@@ -1,0 +1,56 @@
+Total Time: 612.087s
+Min Time: 0.0s
+VC refinements : 39
+Avg VC size : 2974.3846153846152
+Max VC size : 3967
+Avg UIF-ADT size : 496.1794871794872
+Max UIF-ADT size : 635
+avgTempVars : 5.076923076923077
+maxTempVars : 6
+### Farkas solver stats ####
+Disjunct Explorations : 195
+Total retries: 6
+avgFarkaSize : 147.11282051282052
+maxFarkaSize : 644
+avgFarkaTime : 0.8952666666666667s
+maxFarkaTime : 20.38s
+avgNLSize : 6.256410256410256
+maxNLSize : 11
+avgDijSize : 399.1948717948718
+maxDijSize : 2530
+avgElimvars : 125.94358974358974
+maxElimvars : 423
+avgElimAtoms : 244.24102564102563
+maxElimAtoms : 2000
+avgExploreTime : 2.1281897435897434s
+maxExploreTime : 18.334s
+avgCompatCalls : 739.1948717948718
+maxCompatCalls : 4846
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: avlInsert
+avlInsert --> ((((1 * res11._2) + (-47 * height(t))) + -40) ≤ 0)
+unbalancedInsert --> (((0 * e) + -1) ≤ 0)
+height --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: deleteMax
+deleteMax --> ((((1 * res12._2) + (-52 * height(t))) + -4) ≤ 0)
+height --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: avlDelete
+avlDelete --> ((((1 * res10._2) + (-53 * height(t))) + -40) ≤ 0)
+unbalancedDelete --> (((0 * e) + -1) ≤ 0)
+height --> (((-1 * #res) + -1) ≤ 0)
+deleteMax --> ((((1 * res12._2) + (-52 * height(t))) + -4) ≤ 0)
+
+Invariants for Function: size
+size --> ((((-3 * res9) + (1 * height(t))) + 0) ≤ 0)
+height --> (((-1 * #res) + -1) ≤ 0)
+
+

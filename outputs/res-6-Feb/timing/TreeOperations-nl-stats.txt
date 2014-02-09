@@ -1,0 +1,67 @@
+Total Time: 29.572s
+Min Time: 0.07s
+VC refinements : 16
+Avg VC size : 488.4375
+Max VC size : 1915
+Avg UIF-ADT size : 108.125
+Max UIF-ADT size : 183
+avgTempVars : 4.4375
+maxTempVars : 7
+### Farkas solver stats ####
+Disjunct Explorations : 57
+Total retries: 0
+avgFarkaSize : 79.21052631578948
+maxFarkaSize : 611
+avgFarkaTime : 0.04736842105263158s
+maxFarkaTime : 0.693s
+avgNLSize : 6.56140350877193
+maxNLSize : 29
+avgDijSize : 57.26315789473684
+maxDijSize : 363
+avgElimvars : 33.50877192982456
+maxElimvars : 120
+avgElimAtoms : 39.98245614035088
+maxElimAtoms : 180
+avgExploreTime : 0.09778947368421052s
+maxExploreTime : 0.479s
+avgCompatCalls : 151.49122807017545
+maxCompatCalls : 828
+avgLemmaApps : 29.473684210526315
+maxLemmaApps : 1088
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: insert
+insert --> ((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+height --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: addAll
+addAll --> (((((-4 * listSize(l)) + (-17 * (listSize(l) * (height(t) + listSize(l))))) + (2 * res13._2)) + -2) ≤ 0)
+height --> (((-8 * #res) + -1) ≤ 0)
+insert --> ((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize --> (((-8 * #res) + -4) ≤ 0)
+
+Invariants for Function: remove
+remove --> ((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: removeAll
+removeAll --> (((((4 * res15._2) + (-28 * listSize(l))) + (-116 * (listSize(l) * height(t)))) + -7) ≤ 0)
+remove --> ((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height --> (((-2 * #res) + -1) ≤ 0)
+listSize --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: contains
+contains --> ((((-14 * height(t)) + (2 * res11._2)) + -3) ≤ 0)
+height --> (((-2 * #res) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+addAll: 	(a?1->8), (b?1->1), (c?->0), 
+remove: 	(a?2->28), (b?2->1), 
+insert: 	(a?->7), (b?->3), 
+removeAll: 	(a?3->28), (b?3->6), (c?2->0), 
+contains: 	(a?4->6), (b?4->0), 

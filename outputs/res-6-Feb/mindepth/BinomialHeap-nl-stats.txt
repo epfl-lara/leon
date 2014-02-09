@@ -1,0 +1,64 @@
+Total Time: 409.2s
+Min Time: 308.436s
+VC refinements : 34
+Avg VC size : 2718.4411764705883
+Max VC size : 2920
+Avg UIF-ADT size : 627.0588235294117
+Max UIF-ADT size : 671
+avgTempVars : 5.529411764705882
+maxTempVars : 8
+### Farkas solver stats ####
+Disjunct Explorations : 114
+Total retries: 2
+avgFarkaSize : 126.62280701754386
+maxFarkaSize : 1085
+avgFarkaTime : 0.7729736842105264s
+maxFarkaTime : 22.328s
+avgNLSize : 15.25438596491228
+maxNLSize : 73
+avgDijSize : 156.0
+maxDijSize : 606
+avgElimvars : 95.95614035087719
+maxElimvars : 378
+avgElimAtoms : 130.32456140350877
+maxElimAtoms : 476
+avgExploreTime : 0.867561403508772s
+maxExploreTime : 6.516s
+avgCompatCalls : 1281.140350877193
+maxCompatCalls : 10666
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: insTree
+insTree --> ((((1 * res14._2) + (-7 * treeNum(h))) + -2) ? 0)
+treeNum --> (((-3 * #res) + -1) ? 0)
+
+Invariants for Function: removeMinTree
+removeMinTree --> ((((-15 * treeNum(h)) + (1 * res12._2)) + -3) ? 0)
+treeNum --> (((-1 * #res) + -1) ? 0)
+
+Invariants for Function: merge
+merge --> (((((-7 * treeNum(h2)) + (-7 * treeNum(h1))) + (1 * res13._2)) + -1) ? 0)
+treeNum --> (((-2 * #res) + -1) ? 0)
+mergeWithCarry --> (((((-7 * treeNum(h1)) + (1 * res11._2)) + (-7 * treeNum(h2))) + -4) ? 0)
+insTree --> ((((1 * res14._2) + (-7 * treeNum(h))) + -2) ? 0)
+
+Invariants for Function: deleteMin
+insTree --> ((((1 * res14._2) + (-7 * treeNum(h))) + -2) ? 0)
+mergeWithCarry --> (((((-7 * treeNum(h1)) + (1 * res11._2)) + (-7 * treeNum(h2))) + -4) ? 0)
+treeNum --> (((-2 * #res) + -1) ? 0)
+deleteMin --> (((((-23 * treeNum(h)) + (-7 * minTreeChildren(h))) + (1 * res15._2)) + -15) ? 0)
+merge --> (((((-7 * treeNum(h2)) + (-7 * treeNum(h1))) + (1 * res13._2)) + -1) ? 0)
+removeMinTree --> ((((-15 * treeNum(h)) + (1 * res12._2)) + -3) ? 0)
+
+
+########## Lower Bounds ############
+insTree: 	(a?->6), (b?->1), 
+removeMinTree: 	(a?2->14), (b?2->2), 
+merge: 	(a?1->6), (b?1->6), (c?->0), 
+deleteMin: 	(a?3->6), (b?3->22), (c?1->14), 

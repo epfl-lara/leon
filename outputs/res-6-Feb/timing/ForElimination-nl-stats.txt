@@ -1,0 +1,68 @@
+Total Time: 331.285s
+Min Time: 0.351s
+VC refinements : 22
+Avg VC size : 1167.9545454545455
+Max VC size : 1881
+Avg UIF-ADT size : 280.0
+Max UIF-ADT size : 442
+avgTempVars : 5.7272727272727275
+maxTempVars : 8
+### Farkas solver stats ####
+Disjunct Explorations : 73
+Total retries: 8
+avgFarkaSize : 95.9041095890411
+maxFarkaSize : 346
+avgFarkaTime : 2.726013698630137s
+maxFarkaTime : 20.201s
+avgNLSize : 7.493150684931507
+maxNLSize : 17
+avgDijSize : 162.17808219178082
+maxDijSize : 817
+avgElimvars : 30.34246575342466
+maxElimvars : 80
+avgElimAtoms : 71.28767123287672
+maxElimAtoms : 342
+avgExploreTime : 0.4259178082191781s
+maxExploreTime : 3.399s
+avgCompatCalls : 205.45205479452054
+maxCompatCalls : 1218
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: eliminateForLoops
+eliminateForLoops --> ((((-16 * sizeStat(stat)) + (1 * res23._2)) + 10) ≤ 0)
+sizeStat --> (((-16 * #res) + 1) ≤ 0)
+sizeList --> (((-4 * #res) + -1) ≤ 0)
+eliminateForLoopsList --> ((((1 * res24._2) + (-16 * sizeList(l))) + -3) ≤ 0)
+
+Invariants for Function: isForFreeList
+isForFreeList --> ((((-10 * sizeList(l)) + (1 * res17._2)) + -1) ≤ 0)
+isForFree --> ((((-10 * sizeStat(stat)) + (1 * res21._2)) + 5) ≤ 0)
+sizeList --> (((-3 * #res) + -1) ≤ 0)
+sizeStat --> (((-2 * #res) + 1) ≤ 0)
+
+Invariants for Function: forLoopsWellFormed
+isForFree --> ((((-10 * sizeStat(stat)) + (1 * res21._2)) + 5) ≤ 0)
+forLoopsWellFormedList --> ((((-10 * sizeList(l)) + (1 * res18._2)) + -1) ≤ 0)
+isForFreeList --> ((((-10 * sizeList(l)) + (1 * res17._2)) + -1) ≤ 0)
+forLoopsWellFormed --> ((((-10 * sizeStat(stat)) + (1 * res20._2)) + 6) ≤ 0)
+sizeList --> (((-2 * #res) + -1) ≤ 0)
+sizeStat --> (((-8 * #res) + 7) ≤ 0)
+
+Invariants for Function: eliminateWhileLoopsList
+eliminateWhileLoopsList --> ((((-12 * sizeList(l)) + (1 * res19._2)) + -2) ≤ 0)
+eliminateWhileLoops --> ((((1 * res22._2) + (-12 * sizeStat(stat))) + 6) ≤ 0)
+sizeList --> (((0 * #res) + -1) ≤ 0)
+sizeStat --> (((0 * #res) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+eliminateForLoops: 	(a?7->15), (b?7->-11), 
+isForFreeList: 	(a?1->9), (b?1->0), 
+forLoopsWellFormed: 	(a?3->9), (b?3->-7), 
+eliminateWhileLoopsList: 	(a?4->11), (b?4->1), 

@@ -1,0 +1,58 @@
+Total Time: 4.464s
+Min Time: 0.352s
+VC refinements : 11
+Avg VC size : 194.8181818181818
+Max VC size : 426
+Avg UIF-ADT size : 30.90909090909091
+Max UIF-ADT size : 43
+avgTempVars : 3.090909090909091
+maxTempVars : 4
+### Farkas solver stats ####
+Disjunct Explorations : 38
+Total retries: 0
+avgFarkaSize : 26.13157894736842
+maxFarkaSize : 87
+avgFarkaTime : 0.010842105263157896s
+maxFarkaTime : 0.044s
+avgNLSize : 2.0789473684210527
+maxNLSize : 6
+avgDijSize : 25.763157894736842
+maxDijSize : 126
+avgElimvars : 15.105263157894736
+maxElimvars : 54
+avgElimAtoms : 18.94736842105263
+maxElimAtoms : 76
+avgExploreTime : 0.0368421052631579s
+maxExploreTime : 0.147s
+avgCompatCalls : 27.263157894736842
+maxCompatCalls : 164
+avgLemmaApps : 5.052631578947368
+maxLemmaApps : 168
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: fact
+fact --> ((((1 * res10._2) + (-3 * n)) + -2) ≤ 0)
+
+Invariants for Function: factMap
+factMap --> ((((1 * res9._2) + (-5 * k)) + -2) ≤ 0)
+descending --> (((0 * k) + -1) ≤ 0)
+fact --> ((((1 * res10._2) + (-3 * n)) + -2) ≤ 0)
+
+Invariants for Function: squareMap
+squareMap --> ((((2 * res12._2) + (-10 * height(t))) + -3) ≤ 0)
+height --> (((-4 * #res) + -1) ≤ 0)
+
+Invariants for Function: parallelSearch
+parallelSearch --> ((((1 * res11._2) + (-5 * height(t))) + -1) ≤ 0)
+height --> (((-2 * #res) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+fact: 	(a?2->2), (b?2->1), 
+factMap: 	(a?3->4), (b?3->1), 
+squareMap: 	(a?1->4), (b?1->0), 
+parallelSearch: 	(a?->4), (b?->0), 

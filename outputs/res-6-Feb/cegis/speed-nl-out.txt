@@ -1,0 +1,7730 @@
+After Depth Instrumentation: 
+object SpeedBenchmarks {
+  case class Empty() extends StringBuffer
+
+  case class Nil() extends List
+
+  case class Chunk(str: List, next: StringBuffer) extends StringBuffer
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  sealed abstract class StringBuffer
+
+  def Equals(str1 : List, str2 : List, s1 : StringBuffer, s2 : StringBuffer, k : Int) : Boolean = {    require((sizeBound(s1, k) && sizeBound(s2, k) && (size(str1) <= k) && (size(str2) <= k) && (k >= 0)));
+((str1, str2) match {
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      if ((h1 != h2)) {
+        false
+      } else {
+        Equals(t1, t2, s1, s2, k)
+      }
+    case (Cons(_, _), Nil()) =>
+      (s2 match {
+        case Chunk(str, next) =>
+          Equals(str1, str, s1, next, k)
+        case Empty() =>
+          false
+      })
+    case (Nil(), Cons(_, _)) =>
+      (s1 match {
+        case Chunk(str, next) =>
+          Equals(str, str2, next, s2, k)
+        case Empty() =>
+          false
+      })
+    case _ =>
+      ((s1, s2) match {
+        case (Chunk(nstr1, next1), Chunk(nstr2, next2)) =>
+          Equals(nstr1, nstr2, next1, next2, k)
+        case (Empty(), Chunk(nstr2, next2)) =>
+          Equals(str1, nstr2, s1, next2, k)
+        case (Chunk(nstr1, next1), Empty()) =>
+          Equals(nstr1, str2, next1, s2, k)
+        case _ =>
+          true
+      })
+  })} ensuring(res => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def Dis3(x : Int, b : Boolean, t : Int, n : Int) : Int = {    require(((b && (t == 1)) || (!(b) && (t == -1))));
+if (((x > n) || (x < 0))) {
+    0
+  } else {
+    if (b) {
+      Dis3((x + t), b, t, n)
+    } else {
+      Dis3((x - t), b, t, n)
+    }
+  }} ensuring(res => true)
+
+  def Dis1(x : Int, y : Int, n : Int, m : Int) : Int = {if ((x >= n)) {
+    0
+  } else {
+    if ((y < m)) {
+      Dis1(x, (y + 1), n, m)
+    } else {
+      Dis1((x + 1), y, n, m)
+    }
+  }} ensuring(res => true)
+
+  def Dis4(x : Int, b : Boolean, t : Int, n : Int) : Int = {if (((x > n) || (x < 0))) {
+    0
+  } else {
+    if (b) {
+      Dis4((x + t), b, t, n)
+    } else {
+      Dis4((x - t), b, t, n)
+    }
+  }} ensuring(res => true)
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + size(t))
+  })}
+
+  def length(sb : StringBuffer) : Int = {(sb match {
+    case Chunk(_, next) =>
+      (1 + length(next))
+    case _ =>
+      0
+  })}
+
+  def Dis2(x : Int, z : Int, n : Int) : Int = {if ((x >= n)) {
+    0
+  } else {
+    if ((z > x)) {
+      Dis2((x + 1), z, n)
+    } else {
+      Dis2(x, (z + 1), n)
+    }
+  }} ensuring(res => true)
+
+  def sizeBound(sb : StringBuffer, k : Int) : Boolean = {(sb match {
+    case Chunk(str, next) =>
+      ((size(str) <= k) && sizeBound(next, k))
+    case _ =>
+      (0 <= k)
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: Equals
+Defined fun: max
+Defined fun: Dis3
+Defined fun: Dis1
+Defined fun: Dis4
+Defined fun: size
+Defined fun: length
+Defined fun: Dis2
+Defined fun: sizeBound
+Defined fun: max
+FunMap: Map(sizeBound -> sizeBound, Dis4 -> Dis4, Equals -> Equals, Dis2 -> Dis2, Dis1 -> Dis1, max -> max, max -> max, length -> length, Dis3 -> Dis3, size -> size)
+After Time Instrumentation: 
+object SpeedBenchmarks {
+  case class Empty() extends StringBuffer
+
+  case class Nil() extends List
+
+  case class Chunk(str: List, next: StringBuffer) extends StringBuffer
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  sealed abstract class StringBuffer
+
+  def Equals(str1 : List, str2 : List, s1 : StringBuffer, s2 : StringBuffer, k : Int) : (Boolean, Int) = {    require((sizeBound(s1, k) && sizeBound(s2, k) && (size(str1) <= k) && (size(str2) <= k) && (k >= 0)));
+locally {
+    val ir = (str1, str2)
+    locally {
+      val (r1: Boolean, t29: Int) = locally {
+        val t32 = 5
+        if ((ir._1.isInstanceOf[Cons] && ir._2.isInstanceOf[Cons])) {
+          locally {
+            val (e29: Boolean, t33: Int) = locally {
+              val t34 = 6
+              if ((ir._1.head != ir._2.head)) {
+                (false, t34)
+              } else {
+                locally {
+                  val (e32: Boolean, t36: Int) = locally {
+                    val (e38: Boolean, t42: Int) = Equals(ir._1.tail, ir._2.tail, s1, s2, k)
+                    (e38, (2 + (2 + (1 + t42))))
+                  }
+                  
+                  (e32, (t34 + t36))
+                }
+                
+              }
+            }
+            
+            (e29, (t32 + t33))
+          }
+          
+        } else {
+          locally {
+            val (e50: Boolean, t54: Int) = locally {
+              val t55 = 5
+              if ((ir._1.isInstanceOf[Cons] && ir._2.isInstanceOf[Nil])) {
+                locally {
+                  val (e52: Boolean, t56: Int) = locally {
+                    val t57 = 1
+                    if (s2.isInstanceOf[Chunk]) {
+                      locally {
+                        val (e54: Boolean, t58: Int) = locally {
+                          val (e60: Boolean, t64: Int) = Equals(str1, s2.str, s1, s2.next, k)
+                          (e60, (1 + (1 + (1 + t64))))
+                        }
+                        
+                        (e54, (t57 + t58))
+                      }
+                      
+                    } else {
+                      (false, t57)
+                    }
+                  }
+                  
+                  (e52, (t55 + t56))
+                }
+                
+              } else {
+                locally {
+                  val (e65: Boolean, t69: Int) = locally {
+                    val t70 = 5
+                    if ((ir._1.isInstanceOf[Nil] && ir._2.isInstanceOf[Cons])) {
+                      locally {
+                        val (e67: Boolean, t71: Int) = locally {
+                          val t72 = 1
+                          if (s1.isInstanceOf[Chunk]) {
+                            locally {
+                              val (e69: Boolean, t73: Int) = locally {
+                                val (e75: Boolean, t79: Int) = Equals(s1.str, str2, s1.next, s2, k)
+                                (e75, (1 + (1 + (1 + t79))))
+                              }
+                              
+                              (e69, (t72 + t73))
+                            }
+                            
+                          } else {
+                            (false, t72)
+                          }
+                        }
+                        
+                        (e67, (t70 + t71))
+                      }
+                      
+                    } else {
+                      locally {
+                        val (e80: Boolean, t84: Int) = locally {
+                          val ir1 = (s1, s2)
+                          locally {
+                            val (r2: Boolean, t85: Int) = locally {
+                              val t88 = 5
+                              if ((ir1._1.isInstanceOf[Chunk] && ir1._2.isInstanceOf[Chunk])) {
+                                locally {
+                                  val (e84: Boolean, t89: Int) = locally {
+                                    val (e90: Boolean, t95: Int) = Equals(ir1._1.str, ir1._2.str, ir1._1.next, ir1._2.next, k)
+                                    (e90, (2 + (2 + (2 + (2 + (1 + t95))))))
+                                  }
+                                  
+                                  (e84, (t88 + t89))
+                                }
+                                
+                              } else {
+                                locally {
+                                  val (e99: Boolean, t104: Int) = locally {
+                                    val t105 = 5
+                                    if ((ir1._1.isInstanceOf[Empty] && ir1._2.isInstanceOf[Chunk])) {
+                                      locally {
+                                        val (e101: Boolean, t106: Int) = locally {
+                                          val (e107: Boolean, t112: Int) = Equals(str1, ir1._2.str, s1, ir1._2.next, k)
+                                          (e107, (2 + (2 + (1 + t112))))
+                                        }
+                                        
+                                        (e101, (t105 + t106))
+                                      }
+                                      
+                                    } else {
+                                      locally {
+                                        val (e112: Boolean, t117: Int) = locally {
+                                          val t118 = 5
+                                          if ((ir1._1.isInstanceOf[Chunk] && ir1._2.isInstanceOf[Empty])) {
+                                            locally {
+                                              val (e114: Boolean, t119: Int) = locally {
+                                                val (e120: Boolean, t125: Int) = Equals(ir1._1.str, str2, ir1._1.next, s2, k)
+                                                (e120, (2 + (2 + (1 + t125))))
+                                              }
+                                              
+                                              (e114, (t118 + t119))
+                                            }
+                                            
+                                          } else {
+                                            (true, t118)
+                                          }
+                                        }
+                                        
+                                        (e112, (t105 + t117))
+                                      }
+                                      
+                                    }
+                                  }
+                                  
+                                  (e99, (t88 + t104))
+                                }
+                                
+                              }
+                            }
+                            
+                            (r2, (t85 + 2))
+                          }
+                          
+                        }
+                        
+                        (e80, (t70 + t84))
+                      }
+                      
+                    }
+                  }
+                  
+                  (e65, (t55 + t69))
+                }
+                
+              }
+            }
+            
+            (e50, (t32 + t54))
+          }
+          
+        }
+      }
+      
+      (r1, (t29 + 2))
+    }
+    
+  }
+  } ensuring(res12 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def Dis3(x : Int, b : Boolean, t : Int, n : Int) : (Int, Int) = {    require(((b && (t == 1)) || (!(b) && (t == -1))));
+locally {
+    val t213 = 3
+    if (((x > n) || (x < 0))) {
+      (0, t213)
+    } else {
+      locally {
+        val (e210: Int, t215: Int) = if (b) {
+          locally {
+            val (e212: Int, t217: Int) = locally {
+              val (e217: Int, t222: Int) = Dis3((x + t), b, t, n)
+              (e217, (1 + (1 + t222)))
+            }
+            
+            (e212, t217)
+          }
+          
+        } else {
+          locally {
+            val (e220: Int, t225: Int) = locally {
+              val (e225: Int, t230: Int) = Dis3((x - t), b, t, n)
+              (e225, (1 + (1 + t230)))
+            }
+            
+            (e220, t225)
+          }
+          
+        }
+        (e210, (t213 + t215))
+      }
+      
+    }
+  }
+  } ensuring(res15 => true)
+
+  def Dis1(x : Int, y : Int, n : Int, m : Int) : (Int, Int) = {locally {
+    val t189 = 1
+    if ((x >= n)) {
+      (0, t189)
+    } else {
+      locally {
+        val (e186: Int, t191: Int) = locally {
+          val t192 = 1
+          if ((y < m)) {
+            locally {
+              val (e188: Int, t193: Int) = locally {
+                val (e193: Int, t198: Int) = Dis1(x, (y + 1), n, m)
+                (e193, (1 + (1 + t198)))
+              }
+              
+              (e188, (t192 + t193))
+            }
+            
+          } else {
+            locally {
+              val (e196: Int, t201: Int) = locally {
+                val (e201: Int, t206: Int) = Dis1((x + 1), y, n, m)
+                (e201, (1 + (1 + t206)))
+              }
+              
+              (e196, (t192 + t201))
+            }
+            
+          }
+        }
+        
+        (e186, (t189 + t191))
+      }
+      
+    }
+  }
+  } ensuring(res14 => true)
+
+  def Dis4(x : Int, b : Boolean, t : Int, n : Int) : (Int, Int) = {locally {
+    val t3 = 3
+    if (((x > n) || (x < 0))) {
+      (0, t3)
+    } else {
+      locally {
+        val (e2: Int, t5: Int) = if (b) {
+          locally {
+            val (e4: Int, t7: Int) = locally {
+              val (e9: Int, t12: Int) = Dis4((x + t), b, t, n)
+              (e9, (1 + (1 + t12)))
+            }
+            
+            (e4, t7)
+          }
+          
+        } else {
+          locally {
+            val (e12: Int, t15: Int) = locally {
+              val (e17: Int, t20: Int) = Dis4((x - t), b, t, n)
+              (e17, (1 + (1 + t20)))
+            }
+            
+            (e12, t15)
+          }
+          
+        }
+        (e2, (t3 + t5))
+      }
+      
+    }
+  }
+  } ensuring(res11 => true)
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + size(t))
+  })}
+
+  def length(sb : StringBuffer) : Int = {(sb match {
+    case Chunk(_, next) =>
+      (1 + length(next))
+    case _ =>
+      0
+  })}
+
+  def Dis2(x : Int, z : Int, n : Int) : (Int, Int) = {locally {
+    val t167 = 1
+    if ((x >= n)) {
+      (0, t167)
+    } else {
+      locally {
+        val (e164: Int, t169: Int) = locally {
+          val t170 = 1
+          if ((z > x)) {
+            locally {
+              val (e166: Int, t171: Int) = locally {
+                val (e170: Int, t175: Int) = Dis2((x + 1), z, n)
+                (e170, (1 + (1 + t175)))
+              }
+              
+              (e166, (t170 + t171))
+            }
+            
+          } else {
+            locally {
+              val (e173: Int, t178: Int) = locally {
+                val (e177: Int, t182: Int) = Dis2(x, (z + 1), n)
+                (e177, (1 + (1 + t182)))
+              }
+              
+              (e173, (t170 + t178))
+            }
+            
+          }
+        }
+        
+        (e164, (t167 + t169))
+      }
+      
+    }
+  }
+  } ensuring(res13 => true)
+
+  def sizeBound(sb : StringBuffer, k : Int) : Boolean = {(sb match {
+    case Chunk(str, next) =>
+      ((size(str) <= k) && sizeBound(next, k))
+    case _ =>
+      (0 <= k)
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object SpeedBenchmarks {
+  case class Empty() extends StringBuffer
+
+  case class Nil() extends List
+
+  case class Chunk(str: List, next: StringBuffer) extends StringBuffer
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  sealed abstract class StringBuffer
+
+  def Equals(str1 : List, str2 : List, s1 : StringBuffer, s2 : StringBuffer, k : Int) : (Boolean, Int) = {    require((sizeBound(s1, k) && sizeBound(s2, k) && (size(str1) <= k) && (size(str2) <= k) && (k >= 0)));
+locally {
+    val ir = (str1, str2)
+    locally {
+      val (r1: Boolean, t29: Int) = if ((ir._1.isInstanceOf[Cons] && ir._2.isInstanceOf[Cons])) {
+        locally {
+          val (e29: Boolean, t33: Int) = if ((ir._1.head != ir._2.head)) {
+            (false, 6)
+          } else {
+            locally {
+              val (e32: Boolean, t36: Int) = locally {
+                val (e38: Boolean, t42: Int) = Equals(ir._1.tail, ir._2.tail, s1, s2, k)
+                (e38, (2 + (2 + (1 + t42))))
+              }
+              
+              (e32, (6 + t36))
+            }
+            
+          }
+          (e29, (5 + t33))
+        }
+        
+      } else {
+        locally {
+          val (e50: Boolean, t54: Int) = if ((ir._1.isInstanceOf[Cons] && ir._2.isInstanceOf[Nil])) {
+            locally {
+              val (e52: Boolean, t56: Int) = if (s2.isInstanceOf[Chunk]) {
+                locally {
+                  val (e54: Boolean, t58: Int) = locally {
+                    val (e60: Boolean, t64: Int) = Equals(str1, s2.str, s1, s2.next, k)
+                    (e60, (1 + (1 + (1 + t64))))
+                  }
+                  
+                  (e54, (1 + t58))
+                }
+                
+              } else {
+                (false, 1)
+              }
+              (e52, (5 + t56))
+            }
+            
+          } else {
+            locally {
+              val (e65: Boolean, t69: Int) = if ((ir._1.isInstanceOf[Nil] && ir._2.isInstanceOf[Cons])) {
+                locally {
+                  val (e67: Boolean, t71: Int) = if (s1.isInstanceOf[Chunk]) {
+                    locally {
+                      val (e69: Boolean, t73: Int) = locally {
+                        val (e75: Boolean, t79: Int) = Equals(s1.str, str2, s1.next, s2, k)
+                        (e75, (1 + (1 + (1 + t79))))
+                      }
+                      
+                      (e69, (1 + t73))
+                    }
+                    
+                  } else {
+                    (false, 1)
+                  }
+                  (e67, (5 + t71))
+                }
+                
+              } else {
+                locally {
+                  val (e80: Boolean, t84: Int) = locally {
+                    val ir1 = (s1, s2)
+                    locally {
+                      val (r2: Boolean, t85: Int) = if ((ir1._1.isInstanceOf[Chunk] && ir1._2.isInstanceOf[Chunk])) {
+                        locally {
+                          val (e84: Boolean, t89: Int) = locally {
+                            val (e90: Boolean, t95: Int) = Equals(ir1._1.str, ir1._2.str, ir1._1.next, ir1._2.next, k)
+                            (e90, (2 + (2 + (2 + (2 + (1 + t95))))))
+                          }
+                          
+                          (e84, (5 + t89))
+                        }
+                        
+                      } else {
+                        locally {
+                          val (e99: Boolean, t104: Int) = if ((ir1._1.isInstanceOf[Empty] && ir1._2.isInstanceOf[Chunk])) {
+                            locally {
+                              val (e101: Boolean, t106: Int) = locally {
+                                val (e107: Boolean, t112: Int) = Equals(str1, ir1._2.str, s1, ir1._2.next, k)
+                                (e107, (2 + (2 + (1 + t112))))
+                              }
+                              
+                              (e101, (5 + t106))
+                            }
+                            
+                          } else {
+                            locally {
+                              val (e112: Boolean, t117: Int) = if ((ir1._1.isInstanceOf[Chunk] && ir1._2.isInstanceOf[Empty])) {
+                                locally {
+                                  val (e114: Boolean, t119: Int) = locally {
+                                    val (e120: Boolean, t125: Int) = Equals(ir1._1.str, str2, ir1._1.next, s2, k)
+                                    (e120, (2 + (2 + (1 + t125))))
+                                  }
+                                  
+                                  (e114, (5 + t119))
+                                }
+                                
+                              } else {
+                                (true, 5)
+                              }
+                              (e112, (5 + t117))
+                            }
+                            
+                          }
+                          (e99, (5 + t104))
+                        }
+                        
+                      }
+                      (r2, (t85 + 2))
+                    }
+                    
+                  }
+                  
+                  (e80, (5 + t84))
+                }
+                
+              }
+              (e65, (5 + t69))
+            }
+            
+          }
+          (e50, (5 + t54))
+        }
+        
+      }
+      (r1, (t29 + 2))
+    }
+    
+  }
+  } ensuring(res12 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def Dis3(x : Int, b : Boolean, t : Int, n : Int) : (Int, Int) = {    require(((b && (t == 1)) || (!(b) && (t == -1))));
+if (((x > n) || (x < 0))) {
+    (0, 3)
+  } else {
+    locally {
+      val (e210: Int, t215: Int) = if (b) {
+        locally {
+          val (e212: Int, t217: Int) = locally {
+            val (e217: Int, t222: Int) = Dis3((x + t), b, t, n)
+            (e217, (1 + (1 + t222)))
+          }
+          
+          (e212, t217)
+        }
+        
+      } else {
+        locally {
+          val (e220: Int, t225: Int) = locally {
+            val (e225: Int, t230: Int) = Dis3((x - t), b, t, n)
+            (e225, (1 + (1 + t230)))
+          }
+          
+          (e220, t225)
+        }
+        
+      }
+      (e210, (3 + t215))
+    }
+    
+  }} ensuring(res15 => true)
+
+  def Dis1(x : Int, y : Int, n : Int, m : Int) : (Int, Int) = {if ((x >= n)) {
+    (0, 1)
+  } else {
+    locally {
+      val (e186: Int, t191: Int) = if ((y < m)) {
+        locally {
+          val (e188: Int, t193: Int) = locally {
+            val (e193: Int, t198: Int) = Dis1(x, (y + 1), n, m)
+            (e193, (1 + (1 + t198)))
+          }
+          
+          (e188, (1 + t193))
+        }
+        
+      } else {
+        locally {
+          val (e196: Int, t201: Int) = locally {
+            val (e201: Int, t206: Int) = Dis1((x + 1), y, n, m)
+            (e201, (1 + (1 + t206)))
+          }
+          
+          (e196, (1 + t201))
+        }
+        
+      }
+      (e186, (1 + t191))
+    }
+    
+  }} ensuring(res14 => true)
+
+  def Dis4(x : Int, b : Boolean, t : Int, n : Int) : (Int, Int) = {if (((x > n) || (x < 0))) {
+    (0, 3)
+  } else {
+    locally {
+      val (e2: Int, t5: Int) = if (b) {
+        locally {
+          val (e4: Int, t7: Int) = locally {
+            val (e9: Int, t12: Int) = Dis4((x + t), b, t, n)
+            (e9, (1 + (1 + t12)))
+          }
+          
+          (e4, t7)
+        }
+        
+      } else {
+        locally {
+          val (e12: Int, t15: Int) = locally {
+            val (e17: Int, t20: Int) = Dis4((x - t), b, t, n)
+            (e17, (1 + (1 + t20)))
+          }
+          
+          (e12, t15)
+        }
+        
+      }
+      (e2, (3 + t5))
+    }
+    
+  }} ensuring(res11 => true)
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + size(t))
+  })}
+
+  def length(sb : StringBuffer) : Int = {(sb match {
+    case Chunk(_, next) =>
+      (1 + length(next))
+    case _ =>
+      0
+  })}
+
+  def Dis2(x : Int, z : Int, n : Int) : (Int, Int) = {if ((x >= n)) {
+    (0, 1)
+  } else {
+    locally {
+      val (e164: Int, t169: Int) = if ((z > x)) {
+        locally {
+          val (e166: Int, t171: Int) = locally {
+            val (e170: Int, t175: Int) = Dis2((x + 1), z, n)
+            (e170, (1 + (1 + t175)))
+          }
+          
+          (e166, (1 + t171))
+        }
+        
+      } else {
+        locally {
+          val (e173: Int, t178: Int) = locally {
+            val (e177: Int, t182: Int) = Dis2(x, (z + 1), n)
+            (e177, (1 + (1 + t182)))
+          }
+          
+          (e173, (1 + t178))
+        }
+        
+      }
+      (e164, (1 + t169))
+    }
+    
+  }} ensuring(res13 => true)
+
+  def sizeBound(sb : StringBuffer, k : Int) : Boolean = {(sb match {
+    case Chunk(str, next) =>
+      ((size(str) <= k) && sizeBound(next, k))
+    case _ =>
+      (0 <= k)
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def mult(x : Int, y : Int) : Int = {locally {
+    val r = locally {
+      val px = if ((x < 0)) {
+        -(x)
+      } else {
+        x
+      }
+      locally {
+        val py = if ((y < 0)) {
+          -(y)
+        } else {
+          y
+        }
+        pmult(px, py)
+      }
+      
+    }
+    
+    if ((((x >= 0) && (y >= 0)) || ((x < 0) && (y < 0)))) {
+      r
+    } else {
+      -(r)
+    }
+  }
+  }
+
+  def pmult(x : Int, y : Int) : Int = {if (((x == 0) || (y == 0))) {
+    0
+  } else {
+    (pmult((x - 1), y) + y)
+  }} ensuring(res => ((res >= 0) && (((x == 0) || (y == 0)) || (res == (pmult(x, (y - 1)) + x)))))
+}
+
+Function: Equals template --> (res12._2 ≤ (((a? * mult((k + 1), (length(s1) + length(s2)))) + (b? * size(str1))) + e?))
+Function: Dis3 template --> (res15._2 ≤ ((a?3 * max(0, (n - x))) + c?3))
+Function: Dis1 template --> (res14._2 ≤ (((a?1 * max(0, (n - x))) + (b?1 * max(0, (m - y)))) + c?1))
+Function: Dis4 template --> ((((b ∧ (t ≥ 0)) ∨ (¬(b) ∧ (t < 0))) ∧ (res11._2 ≤ ((a?4 * max(0, (n - x))) + c?4))) ∨ (((¬(b) ∧ (t ≥ 0)) ∨ (b ∧ (t < 0))) ∧ (res11._2 ≤ ((d?1 * max(0, x)) + e?1))))
+Function: Dis2 template --> (res13._2 ≤ (((a?2 * max(0, (n - x))) + (b?2 * max(0, (n - z)))) + c?2))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(pmult, length, Dis3, mult, size, Dis1, sizeBound, Dis4, Equals, Dis2)
+[[34m Info  [0m] - considering function Dis3...
+[[34m Info  [0m] Body: if (((x > n) ∨ (x < 0)))
+            (0, 3)
+          else
+            (let (e210,t215 := if (b)
+              (let (e212,t217 := (let (e217,t222 := Dis3((x + t), b, t, n)) in
+                (e217, (1 + (1 + t222))))) in
+                (e212, t217))
+            else
+              (let (e220,t225 := (let (e225,t230 := Dis3((x - t), b, t, n)) in
+                (e225, (1 + (1 + t230))))) in
+                (e220, t225))) in
+              (e210, (3 + t215)))
+[[34m Info  [0m] Post: true
+falttened Body: (((b && (t == 1)) || (!(b) && (t == -1))) && (res15 == ifres) && ((((x > n) || (x < 0)) && (ifres == tp) && (arg == 0) && (arg1 == 3) && (tp == (arg, arg1))) || ((x <= n) && (x >= 0) && (ifres == tp1) && (arg2 == (3 + t215)) && (tp1 == (e210, arg2)) && ((b && (ifres1 == tp2) && (tp2 == (e212, t217)) && (e217 == ts) && (ts == tres._1) && (t222 == ts1) && (ts1 == tres._2) && (tres == r3) && (arg3 == (x + t)) && (r3 == Dis3(arg3, b, t, n)) && (t217 == (1 + (1 + t222))) && (e212 == e217)) || (!(b) && (ifres1 == tp3) && (tp3 == (e220, t225)) && (e225 == ts2) && (ts2 == tres1._1) && (t230 == ts3) && (ts3 == tres1._2) && (t225 == (1 + (1 + t230))) && (tres1 == r4) && (arg4 == (x - t)) && (r4 == Dis3(arg4, b, t, n)) && (e220 == e225))) && (e210 == ts4) && (ts4 == ifres1._1) && (t215 == ts5) && (ts5 == ifres1._2))))
+Flattened Post: ((ts6 > ((a?3 * r5) + c?3)) && (ts6 == res15._2) && (arg5 == 0) && (arg6 == (n - x)) && (r5 == max(arg5, arg6)))
+[[34m Info  [0m] Number of axiom instances: 0
+1: solved... in 0.146s
+2: solved... in 0.144s
+1: solved... in 0.018s
+2: solved... in 0.01s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/3
+Unrolled calls: Set((r3 == Dis3(arg3, b, t, n)), (r4 == Dis3(arg4, b, t, n)), (r5 == max(arg5, arg6)))
+Unrolling (r3 == Dis3(arg3, b, t, n))
+Unrolling (r4 == Dis3(arg4, b, t, n))
+Inlining (r5 == max(arg5, arg6))
+[[34m Info  [0m] Number of axiom instances: 0
+1: solved... in 0.033s
+2: solved... in 0.006s
+1: solved... in 0.016s
+2: solved... in 0.006s
+1: solved... in 0.014s
+2: solved... in 0.007s
+1: solved... in 0.014s
+2: solved... in 0.007s
+1: solved... in 0.014s
+2: solved... in 0.008s
+1: solved... in 0.015s
+2: solved... in 0.008s
+1: solved... in 0.012s
+2: solved... in 0.007s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.007s
+1: solved... in 0.013s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.012s
+2: solved... in 0.007s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.013s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.013s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.012s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.012s
+2: solved... in 0.01s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.017s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.014s
+2: solved... in 0.015s
+1: solved... in 0.008s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.018s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.008s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.008s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.008s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.008s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.008s
+2: solved... in 0.019s
+1: solved... in 0.008s
+2: solved... in 0.017s
+1: solved... in 0.008s
+2: solved... in 0.014s
+1: solved... in 0.008s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.008s
+2: solved... in 0.016s
+1: solved... in 0.008s
+2: solved... in 0.026s
+1: solved... in 0.008s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.008s
+2: solved... in 0.021s
+1: solved... in 0.008s
+2: solved... in 0.022s
+1: solved... in 0.008s
+2: solved... in 0.021s
+1: solved... in 0.008s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.008s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.008s
+2: solved... in 0.023s
+1: solved... in 0.008s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.008s
+2: solved... in 0.023s
+1: solved... in 0.008s
+2: solved... in 0.023s
+1: solved... in 0.008s
+2: solved... in 0.019s
+1: solved... in 0.008s
+2: solved... in 0.024s
+1: solved... in 0.008s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.008s
+2: solved... in 0.017s
+1: solved... in 0.008s
+2: solved... in 0.022s
+1: solved... in 0.008s
+2: solved... in 0.022s
+1: solved... in 0.008s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.008s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.008s
+2: solved... in 0.029s
+1: solved... in 0.008s
+2: solved... in 0.027s
+1: solved... in 0.008s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.008s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.008s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.008s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.008s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.012s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.008s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.008s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.008s
+2: solved... in 0.035s
+1: solved... in 0.008s
+2: solved... in 0.032s
+1: solved... in 0.015s
+2: solved... in 0.031s
+1: solved... in 0.008s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.008s
+2: solved... in 0.035s
+1: solved... in 0.008s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.008s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.008s
+2: solved... in 0.029s
+1: solved... in 0.01s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.008s
+2: solved... in 0.046s
+1: solved... in 0.008s
+2: solved... in 0.043s
+1: solved... in 0.008s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.008s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.008s
+2: solved... in 0.025s
+1: solved... in 0.008s
+2: solved... in 0.031s
+1: solved... in 0.008s
+2: solved... in 0.032s
+1: solved... in 0.008s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.01s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.008s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.008s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.008s
+2: solved... in 0.041s
+1: solved... in 0.008s
+2: solved... in 0.029s
+1: solved... in 0.008s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.008s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.008s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.044s
+1: solved... in 0.008s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.008s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.05s
+1: solved... in 0.009s
+2: solved... in 0.041s
+1: solved... in 0.008s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.055s
+1: solved... in 0.008s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.008s
+2: solved... in 0.038s
+1: solved... in 0.008s
+2: solved... in 0.033s
+1: solved... in 0.008s
+2: solved... in 0.036s
+1: solved... in 0.008s
+2: solved... in 0.037s
+1: solved... in 0.008s
+2: solved... in 0.04s
+1: solved... in 0.008s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.008s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.018s
+2: solved... in 0.04s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.044s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.008s
+2: solved... in 0.042s
+1: solved... in 0.008s
+2: solved... in 0.036s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/6
+Unrolled calls: Set((r7 == Dis3(arg11, b, t, n)), (r9 == Dis3(arg16, b, t, n)), (r11 == max(arg19, arg20)), (r6 == Dis3(arg10, b, t, n)), (r8 == Dis3(arg15, b, t, n)), (r10 == max(arg17, arg18)))
+Inlining (r10 == max(arg17, arg18))
+Inlining (r11 == max(arg19, arg20))
+[[34m Info  [0m] Number of axiom instances: 0
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.011s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.017s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.014s
+2: solved... in 0.01s
+1: solved... in 0.012s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.01s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.01s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.012s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.014s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.01s
+2: solved... in 0.013s
+1: solved... in 0.01s
+2: solved... in 0.015s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.022s
+1: solved... in 0.013s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.029s
+1: solved... in 0.01s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.026s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.025s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.027s
+1: solved... in 0.014s
+2: solved... in 0.025s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.03s
+1: solved... in 0.01s
+2: solved... in 0.026s
+1: solved... in 0.01s
+2: solved... in 0.028s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.01s
+2: solved... in 0.025s
+1: solved... in 0.01s
+2: solved... in 0.026s
+1: solved... in 0.01s
+2: solved... in 0.027s
+1: solved... in 0.01s
+2: solved... in 0.034s
+1: solved... in 0.01s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.01s
+2: solved... in 0.03s
+1: solved... in 0.01s
+2: solved... in 0.033s
+1: solved... in 0.01s
+2: solved... in 0.036s
+1: solved... in 0.01s
+2: solved... in 0.031s
+1: solved... in 0.01s
+2: solved... in 0.035s
+1: solved... in 0.01s
+2: solved... in 0.043s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.022s
+1: solved... in 0.012s
+2: solved... in 0.019s
+1: solved... in 0.018s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.011s
+2: solved... in 0.022s
+1: solved... in 0.012s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.01s
+2: solved... in 0.021s
+1: solved... in 0.01s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.027s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.01s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.01s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.01s
+2: solved... in 0.031s
+1: solved... in 0.01s
+2: solved... in 0.032s
+1: solved... in 0.01s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.01s
+2: solved... in 0.028s
+1: solved... in 0.011s
+[[34m Info  [0m] - Found inductive invariant: Dis3 --> ((((1 * res15._2) + (-5 * max(0, (n - x)))) + -200) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function Dis1...
+[[34m Info  [0m] Body: if ((x ≥ n))
+            (0, 1)
+          else
+            (let (e186,t191 := if ((y < m))
+              (let (e188,t193 := (let (e193,t198 := Dis1(x, (y + 1), n, m)) in
+                (e193, (1 + (1 + t198))))) in
+                (e188, (1 + t193)))
+            else
+              (let (e196,t201 := (let (e201,t206 := Dis1((x + 1), y, n, m)) in
+                (e201, (1 + (1 + t206))))) in
+                (e196, (1 + t201)))) in
+              (e186, (1 + t191)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res14 == ifres9) && (((x >= n) && (ifres9 == tp12) && (arg31 == 0) && (arg32 == 1) && (tp12 == (arg31, arg32))) || ((x < n) && (ifres9 == tp13) && (arg33 == (1 + t191)) && (tp13 == (e186, arg33)) && (((y < m) && (ifres10 == tp14) && (arg34 == (1 + t193)) && (tp14 == (e188, arg34)) && (t198 == ts26) && (ts26 == tres6._2) && (tres6 == r17) && (arg35 == (y + 1)) && (r17 == Dis1(x, arg35, n, m)) && (t193 == (1 + (1 + t198))) && (e193 == ts27) && (ts27 == tres6._1) && (e188 == e193)) || ((y >= m) && (ifres10 == tp15) && (arg36 == (1 + t201)) && (tp15 == (e196, arg36)) && (e201 == ts28) && (ts28 == tres7._1) && (e196 == e201) && (tres7 == r18) && (arg37 == (x + 1)) && (r18 == Dis1(arg37, y, n, m)) && (t201 == (1 + (1 + t206))) && (t206 == ts29) && (ts29 == tres7._2))) && (e186 == ts30) && (ts30 == ifres10._1) && (t191 == ts31) && (ts31 == ifres10._2))))
+Flattened Post: ((ts32 > (((a?1 * r19) + (b?1 * r20)) + c?1)) && (arg40 == 0) && (arg39 == (n - x)) && (arg38 == 0) && (arg41 == (m - y)) && (ts32 == res14._2) && (r20 == max(arg40, arg41)) && (r19 == max(arg38, arg39)))
+[[34m Info  [0m] Number of axiom instances: 0
+1: solved... in 0.007s
+2: solved... in 0.006s
+1: solved... in 0.013s
+2: solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/4
+Unrolled calls: Set((r17 == Dis1(x, arg35, n, m)), (r18 == Dis1(arg37, y, n, m)), (r20 == max(arg40, arg41)), (r19 == max(arg38, arg39)))
+Unrolling (r17 == Dis1(x, arg35, n, m))
+Unrolling (r18 == Dis1(arg37, y, n, m))
+Inlining (r20 == max(arg40, arg41))
+Inlining (r19 == max(arg38, arg39))
+[[34m Info  [0m] Number of axiom instances: 0
+1: solved... in 0.011s
+2: solved... in 0.006s
+1: solved... in 0.012s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.013s
+2: solved... in 0.006s
+1: solved... in 0.011s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.006s
+1: solved... in 0.009s
+2: solved... in 0.006s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.007s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.016s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.014s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.008s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.009s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.01s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.011s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.012s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.014s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.01s
+2: solved... in 0.015s
+1: solved... in 0.01s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.015s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.016s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.017s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.018s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.019s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.01s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.02s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.021s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.022s
+1: solved... in 0.009s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.029s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.011s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.024s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.025s
+1: solved... in 0.009s
+2: solved... in 0.026s
+1: solved... in 0.01s
+2: solved... in 0.026s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.01s
+2: solved... in 0.032s
+1: solved... in 0.011s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.01s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.027s
+1: solved... in 0.01s
+2: solved... in 0.036s
+1: solved... in 0.011s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.01s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.028s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.029s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.011s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.01s
+2: solved... in 0.035s
+1: solved... in 0.01s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.03s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.04s
+1: solved... in 0.011s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.031s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.012s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.012s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.032s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.01s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.042s
+1: solved... in 0.011s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.033s
+1: solved... in 0.009s
+2: solved... in 0.034s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.008s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.011s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.035s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.008s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.012s
+2: solved... in 0.043s
+1: solved... in 0.01s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.036s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.037s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.047s
+1: solved... in 0.01s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.038s
+1: solved... in 0.009s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.041s
+1: solved... in 0.009s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.012s
+2: solved... in 0.044s
+1: solved... in 0.009s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.04s
+1: solved... in 0.009s
+2: solved... in 0.04s
+1: solved... in 0.009s
+2: solved... in 0.04s
+1: solved... in 0.01s
+2: solved... in 0.04s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.039s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.013s
+2: solved... in 0.047s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.009s
+2: solved... in 0.041s
+1: solved... in 0.009s
+2: solved... in 0.042s
+1: solved... in 0.008s
+2: solved... in 0.041s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.009s
+2: solved... in 0.041s
+1: solved... in 0.009s
+2: solved... in 0.042s
+1: solved... in 0.009s
+2: solved... in 0.05s
+1: solved... in 0.011s
+2: solved... in 0.05s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.008s
+2: solved... in 0.042s
+1: solved... in 0.009s
+2: solved... in 0.042s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.055s
+1: solved... in 0.009s
+2: solved... in 0.043s
+1: solved... in 0.015s
+2: solved... in 0.043s
+1: solved... in 0.009s
+2: solved... in 0.044s
+1: solved... in 0.01s
+2: solved... in 0.044s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.009s
+2: solved... in 0.044s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.01s
+2: solved... in 0.047s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.008s
+2: solved... in 0.044s
+1: solved... in 0.009s
+2: solved... in 0.056s
+1: solved... in 0.009s
+2: solved... in 0.044s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.009s
+2: solved... in 0.045s
+1: solved... in 0.009s
+2: solved... in 0.049s
+1: solved... in 0.012s
+2: solved... in 0.05s
+1: solved... in 0.009s
+2: solved... in 0.052s
+1: solved... in 0.009s
+2: solved... in 0.046s
+1: solved... in 0.009s
+2: solved... in 0.046s
+1: solved... in 0.009s
+2: solved... in 0.046s
+1: solved... in 0.009s
+2: solved... in 0.047s
+1: solved... in 0.008s
+2: solved... in 0.046s
+1: solved... in 0.009s
+2: solved... in 0.047s
+1: solved... in 0.012s
+2: solved... in 0.054s
+1: solved... in 0.009s
+2: solved... in 0.048s
+1: solved... in 0.009s
+2: solved... in 0.047s
+1: solved... in 0.009s
+2: solved... in 0.048s
+1: solved... in 0.009s
+2: solved... in 0.048s
+1: solved... in 0.009s
+2: solved... in 0.047s
+1: solved... in 0.009s
+2: solved... in 0.048s
+1: solved... in 0.009s
+2: solved... in 0.048s
+1: solved... in 0.013s
+2: solved... in 0.056s
+1: solved... in 0.01s
+2: solved... in 0.048s
+1: solved... in 0.011s
+2: solved... in 0.049s
+1: solved... in 0.009s
+2: solved... in 0.049s
+1: solved... in 0.009s
+2: solved... in 0.049s
+1: solved... in 0.009s
+2: solved... in 0.049s
+1: solved... in 0.009s
+2: solved... in 0.05s
+1: solved... in 0.009s
+2: solved... in 0.054s
+1: solved... in 0.011s
+2: solved... in 0.054s
+1: solved... in 0.009s
+2: solved... in 0.05s
+1: solved... in 0.009s
+2: solved... in 0.052s
+1: solved... in 0.009s
+2: solved... in 0.05s
+1: solved... in 0.009s
+2: solved... in 0.051s
+1: solved... in 0.009s
+2: solved... in 0.051s
+1: solved... in 0.009s
+2: solved... in 0.052s
+1: solved... in 0.009s
+2: solved... in 0.064s
+1: solved... in 0.01s
+2: solved... in 0.051s
+1: solved... in 0.009s
+2: solved... in 0.051s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.009s
+2: solved... in 0.052s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.009s
+2: solved... in 0.052s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.012s
+2: solved... in 0.06s
+1: solved... in 0.009s
+2: solved... in 0.052s
+1: solved... in 0.009s
+2: solved... in 0.066s
+1: solved... in 0.009s
+2: solved... in 0.054s
+1: solved... in 0.008s
+2: solved... in 0.053s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.009s
+2: solved... in 0.053s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.01s
+2: solved... in 0.055s
+1: solved... in 0.009s
+2: solved... in 0.054s
+1: solved... in 0.009s
+2: solved... in 0.054s
+1: solved... in 0.009s
+2: solved... in 0.054s
+1: solved... in 0.009s
+2: solved... in 0.055s
+1: solved... in 0.009s
+2: solved... in 0.055s
+1: solved... in 0.009s
+2: solved... in 0.067s
+1: solved... in 0.01s
+2: solved... in 0.055s
+1: solved... in 0.009s
+2: solved... in 0.055s
+1: solved... in 0.009s
+2: solved... in 0.057s
+1: solved... in 0.009s
+2: solved... in 0.056s
+1: solved... in 0.01s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.057s
+1: solved... in 0.01s
+2: solved... in 0.069s
+1: solved... in 0.01s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.057s
+1: solved... in 0.009s
+2: solved... in 0.057s
+1: solved... in 0.009s
+2: solved... in 0.058s
+1: solved... in 0.01s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.01s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.057s
+1: solved... in 0.009s
+2: solved... in 0.057s
+1: solved... in 0.009s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.01s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.058s
+1: solved... in 0.009s
+2: solved... in 0.061s
+1: solved... in 0.009s
+2: solved... in 0.06s
+1: solved... in 0.009s
+2: solved... in 0.06s
+1: solved... in 0.009s
+2: solved... in 0.072s
+1: solved... in 0.009s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.059s
+1: solved... in 0.009s
+2: solved... in 0.06s
+1: solved... in 0.008s
+2: solved... in 0.071s
+1: solved... in 0.009s
+2: solved... in 0.064s
+1: solved... in 0.011s
+2: solved... in 0.065s
+1: solved... in 0.009s
+2: solved... in 0.061s
+1: solved... in 0.009s
+2: solved... in 0.061s
+1: solved... in 0.009s
+2: solved... in 0.061s
+1: solved... in 0.009s
+2: solved... in 0.061s
+1: solved... in 0.009s
+2: solved... in 0.064s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.01s
+2: solved... in 0.062s
+1: solved... in 0.009s
+2: solved... in 0.061s
+1: solved... in 0.009s
+2: solved... in 0.062s
+1: solved... in 0.008s
+2: solved... in 0.062s
+1: solved... in 0.009s
+2: solved... in 0.062s
+1: solved... in 0.01s
+2: solved... in 0.062s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.009s
+2: solved... in 0.062s
+1: solved... in 0.009s
+2: solved... in 0.063s
+1: solved... in 0.009s
+2: solved... in 0.063s
+1: solved... in 0.009s
+2: solved... in 0.063s
+1: solved... in 0.009s
+2: solved... in 0.063s
+1: solved... in 0.009s
+2: solved... in 0.071s
+1: solved... in 0.01s
+2: solved... in 0.065s
+1: solved... in 0.01s
+2: solved... in 0.064s
+1: solved... in 0.009s
+2: solved... in 0.063s
+1: solved... in 0.009s
+2: solved... in 0.063s
+1: solved... in 0.009s
+2: solved... in 0.064s
+1: solved... in 0.009s
+2: solved... in 0.064s
+1: solved... in 0.009s
+2: solved... in 0.076s
+1: solved... in 0.009s
+2: solved... in 0.065s
+1: solved... in 0.008s
+2: solved... in 0.065s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.065s
+1: solved... in 0.009s
+2: solved... in 0.064s
+1: solved... in 0.009s
+2: solved... in 0.079s
+1: solved... in 0.01s
+2: solved... in 0.066s
+1: solved... in 0.009s
+2: solved... in 0.065s
+1: solved... in 0.009s
+2: solved... in 0.065s
+1: solved... in 0.009s
+2: solved... in 0.065s
+1: solved... in 0.009s
+2: solved... in 0.067s
+1: solved... in 0.009s
+2: solved... in 0.075s
+1: solved... in 0.011s
+2: solved... in 0.07s
+1: solved... in 0.009s
+2: solved... in 0.066s
+1: solved... in 0.009s
+2: solved... in 0.066s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.067s
+1: solved... in 0.009s
+2: solved... in 0.067s
+1: solved... in 0.01s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.067s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.069s
+1: solved... in 0.009s
+2: solved... in 0.069s
+1: solved... in 0.009s
+2: solved... in 0.069s
+1: solved... in 0.009s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.009s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.084s
+1: solved... in 0.01s
+2: solved... in 0.069s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.01s
+2: solved... in 0.068s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.009s
+2: solved... in 0.085s
+1: solved... in 0.018s
+2: solved... in 0.069s
+1: solved... in 0.009s
+2: solved... in 0.071s
+1: solved... in 0.009s
+2: solved... in 0.07s
+1: solved... in 0.01s
+2: solved... in 0.072s
+1: solved... in 0.009s
+2: solved... in 0.071s
+1: solved... in 0.009s
+2: solved... in 0.082s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.01s
+2: solved... in 0.071s
+1: solved... in 0.01s
+2: solved... in 0.072s
+1: solved... in 0.009s
+2: solved... in 0.072s
+1: solved... in 0.009s
+2: solved... in 0.072s
+1: solved... in 0.012s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.072s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.009s
+2: solved... in 0.073s
+1: solved... in 0.009s
+2: solved... in 0.08s
+1: solved... in 0.01s
+2: solved... in 0.075s
+1: solved... in 0.009s
+2: solved... in 0.074s
+1: solved... in 0.009s
+2: solved... in 0.079s
+1: solved... in 0.01s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.076s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.075s
+1: solved... in 0.009s
+2: solved... in 0.072s
+1: solved... in 0.009s
+2: solved... in 0.076s
+1: solved... in 0.009s
+2: solved... in 0.076s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.012s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.075s
+1: solved... in 0.009s
+2: solved... in 0.075s
+1: solved... in 0.009s
+2: solved... in 0.074s
+1: solved... in 0.009s
+2: solved... in 0.076s
+1: solved... in 0.009s
+2: solved... in 0.087s
+1: solved... in 0.011s
+2: solved... in 0.074s
+1: solved... in 0.009s
+2: solved... in 0.077s
+1: solved... in 0.009s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.076s
+1: solved... in 0.009s
+2: solved... in 0.093s
+1: solved... in 0.01s
+2: solved... in 0.075s
+1: solved... in 0.009s
+2: solved... in 0.078s
+1: solved... in 0.01s
+2: solved... in 0.082s
+1: solved... in 0.01s
+2: solved... in 0.082s
+1: solved... in 0.01s
+2: solved... in 0.096s
+1: solved... in 0.011s
+2: solved... in 0.086s
+1: solved... in 0.009s
+2: solved... in 0.079s
+1: solved... in 0.009s
+2: solved... in 0.078s
+1: solved... in 0.01s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.079s
+1: solved... in 0.012s
+2: solved... in 0.086s
+1: solved... in 0.01s
+2: solved... in 0.077s
+1: solved... in 0.009s
+2: solved... in 0.079s
+1: solved... in 0.009s
+2: solved... in 0.081s
+1: solved... in 0.01s
+2: solved... in 0.078s
+1: solved... in 0.009s
+2: solved... in 0.097s
+1: solved... in 0.01s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.079s
+1: solved... in 0.009s
+2: solved... in 0.089s
+1: solved... in 0.011s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.082s
+1: solved... in 0.009s
+2: solved... in 0.084s
+1: solved... in 0.009s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.081s
+1: solved... in 0.009s
+2: solved... in 0.096s
+1: solved... in 0.009s
+2: solved... in 0.085s
+1: solved... in 0.009s
+2: solved... in 0.082s
+1: solved... in 0.009s
+2: solved... in 0.082s
+1: solved... in 0.01s
+2: solved... in 0.083s
+1: solved... in 0.01s
+2: solved... in 0.097s
+1: solved... in 0.009s
+2: solved... in 0.083s
+1: solved... in 0.01s
+2: solved... in 0.083s
+1: solved... in 0.009s
+2: solved... in 0.088s
+1: solved... in 0.009s
+2: solved... in 0.083s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.085s
+1: solved... in 0.01s
+2: solved... in 0.088s
+1: solved... in 0.009s
+2: solved... in 0.088s
+1: solved... in 0.01s
+2: solved... in 0.087s
+1: solved... in 0.009s
+2: solved... in 0.101s
+1: solved... in 0.01s
+2: solved... in 0.089s
+1: solved... in 0.009s
+2: solved... in 0.085s
+1: solved... in 0.009s
+2: solved... in 0.088s
+1: solved... in 0.01s
+2: solved... in 0.084s
+1: solved... in 0.01s
+2: solved... in 0.099s
+1: solved... in 0.011s
+2: solved... in 0.086s
+1: solved... in 0.009s
+2: solved... in 0.084s
+1: solved... in 0.01s
+2: solved... in 0.087s
+1: solved... in 0.01s
+2: solved... in 0.085s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.011s
+2: solved... in 0.084s
+1: solved... in 0.009s
+2: solved... in 0.089s
+1: solved... in 0.009s
+2: solved... in 0.086s
+1: solved... in 0.01s
+2: solved... in 0.085s
+1: solved... in 0.009s
+2: solved... in 0.097s
+1: solved... in 0.01s
+2: solved... in 0.091s
+1: solved... in 0.009s
+2: solved... in 0.087s
+1: solved... in 0.01s
+2: solved... in 0.091s
+1: solved... in 0.01s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.102s
+1: solved... in 0.009s
+2: solved... in 0.088s
+1: solved... in 0.009s
+2: solved... in 0.088s
+1: solved... in 0.011s
+2: solved... in 0.088s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.106s
+1: solved... in 0.009s
+2: solved... in 0.089s
+1: solved... in 0.01s
+2: solved... in 0.089s
+1: solved... in 0.009s
+2: solved... in 0.088s
+1: solved... in 0.009s
+2: solved... in 0.092s
+1: solved... in 0.009s
+2: solved... in 0.091s
+1: solved... in 0.009s
+2: solved... in 0.089s
+1: solved... in 0.009s
+2: solved... in 0.094s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.093s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.092s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.092s
+1: solved... in 0.009s
+2: solved... in 0.093s
+1: solved... in 0.009s
+2: solved... in 0.09s
+1: solved... in 0.009s
+2: solved... in 0.099s
+1: solved... in 0.009s
+2: solved... in 0.091s
+1: solved... in 0.01s
+2: solved... in 0.095s
+1: solved... in 0.01s
+2: solved... in 0.096s
+1: solved... in 0.012s
+2: solved... in 0.092s
+1: solved... in 0.009s
+2: solved... in 0.092s
+1: solved... in 0.009s
+2: solved... in 0.094s
+1: solved... in 0.009s
+2: solved... in 0.102s
+1: solved... in 0.01s
+2: solved... in 0.094s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.009s
+2: solved... in 0.095s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.096s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.101s
+1: solved... in 0.009s
+2: solved... in 0.103s
+1: solved... in 0.009s
+2: solved... in 0.094s
+1: solved... in 0.009s
+2: solved... in 0.095s
+1: solved... in 0.009s
+2: solved... in 0.094s
+1: solved... in 0.009s
+2: solved... in 0.096s
+1: solved... in 0.009s
+2: solved... in 0.099s
+1: solved... in 0.009s
+2: solved... in 0.096s
+1: solved... in 0.009s
+2: solved... in 0.111s
+1: solved... in 0.009s
+2: solved... in 0.102s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.104s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.009s
+2: solved... in 0.102s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.009s
+2: solved... in 0.097s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.009s
+2: solved... in 0.103s
+1: solved... in 0.009s
+2: solved... in 0.098s
+1: solved... in 0.01s
+2: solved... in 0.097s
+1: solved... in 0.009s
+2: solved... in 0.099s
+1: solved... in 0.009s
+2: solved... in 0.105s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.102s
+1: solved... in 0.009s
+2: solved... in 0.103s
+1: solved... in 0.01s
+2: solved... in 0.108s
+1: solved... in 0.01s
+2: solved... in 0.107s
+1: solved... in 0.009s
+2: solved... in 0.097s
+1: solved... in 0.009s
+2: solved... in 0.101s
+1: solved... in 0.01s
+2: solved... in 0.099s
+1: solved... in 0.01s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.116s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.103s
+1: solved... in 0.01s
+2: solved... in 0.104s
+1: solved... in 0.009s
+2: solved... in 0.105s
+1: solved... in 0.009s
+2: solved... in 0.105s
+1: solved... in 0.009s
+2: solved... in 0.113s
+1: solved... in 0.01s
+2: solved... in 0.102s
+1: solved... in 0.009s
+2: solved... in 0.1s
+1: solved... in 0.009s
+2: solved... in 0.106s
+1: solved... in 0.01s
+2: solved... in 0.106s
+1: solved... in 0.009s
+2: solved... in 0.121s
+1: solved... in 0.01s
+2: solved... in 0.111s
+1: solved... in 0.01s
+2: solved... in 0.101s
+1: solved... in 0.009s
+2: solved... in 0.102s
+1: solved... in 0.009s
+2: solved... in 0.107s
+1: solved... in 0.012s
+2: solved... in 0.105s
+1: solved... in 0.009s
+2: solved... in 0.103s
+1: solved... in 0.009s
+2: solved... in 0.103s
+1: solved... in 0.009s
+2: solved... in 0.109s
+1: solved... in 0.009s
+2: solved... in 0.105s
+1: solved... in 0.009s
+2: solved... in 0.108s
+1: solved... in 0.009s
+2: solved... in 0.104s
+1: solved... in 0.009s
+2: solved... in 0.109s
+1: solved... in 0.009s
+2: solved... in 0.107s
+1: solved... in 0.009s
+2: solved... in 0.11s
+1: solved... in 0.009s
+2: solved... in 0.107s
+1: solved... in 0.009s
+2: solved... in 0.126s
+1: solved... in 0.009s
+2: solved... in 0.113s
+1: solved... in 0.009s
+2: solved... in 0.106s
+1: solved... in 0.009s
+2: solved... in 0.106s
+1: solved... in 0.009s
+2: solved... in 0.106s
+1: solved... in 0.009s
+2: solved... in 0.107s
+1: solved... in 0.009s
+2: solved... in 0.106s
+1: solved... in 0.009s
+2: solved... in 0.112s
+1: solved... in 0.009s
+2: solved... in 0.118s
+1: solved... in 0.009s
+2: solved... in 0.121s
+1: solved... in 0.009s
+2: solved... in 0.113s
+1: solved... in 0.009s
+2: solved... in 0.117s
+1: solved... in 0.009s
+2: solved... in 0.108s
+1: solved... in 0.009s
+2: solved... in 0.114s
+1: solved... in 0.009s
+2: solved... in 0.11s
+1: solved... in 0.009s
+2: solved... in 0.107s
+1: solved... in 0.01s
+2: solved... in 0.113s
+1: solved... in 0.009s
+2: solved... in 0.12s
+1: solved... in 0.009s
+2: solved... in 0.113s
+1: solved... in 0.009s
+2: solved... in 0.109s
+1: solved... in 0.009s
+2: solved... in 0.115s
+1: solved... in 0.009s
+2: solved... in 0.141s
+1: solved... in 0.01s
+2: solved... in 0.117s
+1: solved... in 0.01s
+2: solved... in 0.135s
+1: solved... in 0.009s
+2: solved... in 0.115s
+1: solved... in 0.009s
+2: solved... in 0.124s
+1: solved... in 0.01s
+2: solved... in 0.131s
+1: solved... in 0.009s
+2: solved... in 0.116s
+1: solved... in 0.009s
+2: solved... in 0.12s
+1: solved... in 0.009s
+2: solved... in 0.115s
+1: solved... in 0.009s
+2: solved... in 0.117s
+1: solved... in 0.01s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.146s
+1: solved... in 0.009s
+2: solved... in 0.146s
+1: solved... in 0.009s
+2: solved... in 0.115s
+1: solved... in 0.009s
+2: solved... in 0.115s
+1: solved... in 0.009s
+2: solved... in 0.145s
+1: solved... in 0.009s
+2: solved... in 0.138s
+1: solved... in 0.009s
+2: solved... in 0.118s
+1: solved... in 0.009s
+2: solved... in 0.136s
+1: solved... in 0.009s
+2: solved... in 0.122s
+1: solved... in 0.009s
+2: solved... in 0.118s
+1: solved... in 0.009s
+2: solved... in 0.118s
+1: solved... in 0.009s
+2: solved... in 0.149s
+1: solved... in 0.009s
+2: solved... in 0.128s
+1: solved... in 0.009s
+2: solved... in 0.145s
+1: solved... in 0.009s
+2: solved... in 0.149s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.01s
+2: solved... in 0.122s
+1: solved... in 0.01s
+2: solved... in 0.121s
+1: solved... in 0.009s
+2: solved... in 0.119s
+1: solved... in 0.009s
+2: solved... in 0.147s
+1: solved... in 0.009s
+2: solved... in 0.128s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.122s
+1: solved... in 0.009s
+2: solved... in 0.124s
+1: solved... in 0.01s
+2: solved... in 0.123s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.151s
+1: solved... in 0.009s
+2: solved... in 0.152s
+1: solved... in 0.009s
+2: solved... in 0.124s
+1: solved... in 0.009s
+2: solved... in 0.132s
+1: solved... in 0.01s
+2: solved... in 0.136s
+1: solved... in 0.009s
+2: solved... in 0.135s
+1: solved... in 0.01s
+2: solved... in 0.124s
+1: solved... in 0.009s
+2: solved... in 0.15s
+1: solved... in 0.009s
+2: solved... in 0.155s
+1: solved... in 0.009s
+2: solved... in 0.148s
+1: solved... in 0.009s
+2: solved... in 0.128s
+1: solved... in 0.01s
+2: solved... in 0.138s
+1: solved... in 0.009s
+2: solved... in 0.13s
+1: solved... in 0.009s
+2: solved... in 0.149s
+1: solved... in 0.009s
+2: solved... in 0.146s
+1: solved... in 0.009s
+2: solved... in 0.139s
+1: solved... in 0.009s
+2: solved... in 0.152s
+1: solved... in 0.009s
+2: solved... in 0.154s
+1: solved... in 0.009s
+2: solved... in 0.128s
+1: solved... in 0.009s
+2: solved... in 0.157s
+1: solved... in 0.009s
+2: solved... in 0.127s
+1: solved... in 0.009s
+2: solved... in 0.133s
+1: solved... in 0.01s
+2: solved... in 0.128s
+1: solved... in 0.009s
+2: solved... in 0.127s
+1: solved... in 0.016s
+2: solved... in 0.156s
+1: solved... in 0.009s
+2: solved... in 0.153s
+1: solved... in 0.01s
+2: solved... in 0.129s
+1: solved... in 0.009s
+2: solved... in 0.153s
+1: solved... in 0.009s
+2: solved... in 0.161s
+1: solved... in 0.009s
+2: solved... in 0.129s
+1: solved... in 0.009s
+2: solved... in 0.139s
+1: solved... in 0.009s
+2: solved... in 0.132s
+1: solved... in 0.009s
+2: solved... in 0.157s
+1: solved... in 0.01s
+2: solved... in 0.13s
+1: solved... in 0.009s
+2: solved... in 0.133s
+1: solved... in 0.01s
+2: solved... in 0.162s
+1: solved... in 0.009s
+2: solved... in 0.131s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.132s
+1: solved... in 0.01s
+2: solved... in 0.132s
+1: solved... in 0.009s
+2: solved... in 0.17s
+1: solved... in 0.009s
+2: solved... in 0.157s
+1: solved... in 0.01s
+2: solved... in 0.134s
+1: solved... in 0.009s
+2: solved... in 0.157s
+1: solved... in 0.009s
+2: solved... in 0.14s
+1: solved... in 0.009s
+2: solved... in 0.156s
+1: solved... in 0.009s
+2: solved... in 0.155s
+1: solved... in 0.009s
+2: solved... in 0.134s
+1: solved... in 0.009s
+2: solved... in 0.138s
+1: solved... in 0.009s
+2: solved... in 0.163s
+1: solved... in 0.009s
+2: solved... in 0.158s
+1: solved... in 0.009s
+2: solved... in 0.162s
+1: solved... in 0.009s
+2: solved... in 0.135s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.138s
+1: solved... in 0.01s
+2: solved... in 0.143s
+1: solved... in 0.01s
+2: solved... in 0.137s
+1: solved... in 0.009s
+2: solved... in 0.153s
+1: solved... in 0.009s
+2: solved... in 0.163s
+1: solved... in 0.009s
+2: solved... in 0.139s
+1: solved... in 0.009s
+2: solved... in 0.135s
+1: solved... in 0.009s
+2: solved... in 0.149s
+1: solved... in 0.009s
+2: solved... in 0.148s
+1: solved... in 0.01s
+2: solved... in 0.145s
+1: solved... in 0.009s
+2: solved... in 0.14s
+1: solved... in 0.01s
+2: solved... in 0.151s
+1: solved... in 0.009s
+2: solved... in 0.162s
+1: solved... in 0.01s
+2: solved... in 0.165s
+1: solved... in 0.009s
+2: solved... in 0.164s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.142s
+1: solved... in 0.009s
+2: solved... in 0.148s
+1: solved... in 0.009s
+2: solved... in 0.168s
+1: solved... in 0.009s
+2: solved... in 0.168s
+1: solved... in 0.009s
+2: solved... in 0.145s
+1: solved... in 0.009s
+2: solved... in 0.148s
+1: solved... in 0.009s
+2: solved... in 0.165s
+1: solved... in 0.009s
+2: solved... in 0.171s
+1: solved... in 0.009s
+2: solved... in 0.163s
+1: solved... in 0.009s
+2: solved... in 0.169s
+1: solved... in 0.01s
+2: solved... in 0.165s
+1: solved... in 0.009s
+2: solved... in 0.164s
+1: solved... in 0.009s
+2: solved... in 0.165s
+1: solved... in 0.009s
+2: solved... in 0.168s
+1: solved... in 0.009s
+2: solved... in 0.169s
+1: solved... in 0.009s
+2: solved... in 0.167s
+1: solved... in 0.009s
+2: solved... in 0.171s
+1: solved... in 0.009s
+2: solved... in 0.154s
+1: solved... in 0.01s
+2: solved... in 0.15s
+1: solved... in 0.009s
+2: solved... in 0.172s
+1: solved... in 0.009s
+2: solved... in 0.155s
+1: solved... in 0.009s
+2: solved... in 0.152s
+1: solved... in 0.009s
+2: solved... in 0.153s
+1: solved... in 0.009s
+2: solved... in 0.158s
+1: solved... in 0.009s
+2: solved... in 0.149s
+1: solved... in 0.009s
+2: solved... in 0.178s
+1: solved... in 0.009s
+2: solved... in 0.153s
+1: solved... in 0.009s
+2: solved... in 0.172s
+1: solved... in 0.009s
+2: solved... in 0.156s
+1: solved... in 0.009s
+2: solved... in 0.176s
+1: solved... in 0.009s
+2: solved... in 0.15s
+1: solved... in 0.009s
+2: solved... in 0.178s
+1: solved... in 0.009s
+2: solved... in 0.166s
+1: solved... in 0.009s
+2: solved... in 0.152s
+1: solved... in 0.009s
+2: solved... in 0.172s
+1: solved... in 0.009s
+2: solved... in 0.172s
+1: solved... in 0.009s
+2: solved... in 0.17s
+1: solved... in 0.01s
+2: solved... in 0.171s
+1: solved... in 0.009s
+2: solved... in 0.176s
+1: solved... in 0.009s
+2: solved... in 0.156s
+1: solved... in 0.009s
+2: solved... in 0.159s
+1: solved... in 0.01s
+2: solved... in 0.172s
+1: solved... in 0.009s
+2: solved... in 0.158s
+1: solved... in 0.01s
+2: solved... in 0.174s
+1: solved... in 0.009s
+2: solved... in 0.164s
+1: solved... in 0.009s
+2: solved... in 0.173s
+1: solved... in 0.01s
+2: solved... in 0.179s
+1: solved... in 0.009s
+2: solved... in 0.174s
+1: solved... in 0.009s
+2: solved... in 0.179s
+1: solved... in 0.01s
+2: solved... in 0.182s
+1: solved... in 0.009s
+2: solved... in 0.165s
+1: solved... in 0.009s
+2: solved... in 0.185s
+1: solved... in 0.009s
+2: solved... in 0.176s
+1: solved... in 0.009s
+2: solved... in 0.164s
+1: solved... in 0.009s
+2: solved... in 0.158s
+1: solved... in 0.009s
+2: solved... in 0.161s
+1: solved... in 0.009s
+2: solved... in 0.179s
+1: solved... in 0.009s
+2: solved... in 0.187s
+1: solved... in 0.009s
+2: solved... in 0.185s
+1: solved... in 0.009s
+2: solved... in 0.19s
+1: solved... in 0.01s
+2: solved... in 0.18s
+1: solved... in 0.009s
+2: solved... in 0.183s
+1: solved... in 0.009s
+2: solved... in 0.179s
+1: solved... in 0.009s
+2: solved... in 0.187s
+1: solved... in 0.009s
+2: solved... in 0.165s
+1: solved... in 0.009s
+2: solved... in 0.186s
+1: solved... in 0.009s
+2: solved... in 0.185s
+1: solved... in 0.009s
+2: solved... in 0.162s
+1: solved... in 0.009s
+2: solved... in 0.166s
+1: solved... in 0.009s
+2: solved... in 0.185s
+1: solved... in 0.009s
+2: solved... in 0.182s
+1: solved... in 0.009s
+2: solved... in 0.182s
+1: solved... in 0.009s
+2: solved... in 0.184s
+1: solved... in 0.009s
+2: solved... in 0.161s
+1: solved... in 0.009s
+2: solved... in 0.184s
+1: solved... in 0.009s
+2: solved... in 0.197s
+1: solved... in 0.009s
+2: solved... in 0.187s
+1: solved... in 0.009s
+2: solved... in 0.183s
+1: solved... in 0.009s
+2: solved... in 0.183s
+1: solved... in 0.009s
+2: solved... in 0.192s
+1: solved... in 0.009s
+2: solved... in 0.18s
+1: solved... in 0.009s
+2: solved... in 0.193s
+1: solved... in 0.009s
+2: solved... in 0.198s
+1: solved... in 0.009s
+2: solved... in 0.187s
+1: solved... in 0.009s
+2: solved... in 0.174s
+1: solved... in 0.009s
+2: solved... in 0.185s
+1: solved... in 0.009s
+2: solved... in 0.195s
+1: solved... in 0.01s
+2: solved... in 0.187s
+1: solved... in 0.01s
+2: solved... in 0.191s
+1: solved... in 0.009s
+2: solved... in 0.182s
+1: solved... in 0.01s
+2: solved... in 0.19s
+1: solved... in 0.009s
+2: solved... in 0.186s
+1: solved... in 0.009s
+2: solved... in 0.187s
+1: solved... in 0.009s
+2: solved... in 0.172s
+1: solved... in 0.009s
+2: solved... in 0.194s
+1: solved... in 0.009s
+2: solved... in 0.193s
+1: solved... in 0.009s
+2: solved... in 0.193s
+1: solved... in 0.009s
+2: solved... in 0.182s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/8
+Unrolled calls: Set((r28 == max(arg62, arg63)), (r22 == Dis1(arg48, arg35, n, m)), (r24 == Dis1(arg55, y, n, m)), (r26 == max(arg58, arg59)), (r21 == Dis1(x, arg46, n, m)), (r25 == max(arg56, arg57)), (r27 == max(arg60, arg61)), (r23 == Dis1(arg37, arg53, n, m)))
+Inlining (r26 == max(arg58, arg59))
+Inlining (r27 == max(arg60, arg61))
+Inlining (r28 == max(arg62, arg63))
+Inlining (r25 == max(arg56, arg57))
+[[34m Info  [0m] Number of axiom instances: 0
+1: solved... in 0.01s
+2: solved... in 0.005s
+1: solved... in 0.011s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.011s
+2: solved... in 0.006s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.007s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.007s
+1: solved... in 0.011s
+2: solved... in 0.01s
+1: solved... in 0.011s
+2: solved... in 0.011s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.007s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.011s
+2: solved... in 0.008s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.01s
+1: solved... in 0.011s
+2: solved... in 0.01s
+1: solved... in 0.01s
+2: solved... in 0.009s
+1: solved... in 0.011s
+2: solved... in 0.01s
+1: solved... in 0.011s
+2: solved... in 0.01s
+1: solved... in 0.011s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.016s
+1: solved... in 0.01s
+2: solved... in 0.01s
+1: solved... in 0.011s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.011s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.011s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.012s
+2: solved... in 0.013s
+1: solved... in 0.012s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.012s
+2: solved... in 0.018s
+1: solved... in 0.012s
+2: solved... in 0.013s
+1: solved... in 0.011s
+2: solved... in 0.012s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.011s
+2: solved... in 0.011s
+1: solved... in 0.011s
+2: solved... in 0.012s
+1: solved... in 0.01s
+2: solved... in 0.012s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.013s
+2: solved... in 0.013s
+1: solved... in 0.011s
+2: solved... in 0.013s
+1: solved... in 0.011s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.015s
+1: solved... in 0.011s
+2: solved... in 0.015s
+1: solved... in 0.011s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.011s
+2: solved... in 0.021s
+1: solved... in 0.01s
+2: solved... in 0.015s
+1: solved... in 0.01s
+2: solved... in 0.022s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.012s
+2: solved... in 0.016s
+1: solved... in 0.011s
+2: solved... in 0.014s
+1: solved... in 0.01s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.014s
+1: solved... in 0.011s
+2: solved... in 0.015s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.011s
+2: solved... in 0.016s
+1: solved... in 0.01s
+2: solved... in 0.032s
+1: solved... in 0.011s
+2: solved... in 0.03s
+1: solved... in 0.01s
+2: solved... in 0.025s
+1: solved... in 0.01s
+2: solved... in 0.026s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.016s
+1: solved... in 0.01s
+2: solved... in 0.016s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.03s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.016s
+1: solved... in 0.01s
+2: solved... in 0.029s
+1: solved... in 0.011s
+2: solved... in 0.035s
+1: solved... in 0.011s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.017s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.017s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.019s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.011s
+2: solved... in 0.018s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.01s
+2: solved... in 0.019s
+1: solved... in 0.011s
+2: solved... in 0.019s
+1: solved... in 0.011s
+2: solved... in 0.019s
+1: solved... in 0.011s
+2: solved... in 0.025s
+1: solved... in 0.011s
+2: solved... in 0.037s
+1: solved... in 0.01s
+2: solved... in 0.03s
+1: solved... in 0.011s
+2: solved... in 0.036s
+1: solved... in 0.011s
+2: solved... in 0.029s
+1: solved... in 0.01s
+2: solved... in 0.03s
+1: solved... in 0.011s
+2: solved... in 0.031s
+1: solved... in 0.011s
+2: solved... in 0.032s
+1: solved... in 0.011s
+2: solved... in 0.032s
+1: solved... in 0.011s
+2: solved... in 0.034s
+1: solved... in 0.011s
+2: solved... in 0.033s
+1: solved... in 0.011s
+2: solved... in 0.036s
+1: solved... in 0.01s
+2: solved... in 0.029s
+1: solved... in 0.011s
+2: solved... in 0.021s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.011s
+2: solved... in 0.021s
+1: solved... in 0.011s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.047s
+1: solved... in 0.011s
+2: solved... in 0.022s
+1: solved... in 0.011s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.022s
+1: solved... in 0.011s
+2: solved... in 0.023s
+1: solved... in 0.011s
+2: solved... in 0.023s
+1: solved... in 0.011s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.023s
+1: solved... in 0.011s
+2: solved... in 0.023s
+1: solved... in 0.01s
+2: solved... in 0.024s
+1: solved... in 0.011s
+2: solved... in 0.024s
+1: solved... in 0.011s
+2: solved... in 0.024s
+1: solved... in 0.011s
+2: solved... in 0.024s
+1: solved... in 0.011s
+2: solved... in 0.024s
+1: solved... in 0.01s
+2: solved... in 0.025s
+1: solved... in 0.011s
+2: solved... in 0.045s
+1: solved... in 0.011s
+2: solved... in 0.045s
+1: solved... in 0.011s
+2: solved... in 0.043s
+1: solved... in 0.011s
+2: solved... in 0.063s
+1: solved... in 0.011s
+2: solved... in 0.059s
+1: solved... in 0.01s
+2: solved... in 0.026s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.011s
+2: solved... in 0.029s
+1: solved... in 0.011s
+2: solved... in 0.028s
+1: solved... in 0.01s
+2: solved... in 0.029s
+1: solved... in 0.011s
+2: solved... in 0.037s
+1: solved... in 0.011s
+2: solved... in 0.034s
+1: solved... in 0.01s
+2: solved... in 0.034s
+1: solved... in 0.01s
+2: solved... in 0.038s
+1: solved... in 0.011s
+2: solved... in 0.038s
+1: solved... in 0.011s
+2: solved... in 0.036s
+1: solved... in 0.011s
+2: solved... in 0.036s
+1: solved... in 0.011s
+2: solved... in 0.051s
+1: solved... in 0.01s
+2: solved... in 0.084s
+1: solved... in 0.011s
+2: solved... in 0.034s
+1: solved... in 0.011s
+2: solved... in 0.033s
+1: solved... in 0.011s
+2: solved... in 0.038s
+1: solved... in 0.011s
+2: solved... in 0.038s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.011s
+2: solved... in 0.049s
+1: solved... in 0.011s
+2: solved... in 0.041s
+1: solved... in 0.01s
+2: solved... in 0.073s
+1: solved... in 0.01s
+2: solved... in 0.104s
+1: solved... in 0.011s
+2: solved... in 0.043s
+1: solved... in 0.011s
+2: solved... in 0.049s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.01s
+2: solved... in 0.047s
+1: solved... in 0.011s
+2: solved... in 0.054s
+1: solved... in 0.011s
+2: solved... in 0.053s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.011s
+2: solved... in 0.049s
+1: solved... in 0.011s
+2: solved... in 0.045s
+1: solved... in 0.011s
+2: solved... in 0.043s
+1: solved... in 0.012s
+2: solved... in 0.045s
+1: solved... in 0.014s
+2: solved... in 0.047s
+1: solved... in 0.01s
+2: solved... in 0.047s
+1: solved... in 0.011s
+2: solved... in 0.049s
+1: solved... in 0.011s
+2: solved... in 0.049s
+1: solved... in 0.011s
+2: solved... in 0.041s
+1: solved... in 0.011s
+2: solved... in 0.042s
+1: solved... in 0.011s
+2: solved... in 0.054s
+1: solved... in 0.011s
+2: solved... in 0.06s
+1: solved... in 0.011s
+2: solved... in 0.056s
+1: solved... in 0.011s
+2: solved... in 0.057s
+1: solved... in 0.011s
+2: solved... in 0.058s
+1: solved... in 0.011s
+2: solved... in 0.059s
+1: solved... in 0.011s
+2: solved... in 0.054s
+1: solved... in 0.011s
+2: solved... in 0.056s
+1: solved... in 0.01s
+2: solved... in 0.057s
+1: solved... in 0.011s
+2: solved... in 0.058s
+1: solved... in 0.01s
+2: solved... in 0.06s
+1: solved... in 0.011s
+2: solved... in 0.046s
+1: solved... in 0.011s
+2: solved... in 0.062s
+1: solved... in 0.011s
+2: solved... in 0.06s
+1: solved... in 0.01s
+2: solved... in 0.061s
+1: solved... in 0.01s
+2: solved... in 0.062s
+1: solved... in 0.01s
+2: solved... in 0.065s
+1: solved... in 0.011s
+2: solved... in 0.052s
+1: solved... in 0.01s
+2: solved... in 0.061s
+1: solved... in 0.01s
+2: solved... in 0.048s
+1: solved... in 0.01s
+2: solved... in 0.074s
+1: solved... in 0.01s
+2: solved... in 0.047s
+1: solved... in 0.011s
+2: solved... in 0.067s
+1: solved... in 0.011s
+2: solved... in 0.067s
+1: solved... in 0.011s
+2: solved... in 0.058s
+1: solved... in 0.011s
+2: solved... in 0.054s
+1: solved... in 0.01s
+2: solved... in 0.079s
+1: solved... in 0.011s
+2: solved... in 0.046s
+1: solved... in 0.011s
+2: solved... in 0.047s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.01s
+2: solved... in 0.059s
+1: solved... in 0.011s
+2: solved... in 0.053s
+1: solved... in 0.01s
+2: solved... in 0.047s
+1: solved... in 0.01s
+2: solved... in 0.057s
+1: solved... in 0.011s
+2: solved... in 0.053s
+1: solved... in 0.011s
+2: solved... in 0.048s
+1: solved... in 0.01s
+2: solved... in 0.049s
+1: solved... in 0.011s
+2: solved... in 0.064s
+1: solved... in 0.011s
+2: solved... in 0.057s
+1: solved... in 0.011s
+2: solved... in 0.055s
+1: solved... in 0.011s
+2: solved... in 0.112s
+1: solved... in 0.011s
+2: solved... in 0.071s
+1: solved... in 0.011s
+2: solved... in 0.065s
+1: solved... in 0.01s
+2: solved... in 0.068s
+1: solved... in 0.011s
+2: solved... in 0.057s
+1: solved... in 0.01s
+2: solved... in 0.064s
+1: solved... in 0.011s
+2: solved... in 0.091s
+1: solved... in 0.01s
+2: solved... in 0.048s
+1: solved... in 0.011s
+2: solved... in 0.092s
+1: solved... in 0.011s
+2: solved... in 0.086s
+1: solved... in 0.011s
+2: solved... in 0.079s
+1: solved... in 0.011s
+2: solved... in 0.06s
+1: solved... in 0.01s
+2: solved... in 0.066s
+1: solved... in 0.011s
+2: solved... in 0.074s
+1: solved... in 0.011s
+2: solved... in 0.073s
+1: solved... in 0.011s
+2: solved... in 0.077s
+1: solved... in 0.012s
+2: solved... in 0.094s
+1: solved... in 0.011s
+2: solved... in 0.062s
+1: solved... in 0.01s
+2: solved... in 0.058s
+1: solved... in 0.011s
+2: solved... in 0.057s
+1: solved... in 0.01s
+2: solved... in 0.077s
+1: solved... in 0.01s
+2: solved... in 0.083s
+1: solved... in 0.011s
+2: solved... in 0.078s
+1: solved... in 0.011s
+2: solved... in 0.078s
+1: solved... in 0.01s
+2: solved... in 0.08s
+1: solved... in 0.01s
+2: solved... in 0.081s
+1: solved... in 0.011s
+2: solved... in 0.075s
+1: solved... in 0.011s
+2: solved... in 0.083s
+1: solved... in 0.01s
+2: solved... in 0.084s
+1: solved... in 0.011s
+2: solved... in 0.083s
+1: solved... in 0.011s
+2: solved... in 0.084s
+1: solved... in 0.012s
+2: solved... in 0.088s
+1: solved... in 0.011s
+2: solved... in 0.088s
+1: solved... in 0.01s
+2: solved... in 0.088s
+1: solved... in 0.01s
+2: solved... in 0.09s
+1: solved... in 0.011s
+2: solved... in 0.098s
+1: solved... in 0.011s
+2: solved... in 0.065s
+1: solved... in 0.01s
+2: solved... in 0.064s
+1: solved... in 0.011s
+2: solved... in 0.099s
+1: solved... in 0.011s
+2: solved... in 0.1s
+1: solved... in 0.011s
+2: solved... in 0.101s
+1: solved... in 0.01s
+2: solved... in 0.102s
+1: solved... in 0.01s
+2: solved... in 0.103s
+1: solved... in 0.011s
+2: solved... in 0.105s
+1: solved... in 0.011s
+2: solved... in 0.114s
+1: solved... in 0.012s
+2: solved... in 0.113s
+1: solved... in 0.011s
+2: solved... in 0.07s
+1: solved... in 0.011s
+2: solved... in 0.11s
+1: solved... in 0.01s
+2: solved... in 0.126s
+1: solved... in 0.011s
+2: solved... in 0.082s
+1: solved... in 0.01s
+2: solved... in 0.114s
+1: solved... in 0.011s
+2: solved... in 0.104s
+1: solved... in 0.011s
+2: solved... in 0.086s
+1: solved... in 0.012s
+2: solved... in 0.089s
+1: solved... in 0.012s
+2: solved... in 0.068s
+1: solved... in 0.011s
+2: solved... in 0.075s
+1: solved... in 0.01s
+2: solved... in 0.075s
+1: solved... in 0.011s
+2: solved... in 0.073s
+1: solved... in 0.011s
+2: solved... in 0.072s
+1: solved... in 0.011s
+2: solved... in 0.072s
+1: solved... in 0.01s
+2: solved... in 0.075s
+1: solved... in 0.011s
+2: solved... in 0.068s
+1: solved... in 0.011s
+2: solved... in 0.073s
+1: solved... in 0.012s
+2: solved... in 0.078s
+1: solved... in 0.011s
+2: solved... in 0.074s
+1: solved... in 0.011s
+2: solved... in 0.087s
+1: solved... in 0.011s
+2: solved... in 0.068s
+1: solved... in 0.01s
+2: solved... in 0.076s
+1: solved... in 0.012s
+2: solved... in 0.082s
+1: solved... in 0.01s
+2: solved... in 0.09s
+1: solved... in 0.01s
+2: solved... in 0.079s
+1: solved... in 0.01s
+2: solved... in 0.066s
+1: solved... in 0.011s
+2: solved... in 0.077s
+1: solved... in 0.012s
+2: solved... in 0.107s
+1: solved... in 0.011s
+2: solved... in 0.079s
+1: solved... in 0.01s
+2: solved... in 0.199s
+1: solved... in 0.011s
+2: solved... in 0.089s
+1: solved... in 0.01s
+2: solved... in 0.101s
+1: solved... in 0.01s
+2: solved... in 0.086s
+1: solved... in 0.011s
+2: solved... in 0.132s
+1: solved... in 0.01s
+2: solved... in 0.084s
+1: solved... in 0.01s
+2: solved... in 0.092s
+1: solved... in 0.011s
+2: solved... in 0.13s
+1: solved... in 0.01s
+2: solved... in 0.166s
+1: solved... in 0.01s
+2: solved... in 0.157s
+1: solved... in 0.01s
+2: solved... in 0.127s
+1: solved... in 0.011s
+2: solved... in 0.089s
+1: solved... in 0.01s
+2: solved... in 0.165s
+1: solved... in 0.011s
+2: solved... in 0.084s
+1: solved... in 0.01s
+2: solved... in 0.164s
+1: solved... in 0.011s
+2: solved... in 0.081s
+1: solved... in 0.011s
+2: solved... in 0.167s
+1: solved... in 0.01s
+2: solved... in 0.14s
+1: solved... in 0.011s
+2: solved... in 0.162s
+1: solved... in 0.011s
+2: solved... in 0.149s
+1: solved... in 0.01s
+2: solved... in 0.156s
+1: solved... in 0.01s
+2: solved... in 0.082s
+1: solved... in 0.01s
+2: solved... in 0.163s
+1: solved... in 0.011s
+2: solved... in 0.158s
+1: solved... in 0.01s
+2: solved... in 0.14s
+1: solved... in 0.011s
+2: solved... in 0.066s
+1: solved... in 0.012s
+2: solved... in 0.106s
+1: solved... in 0.01s
+2: solved... in 0.148s
+1: solved... in 0.01s
+2: solved... in 0.146s
+1: solved... in 0.01s
+2: solved... in 0.081s
+1: solved... in 0.01s
+2: solved... in 0.156s
+1: solved... in 0.01s
+2: solved... in 0.078s
+1: solved... in 0.01s
+2: solved... in 0.159s
+1: solved... in 0.011s
+2: solved... in 0.107s
+1: solved... in 0.01s
+2: solved... in 0.094s
+1: solved... in 0.011s
+2: solved... in 0.079s
+1: solved... in 0.011s
+2: solved... in 0.183s
+1: solved... in 0.012s
+2: solved... in 0.085s
+1: solved... in 0.01s
+2: solved... in 0.096s
+1: solved... in 0.01s
+2: solved... in 0.181s
+1: solved... in 0.011s
+2: solved... in 0.178s
+1: solved... in 0.01s
+2: solved... in 0.104s
+1: solved... in 0.011s
+2: solved... in 0.25s
+1: solved... in 0.011s
+2: solved... in 0.093s
+1: solved... in 0.01s
+2: solved... in 0.156s
+1: solved... in 0.011s
+2: solved... in 0.136s
+1: solved... in 0.012s
+2: solved... in 0.169s
+1: solved... in 0.01s
+2: solved... in 0.144s
+1: solved... in 0.012s
+2: solved... in 0.293s
+1: solved... in 0.011s
+2: solved... in 0.105s
+1: solved... in 0.011s
+2: solved... in 0.183s
+1: solved... in 0.01s
+2: solved... in 0.101s
+1: solved... in 0.01s
+2: solved... in 0.1s
+1: solved... in 0.011s
+2: solved... in 0.134s
+1: solved... in 0.012s
+2: solved... in 0.194s
+1: solved... in 0.01s
+2: solved... in 0.099s
+1: solved... in 0.013s
+2: solved... in 0.2s
+1: solved... in 0.011s
+2: solved... in 0.11s
+1: solved... in 0.011s
+2: solved... in 0.138s
+1: solved... in 0.01s
+2: solved... in 0.154s
+1: solved... in 0.01s
+2: solved... in 0.094s
+1: solved... in 0.01s
+2: solved... in 0.149s
+1: solved... in 0.01s
+2: solved... in 0.193s
+1: solved... in 0.011s
+2: solved... in 0.114s
+1: solved... in 0.01s
+2: solved... in 0.215s
+1: solved... in 0.01s
+2: solved... in 0.166s
+1: solved... in 0.014s
+2: solved... in 0.093s
+1: solved... in 0.011s
+2: solved... in 0.11s
+1: solved... in 0.011s
+2: solved... in 0.195s
+1: solved... in 0.012s
+2: solved... in 0.103s
+1: solved... in 0.01s
+2: solved... in 0.224s
+1: solved... in 0.013s
+2: solved... in 0.158s
+1: solved... in 0.014s
+2: solved... in 0.192s
+1: solved... in 0.011s
+2: solved... in 0.126s
+1: solved... in 0.013s
+2: solved... in 0.213s
+1: solved... in 0.01s
+2: solved... in 0.132s
+1: solved... in 0.011s
+2: solved... in 0.213s
+1: solved... in 0.01s
+2: solved... in 0.114s
+1: solved... in 0.01s
+2: solved... in 0.185s
+1: solved... in 0.01s
+2: solved... in 0.141s
+1: solved... in 0.014s
+2: solved... in 0.218s
+1: solved... in 0.011s
+2: solved... in 0.125s
+1: solved... in 0.011s
+2: solved... in 0.238s
+1: solved... in 0.01s
+2: solved... in 0.126s
+1: solved... in 0.01s
+2: solved... in 0.263s
+1: solved... in 0.01s
+2: solved... in 0.14s
+1: solved... in 0.013s
+2: solved... in 0.26s
+1: solved... in 0.011s
+2: solved... in 0.146s
+1: solved... in 0.01s
+2: solved... in 0.107s
+1: solved... in 0.011s
+2: solved... in 0.11s
+1: solved... in 0.01s
+2: solved... in 0.204s
+1: solved... in 0.01s
+2: solved... in 0.148s
+1: solved... in 0.011s
+2: solved... in 0.106s
+1: solved... in 0.01s
+2: solved... in 0.15s
+1: solved... in 0.011s
+2: solved... in 0.206s
+1: solved... in 0.011s
+2: solved... in 0.138s
+1: solved... in 0.013s
+2: solved... in 0.173s
+1: solved... in 0.011s
+2: solved... in 0.14s
+1: solved... in 0.012s
+2: solved... in 0.264s
+1: solved... in 0.01s
+2: solved... in 0.196s
+1: solved... in 0.011s
+2: solved... in 0.244s
+1: solved... in 0.013s
+2: solved... in 0.114s
+1: solved... in 0.01s
+2: solved... in 0.162s
+1: solved... in 0.011s
+2: solved... in 0.157s
+1: solved... in 0.013s
+2: solved... in 0.215s
+1: solved... in 0.011s
+2: solved... in 0.265s
+1: solved... in 0.013s
+2: solved... in 0.159s
+1: solved... in 0.012s
+2: solved... in 0.224s
+1: solved... in 0.01s
+2: solved... in 0.279s
+1: solved... in 0.01s
+2: solved... in 0.225s
+1: solved... in 0.011s
+2: solved... in 0.152s
+1: solved... in 0.01s
+2: solved... in 0.122s
+1: solved... in 0.01s
+2: solved... in 0.156s
+1: solved... in 0.011s
+2: solved... in 0.121s
+1: solved... in 0.01s
+2: solved... in 0.221s
+1: solved... in 0.011s
+2: solved... in 0.166s
+1: solved... in 0.01s
+2: solved... in 0.244s
+1: solved... in 0.012s
+2: solved... in 0.127s
+1: solved... in 0.011s
+2: solved... in 0.137s
+1: solved... in 0.011s
+2: solved... in 0.229s
+1: solved... in 0.01s
+2: solved... in 0.122s
+1: solved... in 0.01s
+2: solved... in 0.251s
+1: solved... in 0.011s
+2: solved... in 0.128s
+1: solved... in 0.013s
+2: solved... in 0.248s
+1: solved... in 0.01s
+2: solved... in 0.125s
+1: solved... in 0.01s
+2: solved... in 0.238s
+1: solved... in 0.011s
+2: solved... in 0.187s
+1: solved... in 0.01s
+2: solved... in 0.201s
+1: solved... in 0.014s
+2: solved... in 0.188s
+1: solved... in 0.011s
+2: solved... in 0.279s
+1: solved... in 0.018s
+2: solved... in 0.12s
+1: solved... in 0.012s
+2: solved... in 0.163s
+1: solved... in 0.013s
+2: solved... in 0.126s
+1: solved... in 0.011s
+2: solved... in 0.182s
+1: solved... in 0.01s
+2: solved... in 0.212s
+1: solved... in 0.01s
+2: solved... in 0.158s
+1: solved... in 0.01s
+2: solved... in 0.12s
+1: solved... in 0.011s
+2: solved... in 0.157s
+1: solved... in 0.01s
+2: solved... in 0.124s
+1: solved... in 0.01s
+2: solved... in 0.125s
+1: solved... in 0.013s
+2: solved... in 0.228s
+1: solved... in 0.011s
+2: solved... in 0.166s
+1: solved... in 0.01s
+2: solved... in 0.274s
+1: solved... in 0.01s
+2: solved... in 0.162s
+1: solved... in 0.011s
+2: solved... in 0.151s
+1: solved... in 0.01s
+2: solved... in 0.281s
+1: solved... in 0.011s
+2: solved... in 0.153s
+1: solved... in 0.01s
+2: solved... in 0.198s
+1: solved... in 0.01s
+2: solved... in 0.254s
+1: solved... in 0.013s
+2: solved... in 0.29s
+1: solved... in 0.01s
+2: solved... in 0.169s
+1: solved... in 0.011s
+2: solved... in 0.311s
+1: solved... in 0.01s
+2: solved... in 0.175s
+1: solved... in 0.014s
+2: solved... in 0.17s
+1: solved... in 0.012s
+2: solved... in 0.16s
+1: solved... in 0.012s
+2: solved... in 0.277s
+1: solved... in 0.01s
+2: solved... in 0.163s
+1: solved... in 0.011s
+2: solved... in 0.231s
+1: solved... in 0.01s
+2: solved... in 0.18s
+1: solved... in 0.012s
+2: solved... in 0.319s
+1: solved... in 0.01s
+2: solved... in 0.175s
+1: solved... in 0.011s
+2: solved... in 0.17s
+1: solved... in 0.01s
+2: solved... in 0.245s
+1: solved... in 0.011s
+2: solved... in 0.265s
+1: solved... in 0.011s
+2: solved... in 0.182s
+1: solved... in 0.01s
+2: solved... in 0.265s
+1: solved... in 0.011s
+2: solved... in 0.181s
+1: solved... in 0.012s
+2: solved... in 0.265s
+1: solved... in 0.011s
+2: solved... in 0.141s
+1: solved... in 0.011s
+2: solved... in 0.209s
+1: solved... in 0.012s
+2: solved... in 0.183s
+1: solved... in 0.015s
+2: solved... in 0.257s
+1: solved... in 0.01s
+2: solved... in 0.259s
+1: solved... in 0.012s
+2: solved... in 0.286s
+1: solved... in 0.01s
+2: solved... in 0.213s
+1: solved... in 0.01s
+2: solved... in 0.258s
+1: solved... in 0.012s
+2: solved... in 0.167s
+1: solved... in 0.011s
+2: solved... in 0.276s
+1: solved... in 0.011s
+2: solved... in 0.226s
+1: solved... in 0.01s
+2: solved... in 0.407s
+1: solved... in 0.011s
+2: solved... in 0.192s
+1: solved... in 0.01s
+2: solved... in 0.251s
+1: solved... in 0.01s
+2: solved... in 0.18s
+1: solved... in 0.01s
+2: solved... in 0.3s
+1: solved... in 0.011s
+2: solved... in 0.181s
+1: solved... in 0.01s
+2: solved... in 0.239s
+1: solved... in 0.01s
+2: solved... in 0.157s
+1: solved... in 0.017s
+2: solved... in 0.144s
+1: solved... in 0.01s
+2: solved... in 0.18s
+1: solved... in 0.01s
+2: solved... in 0.292s
+1: solved... in 0.011s
+2: solved... in 0.161s
+1: solved... in 0.011s
+2: solved... in 0.275s
+1: solved... in 0.011s
+2: solved... in 0.204s
+1: solved... in 0.011s
+2: solved... in 0.264s
+1: solved... in 0.01s
+2: solved... in 0.216s
+1: solved... in 0.01s
+2: solved... in 0.161s
+1: solved... in 0.01s
+2: solved... in 0.198s
+1: solved... in 0.012s
+2: solved... in 0.301s
+1: solved... in 0.01s
+2: solved... in 0.195s
+1: solved... in 0.01s
+2: solved... in 0.246s
+1: solved... in 0.01s
+2: solved... in 0.183s
+1: solved... in 0.01s
+2: solved... in 0.296s
+1: solved... in 0.01s
+2: solved... in 0.21s
+1: solved... in 0.01s
+2: solved... in 0.249s
+1: solved... in 0.011s
+2: solved... in 0.24s
+1: solved... in 0.01s
+2: solved... in 0.12s
+1: solved... in 0.01s
+2: solved... in 0.198s
+1: solved... in 0.012s
+2: solved... in 0.171s
+1: solved... in 0.01s
+2: solved... in 0.223s
+1: solved... in 0.011s
+2: solved... in 0.178s
+1: solved... in 0.01s
+2: solved... in 0.231s
+1: solved... in 0.01s
+2: solved... in 0.156s
+1: solved... in 0.01s
+2: solved... in 0.267s
+1: solved... in 0.01s
+2: solved... in 0.163s
+1: solved... in 0.011s
+2: solved... in 0.176s
+1: solved... in 0.011s
+2: solved... in 0.168s
+1: solved... in 0.01s
+2: solved... in 0.194s
+1: solved... in 0.01s
+2: solved... in 0.136s
+1: solved... in 0.01s
+2: solved... in 0.29s
+1: solved... in 0.011s
+2: solved... in 0.203s
+1: solved... in 0.011s
+2: solved... in 0.19s
+1: solved... in 0.01s
+2: solved... in 0.17s
+1: solved... in 0.01s
+2: solved... in 0.191s
+1: solved... in 0.01s
+2: solved... in 0.274s
+1: solved... in 0.01s
+2: solved... in 0.26s
+1: solved... in 0.011s
+2: solved... in 0.203s
+1: solved... in 0.019s
+2: solved... in 0.237s
+1: solved... in 0.01s
+2: solved... in 0.295s
+1: solved... in 0.012s
+2: solved... in 0.21s
+1: solved... in 0.01s
+2: solved... in 0.223s
+1: solved... in 0.01s
+2: solved... in 0.22s
+1: solved... in 0.012s
+2: solved... in 0.239s
+1: solved... in 0.01s
+2: solved... in 0.27s
+1: solved... in 0.01s
+2: solved... in 0.275s
+1: solved... in 0.01s
+2: solved... in 0.296s
+1: solved... in 0.01s
+2: solved... in 0.277s
+1: solved... in 0.01s
+2: solved... in 0.274s
+1: solved... in 0.011s
+2: solved... in 0.255s
+1: solved... in 0.011s
+2: solved... in 0.259s
+1: solved... in 0.011s
+2: solved... in 0.202s
+1: solved... in 0.01s
+2: solved... in 0.21s
+1: solved... in 0.011s
+2: solved... in 0.208s
+1: solved... in 0.01s
+2: solved... in 0.2s
+1: solved... in 0.01s
+2: solved... in 0.159s
+1: solved... in 0.011s
+2: solved... in 0.275s
+1: solved... in 0.011s
+2: solved... in 0.244s
+1: solved... in 0.011s
+2: solved... in 0.184s
+1: solved... in 0.011s
+2: solved... in 0.202s
+1: solved... in 0.01s
+2: solved... in 0.257s
+1: solved... in 0.011s
+2: solved... in 0.253s
+1: solved... in 0.01s
+2: solved... in 0.23s
+1: solved... in 0.01s
+2: solved... in 0.188s
+1: solved... in 0.01s
+2: solved... in 0.253s
+1: solved... in 0.01s
+2: solved... in 0.223s
+1: solved... in 0.01s
+2: solved... in 0.232s
+1: solved... in 0.011s
+2: solved... in 0.195s
+1: solved... in 0.011s
+2: solved... in 0.234s
+1: solved... in 0.01s
+2: solved... in 0.201s
+1: solved... in 0.011s
+2: solved... in 0.209s
+1: solved... in 0.011s
+2: solved... in 0.233s
+1: solved... in 0.011s
+2: solved... in 0.189s
+1: solved... in 0.011s
+2: solved... in 0.192s
+1: solved... in 0.01s
+2: solved... in 0.195s
+1: solved... in 0.01s
+2: solved... in 0.209s
+1: solved... in 0.01s
+2: solved... in 0.187s
+1: solved... in 0.01s
+2: solved... in 0.191s
+1: solved... in 0.01s
+2: solved... in 0.189s
+1: solved... in 0.01s
+2: solved... in 0.189s
+1: solved... in 0.01s
+2: solved... in 0.195s
+1: solved... in 0.011s
+2: solved... in 0.263s
+1: solved... in 0.011s
+2: solved... in 0.236s
+1: solved... in 0.011s
+2: solved... in 0.208s
+1: solved... in 0.01s
+2: solved... in 0.216s
+1: solved... in 0.011s
+2: solved... in 0.197s
+1: solved... in 0.011s
+2: solved... in 0.212s
+1: solved... in 0.01s
+2: solved... in 0.199s
+1: solved... in 0.011s
+2: solved... in 0.188s
+1: solved... in 0.01s
+2: solved... in 0.289s
+1: solved... in 0.011s
+2: solved... in 0.261s
+1: solved... in 0.01s
+2: solved... in 0.196s
+1: solved... in 0.01s
+2: solved... in 0.192s
+1: solved... in 0.01s
+2: solved... in 0.215s
+1: solved... in 0.01s
+2: solved... in 0.238s
+1: solved... in 0.01s
+2: solved... in 0.234s
+1: solved... in 0.011s
+2: solved... in 0.229s
+1: solved... in 0.011s
+2: solved... in 0.257s
+1: solved... in 0.011s
+2: solved... in 0.23s
+1: solved... in 0.011s
+2: solved... in 0.152s
+1: solved... in 0.01s
+2: solved... in 0.2s
+1: solved... in 0.01s
+2: solved... in 0.266s
+1: solved... in 0.01s
+2: solved... in 0.316s
+1: solved... in 0.01s
+2: solved... in 0.277s
+1: solved... in 0.011s
+2: solved... in 0.321s
+1: solved... in 0.011s
+2: solved... in 0.269s
+1: solved... in 0.01s
+2: solved... in 0.317s
+1: solved... in 0.011s
+2: solved... in 0.319s
+1: solved... in 0.011s
+2: solved... in 0.243s
+1: solved... in 0.011s
+2: solved... in 0.228s
+1: solved... in 0.01s
+2: solved... in 0.279s
+1: solved... in 0.011s
+2: solved... in 0.295s
+1: solved... in 0.01s
+2: solved... in 0.276s
+1: solved... in 0.01s
+2: solved... in 0.217s
+1: solved... in 0.01s
+2: solved... in 0.245s
+1: solved... in 0.011s
+2: solved... in 0.235s
+1: solved... in 0.01s
+2: solved... in 0.316s
+1: solved... in 0.01s
+2: solved... in 0.281s
+1: solved... in 0.01s
+2: solved... in 0.317s
+1: solved... in 0.01s
+2: solved... in 0.227s
+1: solved... in 0.011s
+2: solved... in 0.277s
+1: solved... in 0.011s
+2: solved... in 0.242s
+1: solved... in 0.011s
+2: solved... in 0.292s
+1: solved... in 0.013s
+2: solved... in 0.22s
+1: solved... in 0.011s
+2: solved... in 0.34s
+1: solved... in 0.01s
+2: solved... in 0.329s
+1: solved... in 0.01s
+2: solved... in 0.239s
+1: solved... in 0.01s
+2: solved... in 0.325s
+1: solved... in 0.012s
+2: solved... in 0.291s
+1: solved... in 0.01s
+2: solved... in 0.332s
+1: solved... in 0.01s
+2: solved... in 0.357s
+1: solved... in 0.01s
+2: solved... in 0.248s
+1: solved... in 0.011s
+2: solved... in 0.215s
+1: solved... in 0.01s
+2: solved... in 0.247s
+1: solved... in 0.01s
+2: solved... in 0.29s
+1: solved... in 0.011s
+2: solved... in 0.233s
+1: solved... in 0.011s
+2: solved... in 0.315s
+1: solved... in 0.01s
+2: solved... in 0.299s
+1: solved... in 0.01s
+2: solved... in 0.232s
+1: solved... in 0.01s
+2: solved... in 0.255s
+1: solved... in 0.011s
+2: solved... in 0.217s
+1: solved... in 0.01s
+2: solved... in 0.222s
+1: solved... in 0.011s
+2: solved... in 0.324s
+1: solved... in 0.01s
+2: solved... in 0.297s
+1: solved... in 0.011s
+2: solved... in 0.352s
+1: solved... in 0.011s
+2: solved... in 0.244s
+1: solved... in 0.01s
+2: solved... in 0.321s
+1: solved... in 0.01s
+2: solved... in 0.267s
+1: solved... in 0.01s
+2: solved... in 0.295s
+1: solved... in 0.01s
+2: solved... in 0.282s
+1: solved... in 0.01s
+2: solved... in 0.214s
+1: solved... in 0.01s
+2: solved... in 0.268s
+1: solved... in 0.011s
+2: solved... in 0.374s
+1: solved... in 0.011s
+2: solved... in 0.218s
+1: solved... in 0.01s
+2: solved... in 0.228s
+1: solved... in 0.01s
+2: solved... in 0.263s
+1: solved... in 0.01s
+2: solved... in 0.285s
+1: solved... in 0.011s
+2: solved... in 0.246s
+1: solved... in 0.01s
+2: solved... in 0.346s
+1: solved... in 0.012s
+2: solved... in 0.316s
+1: solved... in 0.01s
+2: solved... in 0.363s
+1: solved... in 0.011s
+2: solved... in 0.277s
+1: solved... in 0.01s
+2: solved... in 0.254s
+1: solved... in 0.01s
+2: solved... in 0.325s
+1: solved... in 0.01s
+2: solved... in 0.269s
+1: solved... in 0.011s
+2: solved... in 0.356s
+1: solved... in 0.011s
+2: solved... in 0.247s
+1: solved... in 0.01s
+2: solved... in 0.387s
+1: solved... in 0.011s
+2: solved... in 0.478s
+1: solved... in 0.011s
+2: solved... in 0.298s
+1: solved... in 0.011s
+2: solved... in 0.25s
+1: solved... in 0.01s
+2: solved... in 0.27s
+1: solved... in 0.012s
+2: solved... in 0.35s
+1: solved... in 0.01s
+2: solved... in 0.304s
+1: solved... in 0.01s
+2: solved... in 0.354s
+1: solved... in 0.01s
+2: solved... in 0.34s
+1: solved... in 0.01s
+2: solved... in 0.31s
+1: solved... in 0.01s
+2: solved... in 0.311s
+1: solved... in 0.011s
+2: solved... in 0.397s
+1: solved... in 0.011s
+2: solved... in 0.36s
+1: solved... in 0.011s
+2: solved... in 0.271s
+1: solved... in 0.011s
+2: solved... in 0.376s
+1: solved... in 0.011s
+2: solved... in 0.395s
+1: solved... in 0.011s
+2: solved... in 0.253s
+1: solved... in 0.011s
+2: solved... in 0.41s
+1: solved... in 0.01s
+2: solved... in 0.311s
+1: solved... in 0.01s
+2: solved... in 0.385s
+1: solved... in 0.01s
+2: solved... in 0.312s
+1: solved... in 0.011s
+2: solved... in 0.405s
+1: solved... in 0.01s
+2: solved... in 0.248s
+1: solved... in 0.01s
+2: solved... in 0.484s
+1: solved... in 0.01s
+2: solved... in 0.262s
+1: solved... in 0.01s
+2: solved... in 0.45s
+1: solved... in 0.01s
+2: solved... in 0.263s
+1: solved... in 0.011s
+2: solved... in 0.387s
+1: solved... in 0.011s
+2: solved... in 0.303s
+1: solved... in 0.011s
+2: solved... in 0.481s
+1: solved... in 0.011s
+2: solved... in 0.382s
+1: solved... in 0.01s
+2: solved... in 0.309s
+1: solved... in 0.012s
+2: solved... in 0.441s
+1: solved... in 0.011s
+2: solved... in 0.427s
+1: solved... in 0.011s
+2: solved... in 0.335s
+1: solved... in 0.012s
+2: solved... in 0.354s
+1: solved... in 0.011s
+2: solved... in 0.434s
+1: solved... in 0.011s
+2: solved... in 0.477s
+1: solved... in 0.01s
+2: solved... in 0.535s
+1: solved... in 0.01s
+2: solved... in 0.405s
+1: solved... in 0.011s
+2: solved... in 0.401s
+1: solved... in 0.011s
+2: solved... in 0.427s
+1: solved... in 0.012s
+2: solved... in 0.326s
+1: solved... in 0.01s
+2: solved... in 0.309s
+1: solved... in 0.01s
+2: solved... in 0.297s
+1: solved... in 0.011s
+2: solved... in 0.253s
+1: solved... in 0.011s
+2: solved... in 0.308s
+1: solved... in 0.011s
+2: solved... in 0.46s
+1: solved... in 0.011s
+2: solved... in 0.377s
+1: solved... in 0.01s
+2: solved... in 0.324s
+1: solved... in 0.01s
+2: solved... in 0.314s
+1: solved... in 0.01s
+2: solved... in 0.283s
+1: solved... in 0.011s
+2: solved... in 0.325s
+1: solved... in 0.011s
+2: solved... in 0.468s
+1: solved... in 0.011s
+2: solved... in 0.303s
+1: solved... in 0.01s
+2: solved... in 0.329s
+1: solved... in 0.01s
+2: solved... in 0.308s
+1: solved... in 0.011s
+2: solved... in 0.323s
+1: solved... in 0.01s
+2: solved... in 0.358s
+1: solved... in 0.01s
+2: solved... in 0.314s
+1: solved... in 0.011s
+2: solved... in 0.401s
+1: solved... in 0.011s
+2: solved... in 0.517s
+1: solved... in 0.01s
+2: solved... in 0.284s
+1: solved... in 0.01s
+2: solved... in 0.669s
+1: solved... in 0.01s
+2: solved... in 0.403s
+1: solved... in 0.012s
+2: solved... in 0.446s
+1: solved... in 0.011s
+2: solved... in 0.385s
+1: solved... in 0.012s
+2: solved... in 0.411s
+1: solved... in 0.01s
+2: solved... in 0.324s
+1: solved... in 0.011s
+2: solved... in 0.351s
+1: solved... in 0.01s
+2: solved... in 0.334s
+1: solved... in 0.01s
+2: solved... in 0.412s
+1: solved... in 0.01s
+2: solved... in 0.291s
+1: solved... in 0.011s
+2: solved... in 0.311s
+1: solved... in 0.011s
+2: solved... in 0.402s
+1: solved... in 0.021s
+2: solved... in 0.36s
+1: solved... in 0.01s
+2: solved... in 0.276s
+1: solved... in 0.01s
+2: solved... in 0.322s
+1: solved... in 0.011s
+2: solved... in 0.483s
+1: solved... in 0.013s
+2: solved... in 0.433s
+1: solved... in 0.011s
+2: solved... in 0.334s
+1: solved... in 0.01s
+2: solved... in 0.356s
+1: solved... in 0.01s
+2: solved... in 0.353s
+1: solved... in 0.011s
+2: solved... in 0.367s
+1: solved... in 0.011s
+2: solved... in 0.453s
+1: solved... in 0.01s
+2: solved... in 0.422s
+1: solved... in 0.011s
+2: solved... in 0.37s
+1: solved... in 0.011s
+2: solved... in 0.4s
+1: solved... in 0.01s
+2: solved... in 0.359s
+1: solved... in 0.01s
+2: solved... in 0.365s
+1: solved... in 0.011s
+2: solved... in 0.274s
+1: solved... in 0.01s
+2: solved... in 0.426s
+1: solved... in 0.01s
+2: solved... in 0.397s
+1: solved... in 0.011s
+2: solved... in 0.378s
+1: solved... in 0.016s
+2: solved... in 0.479s
+1: solved... in 0.01s
+2: solved... in 0.446s
+1: solved... in 0.01s
+2: solved... in 0.314s
+1: solved... in 0.01s
+2: solved... in 0.435s
+1: solved... in 0.011s
+2: solved... in 0.388s
+1: solved... in 0.01s
+2: solved... in 0.393s
+1: solved... in 0.011s
+2: solved... in 0.238s
+1: solved... in 0.01s
+2: solved... in 0.355s
+1: solved... in 0.012s
+2: solved... in 0.366s
+1: solved... in 0.01s
+2: solved... in 0.376s
+1: solved... in 0.01s
+2: solved... in 0.312s
+1: solved... in 0.011s
+2: solved... in 0.338s
+1: solved... in 0.01s
+2: solved... in 0.43s
+1: solved... in 0.011s
+2: solved... in 0.431s
+1: solved... in 0.011s
+2: solved... in 0.331s
+1: solved... in 0.01s
+2: solved... in 0.333s
+1: solved... in 0.01s
+2: solved... in 0.537s
+1: solved... in 0.011s
+2: solved... in 0.544s
+1: solved... in 0.01s
+2: solved... in 0.421s
+1: solved... in 0.011s
+2: solved... in 0.423s
+1: solved... in 0.01s
+2: solved... in 0.417s
+1: solved... in 0.01s
+2: solved... in 0.422s
+1: solved... in 0.012s
+2: solved... in 0.391s
+1: solved... in 0.01s
+2: solved... in 0.373s
+1: solved... in 0.011s
+2: solved... in 0.256s
+1: solved... in 0.012s
+2: solved... in 0.37s
+1: solved... in 0.012s
+2: solved... in 0.325s
+1: solved... in 0.011s
+2: solved... in 0.387s
+1: solved... in 0.011s
+2: solved... in 0.399s
+1: solved... in 0.011s
+2: solved... in 0.439s
+1: solved... in 0.011s
+2: solved... in 0.446s
+1: solved... in 0.01s
+2: solved... in 0.367s
+1: solved... in 0.013s
+2: solved... in 0.332s
+1: solved... in 0.01s
+2: solved... in 0.364s
+1: solved... in 0.01s
+2: solved... in 0.426s
+1: solved... in 0.01s
+2: solved... in 0.375s
+1: solved... in 0.011s
+2: solved... in 0.376s
+1: solved... in 0.011s
+2: solved... in 0.56s
+1: solved... in 0.01s
+2: solved... in 0.454s
+1: solved... in 0.01s
+2: solved... in 0.728s
+1: solved... in 0.01s
+2: solved... in 0.501s
+1: solved... in 0.011s
+2: solved... in 0.463s
+1: solved... in 0.01s
+2: solved... in 0.649s
+1: solved... in 0.01s
+2: solved... in 0.614s
+1: solved... in 0.01s
+2: solved... in 0.515s
+1: solved... in 0.01s
+2: solved... in 0.457s
+1: solved... in 0.01s
+2: solved... in 0.391s
+1: solved... in 0.011s
+2: solved... in 0.443s
+1: solved... in 0.01s
+2: solved... in 0.383s
+1: solved... in 0.01s
+2: solved... in 0.519s
+1: solved... in 0.013s
+2: solved... in 0.383s
+1: solved... in 0.011s
+2: solved... in 0.518s
+1: solved... in 0.011s
+2: solved... in 0.374s
+1: solved... in 0.011s
+2: solved... in 0.374s
+1: solved... in 0.01s
+2: solved... in 0.381s
+1: solved... in 0.012s
+2: solved... in 0.53s
+1: solved... in 0.01s
+2: solved... in 0.387s
+1: solved... in 0.011s
+2: solved... in 0.485s
+1: solved... in 0.01s
+2: solved... in 0.477s
+1: solved... in 0.01s
+2: solved... in 0.671s
+1: solved... in 0.011s
+2: solved... in 0.482s
+1: solved... in 0.011s
+2: solved... in 0.36s
+1: solved... in 0.01s
+2: solved... in 0.37s
+1: solved... in 0.011s
+2: solved... in 0.402s
+1: solved... in 0.01s
+2: solved... in 0.4s
+1: solved... in 0.01s
+2: solved... in 0.416s
+1: solved... in 0.01s
+2: solved... in 0.512s
+1: solved... in 0.01s
+2: solved... in 0.527s
+1: solved... in 0.01s
+2: solved... in 0.43s
+1: solved... in 0.01s
+2: solved... in 0.559s
+1: solved... in 0.01s
+2: solved... in 0.498s
+1: solved... in 0.011s
+2: solved... in 0.404s
+1: solved... in 0.011s
+2: solved... in 0.498s
+1: solved... in 0.011s
+2: solved... in 0.647s
+1: solved... in 0.01s
+2: solved... in 0.475s
+1: solved... in 0.01s
+2: solved... in 0.689s
+1: solved... in 0.012s
+2: solved... in 0.405s
+1: solved... in 0.01s
+2: solved... in 0.515s
+1: solved... in 0.01s
+2: solved... in 0.473s
+1: solved... in 0.01s
+2: solved... in 0.491s
+1: solved... in 0.01s
+2: solved... in 0.416s
+1: solved... in 0.011s
+2: solved... in 0.487s
+1: solved... in 0.01s
+2: solved... in 0.698s
+1: solved... in 0.011s
+2: solved... in 0.626s
+1: solved... in 0.011s
+2: solved... in 0.502s
+1: solved... in 0.01s
+2: solved... in 0.414s
+1: solved... in 0.011s
+2: solved... in 0.402s
+1: solved... in 0.011s
+2: solved... in 0.671s
+1: solved... in 0.011s
+2: solved... in 0.429s
+1: solved... in 0.01s
+2: solved... in 0.377s
+1: solved... in 0.01s
+2: solved... in 0.41s
+1: solved... in 0.01s
+2: solved... in 0.511s
+1: solved... in 0.01s
+2: solved... in 0.492s
+1: solved... in 0.01s
+2: solved... in 0.579s
+1: solved... in 0.01s
+2: solved... in 0.404s
+1: solved... in 0.011s
+2: solved... in 0.45s
+1: solved... in 0.01s
+2: solved... in 0.513s
+1: solved... in 0.011s
+2: solved... in 0.524s
+1: solved... in 0.01s
+2: solved... in 0.547s
+1: solved... in 0.011s
+2: solved... in 0.479s
+1: solved... in 0.011s
+2: solved... in 0.42s
+1: solved... in 0.011s
+2: solved... in 0.348s
+1: solved... in 0.011s
+2: solved... in 0.57s
+1: solved... in 0.011s
+2: solved... in 0.551s
+1: solved... in 0.011s
+2: solved... in 0.55s
+1: solved... in 0.01s
+2: solved... in 0.738s
+1: solved... in 0.011s
+2: solved... in 0.425s
+1: solved... in 0.011s
+2: solved... in 0.462s
+1: solved... in 0.011s
+2: solved... in 0.52s
+1: solved... in 0.01s
+2: solved... in 0.414s
+1: solved... in 0.01s
+2: solved... in 0.521s
+1: solved... in 0.01s
+2: solved... in 0.379s
+1: solved... in 0.011s
+2: solved... in 0.502s
+1: solved... in 0.011s
+2: solved... in 0.616s
+1: solved... in 0.011s
+2: solved... in 0.549s
+1: solved... in 0.011s
+2: solved... in 0.466s
+1: solved... in 0.012s
+2: solved... in 0.554s
+1: solved... in 0.01s
+2: solved... in 0.357s
+1: solved... in 0.011s
+2: solved... in 0.487s
+1: solved... in 0.011s
+2: solved... in 0.352s
+1: solved... in 0.011s
+2: solved... in 0.531s
+1: solved... in 0.011s
+2: solved... in 0.559s
+1: solved... in 0.01s
+2: solved... in 0.414s
+1: solved... in 0.011s
+2: solved... in 0.341s
+1: solved... in 0.011s
+2: solved... in 0.584s
+1: solved... in 0.011s
+2: solved... in 0.538s
+1: solved... in 0.01s
+2: solved... in 0.516s
+1: solved... in 0.01s
+2: solved... in 0.576s
+1: solved... in 0.011s
+2: solved... in 0.367s
+1: solved... in 0.011s
+2: solved... in 0.5s
+1: solved... in 0.01s
+2: solved... in 0.583s
+1: solved... in 0.01s
+2: solved... in 0.518s
+1: solved... in 0.011s
+2: solved... in 0.538s
+1: solved... in 0.011s
+2: solved... in 0.576s
+1: solved... in 0.012s
+2: solved... in 0.375s
+1: solved... in 0.01s
+2: solved... in 0.473s
+1: solved... in 0.01s
+2: solved... in 0.476s
+1: solved... in 0.01s
+2: solved... in 0.548s
+1: solved... in 0.01s
+2: solved... in 0.464s
+1: solved... in 0.012s
+2: solved... in 0.586s
+1: solved... in 0.011s
+2: solved... in 0.407s
+1: solved... in 0.01s
+2: solved... in 0.421s
+1: solved... in 0.011s
+2: solved... in 0.383s
+1: solved... in 0.01s
+2: solved... in 0.452s
+1: solved... in 0.01s
+2: solved... in 0.551s
+1: solved... in 0.01s
+2: solved... in 0.57s
+1: solved... in 0.011s
+2: solved... in 0.439s
+1: solved... in 0.012s
+2: solved... in 0.612s
+1: solved... in 0.01s
+2: solved... in 0.644s
+1: solved... in 0.01s
+2: solved... in 0.671s
+1: solved... in 0.01s
+2: solved... in 0.545s
+1: solved... in 0.013s
+2: solved... in 0.396s
+1: solved... in 0.01s
+2: solved... in 0.402s
+1: solved... in 0.01s
+2: solved... in 0.389s
+1: solved... in 0.011s
+2: solved... in 0.392s
+1: solved... in 0.011s
+2: solved... in 0.396s
+1: solved... in 0.011s
+2: solved... in 0.654s
+1: solved... in 0.01s
+2: solved... in 0.644s
+1: solved... in 0.01s
+2: solved... in 0.576s
+1: solved... in 0.011s
+2: solved... in 0.527s
+1: solved... in 0.01s
+2: solved... in 0.664s
+1: solved... in 0.01s
+2: solved... in 0.481s
+1: solved... in 0.01s
+2: solved... in 0.48s
+1: solved... in 0.011s
+2: solved... in 0.742s
+1: solved... in 0.01s
+2: solved... in 0.613s
+1: solved... in 0.01s
+2: solved... in 0.65s
+1: solved... in 0.01s
+2: solved... in 0.642s
+1: solved... in 0.01s
+2: solved... in 0.518s
+1: solved... in 0.011s
+2: solved... in 0.633s
+1: solved... in 0.01s
+2: solved... in 0.648s
+1: solved... in 0.011s
+2: solved... in 0.472s
+1: solved... in 0.012s
+2: solved... in 0.514s
+1: solved... in 0.011s
+2: solved... in 0.515s
+1: solved... in 0.012s
+2: solved... in 0.55s
+1: solved... in 0.01s
+2: solved... in 0.676s
+1: solved... in 0.011s
+2: solved... in 0.529s
+1: solved... in 0.01s
+2: solved... in 0.446s
+1: solved... in 0.01s
+2: solved... in 0.457s
+1: solved... in 0.011s
+2: solved... in 0.457s
+1: solved... in 0.01s
+2: solved... in 0.443s
+1: solved... in 0.011s
+2: solved... in 0.691s
+1: solved... in 0.012s
+2: solved... in 0.768s
+1: solved... in 0.011s
+2: solved... in 0.529s
+1: solved... in 0.01s
+2: solved... in 0.538s
+1: solved... in 0.01s
+2: solved... in 0.665s
+1: solved... in 0.01s
+2: solved... in 0.682s
+1: solved... in 0.012s
+2: solved... in 0.606s
+1: solved... in 0.011s
+2: solved... in 0.639s
+1: solved... in 0.011s
+2: solved... in 0.698s
+1: solved... in 0.01s
+2: solved... in 0.41s
+1: solved... in 0.012s
+2: solved... in 0.514s
+1: solved... in 0.011s
+2: solved... in 0.788s
+1: solved... in 0.013s
+2: solved... in 0.54s
+1: solved... in 0.012s
+2: solved... in 0.769s
+1: solved... in 0.01s
+2: solved... in 0.565s
+1: solved... in 0.011s
+2: solved... in 0.577s
+1: solved... in 0.011s
+2: solved... in 0.769s
+1: solved... in 0.017s
+2: solved... in 0.63s
+1: solved... in 0.01s
+2: solved... in 0.707s
+1: solved... in 0.01s
+2: solved... in 0.601s
+1: solved... in 0.013s
+2: solved... in 0.723s
+1: solved... in 0.011s
+2: solved... in 0.448s
+1: solved... in 0.01s
+2: solved... in 0.564s
+1: solved... in 0.012s
+2: solved... in 0.797s
+1: solved... in 0.01s
+2: solved... in 0.501s
+1: solved... in 0.011s
+2: solved... in 0.7s
+1: solved... in 0.01s
+2: solved... in 0.755s
+1: solved... in 0.01s
+2: solved... in 0.62s
+1: solved... in 0.011s
+2: solved... in 0.531s
+1: solved... in 0.01s
+2: solved... in 0.483s
+1: solved... in 0.011s
+2: solved... in 0.634s
+1: solved... in 0.01s
+2: solved... in 0.528s
+1: solved... in 0.011s
+2: solved... in 0.694s
+1: solved... in 0.01s
+2: solved... in 0.777s
+1: solved... in 0.011s
+2: solved... in 0.506s
+1: solved... in 0.01s
+2: solved... in 0.567s
+1: solved... in 0.01s
+2: solved... in 0.508s
+1: solved... in 0.011s
+2: solved... in 0.513s
+1: solved... in 0.01s
+2: solved... in 0.606s
+1: solved... in 0.01s
+2: solved... in 1.023s
+1: solved... in 0.011s
+2: solved... in 0.565s
+1: solved... in 0.01s
+2: solved... in 0.434s
+1: solved... in 0.01s
+2: solved... in 0.634s
+1: solved... in 0.011s
+2: solved... in 0.556s
+1: solved... in 0.011s
+2: solved... in 0.781s
+1: solved... in 0.01s
+2: solved... in 0.537s
+1: solved... in 0.012s
+2: solved... in 0.425s
+1: solved... in 0.011s
+2: solved... in 0.584s
+1: solved... in 0.011s
+2: solved... in 0.699s
+1: solved... in 0.011s
+2: solved... in 0.738s
+1: solved... in 0.01s
+2: solved... in 0.587s
+1: solved... in 0.01s
+2: solved... in 0.561s
+1: solved... in 0.011s
+2: solved... in 0.788s
+1: solved... in 0.011s
+2: solved... in 0.781s
+1: solved... in 0.011s
+2: solved... in 0.597s
+1: solved... in 0.01s
+2: solved... in 0.885s
+1: solved... in 0.01s
+2: solved... in 0.774s
+1: solved... in 0.01s
+2: solved... in 0.775s
+1: solved... in 0.01s
+2: solved... in 0.509s
+1: solved... in 0.01s
+2: solved... in 0.555s
+1: solved... in 0.011s
+2: solved... in 0.54s
+1: solved... in 0.011s
+2: solved... in 0.631s
+1: solved... in 0.011s
+2: solved... in 0.562s
+1: solved... in 0.011s
+2: solved... in 0.54s
+1: solved... in 0.01s
+2: solved... in 0.671s
+1: solved... in 0.011s
+2: solved... in 0.481s
+1: solved... in 0.01s
+2: solved... in 0.619s
+1: solved... in 0.011s
+2: solved... in 0.861s
+1: solved... in 0.011s
+2: solved... in 0.58s
+1: solved... in 0.011s
+2: solved... in 0.606s
+1: solved... in 0.01s
+2: solved... in 0.469s
+1: solved... in 0.01s
+2: solved... in 0.792s
+1: solved... in 0.011s
+2: solved... in 0.564s
+1: solved... in 0.01s
+2: solved... in 0.522s
+1: solved... in 0.01s
+2: solved... in 0.506s
+1: solved... in 0.011s
+2: solved... in 0.78s
+1: solved... in 0.011s
+2: solved... in 0.609s
+1: solved... in 0.011s
+2: solved... in 0.545s
+1: solved... in 0.011s
+2: solved... in 0.796s
+1: solved... in 0.01s
+2: solved... in 0.503s
+1: solved... in 0.01s
+2: solved... in 0.42s
+1: solved... in 0.012s
+2: solved... in 0.712s
+1: solved... in 0.011s
+2: solved... in 0.519s
+1: solved... in 0.011s
+2: solved... in 0.427s
+1: solved... in 0.011s
+2: solved... in 0.615s
+1: solved... in 0.01s
+2: solved... in 0.444s
+1: solved... in 0.01s
+2: solved... in 0.734s
+1: solved... in 0.01s
+2: solved... in 0.528s
+1: solved... in 0.011s
+2: solved... in 0.608s
+1: solved... in 0.011s
+2: solved... in 0.734s
+1: solved... in 0.01s
+2: solved... in 0.666s
+1: solved... in 0.01s
+2: solved... in 0.689s
+1: solved... in 0.011s
+2: solved... in 0.702s
+1: solved... in 0.011s
+2: solved... in 0.82s
+1: solved... in 0.01s
+2: solved... in 0.437s
+1: solved... in 0.011s
+2: solved... in 0.647s
+1: solved... in 0.011s
+2: solved... in 0.488s
+1: solved... in 0.011s
+2: solved... in 0.58s
+1: solved... in 0.01s
+2: solved... in 0.543s
+1: solved... in 0.01s
+2: solved... in 0.643s
+1: solved... in 0.011s
+2: solved... in 0.751s
+1: solved... in 0.011s
+2: solved... in 0.687s
+1: solved... in 0.01s
+2: solved... in 0.791s
+1: solved... in 0.01s
+2: solved... in 0.67s
+1: solved... in 0.011s
+2: solved... in 0.606s
+1: solved... in 0.01s
+2: solved... in 0.896s
+1: solved... in 0.01s
+2: solved... in 0.855s
+1: solved... in 0.011s
+2: solved... in 0.838s
+1: solved... in 0.01s
+2: solved... in 0.902s
+1: solved... in 0.011s
+2: solved... in 0.695s
+1: solved... in 0.01s
+2: solved... in 0.605s
+1: solved... in 0.012s
+2: solved... in 0.502s
+1: solved... in 0.011s
+2: solved... in 0.907s
+1: solved... in 0.011s
+2: solved... in 0.614s
+1: solved... in 0.011s
+2: solved... in 0.882s
+1: solved... in 0.01s
+2: solved... in 0.686s
+1: solved... in 0.011s
+2: solved... in 0.589s
+1: solved... in 0.01s
+2: solved... in 0.731s
+1: solved... in 0.011s
+2: solved... in 0.666s
+1: solved... in 0.01s
+2: solved... in 0.595s
+1: solved... in 0.01s
+2: solved... in 0.709s
+1: solved... in 0.01s
+2: solved... in 0.619s
+1: solved... in 0.012s
+2: solved... in 0.666s
+1: solved... in 0.011s
+2: solved... in 0.58s
+1: solved... in 0.011s
+2: solved... in 0.598s
+1: solved... in 0.011s
+2: solved... in 0.656s
+1: solved... in 0.012s
+2: solved... in 0.583s
+1: solved... in 0.012s
+2: solved... in 0.711s
+1: solved... in 0.013s
+2: solved... in 0.874s
+1: solved... in 0.011s
+2: solved... in 0.903s
+1: solved... in 0.01s
+2: solved... in 0.759s
+1: solved... in 0.01s
+2: solved... in 0.953s
+1: solved... in 0.01s
+2: solved... in 0.853s
+1: solved... in 0.011s
+2: solved... in 0.777s
+1: solved... in 0.011s
+2: solved... in 0.908s
+1: solved... in 0.011s
+2: solved... in 0.73s
+1: solved... in 0.011s
+2: solved... in 0.958s
+1: solved... in 0.011s
+2: solved... in 0.693s
+1: solved... in 0.011s
+2: solved... in 0.794s
+1: solved... in 0.01s
+2: solved... in 0.896s
+1: solved... in 0.011s
+2: solved... in 1.079s
+1: solved... in 0.012s
+2: solved... in 0.981s
+1: solved... in 0.011s
+2: solved... in 0.99s
+1: solved... in 0.011s
+2: solved... in 0.705s
+1: solved... in 0.01s
+2: solved... in 0.847s
+1: solved... in 0.011s
+2: solved... in 0.637s
+1: solved... in 0.011s
+2: solved... in 0.889s
+1: solved... in 0.011s
+2: solved... in 0.808s
+1: solved... in 0.01s
+2: solved... in 0.659s
+1: solved... in 0.012s
+2: solved... in 0.585s
+1: solved... in 0.013s
+2: solved... in 0.496s
+1: solved... in 0.012s
+2: solved... in 0.797s
+1: solved... in 0.011s
+2: solved... in 0.621s
+1: solved... in 0.011s
+2: solved... in 0.817s
+1: solved... in 0.01s
+2: solved... in 0.914s
+1: solved... in 0.011s
+2: solved... in 0.624s
+1: solved... in 0.011s
+2: solved... in 0.679s
+1: solved... in 0.01s
+2: solved... in 0.6s
+1: solved... in 0.011s
+2: solved... in 0.617s
+1: solved... in 0.01s
+2: solved... in 0.534s
+1: solved... in 0.011s
+2: solved... in 0.588s
+1: solved... in 0.01s
+2: solved... in 0.989s
+1: solved... in 0.01s
+2: solved... in 0.67s
+1: solved... in 0.011s
+2: solved... in 0.693s
+1: solved... in 0.01s
+2: solved... in 0.621s
+1: solved... in 0.01s
+2: solved... in 0.607s
+1: solved... in 0.01s
+2: solved... in 0.781s
+1: solved... in 0.011s
+2: solved... in 0.615s
+1: solved... in 0.01s
+2: solved... in 0.611s
+1: solved... in 0.011s
+2: solved... in 0.607s
+1: solved... in 0.011s
+2: solved... in 0.7s
+1: solved... in 0.01s
+2: solved... in 0.698s
+1: solved... in 0.011s
+2: solved... in 0.635s
+1: solved... in 0.01s
+2: solved... in 1.028s
+1: solved... in 0.011s
+2: solved... in 0.634s
+1: solved... in 0.01s
+2: solved... in 0.641s
+1: solved... in 0.011s
+2: solved... in 0.756s
+1: solved... in 0.01s
+2: solved... in 0.701s
+1: solved... in 0.011s
+2: solved... in 0.674s
+1: solved... in 0.011s
+2: solved... in 0.7s
+1: solved... in 0.011s
+2: solved... in 0.636s
+1: solved... in 0.011s
+2: solved... in 0.628s
+1: solved... in 0.01s
+2: solved... in 0.678s
+1: solved... in 0.01s
+2: solved... in 0.675s
+1: solved... in 0.011s
+2: solved... in 0.71s
+1: solved... in 0.011s
+2: solved... in 0.721s
+1: solved... in 0.014s
+2: solved... in 0.647s
+1: solved... in 0.01s
+2: solved... in 0.702s
+1: solved... in 0.01s
+2: solved... in 0.844s
+1: solved... in 0.01s
+2: solved... in 0.658s
+1: solved... in 0.01s
+2: solved... in 0.879s
+1: solved... in 0.01s
+2: solved... in 1.153s
+1: solved... in 0.01s
+2: solved... in 0.722s
+1: solved... in 0.011s
+2: solved... in 0.74s
+1: solved... in 0.015s
+2: solved... in 0.658s
+1: solved... in 0.011s
+2: solved... in 0.659s
+1: solved... in 0.011s
+2: solved... in 0.705s
+1: solved... in 0.011s
+2: solved... in 0.753s
+1: solved... in 0.011s
+2: solved... in 0.665s
+1: solved... in 0.01s
+2: solved... in 0.65s
+1: solved... in 0.015s
+2: solved... in 0.708s
+1: solved... in 0.01s
+2: solved... in 0.727s
+1: solved... in 0.01s
+2: solved... in 0.72s
+1: solved... in 0.011s
+2: solved... in 0.768s
+1: solved... in 0.01s
+2: solved... in 0.677s
+1: solved... in 0.01s
+2: solved... in 0.733s
+1: solved... in 0.01s
+2: solved... in 1.023s
+1: solved... in 0.011s
+2: solved... in 0.757s
+1: solved... in 0.011s
+2: solved... in 0.609s
+1: solved... in 0.012s
+2: solved... in 0.649s
+1: solved... in 0.011s
+2: solved... in 0.746s
+1: solved... in 0.011s
+2: solved... in 0.713s
+1: solved... in 0.01s
+2: solved... in 0.782s
+1: solved... in 0.01s
+2: solved... in 0.802s
+1: solved... in 0.011s
+2: solved... in 0.783s
+1: solved... in 0.01s
+2: solved... in 0.8s
+1: solved... in 0.01s
+2: solved... in 0.775s
+1: solved... in 0.012s
+2: solved... in 0.774s
+1: solved... in 0.011s
+2: solved... in 1.11s
+1: solved... in 0.011s
+2: solved... in 1.076s
+1: solved... in 0.011s
+2: solved... in 0.816s
+1: solved... in 0.011s
+2: solved... in 0.512s
+1: solved... in 0.01s
+2: solved... in 1.022s
+1: solved... in 0.01s
+2: solved... in 0.723s
+1: solved... in 0.011s
+2: solved... in 0.82s
+1: solved... in 0.011s
+2: solved... in 0.805s
+1: solved... in 0.01s
+2: solved... in 0.781s
+1: solved... in 0.013s
+2: solved... in 0.83s
+1: solved... in 0.01s
+2: solved... in 0.716s
+1: solved... in 0.011s
+2: solved... in 0.707s
+1: solved... in 0.01s
+2: solved... in 0.712s
+1: solved... in 0.011s
+2: solved... in 0.721s
+1: solved... in 0.011s
+2: solved... in 0.79s
+1: solved... in 0.01s
+2: solved... in 0.793s
+1: solved... in 0.011s
+2: solved... in 0.831s
+1: solved... in 0.01s
+2: solved... in 0.794s
+1: solved... in 0.011s
+2: solved... in 0.729s
+1: solved... in 0.01s
+2: solved... in 0.659s
+1: solved... in 0.01s
+2: solved... in 0.403s
+1: solved... in 0.011s
+2: solved... in 0.55s
+1: solved... in 0.011s
+2: solved... in 0.767s
+1: solved... in 0.01s
+2: solved... in 1.003s
+1: solved... in 0.011s
+2: solved... in 0.857s
+1: solved... in 0.011s
+2: solved... in 0.908s
+1: solved... in 0.01s
+2: solved... in 0.742s
+1: solved... in 0.011s
+2: solved... in 0.812s
+1: solved... in 0.013s
+2: solved... in 0.711s
+1: solved... in 0.011s
+2: solved... in 1.144s
+1: solved... in 0.01s
+2: solved... in 0.517s
+1: solved... in 0.011s
+2: solved... in 0.907s
+1: solved... in 0.011s
+2: solved... in 0.996s
+1: solved... in 0.011s
+2: solved... in 0.802s
+1: solved... in 0.011s
+2: solved... in 0.586s
+1: solved... in 0.011s
+2: solved... in 0.793s
+1: solved... in 0.012s
+2: solved... in 0.999s
+1: solved... in 0.011s
+2: solved... in 1.117s
+1: solved... in 0.011s
+2: solved... in 0.714s
+1: solved... in 0.011s
+2: solved... in 1.215s
+1: solved... in 0.01s
+2: solved... in 0.683s
+1: solved... in 0.011s
+2: solved... in 1.21s
+1: solved... in 0.011s
+2: solved... in 0.834s
+1: solved... in 0.01s
+2: solved... in 0.708s
+1: solved... in 0.011s
+2: solved... in 1.131s
+1: solved... in 0.01s
+2: solved... in 0.894s
+1: solved... in 0.01s
+2: solved... in 0.933s
+1: solved... in 0.011s
+2: solved... in 0.758s
+1: solved... in 0.011s
+2: solved... in 0.803s
+1: solved... in 0.011s
+2: solved... in 0.918s
+1: solved... in 0.01s
+2: solved... in 0.741s
+1: solved... in 0.011s
+2: solved... in 1.017s
+1: solved... in 0.011s
+2: solved... in 0.91s
+1: solved... in 0.011s
+2: solved... in 0.788s
+1: solved... in 0.011s
+2: solved... in 0.92s
+1: solved... in 0.011s
+2: solved... in 0.79s
+1: solved... in 0.01s
+2: solved... in 0.897s
+1: solved... in 0.011s
+2: solved... in 0.79s
+1: solved... in 0.01s
+2: solved... in 0.751s
+1: solved... in 0.011s
+2: solved... in 0.919s
+1: solved... in 0.01s
+2: solved... in 0.686s
+1: solved... in 0.011s
+2: solved... in 0.976s
+1: solved... in 0.011s
+2: solved... in 0.772s
+1: solved... in 0.011s
+2: solved... in 0.848s
+1: solved... in 0.01s
+2: solved... in 1.137s
+1: solved... in 0.01s
+2: solved... in 1.188s
+1: solved... in 0.01s
+2: solved... in 0.928s
+1: solved... in 0.011s
+2: solved... in 0.833s
+1: solved... in 0.011s
+2: solved... in 0.922s
+1: solved... in 0.011s
+2: solved... in 1.172s
+1: solved... in 0.01s
+2: solved... in 0.832s
+1: solved... in 0.011s
+2: solved... in 0.966s
+1: solved... in 0.011s
+2: solved... in 0.853s
+1: solved... in 0.01s
+2: solved... in 1.192s
+1: solved... in 0.01s
+2: solved... in 0.863s
+1: solved... in 0.011s
+2: solved... in 1.165s
+1: solved... in 0.01s
+2: solved... in 0.658s
+1: solved... in 0.011s
+2: solved... in 0.869s
+1: solved... in 0.011s
+2: solved... in 1.11s
+1: solved... in 0.013s
+2: solved... in 0.88s
+1: solved... in 0.012s
+2: solved... in 1.074s
+1: solved... in 0.011s
+2: solved... in 1.131s
+1: solved... in 0.01s
+2: solved... in 1.166s
+1: solved... in 0.011s
+2: solved... in 0.919s
+1: solved... in 0.01s
+2: solved... in 0.853s
+1: solved... in 0.01s
+2: solved... in 1.011s
+1: solved... in 0.011s
+2: solved... in 0.975s
+1: solved... in 0.01s
+2: solved... in 1.204s
+1: solved... in 0.01s
+2: solved... in 1.355s
+1: solved... in 0.01s
+2: solved... in 0.852s
+1: solved... in 0.011s
+2: solved... in 1.059s
+1: solved... in 0.01s
+2: solved... in 1.238s
+1: solved... in 0.01s
+2: solved... in 0.691s
+1: solved... in 0.011s
+2: solved... in 0.928s
+1: solved... in 0.01s
+2: solved... in 0.85s
+1: solved... in 0.011s
+2: solved... in 1.125s
+1: solved... in 0.011s
+2: solved... in 1.056s
+1: solved... in 0.011s
+2: solved... in 0.816s
+1: solved... in 0.01s
+2: solved... in 0.792s
+1: solved... in 0.01s
+2: solved... in 0.811s
+1: solved... in 0.01s
+2: solved... in 0.928s
+1: solved... in 0.011s
+2: solved... in 0.836s
+1: solved... in 0.01s
+2: solved... in 0.973s
+1: solved... in 0.011s
+2: solved... in 0.841s
+1: solved... in 0.01s
+2: solved... in 1.211s
+1: solved... in 0.011s
+2: solved... in 0.823s
+1: solved... in 0.011s
+2: solved... in 0.903s
+1: solved... in 0.01s
+2: solved... in 0.958s
+1: solved... in 0.011s
+2: solved... in 1.2s
+1: solved... in 0.01s
+2: solved... in 1.225s
+1: solved... in 0.011s
+2: solved... in 1.202s
+1: solved... in 0.011s
+2: solved... in 0.85s
+1: solved... in 0.01s
+2: solved... in 0.901s
+1: solved... in 0.012s
+2: solved... in 1.09s
+1: solved... in 0.01s
+2: solved... in 0.9s
+1: solved... in 0.011s
+2: solved... in 1.268s
+1: solved... in 0.011s
+2: solved... in 0.908s
+1: solved... in 0.011s
+2: solved... in 1.276s
+1: solved... in 0.011s
+2: solved... in 0.988s
+1: solved... in 0.01s
+2: solved... in 1.14s
+1: solved... in 0.01s
+2: solved... in 0.892s
+1: solved... in 0.011s
+2: solved... in 1.394s
+1: solved... in 0.011s
+2: solved... in 1.276s
+1: solved... in 0.011s
+2: solved... in 1.296s
+1: solved... in 0.011s
+2: solved... in 0.766s
+1: solved... in 0.011s
+2: solved... in 0.856s
+1: solved... in 0.01s
+2: solved... in 0.799s
+1: solved... in 0.01s
+2: solved... in 0.822s
+1: solved... in 0.012s
+2: solved... in 1.055s
+1: solved... in 0.011s
+2: solved... in 0.783s
+1: solved... in 0.01s
+2: solved... in 0.798s
+1: solved... in 0.012s
+2: solved... in 1.261s
+1: solved... in 0.01s
+2: solved... in 1.322s
+1: solved... in 0.011s
+2: solved... in 1.233s
+1: solved... in 0.01s
+2: solved... in 0.816s
+1: solved... in 0.011s
+2: solved... in 1.223s
+1: solved... in 0.01s
+2: solved... in 1.317s
+1: solved... in 0.01s
+2: solved... in 1.446s
+1: solved... in 0.01s
+2: solved... in 0.99s
+1: solved... in 0.011s
+2: solved... in 0.996s
+1: solved... in 0.011s
+2: solved... in 0.876s
+1: solved... in 0.011s
+2: solved... in 1.573s
+1: solved... in 0.01s
+2: solved... in 0.854s
+1: solved... in 0.01s
+2: solved... in 0.826s
+1: solved... in 0.011s
+2: solved... in 0.807s
+1: solved... in 0.012s
+2: solved... in 0.956s
+1: solved... in 0.011s
+2: solved... in 1.419s
+1: solved... in 0.011s
+2: solved... in 0.854s
+1: solved... in 0.01s
+2: solved... in 0.841s
+1: solved... in 0.01s
+2: solved... in 0.78s
+1: solved... in 0.011s
+2: solved... in 1.282s
+1: solved... in 0.011s
+2: solved... in 0.777s
+1: solved... in 0.01s
+2: solved... in 0.711s
+1: solved... in 0.01s
+2: solved... in 0.983s
+1: solved... in 0.011s
+2: solved... in 1.174s
+1: solved... in 0.011s
+2: solved... in 0.804s
+1: solved... in 0.011s
+2: solved... in 0.561s
+1: solved... in 0.01s
+2: solved... in 0.52s
+1: solved... in 0.011s
+2: solved... in 0.666s
+1: solved... in 0.012s
+2: solved... in 0.665s
+1: solved... in 0.011s
+2: solved... in 0.897s
+1: solved... in 0.01s
+2: solved... in 0.827s
+1: solved... in 0.01s
+2: solved... in 0.851s
+1: solved... in 0.011s
+2: solved... in 1.139s
+1: solved... in 0.011s
+2: solved... in 1.118s
+1: solved... in 0.011s
+2: solved... in 0.865s
+1: solved... in 0.01s
+2: solved... in 1.087s
+1: solved... in 0.01s
+2: solved... in 0.507s
+1: solved... in 0.011s
+2: solved... in 0.856s
+1: solved... in 0.011s
+2: solved... in 0.904s
+1: solved... in 0.011s
+2: solved... in 1.2s
+1: solved... in 0.011s
+2: solved... in 1.113s
+1: solved... in 0.011s
+2: solved... in 0.807s
+1: solved... in 0.011s
+2: solved... in 1.14s
+1: solved... in 0.01s
+2: solved... in 0.802s
+1: solved... in 0.011s
+2: solved... in 1.062s
+1: solved... in 0.01s
+2: solved... in 1.309s
+1: solved... in 0.011s
+2: solved... in 1.019s
+1: solved... in 0.011s
+2: solved... in 0.787s
+1: solved... in 0.01s
+2: solved... in 0.944s
+1: solved... in 0.011s
+2: solved... in 0.91s
+1: solved... in 0.011s
+2: solved... in 1.006s
+1: solved... in 0.01s
+2: solved... in 1.022s
+1: solved... in 0.011s
+2: solved... in 0.738s
+1: solved... in 0.011s
+2: solved... in 1.135s
+1: solved... in 0.01s
+2: solved... in 0.755s
+1: solved... in 0.01s
+2: solved... in 1.112s
+1: solved... in 0.01s
+2: solved... in 1.021s
+1: solved... in 0.011s
+2: solved... in 0.653s
+1: solved... in 0.01s
+2: solved... in 0.898s
+1: solved... in 0.01s
+2: solved... in 0.889s
+1: solved... in 0.01s
+2: solved... in 0.991s
+1: solved... in 0.011s
+2: solved... in 1.126s
+1: solved... in 0.01s
+2: solved... in 1.118s
+1: solved... in 0.012s
+2: solved... in 0.712s
+1: solved... in 0.01s
+2: solved... in 0.963s
+1: solved... in 0.011s
+2: solved... in 0.622s
+1: solved... in 0.011s
+2: solved... in 0.608s
+1: solved... in 0.01s
+2: solved... in 0.867s
+1: solved... in 0.011s
+2: solved... in 1.272s
+1: solved... in 0.012s
+2: solved... in 1.069s
+1: solved... in 0.011s
+2: solved... in 1.044s
+1: solved... in 0.011s
+2: solved... in 1.089s
+1: solved... in 0.01s
+2: solved... in 0.843s
+1: solved... in 0.011s
+2: solved... in 0.857s
+1: solved... in 0.011s
+2: solved... in 0.887s
+1: solved... in 0.01s
+2: solved... in 1.028s
+1: solved... in 0.01s
+2: solved... in 1.205s
+1: solved... in 0.013s
+2: solved... in 0.83s
+1: solved... in 0.011s
+2: solved... in 0.752s
+1: solved... in 0.01s
+2: solved... in 1.026s
+1: solved... in 0.012s
+2: solved... in 1.242s
+1: solved... in 0.011s
+2: solved... in 1.075s
+1: solved... in 0.011s
+2: solved... in 0.617s
+1: solved... in 0.011s
+2: solved... in 0.995s
+1: solved... in 0.01s
+2: solved... in 1.319s
+1: solved... in 0.01s
+2: solved... in 0.966s
+1: solved... in 0.01s
+2: solved... in 1.319s
+1: solved... in 0.011s
+2: solved... in 0.885s
+1: solved... in 0.01s
+2: solved... in 1.27s
+1: solved... in 0.011s
+2: solved... in 1.048s
+1: solved... in 0.011s
+2: solved... in 3.77s
+1: solved... in 0.012s
+2: solved... in 0.902s
+1: solved... in 0.01s
+2: solved... in 1.02s
+1: solved... in 0.012s
+2: solved... in 1.355s
+1: solved... in 0.012s
+2: solved... in 0.809s
+1: solved... in 0.01s
+2: solved... in 0.634s
+1: solved... in 0.01s
+2: solved... in 0.85s
+1: solved... in 0.01s
+2: solved... in 1.13s
+1: solved... in 0.01s
+2: solved... in 1.001s
+1: solved... in 0.011s
+2: solved... in 1.311s
+1: solved... in 0.01s
+2: solved... in 1.015s
+1: solved... in 0.01s
+2: solved... in 1.53s
+1: solved... in 0.01s
+2: solved... in 1.09s
+1: solved... in 0.015s
+2: solved... in 0.705s
+1: solved... in 0.01s
+2: solved... in 1.008s
+1: solved... in 0.011s
+2: solved... in 0.898s
+1: solved... in 0.01s
+2: solved... in 1.037s
+1: solved... in 0.011s
+2: solved... in 1.201s
+1: solved... in 0.01s
+2: solved... in 1.189s
+1: solved... in 0.013s
+2: solved... in 1.12s
+1: solved... in 0.01s
+2: solved... in 1.266s
+1: solved... in 0.011s
+2: solved... in 1.153s
+1: solved... in 0.013s
+2: solved... in 1.275s
+1: solved... in 0.011s
+2: solved... in 1.075s
+1: solved... in 0.01s
+2: solved... in 0.863s
+1: solved... in 0.011s
+2: solved... in 1.147s
+1: solved... in 0.011s
+2: solved... in 1.177s
+1: solved... in 0.012s
+2: solved... in 1.27s
+1: solved... in 0.012s
+2: solved... in 0.822s
+1: solved... in 0.011s
+2: solved... in 0.922s
+1: solved... in 0.01s
+2: solved... in 1.162s
+1: solved... in 0.011s
+2: solved... in 1.301s
+1: solved... in 0.01s
+2: solved... in 1.255s
+1: solved... in 0.011s
+2: solved... in 0.767s
+1: solved... in 0.01s
+2: solved... in 0.7s
+1: solved... in 0.01s
+2: solved... in 1.227s
+1: solved... in 0.01s
+2: solved... in 0.716s
+1: solved... in 0.011s
+2: solved... in 0.896s
+1: solved... in 0.01s
+2: solved... in 0.724s
+1: solved... in 0.01s
+2: solved... in 1.065s
+1: solved... in 0.011s
+2: solved... in 0.907s
+1: solved... in 0.011s
+2: solved... in 1.179s
+1: solved... in 0.01s
+2: solved... in 0.701s
+1: solved... in 0.011s
+2: solved... in 1.539s
+1: solved... in 0.011s
+2: solved... in 0.807s
+1: solved... in 0.012s
+2: solved... in 1.071s
+1: solved... in 0.012s
+2: solved... in 0.97s
+1: solved... in 0.011s
+2: solved... in 0.964s
+1: solved... in 0.011s
+2: solved... in 1.029s
+1: solved... in 0.01s
+2: solved... in 0.933s
+1: solved... in 0.011s
+2: solved... in 1.185s
+1: solved... in 0.011s
+2: solved... in 1.094s
+1: solved... in 0.011s
+2: solved... in 0.786s
+1: solved... in 0.01s
+2: solved... in 1.078s
+1: solved... in 0.01s
+2: solved... in 1.283s
+1: solved... in 0.01s
+2: solved... in 1.229s
+1: solved... in 0.011s
+2: solved... in 1.02s
+1: solved... in 0.011s
+2: solved... in 1.37s
+1: solved... in 0.011s
+2: solved... in 1.206s
+1: solved... in 0.01s
+2: solved... in 0.982s
+1: solved... in 0.012s
+2: solved... in 1.07s
+1: solved... in 0.01s
+2: solved... in 1.129s
+1: solved... in 0.011s
+2: solved... in 1.005s
+1: solved... in 0.011s
+2: solved... in 0.959s
+1: solved... in 0.011s
+2: solved... in 1.071s
+1: solved... in 0.011s
+2: solved... in 0.949s
+1: solved... in 0.011s
+2: solved... in 1.282s
+1: solved... in 0.01s
+2: solved... in 1.082s
+1: solved... in 0.01s
+2: solved... in 1.03s
+1: solved... in 0.01s
+2: solved... in 1.136s
+1: solved... in 0.01s
+2: solved... in 0.64s
+1: solved... in 0.01s
+2: solved... in 0.836s
+1: solved... in 0.011s
+2: solved... in 0.838s
+1: solved... in 0.01s
+2: solved... in 1.24s
+1: solved... in 0.01s
+2: solved... in 0.831s
+1: solved... in 0.01s
+2: solved... in 0.964s
+1: solved... in 0.011s
+2: solved... in 1.084s
+1: solved... in 0.011s
+2: solved... in 0.911s
+1: solved... in 0.012s
+2: solved... in 0.944s
+1: solved... in 0.012s
+2: solved... in 1.006s
+1: solved... in 0.01s
+2: solved... in 0.932s
+1: solved... in 0.01s
+2: solved... in 0.685s
+1: solved... in 0.011s
+2: solved... in 0.93s
+1: solved... in 0.011s
+2: solved... in 1.414s
+1: solved... in 0.01s
+2: solved... in 1.122s
+1: solved... in 0.01s
+2: solved... in 0.972s
+1: solved... in 0.01s
+2: solved... in 0.84s
+1: solved... in 0.01s
+2: solved... in 0.734s
+1: solved... in 0.012s
+2: solved... in 1.301s
+1: solved... in 0.011s
+2: solved... in 1.055s
+1: solved... in 0.011s
+2: solved... in 1.08s
+1: solved... in 0.011s
+2: solved... in 1.068s
+1: solved... in 0.01s
+2: solved... in 0.695s
+1: solved... in 0.01s
+2: solved... in 1.237s
+1: solved... in 0.011s
+2: solved... in 1.285s
+1: solved... in 0.01s
+2: solved... in 0.863s
+1: solved... in 0.013s
+2: solved... in 0.831s
+1: solved... in 0.01s
+2: solved... in 0.944s
+1: solved... in 0.011s
+2: solved... in 1.048s
+1: solved... in 0.01s
+2: solved... in 0.924s
+1: solved... in 0.014s
+2: solved... in 0.997s
+1: solved... in 0.01s
+2: solved... in 1.337s
+1: solved... in 0.013s
+2: solved... in 1.058s
+1: solved... in 0.013s
+2: solved... in 1.168s
+1: solved... in 0.011s
+2: solved... in 1.076s
+1: solved... in 0.01s
+2: solved... in 0.953s
+1: solved... in 0.011s
+2: solved... in 0.882s
+1: solved... in 0.01s
+2: solved... in 1.113s
+1: solved... in 0.01s
+2: solved... in 0.97s
+1: solved... in 0.011s
+2: solved... in 1.376s
+1: solved... in 0.01s
+2: solved... in 1.15s
+1: solved... in 0.01s
+2: solved... in 1.159s
+1: solved... in 0.011s
+2: solved... in 1.123s
+1: solved... in 0.01s
+2: solved... in 1.229s
+1: solved... in 0.011s
+2: solved... in 1.211s
+1: solved... in 0.011s
+2: solved... in 1.048s
+1: solved... in 0.01s
+2: solved... in 1.199s
+1: solved... in 0.012s
+2: solved... in 1.249s
+1: solved... in 0.011s
+2: solved... in 1.466s
+1: solved... in 0.016s
+2: solved... in 1.033s
+1: solved... in 0.011s
+2: solved... in 1.137s
+1: solved... in 0.015s
+2: solved... in 1.151s
+1: solved... in 0.012s
+2: solved... in 0.963s
+1: solved... in 0.011s
+2: solved... in 0.915s
+1: solved... in 0.011s
+2: solved... in 1.273s
+1: solved... in 0.01s
+2: solved... in 1.049s
+1: solved... in 0.01s
+2: solved... in 1.052s
+1: solved... in 0.01s
+2: solved... in 1.314s
+1: solved... in 0.011s
+2: solved... in 1.077s
+1: solved... in 0.011s
+2: solved... in 1.157s
+1: solved... in 0.011s
+2: solved... in 1.515s
+1: solved... in 0.012s
+2: solved... in 1.244s
+1: solved... in 0.011s
+2: solved... in 1.045s
+1: solved... in 0.01s
+2: solved... in 1.134s
+1: solved... in 0.012s
+2: solved... in 1.155s
+1: solved... in 0.01s
+2: solved... in 1.117s
+1: solved... in 0.01s
+2: solved... in 1.177s
+1: solved... in 0.011s
+2: solved... in 1.159s
+1: solved... in 0.011s
+2: solved... in 1.082s
+1: solved... in 0.011s
+2: solved... in 1.177s
+1: solved... in 0.011s
+2: solved... in 1.109s
+1: solved... in 0.012s
+2: solved... in 1.891s
+1: solved... in 0.01s
+2: solved... in 1.112s
+1: solved... in 0.01s
+2: solved... in 1.49s
+1: solved... in 0.014s
+2: solved... in 1.015s
+1: solved... in 0.01s
+2: solved... in 0.976s
+1: solved... in 0.01s
+2: solved... in 1.117s
+1: solved... in 0.01s
+2: solved... in 1.47s
+1: solved... in 0.011s
+2: solved... in 1.184s
+1: solved... in 0.01s
+2: solved... in 1.445s
+1: solved... in 0.01s
+2: solved... in 1.296s
+1: solved... in 0.011s
+2: solved... in 0.985s
+1: solved... in 0.011s
+2: solved... in 1.155s
+1: solved... in 0.01s
+2: solved... in 1.232s
+1: solved... in 0.01s
+2: solved... in 0.958s
+1: solved... in 0.01s
+2: solved... in 0.912s
+1: solved... in 0.01s
+2: solved... in 1.066s
+1: solved... in 0.011s
+2: solved... in 1.393s
+1: solved... in 0.011s
+2: solved... in 1.229s
+1: solved... in 0.011s
+2: solved... in 1.116s
+1: solved... in 0.01s
+2: solved... in 1.18s
+1: solved... in 0.012s
+2: solved... in 0.923s
+1: solved... in 0.011s
+2: solved... in 1.348s
+1: solved... in 0.01s
+2: solved... in 1.422s
+1: solved... in 0.011s
+2: solved... in 1.138s
+1: solved... in 0.012s
+2: solved... in 1.237s
+1: solved... in 0.01s
+2: solved... in 1.423s
+1: solved... in 0.011s
+2: solved... in 1.408s
+1: solved... in 0.011s
+2: solved... in 0.96s
+1: solved... in 0.01s
+2: solved... in 1.548s
+1: solved... in 0.01s
+2: solved... in 1.287s
+1: solved... in 0.01s
+2: solved... in 1.095s
+1: solved... in 0.011s
+2: solved... in 0.846s
+1: solved... in 0.011s
+2: solved... in 0.774s
+1: solved... in 0.012s
+2: solved... in 0.968s
+1: solved... in 0.011s
+2: solved... in 0.978s
+1: solved... in 0.01s
+2: solved... in 1.049s
+1: solved... in 0.011s
+2: solved... in 1.186s
+1: solved... in 0.011s
+2: solved... in 1.134s
+1: solved... in 0.011s
+2: solved... in 1.139s
+1: solved... in 0.011s
+2: solved... in 1.291s
+1: solved... in 0.01s
+2: solved... in 1.223s
+1: solved... in 0.011s
+2: solved... in 1.377s
+1: solved... in 0.011s
+2: solved... in 1.095s
+1: solved... in 0.01s
+2: solved... in 1.211s
+1: solved... in 0.011s
+2: solved... in 1.504s
+1: solved... in 0.011s
+2: solved... in 1.171s
+1: solved... in 0.01s
+2: solved... in 1.26s
+1: solved... in 0.01s
+2: solved... in 1.341s
+1: solved... in 0.011s
+2: solved... in 1.185s
+1: solved... in 0.011s
+2: solved... in 1.274s
+1: solved... in 0.01s
+2: solved... in 1.611s
+1: solved... in 0.011s
+2: solved... in 2.107s
+1: solved... in 0.011s
+2: solved... in 1.671s
+1: solved... in 0.01s
+2: solved... in 1.266s
+1: solved... in 0.011s
+2: solved... in 1.729s
+1: solved... in 0.01s
+2: solved... in 1.408s
+1: solved... in 0.01s
+2: solved... in 1.783s
+1: solved... in 0.011s
+2: solved... in 1.677s
+1: solved... in 0.011s
+2: solved... in 1.222s
+1: solved... in 0.01s
+2: solved... in 1.527s
+1: solved... in 0.011s
+2: solved... in 1.393s
+1: solved... in 0.011s
+2: solved... in 1.47s
+1: solved... in 0.01s
+2: solved... in 1.208s
+1: solved... in 0.01s
+2: solved... in 1.377s
+1: solved... in 0.011s
+2: solved... in 1.247s
+1: solved... in 0.01s
+2: solved... in 1.592s
+1: solved... in 0.01s
+2: solved... in 1.327s
+1: solved... in 0.011s
+2: solved... in 1.228s
+1: solved... in 0.011s
+2: solved... in 1.411s
+1: solved... in 0.01s
+2: solved... in 1.196s
+1: solved... in 0.011s
+2: solved... in 1.29s
+1: solved... in 0.011s
+2: solved... in 1.628s
+1: solved... in 0.011s
+2: solved... in 1.679s
+1: solved... in 0.01s
+2: solved... in 1.512s
+1: solved... in 0.012s
+2: solved... in 2.116s
+1: solved... in 0.01s
+2: solved... in 1.506s
+1: solved... in 0.011s
+2: solved... in 1.424s
+1: solved... in 0.01s
+2: solved... in 1.178s
+1: solved... in 0.011s
+2: solved... in 1.269s
+1: solved... in 0.01s
+2: solved... in 1.278s
+1: solved... in 0.012s
+2: solved... in 1.524s
+1: solved... in 0.011s
+2: solved... in 1.366s
+1: solved... in 0.011s
+2: solved... in 1.451s
+1: solved... in 0.01s
+2: solved... in 0.765s
+1: solved... in 0.01s
+2: solved... in 1.264s
+1: solved... in 0.011s
+2: solved... in 1.655s
+1: solved... in 0.01s
+2: solved... in 1.09s
+1: solved... in 0.01s
+2: solved... in 1.246s
+1: solved... in 0.01s
+2: solved... in 1.141s
+1: solved... in 0.014s
+2: solved... in 1.336s
+1: solved... in 0.01s
+2: solved... in 1.329s
+1: solved... in 0.01s
+2: solved... in 1.49s
+1: solved... in 0.01s
+2: solved... in 1.482s
+1: solved... in 0.011s
+2: solved... in 0.763s
+1: solved... in 0.01s
+2: solved... in 0.917s
+1: solved... in 0.011s
+2: solved... in 1.929s
+1: solved... in 0.011s
+2: solved... in 1.309s
+1: solved... in 0.01s
+2: solved... in 1.344s
+1: solved... in 0.011s
+2: solved... in 1.508s
+1: solved... in 0.011s
+2: solved... in 1.098s
+1: solved... in 0.011s
+2: solved... in 0.896s
+1: solved... in 0.012s
+2: solved... in 1.269s
+1: solved... in 0.011s
+2: solved... in 1.734s
+1: solved... in 0.01s
+2: solved... in 1.316s
+1: solved... in 0.01s
+2: solved... in 0.651s
+1: solved... in 0.011s
+2: solved... in 1.02s
+1: solved... in 0.011s
+2: solved... in 0.894s
+1: solved... in 0.011s
+2: solved... in 1.316s
+1: solved... in 0.012s
+2: solved... in 1.346s
+1: solved... in 0.011s
+2: solved... in 1.034s
+1: solved... in 0.01s
+2: solved... in 1.431s
+1: solved... in 0.01s
+2: solved... in 1.239s
+1: solved... in 0.011s
+2: solved... in 1.147s
+1: solved... in 0.01s
+2: solved... in 1.266s
+1: solved... in 0.011s
+2: solved... in 1.097s
+1: solved... in 0.011s
+2: solved... in 1.12s
+1: solved... in 0.01s
+2: solved... in 1.505s
+1: solved... in 0.01s
+2: solved... in 1.173s
+1: solved... in 0.011s
+2: solved... in 1.488s
+1: solved... in 0.011s
+2: solved... in 1.17s
+1: solved... in 0.011s
+2: solved... in 1.078s
+1: solved... in 0.011s
+2: solved... in 1.621s
+1: solved... in 0.01s
+2: solved... in 1.363s
+1: solved... in 0.01s
+2: solved... in 1.226s
+1: solved... in 0.01s
+2: solved... in 1.24s
+1: solved... in 0.01s
+2: solved... in 1.368s
+1: solved... in 0.01s
+2: solved... in 0.772s
+1: solved... in 0.011s
+2: solved... in 1.284s
+1: solved... in 0.01s
+2: solved... in 1.255s
+1: solved... in 0.01s
+2: solved... in 1.467s
+1: solved... in 0.01s
+2: solved... in 1.201s
+1: solved... in 0.015s
+2: solved... in 1.089s
+1: solved... in 0.01s
+2: solved... in 1.181s
+1: solved... in 0.011s
+2: solved... in 1.594s
+1: solved... in 0.011s
+2: solved... in 1.578s
+1: solved... in 0.01s
+2: solved... in 1.401s
+1: solved... in 0.01s
+2: solved... in 1.363s
+1: solved... in 0.011s
+2: solved... in 1.286s
+1: solved... in 0.01s
+2: solved... in 1.145s
+1: solved... in 0.01s
+2: solved... in 1.148s
+1: solved... in 0.01s
+2: solved... in 1.292s
+1: solved... in 0.011s
+2: solved... in 1.321s
+1: solved... in 0.01s
+2: solved... in 1.536s
+1: solved... in 0.011s
+2: solved... in 1.247s
+1: solved... in 0.01s
+2: solved... in 1.268s
+1: solved... in 0.011s
+2: solved... in 1.35s
+1: solved... in 0.011s
+2: solved... in 1.988s
+1: solved... in 0.01s
+2: solved... in 1.851s
+1: solved... in 0.01s
+2: solved... in 1.367s
+1: solved... in 0.01s
+2: solved... in 1.544s
+1: solved... in 0.01s
+2: solved... in 1.324s
+1: solved... in 0.011s
+2: solved... in 1.799s
+1: solved... in 0.01s
+2: solved... in 1.932s
+1: solved... in 0.011s
+2: solved... in 1.287s
+1: solved... in 0.011s
+2: solved... in 1.243s
+1: solved... in 0.011s
+2: solved... in 1.477s
+1: solved... in 0.011s
+2: solved... in 1.064s
+1: solved... in 0.011s
+2: solved... in 1.611s
+1: solved... in 0.011s
+2: solved... in 1.207s
+1: solved... in 0.01s
+2: solved... in 1.097s
+1: solved... in 0.011s
+2: solved... in 1.28s
+1: solved... in 0.011s
+2: solved... in 1.271s
+1: solved... in 0.011s
+2: solved... in 1.399s
+1: solved... in 0.01s
+2: solved... in 1.55s
+1: solved... in 0.011s
+2: solved... in 1.269s
+1: solved... in 0.01s
+2: solved... in 1.439s
+1: solved... in 0.01s
+2: solved... in 1.233s
+1: solved... in 0.01s
+2: solved... in 1.671s
+1: solved... in 0.01s
+2: solved... in 1.246s
+1: solved... in 0.011s
+2: solved... in 1.54s
+1: solved... in 0.011s
+2: solved... in 1.411s
+1: solved... in 0.01s
+2: solved... in 1.5s
+1: solved... in 0.011s
+2: solved... in 1.868s
+1: solved... in 0.01s
+2: solved... in 1.266s
+1: solved... in 0.01s
+2: solved... in 1.712s
+1: solved... in 0.011s
+2: solved... in 1.444s
+1: solved... in 0.011s
+2: solved... in 1.436s
+1: solved... in 0.01s
+2: solved... in 1.741s
+1: solved... in 0.01s
+2: solved... in 1.391s
+1: solved... in 0.012s
+2: solved... in 1.331s
+1: solved... in 0.011s
+2: solved... in 2.193s
+1: solved... in 0.012s
+2: solved... in 1.491s
+1: solved... in 0.01s
+2: solved... in 1.389s
+1: solved... in 0.013s
+2: solved... in 1.52s
+1: solved... in 0.01s
+2: solved... in 1.596s
+1: solved... in 0.011s
+2: solved... in 1.405s
+1: solved... in 0.011s
+2: solved... in 1.866s
+1: solved... in 0.01s
+2: solved... in 2.151s
+1: solved... in 0.01s
+2: solved... in 1.34s
+1: solved... in 0.011s
+2: solved... in 1.505s
+1: solved... in 0.011s
+2: solved... in 1.55s
+1: solved... in 0.011s
+2: solved... in 1.46s
+1: solved... in 0.01s
+2: solved... in 1.276s
+1: solved... in 0.01s
+2: solved... in 1.314s
+1: solved... in 0.01s
+2: solved... in 1.304s
+1: solved... in 0.01s
+2: solved... in 1.482s
+1: solved... in 0.011s
+2: solved... in 1.4s
+1: solved... in 0.011s
+2: solved... in 1.444s
+1: solved... in 0.011s
+2: solved... in 1.23s
+1: solved... in 0.01s
+2: solved... in 1.181s
+1: solved... in 0.01s
+2: solved... in 1.044s
+1: solved... in 0.01s
+2: solved... in 1.14s
+1: solved... in 0.011s
+2: solved... in 1.283s
+1: solved... in 0.011s
+2: solved... in 1.309s
+1: solved... in 0.01s
+2: solved... in 1.5s
+1: solved... in 0.011s
+2: solved... in 1.422s
+1: solved... in 0.011s
+2: solved... in 1.214s
+1: solved... in 0.011s
+2: solved... in 1.398s
+1: solved... in 0.01s
+2: solved... in 1.477s
+1: solved... in 0.01s
+2: solved... in 1.247s
+1: solved... in 0.01s
+2: solved... in 1.798s
+1: solved... in 0.011s
+2: solved... in 1.834s
+1: solved... in 0.01s
+2: solved... in 1.421s
+1: solved... in 0.011s
+2: solved... in 1.656s
+1: solved... in 0.011s
+2: solved... in 1.852s
+1: solved... in 0.011s
+2: solved... in 1.475s
+1: solved... in 0.011s
+2: solved... in 0.974s
+1: solved... in 0.011s
+2: solved... in 0.917s
+1: solved... in 0.01s
+2: solved... in 1.057s
+1: solved... in 0.011s
+2: solved... in 0.947s
+1: solved... in 0.011s
+2: solved... in 0.873s
+1: solved... in 0.011s
+2: solved... in 0.875s
+1: solved... in 0.012s
+2: solved... in 1.014s
+1: solved... in 0.01s
+2: solved... in 1.013s
+1: solved... in 0.01s
+2: solved... in 1.436s
+1: solved... in 0.01s
+2: solved... in 1.518s
+1: solved... in 0.011s
+2: solved... in 0.888s
+1: solved... in 0.011s
+2: solved... in 0.899s
+1: solved... in 0.01s
+2: solved... in 1.53s
+1: solved... in 0.01s
+2: solved... in 1.337s
+1: solved... in 0.011s
+2: solved... in 1.519s
+1: solved... in 0.011s
+2: solved... in 1.555s
+1: solved... in 0.011s
+2: solved... in 1.014s
+1: solved... in 0.01s
+2: solved... in 1.026s
+1: solved... in 0.01s
+2: solved... in 1.06s
+1: solved... in 0.011s
+2: solved... in 1.067s
+1: solved... in 0.011s
+2: solved... in 1.29s
+1: solved... in 0.011s
+2: solved... in 0.973s
+1: solved... in 0.01s
+2: solved... in 1.531s
+1: solved... in 0.01s
+2: solved... in 1.836s
+1: solved... in 0.011s
+2: solved... in 1.132s
+1: solved... in 0.011s
+2: solved... in 0.904s
+1: solved... in 0.011s
+2: solved... in 1.555s
+1: solved... in 0.011s
+2: solved... in 1.581s
+1: solved... in 0.011s
+2: solved... in 1.562s
+1: solved... in 0.011s
+2: solved... in 1.653s
+1: solved... in 0.01s
+2: solved... in 1.635s
+1: solved... in 0.01s
+2: solved... in 1.647s
+1: solved... in 0.011s
+2: solved... in 1.203s
+1: solved... in 0.011s
+2: solved... in 1.286s
+1: solved... in 0.01s
+2: solved... in 1.178s
+1: solved... in 0.011s
+2: solved... in 1.162s
+1: solved... in 0.011s
+2: solved... in 1.718s
+1: solved... in 0.01s
+2: solved... in 1.724s
+1: solved... in 0.01s
+2: solved... in 2.042s
+1: solved... in 0.011s
+2: solved... in 2.076s
+1: solved... in 0.01s
+2: solved... in 1.583s
+1: solved... in 0.011s
+2: solved... in 1.627s
+1: solved... in 0.01s
+2: solved... in 1.837s
+1: solved... in 0.011s
+2: solved... in 1.708s
+1: solved... in 0.01s
+2: solved... in 1.147s
+1: solved... in 0.011s
+2: solved... in 1.364s
+1: solved... in 0.011s
+2: solved... in 1.36s
+1: solved... in 0.01s
+2: solved... in 1.374s
+1: solved... in 0.011s
+2: solved... in 1.149s
+1: solved... in 0.01s
+2: solved... in 1.406s
+1: solved... in 0.011s
+2: solved... in 1.697s
+1: solved... in 0.01s
+2: solved... in 1.27s
+1: solved... in 0.012s
+2: solved... in 1.285s
+1: solved... in 0.01s
+2: solved... in 1.336s
+1: solved... in 0.01s
+2: solved... in 1.065s
+1: solved... in 0.011s
+2: solved... in 1.161s
+1: solved... in 0.011s
+2: solved... in 1.072s
+1: solved... in 0.011s
+2: solved... in 1.105s
+1: solved... in 0.01s
+2: solved... in 1.5s
+1: solved... in 0.01s
+2: solved... in 1.829s
+1: solved... in 0.011s
+2: solved... in 1.353s
+1: solved... in 0.012s
+2: solved... in 1.315s
+1: solved... in 0.01s
+2: solved... in 1.202s
+1: solved... in 0.011s
+2: solved... in 1.182s
+1: solved... in 0.011s
+2: solved... in 1.156s
+1: solved... in 0.01s
+2: solved... in 1.218s
+1: solved... in 0.011s
+2: solved... in 1.547s
+1: solved... in 0.01s
+2: solved... in 1.509s
+1: solved... in 0.01s
+2: solved... in 1.292s
+1: solved... in 0.011s
+2: solved... in 1.541s
+1: solved... in 0.01s
+2: solved... in 1.907s
+1: solved... in 0.011s
+2: solved... in 1.935s
+1: solved... in 0.011s
+2: solved... in 1.272s
+1: solved... in 0.01s
+2: solved... in 1.309s
+1: solved... in 0.011s
+2: solved... in 1.41s
+1: solved... in 0.01s
+2: solved... in 1.229s
+1: solved... in 0.012s
+2: solved... in 1.361s
+1: solved... in 0.01s
+2: solved... in 1.178s
+1: solved... in 0.01s
+2: solved... in 1.753s
+1: solved... in 0.011s
+2: solved... in 1.824s
+1: solved... in 0.011s
+2: solved... in 1.513s
+1: solved... in 0.011s
+2: solved... in 1.827s
+1: solved... in 0.01s
+2: solved... in 1.784s
+1: solved... in 0.011s
+2: solved... in 1.806s
+1: solved... in 0.01s
+2: solved... in 1.815s
+1: solved... in 0.011s
+2: solved... in 1.866s
+1: solved... in 0.01s
+2: solved... in 1.805s
+1: solved... in 0.01s
+2: solved... in 1.842s
+1: solved... in 0.011s
+2: solved... in 1.979s
+1: solved... in 0.011s
+2: solved... in 2.001s
+1: solved... in 0.01s
+2: solved... in 1.998s
+1: solved... in 0.01s
+2: solved... in 1.111s
+1: solved... in 0.011s
+2: solved... in 1.236s
+1: solved... in 0.011s
+2: solved... in 2.152s
+1: solved... in 0.011s
+2: solved... in 1.39s
+1: solved... in 0.01s
+2: solved... in 2.126s
+1: solved... in 0.011s
+2: solved... in 1.908s
+1: solved... in 0.011s
+2: solved... in 2.174s
+1: solved... in 0.012s
+2: solved... in 2.122s
+1: solved... in 0.01s
+2: solved... in 1.375s
+1: solved... in 0.011s
+2: solved... in 2.011s
+1: solved... in 0.01s
+2: solved... in 1.916s
+1: solved... in 0.01s
+2: solved... in 2.112s
+1: solved... in 0.01s
+2: solved... in 1.404s
+1: solved... in 0.011s
+2: solved... in 2.094s
+1: solved... in 0.01s
+2: solved... in 2.152s
+1: solved... in 0.01s
+2: solved... in 1.658s
+1: solved... in 0.01s
+2: solved... in 1.2s
+1: solved... in 0.01s
+2: solved... in 1.23s
+1: solved... in 0.01s
+2: solved... in 1.382s
+1: solved... in 0.01s
+2: solved... in 1.997s
+1: solved... in 0.01s
+2: solved... in 2.029s
+1: solved... in 0.011s
+2: solved... in 1.293s
+1: solved... in 0.011s
+2: solved... in 1.668s
+1: solved... in 0.01s
+2: solved... in 1.414s
+1: solved... in 0.012s
+2: solved... in 2.18s
+1: solved... in 0.01s
+2: solved... in 1.945s
+1: solved... in 0.01s
+2: solved... in 2.025s
+1: solved... in 0.01s
+2: solved... in 1.175s
+1: solved... in 0.011s
+2: solved... in 1.123s
+1: solved... in 0.011s
+2: solved... in 2.055s
+1: solved... in 0.011s
+2: solved... in 2.045s
+1: solved... in 0.01s
+2: solved... in 1.23s
+1: solved... in 0.011s
+2: solved... in 1.302s
+1: solved... in 0.01s
+2: solved... in 1.312s
+1: solved... in 0.012s
+2: solved... in 1.453s
+1: solved... in 0.01s
+2: solved... in 1.231s
+1: solved... in 0.011s
+2: solved... in 1.344s
+1: solved... in 0.011s
+2: solved... in 1.242s
+1: solved... in 0.011s
+2: solved... in 1.357s
+1: solved... in 0.01s
+2: solved... in 2.158s
+1: solved... in 0.011s
+2: solved... in 2.063s
+1: solved... in 0.01s
+2: solved... in 1.223s
+1: solved... in 0.011s
+2: solved... in 1.492s
+1: solved... in 0.01s
+2: solved... in 1.208s
+1: solved... in 0.011s
+2: solved... in 1.287s
+1: solved... in 0.011s
+2: solved... in 1.233s
+1: solved... in 0.01s
+2: solved... in 1.274s
+1: solved... in 0.01s
+2: solved... in 2.208s
+1: solved... in 0.011s
+2: solved... in 1.805s
+1: solved... in 0.011s
+2: solved... in 1.194s
+1: solved... in 0.01s
+2: solved... in 1.428s
+1: solved... in 0.01s
+2: solved... in 1.46s
+1: solved... in 0.011s
+2: solved... in 1.575s
+1: solved... in 0.01s
+2: solved... in 2.19s
+1: solved... in 0.011s
+2: solved... in 1.511s
+1: solved... in 0.018s
+2: solved... in 2.827s
+1: solved... in 0.011s
+2: solved... in 1.482s
+1: solved... in 0.011s
+2: solved... in 1.222s
+1: solved... in 0.011s
+2: solved... in 1.631s
+1: solved... in 0.011s
+2: solved... in 2.13s
+1: solved... in 0.01s
+2: solved... in 2.192s
+1: solved... in 0.01s
+2: solved... in 1.21s
+1: solved... in 0.01s
+2: solved... in 2.104s
+1: solved... in 0.01s
+2: solved... in 2.172s
+1: solved... in 0.01s
+2: solved... in 2.437s
+1: solved... in 0.011s
+2: solved... in 2.193s
+1: solved... in 0.011s
+2: solved... in 1.34s
+1: solved... in 0.011s
+2: solved... in 1.556s
+1: solved... in 0.011s
+2: solved... in 2.15s
+1: solved... in 0.011s
+2: solved... in 1.577s
+1: solved... in 0.01s
+2: solved... in 1.378s
+1: solved... in 0.012s
+2: solved... in 1.525s
+1: solved... in 0.01s
+2: solved... in 1.304s
+1: solved... in 0.01s
+2: solved... in 1.416s
+1: solved... in 0.01s
+2: solved... in 1.408s
+1: solved... in 0.011s
+2: solved... in 1.311s
+1: solved... in 0.01s
+2: solved... in 1.24s
+1: solved... in 0.01s
+2: solved... in 1.064s
+1: solved... in 0.01s
+2: solved... in 1.079s
+1: solved... in 0.01s
+2: solved... in 2.541s
+1: solved... in 0.01s
+2: solved... in 1.556s
+1: solved... in 0.01s
+2: solved... in 1.556s
+1: solved... in 0.01s
+2: solved... in 2.184s
+1: solved... in 0.01s
+2: solved... in 1.711s
+1: solved... in 0.011s
+2: solved... in 1.621s
+1: solved... in 0.012s
+2: solved... in 1.563s
+1: solved... in 0.011s
+2: solved... in 2.106s
+1: solved... in 0.011s
+2: solved... in 1.81s
+1: solved... in 0.01s
+2: solved... in 1.55s
+1: solved... in 0.011s
+2: solved... in 2.124s
+1: solved... in 0.01s
+2: solved... in 1.6s
+1: solved... in 0.01s
+2: solved... in 1.551s
+1: solved... in 0.01s
+2: solved... in 1.47s
+1: solved... in 0.011s
+2: solved... in 1.628s
+1: solved... in 0.01s
+2: solved... in 1.743s
+1: solved... in 0.01s
+2: solved... in 1.528s
+1: solved... in 0.01s
+2: solved... in 1.596s
+1: solved... in 0.011s
+2: solved... in 1.893s
+1: solved... in 0.01s
+2: solved... in 2.062s
+1: solved... in 0.01s
+2: solved... in 1.857s
+1: solved... in 0.011s
+2: solved... in 1.811s
+1: solved... in 0.011s
+2: solved... in 1.842s
+1: solved... in 0.011s
+2: solved... in 1.948s
+1: solved... in 0.01s
+2: solved... in 1.78s
+1: solved... in 0.011s
+2: solved... in 2.044s
+1: solved... in 0.011s
+2: solved... in 1.447s
+1: solved... in 0.011s
+2: solved... in 1.513s
+1: solved... in 0.01s
+2: solved... in 1.867s
+1: solved... in 0.011s
+2: solved... in 1.914s
+1: solved... in 0.01s
+2: solved... in 1.547s
+1: solved... in 0.012s
+2: solved... in 1.584s
+1: solved... in 0.012s
+2: solved... in 1.763s
+1: solved... in 0.01s
+2: solved... in 1.701s
+1: solved... in 0.01s
+2: solved... in 1.932s
+1: solved... in 0.01s
+2: solved... in 2.023s
+1: solved... in 0.01s
+2: solved... in 1.746s
+1: solved... in 0.011s
+2: solved... in 1.569s
+1: solved... in 0.01s
+2: solved... in 1.62s
+1: solved... in 0.01s
+2: solved... in 1.604s
+1: solved... in 0.011s
+2: solved... in 1.594s
+1: solved... in 0.01s
+2: solved... in 1.49s
+1: solved... in 0.01s
+2: solved... in 1.643s
+1: solved... in 0.01s
+2: solved... in 1.667s
+1: solved... in 0.01s
+2: solved... in 2.041s
+1: solved... in 0.011s
+2: solved... in 1.776s
+1: solved... in 0.011s
+2: solved... in 1.498s
+1: solved... in 0.01s
+2: solved... in 1.618s
+1: solved... in 0.01s
+2: solved... in 0.908s
+1: solved... in 0.011s
+2: solved... in 1.021s
+1: solved... in 0.01s
+2: solved... in 1.374s
+1: solved... in 0.01s
+2: solved... in 1.847s
+1: solved... in 0.01s
+2: solved... in 1.707s
+1: solved... in 0.011s
+2: solved... in 1.795s
+1: solved... in 0.011s
+2: solved... in 1.895s
+1: solved... in 0.011s
+2: solved... in 1.983s
+1: solved... in 0.01s
+2: solved... in 1.547s
+1: solved... in 0.01s
+2: solved... in 1.599s
+1: solved... in 0.01s
+2: solved... in 1.63s
+1: solved... in 0.011s
+2: solved... in 2.139s
+1: solved... in 0.01s
+2: solved... in 1.716s
+1: solved... in 0.011s
+2: solved... in 1.511s
+1: solved... in 0.011s
+2: solved... in 1.998s
+1: solved... in 0.011s
+2: solved... in 1.652s
+1: solved... in 0.011s
+2: solved... in 2.298s
+1: solved... in 0.01s
+2: solved... in 1.667s
+1: solved... in 0.01s
+2: solved... in 1.89s
+1: solved... in 0.011s
+2: solved... in 1.645s
+1: solved... in 0.012s
+2: solved... in 2.293s
+1: solved... in 0.01s
+2: solved... in 1.726s
+1: solved... in 0.01s
+2: solved... in 1.549s
+1: solved... in 0.011s
+2: solved... in 1.536s
+1: solved... in 0.01s
+2: solved... in 1.549s
+1: solved... in 0.011s
+2: solved... in 1.661s
+1: solved... in 0.011s
+2: solved... in 1.652s
+1: solved... in 0.012s
+2: solved... in 1.605s
+1: solved... in 0.012s
+2: solved... in 1.489s
+1: solved... in 0.01s
+2: solved... in 1.585s
+1: solved... in 0.01s
+2: solved... in 1.74s
+1: solved... in 0.01s
+2: solved... in 1.601s
+1: solved... in 0.011s
+2: solved... in 1.655s
+1: solved... in 0.011s
+2: solved... in 1.505s
+1: solved... in 0.01s
+2: solved... in 1.365s
+1: solved... in 0.01s
+2: solved... in 1.469s
+1: solved... in 0.01s
+2: solved... in 2.39s
+1: solved... in 0.01s
+2: solved... in 1.624s
+1: solved... in 0.01s
+2: solved... in 1.696s
+1: solved... in 0.011s
+2: solved... in 2.076s
+1: solved... in 0.011s
+2: solved... in 1.484s
+1: solved... in 0.011s
+2: solved... in 2.081s
+1: solved... in 0.011s
+2: solved... in 1.429s
+1: solved... in 0.011s
+2: solved... in 1.588s
+1: solved... in 0.01s
+2: solved... in 2.318s
+1: solved... in 0.01s
+2: solved... in 1.723s
+1: solved... in 0.012s
+2: solved... in 1.48s
+1: solved... in 0.011s
+2: solved... in 1.336s
+1: solved... in 0.011s
+2: solved... in 1.733s
+1: solved... in 0.011s
+2: solved... in 1.597s
+1: solved... in 0.01s
+2: solved... in 1.665s
+1: solved... in 0.011s
+2: solved... in 1.637s
+1: solved... in 0.011s
+2: solved... in 1.808s
+1: solved... in 0.01s
+2: solved... in 1.613s
+1: solved... in 0.011s
+2: solved... in 1.871s
+1: solved... in 0.011s
+2: solved... in 1.877s
+1: solved... in 0.011s
+2: solved... in 1.733s
+1: solved... in 0.012s
+2: solved... in 1.725s
+1: solved... in 0.011s
+2: solved... in 1.802s
+1: solved... in 0.011s
+2: solved... in 2.775s
+1: solved... in 0.011s
+2: solved... in 2.596s
+1: solved... in 0.01s
+2: solved... in 1.774s
+1: solved... in 0.01s
+2: solved... in 1.733s
+1: solved... in 0.01s
+2: solved... in 1.851s
+1: solved... in 0.011s
+2: solved... in 2.408s
+1: solved... in 0.01s
+2: solved... in 2.65s
+1: solved... in 0.011s
+2: solved... in 1.753s
+1: solved... in 0.01s
+2: solved... in 3.185s
+1: solved... in 0.011s
+2: solved... in 1.623s
+1: solved... in 0.011s
+2: solved... in 1.75s
+1: solved... in 0.011s
+2: solved... in 1.803s
+1: solved... in 0.011s
+2: solved... in 1.235s
+1: solved... in 0.01s
+2: solved... in 1.953s
+1: solved... in 0.011s
+2: solved... in 1.699s
+1: solved... in 0.01s
+2: solved... in 1.636s
+1: solved... in 0.01s
+2: solved... in 1.997s
+1: solved... in 0.01s
+2: solved... in 1.798s
+1: solved... in 0.024s
+2: solved... in 2.138s
+1: solved... in 0.01s
+2: solved... in 1.576s
+1: solved... in 0.011s
+2: solved... in 1.735s
+1: solved... in 0.011s
+2: solved... in 1.631s
+1: solved... in 0.01s
+2: solved... in 1.623s
+1: solved... in 0.01s
+2: solved... in 1.636s
+1: solved... in 0.01s
+2: solved... in 1.539s
+1: solved... in 0.011s
+2: solved... in 1.588s
+1: solved... in 0.011s
+2: solved... in 1.591s
+1: solved... in 0.01s
+2: solved... in 2.143s
+1: solved... in 0.011s
+2: solved... in 1.632s
+1: solved... in 0.011s
+2: solved... in 1.815s
+1: solved... in 0.01s
+2: solved... in 1.944s
+1: solved... in 0.01s
+2: solved... in 1.627s
+1: solved... in 0.011s
+2: solved... in 2.198s
+1: solved... in 0.011s
+2: solved... in 1.682s
+1: solved... in 0.012s
+2: solved... in 1.754s
+1: solved... in 0.01s
+2: solved... in 2.743s
+1: solved... in 0.01s
+2: solved... in 2.017s
+1: solved... in 0.011s
+2: solved... in 1.397s
+1: solved... in 0.011s
+2: solved... in 1.341s
+1: solved... in 0.01s
+2: solved... in 1.691s
+1: solved... in 0.011s
+2: solved... in 1.978s
+1: solved... in 0.011s
+2: solved... in 2.758s
+1: solved... in 0.01s
+2: solved... in 1.914s
+1: solved... in 0.01s
+2: solved... in 1.582s
+1: solved... in 0.011s
+2: solved... in 1.668s
+1: solved... in 0.01s
+2: solved... in 1.937s
+1: solved... in 0.019s
+2: solved... in 2.044s
+1: solved... in 0.01s
+2: solved... in 1.679s
+1: solved... in 0.01s
+2: solved... in 1.704s
+1: solved... in 0.01s
+2: solved... in 2.337s
+1: solved... in 0.011s
+2: solved... in 1.913s
+1: solved... in 0.011s
+2: solved... in 1.757s
+1: solved... in 0.011s
+2: solved... in 1.825s
+1: solved... in 0.01s
+2: solved... in 1.843s
+1: solved... in 0.011s
+2: solved... in 1.82s
+1: solved... in 0.01s
+2: solved... in 2.222s
+1: solved... in 0.011s
+2: solved... in 1.63s
+1: solved... in 0.011s
+2: solved... in 2.187s
+1: solved... in 0.01s
+2: solved... in 1.902s
+1: solved... in 0.01s
+2: solved... in 2.098s
+1: solved... in 0.01s
+2: solved... in 2.14s
+1: solved... in 0.011s
+2: solved... in 2.156s
+1: solved... in 0.01s
+2: solved... in 2.175s
+1: solved... in 0.011s
+2: solved... in 1.683s
+1: solved... in 0.011s
+2: solved... in 2.87s
+1: solved... in 0.011s
+2: solved... in 2.149s
+1: solved... in 0.011s
+2: solved... in 2.115s
+1: solved... in 0.011s

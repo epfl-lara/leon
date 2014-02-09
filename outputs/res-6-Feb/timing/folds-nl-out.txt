@@ -1,0 +1,1039 @@
+After Depth Instrumentation: 
+object TreeMaps {
+  case class Cons(head: Int, tail: List) extends List
+
+  case class Node(left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class Tree
+
+  case class Nil() extends List
+
+  case class Leaf() extends Tree
+
+  sealed abstract class List
+
+  def descending(l : List, k : Int) : Boolean = {(l match {
+    case Nil() =>
+      true
+    case Cons(x, t) =>
+      ((x > 0) && (x <= k) && descending(t, (x - 1)))
+  })}
+
+  def parallelSearch(elem : Int, t : Tree) : Boolean = {(t match {
+    case Leaf() =>
+      false
+    case Node(l, x, r) =>
+      if ((x == elem)) {
+        true
+      } else {
+        locally {
+          val r1 = parallelSearch(elem, r)
+          locally {
+            val r2 = parallelSearch(elem, l)
+            if ((r1 || r2)) {
+              true
+            } else {
+              false
+            }
+          }
+          
+        }
+        
+      }
+  })} ensuring(res => true)
+
+  def size(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      ((size(l) + size(r)) + 1)
+  })}
+
+  def factMap(l : List, k : Int) : List = {    require((descending(l, k) && (k >= 0)));
+(l match {
+    case Nil() =>
+      Nil()
+    case Cons(x, t) =>
+      locally {
+        val f = fact(x)
+        Cons(f, factMap(t, (x - 1)))
+      }
+      
+  })} ensuring(res => true)
+
+  def fact(n : Int) : Int = {    require((n >= 0));
+if (((n == 1) || (n == 0))) {
+    1
+  } else {
+    (n * fact((n - 1)))
+  }} ensuring(res => true)
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + size(t))
+  })}
+
+  def squareMap(t : Tree) : Tree = {(t match {
+    case Leaf() =>
+      t
+    case Node(l, x, r) =>
+      locally {
+        val nl = squareMap(l)
+        locally {
+          val nr = squareMap(r)
+          Node(nl, (x * x), nr)
+        }
+        
+      }
+      
+  })} ensuring(res => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: descending
+Defined fun: parallelSearch
+Defined fun: size
+Defined fun: factMap
+Defined fun: fact
+Defined fun: size
+Defined fun: squareMap
+Defined fun: max
+FunMap: Map(fact -> fact, descending -> descending, factMap -> factMap, max -> max, size -> size, squareMap -> squareMap, parallelSearch -> parallelSearch, size -> size)
+After Time Instrumentation: 
+object TreeMaps {
+  case class Cons(head: Int, tail: List) extends List
+
+  case class Node(left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class Tree
+
+  case class Nil() extends List
+
+  case class Leaf() extends Tree
+
+  sealed abstract class List
+
+  def descending(l : List, k : Int) : Boolean = {(l match {
+    case Nil() =>
+      true
+    case Cons(x, t) =>
+      ((x > 0) && (x <= k) && descending(t, (x - 1)))
+  })}
+
+  def parallelSearch(elem : Int, t : Tree) : (Boolean, Int) = {locally {
+    val t57 = 1
+    if (t.isInstanceOf[Leaf]) {
+      (false, t57)
+    } else {
+      locally {
+        val (e50: Boolean, t59: Int) = locally {
+          val t60 = 2
+          if ((t.value == elem)) {
+            (true, t60)
+          } else {
+            locally {
+              val (e53: Boolean, t62: Int) = locally {
+                val (ir3: Boolean, it3: Int) = locally {
+                  val (e56: Boolean, t66: Int) = parallelSearch(elem, t.right)
+                  (e56, (1 + (1 + t66)))
+                }
+                
+                locally {
+                  val (r7: Boolean, t63: Int) = locally {
+                    val (ir4: Boolean, it4: Int) = locally {
+                      val (e60: Boolean, t71: Int) = parallelSearch(elem, t.left)
+                      (e60, (1 + (1 + t71)))
+                    }
+                    
+                    locally {
+                      val (r8: Boolean, t68: Int) = locally {
+                        val t73 = 1
+                        if ((ir3 || ir4)) {
+                          (true, t73)
+                        } else {
+                          (false, t73)
+                        }
+                      }
+                      
+                      (r8, (t68 + (it4 + 1)))
+                    }
+                    
+                  }
+                  
+                  (r7, (t63 + (it3 + 1)))
+                }
+                
+              }
+              
+              (e53, (t60 + t62))
+            }
+            
+          }
+        }
+        
+        (e50, (t57 + t59))
+      }
+      
+    }
+  }
+  } ensuring(res12 => true)
+
+  def size(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      ((size(l) + size(r)) + 1)
+  })}
+
+  def factMap(l : List, k : Int) : (List, Int) = {    require((descending(l, k) && (k >= 0)));
+locally {
+    val t21 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), (t21 + 1))
+    } else {
+      locally {
+        val (e17: Cons, t23: Int) = locally {
+          val (ir: Int, it: Int) = locally {
+            val (e19: Int, t26: Int) = fact(l.head)
+            (e19, (1 + (1 + t26)))
+          }
+          
+          locally {
+            val (r4: Cons, t24: Int) = locally {
+              val (e22: List, t29: Int) = locally {
+                val (e25: List, t32: Int) = factMap(l.tail, (l.head - 1))
+                (e25, (2 + (1 + (1 + t32))))
+              }
+              
+              (Cons(ir, e22), (t29 + 1))
+            }
+            
+            (r4, (t24 + (it + 1)))
+          }
+          
+        }
+        
+        (e17, (t21 + t23))
+      }
+      
+    }
+  }
+  } ensuring(res10 => true)
+
+  def fact(n : Int) : (Int, Int) = {    require((n >= 0));
+locally {
+    val t6 = 3
+    if (((n == 1) || (n == 0))) {
+      (1, t6)
+    } else {
+      locally {
+        val (e2: Int, t8: Int) = locally {
+          val (e4: Int, t10: Int) = locally {
+            val (e6: Int, t12: Int) = fact((n - 1))
+            (e6, (1 + (1 + t12)))
+          }
+          
+          ((n * e4), (t10 + 1))
+        }
+        
+        (e2, (t6 + t8))
+      }
+      
+    }
+  }
+  } ensuring(res9 => true)
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + size(t))
+  })}
+
+  def squareMap(t : Tree) : (Tree, Int) = {locally {
+    val t38 = 1
+    if (t.isInstanceOf[Leaf]) {
+      (t, t38)
+    } else {
+      locally {
+        val (e33: Node, t40: Int) = locally {
+          val (ir1: Tree, it1: Int) = locally {
+            val (e35: Tree, t43: Int) = squareMap(t.left)
+            (e35, (1 + (1 + t43)))
+          }
+          
+          locally {
+            val (r5: Node, t41: Int) = locally {
+              val (ir2: Tree, it2: Int) = locally {
+                val (e38: Tree, t47: Int) = squareMap(t.right)
+                (e38, (1 + (1 + t47)))
+              }
+              
+              (Node(ir1, (t.value * t.value), ir2), (4 + (it2 + 1)))
+            }
+            
+            (r5, (t41 + (it1 + 1)))
+          }
+          
+        }
+        
+        (e33, (t38 + t40))
+      }
+      
+    }
+  }
+  } ensuring(res11 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object TreeMaps {
+  case class Cons(head: Int, tail: List) extends List
+
+  case class Node(left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class Tree
+
+  case class Nil() extends List
+
+  case class Leaf() extends Tree
+
+  sealed abstract class List
+
+  def descending(l : List, k : Int) : Boolean = {(l match {
+    case Nil() =>
+      true
+    case Cons(x, t) =>
+      ((x > 0) && (x <= k) && descending(t, (x - 1)))
+  })}
+
+  def parallelSearch(elem : Int, t : Tree) : (Boolean, Int) = {if (t.isInstanceOf[Leaf]) {
+    (false, 1)
+  } else {
+    locally {
+      val (e50: Boolean, t59: Int) = if ((t.value == elem)) {
+        (true, 2)
+      } else {
+        locally {
+          val (e53: Boolean, t62: Int) = locally {
+            val (ir3: Boolean, it3: Int) = locally {
+              val (e56: Boolean, t66: Int) = parallelSearch(elem, t.right)
+              (e56, (1 + (1 + t66)))
+            }
+            
+            locally {
+              val (r7: Boolean, t63: Int) = locally {
+                val (ir4: Boolean, it4: Int) = locally {
+                  val (e60: Boolean, t71: Int) = parallelSearch(elem, t.left)
+                  (e60, (1 + (1 + t71)))
+                }
+                
+                locally {
+                  val (r8: Boolean, t68: Int) = if ((ir3 || ir4)) {
+                    (true, 1)
+                  } else {
+                    (false, 1)
+                  }
+                  (r8, (t68 + (it4 + 1)))
+                }
+                
+              }
+              
+              (r7, (t63 + (it3 + 1)))
+            }
+            
+          }
+          
+          (e53, (2 + t62))
+        }
+        
+      }
+      (e50, (1 + t59))
+    }
+    
+  }} ensuring(res12 => true)
+
+  def size(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      ((size(l) + size(r)) + 1)
+  })}
+
+  def factMap(l : List, k : Int) : (List, Int) = {    require((descending(l, k) && (k >= 0)));
+if (l.isInstanceOf[Nil]) {
+    (Nil(), (1 + 1))
+  } else {
+    locally {
+      val (e17: Cons, t23: Int) = locally {
+        val (ir: Int, it: Int) = locally {
+          val (e19: Int, t26: Int) = fact(l.head)
+          (e19, (1 + (1 + t26)))
+        }
+        
+        locally {
+          val (r4: Cons, t24: Int) = locally {
+            val (e22: List, t29: Int) = locally {
+              val (e25: List, t32: Int) = factMap(l.tail, (l.head - 1))
+              (e25, (2 + (1 + (1 + t32))))
+            }
+            
+            (Cons(ir, e22), (t29 + 1))
+          }
+          
+          (r4, (t24 + (it + 1)))
+        }
+        
+      }
+      
+      (e17, (1 + t23))
+    }
+    
+  }} ensuring(res10 => true)
+
+  def fact(n : Int) : (Int, Int) = {    require((n >= 0));
+if (((n == 1) || (n == 0))) {
+    (1, 3)
+  } else {
+    locally {
+      val (e2: Int, t8: Int) = locally {
+        val (e4: Int, t10: Int) = locally {
+          val (e6: Int, t12: Int) = fact((n - 1))
+          (e6, (1 + (1 + t12)))
+        }
+        
+        (mult(n, e4), (t10 + 1))
+      }
+      
+      (e2, (3 + t8))
+    }
+    
+  }} ensuring(res9 => true)
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + size(t))
+  })}
+
+  def squareMap(t : Tree) : (Tree, Int) = {if (t.isInstanceOf[Leaf]) {
+    (t, 1)
+  } else {
+    locally {
+      val (e33: Node, t40: Int) = locally {
+        val (ir1: Tree, it1: Int) = locally {
+          val (e35: Tree, t43: Int) = squareMap(t.left)
+          (e35, (1 + (1 + t43)))
+        }
+        
+        locally {
+          val (r5: Node, t41: Int) = locally {
+            val (ir2: Tree, it2: Int) = locally {
+              val (e38: Tree, t47: Int) = squareMap(t.right)
+              (e38, (1 + (1 + t47)))
+            }
+            
+            (Node(ir1, mult(t.value, t.value), ir2), (4 + (it2 + 1)))
+          }
+          
+          (r5, (t41 + (it1 + 1)))
+        }
+        
+      }
+      
+      (e33, (1 + t40))
+    }
+    
+  }} ensuring(res11 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def mult(x : Int, y : Int) : Int = {locally {
+    val r = locally {
+      val px = if ((x < 0)) {
+        -(x)
+      } else {
+        x
+      }
+      locally {
+        val py = if ((y < 0)) {
+          -(y)
+        } else {
+          y
+        }
+        pmult(px, py)
+      }
+      
+    }
+    
+    if ((((x >= 0) && (y >= 0)) || ((x < 0) && (y < 0)))) {
+      r
+    } else {
+      -(r)
+    }
+  }
+  }
+
+  def pmult(x : Int, y : Int) : Int = {if (((x == 0) || (y == 0))) {
+    0
+  } else {
+    (pmult((x - 1), y) + y)
+  }} ensuring(res => ((res >= 0) && (((x == 0) || (y == 0)) || (res == (pmult(x, (y - 1)) + x)))))
+}
+
+Function: parallelSearch template --> (res12._2 ≤ ((a? * size(t)) + b?))
+Function: factMap template --> (res10._2 ≤ ((a?3 * mult(k, k)) + b?3))
+Function: fact template --> (res9._2 ≤ ((a?2 * n) + b?2))
+Function: squareMap template --> (res11._2 ≤ ((a?1 * size(t)) + b?1))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(pmult, mult, fact, descending, size, size, parallelSearch, squareMap, factMap)
+[[34m Info  [0m] - considering function fact...
+[[34m Info  [0m] Body: if (((n == 1) ∨ (n == 0)))
+            (1, 3)
+          else
+            (let (e2,t8 := (let (e4,t10 := (let (e6,t12 := fact((n - 1))) in
+              (e6, (1 + (1 + t12))))) in
+              (mult(n, e4), (t10 + 1)))) in
+              (e2, (3 + t8)))
+[[34m Info  [0m] Post: true
+falttened Body: ((n >= 0) && (res9 == ifres) && ((((n == 1) || (n == 0)) && (ifres == tp) && (arg == 1) && (arg1 == 3) && (tp == (arg, arg1))) || (((n < 1) || (n > 1)) && ((n < 0) || (n > 0)) && (ifres == tp1) && (arg2 == (3 + t8)) && (tp1 == (e2, arg2)) && (t10 == (1 + (1 + t12))) && (e4 == e6) && (e6 == ts) && (ts == tres._1) && (tres == r9) && (arg3 == (n - 1)) && (r9 == fact(arg3)) && (t8 == (t10 + 1)) && (t12 == ts1) && (ts1 == tres._2) && (e2 == r10) && (r10 == mult(n, e4)))))
+Flattened Post: ((ts2 > ((a?2 * n) + b?2)) && (ts2 == res9._2))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+fact-->((((1 * res9._2) + (0 * n)) + 0) ≤ 0)
+Function: fact--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.016s
+candidate Invariants
+fact-->((((0 * n) + (1 * res9._2)) + -5) ≤ 0)
+Function: fact--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 12 + 10
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/2
+Unrolled calls: Set((r10 == mult(n, e4)))
+Inlining (r10 == mult(n, e4))
+[[34m Info  [0m] Number of axiom instances: 8
+candidate Invariants
+fact-->((((1 * res9._2) + (0 * n)) + 0) ≤ 0)
+Function: fact--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+fact-->((((1 * res9._2) + (0 * n)) + -5) ≤ 0)
+Function: fact--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 16 + 10
+solving...
+solved... in 0.009s
+candidate Invariants
+fact-->((((1 * res9._2) + (-13 * n)) + -5) ≤ 0)
+Nesting level: a?2-->0
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 13
+Found new upper bound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new lower bound: 5
+Minimizing variable: b?2 Initial upperbound: 5
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: fact --> ((((1 * res9._2) + (-6 * n)) + -3) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function parallelSearch...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (false, 1)
+          else
+            (let (e50,t59 := if ((t.value == elem))
+              (true, 2)
+            else
+              (let (e53,t62 := (let (ir3,it3 := (let (e56,t66 := parallelSearch(elem, t.right)) in
+                (e56, (1 + (1 + t66))))) in
+                (let (r7,t63 := (let (ir4,it4 := (let (e60,t71 := parallelSearch(elem, t.left)) in
+                  (e60, (1 + (1 + t71))))) in
+                  (let (r8,t68 := if ((ir3 ∨ ir4))
+                    (true, 1)
+                  else
+                    (false, 1)) in
+                    (r8, (t68 + (it4 + 1)))))) in
+                  (r7, (t63 + (it3 + 1)))))) in
+                (e53, (2 + t62)))) in
+              (e50, (1 + t59)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res12 == ifres4) && ((ci && (ci == t.isInstanceOf[Leaf]) && (ifres4 == tp2) && !(arg5) && (arg6 == 1) && (tp2 == (arg5, arg6))) || (!(ci1) && (ci1 == t.isInstanceOf[Leaf]) && (ifres4 == tp3) && (arg7 == (1 + t59)) && (tp3 == (e50, arg7)) && (((cs == elem) && (cs == t.value) && (ifres5 == tp4) && arg8 && (arg9 == 2) && (tp4 == (arg8, arg9))) || ((((cs1 < elem) && (cs1 == t.value)) || ((cs2 > elem) && (cs2 == t.value))) && (ifres5 == tp5) && (arg10 == (2 + t62)) && (tp5 == (e53, arg10)) && (((ir3 || ir4) && (ifres6 == tp6) && arg11 && (arg12 == 1) && (tp6 == (arg11, arg12))) || (!(ir3) && !(ir4) && (ifres6 == tp7) && !(arg13) && (arg14 == 1) && (tp7 == (arg13, arg14)))) && (!(r8) || (ts10 && (ts10 == ifres6._1))) && ((!(ts11) && (ts11 == ifres6._1)) || r8) && (t63 == (t68 + (it4 + 1))) && (!(e60) || (ts12 && (ts12 == tres1._1))) && ((!(ts13) && (ts13 == tres1._1)) || e60) && (!(e56) || (ts14 && (ts14 == tres2._1))) && ((!(ts15) && (ts15 == tres2._1)) || e56) && (!(ir4) || e60) && (!(e60) || ir4) && (!(r7) || r8) && (!(r8) || r7) && (t71 == ts16) && (ts16 == tres1._2) && (tres1 == r14) && (cs3 == t.left) && (r14 == parallelSearch(elem, cs3)) && (t68 == ts17) && (ts17 == ifres6._2) && (t66 == ts18) && (ts18 == tres2._2) && (it4 == (1 + (1 + t71))) && (!(ir3) || e56) && (!(e56) || ir3) && (tres2 == r15) && (cs4 == t.right) && (r15 == parallelSearch(elem, cs4)) && (t62 == (t63 + (it3 + 1))) && (!(e53) || r7) && (!(r7) || e53) && (it3 == (1 + (1 + t66))))) && (!(e50) || (ts19 && (ts19 == ifres5._1))) && ((!(ts20) && (ts20 == ifres5._1)) || e50) && (t59 == ts21) && (ts21 == ifres5._2))))
+Flattened Post: ((ts22 > ((a? * r16) + b?)) && (ts22 == res12._2) && (r16 == size(t)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+parallelSearch-->((((0 * size(t)) + (1 * res12._2)) + 0) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 70
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 15 + 0
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/3
+Unrolled calls: Set((r16 == size(t)))
+Creating VC for size
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function size : (((a?5 * #res) + a?4) ≤ 0)
+Unrolling (r16 == size(t))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (0 * size(t))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 112
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 24 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+parallelSearch-->((((2 * res12._2) + (-1 * size(t))) + 1) ≤ 0)
+size-->(((0 * #res) + 51) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 9 + 24
+solving...
+solved... in 0.012s
+candidate Invariants
+parallelSearch-->((((1 * size(t)) + (1 * res12._2)) + 54) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 12 + 33
+solving...
+solved... in 0.012s
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (0 * size(t))) + -133) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 112
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 24 + 45
+solving...
+solved... in 0.027s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/8
+Unrolled calls: Set((r22 == size(cs3)), (r23 == size(cs4)))
+Unrolling (r22 == size(cs3))
+Unrolling (r23 == size(cs4))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (0 * size(t))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 164
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 29 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+parallelSearch-->((((2 * res12._2) + (-1 * size(t))) + 1) ≤ 0)
+size-->(((0 * #res) + 95) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 29
+solving...
+solved... in 0.013s
+candidate Invariants
+parallelSearch-->((((8 * size(t)) + (16 * res12._2)) + 618) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 37
+solving...
+solved... in 0.012s
+candidate Invariants
+parallelSearch-->((((8 * res12._2) + (-333 * size(t))) + -16) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 15 + 47
+solving...
+solved... in 0.031s
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (-38 * size(t))) + -2) ≤ 0)
+size-->(((-3 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 38
+Found new upper bound: 37/2
+Found new upper bound: 143/16
+Found new upper bound: 4095/1024
+Found new upper bound: 0
+Found new upper bound: -257/256
+Found new upper bound: -3
+Found new upper bound: -385/64
+Found new upper bound: -833/64
+Found new upper bound: -109/4
+Found new upper bound: -221/4
+Found new upper bound: -445/4
+Found new upper bound: -57089/256
+Found new upper bound: -28609/64
+Found new upper bound: -57281/64
+Found new upper bound: -114625/64
+Found new upper bound: -229313/64
+Minimizing variable: b? Initial upperbound: 3586
+Found new upper bound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+candidate Invariants
+parallelSearch-->((((64 * res12._2) + (229313 * size(t))) + -192) ≤ 0)
+size-->(((1 * #res) + 0) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 164
+[[34m Info  [0m] Number of equal calls: 21
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 41 + 62
+solving...
+solved... in 0.076s
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (-4 * size(t))) + -2) ≤ 0)
+size-->(((-3 * #res) + -1) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 164
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 31 + 103
+solving...
+solved... in 0.066s
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (-14 * size(t))) + -4) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 14
+Found new lower bound: 7
+Found new upper bound: 10
+Found new lower bound: 8
+Found new lower bound: 9
+Minimizing variable: b? Initial upperbound: 1
+Found new lower bound: 0
+Minimization complete...
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (-10 * size(t))) + -1) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+Function: parallelSearch--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 164
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 29 + 134
+solving...
+solved... in 0.095s
+candidate Invariants
+parallelSearch-->((((1 * res12._2) + (-12 * size(t))) + -2) ≤ 0)
+size-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 12
+Found new lower bound: 6
+Found new lower bound: 9
+Found new lower bound: 10
+Found new upper bound: 11
+Minimizing variable: b? Initial upperbound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: parallelSearch --> ((((-11 * size(t)) + (1 * res12._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-1 * #res) + 0) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function squareMap...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (t, 1)
+          else
+            (let (e33,t40 := (let (ir1,it1 := (let (e35,t43 := squareMap(t.left)) in
+              (e35, (1 + (1 + t43))))) in
+              (let (r5,t41 := (let (ir2,it2 := (let (e38,t47 := squareMap(t.right)) in
+                (e38, (1 + (1 + t47))))) in
+                (Node(ir1, mult(t.value, t.value), ir2), (4 + (it2 + 1))))) in
+                (r5, (t41 + (it1 + 1)))))) in
+              (e33, (1 + t40)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res11 == ifres11) && ((ci10 && (ci10 == t.isInstanceOf[Leaf]) && (ifres11 == tp8) && (arg15 == 1) && (tp8 == (t, arg15))) || (!(ci11) && (ci11 == t.isInstanceOf[Leaf]) && (ifres11 == tp9) && (arg16 == (1 + t40)) && (tp9 == (e33, arg16)) && (it2 == (1 + (1 + t47))) && (t40 == (t41 + (it1 + 1))) && (e33 == r5) && (tres3 == r43) && (cs13 == t.right) && (r43 == squareMap(cs13)) && (r5 == cc) && (cs14 == t.value) && (cs15 == t.value) && (r44 == mult(cs14, cs15)) && (cc == Node(ir1, r44, ir2)) && (ir1 == e35) && (e38 == ts41) && (ts41 == tres3._1) && (tres4 == r45) && (cs16 == t.left) && (r45 == squareMap(cs16)) && (ir2 == e38) && (e35 == ts42) && (ts42 == tres4._1) && (t43 == ts43) && (ts43 == tres4._2) && (it1 == (1 + (1 + t43))) && (t47 == ts44) && (ts44 == tres3._2) && (t41 == (4 + (it2 + 1))))))
+Flattened Post: ((ts45 > ((a?1 * r46) + b?1)) && (ts45 == res11._2) && (r46 == size(t)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+squareMap-->((((0 * size(t)) + (1 * res11._2)) + 0) ≤ 0)
+Function: squareMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 26
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/4
+Unrolled calls: Set((r44 == mult(cs14, cs15)), (r46 == size(t)))
+Inlining (r44 == mult(cs14, cs15))
+Creating VC for size
+Unrolling (r46 == size(t))
+[[34m Info  [0m] Number of axiom instances: 8
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+squareMap-->((((0 * size(t)) + (1 * res11._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: squareMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+squareMap-->((((8 * res11._2) + (0 * size(t))) + -1) ≤ 0)
+size-->(((0 * #res) + 23) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 9 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+squareMap-->((((0 * size(t)) + (1 * res11._2)) + -4) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: squareMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 61
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 16
+# of atomic predicates: 16 + 19
+solving...
+solved... in 0.008s
+candidate Invariants
+squareMap-->((((-16 * size(t)) + (1 * res11._2)) + -2) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 16
+Found new lower bound: 8
+Found new upper bound: 12
+Found new lower bound: 10
+Found new lower bound: 11
+Minimizing variable: b?1 Initial upperbound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: squareMap --> ((((-12 * size(t)) + (1 * res11._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((0 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function factMap...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Nil(), (1 + 1))
+          else
+            (let (e17,t23 := (let (ir,it := (let (e19,t26 := fact(l.head)) in
+              (e19, (1 + (1 + t26))))) in
+              (let (r4,t24 := (let (e22,t29 := (let (e25,t32 := factMap(l.tail, (l.head - 1))) in
+                (e25, (2 + (1 + (1 + t32)))))) in
+                (Cons(ir, e22), (t29 + 1)))) in
+                (r4, (t24 + (it + 1)))))) in
+              (e17, (1 + t23)))
+[[34m Info  [0m] Post: true
+falttened Body: (r62 && (r62 == descending(l, k)) && (k >= 0) && (res10 == ifres17) && ((ci16 && (ci16 == l.isInstanceOf[Nil]) && (ifres17 == tp10) && (cc1 == Nil()) && (arg18 == (1 + 1)) && (tp10 == (cc1, arg18))) || (!(ci17) && (ci17 == l.isInstanceOf[Nil]) && (ifres17 == tp11) && (arg19 == (1 + t23)) && (tp11 == (e17, arg19)) && (t26 == ts54) && (ts54 == tres6._2) && (e17 == r4) && (t29 == (2 + (1 + (1 + t32)))) && (tres5 == r63) && (cs21 == l.tail) && (cs22 == l.head) && (arg20 == (cs22 - 1)) && (r63 == factMap(cs21, arg20)) && (e25 == ts55) && (ts55 == tres5._1) && (e22 == e25) && (ir == e19) && (r4 == cc2) && (cc2 == Cons(ir, e22)) && (it == (1 + (1 + t26))) && (t23 == (t24 + (it + 1))) && (e19 == ts56) && (ts56 == tres6._1) && (tres6 == r64) && (cs23 == l.head) && (r64 == fact(cs23)) && (t32 == ts57) && (ts57 == tres5._2) && (t24 == (t29 + 1)))))
+Flattened Post: ((ts58 > ((a?3 * r65) + b?3)) && (ts58 == res10._2) && (r65 == mult(k, k)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+factMap-->((((1 * res10._2) + (0 * mult(k, k))) + 0) ≤ 0)
+Function: factMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/4
+Unrolled calls: Set((r62 <=> descending(l, k)), (r64 == fact(cs23)), (r65 == mult(k, k)))
+Creating VC for descending
+[[34m Info  [0m] - Number of new terms enumerated: 3
+[[34m Info  [0m] - Template generated for function descending : (((a?7 * k) + a?6) ≤ 0)
+Unrolling (r62 <=> descending(l, k))
+Creating VC for fact
+Unrolling (r64 == fact(cs23))
+Inlining (r65 == mult(k, k))
+[[34m Info  [0m] Number of axiom instances: 8
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+factMap-->((((0 * mult(k, k)) + (1 * res10._2)) + 0) ≤ 0)
+descending-->(((0 * k) + 0) ≤ 0)
+fact-->((((1 * res9._2) + (-6 * n)) + -3) ≤ 0)
+Function: factMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 13
+Function: fact--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/13
+Unrolled calls: Set((r77 == pmult(px3, arg33)), (r79 == mult(arg20, arg20)), (r72 == mult(n, e82)), (r74 == mult(cs23, e85)), (r76 == pmult(px3, py3)))
+Inlining (r79 == mult(arg20, arg20))
+Unrolling (r77 == pmult(px3, arg33))
+Inlining (r72 == mult(n, e82))
+Unrolling (r76 == pmult(px3, py3))
+Inlining (r74 == mult(cs23, e85))
+[[34m Info  [0m] Number of axiom instances: 242
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 8
+candidate Invariants
+factMap-->((((0 * mult(k, k)) + (1 * res10._2)) + 0) ≤ 0)
+descending-->(((0 * k) + 0) ≤ 0)
+fact-->((((1 * res9._2) + (-6 * n)) + -3) ≤ 0)
+Function: factMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+factMap-->((((8 * res10._2) + (0 * mult(k, k))) + -31) ≤ 0)
+descending-->(((0 * k) + 1) ≤ 0)
+fact-->((((1 * res9._2) + (-6 * n)) + -3) ≤ 0)
+Function: descending--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 12
+solving...
+solved... in 0.006s
+candidate Invariants
+factMap-->((((0 * mult(k, k)) + (1 * res10._2)) + -5) ≤ 0)
+descending-->(((0 * k) + -1) ≤ 0)
+fact-->((((1 * res9._2) + (-6 * n)) + -3) ≤ 0)
+Function: factMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 55 + 20
+solving...
+solved... in 0.023s
+candidate Invariants
+factMap-->((((1 * res10._2) + (-9 * mult(k, k))) + -5) ≤ 0)
+descending-->(((0 * k) + -1) ≤ 0)
+fact-->((((1 * res9._2) + (-6 * n)) + -3) ≤ 0)
+Function: factMap--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 52
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 23 + 75
+solving...
+solved... in 0.036s
+candidate Invariants
+factMap-->((((1 * res10._2) + (-13 * mult(k, k))) + -5) ≤ 0)
+descending-->(((0 * k) + -1) ≤ 0)
+fact-->((((1 * res9._2) + (-6 * n)) + -3) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: b?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 13
+Found new lower bound: 6
+Found new lower bound: 9
+Found new lower bound: 11
+Found new upper bound: 12
+Minimizing variable: b?3 Initial upperbound: 5
+Found new upper bound: 2
+Found new lower bound: 1
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: factMap --> ((((-12 * (k * k)) + (1 * res10._2)) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: descending --> (((0 * k) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: fact --> ((((1 * res9._2) + (-6 * n)) + -3) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

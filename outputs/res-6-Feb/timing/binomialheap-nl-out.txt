@@ -1,0 +1,3768 @@
+[[33mWarning[0m] warning: there were 2 deprecation warning(s); re-run with -deprecation for details
+After Depth Instrumentation: 
+object BinomialHeap {
+  sealed abstract class BinomialTree
+
+  case class Node(rank: Int, elem: Element, children: BinomialHeap) extends BinomialTree
+
+  case class Some(t: BinomialTree) extends OptionalTree
+
+  sealed abstract class ElementAbs
+
+  case class Element(n: Int) extends ElementAbs
+
+  case class ConsHeap(head: BinomialTree, tail: BinomialHeap) extends BinomialHeap
+
+  case class None() extends OptionalTree
+
+  sealed abstract class List
+
+  case class NilHeap() extends BinomialHeap
+
+  sealed abstract class OptionalTree
+
+  case class NilL() extends List
+
+  case class NodeL(head: BinomialHeap, tail: List) extends List
+
+  sealed abstract class BinomialHeap
+
+  def leq(a : Element, b : Element) : Boolean = {(a match {
+    case Element(a1) =>
+      (b match {
+        case Element(a2) =>
+          if ((a1 <= a2)) {
+            true
+          } else {
+            false
+          }
+      })
+  })}
+
+  def treeNum(h : BinomialHeap) : Int = {(h match {
+    case ConsHeap(head, tail) =>
+      (1 + treeNum(tail))
+    case NilHeap() =>
+      0
+  })}
+
+  def merge(h1 : BinomialHeap, h2 : BinomialHeap) : BinomialHeap = {(h1 match {
+    case ConsHeap(head1, tail1) =>
+      (h2 match {
+        case ConsHeap(head2, tail2) =>
+          if ((rank(head1) < rank(head2))) {
+            ConsHeap(head1, merge(tail1, h2))
+          } else {
+            if ((rank(head2) < rank(head1))) {
+              ConsHeap(head2, merge(h1, tail2))
+            } else {
+              mergeWithCarry(link(head1, head2), tail1, tail2)
+            }
+          }
+        case NilHeap() =>
+          h1
+      })
+    case NilHeap() =>
+      h2
+  })} ensuring(res => true)
+
+  def mergeWithCarry(t : BinomialTree, h1 : BinomialHeap, h2 : BinomialHeap) : BinomialHeap = {(t match {
+    case Node(r, _, _) =>
+      (h1 match {
+        case ConsHeap(head1, tail1) =>
+          (h2 match {
+            case ConsHeap(head2, tail2) =>
+              if ((rank(head1) < rank(head2))) {
+                if ((rank(t) < rank(head1))) {
+                  ConsHeap(t, ConsHeap(head1, merge(tail1, h2)))
+                } else {
+                  mergeWithCarry(link(t, head1), tail1, h2)
+                }
+              } else {
+                if ((rank(head2) < rank(head1))) {
+                  if ((rank(t) < rank(head2))) {
+                    ConsHeap(t, ConsHeap(head2, merge(h1, tail2)))
+                  } else {
+                    mergeWithCarry(link(t, head2), h1, tail2)
+                  }
+                } else {
+                  ConsHeap(t, mergeWithCarry(link(head1, head2), tail1, tail2))
+                }
+              }
+            case NilHeap() =>
+              insTree(t, h1)
+          })
+        case NilHeap() =>
+          insTree(t, h2)
+      })
+  })} ensuring(res => true)
+
+  def root(t : BinomialTree) : Element = {(t match {
+    case Node(_, e, _) =>
+      e
+  })}
+
+  def removeMinTree(h : BinomialHeap) : (OptionalTree, BinomialHeap) = {(h match {
+    case ConsHeap(head, NilHeap()) =>
+      (Some(head), NilHeap())
+    case ConsHeap(head1, tail1) =>
+      locally {
+        val x$1 = (removeMinTree(tail1) match {
+          case (opthead2, tail2) =>
+            (opthead2, tail2)
+        })
+        locally {
+          val opthead2 = x$1._1
+          locally {
+            val tail2 = x$1._2
+            (opthead2 match {
+              case None() =>
+                (Some(head1), tail1)
+              case Some(head2) =>
+                if (leq(root(head1), root(head2))) {
+                  (Some(head1), tail1)
+                } else {
+                  (Some(head2), ConsHeap(head1, tail2))
+                }
+            })
+          }
+          
+        }
+        
+      }
+      
+    case _ =>
+      (None(), NilHeap())
+  })} ensuring(res => (treeNum(res._2) <= treeNum(h)))
+
+  def isEmpty(t : BinomialHeap) : Boolean = {(t match {
+    case ConsHeap(_, _) =>
+      false
+    case NilHeap() =>
+      true
+  })}
+
+  def minTreeChildren(h : BinomialHeap) : Int = {locally {
+    val min = (removeMinTree(h) match {
+      case (min, _) =>
+        min
+    })
+    (min match {
+      case None() =>
+        0
+      case Some(Node(_, _, ch)) =>
+        treeNum(ch)
+    })
+  }
+  }
+
+  def rank(t : BinomialTree) : Int = {(t match {
+    case Node(r, _, _) =>
+      r
+  })}
+
+  def link(t1 : BinomialTree, t2 : BinomialTree) : BinomialTree = {(t1 match {
+    case Node(r, x1, c1) =>
+      (t2 match {
+        case Node(_, x2, c2) =>
+          if (leq(x1, x2)) {
+            Node((r + 1), x1, ConsHeap(t2, c1))
+          } else {
+            Node((r + 1), x2, ConsHeap(t1, c2))
+          }
+      })
+  })}
+
+  def deleteMin(h : BinomialHeap) : BinomialHeap = {locally {
+    val x$2 = (removeMinTree(h) match {
+      case (min, ts2) =>
+        (min, ts2)
+    })
+    locally {
+      val min = x$2._1
+      locally {
+        val ts2 = x$2._2
+        (min match {
+          case Some(Node(_, _, ts1)) =>
+            merge(ts1, ts2)
+          case _ =>
+            h
+        })
+      }
+      
+    }
+    
+  }
+  } ensuring(res => true)
+
+  def insTree(t : BinomialTree, h : BinomialHeap) : BinomialHeap = {(h match {
+    case ConsHeap(head, tail) =>
+      if ((rank(t) < rank(head))) {
+        ConsHeap(t, h)
+      } else {
+        if ((rank(t) > rank(head))) {
+          ConsHeap(head, insTree(t, tail))
+        } else {
+          insTree(link(t, head), tail)
+        }
+      }
+    case NilHeap() =>
+      ConsHeap(t, NilHeap())
+  })} ensuring(res => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: leq
+Defined fun: treeNum
+Defined fun: merge
+Defined fun: mergeWithCarry
+Defined fun: root
+Defined fun: removeMinTree
+Defined fun: isEmpty
+Defined fun: minTreeChildren
+Defined fun: rank
+Defined fun: link
+Defined fun: deleteMin
+Defined fun: insTree
+Defined fun: max
+FunMap: Map(leq -> leq, minTreeChildren -> minTreeChildren, rank -> rank, root -> root, link -> link, mergeWithCarry -> mergeWithCarry, max -> max, removeMinTree -> removeMinTree, deleteMin -> deleteMin, merge -> merge, treeNum -> treeNum, insTree -> insTree, isEmpty -> isEmpty)
+After Time Instrumentation: 
+object BinomialHeap {
+  sealed abstract class BinomialTree
+
+  case class Node(rank: Int, elem: Element, children: BinomialHeap) extends BinomialTree
+
+  case class Some(t: BinomialTree) extends OptionalTree
+
+  sealed abstract class ElementAbs
+
+  case class Element(n: Int) extends ElementAbs
+
+  case class ConsHeap(head: BinomialTree, tail: BinomialHeap) extends BinomialHeap
+
+  case class None() extends OptionalTree
+
+  sealed abstract class List
+
+  case class NilHeap() extends BinomialHeap
+
+  sealed abstract class OptionalTree
+
+  case class NilL() extends List
+
+  case class NodeL(head: BinomialHeap, tail: List) extends List
+
+  sealed abstract class BinomialHeap
+
+  def leq(a : Element, b : Element) : (Boolean, Int) = {locally {
+    val t6 = 3
+    if ((a.n <= b.n)) {
+      (true, t6)
+    } else {
+      (false, t6)
+    }
+  }
+  }
+
+  def treeNum(h : BinomialHeap) : Int = {(h match {
+    case ConsHeap(head, tail) =>
+      (1 + treeNum(tail))
+    case NilHeap() =>
+      0
+  })}
+
+  def merge(h1 : BinomialHeap, h2 : BinomialHeap) : (BinomialHeap, Int) = {locally {
+    val t237 = 1
+    if (h1.isInstanceOf[ConsHeap]) {
+      locally {
+        val (e225: BinomialHeap, t238: Int) = locally {
+          val t239 = 1
+          if (h2.isInstanceOf[ConsHeap]) {
+            locally {
+              val (e227: BinomialHeap, t240: Int) = locally {
+                val (e228: Boolean, t241: Int) = locally {
+                  val (e267: Int, t280: Int) = locally {
+                    val (e273: Int, t286: Int) = rank(h1.head)
+                    (e273, (1 + (1 + t286)))
+                  }
+                  
+                  locally {
+                    val (e268: Int, t281: Int) = locally {
+                      val (e270: Int, t283: Int) = rank(h2.head)
+                      (e270, (1 + (1 + t283)))
+                    }
+                    
+                    ((e267 < e268), (t281 + (t280 + 1)))
+                  }
+                  
+                }
+                
+                if (e228) {
+                  locally {
+                    val (e229: ConsHeap, t242: Int) = locally {
+                      val (e231: BinomialHeap, t244: Int) = locally {
+                        val (e234: BinomialHeap, t247: Int) = merge(h1.tail, h2)
+                        (e234, (1 + (1 + t247)))
+                      }
+                      
+                      (ConsHeap(h1.head, e231), (t244 + 2))
+                    }
+                    
+                    (e229, (t241 + t242))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e237: BinomialHeap, t250: Int) = locally {
+                      val (e238: Boolean, t251: Int) = locally {
+                        val (e259: Int, t272: Int) = locally {
+                          val (e265: Int, t278: Int) = rank(h2.head)
+                          (e265, (1 + (1 + t278)))
+                        }
+                        
+                        locally {
+                          val (e260: Int, t273: Int) = locally {
+                            val (e262: Int, t275: Int) = rank(h1.head)
+                            (e262, (1 + (1 + t275)))
+                          }
+                          
+                          ((e259 < e260), (t273 + (t272 + 1)))
+                        }
+                        
+                      }
+                      
+                      if (e238) {
+                        locally {
+                          val (e239: ConsHeap, t252: Int) = locally {
+                            val (e241: BinomialHeap, t254: Int) = locally {
+                              val (e244: BinomialHeap, t257: Int) = merge(h1, h2.tail)
+                              (e244, (1 + (1 + t257)))
+                            }
+                            
+                            (ConsHeap(h2.head, e241), (t254 + 2))
+                          }
+                          
+                          (e239, (t251 + t252))
+                        }
+                        
+                      } else {
+                        locally {
+                          val (e247: BinomialHeap, t260: Int) = locally {
+                            val (e248: BinomialTree, t261: Int) = locally {
+                              val (e256: BinomialTree, t269: Int) = link(h1.head, h2.head)
+                              (e256, (1 + (1 + (1 + t269))))
+                            }
+                            
+                            locally {
+                              val (e251: BinomialHeap, t264: Int) = mergeWithCarry(e248, h1.tail, h2.tail)
+                              (e251, (1 + (1 + (t261 + (1 + t264)))))
+                            }
+                            
+                          }
+                          
+                          (e247, (t251 + t260))
+                        }
+                        
+                      }
+                    }
+                    
+                    (e237, (t241 + t250))
+                  }
+                  
+                }
+              }
+              
+              (e227, (t239 + t240))
+            }
+            
+          } else {
+            (h1, t239)
+          }
+        }
+        
+        (e225, (t237 + t238))
+      }
+      
+    } else {
+      (h2, t237)
+    }
+  }
+  } ensuring(res14 => true)
+
+  def mergeWithCarry(t : BinomialTree, h1 : BinomialHeap, h2 : BinomialHeap) : (BinomialHeap, Int) = {locally {
+    val t43 = 1
+    if (h1.isInstanceOf[ConsHeap]) {
+      locally {
+        val (e39: BinomialHeap, t44: Int) = locally {
+          val t45 = 1
+          if (h2.isInstanceOf[ConsHeap]) {
+            locally {
+              val (e41: BinomialHeap, t46: Int) = locally {
+                val (e42: Boolean, t47: Int) = locally {
+                  val (e125: Int, t130: Int) = locally {
+                    val (e131: Int, t136: Int) = rank(h1.head)
+                    (e131, (1 + (1 + t136)))
+                  }
+                  
+                  locally {
+                    val (e126: Int, t131: Int) = locally {
+                      val (e128: Int, t133: Int) = rank(h2.head)
+                      (e128, (1 + (1 + t133)))
+                    }
+                    
+                    ((e125 < e126), (t131 + (t130 + 1)))
+                  }
+                  
+                }
+                
+                if (e42) {
+                  locally {
+                    val (e43: BinomialHeap, t48: Int) = locally {
+                      val (e44: Boolean, t49: Int) = locally {
+                        val (e65: Int, t70: Int) = locally {
+                          val (e71: Int, t76: Int) = rank(t)
+                          (e71, (1 + t76))
+                        }
+                        
+                        locally {
+                          val (e66: Int, t71: Int) = locally {
+                            val (e68: Int, t73: Int) = rank(h1.head)
+                            (e68, (1 + (1 + t73)))
+                          }
+                          
+                          ((e65 < e66), (t71 + (t70 + 1)))
+                        }
+                        
+                      }
+                      
+                      if (e44) {
+                        locally {
+                          val (e45: ConsHeap, t50: Int) = locally {
+                            val (e47: ConsHeap, t52: Int) = locally {
+                              val (e49: BinomialHeap, t54: Int) = locally {
+                                val (e52: BinomialHeap, t57: Int) = merge(h1.tail, h2)
+                                (e52, (1 + (1 + t57)))
+                              }
+                              
+                              (ConsHeap(h1.head, e49), (t54 + 2))
+                            }
+                            
+                            (ConsHeap(t, e47), (t52 + 1))
+                          }
+                          
+                          (e45, (t49 + t50))
+                        }
+                        
+                      } else {
+                        locally {
+                          val (e55: BinomialHeap, t60: Int) = locally {
+                            val (e56: BinomialTree, t61: Int) = locally {
+                              val (e63: BinomialTree, t68: Int) = link(t, h1.head)
+                              (e63, (1 + (1 + t68)))
+                            }
+                            
+                            locally {
+                              val (e59: BinomialHeap, t64: Int) = mergeWithCarry(e56, h1.tail, h2)
+                              (e59, (1 + (t61 + (1 + t64))))
+                            }
+                            
+                          }
+                          
+                          (e55, (t49 + t60))
+                        }
+                        
+                      }
+                    }
+                    
+                    (e43, (t47 + t48))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e72: BinomialHeap, t77: Int) = locally {
+                      val (e73: Boolean, t78: Int) = locally {
+                        val (e117: Int, t122: Int) = locally {
+                          val (e123: Int, t128: Int) = rank(h2.head)
+                          (e123, (1 + (1 + t128)))
+                        }
+                        
+                        locally {
+                          val (e118: Int, t123: Int) = locally {
+                            val (e120: Int, t125: Int) = rank(h1.head)
+                            (e120, (1 + (1 + t125)))
+                          }
+                          
+                          ((e117 < e118), (t123 + (t122 + 1)))
+                        }
+                        
+                      }
+                      
+                      if (e73) {
+                        locally {
+                          val (e74: BinomialHeap, t79: Int) = locally {
+                            val (e75: Boolean, t80: Int) = locally {
+                              val (e96: Int, t101: Int) = locally {
+                                val (e102: Int, t107: Int) = rank(t)
+                                (e102, (1 + t107))
+                              }
+                              
+                              locally {
+                                val (e97: Int, t102: Int) = locally {
+                                  val (e99: Int, t104: Int) = rank(h2.head)
+                                  (e99, (1 + (1 + t104)))
+                                }
+                                
+                                ((e96 < e97), (t102 + (t101 + 1)))
+                              }
+                              
+                            }
+                            
+                            if (e75) {
+                              locally {
+                                val (e76: ConsHeap, t81: Int) = locally {
+                                  val (e78: ConsHeap, t83: Int) = locally {
+                                    val (e80: BinomialHeap, t85: Int) = locally {
+                                      val (e83: BinomialHeap, t88: Int) = merge(h1, h2.tail)
+                                      (e83, (1 + (1 + t88)))
+                                    }
+                                    
+                                    (ConsHeap(h2.head, e80), (t85 + 2))
+                                  }
+                                  
+                                  (ConsHeap(t, e78), (t83 + 1))
+                                }
+                                
+                                (e76, (t80 + t81))
+                              }
+                              
+                            } else {
+                              locally {
+                                val (e86: BinomialHeap, t91: Int) = locally {
+                                  val (e87: BinomialTree, t92: Int) = locally {
+                                    val (e94: BinomialTree, t99: Int) = link(t, h2.head)
+                                    (e94, (1 + (1 + t99)))
+                                  }
+                                  
+                                  locally {
+                                    val (e90: BinomialHeap, t95: Int) = mergeWithCarry(e87, h1, h2.tail)
+                                    (e90, (1 + (t92 + (1 + t95))))
+                                  }
+                                  
+                                }
+                                
+                                (e86, (t80 + t91))
+                              }
+                              
+                            }
+                          }
+                          
+                          (e74, (t78 + t79))
+                        }
+                        
+                      } else {
+                        locally {
+                          val (e103: ConsHeap, t108: Int) = locally {
+                            val (e105: BinomialHeap, t110: Int) = locally {
+                              val (e106: BinomialTree, t111: Int) = locally {
+                                val (e114: BinomialTree, t119: Int) = link(h1.head, h2.head)
+                                (e114, (1 + (1 + (1 + t119))))
+                              }
+                              
+                              locally {
+                                val (e109: BinomialHeap, t114: Int) = mergeWithCarry(e106, h1.tail, h2.tail)
+                                (e109, (1 + (1 + (t111 + (1 + t114)))))
+                              }
+                              
+                            }
+                            
+                            (ConsHeap(t, e105), (t110 + 1))
+                          }
+                          
+                          (e103, (t78 + t108))
+                        }
+                        
+                      }
+                    }
+                    
+                    (e72, (t47 + t77))
+                  }
+                  
+                }
+              }
+              
+              (e41, (t45 + t46))
+            }
+            
+          } else {
+            locally {
+              val (e133: BinomialHeap, t138: Int) = locally {
+                val (e136: BinomialHeap, t141: Int) = insTree(t, h1)
+                (e136, (1 + t141))
+              }
+              
+              (e133, (t45 + t138))
+            }
+            
+          }
+        }
+        
+        (e39, (t43 + t44))
+      }
+      
+    } else {
+      locally {
+        val (e138: BinomialHeap, t143: Int) = locally {
+          val (e141: BinomialHeap, t146: Int) = insTree(t, h2)
+          (e141, (1 + t146))
+        }
+        
+        (e138, (t43 + t143))
+      }
+      
+    }
+  }
+  } ensuring(res11 => true)
+
+  def root(t : BinomialTree) : (ElementAbs, Int) = {(t.elem, 1)}
+
+  def removeMinTree(h : BinomialHeap) : ((OptionalTree, BinomialHeap), Int) = {locally {
+    val t148 = 4
+    if ((h.isInstanceOf[ConsHeap] && h.tail.isInstanceOf[NilHeap])) {
+      ((Some(h.head), NilHeap()), (t148 + 4))
+    } else {
+      locally {
+        val (e149: (OptionalTree, BinomialHeap), t154: Int) = locally {
+          val t155 = 1
+          if (h.isInstanceOf[ConsHeap]) {
+            locally {
+              val (e151: (OptionalTree, BinomialHeap), t156: Int) = locally {
+                val (ir: (OptionalTree, BinomialHeap), it: Int) = locally {
+                  val (ir1: (OptionalTree, BinomialHeap), it1: Int) = locally {
+                    val (e153: (OptionalTree, BinomialHeap), t160: Int) = removeMinTree(h.tail)
+                    (e153, (1 + (1 + t160)))
+                  }
+                  
+                  ((ir1._1, ir1._2), (3 + (it1 + 1)))
+                }
+                
+                locally {
+                  val (r4: (OptionalTree, BinomialHeap), t157: Int) = locally {
+                    val ir2 = ir._1
+                    locally {
+                      val (r6: (OptionalTree, BinomialHeap), t166: Int) = locally {
+                        val (r7: (OptionalTree, BinomialHeap), t168: Int) = locally {
+                          val t170 = 1
+                          if (ir2.isInstanceOf[None]) {
+                            ((Some(h.head), h.tail), (t170 + 4))
+                          } else {
+                            locally {
+                              val (e168: (OptionalTree, BinomialHeap), t177: Int) = locally {
+                                val (e169: Boolean, t178: Int) = locally {
+                                  val (e184: Element, t193: Int) = locally {
+                                    val (e191: Element, t200: Int) = root(h.head)
+                                    (e191, (1 + (1 + t200)))
+                                  }
+                                  
+                                  locally {
+                                    val (e185: Element, t194: Int) = locally {
+                                      val (e188: Element, t197: Int) = root(ir2.t)
+                                      (e188, (1 + (1 + t197)))
+                                    }
+                                    
+                                    locally {
+                                      val (e186: Boolean, t195: Int) = leq(e184, e185)
+                                      (e186, (t194 + (t193 + (1 + t195))))
+                                    }
+                                    
+                                  }
+                                  
+                                }
+                                
+                                if (e169) {
+                                  ((Some(h.head), h.tail), (t178 + 4))
+                                } else {
+                                  ((Some(ir2.t), ConsHeap(h.head, ir._2)), (t178 + 5))
+                                }
+                              }
+                              
+                              (e168, (t170 + t177))
+                            }
+                            
+                          }
+                        }
+                        
+                        (r7, (t168 + 2))
+                      }
+                      
+                      (r6, (t166 + 2))
+                    }
+                    
+                  }
+                  
+                  (r4, (t157 + (it + 1)))
+                }
+                
+              }
+              
+              (e151, (t155 + t156))
+            }
+            
+          } else {
+            ((None(), NilHeap()), (t155 + 3))
+          }
+        }
+        
+        (e149, (t148 + t154))
+      }
+      
+    }
+  }
+  } ensuring(res12 => (treeNum(res12._1._2) <= treeNum(h)))
+
+  def isEmpty(t : BinomialHeap) : Boolean = {(t match {
+    case ConsHeap(_, _) =>
+      false
+    case NilHeap() =>
+      true
+  })}
+
+  def minTreeChildren(h : BinomialHeap) : Int = {locally {
+    val min = (removeMinTree(h)._1 match {
+      case (min, _) =>
+        min
+    })
+    (min match {
+      case None() =>
+        0
+      case Some(Node(_, _, ch)) =>
+        treeNum(ch)
+    })
+  }
+  }
+
+  def rank(t : BinomialTree) : (Int, Int) = {(t.rank, 1)}
+
+  def link(t1 : BinomialTree, t2 : BinomialTree) : (BinomialTree, Int) = {locally {
+    val (e10: Boolean, t15: Int) = locally {
+      val (e35: Boolean, t40: Int) = leq(t1.elem, t2.elem)
+      (e35, (1 + (1 + (1 + t40))))
+    }
+    
+    if (e10) {
+      (Node((t1.rank + 1), t1.elem, ConsHeap(t2, t1.children)), (t15 + 6))
+    } else {
+      (Node((t1.rank + 1), t2.elem, ConsHeap(t1, t2.children)), (t15 + 6))
+    }
+  }
+  }
+
+  def deleteMin(h : BinomialHeap) : (BinomialHeap, Int) = {locally {
+    val (ir4: (OptionalTree, BinomialHeap), it4: Int) = locally {
+      val (ir5: (OptionalTree, BinomialHeap), it5: Int) = locally {
+        val (e204: (OptionalTree, BinomialHeap), t215: Int) = removeMinTree(h)
+        (e204, (1 + t215))
+      }
+      
+      ((ir5._1, ir5._2), (3 + (it5 + 1)))
+    }
+    
+    locally {
+      val (r8: BinomialHeap, t212: Int) = locally {
+        val ir6 = ir4._1
+        locally {
+          val (r10: BinomialHeap, t220: Int) = locally {
+            val (r11: BinomialHeap, t222: Int) = locally {
+              val t224 = 4
+              if ((ir6.isInstanceOf[Some] && ir6.t.isInstanceOf[Node])) {
+                locally {
+                  val (e212: BinomialHeap, t225: Int) = locally {
+                    val (e215: BinomialHeap, t228: Int) = merge(ir6.t.children, ir4._2)
+                    (e215, (2 + (1 + t228)))
+                  }
+                  
+                  (e212, (t224 + t225))
+                }
+                
+              } else {
+                (h, t224)
+              }
+            }
+            
+            (r11, (t222 + 2))
+          }
+          
+          (r10, (t220 + 2))
+        }
+        
+      }
+      
+      (r8, (t212 + (it4 + 1)))
+    }
+    
+  }
+  } ensuring(res13 => true)
+
+  def insTree(t : BinomialTree, h : BinomialHeap) : (BinomialHeap, Int) = {locally {
+    val t292 = 1
+    if (h.isInstanceOf[ConsHeap]) {
+      locally {
+        val (e280: BinomialHeap, t293: Int) = locally {
+          val (e281: Boolean, t294: Int) = locally {
+            val (e311: Int, t324: Int) = locally {
+              val (e317: Int, t330: Int) = rank(t)
+              (e317, (1 + t330))
+            }
+            
+            locally {
+              val (e312: Int, t325: Int) = locally {
+                val (e314: Int, t327: Int) = rank(h.head)
+                (e314, (1 + (1 + t327)))
+              }
+              
+              ((e311 < e312), (t325 + (t324 + 1)))
+            }
+            
+          }
+          
+          if (e281) {
+            (ConsHeap(t, h), (t294 + 1))
+          } else {
+            locally {
+              val (e285: BinomialHeap, t298: Int) = locally {
+                val (e286: Boolean, t299: Int) = locally {
+                  val (e304: Int, t317: Int) = locally {
+                    val (e310: Int, t323: Int) = rank(t)
+                    (e310, (1 + t323))
+                  }
+                  
+                  locally {
+                    val (e305: Int, t318: Int) = locally {
+                      val (e307: Int, t320: Int) = rank(h.head)
+                      (e307, (1 + (1 + t320)))
+                    }
+                    
+                    ((e304 > e305), (t318 + (t317 + 1)))
+                  }
+                  
+                }
+                
+                if (e286) {
+                  locally {
+                    val (e287: ConsHeap, t300: Int) = locally {
+                      val (e289: BinomialHeap, t302: Int) = locally {
+                        val (e292: BinomialHeap, t305: Int) = insTree(t, h.tail)
+                        (e292, (1 + (1 + t305)))
+                      }
+                      
+                      (ConsHeap(h.head, e289), (t302 + 2))
+                    }
+                    
+                    (e287, (t299 + t300))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e295: BinomialHeap, t308: Int) = locally {
+                      val (e296: BinomialTree, t309: Int) = locally {
+                        val (e302: BinomialTree, t315: Int) = link(t, h.head)
+                        (e302, (1 + (1 + t315)))
+                      }
+                      
+                      locally {
+                        val (e298: BinomialHeap, t311: Int) = insTree(e296, h.tail)
+                        (e298, (1 + (t309 + (1 + t311))))
+                      }
+                      
+                    }
+                    
+                    (e295, (t299 + t308))
+                  }
+                  
+                }
+              }
+              
+              (e285, (t294 + t298))
+            }
+            
+          }
+        }
+        
+        (e280, (t292 + t293))
+      }
+      
+    } else {
+      (ConsHeap(t, NilHeap()), (t292 + 2))
+    }
+  }
+  } ensuring(res15 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object BinomialHeap {
+  sealed abstract class BinomialTree
+
+  case class Node(rank: Int, elem: Element, children: BinomialHeap) extends BinomialTree
+
+  case class Some(t: BinomialTree) extends OptionalTree
+
+  sealed abstract class ElementAbs
+
+  case class Element(n: Int) extends ElementAbs
+
+  case class ConsHeap(head: BinomialTree, tail: BinomialHeap) extends BinomialHeap
+
+  case class None() extends OptionalTree
+
+  sealed abstract class List
+
+  case class NilHeap() extends BinomialHeap
+
+  sealed abstract class OptionalTree
+
+  case class NilL() extends List
+
+  case class NodeL(head: BinomialHeap, tail: List) extends List
+
+  sealed abstract class BinomialHeap
+
+  def leq(a : Element, b : Element) : (Boolean, Int) = {    require((a.isInstanceOf[Element] && b.isInstanceOf[Element]));
+if ((a.n <= b.n)) {
+    (true, 3)
+  } else {
+    (false, 3)
+  }}
+
+  def treeNum(h : BinomialHeap) : Int = {(h match {
+    case ConsHeap(head, tail) =>
+      (1 + treeNum(tail))
+    case NilHeap() =>
+      0
+  })}
+
+  def merge(h1 : BinomialHeap, h2 : BinomialHeap) : (BinomialHeap, Int) = {if (h1.isInstanceOf[ConsHeap]) {
+    locally {
+      val (e225: BinomialHeap, t238: Int) = if (h2.isInstanceOf[ConsHeap]) {
+        locally {
+          val (e227: BinomialHeap, t240: Int) = locally {
+            val (e228: Boolean, t241: Int) = locally {
+              val (e267: Int, t280: Int) = locally {
+                val (e273: Int, t286: Int) = rank(h1.head)
+                (e273, (1 + (1 + t286)))
+              }
+              
+              locally {
+                val (e268: Int, t281: Int) = locally {
+                  val (e270: Int, t283: Int) = rank(h2.head)
+                  (e270, (1 + (1 + t283)))
+                }
+                
+                ((e267 < e268), (t281 + (t280 + 1)))
+              }
+              
+            }
+            
+            if (e228) {
+              locally {
+                val (e229: ConsHeap, t242: Int) = locally {
+                  val (e231: BinomialHeap, t244: Int) = locally {
+                    val (e234: BinomialHeap, t247: Int) = merge(h1.tail, h2)
+                    (e234, (1 + (1 + t247)))
+                  }
+                  
+                  (ConsHeap(h1.head, e231), (t244 + 2))
+                }
+                
+                (e229, (t241 + t242))
+              }
+              
+            } else {
+              locally {
+                val (e237: BinomialHeap, t250: Int) = locally {
+                  val (e238: Boolean, t251: Int) = locally {
+                    val (e259: Int, t272: Int) = locally {
+                      val (e265: Int, t278: Int) = rank(h2.head)
+                      (e265, (1 + (1 + t278)))
+                    }
+                    
+                    locally {
+                      val (e260: Int, t273: Int) = locally {
+                        val (e262: Int, t275: Int) = rank(h1.head)
+                        (e262, (1 + (1 + t275)))
+                      }
+                      
+                      ((e259 < e260), (t273 + (t272 + 1)))
+                    }
+                    
+                  }
+                  
+                  if (e238) {
+                    locally {
+                      val (e239: ConsHeap, t252: Int) = locally {
+                        val (e241: BinomialHeap, t254: Int) = locally {
+                          val (e244: BinomialHeap, t257: Int) = merge(h1, h2.tail)
+                          (e244, (1 + (1 + t257)))
+                        }
+                        
+                        (ConsHeap(h2.head, e241), (t254 + 2))
+                      }
+                      
+                      (e239, (t251 + t252))
+                    }
+                    
+                  } else {
+                    locally {
+                      val (e247: BinomialHeap, t260: Int) = locally {
+                        val (e248: BinomialTree, t261: Int) = locally {
+                          val (e256: BinomialTree, t269: Int) = link(h1.head, h2.head)
+                          (e256, (1 + (1 + (1 + t269))))
+                        }
+                        
+                        locally {
+                          val (e251: BinomialHeap, t264: Int) = mergeWithCarry(e248, h1.tail, h2.tail)
+                          (e251, (1 + (1 + (t261 + (1 + t264)))))
+                        }
+                        
+                      }
+                      
+                      (e247, (t251 + t260))
+                    }
+                    
+                  }
+                }
+                
+                (e237, (t241 + t250))
+              }
+              
+            }
+          }
+          
+          (e227, (1 + t240))
+        }
+        
+      } else {
+        (h1, 1)
+      }
+      (e225, (1 + t238))
+    }
+    
+  } else {
+    (h2, 1)
+  }} ensuring(res14 => true)
+
+  def mergeWithCarry(t : BinomialTree, h1 : BinomialHeap, h2 : BinomialHeap) : (BinomialHeap, Int) = {if (h1.isInstanceOf[ConsHeap]) {
+    locally {
+      val (e39: BinomialHeap, t44: Int) = if (h2.isInstanceOf[ConsHeap]) {
+        locally {
+          val (e41: BinomialHeap, t46: Int) = locally {
+            val (e42: Boolean, t47: Int) = locally {
+              val (e125: Int, t130: Int) = locally {
+                val (e131: Int, t136: Int) = rank(h1.head)
+                (e131, (1 + (1 + t136)))
+              }
+              
+              locally {
+                val (e126: Int, t131: Int) = locally {
+                  val (e128: Int, t133: Int) = rank(h2.head)
+                  (e128, (1 + (1 + t133)))
+                }
+                
+                ((e125 < e126), (t131 + (t130 + 1)))
+              }
+              
+            }
+            
+            if (e42) {
+              locally {
+                val (e43: BinomialHeap, t48: Int) = locally {
+                  val (e44: Boolean, t49: Int) = locally {
+                    val (e65: Int, t70: Int) = locally {
+                      val (e71: Int, t76: Int) = rank(t)
+                      (e71, (1 + t76))
+                    }
+                    
+                    locally {
+                      val (e66: Int, t71: Int) = locally {
+                        val (e68: Int, t73: Int) = rank(h1.head)
+                        (e68, (1 + (1 + t73)))
+                      }
+                      
+                      ((e65 < e66), (t71 + (t70 + 1)))
+                    }
+                    
+                  }
+                  
+                  if (e44) {
+                    locally {
+                      val (e45: ConsHeap, t50: Int) = locally {
+                        val (e47: ConsHeap, t52: Int) = locally {
+                          val (e49: BinomialHeap, t54: Int) = locally {
+                            val (e52: BinomialHeap, t57: Int) = merge(h1.tail, h2)
+                            (e52, (1 + (1 + t57)))
+                          }
+                          
+                          (ConsHeap(h1.head, e49), (t54 + 2))
+                        }
+                        
+                        (ConsHeap(t, e47), (t52 + 1))
+                      }
+                      
+                      (e45, (t49 + t50))
+                    }
+                    
+                  } else {
+                    locally {
+                      val (e55: BinomialHeap, t60: Int) = locally {
+                        val (e56: BinomialTree, t61: Int) = locally {
+                          val (e63: BinomialTree, t68: Int) = link(t, h1.head)
+                          (e63, (1 + (1 + t68)))
+                        }
+                        
+                        locally {
+                          val (e59: BinomialHeap, t64: Int) = mergeWithCarry(e56, h1.tail, h2)
+                          (e59, (1 + (t61 + (1 + t64))))
+                        }
+                        
+                      }
+                      
+                      (e55, (t49 + t60))
+                    }
+                    
+                  }
+                }
+                
+                (e43, (t47 + t48))
+              }
+              
+            } else {
+              locally {
+                val (e72: BinomialHeap, t77: Int) = locally {
+                  val (e73: Boolean, t78: Int) = locally {
+                    val (e117: Int, t122: Int) = locally {
+                      val (e123: Int, t128: Int) = rank(h2.head)
+                      (e123, (1 + (1 + t128)))
+                    }
+                    
+                    locally {
+                      val (e118: Int, t123: Int) = locally {
+                        val (e120: Int, t125: Int) = rank(h1.head)
+                        (e120, (1 + (1 + t125)))
+                      }
+                      
+                      ((e117 < e118), (t123 + (t122 + 1)))
+                    }
+                    
+                  }
+                  
+                  if (e73) {
+                    locally {
+                      val (e74: BinomialHeap, t79: Int) = locally {
+                        val (e75: Boolean, t80: Int) = locally {
+                          val (e96: Int, t101: Int) = locally {
+                            val (e102: Int, t107: Int) = rank(t)
+                            (e102, (1 + t107))
+                          }
+                          
+                          locally {
+                            val (e97: Int, t102: Int) = locally {
+                              val (e99: Int, t104: Int) = rank(h2.head)
+                              (e99, (1 + (1 + t104)))
+                            }
+                            
+                            ((e96 < e97), (t102 + (t101 + 1)))
+                          }
+                          
+                        }
+                        
+                        if (e75) {
+                          locally {
+                            val (e76: ConsHeap, t81: Int) = locally {
+                              val (e78: ConsHeap, t83: Int) = locally {
+                                val (e80: BinomialHeap, t85: Int) = locally {
+                                  val (e83: BinomialHeap, t88: Int) = merge(h1, h2.tail)
+                                  (e83, (1 + (1 + t88)))
+                                }
+                                
+                                (ConsHeap(h2.head, e80), (t85 + 2))
+                              }
+                              
+                              (ConsHeap(t, e78), (t83 + 1))
+                            }
+                            
+                            (e76, (t80 + t81))
+                          }
+                          
+                        } else {
+                          locally {
+                            val (e86: BinomialHeap, t91: Int) = locally {
+                              val (e87: BinomialTree, t92: Int) = locally {
+                                val (e94: BinomialTree, t99: Int) = link(t, h2.head)
+                                (e94, (1 + (1 + t99)))
+                              }
+                              
+                              locally {
+                                val (e90: BinomialHeap, t95: Int) = mergeWithCarry(e87, h1, h2.tail)
+                                (e90, (1 + (t92 + (1 + t95))))
+                              }
+                              
+                            }
+                            
+                            (e86, (t80 + t91))
+                          }
+                          
+                        }
+                      }
+                      
+                      (e74, (t78 + t79))
+                    }
+                    
+                  } else {
+                    locally {
+                      val (e103: ConsHeap, t108: Int) = locally {
+                        val (e105: BinomialHeap, t110: Int) = locally {
+                          val (e106: BinomialTree, t111: Int) = locally {
+                            val (e114: BinomialTree, t119: Int) = link(h1.head, h2.head)
+                            (e114, (1 + (1 + (1 + t119))))
+                          }
+                          
+                          locally {
+                            val (e109: BinomialHeap, t114: Int) = mergeWithCarry(e106, h1.tail, h2.tail)
+                            (e109, (1 + (1 + (t111 + (1 + t114)))))
+                          }
+                          
+                        }
+                        
+                        (ConsHeap(t, e105), (t110 + 1))
+                      }
+                      
+                      (e103, (t78 + t108))
+                    }
+                    
+                  }
+                }
+                
+                (e72, (t47 + t77))
+              }
+              
+            }
+          }
+          
+          (e41, (1 + t46))
+        }
+        
+      } else {
+        locally {
+          val (e133: BinomialHeap, t138: Int) = locally {
+            val (e136: BinomialHeap, t141: Int) = insTree(t, h1)
+            (e136, (1 + t141))
+          }
+          
+          (e133, (1 + t138))
+        }
+        
+      }
+      (e39, (1 + t44))
+    }
+    
+  } else {
+    locally {
+      val (e138: BinomialHeap, t143: Int) = locally {
+        val (e141: BinomialHeap, t146: Int) = insTree(t, h2)
+        (e141, (1 + t146))
+      }
+      
+      (e138, (1 + t143))
+    }
+    
+  }} ensuring(res11 => true)
+
+  def root(t : BinomialTree) : (ElementAbs, Int) = {(t.elem, 1)}
+
+  def removeMinTree(h : BinomialHeap) : ((OptionalTree, BinomialHeap), Int) = {if ((h.isInstanceOf[ConsHeap] && h.tail.isInstanceOf[NilHeap])) {
+    ((Some(h.head), NilHeap()), (4 + 4))
+  } else {
+    locally {
+      val (e149: (OptionalTree, BinomialHeap), t154: Int) = if (h.isInstanceOf[ConsHeap]) {
+        locally {
+          val (e151: (OptionalTree, BinomialHeap), t156: Int) = locally {
+            val (ir: (OptionalTree, BinomialHeap), it: Int) = locally {
+              val (ir1: (OptionalTree, BinomialHeap), it1: Int) = locally {
+                val (e153: (OptionalTree, BinomialHeap), t160: Int) = removeMinTree(h.tail)
+                (e153, (1 + (1 + t160)))
+              }
+              
+              ((ir1._1, ir1._2), (3 + (it1 + 1)))
+            }
+            
+            locally {
+              val (r4: (OptionalTree, BinomialHeap), t157: Int) = locally {
+                val ir2 = ir._1
+                locally {
+                  val (r6: (OptionalTree, BinomialHeap), t166: Int) = locally {
+                    val (r7: (OptionalTree, BinomialHeap), t168: Int) = if (ir2.isInstanceOf[None]) {
+                      ((Some(h.head), h.tail), (1 + 4))
+                    } else {
+                      locally {
+                        val (e168: (OptionalTree, BinomialHeap), t177: Int) = locally {
+                          val (e169: Boolean, t178: Int) = locally {
+                            val (e184: Element, t193: Int) = locally {
+                              val (e191: Element, t200: Int) = root(h.head)
+                              (e191, (1 + (1 + t200)))
+                            }
+                            
+                            locally {
+                              val (e185: Element, t194: Int) = locally {
+                                val (e188: Element, t197: Int) = root(ir2.t)
+                                (e188, (1 + (1 + t197)))
+                              }
+                              
+                              locally {
+                                val (e186: Boolean, t195: Int) = leq(e184, e185)
+                                (e186, (t194 + (t193 + (1 + t195))))
+                              }
+                              
+                            }
+                            
+                          }
+                          
+                          if (e169) {
+                            ((Some(h.head), h.tail), (t178 + 4))
+                          } else {
+                            ((Some(ir2.t), ConsHeap(h.head, ir._2)), (t178 + 5))
+                          }
+                        }
+                        
+                        (e168, (1 + t177))
+                      }
+                      
+                    }
+                    (r7, (t168 + 2))
+                  }
+                  
+                  (r6, (t166 + 2))
+                }
+                
+              }
+              
+              (r4, (t157 + (it + 1)))
+            }
+            
+          }
+          
+          (e151, (1 + t156))
+        }
+        
+      } else {
+        ((None(), NilHeap()), (1 + 3))
+      }
+      (e149, (4 + t154))
+    }
+    
+  }} ensuring(res12 => (treeNum(res12._1._2) <= treeNum(h)))
+
+  def isEmpty(t : BinomialHeap) : Boolean = {(t match {
+    case ConsHeap(_, _) =>
+      false
+    case NilHeap() =>
+      true
+  })}
+
+  def minTreeChildren(h : BinomialHeap) : Int = {((removeMinTree(h)._1 match {
+    case (min, _) =>
+      min
+  }) match {
+    case None() =>
+      0
+    case Some(Node(_, _, ch)) =>
+      treeNum(ch)
+  })}
+
+  def rank(t : BinomialTree) : (Int, Int) = {(t.rank, 1)}
+
+  def link(t1 : BinomialTree, t2 : BinomialTree) : (BinomialTree, Int) = {locally {
+    val (e10: Boolean, t15: Int) = locally {
+      val (e35: Boolean, t40: Int) = leq(t1.elem, t2.elem)
+      (e35, (1 + (1 + (1 + t40))))
+    }
+    
+    if (e10) {
+      (Node((t1.rank + 1), t1.elem, ConsHeap(t2, t1.children)), (t15 + 6))
+    } else {
+      (Node((t1.rank + 1), t2.elem, ConsHeap(t1, t2.children)), (t15 + 6))
+    }
+  }
+  }
+
+  def deleteMin(h : BinomialHeap) : (BinomialHeap, Int) = {locally {
+    val (ir4: (OptionalTree, BinomialHeap), it4: Int) = locally {
+      val (ir5: (OptionalTree, BinomialHeap), it5: Int) = locally {
+        val (e204: (OptionalTree, BinomialHeap), t215: Int) = removeMinTree(h)
+        (e204, (1 + t215))
+      }
+      
+      ((ir5._1, ir5._2), (3 + (it5 + 1)))
+    }
+    
+    locally {
+      val (r8: BinomialHeap, t212: Int) = locally {
+        val ir6 = ir4._1
+        locally {
+          val (r10: BinomialHeap, t220: Int) = locally {
+            val (r11: BinomialHeap, t222: Int) = if ((ir6.isInstanceOf[Some] && ir6.t.isInstanceOf[Node])) {
+              locally {
+                val (e212: BinomialHeap, t225: Int) = locally {
+                  val (e215: BinomialHeap, t228: Int) = merge(ir6.t.children, ir4._2)
+                  (e215, (2 + (1 + t228)))
+                }
+                
+                (e212, (4 + t225))
+              }
+              
+            } else {
+              (h, 4)
+            }
+            (r11, (t222 + 2))
+          }
+          
+          (r10, (t220 + 2))
+        }
+        
+      }
+      
+      (r8, (t212 + (it4 + 1)))
+    }
+    
+  }
+  } ensuring(res13 => true)
+
+  def insTree(t : BinomialTree, h : BinomialHeap) : (BinomialHeap, Int) = {if (h.isInstanceOf[ConsHeap]) {
+    locally {
+      val (e280: BinomialHeap, t293: Int) = locally {
+        val (e281: Boolean, t294: Int) = locally {
+          val (e311: Int, t324: Int) = locally {
+            val (e317: Int, t330: Int) = rank(t)
+            (e317, (1 + t330))
+          }
+          
+          locally {
+            val (e312: Int, t325: Int) = locally {
+              val (e314: Int, t327: Int) = rank(h.head)
+              (e314, (1 + (1 + t327)))
+            }
+            
+            ((e311 < e312), (t325 + (t324 + 1)))
+          }
+          
+        }
+        
+        if (e281) {
+          (ConsHeap(t, h), (t294 + 1))
+        } else {
+          locally {
+            val (e285: BinomialHeap, t298: Int) = locally {
+              val (e286: Boolean, t299: Int) = locally {
+                val (e304: Int, t317: Int) = locally {
+                  val (e310: Int, t323: Int) = rank(t)
+                  (e310, (1 + t323))
+                }
+                
+                locally {
+                  val (e305: Int, t318: Int) = locally {
+                    val (e307: Int, t320: Int) = rank(h.head)
+                    (e307, (1 + (1 + t320)))
+                  }
+                  
+                  ((e304 > e305), (t318 + (t317 + 1)))
+                }
+                
+              }
+              
+              if (e286) {
+                locally {
+                  val (e287: ConsHeap, t300: Int) = locally {
+                    val (e289: BinomialHeap, t302: Int) = locally {
+                      val (e292: BinomialHeap, t305: Int) = insTree(t, h.tail)
+                      (e292, (1 + (1 + t305)))
+                    }
+                    
+                    (ConsHeap(h.head, e289), (t302 + 2))
+                  }
+                  
+                  (e287, (t299 + t300))
+                }
+                
+              } else {
+                locally {
+                  val (e295: BinomialHeap, t308: Int) = locally {
+                    val (e296: BinomialTree, t309: Int) = locally {
+                      val (e302: BinomialTree, t315: Int) = link(t, h.head)
+                      (e302, (1 + (1 + t315)))
+                    }
+                    
+                    locally {
+                      val (e298: BinomialHeap, t311: Int) = insTree(e296, h.tail)
+                      (e298, (1 + (t309 + (1 + t311))))
+                    }
+                    
+                  }
+                  
+                  (e295, (t299 + t308))
+                }
+                
+              }
+            }
+            
+            (e285, (t294 + t298))
+          }
+          
+        }
+      }
+      
+      (e280, (1 + t293))
+    }
+    
+  } else {
+    (ConsHeap(t, NilHeap()), (1 + 2))
+  }} ensuring(res15 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: merge template --> (res14._2 ≤ (((a?1 * treeNum(h1)) + (b?1 * treeNum(h2))) + c?))
+Function: mergeWithCarry template --> (res11._2 ≤ (((d? * treeNum(h1)) + (e? * treeNum(h2))) + f?))
+Function: removeMinTree template --> (res12._2 ≤ ((a?2 * treeNum(h)) + b?2))
+Function: deleteMin template --> (res13._2 ≤ (((a?3 * minTreeChildren(h)) + (b?3 * treeNum(h))) + c?1))
+Function: insTree template --> (res15._2 ≤ ((a? * treeNum(h)) + b?))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(treeNum, link, insTree, removeMinTree, minTreeChildren, mergeWithCarry, merge, deleteMin)
+[[34m Info  [0m] - considering function insTree...
+[[34m Info  [0m] Body: if (h.isInstanceOf[ConsHeap])
+            (let (e280,t293 := (let (e281,t294 := (let (e311,t324 := (let (e317,t330 := rank(t)) in
+              (e317, (1 + t330)))) in
+              (let (e312,t325 := (let (e314,t327 := rank(h.head)) in
+                (e314, (1 + (1 + t327))))) in
+                ((e311 < e312), (t325 + (t324 + 1)))))) in
+              if (e281)
+                (ConsHeap(t, h), (t294 + 1))
+              else
+                (let (e285,t298 := (let (e286,t299 := (let (e304,t317 := (let (e310,t323 := rank(t)) in
+                  (e310, (1 + t323)))) in
+                  (let (e305,t318 := (let (e307,t320 := rank(h.head)) in
+                    (e307, (1 + (1 + t320))))) in
+                    ((e304 > e305), (t318 + (t317 + 1)))))) in
+                  if (e286)
+                    (let (e287,t300 := (let (e289,t302 := (let (e292,t305 := insTree(t, h.tail)) in
+                      (e292, (1 + (1 + t305))))) in
+                      (ConsHeap(h.head, e289), (t302 + 2)))) in
+                      (e287, (t299 + t300)))
+                  else
+                    (let (e295,t308 := (let (e296,t309 := (let (e302,t315 := link(t, h.head)) in
+                      (e302, (1 + (1 + t315))))) in
+                      (let (e298,t311 := insTree(e296, h.tail)) in
+                        (e298, (1 + (t309 + (1 + t311))))))) in
+                      (e295, (t299 + t308))))) in
+                  (e285, (t294 + t298))))) in
+              (e280, (1 + t293)))
+          else
+            (ConsHeap(t, NilHeap()), (1 + 2))
+[[34m Info  [0m] Post: true
+falttened Body: ((res15 == ifres) && ((ci && (ci == h.isInstanceOf[ConsHeap]) && (ifres == tp) && (arg == (1 + t293)) && (tp == (e280, arg)) && (t293 == ts) && (ts == ifres1._2) && (t324 == (1 + t330)) && (e280 == ts1) && (ts1 == ifres1._1) && ((e281 && (ifres1 == tp1) && (cc == ConsHeap(t, h)) && (arg1 == (t294 + 1)) && (tp1 == (cc, arg1))) || (!(e281) && (ifres1 == tp2) && (arg2 == (t294 + t298)) && (tp2 == (e285, arg2)) && ((e286 && (ifres2 == tp3) && (arg3 == (t299 + t300)) && (tp3 == (e287, arg3)) && (e287 == cc1) && (cs == h.head) && (cc1 == ConsHeap(cs, e289)) && (t300 == (t302 + 2)) && (e289 == e292) && (t302 == (1 + (1 + t305))) && (t305 == ts2) && (ts2 == tres._2) && (e292 == ts3) && (ts3 == tres._1) && (tres == r12) && (cs1 == h.tail) && (r12 == insTree(t, cs1))) || (!(e286) && (ifres2 == tp4) && (arg4 == (t299 + t308)) && (tp4 == (e295, arg4)) && (e302 == ts4) && (ts4 == tres2._1) && (tres2 == r13) && (cs2 == h.head) && (r13 == link(t, cs2)) && (t309 == (1 + (1 + t315))) && (t315 == ts5) && (ts5 == tres2._2) && (t311 == ts6) && (ts6 == tres1._2) && (e298 == ts7) && (ts7 == tres1._1) && (t308 == (1 + (t309 + (1 + t311)))) && (e296 == e302) && (e295 == e298) && (tres1 == r14) && (cs3 == h.tail) && (r14 == insTree(e296, cs3)))) && (e307 == ts8) && (ts8 == tres3._1) && (!(e286) || (e304 > e305)) && ((e304 <= e305) || e286) && (t320 == ts9) && (ts9 == tres3._2) && (t299 == (t318 + (t317 + 1))) && (t323 == ts10) && (ts10 == tres4._2) && (e285 == ts11) && (ts11 == ifres2._1) && (e310 == ts12) && (ts12 == tres4._1) && (t318 == (1 + (1 + t320))) && (t317 == (1 + t323)) && (tres4 == r15) && (r15 == rank(t)) && (t298 == ts13) && (ts13 == ifres2._2) && (e305 == e307) && (e304 == e310) && (tres3 == r16) && (cs4 == h.head) && (r16 == rank(cs4)))) && (e314 == ts14) && (ts14 == tres5._1) && (t294 == (t325 + (t324 + 1))) && (t330 == ts15) && (ts15 == tres6._2) && (e311 == e317) && (!(e281) || (e311 < e312)) && ((e311 >= e312) || e281) && (t327 == ts16) && (ts16 == tres5._2) && (t325 == (1 + (1 + t327))) && (e317 == ts17) && (ts17 == tres6._1) && (tres5 == r17) && (cs5 == h.head) && (r17 == rank(cs5)) && (tres6 == r18) && (r18 == rank(t)) && (e312 == e314)) || (!(ci1) && (ci1 == h.isInstanceOf[ConsHeap]) && (ifres == tp5) && (cc2 == NilHeap()) && (cc3 == ConsHeap(t, cc2)) && (arg5 == (1 + 2)) && (tp5 == (cc3, arg5)))))
+Flattened Post: ((ts18 > ((a? * r19) + b?)) && (ts18 == res15._2) && (r19 == treeNum(h)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + 0) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 9 + 9
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/8
+Unrolled calls: Set((r18 == rank(t)), (r19 == treeNum(h)), (r17 == rank(cs5)))
+Inlining (r18 == rank(t))
+Creating VC for treeNum
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function treeNum : (((a?5 * #res) + a?4) ≤ 0)
+Unrolling (r19 == treeNum(h))
+Inlining (r17 == rank(cs5))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (8 * res15._2)) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 39) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.008s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + -6) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 10 + 18
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * treeNum(h)) + (2 * res15._2)) + -18) ≤ 0)
+treeNum-->(((1 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 125
+[[34m Info  [0m] Number of equal calls: 23
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 28
+solving...
+solved... in 0.01s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/9
+Unrolled calls: Set((r15 == rank(t)), (r16 == rank(cs4)), (r25 == treeNum(cs1)))
+Inlining (r15 == rank(t))
+Inlining (r16 == rank(cs4))
+Unrolling (r25 == treeNum(cs1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (8 * res15._2)) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 39) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.008s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + -6) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 15 + 18
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-21 * treeNum(h))) + -6) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 12 + 33
+solving...
+solved... in 0.011s
+candidate Invariants
+insTree-->((((-35 * treeNum(h)) + (2 * res15._2)) + -52) ≤ 0)
+treeNum-->(((-1 * #res) + -2) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 147
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 15 + 45
+solving...
+solved... in 0.012s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/7
+Unrolled calls: Set((r13 == link(t, cs2)), (r24 == treeNum(cs3)))
+Inlining (r13 == link(t, cs2))
+Unrolling (r24 == treeNum(cs3))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (0 * treeNum(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (8 * res15._2)) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 39) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+insTree-->((((1 * res15._2) + (0 * treeNum(h))) + -6) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 12 + 18
+solving...
+solved... in 0.008s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-16 * treeNum(h))) + -4) ≤ 0)
+treeNum-->(((-8 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 18 + 30
+solving...
+solved... in 0.012s
+candidate Invariants
+insTree-->((((4 * res15._2) + (-69 * treeNum(h))) + -104) ≤ 0)
+treeNum-->(((-1 * #res) + -2) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 203
+[[34m Info  [0m] Number of equal calls: 35
+# of atomic predicates: 16 + 48
+solving...
+solved... in 0.012s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/7
+Unrolled calls: Set((r36 == leq(cs13, cs14)))
+Inlining (r36 == leq(cs13, cs14))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (0 * treeNum(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+insTree-->((((8 * res15._2) + (0 * treeNum(h))) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 39) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+insTree-->((((0 * treeNum(h)) + (1 * res15._2)) + -6) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 12 + 18
+solving...
+solved... in 0.007s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-16 * treeNum(h))) + -4) ≤ 0)
+treeNum-->(((-8 * #res) + -1) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 16 + 30
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((-69 * treeNum(h)) + (4 * res15._2)) + -104) ≤ 0)
+treeNum-->(((-1 * #res) + -2) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 197
+[[34m Info  [0m] Number of equal calls: 36
+# of atomic predicates: 16 + 46
+solving...
+solved... in 0.013s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-30 * treeNum(h))) + -9) ≤ 0)
+treeNum-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 30
+Found new upper bound: -1
+Found new upper bound: -3
+Found new upper bound: -7
+Found new upper bound: -15
+Found new upper bound: -31
+Found new upper bound: -63
+Found new upper bound: -127
+Found new upper bound: -255
+Found new upper bound: -511
+Found new upper bound: -1023
+Found new upper bound: -2047
+Found new upper bound: -4095
+Found new upper bound: -8191
+Found new upper bound: -16383
+Found new upper bound: -32767
+Found new upper bound: -65535
+Minimizing variable: b? Initial upperbound: 32777
+Found new upper bound: 10931
+Found new upper bound: 4690
+Found new upper bound: 2193
+Found new upper bound: 1066
+Found new upper bound: 529
+Found new upper bound: 527/2
+Found new upper bound: 523/4
+Found new upper bound: 1039/16
+Found new upper bound: 4095/128
+Found new upper bound: 15359/1024
+Found new lower bound: 7
+Found new upper bound: 163839/16384
+Found new upper bound: 8
+Minimization complete...
+candidate Invariants
+insTree-->((((1 * res15._2) + (65535 * treeNum(h))) + -8) ≤ 0)
+treeNum-->(((1 * #res) + 0) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 206
+[[34m Info  [0m] Number of equal calls: 36
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 28 + 62
+solving...
+solved... in 0.014s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-30 * treeNum(h))) + -9) ≤ 0)
+treeNum-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 30
+Found new lower bound: 15
+Found new lower bound: 22
+Found new lower bound: 26
+Found new lower bound: 28
+Found new upper bound: 29
+Minimizing variable: b? Initial upperbound: 38
+Found new upper bound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: insTree --> ((((1 * res15._2) + (-29 * treeNum(h))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: treeNum --> (((-3 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function removeMinTree...
+[[34m Info  [0m] Body: if ((h.isInstanceOf[ConsHeap] ∧ h.tail.isInstanceOf[NilHeap]))
+            ((Some(h.head), NilHeap()), (4 + 4))
+          else
+            (let (e149,t154 := if (h.isInstanceOf[ConsHeap])
+              (let (e151,t156 := (let (ir,it := (let (ir1,it1 := (let (e153,t160 := removeMinTree(h.tail)) in
+                (e153, (1 + (1 + t160))))) in
+                ((ir1._1, ir1._2), (3 + (it1 + 1))))) in
+                (let (r4,t157 := (let (ir2 := ir._1) in
+                  (let (r6,t166 := (let (r7,t168 := if (ir2.isInstanceOf[None])
+                    ((Some(h.head), h.tail), (1 + 4))
+                  else
+                    (let (e168,t177 := (let (e169,t178 := (let (e184,t193 := (let (e191,t200 := root(h.head)) in
+                      (e191, (1 + (1 + t200))))) in
+                      (let (e185,t194 := (let (e188,t197 := root(ir2.t)) in
+                        (e188, (1 + (1 + t197))))) in
+                        (let (e186,t195 := leq(e184, e185)) in
+                          (e186, (t194 + (t193 + (1 + t195)))))))) in
+                      if (e169)
+                        ((Some(h.head), h.tail), (t178 + 4))
+                      else
+                        ((Some(ir2.t), ConsHeap(h.head, ir._2)), (t178 + 5)))) in
+                      (e168, (1 + t177)))) in
+                    (r7, (t168 + 2)))) in
+                    (r6, (t166 + 2))))) in
+                  (r4, (t157 + (it + 1)))))) in
+                (e151, (1 + t156)))
+            else
+              ((None(), NilHeap()), (1 + 3))) in
+              (e149, (4 + t154)))
+[[34m Info  [0m] Post: (treeNum(res12._1._2) ≤ treeNum(h))
+falttened Body: ((res12 == ifres9) && ((ci10 && (ci10 == h.isInstanceOf[ConsHeap]) && ci11 && (cs26 == h.tail) && (ci11 == cs26.isInstanceOf[NilHeap]) && (ifres9 == tp15) && (tp14 == (cc8, cc9)) && (arg18 == (4 + 4)) && (cc9 == NilHeap()) && (tp15 == (tp14, arg18)) && (cc8 == Some(cs27)) && (cs27 == h.head)) || (((!(ci12) && (ci12 == h.isInstanceOf[ConsHeap])) || (!(ci13) && (cs28 == h.tail) && (ci13 == cs28.isInstanceOf[NilHeap]))) && (ifres9 == tp16) && (arg19 == (4 + t154)) && (tp16 == (e149, arg19)) && ((ci14 && (ci14 == h.isInstanceOf[ConsHeap]) && (ifres10 == tp17) && (arg20 == (1 + t156)) && (tp17 == (e151, arg20)) && (t156 == (t157 + (it + 1))) && (r6 == r7) && (e151 == r4) && (it == (3 + (it1 + 1))) && ((ci15 && (ci15 == ir2.isInstanceOf[None]) && (ifres11 == tp19) && (cc10 == Some(cs29)) && (tp18 == (cc10, cs30)) && (arg21 == (1 + 4)) && (cs29 == h.head) && (cs30 == h.tail) && (tp19 == (tp18, arg21))) || (!(ci16) && (ci16 == ir2.isInstanceOf[None]) && (ifres11 == tp20) && (arg22 == (1 + t177)) && (tp20 == (e168, arg22)) && (t194 == (1 + (1 + t197))) && (t177 == ts49) && (ts49 == ifres12._2) && (!(e186) || (ts50 && (ts50 == tres8._1))) && ((!(ts51) && (ts51 == tres8._1)) || e186) && (tres9 == r52) && (cs31 == ir2.t) && (r52 == root(cs31)) && (!(e169) || e186) && (!(e186) || e169) && ((e169 && (ifres12 == tp22) && (cs32 == h.head) && (arg23 == (t178 + 4)) && (tp22 == (tp21, arg23)) && (cc11 == Some(cs32)) && (tp21 == (cc11, cs33)) && (cs33 == h.tail)) || (!(e169) && (ifres12 == tp24) && (cs34 == ir2.t) && (cs35 == h.head) && (cc13 == ConsHeap(cs35, ts52)) && (ts52 == ir._2) && (tp23 == (cc12, cc13)) && (tp24 == (tp23, arg24)) && (cc12 == Some(cs34)) && (arg24 == (t178 + 5)))) && (e184 == e191) && (t197 == ts53) && (ts53 == tres9._2) && (e168 == ts54) && (ts54 == ifres12._1) && (e188 == ts55) && (ts55 == tres9._1) && (tres8 == r53) && (r53 == leq(e184, e185)) && (e191 == ts56) && (ts56 == tres10._1) && (e185 == e188) && (t178 == (t194 + (t193 + (1 + t195)))) && (t195 == ts57) && (ts57 == tres8._2) && (tres10 == r54) && (cs36 == h.head) && (r54 == root(cs36)) && (t193 == (1 + (1 + t200))) && (t200 == ts58) && (ts58 == tres10._2))) && (t166 == (t168 + 2)) && (t160 == ts59) && (ts59 == tres11._2) && (r7 == ts60) && (ts60 == ifres11._1) && (ir1 == e153) && (t157 == (t166 + 2)) && (e153 == ts61) && (ts61 == tres11._1) && (it1 == (1 + (1 + t160))) && (t168 == ts62) && (ts62 == ifres11._2) && (r4 == r6) && (tres11 == r55) && (cs37 == h.tail) && (r55 == removeMinTree(cs37)) && (ir2 == ts63) && (ts63 == ir._1) && (ir == tp25) && (ts64 == ir1._1) && (ts65 == ir1._2) && (tp25 == (ts64, ts65))) || (!(ci17) && (ci17 == h.isInstanceOf[ConsHeap]) && (ifres10 == tp27) && (cc14 == None()) && (cc15 == NilHeap()) && (arg25 == (1 + 3)) && (tp26 == (cc14, cc15)) && (tp27 == (tp26, arg25)))) && (e149 == ts66) && (ts66 == ifres10._1) && (t154 == ts67) && (ts67 == ifres10._2))))
+Flattened Post: (((r56 > r57) && (ts68 == res12._1) && (ts69 == ts68._2) && (r56 == treeNum(ts69)) && (r57 == treeNum(h))) || ((ts70 > ((a?2 * r58) + b?2)) && (ts70 == res12._2) && (r58 == treeNum(h))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (1 * res12._2)) + 0) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+removeMinTree-->((((1 * res12._2) + (0 * treeNum(h))) + -10) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 79
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 9 + 9
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/9
+Unrolled calls: Set((r59 == treeNum(ts72)), (r60 == treeNum(cs37)), (r58 == treeNum(h)))
+Creating VC for treeNum
+Unrolling (r59 == treeNum(ts72))
+Unrolling (r60 == treeNum(cs37))
+Unrolling (r58 == treeNum(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMinTree-->((((1 * res12._2) + (0 * treeNum(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+removeMinTree-->((((8 * res12._2) + (0 * treeNum(h))) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 79) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (1 * res12._2)) + -11) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 7 + 18
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/11
+Unrolled calls: Set((r56 == treeNum(ts69)), (r57 == treeNum(h)))
+Unrolling (r56 == treeNum(ts69))
+Unrolling (r57 == treeNum(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (1 * res12._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (8 * res12._2)) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 79) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+removeMinTree-->((((1 * res12._2) + (0 * treeNum(h))) + -11) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 111
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 22 + 18
+solving...
+solved... in 0.009s
+candidate Invariants
+removeMinTree-->((((-27 * treeNum(h)) + (1 * res12._2)) + -11) ≤ 0)
+treeNum-->(((1 * #res) + -2) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 22 + 40
+solving...
+solved... in 0.014s
+candidate Invariants
+removeMinTree-->((((2 * res12._2) + (-43 * treeNum(h))) + -60) ≤ 0)
+treeNum-->(((-1 * #res) + -2) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 165
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 22 + 62
+solving...
+solved... in 0.015s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/11
+Unrolled calls: Set((r54 == root(cs36)), (r67 == treeNum(cs37)), (r53 == leq(e184, e185)), (r52 == root(cs31)))
+Inlining (r54 == root(cs36))
+Unrolling (r67 == treeNum(cs37))
+Inlining (r53 == leq(e184, e185))
+Inlining (r52 == root(cs31))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (1 * res12._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (8 * res12._2)) + -1) ≤ 0)
+treeNum-->(((0 * #res) + 79) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+removeMinTree-->((((0 * treeNum(h)) + (1 * res12._2)) + -11) ≤ 0)
+treeNum-->(((0 * #res) + -1) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 123
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 23 + 18
+solving...
+solved... in 0.008s
+candidate Invariants
+removeMinTree-->((((-59 * treeNum(h)) + (2 * res12._2)) + -22) ≤ 0)
+treeNum-->(((1 * #res) + -1) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 22 + 41
+solving...
+solved... in 0.014s
+candidate Invariants
+removeMinTree-->((((32 * res12._2) + (-699 * treeNum(h))) + -960) ≤ 0)
+treeNum-->(((-1 * #res) + -2) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 191
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 23 + 63
+solving...
+solved... in 0.014s
+candidate Invariants
+removeMinTree-->((((1 * res12._2) + (-32 * treeNum(h))) + -9) ≤ 0)
+treeNum-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 32
+Found new lower bound: 16
+Found new lower bound: 24
+Found new lower bound: 28
+Found new lower bound: 30
+Found new upper bound: 31
+Minimizing variable: b?2 Initial upperbound: 40
+Found new upper bound: 9
+Found new lower bound: 4
+Found new lower bound: 6
+Found new lower bound: 7
+Found new upper bound: 8
+Minimization complete...
+candidate Invariants
+removeMinTree-->((((-31 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 199
+[[34m Info  [0m] Number of equal calls: 32
+# of atomic predicates: 23 + 86
+solving...
+solved... in 0.017s
+candidate Invariants
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -9) ≤ 0)
+treeNum-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 32
+Found new lower bound: 16
+Found new lower bound: 24
+Found new lower bound: 28
+Found new lower bound: 30
+Found new lower bound: 31
+Minimizing variable: b?2 Initial upperbound: 9
+Found new lower bound: 4
+Found new lower bound: 6
+Found new lower bound: 7
+Found new upper bound: 8
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: removeMinTree --> ((((-32 * treeNum(h)) + (1 * res12._2)) + -8) <= 0)
+[[34m Info  [0m] - Found inductive invariant: treeNum --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function mergeWithCarry...
+[[34m Info  [0m] Body: if (h1.isInstanceOf[ConsHeap])
+            (let (e39,t44 := if (h2.isInstanceOf[ConsHeap])
+              (let (e41,t46 := (let (e42,t47 := (let (e125,t130 := (let (e131,t136 := rank(h1.head)) in
+                (e131, (1 + (1 + t136))))) in
+                (let (e126,t131 := (let (e128,t133 := rank(h2.head)) in
+                  (e128, (1 + (1 + t133))))) in
+                  ((e125 < e126), (t131 + (t130 + 1)))))) in
+                if (e42)
+                  (let (e43,t48 := (let (e44,t49 := (let (e65,t70 := (let (e71,t76 := rank(t)) in
+                    (e71, (1 + t76)))) in
+                    (let (e66,t71 := (let (e68,t73 := rank(h1.head)) in
+                      (e68, (1 + (1 + t73))))) in
+                      ((e65 < e66), (t71 + (t70 + 1)))))) in
+                    if (e44)
+                      (let (e45,t50 := (let (e47,t52 := (let (e49,t54 := (let (e52,t57 := merge(h1.tail, h2)) in
+                        (e52, (1 + (1 + t57))))) in
+                        (ConsHeap(h1.head, e49), (t54 + 2)))) in
+                        (ConsHeap(t, e47), (t52 + 1)))) in
+                        (e45, (t49 + t50)))
+                    else
+                      (let (e55,t60 := (let (e56,t61 := (let (e63,t68 := link(t, h1.head)) in
+                        (e63, (1 + (1 + t68))))) in
+                        (let (e59,t64 := mergeWithCarry(e56, h1.tail, h2)) in
+                          (e59, (1 + (t61 + (1 + t64))))))) in
+                        (e55, (t49 + t60))))) in
+                    (e43, (t47 + t48)))
+                else
+                  (let (e72,t77 := (let (e73,t78 := (let (e117,t122 := (let (e123,t128 := rank(h2.head)) in
+                    (e123, (1 + (1 + t128))))) in
+                    (let (e118,t123 := (let (e120,t125 := rank(h1.head)) in
+                      (e120, (1 + (1 + t125))))) in
+                      ((e117 < e118), (t123 + (t122 + 1)))))) in
+                    if (e73)
+                      (let (e74,t79 := (let (e75,t80 := (let (e96,t101 := (let (e102,t107 := rank(t)) in
+                        (e102, (1 + t107)))) in
+                        (let (e97,t102 := (let (e99,t104 := rank(h2.head)) in
+                          (e99, (1 + (1 + t104))))) in
+                          ((e96 < e97), (t102 + (t101 + 1)))))) in
+                        if (e75)
+                          (let (e76,t81 := (let (e78,t83 := (let (e80,t85 := (let (e83,t88 := merge(h1, h2.tail)) in
+                            (e83, (1 + (1 + t88))))) in
+                            (ConsHeap(h2.head, e80), (t85 + 2)))) in
+                            (ConsHeap(t, e78), (t83 + 1)))) in
+                            (e76, (t80 + t81)))
+                        else
+                          (let (e86,t91 := (let (e87,t92 := (let (e94,t99 := link(t, h2.head)) in
+                            (e94, (1 + (1 + t99))))) in
+                            (let (e90,t95 := mergeWithCarry(e87, h1, h2.tail)) in
+                              (e90, (1 + (t92 + (1 + t95))))))) in
+                            (e86, (t80 + t91))))) in
+                        (e74, (t78 + t79)))
+                    else
+                      (let (e103,t108 := (let (e105,t110 := (let (e106,t111 := (let (e114,t119 := link(h1.head, h2.head)) in
+                        (e114, (1 + (1 + (1 + t119)))))) in
+                        (let (e109,t114 := mergeWithCarry(e106, h1.tail, h2.tail)) in
+                          (e109, (1 + (1 + (t111 + (1 + t114)))))))) in
+                        (ConsHeap(t, e105), (t110 + 1)))) in
+                        (e103, (t78 + t108))))) in
+                    (e72, (t47 + t77))))) in
+                (e41, (1 + t46)))
+            else
+              (let (e133,t138 := (let (e136,t141 := insTree(t, h1)) in
+                (e136, (1 + t141)))) in
+                (e133, (1 + t138)))) in
+              (e39, (1 + t44)))
+          else
+            (let (e138,t143 := (let (e141,t146 := insTree(t, h2)) in
+              (e141, (1 + t146)))) in
+              (e138, (1 + t143)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res11 == ifres21) && ((ci32 && (ci32 == h1.isInstanceOf[ConsHeap]) && (ifres21 == tp32) && (arg32 == (1 + t44)) && (tp32 == (e39, arg32)) && ((ci33 && (ci33 == h2.isInstanceOf[ConsHeap]) && (ifres22 == tp33) && (arg33 == (1 + t46)) && (tp33 == (e41, arg33)) && (t131 == (1 + (1 + t133))) && ((e42 && (ifres23 == tp34) && (arg34 == (t47 + t48)) && (tp34 == (e43, arg34)) && (e66 == e68) && (t73 == ts93) && (ts93 == tres15._2) && ((e44 && (ifres24 == tp35) && (arg35 == (t49 + t50)) && (tp35 == (e45, arg35)) && (t52 == (t54 + 2)) && (t50 == (t52 + 1)) && (t54 == (1 + (1 + t57))) && (t57 == ts94) && (ts94 == tres12._2) && (e49 == e52) && (tres12 == r88) && (cs51 == h1.tail) && (r88 == merge(cs51, h2)) && (e45 == cc16) && (cc16 == ConsHeap(t, e47)) && (e52 == ts95) && (ts95 == tres12._1) && (e47 == cc17) && (cs52 == h1.head) && (cc17 == ConsHeap(cs52, e49))) || (!(e44) && (ifres24 == tp36) && (arg36 == (t49 + t60)) && (tp36 == (e55, arg36)) && (e63 == ts96) && (ts96 == tres14._1) && (e56 == e63) && (tres13 == r89) && (cs53 == h1.tail) && (r89 == mergeWithCarry(e56, cs53, h2)) && (t64 == ts97) && (ts97 == tres13._2) && (t61 == (1 + (1 + t68))) && (e59 == ts98) && (ts98 == tres13._1) && (e55 == e59) && (t60 == (1 + (t61 + (1 + t64)))) && (tres14 == r90) && (cs54 == h1.head) && (r90 == link(t, cs54)) && (t68 == ts99) && (ts99 == tres14._2))) && (t48 == ts100) && (ts100 == ifres24._2) && (t70 == (1 + t76)) && (t49 == (t71 + (t70 + 1))) && (e68 == ts101) && (ts101 == tres15._1) && (tres15 == r91) && (cs55 == h1.head) && (r91 == rank(cs55)) && (t76 == ts102) && (ts102 == tres16._2) && (e65 == e71) && (t71 == (1 + (1 + t73))) && (tres16 == r92) && (r92 == rank(t)) && (e43 == ts103) && (ts103 == ifres24._1) && (!(e44) || (e65 < e66)) && ((e65 >= e66) || e44) && (e71 == ts104) && (ts104 == tres16._1)) || (!(e42) && (ifres23 == tp37) && (arg37 == (t47 + t77)) && (tp37 == (e72, arg37)) && (e72 == ts105) && (ts105 == ifres25._1) && (e117 == e123) && (t77 == ts106) && (ts106 == ifres25._2) && (t125 == ts107) && (ts107 == tres24._2) && (t123 == (1 + (1 + t125))) && (t128 == ts108) && (ts108 == tres25._2) && (e120 == ts109) && (ts109 == tres24._1) && (e118 == e120) && (tres25 == r93) && (cs56 == h2.head) && (r93 == rank(cs56)) && ((e73 && (ifres25 == tp38) && (arg38 == (t78 + t79)) && (tp38 == (e74, arg38)) && (t102 == (1 + (1 + t104))) && (t80 == (t102 + (t101 + 1))) && (e74 == ts110) && (ts110 == ifres26._1) && (e97 == e99) && (!(e75) || (e96 < e97)) && ((e96 >= e97) || e75) && (e96 == e102) && (tres21 == r94) && (r94 == rank(t)) && ((e75 && (ifres26 == tp39) && (arg39 == (t80 + t81)) && (tp39 == (e76, arg39)) && (e76 == cc18) && (cc18 == ConsHeap(t, e78)) && (t85 == (1 + (1 + t88))) && (t83 == (t85 + 2)) && (e83 == ts111) && (ts111 == tres17._1) && (t81 == (t83 + 1)) && (e80 == e83) && (e78 == cc19) && (cs57 == h2.head) && (cc19 == ConsHeap(cs57, e80)) && (tres17 == r95) && (cs58 == h2.tail) && (r95 == merge(h1, cs58)) && (t88 == ts112) && (ts112 == tres17._2)) || (!(e75) && (ifres26 == tp40) && (arg40 == (t80 + t91)) && (tp40 == (e86, arg40)) && (t99 == ts113) && (ts113 == tres19._2) && (tres19 == r96) && (cs59 == h2.head) && (r96 == link(t, cs59)) && (t92 == (1 + (1 + t99))) && (e86 == e90) && (e94 == ts114) && (ts114 == tres19._1) && (tres18 == r97) && (cs60 == h2.tail) && (r97 == mergeWithCarry(e87, h1, cs60)) && (t91 == (1 + (t92 + (1 + t95)))) && (e90 == ts115) && (ts115 == tres18._1) && (t95 == ts116) && (ts116 == tres18._2) && (e87 == e94))) && (t104 == ts117) && (ts117 == tres20._2) && (tres20 == r98) && (cs61 == h2.head) && (r98 == rank(cs61)) && (t107 == ts118) && (ts118 == tres21._2) && (e99 == ts119) && (ts119 == tres20._1) && (e102 == ts120) && (ts120 == tres21._1) && (t101 == (1 + t107)) && (t79 == ts121) && (ts121 == ifres26._2)) || (!(e73) && (ifres25 == tp41) && (arg41 == (t78 + t108)) && (tp41 == (e103, arg41)) && (e114 == ts122) && (ts122 == tres23._1) && (t119 == ts123) && (ts123 == tres23._2) && (tres23 == r99) && (cs62 == h1.head) && (cs63 == h2.head) && (r99 == link(cs62, cs63)) && (e109 == ts124) && (ts124 == tres22._1) && (t108 == (t110 + 1)) && (e105 == e109) && (t111 == (1 + (1 + (1 + t119)))) && (e103 == cc20) && (cc20 == ConsHeap(t, e105)) && (t110 == (1 + (1 + (t111 + (1 + t114))))) && (t114 == ts125) && (ts125 == tres22._2) && (tres22 == r100) && (cs64 == h1.tail) && (cs65 == h2.tail) && (r100 == mergeWithCarry(e106, cs64, cs65)) && (e106 == e114))) && (e123 == ts126) && (ts126 == tres25._1) && (tres24 == r101) && (cs66 == h1.head) && (r101 == rank(cs66)) && (!(e73) || (e117 < e118)) && ((e117 >= e118) || e73) && (t78 == (t123 + (t122 + 1))) && (t122 == (1 + (1 + t128))))) && (t47 == (t131 + (t130 + 1))) && (e126 == e128) && (tres26 == r102) && (cs67 == h2.head) && (r102 == rank(cs67)) && (e131 == ts127) && (ts127 == tres27._1) && (t46 == ts128) && (ts128 == ifres23._2) && (e125 == e131) && (t130 == (1 + (1 + t136))) && (t133 == ts129) && (ts129 == tres26._2) && (t136 == ts130) && (ts130 == tres27._2) && (e128 == ts131) && (ts131 == tres26._1) && (!(e42) || (e125 < e126)) && ((e125 >= e126) || e42) && (tres27 == r103) && (cs68 == h1.head) && (r103 == rank(cs68)) && (e41 == ts132) && (ts132 == ifres23._1)) || (!(ci34) && (ci34 == h2.isInstanceOf[ConsHeap]) && (ifres22 == tp42) && (arg42 == (1 + t138)) && (tp42 == (e133, arg42)) && (e136 == ts133) && (ts133 == tres28._1) && (tres28 == r104) && (r104 == insTree(t, h1)) && (e133 == e136) && (t138 == (1 + t141)) && (t141 == ts134) && (ts134 == tres28._2))) && (e39 == ts135) && (ts135 == ifres22._1) && (t44 == ts136) && (ts136 == ifres22._2)) || (!(ci35) && (ci35 == h1.isInstanceOf[ConsHeap]) && (ifres21 == tp43) && (arg43 == (1 + t143)) && (tp43 == (e138, arg43)) && (t146 == ts137) && (ts137 == tres29._2) && (e138 == e141) && (e141 == ts138) && (ts138 == tres29._1) && (t143 == (1 + t146)) && (tres29 == r105) && (r105 == insTree(t, h2)))))
+Flattened Post: ((ts139 > (((d? * r106) + (e? * r107)) + f?)) && (ts139 == res11._2) && (r106 == treeNum(h1)) && (r107 == treeNum(h2)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/20
+Unrolled calls: Set((r106 == treeNum(h1)), (r105 == insTree(t, h2)), (r107 == treeNum(h2)))
+Creating VC for treeNum
+Unrolling (r106 == treeNum(h1))
+Creating VC for insTree
+Unrolling (r105 == insTree(t, h2))
+Unrolling (r107 == treeNum(h2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/43
+Unrolled calls: Set((r130 == treeNum(h2)), (r119 == treeNum(h)))
+Unrolling (r130 == treeNum(h2))
+Unrolling (r119 == treeNum(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (1 * res11._2)) + (0 * treeNum(h1))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 21
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 16 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (4 * res11._2)) + (0 * treeNum(h1))) + -27) ≤ 0)
+treeNum-->(((0 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 16
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/47
+Unrolled calls: Set((r113 == rank(t)), (r112 == rank(cs71)))
+Inlining (r113 == rank(t))
+Inlining (r112 == rank(cs71))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (1 * res11._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (8 * res11._2)) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 154
+[[34m Info  [0m] Number of equal calls: 21
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 121
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 32 + 22
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/45
+Unrolled calls: Set((r91 == rank(cs55)), (r118 == rank(cs76)), (r115 == link(t, cs74)), (r92 == rank(t)), (r88 == merge(cs51, h2)), (r103 == rank(cs68)), (r117 == rank(t)), (r144 == treeNum(cs75)), (r102 == rank(cs67)))
+Inlining (r103 == rank(cs68))
+Creating VC for merge
+Unrolling (r88 == merge(cs51, h2))
+Inlining (r117 == rank(t))
+Inlining (r118 == rank(cs76))
+Inlining (r91 == rank(cs55))
+Inlining (r115 == link(t, cs74))
+Inlining (r102 == rank(cs67))
+Unrolling (r144 == treeNum(cs75))
+Inlining (r92 == rank(t))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h1))) + (0 * treeNum(h2))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (1 * res14._2)) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 32 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+mergeWithCarry-->(((((8 * res11._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((2 * res14._2) + (1 * treeNum(h1))) + (-1 * treeNum(h2))) + -6) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 295
+[[34m Info  [0m] Number of equal calls: 36
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 203
+[[34m Info  [0m] Number of equal calls: 35
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 50 + 32
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 10/60
+Unrolled calls: Set((r96 == link(t, cs59)), (r93 == rank(cs56)), (r166 == treeNum(h2)), (r98 == rank(cs61)), (r165 == treeNum(h1)), (r134 == treeNum(cs60)), (r175 == leq(cs116, cs117)), (r101 == rank(cs66)), (r94 == rank(t)), (r133 == treeNum(h1)))
+Inlining (r94 == rank(t))
+Inlining (r98 == rank(cs61))
+Inlining (r93 == rank(cs56))
+Unrolling (r166 == treeNum(h2))
+Unrolling (r133 == treeNum(h1))
+Inlining (r96 == link(t, cs59))
+Inlining (r175 == leq(cs116, cs117))
+Unrolling (r134 == treeNum(cs60))
+Unrolling (r165 == treeNum(h1))
+Inlining (r101 == rank(cs66))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (1 * res14._2)) + (0 * treeNum(h2))) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (8 * res11._2)) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((4 * res14._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + -11) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 206
+[[34m Info  [0m] Number of equal calls: 29
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 98
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 46 + 34
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/67
+Unrolled calls: Set((r207 == treeNum(h2)), (r158 == rank(cs90)), (r132 == treeNum(h2)), (r157 == rank(cs89)), (r131 == treeNum(cs53)), (r90 == link(t, cs54)), (r206 == treeNum(cs92)))
+Unrolling (r132 == treeNum(h2))
+Inlining (r90 == link(t, cs54))
+Inlining (r157 == rank(cs89))
+Unrolling (r131 == treeNum(cs53))
+Unrolling (r207 == treeNum(h2))
+Unrolling (r206 == treeNum(cs92))
+Inlining (r158 == rank(cs90))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (1 * res11._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (1 * res14._2)) + (0 * treeNum(h2))) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 34
+[[34m Info  [0m] Number of equal calls: 7
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 36 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h2))) + (1 * treeNum(h1))) + -36) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (1 * res14._2)) + -1) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 240
+[[34m Info  [0m] Number of equal calls: 36
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 194
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 50 + 36
+solving...
+solved... in 0.01s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/65
+Unrolled calls: Set((r164 == rank(cs100)), (r160 == rank(cs93)), (r104 == insTree(t, h1)), (r128 == treeNum(cs64)), (r99 == link(cs62, cs63)), (r135 == treeNum(h1)), (r129 == treeNum(cs65)), (r202 == treeNum(h1)), (r203 == treeNum(cs94)))
+Unrolling (r129 == treeNum(cs65))
+Inlining (r99 == link(cs62, cs63))
+Unrolling (r135 == treeNum(h1))
+Inlining (r160 == rank(cs93))
+Inlining (r164 == rank(cs100))
+Unrolling (r128 == treeNum(cs64))
+Unrolling (r104 == insTree(t, h1))
+Unrolling (r203 == treeNum(cs94))
+Unrolling (r202 == treeNum(h1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((1 * res14._2) + (0 * treeNum(h2))) + (0 * treeNum(h1))) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+mergeWithCarry-->(((((8 * res11._2) + (0 * treeNum(h1))) + (0 * treeNum(h2))) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (4 * res14._2)) + (0 * treeNum(h2))) + -11) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 331
+[[34m Info  [0m] Number of equal calls: 43
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 230
+[[34m Info  [0m] Number of equal calls: 36
+# of atomic predicates: 52 + 34
+solving...
+solved... in 0.01s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/69
+Unrolled calls: Set((r196 == treeNum(cs96)), (r163 == link(cs98, cs99)), (r234 == leq(cs168, cs169)), (r162 == mergeWithCarry(e392, cs96, cs97)), (r197 == treeNum(cs97)))
+Unrolling (r197 == treeNum(cs97))
+Unrolling (r162 == mergeWithCarry(e392, cs96, cs97))
+Unrolling (r196 == treeNum(cs96))
+Inlining (r234 == leq(cs168, cs169))
+Inlining (r163 == link(cs98, cs99))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h1)) + (1 * res11._2)) + (0 * treeNum(h2))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (1 * res14._2)) + (0 * treeNum(h2))) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (8 * res11._2)) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (4 * res14._2)) + -11) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 285
+[[34m Info  [0m] Number of equal calls: 38
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 860
+[[34m Info  [0m] Number of equal calls: 68
+# of atomic predicates: 60 + 34
+solving...
+solved... in 0.012s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/87
+Unrolled calls: Set((r268 == link(cs194, cs195)), (r270 == rank(cs198)), (r276 == leq(cs212, cs213)), (r262 == rank(cs188)), (r219 == leq(cs148, cs149)), (r271 == rank(cs199)), (r272 == rank(cs200)))
+Inlining (r268 == link(cs194, cs195))
+Inlining (r271 == rank(cs199))
+Inlining (r272 == rank(cs200))
+Inlining (r262 == rank(cs188))
+Inlining (r219 == leq(cs148, cs149))
+Inlining (r276 == leq(cs212, cs213))
+Inlining (r270 == rank(cs198))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (0 * treeNum(h1))) + (0 * treeNum(h2))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (1 * res14._2)) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (8 * res11._2)) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (4 * res14._2)) + -11) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 389
+[[34m Info  [0m] Number of equal calls: 43
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 918
+[[34m Info  [0m] Number of equal calls: 69
+# of atomic predicates: 63 + 34
+solving...
+solved... in 0.021s
+candidate Invariants
+mergeWithCarry-->(((((8 * res11._2) + (-320 * treeNum(h1))) + (1 * treeNum(h2))) + -48) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((8 * res14._2) + (-127 * treeNum(h1))) + (-192 * treeNum(h2))) + -16) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+[[34m Info  [0m] Number of equal calls: 13
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 428
+[[34m Info  [0m] Number of equal calls: 50
+# of atomic predicates: 44 + 97
+solving...
+solved... in 0.03s
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (-29 * treeNum(h2))) + (-10 * treeNum(h1))) + -6) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((1 * res14._2) + (-24 * treeNum(h2))) + (-15 * treeNum(h1))) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 89
+[[34m Info  [0m] Number of equal calls: 15
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 371
+[[34m Info  [0m] Number of equal calls: 49
+# of atomic predicates: 44 + 141
+solving...
+solved... in 0.034s
+candidate Invariants
+mergeWithCarry-->(((((-29 * treeNum(h2)) + (-30 * treeNum(h1))) + (1 * res11._2)) + -6) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-24 * treeNum(h2)) + (-35 * treeNum(h1))) + (1 * res14._2)) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 389
+[[34m Info  [0m] Number of equal calls: 42
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 371
+[[34m Info  [0m] Number of equal calls: 48
+# of atomic predicates: 47 + 185
+solving...
+solved... in 0.046s
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (-30 * treeNum(h1))) + (-29 * treeNum(h2))) + -6) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-29 * treeNum(h2)) + (1 * res14._2)) + (-30 * treeNum(h1))) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 450
+[[34m Info  [0m] Number of equal calls: 52
+# of atomic predicates: 24 + 232
+solving...
+solved... in 0.074s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 16/93
+Unrolled calls: Set((r274 == insTree(e392, cs97)), (r237 == rank(cs174)), (r261 == rank(e392)), (r193 == leq(cs138, cs139)), (r297 == treeNum(cs97)), (r295 == treeNum(cs97)), (r180 == treeNum(cs58)), (r296 == treeNum(cs185)), (r238 == rank(t)), (r120 == rank(cs77)), (r95 == merge(h1, cs58)), (r179 == treeNum(h1)), (r273 == insTree(e392, cs96)), (r294 == treeNum(cs96)), (r257 == rank(cs183)), (r126 == rank(t)))
+Inlining (r237 == rank(cs174))
+Unrolling (r296 == treeNum(cs185))
+Inlining (r120 == rank(cs77))
+Inlining (r238 == rank(t))
+Unrolling (r297 == treeNum(cs97))
+Unrolling (r295 == treeNum(cs97))
+Unrolling (r273 == insTree(e392, cs96))
+Unrolling (r274 == insTree(e392, cs97))
+Inlining (r261 == rank(e392))
+Unrolling (r180 == treeNum(cs58))
+Inlining (r193 == leq(cs138, cs139))
+Unrolling (r95 == merge(h1, cs58))
+Unrolling (r294 == treeNum(cs96))
+Unrolling (r179 == treeNum(h1))
+Inlining (r126 == rank(t))
+Inlining (r257 == rank(cs183))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (1 * res11._2)) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h1)) + (0 * treeNum(h2))) + (1 * res14._2)) + 0) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 18
+[[34m Info  [0m] Number of equal calls: 6
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+mergeWithCarry-->(((((0 * treeNum(h1)) + (8 * res11._2)) + (0 * treeNum(h2))) + -53) ≤ 0)
+treeNum-->(((-24 * #res) + 1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((0 * treeNum(h2)) + (0 * treeNum(h1))) + (4 * res14._2)) + -11) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 234
+[[34m Info  [0m] Number of equal calls: 29
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 960
+[[34m Info  [0m] Number of equal calls: 73
+# of atomic predicates: 60 + 34
+solving...
+solved... in 0.024s
+candidate Invariants
+mergeWithCarry-->(((((8 * res11._2) + (1 * treeNum(h2))) + (-136 * treeNum(h1))) + -48) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((64 * treeNum(h2)) + (256 * res14._2)) + (-7756 * treeNum(h1))) + -512) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 242
+[[34m Info  [0m] Number of equal calls: 30
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 36 + 94
+solving...
+solved... in 0.033s
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (-30 * treeNum(h1))) + (14 * treeNum(h2))) + -6) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-256 * treeNum(h2)) + (1024 * res14._2)) + (-30700 * treeNum(h1))) + -2048) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 69
+[[34m Info  [0m] Number of equal calls: 15
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 382
+[[34m Info  [0m] Number of equal calls: 50
+# of atomic predicates: 41 + 130
+solving...
+solved... in 0.045s
+candidate Invariants
+mergeWithCarry-->(((((1 * res11._2) + (-5 * treeNum(h2))) + (-30 * treeNum(h1))) + -6) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((4 * res14._2) + (-152 * treeNum(h1))) + (-1 * treeNum(h2))) + -8) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 194
+[[34m Info  [0m] Number of equal calls: 30
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 559
+[[34m Info  [0m] Number of equal calls: 57
+# of atomic predicates: 47 + 171
+solving...
+solved... in 0.059s
+candidate Invariants
+mergeWithCarry-->(((((-30 * treeNum(h1)) + (1 * res11._2)) + (-17 * treeNum(h2))) + -6) ≤ 0)
+treeNum-->(((-3 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-1 * treeNum(h2)) + (1 * res14._2)) + (-54 * treeNum(h1))) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 194
+[[34m Info  [0m] Number of equal calls: 28
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 559
+[[34m Info  [0m] Number of equal calls: 56
+# of atomic predicates: 47 + 218
+solving...
+solved... in 2.315s
+candidate Invariants
+mergeWithCarry-->(((((-60 * treeNum(h2)) + (-59 * treeNum(h1))) + (2 * res11._2)) + -12) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-30 * treeNum(h2)) + (1 * res14._2)) + (-30 * treeNum(h1))) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 288
+[[34m Info  [0m] Number of equal calls: 40
+# of atomic predicates: 26 + 265
+solving...
+solved... in 0.203s
+candidate Invariants
+mergeWithCarry-->(((((-30 * treeNum(h2)) + (1 * res11._2)) + (-32 * treeNum(h1))) + -6) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-30 * treeNum(h2)) + (1 * res14._2)) + (-33 * treeNum(h1))) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 537
+[[34m Info  [0m] Number of equal calls: 45
+# of atomic predicates: 28 + 291
+solving...
+solved... in 0.171s
+candidate Invariants
+mergeWithCarry-->(((((-30 * treeNum(h2)) + (1 * res11._2)) + (-32 * treeNum(h1))) + -6) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((1 * res14._2) + (-32 * treeNum(h1))) + (-30 * treeNum(h2))) + -2) ≤ 0)
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 453
+[[34m Info  [0m] Number of equal calls: 54
+# of atomic predicates: 24 + 319
+solving...
+solved... in 0.186s
+candidate Invariants
+mergeWithCarry-->(((((-32 * treeNum(h1)) + (1 * res11._2)) + (-39 * treeNum(h2))) + -6) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+merge-->(((((-32 * treeNum(h1)) + (-39 * treeNum(h2))) + (1 * res14._2)) + -2) ≤ 0)
+Nesting level: d?-->1
+Nesting level: e?-->1
+Nesting level: f?-->0
+minimizing...
+Minimizing variable: d? Initial upperbound: 32
+Found new lower bound: 16
+Found new lower bound: 24
+Found new lower bound: 28
+Found new lower bound: 30
+Found new upper bound: 31
+Minimizing variable: e? Initial upperbound: 39
+Found new lower bound: 19
+Found new lower bound: 29
+Found new lower bound: 34
+Found new lower bound: 36
+Found new lower bound: 37
+Found new upper bound: 38
+Minimizing variable: f? Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new upper bound: 5
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: mergeWithCarry --> (((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) <= 0)
+[[34m Info  [0m] - Found inductive invariant: treeNum --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: insTree --> ((((1 * res15._2) + (-29 * treeNum(h))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: merge --> (((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function deleteMin...
+[[34m Info  [0m] Body: (let (ir4,it4 := (let (ir5,it5 := (let (e204,t215 := removeMinTree(h)) in
+            (e204, (1 + t215)))) in
+            ((ir5._1, ir5._2), (3 + (it5 + 1))))) in
+            (let (r8,t212 := (let (ir6 := ir4._1) in
+              (let (r10,t220 := (let (r11,t222 := if ((ir6.isInstanceOf[Some] ∧ ir6.t.isInstanceOf[Node]))
+                (let (e212,t225 := (let (e215,t228 := merge(ir6.t.children, ir4._2)) in
+                  (e215, (2 + (1 + t228))))) in
+                  (e212, (4 + t225)))
+              else
+                (h, 4)) in
+                (r11, (t222 + 2)))) in
+                (r10, (t220 + 2))))) in
+              (r8, (t212 + (it4 + 1)))))
+[[34m Info  [0m] Post: true
+falttened Body: ((res13 == tp158) && (arg180 == (t212 + (it4 + 1))) && (tp158 == (r8, arg180)) && (it5 == (1 + t215)) && (t215 == ts480) && (ts480 == tres114._2) && (t220 == (t222 + 2)) && (r11 == ts481) && (ts481 == ifres98._1) && (t222 == ts482) && (ts482 == ifres98._2) && (r10 == r11) && (ir5 == e204) && (e204 == ts483) && (ts483 == tres114._1) && (it4 == (3 + (it5 + 1))) && (ir4 == tp159) && (ts484 == ir5._1) && (ts485 == ir5._2) && (tp159 == (ts484, ts485)) && (r8 == r10) && ((ci116 && (ci116 == ir6.isInstanceOf[Some]) && ci117 && (cs274 == ir6.t) && (ci117 == cs274.isInstanceOf[Node]) && (ifres98 == tp160) && (arg181 == (4 + t225)) && (tp160 == (e212, arg181)) && (t225 == (2 + (1 + t228))) && (t228 == ts486) && (ts486 == tres113._2) && (tres113 == r415) && (cs275 == ir6.t) && (cs276 == cs275.children) && (ts487 == ir4._2) && (r415 == merge(cs276, ts487)) && (e215 == ts488) && (ts488 == tres113._1) && (e212 == e215)) || (((!(ci118) && (ci118 == ir6.isInstanceOf[Some])) || (!(ci119) && (cs277 == ir6.t) && (ci119 == cs277.isInstanceOf[Node]))) && (ifres98 == tp161) && (arg182 == 4) && (tp161 == (h, arg182)))) && (ir6 == ts489) && (ts489 == ir4._1) && (t212 == (t220 + 2)) && (tres114 == r416) && (r416 == removeMinTree(h)))
+Flattened Post: ((ts490 > (((a?3 * r417) + (b?3 * r418)) + c?1)) && (ts490 == res13._2) && (r417 == minTreeChildren(h)) && (r418 == treeNum(h)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+deleteMin-->(((((0 * treeNum(h)) + (0 * minTreeChildren(h))) + (1 * res13._2)) + 0) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 26
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/6
+Unrolled calls: Set((r420 == treeNum(h)), (r418 == treeNum(h)), (r417 == minTreeChildren(h)), (r416 == removeMinTree(h)), (r419 == treeNum(ts492)))
+Creating VC for treeNum
+Unrolling (r420 == treeNum(h))
+Unrolling (r418 == treeNum(h))
+Unrolling (r419 == treeNum(ts492))
+Inlining (r417 == minTreeChildren(h))
+Creating VC for removeMinTree
+Unrolling (r416 == removeMinTree(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+deleteMin-->(((((1 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 99
+[[34m Info  [0m] Number of equal calls: 24
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/41
+Unrolled calls: Set((r463 == treeNum(h)), (r462 == treeNum(ts560)), (r427 == removeMinTree(h)), (r442 == treeNum(h)), (r468 == treeNum(h)))
+Unrolling (r463 == treeNum(h))
+Unrolling (r468 == treeNum(h))
+Unrolling (r462 == treeNum(ts560))
+Unrolling (r427 == removeMinTree(h))
+Unrolling (r442 == treeNum(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+deleteMin-->(((((0 * treeNum(h)) + (1 * res13._2)) + (0 * minTreeChildren(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+deleteMin-->(((((8 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + -189) ≤ 0)
+treeNum-->(((-232 * #res) + 1) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1023
+[[34m Info  [0m] Number of equal calls: 89
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 162
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 38 + 22
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 31/55
+Unrolled calls: Set((r440 == leq(e589, e588)), (r428 == removeMinTree(h)), (r432 == treeNum(cs284)), (r487 == treeNum(h)), (r450 == treeNum(ts548)), (r455 == treeNum(h)), (r461 == treeNum(cs289)), (r464 == treeNum(ts562)), (r485 == treeNum(cs301)), (r429 == removeMinTree(h)), (r465 == treeNum(h)), (r454 == treeNum(ts552)), (r451 == treeNum(cs301)), (r459 == treeNum(h)), (r456 == treeNum(ts554)), (r489 == treeNum(h)), (r457 == treeNum(h)), (r490 == treeNum(cs289)), (r441 == root(cs297)), (r447 == root(cs304)), (r458 == treeNum(ts556)), (r431 == removeMinTree(h)), (r488 == treeNum(h)), (r430 == removeMinTree(h)), (r439 == root(cs292)), (r491 == treeNum(h)), (r448 == leq(e599, e598)), (r415 == merge(cs276, ts487)), (r449 == root(cs305)), (r460 == treeNum(ts558)), (r492 == treeNum(h)))
+Inlining (r440 == leq(e589, e588))
+Inlining (r447 == root(cs304))
+Unrolling (r456 == treeNum(ts554))
+Unrolling (r461 == treeNum(cs289))
+Unrolling (r491 == treeNum(h))
+Creating VC for merge
+Unrolling (r415 == merge(cs276, ts487))
+Inlining (r448 == leq(e599, e598))
+Unrolling (r455 == treeNum(h))
+Unrolling (r465 == treeNum(h))
+Unrolling (r430 == removeMinTree(h))
+Unrolling (r458 == treeNum(ts556))
+Unrolling (r457 == treeNum(h))
+Unrolling (r431 == removeMinTree(h))
+Unrolling (r488 == treeNum(h))
+Unrolling (r450 == treeNum(ts548))
+Unrolling (r460 == treeNum(ts558))
+Inlining (r439 == root(cs292))
+Unrolling (r485 == treeNum(cs301))
+Unrolling (r489 == treeNum(h))
+Inlining (r441 == root(cs297))
+Unrolling (r490 == treeNum(cs289))
+Unrolling (r464 == treeNum(ts562))
+Inlining (r449 == root(cs305))
+Unrolling (r451 == treeNum(cs301))
+Unrolling (r454 == treeNum(ts552))
+Unrolling (r428 == removeMinTree(h))
+Unrolling (r432 == treeNum(cs284))
+Unrolling (r492 == treeNum(h))
+Unrolling (r459 == treeNum(h))
+Unrolling (r429 == removeMinTree(h))
+Unrolling (r487 == treeNum(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+deleteMin-->(((((1 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 32 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/89
+Unrolled calls: Set((r511 == treeNum(h1)), (r512 == treeNum(h2)))
+Unrolling (r511 == treeNum(h1))
+Unrolling (r512 == treeNum(h2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+deleteMin-->(((((1 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + 0) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 41 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+deleteMin-->(((((0 * minTreeChildren(h)) + (8 * res13._2)) + (0 * treeNum(h))) + -185) ≤ 0)
+treeNum-->(((-8 * #res) + 1) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6204
+[[34m Info  [0m] Number of equal calls: 232
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 164
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 125 + 41
+solving...
+solved... in 0.025s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 24/101
+Unrolled calls: Set((r571 == treeNum(cs413)), (r570 == treeNum(ts728)), (r506 == rank(cs338)), (r586 == treeNum(cs413)), (r573 == treeNum(cs381)), (r592 == treeNum(cs348)), (r509 == link(cs343, cs344)), (r584 == treeNum(cs428)), (r505 == rank(cs337)), (r566 == treeNum(ts724)), (r510 == rank(cs345)), (r569 == treeNum(cs375)), (r593 == treeNum(ts487)), (r587 == treeNum(cs381)), (r567 == treeNum(cs428)), (r568 == treeNum(ts726)), (r572 == treeNum(ts730)), (r503 == rank(cs334)), (r575 == treeNum(ts487)), (r508 == mergeWithCarry(e630, cs341, cs342)), (r513 == rank(cs346)), (r574 == treeNum(cs276)), (r520 == rank(cs357)), (r585 == treeNum(cs375)))
+Unrolling (r586 == treeNum(cs413))
+Unrolling (r566 == treeNum(ts724))
+Unrolling (r569 == treeNum(cs375))
+Inlining (r509 == link(cs343, cs344))
+Unrolling (r571 == treeNum(cs413))
+Unrolling (r572 == treeNum(ts730))
+Unrolling (r568 == treeNum(ts726))
+Inlining (r506 == rank(cs338))
+Unrolling (r570 == treeNum(ts728))
+Unrolling (r584 == treeNum(cs428))
+Inlining (r503 == rank(cs334))
+Unrolling (r587 == treeNum(cs381))
+Inlining (r520 == rank(cs357))
+Unrolling (r574 == treeNum(cs276))
+Unrolling (r585 == treeNum(cs375))
+Unrolling (r573 == treeNum(cs381))
+Creating VC for mergeWithCarry
+Unrolling (r508 == mergeWithCarry(e630, cs341, cs342))
+Inlining (r513 == rank(cs346))
+Unrolling (r567 == treeNum(cs428))
+Unrolling (r593 == treeNum(ts487))
+Inlining (r505 == rank(cs337))
+Inlining (r510 == rank(cs345))
+Unrolling (r575 == treeNum(ts487))
+Unrolling (r592 == treeNum(cs348))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * treeNum(h)) + (0 * minTreeChildren(h))) + (1 * res13._2)) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 44 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/136
+Unrolled calls: Set((r637 == treeNum(h2)), (r636 == insTree(t, h2)), (r638 == treeNum(h1)))
+Unrolling (r637 == treeNum(h2))
+Creating VC for insTree
+Unrolling (r636 == insTree(t, h2))
+Unrolling (r638 == treeNum(h1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * treeNum(h)) + (1 * res13._2)) + (0 * minTreeChildren(h))) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 52
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 0 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/174
+Unrolled calls: Set((r706 == treeNum(h2)), (r687 == rank(t)), (r681 == rank(cs505)), (r680 == treeNum(h)))
+Unrolling (r706 == treeNum(h2))
+Inlining (r687 == rank(t))
+Inlining (r681 == rank(cs505))
+Unrolling (r680 == treeNum(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (0 * treeNum(h))) + (1 * res13._2)) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 21
+[[34m Info  [0m] Number of equal calls: 6
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 176
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 57 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 1) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (0 * treeNum(h))) + (8 * res13._2)) + -185) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 57
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/176
+Unrolled calls: Set((r673 == rank(t)), (r634 == rank(cs472)), (r674 == rank(cs499)), (r702 == treeNum(h2)), (r619 == rank(t)), (r633 == rank(cs471)), (r620 == rank(cs455)), (r621 == merge(cs456, h2)), (r701 == treeNum(cs456)))
+Inlining (r619 == rank(t))
+Inlining (r673 == rank(t))
+Inlining (r633 == rank(cs471))
+Inlining (r634 == rank(cs472))
+Unrolling (r621 == merge(cs456, h2))
+Unrolling (r702 == treeNum(h2))
+Unrolling (r701 == treeNum(cs456))
+Inlining (r674 == rank(cs499))
+Inlining (r620 == rank(cs455))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * treeNum(h)) + (0 * minTreeChildren(h))) + (1 * res13._2)) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 189
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 65 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 121
+[[34m Info  [0m] Number of equal calls: 24
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 9965
+[[34m Info  [0m] Number of equal calls: 329
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 350
+[[34m Info  [0m] Number of equal calls: 48
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 206
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 222 + 65
+solving...
+solved... in 0.403s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 28/177
+Unrolled calls: Set((r528 == root(cs374)), (r527 == root(cs373)), (r563 == root(cs423)), (r698 == treeNum(cs342)), (r553 == root(cs408)), (r682 == rank(t)), (r686 == rank(cs510)), (r536 == root(cs384)), (r561 == leq(e695, e694)), (r538 == root(cs389)), (r609 == leq(cs441, cs442)), (r622 == link(t, cs458)), (r725 == treeNum(cs503)), (r552 == leq(e685, e684)), (r707 == treeNum(h2)), (r685 == link(t, cs509)), (r662 == treeNum(cs341)), (r679 == rank(cs504)), (r677 == link(t, cs502)), (r551 == root(cs407)), (r661 == treeNum(cs342)), (r723 == treeNum(cs508)), (r675 == rank(t)), (r562 == root(cs422)), (r656 == insTree(e630, cs342)), (r708 == treeNum(cs459)), (r537 == leq(e675, e674)), (r526 == leq(e665, e664)))
+Unrolling (r662 == treeNum(cs341))
+Inlining (r686 == rank(cs510))
+Inlining (r563 == root(cs423))
+Inlining (r553 == root(cs408))
+Inlining (r685 == link(t, cs509))
+Inlining (r536 == root(cs384))
+Unrolling (r725 == treeNum(cs503))
+Inlining (r537 == leq(e675, e674))
+Unrolling (r656 == insTree(e630, cs342))
+Inlining (r551 == root(cs407))
+Inlining (r609 == leq(cs441, cs442))
+Inlining (r538 == root(cs389))
+Inlining (r622 == link(t, cs458))
+Inlining (r552 == leq(e685, e684))
+Inlining (r679 == rank(cs504))
+Unrolling (r661 == treeNum(cs342))
+Inlining (r682 == rank(t))
+Unrolling (r707 == treeNum(h2))
+Inlining (r527 == root(cs373))
+Inlining (r677 == link(t, cs502))
+Inlining (r675 == rank(t))
+Inlining (r526 == leq(e665, e664))
+Unrolling (r723 == treeNum(cs508))
+Inlining (r561 == leq(e695, e694))
+Inlining (r562 == root(cs422))
+Unrolling (r708 == treeNum(cs459))
+Unrolling (r698 == treeNum(cs342))
+Inlining (r528 == root(cs374))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (1 * res13._2)) + (0 * treeNum(h))) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 276
+[[34m Info  [0m] Number of equal calls: 41
+# of atomic predicates: 67 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (0 * treeNum(h))) + (1 * res13._2)) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 203
+[[34m Info  [0m] Number of equal calls: 35
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8025
+[[34m Info  [0m] Number of equal calls: 272
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 285
+[[34m Info  [0m] Number of equal calls: 39
+# of atomic predicates: 206 + 67
+solving...
+solved... in 0.16s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/172
+Unrolled calls: Set((r782 == leq(cs583, cs584)), (r779 == leq(cs572, cs573)), (r519 == rank(cs356)), (r588 == treeNum(cs276)), (r770 == leq(cs540, cs541)), (r515 == rank(cs349)), (r589 == treeNum(cs350)))
+Inlining (r519 == rank(cs356))
+Inlining (r770 == leq(cs540, cs541))
+Inlining (r782 == leq(cs583, cs584))
+Inlining (r779 == leq(cs572, cs573))
+Unrolling (r588 == treeNum(cs276))
+Unrolling (r589 == treeNum(cs350))
+Inlining (r515 == rank(cs349))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * treeNum(h)) + (1 * res13._2)) + (0 * minTreeChildren(h))) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 70 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((0 * treeNum(h)) + (1 * res13._2)) + (0 * minTreeChildren(h))) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8116
+[[34m Info  [0m] Number of equal calls: 279
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 214
+[[34m Info  [0m] Number of equal calls: 32
+# of atomic predicates: 192 + 70
+solving...
+solved... in 0.092s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/169
+Unrolled calls: Set((r663 == treeNum(cs353)), (r518 == link(cs354, cs355)), (r625 == rank(cs461)), (r699 == treeNum(cs468)), (r624 == rank(cs460)), (r517 == mergeWithCarry(e653, cs352, cs353)), (r700 == treeNum(cs467)), (r664 == treeNum(cs352)), (r632 == link(cs469, cs470)))
+Unrolling (r664 == treeNum(cs352))
+Inlining (r624 == rank(cs460))
+Unrolling (r699 == treeNum(cs468))
+Unrolling (r663 == treeNum(cs353))
+Inlining (r632 == link(cs469, cs470))
+Inlining (r625 == rank(cs461))
+Unrolling (r700 == treeNum(cs467))
+Unrolling (r517 == mergeWithCarry(e653, cs352, cs353))
+Inlining (r518 == link(cs354, cs355))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (1 * res13._2)) + (0 * treeNum(h))) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 70 + 0
+solving...
+solved... in 0.011s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8074
+[[34m Info  [0m] Number of equal calls: 261
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 331
+[[34m Info  [0m] Number of equal calls: 43
+# of atomic predicates: 198 + 70
+solving...
+solved... in 0.424s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/184
+Unrolled calls: Set((r831 == leq(cs625, cs626)))
+Inlining (r831 == leq(cs625, cs626))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (0 * treeNum(h))) + (0 * minTreeChildren(h))) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 70 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (1 * res13._2)) + (0 * treeNum(h))) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10339
+[[34m Info  [0m] Number of equal calls: 357
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 329
+[[34m Info  [0m] Number of equal calls: 40
+# of atomic predicates: 198 + 70
+solving...
+solved... in 0.395s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/195
+Unrolled calls: Set((r629 == link(t, cs465)), (r630 == rank(cs466)), (r626 == rank(t)), (r705 == treeNum(h1)), (r704 == treeNum(cs464)))
+Unrolling (r705 == treeNum(h1))
+Inlining (r626 == rank(t))
+Unrolling (r704 == treeNum(cs464))
+Inlining (r629 == link(t, cs465))
+Inlining (r630 == rank(cs466))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (0 * treeNum(h))) + (0 * minTreeChildren(h))) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 70 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (0 * minTreeChildren(h))) + (0 * treeNum(h))) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10339
+[[34m Info  [0m] Number of equal calls: 357
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 468
+[[34m Info  [0m] Number of equal calls: 52
+# of atomic predicates: 198 + 70
+solving...
+solved... in 0.392s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/193
+Unrolled calls: Set((r898 == leq(cs674, cs675)))
+Inlining (r898 == leq(cs674, cs675))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((0 * #res) + 0) ≤ 0)
+deleteMin-->(((((0 * treeNum(h)) + (0 * minTreeChildren(h))) + (1 * res13._2)) + 0) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: insTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 8
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 175
+[[34m Info  [0m] Number of equal calls: 33
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 13
+[[34m Info  [0m] Number of equal calls: 3
+Function: removeMinTree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5
+[[34m Info  [0m] Number of equal calls: 3
+Function: mergeWithCarry--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 70 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-1 * #res) + 1) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (1 * res13._2)) + (0 * treeNum(h))) + -17) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: treeNum--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8319
+[[34m Info  [0m] Number of equal calls: 277
+# of atomic predicates: 184 + 70
+solving...
+solved... in 0.188s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((-1 * treeNum(h)) + (-691 * minTreeChildren(h))) + (4 * res13._2)) + -756) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8526
+[[34m Info  [0m] Number of equal calls: 289
+# of atomic predicates: 175 + 254
+solving...
+solved... in 1.209s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (-71 * treeNum(h))) + (-31 * minTreeChildren(h))) + -23) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 11231
+[[34m Info  [0m] Number of equal calls: 395
+# of atomic predicates: 175 + 429
+solving...
+solved... in 3.014s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((-71 * treeNum(h)) + (-31 * minTreeChildren(h))) + (1 * res13._2)) + -29) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: b?3-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 31
+Found new upper bound: -3
+Found new upper bound: -13/2
+Found new upper bound: -27/2
+Found new upper bound: -55/2
+Found new upper bound: -111/2
+Found new upper bound: -223/2
+Found new upper bound: -447/2
+Found new upper bound: -895/2
+Found new upper bound: -1791/2
+Found new upper bound: -3583/2
+Found new upper bound: -7167/2
+Found new upper bound: -14335/2
+Found new upper bound: -28671/2
+Found new upper bound: -57343/2
+Found new upper bound: -114687/2
+Found new upper bound: -229375/2
+Minimizing variable: b?3 Initial upperbound: 114789
+Found new lower bound: 57394
+Minimizing variable: c?1 Initial upperbound: 23
+Found new lower bound: 11
+Found new lower bound: 17
+Found new lower bound: 20
+Found new lower bound: 21
+Found new lower bound: 22
+Minimization complete...
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((229375 * minTreeChildren(h)) + (2 * res13._2)) + (-229578 * treeNum(h))) + -46) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1253
+[[34m Info  [0m] Number of equal calls: 112
+# of atomic predicates: 84 + 604
+solving...
+solved... in 4.194s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((-31 * minTreeChildren(h)) + (-71 * treeNum(h))) + (1 * res13._2)) + -29) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: b?3-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 31
+Found new upper bound: 1
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: b?3 Initial upperbound: 159
+Found new lower bound: 79
+Found new upper bound: 102
+Found new lower bound: 90
+Found new lower bound: 96
+Found new lower bound: 99
+Found new lower bound: 100
+Found new upper bound: 101
+Minimizing variable: c?1 Initial upperbound: 23
+Found new lower bound: 11
+Found new lower bound: 17
+Found new lower bound: 20
+Found new lower bound: 21
+Found new lower bound: 22
+Minimization complete...
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((0 * minTreeChildren(h)) + (1 * res13._2)) + (-101 * treeNum(h))) + -23) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Function: deleteMin--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7551
+[[34m Info  [0m] Number of equal calls: 269
+# of atomic predicates: 164 + 688
+solving...
+solved... in 3.936s
+candidate Invariants
+insTree-->((((1 * res15._2) + (-29 * treeNum(h))) + -3) ≤ 0)
+treeNum-->(((-2 * #res) + -1) ≤ 0)
+deleteMin-->(((((1 * res13._2) + (-71 * treeNum(h))) + (-31 * minTreeChildren(h))) + -29) ≤ 0)
+merge-->(((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) ≤ 0)
+removeMinTree-->((((-32 * treeNum(h)) + (1 * res12._2)) + -8) ≤ 0)
+mergeWithCarry-->(((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: b?3-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 31
+Found new lower bound: 15
+Found new lower bound: 23
+Found new lower bound: 27
+Found new lower bound: 29
+Found new lower bound: 30
+Minimizing variable: b?3 Initial upperbound: 71
+Found new lower bound: 35
+Found new lower bound: 53
+Found new lower bound: 62
+Found new lower bound: 66
+Found new lower bound: 68
+Found new lower bound: 69
+Found new upper bound: 70
+Minimizing variable: c?1 Initial upperbound: 28
+Found new lower bound: 14
+Found new lower bound: 21
+Found new lower bound: 24
+Found new lower bound: 26
+Found new upper bound: 27
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: insTree --> ((((1 * res15._2) + (-29 * treeNum(h))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: treeNum --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: deleteMin --> (((((-70 * treeNum(h)) + (-31 * minTreeChildren(h))) + (1 * res13._2)) + -27) <= 0)
+[[34m Info  [0m] - Found inductive invariant: merge --> (((((1 * res14._2) + (-31 * treeNum(h1))) + (-38 * treeNum(h2))) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: removeMinTree --> ((((-32 * treeNum(h)) + (1 * res12._2)) + -8) <= 0)
+[[34m Info  [0m] - Found inductive invariant: mergeWithCarry --> (((((-38 * treeNum(h2)) + (-31 * treeNum(h1))) + (1 * res11._2)) + -5) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

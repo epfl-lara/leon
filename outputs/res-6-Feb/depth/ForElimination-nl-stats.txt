@@ -1,0 +1,63 @@
+Total Time: 414.697s
+Min Time: 0.0s
+VC refinements : 26
+Avg VC size : 1288.5
+Max VC size : 2193
+Avg UIF-ADT size : 273.84615384615387
+Max UIF-ADT size : 470
+avgTempVars : 5.923076923076923
+maxTempVars : 8
+### Farkas solver stats ####
+Disjunct Explorations : 110
+Total retries: 15
+avgFarkaSize : 149.83636363636364
+maxFarkaSize : 552
+avgFarkaTime : 3.206181818181818s
+maxFarkaTime : 20.41s
+avgNLSize : 11.318181818181818
+maxNLSize : 25
+avgDijSize : 145.65454545454546
+maxDijSize : 868
+avgElimvars : 40.54545454545455
+maxElimvars : 87
+avgElimAtoms : 73.35454545454546
+maxElimAtoms : 453
+avgExploreTime : 0.47764545454545454s
+maxExploreTime : 3.911s
+avgCompatCalls : 243.0909090909091
+maxCompatCalls : 1128
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: eliminateForLoops
+eliminateForLoops --> ((((1 * res20._2) + (-6 * sizeStat(stat))) + 1) ≤ 0)
+sizeStat --> (((-1 * #res) + 1) ≤ 0)
+eliminateForLoopsList --> ((((-6 * sizeList(l)) + (1 * res21._2)) + -2) ≤ 0)
+sizeList --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: eliminateWhileLoops
+eliminateWhileLoops --> ((((1 * res17._2) + (-9 * sizeStat(stat))) + 2) ≤ 0)
+sizeStat --> (((-16 * #res) + 1) ≤ 0)
+sizeList --> (((-2 * #res) + -1) ≤ 0)
+eliminateWhileLoopsList --> ((((-9 * sizeList(l)) + (1 * res22._2)) + -2) ≤ 0)
+
+Invariants for Function: isForFreeList
+isForFreeList --> ((((1 * res24._2) + (-6 * sizeList(l))) + -5) ≤ 0)
+isForFree --> ((((-6 * sizeStat(stat)) + (1 * res23._2)) + -1) ≤ 0)
+sizeList --> (((-2 * #res) + -1) ≤ 0)
+sizeStat --> (((-16 * #res) + 1) ≤ 0)
+
+Invariants for Function: forLoopsWellFormed
+sizeList --> (((-1 * #res) + 0) ≤ 0)
+sizeStat --> (((-1 * #res) + 1) ≤ 0)
+forLoopsWellFormedList --> ((((-7 * sizeList(l)) + (1 * res19._2)) + -2) ≤ 0)
+isForFree --> ((((-6 * sizeStat(stat)) + (1 * res23._2)) + -1) ≤ 0)
+forLoopsWellFormed --> ((((1 * res18._2) + (-7 * sizeStat(stat))) + 3) ≤ 0)
+isForFreeList --> ((((1 * res24._2) + (-6 * sizeList(l))) + -5) ≤ 0)
+
+

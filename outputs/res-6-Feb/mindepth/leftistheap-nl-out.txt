@@ -1,0 +1,3037 @@
+After Depth Instrumentation: 
+object LeftistHeap {
+  case class Leaf() extends Heap
+
+  sealed abstract class Heap
+
+  case class Node(rk: Int, value: Int, left: Heap, right: Heap) extends Heap
+
+  def makeT(value : Int, left : Heap, right : Heap) : (Heap, Int) = {locally {
+    val (rcond5: Boolean, dcond5: Int) = locally {
+      val (r40: Int, d41: Int) = locally {
+        val (e7: Int, d46: Int) = rank(left)
+        (e7, (1 + d46))
+      }
+      
+      locally {
+        val (r41: Int, d42: Int) = locally {
+          val (e6: Int, d44: Int) = rank(right)
+          (e6, (1 + d44))
+        }
+        
+        ((r40 >= r41), (1 + if ((d41 >= d42)) {
+          d41
+        } else {
+          d42
+        }))
+      }
+      
+    }
+    
+    if (rcond5) {
+      locally {
+        val (rthen5: Node, dthen5: Int) = locally {
+          val (r44: Int, d47: Int) = locally {
+            val (r48: Int, d51: Int) = locally {
+              val (e8: Int, d54: Int) = rank(right)
+              (e8, (1 + d54))
+            }
+            
+            ((r48 + 1), (1 + if ((d51 >= 0)) {
+              d51
+            } else {
+              0
+            }))
+          }
+          
+          (Node(r44, value, left, right), (1 + if ((if ((if ((d47 >= 0)) {
+            d47
+          } else {
+            0
+          } >= 0)) {
+            if ((d47 >= 0)) {
+              d47
+            } else {
+              0
+            }
+          } else {
+            0
+          } >= 0)) {
+            if ((if ((d47 >= 0)) {
+              d47
+            } else {
+              0
+            } >= 0)) {
+              if ((d47 >= 0)) {
+                d47
+              } else {
+                0
+              }
+            } else {
+              0
+            }
+          } else {
+            0
+          }))
+        }
+        
+        (rthen5, if ((dcond5 >= dthen5)) {
+          dcond5
+        } else {
+          dthen5
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse5: Node, delse5: Int) = locally {
+          val (r51: Int, d55: Int) = locally {
+            val (r55: Int, d59: Int) = locally {
+              val (e9: Int, d62: Int) = rank(left)
+              (e9, (1 + d62))
+            }
+            
+            ((r55 + 1), (1 + if ((d59 >= 0)) {
+              d59
+            } else {
+              0
+            }))
+          }
+          
+          (Node(r51, value, right, left), (1 + if ((if ((if ((d55 >= 0)) {
+            d55
+          } else {
+            0
+          } >= 0)) {
+            if ((d55 >= 0)) {
+              d55
+            } else {
+              0
+            }
+          } else {
+            0
+          } >= 0)) {
+            if ((if ((d55 >= 0)) {
+              d55
+            } else {
+              0
+            } >= 0)) {
+              if ((d55 >= 0)) {
+                d55
+              } else {
+                0
+              }
+            } else {
+              0
+            }
+          } else {
+            0
+          }))
+        }
+        
+        (relse5, if ((dcond5 >= delse5)) {
+          dcond5
+        } else {
+          delse5
+        })
+      }
+      
+    }
+  }
+  }
+
+  def removeMax(h : Heap) : (Heap, Int) = {    require(hasLeftistProperty(h));
+locally {
+    val dcond = 1
+    if (h.isInstanceOf[Node]) {
+      locally {
+        val (rthen: Heap, dthen: Int) = locally {
+          val (e: Heap, d3: Int) = merge(h.left, h.right)
+          (e, (2 + d3))
+        }
+        
+        (rthen, if ((dcond >= dthen)) {
+          dcond
+        } else {
+          dthen
+        })
+      }
+      
+    } else {
+      (h, if ((dcond >= 0)) {
+        dcond
+      } else {
+        0
+      })
+    }
+  }
+  } ensuring(res => true)
+
+  def insert(element : Int, heap : Heap) : (Heap, Int) = {    require(hasLeftistProperty(heap));
+locally {
+    val (e5: Heap, d34: Int) = merge(Node(1, element, Leaf(), Leaf()), heap)
+    (e5, (3 + d34))
+  }
+  } ensuring(res => true)
+
+  def rightHeight(h : Heap) : Int = {(h match {
+    case Leaf() =>
+      0
+    case Node(_, _, _, r) =>
+      (rightHeight(r) + 1)
+  })}
+
+  def merge(h1 : Heap, h2 : Heap) : (Heap, Int) = {    require((hasLeftistProperty(h1) && hasLeftistProperty(h2)));
+locally {
+    val dcond1 = 1
+    if (h1.isInstanceOf[Leaf]) {
+      (h2, if ((dcond1 >= 0)) {
+        dcond1
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse1: Heap, delse1: Int) = locally {
+          val dcond2 = 1
+          if (h2.isInstanceOf[Leaf]) {
+            (h1, if ((dcond2 >= 0)) {
+              dcond2
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse2: Heap, delse2: Int) = locally {
+                val dcond3 = 2
+                if ((h1.value > h2.value)) {
+                  locally {
+                    val (rthen3: Heap, dthen3: Int) = locally {
+                      val (r18: Heap, d14: Int) = locally {
+                        val (e2: Heap, d18: Int) = merge(h1.right, h2)
+                        (e2, (2 + d18))
+                      }
+                      
+                      locally {
+                        val (e1: Heap, d15: Int) = makeT(h1.value, h1.left, r18)
+                        (e1, ((1 + d15) + if ((1 >= d14)) {
+                          1
+                        } else {
+                          d14
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen3, if ((dcond3 >= dthen3)) {
+                      dcond3
+                    } else {
+                      dthen3
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse3: Heap, delse3: Int) = locally {
+                      val (r26: Heap, d24: Int) = locally {
+                        val (e4: Heap, d28: Int) = merge(h1, h2.right)
+                        (e4, (2 + d28))
+                      }
+                      
+                      locally {
+                        val (e3: Heap, d25: Int) = makeT(h2.value, h2.left, r26)
+                        (e3, ((1 + d25) + if ((1 >= d24)) {
+                          1
+                        } else {
+                          d24
+                        }))
+                      }
+                      
+                    }
+                    
+                    (relse3, if ((dcond3 >= delse3)) {
+                      dcond3
+                    } else {
+                      delse3
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse2, if ((dcond2 >= delse2)) {
+                dcond2
+              } else {
+                delse2
+              })
+            }
+            
+          }
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def hasLeftistProperty(h : Heap) : Boolean = {(h match {
+    case Leaf() =>
+      true
+    case Node(_, _, l, r) =>
+      (hasLeftistProperty(l) && hasLeftistProperty(r) && (rightHeight(l) >= rightHeight(r)) && (rank(h)._1 == rightHeight(h)))
+  })}
+
+  def leftRightHeight(h : Heap) : Int = {(h match {
+    case Leaf() =>
+      0
+    case Node(_, _, l, r) =>
+      rightHeight(l)
+  })}
+
+  def rank(h : Heap) : (Int, Int) = {locally {
+    val dcond4 = 1
+    if (h.isInstanceOf[Leaf]) {
+      (0, if ((dcond4 >= 0)) {
+        dcond4
+      } else {
+        0
+      })
+    } else {
+      (h.rk, if ((dcond4 >= 1)) {
+        dcond4
+      } else {
+        1
+      })
+    }
+  }
+  }
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: makeT
+Defined fun: removeMax
+Defined fun: insert
+Defined fun: rightHeight
+Defined fun: merge
+Defined fun: hasLeftistProperty
+Defined fun: leftRightHeight
+Defined fun: rank
+Defined fun: max
+FunMap: Map(removeMax -> removeMax, leftRightHeight -> leftRightHeight, insert -> insert, hasLeftistProperty -> hasLeftistProperty, max -> max, rightHeight -> rightHeight, merge -> merge, rank -> rank, makeT -> makeT)
+After Time Instrumentation: 
+object LeftistHeap {
+  case class Leaf() extends Heap
+
+  sealed abstract class Heap
+
+  case class Node(rk: Int, value: Int, left: Heap, right: Heap) extends Heap
+
+  def makeT(value : Int, left : Heap, right : Heap) : (Heap, Int) = {locally {
+    val (rcond5: Boolean, dcond5: Int) = locally {
+      val (r40: Int, d41: Int) = locally {
+        val (e7: Int, d46: Int) = rank(left)
+        (e7, (1 + d46))
+      }
+      
+      locally {
+        val (r41: Int, d42: Int) = locally {
+          val (e6: Int, d44: Int) = rank(right)
+          (e6, (1 + d44))
+        }
+        
+        ((r40 >= r41), (1 + if ((d41 >= d42)) {
+          d41
+        } else {
+          d42
+        }))
+      }
+      
+    }
+    
+    if (rcond5) {
+      locally {
+        val (rthen5: Node, dthen5: Int) = locally {
+          val (r44: Int, d47: Int) = locally {
+            val (r48: Int, d51: Int) = locally {
+              val (e8: Int, d54: Int) = rank(right)
+              (e8, (1 + d54))
+            }
+            
+            ((r48 + 1), (1 + if ((d51 >= 0)) {
+              d51
+            } else {
+              0
+            }))
+          }
+          
+          (Node(r44, value, left, right), (1 + if ((if ((if ((d47 >= 0)) {
+            d47
+          } else {
+            0
+          } >= 0)) {
+            if ((d47 >= 0)) {
+              d47
+            } else {
+              0
+            }
+          } else {
+            0
+          } >= 0)) {
+            if ((if ((d47 >= 0)) {
+              d47
+            } else {
+              0
+            } >= 0)) {
+              if ((d47 >= 0)) {
+                d47
+              } else {
+                0
+              }
+            } else {
+              0
+            }
+          } else {
+            0
+          }))
+        }
+        
+        (rthen5, if ((dcond5 >= dthen5)) {
+          dcond5
+        } else {
+          dthen5
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse5: Node, delse5: Int) = locally {
+          val (r51: Int, d55: Int) = locally {
+            val (r55: Int, d59: Int) = locally {
+              val (e9: Int, d62: Int) = rank(left)
+              (e9, (1 + d62))
+            }
+            
+            ((r55 + 1), (1 + if ((d59 >= 0)) {
+              d59
+            } else {
+              0
+            }))
+          }
+          
+          (Node(r51, value, right, left), (1 + if ((if ((if ((d55 >= 0)) {
+            d55
+          } else {
+            0
+          } >= 0)) {
+            if ((d55 >= 0)) {
+              d55
+            } else {
+              0
+            }
+          } else {
+            0
+          } >= 0)) {
+            if ((if ((d55 >= 0)) {
+              d55
+            } else {
+              0
+            } >= 0)) {
+              if ((d55 >= 0)) {
+                d55
+              } else {
+                0
+              }
+            } else {
+              0
+            }
+          } else {
+            0
+          }))
+        }
+        
+        (relse5, if ((dcond5 >= delse5)) {
+          dcond5
+        } else {
+          delse5
+        })
+      }
+      
+    }
+  }
+  }
+
+  def removeMax(h : Heap) : (Heap, Int) = {    require(hasLeftistProperty(h));
+locally {
+    val dcond = 1
+    if (h.isInstanceOf[Node]) {
+      locally {
+        val (rthen: Heap, dthen: Int) = locally {
+          val (e: Heap, d3: Int) = merge(h.left, h.right)
+          (e, (2 + d3))
+        }
+        
+        (rthen, if ((dcond >= dthen)) {
+          dcond
+        } else {
+          dthen
+        })
+      }
+      
+    } else {
+      (h, if ((dcond >= 0)) {
+        dcond
+      } else {
+        0
+      })
+    }
+  }
+  } ensuring(res7 => true)
+
+  def insert(element : Int, heap : Heap) : (Heap, Int) = {    require(hasLeftistProperty(heap));
+locally {
+    val (e5: Heap, d34: Int) = merge(Node(1, element, Leaf(), Leaf()), heap)
+    (e5, (3 + d34))
+  }
+  } ensuring(res8 => true)
+
+  def rightHeight(h : Heap) : Int = {(h match {
+    case Leaf() =>
+      0
+    case Node(_, _, _, r) =>
+      (rightHeight(r) + 1)
+  })}
+
+  def merge(h1 : Heap, h2 : Heap) : (Heap, Int) = {    require((hasLeftistProperty(h1) && hasLeftistProperty(h2)));
+locally {
+    val dcond1 = 1
+    if (h1.isInstanceOf[Leaf]) {
+      (h2, if ((dcond1 >= 0)) {
+        dcond1
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse1: Heap, delse1: Int) = locally {
+          val dcond2 = 1
+          if (h2.isInstanceOf[Leaf]) {
+            (h1, if ((dcond2 >= 0)) {
+              dcond2
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse2: Heap, delse2: Int) = locally {
+                val dcond3 = 2
+                if ((h1.value > h2.value)) {
+                  locally {
+                    val (rthen3: Heap, dthen3: Int) = locally {
+                      val (r18: Heap, d14: Int) = locally {
+                        val (e2: Heap, d18: Int) = merge(h1.right, h2)
+                        (e2, (2 + d18))
+                      }
+                      
+                      locally {
+                        val (e1: Heap, d15: Int) = makeT(h1.value, h1.left, r18)
+                        (e1, ((1 + d15) + if ((1 >= d14)) {
+                          1
+                        } else {
+                          d14
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen3, if ((dcond3 >= dthen3)) {
+                      dcond3
+                    } else {
+                      dthen3
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse3: Heap, delse3: Int) = locally {
+                      val (r26: Heap, d24: Int) = locally {
+                        val (e4: Heap, d28: Int) = merge(h1, h2.right)
+                        (e4, (2 + d28))
+                      }
+                      
+                      locally {
+                        val (e3: Heap, d25: Int) = makeT(h2.value, h2.left, r26)
+                        (e3, ((1 + d25) + if ((1 >= d24)) {
+                          1
+                        } else {
+                          d24
+                        }))
+                      }
+                      
+                    }
+                    
+                    (relse3, if ((dcond3 >= delse3)) {
+                      dcond3
+                    } else {
+                      delse3
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse2, if ((dcond2 >= delse2)) {
+                dcond2
+              } else {
+                delse2
+              })
+            }
+            
+          }
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res9 => true)
+
+  def hasLeftistProperty(h : Heap) : Boolean = {(h match {
+    case Leaf() =>
+      true
+    case Node(_, _, l, r) =>
+      (hasLeftistProperty(l) && hasLeftistProperty(r) && (rightHeight(l) >= rightHeight(r)) && (rank(h)._1 == rightHeight(h)))
+  })}
+
+  def leftRightHeight(h : Heap) : Int = {(h match {
+    case Leaf() =>
+      0
+    case Node(_, _, l, r) =>
+      rightHeight(l)
+  })}
+
+  def rank(h : Heap) : (Int, Int) = {locally {
+    val dcond4 = 1
+    if (h.isInstanceOf[Leaf]) {
+      (0, if ((dcond4 >= 0)) {
+        dcond4
+      } else {
+        0
+      })
+    } else {
+      (h.rk, if ((dcond4 >= 1)) {
+        dcond4
+      } else {
+        1
+      })
+    }
+  }
+  }
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object LeftistHeap {
+  case class Leaf() extends Heap
+
+  sealed abstract class Heap
+
+  case class Node(rk: Int, value: Int, left: Heap, right: Heap) extends Heap
+
+  def makeT(value : Int, left : Heap, right : Heap) : (Heap, Int) = {locally {
+    val (rcond5: Boolean, dcond5: Int) = locally {
+      val (r40: Int, d41: Int) = locally {
+        val (e7: Int, d46: Int) = rank(left)
+        (e7, (1 + d46))
+      }
+      
+      locally {
+        val (r41: Int, d42: Int) = locally {
+          val (e6: Int, d44: Int) = rank(right)
+          (e6, (1 + d44))
+        }
+        
+        ((r40 >= r41), (1 + if ((d41 >= d42)) {
+          d41
+        } else {
+          d42
+        }))
+      }
+      
+    }
+    
+    if (rcond5) {
+      locally {
+        val (rthen5: Node, dthen5: Int) = locally {
+          val (r44: Int, d47: Int) = locally {
+            val (r48: Int, d51: Int) = locally {
+              val (e8: Int, d54: Int) = rank(right)
+              (e8, (1 + d54))
+            }
+            
+            ((r48 + 1), (1 + if ((d51 >= 0)) {
+              d51
+            } else {
+              0
+            }))
+          }
+          
+          (Node(r44, value, left, right), (1 + if ((if ((if ((d47 >= 0)) {
+            d47
+          } else {
+            0
+          } >= 0)) {
+            if ((d47 >= 0)) {
+              d47
+            } else {
+              0
+            }
+          } else {
+            0
+          } >= 0)) {
+            if ((if ((d47 >= 0)) {
+              d47
+            } else {
+              0
+            } >= 0)) {
+              if ((d47 >= 0)) {
+                d47
+              } else {
+                0
+              }
+            } else {
+              0
+            }
+          } else {
+            0
+          }))
+        }
+        
+        (rthen5, if ((dcond5 >= dthen5)) {
+          dcond5
+        } else {
+          dthen5
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse5: Node, delse5: Int) = locally {
+          val (r51: Int, d55: Int) = locally {
+            val (r55: Int, d59: Int) = locally {
+              val (e9: Int, d62: Int) = rank(left)
+              (e9, (1 + d62))
+            }
+            
+            ((r55 + 1), (1 + if ((d59 >= 0)) {
+              d59
+            } else {
+              0
+            }))
+          }
+          
+          (Node(r51, value, right, left), (1 + if ((if ((if ((d55 >= 0)) {
+            d55
+          } else {
+            0
+          } >= 0)) {
+            if ((d55 >= 0)) {
+              d55
+            } else {
+              0
+            }
+          } else {
+            0
+          } >= 0)) {
+            if ((if ((d55 >= 0)) {
+              d55
+            } else {
+              0
+            } >= 0)) {
+              if ((d55 >= 0)) {
+                d55
+              } else {
+                0
+              }
+            } else {
+              0
+            }
+          } else {
+            0
+          }))
+        }
+        
+        (relse5, if ((dcond5 >= delse5)) {
+          dcond5
+        } else {
+          delse5
+        })
+      }
+      
+    }
+  }
+  }
+
+  def removeMax(h : Heap) : (Heap, Int) = {    require(hasLeftistProperty(h));
+if (h.isInstanceOf[Node]) {
+    locally {
+      val (rthen: Heap, dthen: Int) = locally {
+        val (e: Heap, d3: Int) = merge(h.left, h.right)
+        (e, (2 + d3))
+      }
+      
+      (rthen, if ((1 >= dthen)) {
+        1
+      } else {
+        dthen
+      })
+    }
+    
+  } else {
+    (h, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  }} ensuring(res7 => true)
+
+  def insert(element : Int, heap : Heap) : (Heap, Int) = {    require(hasLeftistProperty(heap));
+locally {
+    val (e5: Heap, d34: Int) = merge(Node(1, element, Leaf(), Leaf()), heap)
+    (e5, (3 + d34))
+  }
+  } ensuring(res8 => true)
+
+  def rightHeight(h : Heap) : Int = {(h match {
+    case Leaf() =>
+      0
+    case Node(_, _, _, r) =>
+      (rightHeight(r) + 1)
+  })}
+
+  def merge(h1 : Heap, h2 : Heap) : (Heap, Int) = {    require((hasLeftistProperty(h1) && hasLeftistProperty(h2)));
+if (h1.isInstanceOf[Leaf]) {
+    (h2, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse1: Heap, delse1: Int) = if (h2.isInstanceOf[Leaf]) {
+        (h1, if ((1 >= 0)) {
+          1
+        } else {
+          0
+        })
+      } else {
+        locally {
+          val (relse2: Heap, delse2: Int) = if ((h1.value > h2.value)) {
+            locally {
+              val (rthen3: Heap, dthen3: Int) = locally {
+                val (r18: Heap, d14: Int) = locally {
+                  val (e2: Heap, d18: Int) = merge(h1.right, h2)
+                  (e2, (2 + d18))
+                }
+                
+                locally {
+                  val (e1: Heap, d15: Int) = makeT(h1.value, h1.left, r18)
+                  (e1, ((1 + d15) + if ((1 >= d14)) {
+                    1
+                  } else {
+                    d14
+                  }))
+                }
+                
+              }
+              
+              (rthen3, if ((2 >= dthen3)) {
+                2
+              } else {
+                dthen3
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse3: Heap, delse3: Int) = locally {
+                val (r26: Heap, d24: Int) = locally {
+                  val (e4: Heap, d28: Int) = merge(h1, h2.right)
+                  (e4, (2 + d28))
+                }
+                
+                locally {
+                  val (e3: Heap, d25: Int) = makeT(h2.value, h2.left, r26)
+                  (e3, ((1 + d25) + if ((1 >= d24)) {
+                    1
+                  } else {
+                    d24
+                  }))
+                }
+                
+              }
+              
+              (relse3, if ((2 >= delse3)) {
+                2
+              } else {
+                delse3
+              })
+            }
+            
+          }
+          (relse2, if ((1 >= delse2)) {
+            1
+          } else {
+            delse2
+          })
+        }
+        
+      }
+      (relse1, if ((1 >= delse1)) {
+        1
+      } else {
+        delse1
+      })
+    }
+    
+  }} ensuring(res9 => true)
+
+  def hasLeftistProperty(h : Heap) : Boolean = {(h match {
+    case Leaf() =>
+      true
+    case Node(_, _, l, r) =>
+      (hasLeftistProperty(l) && hasLeftistProperty(r) && (rightHeight(l) >= rightHeight(r)) && (rank(h)._1 == rightHeight(h)))
+  })}
+
+  def leftRightHeight(h : Heap) : Int = {(h match {
+    case Leaf() =>
+      0
+    case Node(_, _, l, r) =>
+      rightHeight(l)
+  })}
+
+  def rank(h : Heap) : (Int, Int) = {if (h.isInstanceOf[Leaf]) {
+    (0, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    (h.rk, if ((1 >= 1)) {
+      1
+    } else {
+      1
+    })
+  }}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: removeMax template --> (res7._2 ≤ ((a? * leftRightHeight(h)) + b?))
+Function: insert template --> (res8._2 ≤ ((a?2 * rightHeight(heap)) + c?1))
+Function: merge template --> (res9._2 ≤ (((a?1 * rightHeight(h1)) + (b?1 * rightHeight(h2))) + c?))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(rightHeight, makeT, hasLeftistProperty, merge, insert, leftRightHeight, removeMax)
+[[34m Info  [0m] - considering function merge...
+[[34m Info  [0m] Body: if (h1.isInstanceOf[Leaf])
+            (h2, if ((1 ≥ 0))
+              1
+            else
+              0)
+          else
+            (let (relse1,delse1 := if (h2.isInstanceOf[Leaf])
+              (h1, if ((1 ≥ 0))
+                1
+              else
+                0)
+            else
+              (let (relse2,delse2 := if ((h1.value > h2.value))
+                (let (rthen3,dthen3 := (let (r18,d14 := (let (e2,d18 := merge(h1.right, h2)) in
+                  (e2, (2 + d18)))) in
+                  (let (e1,d15 := makeT(h1.value, h1.left, r18)) in
+                    (e1, ((1 + d15) + if ((1 ≥ d14))
+                      1
+                    else
+                      d14))))) in
+                  (rthen3, if ((2 ≥ dthen3))
+                    2
+                  else
+                    dthen3))
+              else
+                (let (relse3,delse3 := (let (r26,d24 := (let (e4,d28 := merge(h1, h2.right)) in
+                  (e4, (2 + d28)))) in
+                  (let (e3,d25 := makeT(h2.value, h2.left, r26)) in
+                    (e3, ((1 + d25) + if ((1 ≥ d24))
+                      1
+                    else
+                      d24))))) in
+                  (relse3, if ((2 ≥ delse3))
+                    2
+                  else
+                    delse3))) in
+                (relse2, if ((1 ≥ delse2))
+                  1
+                else
+                  delse2))) in
+              (relse1, if ((1 ≥ delse1))
+                1
+              else
+                delse1))
+[[34m Info  [0m] Post: true
+falttened Body: (r58 && (r58 == hasLeftistProperty(h1)) && r59 && (r59 == hasLeftistProperty(h2)) && (res9 == ifres) && ((ci && (ci == h1.isInstanceOf[Leaf]) && (ifres == tp) && (tp == (h2, ifres1)) && (((1 >= 0) && (ifres1 == 1)) || ((1 < 0) && (ifres1 == 0)))) || (!(ci1) && (ci1 == h1.isInstanceOf[Leaf]) && (ifres == tp1) && (tp1 == (relse1, ifres2)) && ((ci2 && (ci2 == h2.isInstanceOf[Leaf]) && (ifres3 == tp2) && (tp2 == (h1, ifres4)) && (((1 >= 0) && (ifres4 == 1)) || ((1 < 0) && (ifres4 == 0)))) || (!(ci3) && (ci3 == h2.isInstanceOf[Leaf]) && (ifres3 == tp3) && (tp3 == (relse2, ifres5)) && (((cs > cs1) && (cs == h1.value) && (cs1 == h2.value) && (ifres6 == tp4) && (tp4 == (rthen3, ifres7)) && (tres == r60) && (cs2 == h1.value) && (cs3 == h1.left) && (r60 == makeT(cs2, cs3, r18)) && (dthen3 == ((1 + d15) + ifres8)) && (tres1 == r61) && (cs4 == h1.right) && (r61 == merge(cs4, h2)) && (e1 == ts) && (ts == tres._1) && (((1 >= d14) && (ifres8 == 1)) || ((1 < d14) && (ifres8 == d14))) && (d18 == ts1) && (ts1 == tres1._2) && (rthen3 == e1) && (r18 == e2) && (d15 == ts2) && (ts2 == tres._2) && (((2 >= dthen3) && (ifres7 == 2)) || ((2 < dthen3) && (ifres7 == dthen3))) && (d14 == (2 + d18)) && (e2 == ts3) && (ts3 == tres1._1)) || ((cs5 <= cs6) && (cs5 == h1.value) && (cs6 == h2.value) && (ifres6 == tp5) && (tp5 == (relse3, ifres9)) && (tres2 == r62) && (cs7 == h2.value) && (cs8 == h2.left) && (r62 == makeT(cs7, cs8, r26)) && (d25 == ts4) && (ts4 == tres2._2) && (e4 == ts5) && (ts5 == tres3._1) && (r26 == e4) && (delse3 == ((1 + d25) + ifres10)) && (((2 >= delse3) && (ifres9 == 2)) || ((2 < delse3) && (ifres9 == delse3))) && (d28 == ts6) && (ts6 == tres3._2) && (((1 >= d24) && (ifres10 == 1)) || ((1 < d24) && (ifres10 == d24))) && (tres3 == r63) && (cs9 == h2.right) && (r63 == merge(h1, cs9)) && (e3 == ts7) && (ts7 == tres2._1) && (d24 == (2 + d28)) && (relse3 == e3))) && (relse2 == ts8) && (ts8 == ifres6._1) && (delse2 == ts9) && (ts9 == ifres6._2) && (((1 >= delse2) && (ifres5 == 1)) || ((1 < delse2) && (ifres5 == delse2))))) && (relse1 == ts10) && (ts10 == ifres3._1) && (delse1 == ts11) && (ts11 == ifres3._2) && (((1 >= delse1) && (ifres2 == 1)) || ((1 < delse1) && (ifres2 == delse1))))))
+Flattened Post: ((ts12 > (((a?1 * r64) + (b?1 * r65)) + c?)) && (ts12 == res9._2) && (r64 == rightHeight(h1)) && (r65 == rightHeight(h2)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+merge-->(((((0 * rightHeight(h1)) + (1 * res9._2)) + (0 * rightHeight(h2))) + 0) ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+merge-->(((((0 * rightHeight(h1)) + (0 * rightHeight(h2))) + (1 * res9._2)) + -3) ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 78
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 12 + 10
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/8
+Unrolled calls: Set((r59 <=> hasLeftistProperty(h2)), (r64 == rightHeight(h1)), (r65 == rightHeight(h2)), (r58 <=> hasLeftistProperty(h1)), (r62 == makeT(cs7, cs8, r26)))
+Creating VC for rightHeight
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function rightHeight : (((a?4 * #res) + a?3) ≤ 0)
+Unrolling (r65 == rightHeight(h2))
+Unrolling (r64 == rightHeight(h1))
+Creating VC for hasLeftistProperty
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function hasLeftistProperty : (a?5 ≤ 0)
+Unrolling (r58 <=> hasLeftistProperty(h1))
+Unrolling (r59 <=> hasLeftistProperty(h2))
+Inlining (r62 == makeT(cs7, cs8, r26))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+merge-->(((((0 * rightHeight(h1)) + (1 * res9._2)) + (0 * rightHeight(h2))) + 0) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 330
+[[34m Info  [0m] Number of equal calls: 35
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+merge-->(((((16 * res9._2) + (34 * rightHeight(h2))) + (-2 * rightHeight(h1))) + 8) ≤ 0)
+rightHeight-->(((-4 * #res) + 3) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 23
+solving...
+solved... in 0.009s
+candidate Invariants
+merge-->(((((1 * rightHeight(h2)) + (1 * res9._2)) + (-1 * rightHeight(h1))) + 5) ≤ 0)
+rightHeight-->(((0 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 266
+[[34m Info  [0m] Number of equal calls: 33
+# of atomic predicates: 23 + 38
+solving...
+solved... in 0.014s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 16/60
+Unrolled calls: Set((r103 == rightHeight(cs31)), (r106 == rightHeight(h2)), (r104 == rightHeight(cs32)), (r131 == rightHeight(cs4)), (r60 == makeT(cs2, cs3, r18)), (r92 == rightHeight(h1)), (r124 == rank(r26)), (r90 == rightHeight(cs24)), (r91 == rank(h1)), (r105 == rank(h2)), (r122 == rank(cs8)), (r127 == rightHeight(h1)), (r132 == rightHeight(h2)), (r89 == rightHeight(cs23)), (r128 == rightHeight(cs9)), (r123 == rank(cs8)))
+Unrolling (r103 == rightHeight(cs31))
+Unrolling (r128 == rightHeight(cs9))
+Unrolling (r106 == rightHeight(h2))
+Inlining (r124 == rank(r26))
+Unrolling (r104 == rightHeight(cs32))
+Unrolling (r89 == rightHeight(cs23))
+Inlining (r122 == rank(cs8))
+Unrolling (r127 == rightHeight(h1))
+Unrolling (r92 == rightHeight(h1))
+Unrolling (r131 == rightHeight(cs4))
+Inlining (r105 == rank(h2))
+Unrolling (r90 == rightHeight(cs24))
+Unrolling (r132 == rightHeight(h2))
+Inlining (r91 == rank(h1))
+Inlining (r123 == rank(cs8))
+Inlining (r60 == makeT(cs2, cs3, r18))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+merge-->(((((1 * res9._2) + (0 * rightHeight(h2))) + (0 * rightHeight(h1))) + 0) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 790
+[[34m Info  [0m] Number of equal calls: 52
+# of atomic predicates: 44 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+merge-->(((((24 * rightHeight(h1)) + (32 * res9._2)) + (-64 * rightHeight(h2))) + 428) ≤ 0)
+rightHeight-->(((2 * #res) + -8) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 750
+[[34m Info  [0m] Number of equal calls: 51
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 57 + 44
+solving...
+solved... in 0.024s
+candidate Invariants
+merge-->(((((8 * rightHeight(h1)) + (-32 * rightHeight(h2))) + (64 * res9._2)) + 16) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 12 + 101
+solving...
+solved... in 0.02s
+candidate Invariants
+merge-->(((((16 * res9._2) + (8 * rightHeight(h2))) + (152 * rightHeight(h1))) + -2) ≤ 0)
+rightHeight-->(((-2 * #res) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 750
+[[34m Info  [0m] Number of equal calls: 54
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 49 + 113
+solving...
+solved... in 0.07s
+candidate Invariants
+merge-->(((((8 * rightHeight(h1)) + (1 * res9._2)) + (-8 * rightHeight(h2))) + -7) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 750
+[[34m Info  [0m] Number of equal calls: 51
+# of atomic predicates: 42 + 162
+solving...
+solved... in 0.257s
+candidate Invariants
+merge-->(((((-41 * rightHeight(h1)) + (-8 * rightHeight(h2))) + (1 * res9._2)) + 12) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 632
+[[34m Info  [0m] Number of equal calls: 49
+# of atomic predicates: 45 + 204
+solving...
+solved... in 0.202s
+candidate Invariants
+merge-->(((((-8 * rightHeight(h2)) + (-16 * rightHeight(h1))) + (1 * res9._2)) + 17) ≤ 0)
+rightHeight-->(((-1 * #res) + 0) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 25 + 249
+solving...
+solved... in 0.09s
+candidate Invariants
+merge-->(((((-39 * rightHeight(h1)) + (-8 * rightHeight(h2))) + (1 * res9._2)) + 17) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 632
+[[34m Info  [0m] Number of equal calls: 47
+# of atomic predicates: 48 + 274
+solving...
+solved... in 0.355s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/58
+Unrolled calls: Set((r82 == rightHeight(cs20)), (r155 == rank(r18)), (r157 == rank(r18)), (r158 == rank(cs3)), (r121 == rank(r26)), (r81 == rightHeight(cs19)))
+Inlining (r155 == rank(r18))
+Inlining (r158 == rank(cs3))
+Unrolling (r81 == rightHeight(cs19))
+Unrolling (r82 == rightHeight(cs20))
+Inlining (r121 == rank(r26))
+Inlining (r157 == rank(r18))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+merge-->(((((0 * rightHeight(h2)) + (0 * rightHeight(h1))) + (1 * res9._2)) + 0) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 678
+[[34m Info  [0m] Number of equal calls: 52
+# of atomic predicates: 62 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+merge-->(((((4 * rightHeight(h2)) + (32 * res9._2)) + (32 * rightHeight(h1))) + 8) ≤ 0)
+rightHeight-->(((11 * #res) + 64) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 62
+solving...
+solved... in 0.016s
+candidate Invariants
+merge-->(((((4 * res9._2) + (1 * rightHeight(h2))) + (-16 * rightHeight(h1))) + 4) ≤ 0)
+rightHeight-->(((-2 * #res) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 790
+[[34m Info  [0m] Number of equal calls: 56
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 71 + 81
+solving...
+solved... in 0.034s
+candidate Invariants
+merge-->(((((32 * rightHeight(h1)) + (32 * res9._2)) + (-4 * rightHeight(h2))) + 8) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 698
+[[34m Info  [0m] Number of equal calls: 54
+# of atomic predicates: 66 + 152
+solving...
+solved... in 0.054s
+candidate Invariants
+merge-->(((((-4 * rightHeight(h1)) + (32 * rightHeight(h2))) + (32 * res9._2)) + 8) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 698
+[[34m Info  [0m] Number of equal calls: 56
+# of atomic predicates: 59 + 218
+solving...
+solved... in 0.107s
+candidate Invariants
+merge-->(((((-8 * rightHeight(h2)) + (1 * res9._2)) + (1 * rightHeight(h1))) + 8) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 29 + 277
+solving...
+solved... in 0.107s
+candidate Invariants
+merge-->(((((1 * res9._2) + (-8 * rightHeight(h2))) + (8 * rightHeight(h1))) + 1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 530
+[[34m Info  [0m] Number of equal calls: 55
+# of atomic predicates: 51 + 306
+solving...
+solved... in 0.128s
+candidate Invariants
+merge-->(((((-8 * rightHeight(h2)) + (-1 * rightHeight(h1))) + (1 * res9._2)) + 1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 743
+[[34m Info  [0m] Number of equal calls: 55
+# of atomic predicates: 60 + 357
+solving...
+solved... in 0.174s
+candidate Invariants
+merge-->(((((-8 * rightHeight(h1)) + (-8 * rightHeight(h2))) + (1 * res9._2)) + 6) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 14 + 417
+solving...
+solved... in 0.175s
+candidate Invariants
+merge-->(((((-8 * rightHeight(h2)) + (-8 * rightHeight(h1))) + (1 * res9._2)) + -2) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->1
+Nesting level: c?-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 8
+Found new lower bound: 4
+Found new lower bound: 6
+Found new upper bound: 7
+Minimizing variable: b?1 Initial upperbound: 8
+Found new lower bound: 4
+Found new lower bound: 6
+Found new upper bound: 7
+Minimizing variable: c? Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: merge --> (((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: rightHeight --> (((-8 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: hasLeftistProperty --> (-1 <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function insert...
+[[34m Info  [0m] Body: (let (e5,d34 := merge(Node(1, element, Leaf(), Leaf()), heap)) in
+            (e5, (3 + d34)))
+[[34m Info  [0m] Post: true
+falttened Body: (r199 && (r199 == hasLeftistProperty(heap)) && (res8 == tp28) && (arg9 == (3 + d34)) && (tp28 == (e5, arg9)) && (tres12 == r200) && (cc6 == Node(arg10, element, cc4, cc5)) && (r200 == merge(cc6, heap)) && (arg10 == 1) && (cc5 == Leaf()) && (cc4 == Leaf()) && (e5 == ts64) && (ts64 == tres12._1) && (d34 == ts65) && (ts65 == tres12._2))
+Flattened Post: ((ts66 > ((a?2 * r201) + c?1)) && (ts66 == res8._2) && (r201 == rightHeight(heap)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/3
+Unrolled calls: Set((r199 <=> hasLeftistProperty(heap)), (r200 == merge(cc6, heap)), (r201 == rightHeight(heap)))
+Creating VC for hasLeftistProperty
+Unrolling (r199 <=> hasLeftistProperty(heap))
+Creating VC for merge
+Unrolling (r200 == merge(cc6, heap))
+Creating VC for rightHeight
+Unrolling (r201 == rightHeight(heap))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 178
+[[34m Info  [0m] Number of equal calls: 23
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 78
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 11/46
+Unrolled calls: Set((r222 == rightHeight(heap)), (r238 == makeT(cs82, cs83, r232)), (r221 == rank(heap)), (r249 <=> hasLeftistProperty(cc6)), (r233 <=> hasLeftistProperty(h1)), (r240 == rightHeight(h2)), (r234 <=> hasLeftistProperty(h2)), (r239 == rightHeight(h1)), (r219 == rightHeight(cs68)), (r220 == rightHeight(cs69)), (r244 == makeT(cs87, cs88, r241)))
+Unrolling (r233 <=> hasLeftistProperty(h1))
+Unrolling (r220 == rightHeight(cs69))
+Inlining (r221 == rank(heap))
+Inlining (r238 == makeT(cs82, cs83, r232))
+Unrolling (r249 <=> hasLeftistProperty(cc6))
+Unrolling (r239 == rightHeight(h1))
+Unrolling (r222 == rightHeight(heap))
+Inlining (r244 == makeT(cs87, cs88, r241))
+Unrolling (r219 == rightHeight(cs68))
+Unrolling (r240 == rightHeight(h2))
+Unrolling (r234 <=> hasLeftistProperty(h2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 288
+[[34m Info  [0m] Number of equal calls: 32
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 330
+[[34m Info  [0m] Number of equal calls: 35
+# of atomic predicates: 36 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+insert-->((((1 * rightHeight(heap)) + (2 * res8._2)) + -1) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + -2) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 36
+solving...
+solved... in 0.008s
+candidate Invariants
+insert-->((((16 * res8._2) + (8 * rightHeight(heap))) + -2) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + 1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 30
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 266
+[[34m Info  [0m] Number of equal calls: 35
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 40 + 55
+solving...
+solved... in 0.016s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 24/106
+Unrolled calls: Set((r314 == rightHeight(h2)), (r311 == rightHeight(cs120)), (r245 == makeT(cs91, cs92, r242)), (r333 == rightHeight(cc6)), (r251 == rightHeight(cc6)), (r216 == rightHeight(h)), (r259 == rightHeight(cs99)), (r261 == rightHeight(h1)), (r331 <=> hasLeftistProperty(cc6)), (r334 == rightHeight(cs93)), (r325 == rightHeight(cs76)), (r278 == rank(cs83)), (r260 == rank(h1)), (r312 == rightHeight(cs121)), (r280 == rank(r232)), (r252 == rightHeight(heap)), (r326 == rightHeight(h2)), (r215 == rank(h)), (r258 == rightHeight(cs98)), (r279 == rank(cs83)), (r313 == rank(h2)), (r329 == rightHeight(h1)), (r236 == makeT(cs77, cs78, r231)), (r330 == rightHeight(cs81)))
+Unrolling (r330 == rightHeight(cs81))
+Unrolling (r312 == rightHeight(cs121))
+Unrolling (r334 == rightHeight(cs93))
+Unrolling (r259 == rightHeight(cs99))
+Unrolling (r311 == rightHeight(cs120))
+Inlining (r313 == rank(h2))
+Unrolling (r331 <=> hasLeftistProperty(cc6))
+Inlining (r279 == rank(cs83))
+Unrolling (r251 == rightHeight(cc6))
+Unrolling (r325 == rightHeight(cs76))
+Unrolling (r252 == rightHeight(heap))
+Unrolling (r333 == rightHeight(cc6))
+Unrolling (r326 == rightHeight(h2))
+Unrolling (r261 == rightHeight(h1))
+Inlining (r215 == rank(h))
+Unrolling (r258 == rightHeight(cs98))
+Unrolling (r314 == rightHeight(h2))
+Inlining (r278 == rank(cs83))
+Inlining (r236 == makeT(cs77, cs78, r231))
+Inlining (r260 == rank(h1))
+Inlining (r245 == makeT(cs91, cs92, r242))
+Unrolling (r329 == rightHeight(h1))
+Inlining (r280 == rank(r232))
+Unrolling (r216 == rightHeight(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 419
+[[34m Info  [0m] Number of equal calls: 39
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 632
+[[34m Info  [0m] Number of equal calls: 48
+# of atomic predicates: 69 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insert-->((((2 * res8._2) + (1 * rightHeight(heap))) + 1) ≤ 0)
+hasLeftistProperty-->(2 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + -1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 69
+solving...
+solved... in 0.015s
+candidate Invariants
+insert-->((((16 * res8._2) + (8 * rightHeight(heap))) + -2) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 88
+solving...
+solved... in 0.015s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/119
+Unrolled calls: Set((r384 == rank(cs78)), (r393 == rank(r242)), (r391 == rank(r242)), (r382 == rank(cs78)), (r394 == rank(cs92)), (r383 == rank(r231)))
+Inlining (r383 == rank(r231))
+Inlining (r382 == rank(cs78))
+Inlining (r394 == rank(cs92))
+Inlining (r384 == rank(cs78))
+Inlining (r391 == rank(r242))
+Inlining (r393 == rank(r242))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 397
+[[34m Info  [0m] Number of equal calls: 38
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 750
+[[34m Info  [0m] Number of equal calls: 52
+# of atomic predicates: 96 + 0
+solving...
+solved... in 0.015s
+candidate Invariants
+insert-->((((224 * res8._2) + (7168 * rightHeight(heap))) + -52803) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((2 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 96
+solving...
+solved... in 0.023s
+candidate Invariants
+insert-->((((-8 * rightHeight(heap)) + (8 * res8._2)) + 1) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 117
+solving...
+solved... in 0.023s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/113
+Unrolled calls: Set((r305 == rank(cs88)), (r303 == rank(r241)), (r381 == rank(r231)), (r335 <=> hasLeftistProperty(cs86)), (r306 == rank(cs88)))
+Unrolling (r335 <=> hasLeftistProperty(cs86))
+Inlining (r306 == rank(cs88))
+Inlining (r305 == rank(cs88))
+Inlining (r303 == rank(r241))
+Inlining (r381 == rank(r231))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 455
+[[34m Info  [0m] Number of equal calls: 43
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 80
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 68 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+insert-->((((448 * res8._2) + (0 * rightHeight(heap))) + -102019) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((2 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 68
+solving...
+solved... in 0.012s
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (2 * res8._2)) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 361
+[[34m Info  [0m] Number of equal calls: 41
+# of atomic predicates: 36 + 89
+solving...
+solved... in 0.016s
+candidate Invariants
+insert-->((((8 * res8._2) + (-208 * rightHeight(heap))) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 366
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 36 + 125
+solving...
+solved... in 0.023s
+candidate Invariants
+insert-->((((-152 * rightHeight(heap)) + (8 * res8._2)) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 411
+[[34m Info  [0m] Number of equal calls: 39
+# of atomic predicates: 40 + 161
+solving...
+solved... in 0.036s
+candidate Invariants
+insert-->((((1 * rightHeight(heap)) + (1 * res8._2)) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 201
+solving...
+solved... in 0.04s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/122
+Unrolled calls: Set((r363 == rank(cc6)), (r337 == rightHeight(cs86)), (r338 == rightHeight(heap)), (r292 == rightHeight(cc6)), (r392 == rank(cs92)), (r291 == rank(cc6)), (r364 == rightHeight(cc6)))
+Inlining (r291 == rank(cc6))
+Unrolling (r337 == rightHeight(cs86))
+Unrolling (r338 == rightHeight(heap))
+Unrolling (r292 == rightHeight(cc6))
+Inlining (r392 == rank(cs92))
+Unrolling (r364 == rightHeight(cc6))
+Inlining (r363 == rank(cc6))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 506
+[[34m Info  [0m] Number of equal calls: 46
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 80
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 68 + 0
+solving...
+solved... in 0.014s
+candidate Invariants
+insert-->((((224 * res8._2) + (-3136 * rightHeight(heap))) + -731) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((2 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 68
+solving...
+solved... in 0.011s
+candidate Invariants
+insert-->((((-24192 * rightHeight(heap)) + (896 * res8._2)) + 4157) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 506
+[[34m Info  [0m] Number of equal calls: 45
+# of atomic predicates: 44 + 89
+solving...
+solved... in 0.041s
+candidate Invariants
+insert-->((((8 * res8._2) + (-2 * rightHeight(heap))) + -4) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 133
+solving...
+solved... in 0.041s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 18/119
+Unrolled calls: Set((r246 == merge(cc6, cs93)), (r270 == rightHeight(cs104)), (r370 == rightHeight(cs144)), (r308 == rightHeight(cs117)), (r310 <=> hasLeftistProperty(cs119)), (r248 == rightHeight(cs95)), (r296 == rightHeight(cs115)), (r352 == rightHeight(cs130)), (r349 == rightHeight(cs127)), (r247 == rightHeight(cs94)), (r218 <=> hasLeftistProperty(cs67)), (r309 <=> hasLeftistProperty(cs118)), (r288 <=> hasLeftistProperty(cs111)), (r307 == rightHeight(cs116)), (r217 <=> hasLeftistProperty(cs66)), (r350 == rightHeight(cs128)), (r374 == rightHeight(cs149)), (r396 == rightHeight(cs154)))
+Unrolling (r349 == rightHeight(cs127))
+Unrolling (r396 == rightHeight(cs154))
+Unrolling (r288 <=> hasLeftistProperty(cs111))
+Unrolling (r374 == rightHeight(cs149))
+Unrolling (r247 == rightHeight(cs94))
+Unrolling (r370 == rightHeight(cs144))
+Unrolling (r218 <=> hasLeftistProperty(cs67))
+Unrolling (r217 <=> hasLeftistProperty(cs66))
+Unrolling (r310 <=> hasLeftistProperty(cs119))
+Unrolling (r308 == rightHeight(cs117))
+Unrolling (r352 == rightHeight(cs130))
+Unrolling (r309 <=> hasLeftistProperty(cs118))
+Unrolling (r246 == merge(cc6, cs93))
+Unrolling (r296 == rightHeight(cs115))
+Unrolling (r350 == rightHeight(cs128))
+Unrolling (r307 == rightHeight(cs116))
+Unrolling (r270 == rightHeight(cs104))
+Unrolling (r248 == rightHeight(cs95))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 658
+[[34m Info  [0m] Number of equal calls: 53
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 216
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 68 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+insert-->((((448 * res8._2) + (-2688 * rightHeight(heap))) + -8723) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((2 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 68
+solving...
+solved... in 0.011s
+candidate Invariants
+insert-->((((-6720 * rightHeight(heap)) + (448 * res8._2)) + -8387) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1458
+[[34m Info  [0m] Number of equal calls: 77
+# of atomic predicates: 46 + 89
+solving...
+solved... in 0.068s
+candidate Invariants
+insert-->((((1 * rightHeight(heap)) + (1 * res8._2)) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 135
+solving...
+solved... in 0.072s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 15/187
+Unrolled calls: Set((r499 == rightHeight(cs204)), (r513 == rightHeight(cs212)), (r545 == makeT(cs235, cs236, r541)), (r294 == rightHeight(cc6)), (r486 == rank(cs67)), (r498 == rightHeight(cs203)), (r501 == rightHeight(cs66)), (r515 == rightHeight(cs119)), (r514 == rank(cs119)), (r487 == rightHeight(cs67)), (r485 == rightHeight(cs196)), (r512 == rightHeight(cs211)), (r500 == rank(cs66)), (r293 == rank(cc6)), (r484 == rightHeight(cs195)))
+Unrolling (r487 == rightHeight(cs67))
+Inlining (r293 == rank(cc6))
+Unrolling (r513 == rightHeight(cs212))
+Inlining (r545 == makeT(cs235, cs236, r541))
+Unrolling (r498 == rightHeight(cs203))
+Unrolling (r515 == rightHeight(cs119))
+Unrolling (r484 == rightHeight(cs195))
+Unrolling (r512 == rightHeight(cs211))
+Inlining (r500 == rank(cs66))
+Inlining (r514 == rank(cs119))
+Unrolling (r499 == rightHeight(cs204))
+Unrolling (r294 == rightHeight(cc6))
+Inlining (r486 == rank(cs67))
+Unrolling (r485 == rightHeight(cs196))
+Unrolling (r501 == rightHeight(cs66))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 450
+[[34m Info  [0m] Number of equal calls: 49
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 813
+[[34m Info  [0m] Number of equal calls: 62
+# of atomic predicates: 105 + 0
+solving...
+solved... in 0.015s
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (56 * res8._2)) + -3109) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 25 + 105
+solving...
+solved... in 0.018s
+candidate Invariants
+insert-->((((7 * res8._2) + (-42 * rightHeight(heap))) + -435) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1541
+[[34m Info  [0m] Number of equal calls: 75
+# of atomic predicates: 80 + 130
+solving...
+solved... in 0.071s
+candidate Invariants
+insert-->((((-8 * rightHeight(heap)) + (1 * res8._2)) + -18) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2356
+[[34m Info  [0m] Number of equal calls: 101
+# of atomic predicates: 78 + 210
+solving...
+solved... in 0.284s
+candidate Invariants
+insert-->((((32 * res8._2) + (-4 * rightHeight(heap))) + -8) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 288
+solving...
+solved... in 0.315s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/194
+Unrolled calls: Set((r574 == rank(cs236)), (r531 == rightHeight(cs118)), (r583 <=> hasLeftistProperty(cc6)), (r571 == rank(r541)), (r530 == rank(cs118)), (r528 == rightHeight(cs221)), (r572 == rank(cs236)), (r529 == rightHeight(cs222)))
+Unrolling (r531 == rightHeight(cs118))
+Inlining (r574 == rank(cs236))
+Inlining (r530 == rank(cs118))
+Inlining (r572 == rank(cs236))
+Unrolling (r528 == rightHeight(cs221))
+Unrolling (r583 <=> hasLeftistProperty(cc6))
+Unrolling (r529 == rightHeight(cs222))
+Inlining (r571 == rank(r541))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 890
+[[34m Info  [0m] Number of equal calls: 66
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1889
+[[34m Info  [0m] Number of equal calls: 82
+# of atomic predicates: 156 + 0
+solving...
+solved... in 0.02s
+candidate Invariants
+insert-->((((1792 * res8._2) + (448 * rightHeight(heap))) + -28620) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 25 + 156
+solving...
+solved... in 0.023s
+candidate Invariants
+insert-->((((-224 * rightHeight(heap)) + (1792 * res8._2)) + -16696) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1820
+[[34m Info  [0m] Number of equal calls: 101
+# of atomic predicates: 81 + 181
+solving...
+solved... in 0.031s
+candidate Invariants
+insert-->((((2 * res8._2) + (1 * rightHeight(heap))) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-4 * #res) + 1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2425
+[[34m Info  [0m] Number of equal calls: 106
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 101 + 262
+solving...
+solved... in 0.164s
+candidate Invariants
+insert-->((((1 * res8._2) + (-15 * rightHeight(heap))) + 4) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 44
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 18 + 363
+solving...
+solved... in 0.163s
+candidate Invariants
+insert-->((((-15 * rightHeight(heap)) + (1 * res8._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2482
+[[34m Info  [0m] Number of equal calls: 105
+# of atomic predicates: 90 + 381
+solving...
+solved... in 0.206s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/203
+Unrolled calls: Set((r573 == rank(r541)), (r590 == rightHeight(cs93)), (r589 == rightHeight(cs229)), (r585 == rightHeight(cc6)), (r586 == rightHeight(cs234)), (r543 == makeT(cs230, cs231, r540)))
+Inlining (r543 == makeT(cs230, cs231, r540))
+Unrolling (r585 == rightHeight(cc6))
+Unrolling (r589 == rightHeight(cs229))
+Unrolling (r586 == rightHeight(cs234))
+Unrolling (r590 == rightHeight(cs93))
+Inlining (r573 == rank(r541))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1326
+[[34m Info  [0m] Number of equal calls: 77
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1889
+[[34m Info  [0m] Number of equal calls: 82
+# of atomic predicates: 169 + 0
+solving...
+solved... in 0.031s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (8 * res8._2)) + -24) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + 8) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2319
+[[34m Info  [0m] Number of equal calls: 104
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2099
+[[34m Info  [0m] Number of equal calls: 89
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 179 + 169
+solving...
+solved... in 0.053s
+candidate Invariants
+insert-->((((2 * rightHeight(heap)) + (8 * res8._2)) + 4) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 13 + 348
+solving...
+solved... in 0.066s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (4 * res8._2)) + -68) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2168
+[[34m Info  [0m] Number of equal calls: 104
+# of atomic predicates: 91 + 361
+solving...
+solved... in 0.126s
+candidate Invariants
+insert-->((((8 * res8._2) + (-1 * rightHeight(heap))) + -208) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-8 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2337
+[[34m Info  [0m] Number of equal calls: 100
+# of atomic predicates: 91 + 452
+solving...
+solved... in 0.238s
+candidate Invariants
+insert-->((((-2 * rightHeight(heap)) + (2 * res8._2)) + 1) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 543
+solving...
+solved... in 0.194s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/205
+Unrolled calls: Set((r647 == rank(r540)), (r620 == rank(cc6)), (r648 == rank(cs231)), (r365 == rank(cc6)), (r650 == rank(cs231)), (r621 == rightHeight(cc6)), (r304 == rank(r241)), (r366 == rightHeight(cc6)), (r587 <=> hasLeftistProperty(cs229)))
+Inlining (r650 == rank(cs231))
+Unrolling (r587 <=> hasLeftistProperty(cs229))
+Unrolling (r366 == rightHeight(cc6))
+Inlining (r304 == rank(r241))
+Inlining (r647 == rank(r540))
+Unrolling (r621 == rightHeight(cc6))
+Inlining (r648 == rank(cs231))
+Inlining (r365 == rank(cc6))
+Inlining (r620 == rank(cc6))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2470
+[[34m Info  [0m] Number of equal calls: 108
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1889
+[[34m Info  [0m] Number of equal calls: 82
+# of atomic predicates: 180 + 0
+solving...
+solved... in 0.026s
+candidate Invariants
+insert-->((((2 * rightHeight(heap)) + (8 * res8._2)) + 4) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((216 * #res) + -248) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 25 + 180
+solving...
+solved... in 0.091s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (8 * res8._2)) + 8) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 205
+solving...
+solved... in 0.081s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/212
+Unrolled calls: Set((r619 == rightHeight(cc6)), (r618 == rank(cc6)))
+Unrolling (r619 == rightHeight(cc6))
+Inlining (r618 == rank(cc6))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 912
+[[34m Info  [0m] Number of equal calls: 67
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1889
+[[34m Info  [0m] Number of equal calls: 82
+# of atomic predicates: 158 + 0
+solving...
+solved... in 0.019s
+candidate Invariants
+insert-->((((896 * res8._2) + (224 * rightHeight(heap))) + -16972) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + 1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 25 + 158
+solving...
+solved... in 0.03s
+candidate Invariants
+insert-->((((-224 * rightHeight(heap)) + (1792 * res8._2)) + -55224) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2795
+[[34m Info  [0m] Number of equal calls: 116
+# of atomic predicates: 91 + 183
+solving...
+solved... in 0.138s
+candidate Invariants
+insert-->((((1 * rightHeight(heap)) + (8 * res8._2)) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 1) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 274
+solving...
+solved... in 0.151s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 26/211
+Unrolled calls: Set((r449 == rightHeight(cs176)), (r450 == rightHeight(cs178)), (r243 == merge(cs86, heap)), (r577 == rightHeight(cs247)), (r576 == rightHeight(cs246)), (r698 == rightHeight(cs292)), (r367 == rightHeight(cs141)), (r606 == rightHeight(cs256)), (r351 == rightHeight(cs129)), (r295 == rightHeight(cs114)), (r235 == merge(cs76, h2)), (r257 <=> hasLeftistProperty(cs97)), (r564 == rightHeight(cs244)), (r575 == rightHeight(cs245)), (r581 == rightHeight(cs254)), (r368 == rightHeight(cs142)), (r371 == rightHeight(cs145)), (r578 == rightHeight(cs248)), (r448 == rightHeight(cs175)), (r369 == rightHeight(cs143)), (r256 <=> hasLeftistProperty(cs96)), (r563 == rightHeight(cs242)), (r582 == rightHeight(cs255)), (r372 == rightHeight(cs146)), (r579 == rightHeight(cs251)), (r622 == rightHeight(cs269)))
+Unrolling (r582 == rightHeight(cs255))
+Unrolling (r351 == rightHeight(cs129))
+Unrolling (r575 == rightHeight(cs245))
+Unrolling (r564 == rightHeight(cs244))
+Unrolling (r577 == rightHeight(cs247))
+Unrolling (r563 == rightHeight(cs242))
+Unrolling (r698 == rightHeight(cs292))
+Unrolling (r235 == merge(cs76, h2))
+Unrolling (r371 == rightHeight(cs145))
+Unrolling (r256 <=> hasLeftistProperty(cs96))
+Unrolling (r576 == rightHeight(cs246))
+Unrolling (r368 == rightHeight(cs142))
+Unrolling (r448 == rightHeight(cs175))
+Unrolling (r449 == rightHeight(cs176))
+Unrolling (r257 <=> hasLeftistProperty(cs97))
+Unrolling (r606 == rightHeight(cs256))
+Unrolling (r372 == rightHeight(cs146))
+Unrolling (r622 == rightHeight(cs269))
+Unrolling (r578 == rightHeight(cs248))
+Unrolling (r243 == merge(cs86, heap))
+Unrolling (r295 == rightHeight(cs114))
+Unrolling (r369 == rightHeight(cs143))
+Unrolling (r450 == rightHeight(cs178))
+Unrolling (r581 == rightHeight(cs254))
+Unrolling (r367 == rightHeight(cs141))
+Unrolling (r579 == rightHeight(cs251))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1217
+[[34m Info  [0m] Number of equal calls: 76
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 404
+[[34m Info  [0m] Number of equal calls: 32
+# of atomic predicates: 112 + 0
+solving...
+solved... in 0.015s
+candidate Invariants
+insert-->((((-8 * rightHeight(heap)) + (16 * res8._2)) + -178) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + 8) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2804
+[[34m Info  [0m] Number of equal calls: 108
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3612
+[[34m Info  [0m] Number of equal calls: 104
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 189 + 112
+solving...
+solved... in 0.066s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (2 * res8._2)) + -34) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2864
+[[34m Info  [0m] Number of equal calls: 117
+# of atomic predicates: 94 + 301
+solving...
+solved... in 0.097s
+candidate Invariants
+insert-->((((8 * rightHeight(heap)) + (32 * res8._2)) + -4) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 13 + 395
+solving...
+solved... in 0.147s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (4 * res8._2)) + -104) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2719
+[[34m Info  [0m] Number of equal calls: 107
+# of atomic predicates: 79 + 408
+solving...
+solved... in 0.295s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (8 * res8._2)) + -208) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2992
+[[34m Info  [0m] Number of equal calls: 111
+# of atomic predicates: 90 + 487
+solving...
+solved... in 0.359s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (1 * res8._2)) + -13) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + 1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2935
+[[34m Info  [0m] Number of equal calls: 112
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 96 + 577
+solving...
+solved... in 0.655s
+candidate Invariants
+insert-->((((8 * res8._2) + (-120 * rightHeight(heap))) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 44
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 18 + 673
+solving...
+solved... in 0.687s
+candidate Invariants
+insert-->((((1 * res8._2) + (-15 * rightHeight(heap))) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2636
+[[34m Info  [0m] Number of equal calls: 108
+# of atomic predicates: 80 + 691
+solving...
+solved... in 1.505s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/243
+Unrolled calls: Set((r748 == rightHeight(cs97)), (r729 == rank(cs96)), (r727 == rightHeight(cs314)), (r728 == rightHeight(cs315)), (r277 == rank(r232)), (r747 == rank(cs97)), (r730 == rightHeight(cs96)), (r745 == rightHeight(cs326)), (r746 == rightHeight(cs327)))
+Unrolling (r730 == rightHeight(cs96))
+Unrolling (r727 == rightHeight(cs314))
+Unrolling (r746 == rightHeight(cs327))
+Inlining (r277 == rank(r232))
+Unrolling (r748 == rightHeight(cs97))
+Inlining (r747 == rank(cs97))
+Unrolling (r745 == rightHeight(cs326))
+Unrolling (r728 == rightHeight(cs315))
+Inlining (r729 == rank(cs96))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1157
+[[34m Info  [0m] Number of equal calls: 77
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3161
+[[34m Info  [0m] Number of equal calls: 100
+# of atomic predicates: 182 + 0
+solving...
+solved... in 0.035s
+candidate Invariants
+insert-->((((-4 * rightHeight(heap)) + (8 * res8._2)) + -74) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + 8) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3167
+[[34m Info  [0m] Number of equal calls: 115
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4596
+[[34m Info  [0m] Number of equal calls: 115
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 258 + 182
+solving...
+solved... in 0.163s
+candidate Invariants
+insert-->((((2 * res8._2) + (-1 * rightHeight(heap))) + 2) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 835
+[[34m Info  [0m] Number of equal calls: 72
+# of atomic predicates: 58 + 440
+solving...
+solved... in 0.197s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (2 * res8._2)) + -24) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2524
+[[34m Info  [0m] Number of equal calls: 116
+# of atomic predicates: 100 + 498
+solving...
+solved... in 0.206s
+candidate Invariants
+insert-->((((1 * res8._2) + (-1 * rightHeight(heap))) + 1) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-4 * #res) + -1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 13 + 598
+solving...
+solved... in 0.332s
+candidate Invariants
+insert-->((((-1 * rightHeight(heap)) + (1 * res8._2)) + -24) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-4 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3014
+[[34m Info  [0m] Number of equal calls: 118
+# of atomic predicates: 106 + 611
+solving...
+solved... in 0.204s
+candidate Invariants
+insert-->((((4 * res8._2) + (4 * rightHeight(heap))) + -1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-8 * #res) + 1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2992
+[[34m Info  [0m] Number of equal calls: 112
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 109 + 717
+solving...
+solved... in 0.599s
+candidate Invariants
+insert-->((((1 * res8._2) + (-15 * rightHeight(heap))) + 3) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 44
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 18 + 826
+solving...
+solved... in 0.616s
+candidate Invariants
+insert-->((((-15 * rightHeight(heap)) + (1 * res8._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2636
+[[34m Info  [0m] Number of equal calls: 110
+# of atomic predicates: 87 + 844
+solving...
+solved... in 1.179s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 17/256
+Unrolled calls: Set((r800 == rightHeight(cs352)), (r802 == rightHeight(cs354)), (r614 <=> hasLeftistProperty(cs265)), (r395 == rightHeight(cs152)), (r348 == rightHeight(cs126)), (r651 == rightHeight(cs271)), (r373 == rightHeight(cs148)), (r359 <=> hasLeftistProperty(cs136)), (r580 == rightHeight(cs252)), (r653 == rightHeight(cs273)), (r287 <=> hasLeftistProperty(cs110)), (r237 == merge(h1, cs81)), (r607 == rightHeight(cs260)), (r803 == rightHeight(cs356)), (r804 == rightHeight(cs358)), (r801 == rightHeight(cs353)), (r805 == rightHeight(cs359)))
+Unrolling (r651 == rightHeight(cs271))
+Unrolling (r395 == rightHeight(cs152))
+Unrolling (r237 == merge(h1, cs81))
+Unrolling (r607 == rightHeight(cs260))
+Unrolling (r348 == rightHeight(cs126))
+Unrolling (r805 == rightHeight(cs359))
+Unrolling (r801 == rightHeight(cs353))
+Unrolling (r804 == rightHeight(cs358))
+Unrolling (r287 <=> hasLeftistProperty(cs110))
+Unrolling (r803 == rightHeight(cs356))
+Unrolling (r614 <=> hasLeftistProperty(cs265))
+Unrolling (r800 == rightHeight(cs352))
+Unrolling (r802 == rightHeight(cs354))
+Unrolling (r653 == rightHeight(cs273))
+Unrolling (r373 == rightHeight(cs148))
+Unrolling (r359 <=> hasLeftistProperty(cs136))
+Unrolling (r580 == rightHeight(cs252))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res8._2) + (0 * rightHeight(heap))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1244
+[[34m Info  [0m] Number of equal calls: 74
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 921
+[[34m Info  [0m] Number of equal calls: 46
+# of atomic predicates: 149 + 0
+solving...
+solved... in 0.023s
+candidate Invariants
+insert-->((((8 * res8._2) + (-48 * rightHeight(heap))) + -25) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + 8) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 12 + 149
+solving...
+solved... in 0.017s
+candidate Invariants
+insert-->((((8 * res8._2) + (-224 * rightHeight(heap))) + -39) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 13 + 161
+solving...
+solved... in 0.019s
+candidate Invariants
+insert-->((((-28 * rightHeight(heap)) + (1 * res8._2)) + -8) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 28
+Found new upper bound: 27/2
+Found new upper bound: 11/2
+Found new upper bound: 3/2
+Found new upper bound: -1/2
+Found new upper bound: -3/2
+Found new upper bound: -7/2
+Found new upper bound: -15/2
+Found new upper bound: -31/2
+Found new upper bound: -63/2
+Found new upper bound: -127/2
+Found new upper bound: -255/2
+Found new upper bound: -511/2
+Found new upper bound: -1023/2
+Found new upper bound: -2047/2
+Found new upper bound: -4095/2
+Found new upper bound: -8191/2
+Minimizing variable: c?1 Initial upperbound: 4124
+Aborting due to overflow.
+Minimization complete...
+candidate Invariants
+insert-->((((8191 * rightHeight(heap)) + (2 * res8._2)) + -8248) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2015
+[[34m Info  [0m] Number of equal calls: 91
+# of atomic predicates: 99 + 174
+solving...
+solved... in 0.042s
+candidate Invariants
+insert-->((((8 * res8._2) + (8 * rightHeight(heap))) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-8 * #res) + 1) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 273
+solving...
+solved... in 0.1s
+candidate Invariants
+insert-->((((-27 * rightHeight(heap)) + (1 * res8._2)) + 1) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 44
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 18 + 281
+solving...
+solved... in 0.137s
+candidate Invariants
+insert-->((((1 * res8._2) + (-21 * rightHeight(heap))) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 21
+Found new upper bound: 9
+Found new upper bound: 3
+Found new upper bound: 3/4
+Found new upper bound: -1/4
+Found new upper bound: -5/4
+Found new upper bound: -13/4
+Found new upper bound: -29/4
+Found new upper bound: -61/4
+Found new upper bound: -125/4
+Found new upper bound: -253/4
+Found new upper bound: -509/4
+Found new upper bound: -1021/4
+Found new upper bound: -2045/4
+Found new upper bound: -4093/4
+Found new upper bound: -8189/4
+Found new upper bound: -16381/4
+Minimizing variable: c?1 Initial upperbound: 12297
+Found new lower bound: 6148
+Found new lower bound: 9222
+Found new lower bound: 10759
+Found new lower bound: 11528
+Found new lower bound: 11912
+Found new lower bound: 12104
+Found new lower bound: 12200
+Found new lower bound: 12248
+Found new lower bound: 12272
+Found new lower bound: 12284
+Found new lower bound: 12290
+Found new lower bound: 12293
+Found new lower bound: 12295
+Found new lower bound: 12296
+Minimization complete...
+candidate Invariants
+insert-->((((16381 * rightHeight(heap)) + (4 * res8._2)) + -49188) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2183
+[[34m Info  [0m] Number of equal calls: 88
+# of atomic predicates: 106 + 299
+solving...
+solved... in 0.212s
+candidate Invariants
+insert-->((((1 * res8._2) + (-3 * rightHeight(heap))) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 959
+[[34m Info  [0m] Number of equal calls: 67
+# of atomic predicates: 68 + 405
+solving...
+solved... in 0.283s
+candidate Invariants
+insert-->((((1 * res8._2) + (-7 * rightHeight(heap))) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2736
+[[34m Info  [0m] Number of equal calls: 117
+# of atomic predicates: 103 + 473
+solving...
+solved... in 0.448s
+candidate Invariants
+insert-->((((-11 * rightHeight(heap)) + (1 * res8._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 11
+Found new upper bound: 19/4
+Found new upper bound: 7/4
+Found new upper bound: -1/4
+Found new upper bound: -5/4
+Found new upper bound: -13/4
+Found new upper bound: -29/4
+Found new upper bound: -121/8
+Found new upper bound: -249/8
+Found new upper bound: -505/8
+Found new upper bound: -1017/8
+Found new upper bound: -2041/8
+Found new upper bound: -4089/8
+Found new upper bound: -8185/8
+Found new upper bound: -16377/8
+Found new upper bound: -32761/8
+Found new upper bound: -65529/8
+Minimizing variable: c?1 Initial upperbound: 32776
+Found new lower bound: 16388
+Found new lower bound: 24582
+Found new lower bound: 28679
+Found new lower bound: 30727
+Found new lower bound: 31751
+Found new lower bound: 32263
+Found new lower bound: 32519
+Found new lower bound: 32647
+Found new lower bound: 32711
+Found new lower bound: 32743
+Found new lower bound: 32759
+Found new lower bound: 32767
+Found new lower bound: 32771
+Found new lower bound: 32773
+Found new lower bound: 32774
+Found new lower bound: 32775
+Minimization complete...
+candidate Invariants
+insert-->((((8 * res8._2) + (65529 * rightHeight(heap))) + -262208) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-8 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2183
+[[34m Info  [0m] Number of equal calls: 86
+# of atomic predicates: 106 + 576
+solving...
+solved... in 0.627s
+candidate Invariants
+insert-->((((-11 * rightHeight(heap)) + (1 * res8._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 11
+Found new upper bound: 19/4
+Found new upper bound: 7/4
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: c?1 Initial upperbound: 26
+Found new lower bound: 13
+Found new lower bound: 19
+Found new lower bound: 22
+Found new lower bound: 24
+Found new upper bound: 25
+Minimization complete...
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + -25) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-4 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3014
+[[34m Info  [0m] Number of equal calls: 120
+# of atomic predicates: 101 + 682
+solving...
+solved... in 0.591s
+candidate Invariants
+insert-->((((-11 * rightHeight(heap)) + (1 * res8._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 11
+Found new upper bound: 1
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: c?1 Initial upperbound: 42
+Found new lower bound: 21
+Found new lower bound: 31
+Found new upper bound: 32
+Minimization complete...
+candidate Invariants
+insert-->((((0 * rightHeight(heap)) + (1 * res8._2)) + -32) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3064
+[[34m Info  [0m] Number of equal calls: 108
+# of atomic predicates: 110 + 783
+solving...
+solved... in 1.045s
+candidate Invariants
+insert-->((((-11 * rightHeight(heap)) + (1 * res8._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 11
+Found new lower bound: 5
+Found new upper bound: 31/4
+Found new lower bound: 6
+Minimizing variable: c?1 Initial upperbound: 10
+Found new lower bound: 5
+Found new lower bound: 7
+Found new lower bound: 8
+Found new lower bound: 9
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: insert --> ((((4 * res8._2) + (-31 * rightHeight(heap))) + -40) <= 0)
+[[34m Info  [0m] - Found inductive invariant: hasLeftistProperty --> (-1 <= 0)
+[[34m Info  [0m] - Found inductive invariant: merge --> (((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: rightHeight --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function removeMax...
+[[34m Info  [0m] Body: if (h.isInstanceOf[Node])
+            (let (rthen,dthen := (let (e,d3 := merge(h.left, h.right)) in
+              (e, (2 + d3)))) in
+              (rthen, if ((1 ≥ dthen))
+                1
+              else
+                dthen))
+          else
+            (h, if ((1 ≥ 0))
+              1
+            else
+              0)
+[[34m Info  [0m] Post: true
+falttened Body: (r967 && (r967 == hasLeftistProperty(h)) && (res7 == ifres613) && ((ci396 && (ci396 == h.isInstanceOf[Node]) && (ifres613 == tp155) && (tp155 == (rthen, ifres614)) && (((1 >= dthen) && (ifres614 == 1)) || ((1 < dthen) && (ifres614 == dthen))) && (d3 == ts427) && (ts427 == tres61._2) && (dthen == (2 + d3)) && (rthen == e) && (e == ts428) && (ts428 == tres61._1) && (tres61 == r968) && (cs408 == h.left) && (cs409 == h.right) && (r968 == merge(cs408, cs409))) || (!(ci397) && (ci397 == h.isInstanceOf[Node]) && (ifres613 == tp156) && (tp156 == (h, ifres615)) && (((1 >= 0) && (ifres615 == 1)) || ((1 < 0) && (ifres615 == 0))))))
+Flattened Post: ((ts429 > ((a? * r969) + b?)) && (ts429 == res7._2) && (r969 == leftRightHeight(h)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMax-->((((1 * res7._2) + (0 * leftRightHeight(h))) + 0) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+removeMax-->((((1 * res7._2) + (0 * leftRightHeight(h))) + -3) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 9
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/3
+Unrolled calls: Set((r967 <=> hasLeftistProperty(h)), (r968 == merge(cs408, cs409)), (r969 == leftRightHeight(h)))
+Creating VC for hasLeftistProperty
+Unrolling (r967 <=> hasLeftistProperty(h))
+Creating VC for merge
+Unrolling (r968 == merge(cs408, cs409))
+Inlining (r969 == leftRightHeight(h))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMax-->((((0 * leftRightHeight(h)) + (1 * res7._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 75
+[[34m Info  [0m] Number of equal calls: 16
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 78
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 15 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 12/45
+Unrolled calls: Set((r1008 == rightHeight(h1)), (r990 == rank(h)), (r1019 == rightHeight(cs408)), (r1016 == rightHeight(cs446)), (r991 == rightHeight(h)), (r989 == rightHeight(cs421)), (r988 == rightHeight(cs420)), (r1020 == rightHeight(cs409)), (r1007 == makeT(cs434, cs435, r1001)), (r1002 <=> hasLeftistProperty(h1)), (r1003 <=> hasLeftistProperty(h2)), (r1009 == rightHeight(h2)))
+Inlining (r990 == rank(h))
+Creating VC for rightHeight
+Unrolling (r1016 == rightHeight(cs446))
+Unrolling (r1008 == rightHeight(h1))
+Unrolling (r1009 == rightHeight(h2))
+Unrolling (r1019 == rightHeight(cs408))
+Unrolling (r1020 == rightHeight(cs409))
+Unrolling (r1002 <=> hasLeftistProperty(h1))
+Unrolling (r991 == rightHeight(h))
+Unrolling (r1003 <=> hasLeftistProperty(h2))
+Unrolling (r989 == rightHeight(cs421))
+Inlining (r1007 == makeT(cs434, cs435, r1001))
+Unrolling (r988 == rightHeight(cs420))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMax-->((((1 * res7._2) + (0 * leftRightHeight(h))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 25
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 266
+[[34m Info  [0m] Number of equal calls: 35
+# of atomic predicates: 31 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+removeMax-->((((8 * leftRightHeight(h)) + (16 * res7._2)) + -234) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((2 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 20 + 31
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 13/90
+Unrolled calls: Set((r1048 == rightHeight(cs466)), (r981 == rightHeight(cs417)), (r1073 == rightHeight(cs430)), (r1032 == rightHeight(cs456)), (r980 == rightHeight(cs416)), (r1049 == rank(h2)), (r1050 == rightHeight(h2)), (r1047 == rightHeight(cs465)), (r1033 == rightHeight(cs457)), (r1034 == rank(h1)), (r1074 == rightHeight(h2)), (r1035 == rightHeight(h1)), (r1004 == makeT(cs428, cs429, r1000)))
+Unrolling (r1032 == rightHeight(cs456))
+Unrolling (r1047 == rightHeight(cs465))
+Unrolling (r981 == rightHeight(cs417))
+Unrolling (r1050 == rightHeight(h2))
+Unrolling (r1033 == rightHeight(cs457))
+Inlining (r1049 == rank(h2))
+Unrolling (r1073 == rightHeight(cs430))
+Unrolling (r1035 == rightHeight(h1))
+Inlining (r1004 == makeT(cs428, cs429, r1000))
+Unrolling (r1048 == rightHeight(cs466))
+Inlining (r1034 == rank(h1))
+Unrolling (r1074 == rightHeight(h2))
+Unrolling (r980 == rightHeight(cs416))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMax-->((((1 * res7._2) + (0 * leftRightHeight(h))) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 25
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 550
+[[34m Info  [0m] Number of equal calls: 49
+# of atomic predicates: 65 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+removeMax-->((((8 * res7._2) + (-8 * leftRightHeight(h))) + -111) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 1
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 22 + 65
+solving...
+solved... in 0.01s
+candidate Invariants
+removeMax-->((((-22 * leftRightHeight(h)) + (2 * res7._2)) + 13) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + 1) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 590
+[[34m Info  [0m] Number of equal calls: 47
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 50 + 87
+solving...
+solved... in 0.017s
+candidate Invariants
+removeMax-->((((8 * res7._2) + (-88 * leftRightHeight(h))) + 1) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + 0) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 9 + 137
+solving...
+solved... in 0.022s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 10/91
+Unrolled calls: Set((r1077 == rightHeight(h1)), (r1069 == rank(cs435)), (r983 == rightHeight(h)), (r1067 == rank(r1001)), (r1066 == rank(r1001)), (r1107 == rank(r1000)), (r1108 == rank(r1000)), (r1078 == rightHeight(cs433)), (r982 == rank(h)), (r1106 == rank(cs429)))
+Inlining (r1107 == rank(r1000))
+Inlining (r1069 == rank(cs435))
+Inlining (r1108 == rank(r1000))
+Inlining (r1067 == rank(r1001))
+Unrolling (r983 == rightHeight(h))
+Inlining (r1066 == rank(r1001))
+Inlining (r982 == rank(h))
+Inlining (r1106 == rank(cs429))
+Unrolling (r1077 == rightHeight(h1))
+Unrolling (r1078 == rightHeight(cs433))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeMax-->((((0 * leftRightHeight(h)) + (1 * res7._2)) + 0) ≤ 0)
+hasLeftistProperty-->(0 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((0 * #res) + 0) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 25
+Function: merge--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 635
+[[34m Info  [0m] Number of equal calls: 51
+# of atomic predicates: 80 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+removeMax-->((((-8 * leftRightHeight(h)) + (8 * res7._2)) + -111) ≤ 0)
+hasLeftistProperty-->(1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((1 * #res) + -8) ≤ 0)
+Function: hasLeftistProperty--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 80
+solving...
+solved... in 0.011s
+candidate Invariants
+removeMax-->((((-44 * leftRightHeight(h)) + (4 * res7._2)) + -53) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: removeMax--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 403
+[[34m Info  [0m] Number of equal calls: 40
+# of atomic predicates: 45 + 99
+solving...
+solved... in 0.02s
+candidate Invariants
+removeMax-->((((1 * res7._2) + (-15 * leftRightHeight(h))) + -3) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-8 * #res) + 1) ≤ 0)
+Function: rightHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 144
+solving...
+solved... in 0.025s
+candidate Invariants
+removeMax-->((((-15 * leftRightHeight(h)) + (1 * res7._2)) + -5) ≤ 0)
+hasLeftistProperty-->(-1 ≤ 0)
+merge-->(((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 15
+Found new lower bound: 7
+Found new lower bound: 11
+Found new lower bound: 13
+Found new upper bound: 14
+Minimizing variable: b? Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: removeMax --> ((((-14 * leftRightHeight(h)) + (1 * res7._2)) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: hasLeftistProperty --> (-1 <= 0)
+[[34m Info  [0m] - Found inductive invariant: merge --> (((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: rightHeight --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

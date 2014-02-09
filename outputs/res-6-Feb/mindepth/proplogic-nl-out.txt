@@ -1,0 +1,4337 @@
+After Depth Instrumentation: 
+object PropLogicDepth {
+  case class Implies(lhs: Formula, rhs: Formula) extends Formula
+
+  sealed abstract class Formula
+
+  case class Or(lhs: Formula, rhs: Formula) extends Formula
+
+  case class And(lhs: Formula, rhs: Formula) extends Formula
+
+  case class Literal(id: Int) extends Formula
+
+  case class Not(f: Formula) extends Formula
+
+  def simplify(f : Formula) : (Formula, Int) = {locally {
+    val dcond9 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (rthen9: And, dthen9: Int) = locally {
+          val (r81: Formula, d93: Int) = locally {
+            val (e14: Formula, d99: Int) = simplify(f.lhs)
+            (e14, (2 + d99))
+          }
+          
+          locally {
+            val (r82: Formula, d94: Int) = locally {
+              val (e13: Formula, d96: Int) = simplify(f.rhs)
+              (e13, (2 + d96))
+            }
+            
+            (And(r81, r82), (1 + if ((d93 >= d94)) {
+              d93
+            } else {
+              d94
+            }))
+          }
+          
+        }
+        
+        (rthen9, if ((dcond9 >= dthen9)) {
+          dcond9
+        } else {
+          dthen9
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse9: Formula, delse9: Int) = locally {
+          val dcond10 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (rthen10: Or, dthen10: Int) = locally {
+                val (r88: Formula, d102: Int) = locally {
+                  val (e16: Formula, d108: Int) = simplify(f.lhs)
+                  (e16, (2 + d108))
+                }
+                
+                locally {
+                  val (r89: Formula, d103: Int) = locally {
+                    val (e15: Formula, d105: Int) = simplify(f.rhs)
+                    (e15, (2 + d105))
+                  }
+                  
+                  (Or(r88, r89), (1 + if ((d102 >= d103)) {
+                    d102
+                  } else {
+                    d103
+                  }))
+                }
+                
+              }
+              
+              (rthen10, if ((dcond10 >= dthen10)) {
+                dcond10
+              } else {
+                dthen10
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse10: Formula, delse10: Int) = locally {
+                val dcond11 = 1
+                if (f.isInstanceOf[Implies]) {
+                  locally {
+                    val (rthen11: Or, dthen11: Int) = locally {
+                      val (r95: Not, d111: Int) = locally {
+                        val (r99: Formula, d116: Int) = locally {
+                          val (e18: Formula, d118: Int) = simplify(f.lhs)
+                          (e18, (2 + d118))
+                        }
+                        
+                        (Not(r99), (1 + d116))
+                      }
+                      
+                      locally {
+                        val (r96: Formula, d112: Int) = locally {
+                          val (e17: Formula, d114: Int) = simplify(f.rhs)
+                          (e17, (2 + d114))
+                        }
+                        
+                        (Or(r95, r96), (1 + if ((d111 >= d112)) {
+                          d111
+                        } else {
+                          d112
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen11, if ((dcond11 >= dthen11)) {
+                      dcond11
+                    } else {
+                      dthen11
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse11: Formula, delse11: Int) = locally {
+                      val dcond12 = 1
+                      if (f.isInstanceOf[Not]) {
+                        locally {
+                          val (rthen12: Not, dthen12: Int) = locally {
+                            val (r103: Formula, d121: Int) = locally {
+                              val (e19: Formula, d123: Int) = simplify(f.f)
+                              (e19, (2 + d123))
+                            }
+                            
+                            (Not(r103), (1 + d121))
+                          }
+                          
+                          (rthen12, if ((dcond12 >= dthen12)) {
+                            dcond12
+                          } else {
+                            dthen12
+                          })
+                        }
+                        
+                      } else {
+                        (f, if ((dcond12 >= 0)) {
+                          dcond12
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse11, if ((dcond11 >= delse11)) {
+                      dcond11
+                    } else {
+                      delse11
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse10, if ((dcond10 >= delse10)) {
+                dcond10
+              } else {
+                delse10
+              })
+            }
+            
+          }
+        }
+        
+        (relse9, if ((dcond9 >= delse9)) {
+          dcond9
+        } else {
+          delse9
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def nestingDepth(f : Formula) : Int = {(f match {
+    case And(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Or(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Implies(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Not(f) =>
+      (nestingDepth(f) + 1)
+    case Literal(_) =>
+      1
+  })}
+
+  def nnf(formula : Formula) : (Formula, Int) = {locally {
+    val dcond = 1
+    if (formula.isInstanceOf[And]) {
+      locally {
+        val (rthen: And, dthen: Int) = locally {
+          val (r2: Formula, d1: Int) = locally {
+            val (e1: Formula, d7: Int) = nnf(formula.lhs)
+            (e1, (2 + d7))
+          }
+          
+          locally {
+            val (r3: Formula, d2: Int) = locally {
+              val (e: Formula, d4: Int) = nnf(formula.rhs)
+              (e, (2 + d4))
+            }
+            
+            (And(r2, r3), (1 + if ((d1 >= d2)) {
+              d1
+            } else {
+              d2
+            }))
+          }
+          
+        }
+        
+        (rthen, if ((dcond >= dthen)) {
+          dcond
+        } else {
+          dthen
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse: Formula, delse: Int) = locally {
+          val dcond1 = 1
+          if (formula.isInstanceOf[Or]) {
+            locally {
+              val (rthen1: Or, dthen1: Int) = locally {
+                val (r9: Formula, d10: Int) = locally {
+                  val (e3: Formula, d16: Int) = nnf(formula.lhs)
+                  (e3, (2 + d16))
+                }
+                
+                locally {
+                  val (r10: Formula, d11: Int) = locally {
+                    val (e2: Formula, d13: Int) = nnf(formula.rhs)
+                    (e2, (2 + d13))
+                  }
+                  
+                  (Or(r9, r10), (1 + if ((d10 >= d11)) {
+                    d10
+                  } else {
+                    d11
+                  }))
+                }
+                
+              }
+              
+              (rthen1, if ((dcond1 >= dthen1)) {
+                dcond1
+              } else {
+                dthen1
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse1: Formula, delse1: Int) = locally {
+                val dcond2 = 1
+                if (formula.isInstanceOf[Implies]) {
+                  locally {
+                    val (rthen2: Implies, dthen2: Int) = locally {
+                      val (r16: Formula, d19: Int) = locally {
+                        val (e5: Formula, d25: Int) = nnf(formula.lhs)
+                        (e5, (2 + d25))
+                      }
+                      
+                      locally {
+                        val (r17: Formula, d20: Int) = locally {
+                          val (e4: Formula, d22: Int) = nnf(formula.rhs)
+                          (e4, (2 + d22))
+                        }
+                        
+                        (Implies(r16, r17), (1 + if ((d19 >= d20)) {
+                          d19
+                        } else {
+                          d20
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen2, if ((dcond2 >= dthen2)) {
+                      dcond2
+                    } else {
+                      dthen2
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse2: Formula, delse2: Int) = locally {
+                      val dcond3 = 3
+                      if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[And])) {
+                        locally {
+                          val (rthen3: Or, dthen3: Int) = locally {
+                            val (r27: Formula, d32: Int) = locally {
+                              val (e7: Formula, d40: Int) = nnf(Not(formula.f.lhs))
+                              (e7, (4 + d40))
+                            }
+                            
+                            locally {
+                              val (r28: Formula, d33: Int) = locally {
+                                val (e6: Formula, d35: Int) = nnf(Not(formula.f.rhs))
+                                (e6, (4 + d35))
+                              }
+                              
+                              (Or(r27, r28), (1 + if ((d32 >= d33)) {
+                                d32
+                              } else {
+                                d33
+                              }))
+                            }
+                            
+                          }
+                          
+                          (rthen3, if ((dcond3 >= dthen3)) {
+                            dcond3
+                          } else {
+                            dthen3
+                          })
+                        }
+                        
+                      } else {
+                        locally {
+                          val (relse3: Formula, delse3: Int) = locally {
+                            val dcond4 = 3
+                            if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Or])) {
+                              locally {
+                                val (rthen4: And, dthen4: Int) = locally {
+                                  val (r42: Formula, d49: Int) = locally {
+                                    val (e9: Formula, d57: Int) = nnf(Not(formula.f.lhs))
+                                    (e9, (4 + d57))
+                                  }
+                                  
+                                  locally {
+                                    val (r43: Formula, d50: Int) = locally {
+                                      val (e8: Formula, d52: Int) = nnf(Not(formula.f.rhs))
+                                      (e8, (4 + d52))
+                                    }
+                                    
+                                    (And(r42, r43), (1 + if ((d49 >= d50)) {
+                                      d49
+                                    } else {
+                                      d50
+                                    }))
+                                  }
+                                  
+                                }
+                                
+                                (rthen4, if ((dcond4 >= dthen4)) {
+                                  dcond4
+                                } else {
+                                  dthen4
+                                })
+                              }
+                              
+                            } else {
+                              locally {
+                                val (relse4: Formula, delse4: Int) = locally {
+                                  val dcond5 = 3
+                                  if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Implies])) {
+                                    locally {
+                                      val (rthen5: And, dthen5: Int) = locally {
+                                        val (r57: Formula, d66: Int) = locally {
+                                          val (e11: Formula, d74: Int) = nnf(formula.f.lhs)
+                                          (e11, (3 + d74))
+                                        }
+                                        
+                                        locally {
+                                          val (r58: Formula, d67: Int) = locally {
+                                            val (e10: Formula, d69: Int) = nnf(Not(formula.f.rhs))
+                                            (e10, (4 + d69))
+                                          }
+                                          
+                                          (And(r57, r58), (1 + if ((d66 >= d67)) {
+                                            d66
+                                          } else {
+                                            d67
+                                          }))
+                                        }
+                                        
+                                      }
+                                      
+                                      (rthen5, if ((dcond5 >= dthen5)) {
+                                        dcond5
+                                      } else {
+                                        dthen5
+                                      })
+                                    }
+                                    
+                                  } else {
+                                    locally {
+                                      val (relse5: Formula, delse5: Int) = locally {
+                                        val dcond6 = 3
+                                        if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Not])) {
+                                          locally {
+                                            val (rthen6: Formula, dthen6: Int) = locally {
+                                              val (e12: Formula, d83: Int) = nnf(formula.f.f)
+                                              (e12, (3 + d83))
+                                            }
+                                            
+                                            (rthen6, if ((dcond6 >= dthen6)) {
+                                              dcond6
+                                            } else {
+                                              dthen6
+                                            })
+                                          }
+                                          
+                                        } else {
+                                          locally {
+                                            val (relse6: Formula, delse6: Int) = locally {
+                                              val dcond7 = 3
+                                              if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Literal])) {
+                                                (formula, if ((dcond7 >= 0)) {
+                                                  dcond7
+                                                } else {
+                                                  0
+                                                })
+                                              } else {
+                                                locally {
+                                                  val (relse7: Formula, delse7: Int) = locally {
+                                                    val dcond8 = 1
+                                                    if (formula.isInstanceOf[Literal]) {
+                                                      (formula, if ((dcond8 >= 0)) {
+                                                        dcond8
+                                                      } else {
+                                                        0
+                                                      })
+                                                    } else {
+                                                      (formula, if ((dcond8 >= 0)) {
+                                                        dcond8
+                                                      } else {
+                                                        0
+                                                      })
+                                                    }
+                                                  }
+                                                  
+                                                  (relse7, if ((dcond7 >= delse7)) {
+                                                    dcond7
+                                                  } else {
+                                                    delse7
+                                                  })
+                                                }
+                                                
+                                              }
+                                            }
+                                            
+                                            (relse6, if ((dcond6 >= delse6)) {
+                                              dcond6
+                                            } else {
+                                              delse6
+                                            })
+                                          }
+                                          
+                                        }
+                                      }
+                                      
+                                      (relse5, if ((dcond5 >= delse5)) {
+                                        dcond5
+                                      } else {
+                                        delse5
+                                      })
+                                    }
+                                    
+                                  }
+                                }
+                                
+                                (relse4, if ((dcond4 >= delse4)) {
+                                  dcond4
+                                } else {
+                                  delse4
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (relse3, if ((dcond3 >= delse3)) {
+                            dcond3
+                          } else {
+                            delse3
+                          })
+                        }
+                        
+                      }
+                    }
+                    
+                    (relse2, if ((dcond2 >= delse2)) {
+                      dcond2
+                    } else {
+                      delse2
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse1, if ((dcond1 >= delse1)) {
+                dcond1
+              } else {
+                delse1
+              })
+            }
+            
+          }
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def isNNF(f : Formula) : (Boolean, Int) = {locally {
+    val dcond13 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (rthen13: Boolean, dthen13: Int) = locally {
+          val (r107: Boolean, d126: Int) = locally {
+            val (e21: Boolean, d132: Int) = isNNF(f.lhs)
+            (e21, (2 + d132))
+          }
+          
+          locally {
+            val (r108: Boolean, d127: Int) = locally {
+              val (e20: Boolean, d129: Int) = isNNF(f.rhs)
+              (e20, (2 + d129))
+            }
+            
+            ((r107 && r108), (1 + if ((d126 >= d127)) {
+              d126
+            } else {
+              d127
+            }))
+          }
+          
+        }
+        
+        (rthen13, if ((dcond13 >= dthen13)) {
+          dcond13
+        } else {
+          dthen13
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse13: Boolean, delse13: Int) = locally {
+          val dcond14 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (rthen14: Boolean, dthen14: Int) = locally {
+                val (r114: Boolean, d135: Int) = locally {
+                  val (e23: Boolean, d141: Int) = isNNF(f.lhs)
+                  (e23, (2 + d141))
+                }
+                
+                locally {
+                  val (r115: Boolean, d136: Int) = locally {
+                    val (e22: Boolean, d138: Int) = isNNF(f.rhs)
+                    (e22, (2 + d138))
+                  }
+                  
+                  ((r114 && r115), (1 + if ((d135 >= d136)) {
+                    d135
+                  } else {
+                    d136
+                  }))
+                }
+                
+              }
+              
+              (rthen14, if ((dcond14 >= dthen14)) {
+                dcond14
+              } else {
+                dthen14
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse14: Boolean, delse14: Int) = locally {
+                val dcond15 = 1
+                if (f.isInstanceOf[Implies]) {
+                  locally {
+                    val (rthen15: Boolean, dthen15: Int) = locally {
+                      val (r121: Boolean, d144: Int) = locally {
+                        val (e25: Boolean, d150: Int) = isNNF(f.lhs)
+                        (e25, (2 + d150))
+                      }
+                      
+                      locally {
+                        val (r122: Boolean, d145: Int) = locally {
+                          val (e24: Boolean, d147: Int) = isNNF(f.rhs)
+                          (e24, (2 + d147))
+                        }
+                        
+                        ((r121 && r122), (1 + if ((d144 >= d145)) {
+                          d144
+                        } else {
+                          d145
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen15, if ((dcond15 >= dthen15)) {
+                      dcond15
+                    } else {
+                      dthen15
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse15: Boolean, delse15: Int) = locally {
+                      val dcond16 = 3
+                      if ((f.isInstanceOf[Not] && f.f.isInstanceOf[Literal])) {
+                        (true, if ((dcond16 >= 0)) {
+                          dcond16
+                        } else {
+                          0
+                        })
+                      } else {
+                        locally {
+                          val (relse16: Boolean, delse16: Int) = locally {
+                            val dcond17 = 1
+                            if (f.isInstanceOf[Not]) {
+                              (false, if ((dcond17 >= 0)) {
+                                dcond17
+                              } else {
+                                0
+                              })
+                            } else {
+                              locally {
+                                val (relse17: Boolean, delse17: Int) = locally {
+                                  val dcond18 = 1
+                                  if (f.isInstanceOf[Literal]) {
+                                    (true, if ((dcond18 >= 0)) {
+                                      dcond18
+                                    } else {
+                                      0
+                                    })
+                                  } else {
+                                    (false, if ((dcond18 >= 0)) {
+                                      dcond18
+                                    } else {
+                                      0
+                                    })
+                                  }
+                                }
+                                
+                                (relse17, if ((dcond17 >= delse17)) {
+                                  dcond17
+                                } else {
+                                  delse17
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (relse16, if ((dcond16 >= delse16)) {
+                            dcond16
+                          } else {
+                            delse16
+                          })
+                        }
+                        
+                      }
+                    }
+                    
+                    (relse15, if ((dcond15 >= delse15)) {
+                      dcond15
+                    } else {
+                      delse15
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse14, if ((dcond14 >= delse14)) {
+                dcond14
+              } else {
+                delse14
+              })
+            }
+            
+          }
+        }
+        
+        (relse13, if ((dcond13 >= delse13)) {
+          dcond13
+        } else {
+          delse13
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def isSimplified(f : Formula) : (Boolean, Int) = {locally {
+    val dcond19 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (rthen19: Boolean, dthen19: Int) = locally {
+          val (r135: Boolean, d160: Int) = locally {
+            val (e27: Boolean, d166: Int) = isSimplified(f.lhs)
+            (e27, (2 + d166))
+          }
+          
+          locally {
+            val (r136: Boolean, d161: Int) = locally {
+              val (e26: Boolean, d163: Int) = isSimplified(f.rhs)
+              (e26, (2 + d163))
+            }
+            
+            ((r135 && r136), (1 + if ((d160 >= d161)) {
+              d160
+            } else {
+              d161
+            }))
+          }
+          
+        }
+        
+        (rthen19, if ((dcond19 >= dthen19)) {
+          dcond19
+        } else {
+          dthen19
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse19: Boolean, delse19: Int) = locally {
+          val dcond20 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (rthen20: Boolean, dthen20: Int) = locally {
+                val (r142: Boolean, d169: Int) = locally {
+                  val (e29: Boolean, d175: Int) = isSimplified(f.lhs)
+                  (e29, (2 + d175))
+                }
+                
+                locally {
+                  val (r143: Boolean, d170: Int) = locally {
+                    val (e28: Boolean, d172: Int) = isSimplified(f.rhs)
+                    (e28, (2 + d172))
+                  }
+                  
+                  ((r142 && r143), (1 + if ((d169 >= d170)) {
+                    d169
+                  } else {
+                    d170
+                  }))
+                }
+                
+              }
+              
+              (rthen20, if ((dcond20 >= dthen20)) {
+                dcond20
+              } else {
+                dthen20
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse20: Boolean, delse20: Int) = locally {
+                val dcond21 = 1
+                if (f.isInstanceOf[Implies]) {
+                  (false, if ((dcond21 >= 0)) {
+                    dcond21
+                  } else {
+                    0
+                  })
+                } else {
+                  locally {
+                    val (relse21: Boolean, delse21: Int) = locally {
+                      val dcond22 = 1
+                      if (f.isInstanceOf[Not]) {
+                        locally {
+                          val (rthen22: Boolean, dthen22: Int) = locally {
+                            val (e30: Boolean, d180: Int) = isSimplified(f.f)
+                            (e30, (2 + d180))
+                          }
+                          
+                          (rthen22, if ((dcond22 >= dthen22)) {
+                            dcond22
+                          } else {
+                            dthen22
+                          })
+                        }
+                        
+                      } else {
+                        (true, if ((dcond22 >= 0)) {
+                          dcond22
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse21, if ((dcond21 >= delse21)) {
+                      dcond21
+                    } else {
+                      delse21
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse20, if ((dcond20 >= delse20)) {
+                dcond20
+              } else {
+                delse20
+              })
+            }
+            
+          }
+        }
+        
+        (relse19, if ((dcond19 >= delse19)) {
+          dcond19
+        } else {
+          delse19
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: simplify
+Defined fun: nestingDepth
+Defined fun: nnf
+Defined fun: isNNF
+Defined fun: max
+Defined fun: isSimplified
+Defined fun: max
+FunMap: Map(nestingDepth -> nestingDepth, simplify -> simplify, isSimplified -> isSimplified, max -> max, max -> max, isNNF -> isNNF, nnf -> nnf)
+After Time Instrumentation: 
+object PropLogicDepth {
+  case class Implies(lhs: Formula, rhs: Formula) extends Formula
+
+  sealed abstract class Formula
+
+  case class Or(lhs: Formula, rhs: Formula) extends Formula
+
+  case class And(lhs: Formula, rhs: Formula) extends Formula
+
+  case class Literal(id: Int) extends Formula
+
+  case class Not(f: Formula) extends Formula
+
+  def simplify(f : Formula) : (Formula, Int) = {locally {
+    val dcond9 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (rthen9: And, dthen9: Int) = locally {
+          val (r81: Formula, d93: Int) = locally {
+            val (e14: Formula, d99: Int) = simplify(f.lhs)
+            (e14, (2 + d99))
+          }
+          
+          locally {
+            val (r82: Formula, d94: Int) = locally {
+              val (e13: Formula, d96: Int) = simplify(f.rhs)
+              (e13, (2 + d96))
+            }
+            
+            (And(r81, r82), (1 + if ((d93 >= d94)) {
+              d93
+            } else {
+              d94
+            }))
+          }
+          
+        }
+        
+        (rthen9, if ((dcond9 >= dthen9)) {
+          dcond9
+        } else {
+          dthen9
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse9: Formula, delse9: Int) = locally {
+          val dcond10 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (rthen10: Or, dthen10: Int) = locally {
+                val (r88: Formula, d102: Int) = locally {
+                  val (e16: Formula, d108: Int) = simplify(f.lhs)
+                  (e16, (2 + d108))
+                }
+                
+                locally {
+                  val (r89: Formula, d103: Int) = locally {
+                    val (e15: Formula, d105: Int) = simplify(f.rhs)
+                    (e15, (2 + d105))
+                  }
+                  
+                  (Or(r88, r89), (1 + if ((d102 >= d103)) {
+                    d102
+                  } else {
+                    d103
+                  }))
+                }
+                
+              }
+              
+              (rthen10, if ((dcond10 >= dthen10)) {
+                dcond10
+              } else {
+                dthen10
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse10: Formula, delse10: Int) = locally {
+                val dcond11 = 1
+                if (f.isInstanceOf[Implies]) {
+                  locally {
+                    val (rthen11: Or, dthen11: Int) = locally {
+                      val (r95: Not, d111: Int) = locally {
+                        val (r99: Formula, d116: Int) = locally {
+                          val (e18: Formula, d118: Int) = simplify(f.lhs)
+                          (e18, (2 + d118))
+                        }
+                        
+                        (Not(r99), (1 + d116))
+                      }
+                      
+                      locally {
+                        val (r96: Formula, d112: Int) = locally {
+                          val (e17: Formula, d114: Int) = simplify(f.rhs)
+                          (e17, (2 + d114))
+                        }
+                        
+                        (Or(r95, r96), (1 + if ((d111 >= d112)) {
+                          d111
+                        } else {
+                          d112
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen11, if ((dcond11 >= dthen11)) {
+                      dcond11
+                    } else {
+                      dthen11
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse11: Formula, delse11: Int) = locally {
+                      val dcond12 = 1
+                      if (f.isInstanceOf[Not]) {
+                        locally {
+                          val (rthen12: Not, dthen12: Int) = locally {
+                            val (r103: Formula, d121: Int) = locally {
+                              val (e19: Formula, d123: Int) = simplify(f.f)
+                              (e19, (2 + d123))
+                            }
+                            
+                            (Not(r103), (1 + d121))
+                          }
+                          
+                          (rthen12, if ((dcond12 >= dthen12)) {
+                            dcond12
+                          } else {
+                            dthen12
+                          })
+                        }
+                        
+                      } else {
+                        (f, if ((dcond12 >= 0)) {
+                          dcond12
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse11, if ((dcond11 >= delse11)) {
+                      dcond11
+                    } else {
+                      delse11
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse10, if ((dcond10 >= delse10)) {
+                dcond10
+              } else {
+                delse10
+              })
+            }
+            
+          }
+        }
+        
+        (relse9, if ((dcond9 >= delse9)) {
+          dcond9
+        } else {
+          delse9
+        })
+      }
+      
+    }
+  }
+  } ensuring(res9 => true)
+
+  def nestingDepth(f : Formula) : Int = {(f match {
+    case And(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Or(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Implies(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Not(f) =>
+      (nestingDepth(f) + 1)
+    case Literal(_) =>
+      1
+  })}
+
+  def nnf(formula : Formula) : (Formula, Int) = {locally {
+    val dcond = 1
+    if (formula.isInstanceOf[And]) {
+      locally {
+        val (rthen: And, dthen: Int) = locally {
+          val (r2: Formula, d1: Int) = locally {
+            val (e1: Formula, d7: Int) = nnf(formula.lhs)
+            (e1, (2 + d7))
+          }
+          
+          locally {
+            val (r3: Formula, d2: Int) = locally {
+              val (e: Formula, d4: Int) = nnf(formula.rhs)
+              (e, (2 + d4))
+            }
+            
+            (And(r2, r3), (1 + if ((d1 >= d2)) {
+              d1
+            } else {
+              d2
+            }))
+          }
+          
+        }
+        
+        (rthen, if ((dcond >= dthen)) {
+          dcond
+        } else {
+          dthen
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse: Formula, delse: Int) = locally {
+          val dcond1 = 1
+          if (formula.isInstanceOf[Or]) {
+            locally {
+              val (rthen1: Or, dthen1: Int) = locally {
+                val (r9: Formula, d10: Int) = locally {
+                  val (e3: Formula, d16: Int) = nnf(formula.lhs)
+                  (e3, (2 + d16))
+                }
+                
+                locally {
+                  val (r10: Formula, d11: Int) = locally {
+                    val (e2: Formula, d13: Int) = nnf(formula.rhs)
+                    (e2, (2 + d13))
+                  }
+                  
+                  (Or(r9, r10), (1 + if ((d10 >= d11)) {
+                    d10
+                  } else {
+                    d11
+                  }))
+                }
+                
+              }
+              
+              (rthen1, if ((dcond1 >= dthen1)) {
+                dcond1
+              } else {
+                dthen1
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse1: Formula, delse1: Int) = locally {
+                val dcond2 = 1
+                if (formula.isInstanceOf[Implies]) {
+                  locally {
+                    val (rthen2: Implies, dthen2: Int) = locally {
+                      val (r16: Formula, d19: Int) = locally {
+                        val (e5: Formula, d25: Int) = nnf(formula.lhs)
+                        (e5, (2 + d25))
+                      }
+                      
+                      locally {
+                        val (r17: Formula, d20: Int) = locally {
+                          val (e4: Formula, d22: Int) = nnf(formula.rhs)
+                          (e4, (2 + d22))
+                        }
+                        
+                        (Implies(r16, r17), (1 + if ((d19 >= d20)) {
+                          d19
+                        } else {
+                          d20
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen2, if ((dcond2 >= dthen2)) {
+                      dcond2
+                    } else {
+                      dthen2
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse2: Formula, delse2: Int) = locally {
+                      val dcond3 = 3
+                      if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[And])) {
+                        locally {
+                          val (rthen3: Or, dthen3: Int) = locally {
+                            val (r27: Formula, d32: Int) = locally {
+                              val (e7: Formula, d40: Int) = nnf(Not(formula.f.lhs))
+                              (e7, (4 + d40))
+                            }
+                            
+                            locally {
+                              val (r28: Formula, d33: Int) = locally {
+                                val (e6: Formula, d35: Int) = nnf(Not(formula.f.rhs))
+                                (e6, (4 + d35))
+                              }
+                              
+                              (Or(r27, r28), (1 + if ((d32 >= d33)) {
+                                d32
+                              } else {
+                                d33
+                              }))
+                            }
+                            
+                          }
+                          
+                          (rthen3, if ((dcond3 >= dthen3)) {
+                            dcond3
+                          } else {
+                            dthen3
+                          })
+                        }
+                        
+                      } else {
+                        locally {
+                          val (relse3: Formula, delse3: Int) = locally {
+                            val dcond4 = 3
+                            if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Or])) {
+                              locally {
+                                val (rthen4: And, dthen4: Int) = locally {
+                                  val (r42: Formula, d49: Int) = locally {
+                                    val (e9: Formula, d57: Int) = nnf(Not(formula.f.lhs))
+                                    (e9, (4 + d57))
+                                  }
+                                  
+                                  locally {
+                                    val (r43: Formula, d50: Int) = locally {
+                                      val (e8: Formula, d52: Int) = nnf(Not(formula.f.rhs))
+                                      (e8, (4 + d52))
+                                    }
+                                    
+                                    (And(r42, r43), (1 + if ((d49 >= d50)) {
+                                      d49
+                                    } else {
+                                      d50
+                                    }))
+                                  }
+                                  
+                                }
+                                
+                                (rthen4, if ((dcond4 >= dthen4)) {
+                                  dcond4
+                                } else {
+                                  dthen4
+                                })
+                              }
+                              
+                            } else {
+                              locally {
+                                val (relse4: Formula, delse4: Int) = locally {
+                                  val dcond5 = 3
+                                  if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Implies])) {
+                                    locally {
+                                      val (rthen5: And, dthen5: Int) = locally {
+                                        val (r57: Formula, d66: Int) = locally {
+                                          val (e11: Formula, d74: Int) = nnf(formula.f.lhs)
+                                          (e11, (3 + d74))
+                                        }
+                                        
+                                        locally {
+                                          val (r58: Formula, d67: Int) = locally {
+                                            val (e10: Formula, d69: Int) = nnf(Not(formula.f.rhs))
+                                            (e10, (4 + d69))
+                                          }
+                                          
+                                          (And(r57, r58), (1 + if ((d66 >= d67)) {
+                                            d66
+                                          } else {
+                                            d67
+                                          }))
+                                        }
+                                        
+                                      }
+                                      
+                                      (rthen5, if ((dcond5 >= dthen5)) {
+                                        dcond5
+                                      } else {
+                                        dthen5
+                                      })
+                                    }
+                                    
+                                  } else {
+                                    locally {
+                                      val (relse5: Formula, delse5: Int) = locally {
+                                        val dcond6 = 3
+                                        if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Not])) {
+                                          locally {
+                                            val (rthen6: Formula, dthen6: Int) = locally {
+                                              val (e12: Formula, d83: Int) = nnf(formula.f.f)
+                                              (e12, (3 + d83))
+                                            }
+                                            
+                                            (rthen6, if ((dcond6 >= dthen6)) {
+                                              dcond6
+                                            } else {
+                                              dthen6
+                                            })
+                                          }
+                                          
+                                        } else {
+                                          locally {
+                                            val (relse6: Formula, delse6: Int) = locally {
+                                              val dcond7 = 3
+                                              if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Literal])) {
+                                                (formula, if ((dcond7 >= 0)) {
+                                                  dcond7
+                                                } else {
+                                                  0
+                                                })
+                                              } else {
+                                                locally {
+                                                  val (relse7: Formula, delse7: Int) = locally {
+                                                    val dcond8 = 1
+                                                    if (formula.isInstanceOf[Literal]) {
+                                                      (formula, if ((dcond8 >= 0)) {
+                                                        dcond8
+                                                      } else {
+                                                        0
+                                                      })
+                                                    } else {
+                                                      (formula, if ((dcond8 >= 0)) {
+                                                        dcond8
+                                                      } else {
+                                                        0
+                                                      })
+                                                    }
+                                                  }
+                                                  
+                                                  (relse7, if ((dcond7 >= delse7)) {
+                                                    dcond7
+                                                  } else {
+                                                    delse7
+                                                  })
+                                                }
+                                                
+                                              }
+                                            }
+                                            
+                                            (relse6, if ((dcond6 >= delse6)) {
+                                              dcond6
+                                            } else {
+                                              delse6
+                                            })
+                                          }
+                                          
+                                        }
+                                      }
+                                      
+                                      (relse5, if ((dcond5 >= delse5)) {
+                                        dcond5
+                                      } else {
+                                        delse5
+                                      })
+                                    }
+                                    
+                                  }
+                                }
+                                
+                                (relse4, if ((dcond4 >= delse4)) {
+                                  dcond4
+                                } else {
+                                  delse4
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (relse3, if ((dcond3 >= delse3)) {
+                            dcond3
+                          } else {
+                            delse3
+                          })
+                        }
+                        
+                      }
+                    }
+                    
+                    (relse2, if ((dcond2 >= delse2)) {
+                      dcond2
+                    } else {
+                      delse2
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse1, if ((dcond1 >= delse1)) {
+                dcond1
+              } else {
+                delse1
+              })
+            }
+            
+          }
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res12 => true)
+
+  def isNNF(f : Formula) : (Boolean, Int) = {locally {
+    val dcond13 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (rthen13: Boolean, dthen13: Int) = locally {
+          val (r107: Boolean, d126: Int) = locally {
+            val (e21: Boolean, d132: Int) = isNNF(f.lhs)
+            (e21, (2 + d132))
+          }
+          
+          locally {
+            val (r108: Boolean, d127: Int) = locally {
+              val (e20: Boolean, d129: Int) = isNNF(f.rhs)
+              (e20, (2 + d129))
+            }
+            
+            ((r107 && r108), (1 + if ((d126 >= d127)) {
+              d126
+            } else {
+              d127
+            }))
+          }
+          
+        }
+        
+        (rthen13, if ((dcond13 >= dthen13)) {
+          dcond13
+        } else {
+          dthen13
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse13: Boolean, delse13: Int) = locally {
+          val dcond14 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (rthen14: Boolean, dthen14: Int) = locally {
+                val (r114: Boolean, d135: Int) = locally {
+                  val (e23: Boolean, d141: Int) = isNNF(f.lhs)
+                  (e23, (2 + d141))
+                }
+                
+                locally {
+                  val (r115: Boolean, d136: Int) = locally {
+                    val (e22: Boolean, d138: Int) = isNNF(f.rhs)
+                    (e22, (2 + d138))
+                  }
+                  
+                  ((r114 && r115), (1 + if ((d135 >= d136)) {
+                    d135
+                  } else {
+                    d136
+                  }))
+                }
+                
+              }
+              
+              (rthen14, if ((dcond14 >= dthen14)) {
+                dcond14
+              } else {
+                dthen14
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse14: Boolean, delse14: Int) = locally {
+                val dcond15 = 1
+                if (f.isInstanceOf[Implies]) {
+                  locally {
+                    val (rthen15: Boolean, dthen15: Int) = locally {
+                      val (r121: Boolean, d144: Int) = locally {
+                        val (e25: Boolean, d150: Int) = isNNF(f.lhs)
+                        (e25, (2 + d150))
+                      }
+                      
+                      locally {
+                        val (r122: Boolean, d145: Int) = locally {
+                          val (e24: Boolean, d147: Int) = isNNF(f.rhs)
+                          (e24, (2 + d147))
+                        }
+                        
+                        ((r121 && r122), (1 + if ((d144 >= d145)) {
+                          d144
+                        } else {
+                          d145
+                        }))
+                      }
+                      
+                    }
+                    
+                    (rthen15, if ((dcond15 >= dthen15)) {
+                      dcond15
+                    } else {
+                      dthen15
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse15: Boolean, delse15: Int) = locally {
+                      val dcond16 = 3
+                      if ((f.isInstanceOf[Not] && f.f.isInstanceOf[Literal])) {
+                        (true, if ((dcond16 >= 0)) {
+                          dcond16
+                        } else {
+                          0
+                        })
+                      } else {
+                        locally {
+                          val (relse16: Boolean, delse16: Int) = locally {
+                            val dcond17 = 1
+                            if (f.isInstanceOf[Not]) {
+                              (false, if ((dcond17 >= 0)) {
+                                dcond17
+                              } else {
+                                0
+                              })
+                            } else {
+                              locally {
+                                val (relse17: Boolean, delse17: Int) = locally {
+                                  val dcond18 = 1
+                                  if (f.isInstanceOf[Literal]) {
+                                    (true, if ((dcond18 >= 0)) {
+                                      dcond18
+                                    } else {
+                                      0
+                                    })
+                                  } else {
+                                    (false, if ((dcond18 >= 0)) {
+                                      dcond18
+                                    } else {
+                                      0
+                                    })
+                                  }
+                                }
+                                
+                                (relse17, if ((dcond17 >= delse17)) {
+                                  dcond17
+                                } else {
+                                  delse17
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (relse16, if ((dcond16 >= delse16)) {
+                            dcond16
+                          } else {
+                            delse16
+                          })
+                        }
+                        
+                      }
+                    }
+                    
+                    (relse15, if ((dcond15 >= delse15)) {
+                      dcond15
+                    } else {
+                      delse15
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse14, if ((dcond14 >= delse14)) {
+                dcond14
+              } else {
+                delse14
+              })
+            }
+            
+          }
+        }
+        
+        (relse13, if ((dcond13 >= delse13)) {
+          dcond13
+        } else {
+          delse13
+        })
+      }
+      
+    }
+  }
+  } ensuring(res11 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def isSimplified(f : Formula) : (Boolean, Int) = {locally {
+    val dcond19 = 1
+    if (f.isInstanceOf[And]) {
+      locally {
+        val (rthen19: Boolean, dthen19: Int) = locally {
+          val (r135: Boolean, d160: Int) = locally {
+            val (e27: Boolean, d166: Int) = isSimplified(f.lhs)
+            (e27, (2 + d166))
+          }
+          
+          locally {
+            val (r136: Boolean, d161: Int) = locally {
+              val (e26: Boolean, d163: Int) = isSimplified(f.rhs)
+              (e26, (2 + d163))
+            }
+            
+            ((r135 && r136), (1 + if ((d160 >= d161)) {
+              d160
+            } else {
+              d161
+            }))
+          }
+          
+        }
+        
+        (rthen19, if ((dcond19 >= dthen19)) {
+          dcond19
+        } else {
+          dthen19
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse19: Boolean, delse19: Int) = locally {
+          val dcond20 = 1
+          if (f.isInstanceOf[Or]) {
+            locally {
+              val (rthen20: Boolean, dthen20: Int) = locally {
+                val (r142: Boolean, d169: Int) = locally {
+                  val (e29: Boolean, d175: Int) = isSimplified(f.lhs)
+                  (e29, (2 + d175))
+                }
+                
+                locally {
+                  val (r143: Boolean, d170: Int) = locally {
+                    val (e28: Boolean, d172: Int) = isSimplified(f.rhs)
+                    (e28, (2 + d172))
+                  }
+                  
+                  ((r142 && r143), (1 + if ((d169 >= d170)) {
+                    d169
+                  } else {
+                    d170
+                  }))
+                }
+                
+              }
+              
+              (rthen20, if ((dcond20 >= dthen20)) {
+                dcond20
+              } else {
+                dthen20
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse20: Boolean, delse20: Int) = locally {
+                val dcond21 = 1
+                if (f.isInstanceOf[Implies]) {
+                  (false, if ((dcond21 >= 0)) {
+                    dcond21
+                  } else {
+                    0
+                  })
+                } else {
+                  locally {
+                    val (relse21: Boolean, delse21: Int) = locally {
+                      val dcond22 = 1
+                      if (f.isInstanceOf[Not]) {
+                        locally {
+                          val (rthen22: Boolean, dthen22: Int) = locally {
+                            val (e30: Boolean, d180: Int) = isSimplified(f.f)
+                            (e30, (2 + d180))
+                          }
+                          
+                          (rthen22, if ((dcond22 >= dthen22)) {
+                            dcond22
+                          } else {
+                            dthen22
+                          })
+                        }
+                        
+                      } else {
+                        (true, if ((dcond22 >= 0)) {
+                          dcond22
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse21, if ((dcond21 >= delse21)) {
+                      dcond21
+                    } else {
+                      delse21
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse20, if ((dcond20 >= delse20)) {
+                dcond20
+              } else {
+                delse20
+              })
+            }
+            
+          }
+        }
+        
+        (relse19, if ((dcond19 >= delse19)) {
+          dcond19
+        } else {
+          delse19
+        })
+      }
+      
+    }
+  }
+  } ensuring(res10 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object PropLogicDepth {
+  case class Implies(lhs: Formula, rhs: Formula) extends Formula
+
+  sealed abstract class Formula
+
+  case class Or(lhs: Formula, rhs: Formula) extends Formula
+
+  case class And(lhs: Formula, rhs: Formula) extends Formula
+
+  case class Literal(id: Int) extends Formula
+
+  case class Not(f: Formula) extends Formula
+
+  def simplify(f : Formula) : (Formula, Int) = {if (f.isInstanceOf[And]) {
+    locally {
+      val (rthen9: And, dthen9: Int) = locally {
+        val (r81: Formula, d93: Int) = locally {
+          val (e14: Formula, d99: Int) = simplify(f.lhs)
+          (e14, (2 + d99))
+        }
+        
+        locally {
+          val (r82: Formula, d94: Int) = locally {
+            val (e13: Formula, d96: Int) = simplify(f.rhs)
+            (e13, (2 + d96))
+          }
+          
+          (And(r81, r82), (1 + if ((d93 >= d94)) {
+            d93
+          } else {
+            d94
+          }))
+        }
+        
+      }
+      
+      (rthen9, if ((1 >= dthen9)) {
+        1
+      } else {
+        dthen9
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse9: Formula, delse9: Int) = if (f.isInstanceOf[Or]) {
+        locally {
+          val (rthen10: Or, dthen10: Int) = locally {
+            val (r88: Formula, d102: Int) = locally {
+              val (e16: Formula, d108: Int) = simplify(f.lhs)
+              (e16, (2 + d108))
+            }
+            
+            locally {
+              val (r89: Formula, d103: Int) = locally {
+                val (e15: Formula, d105: Int) = simplify(f.rhs)
+                (e15, (2 + d105))
+              }
+              
+              (Or(r88, r89), (1 + if ((d102 >= d103)) {
+                d102
+              } else {
+                d103
+              }))
+            }
+            
+          }
+          
+          (rthen10, if ((1 >= dthen10)) {
+            1
+          } else {
+            dthen10
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse10: Formula, delse10: Int) = if (f.isInstanceOf[Implies]) {
+            locally {
+              val (rthen11: Or, dthen11: Int) = locally {
+                val (r95: Not, d111: Int) = locally {
+                  val (r99: Formula, d116: Int) = locally {
+                    val (e18: Formula, d118: Int) = simplify(f.lhs)
+                    (e18, (2 + d118))
+                  }
+                  
+                  (Not(r99), (1 + d116))
+                }
+                
+                locally {
+                  val (r96: Formula, d112: Int) = locally {
+                    val (e17: Formula, d114: Int) = simplify(f.rhs)
+                    (e17, (2 + d114))
+                  }
+                  
+                  (Or(r95, r96), (1 + if ((d111 >= d112)) {
+                    d111
+                  } else {
+                    d112
+                  }))
+                }
+                
+              }
+              
+              (rthen11, if ((1 >= dthen11)) {
+                1
+              } else {
+                dthen11
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse11: Formula, delse11: Int) = if (f.isInstanceOf[Not]) {
+                locally {
+                  val (rthen12: Not, dthen12: Int) = locally {
+                    val (r103: Formula, d121: Int) = locally {
+                      val (e19: Formula, d123: Int) = simplify(f.f)
+                      (e19, (2 + d123))
+                    }
+                    
+                    (Not(r103), (1 + d121))
+                  }
+                  
+                  (rthen12, if ((1 >= dthen12)) {
+                    1
+                  } else {
+                    dthen12
+                  })
+                }
+                
+              } else {
+                (f, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              }
+              (relse11, if ((1 >= delse11)) {
+                1
+              } else {
+                delse11
+              })
+            }
+            
+          }
+          (relse10, if ((1 >= delse10)) {
+            1
+          } else {
+            delse10
+          })
+        }
+        
+      }
+      (relse9, if ((1 >= delse9)) {
+        1
+      } else {
+        delse9
+      })
+    }
+    
+  }} ensuring(res9 => true)
+
+  def nestingDepth(f : Formula) : Int = {(f match {
+    case And(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Or(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Implies(lhs, rhs) =>
+      (max(nestingDepth(lhs), nestingDepth(rhs)) + 1)
+    case Not(f) =>
+      (nestingDepth(f) + 1)
+    case Literal(_) =>
+      1
+  })}
+
+  def nnf(formula : Formula) : (Formula, Int) = {if (formula.isInstanceOf[And]) {
+    locally {
+      val (rthen: And, dthen: Int) = locally {
+        val (r2: Formula, d1: Int) = locally {
+          val (e1: Formula, d7: Int) = nnf(formula.lhs)
+          (e1, (2 + d7))
+        }
+        
+        locally {
+          val (r3: Formula, d2: Int) = locally {
+            val (e: Formula, d4: Int) = nnf(formula.rhs)
+            (e, (2 + d4))
+          }
+          
+          (And(r2, r3), (1 + if ((d1 >= d2)) {
+            d1
+          } else {
+            d2
+          }))
+        }
+        
+      }
+      
+      (rthen, if ((1 >= dthen)) {
+        1
+      } else {
+        dthen
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse: Formula, delse: Int) = if (formula.isInstanceOf[Or]) {
+        locally {
+          val (rthen1: Or, dthen1: Int) = locally {
+            val (r9: Formula, d10: Int) = locally {
+              val (e3: Formula, d16: Int) = nnf(formula.lhs)
+              (e3, (2 + d16))
+            }
+            
+            locally {
+              val (r10: Formula, d11: Int) = locally {
+                val (e2: Formula, d13: Int) = nnf(formula.rhs)
+                (e2, (2 + d13))
+              }
+              
+              (Or(r9, r10), (1 + if ((d10 >= d11)) {
+                d10
+              } else {
+                d11
+              }))
+            }
+            
+          }
+          
+          (rthen1, if ((1 >= dthen1)) {
+            1
+          } else {
+            dthen1
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse1: Formula, delse1: Int) = if (formula.isInstanceOf[Implies]) {
+            locally {
+              val (rthen2: Implies, dthen2: Int) = locally {
+                val (r16: Formula, d19: Int) = locally {
+                  val (e5: Formula, d25: Int) = nnf(formula.lhs)
+                  (e5, (2 + d25))
+                }
+                
+                locally {
+                  val (r17: Formula, d20: Int) = locally {
+                    val (e4: Formula, d22: Int) = nnf(formula.rhs)
+                    (e4, (2 + d22))
+                  }
+                  
+                  (Implies(r16, r17), (1 + if ((d19 >= d20)) {
+                    d19
+                  } else {
+                    d20
+                  }))
+                }
+                
+              }
+              
+              (rthen2, if ((1 >= dthen2)) {
+                1
+              } else {
+                dthen2
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse2: Formula, delse2: Int) = if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[And])) {
+                locally {
+                  val (rthen3: Or, dthen3: Int) = locally {
+                    val (r27: Formula, d32: Int) = locally {
+                      val (e7: Formula, d40: Int) = nnf(Not(formula.f.lhs))
+                      (e7, (4 + d40))
+                    }
+                    
+                    locally {
+                      val (r28: Formula, d33: Int) = locally {
+                        val (e6: Formula, d35: Int) = nnf(Not(formula.f.rhs))
+                        (e6, (4 + d35))
+                      }
+                      
+                      (Or(r27, r28), (1 + if ((d32 >= d33)) {
+                        d32
+                      } else {
+                        d33
+                      }))
+                    }
+                    
+                  }
+                  
+                  (rthen3, if ((3 >= dthen3)) {
+                    3
+                  } else {
+                    dthen3
+                  })
+                }
+                
+              } else {
+                locally {
+                  val (relse3: Formula, delse3: Int) = if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Or])) {
+                    locally {
+                      val (rthen4: And, dthen4: Int) = locally {
+                        val (r42: Formula, d49: Int) = locally {
+                          val (e9: Formula, d57: Int) = nnf(Not(formula.f.lhs))
+                          (e9, (4 + d57))
+                        }
+                        
+                        locally {
+                          val (r43: Formula, d50: Int) = locally {
+                            val (e8: Formula, d52: Int) = nnf(Not(formula.f.rhs))
+                            (e8, (4 + d52))
+                          }
+                          
+                          (And(r42, r43), (1 + if ((d49 >= d50)) {
+                            d49
+                          } else {
+                            d50
+                          }))
+                        }
+                        
+                      }
+                      
+                      (rthen4, if ((3 >= dthen4)) {
+                        3
+                      } else {
+                        dthen4
+                      })
+                    }
+                    
+                  } else {
+                    locally {
+                      val (relse4: Formula, delse4: Int) = if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Implies])) {
+                        locally {
+                          val (rthen5: And, dthen5: Int) = locally {
+                            val (r57: Formula, d66: Int) = locally {
+                              val (e11: Formula, d74: Int) = nnf(formula.f.lhs)
+                              (e11, (3 + d74))
+                            }
+                            
+                            locally {
+                              val (r58: Formula, d67: Int) = locally {
+                                val (e10: Formula, d69: Int) = nnf(Not(formula.f.rhs))
+                                (e10, (4 + d69))
+                              }
+                              
+                              (And(r57, r58), (1 + if ((d66 >= d67)) {
+                                d66
+                              } else {
+                                d67
+                              }))
+                            }
+                            
+                          }
+                          
+                          (rthen5, if ((3 >= dthen5)) {
+                            3
+                          } else {
+                            dthen5
+                          })
+                        }
+                        
+                      } else {
+                        locally {
+                          val (relse5: Formula, delse5: Int) = if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Not])) {
+                            locally {
+                              val (rthen6: Formula, dthen6: Int) = locally {
+                                val (e12: Formula, d83: Int) = nnf(formula.f.f)
+                                (e12, (3 + d83))
+                              }
+                              
+                              (rthen6, if ((3 >= dthen6)) {
+                                3
+                              } else {
+                                dthen6
+                              })
+                            }
+                            
+                          } else {
+                            locally {
+                              val (relse6: Formula, delse6: Int) = if ((formula.isInstanceOf[Not] && formula.f.isInstanceOf[Literal])) {
+                                (formula, if ((3 >= 0)) {
+                                  3
+                                } else {
+                                  0
+                                })
+                              } else {
+                                locally {
+                                  val (relse7: Formula, delse7: Int) = if (formula.isInstanceOf[Literal]) {
+                                    (formula, if ((1 >= 0)) {
+                                      1
+                                    } else {
+                                      0
+                                    })
+                                  } else {
+                                    (formula, if ((1 >= 0)) {
+                                      1
+                                    } else {
+                                      0
+                                    })
+                                  }
+                                  (relse7, if ((3 >= delse7)) {
+                                    3
+                                  } else {
+                                    delse7
+                                  })
+                                }
+                                
+                              }
+                              (relse6, if ((3 >= delse6)) {
+                                3
+                              } else {
+                                delse6
+                              })
+                            }
+                            
+                          }
+                          (relse5, if ((3 >= delse5)) {
+                            3
+                          } else {
+                            delse5
+                          })
+                        }
+                        
+                      }
+                      (relse4, if ((3 >= delse4)) {
+                        3
+                      } else {
+                        delse4
+                      })
+                    }
+                    
+                  }
+                  (relse3, if ((3 >= delse3)) {
+                    3
+                  } else {
+                    delse3
+                  })
+                }
+                
+              }
+              (relse2, if ((1 >= delse2)) {
+                1
+              } else {
+                delse2
+              })
+            }
+            
+          }
+          (relse1, if ((1 >= delse1)) {
+            1
+          } else {
+            delse1
+          })
+        }
+        
+      }
+      (relse, if ((1 >= delse)) {
+        1
+      } else {
+        delse
+      })
+    }
+    
+  }} ensuring(res12 => true)
+
+  def isNNF(f : Formula) : (Boolean, Int) = {if (f.isInstanceOf[And]) {
+    locally {
+      val (rthen13: Boolean, dthen13: Int) = locally {
+        val (r107: Boolean, d126: Int) = locally {
+          val (e21: Boolean, d132: Int) = isNNF(f.lhs)
+          (e21, (2 + d132))
+        }
+        
+        locally {
+          val (r108: Boolean, d127: Int) = locally {
+            val (e20: Boolean, d129: Int) = isNNF(f.rhs)
+            (e20, (2 + d129))
+          }
+          
+          ((r107 && r108), (1 + if ((d126 >= d127)) {
+            d126
+          } else {
+            d127
+          }))
+        }
+        
+      }
+      
+      (rthen13, if ((1 >= dthen13)) {
+        1
+      } else {
+        dthen13
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse13: Boolean, delse13: Int) = if (f.isInstanceOf[Or]) {
+        locally {
+          val (rthen14: Boolean, dthen14: Int) = locally {
+            val (r114: Boolean, d135: Int) = locally {
+              val (e23: Boolean, d141: Int) = isNNF(f.lhs)
+              (e23, (2 + d141))
+            }
+            
+            locally {
+              val (r115: Boolean, d136: Int) = locally {
+                val (e22: Boolean, d138: Int) = isNNF(f.rhs)
+                (e22, (2 + d138))
+              }
+              
+              ((r114 && r115), (1 + if ((d135 >= d136)) {
+                d135
+              } else {
+                d136
+              }))
+            }
+            
+          }
+          
+          (rthen14, if ((1 >= dthen14)) {
+            1
+          } else {
+            dthen14
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse14: Boolean, delse14: Int) = if (f.isInstanceOf[Implies]) {
+            locally {
+              val (rthen15: Boolean, dthen15: Int) = locally {
+                val (r121: Boolean, d144: Int) = locally {
+                  val (e25: Boolean, d150: Int) = isNNF(f.lhs)
+                  (e25, (2 + d150))
+                }
+                
+                locally {
+                  val (r122: Boolean, d145: Int) = locally {
+                    val (e24: Boolean, d147: Int) = isNNF(f.rhs)
+                    (e24, (2 + d147))
+                  }
+                  
+                  ((r121 && r122), (1 + if ((d144 >= d145)) {
+                    d144
+                  } else {
+                    d145
+                  }))
+                }
+                
+              }
+              
+              (rthen15, if ((1 >= dthen15)) {
+                1
+              } else {
+                dthen15
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse15: Boolean, delse15: Int) = if ((f.isInstanceOf[Not] && f.f.isInstanceOf[Literal])) {
+                (true, if ((3 >= 0)) {
+                  3
+                } else {
+                  0
+                })
+              } else {
+                locally {
+                  val (relse16: Boolean, delse16: Int) = if (f.isInstanceOf[Not]) {
+                    (false, if ((1 >= 0)) {
+                      1
+                    } else {
+                      0
+                    })
+                  } else {
+                    locally {
+                      val (relse17: Boolean, delse17: Int) = if (f.isInstanceOf[Literal]) {
+                        (true, if ((1 >= 0)) {
+                          1
+                        } else {
+                          0
+                        })
+                      } else {
+                        (false, if ((1 >= 0)) {
+                          1
+                        } else {
+                          0
+                        })
+                      }
+                      (relse17, if ((1 >= delse17)) {
+                        1
+                      } else {
+                        delse17
+                      })
+                    }
+                    
+                  }
+                  (relse16, if ((3 >= delse16)) {
+                    3
+                  } else {
+                    delse16
+                  })
+                }
+                
+              }
+              (relse15, if ((1 >= delse15)) {
+                1
+              } else {
+                delse15
+              })
+            }
+            
+          }
+          (relse14, if ((1 >= delse14)) {
+            1
+          } else {
+            delse14
+          })
+        }
+        
+      }
+      (relse13, if ((1 >= delse13)) {
+        1
+      } else {
+        delse13
+      })
+    }
+    
+  }} ensuring(res11 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def isSimplified(f : Formula) : (Boolean, Int) = {if (f.isInstanceOf[And]) {
+    locally {
+      val (rthen19: Boolean, dthen19: Int) = locally {
+        val (r135: Boolean, d160: Int) = locally {
+          val (e27: Boolean, d166: Int) = isSimplified(f.lhs)
+          (e27, (2 + d166))
+        }
+        
+        locally {
+          val (r136: Boolean, d161: Int) = locally {
+            val (e26: Boolean, d163: Int) = isSimplified(f.rhs)
+            (e26, (2 + d163))
+          }
+          
+          ((r135 && r136), (1 + if ((d160 >= d161)) {
+            d160
+          } else {
+            d161
+          }))
+        }
+        
+      }
+      
+      (rthen19, if ((1 >= dthen19)) {
+        1
+      } else {
+        dthen19
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse19: Boolean, delse19: Int) = if (f.isInstanceOf[Or]) {
+        locally {
+          val (rthen20: Boolean, dthen20: Int) = locally {
+            val (r142: Boolean, d169: Int) = locally {
+              val (e29: Boolean, d175: Int) = isSimplified(f.lhs)
+              (e29, (2 + d175))
+            }
+            
+            locally {
+              val (r143: Boolean, d170: Int) = locally {
+                val (e28: Boolean, d172: Int) = isSimplified(f.rhs)
+                (e28, (2 + d172))
+              }
+              
+              ((r142 && r143), (1 + if ((d169 >= d170)) {
+                d169
+              } else {
+                d170
+              }))
+            }
+            
+          }
+          
+          (rthen20, if ((1 >= dthen20)) {
+            1
+          } else {
+            dthen20
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse20: Boolean, delse20: Int) = if (f.isInstanceOf[Implies]) {
+            (false, if ((1 >= 0)) {
+              1
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse21: Boolean, delse21: Int) = if (f.isInstanceOf[Not]) {
+                locally {
+                  val (rthen22: Boolean, dthen22: Int) = locally {
+                    val (e30: Boolean, d180: Int) = isSimplified(f.f)
+                    (e30, (2 + d180))
+                  }
+                  
+                  (rthen22, if ((1 >= dthen22)) {
+                    1
+                  } else {
+                    dthen22
+                  })
+                }
+                
+              } else {
+                (true, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              }
+              (relse21, if ((1 >= delse21)) {
+                1
+              } else {
+                delse21
+              })
+            }
+            
+          }
+          (relse20, if ((1 >= delse20)) {
+            1
+          } else {
+            delse20
+          })
+        }
+        
+      }
+      (relse19, if ((1 >= delse19)) {
+        1
+      } else {
+        delse19
+      })
+    }
+    
+  }} ensuring(res10 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: simplify template --> (res9._2 ≤ ((a? * nestingDepth(f)) + b?))
+Function: nnf template --> (res12._2 ≤ ((a?2 * nestingDepth(formula)) + b?2))
+Function: isNNF template --> (res11._2 ≤ ((a?3 * nestingDepth(f)) + b?3))
+Function: isSimplified template --> (res10._2 ≤ ((a?1 * nestingDepth(f)) + b?1))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(nestingDepth, simplify, isSimplified, nnf, isNNF)
+[[34m Info  [0m] - considering function simplify...
+[[34m Info  [0m] Body: if (f.isInstanceOf[And])
+            (let (rthen9,dthen9 := (let (r81,d93 := (let (e14,d99 := simplify(f.lhs)) in
+              (e14, (2 + d99)))) in
+              (let (r82,d94 := (let (e13,d96 := simplify(f.rhs)) in
+                (e13, (2 + d96)))) in
+                (And(r81, r82), (1 + if ((d93 ≥ d94))
+                  d93
+                else
+                  d94))))) in
+              (rthen9, if ((1 ≥ dthen9))
+                1
+              else
+                dthen9))
+          else
+            (let (relse9,delse9 := if (f.isInstanceOf[Or])
+              (let (rthen10,dthen10 := (let (r88,d102 := (let (e16,d108 := simplify(f.lhs)) in
+                (e16, (2 + d108)))) in
+                (let (r89,d103 := (let (e15,d105 := simplify(f.rhs)) in
+                  (e15, (2 + d105)))) in
+                  (Or(r88, r89), (1 + if ((d102 ≥ d103))
+                    d102
+                  else
+                    d103))))) in
+                (rthen10, if ((1 ≥ dthen10))
+                  1
+                else
+                  dthen10))
+            else
+              (let (relse10,delse10 := if (f.isInstanceOf[Implies])
+                (let (rthen11,dthen11 := (let (r95,d111 := (let (r99,d116 := (let (e18,d118 := simplify(f.lhs)) in
+                  (e18, (2 + d118)))) in
+                  (Not(r99), (1 + d116)))) in
+                  (let (r96,d112 := (let (e17,d114 := simplify(f.rhs)) in
+                    (e17, (2 + d114)))) in
+                    (Or(r95, r96), (1 + if ((d111 ≥ d112))
+                      d111
+                    else
+                      d112))))) in
+                  (rthen11, if ((1 ≥ dthen11))
+                    1
+                  else
+                    dthen11))
+              else
+                (let (relse11,delse11 := if (f.isInstanceOf[Not])
+                  (let (rthen12,dthen12 := (let (r103,d121 := (let (e19,d123 := simplify(f.f)) in
+                    (e19, (2 + d123)))) in
+                    (Not(r103), (1 + d121)))) in
+                    (rthen12, if ((1 ≥ dthen12))
+                      1
+                    else
+                      dthen12))
+                else
+                  (f, if ((1 ≥ 0))
+                    1
+                  else
+                    0)) in
+                  (relse11, if ((1 ≥ delse11))
+                    1
+                  else
+                    delse11))) in
+                (relse10, if ((1 ≥ delse10))
+                  1
+                else
+                  delse10))) in
+              (relse9, if ((1 ≥ delse9))
+                1
+              else
+                delse9))
+[[34m Info  [0m] Post: true
+falttened Body: ((res9 == ifres) && ((ci && (ci == f.isInstanceOf[And]) && (ifres == tp) && (tp == (rthen9, ifres1)) && (e14 == ts) && (ts == tres1._1) && (d93 == (2 + d99)) && (dthen9 == (1 + ifres2)) && (((1 >= dthen9) && (ifres1 == 1)) || ((1 < dthen9) && (ifres1 == dthen9))) && (rthen9 == cc) && (cc == And(r81, r82)) && (tres1 == r152) && (cs == f.lhs) && (r152 == simplify(cs)) && (r82 == e13) && (((d93 >= d94) && (ifres2 == d93)) || ((d93 < d94) && (ifres2 == d94))) && (d94 == (2 + d96)) && (d96 == ts1) && (ts1 == tres._2) && (e13 == ts2) && (ts2 == tres._1) && (tres == r153) && (cs1 == f.rhs) && (r153 == simplify(cs1)) && (r81 == e14) && (d99 == ts3) && (ts3 == tres1._2)) || (!(ci1) && (ci1 == f.isInstanceOf[And]) && (ifres == tp1) && (tp1 == (relse9, ifres3)) && ((ci2 && (ci2 == f.isInstanceOf[Or]) && (ifres4 == tp2) && (tp2 == (rthen10, ifres5)) && (rthen10 == cc1) && (cc1 == Or(r88, r89)) && (r89 == e15) && (((1 >= dthen10) && (ifres5 == 1)) || ((1 < dthen10) && (ifres5 == dthen10))) && (tres3 == r154) && (cs2 == f.lhs) && (r154 == simplify(cs2)) && (d108 == ts4) && (ts4 == tres3._2) && (e16 == ts5) && (ts5 == tres3._1) && (d102 == (2 + d108)) && (e15 == ts6) && (ts6 == tres2._1) && (r88 == e16) && (d103 == (2 + d105)) && (dthen10 == (1 + ifres6)) && (tres2 == r155) && (cs3 == f.rhs) && (r155 == simplify(cs3)) && (((d102 >= d103) && (ifres6 == d102)) || ((d102 < d103) && (ifres6 == d103))) && (d105 == ts7) && (ts7 == tres2._2)) || (!(ci3) && (ci3 == f.isInstanceOf[Or]) && (ifres4 == tp3) && (tp3 == (relse10, ifres7)) && ((ci4 && (ci4 == f.isInstanceOf[Implies]) && (ifres8 == tp4) && (tp4 == (rthen11, ifres9)) && (((1 >= dthen11) && (ifres9 == 1)) || ((1 < dthen11) && (ifres9 == dthen11))) && (d116 == (2 + d118)) && (d112 == (2 + d114)) && (e18 == ts8) && (ts8 == tres5._1) && (r96 == e17) && (d118 == ts9) && (ts9 == tres5._2) && (rthen11 == cc2) && (cc2 == Or(r95, r96)) && (dthen11 == (1 + ifres10)) && (d114 == ts10) && (ts10 == tres4._2) && (tres5 == r156) && (cs4 == f.lhs) && (r156 == simplify(cs4)) && (d111 == (1 + d116)) && (r99 == e18) && (tres4 == r157) && (cs5 == f.rhs) && (r157 == simplify(cs5)) && (((d111 >= d112) && (ifres10 == d111)) || ((d111 < d112) && (ifres10 == d112))) && (e17 == ts11) && (ts11 == tres4._1) && (r95 == cc3) && (cc3 == Not(r99))) || (!(ci5) && (ci5 == f.isInstanceOf[Implies]) && (ifres8 == tp5) && (tp5 == (relse11, ifres11)) && ((ci6 && (ci6 == f.isInstanceOf[Not]) && (ifres12 == tp6) && (tp6 == (rthen12, ifres13)) && (tres6 == r158) && (cs6 == f.f) && (r158 == simplify(cs6)) && (e19 == ts12) && (ts12 == tres6._1) && (r103 == e19) && (d123 == ts13) && (ts13 == tres6._2) && (d121 == (2 + d123)) && (rthen12 == cc4) && (cc4 == Not(r103)) && (dthen12 == (1 + d121)) && (((1 >= dthen12) && (ifres13 == 1)) || ((1 < dthen12) && (ifres13 == dthen12)))) || (!(ci7) && (ci7 == f.isInstanceOf[Not]) && (ifres12 == tp7) && (tp7 == (f, ifres14)) && (((1 >= 0) && (ifres14 == 1)) || ((1 < 0) && (ifres14 == 0))))) && (relse11 == ts14) && (ts14 == ifres12._1) && (delse11 == ts15) && (ts15 == ifres12._2) && (((1 >= delse11) && (ifres11 == 1)) || ((1 < delse11) && (ifres11 == delse11))))) && (relse10 == ts16) && (ts16 == ifres8._1) && (delse10 == ts17) && (ts17 == ifres8._2) && (((1 >= delse10) && (ifres7 == 1)) || ((1 < delse10) && (ifres7 == delse10))))) && (relse9 == ts18) && (ts18 == ifres4._1) && (delse9 == ts19) && (ts19 == ifres4._2) && (((1 >= delse9) && (ifres3 == 1)) || ((1 < delse9) && (ifres3 == delse9))))))
+Flattened Post: ((ts20 > ((a? * r159) + b?)) && (ts20 == res9._2) && (r159 == nestingDepth(f)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify-->((((0 * nestingDepth(f)) + (1 * res9._2)) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 79
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.012s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/8
+Unrolled calls: Set((r159 == nestingDepth(f)))
+Creating VC for nestingDepth
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function nestingDepth : (((a?5 * #res) + a?4) ≤ 0)
+Unrolling (r159 == nestingDepth(f))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify-->((((1 * res9._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.015s
+candidate Invariants
+simplify-->((((-2 * nestingDepth(f)) + (16 * res9._2)) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 46) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 16
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 27 + 11
+solving...
+solved... in 0.011s
+candidate Invariants
+simplify-->((((1 * res9._2) + (0 * nestingDepth(f))) + -2) ≤ 0)
+nestingDepth-->(((0 * #res) + -1) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 76
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 18 + 38
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/34
+Unrolled calls: Set((r187 == nestingDepth(cs2)), (r184 == nestingDepth(cs4)), (r163 == max(r161, r162)), (r186 == nestingDepth(cs5)), (r179 == max(r177, r178)), (r176 == max(r174, r175)), (r181 == nestingDepth(cs3)))
+Inlining (r179 == max(r177, r178))
+Inlining (r176 == max(r174, r175))
+Unrolling (r186 == nestingDepth(cs5))
+Unrolling (r184 == nestingDepth(cs4))
+Unrolling (r181 == nestingDepth(cs3))
+Inlining (r163 == max(r161, r162))
+Unrolling (r187 == nestingDepth(cs2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify-->((((0 * nestingDepth(f)) + (1 * res9._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 16
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+simplify-->((((-1 * nestingDepth(f)) + (2 * res9._2)) + 1) ≤ 0)
+nestingDepth-->(((3 * #res) + 32) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 122
+[[34m Info  [0m] Number of equal calls: 16
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 31 + 23
+solving...
+solved... in 0.041s
+candidate Invariants
+simplify-->((((1 * nestingDepth(f)) + (2 * res9._2)) + -6) ≤ 0)
+nestingDepth-->(((1 * #res) + -1) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 137
+[[34m Info  [0m] Number of equal calls: 17
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 36 + 54
+solving...
+solved... in 0.032s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/67
+Unrolled calls: Set((r169 == max(r167, r168)), (r209 == max(r207, r208)))
+Inlining (r169 == max(r167, r168))
+Inlining (r209 == max(r207, r208))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify-->((((0 * nestingDepth(f)) + (1 * res9._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 114
+[[34m Info  [0m] Number of equal calls: 16
+# of atomic predicates: 27 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+simplify-->((((2 * res9._2) + (-1 * nestingDepth(f))) + 1) ≤ 0)
+nestingDepth-->(((-4 * #res) + 5) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 97
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 29 + 27
+solving...
+solved... in 0.014s
+candidate Invariants
+simplify-->((((-4 * nestingDepth(f)) + (1 * res9._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + -1) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 111
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 37 + 56
+solving...
+solved... in 0.021s
+candidate Invariants
+simplify-->((((2 * res9._2) + (-2 * nestingDepth(f))) + 1) ≤ 0)
+nestingDepth-->(((0 * #res) + 1) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 93
+solving...
+solved... in 0.024s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/65
+Unrolled calls: Set((r223 == max(r221, r222)), (r213 == max(r211, r212)), (r183 == nestingDepth(cs6)), (r166 == max(r164, r165)))
+Inlining (r223 == max(r221, r222))
+Inlining (r213 == max(r211, r212))
+Unrolling (r183 == nestingDepth(cs6))
+Inlining (r166 == max(r164, r165))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify-->((((0 * nestingDepth(f)) + (1 * res9._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 111
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 39 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+simplify-->((((1 * nestingDepth(f)) + (2 * res9._2)) + -2) ≤ 0)
+nestingDepth-->(((-176 * #res) + 559) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 103
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 25 + 39
+solving...
+solved... in 0.014s
+candidate Invariants
+simplify-->((((-1 * nestingDepth(f)) + (2 * res9._2)) + 14) ≤ 0)
+nestingDepth-->(((2 * #res) + -8) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 64
+solving...
+solved... in 0.036s
+candidate Invariants
+simplify-->((((1 * res9._2) + (-4 * nestingDepth(f))) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 49
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 24 + 85
+solving...
+solved... in 0.04s
+candidate Invariants
+simplify-->((((-4 * nestingDepth(f)) + (1 * res9._2)) + -2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 49
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 24 + 109
+solving...
+solved... in 0.085s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/71
+Unrolled calls: Set((r185 == nestingDepth(cs1)), (r173 == max(r171, r172)), (r182 == nestingDepth(cs)))
+Unrolling (r185 == nestingDepth(cs1))
+Inlining (r173 == max(r171, r172))
+Unrolling (r182 == nestingDepth(cs))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+simplify-->((((1 * res9._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 114
+[[34m Info  [0m] Number of equal calls: 16
+# of atomic predicates: 28 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+simplify-->((((-2 * nestingDepth(f)) + (2 * res9._2)) + -1) ≤ 0)
+nestingDepth-->(((24 * #res) + -8) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 103
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 27 + 28
+solving...
+solved... in 0.016s
+candidate Invariants
+simplify-->((((1 * res9._2) + (-4 * nestingDepth(f))) + 5) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 117
+[[34m Info  [0m] Number of equal calls: 15
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 48 + 55
+solving...
+solved... in 0.04s
+candidate Invariants
+simplify-->((((1 * res9._2) + (-4 * nestingDepth(f))) + 6) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 131
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 36 + 103
+solving...
+solved... in 0.066s
+candidate Invariants
+simplify-->((((-4 * nestingDepth(f)) + (1 * res9._2)) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b? Initial upperbound: -1
+Found new upper bound: -2
+Found new upper bound: -33/8
+Found new lower bound: -9
+Found new lower bound: -7
+Found new lower bound: -6
+Minimization complete...
+candidate Invariants
+simplify-->((((-24 * nestingDepth(f)) + (8 * res9._2)) + 33) ≤ 0)
+nestingDepth-->(((-4 * #res) + 3) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 11 + 139
+solving...
+solved... in 0.069s
+candidate Invariants
+simplify-->((((1 * res9._2) + (-4 * nestingDepth(f))) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b? Initial upperbound: -1
+Found new upper bound: -2
+Found new lower bound: -4
+Found new lower bound: -3
+Minimization complete...
+candidate Invariants
+simplify-->((((-3 * nestingDepth(f)) + (1 * res9._2)) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: simplify--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 129
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 31 + 150
+solving...
+solved... in 0.071s
+candidate Invariants
+simplify-->((((-4 * nestingDepth(f)) + (1 * res9._2)) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 4
+Found new lower bound: 2
+Found new lower bound: 3
+Minimizing variable: b? Initial upperbound: -2
+Found new lower bound: -4
+Found new upper bound: -3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: simplify --> ((((-4 * nestingDepth(f)) + (1 * res9._2)) + 3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: nestingDepth --> (((-1 * #res) + 0) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function isSimplified...
+[[34m Info  [0m] Body: if (f.isInstanceOf[And])
+            (let (rthen19,dthen19 := (let (r135,d160 := (let (e27,d166 := isSimplified(f.lhs)) in
+              (e27, (2 + d166)))) in
+              (let (r136,d161 := (let (e26,d163 := isSimplified(f.rhs)) in
+                (e26, (2 + d163)))) in
+                ((r135 ∧ r136), (1 + if ((d160 ≥ d161))
+                  d160
+                else
+                  d161))))) in
+              (rthen19, if ((1 ≥ dthen19))
+                1
+              else
+                dthen19))
+          else
+            (let (relse19,delse19 := if (f.isInstanceOf[Or])
+              (let (rthen20,dthen20 := (let (r142,d169 := (let (e29,d175 := isSimplified(f.lhs)) in
+                (e29, (2 + d175)))) in
+                (let (r143,d170 := (let (e28,d172 := isSimplified(f.rhs)) in
+                  (e28, (2 + d172)))) in
+                  ((r142 ∧ r143), (1 + if ((d169 ≥ d170))
+                    d169
+                  else
+                    d170))))) in
+                (rthen20, if ((1 ≥ dthen20))
+                  1
+                else
+                  dthen20))
+            else
+              (let (relse20,delse20 := if (f.isInstanceOf[Implies])
+                (false, if ((1 ≥ 0))
+                  1
+                else
+                  0)
+              else
+                (let (relse21,delse21 := if (f.isInstanceOf[Not])
+                  (let (rthen22,dthen22 := (let (e30,d180 := isSimplified(f.f)) in
+                    (e30, (2 + d180)))) in
+                    (rthen22, if ((1 ≥ dthen22))
+                      1
+                    else
+                      dthen22))
+                else
+                  (true, if ((1 ≥ 0))
+                    1
+                  else
+                    0)) in
+                  (relse21, if ((1 ≥ delse21))
+                    1
+                  else
+                    delse21))) in
+                (relse20, if ((1 ≥ delse20))
+                  1
+                else
+                  delse20))) in
+              (relse19, if ((1 ≥ delse19))
+                1
+              else
+                delse19))
+[[34m Info  [0m] Post: true
+falttened Body: ((res10 == ifres60) && ((ci80 && (ci80 == f.isInstanceOf[And]) && (ifres60 == tp8) && (tp8 == (rthen19, ifres61)) && (!(e27) || (ts54 && (ts54 == tres8._1))) && ((!(ts55) && (ts55 == tres8._1)) || e27) && (d160 == (2 + d166)) && (!(e26) || (ts56 && (ts56 == tres7._1))) && ((!(ts57) && (ts57 == tres7._1)) || e26) && (d163 == ts58) && (ts58 == tres7._2) && (!(r135) || e27) && (!(e27) || r135) && (dthen19 == (1 + ifres62)) && (tres7 == r283) && (cs70 == f.rhs) && (r283 == isSimplified(cs70)) && (!(r136) || e26) && (!(e26) || r136) && (((d160 >= d161) && (ifres62 == d160)) || ((d160 < d161) && (ifres62 == d161))) && (tres8 == r284) && (cs71 == f.lhs) && (r284 == isSimplified(cs71)) && (!(rthen19) || (r135 && r136)) && (!(r135) || !(r136) || rthen19) && (((1 >= dthen19) && (ifres61 == 1)) || ((1 < dthen19) && (ifres61 == dthen19))) && (d166 == ts59) && (ts59 == tres8._2) && (d161 == (2 + d163))) || (!(ci81) && (ci81 == f.isInstanceOf[And]) && (ifres60 == tp9) && (tp9 == (relse19, ifres63)) && ((ci82 && (ci82 == f.isInstanceOf[Or]) && (ifres64 == tp10) && (tp10 == (rthen20, ifres65)) && (!(e28) || (ts60 && (ts60 == tres9._1))) && ((!(ts61) && (ts61 == tres9._1)) || e28) && (tres10 == r285) && (cs72 == f.lhs) && (r285 == isSimplified(cs72)) && (d175 == ts62) && (ts62 == tres10._2) && (!(rthen20) || (r142 && r143)) && (!(r142) || !(r143) || rthen20) && (((1 >= dthen20) && (ifres65 == 1)) || ((1 < dthen20) && (ifres65 == dthen20))) && (d169 == (2 + d175)) && (tres9 == r286) && (cs73 == f.rhs) && (r286 == isSimplified(cs73)) && (dthen20 == (1 + ifres66)) && (d172 == ts63) && (ts63 == tres9._2) && (((d169 >= d170) && (ifres66 == d169)) || ((d169 < d170) && (ifres66 == d170))) && (!(r143) || e28) && (!(e28) || r143) && (d170 == (2 + d172)) && (!(r142) || e29) && (!(e29) || r142) && (!(e29) || (ts64 && (ts64 == tres10._1))) && ((!(ts65) && (ts65 == tres10._1)) || e29)) || (!(ci83) && (ci83 == f.isInstanceOf[Or]) && (ifres64 == tp11) && (tp11 == (relse20, ifres67)) && ((ci84 && (ci84 == f.isInstanceOf[Implies]) && (ifres68 == tp12) && !(arg) && (tp12 == (arg, ifres69)) && (((1 >= 0) && (ifres69 == 1)) || ((1 < 0) && (ifres69 == 0)))) || (!(ci85) && (ci85 == f.isInstanceOf[Implies]) && (ifres68 == tp13) && (tp13 == (relse21, ifres70)) && ((ci86 && (ci86 == f.isInstanceOf[Not]) && (ifres71 == tp14) && (tp14 == (rthen22, ifres72)) && (d180 == ts66) && (ts66 == tres11._2) && (!(rthen22) || e30) && (!(e30) || rthen22) && (((1 >= dthen22) && (ifres72 == 1)) || ((1 < dthen22) && (ifres72 == dthen22))) && (!(e30) || (ts67 && (ts67 == tres11._1))) && ((!(ts68) && (ts68 == tres11._1)) || e30) && (tres11 == r287) && (cs74 == f.f) && (r287 == isSimplified(cs74)) && (dthen22 == (2 + d180))) || (!(ci87) && (ci87 == f.isInstanceOf[Not]) && (ifres71 == tp15) && arg1 && (tp15 == (arg1, ifres73)) && (((1 >= 0) && (ifres73 == 1)) || ((1 < 0) && (ifres73 == 0))))) && (!(relse21) || (ts69 && (ts69 == ifres71._1))) && ((!(ts70) && (ts70 == ifres71._1)) || relse21) && (delse21 == ts71) && (ts71 == ifres71._2) && (((1 >= delse21) && (ifres70 == 1)) || ((1 < delse21) && (ifres70 == delse21))))) && (!(relse20) || (ts72 && (ts72 == ifres68._1))) && ((!(ts73) && (ts73 == ifres68._1)) || relse20) && (delse20 == ts74) && (ts74 == ifres68._2) && (((1 >= delse20) && (ifres67 == 1)) || ((1 < delse20) && (ifres67 == delse20))))) && (!(relse19) || (ts75 && (ts75 == ifres64._1))) && ((!(ts76) && (ts76 == ifres64._1)) || relse19) && (delse19 == ts77) && (ts77 == ifres64._2) && (((1 >= delse19) && (ifres63 == 1)) || ((1 < delse19) && (ifres63 == delse19))))))
+Flattened Post: ((ts78 > ((a?1 * r288) + b?1)) && (ts78 == res10._2) && (r288 == nestingDepth(f)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified-->((((1 * res10._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 17
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/6
+Unrolled calls: Set((r288 == nestingDepth(f)))
+Creating VC for nestingDepth
+Unrolling (r288 == nestingDepth(f))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified-->((((0 * nestingDepth(f)) + (1 * res10._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 45
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+isSimplified-->((((0 * nestingDepth(f)) + (8 * res10._2)) + -1) ≤ 0)
+nestingDepth-->(((0 * #res) + 65) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 20
+solving...
+solved... in 0.008s
+candidate Invariants
+isSimplified-->((((1 * res10._2) + (0 * nestingDepth(f))) + 8) ≤ 0)
+nestingDepth-->(((-4 * #res) + 1) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 18 + 28
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/30
+Unrolled calls: Set((r292 == max(r290, r291)), (r312 == nestingDepth(cs70)), (r302 == max(r300, r301)), (r310 == nestingDepth(cs71)))
+Inlining (r292 == max(r290, r291))
+Unrolling (r312 == nestingDepth(cs70))
+Inlining (r302 == max(r300, r301))
+Unrolling (r310 == nestingDepth(cs71))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified-->((((0 * nestingDepth(f)) + (1 * res10._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isSimplified-->((((-2 * nestingDepth(f)) + (16 * res10._2)) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 46) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 35 + 10
+solving...
+solved... in 0.012s
+candidate Invariants
+isSimplified-->((((1 * nestingDepth(f)) + (1 * res10._2)) + -18) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 37 + 45
+solving...
+solved... in 0.021s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/46
+Unrolled calls: Set((r314 == nestingDepth(cs72)), (r313 == nestingDepth(cs73)), (r305 == max(r303, r304)), (r298 == max(r296, r297)))
+Unrolling (r314 == nestingDepth(cs72))
+Unrolling (r313 == nestingDepth(cs73))
+Inlining (r305 == max(r303, r304))
+Inlining (r298 == max(r296, r297))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified-->((((0 * nestingDepth(f)) + (1 * res10._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isSimplified-->((((16 * res10._2) + (-2 * nestingDepth(f))) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 46) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 32
+[[34m Info  [0m] Number of equal calls: 8
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 24 + 10
+solving...
+solved... in 0.008s
+candidate Invariants
+isSimplified-->((((1 * res10._2) + (0 * nestingDepth(f))) + -1) ≤ 0)
+nestingDepth-->(((-2 * #res) + -1) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 77
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 41 + 34
+solving...
+solved... in 0.015s
+candidate Invariants
+isSimplified-->((((8 * nestingDepth(f)) + (32 * res10._2)) + -4) ≤ 0)
+nestingDepth-->(((0 * #res) + 1) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 75
+solving...
+solved... in 0.016s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/62
+Unrolled calls: Set((r308 == max(r306, r307)), (r295 == max(r293, r294)))
+Inlining (r308 == max(r306, r307))
+Inlining (r295 == max(r293, r294))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isSimplified-->((((1 * res10._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isSimplified-->((((16 * res10._2) + (-2 * nestingDepth(f))) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 46) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 95
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 27 + 10
+solving...
+solved... in 0.009s
+candidate Invariants
+isSimplified-->((((1 * nestingDepth(f)) + (1 * res10._2)) + -18) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: isSimplified--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 77
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 40 + 37
+solving...
+solved... in 0.021s
+candidate Invariants
+isSimplified-->((((1 * res10._2) + (-3 * nestingDepth(f))) + 1) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 3
+Found new lower bound: 1
+Found new lower bound: 2
+Minimizing variable: b?1 Initial upperbound: -1
+Found new upper bound: -2
+Found new lower bound: -4
+Found new lower bound: -3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: isSimplified --> ((((1 * res10._2) + (-3 * nestingDepth(f))) + 2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: nestingDepth --> (((-1 * #res) + 1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function nnf...
+[[34m Info  [0m] Body: if (formula.isInstanceOf[And])
+            (let (rthen,dthen := (let (r2,d1 := (let (e1,d7 := nnf(formula.lhs)) in
+              (e1, (2 + d7)))) in
+              (let (r3,d2 := (let (e,d4 := nnf(formula.rhs)) in
+                (e, (2 + d4)))) in
+                (And(r2, r3), (1 + if ((d1 ≥ d2))
+                  d1
+                else
+                  d2))))) in
+              (rthen, if ((1 ≥ dthen))
+                1
+              else
+                dthen))
+          else
+            (let (relse,delse := if (formula.isInstanceOf[Or])
+              (let (rthen1,dthen1 := (let (r9,d10 := (let (e3,d16 := nnf(formula.lhs)) in
+                (e3, (2 + d16)))) in
+                (let (r10,d11 := (let (e2,d13 := nnf(formula.rhs)) in
+                  (e2, (2 + d13)))) in
+                  (Or(r9, r10), (1 + if ((d10 ≥ d11))
+                    d10
+                  else
+                    d11))))) in
+                (rthen1, if ((1 ≥ dthen1))
+                  1
+                else
+                  dthen1))
+            else
+              (let (relse1,delse1 := if (formula.isInstanceOf[Implies])
+                (let (rthen2,dthen2 := (let (r16,d19 := (let (e5,d25 := nnf(formula.lhs)) in
+                  (e5, (2 + d25)))) in
+                  (let (r17,d20 := (let (e4,d22 := nnf(formula.rhs)) in
+                    (e4, (2 + d22)))) in
+                    (Implies(r16, r17), (1 + if ((d19 ≥ d20))
+                      d19
+                    else
+                      d20))))) in
+                  (rthen2, if ((1 ≥ dthen2))
+                    1
+                  else
+                    dthen2))
+              else
+                (let (relse2,delse2 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[And]))
+                  (let (rthen3,dthen3 := (let (r27,d32 := (let (e7,d40 := nnf(Not(formula.f.lhs))) in
+                    (e7, (4 + d40)))) in
+                    (let (r28,d33 := (let (e6,d35 := nnf(Not(formula.f.rhs))) in
+                      (e6, (4 + d35)))) in
+                      (Or(r27, r28), (1 + if ((d32 ≥ d33))
+                        d32
+                      else
+                        d33))))) in
+                    (rthen3, if ((3 ≥ dthen3))
+                      3
+                    else
+                      dthen3))
+                else
+                  (let (relse3,delse3 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Or]))
+                    (let (rthen4,dthen4 := (let (r42,d49 := (let (e9,d57 := nnf(Not(formula.f.lhs))) in
+                      (e9, (4 + d57)))) in
+                      (let (r43,d50 := (let (e8,d52 := nnf(Not(formula.f.rhs))) in
+                        (e8, (4 + d52)))) in
+                        (And(r42, r43), (1 + if ((d49 ≥ d50))
+                          d49
+                        else
+                          d50))))) in
+                      (rthen4, if ((3 ≥ dthen4))
+                        3
+                      else
+                        dthen4))
+                  else
+                    (let (relse4,delse4 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Implies]))
+                      (let (rthen5,dthen5 := (let (r57,d66 := (let (e11,d74 := nnf(formula.f.lhs)) in
+                        (e11, (3 + d74)))) in
+                        (let (r58,d67 := (let (e10,d69 := nnf(Not(formula.f.rhs))) in
+                          (e10, (4 + d69)))) in
+                          (And(r57, r58), (1 + if ((d66 ≥ d67))
+                            d66
+                          else
+                            d67))))) in
+                        (rthen5, if ((3 ≥ dthen5))
+                          3
+                        else
+                          dthen5))
+                    else
+                      (let (relse5,delse5 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Not]))
+                        (let (rthen6,dthen6 := (let (e12,d83 := nnf(formula.f.f)) in
+                          (e12, (3 + d83)))) in
+                          (rthen6, if ((3 ≥ dthen6))
+                            3
+                          else
+                            dthen6))
+                      else
+                        (let (relse6,delse6 := if ((formula.isInstanceOf[Not] ∧ formula.f.isInstanceOf[Literal]))
+                          (formula, if ((3 ≥ 0))
+                            3
+                          else
+                            0)
+                        else
+                          (let (relse7,delse7 := if (formula.isInstanceOf[Literal])
+                            (formula, if ((1 ≥ 0))
+                              1
+                            else
+                              0)
+                          else
+                            (formula, if ((1 ≥ 0))
+                              1
+                            else
+                              0)) in
+                            (relse7, if ((3 ≥ delse7))
+                              3
+                            else
+                              delse7))) in
+                          (relse6, if ((3 ≥ delse6))
+                            3
+                          else
+                            delse6))) in
+                        (relse5, if ((3 ≥ delse5))
+                          3
+                        else
+                          delse5))) in
+                      (relse4, if ((3 ≥ delse4))
+                        3
+                      else
+                        delse4))) in
+                    (relse3, if ((3 ≥ delse3))
+                      3
+                    else
+                      delse3))) in
+                  (relse2, if ((1 ≥ delse2))
+                    1
+                  else
+                    delse2))) in
+                (relse1, if ((1 ≥ delse1))
+                  1
+                else
+                  delse1))) in
+              (relse, if ((1 ≥ delse))
+                1
+              else
+                delse))
+[[34m Info  [0m] Post: true
+falttened Body: ((res12 == ifres104) && ((ci136 && (ci136 == formula.isInstanceOf[And]) && (ifres104 == tp16) && (tp16 == (rthen, ifres105)) && (r3 == e) && (d4 == ts100) && (ts100 == tres12._2) && (((1 >= dthen) && (ifres105 == 1)) || ((1 < dthen) && (ifres105 == dthen))) && (d2 == (2 + d4)) && (tres13 == r370) && (cs117 == formula.lhs) && (r370 == nnf(cs117)) && (tres12 == r371) && (cs118 == formula.rhs) && (r371 == nnf(cs118)) && (rthen == cc5) && (cc5 == And(r2, r3)) && (d7 == ts101) && (ts101 == tres13._2) && (d1 == (2 + d7)) && (e1 == ts102) && (ts102 == tres13._1) && (((d1 >= d2) && (ifres106 == d1)) || ((d1 < d2) && (ifres106 == d2))) && (dthen == (1 + ifres106)) && (e == ts103) && (ts103 == tres12._1) && (r2 == e1)) || (!(ci137) && (ci137 == formula.isInstanceOf[And]) && (ifres104 == tp17) && (tp17 == (relse, ifres107)) && ((ci138 && (ci138 == formula.isInstanceOf[Or]) && (ifres108 == tp18) && (tp18 == (rthen1, ifres109)) && (rthen1 == cc6) && (cc6 == Or(r9, r10)) && (r10 == e2) && (d13 == ts104) && (ts104 == tres14._2) && (e2 == ts105) && (ts105 == tres14._1) && (e3 == ts106) && (ts106 == tres15._1) && (d10 == (2 + d16)) && (r9 == e3) && (d16 == ts107) && (ts107 == tres15._2) && (tres15 == r372) && (cs119 == formula.lhs) && (r372 == nnf(cs119)) && (d11 == (2 + d13)) && (((1 >= dthen1) && (ifres109 == 1)) || ((1 < dthen1) && (ifres109 == dthen1))) && (((d10 >= d11) && (ifres110 == d10)) || ((d10 < d11) && (ifres110 == d11))) && (dthen1 == (1 + ifres110)) && (tres14 == r373) && (cs120 == formula.rhs) && (r373 == nnf(cs120))) || (!(ci139) && (ci139 == formula.isInstanceOf[Or]) && (ifres108 == tp19) && (tp19 == (relse1, ifres111)) && ((ci140 && (ci140 == formula.isInstanceOf[Implies]) && (ifres112 == tp20) && (tp20 == (rthen2, ifres113)) && (e5 == ts108) && (ts108 == tres17._1) && (((1 >= dthen2) && (ifres113 == 1)) || ((1 < dthen2) && (ifres113 == dthen2))) && (d25 == ts109) && (ts109 == tres17._2) && (((d19 >= d20) && (ifres114 == d19)) || ((d19 < d20) && (ifres114 == d20))) && (dthen2 == (1 + ifres114)) && (tres16 == r374) && (cs121 == formula.rhs) && (r374 == nnf(cs121)) && (d19 == (2 + d25)) && (r16 == e5) && (d20 == (2 + d22)) && (rthen2 == cc7) && (cc7 == Implies(r16, r17)) && (r17 == e4) && (e4 == ts110) && (ts110 == tres16._1) && (d22 == ts111) && (ts111 == tres16._2) && (tres17 == r375) && (cs122 == formula.lhs) && (r375 == nnf(cs122))) || (!(ci141) && (ci141 == formula.isInstanceOf[Implies]) && (ifres112 == tp21) && (tp21 == (relse2, ifres115)) && ((ci142 && (ci142 == formula.isInstanceOf[Not]) && ci143 && (cs123 == formula.f) && (ci143 == cs123.isInstanceOf[And]) && (ifres116 == tp22) && (tp22 == (rthen3, ifres117)) && (r28 == e6) && (dthen3 == (1 + ifres118)) && (d32 == (4 + d40)) && (rthen3 == cc8) && (cc8 == Or(r27, r28)) && (tres18 == r376) && (cs124 == formula.f) && (cs125 == cs124.rhs) && (cc9 == Not(cs125)) && (r376 == nnf(cc9)) && (d35 == ts112) && (ts112 == tres18._2) && (r27 == e7) && (e7 == ts113) && (ts113 == tres19._1) && (tres19 == r377) && (cs126 == formula.f) && (cs127 == cs126.lhs) && (cc10 == Not(cs127)) && (r377 == nnf(cc10)) && (e6 == ts114) && (ts114 == tres18._1) && (((3 >= dthen3) && (ifres117 == 3)) || ((3 < dthen3) && (ifres117 == dthen3))) && (d33 == (4 + d35)) && (((d32 >= d33) && (ifres118 == d32)) || ((d32 < d33) && (ifres118 == d33))) && (d40 == ts115) && (ts115 == tres19._2)) || (((!(ci144) && (ci144 == formula.isInstanceOf[Not])) || (!(ci145) && (cs128 == formula.f) && (ci145 == cs128.isInstanceOf[And]))) && (ifres116 == tp23) && (tp23 == (relse3, ifres119)) && ((ci146 && (ci146 == formula.isInstanceOf[Not]) && ci147 && (cs129 == formula.f) && (ci147 == cs129.isInstanceOf[Or]) && (ifres120 == tp24) && (tp24 == (rthen4, ifres121)) && (rthen4 == cc11) && (cc11 == And(r42, r43)) && (e9 == ts116) && (ts116 == tres21._1) && (r43 == e8) && (d52 == ts117) && (ts117 == tres20._2) && (d50 == (4 + d52)) && (((3 >= dthen4) && (ifres121 == 3)) || ((3 < dthen4) && (ifres121 == dthen4))) && (r42 == e9) && (tres20 == r378) && (cs130 == formula.f) && (cs131 == cs130.rhs) && (cc12 == Not(cs131)) && (r378 == nnf(cc12)) && (d57 == ts118) && (ts118 == tres21._2) && (((d49 >= d50) && (ifres122 == d49)) || ((d49 < d50) && (ifres122 == d50))) && (d49 == (4 + d57)) && (e8 == ts119) && (ts119 == tres20._1) && (dthen4 == (1 + ifres122)) && (tres21 == r379) && (cs132 == formula.f) && (cs133 == cs132.lhs) && (cc13 == Not(cs133)) && (r379 == nnf(cc13))) || (((!(ci148) && (ci148 == formula.isInstanceOf[Not])) || (!(ci149) && (cs134 == formula.f) && (ci149 == cs134.isInstanceOf[Or]))) && (ifres120 == tp25) && (tp25 == (relse4, ifres123)) && ((ci150 && (ci150 == formula.isInstanceOf[Not]) && ci151 && (cs135 == formula.f) && (ci151 == cs135.isInstanceOf[Implies]) && (ifres124 == tp26) && (tp26 == (rthen5, ifres125)) && (r57 == e11) && (d74 == ts120) && (ts120 == tres23._2) && (d69 == ts121) && (ts121 == tres22._2) && (dthen5 == (1 + ifres126)) && (tres22 == r380) && (cs136 == formula.f) && (cs137 == cs136.rhs) && (cc14 == Not(cs137)) && (r380 == nnf(cc14)) && (e10 == ts122) && (ts122 == tres22._1) && (d66 == (3 + d74)) && (rthen5 == cc15) && (cc15 == And(r57, r58)) && (e11 == ts123) && (ts123 == tres23._1) && (tres23 == r381) && (cs138 == formula.f) && (cs139 == cs138.lhs) && (r381 == nnf(cs139)) && (((d66 >= d67) && (ifres126 == d66)) || ((d66 < d67) && (ifres126 == d67))) && (r58 == e10) && (d67 == (4 + d69)) && (((3 >= dthen5) && (ifres125 == 3)) || ((3 < dthen5) && (ifres125 == dthen5)))) || (((!(ci152) && (ci152 == formula.isInstanceOf[Not])) || (!(ci153) && (cs140 == formula.f) && (ci153 == cs140.isInstanceOf[Implies]))) && (ifres124 == tp27) && (tp27 == (relse5, ifres127)) && ((ci154 && (ci154 == formula.isInstanceOf[Not]) && ci155 && (cs141 == formula.f) && (ci155 == cs141.isInstanceOf[Not]) && (ifres128 == tp28) && (tp28 == (rthen6, ifres129)) && (e12 == ts124) && (ts124 == tres24._1) && (dthen6 == (3 + d83)) && (((3 >= dthen6) && (ifres129 == 3)) || ((3 < dthen6) && (ifres129 == dthen6))) && (d83 == ts125) && (ts125 == tres24._2) && (rthen6 == e12) && (tres24 == r382) && (cs142 == formula.f) && (cs143 == cs142.f) && (r382 == nnf(cs143))) || (((!(ci156) && (ci156 == formula.isInstanceOf[Not])) || (!(ci157) && (cs144 == formula.f) && (ci157 == cs144.isInstanceOf[Not]))) && (ifres128 == tp29) && (tp29 == (relse6, ifres130)) && ((ci158 && (ci158 == formula.isInstanceOf[Not]) && ci159 && (cs145 == formula.f) && (ci159 == cs145.isInstanceOf[Literal]) && (ifres131 == tp30) && (tp30 == (formula, ifres132)) && (((3 >= 0) && (ifres132 == 3)) || ((3 < 0) && (ifres132 == 0)))) || (((!(ci160) && (ci160 == formula.isInstanceOf[Not])) || (!(ci161) && (cs146 == formula.f) && (ci161 == cs146.isInstanceOf[Literal]))) && (ifres131 == tp31) && (tp31 == (relse7, ifres133)) && ((ci162 && (ci162 == formula.isInstanceOf[Literal]) && (ifres134 == tp32) && (tp32 == (formula, ifres135)) && (((1 >= 0) && (ifres135 == 1)) || ((1 < 0) && (ifres135 == 0)))) || (!(ci163) && (ci163 == formula.isInstanceOf[Literal]) && (ifres134 == tp33) && (tp33 == (formula, ifres136)) && (((1 >= 0) && (ifres136 == 1)) || ((1 < 0) && (ifres136 == 0))))) && (relse7 == ts126) && (ts126 == ifres134._1) && (delse7 == ts127) && (ts127 == ifres134._2) && (((3 >= delse7) && (ifres133 == 3)) || ((3 < delse7) && (ifres133 == delse7))))) && (relse6 == ts128) && (ts128 == ifres131._1) && (delse6 == ts129) && (ts129 == ifres131._2) && (((3 >= delse6) && (ifres130 == 3)) || ((3 < delse6) && (ifres130 == delse6))))) && (relse5 == ts130) && (ts130 == ifres128._1) && (delse5 == ts131) && (ts131 == ifres128._2) && (((3 >= delse5) && (ifres127 == 3)) || ((3 < delse5) && (ifres127 == delse5))))) && (relse4 == ts132) && (ts132 == ifres124._1) && (delse4 == ts133) && (ts133 == ifres124._2) && (((3 >= delse4) && (ifres123 == 3)) || ((3 < delse4) && (ifres123 == delse4))))) && (relse3 == ts134) && (ts134 == ifres120._1) && (delse3 == ts135) && (ts135 == ifres120._2) && (((3 >= delse3) && (ifres119 == 3)) || ((3 < delse3) && (ifres119 == delse3))))) && (relse2 == ts136) && (ts136 == ifres116._1) && (delse2 == ts137) && (ts137 == ifres116._2) && (((1 >= delse2) && (ifres115 == 1)) || ((1 < delse2) && (ifres115 == delse2))))) && (relse1 == ts138) && (ts138 == ifres112._1) && (delse1 == ts139) && (ts139 == ifres112._2) && (((1 >= delse1) && (ifres111 == 1)) || ((1 < delse1) && (ifres111 == delse1))))) && (relse == ts140) && (ts140 == ifres108._1) && (delse == ts141) && (ts141 == ifres108._2) && (((1 >= delse) && (ifres107 == 1)) || ((1 < delse) && (ifres107 == delse))))))
+Flattened Post: ((ts142 > ((a?2 * r383) + b?2)) && (ts142 == res12._2) && (r383 == nestingDepth(formula)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 246
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/14
+Unrolled calls: Set((r383 == nestingDepth(formula)))
+Creating VC for nestingDepth
+Unrolling (r383 == nestingDepth(formula))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 112
+[[34m Info  [0m] Number of equal calls: 16
+# of atomic predicates: 18 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+nnf-->((((8 * res12._2) + (0 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((0 * #res) + 49) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 18
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf-->((((1 * res12._2) + (0 * nestingDepth(formula))) + 6) ≤ 0)
+nestingDepth-->(((-16 * #res) + 1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 76
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 27 + 26
+solving...
+solved... in 0.014s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/46
+Unrolled calls: Set((r408 == nestingDepth(cs119)), (r400 == max(r398, r399)), (r407 == nestingDepth(cs121)), (r403 == max(r401, r402)), (r415 == nestingDepth(cs122)), (r412 == nestingDepth(cs120)), (r387 == max(r385, r386)))
+Inlining (r400 == max(r398, r399))
+Unrolling (r408 == nestingDepth(cs119))
+Unrolling (r407 == nestingDepth(cs121))
+Unrolling (r412 == nestingDepth(cs120))
+Inlining (r403 == max(r401, r402))
+Inlining (r387 == max(r385, r386))
+Unrolling (r415 == nestingDepth(cs122))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((1 * res12._2) + (0 * nestingDepth(formula))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf-->((((-2 * nestingDepth(formula)) + (16 * res12._2)) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 78) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 219
+[[34m Info  [0m] Number of equal calls: 22
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 29 + 10
+solving...
+solved... in 0.025s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/79
+Unrolled calls: Set((r406 == nestingDepth(cc13)), (r417 == nestingDepth(cc12)))
+Unrolling (r406 == nestingDepth(cc13))
+Unrolling (r417 == nestingDepth(cc12))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((1 * res12._2) + (0 * nestingDepth(formula))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+nnf-->((((16 * res12._2) + (-2 * nestingDepth(formula))) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 78) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 159
+[[34m Info  [0m] Number of equal calls: 18
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 31 + 10
+solving...
+solved... in 0.012s
+candidate Invariants
+nnf-->((((1 * res12._2) + (1 * nestingDepth(formula))) + -8) ≤ 0)
+nestingDepth-->(((2 * #res) + -8) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 135
+[[34m Info  [0m] Number of equal calls: 17
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 42 + 41
+solving...
+solved... in 0.023s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/97
+Unrolled calls: Set((r393 == max(r391, r392)), (r411 == nestingDepth(cc9)), (r413 == nestingDepth(cc10)), (r459 == max(r457, r458)))
+Inlining (r393 == max(r391, r392))
+Unrolling (r411 == nestingDepth(cc9))
+Unrolling (r413 == nestingDepth(cc10))
+Inlining (r459 == max(r457, r458))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 125
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 31 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf-->((((-1 * nestingDepth(formula)) + (2 * res12._2)) + 1) ≤ 0)
+nestingDepth-->(((3 * #res) + 16) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 111
+[[34m Info  [0m] Number of equal calls: 15
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 47 + 31
+solving...
+solved... in 0.026s
+candidate Invariants
+nnf-->((((-2 * nestingDepth(formula)) + (2 * res12._2)) + 1) ≤ 0)
+nestingDepth-->(((-8 * #res) + -1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 22 + 78
+solving...
+solved... in 0.031s
+candidate Invariants
+nnf-->((((1 * res12._2) + (0 * nestingDepth(formula))) + -4) ≤ 0)
+nestingDepth-->(((0 * #res) + -1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 125
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 31 + 100
+solving...
+solved... in 0.036s
+candidate Invariants
+nnf-->((((4 * res12._2) + (1 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((0 * #res) + 1) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 131
+solving...
+solved... in 0.043s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/113
+Unrolled calls: Set((r456 == max(r454, r455)), (r390 == max(r388, r389)), (r423 == max(r421, r422)), (r443 == max(r441, r442)))
+Inlining (r456 == max(r454, r455))
+Inlining (r390 == max(r388, r389))
+Inlining (r423 == max(r421, r422))
+Inlining (r443 == max(r441, r442))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 125
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 30 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf-->((((-4 * nestingDepth(formula)) + (2 * res12._2)) + -1) ≤ 0)
+nestingDepth-->(((16 * #res) + 8) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 181
+[[34m Info  [0m] Number of equal calls: 20
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 35 + 30
+solving...
+solved... in 0.024s
+candidate Invariants
+nnf-->((((1 * res12._2) + (1 * nestingDepth(formula))) + -6) ≤ 0)
+nestingDepth-->(((16 * #res) + -24) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 96
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 44 + 65
+solving...
+solved... in 0.051s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-3 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 181
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 27 + 109
+solving...
+solved... in 0.079s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/109
+Unrolled calls: Set((r453 == max(r451, r452)))
+Inlining (r453 == max(r451, r452))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((1 * res12._2) + (0 * nestingDepth(formula))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 143
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 37 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+nnf-->((((-6 * nestingDepth(formula)) + (16 * res12._2)) + -8) ≤ 0)
+nestingDepth-->(((1 * #res) + 16) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 181
+[[34m Info  [0m] Number of equal calls: 20
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 35 + 37
+solving...
+solved... in 0.112s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-4 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((-2 * #res) + -1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 49
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 24 + 72
+solving...
+solved... in 0.102s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/108
+Unrolled calls: Set((r405 == nestingDepth(cs117)), (r433 == max(r431, r432)), (r397 == max(r395, r396)), (r416 == nestingDepth(cs118)))
+Unrolling (r405 == nestingDepth(cs117))
+Inlining (r433 == max(r431, r432))
+Inlining (r397 == max(r395, r396))
+Unrolling (r416 == nestingDepth(cs118))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 89
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 32 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf-->((((2 * res12._2) + (-12 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((-14 * #res) + 9) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 181
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 27 + 32
+solving...
+solved... in 0.01s
+candidate Invariants
+nnf-->((((-1 * nestingDepth(formula)) + (2 * res12._2)) + -1) ≤ 0)
+nestingDepth-->(((1 * #res) + 8) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 181
+[[34m Info  [0m] Number of equal calls: 20
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 35 + 59
+solving...
+solved... in 0.102s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 11/124
+Unrolled calls: Set((r373 == nnf(cs120)), (r399 == nestingDepth(cs157)), (r505 == nestingDepth(cs216)), (r421 == nestingDepth(cs161)), (r376 == nnf(cc9)), (r422 == nestingDepth(cs162)), (r377 == nnf(cc10)), (r398 == nestingDepth(cs156)), (r372 == nnf(cs119)), (r495 == nestingDepth(cs209)), (r404 == nestingDepth(cs160)))
+Unrolling (r495 == nestingDepth(cs209))
+Unrolling (r372 == nnf(cs119))
+Unrolling (r422 == nestingDepth(cs162))
+Unrolling (r404 == nestingDepth(cs160))
+Unrolling (r421 == nestingDepth(cs161))
+Unrolling (r399 == nestingDepth(cs157))
+Unrolling (r376 == nnf(cc9))
+Unrolling (r505 == nestingDepth(cs216))
+Unrolling (r373 == nnf(cs120))
+Unrolling (r377 == nnf(cc10))
+Unrolling (r398 == nestingDepth(cs156))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 125
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 31 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+nnf-->((((16 * res12._2) + (-2 * nestingDepth(formula))) + -8) ≤ 0)
+nestingDepth-->(((-14 * #res) + 17) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 287
+[[34m Info  [0m] Number of equal calls: 28
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 26 + 31
+solving...
+solved... in 0.013s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-1 * nestingDepth(formula))) + 14) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 20 + 57
+solving...
+solved... in 0.02s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-3 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 261
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 28 + 77
+solving...
+solved... in 0.045s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/235
+Unrolled calls: Set((r409 == nestingDepth(cs143)), (r591 == max(r589, r590)))
+Unrolling (r409 == nestingDepth(cs143))
+Inlining (r591 == max(r589, r590))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+nnf-->((((16 * res12._2) + (-2 * nestingDepth(formula))) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 78) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 69
+[[34m Info  [0m] Number of equal calls: 11
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 40 + 10
+solving...
+solved... in 0.01s
+candidate Invariants
+nnf-->((((1 * nestingDepth(formula)) + (1 * res12._2)) + -18) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 117
+[[34m Info  [0m] Number of equal calls: 16
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 37 + 50
+solving...
+solved... in 0.02s
+candidate Invariants
+nnf-->((((-4 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 261
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 33 + 87
+solving...
+solved... in 0.027s
+candidate Invariants
+nnf-->((((-6 * nestingDepth(formula)) + (1 * res12._2)) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1536
+[[34m Info  [0m] Number of equal calls: 64
+# of atomic predicates: 59 + 120
+solving...
+solved... in 0.055s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/295
+Unrolled calls: Set((r643 == max(r641, r642)), (r588 == max(r586, r587)), (r760 == nestingDepth(cc54)), (r536 == max(r534, r535)), (r757 == nestingDepth(cc52)), (r772 == nestingDepth(cc31)), (r543 == max(r541, r542)), (r755 == nestingDepth(cc32)))
+Inlining (r543 == max(r541, r542))
+Inlining (r643 == max(r641, r642))
+Inlining (r588 == max(r586, r587))
+Unrolling (r757 == nestingDepth(cc52))
+Unrolling (r760 == nestingDepth(cc54))
+Unrolling (r755 == nestingDepth(cc32))
+Unrolling (r772 == nestingDepth(cc31))
+Inlining (r536 == max(r534, r535))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((0 * nestingDepth(formula)) + (1 * res12._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+nnf-->((((-2 * nestingDepth(formula)) + (16 * res12._2)) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 78) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 90
+[[34m Info  [0m] Number of equal calls: 12
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 44 + 10
+solving...
+solved... in 0.013s
+candidate Invariants
+nnf-->((((1 * res12._2) + (1 * nestingDepth(formula))) + -18) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 125
+[[34m Info  [0m] Number of equal calls: 17
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 40 + 54
+solving...
+solved... in 0.031s
+candidate Invariants
+nnf-->((((-3 * nestingDepth(formula)) + (1 * res12._2)) + -1) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 261
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 32 + 94
+solving...
+solved... in 0.037s
+candidate Invariants
+nnf-->((((-6 * nestingDepth(formula)) + (1 * res12._2)) + 2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 296
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 28 + 126
+solving...
+solved... in 0.078s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/327
+Unrolled calls: Set((r530 == max(r528, r529)), (r414 == nestingDepth(cc14)), (r523 == max(r521, r522)), (r410 == nestingDepth(cs139)), (r436 == max(r434, r435)), (r594 == max(r592, r593)))
+Unrolling (r414 == nestingDepth(cc14))
+Inlining (r594 == max(r592, r593))
+Inlining (r530 == max(r528, r529))
+Inlining (r523 == max(r521, r522))
+Inlining (r436 == max(r434, r435))
+Unrolling (r410 == nestingDepth(cs139))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+nnf-->((((1 * res12._2) + (0 * nestingDepth(formula))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 143
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 38 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+nnf-->((((-4 * nestingDepth(formula)) + (1 * res12._2)) + -1) ≤ 0)
+nestingDepth-->(((1 * #res) + -8) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 90
+[[34m Info  [0m] Number of equal calls: 12
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 48 + 38
+solving...
+solved... in 0.144s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-4 * nestingDepth(formula))) + -1) ≤ 0)
+nestingDepth-->(((-4 * #res) + 1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 261
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 32 + 86
+solving...
+solved... in 0.073s
+candidate Invariants
+nnf-->((((-6 * nestingDepth(formula)) + (1 * res12._2)) + 1) ≤ 0)
+nestingDepth-->(((-1 * #res) + -1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 90
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 36 + 118
+solving...
+solved... in 0.076s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-6 * nestingDepth(formula))) + -5) ≤ 0)
+nestingDepth-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 6
+Found new upper bound: 2
+Found new upper bound: 0
+Found new upper bound: -2
+Found new upper bound: -5
+Found new upper bound: -11
+Found new upper bound: -23
+Found new upper bound: -47
+Found new upper bound: -95
+Found new upper bound: -191
+Found new upper bound: -383
+Found new upper bound: -767
+Found new upper bound: -1535
+Found new upper bound: -3071
+Found new upper bound: -6143
+Found new upper bound: -12287
+Found new upper bound: -24575
+Minimizing variable: b?2 Initial upperbound: -1/2
+Found new upper bound: -2
+Found new upper bound: -5
+Found new upper bound: -11
+Found new upper bound: -23
+Found new upper bound: -47
+Found new upper bound: -95
+Found new upper bound: -191
+Found new upper bound: -383
+Found new upper bound: -767
+Found new upper bound: -1535
+Found new upper bound: -3071
+Found new upper bound: -6143
+Found new upper bound: -12287
+Found new upper bound: -24575
+Found new upper bound: -49151
+Found new upper bound: -98303
+Minimization complete...
+candidate Invariants
+nnf-->((((24575 * nestingDepth(formula)) + (1 * res12._2)) + 98303) ≤ 0)
+nestingDepth-->(((0 * #res) + 1) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 154
+solving...
+solved... in 0.076s
+candidate Invariants
+nnf-->((((-6 * nestingDepth(formula)) + (1 * res12._2)) + -5) ≤ 0)
+nestingDepth-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new upper bound: 5
+Minimizing variable: b?2 Initial upperbound: -3
+Found new upper bound: -8
+Found new lower bound: -16
+Found new lower bound: -12
+Found new lower bound: -10
+Found new upper bound: -9
+Minimization complete...
+candidate Invariants
+nnf-->((((1 * res12._2) + (-5 * nestingDepth(formula))) + 9) ≤ 0)
+nestingDepth-->(((-1 * #res) + 1) ≤ 0)
+Function: nnf--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 10 + 162
+solving...
+solved... in 0.075s
+candidate Invariants
+nnf-->((((1 * res12._2) + (-6 * nestingDepth(formula))) + -5) ≤ 0)
+nestingDepth-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new upper bound: 5
+Minimizing variable: b?2 Initial upperbound: -1
+Found new upper bound: -2
+Found new lower bound: -4
+Found new lower bound: -3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: nnf --> ((((1 * res12._2) + (-5 * nestingDepth(formula))) + 2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: nestingDepth --> (((-1 * #res) + 1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[31m Error [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m Info  [0m] - considering function isNNF...
+[[34m Info  [0m] Body: if (f.isInstanceOf[And])
+            (let (rthen13,dthen13 := (let (r107,d126 := (let (e21,d132 := isNNF(f.lhs)) in
+              (e21, (2 + d132)))) in
+              (let (r108,d127 := (let (e20,d129 := isNNF(f.rhs)) in
+                (e20, (2 + d129)))) in
+                ((r107 ∧ r108), (1 + if ((d126 ≥ d127))
+                  d126
+                else
+                  d127))))) in
+              (rthen13, if ((1 ≥ dthen13))
+                1
+              else
+                dthen13))
+          else
+            (let (relse13,delse13 := if (f.isInstanceOf[Or])
+              (let (rthen14,dthen14 := (let (r114,d135 := (let (e23,d141 := isNNF(f.lhs)) in
+                (e23, (2 + d141)))) in
+                (let (r115,d136 := (let (e22,d138 := isNNF(f.rhs)) in
+                  (e22, (2 + d138)))) in
+                  ((r114 ∧ r115), (1 + if ((d135 ≥ d136))
+                    d135
+                  else
+                    d136))))) in
+                (rthen14, if ((1 ≥ dthen14))
+                  1
+                else
+                  dthen14))
+            else
+              (let (relse14,delse14 := if (f.isInstanceOf[Implies])
+                (let (rthen15,dthen15 := (let (r121,d144 := (let (e25,d150 := isNNF(f.lhs)) in
+                  (e25, (2 + d150)))) in
+                  (let (r122,d145 := (let (e24,d147 := isNNF(f.rhs)) in
+                    (e24, (2 + d147)))) in
+                    ((r121 ∧ r122), (1 + if ((d144 ≥ d145))
+                      d144
+                    else
+                      d145))))) in
+                  (rthen15, if ((1 ≥ dthen15))
+                    1
+                  else
+                    dthen15))
+              else
+                (let (relse15,delse15 := if ((f.isInstanceOf[Not] ∧ f.f.isInstanceOf[Literal]))
+                  (true, if ((3 ≥ 0))
+                    3
+                  else
+                    0)
+                else
+                  (let (relse16,delse16 := if (f.isInstanceOf[Not])
+                    (false, if ((1 ≥ 0))
+                      1
+                    else
+                      0)
+                  else
+                    (let (relse17,delse17 := if (f.isInstanceOf[Literal])
+                      (true, if ((1 ≥ 0))
+                        1
+                      else
+                        0)
+                    else
+                      (false, if ((1 ≥ 0))
+                        1
+                      else
+                        0)) in
+                      (relse17, if ((1 ≥ delse17))
+                        1
+                      else
+                        delse17))) in
+                    (relse16, if ((3 ≥ delse16))
+                      3
+                    else
+                      delse16))) in
+                  (relse15, if ((1 ≥ delse15))
+                    1
+                  else
+                    delse15))) in
+                (relse14, if ((1 ≥ delse14))
+                  1
+                else
+                  delse14))) in
+              (relse13, if ((1 ≥ delse13))
+                1
+              else
+                delse13))
+[[34m Info  [0m] Post: true
+falttened Body: ((res11 == ifres394) && ((ci484 && (ci484 == f.isInstanceOf[And]) && (ifres394 == tp106) && (tp106 == (rthen13, ifres395)) && (d127 == (2 + d129)) && (tres77 == r857) && (cs449 == f.rhs) && (r857 == isNNF(cs449)) && (!(r107) || e21) && (!(e21) || r107) && (dthen13 == (1 + ifres396)) && (((d126 >= d127) && (ifres396 == d126)) || ((d126 < d127) && (ifres396 == d127))) && (d129 == ts424) && (ts424 == tres77._2) && (!(e20) || (ts425 && (ts425 == tres77._1))) && ((!(ts426) && (ts426 == tres77._1)) || e20) && (!(e21) || (ts427 && (ts427 == tres78._1))) && ((!(ts428) && (ts428 == tres78._1)) || e21) && (d126 == (2 + d132)) && (tres78 == r858) && (cs450 == f.lhs) && (r858 == isNNF(cs450)) && (((1 >= dthen13) && (ifres395 == 1)) || ((1 < dthen13) && (ifres395 == dthen13))) && (!(r108) || e20) && (!(e20) || r108) && (d132 == ts429) && (ts429 == tres78._2) && (!(rthen13) || (r107 && r108)) && (!(r107) || !(r108) || rthen13)) || (!(ci485) && (ci485 == f.isInstanceOf[And]) && (ifres394 == tp107) && (tp107 == (relse13, ifres397)) && ((ci486 && (ci486 == f.isInstanceOf[Or]) && (ifres398 == tp108) && (tp108 == (rthen14, ifres399)) && (tres79 == r859) && (cs451 == f.rhs) && (r859 == isNNF(cs451)) && (dthen14 == (1 + ifres400)) && (((1 >= dthen14) && (ifres399 == 1)) || ((1 < dthen14) && (ifres399 == dthen14))) && (d135 == (2 + d141)) && (tres80 == r860) && (cs452 == f.lhs) && (r860 == isNNF(cs452)) && (!(rthen14) || (r114 && r115)) && (!(r114) || !(r115) || rthen14) && (((d135 >= d136) && (ifres400 == d135)) || ((d135 < d136) && (ifres400 == d136))) && (d138 == ts430) && (ts430 == tres79._2) && (d141 == ts431) && (ts431 == tres80._2) && (!(r115) || e22) && (!(e22) || r115) && (!(e22) || (ts432 && (ts432 == tres79._1))) && ((!(ts433) && (ts433 == tres79._1)) || e22) && (!(e23) || (ts434 && (ts434 == tres80._1))) && ((!(ts435) && (ts435 == tres80._1)) || e23) && (d136 == (2 + d138)) && (!(r114) || e23) && (!(e23) || r114)) || (!(ci487) && (ci487 == f.isInstanceOf[Or]) && (ifres398 == tp109) && (tp109 == (relse14, ifres401)) && ((ci488 && (ci488 == f.isInstanceOf[Implies]) && (ifres402 == tp110) && (tp110 == (rthen15, ifres403)) && (((1 >= dthen15) && (ifres403 == 1)) || ((1 < dthen15) && (ifres403 == dthen15))) && (d144 == (2 + d150)) && (!(rthen15) || (r121 && r122)) && (!(r121) || !(r122) || rthen15) && (tres81 == r861) && (cs453 == f.rhs) && (r861 == isNNF(cs453)) && (((d144 >= d145) && (ifres404 == d144)) || ((d144 < d145) && (ifres404 == d145))) && (!(e25) || (ts436 && (ts436 == tres82._1))) && ((!(ts437) && (ts437 == tres82._1)) || e25) && (d147 == ts438) && (ts438 == tres81._2) && (dthen15 == (1 + ifres404)) && (!(r121) || e25) && (!(e25) || r121) && (d145 == (2 + d147)) && (tres82 == r862) && (cs454 == f.lhs) && (r862 == isNNF(cs454)) && (!(r122) || e24) && (!(e24) || r122) && (d150 == ts439) && (ts439 == tres82._2) && (!(e24) || (ts440 && (ts440 == tres81._1))) && ((!(ts441) && (ts441 == tres81._1)) || e24)) || (!(ci489) && (ci489 == f.isInstanceOf[Implies]) && (ifres402 == tp111) && (tp111 == (relse15, ifres405)) && ((ci490 && (ci490 == f.isInstanceOf[Not]) && ci491 && (cs455 == f.f) && (ci491 == cs455.isInstanceOf[Literal]) && (ifres406 == tp112) && arg2 && (tp112 == (arg2, ifres407)) && (((3 >= 0) && (ifres407 == 3)) || ((3 < 0) && (ifres407 == 0)))) || (((!(ci492) && (ci492 == f.isInstanceOf[Not])) || (!(ci493) && (cs456 == f.f) && (ci493 == cs456.isInstanceOf[Literal]))) && (ifres406 == tp113) && (tp113 == (relse16, ifres408)) && ((ci494 && (ci494 == f.isInstanceOf[Not]) && (ifres409 == tp114) && !(arg3) && (tp114 == (arg3, ifres410)) && (((1 >= 0) && (ifres410 == 1)) || ((1 < 0) && (ifres410 == 0)))) || (!(ci495) && (ci495 == f.isInstanceOf[Not]) && (ifres409 == tp115) && (tp115 == (relse17, ifres411)) && ((ci496 && (ci496 == f.isInstanceOf[Literal]) && (ifres412 == tp116) && arg4 && (tp116 == (arg4, ifres413)) && (((1 >= 0) && (ifres413 == 1)) || ((1 < 0) && (ifres413 == 0)))) || (!(ci497) && (ci497 == f.isInstanceOf[Literal]) && (ifres412 == tp117) && !(arg5) && (tp117 == (arg5, ifres414)) && (((1 >= 0) && (ifres414 == 1)) || ((1 < 0) && (ifres414 == 0))))) && (!(relse17) || (ts442 && (ts442 == ifres412._1))) && ((!(ts443) && (ts443 == ifres412._1)) || relse17) && (delse17 == ts444) && (ts444 == ifres412._2) && (((1 >= delse17) && (ifres411 == 1)) || ((1 < delse17) && (ifres411 == delse17))))) && (!(relse16) || (ts445 && (ts445 == ifres409._1))) && ((!(ts446) && (ts446 == ifres409._1)) || relse16) && (delse16 == ts447) && (ts447 == ifres409._2) && (((3 >= delse16) && (ifres408 == 3)) || ((3 < delse16) && (ifres408 == delse16))))) && (!(relse15) || (ts448 && (ts448 == ifres406._1))) && ((!(ts449) && (ts449 == ifres406._1)) || relse15) && (delse15 == ts450) && (ts450 == ifres406._2) && (((1 >= delse15) && (ifres405 == 1)) || ((1 < delse15) && (ifres405 == delse15))))) && (!(relse14) || (ts451 && (ts451 == ifres402._1))) && ((!(ts452) && (ts452 == ifres402._1)) || relse14) && (delse14 == ts453) && (ts453 == ifres402._2) && (((1 >= delse14) && (ifres401 == 1)) || ((1 < delse14) && (ifres401 == delse14))))) && (!(relse13) || (ts454 && (ts454 == ifres398._1))) && ((!(ts455) && (ts455 == ifres398._1)) || relse13) && (delse13 == ts456) && (ts456 == ifres398._2) && (((1 >= delse13) && (ifres397 == 1)) || ((1 < delse13) && (ifres397 == delse13))))))
+Flattened Post: ((ts457 > ((a?3 * r863) + b?3)) && (ts457 == res11._2) && (r863 == nestingDepth(f)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF-->((((0 * nestingDepth(f)) + (1 * res11._2)) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 91
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+isNNF-->((((1 * res11._2) + (0 * nestingDepth(f))) + -6) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 68
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 10
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/7
+Unrolled calls: Set((r863 == nestingDepth(f)))
+Creating VC for nestingDepth
+Unrolling (r863 == nestingDepth(f))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF-->((((1 * res11._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 21 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isNNF-->((((8 * res11._2) + (0 * nestingDepth(f))) + -1) ≤ 0)
+nestingDepth-->(((0 * #res) + 65) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 21
+solving...
+solved... in 0.006s
+candidate Invariants
+isNNF-->((((0 * nestingDepth(f)) + (1 * res11._2)) + 8) ≤ 0)
+nestingDepth-->(((-16 * #res) + 1) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 31 + 29
+solving...
+solved... in 0.018s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/32
+Unrolled calls: Set((r868 == max(r866, r867)), (r888 == nestingDepth(cs451)), (r887 == nestingDepth(cs452)), (r881 == max(r879, r880)))
+Inlining (r868 == max(r866, r867))
+Unrolling (r888 == nestingDepth(cs451))
+Unrolling (r887 == nestingDepth(cs452))
+Inlining (r881 == max(r879, r880))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF-->((((1 * res11._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 85
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 25 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+isNNF-->((((-2 * nestingDepth(f)) + (16 * res11._2)) + -8) ≤ 0)
+nestingDepth-->(((24 * #res) + 7) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 93
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 25
+solving...
+solved... in 0.031s
+candidate Invariants
+isNNF-->((((1 * nestingDepth(f)) + (1 * res11._2)) + -5) ≤ 0)
+nestingDepth-->(((1 * #res) + -1) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 16
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 37 + 46
+solving...
+solved... in 0.056s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/48
+Unrolled calls: Set((r874 == max(r872, r873)), (r889 == nestingDepth(cs454)), (r897 == max(r895, r896)), (r886 == nestingDepth(cs453)), (r884 == max(r882, r883)))
+Inlining (r874 == max(r872, r873))
+Inlining (r897 == max(r895, r896))
+Unrolling (r889 == nestingDepth(cs454))
+Unrolling (r886 == nestingDepth(cs453))
+Inlining (r884 == max(r882, r883))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF-->((((1 * res11._2) + (0 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 136
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+isNNF-->((((16 * res11._2) + (-2 * nestingDepth(f))) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 94) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 93
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 23 + 11
+solving...
+solved... in 0.008s
+candidate Invariants
+isNNF-->((((-1 * nestingDepth(f)) + (1 * res11._2)) + -3) ≤ 0)
+nestingDepth-->(((-2 * #res) + -1) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 143
+[[34m Info  [0m] Number of equal calls: 18
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 40 + 34
+solving...
+solved... in 0.015s
+candidate Invariants
+isNNF-->((((1 * nestingDepth(f)) + (2 * res11._2)) + 1) ≤ 0)
+nestingDepth-->(((0 * #res) + 1) ≤ 0)
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 74
+solving...
+solved... in 0.018s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/63
+Unrolled calls: Set((r930 == max(r928, r929)), (r871 == max(r869, r870)), (r920 == max(r918, r919)))
+Inlining (r930 == max(r928, r929))
+Inlining (r871 == max(r869, r870))
+Inlining (r920 == max(r918, r919))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF-->((((0 * nestingDepth(f)) + (1 * res11._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 121
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+isNNF-->((((2 * res11._2) + (1 * nestingDepth(f))) + -2) ≤ 0)
+nestingDepth-->(((12 * #res) + 14) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 44 + 34
+solving...
+solved... in 0.012s
+candidate Invariants
+isNNF-->((((2 * res11._2) + (-1 * nestingDepth(f))) + 12) ≤ 0)
+nestingDepth-->(((2 * #res) + -8) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 85
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 45 + 78
+solving...
+solved... in 0.049s
+candidate Invariants
+isNNF-->((((-4 * nestingDepth(f)) + (1 * res11._2)) + 10) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 103
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 41 + 123
+solving...
+solved... in 0.052s
+candidate Invariants
+isNNF-->((((1 * res11._2) + (-4 * nestingDepth(f))) + 7) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 111
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 40 + 164
+solving...
+solved... in 0.065s
+candidate Invariants
+isNNF-->((((1 * res11._2) + (-4 * nestingDepth(f))) + 1) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 45
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 29 + 204
+solving...
+solved... in 0.086s
+candidate Invariants
+isNNF-->((((1 * res11._2) + (-4 * nestingDepth(f))) + -2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 45
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 28 + 233
+solving...
+solved... in 0.125s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/60
+Unrolled calls: Set((r900 == max(r898, r899)), (r890 == nestingDepth(cs449)), (r913 == max(r911, r912)), (r878 == max(r876, r877)), (r891 == nestingDepth(cs450)))
+Unrolling (r890 == nestingDepth(cs449))
+Inlining (r913 == max(r911, r912))
+Inlining (r878 == max(r876, r877))
+Unrolling (r891 == nestingDepth(cs450))
+Inlining (r900 == max(r898, r899))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isNNF-->((((0 * nestingDepth(f)) + (1 * res11._2)) + 0) ≤ 0)
+nestingDepth-->(((0 * #res) + 0) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 136
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+isNNF-->((((-2 * nestingDepth(f)) + (16 * res11._2)) + 8) ≤ 0)
+nestingDepth-->(((8 * #res) + 94) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 93
+[[34m Info  [0m] Number of equal calls: 13
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 11
+solving...
+solved... in 0.01s
+candidate Invariants
+isNNF-->((((2 * res11._2) + (1 * nestingDepth(f))) + -24) ≤ 0)
+nestingDepth-->(((1 * #res) + -16) ≤ 0)
+Function: isNNF--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 85
+[[34m Info  [0m] Number of equal calls: 14
+Function: nestingDepth--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 44 + 32
+solving...
+solved... in 0.019s
+candidate Invariants
+isNNF-->((((-4 * nestingDepth(f)) + (1 * res11._2)) + 0) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: b?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?3 Initial upperbound: 3
+Found new upper bound: 1/2
+Found new upper bound: 0
+Found new lower bound: -1
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: isNNF --> ((((1 * res11._2) + (-3 * nestingDepth(f))) + 0) <= 0)
+[[34m Info  [0m] - Found inductive invariant: nestingDepth --> (((-1 * #res) + 1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝
+[0m] Number of compatible calls: 32
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 14 + 120
+solving...
+solved... in 0.03s
+candidate Invariants
+isSimplified-->((((-4 * nestingDepth(f)) + (1 * res11._2)) + -2) ≤ 0)
+nestingDepth-->(((-1 * #res) + 0) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?1 Initial upperbound: 2
+Found new upper bound: 1
+Found new upper bound: -1/4
+Found new upper bound: -9/8
+Found new lower bound: -3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: isSimplified --> ((((-24 * nestingDepth(f)) + (8 * res11._2)) + 9) <= 0)
+[[34m Info  [0m] - Found inductive invariant: nestingDepth --> (((-4 * #res) + 3) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

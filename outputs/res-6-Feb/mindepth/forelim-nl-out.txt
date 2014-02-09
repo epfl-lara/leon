@@ -1,0 +1,4934 @@
+[[33mWarning[0m] warning: there were 9 deprecation warning(s); re-run with -deprecation for details
+After Depth Instrumentation: 
+object ForElimination {
+  sealed abstract class Statement
+
+  case class For(init: Statement, expr: Expression, step: Statement, body: Statement) extends Statement
+
+  case class Minus(lhs: Expression, rhs: Expression) extends Expression
+
+  case class LessThan(lhs: Expression, rhs: Expression) extends Expression
+
+  case class IfThenElse(expr: Expression, then: Statement, elze: Statement) extends Statement
+
+  case class While(expr: Expression, body: Statement) extends Statement
+
+  case class Skip() extends Statement
+
+  case class Block(body: List) extends Statement
+
+  case class Equals(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Not(expr: Expression) extends Expression
+
+  sealed abstract class List
+
+  case class Nil() extends List
+
+  case class Print(msg: Int, varID: Int) extends Statement
+
+  case class Times(lhs: Expression, rhs: Expression) extends Expression
+
+  case class And(lhs: Expression, rhs: Expression) extends Expression
+
+  sealed abstract class Expression
+
+  case class Or(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Division(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Var(varID: Int) extends Expression
+
+  case class Assign(varID: Int, expr: Expression) extends Statement
+
+  case class Cons(head: Statement, tail: List) extends List
+
+  case class IntLiteral(value: Int) extends Expression
+
+  case class Plus(lhs: Expression, rhs: Expression) extends Expression
+
+  def isForFree(stat : Statement) : (Boolean, Int) = {locally {
+    val dcond7 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen7: Boolean, dthen7: Int) = locally {
+          val (e13: Boolean, d69: Int) = isForFreeList(stat.body)
+          (e13, (2 + d69))
+        }
+        
+        (rthen7, if ((dcond7 >= dthen7)) {
+          dcond7
+        } else {
+          dthen7
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse7: Boolean, delse7: Int) = locally {
+          val dcond8 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen8: Boolean, dthen8: Int) = locally {
+                val (r59: Boolean, d72: Int) = locally {
+                  val (e15: Boolean, d78: Int) = isForFree(stat.then)
+                  (e15, (2 + d78))
+                }
+                
+                locally {
+                  val (r60: Boolean, d73: Int) = locally {
+                    val (e14: Boolean, d75: Int) = isForFree(stat.elze)
+                    (e14, (2 + d75))
+                  }
+                  
+                  ((r59 && r60), (1 + if ((d72 >= d73)) {
+                    d72
+                  } else {
+                    d73
+                  }))
+                }
+                
+              }
+              
+              (rthen8, if ((dcond8 >= dthen8)) {
+                dcond8
+              } else {
+                dthen8
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse8: Boolean, delse8: Int) = locally {
+                val dcond9 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen9: Boolean, dthen9: Int) = locally {
+                      val (e16: Boolean, d82: Int) = isForFree(stat.body)
+                      (e16, (2 + d82))
+                    }
+                    
+                    (rthen9, if ((dcond9 >= dthen9)) {
+                      dcond9
+                    } else {
+                      dthen9
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse9: Boolean, delse9: Int) = locally {
+                      val dcond10 = 1
+                      if (stat.isInstanceOf[For]) {
+                        (false, if ((dcond10 >= 0)) {
+                          dcond10
+                        } else {
+                          0
+                        })
+                      } else {
+                        (true, if ((dcond10 >= 0)) {
+                          dcond10
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse9, if ((dcond9 >= delse9)) {
+                      dcond9
+                    } else {
+                      delse9
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse8, if ((dcond8 >= delse8)) {
+                dcond8
+              } else {
+                delse8
+              })
+            }
+            
+          }
+        }
+        
+        (relse7, if ((dcond7 >= delse7)) {
+          dcond7
+        } else {
+          delse7
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def sizeList(l : List) : Int = {(l match {
+    case Cons(h, t) =>
+      (sizeStat(h) + sizeList(t))
+    case Nil() =>
+      0
+  })}
+
+  def eliminateForLoops(stat : Statement) : (Statement, Int) = {locally {
+    val dcond16 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen16: Block, dthen16: Int) = locally {
+          val (r100: List, d125: Int) = locally {
+            val (e26: List, d127: Int) = eliminateForLoopsList(stat.body)
+            (e26, (2 + d127))
+          }
+          
+          (Block(r100), (1 + d125))
+        }
+        
+        (rthen16, if ((dcond16 >= dthen16)) {
+          dcond16
+        } else {
+          dthen16
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse16: Statement, delse16: Int) = locally {
+          val dcond17 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen17: IfThenElse, dthen17: Int) = locally {
+                val (r105: Statement, d131: Int) = locally {
+                  val (e28: Statement, d137: Int) = eliminateForLoops(stat.then)
+                  (e28, (2 + d137))
+                }
+                
+                locally {
+                  val (r106: Statement, d132: Int) = locally {
+                    val (e27: Statement, d134: Int) = eliminateForLoops(stat.elze)
+                    (e27, (2 + d134))
+                  }
+                  
+                  (IfThenElse(stat.expr, r105, r106), (1 + if ((if ((1 >= d131)) {
+                    1
+                  } else {
+                    d131
+                  } >= d132)) {
+                    if ((1 >= d131)) {
+                      1
+                    } else {
+                      d131
+                    }
+                  } else {
+                    d132
+                  }))
+                }
+                
+              }
+              
+              (rthen17, if ((dcond17 >= dthen17)) {
+                dcond17
+              } else {
+                dthen17
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse17: Statement, delse17: Int) = locally {
+                val dcond18 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen18: While, dthen18: Int) = locally {
+                      val (r114: Statement, d142: Int) = locally {
+                        val (e29: Statement, d144: Int) = eliminateForLoops(stat.body)
+                        (e29, (2 + d144))
+                      }
+                      
+                      (While(stat.expr, r114), (1 + if ((1 >= d142)) {
+                        1
+                      } else {
+                        d142
+                      }))
+                    }
+                    
+                    (rthen18, if ((dcond18 >= dthen18)) {
+                      dcond18
+                    } else {
+                      dthen18
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse18: Statement, delse18: Int) = locally {
+                      val dcond19 = 1
+                      if (stat.isInstanceOf[For]) {
+                        locally {
+                          val (rthen19: Block, dthen19: Int) = locally {
+                            val (r119: Cons, d148: Int) = locally {
+                              val (r120: Statement, d149: Int) = locally {
+                                val (e32: Statement, d168: Int) = eliminateForLoops(stat.init)
+                                (e32, (2 + d168))
+                              }
+                              
+                              locally {
+                                val (r121: Cons, d150: Int) = locally {
+                                  val (r122: While, d151: Int) = locally {
+                                    val (r125: Block, d154: Int) = locally {
+                                      val (r126: Cons, d155: Int) = locally {
+                                        val (r127: Statement, d156: Int) = locally {
+                                          val (e31: Statement, d164: Int) = eliminateForLoops(stat.body)
+                                          (e31, (2 + d164))
+                                        }
+                                        
+                                        locally {
+                                          val (r128: Cons, d157: Int) = locally {
+                                            val (r129: Statement, d158: Int) = locally {
+                                              val (e30: Statement, d161: Int) = eliminateForLoops(stat.step)
+                                              (e30, (2 + d161))
+                                            }
+                                            
+                                            (Cons(r129, Nil()), (1 + if ((d158 >= 1)) {
+                                              d158
+                                            } else {
+                                              1
+                                            }))
+                                          }
+                                          
+                                          (Cons(r127, r128), (1 + if ((d156 >= d157)) {
+                                            d156
+                                          } else {
+                                            d157
+                                          }))
+                                        }
+                                        
+                                      }
+                                      
+                                      (Block(r126), (1 + d155))
+                                    }
+                                    
+                                    (While(stat.expr, r125), (1 + if ((1 >= d154)) {
+                                      1
+                                    } else {
+                                      d154
+                                    }))
+                                  }
+                                  
+                                  (Cons(r122, Nil()), (1 + if ((d151 >= 1)) {
+                                    d151
+                                  } else {
+                                    1
+                                  }))
+                                }
+                                
+                                (Cons(r120, r121), (1 + if ((d149 >= d150)) {
+                                  d149
+                                } else {
+                                  d150
+                                }))
+                              }
+                              
+                            }
+                            
+                            (Block(r119), (1 + d148))
+                          }
+                          
+                          (rthen19, if ((dcond19 >= dthen19)) {
+                            dcond19
+                          } else {
+                            dthen19
+                          })
+                        }
+                        
+                      } else {
+                        (stat, if ((dcond19 >= 0)) {
+                          dcond19
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse18, if ((dcond18 >= delse18)) {
+                      dcond18
+                    } else {
+                      delse18
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse17, if ((dcond17 >= delse17)) {
+                dcond17
+              } else {
+                delse17
+              })
+            }
+            
+          }
+        }
+        
+        (relse16, if ((dcond16 >= delse16)) {
+          dcond16
+        } else {
+          delse16
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def eliminateForLoopsList(l : List) : (List, Int) = {locally {
+    val dcond = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond >= 1)) {
+        dcond
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse: Cons, delse: Int) = locally {
+          val (r2: Statement, d1: Int) = locally {
+            val (e1: Statement, d7: Int) = eliminateForLoops(l.head)
+            (e1, (2 + d7))
+          }
+          
+          locally {
+            val (r3: List, d2: Int) = locally {
+              val (e: List, d4: Int) = eliminateForLoopsList(l.tail)
+              (e, (2 + d4))
+            }
+            
+            (Cons(r2, r3), (1 + if ((d1 >= d2)) {
+              d1
+            } else {
+              d2
+            }))
+          }
+          
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def eliminateWhileLoopsList(l : List) : (List, Int) = {locally {
+    val dcond2 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond2 >= 1)) {
+        dcond2
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse2: Cons, delse2: Int) = locally {
+          val (r16: Statement, d19: Int) = locally {
+            val (e5: Statement, d25: Int) = eliminateWhileLoops(l.head)
+            (e5, (2 + d25))
+          }
+          
+          locally {
+            val (r17: List, d20: Int) = locally {
+              val (e4: List, d22: Int) = eliminateWhileLoopsList(l.tail)
+              (e4, (2 + d22))
+            }
+            
+            (Cons(r16, r17), (1 + if ((d19 >= d20)) {
+              d19
+            } else {
+              d20
+            }))
+          }
+          
+        }
+        
+        (relse2, if ((dcond2 >= delse2)) {
+          dcond2
+        } else {
+          delse2
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def forLoopsWellFormedList(l : List) : (Boolean, Int) = {locally {
+    val dcond11 = 1
+    if (l.isInstanceOf[Nil]) {
+      (true, if ((dcond11 >= 0)) {
+        dcond11
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse11: Boolean, delse11: Int) = locally {
+          val (r70: Boolean, d86: Int) = locally {
+            val (e18: Boolean, d92: Int) = forLoopsWellFormed(l.head)
+            (e18, (2 + d92))
+          }
+          
+          locally {
+            val (r71: Boolean, d87: Int) = locally {
+              val (e17: Boolean, d89: Int) = forLoopsWellFormedList(l.tail)
+              (e17, (2 + d89))
+            }
+            
+            ((r70 && r71), (1 + if ((d86 >= d87)) {
+              d86
+            } else {
+              d87
+            }))
+          }
+          
+        }
+        
+        (relse11, if ((dcond11 >= delse11)) {
+          dcond11
+        } else {
+          delse11
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def eliminateWhileLoops(stat : Statement) : (Statement, Int) = {locally {
+    val dcond3 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen3: Block, dthen3: Int) = locally {
+          val (r23: List, d28: Int) = locally {
+            val (e6: List, d30: Int) = eliminateWhileLoopsList(stat.body)
+            (e6, (2 + d30))
+          }
+          
+          (Block(r23), (1 + d28))
+        }
+        
+        (rthen3, if ((dcond3 >= dthen3)) {
+          dcond3
+        } else {
+          dthen3
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse3: Statement, delse3: Int) = locally {
+          val dcond4 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen4: IfThenElse, dthen4: Int) = locally {
+                val (r28: Statement, d34: Int) = locally {
+                  val (e8: Statement, d40: Int) = eliminateWhileLoops(stat.then)
+                  (e8, (2 + d40))
+                }
+                
+                locally {
+                  val (r29: Statement, d35: Int) = locally {
+                    val (e7: Statement, d37: Int) = eliminateWhileLoops(stat.elze)
+                    (e7, (2 + d37))
+                  }
+                  
+                  (IfThenElse(stat.expr, r28, r29), (1 + if ((if ((1 >= d34)) {
+                    1
+                  } else {
+                    d34
+                  } >= d35)) {
+                    if ((1 >= d34)) {
+                      1
+                    } else {
+                      d34
+                    }
+                  } else {
+                    d35
+                  }))
+                }
+                
+              }
+              
+              (rthen4, if ((dcond4 >= dthen4)) {
+                dcond4
+              } else {
+                dthen4
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse4: Statement, delse4: Int) = locally {
+                val dcond5 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen5: For, dthen5: Int) = locally {
+                      val (r39: Statement, d47: Int) = locally {
+                        val (e9: Statement, d49: Int) = eliminateWhileLoops(stat.body)
+                        (e9, (2 + d49))
+                      }
+                      
+                      (For(Skip(), stat.expr, Skip(), r39), (1 + if ((1 >= d47)) {
+                        1
+                      } else {
+                        d47
+                      }))
+                    }
+                    
+                    (rthen5, if ((dcond5 >= dthen5)) {
+                      dcond5
+                    } else {
+                      dthen5
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse5: Statement, delse5: Int) = locally {
+                      val dcond6 = 1
+                      if (stat.isInstanceOf[For]) {
+                        locally {
+                          val (rthen6: For, dthen6: Int) = locally {
+                            val (r44: Statement, d53: Int) = locally {
+                              val (e12: Statement, d65: Int) = eliminateWhileLoops(stat.init)
+                              (e12, (2 + d65))
+                            }
+                            
+                            locally {
+                              val (r46: Statement, d55: Int) = locally {
+                                val (e11: Statement, d61: Int) = eliminateWhileLoops(stat.step)
+                                (e11, (2 + d61))
+                              }
+                              
+                              locally {
+                                val (r47: Statement, d56: Int) = locally {
+                                  val (e10: Statement, d58: Int) = eliminateWhileLoops(stat.body)
+                                  (e10, (2 + d58))
+                                }
+                                
+                                (For(r44, stat.expr, r46, r47), (1 + if ((if ((if ((d53 >= 1)) {
+                                  d53
+                                } else {
+                                  1
+                                } >= d55)) {
+                                  if ((d53 >= 1)) {
+                                    d53
+                                  } else {
+                                    1
+                                  }
+                                } else {
+                                  d55
+                                } >= d56)) {
+                                  if ((if ((d53 >= 1)) {
+                                    d53
+                                  } else {
+                                    1
+                                  } >= d55)) {
+                                    if ((d53 >= 1)) {
+                                      d53
+                                    } else {
+                                      1
+                                    }
+                                  } else {
+                                    d55
+                                  }
+                                } else {
+                                  d56
+                                }))
+                              }
+                              
+                            }
+                            
+                          }
+                          
+                          (rthen6, if ((dcond6 >= dthen6)) {
+                            dcond6
+                          } else {
+                            dthen6
+                          })
+                        }
+                        
+                      } else {
+                        (stat, if ((dcond6 >= 0)) {
+                          dcond6
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse5, if ((dcond5 >= delse5)) {
+                      dcond5
+                    } else {
+                      delse5
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse4, if ((dcond4 >= delse4)) {
+                dcond4
+              } else {
+                delse4
+              })
+            }
+            
+          }
+        }
+        
+        (relse3, if ((dcond3 >= delse3)) {
+          dcond3
+        } else {
+          delse3
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def sizeStat(st : Statement) : Int = {(st match {
+    case Block(l) =>
+      (sizeList(l) + 1)
+    case IfThenElse(c, th, el) =>
+      ((sizeStat(th) + sizeStat(el)) + 1)
+    case While(c, b) =>
+      (sizeStat(b) + 1)
+    case For(init, cond, step, body) =>
+      ((sizeStat(init) + sizeStat(step)) + sizeStat(body))
+    case other =>
+      1
+  })}
+
+  def forLoopsWellFormed(stat : Statement) : (Boolean, Int) = {locally {
+    val dcond12 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen12: Boolean, dthen12: Int) = locally {
+          val (e19: Boolean, d96: Int) = forLoopsWellFormedList(stat.body)
+          (e19, (2 + d96))
+        }
+        
+        (rthen12, if ((dcond12 >= dthen12)) {
+          dcond12
+        } else {
+          dthen12
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse12: Boolean, delse12: Int) = locally {
+          val dcond13 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen13: Boolean, dthen13: Int) = locally {
+                val (r80: Boolean, d99: Int) = locally {
+                  val (e21: Boolean, d105: Int) = forLoopsWellFormed(stat.then)
+                  (e21, (2 + d105))
+                }
+                
+                locally {
+                  val (r81: Boolean, d100: Int) = locally {
+                    val (e20: Boolean, d102: Int) = forLoopsWellFormed(stat.elze)
+                    (e20, (2 + d102))
+                  }
+                  
+                  ((r80 && r81), (1 + if ((d99 >= d100)) {
+                    d99
+                  } else {
+                    d100
+                  }))
+                }
+                
+              }
+              
+              (rthen13, if ((dcond13 >= dthen13)) {
+                dcond13
+              } else {
+                dthen13
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse13: Boolean, delse13: Int) = locally {
+                val dcond14 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen14: Boolean, dthen14: Int) = locally {
+                      val (e22: Boolean, d109: Int) = forLoopsWellFormed(stat.body)
+                      (e22, (2 + d109))
+                    }
+                    
+                    (rthen14, if ((dcond14 >= dthen14)) {
+                      dcond14
+                    } else {
+                      dthen14
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse14: Boolean, delse14: Int) = locally {
+                      val dcond15 = 1
+                      if (stat.isInstanceOf[For]) {
+                        locally {
+                          val (rthen15: Boolean, dthen15: Int) = locally {
+                            val (r90: Boolean, d112: Int) = locally {
+                              val (e25: Boolean, d122: Int) = isForFree(stat.init)
+                              (e25, (2 + d122))
+                            }
+                            
+                            locally {
+                              val (r91: Boolean, d113: Int) = locally {
+                                val (e24: Boolean, d119: Int) = isForFree(stat.step)
+                                (e24, (2 + d119))
+                              }
+                              
+                              locally {
+                                val (r92: Boolean, d114: Int) = locally {
+                                  val (e23: Boolean, d116: Int) = forLoopsWellFormed(stat.body)
+                                  (e23, (2 + d116))
+                                }
+                                
+                                ((r90 && r91 && r92), (1 + if ((if ((d112 >= d113)) {
+                                  d112
+                                } else {
+                                  d113
+                                } >= d114)) {
+                                  if ((d112 >= d113)) {
+                                    d112
+                                  } else {
+                                    d113
+                                  }
+                                } else {
+                                  d114
+                                }))
+                              }
+                              
+                            }
+                            
+                          }
+                          
+                          (rthen15, if ((dcond15 >= dthen15)) {
+                            dcond15
+                          } else {
+                            dthen15
+                          })
+                        }
+                        
+                      } else {
+                        (true, if ((dcond15 >= 0)) {
+                          dcond15
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse14, if ((dcond14 >= delse14)) {
+                      dcond14
+                    } else {
+                      delse14
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse13, if ((dcond13 >= delse13)) {
+                dcond13
+              } else {
+                delse13
+              })
+            }
+            
+          }
+        }
+        
+        (relse12, if ((dcond12 >= delse12)) {
+          dcond12
+        } else {
+          delse12
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def isForFreeList(l : List) : (Boolean, Int) = {locally {
+    val dcond1 = 1
+    if (l.isInstanceOf[Nil]) {
+      (true, if ((dcond1 >= 0)) {
+        dcond1
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse1: Boolean, delse1: Int) = locally {
+          val (r9: Boolean, d10: Int) = locally {
+            val (e3: Boolean, d16: Int) = isForFree(l.head)
+            (e3, (2 + d16))
+          }
+          
+          locally {
+            val (r10: Boolean, d11: Int) = locally {
+              val (e2: Boolean, d13: Int) = isForFreeList(l.tail)
+              (e2, (2 + d13))
+            }
+            
+            ((r9 && r10), (1 + if ((d10 >= d11)) {
+              d10
+            } else {
+              d11
+            }))
+          }
+          
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: isForFree
+Defined fun: sizeList
+Defined fun: eliminateForLoops
+Defined fun: eliminateForLoopsList
+Defined fun: eliminateWhileLoopsList
+Defined fun: forLoopsWellFormedList
+Defined fun: eliminateWhileLoops
+Defined fun: sizeStat
+Defined fun: forLoopsWellFormed
+Defined fun: isForFreeList
+Defined fun: max
+FunMap: Map(eliminateForLoopsList -> eliminateForLoopsList, forLoopsWellFormed -> forLoopsWellFormed, eliminateForLoops -> eliminateForLoops, max -> max, isForFreeList -> isForFreeList, forLoopsWellFormedList -> forLoopsWellFormedList, sizeList -> sizeList, eliminateWhileLoops -> eliminateWhileLoops, eliminateWhileLoopsList -> eliminateWhileLoopsList, isForFree -> isForFree, sizeStat -> sizeStat)
+After Time Instrumentation: 
+object ForElimination {
+  sealed abstract class Statement
+
+  case class For(init: Statement, expr: Expression, step: Statement, body: Statement) extends Statement
+
+  case class Minus(lhs: Expression, rhs: Expression) extends Expression
+
+  case class LessThan(lhs: Expression, rhs: Expression) extends Expression
+
+  case class IfThenElse(expr: Expression, then: Statement, elze: Statement) extends Statement
+
+  case class While(expr: Expression, body: Statement) extends Statement
+
+  case class Skip() extends Statement
+
+  case class Block(body: List) extends Statement
+
+  case class Equals(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Not(expr: Expression) extends Expression
+
+  sealed abstract class List
+
+  case class Nil() extends List
+
+  case class Print(msg: Int, varID: Int) extends Statement
+
+  case class Times(lhs: Expression, rhs: Expression) extends Expression
+
+  case class And(lhs: Expression, rhs: Expression) extends Expression
+
+  sealed abstract class Expression
+
+  case class Or(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Division(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Var(varID: Int) extends Expression
+
+  case class Assign(varID: Int, expr: Expression) extends Statement
+
+  case class Cons(head: Statement, tail: List) extends List
+
+  case class IntLiteral(value: Int) extends Expression
+
+  case class Plus(lhs: Expression, rhs: Expression) extends Expression
+
+  def isForFree(stat : Statement) : (Boolean, Int) = {locally {
+    val dcond7 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen7: Boolean, dthen7: Int) = locally {
+          val (e13: Boolean, d69: Int) = isForFreeList(stat.body)
+          (e13, (2 + d69))
+        }
+        
+        (rthen7, if ((dcond7 >= dthen7)) {
+          dcond7
+        } else {
+          dthen7
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse7: Boolean, delse7: Int) = locally {
+          val dcond8 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen8: Boolean, dthen8: Int) = locally {
+                val (r59: Boolean, d72: Int) = locally {
+                  val (e15: Boolean, d78: Int) = isForFree(stat.then)
+                  (e15, (2 + d78))
+                }
+                
+                locally {
+                  val (r60: Boolean, d73: Int) = locally {
+                    val (e14: Boolean, d75: Int) = isForFree(stat.elze)
+                    (e14, (2 + d75))
+                  }
+                  
+                  ((r59 && r60), (1 + if ((d72 >= d73)) {
+                    d72
+                  } else {
+                    d73
+                  }))
+                }
+                
+              }
+              
+              (rthen8, if ((dcond8 >= dthen8)) {
+                dcond8
+              } else {
+                dthen8
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse8: Boolean, delse8: Int) = locally {
+                val dcond9 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen9: Boolean, dthen9: Int) = locally {
+                      val (e16: Boolean, d82: Int) = isForFree(stat.body)
+                      (e16, (2 + d82))
+                    }
+                    
+                    (rthen9, if ((dcond9 >= dthen9)) {
+                      dcond9
+                    } else {
+                      dthen9
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse9: Boolean, delse9: Int) = locally {
+                      val dcond10 = 1
+                      if (stat.isInstanceOf[For]) {
+                        (false, if ((dcond10 >= 0)) {
+                          dcond10
+                        } else {
+                          0
+                        })
+                      } else {
+                        (true, if ((dcond10 >= 0)) {
+                          dcond10
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse9, if ((dcond9 >= delse9)) {
+                      dcond9
+                    } else {
+                      delse9
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse8, if ((dcond8 >= delse8)) {
+                dcond8
+              } else {
+                delse8
+              })
+            }
+            
+          }
+        }
+        
+        (relse7, if ((dcond7 >= delse7)) {
+          dcond7
+        } else {
+          delse7
+        })
+      }
+      
+    }
+  }
+  } ensuring(res24 => true)
+
+  def sizeList(l : List) : Int = {(l match {
+    case Cons(h, t) =>
+      (sizeStat(h) + sizeList(t))
+    case Nil() =>
+      0
+  })}
+
+  def eliminateForLoops(stat : Statement) : (Statement, Int) = {locally {
+    val dcond16 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen16: Block, dthen16: Int) = locally {
+          val (r100: List, d125: Int) = locally {
+            val (e26: List, d127: Int) = eliminateForLoopsList(stat.body)
+            (e26, (2 + d127))
+          }
+          
+          (Block(r100), (1 + d125))
+        }
+        
+        (rthen16, if ((dcond16 >= dthen16)) {
+          dcond16
+        } else {
+          dthen16
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse16: Statement, delse16: Int) = locally {
+          val dcond17 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen17: IfThenElse, dthen17: Int) = locally {
+                val (r105: Statement, d131: Int) = locally {
+                  val (e28: Statement, d137: Int) = eliminateForLoops(stat.then)
+                  (e28, (2 + d137))
+                }
+                
+                locally {
+                  val (r106: Statement, d132: Int) = locally {
+                    val (e27: Statement, d134: Int) = eliminateForLoops(stat.elze)
+                    (e27, (2 + d134))
+                  }
+                  
+                  (IfThenElse(stat.expr, r105, r106), (1 + if ((if ((1 >= d131)) {
+                    1
+                  } else {
+                    d131
+                  } >= d132)) {
+                    if ((1 >= d131)) {
+                      1
+                    } else {
+                      d131
+                    }
+                  } else {
+                    d132
+                  }))
+                }
+                
+              }
+              
+              (rthen17, if ((dcond17 >= dthen17)) {
+                dcond17
+              } else {
+                dthen17
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse17: Statement, delse17: Int) = locally {
+                val dcond18 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen18: While, dthen18: Int) = locally {
+                      val (r114: Statement, d142: Int) = locally {
+                        val (e29: Statement, d144: Int) = eliminateForLoops(stat.body)
+                        (e29, (2 + d144))
+                      }
+                      
+                      (While(stat.expr, r114), (1 + if ((1 >= d142)) {
+                        1
+                      } else {
+                        d142
+                      }))
+                    }
+                    
+                    (rthen18, if ((dcond18 >= dthen18)) {
+                      dcond18
+                    } else {
+                      dthen18
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse18: Statement, delse18: Int) = locally {
+                      val dcond19 = 1
+                      if (stat.isInstanceOf[For]) {
+                        locally {
+                          val (rthen19: Block, dthen19: Int) = locally {
+                            val (r119: Cons, d148: Int) = locally {
+                              val (r120: Statement, d149: Int) = locally {
+                                val (e32: Statement, d168: Int) = eliminateForLoops(stat.init)
+                                (e32, (2 + d168))
+                              }
+                              
+                              locally {
+                                val (r121: Cons, d150: Int) = locally {
+                                  val (r122: While, d151: Int) = locally {
+                                    val (r125: Block, d154: Int) = locally {
+                                      val (r126: Cons, d155: Int) = locally {
+                                        val (r127: Statement, d156: Int) = locally {
+                                          val (e31: Statement, d164: Int) = eliminateForLoops(stat.body)
+                                          (e31, (2 + d164))
+                                        }
+                                        
+                                        locally {
+                                          val (r128: Cons, d157: Int) = locally {
+                                            val (r129: Statement, d158: Int) = locally {
+                                              val (e30: Statement, d161: Int) = eliminateForLoops(stat.step)
+                                              (e30, (2 + d161))
+                                            }
+                                            
+                                            (Cons(r129, Nil()), (1 + if ((d158 >= 1)) {
+                                              d158
+                                            } else {
+                                              1
+                                            }))
+                                          }
+                                          
+                                          (Cons(r127, r128), (1 + if ((d156 >= d157)) {
+                                            d156
+                                          } else {
+                                            d157
+                                          }))
+                                        }
+                                        
+                                      }
+                                      
+                                      (Block(r126), (1 + d155))
+                                    }
+                                    
+                                    (While(stat.expr, r125), (1 + if ((1 >= d154)) {
+                                      1
+                                    } else {
+                                      d154
+                                    }))
+                                  }
+                                  
+                                  (Cons(r122, Nil()), (1 + if ((d151 >= 1)) {
+                                    d151
+                                  } else {
+                                    1
+                                  }))
+                                }
+                                
+                                (Cons(r120, r121), (1 + if ((d149 >= d150)) {
+                                  d149
+                                } else {
+                                  d150
+                                }))
+                              }
+                              
+                            }
+                            
+                            (Block(r119), (1 + d148))
+                          }
+                          
+                          (rthen19, if ((dcond19 >= dthen19)) {
+                            dcond19
+                          } else {
+                            dthen19
+                          })
+                        }
+                        
+                      } else {
+                        (stat, if ((dcond19 >= 0)) {
+                          dcond19
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse18, if ((dcond18 >= delse18)) {
+                      dcond18
+                    } else {
+                      delse18
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse17, if ((dcond17 >= delse17)) {
+                dcond17
+              } else {
+                delse17
+              })
+            }
+            
+          }
+        }
+        
+        (relse16, if ((dcond16 >= delse16)) {
+          dcond16
+        } else {
+          delse16
+        })
+      }
+      
+    }
+  }
+  } ensuring(res19 => true)
+
+  def eliminateForLoopsList(l : List) : (List, Int) = {locally {
+    val dcond = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond >= 1)) {
+        dcond
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse: Cons, delse: Int) = locally {
+          val (r2: Statement, d1: Int) = locally {
+            val (e1: Statement, d7: Int) = eliminateForLoops(l.head)
+            (e1, (2 + d7))
+          }
+          
+          locally {
+            val (r3: List, d2: Int) = locally {
+              val (e: List, d4: Int) = eliminateForLoopsList(l.tail)
+              (e, (2 + d4))
+            }
+            
+            (Cons(r2, r3), (1 + if ((d1 >= d2)) {
+              d1
+            } else {
+              d2
+            }))
+          }
+          
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res17 => true)
+
+  def eliminateWhileLoopsList(l : List) : (List, Int) = {locally {
+    val dcond2 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond2 >= 1)) {
+        dcond2
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse2: Cons, delse2: Int) = locally {
+          val (r16: Statement, d19: Int) = locally {
+            val (e5: Statement, d25: Int) = eliminateWhileLoops(l.head)
+            (e5, (2 + d25))
+          }
+          
+          locally {
+            val (r17: List, d20: Int) = locally {
+              val (e4: List, d22: Int) = eliminateWhileLoopsList(l.tail)
+              (e4, (2 + d22))
+            }
+            
+            (Cons(r16, r17), (1 + if ((d19 >= d20)) {
+              d19
+            } else {
+              d20
+            }))
+          }
+          
+        }
+        
+        (relse2, if ((dcond2 >= delse2)) {
+          dcond2
+        } else {
+          delse2
+        })
+      }
+      
+    }
+  }
+  } ensuring(res23 => true)
+
+  def forLoopsWellFormedList(l : List) : (Boolean, Int) = {locally {
+    val dcond11 = 1
+    if (l.isInstanceOf[Nil]) {
+      (true, if ((dcond11 >= 0)) {
+        dcond11
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse11: Boolean, delse11: Int) = locally {
+          val (r70: Boolean, d86: Int) = locally {
+            val (e18: Boolean, d92: Int) = forLoopsWellFormed(l.head)
+            (e18, (2 + d92))
+          }
+          
+          locally {
+            val (r71: Boolean, d87: Int) = locally {
+              val (e17: Boolean, d89: Int) = forLoopsWellFormedList(l.tail)
+              (e17, (2 + d89))
+            }
+            
+            ((r70 && r71), (1 + if ((d86 >= d87)) {
+              d86
+            } else {
+              d87
+            }))
+          }
+          
+        }
+        
+        (relse11, if ((dcond11 >= delse11)) {
+          dcond11
+        } else {
+          delse11
+        })
+      }
+      
+    }
+  }
+  } ensuring(res21 => true)
+
+  def eliminateWhileLoops(stat : Statement) : (Statement, Int) = {locally {
+    val dcond3 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen3: Block, dthen3: Int) = locally {
+          val (r23: List, d28: Int) = locally {
+            val (e6: List, d30: Int) = eliminateWhileLoopsList(stat.body)
+            (e6, (2 + d30))
+          }
+          
+          (Block(r23), (1 + d28))
+        }
+        
+        (rthen3, if ((dcond3 >= dthen3)) {
+          dcond3
+        } else {
+          dthen3
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse3: Statement, delse3: Int) = locally {
+          val dcond4 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen4: IfThenElse, dthen4: Int) = locally {
+                val (r28: Statement, d34: Int) = locally {
+                  val (e8: Statement, d40: Int) = eliminateWhileLoops(stat.then)
+                  (e8, (2 + d40))
+                }
+                
+                locally {
+                  val (r29: Statement, d35: Int) = locally {
+                    val (e7: Statement, d37: Int) = eliminateWhileLoops(stat.elze)
+                    (e7, (2 + d37))
+                  }
+                  
+                  (IfThenElse(stat.expr, r28, r29), (1 + if ((if ((1 >= d34)) {
+                    1
+                  } else {
+                    d34
+                  } >= d35)) {
+                    if ((1 >= d34)) {
+                      1
+                    } else {
+                      d34
+                    }
+                  } else {
+                    d35
+                  }))
+                }
+                
+              }
+              
+              (rthen4, if ((dcond4 >= dthen4)) {
+                dcond4
+              } else {
+                dthen4
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse4: Statement, delse4: Int) = locally {
+                val dcond5 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen5: For, dthen5: Int) = locally {
+                      val (r39: Statement, d47: Int) = locally {
+                        val (e9: Statement, d49: Int) = eliminateWhileLoops(stat.body)
+                        (e9, (2 + d49))
+                      }
+                      
+                      (For(Skip(), stat.expr, Skip(), r39), (1 + if ((1 >= d47)) {
+                        1
+                      } else {
+                        d47
+                      }))
+                    }
+                    
+                    (rthen5, if ((dcond5 >= dthen5)) {
+                      dcond5
+                    } else {
+                      dthen5
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse5: Statement, delse5: Int) = locally {
+                      val dcond6 = 1
+                      if (stat.isInstanceOf[For]) {
+                        locally {
+                          val (rthen6: For, dthen6: Int) = locally {
+                            val (r44: Statement, d53: Int) = locally {
+                              val (e12: Statement, d65: Int) = eliminateWhileLoops(stat.init)
+                              (e12, (2 + d65))
+                            }
+                            
+                            locally {
+                              val (r46: Statement, d55: Int) = locally {
+                                val (e11: Statement, d61: Int) = eliminateWhileLoops(stat.step)
+                                (e11, (2 + d61))
+                              }
+                              
+                              locally {
+                                val (r47: Statement, d56: Int) = locally {
+                                  val (e10: Statement, d58: Int) = eliminateWhileLoops(stat.body)
+                                  (e10, (2 + d58))
+                                }
+                                
+                                (For(r44, stat.expr, r46, r47), (1 + if ((if ((if ((d53 >= 1)) {
+                                  d53
+                                } else {
+                                  1
+                                } >= d55)) {
+                                  if ((d53 >= 1)) {
+                                    d53
+                                  } else {
+                                    1
+                                  }
+                                } else {
+                                  d55
+                                } >= d56)) {
+                                  if ((if ((d53 >= 1)) {
+                                    d53
+                                  } else {
+                                    1
+                                  } >= d55)) {
+                                    if ((d53 >= 1)) {
+                                      d53
+                                    } else {
+                                      1
+                                    }
+                                  } else {
+                                    d55
+                                  }
+                                } else {
+                                  d56
+                                }))
+                              }
+                              
+                            }
+                            
+                          }
+                          
+                          (rthen6, if ((dcond6 >= dthen6)) {
+                            dcond6
+                          } else {
+                            dthen6
+                          })
+                        }
+                        
+                      } else {
+                        (stat, if ((dcond6 >= 0)) {
+                          dcond6
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse5, if ((dcond5 >= delse5)) {
+                      dcond5
+                    } else {
+                      delse5
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse4, if ((dcond4 >= delse4)) {
+                dcond4
+              } else {
+                delse4
+              })
+            }
+            
+          }
+        }
+        
+        (relse3, if ((dcond3 >= delse3)) {
+          dcond3
+        } else {
+          delse3
+        })
+      }
+      
+    }
+  }
+  } ensuring(res22 => true)
+
+  def sizeStat(st : Statement) : Int = {(st match {
+    case Block(l) =>
+      (sizeList(l) + 1)
+    case IfThenElse(c, th, el) =>
+      ((sizeStat(th) + sizeStat(el)) + 1)
+    case While(c, b) =>
+      (sizeStat(b) + 1)
+    case For(init, cond, step, body) =>
+      ((sizeStat(init) + sizeStat(step)) + sizeStat(body))
+    case other =>
+      1
+  })}
+
+  def forLoopsWellFormed(stat : Statement) : (Boolean, Int) = {locally {
+    val dcond12 = 1
+    if (stat.isInstanceOf[Block]) {
+      locally {
+        val (rthen12: Boolean, dthen12: Int) = locally {
+          val (e19: Boolean, d96: Int) = forLoopsWellFormedList(stat.body)
+          (e19, (2 + d96))
+        }
+        
+        (rthen12, if ((dcond12 >= dthen12)) {
+          dcond12
+        } else {
+          dthen12
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse12: Boolean, delse12: Int) = locally {
+          val dcond13 = 1
+          if (stat.isInstanceOf[IfThenElse]) {
+            locally {
+              val (rthen13: Boolean, dthen13: Int) = locally {
+                val (r80: Boolean, d99: Int) = locally {
+                  val (e21: Boolean, d105: Int) = forLoopsWellFormed(stat.then)
+                  (e21, (2 + d105))
+                }
+                
+                locally {
+                  val (r81: Boolean, d100: Int) = locally {
+                    val (e20: Boolean, d102: Int) = forLoopsWellFormed(stat.elze)
+                    (e20, (2 + d102))
+                  }
+                  
+                  ((r80 && r81), (1 + if ((d99 >= d100)) {
+                    d99
+                  } else {
+                    d100
+                  }))
+                }
+                
+              }
+              
+              (rthen13, if ((dcond13 >= dthen13)) {
+                dcond13
+              } else {
+                dthen13
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse13: Boolean, delse13: Int) = locally {
+                val dcond14 = 1
+                if (stat.isInstanceOf[While]) {
+                  locally {
+                    val (rthen14: Boolean, dthen14: Int) = locally {
+                      val (e22: Boolean, d109: Int) = forLoopsWellFormed(stat.body)
+                      (e22, (2 + d109))
+                    }
+                    
+                    (rthen14, if ((dcond14 >= dthen14)) {
+                      dcond14
+                    } else {
+                      dthen14
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse14: Boolean, delse14: Int) = locally {
+                      val dcond15 = 1
+                      if (stat.isInstanceOf[For]) {
+                        locally {
+                          val (rthen15: Boolean, dthen15: Int) = locally {
+                            val (r90: Boolean, d112: Int) = locally {
+                              val (e25: Boolean, d122: Int) = isForFree(stat.init)
+                              (e25, (2 + d122))
+                            }
+                            
+                            locally {
+                              val (r91: Boolean, d113: Int) = locally {
+                                val (e24: Boolean, d119: Int) = isForFree(stat.step)
+                                (e24, (2 + d119))
+                              }
+                              
+                              locally {
+                                val (r92: Boolean, d114: Int) = locally {
+                                  val (e23: Boolean, d116: Int) = forLoopsWellFormed(stat.body)
+                                  (e23, (2 + d116))
+                                }
+                                
+                                ((r90 && r91 && r92), (1 + if ((if ((d112 >= d113)) {
+                                  d112
+                                } else {
+                                  d113
+                                } >= d114)) {
+                                  if ((d112 >= d113)) {
+                                    d112
+                                  } else {
+                                    d113
+                                  }
+                                } else {
+                                  d114
+                                }))
+                              }
+                              
+                            }
+                            
+                          }
+                          
+                          (rthen15, if ((dcond15 >= dthen15)) {
+                            dcond15
+                          } else {
+                            dthen15
+                          })
+                        }
+                        
+                      } else {
+                        (true, if ((dcond15 >= 0)) {
+                          dcond15
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse14, if ((dcond14 >= delse14)) {
+                      dcond14
+                    } else {
+                      delse14
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse13, if ((dcond13 >= delse13)) {
+                dcond13
+              } else {
+                delse13
+              })
+            }
+            
+          }
+        }
+        
+        (relse12, if ((dcond12 >= delse12)) {
+          dcond12
+        } else {
+          delse12
+        })
+      }
+      
+    }
+  }
+  } ensuring(res18 => true)
+
+  def isForFreeList(l : List) : (Boolean, Int) = {locally {
+    val dcond1 = 1
+    if (l.isInstanceOf[Nil]) {
+      (true, if ((dcond1 >= 0)) {
+        dcond1
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse1: Boolean, delse1: Int) = locally {
+          val (r9: Boolean, d10: Int) = locally {
+            val (e3: Boolean, d16: Int) = isForFree(l.head)
+            (e3, (2 + d16))
+          }
+          
+          locally {
+            val (r10: Boolean, d11: Int) = locally {
+              val (e2: Boolean, d13: Int) = isForFreeList(l.tail)
+              (e2, (2 + d13))
+            }
+            
+            ((r9 && r10), (1 + if ((d10 >= d11)) {
+              d10
+            } else {
+              d11
+            }))
+          }
+          
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res20 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object ForElimination {
+  sealed abstract class Statement
+
+  case class For(init: Statement, expr: Expression, step: Statement, body: Statement) extends Statement
+
+  case class Minus(lhs: Expression, rhs: Expression) extends Expression
+
+  case class LessThan(lhs: Expression, rhs: Expression) extends Expression
+
+  case class IfThenElse(expr: Expression, then: Statement, elze: Statement) extends Statement
+
+  case class While(expr: Expression, body: Statement) extends Statement
+
+  case class Skip() extends Statement
+
+  case class Block(body: List) extends Statement
+
+  case class Equals(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Not(expr: Expression) extends Expression
+
+  sealed abstract class List
+
+  case class Nil() extends List
+
+  case class Print(msg: Int, varID: Int) extends Statement
+
+  case class Times(lhs: Expression, rhs: Expression) extends Expression
+
+  case class And(lhs: Expression, rhs: Expression) extends Expression
+
+  sealed abstract class Expression
+
+  case class Or(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Division(lhs: Expression, rhs: Expression) extends Expression
+
+  case class Var(varID: Int) extends Expression
+
+  case class Assign(varID: Int, expr: Expression) extends Statement
+
+  case class Cons(head: Statement, tail: List) extends List
+
+  case class IntLiteral(value: Int) extends Expression
+
+  case class Plus(lhs: Expression, rhs: Expression) extends Expression
+
+  def isForFree(stat : Statement) : (Boolean, Int) = {if (stat.isInstanceOf[Block]) {
+    locally {
+      val (rthen7: Boolean, dthen7: Int) = locally {
+        val (e13: Boolean, d69: Int) = isForFreeList(stat.body)
+        (e13, (2 + d69))
+      }
+      
+      (rthen7, if ((1 >= dthen7)) {
+        1
+      } else {
+        dthen7
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse7: Boolean, delse7: Int) = if (stat.isInstanceOf[IfThenElse]) {
+        locally {
+          val (rthen8: Boolean, dthen8: Int) = locally {
+            val (r59: Boolean, d72: Int) = locally {
+              val (e15: Boolean, d78: Int) = isForFree(stat.then)
+              (e15, (2 + d78))
+            }
+            
+            locally {
+              val (r60: Boolean, d73: Int) = locally {
+                val (e14: Boolean, d75: Int) = isForFree(stat.elze)
+                (e14, (2 + d75))
+              }
+              
+              ((r59 && r60), (1 + if ((d72 >= d73)) {
+                d72
+              } else {
+                d73
+              }))
+            }
+            
+          }
+          
+          (rthen8, if ((1 >= dthen8)) {
+            1
+          } else {
+            dthen8
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse8: Boolean, delse8: Int) = if (stat.isInstanceOf[While]) {
+            locally {
+              val (rthen9: Boolean, dthen9: Int) = locally {
+                val (e16: Boolean, d82: Int) = isForFree(stat.body)
+                (e16, (2 + d82))
+              }
+              
+              (rthen9, if ((1 >= dthen9)) {
+                1
+              } else {
+                dthen9
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse9: Boolean, delse9: Int) = if (stat.isInstanceOf[For]) {
+                (false, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              } else {
+                (true, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              }
+              (relse9, if ((1 >= delse9)) {
+                1
+              } else {
+                delse9
+              })
+            }
+            
+          }
+          (relse8, if ((1 >= delse8)) {
+            1
+          } else {
+            delse8
+          })
+        }
+        
+      }
+      (relse7, if ((1 >= delse7)) {
+        1
+      } else {
+        delse7
+      })
+    }
+    
+  }} ensuring(res24 => true)
+
+  def sizeList(l : List) : Int = {(l match {
+    case Cons(h, t) =>
+      (sizeStat(h) + sizeList(t))
+    case Nil() =>
+      0
+  })}
+
+  def eliminateForLoops(stat : Statement) : (Statement, Int) = {if (stat.isInstanceOf[Block]) {
+    locally {
+      val (rthen16: Block, dthen16: Int) = locally {
+        val (r100: List, d125: Int) = locally {
+          val (e26: List, d127: Int) = eliminateForLoopsList(stat.body)
+          (e26, (2 + d127))
+        }
+        
+        (Block(r100), (1 + d125))
+      }
+      
+      (rthen16, if ((1 >= dthen16)) {
+        1
+      } else {
+        dthen16
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse16: Statement, delse16: Int) = if (stat.isInstanceOf[IfThenElse]) {
+        locally {
+          val (rthen17: IfThenElse, dthen17: Int) = locally {
+            val (r105: Statement, d131: Int) = locally {
+              val (e28: Statement, d137: Int) = eliminateForLoops(stat.then)
+              (e28, (2 + d137))
+            }
+            
+            locally {
+              val (r106: Statement, d132: Int) = locally {
+                val (e27: Statement, d134: Int) = eliminateForLoops(stat.elze)
+                (e27, (2 + d134))
+              }
+              
+              (IfThenElse(stat.expr, r105, r106), (1 + if ((if ((1 >= d131)) {
+                1
+              } else {
+                d131
+              } >= d132)) {
+                if ((1 >= d131)) {
+                  1
+                } else {
+                  d131
+                }
+              } else {
+                d132
+              }))
+            }
+            
+          }
+          
+          (rthen17, if ((1 >= dthen17)) {
+            1
+          } else {
+            dthen17
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse17: Statement, delse17: Int) = if (stat.isInstanceOf[While]) {
+            locally {
+              val (rthen18: While, dthen18: Int) = locally {
+                val (r114: Statement, d142: Int) = locally {
+                  val (e29: Statement, d144: Int) = eliminateForLoops(stat.body)
+                  (e29, (2 + d144))
+                }
+                
+                (While(stat.expr, r114), (1 + if ((1 >= d142)) {
+                  1
+                } else {
+                  d142
+                }))
+              }
+              
+              (rthen18, if ((1 >= dthen18)) {
+                1
+              } else {
+                dthen18
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse18: Statement, delse18: Int) = if (stat.isInstanceOf[For]) {
+                locally {
+                  val (rthen19: Block, dthen19: Int) = locally {
+                    val (r119: Cons, d148: Int) = locally {
+                      val (r120: Statement, d149: Int) = locally {
+                        val (e32: Statement, d168: Int) = eliminateForLoops(stat.init)
+                        (e32, (2 + d168))
+                      }
+                      
+                      locally {
+                        val (r121: Cons, d150: Int) = locally {
+                          val (r122: While, d151: Int) = locally {
+                            val (r125: Block, d154: Int) = locally {
+                              val (r126: Cons, d155: Int) = locally {
+                                val (r127: Statement, d156: Int) = locally {
+                                  val (e31: Statement, d164: Int) = eliminateForLoops(stat.body)
+                                  (e31, (2 + d164))
+                                }
+                                
+                                locally {
+                                  val (r128: Cons, d157: Int) = locally {
+                                    val (r129: Statement, d158: Int) = locally {
+                                      val (e30: Statement, d161: Int) = eliminateForLoops(stat.step)
+                                      (e30, (2 + d161))
+                                    }
+                                    
+                                    (Cons(r129, Nil()), (1 + if ((d158 >= 1)) {
+                                      d158
+                                    } else {
+                                      1
+                                    }))
+                                  }
+                                  
+                                  (Cons(r127, r128), (1 + if ((d156 >= d157)) {
+                                    d156
+                                  } else {
+                                    d157
+                                  }))
+                                }
+                                
+                              }
+                              
+                              (Block(r126), (1 + d155))
+                            }
+                            
+                            (While(stat.expr, r125), (1 + if ((1 >= d154)) {
+                              1
+                            } else {
+                              d154
+                            }))
+                          }
+                          
+                          (Cons(r122, Nil()), (1 + if ((d151 >= 1)) {
+                            d151
+                          } else {
+                            1
+                          }))
+                        }
+                        
+                        (Cons(r120, r121), (1 + if ((d149 >= d150)) {
+                          d149
+                        } else {
+                          d150
+                        }))
+                      }
+                      
+                    }
+                    
+                    (Block(r119), (1 + d148))
+                  }
+                  
+                  (rthen19, if ((1 >= dthen19)) {
+                    1
+                  } else {
+                    dthen19
+                  })
+                }
+                
+              } else {
+                (stat, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              }
+              (relse18, if ((1 >= delse18)) {
+                1
+              } else {
+                delse18
+              })
+            }
+            
+          }
+          (relse17, if ((1 >= delse17)) {
+            1
+          } else {
+            delse17
+          })
+        }
+        
+      }
+      (relse16, if ((1 >= delse16)) {
+        1
+      } else {
+        delse16
+      })
+    }
+    
+  }} ensuring(res19 => true)
+
+  def eliminateForLoopsList(l : List) : (List, Int) = {if (l.isInstanceOf[Nil]) {
+    (Nil(), if ((1 >= 1)) {
+      1
+    } else {
+      1
+    })
+  } else {
+    locally {
+      val (relse: Cons, delse: Int) = locally {
+        val (r2: Statement, d1: Int) = locally {
+          val (e1: Statement, d7: Int) = eliminateForLoops(l.head)
+          (e1, (2 + d7))
+        }
+        
+        locally {
+          val (r3: List, d2: Int) = locally {
+            val (e: List, d4: Int) = eliminateForLoopsList(l.tail)
+            (e, (2 + d4))
+          }
+          
+          (Cons(r2, r3), (1 + if ((d1 >= d2)) {
+            d1
+          } else {
+            d2
+          }))
+        }
+        
+      }
+      
+      (relse, if ((1 >= delse)) {
+        1
+      } else {
+        delse
+      })
+    }
+    
+  }} ensuring(res17 => true)
+
+  def eliminateWhileLoopsList(l : List) : (List, Int) = {if (l.isInstanceOf[Nil]) {
+    (Nil(), if ((1 >= 1)) {
+      1
+    } else {
+      1
+    })
+  } else {
+    locally {
+      val (relse2: Cons, delse2: Int) = locally {
+        val (r16: Statement, d19: Int) = locally {
+          val (e5: Statement, d25: Int) = eliminateWhileLoops(l.head)
+          (e5, (2 + d25))
+        }
+        
+        locally {
+          val (r17: List, d20: Int) = locally {
+            val (e4: List, d22: Int) = eliminateWhileLoopsList(l.tail)
+            (e4, (2 + d22))
+          }
+          
+          (Cons(r16, r17), (1 + if ((d19 >= d20)) {
+            d19
+          } else {
+            d20
+          }))
+        }
+        
+      }
+      
+      (relse2, if ((1 >= delse2)) {
+        1
+      } else {
+        delse2
+      })
+    }
+    
+  }} ensuring(res23 => true)
+
+  def forLoopsWellFormedList(l : List) : (Boolean, Int) = {if (l.isInstanceOf[Nil]) {
+    (true, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse11: Boolean, delse11: Int) = locally {
+        val (r70: Boolean, d86: Int) = locally {
+          val (e18: Boolean, d92: Int) = forLoopsWellFormed(l.head)
+          (e18, (2 + d92))
+        }
+        
+        locally {
+          val (r71: Boolean, d87: Int) = locally {
+            val (e17: Boolean, d89: Int) = forLoopsWellFormedList(l.tail)
+            (e17, (2 + d89))
+          }
+          
+          ((r70 && r71), (1 + if ((d86 >= d87)) {
+            d86
+          } else {
+            d87
+          }))
+        }
+        
+      }
+      
+      (relse11, if ((1 >= delse11)) {
+        1
+      } else {
+        delse11
+      })
+    }
+    
+  }} ensuring(res21 => true)
+
+  def eliminateWhileLoops(stat : Statement) : (Statement, Int) = {if (stat.isInstanceOf[Block]) {
+    locally {
+      val (rthen3: Block, dthen3: Int) = locally {
+        val (r23: List, d28: Int) = locally {
+          val (e6: List, d30: Int) = eliminateWhileLoopsList(stat.body)
+          (e6, (2 + d30))
+        }
+        
+        (Block(r23), (1 + d28))
+      }
+      
+      (rthen3, if ((1 >= dthen3)) {
+        1
+      } else {
+        dthen3
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse3: Statement, delse3: Int) = if (stat.isInstanceOf[IfThenElse]) {
+        locally {
+          val (rthen4: IfThenElse, dthen4: Int) = locally {
+            val (r28: Statement, d34: Int) = locally {
+              val (e8: Statement, d40: Int) = eliminateWhileLoops(stat.then)
+              (e8, (2 + d40))
+            }
+            
+            locally {
+              val (r29: Statement, d35: Int) = locally {
+                val (e7: Statement, d37: Int) = eliminateWhileLoops(stat.elze)
+                (e7, (2 + d37))
+              }
+              
+              (IfThenElse(stat.expr, r28, r29), (1 + if ((if ((1 >= d34)) {
+                1
+              } else {
+                d34
+              } >= d35)) {
+                if ((1 >= d34)) {
+                  1
+                } else {
+                  d34
+                }
+              } else {
+                d35
+              }))
+            }
+            
+          }
+          
+          (rthen4, if ((1 >= dthen4)) {
+            1
+          } else {
+            dthen4
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse4: Statement, delse4: Int) = if (stat.isInstanceOf[While]) {
+            locally {
+              val (rthen5: For, dthen5: Int) = locally {
+                val (r39: Statement, d47: Int) = locally {
+                  val (e9: Statement, d49: Int) = eliminateWhileLoops(stat.body)
+                  (e9, (2 + d49))
+                }
+                
+                (For(Skip(), stat.expr, Skip(), r39), (1 + if ((1 >= d47)) {
+                  1
+                } else {
+                  d47
+                }))
+              }
+              
+              (rthen5, if ((1 >= dthen5)) {
+                1
+              } else {
+                dthen5
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse5: Statement, delse5: Int) = if (stat.isInstanceOf[For]) {
+                locally {
+                  val (rthen6: For, dthen6: Int) = locally {
+                    val (r44: Statement, d53: Int) = locally {
+                      val (e12: Statement, d65: Int) = eliminateWhileLoops(stat.init)
+                      (e12, (2 + d65))
+                    }
+                    
+                    locally {
+                      val (r46: Statement, d55: Int) = locally {
+                        val (e11: Statement, d61: Int) = eliminateWhileLoops(stat.step)
+                        (e11, (2 + d61))
+                      }
+                      
+                      locally {
+                        val (r47: Statement, d56: Int) = locally {
+                          val (e10: Statement, d58: Int) = eliminateWhileLoops(stat.body)
+                          (e10, (2 + d58))
+                        }
+                        
+                        (For(r44, stat.expr, r46, r47), (1 + if ((if ((if ((d53 >= 1)) {
+                          d53
+                        } else {
+                          1
+                        } >= d55)) {
+                          if ((d53 >= 1)) {
+                            d53
+                          } else {
+                            1
+                          }
+                        } else {
+                          d55
+                        } >= d56)) {
+                          if ((if ((d53 >= 1)) {
+                            d53
+                          } else {
+                            1
+                          } >= d55)) {
+                            if ((d53 >= 1)) {
+                              d53
+                            } else {
+                              1
+                            }
+                          } else {
+                            d55
+                          }
+                        } else {
+                          d56
+                        }))
+                      }
+                      
+                    }
+                    
+                  }
+                  
+                  (rthen6, if ((1 >= dthen6)) {
+                    1
+                  } else {
+                    dthen6
+                  })
+                }
+                
+              } else {
+                (stat, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              }
+              (relse5, if ((1 >= delse5)) {
+                1
+              } else {
+                delse5
+              })
+            }
+            
+          }
+          (relse4, if ((1 >= delse4)) {
+            1
+          } else {
+            delse4
+          })
+        }
+        
+      }
+      (relse3, if ((1 >= delse3)) {
+        1
+      } else {
+        delse3
+      })
+    }
+    
+  }} ensuring(res22 => true)
+
+  def sizeStat(st : Statement) : Int = {(st match {
+    case Block(l) =>
+      (sizeList(l) + 1)
+    case IfThenElse(c, th, el) =>
+      ((sizeStat(th) + sizeStat(el)) + 1)
+    case While(c, b) =>
+      (sizeStat(b) + 1)
+    case For(init, cond, step, body) =>
+      ((sizeStat(init) + sizeStat(step)) + sizeStat(body))
+    case other =>
+      1
+  })}
+
+  def forLoopsWellFormed(stat : Statement) : (Boolean, Int) = {if (stat.isInstanceOf[Block]) {
+    locally {
+      val (rthen12: Boolean, dthen12: Int) = locally {
+        val (e19: Boolean, d96: Int) = forLoopsWellFormedList(stat.body)
+        (e19, (2 + d96))
+      }
+      
+      (rthen12, if ((1 >= dthen12)) {
+        1
+      } else {
+        dthen12
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse12: Boolean, delse12: Int) = if (stat.isInstanceOf[IfThenElse]) {
+        locally {
+          val (rthen13: Boolean, dthen13: Int) = locally {
+            val (r80: Boolean, d99: Int) = locally {
+              val (e21: Boolean, d105: Int) = forLoopsWellFormed(stat.then)
+              (e21, (2 + d105))
+            }
+            
+            locally {
+              val (r81: Boolean, d100: Int) = locally {
+                val (e20: Boolean, d102: Int) = forLoopsWellFormed(stat.elze)
+                (e20, (2 + d102))
+              }
+              
+              ((r80 && r81), (1 + if ((d99 >= d100)) {
+                d99
+              } else {
+                d100
+              }))
+            }
+            
+          }
+          
+          (rthen13, if ((1 >= dthen13)) {
+            1
+          } else {
+            dthen13
+          })
+        }
+        
+      } else {
+        locally {
+          val (relse13: Boolean, delse13: Int) = if (stat.isInstanceOf[While]) {
+            locally {
+              val (rthen14: Boolean, dthen14: Int) = locally {
+                val (e22: Boolean, d109: Int) = forLoopsWellFormed(stat.body)
+                (e22, (2 + d109))
+              }
+              
+              (rthen14, if ((1 >= dthen14)) {
+                1
+              } else {
+                dthen14
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse14: Boolean, delse14: Int) = if (stat.isInstanceOf[For]) {
+                locally {
+                  val (rthen15: Boolean, dthen15: Int) = locally {
+                    val (r90: Boolean, d112: Int) = locally {
+                      val (e25: Boolean, d122: Int) = isForFree(stat.init)
+                      (e25, (2 + d122))
+                    }
+                    
+                    locally {
+                      val (r91: Boolean, d113: Int) = locally {
+                        val (e24: Boolean, d119: Int) = isForFree(stat.step)
+                        (e24, (2 + d119))
+                      }
+                      
+                      locally {
+                        val (r92: Boolean, d114: Int) = locally {
+                          val (e23: Boolean, d116: Int) = forLoopsWellFormed(stat.body)
+                          (e23, (2 + d116))
+                        }
+                        
+                        ((r90 && r91 && r92), (1 + if ((if ((d112 >= d113)) {
+                          d112
+                        } else {
+                          d113
+                        } >= d114)) {
+                          if ((d112 >= d113)) {
+                            d112
+                          } else {
+                            d113
+                          }
+                        } else {
+                          d114
+                        }))
+                      }
+                      
+                    }
+                    
+                  }
+                  
+                  (rthen15, if ((1 >= dthen15)) {
+                    1
+                  } else {
+                    dthen15
+                  })
+                }
+                
+              } else {
+                (true, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              }
+              (relse14, if ((1 >= delse14)) {
+                1
+              } else {
+                delse14
+              })
+            }
+            
+          }
+          (relse13, if ((1 >= delse13)) {
+            1
+          } else {
+            delse13
+          })
+        }
+        
+      }
+      (relse12, if ((1 >= delse12)) {
+        1
+      } else {
+        delse12
+      })
+    }
+    
+  }} ensuring(res18 => true)
+
+  def isForFreeList(l : List) : (Boolean, Int) = {if (l.isInstanceOf[Nil]) {
+    (true, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse1: Boolean, delse1: Int) = locally {
+        val (r9: Boolean, d10: Int) = locally {
+          val (e3: Boolean, d16: Int) = isForFree(l.head)
+          (e3, (2 + d16))
+        }
+        
+        locally {
+          val (r10: Boolean, d11: Int) = locally {
+            val (e2: Boolean, d13: Int) = isForFreeList(l.tail)
+            (e2, (2 + d13))
+          }
+          
+          ((r9 && r10), (1 + if ((d10 >= d11)) {
+            d10
+          } else {
+            d11
+          }))
+        }
+        
+      }
+      
+      (relse1, if ((1 >= delse1)) {
+        1
+      } else {
+        delse1
+      })
+    }
+    
+  }} ensuring(res20 => true)
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: isForFree template --> (res24._2 ≤ ((a? * sizeStat(stat)) + b?))
+Function: eliminateForLoops template --> (res19._2 ≤ ((a?7 * sizeStat(stat)) + b?7))
+Function: eliminateForLoopsList template --> (res17._2 ≤ ((a?6 * sizeList(l)) + b?6))
+Function: eliminateWhileLoopsList template --> (res23._2 ≤ ((a?4 * sizeList(l)) + b?4))
+Function: forLoopsWellFormedList template --> (res21._2 ≤ ((a?2 * sizeList(l)) + b?2))
+Function: eliminateWhileLoops template --> (res22._2 ≤ ((a?5 * sizeStat(stat)) + b?5))
+Function: forLoopsWellFormed template --> (res18._2 ≤ ((a?3 * sizeStat(stat)) + b?3))
+Function: isForFreeList template --> (res20._2 ≤ ((a?1 * sizeList(l)) + b?1))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(sizeList, sizeStat, eliminateForLoopsList, eliminateForLoops, eliminateWhileLoopsList, eliminateWhileLoops, isForFree, isForFreeList, forLoopsWellFormed, forLoopsWellFormedList)
+[[34m Info  [0m] - considering function eliminateForLoopsList...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Nil(), if ((1 ≥ 1))
+              1
+            else
+              1)
+          else
+            (let (relse,delse := (let (r2,d1 := (let (e1,d7 := eliminateForLoops(l.head)) in
+              (e1, (2 + d7)))) in
+              (let (r3,d2 := (let (e,d4 := eliminateForLoopsList(l.tail)) in
+                (e, (2 + d4)))) in
+                (Cons(r2, r3), (1 + if ((d1 ≥ d2))
+                  d1
+                else
+                  d2))))) in
+              (relse, if ((1 ≥ delse))
+                1
+              else
+                delse))
+[[34m Info  [0m] Post: true
+falttened Body: ((res17 == ifres) && ((ci && (ci == l.isInstanceOf[Nil]) && (ifres == tp) && (cc == Nil()) && (tp == (cc, ifres1)) && (((1 >= 1) && (ifres1 == 1)) || ((1 < 1) && (ifres1 == 1)))) || (!(ci1) && (ci1 == l.isInstanceOf[Nil]) && (ifres == tp1) && (tp1 == (relse, ifres2)) && (r2 == e1) && (d1 == (2 + d7)) && (e1 == ts) && (ts == tres1._1) && (tres1 == r138) && (cs == l.head) && (r138 == eliminateForLoops(cs)) && (delse == (1 + ifres3)) && (d2 == (2 + d4)) && (e == ts1) && (ts1 == tres._1) && (tres == r139) && (cs1 == l.tail) && (r139 == eliminateForLoopsList(cs1)) && (((1 >= delse) && (ifres2 == 1)) || ((1 < delse) && (ifres2 == delse))) && (relse == cc1) && (cc1 == Cons(r2, r3)) && (r3 == e) && (d4 == ts2) && (ts2 == tres._2) && (d7 == ts3) && (ts3 == tres1._2) && (((d1 >= d2) && (ifres3 == d1)) || ((d1 < d2) && (ifres3 == d2))))))
+Flattened Post: ((ts4 > ((a?6 * r140) + b?6)) && (ts4 == res17._2) && (r140 == sizeList(l)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateForLoopsList-->((((0 * sizeList(l)) + (1 * res17._2)) + 0) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.014s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/3
+Unrolled calls: Set((r138 == eliminateForLoops(cs)), (r140 == sizeList(l)))
+Creating VC for eliminateForLoops
+Unrolling (r138 == eliminateForLoops(cs))
+Creating VC for sizeList
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function sizeList : (((a?9 * #res) + a?8) ≤ 0)
+Unrolling (r140 == sizeList(l))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateForLoopsList-->((((0 * sizeList(l)) + (1 * res17._2)) + 0) ≤ 0)
+eliminateForLoops-->((((0 * sizeStat(stat)) + (1 * res19._2)) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 153
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 19 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+eliminateForLoopsList-->((((8 * res17._2) + (0 * sizeList(l))) + -1) ≤ 0)
+eliminateForLoops-->((((1 * res19._2) + (0 * sizeStat(stat))) + -10) ≤ 0)
+sizeList-->(((0 * #res) + 23) ≤ 0)
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 153
+[[34m Info  [0m] Number of equal calls: 17
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 19
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/22
+Unrolled calls: Set((r162 == sizeStat(stat)))
+Creating VC for sizeStat
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function sizeStat : (((a?11 * #res) + a?10) ≤ 0)
+Unrolling (r162 == sizeStat(stat))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateForLoopsList-->((((1 * res17._2) + (0 * sizeList(l))) + 0) ≤ 0)
+eliminateForLoops-->((((0 * sizeStat(stat)) + (1 * res19._2)) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 243
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 32 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+eliminateForLoopsList-->((((8 * res17._2) + (0 * sizeList(l))) + -1) ≤ 0)
+eliminateForLoops-->((((1 * sizeStat(stat)) + (2 * res19._2)) + -1) ≤ 0)
+sizeList-->(((0 * #res) + 23) ≤ 0)
+sizeStat-->(((1 * #res) + 19) ≤ 0)
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 243
+[[34m Info  [0m] Number of equal calls: 26
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 41 + 32
+solving...
+solved... in 0.016s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/49
+Unrolled calls: Set((r207 == sizeStat(cs8)), (r214 == sizeStat(cs9)), (r209 == sizeStat(cs11)))
+Unrolling (r207 == sizeStat(cs8))
+Unrolling (r214 == sizeStat(cs9))
+Unrolling (r209 == sizeStat(cs11))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateForLoopsList-->((((0 * sizeList(l)) + (1 * res17._2)) + 0) ≤ 0)
+eliminateForLoops-->((((1 * res19._2) + (0 * sizeStat(stat))) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+eliminateForLoopsList-->((((0 * sizeList(l)) + (8 * res17._2)) + -1) ≤ 0)
+eliminateForLoops-->((((-1 * sizeStat(stat)) + (2 * res19._2)) + 1) ≤ 0)
+sizeList-->(((0 * #res) + 23) ≤ 0)
+sizeStat-->(((-1 * #res) + 7) ≤ 0)
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 34 + 20
+solving...
+solved... in 0.013s
+candidate Invariants
+eliminateForLoopsList-->((((1 * res17._2) + (0 * sizeList(l))) + -4) ≤ 0)
+eliminateForLoops-->((((-4 * sizeStat(stat)) + (1 * res19._2)) + 2) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 20
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 60 + 54
+solving...
+solved... in 0.024s
+candidate Invariants
+eliminateForLoopsList-->((((-6 * sizeList(l)) + (1 * res17._2)) + -2) ≤ 0)
+eliminateForLoops-->((((-4 * sizeStat(stat)) + (1 * res19._2)) + 2) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 20
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 263
+[[34m Info  [0m] Number of equal calls: 26
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 65 + 114
+solving...
+solved... in 0.05s
+candidate Invariants
+eliminateForLoopsList-->((((1 * res17._2) + (-158 * sizeList(l))) + -2) ≤ 0)
+eliminateForLoops-->((((1 * res19._2) + (-4 * sizeStat(stat))) + -9) ≤ 0)
+sizeList-->(((-64 * #res) + -1) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 16 + 179
+solving...
+solved... in 0.299s
+candidate Invariants
+eliminateForLoopsList-->((((-4 * sizeList(l)) + (1 * res17._2)) + -1) ≤ 0)
+eliminateForLoops-->((((-4 * sizeStat(stat)) + (1 * res19._2)) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + 0) ≤ 0)
+sizeStat-->(((-1 * #res) + 1) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 20
+Function: eliminateForLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 271
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 60 + 195
+solving...
+timed out... in 20.129s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 116
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 33 + 195
+solving...
+timed out... in 20.112s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 53
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 28 + 195
+solving...
+solved... in 4.171s
+candidate Invariants
+eliminateForLoopsList-->((((-97 * sizeList(l)) + (2 * res17._2)) + -12) ≤ 0)
+eliminateForLoops-->((((-392 * sizeStat(stat)) + (8 * res19._2)) + -1) ≤ 0)
+sizeList-->(((-97 * #res) + -4) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Function: eliminateForLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 108
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 29 + 223
+solving...
+solved... in 0.183s
+candidate Invariants
+eliminateForLoopsList-->((((-53 * sizeList(l)) + (1 * res17._2)) + -5) ≤ 0)
+eliminateForLoops-->((((-212 * sizeStat(stat)) + (4 * res19._2)) + 1) ≤ 0)
+sizeList-->(((-49 * #res) + -1) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Nesting level: a?6-->1
+Nesting level: b?6-->0
+minimizing...
+Minimizing variable: a?6 Initial upperbound: 53
+Found new lower bound: 26
+Found new lower bound: 39
+Found new upper bound: 45
+Found new lower bound: 42
+Found new upper bound: 128/3
+Minimizing variable: b?6 Initial upperbound: 6
+Found new upper bound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: eliminateForLoopsList --> ((((-128 * sizeList(l)) + (3 * res17._2)) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: eliminateForLoops --> ((((-128 * sizeStat(stat)) + (3 * res19._2)) + 54) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeList --> (((-4 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeStat --> (((-2 * #res) + 1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function eliminateWhileLoopsList...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Nil(), if ((1 ≥ 1))
+              1
+            else
+              1)
+          else
+            (let (relse2,delse2 := (let (r16,d19 := (let (e5,d25 := eliminateWhileLoops(l.head)) in
+              (e5, (2 + d25)))) in
+              (let (r17,d20 := (let (e4,d22 := eliminateWhileLoopsList(l.tail)) in
+                (e4, (2 + d22)))) in
+                (Cons(r16, r17), (1 + if ((d19 ≥ d20))
+                  d19
+                else
+                  d20))))) in
+              (relse2, if ((1 ≥ delse2))
+                1
+              else
+                delse2))
+[[34m Info  [0m] Post: true
+falttened Body: ((res23 == ifres70) && ((ci62 && (ci62 == l.isInstanceOf[Nil]) && (ifres70 == tp18) && (cc26 == Nil()) && (tp18 == (cc26, ifres71)) && (((1 >= 1) && (ifres71 == 1)) || ((1 < 1) && (ifres71 == 1)))) || (!(ci63) && (ci63 == l.isInstanceOf[Nil]) && (ifres70 == tp19) && (tp19 == (relse2, ifres72)) && (e5 == ts89) && (ts89 == tres17._1) && (delse2 == (1 + ifres73)) && (d22 == ts90) && (ts90 == tres16._2) && (d25 == ts91) && (ts91 == tres17._2) && (((1 >= delse2) && (ifres72 == 1)) || ((1 < delse2) && (ifres72 == delse2))) && (d20 == (2 + d22)) && (((d19 >= d20) && (ifres73 == d19)) || ((d19 < d20) && (ifres73 == d20))) && (r16 == e5) && (r17 == e4) && (tres17 == r264) && (cs61 == l.head) && (r264 == eliminateWhileLoops(cs61)) && (d19 == (2 + d25)) && (tres16 == r265) && (cs62 == l.tail) && (r265 == eliminateWhileLoopsList(cs62)) && (relse2 == cc27) && (cc27 == Cons(r16, r17)) && (e4 == ts92) && (ts92 == tres16._1))))
+Flattened Post: ((ts93 > ((a?4 * r266) + b?4)) && (ts93 == res23._2) && (r266 == sizeList(l)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateWhileLoopsList-->((((1 * res23._2) + (0 * sizeList(l))) + 0) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + -3) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 10 + 9
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/3
+Unrolled calls: Set((r264 == eliminateWhileLoops(cs61)), (r266 == sizeList(l)))
+Creating VC for eliminateWhileLoops
+Unrolling (r264 == eliminateWhileLoops(cs61))
+Creating VC for sizeList
+Unrolling (r266 == sizeList(l))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + 0) ≤ 0)
+eliminateWhileLoops-->((((0 * sizeStat(stat)) + (1 * res22._2)) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 149
+[[34m Info  [0m] Number of equal calls: 16
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/22
+Unrolled calls: Set((r283 == sizeStat(stat)))
+Creating VC for sizeStat
+Unrolling (r283 == sizeStat(stat))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + 0) ≤ 0)
+eliminateWhileLoops-->((((0 * sizeStat(stat)) + (1 * res22._2)) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 62
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 26 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+eliminateWhileLoopsList-->((((1 * res23._2) + (0 * sizeList(l))) + -1) ≤ 0)
+eliminateWhileLoops-->((((2 * res22._2) + (1 * sizeStat(stat))) + 2) ≤ 0)
+sizeList-->(((0 * #res) + 2) ≤ 0)
+sizeStat-->(((0 * #res) + 11) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 16 + 26
+solving...
+solved... in 0.009s
+candidate Invariants
+eliminateWhileLoopsList-->((((1 * res23._2) + (0 * sizeList(l))) + -4) ≤ 0)
+eliminateWhileLoops-->((((-5 * sizeStat(stat)) + (1 * res22._2)) + 1) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+sizeStat-->(((-2 * #res) + 1) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 107
+[[34m Info  [0m] Number of equal calls: 21
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 81
+[[34m Info  [0m] Number of equal calls: 14
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 55 + 42
+solving...
+solved... in 0.019s
+candidate Invariants
+eliminateWhileLoopsList-->((((4 * res23._2) + (1 * sizeList(l))) + -8) ≤ 0)
+eliminateWhileLoops-->((((1 * res22._2) + (0 * sizeStat(stat))) + 1) ≤ 0)
+sizeList-->(((1 * #res) + -4) ≤ 0)
+sizeStat-->(((0 * #res) + -1) ≤ 0)
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 62
+[[34m Info  [0m] Number of equal calls: 13
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 26 + 97
+solving...
+solved... in 0.025s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/49
+Unrolled calls: Set((r298 == sizeStat(cs83)), (r302 == sizeStat(cs61)), (r333 == sizeStat(cs65)), (r326 == sizeStat(cs68)), (r321 == sizeStat(cs66)), (r323 == sizeStat(cs77)), (r303 == sizeList(cs62)), (r300 == sizeStat(cs85)))
+Unrolling (r303 == sizeList(cs62))
+Unrolling (r326 == sizeStat(cs68))
+Unrolling (r300 == sizeStat(cs85))
+Unrolling (r323 == sizeStat(cs77))
+Unrolling (r298 == sizeStat(cs83))
+Unrolling (r333 == sizeStat(cs65))
+Unrolling (r321 == sizeStat(cs66))
+Unrolling (r302 == sizeStat(cs61))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + 0) ≤ 0)
+eliminateWhileLoops-->((((0 * sizeStat(stat)) + (1 * res22._2)) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 81
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+eliminateWhileLoopsList-->((((1 * res23._2) + (0 * sizeList(l))) + 1) ≤ 0)
+eliminateWhileLoops-->((((-2 * sizeStat(stat)) + (2 * res22._2)) + -1) ≤ 0)
+sizeList-->(((0 * #res) + 4) ≤ 0)
+sizeStat-->(((0 * #res) + 1) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 16 + 34
+solving...
+solved... in 0.009s
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + -4) ≤ 0)
+eliminateWhileLoops-->((((32 * res22._2) + (-78 * sizeStat(stat))) + 16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+sizeStat-->(((1 * #res) + -8) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 67
+[[34m Info  [0m] Number of equal calls: 17
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 70
+[[34m Info  [0m] Number of equal calls: 14
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 58 + 50
+solving...
+solved... in 0.023s
+candidate Invariants
+eliminateWhileLoopsList-->((((1 * sizeList(l)) + (8 * res23._2)) + -16) ≤ 0)
+eliminateWhileLoops-->((((-32 * sizeStat(stat)) + (8 * res22._2)) + -1) ≤ 0)
+sizeList-->(((137 * #res) + -8) ≤ 0)
+sizeStat-->(((-2 * #res) + 1) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 86
+[[34m Info  [0m] Number of equal calls: 20
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8
+[[34m Info  [0m] Number of equal calls: 6
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 66 + 108
+solving...
+solved... in 0.797s
+candidate Invariants
+eliminateWhileLoopsList-->((((-66 * sizeList(l)) + (2 * res23._2)) + -3) ≤ 0)
+eliminateWhileLoops-->((((-33 * sizeStat(stat)) + (1 * res22._2)) + 1) ≤ 0)
+sizeList-->(((-2 * #res) + -1) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 33 + 174
+solving...
+timed out... in 20.099s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 33 + 174
+solving...
+timed out... in 20.111s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 395
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 36 + 174
+solving...
+timed out... in 20.106s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 395
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 37 + 174
+solving...
+timed out... in 20.104s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 370
+[[34m Info  [0m] Number of equal calls: 41
+# of atomic predicates: 37 + 174
+solving...
+timed out... in 20.096s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 370
+[[34m Info  [0m] Number of equal calls: 41
+# of atomic predicates: 37 + 174
+solving...
+timed out... in 20.114s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 395
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 38 + 174
+solving...
+timed out... in 20.098s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 370
+[[34m Info  [0m] Number of equal calls: 41
+# of atomic predicates: 38 + 174
+solving...
+timed out... in 20.109s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+[[34m Info  [0m] - Exhausted all easy paths !!
+[[34m Info  [0m] - Number of remaining hard paths: 8
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 13/92
+Unrolled calls: Set((r386 == sizeList(cs145)), (r276 == eliminateWhileLoopsList(cs63)), (r313 == sizeList(cs94)), (r332 == sizeList(cs63)), (r320 == sizeStat(cs80)), (r331 == sizeStat(cs75)), (r322 == sizeStat(cs82)), (r330 == sizeStat(cs79)), (r324 == sizeList(cs73)), (r342 == sizeStat(cs101)), (r328 == sizeStat(cs74)), (r372 == sizeList(cs131)), (r306 == sizeList(cs87)))
+Unrolling (r320 == sizeStat(cs80))
+Unrolling (r328 == sizeStat(cs74))
+Unrolling (r322 == sizeStat(cs82))
+Unrolling (r324 == sizeList(cs73))
+Unrolling (r386 == sizeList(cs145))
+Unrolling (r332 == sizeList(cs63))
+Unrolling (r372 == sizeList(cs131))
+Unrolling (r342 == sizeStat(cs101))
+Unrolling (r331 == sizeStat(cs75))
+Unrolling (r276 == eliminateWhileLoopsList(cs63))
+Unrolling (r306 == sizeList(cs87))
+Unrolling (r313 == sizeList(cs94))
+Unrolling (r330 == sizeStat(cs79))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + 0) ≤ 0)
+eliminateWhileLoops-->((((0 * sizeStat(stat)) + (1 * res22._2)) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 242
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 43 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+eliminateWhileLoopsList-->((((8 * res23._2) + (0 * sizeList(l))) + -1) ≤ 0)
+eliminateWhileLoops-->((((2 * res22._2) + (0 * sizeStat(stat))) + -1) ≤ 0)
+sizeList-->(((0 * #res) + 23) ≤ 0)
+sizeStat-->(((0 * #res) + 5) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 16 + 43
+solving...
+solved... in 0.01s
+candidate Invariants
+eliminateWhileLoopsList-->((((0 * sizeList(l)) + (1 * res23._2)) + -4) ≤ 0)
+eliminateWhileLoops-->((((-8 * sizeStat(stat)) + (2 * res22._2)) + -1) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+sizeStat-->(((-2 * #res) + 1) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 67
+[[34m Info  [0m] Number of equal calls: 22
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 15
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 61 + 59
+solving...
+solved... in 2.113s
+candidate Invariants
+eliminateWhileLoopsList-->((((8 * sizeList(l)) + (16 * res23._2)) + -18) ≤ 0)
+eliminateWhileLoops-->((((0 * sizeStat(stat)) + (1 * res22._2)) + 1) ≤ 0)
+sizeList-->(((-1 * #res) + -1) ≤ 0)
+sizeStat-->(((-4 * #res) + -8) ≤ 0)
+Function: eliminateWhileLoops--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 42 + 120
+solving...
+solved... in 0.077s
+candidate Invariants
+eliminateWhileLoopsList-->((((1 * res23._2) + (-7 * sizeList(l))) + -2) ≤ 0)
+eliminateWhileLoops-->((((-50 * sizeStat(stat)) + (2 * res22._2)) + 1) ≤ 0)
+sizeList-->(((-3 * #res) + -1) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 439
+[[34m Info  [0m] Number of equal calls: 47
+# of atomic predicates: 55 + 162
+solving...
+solved... in 0.126s
+candidate Invariants
+eliminateWhileLoopsList-->((((-18 * sizeList(l)) + (1 * res23._2)) + -2) ≤ 0)
+eliminateWhileLoops-->((((-200 * sizeStat(stat)) + (8 * res22._2)) + 1) ≤ 0)
+sizeList-->(((-4 * #res) + -1) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Function: eliminateWhileLoopsList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 439
+[[34m Info  [0m] Number of equal calls: 47
+# of atomic predicates: 55 + 217
+solving...
+solved... in 0.26s
+candidate Invariants
+eliminateWhileLoopsList-->((((-9 * sizeList(l)) + (1 * res23._2)) + -2) ≤ 0)
+eliminateWhileLoops-->((((1 * res22._2) + (-9 * sizeStat(stat))) + 3) ≤ 0)
+sizeList-->(((-1 * #res) + 0) ≤ 0)
+sizeStat-->(((-1 * #res) + 1) ≤ 0)
+Nesting level: a?4-->1
+Nesting level: b?4-->0
+minimizing...
+Minimizing variable: a?4 Initial upperbound: 9
+Found new lower bound: 4
+Found new upper bound: 6
+Found new lower bound: 5
+Minimizing variable: b?4 Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: eliminateWhileLoopsList --> ((((1 * res23._2) + (-6 * sizeList(l))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: eliminateWhileLoops --> ((((1 * res22._2) + (-6 * sizeStat(stat))) + 0) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeList --> (((-1 * #res) + 0) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeStat --> (((-1 * #res) + 1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function isForFree...
+[[34m Info  [0m] Body: if (stat.isInstanceOf[Block])
+            (let (rthen7,dthen7 := (let (e13,d69 := isForFreeList(stat.body)) in
+              (e13, (2 + d69)))) in
+              (rthen7, if ((1 ≥ dthen7))
+                1
+              else
+                dthen7))
+          else
+            (let (relse7,delse7 := if (stat.isInstanceOf[IfThenElse])
+              (let (rthen8,dthen8 := (let (r59,d72 := (let (e15,d78 := isForFree(stat.then)) in
+                (e15, (2 + d78)))) in
+                (let (r60,d73 := (let (e14,d75 := isForFree(stat.elze)) in
+                  (e14, (2 + d75)))) in
+                  ((r59 ∧ r60), (1 + if ((d72 ≥ d73))
+                    d72
+                  else
+                    d73))))) in
+                (rthen8, if ((1 ≥ dthen8))
+                  1
+                else
+                  dthen8))
+            else
+              (let (relse8,delse8 := if (stat.isInstanceOf[While])
+                (let (rthen9,dthen9 := (let (e16,d82 := isForFree(stat.body)) in
+                  (e16, (2 + d82)))) in
+                  (rthen9, if ((1 ≥ dthen9))
+                    1
+                  else
+                    dthen9))
+              else
+                (let (relse9,delse9 := if (stat.isInstanceOf[For])
+                  (false, if ((1 ≥ 0))
+                    1
+                  else
+                    0)
+                else
+                  (true, if ((1 ≥ 0))
+                    1
+                  else
+                    0)) in
+                  (relse9, if ((1 ≥ delse9))
+                    1
+                  else
+                    delse9))) in
+                (relse8, if ((1 ≥ delse8))
+                  1
+                else
+                  delse8))) in
+              (relse7, if ((1 ≥ delse7))
+                1
+              else
+                delse7))
+[[34m Info  [0m] Post: true
+falttened Body: ((res24 == ifres207) && ((ci220 && (ci220 == stat.isInstanceOf[Block]) && (ifres207 == tp38) && (tp38 == (rthen7, ifres208)) && (((1 >= dthen7) && (ifres208 == 1)) || ((1 < dthen7) && (ifres208 == dthen7))) && (tres34 == r477) && (cs208 == stat.body) && (r477 == isForFreeList(cs208)) && (!(rthen7) || e13) && (!(e13) || rthen7) && (d69 == ts193) && (ts193 == tres34._2) && (!(e13) || (ts194 && (ts194 == tres34._1))) && ((!(ts195) && (ts195 == tres34._1)) || e13) && (dthen7 == (2 + d69))) || (!(ci221) && (ci221 == stat.isInstanceOf[Block]) && (ifres207 == tp39) && (tp39 == (relse7, ifres209)) && ((ci222 && (ci222 == stat.isInstanceOf[IfThenElse]) && (ifres210 == tp40) && (tp40 == (rthen8, ifres211)) && (tres36 == r478) && (cs209 == stat.then) && (r478 == isForFree(cs209)) && (!(e15) || (ts196 && (ts196 == tres36._1))) && ((!(ts197) && (ts197 == tres36._1)) || e15) && (((1 >= dthen8) && (ifres211 == 1)) || ((1 < dthen8) && (ifres211 == dthen8))) && (!(e14) || (ts198 && (ts198 == tres35._1))) && ((!(ts199) && (ts199 == tres35._1)) || e14) && (d72 == (2 + d78)) && (!(rthen8) || (r59 && r60)) && (!(r59) || !(r60) || rthen8) && (d75 == ts200) && (ts200 == tres35._2) && (tres35 == r479) && (cs210 == stat.elze) && (r479 == isForFree(cs210)) && (!(r60) || e14) && (!(e14) || r60) && (((d72 >= d73) && (ifres212 == d72)) || ((d72 < d73) && (ifres212 == d73))) && (d78 == ts201) && (ts201 == tres36._2) && (d73 == (2 + d75)) && (dthen8 == (1 + ifres212)) && (!(r59) || e15) && (!(e15) || r59)) || (!(ci223) && (ci223 == stat.isInstanceOf[IfThenElse]) && (ifres210 == tp41) && (tp41 == (relse8, ifres213)) && ((ci224 && (ci224 == stat.isInstanceOf[While]) && (ifres214 == tp42) && (tp42 == (rthen9, ifres215)) && (d82 == ts202) && (ts202 == tres37._2) && (((1 >= dthen9) && (ifres215 == 1)) || ((1 < dthen9) && (ifres215 == dthen9))) && (!(rthen9) || e16) && (!(e16) || rthen9) && (!(e16) || (ts203 && (ts203 == tres37._1))) && ((!(ts204) && (ts204 == tres37._1)) || e16) && (dthen9 == (2 + d82)) && (tres37 == r480) && (cs211 == stat.body) && (r480 == isForFree(cs211))) || (!(ci225) && (ci225 == stat.isInstanceOf[While]) && (ifres214 == tp43) && (tp43 == (relse9, ifres216)) && ((ci226 && (ci226 == stat.isInstanceOf[For]) && (ifres217 == tp44) && !(arg) && (tp44 == (arg, ifres218)) && (((1 >= 0) && (ifres218 == 1)) || ((1 < 0) && (ifres218 == 0)))) || (!(ci227) && (ci227 == stat.isInstanceOf[For]) && (ifres217 == tp45) && arg1 && (tp45 == (arg1, ifres219)) && (((1 >= 0) && (ifres219 == 1)) || ((1 < 0) && (ifres219 == 0))))) && (!(relse9) || (ts205 && (ts205 == ifres217._1))) && ((!(ts206) && (ts206 == ifres217._1)) || relse9) && (delse9 == ts207) && (ts207 == ifres217._2) && (((1 >= delse9) && (ifres216 == 1)) || ((1 < delse9) && (ifres216 == delse9))))) && (!(relse8) || (ts208 && (ts208 == ifres214._1))) && ((!(ts209) && (ts209 == ifres214._1)) || relse8) && (delse8 == ts210) && (ts210 == ifres214._2) && (((1 >= delse8) && (ifres213 == 1)) || ((1 < delse8) && (ifres213 == delse8))))) && (!(relse7) || (ts211 && (ts211 == ifres210._1))) && ((!(ts212) && (ts212 == ifres210._1)) || relse7) && (delse7 == ts213) && (ts213 == ifres210._2) && (((1 >= delse7) && (ifres209 == 1)) || ((1 < delse7) && (ifres209 == delse7))))))
+Flattened Post: ((ts214 > ((a? * r481) + b?)) && (ts214 == res24._2) && (r481 == sizeStat(stat)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 45
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/5
+Unrolled calls: Set((r481 == sizeStat(stat)))
+Creating VC for sizeStat
+Unrolling (r481 == sizeStat(stat))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+isForFree-->((((-2 * sizeStat(stat)) + (16 * res24._2)) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 18 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+isForFree-->((((2 * res24._2) + (-52 * sizeStat(stat))) + 1) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 13
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 29 + 28
+solving...
+solved... in 0.027s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/21
+Unrolled calls: Set((r499 == sizeStat(cs210)), (r497 == sizeStat(cs209)))
+Unrolling (r499 == sizeStat(cs210))
+Unrolling (r497 == sizeStat(cs209))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((1 * res24._2) + (0 * sizeStat(stat))) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 25 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+isForFree-->((((2 * res24._2) + (0 * sizeStat(stat))) + -1) ≤ 0)
+sizeStat-->(((0 * #res) + 25) ≤ 0)
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 25
+solving...
+solved... in 0.007s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (0 * sizeStat(stat))) + 18) ≤ 0)
+sizeStat-->(((0 * #res) + -1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 26 + 33
+solving...
+solved... in 0.034s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/33
+Unrolled calls: Set((r483 == sizeList(cs212)), (r503 == sizeList(cs226)), (r510 == sizeList(cs233)))
+Creating VC for sizeList
+Unrolling (r483 == sizeList(cs212))
+Unrolling (r503 == sizeList(cs226))
+Unrolling (r510 == sizeList(cs233))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+isForFree-->((((16 * res24._2) + (-2 * sizeStat(stat))) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 103
+[[34m Info  [0m] Number of equal calls: 16
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 44 + 10
+solving...
+solved... in 0.01s
+candidate Invariants
+isForFree-->((((-1 * sizeStat(stat)) + (1 * res24._2)) + -1) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((-1 * #res) + 23) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 38 + 54
+solving...
+solved... in 0.02s
+candidate Invariants
+isForFree-->((((8 * res24._2) + (-1 * sizeStat(stat))) + -16) ≤ 0)
+sizeStat-->(((-2 * #res) + 1) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+[[34m Info  [0m] Number of equal calls: 11
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 28 + 92
+solving...
+solved... in 0.041s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/38
+Unrolled calls: Set((r520 == sizeStat(cs240)), (r498 == sizeStat(cs211)))
+Unrolling (r520 == sizeStat(cs240))
+Unrolling (r498 == sizeStat(cs211))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+isForFree-->((((-2 * sizeStat(stat)) + (16 * res24._2)) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 24 + 10
+solving...
+solved... in 0.007s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (2 * sizeStat(stat))) + -95) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+[[34m Info  [0m] Number of equal calls: 11
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 33 + 34
+solving...
+solved... in 0.013s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + 1) ≤ 0)
+sizeStat-->(((-2 * #res) + 1) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 3
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 27 + 67
+solving...
+solved... in 0.017s
+candidate Invariants
+isForFree-->((((-24 * sizeStat(stat)) + (8 * res24._2)) + 1) ≤ 0)
+sizeStat-->(((-2 * #res) + 1) ≤ 0)
+sizeList-->(((0 * #res) + 1) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 94
+solving...
+solved... in 0.029s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/50
+Unrolled calls: Set((r477 == isForFreeList(cs208)), (r490 == sizeList(cs219)))
+Creating VC for isForFreeList
+Unrolling (r477 == isForFreeList(cs208))
+Unrolling (r490 == sizeList(cs219))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (1 * res20._2)) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isForFree-->((((-2 * sizeStat(stat)) + (16 * res24._2)) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + -3) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 74
+[[34m Info  [0m] Number of equal calls: 13
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 43 + 23
+solving...
+solved... in 0.014s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/56
+Unrolled calls: Set((r553 == isForFree(cs262)), (r555 == sizeList(l)))
+Unrolling (r553 == isForFree(cs262))
+Unrolling (r555 == sizeList(l))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((1 * res24._2) + (0 * sizeStat(stat))) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (1 * res20._2)) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+isForFree-->((((-2 * sizeStat(stat)) + (16 * res24._2)) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+sizeList-->(((0 * #res) + 7) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (2 * res20._2)) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 74
+[[34m Info  [0m] Number of equal calls: 13
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 41 + 20
+solving...
+solved... in 0.012s
+candidate Invariants
+isForFree-->((((1 * sizeStat(stat)) + (1 * res24._2)) + -24) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((4 * res20._2) + (0 * sizeList(l))) + -13) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 120
+[[34m Info  [0m] Number of equal calls: 15
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 147
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 73 + 61
+solving...
+solved... in 0.038s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + 1) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((1 * #res) + -2) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-3 * sizeList(l))) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 134
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 70 + 134
+solving...
+solved... in 0.171s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/64
+Unrolled calls: Set((r577 == sizeStat(cs262)), (r573 == sizeStat(cs272)), (r576 == sizeList(cs263)))
+Unrolling (r577 == sizeStat(cs262))
+Unrolling (r573 == sizeStat(cs272))
+Unrolling (r576 == sizeList(cs263))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((1 * res24._2) + (0 * sizeStat(stat))) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (1 * res20._2)) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isForFree-->((((-2 * sizeStat(stat)) + (16 * res24._2)) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+sizeList-->(((0 * #res) + 7) ≤ 0)
+isForFreeList-->((((2 * res20._2) + (0 * sizeList(l))) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 32 + 20
+solving...
+solved... in 0.009s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (1 * sizeStat(stat))) + -47) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (1 * res20._2)) + -4) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 120
+[[34m Info  [0m] Number of equal calls: 15
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 163
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 71 + 52
+solving...
+solved... in 0.036s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((111 * #res) + -8) ≤ 0)
+isForFreeList-->((((8 * res20._2) + (-1 * sizeList(l))) + -16) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 100 + 123
+solving...
+solved... in 0.062s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + -1) ≤ 0)
+isForFreeList-->((((-7 * sizeList(l)) + (1 * res20._2)) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 72 + 223
+solving...
+timed out... in 20.161s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 228
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 76 + 223
+solving...
+timed out... in 20.163s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 26 + 223
+solving...
+timed out... in 20.132s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 34 + 223
+solving...
+solved... in 0.108s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-5 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-8 * sizeList(l))) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 72 + 257
+solving...
+timed out... in 20.172s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 228
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 72 + 257
+solving...
+timed out... in 20.172s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 208
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 39 + 257
+solving...
+solved... in 0.15s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-5 * #res) + -1) ≤ 0)
+isForFreeList-->((((-4 * sizeList(l)) + (1 * res20._2)) + -6) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 71 + 296
+solving...
+timed out... in 20.196s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 208
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 74 + 296
+solving...
+timed out... in 20.186s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 228
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 45 + 296
+solving...
+solved... in 5.171s
+candidate Invariants
+isForFree-->((((2 * res24._2) + (-6 * sizeStat(stat))) + -3) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-16 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-19 * sizeList(l))) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 72 + 341
+solving...
+timed out... in 20.203s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 66 + 341
+solving...
+timed out... in 20.214s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 28 + 341
+solving...
+solved... in 0.146s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-16 * #res) + 1) ≤ 0)
+sizeList-->(((-3 * #res) + -1) ≤ 0)
+isForFreeList-->((((-52 * sizeList(l)) + (1 * res20._2)) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 39 + 369
+solving...
+timed out... in 20.214s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 83
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 37 + 369
+solving...
+timed out... in 20.203s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+[[34m Info  [0m] - Exhausted all easy paths !!
+[[34m Info  [0m] - Number of remaining hard paths: 2
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/81
+Unrolled calls: Set((r605 == sizeStat(cs270)), (r587 == sizeList(cs274)), (r578 == sizeList(cs264)), (r601 == sizeStat(cs288)), (r562 == sizeList(cs208)), (r606 == sizeList(cs268)), (r604 == sizeStat(cs269)), (r575 == sizeStat(cs265)))
+Unrolling (r562 == sizeList(cs208))
+Unrolling (r605 == sizeStat(cs270))
+Unrolling (r587 == sizeList(cs274))
+Unrolling (r604 == sizeStat(cs269))
+Unrolling (r575 == sizeStat(cs265))
+Unrolling (r606 == sizeList(cs268))
+Unrolling (r578 == sizeList(cs264))
+Unrolling (r601 == sizeStat(cs288))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 40 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-2 * sizeStat(stat))) + -1) ≤ 0)
+sizeStat-->(((-14 * #res) + -2) ≤ 0)
+sizeList-->(((0 * #res) + 4) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (1 * res20._2)) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 119
+[[34m Info  [0m] Number of equal calls: 16
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 43 + 40
+solving...
+solved... in 0.013s
+candidate Invariants
+isForFree-->((((-4 * sizeStat(stat)) + (8 * res24._2)) + 2) ≤ 0)
+sizeStat-->(((1 * #res) + 16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (4 * res20._2)) + -13) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 24 + 83
+solving...
+solved... in 0.053s
+candidate Invariants
+isForFree-->((((-8 * sizeStat(stat)) + (8 * res24._2)) + -1) ≤ 0)
+sizeStat-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + -4) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 77
+[[34m Info  [0m] Number of equal calls: 13
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 163
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 66 + 107
+solving...
+solved... in 0.045s
+candidate Invariants
+isForFree-->((((-4 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-18 * sizeList(l))) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 103
+[[34m Info  [0m] Number of equal calls: 19
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 86 + 173
+solving...
+solved... in 0.128s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-4 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-4 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-4 * sizeList(l))) + -2) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 241
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 51 + 259
+solving...
+solved... in 0.218s
+candidate Invariants
+isForFree-->((((-4 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-4 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-4 * sizeList(l))) + -4) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 45 + 310
+solving...
+timed out... in 20.212s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 45 + 310
+solving...
+timed out... in 20.212s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 45 + 310
+solving...
+timed out... in 20.2s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 41 + 310
+solving...
+timed out... in 20.209s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 124
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 40 + 310
+solving...
+timed out... in 20.205s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 37 + 310
+solving...
+timed out... in 20.196s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 132
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 42 + 310
+solving...
+timed out... in 20.202s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+[[34m Info  [0m] - Exhausted all easy paths !!
+[[34m Info  [0m] - Number of remaining hard paths: 7
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/109
+Unrolled calls: Set((r650 == sizeStat(cs315)), (r627 == sizeList(cs292)), (r625 == sizeStat(cs290)))
+Unrolling (r650 == sizeStat(cs315))
+Unrolling (r627 == sizeList(cs292))
+Unrolling (r625 == sizeStat(cs290))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((1 * res24._2) + (0 * sizeStat(stat))) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+isForFree-->((((16 * res24._2) + (-2 * sizeStat(stat))) + 8) ≤ 0)
+sizeStat-->(((8 * #res) + 46) ≤ 0)
+sizeList-->(((0 * #res) + 7) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (2 * res20._2)) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 32 + 20
+solving...
+solved... in 0.008s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (1 * sizeStat(stat))) + -47) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + -4) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 79
+[[34m Info  [0m] Number of equal calls: 14
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 177
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 76 + 52
+solving...
+timed out... in 20.074s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+[[34m Info  [0m] Number of equal calls: 11
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 200
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 90 + 52
+solving...
+solved... in 0.027s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((1 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-19 * sizeList(l))) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 99
+[[34m Info  [0m] Number of equal calls: 19
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 173
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 125 + 142
+solving...
+solved... in 0.314s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-16 * #res) + -8) ≤ 0)
+isForFreeList-->((((-5 * sizeList(l)) + (1 * res20._2)) + -1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 127
+[[34m Info  [0m] Number of equal calls: 24
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 381
+[[34m Info  [0m] Number of equal calls: 35
+# of atomic predicates: 129 + 267
+solving...
+timed out... in 20.239s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 139
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 87 + 267
+solving...
+solved... in 5.526s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-6 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-4 * #res) + -2) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-6 * sizeList(l))) + -5) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 47 + 354
+solving...
+timed out... in 20.245s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 41 + 354
+solving...
+timed out... in 20.241s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 45 + 354
+solving...
+timed out... in 20.242s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 47 + 354
+solving...
+timed out... in 20.266s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 245
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 49 + 354
+solving...
+timed out... in 20.249s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 276
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 51 + 354
+solving...
+timed out... in 20.231s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 234
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 47 + 354
+solving...
+timed out... in 20.242s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+[[34m Info  [0m] - Exhausted all easy paths !!
+[[34m Info  [0m] - Number of remaining hard paths: 7
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/122
+Unrolled calls: Set((r652 == sizeStat(cs317)), (r643 == sizeList(cs308)))
+Unrolling (r652 == sizeStat(cs317))
+Unrolling (r643 == sizeList(cs308))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 41 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+isForFree-->((((2 * res24._2) + (2 * sizeStat(stat))) + -1) ≤ 0)
+sizeStat-->(((56 * #res) + 376) ≤ 0)
+sizeList-->(((0 * #res) + 7) ≤ 0)
+isForFreeList-->((((2 * res20._2) + (0 * sizeList(l))) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 11
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 36 + 41
+solving...
+solved... in 0.015s
+candidate Invariants
+isForFree-->((((4 * res24._2) + (-1 * sizeStat(stat))) + 20) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((2 * res20._2) + (0 * sizeList(l))) + -7) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 55
+[[34m Info  [0m] Number of equal calls: 10
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 24 + 77
+solving...
+solved... in 0.036s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + 1) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (1 * res20._2)) + -4) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 71 + 101
+solving...
+solved... in 0.05s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + -1) ≤ 0)
+isForFreeList-->((((8 * res20._2) + (-58 * sizeList(l))) + -12) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 115
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 194
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 108 + 172
+solving...
+solved... in 0.267s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-4 * #res) + -1) ≤ 0)
+isForFreeList-->((((2 * res20._2) + (-5 * sizeList(l))) + -3) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 143
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 51 + 280
+solving...
+solved... in 0.325s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-4 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-5 * sizeList(l))) + -1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 139
+[[34m Info  [0m] Number of equal calls: 23
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 95 + 331
+solving...
+timed out... in 20.254s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 286
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 124 + 331
+solving...
+timed out... in 20.301s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 176
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 92 + 331
+solving...
+timed out... in 20.256s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 153
+[[34m Info  [0m] Number of equal calls: 27
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 286
+[[34m Info  [0m] Number of equal calls: 32
+# of atomic predicates: 127 + 331
+solving...
+timed out... in 20.294s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 21
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 95 + 331
+solving...
+timed out... in 20.251s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 127
+[[34m Info  [0m] Number of equal calls: 24
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 97 + 331
+solving...
+timed out... in 20.257s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 276
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 101 + 331
+solving...
+timed out... in 20.297s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 24
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 245
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 101 + 331
+solving...
+timed out... in 20.259s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 161
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 234
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 100 + 331
+solving...
+timed out... in 20.258s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 141
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 286
+[[34m Info  [0m] Number of equal calls: 32
+# of atomic predicates: 121 + 331
+solving...
+timed out... in 20.282s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 189
+[[34m Info  [0m] Number of equal calls: 28
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 97 + 331
+solving...
+timed out... in 20.261s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 129
+[[34m Info  [0m] Number of equal calls: 20
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 88 + 331
+solving...
+timed out... in 20.256s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 286
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 72 + 331
+solving...
+timed out... in 20.244s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 286
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 65 + 331
+solving...
+solved... in 3.9s
+candidate Invariants
+isForFree-->((((-6 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-2 * #res) + -1) ≤ 0)
+isForFreeList-->((((-18 * sizeList(l)) + (2 * res20._2)) + -3) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 99 + 396
+solving...
+timed out... in 20.318s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 24
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 234
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 99 + 396
+solving...
+timed out... in 20.302s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 189
+[[34m Info  [0m] Number of equal calls: 28
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 100 + 396
+solving...
+timed out... in 20.309s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 161
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 90 + 396
+solving...
+timed out... in 20.302s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 129
+[[34m Info  [0m] Number of equal calls: 20
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 245
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 97 + 396
+solving...
+timed out... in 20.323s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 141
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 97 + 396
+solving...
+timed out... in 20.308s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 276
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 51 + 396
+solving...
+solved... in 2.055s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-6 * sizeStat(stat))) + -1) ≤ 0)
+sizeStat-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->(((-2 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (-8 * sizeList(l))) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 52 + 447
+solving...
+timed out... in 20.328s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 52 + 447
+solving...
+timed out... in 20.306s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 189
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 60 + 447
+solving...
+timed out... in 20.326s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 149
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 52 + 447
+solving...
+timed out... in 20.32s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 133
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 48 + 447
+solving...
+timed out... in 20.305s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 161
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 53 + 447
+solving...
+timed out... in 20.323s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+[[34m Info  [0m] - Exhausted all easy paths !!
+[[34m Info  [0m] - Number of remaining hard paths: 6
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/129
+Unrolled calls: Set((r603 == sizeStat(cs271)))
+Unrolling (r603 == sizeStat(cs271))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+isForFree-->((((0 * sizeStat(stat)) + (1 * res24._2)) + 0) ≤ 0)
+sizeStat-->(((0 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + 0) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + 0) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 41 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+isForFree-->((((2 * sizeStat(stat)) + (2 * res24._2)) + -1) ≤ 0)
+sizeStat-->(((56 * #res) + 376) ≤ 0)
+sizeList-->(((0 * #res) + 7) ≤ 0)
+isForFreeList-->((((0 * sizeList(l)) + (2 * res20._2)) + 1) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 11
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 36 + 41
+solving...
+solved... in 0.016s
+candidate Invariants
+isForFree-->((((4 * res24._2) + (-1 * sizeStat(stat))) + 20) ≤ 0)
+sizeStat-->(((1 * #res) + -16) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((2 * res20._2) + (0 * sizeList(l))) + -7) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 12
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 30 + 77
+solving...
+solved... in 0.032s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((0 * #res) + -1) ≤ 0)
+isForFreeList-->((((1 * res20._2) + (0 * sizeList(l))) + -4) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 141
+[[34m Info  [0m] Number of equal calls: 22
+Function: sizeStat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 177
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 99 + 107
+solving...
+solved... in 0.331s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-2 * #res) + -1) ≤ 0)
+isForFreeList-->((((2 * res20._2) + (27 * sizeList(l))) + -4) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 40 + 206
+solving...
+solved... in 0.079s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + -1) ≤ 0)
+isForFreeList-->((((-3 * sizeList(l)) + (1 * res20._2)) + -2) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 194
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 64 + 246
+solving...
+solved... in 0.279s
+candidate Invariants
+isForFree-->((((1 * res24._2) + (-3 * sizeStat(stat))) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + 0) ≤ 0)
+isForFreeList-->((((-3 * sizeList(l)) + (1 * res20._2)) + -2) ≤ 0)
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 38 + 310
+solving...
+solved... in 0.296s
+candidate Invariants
+isForFree-->((((-3 * sizeStat(stat)) + (1 * res24._2)) + -2) ≤ 0)
+sizeStat-->(((-1 * #res) + 0) ≤ 0)
+sizeList-->(((-1 * #res) + 0) ≤ 0)
+isForFreeList-->((((-7 * sizeList(l)) + (1 * res20._2)) + -2) ≤ 0)
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 127
+[[34m Info  [0m] Number of equal calls: 24
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 101 + 348
+solving...
+timed out... in 20.277s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 115
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 86 + 348
+solving...
+timed out... in 20.265s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 103 + 348
+solving...
+timed out... in 20.273s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 151
+[[34m Info  [0m] Number of equal calls: 26
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 229
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 95 + 348
+solving...
+timed out... in 20.269s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 182
+[[34m Info  [0m] Number of equal calls: 23
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 245
+[[34m Info  [0m] Number of equal calls: 30
+# of atomic predicates: 108 + 348
+solving...
+timed out... in 20.293s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 139
+[[34m Info  [0m] Number of equal calls: 23
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 276
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 103 + 348
+solving...
+timed out... in 20.279s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 161
+[[34m Info  [0m] Number of equal calls: 25
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 100 + 348
+solving...
+timed out... in 20.262s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 189
+[[34m Info  [0m] Number of equal calls: 28
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 100 + 348
+solving...
+timed out... in 20.269s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 139
+[[34m Info  [0m] Number of equal calls: 22
+Function: isForFreeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 234
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 99 + 348
+solving...
+timed out... in 20.268s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 141
+[[34m Info  [0m] Number of equal calls: 22
+# of atomic predicates: 55 + 348
+solving...
+timed out... in 20.242s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 129
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 47 + 348
+solving...
+timed out... in 20.244s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 181
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 57 + 348
+solving...
+timed out... in 20.249s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 99
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 44 + 348
+solving...
+timed out... in 20.234s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 45 + 348
+solving...
+timed out... in 20.24s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 153
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 56 + 348
+solving...
+timed out... in 20.239s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 169
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 54 + 348
+solving...
+timed out... in 20.25s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 193
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 61 + 348
+solving...
+timed out... in 20.252s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 205
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 64 + 348
+solving...
+timed out... in 20.257s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: isForFree--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 183
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 59 + 348
+solving...

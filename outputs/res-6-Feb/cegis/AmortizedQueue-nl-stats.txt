@@ -1,0 +1,57 @@
+Total Time: 211.475s
+Min Time: 0.0s
+VC refinements : 26
+Avg VC size : 425.0769230769231
+Max VC size : 1418
+Avg UIF-ADT size : 118.53846153846153
+Max UIF-ADT size : 362
+avgTempVars : 3.230769230769231
+maxTempVars : 4
+### Cegis solver stats #### 
+# of bounds tried: 1
+cegis iterations: 4874
+avgTemplateCtrSize : 450.17049651210505
+maxTemplateCtrSize : 2609
+########## Outputs ############
+Invariants for Function: sizeList
+sizeList --> ((((1 * res19._2) + (-4 * size(list))) + -9) ≤ 0)
+size --> (((0 * #res) + 0) ≤ 0)
+
+Invariants for Function: reverseRec
+reverseRec --> ((((1 * res23._2) + (-5 * size(l1))) + -95) ≤ 0)
+size --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: reverse
+reverse --> ((((1 * res21._2) + (-5 * size(l))) + -97) ≤ 0)
+reverseRec --> ((((1 * res23._2) + (-5 * size(l1))) + -95) ≤ 0)
+size --> (((0 * #res) + 0) ≤ 0)
+
+Invariants for Function: concat
+concat --> ((((-5 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+size --> (((0 * #res) + -1) ≤ 0)
+
+Invariants for Function: removeLast
+removeLast --> ((((-9 * size(l)) + (1 * res24._2)) + 4) ≤ 0)
+size --> (((-1 * #res) + 0) ≤ 0)
+
+Invariants for Function: pop
+pop --> ((((-15 * size(q.front)) + (1 * res22._2)) + 1) ≤ 0)
+removeLast --> ((((-9 * size(l)) + (1 * res24._2)) + 4) ≤ 0)
+size --> (((-1 * #res) + 0) ≤ 0)
+sizeList --> ((((1 * res19._2) + (-4 * size(list))) + -9) ≤ 0)
+
+Invariants for Function: enqueue
+sizeList --> ((((1 * res19._2) + (-4 * size(list))) + -9) ≤ 0)
+enqueue --> ((((1 * res17._2) + (-103 * qsize(q))) + -26) ≤ 0)
+size --> (((-2 * #res) + -1) ≤ 0)
+concat --> ((((-5 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+reverseRec --> ((((1 * res23._2) + (-5 * size(l1))) + -95) ≤ 0)
+
+Invariants for Function: dequeue
+sizeList --> ((((1 * res19._2) + (-4 * size(list))) + -9) ≤ 0)
+size --> (((-1 * #res) + 0) ≤ 0)
+dequeue --> ((((-200 * qsize(q)) + (1 * res20._2)) + 179) ≤ 0)
+concat --> ((((-5 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+reverseRec --> ((((1 * res23._2) + (-5 * size(l1))) + -95) ≤ 0)
+
+

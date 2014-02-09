@@ -1,0 +1,61 @@
+Total Time: 84.165s
+Min Time: 0.079s
+VC refinements : 29
+Avg VC size : 943.5172413793103
+Max VC size : 13016
+Avg UIF-ADT size : 79.41379310344827
+Max UIF-ADT size : 356
+avgTempVars : 4.551724137931035
+maxTempVars : 11
+### Farkas solver stats ####
+Disjunct Explorations : 119
+Total retries: 0
+avgFarkaSize : 133.0672268907563
+maxFarkaSize : 704
+avgFarkaTime : 0.05819327731092437s
+maxFarkaTime : 1.499s
+avgNLSize : 7.218487394957983
+maxNLSize : 26
+avgDijSize : 100.3109243697479
+maxDijSize : 409
+avgElimvars : 29.596638655462186
+maxElimvars : 70
+avgElimAtoms : 64.66386554621849
+maxElimAtoms : 307
+avgExploreTime : 0.26523529411764707s
+maxExploreTime : 1.81s
+avgCompatCalls : 92.11764705882354
+maxCompatCalls : 406
+avgLemmaApps : 135.6638655462185
+maxLemmaApps : 11024
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: Dis3
+Dis3 --> ((((-5 * max(0, (n - x))) + (1 * res14._2)) + -8) ≤ 0)
+
+Invariants for Function: Dis4
+Dis4 --> ((((b ∧ (t ≥ 0)) ∨ (¬(b) ∧ (t < 0))) ∧ ((((1 * res15._2) + (-5 * max(0, (n - x)))) + -8) ≤ 0)) ∨ (((¬(b) ∧ (t ≥ 0)) ∨ (b ∧ (t < 0))) ∧ ((((-5 * max(0, x)) + (1 * res15._2)) + -8) ≤ 0)))
+
+Invariants for Function: Dis2
+Dis2 --> (((((1 * res13._2) + (-4 * max(0, (n - z)))) + (-4 * max(0, (n - x)))) + -1) ≤ 0)
+
+Invariants for Function: Equals
+Equals --> (((((((-34 * length(s2)) + (-39 * length(s1))) + (1 * res11._2)) + (-18 * size(str1))) + (-18 * (k * (length(s1) + length(s2))))) + -34) ≤ 0)
+sizeBound --> (((0 * k) + -1) ≤ 0)
+size --> (((-1 * #res) + -1) ≤ 0)
+length --> (((-1 * #res) + -1) ≤ 0)
+
+Invariants for Function: Dis1
+Dis1 --> (((((1 * res12._2) + (-4 * max(0, (n - x)))) + (-4 * max(0, (m - y)))) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+Dis3: 	(a?3->4), (c?3->7), 
+Dis4: 	(a?4->4), (d?1->4), (c?4->7), (e?1->7), 
+Dis2: 	(a?2->3), (b?2->3), (c?2->0), 
+Equals: 	(d?->33), (e?->33), (a?->17), (b?->17), (c?->38), 
+Dis1: 	(a?1->3), (b?1->3), (c?1->0), 

@@ -1,0 +1,59 @@
+Total Time: 4.426s
+Min Time: 0.272s
+VC refinements : 13
+Avg VC size : 280.46153846153845
+Max VC size : 291
+Avg UIF-ADT size : 95.46153846153847
+Max UIF-ADT size : 100
+avgTempVars : 3.3846153846153846
+maxTempVars : 4
+### Farkas solver stats ####
+Disjunct Explorations : 42
+Total retries: 0
+avgFarkaSize : 23.5
+maxFarkaSize : 64
+avgFarkaTime : 0.0064523809523809525s
+maxFarkaTime : 0.014s
+avgNLSize : 2.1666666666666665
+maxNLSize : 5
+avgDijSize : 16.80952380952381
+maxDijSize : 48
+avgElimvars : 15.642857142857142
+maxElimvars : 46
+avgElimAtoms : 15.071428571428571
+maxElimAtoms : 45
+avgExploreTime : 0.04371428571428571s
+maxExploreTime : 0.147s
+avgCompatCalls : 69.07142857142857
+maxCompatCalls : 301
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: insert
+insert --> ((((2 * res11._2) + (-46 * listSize(inp))) + -5) ≤ 0)
+listSize --> (((-3 * #res) + -1) ≤ 0)
+
+Invariants for Function: delete
+delete --> ((((1 * res12._2) + (-42 * listSize(inp))) + -3) ≤ 0)
+listSize --> (((-3 * #res) + -1) ≤ 0)
+
+Invariants for Function: create
+create --> ((((1 * res10._2) + (-23 * listSize(inp))) + -4) ≤ 0)
+insert --> ((((2 * res11._2) + (-46 * listSize(inp))) + -5) ≤ 0)
+listSize --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: find
+find --> ((((-16 * listSize(inp)) + (1 * res9._2)) + -1) ≤ 0)
+listSize --> (((-3 * #res) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+insert: 	(a?1->22), (c?1->1), 
+delete: 	(a?3->41), (c?3->2), 
+create: 	(a?2->22), (c?2->3), 
+find: 	(a?->15), (c?->0), 

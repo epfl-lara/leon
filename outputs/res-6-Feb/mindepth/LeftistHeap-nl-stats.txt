@@ -1,0 +1,58 @@
+Total Time: 213.884s
+Min Time: 0.253s
+VC refinements : 25
+Avg VC size : 2380.64
+Max VC size : 3393
+Avg UIF-ADT size : 450.84
+Max UIF-ADT size : 671
+avgTempVars : 4.72
+maxTempVars : 6
+### Farkas solver stats ####
+Disjunct Explorations : 122
+Total retries: 0
+avgFarkaSize : 241.68852459016392
+maxFarkaSize : 931
+avgFarkaTime : 0.13145901639344262s
+maxFarkaTime : 1.505s
+avgNLSize : 22.024590163934427
+maxNLSize : 64
+avgDijSize : 217.51639344262296
+maxDijSize : 702
+avgElimvars : 117.01639344262296
+maxElimvars : 269
+avgElimAtoms : 166.91803278688525
+maxElimAtoms : 584
+avgExploreTime : 1.1102622950819674s
+maxExploreTime : 4.474s
+avgCompatCalls : 1005.3196721311475
+maxCompatCalls : 4596
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: merge
+merge --> (((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight --> (((-8 * #res) + -1) ≤ 0)
+hasLeftistProperty --> (-1 ≤ 0)
+
+Invariants for Function: insert
+insert --> ((((4 * res8._2) + (-31 * rightHeight(heap))) + -40) ≤ 0)
+hasLeftistProperty --> (-1 ≤ 0)
+merge --> (((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: removeMax
+removeMax --> ((((-14 * leftRightHeight(h)) + (1 * res7._2)) + -3) ≤ 0)
+hasLeftistProperty --> (-1 ≤ 0)
+merge --> (((((-7 * rightHeight(h1)) + (1 * res9._2)) + (-7 * rightHeight(h2))) + -1) ≤ 0)
+rightHeight --> (((-2 * #res) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+merge: 	(a?1->6), (b?1->6), (c?->0), 
+insert: 	(a?2->6), (c?1->9), 
+removeMax: 	(a?->13), (b?->2), 

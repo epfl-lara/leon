@@ -1,0 +1,2502 @@
+After Depth Instrumentation: 
+object AmortizedQueue {
+  case class Nil() extends List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  case class Queue(front: List, rear: List)
+
+  sealed abstract class List
+
+  def amortizedQueue(front : List, rear : List) : (Queue, Int) = {locally {
+    val (rcond8: Boolean, dcond8: Int) = locally {
+      val (r68: Int, d73: Int) = locally {
+        val (e8: Int, d78: Int) = sizeList(rear)
+        (e8, (1 + d78))
+      }
+      
+      locally {
+        val (r69: Int, d74: Int) = locally {
+          val (e7: Int, d76: Int) = sizeList(front)
+          (e7, (1 + d76))
+        }
+        
+        ((r68 <= r69), (1 + if ((d73 >= d74)) {
+          d73
+        } else {
+          d74
+        }))
+      }
+      
+    }
+    
+    if (rcond8) {
+      (Queue(front, rear), if ((dcond8 >= 1)) {
+        dcond8
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse8: Queue, delse8: Int) = locally {
+          val (r74: List, d81: Int) = locally {
+            val (r77: List, d84: Int) = locally {
+              val (e10: List, d87: Int) = reverse(rear)
+              (e10, (1 + d87))
+            }
+            
+            locally {
+              val (e9: List, d85: Int) = concat(front, r77)
+              (e9, ((1 + d85) + if ((0 >= d84)) {
+                0
+              } else {
+                d84
+              }))
+            }
+            
+          }
+          
+          (Queue(r74, Nil()), (1 + if ((d81 >= 1)) {
+            d81
+          } else {
+            1
+          }))
+        }
+        
+        (relse8, if ((dcond8 >= delse8)) {
+          dcond8
+        } else {
+          delse8
+        })
+      }
+      
+    }
+  }
+  }
+
+  def dequeue(q : Queue) : (Queue, Int) = {    require((isAmortized(q) && !(isEmpty(q))));
+locally {
+    val dcond4 = 3
+    if ((q.isInstanceOf[Queue] && q.front.isInstanceOf[Cons])) {
+      locally {
+        val (rthen4: Queue, dthen4: Int) = locally {
+          val (e4: Queue, d47: Int) = amortizedQueue(q.front.tail, q.rear)
+          (e4, (3 + d47))
+        }
+        
+        (rthen4, if ((dcond4 >= dthen4)) {
+          dcond4
+        } else {
+          dthen4
+        })
+      }
+      
+    } else {
+      (Queue(Nil(), Nil()), if ((dcond4 >= 2)) {
+        dcond4
+      } else {
+        2
+      })
+    }
+  }
+  } ensuring(res => true)
+
+  def size(list : List) : Int = {(list match {
+    case Nil() =>
+      0
+    case Cons(_, xs) =>
+      (1 + size(xs))
+  })}
+
+  def removeLast(l : List) : (List, Int) = {    require((l != Nil()));
+locally {
+    val dcond5 = 3
+    if ((l.isInstanceOf[Cons] && l.tail.isInstanceOf[Nil])) {
+      (Nil(), if ((dcond5 >= 1)) {
+        dcond5
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse5: List, delse5: Int) = locally {
+          val dcond6 = 1
+          if (l.isInstanceOf[Cons]) {
+            locally {
+              val (rthen6: Cons, dthen6: Int) = locally {
+                val (r57: List, d60: Int) = locally {
+                  val (e5: List, d62: Int) = removeLast(l.tail)
+                  (e5, (2 + d62))
+                }
+                
+                (Cons(l.head, r57), (1 + if ((1 >= d60)) {
+                  1
+                } else {
+                  d60
+                }))
+              }
+              
+              (rthen6, if ((dcond6 >= dthen6)) {
+                dcond6
+              } else {
+                dthen6
+              })
+            }
+            
+          } else {
+            (Nil(), if ((dcond6 >= 1)) {
+              dcond6
+            } else {
+              1
+            })
+          }
+        }
+        
+        (relse5, if ((dcond5 >= delse5)) {
+          dcond5
+        } else {
+          delse5
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(res._1) <= size(l)))
+
+  def isAmortized(q : Queue) : Boolean = {(sizeList(q.front)._1 >= sizeList(q.rear)._1)}
+
+  def concat(l1 : List, l2 : List) : (List, Int) = {locally {
+    val dcond7 = 1
+    if (l1.isInstanceOf[Nil]) {
+      (l2, if ((dcond7 >= 0)) {
+        dcond7
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse7: Cons, delse7: Int) = locally {
+          val (r63: List, d67: Int) = locally {
+            val (e6: List, d70: Int) = concat(l1.tail, l2)
+            (e6, (2 + d70))
+          }
+          
+          (Cons(l1.head, r63), (1 + if ((1 >= d67)) {
+            1
+          } else {
+            d67
+          }))
+        }
+        
+        (relse7, if ((dcond7 >= delse7)) {
+          dcond7
+        } else {
+          delse7
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(res._1) == (size(l1) + size(l2))))
+
+  def enqueue(q : Queue, elem : Int) : (Queue, Int) = {locally {
+    val (e2: Queue, d27: Int) = amortizedQueue(q.front, Cons(elem, q.rear))
+    (e2, (3 + d27))
+  }
+  } ensuring(res => true)
+
+  def reverse(l : List) : (List, Int) = {locally {
+    val (e11: List, d90: Int) = reverseRec(l, Nil())
+    (e11, (2 + d90))
+  }
+  } ensuring(res => (size(l) == size(res._1)))
+
+  def pop(q : Queue) : (Queue, Int) = {    require((isAmortized(q) && !(isEmpty(q))));
+locally {
+    val dcond1 = 3
+    if ((q.isInstanceOf[Queue] && q.rear.isInstanceOf[Cons])) {
+      (Queue(q.front, q.rear.tail), if ((dcond1 >= 3)) {
+        dcond1
+      } else {
+        3
+      })
+    } else {
+      locally {
+        val (relse1: Queue, delse1: Int) = locally {
+          val dcond2 = 1
+          if (q.isInstanceOf[Queue]) {
+            locally {
+              val (rthen2: Queue, dthen2: Int) = locally {
+                val (r18: List, d17: Int) = locally {
+                  val (e1: List, d21: Int) = removeLast(q.front)
+                  (e1, (2 + d21))
+                }
+                
+                (Queue(r18, q.rear), (1 + if ((d17 >= 1)) {
+                  d17
+                } else {
+                  1
+                }))
+              }
+              
+              (rthen2, if ((dcond2 >= dthen2)) {
+                dcond2
+              } else {
+                dthen2
+              })
+            }
+            
+          } else {
+            (Queue(Nil(), Nil()), if ((dcond2 >= 2)) {
+              dcond2
+            } else {
+              2
+            })
+          }
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def sizeList(list : List) : (Int, Int) = {locally {
+    val dcond = 1
+    if (list.isInstanceOf[Nil]) {
+      (0, if ((dcond >= 0)) {
+        dcond
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse: Int, delse: Int) = locally {
+          val (r4: Int, d2: Int) = locally {
+            val (e: Int, d4: Int) = sizeList(list.tail)
+            (e, (2 + d4))
+          }
+          
+          ((1 + r4), (1 + if ((0 >= d2)) {
+            0
+          } else {
+            d2
+          }))
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (res._1 >= 0))
+
+  def qsize(q : Queue) : Int = {(size(q.front) + size(q.rear))}
+
+  def reverseRec(l1 : List, l2 : List) : (List, Int) = {locally {
+    val dcond3 = 1
+    if (l1.isInstanceOf[Nil]) {
+      (l2, if ((dcond3 >= 0)) {
+        dcond3
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse3: List, delse3: Int) = locally {
+          val (e3: List, d35: Int) = reverseRec(l1.tail, Cons(l1.head, l2))
+          (e3, (3 + d35))
+        }
+        
+        (relse3, if ((dcond3 >= delse3)) {
+          dcond3
+        } else {
+          delse3
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => ((size(l1) + size(l2)) == size(res._1)))
+
+  def asList(q : Queue) : List = {concat(q.front, reverse(q.rear)._1)._1}
+
+  def isEmpty(queue : Queue) : Boolean = {(queue match {
+    case Queue(Nil(), Nil()) =>
+      true
+    case _ =>
+      false
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: amortizedQueue
+Defined fun: dequeue
+Defined fun: size
+Defined fun: removeLast
+Defined fun: isAmortized
+Defined fun: concat
+Defined fun: enqueue
+Defined fun: reverse
+Defined fun: pop
+Defined fun: sizeList
+Defined fun: qsize
+Defined fun: reverseRec
+Defined fun: asList
+Defined fun: isEmpty
+Defined fun: max
+FunMap: Map(isAmortized -> isAmortized, isEmpty -> isEmpty, sizeList -> sizeList, concat -> concat, amortizedQueue -> amortizedQueue, asList -> asList, pop -> pop, max -> max, dequeue -> dequeue, enqueue -> enqueue, reverseRec -> reverseRec, size -> size, reverse -> reverse, qsize -> qsize, removeLast -> removeLast)
+After Time Instrumentation: 
+object AmortizedQueue {
+  case class Nil() extends List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  case class Queue(front: List, rear: List)
+
+  sealed abstract class List
+
+  def amortizedQueue(front : List, rear : List) : (Queue, Int) = {locally {
+    val (rcond8: Boolean, dcond8: Int) = locally {
+      val (r68: Int, d73: Int) = locally {
+        val (e8: Int, d78: Int) = sizeList(rear)
+        (e8, (1 + d78))
+      }
+      
+      locally {
+        val (r69: Int, d74: Int) = locally {
+          val (e7: Int, d76: Int) = sizeList(front)
+          (e7, (1 + d76))
+        }
+        
+        ((r68 <= r69), (1 + if ((d73 >= d74)) {
+          d73
+        } else {
+          d74
+        }))
+      }
+      
+    }
+    
+    if (rcond8) {
+      (Queue(front, rear), if ((dcond8 >= 1)) {
+        dcond8
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse8: Queue, delse8: Int) = locally {
+          val (r74: List, d81: Int) = locally {
+            val (r77: List, d84: Int) = locally {
+              val (e10: List, d87: Int) = reverse(rear)
+              (e10, (1 + d87))
+            }
+            
+            locally {
+              val (e9: List, d85: Int) = concat(front, r77)
+              (e9, ((1 + d85) + if ((0 >= d84)) {
+                0
+              } else {
+                d84
+              }))
+            }
+            
+          }
+          
+          (Queue(r74, Nil()), (1 + if ((d81 >= 1)) {
+            d81
+          } else {
+            1
+          }))
+        }
+        
+        (relse8, if ((dcond8 >= delse8)) {
+          dcond8
+        } else {
+          delse8
+        })
+      }
+      
+    }
+  }
+  }
+
+  def dequeue(q : Queue) : (Queue, Int) = {    require((isAmortized(q) && !(isEmpty(q))));
+locally {
+    val dcond4 = 3
+    if ((q.isInstanceOf[Queue] && q.front.isInstanceOf[Cons])) {
+      locally {
+        val (rthen4: Queue, dthen4: Int) = locally {
+          val (e4: Queue, d47: Int) = amortizedQueue(q.front.tail, q.rear)
+          (e4, (3 + d47))
+        }
+        
+        (rthen4, if ((dcond4 >= dthen4)) {
+          dcond4
+        } else {
+          dthen4
+        })
+      }
+      
+    } else {
+      (Queue(Nil(), Nil()), if ((dcond4 >= 2)) {
+        dcond4
+      } else {
+        2
+      })
+    }
+  }
+  } ensuring(res20 => true)
+
+  def size(list : List) : Int = {(list match {
+    case Nil() =>
+      0
+    case Cons(_, xs) =>
+      (1 + size(xs))
+  })}
+
+  def removeLast(l : List) : (List, Int) = {    require((l != Nil()));
+locally {
+    val dcond5 = 3
+    if ((l.isInstanceOf[Cons] && l.tail.isInstanceOf[Nil])) {
+      (Nil(), if ((dcond5 >= 1)) {
+        dcond5
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse5: List, delse5: Int) = locally {
+          val dcond6 = 1
+          if (l.isInstanceOf[Cons]) {
+            locally {
+              val (rthen6: Cons, dthen6: Int) = locally {
+                val (r57: List, d60: Int) = locally {
+                  val (e5: List, d62: Int) = removeLast(l.tail)
+                  (e5, (2 + d62))
+                }
+                
+                (Cons(l.head, r57), (1 + if ((1 >= d60)) {
+                  1
+                } else {
+                  d60
+                }))
+              }
+              
+              (rthen6, if ((dcond6 >= dthen6)) {
+                dcond6
+              } else {
+                dthen6
+              })
+            }
+            
+          } else {
+            (Nil(), if ((dcond6 >= 1)) {
+              dcond6
+            } else {
+              1
+            })
+          }
+        }
+        
+        (relse5, if ((dcond5 >= delse5)) {
+          dcond5
+        } else {
+          delse5
+        })
+      }
+      
+    }
+  }
+  } ensuring(res24 => (size(res24._1) <= size(l)))
+
+  def isAmortized(q : Queue) : Boolean = {(sizeList(q.front)._1 >= sizeList(q.rear)._1)}
+
+  def concat(l1 : List, l2 : List) : (List, Int) = {locally {
+    val dcond7 = 1
+    if (l1.isInstanceOf[Nil]) {
+      (l2, if ((dcond7 >= 0)) {
+        dcond7
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse7: Cons, delse7: Int) = locally {
+          val (r63: List, d67: Int) = locally {
+            val (e6: List, d70: Int) = concat(l1.tail, l2)
+            (e6, (2 + d70))
+          }
+          
+          (Cons(l1.head, r63), (1 + if ((1 >= d67)) {
+            1
+          } else {
+            d67
+          }))
+        }
+        
+        (relse7, if ((dcond7 >= delse7)) {
+          dcond7
+        } else {
+          delse7
+        })
+      }
+      
+    }
+  }
+  } ensuring(res18 => (size(res18._1) == (size(l1) + size(l2))))
+
+  def enqueue(q : Queue, elem : Int) : (Queue, Int) = {locally {
+    val (e2: Queue, d27: Int) = amortizedQueue(q.front, Cons(elem, q.rear))
+    (e2, (3 + d27))
+  }
+  } ensuring(res21 => true)
+
+  def reverse(l : List) : (List, Int) = {locally {
+    val (e11: List, d90: Int) = reverseRec(l, Nil())
+    (e11, (2 + d90))
+  }
+  } ensuring(res23 => (size(l) == size(res23._1)))
+
+  def pop(q : Queue) : (Queue, Int) = {    require((isAmortized(q) && !(isEmpty(q))));
+locally {
+    val dcond1 = 3
+    if ((q.isInstanceOf[Queue] && q.rear.isInstanceOf[Cons])) {
+      (Queue(q.front, q.rear.tail), if ((dcond1 >= 3)) {
+        dcond1
+      } else {
+        3
+      })
+    } else {
+      locally {
+        val (relse1: Queue, delse1: Int) = locally {
+          val dcond2 = 1
+          if (q.isInstanceOf[Queue]) {
+            locally {
+              val (rthen2: Queue, dthen2: Int) = locally {
+                val (r18: List, d17: Int) = locally {
+                  val (e1: List, d21: Int) = removeLast(q.front)
+                  (e1, (2 + d21))
+                }
+                
+                (Queue(r18, q.rear), (1 + if ((d17 >= 1)) {
+                  d17
+                } else {
+                  1
+                }))
+              }
+              
+              (rthen2, if ((dcond2 >= dthen2)) {
+                dcond2
+              } else {
+                dthen2
+              })
+            }
+            
+          } else {
+            (Queue(Nil(), Nil()), if ((dcond2 >= 2)) {
+              dcond2
+            } else {
+              2
+            })
+          }
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res19 => true)
+
+  def sizeList(list : List) : (Int, Int) = {locally {
+    val dcond = 1
+    if (list.isInstanceOf[Nil]) {
+      (0, if ((dcond >= 0)) {
+        dcond
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse: Int, delse: Int) = locally {
+          val (r4: Int, d2: Int) = locally {
+            val (e: Int, d4: Int) = sizeList(list.tail)
+            (e, (2 + d4))
+          }
+          
+          ((1 + r4), (1 + if ((0 >= d2)) {
+            0
+          } else {
+            d2
+          }))
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res17 => (res17._1 >= 0))
+
+  def qsize(q : Queue) : Int = {(size(q.front) + size(q.rear))}
+
+  def reverseRec(l1 : List, l2 : List) : (List, Int) = {locally {
+    val dcond3 = 1
+    if (l1.isInstanceOf[Nil]) {
+      (l2, if ((dcond3 >= 0)) {
+        dcond3
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse3: List, delse3: Int) = locally {
+          val (e3: List, d35: Int) = reverseRec(l1.tail, Cons(l1.head, l2))
+          (e3, (3 + d35))
+        }
+        
+        (relse3, if ((dcond3 >= delse3)) {
+          dcond3
+        } else {
+          delse3
+        })
+      }
+      
+    }
+  }
+  } ensuring(res22 => ((size(l1) + size(l2)) == size(res22._1)))
+
+  def asList(q : Queue) : List = {concat(q.front, reverse(q.rear)._1)._1}
+
+  def isEmpty(queue : Queue) : Boolean = {(queue match {
+    case Queue(Nil(), Nil()) =>
+      true
+    case _ =>
+      false
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object AmortizedQueue {
+  case class Nil() extends List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  case class Queue(front: List, rear: List)
+
+  sealed abstract class List
+
+  def amortizedQueue(front : List, rear : List) : (Queue, Int) = {locally {
+    val (rcond8: Boolean, dcond8: Int) = locally {
+      val (r68: Int, d73: Int) = locally {
+        val (e8: Int, d78: Int) = sizeList(rear)
+        (e8, (1 + d78))
+      }
+      
+      locally {
+        val (r69: Int, d74: Int) = locally {
+          val (e7: Int, d76: Int) = sizeList(front)
+          (e7, (1 + d76))
+        }
+        
+        ((r68 <= r69), (1 + if ((d73 >= d74)) {
+          d73
+        } else {
+          d74
+        }))
+      }
+      
+    }
+    
+    if (rcond8) {
+      (Queue(front, rear), if ((dcond8 >= 1)) {
+        dcond8
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse8: Queue, delse8: Int) = locally {
+          val (r74: List, d81: Int) = locally {
+            val (r77: List, d84: Int) = locally {
+              val (e10: List, d87: Int) = reverse(rear)
+              (e10, (1 + d87))
+            }
+            
+            locally {
+              val (e9: List, d85: Int) = concat(front, r77)
+              (e9, ((1 + d85) + if ((0 >= d84)) {
+                0
+              } else {
+                d84
+              }))
+            }
+            
+          }
+          
+          (Queue(r74, Nil()), (1 + if ((d81 >= 1)) {
+            d81
+          } else {
+            1
+          }))
+        }
+        
+        (relse8, if ((dcond8 >= delse8)) {
+          dcond8
+        } else {
+          delse8
+        })
+      }
+      
+    }
+  }
+  }
+
+  def dequeue(q : Queue) : (Queue, Int) = {    require((isAmortized(q) && !(isEmpty(q)) && q.isInstanceOf[Queue]));
+if ((q.isInstanceOf[Queue] && q.front.isInstanceOf[Cons])) {
+    locally {
+      val (rthen4: Queue, dthen4: Int) = locally {
+        val (e4: Queue, d47: Int) = amortizedQueue(q.front.tail, q.rear)
+        (e4, (3 + d47))
+      }
+      
+      (rthen4, if ((3 >= dthen4)) {
+        3
+      } else {
+        dthen4
+      })
+    }
+    
+  } else {
+    (Queue(Nil(), Nil()), if ((3 >= 2)) {
+      3
+    } else {
+      2
+    })
+  }} ensuring(res20 => true)
+
+  def size(list : List) : Int = {(list match {
+    case Nil() =>
+      0
+    case Cons(_, xs) =>
+      (1 + size(xs))
+  })}
+
+  def removeLast(l : List) : (List, Int) = {    require((l != Nil()));
+if ((l.isInstanceOf[Cons] && l.tail.isInstanceOf[Nil])) {
+    (Nil(), if ((3 >= 1)) {
+      3
+    } else {
+      1
+    })
+  } else {
+    locally {
+      val (relse5: List, delse5: Int) = if (l.isInstanceOf[Cons]) {
+        locally {
+          val (rthen6: Cons, dthen6: Int) = locally {
+            val (r57: List, d60: Int) = locally {
+              val (e5: List, d62: Int) = removeLast(l.tail)
+              (e5, (2 + d62))
+            }
+            
+            (Cons(l.head, r57), (1 + if ((1 >= d60)) {
+              1
+            } else {
+              d60
+            }))
+          }
+          
+          (rthen6, if ((1 >= dthen6)) {
+            1
+          } else {
+            dthen6
+          })
+        }
+        
+      } else {
+        (Nil(), if ((1 >= 1)) {
+          1
+        } else {
+          1
+        })
+      }
+      (relse5, if ((3 >= delse5)) {
+        3
+      } else {
+        delse5
+      })
+    }
+    
+  }} ensuring(res24 => (size(res24._1) <= size(l)))
+
+  def isAmortized(q : Queue) : Boolean = {    require(q.isInstanceOf[Queue]);
+(sizeList(q.front)._1 >= sizeList(q.rear)._1)}
+
+  def concat(l1 : List, l2 : List) : (List, Int) = {if (l1.isInstanceOf[Nil]) {
+    (l2, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse7: Cons, delse7: Int) = locally {
+        val (r63: List, d67: Int) = locally {
+          val (e6: List, d70: Int) = concat(l1.tail, l2)
+          (e6, (2 + d70))
+        }
+        
+        (Cons(l1.head, r63), (1 + if ((1 >= d67)) {
+          1
+        } else {
+          d67
+        }))
+      }
+      
+      (relse7, if ((1 >= delse7)) {
+        1
+      } else {
+        delse7
+      })
+    }
+    
+  }} ensuring(res18 => (size(res18._1) == (size(l1) + size(l2))))
+
+  def enqueue(q : Queue, elem : Int) : (Queue, Int) = {    require(q.isInstanceOf[Queue]);
+locally {
+    val (e2: Queue, d27: Int) = amortizedQueue(q.front, Cons(elem, q.rear))
+    (e2, (3 + d27))
+  }
+  } ensuring(res21 => true)
+
+  def reverse(l : List) : (List, Int) = {locally {
+    val (e11: List, d90: Int) = reverseRec(l, Nil())
+    (e11, (2 + d90))
+  }
+  } ensuring(res23 => (size(l) == size(res23._1)))
+
+  def pop(q : Queue) : (Queue, Int) = {    require((isAmortized(q) && !(isEmpty(q)) && q.isInstanceOf[Queue]));
+if ((q.isInstanceOf[Queue] && q.rear.isInstanceOf[Cons])) {
+    (Queue(q.front, q.rear.tail), if ((3 >= 3)) {
+      3
+    } else {
+      3
+    })
+  } else {
+    locally {
+      val (relse1: Queue, delse1: Int) = if (q.isInstanceOf[Queue]) {
+        locally {
+          val (rthen2: Queue, dthen2: Int) = locally {
+            val (r18: List, d17: Int) = locally {
+              val (e1: List, d21: Int) = removeLast(q.front)
+              (e1, (2 + d21))
+            }
+            
+            (Queue(r18, q.rear), (1 + if ((d17 >= 1)) {
+              d17
+            } else {
+              1
+            }))
+          }
+          
+          (rthen2, if ((1 >= dthen2)) {
+            1
+          } else {
+            dthen2
+          })
+        }
+        
+      } else {
+        (Queue(Nil(), Nil()), if ((1 >= 2)) {
+          1
+        } else {
+          2
+        })
+      }
+      (relse1, if ((3 >= delse1)) {
+        3
+      } else {
+        delse1
+      })
+    }
+    
+  }} ensuring(res19 => true)
+
+  def sizeList(list : List) : (Int, Int) = {if (list.isInstanceOf[Nil]) {
+    (0, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse: Int, delse: Int) = locally {
+        val (r4: Int, d2: Int) = locally {
+          val (e: Int, d4: Int) = sizeList(list.tail)
+          (e, (2 + d4))
+        }
+        
+        ((1 + r4), (1 + if ((0 >= d2)) {
+          0
+        } else {
+          d2
+        }))
+      }
+      
+      (relse, if ((1 >= delse)) {
+        1
+      } else {
+        delse
+      })
+    }
+    
+  }} ensuring(res17 => (res17._1 >= 0))
+
+  def qsize(q : Queue) : Int = {    require(q.isInstanceOf[Queue]);
+(size(q.front) + size(q.rear))}
+
+  def reverseRec(l1 : List, l2 : List) : (List, Int) = {if (l1.isInstanceOf[Nil]) {
+    (l2, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse3: List, delse3: Int) = locally {
+        val (e3: List, d35: Int) = reverseRec(l1.tail, Cons(l1.head, l2))
+        (e3, (3 + d35))
+      }
+      
+      (relse3, if ((1 >= delse3)) {
+        1
+      } else {
+        delse3
+      })
+    }
+    
+  }} ensuring(res22 => ((size(l1) + size(l2)) == size(res22._1)))
+
+  def asList(q : Queue) : List = {    require(q.isInstanceOf[Queue]);
+concat(q.front, reverse(q.rear)._1)._1}
+
+  def isEmpty(queue : Queue) : Boolean = {    require(queue.isInstanceOf[Queue]);
+(queue match {
+    case Queue(Nil(), Nil()) =>
+      true
+    case _ =>
+      false
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: dequeue template --> (res20._2 ≤ ((a?5 * qsize(q)) + b?5))
+Function: removeLast template --> (res24._2 ≤ ((a?6 * size(l)) + b?6))
+Function: concat template --> (res18._2 ≤ ((a?1 * size(l1)) + b?1))
+Function: enqueue template --> (res21._2 ≤ ((a?4 * qsize(q)) + b?4))
+Function: reverse template --> (res23._2 ≤ ((a?3 * size(l)) + b?3))
+Function: pop template --> (res19._2 ≤ ((a?7 * size(q.front)) + b?7))
+Function: sizeList template --> (res17._2 ≤ ((a? * size(list)) + b?))
+Function: reverseRec template --> (res22._2 ≤ ((a?2 * size(l1)) + b?2))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(size, reverseRec, reverse, sizeList, concat, amortizedQueue, isAmortized, asList, removeLast, pop, qsize, enqueue, dequeue)
+[[34m Info  [0m] - considering function reverseRec...
+[[34m Info  [0m] Body: if (l1.isInstanceOf[Nil])
+            (l2, if ((1 ≥ 0))
+              1
+            else
+              0)
+          else
+            (let (relse3,delse3 := (let (e3,d35 := reverseRec(l1.tail, Cons(l1.head, l2))) in
+              (e3, (3 + d35)))) in
+              (relse3, if ((1 ≥ delse3))
+                1
+              else
+                delse3))
+[[34m Info  [0m] Post: ((size(l1) + size(l2)) == size(res22._1))
+falttened Body: ((res22 == ifres) && ((ci && (ci == l1.isInstanceOf[Nil]) && (ifres == tp) && (tp == (l2, ifres1)) && (((1 >= 0) && (ifres1 == 1)) || ((1 < 0) && (ifres1 == 0)))) || (!(ci1) && (ci1 == l1.isInstanceOf[Nil]) && (ifres == tp1) && (tp1 == (relse3, ifres2)) && (relse3 == e3) && (delse3 == (3 + d35)) && (tres == r81) && (cs == l1.tail) && (cs1 == l1.head) && (cc == Cons(cs1, l2)) && (r81 == reverseRec(cs, cc)) && (((1 >= delse3) && (ifres2 == 1)) || ((1 < delse3) && (ifres2 == delse3))) && (e3 == ts) && (ts == tres._1) && (d35 == ts1) && (ts1 == tres._2))))
+Flattened Post: (((((r82 + r83) < r84) && (r82 == size(l1)) && (r83 == size(l2)) && (ts2 == res22._1) && (r84 == size(ts2))) || (((r85 + r86) > r87) && (r85 == size(l1)) && (r86 == size(l2)) && (ts3 == res22._1) && (r87 == size(ts3)))) || ((ts4 > ((a?2 * r88) + b?2)) && (ts4 == res22._2) && (r88 == size(l1))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((1 * res22._2) + (0 * size(l1))) + 0) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+reverseRec-->((((0 * size(l1)) + (1 * res22._2)) + -3) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 28
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 0 + 9
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/11
+Unrolled calls: Set((r87 == size(ts3)), (r85 == size(l1)), (r91 == size(ts5)), (r86 == size(l2)), (r88 == size(l1)), (r89 == size(cs)), (r90 == size(cc)))
+Creating VC for size
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function size : (((a?9 * #res) + a?8) ≤ 0)
+Unrolling (r86 == size(l2))
+Unrolling (r88 == size(l1))
+Unrolling (r91 == size(ts5))
+Unrolling (r89 == size(cs))
+Unrolling (r85 == size(l1))
+Unrolling (r87 == size(ts3))
+Unrolling (r90 == size(cc))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((0 * size(l1)) + (1 * res22._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 58
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+reverseRec-->((((16 * res22._2) + (-2 * size(l1))) + 8) ≤ 0)
+size-->(((8 * #res) + 78) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 2
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 17 + 14
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/13
+Unrolled calls: Set((r102 == size(cs)), (r84 == size(ts2)), (r83 == size(l2)), (r82 == size(l1)))
+Unrolling (r102 == size(cs))
+Unrolling (r84 == size(ts2))
+Unrolling (r83 == size(l2))
+Unrolling (r82 == size(l1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((0 * size(l1)) + (1 * res22._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 26 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+reverseRec-->((((-2 * size(l1)) + (16 * res22._2)) + 8) ≤ 0)
+size-->(((7 * #res) + 10) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 11
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 38 + 26
+solving...
+solved... in 0.019s
+candidate Invariants
+reverseRec-->((((-2 * size(l1)) + (2 * res22._2)) + 1) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 11
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 36 + 64
+solving...
+solved... in 0.029s
+candidate Invariants
+reverseRec-->((((1 * res22._2) + (-4 * size(l1))) + 1) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 100
+solving...
+solved... in 0.033s
+candidate Invariants
+reverseRec-->((((-4 * size(l1)) + (1 * res22._2)) + -2) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?2 Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: reverseRec --> ((((-3 * size(l1)) + (1 * res22._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function reverse...
+[[34m Info  [0m] Body: (let (e11,d90 := reverseRec(l, Nil())) in
+            (e11, (2 + d90)))
+[[34m Info  [0m] Post: (size(l) == size(res23._1))
+falttened Body: ((res23 == tp2) && (arg == (2 + d90)) && (tp2 == (e11, arg)) && (tres1 == r115) && (cc1 == Nil()) && (r115 == reverseRec(l, cc1)) && (e11 == ts17) && (ts17 == tres1._1) && (d90 == ts18) && (ts18 == tres1._2))
+Flattened Post: ((((r116 < r117) && (r116 == size(l)) && (ts19 == res23._1) && (r117 == size(ts19))) || ((r118 > r119) && (r118 == size(l)) && (ts20 == res23._1) && (r119 == size(ts20)))) || ((ts21 > ((a?3 * r120) + b?3)) && (ts21 == res23._2) && (r120 == size(l))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverse-->((((0 * size(l)) + (1 * res23._2)) + 0) ≤ 0)
+Function: reverse--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/9
+Unrolled calls: Set((r122 == size(cc1)), (r123 == size(ts22)), (r115 == reverseRec(l, cc1)), (r120 == size(l)), (r121 == size(l)))
+Creating VC for size
+Unrolling (r121 == size(l))
+Unrolling (r122 == size(cc1))
+Unrolling (r120 == size(l))
+Unrolling (r123 == size(ts22))
+Creating VC for reverseRec
+Unrolling (r115 == reverseRec(l, cc1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverse-->((((0 * size(l)) + (1 * res23._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+Function: reverse--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 9
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/19
+Unrolled calls: Set((r139 == size(l)), (r131 == size(l1)))
+Unrolling (r139 == size(l))
+Unrolling (r131 == size(l1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverse-->((((1 * res23._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+Function: reverse--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 155
+[[34m Info  [0m] Number of equal calls: 23
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 28 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+reverse-->((((1 * res23._2) + (1 * size(l))) + -5) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 28
+solving...
+solved... in 0.009s
+candidate Invariants
+reverse-->((((1 * res23._2) + (1 * size(l))) + -28) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+Function: reverse--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 155
+[[34m Info  [0m] Number of equal calls: 19
+# of atomic predicates: 25 + 36
+solving...
+solved... in 0.018s
+candidate Invariants
+reverse-->((((1 * res23._2) + (-4 * size(l))) + -4) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: b?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?3 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: reverse --> ((((1 * res23._2) + (-3 * size(l))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-4 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: reverseRec --> ((((-3 * size(l1)) + (1 * res22._2)) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function sizeList...
+[[34m Info  [0m] Body: if (list.isInstanceOf[Nil])
+            (0, if ((1 ≥ 0))
+              1
+            else
+              0)
+          else
+            (let (relse,delse := (let (r4,d2 := (let (e,d4 := sizeList(list.tail)) in
+              (e, (2 + d4)))) in
+              ((1 + r4), (1 + if ((0 ≥ d2))
+                0
+              else
+                d2)))) in
+              (relse, if ((1 ≥ delse))
+                1
+              else
+                delse))
+[[34m Info  [0m] Post: (res17._1 ≥ 0)
+falttened Body: ((res17 == ifres28) && ((ci44 && (ci44 == list.isInstanceOf[Nil]) && (ifres28 == tp7) && (arg1 == 0) && (tp7 == (arg1, ifres29)) && (((1 >= 0) && (ifres29 == 1)) || ((1 < 0) && (ifres29 == 0)))) || (!(ci45) && (ci45 == list.isInstanceOf[Nil]) && (ifres28 == tp8) && (tp8 == (relse, ifres30)) && (e == ts46) && (ts46 == tres4._1) && (d2 == (2 + d4)) && (d4 == ts47) && (ts47 == tres4._2) && (tres4 == r156) && (cs25 == list.tail) && (r156 == sizeList(cs25)) && (((1 >= delse) && (ifres30 == 1)) || ((1 < delse) && (ifres30 == delse))) && (((0 >= d2) && (ifres31 == 0)) || ((0 < d2) && (ifres31 == d2))) && (r4 == e) && (delse == (1 + ifres31)) && (relse == (1 + r4)))))
+Flattened Post: (((ts48 < 0) && (ts48 == res17._1)) || ((ts49 > ((a? * r157) + b?)) && (ts49 == res17._2) && (r157 == size(list))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sizeList-->((((0 * size(list)) + (1 * res17._2)) + 0) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+sizeList-->((((1 * res17._2) + (0 * size(list))) + -3) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 9
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/2
+Unrolled calls: Set((r157 == size(list)))
+Creating VC for size
+Unrolling (r157 == size(list))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sizeList-->((((1 * res17._2) + (0 * size(list))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+sizeList-->((((-2 * size(list)) + (16 * res17._2)) + -8) ≤ 0)
+size-->(((4 * #res) + 200) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 6
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 22 + 14
+solving...
+solved... in 0.029s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/4
+Unrolled calls: Set((r162 == size(cs25)))
+Unrolling (r162 == size(cs25))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sizeList-->((((1 * res17._2) + (0 * size(list))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 16 + 0
+solving...
+solved... in 0.011s
+candidate Invariants
+sizeList-->((((16 * res17._2) + (-2 * size(list))) + -8) ≤ 0)
+size-->(((-32 * #res) + 624) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 24 + 16
+solving...
+solved... in 0.015s
+candidate Invariants
+sizeList-->((((-4 * size(list)) + (1 * res17._2)) + -3) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b? Initial upperbound: 2
+Found new upper bound: 0
+Found new upper bound: -9/8
+Found new lower bound: -3
+Minimization complete...
+candidate Invariants
+sizeList-->((((-24 * size(list)) + (8 * res17._2)) + 9) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 40
+solving...
+solved... in 0.012s
+candidate Invariants
+sizeList-->((((1 * res17._2) + (-4 * size(list))) + -1) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b? Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: sizeList --> ((((1 * res17._2) + (-3 * size(list))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function concat...
+[[34m Info  [0m] Body: if (l1.isInstanceOf[Nil])
+            (l2, if ((1 ≥ 0))
+              1
+            else
+              0)
+          else
+            (let (relse7,delse7 := (let (r63,d67 := (let (e6,d70 := concat(l1.tail, l2)) in
+              (e6, (2 + d70)))) in
+              (Cons(l1.head, r63), (1 + if ((1 ≥ d67))
+                1
+              else
+                d67)))) in
+              (relse7, if ((1 ≥ delse7))
+                1
+              else
+                delse7))
+[[34m Info  [0m] Post: (size(res18._1) == (size(l1) + size(l2)))
+falttened Body: ((res18 == ifres35) && ((ci52 && (ci52 == l1.isInstanceOf[Nil]) && (ifres35 == tp9) && (tp9 == (l2, ifres36)) && (((1 >= 0) && (ifres36 == 1)) || ((1 < 0) && (ifres36 == 0)))) || (!(ci53) && (ci53 == l1.isInstanceOf[Nil]) && (ifres35 == tp10) && (tp10 == (relse7, ifres37)) && (e6 == ts62) && (ts62 == tres5._1) && (delse7 == (1 + ifres38)) && (d70 == ts63) && (ts63 == tres5._2) && (((1 >= delse7) && (ifres37 == 1)) || ((1 < delse7) && (ifres37 == delse7))) && (tres5 == r172) && (cs29 == l1.tail) && (r172 == concat(cs29, l2)) && (relse7 == cc4) && (cs30 == l1.head) && (cc4 == Cons(cs30, r63)) && (((1 >= d67) && (ifres38 == 1)) || ((1 < d67) && (ifres38 == d67))) && (r63 == e6) && (d67 == (2 + d70)))))
+Flattened Post: ((((r173 < (r174 + r175)) && (ts64 == res18._1) && (r173 == size(ts64)) && (r174 == size(l1)) && (r175 == size(l2))) || ((r176 > (r177 + r178)) && (ts65 == res18._1) && (r176 == size(ts65)) && (r177 == size(l1)) && (r178 == size(l2)))) || ((ts66 > ((a?1 * r179) + b?1)) && (ts66 == res18._2) && (r179 == size(l1))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+concat-->((((1 * res18._2) + (0 * size(l1))) + 0) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+concat-->((((1 * res18._2) + (0 * size(l1))) + -3) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 0 + 9
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/11
+Unrolled calls: Set((r174 == size(l1)), (r179 == size(l1)), (r173 == size(ts64)), (r175 == size(l2)))
+Creating VC for size
+Unrolling (r174 == size(l1))
+Unrolling (r179 == size(l1))
+Unrolling (r173 == size(ts64))
+Unrolling (r175 == size(l2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+concat-->((((0 * size(l1)) + (1 * res18._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+concat-->((((16 * res18._2) + (-2 * size(l1))) + -8) ≤ 0)
+size-->(((-2 * #res) + 56) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 39
+[[34m Info  [0m] Number of equal calls: 7
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 21 + 14
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/13
+Unrolled calls: Set((r176 == size(ts65)), (r181 == size(cs29)), (r178 == size(l2)), (r182 == size(l2)), (r180 == size(ts67)), (r190 == size(cs29)), (r177 == size(l1)))
+Unrolling (r181 == size(cs29))
+Unrolling (r178 == size(l2))
+Unrolling (r177 == size(l1))
+Unrolling (r180 == size(ts67))
+Unrolling (r190 == size(cs29))
+Unrolling (r182 == size(l2))
+Unrolling (r176 == size(ts65))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+concat-->((((1 * res18._2) + (0 * size(l1))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 58
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+concat-->((((16 * res18._2) + (-2 * size(l1))) + -8) ≤ 0)
+size-->(((0 * #res) + 11) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 23
+solving...
+solved... in 0.008s
+candidate Invariants
+concat-->((((-4 * size(l1)) + (8 * res18._2)) + 42) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 23 + 31
+solving...
+solved... in 0.014s
+candidate Invariants
+concat-->((((-1 * size(l1)) + (1 * res18._2)) + 8) ≤ 0)
+size-->(((1 * #res) + -8) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 58
+[[34m Info  [0m] Number of equal calls: 8
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 32 + 54
+solving...
+solved... in 0.021s
+candidate Invariants
+concat-->((((1 * res18._2) + (-4 * size(l1))) + -4) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?1 Initial upperbound: 4
+Found new upper bound: 1
+Found new upper bound: -1
+Found new lower bound: -2
+Minimization complete...
+candidate Invariants
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + 1) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 22 + 86
+solving...
+solved... in 0.022s
+candidate Invariants
+concat-->((((1 * res18._2) + (-4 * size(l1))) + -4) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?1 Initial upperbound: 4
+Found new upper bound: 2
+Found new upper bound: 0
+Found new upper bound: -1
+Found new lower bound: -2
+Minimization complete...
+candidate Invariants
+concat-->((((1 * res18._2) + (-3 * size(l1))) + 1) ≤ 0)
+size-->(((-1 * #res) + 0) ≤ 0)
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 108
+solving...
+solved... in 0.02s
+candidate Invariants
+concat-->((((1 * res18._2) + (-5 * size(l1))) + -4) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 5
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?1 Initial upperbound: 3
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: concat --> ((((-3 * size(l1)) + (1 * res18._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-1 * #res) + 0) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function removeLast...
+[[34m Info  [0m] Body: if ((l.isInstanceOf[Cons] ∧ l.tail.isInstanceOf[Nil]))
+            (Nil(), if ((3 ≥ 1))
+              3
+            else
+              1)
+          else
+            (let (relse5,delse5 := if (l.isInstanceOf[Cons])
+              (let (rthen6,dthen6 := (let (r57,d60 := (let (e5,d62 := removeLast(l.tail)) in
+                (e5, (2 + d62)))) in
+                (Cons(l.head, r57), (1 + if ((1 ≥ d60))
+                  1
+                else
+                  d60)))) in
+                (rthen6, if ((1 ≥ dthen6))
+                  1
+                else
+                  dthen6))
+            else
+              (Nil(), if ((1 ≥ 1))
+                1
+              else
+                1)) in
+              (relse5, if ((3 ≥ delse5))
+                3
+              else
+                delse5))
+[[34m Info  [0m] Post: (size(res24._1) ≤ size(l))
+falttened Body: ((l != cc5) && (cc5 == Nil()) && (res24 == ifres51) && ((ci78 && (ci78 == l.isInstanceOf[Cons]) && ci79 && (cs43 == l.tail) && (ci79 == cs43.isInstanceOf[Nil]) && (ifres51 == tp11) && (cc6 == Nil()) && (tp11 == (cc6, ifres52)) && (((3 >= 1) && (ifres52 == 3)) || ((3 < 1) && (ifres52 == 1)))) || (((!(ci80) && (ci80 == l.isInstanceOf[Cons])) || (!(ci81) && (cs44 == l.tail) && (ci81 == cs44.isInstanceOf[Nil]))) && (ifres51 == tp12) && (tp12 == (relse5, ifres53)) && ((ci82 && (ci82 == l.isInstanceOf[Cons]) && (ifres54 == tp13) && (tp13 == (rthen6, ifres55)) && (rthen6 == cc7) && (cs45 == l.head) && (cc7 == Cons(cs45, r57)) && (dthen6 == (1 + ifres56)) && (e5 == ts83) && (ts83 == tres6._1) && (tres6 == r210) && (cs46 == l.tail) && (r210 == removeLast(cs46)) && (d62 == ts84) && (ts84 == tres6._2) && (((1 >= d60) && (ifres56 == 1)) || ((1 < d60) && (ifres56 == d60))) && (d60 == (2 + d62)) && (((1 >= dthen6) && (ifres55 == 1)) || ((1 < dthen6) && (ifres55 == dthen6))) && (r57 == e5)) || (!(ci83) && (ci83 == l.isInstanceOf[Cons]) && (ifres54 == tp14) && (cc8 == Nil()) && (tp14 == (cc8, ifres57)) && (((1 >= 1) && (ifres57 == 1)) || ((1 < 1) && (ifres57 == 1))))) && (relse5 == ts85) && (ts85 == ifres54._1) && (delse5 == ts86) && (ts86 == ifres54._2) && (((3 >= delse5) && (ifres53 == 3)) || ((3 < delse5) && (ifres53 == delse5))))))
+Flattened Post: (((r211 > r212) && (ts87 == res24._1) && (r211 == size(ts87)) && (r212 == size(l))) || ((ts88 > ((a?6 * r213) + b?6)) && (ts88 == res24._2) && (r213 == size(l))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeLast-->((((1 * res24._2) + (0 * size(l))) + 0) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 37
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+removeLast-->((((1 * res24._2) + (0 * size(l))) + -5) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 37
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 12 + 9
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/6
+Unrolled calls: Set((r213 == size(l)), (r215 == size(cs46)), (r214 == size(ts89)))
+Creating VC for size
+Unrolling (r213 == size(l))
+Unrolling (r215 == size(cs46))
+Unrolling (r214 == size(ts89))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeLast-->((((1 * res24._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 66
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+removeLast-->((((16 * res24._2) + (-2 * size(l))) + 8) ≤ 0)
+size-->(((4 * #res) + 34) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 18 + 14
+solving...
+solved... in 0.008s
+candidate Invariants
+removeLast-->((((1 * res24._2) + (0 * size(l))) + -4) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 66
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 16 + 32
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/8
+Unrolled calls: Set((r222 == size(cs46)))
+Unrolling (r222 == size(cs46))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeLast-->((((0 * size(l)) + (1 * res24._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+removeLast-->((((-2 * size(l)) + (16 * res24._2)) + -8) ≤ 0)
+size-->(((-32 * #res) + 1136) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 15
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 35 + 12
+solving...
+solved... in 0.018s
+candidate Invariants
+removeLast-->((((1 * res24._2) + (-4 * size(l))) + -4) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 7 + 47
+solving...
+solved... in 0.021s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/8
+Unrolled calls: Set((r211 == size(ts87)), (r212 == size(l)))
+Unrolling (r211 == size(ts87))
+Unrolling (r212 == size(l))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeLast-->((((1 * res24._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+removeLast-->((((16 * res24._2) + (-2 * size(l))) + -8) ≤ 0)
+size-->(((-32 * #res) + 1136) ≤ 0)
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 15
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 38 + 12
+solving...
+solved... in 0.021s
+candidate Invariants
+removeLast-->((((1 * res24._2) + (-4 * size(l))) + -4) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?6-->1
+Nesting level: b?6-->0
+minimizing...
+Minimizing variable: a?6 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?6 Initial upperbound: 5
+Found new upper bound: 7/4
+Found new upper bound: 0
+Found new lower bound: -1
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: removeLast --> ((((-3 * size(l)) + (1 * res24._2)) + 0) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-1 * #res) + 0) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function pop...
+[[34m Info  [0m] Body: if ((q.isInstanceOf[Queue] ∧ q.rear.isInstanceOf[Cons]))
+            (Queue(q.front, q.rear.tail), if ((3 ≥ 3))
+              3
+            else
+              3)
+          else
+            (let (relse1,delse1 := if (q.isInstanceOf[Queue])
+              (let (rthen2,dthen2 := (let (r18,d17 := (let (e1,d21 := removeLast(q.front)) in
+                (e1, (2 + d21)))) in
+                (Queue(r18, q.rear), (1 + if ((d17 ≥ 1))
+                  d17
+                else
+                  1)))) in
+                (rthen2, if ((1 ≥ dthen2))
+                  1
+                else
+                  dthen2))
+            else
+              (Queue(Nil(), Nil()), if ((1 ≥ 2))
+                1
+              else
+                2)) in
+              (relse1, if ((3 ≥ delse1))
+                3
+              else
+                delse1))
+[[34m Info  [0m] Post: true
+falttened Body: (r236 && (r236 == isAmortized(q)) && !(r237) && (r237 == isEmpty(q)) && ci98 && (ci98 == q.isInstanceOf[Queue]) && (res19 == ifres65) && ((ci99 && (ci99 == q.isInstanceOf[Queue]) && ci100 && (cs54 == q.rear) && (ci100 == cs54.isInstanceOf[Cons]) && (ifres65 == tp15) && (cs56 == q.rear) && (cs55 == q.front) && (tp15 == (cc11, ifres66)) && (cc11 == Queue(cs55, cs57)) && (cs57 == cs56.tail) && (((3 >= 3) && (ifres66 == 3)) || ((3 < 3) && (ifres66 == 3)))) || (((!(ci101) && (ci101 == q.isInstanceOf[Queue])) || (!(ci102) && (cs58 == q.rear) && (ci102 == cs58.isInstanceOf[Cons]))) && (ifres65 == tp16) && (tp16 == (relse1, ifres67)) && ((ci103 && (ci103 == q.isInstanceOf[Queue]) && (ifres68 == tp17) && (tp17 == (rthen2, ifres69)) && (((d17 >= 1) && (ifres70 == d17)) || ((d17 < 1) && (ifres70 == 1))) && (((1 >= dthen2) && (ifres69 == 1)) || ((1 < dthen2) && (ifres69 == dthen2))) && (r18 == e1) && (d17 == (2 + d21)) && (e1 == ts103) && (ts103 == tres7._1) && (d21 == ts104) && (ts104 == tres7._2) && (tres7 == r238) && (cs59 == q.front) && (r238 == removeLast(cs59)) && (dthen2 == (1 + ifres70)) && (rthen2 == cc12) && (cs60 == q.rear) && (cc12 == Queue(r18, cs60))) || (!(ci104) && (ci104 == q.isInstanceOf[Queue]) && (ifres68 == tp18) && (cc13 == Nil()) && (cc14 == Nil()) && (cc15 == Queue(cc13, cc14)) && (tp18 == (cc15, ifres71)) && (((1 >= 2) && (ifres71 == 1)) || ((1 < 2) && (ifres71 == 2))))) && (relse1 == ts105) && (ts105 == ifres68._1) && (delse1 == ts106) && (ts106 == ifres68._2) && (((3 >= delse1) && (ifres67 == 3)) || ((3 < delse1) && (ifres67 == delse1))))))
+Flattened Post: ((ts107 > ((a?7 * r239) + b?7)) && (ts107 == res19._2) && (cs61 == q.front) && (r239 == size(cs61)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+pop-->((((0 * size(q.front)) + (1 * res19._2)) + 0) ≤ 0)
+Function: pop--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 11
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+pop-->((((0 * size(q.front)) + (1 * res19._2)) + -5) ≤ 0)
+Function: pop--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 21
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 11 + 9
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/6
+Unrolled calls: Set((r238 == removeLast(cs59)), (r237 <=> isEmpty(q)), (r236 <=> isAmortized(q)), (r239 == size(cs61)))
+Creating VC for removeLast
+Unrolling (r238 == removeLast(cs59))
+Inlining (r237 <=> isEmpty(q))
+Inlining (r236 <=> isAmortized(q))
+Creating VC for size
+Unrolling (r239 == size(cs61))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+pop-->((((0 * size(q.front)) + (1 * res19._2)) + 0) ≤ 0)
+removeLast-->((((-3 * size(l)) + (1 * res24._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: pop--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 132
+[[34m Info  [0m] Number of equal calls: 27
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 17 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/16
+Unrolled calls: Set((r241 == size(cs59)), (r246 == size(l)), (r258 == size(cs71)), (r250 == sizeList(cs77)), (r240 == size(ts108)), (r259 == size(cs59)), (r257 == size(ts128)), (r249 == sizeList(cs76)))
+Unrolling (r246 == size(l))
+Unrolling (r258 == size(cs71))
+Unrolling (r257 == size(ts128))
+Unrolling (r259 == size(cs59))
+Unrolling (r241 == size(cs59))
+Creating VC for sizeList
+Unrolling (r249 == sizeList(cs76))
+Unrolling (r250 == sizeList(cs77))
+Unrolling (r240 == size(ts108))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+pop-->((((0 * size(q.front)) + (1 * res19._2)) + 0) ≤ 0)
+removeLast-->((((-3 * size(l)) + (1 * res24._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Function: pop--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 323
+[[34m Info  [0m] Number of equal calls: 44
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/24
+Unrolled calls: Set((r277 == size(cs76)), (r269 == size(list)), (r280 == size(cs77)), (r279 == size(cs71)))
+Unrolling (r277 == size(cs76))
+Unrolling (r269 == size(list))
+Unrolling (r280 == size(cs77))
+Unrolling (r279 == size(cs71))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+pop-->((((1 * res19._2) + (0 * size(q.front))) + 0) ≤ 0)
+removeLast-->((((-3 * size(l)) + (1 * res24._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Function: pop--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 198
+[[34m Info  [0m] Number of equal calls: 31
+Function: removeLast--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 28 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+pop-->((((3 * res19._2) + (-9 * size(q.front))) + -5) ≤ 0)
+removeLast-->((((-3 * size(l)) + (1 * res24._2)) + 0) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Function: pop--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 405
+[[34m Info  [0m] Number of equal calls: 49
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 53 + 28
+solving...
+solved... in 0.026s
+candidate Invariants
+pop-->((((-4 * size(q.front)) + (1 * res19._2)) + -3) ≤ 0)
+removeLast-->((((-3 * size(l)) + (1 * res24._2)) + 0) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Nesting level: a?7-->1
+Nesting level: b?7-->0
+minimizing...
+Minimizing variable: a?7 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b?7 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: pop --> ((((1 * res19._2) + (-3 * size(q.front))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: removeLast --> ((((-3 * size(l)) + (1 * res24._2)) + 0) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-4 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeList --> ((((1 * res17._2) + (-3 * size(list))) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function enqueue...
+[[34m Info  [0m] Body: (let (e2,d27 := amortizedQueue(q.front, Cons(elem, q.rear))) in
+            (e2, (3 + d27)))
+[[34m Info  [0m] Post: true
+falttened Body: (ci153 && (ci153 == q.isInstanceOf[Queue]) && (res21 == tp33) && (arg5 == (3 + d27)) && (tp33 == (e2, arg5)) && (tres13 == r303) && (cs101 == q.front) && (cs102 == q.rear) && (cc29 == Cons(elem, cs102)) && (r303 == amortizedQueue(cs101, cc29)) && (e2 == ts167) && (ts167 == tres13._1) && (d27 == ts168) && (ts168 == tres13._2))
+Flattened Post: ((ts169 > ((a?4 * r304) + b?4)) && (ts169 == res21._2) && (r304 == qsize(q)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+enqueue-->((((1 * res21._2) + (0 * qsize(q))) + 0) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/2
+Unrolled calls: Set((r303 == amortizedQueue(cs101, cc29)), (r304 == qsize(q)))
+Inlining (r303 == amortizedQueue(cs101, cc29))
+Inlining (r304 == qsize(q))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+enqueue-->((((0 * qsize(q)) + (1 * res21._2)) + 0) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 37
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+enqueue-->((((0 * qsize(q)) + (1 * res21._2)) + -6) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 37
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 11 + 12
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/11
+Unrolled calls: Set((r315 == size(cs104)), (r313 == sizeList(cc29)), (r314 == size(cs103)), (r310 == sizeList(cs101)))
+Creating VC for size
+Unrolling (r315 == size(cs104))
+Creating VC for sizeList
+Unrolling (r313 == sizeList(cc29))
+Unrolling (r314 == size(cs103))
+Unrolling (r310 == sizeList(cs101))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+enqueue-->((((1 * res21._2) + (0 * qsize(q))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 171
+[[34m Info  [0m] Number of equal calls: 21
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/16
+Unrolled calls: Set((r327 == size(list)), (r334 == size(cs101)), (r333 == size(cc29)))
+Unrolling (r327 == size(list))
+Unrolling (r334 == size(cs101))
+Unrolling (r333 == size(cc29))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+enqueue-->((((0 * qsize(q)) + (1 * res21._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 245
+[[34m Info  [0m] Number of equal calls: 30
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 30 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+enqueue-->((((1 * res21._2) + (-8 * qsize(q))) + -11) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 320
+[[34m Info  [0m] Number of equal calls: 37
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 49 + 30
+solving...
+solved... in 0.031s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 10/19
+Unrolled calls: Set((r318 == size(r308)), (r342 == size(cs108)), (r312 == reverse(cc29)), (r311 == concat(cs101, r308)), (r319 == size(cc29)), (r317 == size(cs101)), (r316 == size(ts179)), (r320 == size(ts180)), (r340 == size(cs110)), (r341 == size(cs107)))
+Unrolling (r319 == size(cc29))
+Unrolling (r341 == size(cs107))
+Unrolling (r320 == size(ts180))
+Unrolling (r342 == size(cs108))
+Unrolling (r316 == size(ts179))
+Creating VC for concat
+Unrolling (r311 == concat(cs101, r308))
+Unrolling (r318 == size(r308))
+Inlining (r312 == reverse(cc29))
+Unrolling (r317 == size(cs101))
+Unrolling (r340 == size(cs110))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+enqueue-->((((1 * res21._2) + (0 * qsize(q))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 281
+[[34m Info  [0m] Number of equal calls: 32
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 42 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/31
+Unrolled calls: Set((r354 == size(l1)))
+Unrolling (r354 == size(l1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+enqueue-->((((0 * qsize(q)) + (1 * res21._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 427
+[[34m Info  [0m] Number of equal calls: 49
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 69 + 0
+solving...
+solved... in 0.022s
+candidate Invariants
+enqueue-->((((8 * res21._2) + (8 * qsize(q))) + -1) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 281
+[[34m Info  [0m] Number of equal calls: 32
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 50 + 69
+solving...
+solved... in 0.077s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/33
+Unrolled calls: Set((r365 == size(cc35)), (r364 == size(cc29)), (r361 == size(ts213)), (r363 == size(l2)), (r366 == size(ts214)), (r370 == size(cs101)), (r358 == reverseRec(cc29, cc35)), (r375 == size(cs119)), (r362 == size(cs119)))
+Unrolling (r370 == size(cs101))
+Unrolling (r363 == size(l2))
+Unrolling (r361 == size(ts213))
+Unrolling (r364 == size(cc29))
+Unrolling (r375 == size(cs119))
+Unrolling (r365 == size(cc35))
+Creating VC for reverseRec
+Unrolling (r358 == reverseRec(cc29, cc35))
+Unrolling (r366 == size(ts214))
+Unrolling (r362 == size(cs119))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((1 * res21._2) + (0 * qsize(q))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 281
+[[34m Info  [0m] Number of equal calls: 32
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 0 + 0
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/42
+Unrolled calls: Set((r390 == size(l1)))
+Unrolling (r390 == size(l1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((0 * qsize(q)) + (1 * res21._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 8
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 281
+[[34m Info  [0m] Number of equal calls: 32
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 81 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((-36 * qsize(q)) + (3 * res21._2)) + 11) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 81
+solving...
+solved... in 0.016s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((24 * res21._2) + (-288 * qsize(q))) + -245) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 660
+[[34m Info  [0m] Number of equal calls: 68
+# of atomic predicates: 58 + 89
+solving...
+solved... in 0.03s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((1 * res21._2) + (-12 * qsize(q))) + -14) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Nesting level: a?4-->1
+Nesting level: b?4-->0
+minimizing...
+Minimizing variable: a?4 Initial upperbound: 12
+Found new upper bound: 5
+Found new upper bound: 2
+Found new lower bound: 1
+Minimizing variable: b?4 Initial upperbound: 14
+Found new lower bound: 7
+Found new lower bound: 10
+Found new lower bound: 12
+Found new upper bound: 13
+Minimization complete...
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((1 * res21._2) + (-2 * qsize(q))) + -13) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: enqueue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 281
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 39 + 147
+solving...
+solved... in 0.053s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+enqueue-->((((1 * res21._2) + (-3 * qsize(q))) + -14) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Nesting level: a?4-->1
+Nesting level: b?4-->0
+minimizing...
+Minimizing variable: a?4 Initial upperbound: 3
+Found new lower bound: 1
+Found new lower bound: 2
+Minimizing variable: b?4 Initial upperbound: 14
+Found new lower bound: 7
+Found new lower bound: 10
+Found new lower bound: 12
+Found new upper bound: 13
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: reverseRec --> ((((-3 * size(l1)) + (1 * res22._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: enqueue --> ((((-3 * qsize(q)) + (1 * res21._2)) + -13) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-4 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeList --> ((((1 * res17._2) + (-3 * size(list))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: concat --> ((((-3 * size(l1)) + (1 * res18._2)) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function dequeue...
+[[34m Info  [0m] Body: if ((q.isInstanceOf[Queue] ∧ q.front.isInstanceOf[Cons]))
+            (let (rthen4,dthen4 := (let (e4,d47 := amortizedQueue(q.front.tail, q.rear)) in
+              (e4, (3 + d47)))) in
+              (rthen4, if ((3 ≥ dthen4))
+                3
+              else
+                dthen4))
+          else
+            (Queue(Nil(), Nil()), if ((3 ≥ 2))
+              3
+            else
+              2)
+[[34m Info  [0m] Post: true
+falttened Body: (r436 && (r436 == isAmortized(q)) && !(r437) && (r437 == isEmpty(q)) && ci216 && (ci216 == q.isInstanceOf[Queue]) && (res20 == ifres167) && ((ci217 && (ci217 == q.isInstanceOf[Queue]) && ci218 && (cs140 == q.front) && (ci218 == cs140.isInstanceOf[Cons]) && (ifres167 == tp51) && (tp51 == (rthen4, ifres168)) && (d47 == ts270) && (ts270 == tres26._2) && (dthen4 == (3 + d47)) && (e4 == ts271) && (ts271 == tres26._1) && (rthen4 == e4) && (((3 >= dthen4) && (ifres168 == 3)) || ((3 < dthen4) && (ifres168 == dthen4))) && (tres26 == r438) && (cs141 == q.front) && (cs142 == cs141.tail) && (cs143 == q.rear) && (r438 == amortizedQueue(cs142, cs143))) || (((!(ci219) && (ci219 == q.isInstanceOf[Queue])) || (!(ci220) && (cs144 == q.front) && (ci220 == cs144.isInstanceOf[Cons]))) && (ifres167 == tp52) && (cc38 == Nil()) && (cc39 == Nil()) && (cc40 == Queue(cc38, cc39)) && (tp52 == (cc40, ifres169)) && (((3 >= 2) && (ifres169 == 3)) || ((3 < 2) && (ifres169 == 2))))))
+Flattened Post: ((ts272 > ((a?5 * r439) + b?5)) && (ts272 == res20._2) && (r439 == qsize(q)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+dequeue-->((((1 * res20._2) + (0 * qsize(q))) + 0) ≤ 0)
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+dequeue-->((((1 * res20._2) + (0 * qsize(q))) + -5) ≤ 0)
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 9
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 10 + 9
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/4
+Unrolled calls: Set((r436 <=> isAmortized(q)), (r437 <=> isEmpty(q)), (r438 == amortizedQueue(cs142, cs143)), (r439 == qsize(q)))
+Inlining (r436 <=> isAmortized(q))
+Inlining (r437 <=> isEmpty(q))
+Inlining (r438 == amortizedQueue(cs142, cs143))
+Inlining (r439 == qsize(q))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+dequeue-->((((0 * qsize(q)) + (1 * res20._2)) + 0) ≤ 0)
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+dequeue-->((((0 * qsize(q)) + (1 * res20._2)) + -5) ≤ 0)
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 133
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 11 + 9
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 13/15
+Unrolled calls: Set((r459 == size(cs142)), (r456 == size(cs143)), (r460 == size(r448)), (r450 == sizeList(cs142)), (r458 == size(ts292)), (r454 == size(cs153)), (r453 == reverse(cs143)), (r443 == sizeList(cs146)), (r451 == sizeList(cs143)), (r455 == size(cs154)), (r452 == concat(cs142, r448)), (r442 == sizeList(cs145)), (r457 == size(ts287)))
+Creating VC for size
+Unrolling (r454 == size(cs153))
+Inlining (r453 == reverse(cs143))
+Creating VC for sizeList
+Unrolling (r442 == sizeList(cs145))
+Unrolling (r460 == size(r448))
+Unrolling (r443 == sizeList(cs146))
+Unrolling (r450 == sizeList(cs142))
+Unrolling (r457 == size(ts287))
+Unrolling (r458 == size(ts292))
+Unrolling (r459 == size(cs142))
+Unrolling (r455 == size(cs154))
+Creating VC for concat
+Unrolling (r452 == concat(cs142, r448))
+Unrolling (r456 == size(cs143))
+Unrolling (r451 == sizeList(cs143))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+dequeue-->((((1 * res20._2) + (0 * qsize(q))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1021
+[[34m Info  [0m] Number of equal calls: 78
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 24 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 14/36
+Unrolled calls: Set((r498 == size(cs146)), (r490 == size(r448)), (r497 == size(cs145)), (r499 == size(cs142)), (r494 == size(cs143)), (r489 == size(cs169)), (r482 == size(l1)), (r488 == size(ts319)), (r501 == size(cs142)), (r468 == size(list)), (r496 == size(ts321)), (r503 == size(cs143)), (r465 == reverseRec(cs143, cc44)), (r495 == size(cc44)))
+Unrolling (r468 == size(list))
+Unrolling (r490 == size(r448))
+Unrolling (r494 == size(cs143))
+Unrolling (r503 == size(cs143))
+Unrolling (r495 == size(cc44))
+Unrolling (r496 == size(ts321))
+Unrolling (r498 == size(cs146))
+Unrolling (r489 == size(cs169))
+Unrolling (r482 == size(l1))
+Unrolling (r499 == size(cs142))
+Unrolling (r501 == size(cs142))
+Unrolling (r497 == size(cs145))
+Unrolling (r488 == size(ts319))
+Creating VC for reverseRec
+Unrolling (r465 == reverseRec(cs143, cc44))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+dequeue-->((((0 * qsize(q)) + (1 * res20._2)) + 0) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 6
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 810
+[[34m Info  [0m] Number of equal calls: 61
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 0 + 0
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 10/52
+Unrolled calls: Set((r531 == size(cs161)), (r492 == size(cs167)), (r529 == size(cs171)), (r491 == size(ts320)), (r493 == size(l2)), (r536 == size(cs158)), (r530 == size(cs160)), (r532 == size(cs157)), (r521 == size(l1)), (r534 == size(cs167)))
+Unrolling (r536 == size(cs158))
+Unrolling (r492 == size(cs167))
+Unrolling (r529 == size(cs171))
+Unrolling (r534 == size(cs167))
+Unrolling (r521 == size(l1))
+Unrolling (r531 == size(cs161))
+Unrolling (r530 == size(cs160))
+Unrolling (r532 == size(cs157))
+Unrolling (r491 == size(ts320))
+Unrolling (r493 == size(l2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+dequeue-->((((1 * res20._2) + (0 * qsize(q))) + 0) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: reverseRec--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 10
+Function: sizeList--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 24
+[[34m Info  [0m] Number of equal calls: 6
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2541
+[[34m Info  [0m] Number of equal calls: 120
+Function: concat--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 134 + 0
+solving...
+solved... in 0.031s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+dequeue-->((((768 * qsize(q)) + (3072 * res20._2)) + -182260) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 930
+[[34m Info  [0m] Number of equal calls: 66
+# of atomic predicates: 52 + 134
+solving...
+solved... in 0.095s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+dequeue-->((((-3 * qsize(q)) + (1 * res20._2)) + -73) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Nesting level: a?5-->1
+Nesting level: b?5-->0
+minimizing...
+Minimizing variable: a?5 Initial upperbound: 3
+Found new lower bound: 1
+Found new upper bound: 3/2
+Minimizing variable: b?5 Initial upperbound: 79
+Aborting due to overflow.
+Minimization complete...
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+dequeue-->((((2 * res20._2) + (-3 * qsize(q))) + -158) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Function: dequeue--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2385
+[[34m Info  [0m] Number of equal calls: 120
+# of atomic predicates: 114 + 186
+solving...
+solved... in 0.359s
+candidate Invariants
+reverseRec-->((((-3 * size(l1)) + (1 * res22._2)) + -1) ≤ 0)
+size-->(((-4 * #res) + -1) ≤ 0)
+sizeList-->((((1 * res17._2) + (-3 * size(list))) + -1) ≤ 0)
+dequeue-->((((1 * res20._2) + (-3 * qsize(q))) + -21) ≤ 0)
+concat-->((((-3 * size(l1)) + (1 * res18._2)) + -1) ≤ 0)
+Nesting level: a?5-->1
+Nesting level: b?5-->0
+minimizing...
+Minimizing variable: a?5 Initial upperbound: 3
+Found new lower bound: 1
+Found new lower bound: 2
+Minimizing variable: b?5 Initial upperbound: 21
+Found new upper bound: 9
+Found new lower bound: 4
+Found new lower bound: 6
+Found new upper bound: 7
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: reverseRec --> ((((-3 * size(l1)) + (1 * res22._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-4 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sizeList --> ((((1 * res17._2) + (-3 * size(list))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: dequeue --> ((((1 * res20._2) + (-3 * qsize(q))) + -7) <= 0)
+[[34m Info  [0m] - Found inductive invariant: concat --> ((((-3 * size(l1)) + (1 * res18._2)) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

@@ -1,0 +1,6188 @@
+After Depth Instrumentation: 
+object QSortDepth {
+  case class Nil() extends List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  sealed abstract class List
+
+  case class Triple(fst: List, snd: List, trd: List)
+
+  def partition(n : Int, l : List) : (Triple, Int) = {locally {
+    val dcond = 1
+    if (l.isInstanceOf[Nil]) {
+      (Triple(Nil(), Nil(), Nil()), if ((dcond >= 2)) {
+        dcond
+      } else {
+        2
+      })
+    } else {
+      locally {
+        val (relse: Triple, delse: Int) = locally {
+          val (vr: Triple, vd: Int) = locally {
+            val (e: Triple, d6: Int) = partition(n, l.tail)
+            (e, (2 + d6))
+          }
+          
+          locally {
+            val (br: Triple, bd: Int) = locally {
+              val dcond1 = 2
+              if ((n < l.head)) {
+                (Triple(vr.fst, vr.snd, Cons(l.head, vr.trd)), if ((dcond1 >= (1 + if ((if (((1 + vd) >= (1 + vd))) {
+                  (1 + vd)
+                } else {
+                  (1 + vd)
+                } >= (1 + if ((1 >= (1 + vd))) {
+                  1
+                } else {
+                  (1 + vd)
+                }))) {
+                  if (((1 + vd) >= (1 + vd))) {
+                    (1 + vd)
+                  } else {
+                    (1 + vd)
+                  }
+                } else {
+                  (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  })
+                }))) {
+                  dcond1
+                } else {
+                  (1 + if ((if (((1 + vd) >= (1 + vd))) {
+                    (1 + vd)
+                  } else {
+                    (1 + vd)
+                  } >= (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  }))) {
+                    if (((1 + vd) >= (1 + vd))) {
+                      (1 + vd)
+                    } else {
+                      (1 + vd)
+                    }
+                  } else {
+                    (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    })
+                  })
+                })
+              } else {
+                locally {
+                  val (relse1: Triple, delse1: Int) = locally {
+                    val dcond2 = 2
+                    if ((n == l.head)) {
+                      (Triple(vr.fst, Cons(l.head, vr.snd), vr.trd), if ((dcond2 >= (1 + if ((if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                        1
+                      } else {
+                        (1 + vd)
+                      }))) {
+                        (1 + vd)
+                      } else {
+                        (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        })
+                      } >= (1 + vd))) {
+                        if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }))) {
+                          (1 + vd)
+                        } else {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        }
+                      } else {
+                        (1 + vd)
+                      }))) {
+                        dcond2
+                      } else {
+                        (1 + if ((if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }))) {
+                          (1 + vd)
+                        } else {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        } >= (1 + vd))) {
+                          if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          }))) {
+                            (1 + vd)
+                          } else {
+                            (1 + if ((1 >= (1 + vd))) {
+                              1
+                            } else {
+                              (1 + vd)
+                            })
+                          }
+                        } else {
+                          (1 + vd)
+                        })
+                      })
+                    } else {
+                      (Triple(Cons(l.head, vr.fst), vr.snd, vr.trd), if ((dcond2 >= (1 + if ((if (((1 + if ((1 >= (1 + vd))) {
+                        1
+                      } else {
+                        (1 + vd)
+                      }) >= (1 + vd))) {
+                        (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        })
+                      } else {
+                        (1 + vd)
+                      } >= (1 + vd))) {
+                        if (((1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }) >= (1 + vd))) {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        } else {
+                          (1 + vd)
+                        }
+                      } else {
+                        (1 + vd)
+                      }))) {
+                        dcond2
+                      } else {
+                        (1 + if ((if (((1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }) >= (1 + vd))) {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        } else {
+                          (1 + vd)
+                        } >= (1 + vd))) {
+                          if (((1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          }) >= (1 + vd))) {
+                            (1 + if ((1 >= (1 + vd))) {
+                              1
+                            } else {
+                              (1 + vd)
+                            })
+                          } else {
+                            (1 + vd)
+                          }
+                        } else {
+                          (1 + vd)
+                        })
+                      })
+                    }
+                  }
+                  
+                  (relse1, if ((dcond1 >= delse1)) {
+                    dcond1
+                  } else {
+                    delse1
+                  })
+                }
+                
+              }
+            }
+            
+            (br, (bd + 1))
+          }
+          
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(l) == ((size(res._1.fst) + size(res._1.snd)) + size(res._1.trd))))
+
+  def append(aList : List, bList : List) : (List, Int) = {locally {
+    val dcond3 = 1
+    if (aList.isInstanceOf[Nil]) {
+      (bList, if ((dcond3 >= 0)) {
+        dcond3
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse3: Cons, delse3: Int) = locally {
+          val (r43: List, d43: Int) = locally {
+            val (e1: List, d46: Int) = append(aList.tail, bList)
+            (e1, (2 + d46))
+          }
+          
+          (Cons(aList.head, r43), (1 + if ((1 >= d43)) {
+            1
+          } else {
+            d43
+          }))
+        }
+        
+        (relse3, if ((dcond3 >= delse3)) {
+          dcond3
+        } else {
+          delse3
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(res._1) == (size(aList) + size(bList))))
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(x, xs) =>
+      (1 + size(xs))
+  })}
+
+  def quickSort(l : List) : (List, Int) = {locally {
+    val dcond4 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond4 >= 1)) {
+        dcond4
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse4: List, delse4: Int) = locally {
+          val dcond5 = 3
+          if ((l.isInstanceOf[Cons] && l.tail.isInstanceOf[Nil])) {
+            (l, if ((dcond5 >= 0)) {
+              dcond5
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse5: List, delse5: Int) = locally {
+                val dcond6 = 1
+                if (l.isInstanceOf[Cons]) {
+                  locally {
+                    val (rthen6: List, dthen6: Int) = locally {
+                      val (vr1: Triple, vd1: Int) = locally {
+                        val (e2: Triple, d58: Int) = partition(l.head, l.tail)
+                        (e2, (2 + d58))
+                      }
+                      
+                      locally {
+                        val (br1: List, bd1: Int) = locally {
+                          val (r59: List, d61: Int) = locally {
+                            val (r63: List, d67: Int) = locally {
+                              val (e6: List, d75: Int) = quickSort(vr1.fst)
+                              (e6, ((1 + d75) + (1 + vd1)))
+                            }
+                            
+                            locally {
+                              val (e5: List, d69: Int) = append(r63, Cons(l.head, vr1.snd))
+                              (e5, ((1 + d69) + if ((d67 >= (1 + if ((1 >= (1 + vd1))) {
+                                1
+                              } else {
+                                (1 + vd1)
+                              }))) {
+                                d67
+                              } else {
+                                (1 + if ((1 >= (1 + vd1))) {
+                                  1
+                                } else {
+                                  (1 + vd1)
+                                })
+                              }))
+                            }
+                            
+                          }
+                          
+                          locally {
+                            val (r60: List, d62: Int) = locally {
+                              val (e4: List, d65: Int) = quickSort(vr1.trd)
+                              (e4, ((1 + d65) + (1 + vd1)))
+                            }
+                            
+                            locally {
+                              val (e3: List, d63: Int) = append(r59, r60)
+                              (e3, ((1 + d63) + if ((d61 >= d62)) {
+                                d61
+                              } else {
+                                d62
+                              }))
+                            }
+                            
+                          }
+                          
+                        }
+                        
+                        (br1, (bd1 + 1))
+                      }
+                      
+                    }
+                    
+                    (rthen6, if ((dcond6 >= dthen6)) {
+                      dcond6
+                    } else {
+                      dthen6
+                    })
+                  }
+                  
+                } else {
+                  (l, if ((dcond6 >= 0)) {
+                    dcond6
+                  } else {
+                    0
+                  })
+                }
+              }
+              
+              (relse5, if ((dcond5 >= delse5)) {
+                dcond5
+              } else {
+                delse5
+              })
+            }
+            
+          }
+        }
+        
+        (relse4, if ((dcond4 >= delse4)) {
+          dcond4
+        } else {
+          delse4
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(res._1) == size(l)))
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: partition
+Defined fun: append
+Defined fun: size
+Defined fun: quickSort
+Defined fun: max
+FunMap: Map(append -> append, size -> size, max -> max, partition -> partition, quickSort -> quickSort)
+After Time Instrumentation: 
+object QSortDepth {
+  case class Nil() extends List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  sealed abstract class List
+
+  case class Triple(fst: List, snd: List, trd: List)
+
+  def partition(n : Int, l : List) : (Triple, Int) = {locally {
+    val dcond = 1
+    if (l.isInstanceOf[Nil]) {
+      (Triple(Nil(), Nil(), Nil()), if ((dcond >= 2)) {
+        dcond
+      } else {
+        2
+      })
+    } else {
+      locally {
+        val (relse: Triple, delse: Int) = locally {
+          val (vr: Triple, vd: Int) = locally {
+            val (e: Triple, d6: Int) = partition(n, l.tail)
+            (e, (2 + d6))
+          }
+          
+          locally {
+            val (br: Triple, bd: Int) = locally {
+              val dcond1 = 2
+              if ((n < l.head)) {
+                (Triple(vr.fst, vr.snd, Cons(l.head, vr.trd)), if ((dcond1 >= (1 + if ((if (((1 + vd) >= (1 + vd))) {
+                  (1 + vd)
+                } else {
+                  (1 + vd)
+                } >= (1 + if ((1 >= (1 + vd))) {
+                  1
+                } else {
+                  (1 + vd)
+                }))) {
+                  if (((1 + vd) >= (1 + vd))) {
+                    (1 + vd)
+                  } else {
+                    (1 + vd)
+                  }
+                } else {
+                  (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  })
+                }))) {
+                  dcond1
+                } else {
+                  (1 + if ((if (((1 + vd) >= (1 + vd))) {
+                    (1 + vd)
+                  } else {
+                    (1 + vd)
+                  } >= (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  }))) {
+                    if (((1 + vd) >= (1 + vd))) {
+                      (1 + vd)
+                    } else {
+                      (1 + vd)
+                    }
+                  } else {
+                    (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    })
+                  })
+                })
+              } else {
+                locally {
+                  val (relse1: Triple, delse1: Int) = locally {
+                    val dcond2 = 2
+                    if ((n == l.head)) {
+                      (Triple(vr.fst, Cons(l.head, vr.snd), vr.trd), if ((dcond2 >= (1 + if ((if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                        1
+                      } else {
+                        (1 + vd)
+                      }))) {
+                        (1 + vd)
+                      } else {
+                        (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        })
+                      } >= (1 + vd))) {
+                        if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }))) {
+                          (1 + vd)
+                        } else {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        }
+                      } else {
+                        (1 + vd)
+                      }))) {
+                        dcond2
+                      } else {
+                        (1 + if ((if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }))) {
+                          (1 + vd)
+                        } else {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        } >= (1 + vd))) {
+                          if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          }))) {
+                            (1 + vd)
+                          } else {
+                            (1 + if ((1 >= (1 + vd))) {
+                              1
+                            } else {
+                              (1 + vd)
+                            })
+                          }
+                        } else {
+                          (1 + vd)
+                        })
+                      })
+                    } else {
+                      (Triple(Cons(l.head, vr.fst), vr.snd, vr.trd), if ((dcond2 >= (1 + if ((if (((1 + if ((1 >= (1 + vd))) {
+                        1
+                      } else {
+                        (1 + vd)
+                      }) >= (1 + vd))) {
+                        (1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        })
+                      } else {
+                        (1 + vd)
+                      } >= (1 + vd))) {
+                        if (((1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }) >= (1 + vd))) {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        } else {
+                          (1 + vd)
+                        }
+                      } else {
+                        (1 + vd)
+                      }))) {
+                        dcond2
+                      } else {
+                        (1 + if ((if (((1 + if ((1 >= (1 + vd))) {
+                          1
+                        } else {
+                          (1 + vd)
+                        }) >= (1 + vd))) {
+                          (1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          })
+                        } else {
+                          (1 + vd)
+                        } >= (1 + vd))) {
+                          if (((1 + if ((1 >= (1 + vd))) {
+                            1
+                          } else {
+                            (1 + vd)
+                          }) >= (1 + vd))) {
+                            (1 + if ((1 >= (1 + vd))) {
+                              1
+                            } else {
+                              (1 + vd)
+                            })
+                          } else {
+                            (1 + vd)
+                          }
+                        } else {
+                          (1 + vd)
+                        })
+                      })
+                    }
+                  }
+                  
+                  (relse1, if ((dcond1 >= delse1)) {
+                    dcond1
+                  } else {
+                    delse1
+                  })
+                }
+                
+              }
+            }
+            
+            (br, (bd + 1))
+          }
+          
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res8 => (size(l) == ((size(res8._1.fst) + size(res8._1.snd)) + size(res8._1.trd))))
+
+  def append(aList : List, bList : List) : (List, Int) = {locally {
+    val dcond3 = 1
+    if (aList.isInstanceOf[Nil]) {
+      (bList, if ((dcond3 >= 0)) {
+        dcond3
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse3: Cons, delse3: Int) = locally {
+          val (r43: List, d43: Int) = locally {
+            val (e1: List, d46: Int) = append(aList.tail, bList)
+            (e1, (2 + d46))
+          }
+          
+          (Cons(aList.head, r43), (1 + if ((1 >= d43)) {
+            1
+          } else {
+            d43
+          }))
+        }
+        
+        (relse3, if ((dcond3 >= delse3)) {
+          dcond3
+        } else {
+          delse3
+        })
+      }
+      
+    }
+  }
+  } ensuring(res7 => (size(res7._1) == (size(aList) + size(bList))))
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(x, xs) =>
+      (1 + size(xs))
+  })}
+
+  def quickSort(l : List) : (List, Int) = {locally {
+    val dcond4 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond4 >= 1)) {
+        dcond4
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse4: List, delse4: Int) = locally {
+          val dcond5 = 3
+          if ((l.isInstanceOf[Cons] && l.tail.isInstanceOf[Nil])) {
+            (l, if ((dcond5 >= 0)) {
+              dcond5
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse5: List, delse5: Int) = locally {
+                val dcond6 = 1
+                if (l.isInstanceOf[Cons]) {
+                  locally {
+                    val (rthen6: List, dthen6: Int) = locally {
+                      val (vr1: Triple, vd1: Int) = locally {
+                        val (e2: Triple, d58: Int) = partition(l.head, l.tail)
+                        (e2, (2 + d58))
+                      }
+                      
+                      locally {
+                        val (br1: List, bd1: Int) = locally {
+                          val (r59: List, d61: Int) = locally {
+                            val (r63: List, d67: Int) = locally {
+                              val (e6: List, d75: Int) = quickSort(vr1.fst)
+                              (e6, ((1 + d75) + (1 + vd1)))
+                            }
+                            
+                            locally {
+                              val (e5: List, d69: Int) = append(r63, Cons(l.head, vr1.snd))
+                              (e5, ((1 + d69) + if ((d67 >= (1 + if ((1 >= (1 + vd1))) {
+                                1
+                              } else {
+                                (1 + vd1)
+                              }))) {
+                                d67
+                              } else {
+                                (1 + if ((1 >= (1 + vd1))) {
+                                  1
+                                } else {
+                                  (1 + vd1)
+                                })
+                              }))
+                            }
+                            
+                          }
+                          
+                          locally {
+                            val (r60: List, d62: Int) = locally {
+                              val (e4: List, d65: Int) = quickSort(vr1.trd)
+                              (e4, ((1 + d65) + (1 + vd1)))
+                            }
+                            
+                            locally {
+                              val (e3: List, d63: Int) = append(r59, r60)
+                              (e3, ((1 + d63) + if ((d61 >= d62)) {
+                                d61
+                              } else {
+                                d62
+                              }))
+                            }
+                            
+                          }
+                          
+                        }
+                        
+                        (br1, (bd1 + 1))
+                      }
+                      
+                    }
+                    
+                    (rthen6, if ((dcond6 >= dthen6)) {
+                      dcond6
+                    } else {
+                      dthen6
+                    })
+                  }
+                  
+                } else {
+                  (l, if ((dcond6 >= 0)) {
+                    dcond6
+                  } else {
+                    0
+                  })
+                }
+              }
+              
+              (relse5, if ((dcond5 >= delse5)) {
+                dcond5
+              } else {
+                delse5
+              })
+            }
+            
+          }
+        }
+        
+        (relse4, if ((dcond4 >= delse4)) {
+          dcond4
+        } else {
+          delse4
+        })
+      }
+      
+    }
+  }
+  } ensuring(res9 => (size(res9._1) == size(l)))
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object QSortDepth {
+  case class Nil() extends List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  sealed abstract class List
+
+  case class Triple(fst: List, snd: List, trd: List)
+
+  def partition(n : Int, l : List) : (Triple, Int) = {if (l.isInstanceOf[Nil]) {
+    (Triple(Nil(), Nil(), Nil()), if ((1 >= 2)) {
+      1
+    } else {
+      2
+    })
+  } else {
+    locally {
+      val (relse: Triple, delse: Int) = locally {
+        val (vr: Triple, vd: Int) = locally {
+          val (e: Triple, d6: Int) = partition(n, l.tail)
+          (e, (2 + d6))
+        }
+        
+        locally {
+          val (br: Triple, bd: Int) = if ((n < l.head)) {
+            (Triple(vr.fst, vr.snd, Cons(l.head, vr.trd)), if ((2 >= (1 + if ((if (((1 + vd) >= (1 + vd))) {
+              (1 + vd)
+            } else {
+              (1 + vd)
+            } >= (1 + if ((1 >= (1 + vd))) {
+              1
+            } else {
+              (1 + vd)
+            }))) {
+              if (((1 + vd) >= (1 + vd))) {
+                (1 + vd)
+              } else {
+                (1 + vd)
+              }
+            } else {
+              (1 + if ((1 >= (1 + vd))) {
+                1
+              } else {
+                (1 + vd)
+              })
+            }))) {
+              2
+            } else {
+              (1 + if ((if (((1 + vd) >= (1 + vd))) {
+                (1 + vd)
+              } else {
+                (1 + vd)
+              } >= (1 + if ((1 >= (1 + vd))) {
+                1
+              } else {
+                (1 + vd)
+              }))) {
+                if (((1 + vd) >= (1 + vd))) {
+                  (1 + vd)
+                } else {
+                  (1 + vd)
+                }
+              } else {
+                (1 + if ((1 >= (1 + vd))) {
+                  1
+                } else {
+                  (1 + vd)
+                })
+              })
+            })
+          } else {
+            locally {
+              val (relse1: Triple, delse1: Int) = if ((n == l.head)) {
+                (Triple(vr.fst, Cons(l.head, vr.snd), vr.trd), if ((2 >= (1 + if ((if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                  1
+                } else {
+                  (1 + vd)
+                }))) {
+                  (1 + vd)
+                } else {
+                  (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  })
+                } >= (1 + vd))) {
+                  if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  }))) {
+                    (1 + vd)
+                  } else {
+                    (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    })
+                  }
+                } else {
+                  (1 + vd)
+                }))) {
+                  2
+                } else {
+                  (1 + if ((if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  }))) {
+                    (1 + vd)
+                  } else {
+                    (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    })
+                  } >= (1 + vd))) {
+                    if (((1 + vd) >= (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    }))) {
+                      (1 + vd)
+                    } else {
+                      (1 + if ((1 >= (1 + vd))) {
+                        1
+                      } else {
+                        (1 + vd)
+                      })
+                    }
+                  } else {
+                    (1 + vd)
+                  })
+                })
+              } else {
+                (Triple(Cons(l.head, vr.fst), vr.snd, vr.trd), if ((2 >= (1 + if ((if (((1 + if ((1 >= (1 + vd))) {
+                  1
+                } else {
+                  (1 + vd)
+                }) >= (1 + vd))) {
+                  (1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  })
+                } else {
+                  (1 + vd)
+                } >= (1 + vd))) {
+                  if (((1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  }) >= (1 + vd))) {
+                    (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    })
+                  } else {
+                    (1 + vd)
+                  }
+                } else {
+                  (1 + vd)
+                }))) {
+                  2
+                } else {
+                  (1 + if ((if (((1 + if ((1 >= (1 + vd))) {
+                    1
+                  } else {
+                    (1 + vd)
+                  }) >= (1 + vd))) {
+                    (1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    })
+                  } else {
+                    (1 + vd)
+                  } >= (1 + vd))) {
+                    if (((1 + if ((1 >= (1 + vd))) {
+                      1
+                    } else {
+                      (1 + vd)
+                    }) >= (1 + vd))) {
+                      (1 + if ((1 >= (1 + vd))) {
+                        1
+                      } else {
+                        (1 + vd)
+                      })
+                    } else {
+                      (1 + vd)
+                    }
+                  } else {
+                    (1 + vd)
+                  })
+                })
+              }
+              (relse1, if ((2 >= delse1)) {
+                2
+              } else {
+                delse1
+              })
+            }
+            
+          }
+          (br, (bd + 1))
+        }
+        
+      }
+      
+      (relse, if ((1 >= delse)) {
+        1
+      } else {
+        delse
+      })
+    }
+    
+  }} ensuring(res8 => (size(l) == ((size(res8._1.fst) + size(res8._1.snd)) + size(res8._1.trd))))
+
+  def append(aList : List, bList : List) : (List, Int) = {if (aList.isInstanceOf[Nil]) {
+    (bList, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse3: Cons, delse3: Int) = locally {
+        val (r43: List, d43: Int) = locally {
+          val (e1: List, d46: Int) = append(aList.tail, bList)
+          (e1, (2 + d46))
+        }
+        
+        (Cons(aList.head, r43), (1 + if ((1 >= d43)) {
+          1
+        } else {
+          d43
+        }))
+      }
+      
+      (relse3, if ((1 >= delse3)) {
+        1
+      } else {
+        delse3
+      })
+    }
+    
+  }} ensuring(res7 => (size(res7._1) == (size(aList) + size(bList))))
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(x, xs) =>
+      (1 + size(xs))
+  })}
+
+  def quickSort(l : List) : (List, Int) = {if (l.isInstanceOf[Nil]) {
+    (Nil(), if ((1 >= 1)) {
+      1
+    } else {
+      1
+    })
+  } else {
+    locally {
+      val (relse4: List, delse4: Int) = if ((l.isInstanceOf[Cons] && l.tail.isInstanceOf[Nil])) {
+        (l, if ((3 >= 0)) {
+          3
+        } else {
+          0
+        })
+      } else {
+        locally {
+          val (relse5: List, delse5: Int) = if (l.isInstanceOf[Cons]) {
+            locally {
+              val (rthen6: List, dthen6: Int) = locally {
+                val (vr1: Triple, vd1: Int) = locally {
+                  val (e2: Triple, d58: Int) = partition(l.head, l.tail)
+                  (e2, (2 + d58))
+                }
+                
+                locally {
+                  val (br1: List, bd1: Int) = locally {
+                    val (r59: List, d61: Int) = locally {
+                      val (r63: List, d67: Int) = locally {
+                        val (e6: List, d75: Int) = quickSort(vr1.fst)
+                        (e6, ((1 + d75) + (1 + vd1)))
+                      }
+                      
+                      locally {
+                        val (e5: List, d69: Int) = append(r63, Cons(l.head, vr1.snd))
+                        (e5, ((1 + d69) + if ((d67 >= (1 + if ((1 >= (1 + vd1))) {
+                          1
+                        } else {
+                          (1 + vd1)
+                        }))) {
+                          d67
+                        } else {
+                          (1 + if ((1 >= (1 + vd1))) {
+                            1
+                          } else {
+                            (1 + vd1)
+                          })
+                        }))
+                      }
+                      
+                    }
+                    
+                    locally {
+                      val (r60: List, d62: Int) = locally {
+                        val (e4: List, d65: Int) = quickSort(vr1.trd)
+                        (e4, ((1 + d65) + (1 + vd1)))
+                      }
+                      
+                      locally {
+                        val (e3: List, d63: Int) = append(r59, r60)
+                        (e3, ((1 + d63) + if ((d61 >= d62)) {
+                          d61
+                        } else {
+                          d62
+                        }))
+                      }
+                      
+                    }
+                    
+                  }
+                  
+                  (br1, (bd1 + 1))
+                }
+                
+              }
+              
+              (rthen6, if ((1 >= dthen6)) {
+                1
+              } else {
+                dthen6
+              })
+            }
+            
+          } else {
+            (l, if ((1 >= 0)) {
+              1
+            } else {
+              0
+            })
+          }
+          (relse5, if ((3 >= delse5)) {
+            3
+          } else {
+            delse5
+          })
+        }
+        
+      }
+      (relse4, if ((1 >= delse4)) {
+        1
+      } else {
+        delse4
+      })
+    }
+    
+  }} ensuring(res9 => (size(res9._1) == size(l)))
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def mult(x : Int, y : Int) : Int = {locally {
+    val r = locally {
+      val px = if ((x < 0)) {
+        -(x)
+      } else {
+        x
+      }
+      locally {
+        val py = if ((y < 0)) {
+          -(y)
+        } else {
+          y
+        }
+        pmult(px, py)
+      }
+      
+    }
+    
+    if ((((x >= 0) && (y >= 0)) || ((x < 0) && (y < 0)))) {
+      r
+    } else {
+      -(r)
+    }
+  }
+  }
+
+  def pmult(x : Int, y : Int) : Int = {if (((x == 0) || (y == 0))) {
+    0
+  } else {
+    (pmult((x - 1), y) + y)
+  }} ensuring(res => ((res >= 0) && (((x == 0) || (y == 0)) || (res == (pmult(x, (y - 1)) + x)))))
+}
+
+Function: partition template --> (res8._2 ≤ ((a?1 * size(l)) + b?1))
+Function: append template --> (res7._2 ≤ ((a? * size(aList)) + b?))
+Function: quickSort template --> (res9._2 ≤ (((a?2 * mult(size(l), size(l))) + (b?2 * size(l))) + c?))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(pmult, size, mult, append, partition, quickSort)
+[[34m Info  [0m] - considering function append...
+[[34m Info  [0m] Body: if (aList.isInstanceOf[Nil])
+            (bList, if ((1 ≥ 0))
+              1
+            else
+              0)
+          else
+            (let (relse3,delse3 := (let (r43,d43 := (let (e1,d46 := append(aList.tail, bList)) in
+              (e1, (2 + d46)))) in
+              (Cons(aList.head, r43), (1 + if ((1 ≥ d43))
+                1
+              else
+                d43)))) in
+              (relse3, if ((1 ≥ delse3))
+                1
+              else
+                delse3))
+[[34m Info  [0m] Post: (size(res7._1) == (size(aList) + size(bList)))
+falttened Body: ((res7 == ifres) && ((ci && (ci == aList.isInstanceOf[Nil]) && (ifres == tp) && (tp == (bList, ifres1)) && (((1 >= 0) && (ifres1 == 1)) || ((1 < 0) && (ifres1 == 0)))) || (!(ci1) && (ci1 == aList.isInstanceOf[Nil]) && (ifres == tp1) && (tp1 == (relse3, ifres2)) && (relse3 == cc) && (cs == aList.head) && (cc == Cons(cs, r43)) && (((1 >= d43) && (ifres3 == 1)) || ((1 < d43) && (ifres3 == d43))) && (((1 >= delse3) && (ifres2 == 1)) || ((1 < delse3) && (ifres2 == delse3))) && (d46 == ts) && (ts == tres._2) && (d43 == (2 + d46)) && (delse3 == (1 + ifres3)) && (r43 == e1) && (tres == r71) && (cs1 == aList.tail) && (r71 == append(cs1, bList)) && (e1 == ts1) && (ts1 == tres._1))))
+Flattened Post: ((((r72 < (r73 + r74)) && (ts2 == res7._1) && (r72 == size(ts2)) && (r73 == size(aList)) && (r74 == size(bList))) || ((r75 > (r76 + r77)) && (ts3 == res7._1) && (r75 == size(ts3)) && (r76 == size(aList)) && (r77 == size(bList)))) || ((ts4 > ((a? * r78) + b?)) && (ts4 == res7._2) && (r78 == size(aList))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+append-->((((0 * size(aList)) + (1 * res7._2)) + 0) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 19
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/11
+Unrolled calls: Set((r81 == size(bList)), (r78 == size(aList)), (r80 == size(cs1)), (r79 == size(ts5)))
+Creating VC for size
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function size : (((a?4 * #res) + a?3) ≤ 0)
+Unrolling (r81 == size(bList))
+Unrolling (r78 == size(aList))
+Unrolling (r80 == size(cs1))
+Unrolling (r79 == size(ts5))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+append-->((((0 * size(aList)) + (1 * res7._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 58
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+append-->((((-2 * size(aList)) + (16 * res7._2)) + -8) ≤ 0)
+size-->(((-2 * #res) + 56) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 8
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 23 + 14
+solving...
+solved... in 0.026s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/13
+Unrolled calls: Set((r88 == size(cs1)))
+Unrolling (r88 == size(cs1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+append-->((((1 * res7._2) + (0 * size(aList))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+append-->((((0 * size(aList)) + (8 * res7._2)) + -1) ≤ 0)
+size-->(((0 * #res) + 23) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.008s
+candidate Invariants
+append-->((((1 * res7._2) + (0 * size(aList))) + -4) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 9 + 18
+solving...
+solved... in 0.009s
+candidate Invariants
+append-->((((1 * res7._2) + (0 * size(aList))) + -4) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 75
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 24 + 27
+solving...
+solved... in 0.013s
+candidate Invariants
+append-->((((11 * size(aList)) + (1 * res7._2)) + -4) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 91
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 25 + 51
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/13
+Unrolled calls: Set((r72 == size(ts2)), (r73 == size(aList)), (r74 == size(bList)), (r77 == size(bList)), (r75 == size(ts3)), (r76 == size(aList)))
+Unrolling (r73 == size(aList))
+Unrolling (r77 == size(bList))
+Unrolling (r72 == size(ts2))
+Unrolling (r76 == size(aList))
+Unrolling (r74 == size(bList))
+Unrolling (r75 == size(ts3))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+append-->((((1 * res7._2) + (0 * size(aList))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 32 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+append-->((((-2 * size(aList)) + (16 * res7._2)) + -8) ≤ 0)
+size-->(((0 * #res) + 39) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 32
+solving...
+solved... in 0.012s
+candidate Invariants
+append-->((((-28 * size(aList)) + (2 * res7._2)) + 1) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 32 + 40
+solving...
+solved... in 0.09s
+candidate Invariants
+append-->((((1 * res7._2) + (-4 * size(aList))) + 1) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 72
+solving...
+solved... in 0.045s
+candidate Invariants
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: append --> ((((1 * res7._2) + (-4 * size(aList))) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-1 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function partition...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Triple(Nil(), Nil(), Nil()), if ((1 ≥ 2))
+              1
+            else
+              2)
+          else
+            (let (relse,delse := (let (vr,vd := (let (e,d6 := partition(n, l.tail)) in
+              (e, (2 + d6)))) in
+              (let (br,bd := if ((n < l.head))
+                (Triple(vr.fst, vr.snd, Cons(l.head, vr.trd)), if ((2 ≥ (1 + if ((if (((1 + vd) ≥ (1 + vd)))
+                  (1 + vd)
+                else
+                  (1 + vd) ≥ (1 + if ((1 ≥ (1 + vd)))
+                  1
+                else
+                  (1 + vd))))
+                  if (((1 + vd) ≥ (1 + vd)))
+                    (1 + vd)
+                  else
+                    (1 + vd)
+                else
+                  (1 + if ((1 ≥ (1 + vd)))
+                    1
+                  else
+                    (1 + vd)))))
+                  2
+                else
+                  (1 + if ((if (((1 + vd) ≥ (1 + vd)))
+                    (1 + vd)
+                  else
+                    (1 + vd) ≥ (1 + if ((1 ≥ (1 + vd)))
+                    1
+                  else
+                    (1 + vd))))
+                    if (((1 + vd) ≥ (1 + vd)))
+                      (1 + vd)
+                    else
+                      (1 + vd)
+                  else
+                    (1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd))))
+              else
+                (let (relse1,delse1 := if ((n == l.head))
+                  (Triple(vr.fst, Cons(l.head, vr.snd), vr.trd), if ((2 ≥ (1 + if ((if (((1 + vd) ≥ (1 + if ((1 ≥ (1 + vd)))
+                    1
+                  else
+                    (1 + vd))))
+                    (1 + vd)
+                  else
+                    (1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd)) ≥ (1 + vd)))
+                    if (((1 + vd) ≥ (1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd))))
+                      (1 + vd)
+                    else
+                      (1 + if ((1 ≥ (1 + vd)))
+                        1
+                      else
+                        (1 + vd))
+                  else
+                    (1 + vd))))
+                    2
+                  else
+                    (1 + if ((if (((1 + vd) ≥ (1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd))))
+                      (1 + vd)
+                    else
+                      (1 + if ((1 ≥ (1 + vd)))
+                        1
+                      else
+                        (1 + vd)) ≥ (1 + vd)))
+                      if (((1 + vd) ≥ (1 + if ((1 ≥ (1 + vd)))
+                        1
+                      else
+                        (1 + vd))))
+                        (1 + vd)
+                      else
+                        (1 + if ((1 ≥ (1 + vd)))
+                          1
+                        else
+                          (1 + vd))
+                    else
+                      (1 + vd)))
+                else
+                  (Triple(Cons(l.head, vr.fst), vr.snd, vr.trd), if ((2 ≥ (1 + if ((if (((1 + if ((1 ≥ (1 + vd)))
+                    1
+                  else
+                    (1 + vd)) ≥ (1 + vd)))
+                    (1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd))
+                  else
+                    (1 + vd) ≥ (1 + vd)))
+                    if (((1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd)) ≥ (1 + vd)))
+                      (1 + if ((1 ≥ (1 + vd)))
+                        1
+                      else
+                        (1 + vd))
+                    else
+                      (1 + vd)
+                  else
+                    (1 + vd))))
+                    2
+                  else
+                    (1 + if ((if (((1 + if ((1 ≥ (1 + vd)))
+                      1
+                    else
+                      (1 + vd)) ≥ (1 + vd)))
+                      (1 + if ((1 ≥ (1 + vd)))
+                        1
+                      else
+                        (1 + vd))
+                    else
+                      (1 + vd) ≥ (1 + vd)))
+                      if (((1 + if ((1 ≥ (1 + vd)))
+                        1
+                      else
+                        (1 + vd)) ≥ (1 + vd)))
+                        (1 + if ((1 ≥ (1 + vd)))
+                          1
+                        else
+                          (1 + vd))
+                      else
+                        (1 + vd)
+                    else
+                      (1 + vd)))) in
+                  (relse1, if ((2 ≥ delse1))
+                    2
+                  else
+                    delse1))) in
+                (br, (bd + 1))))) in
+              (relse, if ((1 ≥ delse))
+                1
+              else
+                delse))
+[[34m Info  [0m] Post: (size(l) == ((size(res8._1.fst) + size(res8._1.snd)) + size(res8._1.trd)))
+falttened Body: ((res8 == ifres16) && ((ci26 && (ci26 == l.isInstanceOf[Nil]) && (ifres16 == tp2) && (cc3 == Nil()) && (cc2 == Nil()) && (cc1 == Nil()) && (tp2 == (cc4, ifres17)) && (cc4 == Triple(cc1, cc2, cc3)) && (((1 >= 2) && (ifres17 == 1)) || ((1 < 2) && (ifres17 == 2)))) || (!(ci27) && (ci27 == l.isInstanceOf[Nil]) && (ifres16 == tp3) && (tp3 == (relse, ifres18)) && (d6 == ts21) && (ts21 == tres1._2) && (br == ts22) && (ts22 == ifres19._1) && (((n < cs14) && (cs14 == l.head) && (ifres19 == tp4) && (cs15 == vr.fst) && (cc5 == Cons(cs17, cs18)) && (cs18 == vr.trd) && (tp4 == (cc6, ifres20)) && (cc6 == Triple(cs15, cs16, cc5)) && (cs16 == vr.snd) && (cs17 == l.head) && (((2 >= (1 + ifres21)) && (((ifres22 >= (1 + ifres23)) && ((((1 + vd) >= (1 + vd)) && (ifres22 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres22 == (1 + vd)))) && (((1 >= (1 + vd)) && (ifres23 == 1)) || ((1 < (1 + vd)) && (ifres23 == (1 + vd)))) && (ifres21 == ifres24) && ((((1 + vd) >= (1 + vd)) && (ifres24 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres24 == (1 + vd))))) || ((ifres25 < (1 + ifres26)) && ((((1 + vd) >= (1 + vd)) && (ifres25 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres25 == (1 + vd)))) && (((1 >= (1 + vd)) && (ifres26 == 1)) || ((1 < (1 + vd)) && (ifres26 == (1 + vd)))) && (ifres21 == (1 + ifres27)) && (((1 >= (1 + vd)) && (ifres27 == 1)) || ((1 < (1 + vd)) && (ifres27 == (1 + vd)))))) && (ifres20 == 2)) || ((2 < (1 + ifres28)) && (((ifres29 >= (1 + ifres30)) && ((((1 + vd) >= (1 + vd)) && (ifres29 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres29 == (1 + vd)))) && (((1 >= (1 + vd)) && (ifres30 == 1)) || ((1 < (1 + vd)) && (ifres30 == (1 + vd)))) && (ifres28 == ifres31) && ((((1 + vd) >= (1 + vd)) && (ifres31 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres31 == (1 + vd))))) || ((ifres32 < (1 + ifres33)) && ((((1 + vd) >= (1 + vd)) && (ifres32 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres32 == (1 + vd)))) && (((1 >= (1 + vd)) && (ifres33 == 1)) || ((1 < (1 + vd)) && (ifres33 == (1 + vd)))) && (ifres28 == (1 + ifres34)) && (((1 >= (1 + vd)) && (ifres34 == 1)) || ((1 < (1 + vd)) && (ifres34 == (1 + vd)))))) && (ifres20 == (1 + ifres35)) && (((ifres36 >= (1 + ifres37)) && ((((1 + vd) >= (1 + vd)) && (ifres36 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres36 == (1 + vd)))) && (((1 >= (1 + vd)) && (ifres37 == 1)) || ((1 < (1 + vd)) && (ifres37 == (1 + vd)))) && (ifres35 == ifres38) && ((((1 + vd) >= (1 + vd)) && (ifres38 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres38 == (1 + vd))))) || ((ifres39 < (1 + ifres40)) && ((((1 + vd) >= (1 + vd)) && (ifres39 == (1 + vd))) || (((1 + vd) < (1 + vd)) && (ifres39 == (1 + vd)))) && (((1 >= (1 + vd)) && (ifres40 == 1)) || ((1 < (1 + vd)) && (ifres40 == (1 + vd)))) && (ifres35 == (1 + ifres41)) && (((1 >= (1 + vd)) && (ifres41 == 1)) || ((1 < (1 + vd)) && (ifres41 == (1 + vd))))))))) || ((n >= cs19) && (cs19 == l.head) && (ifres19 == tp5) && (tp5 == (relse1, ifres42)) && (((n == cs20) && (cs20 == l.head) && (ifres43 == tp6) && (cc7 == Cons(cs22, cs23)) && (cs23 == vr.snd) && (tp6 == (cc8, ifres44)) && (cc8 == Triple(cs21, cc7, cs24)) && (cs22 == l.head) && (cs21 == vr.fst) && (cs24 == vr.trd) && (((2 >= (1 + ifres45)) && (((ifres46 >= (1 + vd)) && ((((1 + vd) >= (1 + ifres47)) && (((1 >= (1 + vd)) && (ifres47 == 1)) || ((1 < (1 + vd)) && (ifres47 == (1 + vd)))) && (ifres46 == (1 + vd))) || (((1 + vd) < (1 + ifres48)) && (((1 >= (1 + vd)) && (ifres48 == 1)) || ((1 < (1 + vd)) && (ifres48 == (1 + vd)))) && (ifres46 == (1 + ifres49)) && (((1 >= (1 + vd)) && (ifres49 == 1)) || ((1 < (1 + vd)) && (ifres49 == (1 + vd)))))) && (ifres45 == ifres50) && ((((1 + vd) >= (1 + ifres51)) && (((1 >= (1 + vd)) && (ifres51 == 1)) || ((1 < (1 + vd)) && (ifres51 == (1 + vd)))) && (ifres50 == (1 + vd))) || (((1 + vd) < (1 + ifres52)) && (((1 >= (1 + vd)) && (ifres52 == 1)) || ((1 < (1 + vd)) && (ifres52 == (1 + vd)))) && (ifres50 == (1 + ifres53)) && (((1 >= (1 + vd)) && (ifres53 == 1)) || ((1 < (1 + vd)) && (ifres53 == (1 + vd))))))) || ((ifres54 < (1 + vd)) && ((((1 + vd) >= (1 + ifres55)) && (((1 >= (1 + vd)) && (ifres55 == 1)) || ((1 < (1 + vd)) && (ifres55 == (1 + vd)))) && (ifres54 == (1 + vd))) || (((1 + vd) < (1 + ifres56)) && (((1 >= (1 + vd)) && (ifres56 == 1)) || ((1 < (1 + vd)) && (ifres56 == (1 + vd)))) && (ifres54 == (1 + ifres57)) && (((1 >= (1 + vd)) && (ifres57 == 1)) || ((1 < (1 + vd)) && (ifres57 == (1 + vd)))))) && (ifres45 == (1 + vd)))) && (ifres44 == 2)) || ((2 < (1 + ifres58)) && (((ifres59 >= (1 + vd)) && ((((1 + vd) >= (1 + ifres60)) && (((1 >= (1 + vd)) && (ifres60 == 1)) || ((1 < (1 + vd)) && (ifres60 == (1 + vd)))) && (ifres59 == (1 + vd))) || (((1 + vd) < (1 + ifres61)) && (((1 >= (1 + vd)) && (ifres61 == 1)) || ((1 < (1 + vd)) && (ifres61 == (1 + vd)))) && (ifres59 == (1 + ifres62)) && (((1 >= (1 + vd)) && (ifres62 == 1)) || ((1 < (1 + vd)) && (ifres62 == (1 + vd)))))) && (ifres58 == ifres63) && ((((1 + vd) >= (1 + ifres64)) && (((1 >= (1 + vd)) && (ifres64 == 1)) || ((1 < (1 + vd)) && (ifres64 == (1 + vd)))) && (ifres63 == (1 + vd))) || (((1 + vd) < (1 + ifres65)) && (((1 >= (1 + vd)) && (ifres65 == 1)) || ((1 < (1 + vd)) && (ifres65 == (1 + vd)))) && (ifres63 == (1 + ifres66)) && (((1 >= (1 + vd)) && (ifres66 == 1)) || ((1 < (1 + vd)) && (ifres66 == (1 + vd))))))) || ((ifres67 < (1 + vd)) && ((((1 + vd) >= (1 + ifres68)) && (((1 >= (1 + vd)) && (ifres68 == 1)) || ((1 < (1 + vd)) && (ifres68 == (1 + vd)))) && (ifres67 == (1 + vd))) || (((1 + vd) < (1 + ifres69)) && (((1 >= (1 + vd)) && (ifres69 == 1)) || ((1 < (1 + vd)) && (ifres69 == (1 + vd)))) && (ifres67 == (1 + ifres70)) && (((1 >= (1 + vd)) && (ifres70 == 1)) || ((1 < (1 + vd)) && (ifres70 == (1 + vd)))))) && (ifres58 == (1 + vd)))) && (ifres44 == (1 + ifres71)) && (((ifres72 >= (1 + vd)) && ((((1 + vd) >= (1 + ifres73)) && (((1 >= (1 + vd)) && (ifres73 == 1)) || ((1 < (1 + vd)) && (ifres73 == (1 + vd)))) && (ifres72 == (1 + vd))) || (((1 + vd) < (1 + ifres74)) && (((1 >= (1 + vd)) && (ifres74 == 1)) || ((1 < (1 + vd)) && (ifres74 == (1 + vd)))) && (ifres72 == (1 + ifres75)) && (((1 >= (1 + vd)) && (ifres75 == 1)) || ((1 < (1 + vd)) && (ifres75 == (1 + vd)))))) && (ifres71 == ifres76) && ((((1 + vd) >= (1 + ifres77)) && (((1 >= (1 + vd)) && (ifres77 == 1)) || ((1 < (1 + vd)) && (ifres77 == (1 + vd)))) && (ifres76 == (1 + vd))) || (((1 + vd) < (1 + ifres78)) && (((1 >= (1 + vd)) && (ifres78 == 1)) || ((1 < (1 + vd)) && (ifres78 == (1 + vd)))) && (ifres76 == (1 + ifres79)) && (((1 >= (1 + vd)) && (ifres79 == 1)) || ((1 < (1 + vd)) && (ifres79 == (1 + vd))))))) || ((ifres80 < (1 + vd)) && ((((1 + vd) >= (1 + ifres81)) && (((1 >= (1 + vd)) && (ifres81 == 1)) || ((1 < (1 + vd)) && (ifres81 == (1 + vd)))) && (ifres80 == (1 + vd))) || (((1 + vd) < (1 + ifres82)) && (((1 >= (1 + vd)) && (ifres82 == 1)) || ((1 < (1 + vd)) && (ifres82 == (1 + vd)))) && (ifres80 == (1 + ifres83)) && (((1 >= (1 + vd)) && (ifres83 == 1)) || ((1 < (1 + vd)) && (ifres83 == (1 + vd)))))) && (ifres71 == (1 + vd))))))) || ((((n < cs25) && (cs25 == l.head)) || ((n > cs26) && (cs26 == l.head))) && (ifres43 == tp7) && (cs30 == vr.trd) && (tp7 == (cc10, ifres84)) && (cs27 == l.head) && (cs28 == vr.fst) && (cs29 == vr.snd) && (cc10 == Triple(cc9, cs29, cs30)) && (cc9 == Cons(cs27, cs28)) && (((2 >= (1 + ifres85)) && (((ifres86 >= (1 + vd)) && ((((1 + ifres87) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres87 == 1)) || ((1 < (1 + vd)) && (ifres87 == (1 + vd)))) && (ifres86 == (1 + ifres88)) && (((1 >= (1 + vd)) && (ifres88 == 1)) || ((1 < (1 + vd)) && (ifres88 == (1 + vd))))) || (((1 + ifres89) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres89 == 1)) || ((1 < (1 + vd)) && (ifres89 == (1 + vd)))) && (ifres86 == (1 + vd)))) && (ifres85 == ifres90) && ((((1 + ifres91) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres91 == 1)) || ((1 < (1 + vd)) && (ifres91 == (1 + vd)))) && (ifres90 == (1 + ifres92)) && (((1 >= (1 + vd)) && (ifres92 == 1)) || ((1 < (1 + vd)) && (ifres92 == (1 + vd))))) || (((1 + ifres93) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres93 == 1)) || ((1 < (1 + vd)) && (ifres93 == (1 + vd)))) && (ifres90 == (1 + vd))))) || ((ifres94 < (1 + vd)) && ((((1 + ifres95) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres95 == 1)) || ((1 < (1 + vd)) && (ifres95 == (1 + vd)))) && (ifres94 == (1 + ifres96)) && (((1 >= (1 + vd)) && (ifres96 == 1)) || ((1 < (1 + vd)) && (ifres96 == (1 + vd))))) || (((1 + ifres97) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres97 == 1)) || ((1 < (1 + vd)) && (ifres97 == (1 + vd)))) && (ifres94 == (1 + vd)))) && (ifres85 == (1 + vd)))) && (ifres84 == 2)) || ((2 < (1 + ifres98)) && (((ifres99 >= (1 + vd)) && ((((1 + ifres100) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres100 == 1)) || ((1 < (1 + vd)) && (ifres100 == (1 + vd)))) && (ifres99 == (1 + ifres101)) && (((1 >= (1 + vd)) && (ifres101 == 1)) || ((1 < (1 + vd)) && (ifres101 == (1 + vd))))) || (((1 + ifres102) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres102 == 1)) || ((1 < (1 + vd)) && (ifres102 == (1 + vd)))) && (ifres99 == (1 + vd)))) && (ifres98 == ifres103) && ((((1 + ifres104) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres104 == 1)) || ((1 < (1 + vd)) && (ifres104 == (1 + vd)))) && (ifres103 == (1 + ifres105)) && (((1 >= (1 + vd)) && (ifres105 == 1)) || ((1 < (1 + vd)) && (ifres105 == (1 + vd))))) || (((1 + ifres106) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres106 == 1)) || ((1 < (1 + vd)) && (ifres106 == (1 + vd)))) && (ifres103 == (1 + vd))))) || ((ifres107 < (1 + vd)) && ((((1 + ifres108) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres108 == 1)) || ((1 < (1 + vd)) && (ifres108 == (1 + vd)))) && (ifres107 == (1 + ifres109)) && (((1 >= (1 + vd)) && (ifres109 == 1)) || ((1 < (1 + vd)) && (ifres109 == (1 + vd))))) || (((1 + ifres110) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres110 == 1)) || ((1 < (1 + vd)) && (ifres110 == (1 + vd)))) && (ifres107 == (1 + vd)))) && (ifres98 == (1 + vd)))) && (ifres84 == (1 + ifres111)) && (((ifres112 >= (1 + vd)) && ((((1 + ifres113) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres113 == 1)) || ((1 < (1 + vd)) && (ifres113 == (1 + vd)))) && (ifres112 == (1 + ifres114)) && (((1 >= (1 + vd)) && (ifres114 == 1)) || ((1 < (1 + vd)) && (ifres114 == (1 + vd))))) || (((1 + ifres115) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres115 == 1)) || ((1 < (1 + vd)) && (ifres115 == (1 + vd)))) && (ifres112 == (1 + vd)))) && (ifres111 == ifres116) && ((((1 + ifres117) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres117 == 1)) || ((1 < (1 + vd)) && (ifres117 == (1 + vd)))) && (ifres116 == (1 + ifres118)) && (((1 >= (1 + vd)) && (ifres118 == 1)) || ((1 < (1 + vd)) && (ifres118 == (1 + vd))))) || (((1 + ifres119) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres119 == 1)) || ((1 < (1 + vd)) && (ifres119 == (1 + vd)))) && (ifres116 == (1 + vd))))) || ((ifres120 < (1 + vd)) && ((((1 + ifres121) >= (1 + vd)) && (((1 >= (1 + vd)) && (ifres121 == 1)) || ((1 < (1 + vd)) && (ifres121 == (1 + vd)))) && (ifres120 == (1 + ifres122)) && (((1 >= (1 + vd)) && (ifres122 == 1)) || ((1 < (1 + vd)) && (ifres122 == (1 + vd))))) || (((1 + ifres123) < (1 + vd)) && (((1 >= (1 + vd)) && (ifres123 == 1)) || ((1 < (1 + vd)) && (ifres123 == (1 + vd)))) && (ifres120 == (1 + vd)))) && (ifres111 == (1 + vd)))))))) && (relse1 == ts23) && (ts23 == ifres43._1) && (delse1 == ts24) && (ts24 == ifres43._2) && (((2 >= delse1) && (ifres42 == 2)) || ((2 < delse1) && (ifres42 == delse1))))) && (((1 >= delse) && (ifres18 == 1)) || ((1 < delse) && (ifres18 == delse))) && (e == ts25) && (ts25 == tres1._1) && (delse == (bd + 1)) && (vr == e) && (bd == ts26) && (ts26 == ifres19._2) && (tres1 == r109) && (cs31 == l.tail) && (r109 == partition(n, cs31)) && (relse == br) && (vd == (2 + d6)))))
+Flattened Post: ((((r110 < ((r111 + r112) + r113)) && (r112 == size(cs33)) && (r113 == size(cs34)) && (ts29 == res8._1) && (ts27 == res8._1) && (cs32 == ts27.fst) && (cs33 == ts28.snd) && (r111 == size(cs32)) && (r110 == size(l)) && (ts28 == res8._1) && (cs34 == ts29.trd)) || ((r114 > ((r115 + r116) + r117)) && (ts30 == res8._1) && (r117 == size(cs37)) && (cs36 == ts31.snd) && (cs37 == ts32.trd) && (cs35 == ts30.fst) && (r114 == size(l)) && (ts31 == res8._1) && (r116 == size(cs36)) && (r115 == size(cs35)) && (ts32 == res8._1))) || ((ts33 > ((a?1 * r118) + b?1)) && (ts33 == res8._2) && (r118 == size(l))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+partition-->((((1 * res8._2) + (0 * size(l))) + 0) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 119
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/14
+Unrolled calls: Set((r122 == size(cs40)), (r120 == size(cs38)), (r118 == size(l)), (r119 == size(cs31)), (r121 == size(cs39)))
+Creating VC for size
+Unrolling (r122 == size(cs40))
+Unrolling (r118 == size(l))
+Unrolling (r121 == size(cs39))
+Unrolling (r120 == size(cs38))
+Unrolling (r119 == size(cs31))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+partition-->((((1 * res8._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 212
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 15 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+partition-->((((-2 * size(l)) + (16 * res8._2)) + -8) ≤ 0)
+size-->(((-2 * #res) + 88) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 279
+[[34m Info  [0m] Number of equal calls: 27
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 24 + 15
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/16
+Unrolled calls: Set((r117 == size(cs37)), (r130 == size(cs31)), (r114 == size(l)), (r116 == size(cs36)), (r115 == size(cs35)))
+Unrolling (r116 == size(cs36))
+Unrolling (r115 == size(cs35))
+Unrolling (r114 == size(l))
+Unrolling (r117 == size(cs37))
+Unrolling (r130 == size(cs31))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+partition-->((((1 * res8._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 233
+[[34m Info  [0m] Number of equal calls: 25
+# of atomic predicates: 34 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+partition-->((((16 * res8._2) + (-2 * size(l))) + -8) ≤ 0)
+size-->(((0 * #res) + 63) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 34
+solving...
+solved... in 0.037s
+candidate Invariants
+partition-->((((-34 * size(l)) + (2 * res8._2)) + 1) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 187
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 32 + 42
+solving...
+solved... in 0.073s
+candidate Invariants
+partition-->((((1 * size(l)) + (1 * res8._2)) + 9) ≤ 0)
+size-->(((-1 * #res) + 0) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 148
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 25 + 74
+solving...
+solved... in 0.069s
+candidate Invariants
+partition-->((((-7 * size(l)) + (1 * res8._2)) + 2) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 99
+solving...
+solved... in 0.04s
+candidate Invariants
+partition-->((((-7 * size(l)) + (1 * res8._2)) + -3) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 21
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 11 + 109
+solving...
+solved... in 0.05s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/16
+Unrolled calls: Set((r110 == size(l)), (r112 == size(cs33)), (r111 == size(cs32)), (r113 == size(cs34)))
+Unrolling (r110 == size(l))
+Unrolling (r112 == size(cs33))
+Unrolling (r111 == size(cs32))
+Unrolling (r113 == size(cs34))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+partition-->((((0 * size(l)) + (1 * res8._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+partition-->((((8 * res8._2) + (0 * size(l))) + -1) ≤ 0)
+size-->(((0 * #res) + 31) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 10
+solving...
+solved... in 0.006s
+candidate Invariants
+partition-->((((1 * res8._2) + (0 * size(l))) + -5) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 187
+[[34m Info  [0m] Number of equal calls: 22
+# of atomic predicates: 37 + 18
+solving...
+solved... in 0.011s
+candidate Invariants
+partition-->((((1 * res8._2) + (-20 * size(l))) + -3) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 187
+[[34m Info  [0m] Number of equal calls: 22
+# of atomic predicates: 35 + 55
+solving...
+solved... in 0.039s
+candidate Invariants
+partition-->((((2 * res8._2) + (1 * size(l))) + -6) ≤ 0)
+size-->(((3 * #res) + -1) ≤ 0)
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 187
+[[34m Info  [0m] Number of equal calls: 21
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 47 + 90
+solving...
+solved... in 0.059s
+candidate Invariants
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+[[34m Info  [0m] - Found inductive invariant: partition --> ((((1 * res8._2) + (-7 * size(l))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-1 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function quickSort...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Nil(), if ((1 ≥ 1))
+              1
+            else
+              1)
+          else
+            (let (relse4,delse4 := if ((l.isInstanceOf[Cons] ∧ l.tail.isInstanceOf[Nil]))
+              (l, if ((3 ≥ 0))
+                3
+              else
+                0)
+            else
+              (let (relse5,delse5 := if (l.isInstanceOf[Cons])
+                (let (rthen6,dthen6 := (let (vr1,vd1 := (let (e2,d58 := partition(l.head, l.tail)) in
+                  (e2, (2 + d58)))) in
+                  (let (br1,bd1 := (let (r59,d61 := (let (r63,d67 := (let (e6,d75 := quickSort(vr1.fst)) in
+                    (e6, ((1 + d75) + (1 + vd1))))) in
+                    (let (e5,d69 := append(r63, Cons(l.head, vr1.snd))) in
+                      (e5, ((1 + d69) + if ((d67 ≥ (1 + if ((1 ≥ (1 + vd1)))
+                        1
+                      else
+                        (1 + vd1))))
+                        d67
+                      else
+                        (1 + if ((1 ≥ (1 + vd1)))
+                          1
+                        else
+                          (1 + vd1))))))) in
+                    (let (r60,d62 := (let (e4,d65 := quickSort(vr1.trd)) in
+                      (e4, ((1 + d65) + (1 + vd1))))) in
+                      (let (e3,d63 := append(r59, r60)) in
+                        (e3, ((1 + d63) + if ((d61 ≥ d62))
+                          d61
+                        else
+                          d62)))))) in
+                    (br1, (bd1 + 1))))) in
+                  (rthen6, if ((1 ≥ dthen6))
+                    1
+                  else
+                    dthen6))
+              else
+                (l, if ((1 ≥ 0))
+                  1
+                else
+                  0)) in
+                (relse5, if ((3 ≥ delse5))
+                  3
+                else
+                  delse5))) in
+              (relse4, if ((1 ≥ delse4))
+                1
+              else
+                delse4))
+[[34m Info  [0m] Post: (size(res9._1) == size(l))
+falttened Body: ((res9 == ifres139) && ((ci58 && (ci58 == l.isInstanceOf[Nil]) && (ifres139 == tp8) && (cc11 == Nil()) && (tp8 == (cc11, ifres140)) && (((1 >= 1) && (ifres140 == 1)) || ((1 < 1) && (ifres140 == 1)))) || (!(ci59) && (ci59 == l.isInstanceOf[Nil]) && (ifres139 == tp9) && (tp9 == (relse4, ifres141)) && ((ci60 && (ci60 == l.isInstanceOf[Cons]) && ci61 && (cs56 == l.tail) && (ci61 == cs56.isInstanceOf[Nil]) && (ifres142 == tp10) && (tp10 == (l, ifres143)) && (((3 >= 0) && (ifres143 == 3)) || ((3 < 0) && (ifres143 == 0)))) || (((!(ci62) && (ci62 == l.isInstanceOf[Cons])) || (!(ci63) && (cs57 == l.tail) && (ci63 == cs57.isInstanceOf[Nil]))) && (ifres142 == tp11) && (tp11 == (relse5, ifres144)) && ((ci64 && (ci64 == l.isInstanceOf[Cons]) && (ifres145 == tp12) && (tp12 == (rthen6, ifres146)) && (e4 == ts54) && (ts54 == tres3._1) && (rthen6 == br1) && (e2 == ts55) && (ts55 == tres6._1) && (tres3 == r155) && (cs58 == vr1.trd) && (r155 == quickSort(cs58)) && (d62 == ((1 + d65) + (1 + vd1))) && (d58 == ts56) && (ts56 == tres6._2) && (e5 == ts57) && (ts57 == tres4._1) && (((d61 >= d62) && (ifres147 == d61)) || ((d61 < d62) && (ifres147 == d62))) && (r59 == e5) && (d65 == ts58) && (ts58 == tres3._2) && (d67 == ((1 + d75) + (1 + vd1))) && (((1 >= dthen6) && (ifres146 == 1)) || ((1 < dthen6) && (ifres146 == dthen6))) && (d75 == ts59) && (ts59 == tres5._2) && (bd1 == ((1 + d63) + ifres147)) && (br1 == e3) && (tres4 == r156) && (cs59 == l.head) && (cs60 == vr1.snd) && (cc12 == Cons(cs59, cs60)) && (r156 == append(r63, cc12)) && (vr1 == e2) && (tres2 == r157) && (r157 == append(r59, r60)) && (tres6 == r158) && (cs61 == l.head) && (cs62 == l.tail) && (r158 == partition(cs61, cs62)) && (tres5 == r159) && (cs63 == vr1.fst) && (r159 == quickSort(cs63)) && (e3 == ts60) && (ts60 == tres2._1) && (e6 == ts61) && (ts61 == tres5._1) && (d69 == ts62) && (ts62 == tres4._2) && (d61 == ((1 + d69) + ifres148)) && (((d67 >= (1 + ifres149)) && (((1 >= (1 + vd1)) && (ifres149 == 1)) || ((1 < (1 + vd1)) && (ifres149 == (1 + vd1)))) && (ifres148 == d67)) || ((d67 < (1 + ifres150)) && (((1 >= (1 + vd1)) && (ifres150 == 1)) || ((1 < (1 + vd1)) && (ifres150 == (1 + vd1)))) && (ifres148 == (1 + ifres151)) && (((1 >= (1 + vd1)) && (ifres151 == 1)) || ((1 < (1 + vd1)) && (ifres151 == (1 + vd1)))))) && (dthen6 == (bd1 + 1)) && (d63 == ts63) && (ts63 == tres2._2) && (r60 == e4) && (r63 == e6) && (vd1 == (2 + d58))) || (!(ci65) && (ci65 == l.isInstanceOf[Cons]) && (ifres145 == tp13) && (tp13 == (l, ifres152)) && (((1 >= 0) && (ifres152 == 1)) || ((1 < 0) && (ifres152 == 0))))) && (relse5 == ts64) && (ts64 == ifres145._1) && (delse5 == ts65) && (ts65 == ifres145._2) && (((3 >= delse5) && (ifres144 == 3)) || ((3 < delse5) && (ifres144 == delse5))))) && (relse4 == ts66) && (ts66 == ifres142._1) && (delse4 == ts67) && (ts67 == ifres142._2) && (((1 >= delse4) && (ifres141 == 1)) || ((1 < delse4) && (ifres141 == delse4))))))
+Flattened Post: ((((r160 < r161) && (ts68 == res9._1) && (r160 == size(ts68)) && (r161 == size(l))) || ((r162 > r163) && (ts69 == res9._1) && (r162 == size(ts69)) && (r163 == size(l)))) || ((ts70 > (((a?2 * r166) + (b?2 * r167)) + c?)) && (r164 == size(l)) && (r166 == mult(r164, r165)) && (r167 == size(l)) && (ts70 == res9._2) && (r165 == size(l))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+quickSort-->(((((1 * res9._2) + (0 * mult(size(l), size(l)))) + (0 * size(l))) + 0) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 363
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 21/27
+Unrolled calls: Set((r178 == size(cs62)), (r176 == size(r59)), (r170 == size(cc12)), (r173 == size(ts73)), (r181 == size(cs66)), (r164 == size(l)), (r169 == size(r63)), (r166 == mult(r164, r165)), (r167 == size(l)), (r157 == append(r59, r60)), (r168 == size(ts71)), (r158 == partition(cs61, cs62)), (r180 == size(cs65)), (r175 == size(ts74)), (r171 == size(ts72)), (r172 == size(cs63)), (r174 == size(cs58)), (r165 == size(l)), (r156 == append(r63, cc12)), (r177 == size(r60)), (r179 == size(cs64)))
+Creating VC for size
+Unrolling (r175 == size(ts74))
+Unrolling (r174 == size(cs58))
+Inlining (r166 == mult(r164, r165))
+Unrolling (r173 == size(ts73))
+Unrolling (r167 == size(l))
+Creating VC for append
+Unrolling (r156 == append(r63, cc12))
+Unrolling (r170 == size(cc12))
+Unrolling (r168 == size(ts71))
+Unrolling (r165 == size(l))
+Unrolling (r178 == size(cs62))
+Unrolling (r171 == size(ts72))
+Unrolling (r172 == size(cs63))
+Unrolling (r176 == size(r59))
+Unrolling (r181 == size(cs66))
+Unrolling (r179 == size(cs64))
+Unrolling (r177 == size(r60))
+Unrolling (r180 == size(cs65))
+Unrolling (r169 == size(r63))
+Unrolling (r157 == append(r59, r60))
+Creating VC for partition
+Unrolling (r158 == partition(cs61, cs62))
+Unrolling (r164 == size(l))
+[[34m Info  [0m] Number of axiom instances: 8
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+quickSort-->(((((1 * res9._2) + (0 * mult(size(l), size(l)))) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 32
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 11
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 19 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/61
+Unrolled calls: Set((r195 == size(aList)), (r219 == pmult(px1, arg)), (r190 == pmult(px1, py1)), (r213 == size(l)))
+Unrolling (r195 == size(aList))
+Unrolling (r219 == pmult(px1, arg))
+Unrolling (r190 == pmult(px1, py1))
+Unrolling (r213 == size(l))
+
+[[34m Info  [0m] Aborting...
+[[34m Info  [0m] Number of axiom instances: 98
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+quickSort-->(((((1 * res9._2) + (0 * size(l))) + (0 * mult(size(l), size(l)))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2025
+[[34m Info  [0m] Number of equal calls: 100
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 36
+[[34m Info  [0m] Number of equal calls: 9
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 148
+[[34m Info  [0m] Number of equal calls: 22
+# of atomic predicates: 83 + 0
+solving...
+solved... in 0.016s
+candidate Invariants
+quickSort-->(((((-4 * mult(size(l), size(l))) + (32 * res9._2)) + (32 * size(l))) + 8) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 52
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 12
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 43 + 83
+solving...
+solved... in 0.014s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 32/69
+Unrolled calls: Set((r244 == size(cs62)), (r229 == size(cs129)), (r240 == size(cs58)), (r216 == size(ts99)), (r162 == size(ts69)), (r242 == size(cs58)), (r217 == size(cs73)), (r243 == size(r59)), (r227 == size(cs127)), (r260 == size(cs88)), (r231 == size(cs130)), (r232 == size(cs131)), (r237 == mult(r235, r236)), (r233 == size(cs132)), (r241 == mult(r239, r240)), (r234 == size(r63)), (r236 == size(cs63)), (r163 == size(l)), (r262 == size(cs108)), (r235 == size(cs63)), (r261 == size(cs107)), (r228 == size(cs128)), (r224 == size(cs88)), (r230 == size(cs108)), (r256 == pmult(px1, arg4)), (r225 == size(r60)), (r223 == size(ts101)), (r258 == size(cs73)), (r218 == size(bList)), (r226 == size(cs107)), (r239 == size(cs58)), (r238 == size(cs63)))
+Unrolling (r229 == size(cs129))
+Unrolling (r225 == size(r60))
+Unrolling (r244 == size(cs62))
+Unrolling (r239 == size(cs58))
+Unrolling (r256 == pmult(px1, arg4))
+Unrolling (r262 == size(cs108))
+Unrolling (r261 == size(cs107))
+Unrolling (r216 == size(ts99))
+Unrolling (r230 == size(cs108))
+Unrolling (r231 == size(cs130))
+Unrolling (r233 == size(cs132))
+Unrolling (r218 == size(bList))
+Unrolling (r223 == size(ts101))
+Unrolling (r228 == size(cs128))
+Unrolling (r232 == size(cs131))
+Unrolling (r235 == size(cs63))
+Inlining (r237 == mult(r235, r236))
+Unrolling (r217 == size(cs73))
+Unrolling (r236 == size(cs63))
+Unrolling (r163 == size(l))
+Unrolling (r238 == size(cs63))
+Inlining (r241 == mult(r239, r240))
+Unrolling (r162 == size(ts69))
+Unrolling (r242 == size(cs58))
+Unrolling (r260 == size(cs88))
+Unrolling (r243 == size(r59))
+Unrolling (r258 == size(cs73))
+Unrolling (r227 == size(cs127))
+Unrolling (r234 == size(r63))
+Unrolling (r240 == size(cs58))
+Unrolling (r226 == size(cs107))
+Unrolling (r224 == size(cs88))
+[[34m Info  [0m] Number of axiom instances: 512
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+quickSort-->(((((0 * mult(size(l), size(l))) + (0 * size(l))) + (1 * res9._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 31
+[[34m Info  [0m] Number of equal calls: 11
+Function: append--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 88
+[[34m Info  [0m] Number of equal calls: 10
+Function: partition--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 187
+[[34m Info  [0m] Number of equal calls: 20
+# of atomic predicates: 51 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+quickSort-->(((((0 * size(l)) + (1 * res9._2)) + (0 * mult(size(l), size(l)))) + -5) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 145
+# of atomic predicates: 214 + 51
+solving...
+solved... in 0.501s
+candidate Invariants
+quickSort-->(((((-4 * size(l)) + (-112 * mult(size(l), size(l)))) + (4 * res9._2)) + -1) ≤ 0)
+size-->(((-8 * #res) + -1) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 17 + 265
+solving...
+solved... in 0.574s
+candidate Invariants
+quickSort-->(((((8 * res9._2) + (-224 * mult(size(l), size(l)))) + (-4 * size(l))) + -2) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 135 + 282
+solving...
+timed out... in 20.629s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 133 + 282
+solving...
+timed out... in 20.642s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 133 + 282
+solving...
+timed out... in 20.644s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 137
+# of atomic predicates: 133 + 282
+solving...
+timed out... in 20.634s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 137
+# of atomic predicates: 133 + 282
+solving...
+timed out... in 20.649s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 137 + 282
+solving...
+timed out... in 20.699s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 137
+# of atomic predicates: 139 + 282
+solving...
+timed out... in 20.635s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 133 + 282
+solving...
+timed out... in 20.648s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 139
+# of atomic predicates: 129 + 282
+solving...
+solved... in 12.913s
+candidate Invariants
+quickSort-->(((((1 * mult(size(l), size(l))) + (1 * res9._2)) + (1 * size(l))) + 0) ≤ 0)
+size-->(((-1 * #res) + 1) ≤ 0)
+append-->((((1 * res7._2) + (-4 * size(aList))) + -2) ≤ 0)
+partition-->((((1 * res8._2) + (-7 * size(l))) + -3) ≤ 0)
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 135
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 135 + 411
+solving...
+timed out... in 20.741s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 133
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.832s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 59
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 33 + 411
+solving...
+timed out... in 20.673s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 97
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 43 + 411
+solving...
+timed out... in 20.705s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 137 + 411
+solving...
+timed out... in 20.798s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 139 + 411
+solving...
+timed out... in 20.814s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 135 + 411
+solving...
+timed out... in 20.755s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 133
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.79s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.8s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.788s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 139 + 411
+solving...
+timed out... in 20.779s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.8s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 146
+# of atomic predicates: 188 + 411
+solving...
+timed out... in 20.835s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.866s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 137 + 411
+solving...
+timed out... in 20.809s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 139
+# of atomic predicates: 123 + 411
+solving...
+timed out... in 20.719s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 224 + 411
+solving...
+timed out... in 20.925s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 137 + 411
+solving...
+timed out... in 20.799s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 135 + 411
+solving...
+timed out... in 20.808s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.863s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 224 + 411
+solving...
+timed out... in 20.936s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 214 + 411
+solving...
+timed out... in 20.94s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 143 + 411
+solving...
+timed out... in 20.866s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 141
+# of atomic predicates: 127 + 411
+solving...
+timed out... in 20.783s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 150
+# of atomic predicates: 182 + 411
+solving...
+timed out... in 20.84s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 218 + 411
+solving...
+timed out... in 21.004s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 127 + 411
+solving...
+timed out... in 20.784s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.814s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 135 + 411
+solving...
+timed out... in 20.782s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 135 + 411
+solving...
+timed out... in 20.809s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 127 + 411
+solving...
+timed out... in 21.023s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 220 + 411
+solving...
+timed out... in 21.741s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 143 + 411
+solving...
+timed out... in 20.88s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 137
+# of atomic predicates: 139 + 411
+solving...
+timed out... in 21.955s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 139
+# of atomic predicates: 117 + 411
+solving...
+timed out... in 21.06s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 129 + 411
+solving...
+timed out... in 20.952s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 214 + 411
+solving...
+timed out... in 21.154s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 214 + 411
+solving...
+timed out... in 20.898s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 135
+# of atomic predicates: 123 + 411
+solving...
+timed out... in 21.239s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 214 + 411
+solving...
+timed out... in 22.145s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 146
+# of atomic predicates: 182 + 411
+solving...
+timed out... in 22.664s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 142
+# of atomic predicates: 117 + 411
+solving...
+timed out... in 20.765s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 135
+# of atomic predicates: 123 + 411
+solving...
+timed out... in 20.78s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 135
+# of atomic predicates: 125 + 411
+solving...
+timed out... in 20.891s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 146
+# of atomic predicates: 188 + 411
+solving...
+timed out... in 20.851s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 132
+# of atomic predicates: 127 + 411
+solving...
+timed out... in 20.804s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 143 + 411
+solving...
+timed out... in 20.872s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 218 + 411
+solving...
+timed out... in 21.01s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 127 + 411
+solving...
+timed out... in 20.893s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 224 + 411
+solving...
+timed out... in 20.981s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 133 + 411
+solving...
+timed out... in 20.796s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 218 + 411
+solving...
+timed out... in 20.972s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 148
+# of atomic predicates: 209 + 411
+solving...
+timed out... in 20.962s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 216 + 411
+solving...
+timed out... in 20.898s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 139 + 411
+solving...
+timed out... in 20.885s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 220 + 411
+solving...
+timed out... in 21.552s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 224 + 411
+solving...
+timed out... in 21.033s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 150
+# of atomic predicates: 195 + 411
+solving...
+timed out... in 20.878s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 139 + 411
+solving...
+timed out... in 20.85s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 148
+# of atomic predicates: 220 + 411
+solving...
+timed out... in 20.997s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 220 + 411
+solving...
+timed out... in 20.964s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 209 + 411
+solving...
+timed out... in 20.935s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4270
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 135
+# of atomic predicates: 117 + 411
+solving...
+timed out... in 20.74s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 220 + 411
+solving...
+timed out... in 20.997s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 218 + 411
+solving...
+timed out... in 20.966s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4368
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 136
+# of atomic predicates: 127 + 411
+solving...
+timed out... in 20.777s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 224 + 411
+solving...
+timed out... in 21.117s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4917
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 147
+# of atomic predicates: 218 + 411
+solving...
+timed out... in 21.029s
+[[34m Info  [0m] NLsolver timed-out on the disjunct... blocking this disjunct...
+Function: quickSort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4816
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 143
+# of atomic predicates: 216 + 411
+solving...

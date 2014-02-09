@@ -1,0 +1,65 @@
+Total Time: 11.756s
+Min Time: 2.775s
+VC refinements : 16
+Avg VC size : 308.5625
+Max VC size : 717
+Avg UIF-ADT size : 74.4375
+Max UIF-ADT size : 175
+avgTempVars : 3.625
+maxTempVars : 5
+### Farkas solver stats ####
+Disjunct Explorations : 59
+Total retries: 0
+avgFarkaSize : 54.67796610169491
+maxFarkaSize : 357
+avgFarkaTime : 0.025338983050847457s
+maxFarkaTime : 0.435s
+avgNLSize : 4.47457627118644
+maxNLSize : 27
+avgDijSize : 32.389830508474574
+maxDijSize : 281
+avgElimvars : 17.52542372881356
+maxElimvars : 152
+avgElimAtoms : 20.576271186440678
+maxElimAtoms : 192
+avgExploreTime : 0.06033898305084746s
+maxExploreTime : 0.572s
+avgCompatCalls : 117.27118644067797
+maxCompatCalls : 1605
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: size
+size --> (((-32768 * res14) + -32768) ≤ 0)
+
+Invariants for Function: merge
+merge --> (((((-3 * size(bList)) + (-3 * size(aList))) + (1 * res12._2)) + -1) ≤ 0)
+size --> (((-1 * res14) + -1) ≤ 0)
+
+Invariants for Function: split
+split --> ((((1 * res13._2) + (-11 * n)) + -2) ≤ 0)
+size --> (((-1 * res14) + -2) ≤ 0)
+
+Invariants for Function: length
+length --> ((((-3 * size(l)) + (1 * res11._2)) + -1) ≤ 0)
+size --> (((-1 * res14) + -1) ≤ 0)
+
+Invariants for Function: mergeSort
+merge --> (((((-3 * size(bList)) + (-3 * size(aList))) + (1 * res12._2)) + -1) ≤ 0)
+split --> ((((1 * res13._2) + (-11 * n)) + -2) ≤ 0)
+size --> (((-1 * res14) + -1) ≤ 0)
+mergeSort --> ((((1 * res15._2) + (-39 * size(list))) + -1) ≤ 0)
+length --> ((((-3 * size(l)) + (1 * res11._2)) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+merge: 	(a?2->2), (b?2->2), (c?->0), 
+split: 	(a?1->10), (b?1->1), 
+size: 	
+mergeSort: 	(a?3->38), (b?3->0), 
+length: 	(a?->2), (b?->0), 

@@ -1,0 +1,62 @@
+Total Time: 192.86s
+Min Time: 0.947s
+VC refinements : 18
+Avg VC size : 3629.5555555555557
+Max VC size : 30045
+Avg UIF-ADT size : 77.33333333333333
+Max UIF-ADT size : 173
+avgTempVars : 5.055555555555555
+maxTempVars : 7
+### Farkas solver stats ####
+Disjunct Explorations : 65
+Total retries: 2
+avgFarkaSize : 82.35384615384615
+maxFarkaSize : 506
+avgFarkaTime : 0.7296307692307693s
+maxFarkaTime : 21.056s
+avgNLSize : 4.907692307692308
+maxNLSize : 18
+avgDijSize : 303.0153846153846
+maxDijSize : 7040
+avgElimvars : 33.63076923076923
+maxElimvars : 268
+avgElimAtoms : 164.3846153846154
+maxElimAtoms : 3099
+avgExploreTime : 0.6562461538461539s
+maxExploreTime : 13.302s
+avgCompatCalls : 186.2
+maxCompatCalls : 3263
+avgLemmaApps : 869.6615384615385
+maxLemmaApps : 28560
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: genL
+genL --> ((((1 * res12._2) + (-3 * n)) + -1) ≤ 0)
+size --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: append
+append --> ((((1 * res9._2) + (-3 * size(l1))) + -1) ≤ 0)
+size --> (((-2 * #res) + -1) ≤ 0)
+
+Invariants for Function: f_worst
+f_worst --> (((((((3 * (n * m)) + (-3 * ((n * m) * m))) + (1 * res11._2)) + (-4 * m)) + (-3 * n)) + -1) ≤ 0)
+size --> (((-1 * #res) + 0) ≤ 0)
+genL --> ((((1 * res12._2) + (-3 * n)) + -1) ≤ 0)
+append --> ((((1 * res9._2) + (-3 * size(l1))) + -1) ≤ 0)
+
+Invariants for Function: f_good
+f_good --> ((((((-75497471 * (n * m)) + (-8388608 * m)) + (2097152 * res10._2)) + (0 * n)) + -2097152) ≤ 0)
+size --> (((-2 * #res) + -1) ≤ 0)
+append --> ((((1 * res9._2) + (-3 * size(l1))) + -1) ≤ 0)
+genL --> ((((1 * res12._2) + (-3 * n)) + -1) ≤ 0)
+
+
+########## Lower Bounds ############
+genL: 	(a?->2), (b?->0), 
+append: 	(a?1->2), (b?1->0), 
+f_worst: 	(c?1->-4), (a?3->2), (d?1->2), (e?->3), (f?->0), 
+f_good: 	(b?2->-1), (c?->3), (d?->0), 

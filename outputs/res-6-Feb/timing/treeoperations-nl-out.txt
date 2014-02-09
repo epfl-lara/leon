@@ -1,0 +1,1900 @@
+After Depth Instrumentation: 
+object TreeOperations {
+  case class Leaf() extends Tree
+
+  case class Node(left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class Tree
+
+  case class Nil() extends List
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  def remove(elem : Int, t : Tree) : Tree = {(t match {
+    case Leaf() =>
+      Leaf()
+    case Node(l, x, r) =>
+      if ((x < elem)) {
+        Node(l, x, remove(elem, r))
+      } else {
+        if ((x > elem)) {
+          Node(remove(elem, l), x, r)
+        } else {
+          (t match {
+            case Node(Leaf(), x, Leaf()) =>
+              Leaf()
+            case Node(Leaf(), x, Node(_, rx, _)) =>
+              Node(Leaf(), rx, remove(rx, r))
+            case Node(Node(_, lx, _), x, r) =>
+              Node(remove(lx, l), lx, r)
+            case _ =>
+              Leaf()
+          })
+        }
+      }
+  })} ensuring(res => (height(res) <= height(t)))
+
+  def addAll(l : List, t : Tree) : Tree = {(l match {
+    case Nil() =>
+      t
+    case Cons(x, xs) =>
+      locally {
+        val newt = insert(x, t)
+        addAll(xs, newt)
+      }
+      
+  })} ensuring(res => true)
+
+  def contains(elem : Int, t : Tree) : Boolean = {(t match {
+    case Leaf() =>
+      false
+    case Node(l, x, r) =>
+      if ((x == elem)) {
+        true
+      } else {
+        if ((x < elem)) {
+          contains(elem, r)
+        } else {
+          contains(elem, l)
+        }
+      }
+  })} ensuring(res => true)
+
+  def size(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      ((size(l) + size(r)) + 1)
+  })}
+
+  def insert(elem : Int, t : Tree) : Tree = {(t match {
+    case Leaf() =>
+      Node(Leaf(), elem, Leaf())
+    case Node(l, x, r) =>
+      if ((x <= elem)) {
+        Node(l, x, insert(elem, r))
+      } else {
+        Node(insert(elem, l), x, r)
+      }
+  })} ensuring(res => (height(res) <= (height(t) + 1)))
+
+  def listSize(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + listSize(t))
+  })}
+
+  def removeAll(l : List, t : Tree) : Tree = {(l match {
+    case Nil() =>
+      t
+    case Cons(x, xs) =>
+      removeAll(xs, remove(x, t))
+  })} ensuring(res => true)
+
+  def height(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      locally {
+        val hl = height(l)
+        locally {
+          val hr = height(r)
+          if ((hl > hr)) {
+            (hl + 1)
+          } else {
+            (hr + 1)
+          }
+        }
+        
+      }
+      
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: remove
+Defined fun: addAll
+Defined fun: contains
+Defined fun: size
+Defined fun: insert
+Defined fun: listSize
+Defined fun: removeAll
+Defined fun: height
+Defined fun: max
+FunMap: Map(height -> height, size -> size, contains -> contains, max -> max, insert -> insert, addAll -> addAll, listSize -> listSize, remove -> remove, removeAll -> removeAll)
+After Time Instrumentation: 
+object TreeOperations {
+  case class Leaf() extends Tree
+
+  case class Node(left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class Tree
+
+  case class Nil() extends List
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  def remove(elem : Int, t : Tree) : (Tree, Int) = {locally {
+    val t76 = 1
+    if (t.isInstanceOf[Leaf]) {
+      (Leaf(), (t76 + 1))
+    } else {
+      locally {
+        val (e69: Tree, t78: Int) = locally {
+          val t79 = 2
+          if ((t.value < elem)) {
+            locally {
+              val (e71: Node, t80: Int) = locally {
+                val (e74: Tree, t83: Int) = locally {
+                  val (e77: Tree, t86: Int) = remove(elem, t.right)
+                  (e77, (1 + (1 + t86)))
+                }
+                
+                (Node(t.left, t.value, e74), (t83 + 3))
+              }
+              
+              (e71, (t79 + t80))
+            }
+            
+          } else {
+            locally {
+              val (e81: Tree, t90: Int) = locally {
+                val t91 = 2
+                if ((t.value > elem)) {
+                  locally {
+                    val (e83: Node, t92: Int) = locally {
+                      val (e84: Tree, t93: Int) = locally {
+                        val (e91: Tree, t100: Int) = remove(elem, t.left)
+                        (e91, (1 + (1 + t100)))
+                      }
+                      
+                      (Node(e84, t.value, t.right), (1 + (1 + (t93 + 1))))
+                    }
+                    
+                    (e83, (t91 + t92))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e93: Tree, t102: Int) = locally {
+                      val t103 = 6
+                      if ((t.isInstanceOf[Node] && t.left.isInstanceOf[Leaf] && t.right.isInstanceOf[Leaf])) {
+                        (Leaf(), (t103 + 1))
+                      } else {
+                        locally {
+                          val (e96: Tree, t105: Int) = locally {
+                            val t106 = 6
+                            if ((t.isInstanceOf[Node] && t.left.isInstanceOf[Leaf] && t.right.isInstanceOf[Node])) {
+                              locally {
+                                val (e98: Node, t107: Int) = locally {
+                                  val (e101: Tree, t110: Int) = locally {
+                                    val (e104: Tree, t113: Int) = remove(t.right.value, t.right)
+                                    (e104, (1 + (2 + (1 + t113))))
+                                  }
+                                  
+                                  (Node(Leaf(), t.right.value, e101), (t110 + 4))
+                                }
+                                
+                                (e98, (t106 + t107))
+                              }
+                              
+                            } else {
+                              locally {
+                                val (e110: Tree, t119: Int) = locally {
+                                  val t120 = 4
+                                  if ((t.isInstanceOf[Node] && t.left.isInstanceOf[Node])) {
+                                    locally {
+                                      val (e112: Node, t121: Int) = locally {
+                                        val (e113: Tree, t122: Int) = locally {
+                                          val (e121: Tree, t130: Int) = remove(t.left.value, t.left)
+                                          (e121, (1 + (2 + (1 + t130))))
+                                        }
+                                        
+                                        (Node(e113, t.left.value, t.right), (1 + (2 + (t122 + 1))))
+                                      }
+                                      
+                                      (e112, (t120 + t121))
+                                    }
+                                    
+                                  } else {
+                                    (Leaf(), (t120 + 1))
+                                  }
+                                }
+                                
+                                (e110, (t106 + t119))
+                              }
+                              
+                            }
+                          }
+                          
+                          (e96, (t103 + t105))
+                        }
+                        
+                      }
+                    }
+                    
+                    (e93, (t91 + t102))
+                  }
+                  
+                }
+              }
+              
+              (e81, (t79 + t90))
+            }
+            
+          }
+        }
+        
+        (e69, (t76 + t78))
+      }
+      
+    }
+  }
+  } ensuring(res14 => (height(res14._1) <= height(t)))
+
+  def addAll(l : List, t : Tree) : (Tree, Int) = {locally {
+    val t63 = 1
+    if (l.isInstanceOf[Nil]) {
+      (t, t63)
+    } else {
+      locally {
+        val (e57: Tree, t65: Int) = locally {
+          val (ir: Tree, it: Int) = locally {
+            val (e60: Tree, t69: Int) = insert(l.head, t)
+            (e60, (1 + (1 + t69)))
+          }
+          
+          locally {
+            val (r7: Tree, t66: Int) = locally {
+              val (e64: Tree, t73: Int) = addAll(l.tail, ir)
+              (e64, (1 + (1 + t73)))
+            }
+            
+            (r7, (t66 + (it + 1)))
+          }
+          
+        }
+        
+        (e57, (t63 + t65))
+      }
+      
+    }
+  }
+  } ensuring(res13 => true)
+
+  def contains(elem : Int, t : Tree) : (Boolean, Int) = {locally {
+    val t8 = 1
+    if (t.isInstanceOf[Leaf]) {
+      (false, t8)
+    } else {
+      locally {
+        val (e2: Boolean, t10: Int) = locally {
+          val t11 = 2
+          if ((t.value == elem)) {
+            (true, t11)
+          } else {
+            locally {
+              val (e5: Boolean, t13: Int) = locally {
+                val t14 = 2
+                if ((t.value < elem)) {
+                  locally {
+                    val (e7: Boolean, t15: Int) = locally {
+                      val (e10: Boolean, t18: Int) = contains(elem, t.right)
+                      (e10, (1 + (1 + t18)))
+                    }
+                    
+                    (e7, (t14 + t15))
+                  }
+                  
+                } else {
+                  locally {
+                    val (e12: Boolean, t20: Int) = locally {
+                      val (e15: Boolean, t23: Int) = contains(elem, t.left)
+                      (e15, (1 + (1 + t23)))
+                    }
+                    
+                    (e12, (t14 + t20))
+                  }
+                  
+                }
+              }
+              
+              (e5, (t11 + t13))
+            }
+            
+          }
+        }
+        
+        (e2, (t8 + t10))
+      }
+      
+    }
+  }
+  } ensuring(res11 => true)
+
+  def size(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      ((size(l) + size(r)) + 1)
+  })}
+
+  def insert(elem : Int, t : Tree) : (Tree, Int) = {locally {
+    val t32 = 1
+    if (t.isInstanceOf[Leaf]) {
+      (Node(Leaf(), elem, Leaf()), (t32 + 3))
+    } else {
+      locally {
+        val (e29: Node, t37: Int) = locally {
+          val t38 = 2
+          if ((t.value <= elem)) {
+            locally {
+              val (e31: Node, t39: Int) = locally {
+                val (e34: Tree, t42: Int) = locally {
+                  val (e37: Tree, t45: Int) = insert(elem, t.right)
+                  (e37, (1 + (1 + t45)))
+                }
+                
+                (Node(t.left, t.value, e34), (t42 + 3))
+              }
+              
+              (e31, (t38 + t39))
+            }
+            
+          } else {
+            locally {
+              val (e41: Node, t49: Int) = locally {
+                val (e42: Tree, t50: Int) = locally {
+                  val (e49: Tree, t57: Int) = insert(elem, t.left)
+                  (e49, (1 + (1 + t57)))
+                }
+                
+                (Node(e42, t.value, t.right), (1 + (1 + (t50 + 1))))
+              }
+              
+              (e41, (t38 + t49))
+            }
+            
+          }
+        }
+        
+        (e29, (t32 + t37))
+      }
+      
+    }
+  }
+  } ensuring(res12 => (height(res12._1) <= (height(t) + 1)))
+
+  def listSize(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + listSize(t))
+  })}
+
+  def removeAll(l : List, t : Tree) : (Tree, Int) = {locally {
+    val t163 = 1
+    if (l.isInstanceOf[Nil]) {
+      (t, t163)
+    } else {
+      locally {
+        val (e156: Tree, t165: Int) = locally {
+          val (e158: Tree, t167: Int) = locally {
+            val (e162: Tree, t171: Int) = remove(l.head, t)
+            (e162, (1 + (1 + t171)))
+          }
+          
+          locally {
+            val (e159: Tree, t168: Int) = removeAll(l.tail, e158)
+            (e159, (t167 + (1 + (1 + t168))))
+          }
+          
+        }
+        
+        (e156, (t163 + t165))
+      }
+      
+    }
+  }
+  } ensuring(res15 => true)
+
+  def height(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      locally {
+        val hl = height(l)
+        locally {
+          val hr = height(r)
+          if ((hl > hr)) {
+            (hl + 1)
+          } else {
+            (hr + 1)
+          }
+        }
+        
+      }
+      
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object TreeOperations {
+  case class Leaf() extends Tree
+
+  case class Node(left: Tree, value: Int, right: Tree) extends Tree
+
+  sealed abstract class Tree
+
+  case class Nil() extends List
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  def remove(elem : Int, t : Tree) : (Tree, Int) = {if (t.isInstanceOf[Leaf]) {
+    (Leaf(), (1 + 1))
+  } else {
+    locally {
+      val (e69: Tree, t78: Int) = if ((t.value < elem)) {
+        locally {
+          val (e71: Node, t80: Int) = locally {
+            val (e74: Tree, t83: Int) = locally {
+              val (e77: Tree, t86: Int) = remove(elem, t.right)
+              (e77, (1 + (1 + t86)))
+            }
+            
+            (Node(t.left, t.value, e74), (t83 + 3))
+          }
+          
+          (e71, (2 + t80))
+        }
+        
+      } else {
+        locally {
+          val (e81: Tree, t90: Int) = if ((t.value > elem)) {
+            locally {
+              val (e83: Node, t92: Int) = locally {
+                val (e84: Tree, t93: Int) = locally {
+                  val (e91: Tree, t100: Int) = remove(elem, t.left)
+                  (e91, (1 + (1 + t100)))
+                }
+                
+                (Node(e84, t.value, t.right), (1 + (1 + (t93 + 1))))
+              }
+              
+              (e83, (2 + t92))
+            }
+            
+          } else {
+            locally {
+              val (e93: Tree, t102: Int) = if ((t.isInstanceOf[Node] && t.left.isInstanceOf[Leaf] && t.right.isInstanceOf[Leaf])) {
+                (Leaf(), (6 + 1))
+              } else {
+                locally {
+                  val (e96: Tree, t105: Int) = if ((t.isInstanceOf[Node] && t.left.isInstanceOf[Leaf] && t.right.isInstanceOf[Node])) {
+                    locally {
+                      val (e98: Node, t107: Int) = locally {
+                        val (e101: Tree, t110: Int) = locally {
+                          val (e104: Tree, t113: Int) = remove(t.right.value, t.right)
+                          (e104, (1 + (2 + (1 + t113))))
+                        }
+                        
+                        (Node(Leaf(), t.right.value, e101), (t110 + 4))
+                      }
+                      
+                      (e98, (6 + t107))
+                    }
+                    
+                  } else {
+                    locally {
+                      val (e110: Tree, t119: Int) = if ((t.isInstanceOf[Node] && t.left.isInstanceOf[Node])) {
+                        locally {
+                          val (e112: Node, t121: Int) = locally {
+                            val (e113: Tree, t122: Int) = locally {
+                              val (e121: Tree, t130: Int) = remove(t.left.value, t.left)
+                              (e121, (1 + (2 + (1 + t130))))
+                            }
+                            
+                            (Node(e113, t.left.value, t.right), (1 + (2 + (t122 + 1))))
+                          }
+                          
+                          (e112, (4 + t121))
+                        }
+                        
+                      } else {
+                        (Leaf(), (4 + 1))
+                      }
+                      (e110, (6 + t119))
+                    }
+                    
+                  }
+                  (e96, (6 + t105))
+                }
+                
+              }
+              (e93, (2 + t102))
+            }
+            
+          }
+          (e81, (2 + t90))
+        }
+        
+      }
+      (e69, (1 + t78))
+    }
+    
+  }} ensuring(res14 => (height(res14._1) <= height(t)))
+
+  def addAll(l : List, t : Tree) : (Tree, Int) = {if (l.isInstanceOf[Nil]) {
+    (t, 1)
+  } else {
+    locally {
+      val (e57: Tree, t65: Int) = locally {
+        val (ir: Tree, it: Int) = locally {
+          val (e60: Tree, t69: Int) = insert(l.head, t)
+          (e60, (1 + (1 + t69)))
+        }
+        
+        locally {
+          val (r7: Tree, t66: Int) = locally {
+            val (e64: Tree, t73: Int) = addAll(l.tail, ir)
+            (e64, (1 + (1 + t73)))
+          }
+          
+          (r7, (t66 + (it + 1)))
+        }
+        
+      }
+      
+      (e57, (1 + t65))
+    }
+    
+  }} ensuring(res13 => true)
+
+  def contains(elem : Int, t : Tree) : (Boolean, Int) = {if (t.isInstanceOf[Leaf]) {
+    (false, 1)
+  } else {
+    locally {
+      val (e2: Boolean, t10: Int) = if ((t.value == elem)) {
+        (true, 2)
+      } else {
+        locally {
+          val (e5: Boolean, t13: Int) = if ((t.value < elem)) {
+            locally {
+              val (e7: Boolean, t15: Int) = locally {
+                val (e10: Boolean, t18: Int) = contains(elem, t.right)
+                (e10, (1 + (1 + t18)))
+              }
+              
+              (e7, (2 + t15))
+            }
+            
+          } else {
+            locally {
+              val (e12: Boolean, t20: Int) = locally {
+                val (e15: Boolean, t23: Int) = contains(elem, t.left)
+                (e15, (1 + (1 + t23)))
+              }
+              
+              (e12, (2 + t20))
+            }
+            
+          }
+          (e5, (2 + t13))
+        }
+        
+      }
+      (e2, (1 + t10))
+    }
+    
+  }} ensuring(res11 => true)
+
+  def size(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      ((size(l) + size(r)) + 1)
+  })}
+
+  def insert(elem : Int, t : Tree) : (Tree, Int) = {if (t.isInstanceOf[Leaf]) {
+    (Node(Leaf(), elem, Leaf()), (1 + 3))
+  } else {
+    locally {
+      val (e29: Node, t37: Int) = if ((t.value <= elem)) {
+        locally {
+          val (e31: Node, t39: Int) = locally {
+            val (e34: Tree, t42: Int) = locally {
+              val (e37: Tree, t45: Int) = insert(elem, t.right)
+              (e37, (1 + (1 + t45)))
+            }
+            
+            (Node(t.left, t.value, e34), (t42 + 3))
+          }
+          
+          (e31, (2 + t39))
+        }
+        
+      } else {
+        locally {
+          val (e41: Node, t49: Int) = locally {
+            val (e42: Tree, t50: Int) = locally {
+              val (e49: Tree, t57: Int) = insert(elem, t.left)
+              (e49, (1 + (1 + t57)))
+            }
+            
+            (Node(e42, t.value, t.right), (1 + (1 + (t50 + 1))))
+          }
+          
+          (e41, (2 + t49))
+        }
+        
+      }
+      (e29, (1 + t37))
+    }
+    
+  }} ensuring(res12 => (height(res12._1) <= (height(t) + 1)))
+
+  def listSize(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, t) =>
+      (1 + listSize(t))
+  })}
+
+  def removeAll(l : List, t : Tree) : (Tree, Int) = {if (l.isInstanceOf[Nil]) {
+    (t, 1)
+  } else {
+    locally {
+      val (e156: Tree, t165: Int) = locally {
+        val (e158: Tree, t167: Int) = locally {
+          val (e162: Tree, t171: Int) = remove(l.head, t)
+          (e162, (1 + (1 + t171)))
+        }
+        
+        locally {
+          val (e159: Tree, t168: Int) = removeAll(l.tail, e158)
+          (e159, (t167 + (1 + (1 + t168))))
+        }
+        
+      }
+      
+      (e156, (1 + t165))
+    }
+    
+  }} ensuring(res15 => true)
+
+  def height(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(l, x, r) =>
+      locally {
+        val hl = height(l)
+        locally {
+          val hr = height(r)
+          if ((hl > hr)) {
+            (hl + 1)
+          } else {
+            (hr + 1)
+          }
+        }
+        
+      }
+      
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def mult(x : Int, y : Int) : Int = {locally {
+    val r = locally {
+      val px = if ((x < 0)) {
+        -(x)
+      } else {
+        x
+      }
+      locally {
+        val py = if ((y < 0)) {
+          -(y)
+        } else {
+          y
+        }
+        pmult(px, py)
+      }
+      
+    }
+    
+    if ((((x >= 0) && (y >= 0)) || ((x < 0) && (y < 0)))) {
+      r
+    } else {
+      -(r)
+    }
+  }
+  }
+
+  def pmult(x : Int, y : Int) : Int = {if (((x == 0) || (y == 0))) {
+    0
+  } else {
+    (pmult((x - 1), y) + y)
+  }} ensuring(res => ((res >= 0) && (((x == 0) || (y == 0)) || (res == (pmult(x, (y - 1)) + x)))))
+}
+
+Function: remove template --> (res14._2 ≤ ((a?2 * height(t)) + b?2))
+Function: addAll template --> (res13._2 ≤ (((a?1 * mult(listSize(l), (height(t) + listSize(l)))) + (b?1 * listSize(l))) + c?))
+Function: contains template --> (res11._2 ≤ ((a?4 * height(t)) + b?4))
+Function: insert template --> (res12._2 ≤ ((a? * height(t)) + b?))
+Function: removeAll template --> (res15._2 ≤ (((a?3 * mult(listSize(l), height(t))) + (b?3 * listSize(l))) + c?2))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(pmult, listSize, mult, height, insert, addAll, remove, removeAll, size, contains)
+[[34m Info  [0m] - considering function insert...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (Node(Leaf(), elem, Leaf()), (1 + 3))
+          else
+            (let (e29,t37 := if ((t.value ≤ elem))
+              (let (e31,t39 := (let (e34,t42 := (let (e37,t45 := insert(elem, t.right)) in
+                (e37, (1 + (1 + t45))))) in
+                (Node(t.left, t.value, e34), (t42 + 3)))) in
+                (e31, (2 + t39)))
+            else
+              (let (e41,t49 := (let (e42,t50 := (let (e49,t57 := insert(elem, t.left)) in
+                (e49, (1 + (1 + t57))))) in
+                (Node(e42, t.value, t.right), (1 + (1 + (t50 + 1)))))) in
+                (e41, (2 + t49)))) in
+              (e29, (1 + t37)))
+[[34m Info  [0m] Post: (height(res12._1) ≤ (height(t) + 1))
+falttened Body: ((res12 == ifres) && ((ci && (ci == t.isInstanceOf[Leaf]) && (ifres == tp) && (tp == (cc2, arg)) && (cc2 == Node(cc, elem, cc1)) && (arg == (1 + 3)) && (cc == Leaf()) && (cc1 == Leaf())) || (!(ci1) && (ci1 == t.isInstanceOf[Leaf]) && (ifres == tp1) && (arg1 == (1 + t37)) && (tp1 == (e29, arg1)) && (((cs <= elem) && (cs == t.value) && (ifres1 == tp2) && (arg2 == (2 + t39)) && (tp2 == (e31, arg2)) && (e34 == e37) && (t42 == (1 + (1 + t45))) && (t45 == ts) && (ts == tres._2) && (tres == r8) && (cs1 == t.right) && (r8 == insert(elem, cs1)) && (e37 == ts1) && (ts1 == tres._1) && (t39 == (t42 + 3)) && (e31 == cc3) && (cs2 == t.left) && (cs3 == t.value) && (cc3 == Node(cs2, cs3, e34))) || ((cs4 > elem) && (cs4 == t.value) && (ifres1 == tp3) && (arg3 == (2 + t49)) && (tp3 == (e41, arg3)) && (t50 == (1 + (1 + t57))) && (tres1 == r9) && (cs5 == t.left) && (r9 == insert(elem, cs5)) && (e49 == ts2) && (ts2 == tres1._1) && (e42 == e49) && (t49 == (1 + (1 + (t50 + 1)))) && (e41 == cc4) && (cs6 == t.value) && (cs7 == t.right) && (cc4 == Node(e42, cs6, cs7)) && (t57 == ts3) && (ts3 == tres1._2))) && (e29 == ts4) && (ts4 == ifres1._1) && (t37 == ts5) && (ts5 == ifres1._2))))
+Flattened Post: (((r10 > (r11 + 1)) && (ts6 == res12._1) && (r10 == height(ts6)) && (r11 == height(t))) || ((ts7 > ((a? * r12) + b?)) && (ts7 == res12._2) && (r12 == height(t))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * height(t)) + (1 * res12._2)) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 41
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/9
+Unrolled calls: Set((r12 == height(t)), (r15 == height(ts9)), (r16 == height(cs5)))
+Creating VC for height
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function height : (((a?6 * #res) + a?5) ≤ 0)
+Unrolling (r12 == height(t))
+Unrolling (r15 == height(ts9))
+Unrolling (r16 == height(cs5))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * height(t)) + (1 * res12._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 13 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+insert-->((((-1 * height(t)) + (8 * res12._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 79) ≤ 0)
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 8 + 13
+solving...
+solved... in 0.01s
+candidate Invariants
+insert-->((((-11 * height(t)) + (1 * res12._2)) + 0) ≤ 0)
+height-->(((0 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 10 + 21
+solving...
+solved... in 0.009s
+candidate Invariants
+insert-->((((-11 * height(t)) + (1 * res12._2)) + -7) ≤ 0)
+height-->(((0 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 7 + 31
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/16
+Unrolled calls: Set((r10 == height(ts6)), (r11 == height(t)), (r14 == height(cs1)), (r26 == height(cs1)), (r13 == height(ts8)))
+Unrolling (r11 == height(t))
+Unrolling (r26 == height(cs1))
+Unrolling (r13 == height(ts8))
+Unrolling (r10 == height(ts6))
+Unrolling (r14 == height(cs1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * height(t)) + (1 * res12._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 72
+[[34m Info  [0m] Number of equal calls: 15
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+insert-->((((-5 * height(t)) + (1 * res12._2)) + 0) ≤ 0)
+height-->(((-40 * #res) + 57) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 136
+[[34m Info  [0m] Number of equal calls: 16
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 41 + 23
+solving...
+solved... in 0.015s
+candidate Invariants
+insert-->((((1 * res12._2) + (-12 * height(t))) + 0) ≤ 0)
+height-->(((1 * #res) + -8) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 23 + 64
+solving...
+solved... in 0.016s
+candidate Invariants
+insert-->((((1 * res12._2) + (-13 * height(t))) + -7) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 13
+Found new lower bound: 6
+Found new upper bound: 17/2
+Found new lower bound: 7
+Minimizing variable: b? Initial upperbound: 7
+Found new lower bound: 3
+Found new upper bound: 4
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: insert --> ((((-17 * height(t)) + (2 * res12._2)) + -8) <= 0)
+[[34m Info  [0m] - Found inductive invariant: height --> (((-1 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function addAll...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (t, 1)
+          else
+            (let (e57,t65 := (let (ir,it := (let (e60,t69 := insert(l.head, t)) in
+              (e60, (1 + (1 + t69))))) in
+              (let (r7,t66 := (let (e64,t73 := addAll(l.tail, ir)) in
+                (e64, (1 + (1 + t73))))) in
+                (r7, (t66 + (it + 1)))))) in
+              (e57, (1 + t65)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res13 == ifres20) && ((ci20 && (ci20 == l.isInstanceOf[Nil]) && (ifres20 == tp4) && (arg4 == 1) && (tp4 == (t, arg4))) || (!(ci21) && (ci21 == l.isInstanceOf[Nil]) && (ifres20 == tp5) && (arg5 == (1 + t65)) && (tp5 == (e57, arg5)) && (tres2 == r47) && (cs26 == l.tail) && (r47 == addAll(cs26, ir)) && (t65 == (t66 + (it + 1))) && (e64 == ts22) && (ts22 == tres2._1) && (t66 == (1 + (1 + t73))) && (ir == e60) && (e60 == ts23) && (ts23 == tres3._1) && (r7 == e64) && (t69 == ts24) && (ts24 == tres3._2) && (e57 == r7) && (it == (1 + (1 + t69))) && (t73 == ts25) && (ts25 == tres2._2) && (tres3 == r48) && (cs27 == l.head) && (r48 == insert(cs27, t)))))
+Flattened Post: ((ts26 > (((a?1 * r52) + (b?1 * r53)) + c?)) && (ts26 == res13._2) && (r52 == mult(r49, arg6)) && (r50 == height(t)) && (r51 == listSize(l)) && (arg6 == (r50 + r51)) && (r49 == listSize(l)) && (r53 == listSize(l)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+addAll-->(((((0 * listSize(l)) + (0 * mult(listSize(l), (height(t) + listSize(l))))) + (1 * res13._2)) + 0) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+addAll-->(((((0 * mult(listSize(l), (height(t) + listSize(l)))) + (0 * listSize(l))) + (1 * res13._2)) + -3) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 28
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 10 + 10
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/9
+Unrolled calls: Set((r48 == insert(cs27, t)), (r52 == mult(r49, arg6)), (r55 == height(t)), (r50 == height(t)), (r51 == listSize(l)), (r49 == listSize(l)), (r54 == height(ts27)), (r53 == listSize(l)))
+Creating VC for height
+Unrolling (r55 == height(t))
+Creating VC for insert
+Unrolling (r48 == insert(cs27, t))
+Creating VC for listSize
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function listSize : (((a?8 * #res) + a?7) ≤ 0)
+Unrolling (r49 == listSize(l))
+Unrolling (r50 == height(t))
+Unrolling (r54 == height(ts27))
+Unrolling (r51 == listSize(l))
+Unrolling (r53 == listSize(l))
+Inlining (r52 == mult(r49, arg6))
+[[34m Info  [0m] Number of axiom instances: 8
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+addAll-->(((((0 * mult(listSize(l), (height(t) + listSize(l)))) + (0 * listSize(l))) + (1 * res13._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 302
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 43
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 27 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 11/34
+Unrolled calls: Set((r95 == listSize(cs26)), (r93 == height(cs43)), (r97 == listSize(cs26)), (r94 == height(t)), (r84 == pmult(px1, py1)), (r87 == pmult(px1, arg17)), (r72 == height(t)), (r92 == height(ts46)), (r99 == listSize(cs26)), (r96 == height(ir)), (r98 == mult(r95, arg18)))
+Unrolling (r92 == height(ts46))
+Unrolling (r93 == height(cs43))
+Unrolling (r96 == height(ir))
+Inlining (r98 == mult(r95, arg18))
+Unrolling (r72 == height(t))
+Unrolling (r99 == listSize(cs26))
+Unrolling (r84 == pmult(px1, py1))
+Unrolling (r94 == height(t))
+Unrolling (r95 == listSize(cs26))
+Unrolling (r97 == listSize(cs26))
+Unrolling (r87 == pmult(px1, arg17))
+[[34m Info  [0m] Number of axiom instances: 162
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+addAll-->(((((1 * res13._2) + (0 * mult(listSize(l), (height(t) + listSize(l))))) + (0 * listSize(l))) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 8
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 24 + 0
+solving...
+solved... in 0.014s
+candidate Invariants
+addAll-->(((((8 * res13._2) + (0 * mult(listSize(l), (height(t) + listSize(l))))) + (0 * listSize(l))) + -1) ≤ 0)
+height-->(((0 * #res) + 1) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((0 * #res) + 11) ≤ 0)
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 16 + 24
+solving...
+solved... in 0.014s
+candidate Invariants
+addAll-->(((((0 * listSize(l)) + (0 * mult(listSize(l), (height(t) + listSize(l))))) + (2 * res13._2)) + -15) ≤ 0)
+height-->(((0 * #res) + -1) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((0 * #res) + -1) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 457
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 51
+# of atomic predicates: 59 + 40
+solving...
+solved... in 0.015s
+candidate Invariants
+addAll-->(((((-360 * listSize(l)) + (32 * res13._2)) + (-352 * mult(listSize(l), (height(t) + listSize(l))))) + -212) ≤ 0)
+height-->(((1 * #res) + -8) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((2 * #res) + -1) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 511
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 53
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 96 + 99
+solving...
+solved... in 0.098s
+candidate Invariants
+addAll-->(((((-4 * listSize(l)) + (-80 * mult(listSize(l), (height(t) + listSize(l))))) + (8 * res13._2)) + -30) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((-8 * #res) + -1) ≤ 0)
+Nesting level: a?1-->4
+Nesting level: b?1-->1
+Nesting level: c?-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 10
+Found new lower bound: 5
+Found new lower bound: 7
+Found new lower bound: 8
+Found new upper bound: 17/2
+Minimizing variable: b?1 Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimizing variable: c? Initial upperbound: 6
+Found new upper bound: 23/8
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+candidate Invariants
+addAll-->(((((2 * res13._2) + (-2 * listSize(l))) + (-17 * mult(listSize(l), (height(t) + listSize(l))))) + -2) ≤ 0)
+height-->(((-8 * #res) + -1) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((-8 * #res) + -4) ≤ 0)
+Function: addAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 145
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 31
+# of atomic predicates: 43 + 195
+solving...
+solved... in 0.093s
+candidate Invariants
+addAll-->(((((1 * res13._2) + (-10 * mult(listSize(l), (height(t) + listSize(l))))) + (-1 * listSize(l))) + -6) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+insert-->((((-17 * height(t)) + (2 * res12._2)) + -8) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?1-->4
+Nesting level: b?1-->1
+Nesting level: c?-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 10
+Found new lower bound: 5
+Found new lower bound: 7
+Found new lower bound: 8
+Found new upper bound: 17/2
+Minimizing variable: b?1 Initial upperbound: 2
+Found new lower bound: 1
+Minimizing variable: c? Initial upperbound: 15/4
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: addAll --> (((((-4 * listSize(l)) + (-17 * (listSize(l) * (height(t) + listSize(l))))) + (2 * res13._2)) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: height --> (((-8 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: insert --> ((((-17 * height(t)) + (2 * res12._2)) + -8) <= 0)
+[[34m Info  [0m] - Found inductive invariant: listSize --> (((-8 * #res) + -4) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[31m Error [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m Info  [0m] - considering function remove...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (Leaf(), (1 + 1))
+          else
+            (let (e69,t78 := if ((t.value < elem))
+              (let (e71,t80 := (let (e74,t83 := (let (e77,t86 := remove(elem, t.right)) in
+                (e77, (1 + (1 + t86))))) in
+                (Node(t.left, t.value, e74), (t83 + 3)))) in
+                (e71, (2 + t80)))
+            else
+              (let (e81,t90 := if ((t.value > elem))
+                (let (e83,t92 := (let (e84,t93 := (let (e91,t100 := remove(elem, t.left)) in
+                  (e91, (1 + (1 + t100))))) in
+                  (Node(e84, t.value, t.right), (1 + (1 + (t93 + 1)))))) in
+                  (e83, (2 + t92)))
+              else
+                (let (e93,t102 := if ((t.isInstanceOf[Node] ∧ t.left.isInstanceOf[Leaf] ∧ t.right.isInstanceOf[Leaf]))
+                  (Leaf(), (6 + 1))
+                else
+                  (let (e96,t105 := if ((t.isInstanceOf[Node] ∧ t.left.isInstanceOf[Leaf] ∧ t.right.isInstanceOf[Node]))
+                    (let (e98,t107 := (let (e101,t110 := (let (e104,t113 := remove(t.right.value, t.right)) in
+                      (e104, (1 + (2 + (1 + t113)))))) in
+                      (Node(Leaf(), t.right.value, e101), (t110 + 4)))) in
+                      (e98, (6 + t107)))
+                  else
+                    (let (e110,t119 := if ((t.isInstanceOf[Node] ∧ t.left.isInstanceOf[Node]))
+                      (let (e112,t121 := (let (e113,t122 := (let (e121,t130 := remove(t.left.value, t.left)) in
+                        (e121, (1 + (2 + (1 + t130)))))) in
+                        (Node(e113, t.left.value, t.right), (1 + (2 + (t122 + 1)))))) in
+                        (e112, (4 + t121)))
+                    else
+                      (Leaf(), (4 + 1))) in
+                      (e110, (6 + t119)))) in
+                    (e96, (6 + t105)))) in
+                  (e93, (2 + t102)))) in
+                (e81, (2 + t90)))) in
+              (e69, (1 + t78)))
+[[34m Info  [0m] Post: (height(res14._1) ≤ height(t))
+falttened Body: ((res14 == ifres58) && ((ci58 && (ci58 == t.isInstanceOf[Leaf]) && (ifres58 == tp14) && (cc15 == Leaf()) && (arg34 == (1 + 1)) && (tp14 == (cc15, arg34))) || (!(ci59) && (ci59 == t.isInstanceOf[Leaf]) && (ifres58 == tp15) && (arg35 == (1 + t78)) && (tp15 == (e69, arg35)) && (((cs69 < elem) && (cs69 == t.value) && (ifres59 == tp16) && (arg36 == (2 + t80)) && (tp16 == (e71, arg36)) && (t86 == ts71) && (ts71 == tres8._2) && (tres8 == r179) && (cs70 == t.right) && (r179 == remove(elem, cs70)) && (t83 == (1 + (1 + t86))) && (t80 == (t83 + 3)) && (e77 == ts72) && (ts72 == tres8._1) && (e74 == e77) && (e71 == cc16) && (cs71 == t.left) && (cs72 == t.value) && (cc16 == Node(cs71, cs72, e74))) || ((cs73 >= elem) && (cs73 == t.value) && (ifres59 == tp17) && (arg37 == (2 + t90)) && (tp17 == (e81, arg37)) && (((cs74 > elem) && (cs74 == t.value) && (ifres60 == tp18) && (arg38 == (2 + t92)) && (tp18 == (e83, arg38)) && (t100 == ts73) && (ts73 == tres9._2) && (e91 == ts74) && (ts74 == tres9._1) && (e83 == cc17) && (cs75 == t.value) && (cs76 == t.right) && (cc17 == Node(e84, cs75, cs76)) && (e84 == e91) && (tres9 == r180) && (cs77 == t.left) && (r180 == remove(elem, cs77)) && (t93 == (1 + (1 + t100))) && (t92 == (1 + (1 + (t93 + 1))))) || ((cs78 <= elem) && (cs78 == t.value) && (ifres60 == tp19) && (arg39 == (2 + t102)) && (tp19 == (e93, arg39)) && ((ci60 && (ci60 == t.isInstanceOf[Node]) && ci61 && (cs79 == t.left) && (ci61 == cs79.isInstanceOf[Leaf]) && ci62 && (cs80 == t.right) && (ci62 == cs80.isInstanceOf[Leaf]) && (ifres61 == tp20) && (cc18 == Leaf()) && (arg40 == (6 + 1)) && (tp20 == (cc18, arg40))) || (((!(ci63) && (ci63 == t.isInstanceOf[Node])) || (!(ci64) && (cs81 == t.left) && (ci64 == cs81.isInstanceOf[Leaf])) || (!(ci65) && (cs82 == t.right) && (ci65 == cs82.isInstanceOf[Leaf]))) && (ifres61 == tp21) && (arg41 == (6 + t105)) && (tp21 == (e96, arg41)) && ((ci66 && (ci66 == t.isInstanceOf[Node]) && ci67 && (cs83 == t.left) && (ci67 == cs83.isInstanceOf[Leaf]) && ci68 && (cs84 == t.right) && (ci68 == cs84.isInstanceOf[Node]) && (ifres62 == tp22) && (arg42 == (6 + t107)) && (tp22 == (e98, arg42)) && (t113 == ts75) && (ts75 == tres10._2) && (tres10 == r181) && (cs85 == t.right) && (cs86 == cs85.value) && (cs87 == t.right) && (r181 == remove(cs86, cs87)) && (e98 == cc20) && (cc19 == Leaf()) && (cs88 == t.right) && (cs89 == cs88.value) && (cc20 == Node(cc19, cs89, e101)) && (e104 == ts76) && (ts76 == tres10._1) && (e101 == e104) && (t110 == (1 + (2 + (1 + t113)))) && (t107 == (t110 + 4))) || (((!(ci69) && (ci69 == t.isInstanceOf[Node])) || (!(ci70) && (cs90 == t.left) && (ci70 == cs90.isInstanceOf[Leaf])) || (!(ci71) && (cs91 == t.right) && (ci71 == cs91.isInstanceOf[Node]))) && (ifres62 == tp23) && (arg43 == (6 + t119)) && (tp23 == (e110, arg43)) && ((ci72 && (ci72 == t.isInstanceOf[Node]) && ci73 && (cs92 == t.left) && (ci73 == cs92.isInstanceOf[Node]) && (ifres63 == tp24) && (arg44 == (4 + t121)) && (tp24 == (e112, arg44)) && (t121 == (1 + (2 + (t122 + 1)))) && (e113 == e121) && (t130 == ts77) && (ts77 == tres11._2) && (e121 == ts78) && (ts78 == tres11._1) && (t122 == (1 + (2 + (1 + t130)))) && (tres11 == r182) && (cs93 == t.left) && (cs94 == cs93.value) && (cs95 == t.left) && (r182 == remove(cs94, cs95)) && (e112 == cc21) && (cs96 == t.left) && (cs97 == cs96.value) && (cs98 == t.right) && (cc21 == Node(e113, cs97, cs98))) || (((!(ci74) && (ci74 == t.isInstanceOf[Node])) || (!(ci75) && (cs99 == t.left) && (ci75 == cs99.isInstanceOf[Node]))) && (ifres63 == tp25) && (cc22 == Leaf()) && (arg45 == (4 + 1)) && (tp25 == (cc22, arg45)))) && (e110 == ts79) && (ts79 == ifres63._1) && (t119 == ts80) && (ts80 == ifres63._2))) && (e96 == ts81) && (ts81 == ifres62._1) && (t105 == ts82) && (ts82 == ifres62._2))) && (e93 == ts83) && (ts83 == ifres61._1) && (t102 == ts84) && (ts84 == ifres61._2))) && (e81 == ts85) && (ts85 == ifres60._1) && (t90 == ts86) && (ts86 == ifres60._2))) && (e69 == ts87) && (ts87 == ifres59._1) && (t78 == ts88) && (ts88 == ifres59._2))))
+Flattened Post: (((r183 > r184) && (ts89 == res14._1) && (r183 == height(ts89)) && (r184 == height(t))) || ((ts90 > ((a?2 * r185) + b?2)) && (ts90 == res14._2) && (r185 == height(t))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+remove-->((((0 * height(t)) + (1 * res14._2)) + 0) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 61
+[[34m Info  [0m] Number of equal calls: 10
+# of atomic predicates: 13 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+remove-->((((0 * height(t)) + (1 * res14._2)) + -14) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 259
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 13 + 13
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/15
+Unrolled calls: Set((r190 == height(ts93)), (r191 == height(cs95)), (r185 == height(t)))
+Creating VC for height
+Unrolling (r190 == height(ts93))
+Unrolling (r191 == height(cs95))
+Unrolling (r185 == height(t))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+remove-->((((0 * height(t)) + (1 * res14._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 73
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+remove-->((((16 * res14._2) + (-8 * height(t))) + -2) ≤ 0)
+height-->(((-8 * #res) + 222) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 408
+[[34m Info  [0m] Number of equal calls: 30
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 26 + 14
+solving...
+solved... in 0.008s
+candidate Invariants
+remove-->((((-31 * height(t)) + (1 * res14._2)) + -45) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 56
+[[34m Info  [0m] Number of equal calls: 10
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 18 + 40
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/24
+Unrolled calls: Set((r183 == height(ts89)), (r188 == height(ts92)), (r189 == height(cs70)), (r205 == height(cs70)), (r184 == height(t)), (r206 == height(cs95)))
+Unrolling (r183 == height(ts89))
+Unrolling (r184 == height(t))
+Unrolling (r188 == height(ts92))
+Unrolling (r205 == height(cs70))
+Unrolling (r189 == height(cs70))
+Unrolling (r206 == height(cs95))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+remove-->((((0 * height(t)) + (1 * res14._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 109
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 23 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+remove-->((((-1 * height(t)) + (8 * res14._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 19) ≤ 0)
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 23
+solving...
+solved... in 0.006s
+candidate Invariants
+remove-->((((-17 * height(t)) + (1 * res14._2)) + 0) ≤ 0)
+height-->(((0 * #res) + -1) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 466
+[[34m Info  [0m] Number of equal calls: 34
+# of atomic predicates: 38 + 31
+solving...
+solved... in 0.012s
+candidate Invariants
+remove-->((((1 * res14._2) + (-30 * height(t))) + 0) ≤ 0)
+height-->(((1 * #res) + -8) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 73
+[[34m Info  [0m] Number of equal calls: 13
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 32 + 69
+solving...
+solved... in 0.016s
+candidate Invariants
+remove-->((((-30 * height(t)) + (1 * res14._2)) + -15) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 30
+Found new lower bound: 15
+Found new lower bound: 22
+Found new lower bound: 26
+Found new lower bound: 28
+Found new upper bound: 29
+Minimizing variable: b?2 Initial upperbound: 15
+Found new upper bound: 31/5
+Found new upper bound: 75/28
+Found new upper bound: 61/80
+Found new upper bound: -9/50
+Found new upper bound: -347/336
+Found new upper bound: -89/24
+Found new upper bound: -2315/288
+Found new upper bound: -17
+Found new lower bound: -34
+Found new lower bound: -26
+Found new lower bound: -22
+Found new lower bound: -20
+Found new lower bound: -19
+Found new lower bound: -18
+Minimization complete...
+candidate Invariants
+remove-->((((-29 * height(t)) + (1 * res14._2)) + 17) ≤ 0)
+height-->(((-1 * #res) + 0) ≤ 0)
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 101
+solving...
+solved... in 0.017s
+candidate Invariants
+remove-->((((-30 * height(t)) + (1 * res14._2)) + -14) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 30
+Found new lower bound: 15
+Found new lower bound: 22
+Found new lower bound: 26
+Found new lower bound: 28
+Found new upper bound: 29
+Minimizing variable: b?2 Initial upperbound: 14
+Found new upper bound: 3
+Found new lower bound: 1
+Found new upper bound: 2
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: remove --> ((((1 * res14._2) + (-29 * height(t))) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: height --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function removeAll...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (t, 1)
+          else
+            (let (e156,t165 := (let (e158,t167 := (let (e162,t171 := remove(l.head, t)) in
+              (e162, (1 + (1 + t171))))) in
+              (let (e159,t168 := removeAll(l.tail, e158)) in
+                (e159, (t167 + (1 + (1 + t168))))))) in
+              (e156, (1 + t165)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res15 == ifres84) && ((ci96 && (ci96 == l.isInstanceOf[Nil]) && (ifres84 == tp26) && (arg46 == 1) && (tp26 == (t, arg46))) || (!(ci97) && (ci97 == l.isInstanceOf[Nil]) && (ifres84 == tp27) && (arg47 == (1 + t165)) && (tp27 == (e156, arg47)) && (e159 == ts112) && (ts112 == tres12._1) && (t168 == ts113) && (ts113 == tres12._2) && (t167 == (1 + (1 + t171))) && (e162 == ts114) && (ts114 == tres13._1) && (t165 == (t167 + (1 + (1 + t168)))) && (tres13 == r231) && (cs120 == l.head) && (r231 == remove(cs120, t)) && (e156 == e159) && (e158 == e162) && (t171 == ts115) && (ts115 == tres13._2) && (tres12 == r232) && (cs121 == l.tail) && (r232 == removeAll(cs121, e158)))))
+Flattened Post: ((ts116 > (((a?3 * r235) + (b?3 * r236)) + c?2)) && (r233 == listSize(l)) && (r235 == mult(r233, r234)) && (r236 == listSize(l)) && (ts116 == res15._2) && (r234 == height(t)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeAll-->(((((0 * mult(listSize(l), height(t))) + (1 * res15._2)) + (0 * listSize(l))) + 0) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+removeAll-->(((((0 * listSize(l)) + (1 * res15._2)) + (0 * mult(listSize(l), height(t)))) + -3) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 26
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 10 + 10
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/8
+Unrolled calls: Set((r233 == listSize(l)), (r235 == mult(r233, r234)), (r231 == remove(cs120, t)), (r236 == listSize(l)), (r237 == height(ts117)), (r234 == height(t)), (r238 == height(t)))
+Creating VC for remove
+Unrolling (r231 == remove(cs120, t))
+Creating VC for height
+Unrolling (r237 == height(ts117))
+Creating VC for listSize
+Unrolling (r233 == listSize(l))
+Inlining (r235 == mult(r233, r234))
+Unrolling (r238 == height(t))
+Unrolling (r234 == height(t))
+Unrolling (r236 == listSize(l))
+[[34m Info  [0m] Number of axiom instances: 8
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeAll-->(((((1 * res15._2) + (0 * listSize(l))) + (0 * mult(listSize(l), height(t)))) + 0) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 277
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 35
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 259
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 25 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 12/44
+Unrolled calls: Set((r285 == height(cs148)), (r287 == listSize(cs121)), (r280 == height(ts162)), (r251 == height(t)), (r289 == mult(r287, r288)), (r286 == height(t)), (r284 == height(ts164)), (r281 == height(cs156)), (r263 == pmult(px3, py3)), (r290 == listSize(cs121)), (r279 == pmult(px3, arg72)), (r288 == height(e158)))
+Unrolling (r288 == height(e158))
+Unrolling (r280 == height(ts162))
+Unrolling (r279 == pmult(px3, arg72))
+Unrolling (r287 == listSize(cs121))
+Inlining (r289 == mult(r287, r288))
+Unrolling (r286 == height(t))
+Unrolling (r263 == pmult(px3, py3))
+Unrolling (r285 == height(cs148))
+Unrolling (r251 == height(t))
+Unrolling (r281 == height(cs156))
+Unrolling (r284 == height(ts164))
+Unrolling (r290 == listSize(cs121))
+[[34m Info  [0m] Number of axiom instances: 162
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeAll-->(((((1 * res15._2) + (0 * listSize(l))) + (0 * mult(listSize(l), height(t)))) + 0) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 511
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 50
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 73
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 67 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+removeAll-->(((((2 * res15._2) + (4 * mult(listSize(l), height(t)))) + (1 * listSize(l))) + 0) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-1 * #res) + 2) ≤ 0)
+listSize-->(((-928 * #res) + -39683) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 3
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 30 + 67
+solving...
+solved... in 0.012s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/63
+Unrolled calls: Set((r276 == height(cs161)), (r303 == pmult(px4, py4)), (r317 == pmult(px4, arg76)), (r275 == height(ts160)), (r323 == height(cs161)))
+Unrolling (r317 == pmult(px4, arg76))
+Unrolling (r323 == height(cs161))
+Unrolling (r303 == pmult(px4, py4))
+Unrolling (r275 == height(ts160))
+Unrolling (r276 == height(cs161))
+[[34m Info  [0m] Number of axiom instances: 578
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+removeAll-->(((((1 * res15._2) + (0 * mult(listSize(l), height(t)))) + (0 * listSize(l))) + 0) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 3
+Function: remove--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 73
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 36 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+removeAll-->(((((0 * listSize(l)) + (2 * res15._2)) + (0 * mult(listSize(l), height(t)))) + 1) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-1 * #res) + 1) ≤ 0)
+listSize-->(((0 * #res) + 7) ≤ 0)
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 16 + 36
+solving...
+solved... in 0.009s
+candidate Invariants
+removeAll-->(((((0 * mult(listSize(l), height(t))) + (1 * res15._2)) + (0 * listSize(l))) + -5) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((0 * #res) + -1) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 78
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 18
+# of atomic predicates: 42 + 52
+solving...
+solved... in 0.01s
+candidate Invariants
+removeAll-->(((((-20 * listSize(l)) + (1 * res15._2)) + (0 * mult(listSize(l), height(t)))) + -4) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-3 * #res) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 735
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 55
+# of atomic predicates: 80 + 94
+solving...
+solved... in 0.032s
+candidate Invariants
+removeAll-->(((((1 * res15._2) + (-43 * mult(listSize(l), height(t)))) + (-8 * listSize(l))) + -5) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((-1 * #res) + -4) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 325
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 40
+# of atomic predicates: 71 + 174
+solving...
+solved... in 0.121s
+candidate Invariants
+removeAll-->(((((-50 * listSize(l)) + (-4 * mult(listSize(l), height(t)))) + (1 * res15._2)) + -5) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((-1 * #res) + -4) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 585
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 50
+# of atomic predicates: 120 + 245
+solving...
+solved... in 0.323s
+candidate Invariants
+removeAll-->(((((8 * res15._2) + (-376 * listSize(l))) + (-1 * mult(listSize(l), height(t)))) + -40) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 726
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 57
+# of atomic predicates: 79 + 365
+solving...
+solved... in 0.351s
+candidate Invariants
+removeAll-->(((((1 * mult(listSize(l), height(t))) + (-252 * listSize(l))) + (4 * res15._2)) + -20) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((-1 * #res) + -2) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 828
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 60
+# of atomic predicates: 78 + 444
+solving...
+solved... in 0.615s
+candidate Invariants
+removeAll-->(((((-134 * listSize(l)) + (2 * res15._2)) + (1 * mult(listSize(l), height(t)))) + -10) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Function: removeAll--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 582
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 50
+# of atomic predicates: 89 + 522
+solving...
+solved... in 0.693s
+candidate Invariants
+removeAll-->(((((-8 * listSize(l)) + (-30 * mult(listSize(l), height(t)))) + (1 * res15._2)) + -5) ≤ 0)
+remove-->((((1 * res14._2) + (-29 * height(t))) + -2) ≤ 0)
+height-->(((-2 * #res) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?3-->3
+Nesting level: b?3-->1
+Nesting level: c?2-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 30
+Found new lower bound: 15
+Found new lower bound: 22
+Found new lower bound: 26
+Found new lower bound: 28
+Found new upper bound: 29
+Minimizing variable: b?3 Initial upperbound: 8
+Found new lower bound: 4
+Found new lower bound: 6
+Found new upper bound: 7
+Minimizing variable: c?2 Initial upperbound: 5
+Found new upper bound: 7/4
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: removeAll --> (((((4 * res15._2) + (-28 * listSize(l))) + (-116 * (listSize(l) * height(t)))) + -7) <= 0)
+[[34m Info  [0m] - Found inductive invariant: remove --> ((((1 * res14._2) + (-29 * height(t))) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: height --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: listSize --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[31m Error [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m Info  [0m] - considering function contains...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (false, 1)
+          else
+            (let (e2,t10 := if ((t.value == elem))
+              (true, 2)
+            else
+              (let (e5,t13 := if ((t.value < elem))
+                (let (e7,t15 := (let (e10,t18 := contains(elem, t.right)) in
+                  (e10, (1 + (1 + t18))))) in
+                  (e7, (2 + t15)))
+              else
+                (let (e12,t20 := (let (e15,t23 := contains(elem, t.left)) in
+                  (e15, (1 + (1 + t23))))) in
+                  (e12, (2 + t20)))) in
+                (e5, (2 + t13)))) in
+              (e2, (1 + t10)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res11 == ifres140) && ((ci172 && (ci172 == t.isInstanceOf[Leaf]) && (ifres140 == tp52) && !(arg87) && (arg88 == 1) && (tp52 == (arg87, arg88))) || (!(ci173) && (ci173 == t.isInstanceOf[Leaf]) && (ifres140 == tp53) && (arg89 == (1 + t10)) && (tp53 == (e2, arg89)) && (((cs217 == elem) && (cs217 == t.value) && (ifres141 == tp54) && arg90 && (arg91 == 2) && (tp54 == (arg90, arg91))) || ((((cs218 < elem) && (cs218 == t.value)) || ((cs219 > elem) && (cs219 == t.value))) && (ifres141 == tp55) && (arg92 == (2 + t13)) && (tp55 == (e5, arg92)) && (((cs220 < elem) && (cs220 == t.value) && (ifres142 == tp56) && (arg93 == (2 + t15)) && (tp56 == (e7, arg93)) && (t18 == ts203) && (ts203 == tres22._2) && (!(e10) || (ts204 && (ts204 == tres22._1))) && ((!(ts205) && (ts205 == tres22._1)) || e10) && (!(e7) || e10) && (!(e10) || e7) && (t15 == (1 + (1 + t18))) && (tres22 == r407) && (cs221 == t.right) && (r407 == contains(elem, cs221))) || ((cs222 >= elem) && (cs222 == t.value) && (ifres142 == tp57) && (arg94 == (2 + t20)) && (tp57 == (e12, arg94)) && (t23 == ts206) && (ts206 == tres23._2) && (!(e15) || (ts207 && (ts207 == tres23._1))) && ((!(ts208) && (ts208 == tres23._1)) || e15) && (tres23 == r408) && (cs223 == t.left) && (r408 == contains(elem, cs223)) && (!(e12) || e15) && (!(e15) || e12) && (t20 == (1 + (1 + t23))))) && (!(e5) || (ts209 && (ts209 == ifres142._1))) && ((!(ts210) && (ts210 == ifres142._1)) || e5) && (t13 == ts211) && (ts211 == ifres142._2))) && (!(e2) || (ts212 && (ts212 == ifres141._1))) && ((!(ts213) && (ts213 == ifres141._1)) || e2) && (t10 == ts214) && (ts214 == ifres141._2))))
+Flattened Post: ((ts215 > ((a?4 * r409) + b?4)) && (ts215 == res11._2) && (r409 == height(t)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+contains-->((((0 * height(t)) + (1 * res11._2)) + 0) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+contains-->((((0 * height(t)) + (1 * res11._2)) + -3) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 48
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 9 + 9
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/3
+Unrolled calls: Set((r409 == height(t)))
+Creating VC for height
+Unrolling (r409 == height(t))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+contains-->((((1 * res11._2) + (0 * height(t))) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 71
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 16 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+contains-->((((8 * res11._2) + (-1 * height(t))) + 0) ≤ 0)
+height-->(((0 * #res) + 183) ≤ 0)
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 8 + 16
+solving...
+solved... in 0.006s
+candidate Invariants
+contains-->((((1 * res11._2) + (-24 * height(t))) + 0) ≤ 0)
+height-->(((0 * #res) + -1) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 11 + 24
+solving...
+solved... in 0.008s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/8
+Unrolled calls: Set((r417 == height(cs223)))
+Unrolling (r417 == height(cs223))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+contains-->((((0 * height(t)) + (1 * res11._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 0) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 71
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+contains-->((((-1 * height(t)) + (8 * res11._2)) + 0) ≤ 0)
+height-->(((0 * #res) + 61) ≤ 0)
+Function: height--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 22
+solving...
+solved... in 0.007s
+candidate Invariants
+contains-->((((-26 * height(t)) + (1 * res11._2)) + 0) ≤ 0)
+height-->(((0 * #res) + -1) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 16 + 30
+solving...
+solved... in 0.01s
+candidate Invariants
+contains-->((((-8 * height(t)) + (1 * res11._2)) + 0) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 46
+solving...
+solved... in 0.009s
+candidate Invariants
+contains-->((((-8 * height(t)) + (1 * res11._2)) + -7) ≤ 0)
+height-->(((-1 * #res) + -2) ≤ 0)
+Function: contains--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 16
+[[34m Info  [0m] Number of equal calls: 6
+# of atomic predicates: 16 + 56
+solving...
+solved... in 0.011s
+candidate Invariants
+contains-->((((1 * res11._2) + (-8 * height(t))) + -4) ≤ 0)
+height-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?4-->1
+Nesting level: b?4-->0
+minimizing...
+Minimizing variable: a?4 Initial upperbound: 8
+Found new lower bound: 4
+Found new lower bound: 6
+Found new upper bound: 7
+Minimizing variable: b?4 Initial upperbound: 4
+Found new upper bound: 3/2
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: contains --> ((((-14 * height(t)) + (2 * res11._2)) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: height --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

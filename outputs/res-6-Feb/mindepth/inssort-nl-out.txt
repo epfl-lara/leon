@@ -1,0 +1,984 @@
+After Depth Instrumentation: 
+object InsertionSort {
+  case class Nil() extends List
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, xs) =>
+      (1 + size(xs))
+  })}
+
+  def sort(l : List) : (List, Int) = {locally {
+    val dcond = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond >= 1)) {
+        dcond
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse: List, delse: Int) = locally {
+          val (r3: List, d2: Int) = locally {
+            val (e2: List, d5: Int) = sort(l.tail)
+            (e2, (2 + d5))
+          }
+          
+          locally {
+            val (e1: List, d3: Int) = sortedIns(l.head, r3)
+            (e1, ((1 + d3) + if ((1 >= d2)) {
+              1
+            } else {
+              d2
+            }))
+          }
+          
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(res._1) == size(l)))
+
+  def sortedIns(e : Int, l : List) : (List, Int) = {locally {
+    val dcond1 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Cons(e, Nil()), if ((dcond1 >= 2)) {
+        dcond1
+      } else {
+        2
+      })
+    } else {
+      locally {
+        val (relse1: Cons, delse1: Int) = locally {
+          val dcond2 = 2
+          if ((l.head <= e)) {
+            locally {
+              val (rthen2: Cons, dthen2: Int) = locally {
+                val (r14: List, d15: Int) = locally {
+                  val (e3: List, d18: Int) = sortedIns(e, l.tail)
+                  (e3, (2 + d18))
+                }
+                
+                (Cons(l.head, r14), (1 + if ((1 >= d15)) {
+                  1
+                } else {
+                  d15
+                }))
+              }
+              
+              (rthen2, if ((dcond2 >= dthen2)) {
+                dcond2
+              } else {
+                dthen2
+              })
+            }
+            
+          } else {
+            (Cons(e, l), if ((dcond2 >= 1)) {
+              dcond2
+            } else {
+              1
+            })
+          }
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => (size(res._1) == (size(l) + 1)))
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: size
+Defined fun: sort
+Defined fun: sortedIns
+Defined fun: max
+FunMap: Map(size -> size, sort -> sort, sortedIns -> sortedIns, max -> max)
+After Time Instrumentation: 
+object InsertionSort {
+  case class Nil() extends List
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, xs) =>
+      (1 + size(xs))
+  })}
+
+  def sort(l : List) : (List, Int) = {locally {
+    val dcond = 1
+    if (l.isInstanceOf[Nil]) {
+      (Nil(), if ((dcond >= 1)) {
+        dcond
+      } else {
+        1
+      })
+    } else {
+      locally {
+        val (relse: List, delse: Int) = locally {
+          val (r3: List, d2: Int) = locally {
+            val (e2: List, d5: Int) = sort(l.tail)
+            (e2, (2 + d5))
+          }
+          
+          locally {
+            val (e1: List, d3: Int) = sortedIns(l.head, r3)
+            (e1, ((1 + d3) + if ((1 >= d2)) {
+              1
+            } else {
+              d2
+            }))
+          }
+          
+        }
+        
+        (relse, if ((dcond >= delse)) {
+          dcond
+        } else {
+          delse
+        })
+      }
+      
+    }
+  }
+  } ensuring(res5 => (size(res5._1) == size(l)))
+
+  def sortedIns(e : Int, l : List) : (List, Int) = {locally {
+    val dcond1 = 1
+    if (l.isInstanceOf[Nil]) {
+      (Cons(e, Nil()), if ((dcond1 >= 2)) {
+        dcond1
+      } else {
+        2
+      })
+    } else {
+      locally {
+        val (relse1: Cons, delse1: Int) = locally {
+          val dcond2 = 2
+          if ((l.head <= e)) {
+            locally {
+              val (rthen2: Cons, dthen2: Int) = locally {
+                val (r14: List, d15: Int) = locally {
+                  val (e3: List, d18: Int) = sortedIns(e, l.tail)
+                  (e3, (2 + d18))
+                }
+                
+                (Cons(l.head, r14), (1 + if ((1 >= d15)) {
+                  1
+                } else {
+                  d15
+                }))
+              }
+              
+              (rthen2, if ((dcond2 >= dthen2)) {
+                dcond2
+              } else {
+                dthen2
+              })
+            }
+            
+          } else {
+            (Cons(e, l), if ((dcond2 >= 1)) {
+              dcond2
+            } else {
+              1
+            })
+          }
+        }
+        
+        (relse1, if ((dcond1 >= delse1)) {
+          dcond1
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res6 => (size(res6._1) == (size(l) + 1)))
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object InsertionSort {
+  case class Nil() extends List
+
+  sealed abstract class List
+
+  case class Cons(head: Int, tail: List) extends List
+
+  def size(l : List) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(_, xs) =>
+      (1 + size(xs))
+  })}
+
+  def sort(l : List) : (List, Int) = {if (l.isInstanceOf[Nil]) {
+    (Nil(), if ((1 >= 1)) {
+      1
+    } else {
+      1
+    })
+  } else {
+    locally {
+      val (relse: List, delse: Int) = locally {
+        val (r3: List, d2: Int) = locally {
+          val (e2: List, d5: Int) = sort(l.tail)
+          (e2, (2 + d5))
+        }
+        
+        locally {
+          val (e1: List, d3: Int) = sortedIns(l.head, r3)
+          (e1, ((1 + d3) + if ((1 >= d2)) {
+            1
+          } else {
+            d2
+          }))
+        }
+        
+      }
+      
+      (relse, if ((1 >= delse)) {
+        1
+      } else {
+        delse
+      })
+    }
+    
+  }} ensuring(res5 => (size(res5._1) == size(l)))
+
+  def sortedIns(e : Int, l : List) : (List, Int) = {if (l.isInstanceOf[Nil]) {
+    (Cons(e, Nil()), if ((1 >= 2)) {
+      1
+    } else {
+      2
+    })
+  } else {
+    locally {
+      val (relse1: Cons, delse1: Int) = if ((l.head <= e)) {
+        locally {
+          val (rthen2: Cons, dthen2: Int) = locally {
+            val (r14: List, d15: Int) = locally {
+              val (e3: List, d18: Int) = sortedIns(e, l.tail)
+              (e3, (2 + d18))
+            }
+            
+            (Cons(l.head, r14), (1 + if ((1 >= d15)) {
+              1
+            } else {
+              d15
+            }))
+          }
+          
+          (rthen2, if ((2 >= dthen2)) {
+            2
+          } else {
+            dthen2
+          })
+        }
+        
+      } else {
+        (Cons(e, l), if ((2 >= 1)) {
+          2
+        } else {
+          1
+        })
+      }
+      (relse1, if ((1 >= delse1)) {
+        1
+      } else {
+        delse1
+      })
+    }
+    
+  }} ensuring(res6 => (size(res6._1) == (size(l) + 1)))
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+
+  def mult(x : Int, y : Int) : Int = {locally {
+    val r = locally {
+      val px = if ((x < 0)) {
+        -(x)
+      } else {
+        x
+      }
+      locally {
+        val py = if ((y < 0)) {
+          -(y)
+        } else {
+          y
+        }
+        pmult(px, py)
+      }
+      
+    }
+    
+    if ((((x >= 0) && (y >= 0)) || ((x < 0) && (y < 0)))) {
+      r
+    } else {
+      -(r)
+    }
+  }
+  }
+
+  def pmult(x : Int, y : Int) : Int = {if (((x == 0) || (y == 0))) {
+    0
+  } else {
+    (pmult((x - 1), y) + y)
+  }} ensuring(res => ((res >= 0) && (((x == 0) || (y == 0)) || (res == (pmult(x, (y - 1)) + x)))))
+}
+
+Function: sort template --> (res5._2 ≤ ((a?1 * mult(size(l), size(l))) + b?1))
+Function: sortedIns template --> (res6._2 ≤ ((a? * size(l)) + b?))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(pmult, size, mult, sortedIns, sort)
+[[34m Info  [0m] - considering function sortedIns...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Cons(e, Nil()), if ((1 ≥ 2))
+              1
+            else
+              2)
+          else
+            (let (relse1,delse1 := if ((l.head ≤ e))
+              (let (rthen2,dthen2 := (let (r14,d15 := (let (e3,d18 := sortedIns(e, l.tail)) in
+                (e3, (2 + d18)))) in
+                (Cons(l.head, r14), (1 + if ((1 ≥ d15))
+                  1
+                else
+                  d15)))) in
+                (rthen2, if ((2 ≥ dthen2))
+                  2
+                else
+                  dthen2))
+            else
+              (Cons(e, l), if ((2 ≥ 1))
+                2
+              else
+                1)) in
+              (relse1, if ((1 ≥ delse1))
+                1
+              else
+                delse1))
+[[34m Info  [0m] Post: (size(res6._1) == (size(l) + 1))
+falttened Body: ((res6 == ifres) && ((ci && (ci == l.isInstanceOf[Nil]) && (ifres == tp) && (cc == Nil()) && (cc1 == Cons(e, cc)) && (tp == (cc1, ifres1)) && (((1 >= 2) && (ifres1 == 1)) || ((1 < 2) && (ifres1 == 2)))) || (!(ci1) && (ci1 == l.isInstanceOf[Nil]) && (ifres == tp1) && (tp1 == (relse1, ifres2)) && (((cs <= e) && (cs == l.head) && (ifres3 == tp2) && (tp2 == (rthen2, ifres4)) && (e3 == ts) && (ts == tres._1) && (rthen2 == cc2) && (cs1 == l.head) && (cc2 == Cons(cs1, r14)) && (d15 == (2 + d18)) && (d18 == ts1) && (ts1 == tres._2) && (dthen2 == (1 + ifres5)) && (((1 >= d15) && (ifres5 == 1)) || ((1 < d15) && (ifres5 == d15))) && (((2 >= dthen2) && (ifres4 == 2)) || ((2 < dthen2) && (ifres4 == dthen2))) && (tres == r21) && (cs2 == l.tail) && (r21 == sortedIns(e, cs2)) && (r14 == e3)) || ((cs3 > e) && (cs3 == l.head) && (ifres3 == tp3) && (cc3 == Cons(e, l)) && (tp3 == (cc3, ifres6)) && (((2 >= 1) && (ifres6 == 2)) || ((2 < 1) && (ifres6 == 1))))) && (relse1 == ts2) && (ts2 == ifres3._1) && (delse1 == ts3) && (ts3 == ifres3._2) && (((1 >= delse1) && (ifres2 == 1)) || ((1 < delse1) && (ifres2 == delse1))))))
+Flattened Post: ((((r22 < (r23 + 1)) && (ts4 == res6._1) && (r22 == size(ts4)) && (r23 == size(l))) || ((r24 > (r25 + 1)) && (ts5 == res6._1) && (r24 == size(ts5)) && (r25 == size(l)))) || ((ts6 > ((a? * r26) + b?)) && (ts6 == res6._2) && (r26 == size(l))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sortedIns-->((((0 * size(l)) + (1 * res6._2)) + 0) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 11
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+sortedIns-->((((0 * size(l)) + (1 * res6._2)) + -4) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 37
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 11 + 9
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/8
+Unrolled calls: Set((r28 == size(cs2)), (r27 == size(ts7)), (r26 == size(l)))
+Creating VC for size
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function size : (((a?3 * #res) + a?2) ≤ 0)
+Unrolling (r28 == size(cs2))
+Unrolling (r27 == size(ts7))
+Unrolling (r26 == size(l))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 78
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 15 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+sortedIns-->((((-2 * size(l)) + (16 * res6._2)) + -8) ≤ 0)
+size-->(((0 * #res) + 39) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 15
+solving...
+solved... in 0.008s
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (-6 * size(l))) + -1) ≤ 0)
+size-->(((0 * #res) + -1) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 78
+[[34m Info  [0m] Number of equal calls: 12
+# of atomic predicates: 15 + 23
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/10
+Unrolled calls: Set((r35 == size(cs2)))
+Unrolling (r35 == size(cs2))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 12
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 7 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 2) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 7
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/10
+Unrolled calls: Set((r25 == size(l)), (r24 == size(ts5)))
+Unrolling (r25 == size(l))
+Unrolling (r24 == size(ts5))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sortedIns-->((((0 * size(l)) + (1 * res6._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+# of atomic predicates: 28 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+sortedIns-->((((2 * res6._2) + (2 * size(l))) + -1) ≤ 0)
+size-->(((16 * #res) + 72) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 38 + 28
+solving...
+solved... in 0.034s
+candidate Invariants
+sortedIns-->((((-4 * size(l)) + (1 * res6._2)) + 3) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 14
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 12 + 66
+solving...
+solved... in 0.027s
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (-4 * size(l))) + 3) ≤ 0)
+size-->(((-2 * #res) + 1) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 1
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 78
+solving...
+solved... in 0.031s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/10
+Unrolled calls: Set((r22 == size(ts4)), (r23 == size(l)))
+Unrolling (r22 == size(ts4))
+Unrolling (r23 == size(l))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (0 * size(l))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 14
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+sortedIns-->((((8 * res6._2) + (2 * size(l))) + -4) ≤ 0)
+size-->(((16 * #res) + 232) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 92
+[[34m Info  [0m] Number of equal calls: 14
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 38 + 12
+solving...
+solved... in 0.027s
+candidate Invariants
+sortedIns-->((((-6 * size(l)) + (1 * res6._2)) + 1) ≤ 0)
+size-->(((-8 * #res) + -1) ≤ 0)
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 50
+solving...
+solved... in 0.04s
+candidate Invariants
+sortedIns-->((((-5 * size(l)) + (1 * res6._2)) + -3) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 5
+Found new upper bound: 0
+Found new upper bound: -2
+Found new upper bound: -5
+Found new upper bound: -11
+Found new upper bound: -23
+Found new upper bound: -47
+Found new upper bound: -95
+Found new upper bound: -191
+Found new upper bound: -383
+Found new upper bound: -767
+Found new upper bound: -1535
+Found new upper bound: -3071
+Found new upper bound: -6143
+Found new upper bound: -12287
+Found new upper bound: -24575
+Found new upper bound: -49151
+Minimizing variable: b? Initial upperbound: 1/8
+Found new upper bound: -1
+Found new upper bound: -3
+Found new upper bound: -7
+Found new upper bound: -15
+Found new upper bound: -31
+Found new upper bound: -63
+Found new upper bound: -127
+Found new upper bound: -255
+Found new upper bound: -511
+Found new upper bound: -1023
+Found new upper bound: -2047
+Found new upper bound: -4095
+Found new upper bound: -8191
+Found new upper bound: -16383
+Found new upper bound: -32767
+Found new upper bound: -65535
+Minimization complete...
+candidate Invariants
+sortedIns-->((((49151 * size(l)) + (1 * res6._2)) + 65535) ≤ 0)
+size-->(((0 * #res) + 1) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 60
+solving...
+solved... in 0.023s
+candidate Invariants
+sortedIns-->((((1 * res6._2) + (-5 * size(l))) + -3) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 5
+Found new lower bound: 2
+Found new upper bound: 3
+Minimizing variable: b? Initial upperbound: 3
+Found new lower bound: 1
+Found new upper bound: 2
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: sortedIns --> ((((1 * res6._2) + (-3 * size(l))) + -2) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function sort...
+[[34m Info  [0m] Body: if (l.isInstanceOf[Nil])
+            (Nil(), if ((1 ≥ 1))
+              1
+            else
+              1)
+          else
+            (let (relse,delse := (let (r3,d2 := (let (e2,d5 := sort(l.tail)) in
+              (e2, (2 + d5)))) in
+              (let (e1,d3 := sortedIns(l.head, r3)) in
+                (e1, ((1 + d3) + if ((1 ≥ d2))
+                  1
+                else
+                  d2))))) in
+              (relse, if ((1 ≥ delse))
+                1
+              else
+                delse))
+[[34m Info  [0m] Post: (size(res5._1) == size(l))
+falttened Body: ((res5 == ifres16) && ((ci20 && (ci20 == l.isInstanceOf[Nil]) && (ifres16 == tp4) && (cc4 == Nil()) && (tp4 == (cc4, ifres17)) && (((1 >= 1) && (ifres17 == 1)) || ((1 < 1) && (ifres17 == 1)))) || (!(ci21) && (ci21 == l.isInstanceOf[Nil]) && (ifres16 == tp5) && (tp5 == (relse, ifres18)) && (tres1 == r57) && (cs13 == l.head) && (r57 == sortedIns(cs13, r3)) && (e1 == ts27) && (ts27 == tres1._1) && (((1 >= delse) && (ifres18 == 1)) || ((1 < delse) && (ifres18 == delse))) && (d3 == ts28) && (ts28 == tres1._2) && (d2 == (2 + d5)) && (delse == ((1 + d3) + ifres19)) && (tres2 == r58) && (cs14 == l.tail) && (r58 == sort(cs14)) && (r3 == e2) && (relse == e1) && (e2 == ts29) && (ts29 == tres2._1) && (((1 >= d2) && (ifres19 == 1)) || ((1 < d2) && (ifres19 == d2))) && (d5 == ts30) && (ts30 == tres2._2))))
+Flattened Post: ((((r59 < r60) && (ts31 == res5._1) && (r59 == size(ts31)) && (r60 == size(l))) || ((r61 > r62) && (ts32 == res5._1) && (r61 == size(ts32)) && (r62 == size(l)))) || ((ts33 > ((a?1 * r65) + b?1)) && (ts33 == res5._2) && (r63 == size(l)) && (r64 == size(l)) && (r65 == mult(r63, r64))))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sort-->((((1 * res5._2) + (0 * mult(size(l), size(l)))) + 0) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 44
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 8/13
+Unrolled calls: Set((r65 == mult(r63, r64)), (r67 == size(cs14)), (r64 == size(l)), (r63 == size(l)), (r57 == sortedIns(cs13, r3)), (r68 == size(ts35)), (r66 == size(ts34)), (r69 == size(r3)))
+Creating VC for size
+Unrolling (r68 == size(ts35))
+Creating VC for sortedIns
+Unrolling (r57 == sortedIns(cs13, r3))
+Unrolling (r66 == size(ts34))
+Unrolling (r64 == size(l))
+Unrolling (r63 == size(l))
+Unrolling (r69 == size(r3))
+Unrolling (r67 == size(cs14))
+Inlining (r65 == mult(r63, r64))
+[[34m Info  [0m] Number of axiom instances: 8
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (1 * res5._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 17 + 0
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/25
+Unrolled calls: Set((r77 == size(l)), (r86 == pmult(px1, py1)))
+Unrolling (r77 == size(l))
+Unrolling (r86 == pmult(px1, py1))
+[[34m Info  [0m] Number of axiom instances: 50
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (1 * res5._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 14
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 20 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (4 * res5._2)) + -11) ≤ 0)
+size-->(((-32 * #res) + 1) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 319
+[[34m Info  [0m] Number of equal calls: 30
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 41 + 20
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/29
+Unrolled calls: Set((r62 == size(l)), (r94 == mult(r92, r93)), (r61 == size(ts32)), (r89 == size(ts47)), (r93 == size(cs14)), (r105 == size(cs22)), (r95 == size(r3)), (r90 == size(cs22)), (r92 == size(cs14)))
+Unrolling (r90 == size(cs22))
+Unrolling (r95 == size(r3))
+Inlining (r94 == mult(r92, r93))
+Unrolling (r93 == size(cs14))
+Unrolling (r92 == size(cs14))
+Unrolling (r61 == size(ts32))
+Unrolling (r89 == size(ts47))
+Unrolling (r105 == size(cs22))
+Unrolling (r62 == size(l))
+[[34m Info  [0m] Number of axiom instances: 162
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (1 * res5._2)) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 14
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (4 * res5._2)) + -11) ≤ 0)
+size-->(((-16 * #res) + 1) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 267
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 29
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 45 + 22
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/32
+Unrolled calls: Set((r117 == pmult(px2, py2)), (r60 == size(l)), (r59 == size(ts31)), (r124 == pmult(px2, arg4)))
+Unrolling (r117 == pmult(px2, py2))
+Unrolling (r60 == size(l))
+Unrolling (r59 == size(ts31))
+Unrolling (r124 == pmult(px2, arg4))
+[[34m Info  [0m] Number of axiom instances: 512
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+sort-->((((1 * res5._2) + (0 * mult(size(l), size(l)))) + 0) ≤ 0)
+size-->(((0 * #res) + 0) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+Function: sortedIns--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 14
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (4 * res5._2)) + -11) ≤ 0)
+size-->(((-16 * #res) + 1) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 443
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre2 implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+[[34m Info  [0m] Number of equal calls: 37
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 122 + 22
+solving...
+solved... in 0.039s
+candidate Invariants
+sort-->((((1 * res5._2) + (-30 * mult(size(l), size(l)))) + -2) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Nesting level: a?1-->3
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 30
+Found new upper bound: 14
+Found new upper bound: 6
+Found new upper bound: 2
+Found new upper bound: 1/2
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: b?1 Initial upperbound: 5
+Found new lower bound: 2
+Found new lower bound: 3
+Found new upper bound: 4
+Minimization complete...
+candidate Invariants
+sort-->((((0 * mult(size(l), size(l))) + (1 * res5._2)) + -4) ≤ 0)
+size-->(((-2 * #res) + -1) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Function: sort--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 143
+Axiom pre1 implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+Axiom pre not implied 
+Axiom pre1 implied 
+Axiom pre2 implied 
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 50 + 144
+solving...
+solved... in 0.054s
+candidate Invariants
+sort-->((((1 * res5._2) + (-6 * mult(size(l), size(l)))) + -2) ≤ 0)
+size-->(((-1 * #res) + -1) ≤ 0)
+sortedIns-->((((1 * res6._2) + (-3 * size(l))) + -2) ≤ 0)
+Nesting level: a?1-->3
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new upper bound: 5
+Minimizing variable: b?1 Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: sort --> ((((1 * res5._2) + (-5 * (size(l) * size(l)))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: size --> (((-1 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: sortedIns --> ((((1 * res6._2) + (-3 * size(l))) + -2) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

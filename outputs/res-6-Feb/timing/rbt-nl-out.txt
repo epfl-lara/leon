@@ -1,0 +1,2643 @@
+After Depth Instrumentation: 
+object RedBlackTree {
+  case class Empty() extends Tree
+
+  case class Black() extends Color
+
+  sealed abstract class Color
+
+  sealed abstract class Tree
+
+  case class Red() extends Color
+
+  case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
+
+  def redNodesHaveBlackChildren(t : Tree) : Boolean = {(t match {
+    case Empty() =>
+      true
+    case Node(Black(), l, _, r) =>
+      (redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case Node(Red(), l, _, r) =>
+      (isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case _ =>
+      false
+  })}
+
+  def blackHeight(t : Tree) : Int = {(t match {
+    case Empty() =>
+      0
+    case Node(Black(), l, _, _) =>
+      (blackHeight(l) + 1)
+    case Node(Red(), l, _, _) =>
+      blackHeight(l)
+  })}
+
+  def redDescHaveBlackChildren(t : Tree) : Boolean = {(t match {
+    case Node(_, l, _, r) =>
+      (redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case _ =>
+      true
+  })}
+
+  def twopower(x : Int) : Int = {    require((x >= 0));
+if ((x < 1)) {
+    1
+  } else {
+    (2 * twopower((x - 1)))
+  }}
+
+  def add(x : Int, t : Tree) : Tree = {    require((redNodesHaveBlackChildren(t) && blackBalanced(t)));
+locally {
+    val t1 = ins(x, t)
+    makeBlack(t1)
+  }
+  } ensuring(res => true)
+
+  def size(t : Tree) : Int = {    require(blackBalanced(t));
+(t match {
+    case Empty() =>
+      0
+    case Node(_, l, v, r) =>
+      ((size(l) + 1) + size(r))
+  })} ensuring(res => true)
+
+  def ins(x : Int, t : Tree) : Tree = {    require((redNodesHaveBlackChildren(t) && blackBalanced(t)));
+(t match {
+    case Empty() =>
+      Node(Red(), Empty(), x, Empty())
+    case Node(c, a, y, b) =>
+      if ((x < y)) {
+        locally {
+          val t1 = ins(x, a)
+          balance(c, t1, y, b)
+        }
+        
+      } else {
+        if ((x == y)) {
+          Node(c, a, y, b)
+        } else {
+          locally {
+            val t1 = ins(x, b)
+            balance(c, a, y, t1)
+          }
+          
+        }
+      }
+  })} ensuring(res => true)
+
+  def blackBalanced(t : Tree) : Boolean = {(t match {
+    case Node(_, l, _, r) =>
+      (blackBalanced(l) && blackBalanced(r) && (blackHeight(l) == blackHeight(r)))
+    case _ =>
+      true
+  })}
+
+  def makeBlack(n : Tree) : Tree = {(n match {
+    case Node(Red(), l, v, r) =>
+      Node(Black(), l, v, r)
+    case _ =>
+      n
+  })}
+
+  def balance(co : Color, l : Tree, x : Int, r : Tree) : Tree = {(Node(co, l, x, r) match {
+    case Node(Black(), Node(Red(), Node(Red(), a, xV, b), yV, c), zV, d) =>
+      Node(Red(), Node(Black(), a, xV, b), yV, Node(Black(), c, zV, d))
+    case Node(Black(), Node(Red(), a, xV, Node(Red(), b, yV, c)), zV, d) =>
+      Node(Red(), Node(Black(), a, xV, b), yV, Node(Black(), c, zV, d))
+    case Node(Black(), a, xV, Node(Red(), Node(Red(), b, yV, c), zV, d)) =>
+      Node(Red(), Node(Black(), a, xV, b), yV, Node(Black(), c, zV, d))
+    case Node(Black(), a, xV, Node(Red(), b, yV, Node(Red(), c, zV, d))) =>
+      Node(Red(), Node(Black(), a, xV, b), yV, Node(Black(), c, zV, d))
+    case _ =>
+      Node(co, l, x, r)
+  })}
+
+  def isBlack(t : Tree) : Boolean = {(t match {
+    case Empty() =>
+      true
+    case Node(Black(), _, _, _) =>
+      true
+    case _ =>
+      false
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: redNodesHaveBlackChildren
+Defined fun: blackHeight
+Defined fun: redDescHaveBlackChildren
+Defined fun: twopower
+Defined fun: add
+Defined fun: size
+Defined fun: ins
+Defined fun: blackBalanced
+Defined fun: makeBlack
+Defined fun: balance
+Defined fun: isBlack
+Defined fun: max
+FunMap: Map(twopower -> twopower, makeBlack -> makeBlack, balance -> balance, add -> add, size -> size, max -> max, ins -> ins, blackHeight -> blackHeight, redNodesHaveBlackChildren -> redNodesHaveBlackChildren, redDescHaveBlackChildren -> redDescHaveBlackChildren, blackBalanced -> blackBalanced, isBlack -> isBlack)
+After Time Instrumentation: 
+object RedBlackTree {
+  case class Empty() extends Tree
+
+  case class Black() extends Color
+
+  sealed abstract class Color
+
+  sealed abstract class Tree
+
+  case class Red() extends Color
+
+  case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
+
+  def redNodesHaveBlackChildren(t : Tree) : Boolean = {(t match {
+    case Empty() =>
+      true
+    case Node(Black(), l, _, r) =>
+      (redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case Node(Red(), l, _, r) =>
+      (isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case _ =>
+      false
+  })}
+
+  def blackHeight(t : Tree) : Int = {(t match {
+    case Empty() =>
+      0
+    case Node(Black(), l, _, _) =>
+      (blackHeight(l) + 1)
+    case Node(Red(), l, _, _) =>
+      blackHeight(l)
+  })}
+
+  def redDescHaveBlackChildren(t : Tree) : Boolean = {(t match {
+    case Node(_, l, _, r) =>
+      (redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case _ =>
+      true
+  })}
+
+  def twopower(x : Int) : Int = {    require((x >= 0));
+if ((x < 1)) {
+    1
+  } else {
+    (2 * twopower((x - 1)))
+  }}
+
+  def add(x : Int, t : Tree) : (Tree, Int) = {    require((redNodesHaveBlackChildren(t) && blackBalanced(t)));
+locally {
+    val (ir1: Tree, it1: Int) = locally {
+      val (e229: Tree, t239: Int) = ins(x, t)
+      (e229, (1 + t239))
+    }
+    
+    locally {
+      val (r9: Tree, t236: Int) = locally {
+        val (e231: Tree, t241: Int) = makeBlack(ir1)
+        (e231, (1 + t241))
+      }
+      
+      (r9, (t236 + (it1 + 1)))
+    }
+    
+  }
+  } ensuring(res7 => true)
+
+  def size(t : Tree) : Int = {    require(blackBalanced(t));
+(t match {
+    case Empty() =>
+      0
+    case Node(_, l, v, r) =>
+      ((size(l) + 1) + size(r))
+  })} ensuring(res8 => true)
+
+  def ins(x : Int, t : Tree) : (Tree, Int) = {    require((redNodesHaveBlackChildren(t) && blackBalanced(t)));
+locally {
+    val t242 = 1
+    if (t.isInstanceOf[Empty]) {
+      (Node(Red(), Empty(), x, Empty()), (t242 + 4))
+    } else {
+      locally {
+        val (e238: Tree, t248: Int) = locally {
+          val t249 = 2
+          if ((x < t.value)) {
+            locally {
+              val (e240: Tree, t250: Int) = locally {
+                val (ir2: Tree, it2: Int) = locally {
+                  val (e243: Tree, t254: Int) = ins(x, t.left)
+                  (e243, (1 + (1 + t254)))
+                }
+                
+                locally {
+                  val (r10: Tree, t251: Int) = locally {
+                    val (e249: Tree, t260: Int) = balance(t.color, ir2, t.value, t.right)
+                    (e249, (1 + (1 + (1 + (1 + t260)))))
+                  }
+                  
+                  (r10, (t251 + (it2 + 1)))
+                }
+                
+              }
+              
+              (e240, (t249 + t250))
+            }
+            
+          } else {
+            locally {
+              val (e253: Tree, t264: Int) = locally {
+                val t265 = 2
+                if ((x == t.value)) {
+                  (Node(t.color, t.left, t.value, t.right), (t265 + 5))
+                } else {
+                  locally {
+                    val (e264: Tree, t275: Int) = locally {
+                      val (ir3: Tree, it3: Int) = locally {
+                        val (e267: Tree, t279: Int) = ins(x, t.right)
+                        (e267, (1 + (1 + t279)))
+                      }
+                      
+                      locally {
+                        val (r11: Tree, t276: Int) = locally {
+                          val (e273: Tree, t285: Int) = balance(t.color, t.left, t.value, ir3)
+                          (e273, (1 + (1 + (1 + (1 + t285)))))
+                        }
+                        
+                        (r11, (t276 + (it3 + 1)))
+                      }
+                      
+                    }
+                    
+                    (e264, (t265 + t275))
+                  }
+                  
+                }
+              }
+              
+              (e253, (t249 + t264))
+            }
+            
+          }
+        }
+        
+        (e238, (t242 + t248))
+      }
+      
+    }
+  }
+  } ensuring(res9 => true)
+
+  def blackBalanced(t : Tree) : Boolean = {(t match {
+    case Node(_, l, _, r) =>
+      (blackBalanced(l) && blackBalanced(r) && (blackHeight(l) == blackHeight(r)))
+    case _ =>
+      true
+  })}
+
+  def makeBlack(n : Tree) : (Tree, Int) = {locally {
+    val t8 = 4
+    if ((n.isInstanceOf[Node] && n.color.isInstanceOf[Red])) {
+      (Node(Black(), n.left, n.value, n.right), (t8 + 5))
+    } else {
+      (n, t8)
+    }
+  }
+  }
+
+  def balance(co : Color, l : Tree, x : Int, r : Tree) : (Tree, Int) = {locally {
+    val ir = Node(co, l, x, r)
+    locally {
+      val (r8: Node, t23: Int) = locally {
+        val t28 = 16
+        if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.left.isInstanceOf[Node] && ir.left.color.isInstanceOf[Red] && ir.left.left.isInstanceOf[Node] && ir.left.left.color.isInstanceOf[Red])) {
+          (Node(Red(), Node(Black(), ir.left.left.left, ir.left.left.value, ir.left.left.right), ir.left.value, Node(Black(), ir.left.right, ir.value, ir.right)), (t28 + 21))
+        } else {
+          locally {
+            val (e48: Node, t57: Int) = locally {
+              val t58 = 16
+              if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.left.isInstanceOf[Node] && ir.left.color.isInstanceOf[Red] && ir.left.right.isInstanceOf[Node] && ir.left.right.color.isInstanceOf[Red])) {
+                (Node(Red(), Node(Black(), ir.left.left, ir.left.value, ir.left.right.left), ir.left.right.value, Node(Black(), ir.left.right.right, ir.value, ir.right)), (t58 + 21))
+              } else {
+                locally {
+                  val (e78: Node, t87: Int) = locally {
+                    val t88 = 16
+                    if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.right.isInstanceOf[Node] && ir.right.color.isInstanceOf[Red] && ir.right.left.isInstanceOf[Node] && ir.right.left.color.isInstanceOf[Red])) {
+                      (Node(Red(), Node(Black(), ir.left, ir.value, ir.right.left.left), ir.right.left.value, Node(Black(), ir.right.left.right, ir.right.value, ir.right.right)), (t88 + 21))
+                    } else {
+                      locally {
+                        val (e108: Node, t117: Int) = locally {
+                          val t118 = 16
+                          if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.right.isInstanceOf[Node] && ir.right.color.isInstanceOf[Red] && ir.right.right.isInstanceOf[Node] && ir.right.right.color.isInstanceOf[Red])) {
+                            (Node(Red(), Node(Black(), ir.left, ir.value, ir.right.left), ir.right.value, Node(Black(), ir.right.right.left, ir.right.right.value, ir.right.right.right)), (t118 + 21))
+                          } else {
+                            (Node(co, l, x, r), (t118 + 1))
+                          }
+                        }
+                        
+                        (e108, (t88 + t117))
+                      }
+                      
+                    }
+                  }
+                  
+                  (e78, (t58 + t87))
+                }
+                
+              }
+            }
+            
+            (e48, (t28 + t57))
+          }
+          
+        }
+      }
+      
+      (r8, (t23 + 2))
+    }
+    
+  }
+  }
+
+  def isBlack(t : Tree) : Boolean = {(t match {
+    case Empty() =>
+      true
+    case Node(Black(), _, _, _) =>
+      true
+    case _ =>
+      false
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object RedBlackTree {
+  case class Empty() extends Tree
+
+  case class Black() extends Color
+
+  sealed abstract class Color
+
+  sealed abstract class Tree
+
+  case class Red() extends Color
+
+  case class Node(color: Color, left: Tree, value: Int, right: Tree) extends Tree
+
+  def redNodesHaveBlackChildren(t : Tree) : Boolean = {(t match {
+    case Empty() =>
+      true
+    case Node(Black(), l, _, r) =>
+      (redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case Node(Red(), l, _, r) =>
+      (isBlack(l) && isBlack(r) && redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case _ =>
+      false
+  })}
+
+  def blackHeight(t : Tree) : Int = {(t match {
+    case Empty() =>
+      0
+    case Node(Black(), l, _, _) =>
+      (blackHeight(l) + 1)
+    case Node(Red(), l, _, _) =>
+      blackHeight(l)
+  })}
+
+  def redDescHaveBlackChildren(t : Tree) : Boolean = {(t match {
+    case Node(_, l, _, r) =>
+      (redNodesHaveBlackChildren(l) && redNodesHaveBlackChildren(r))
+    case _ =>
+      true
+  })}
+
+  def twopower(x : Int) : Int = {    require((x >= 0));
+if ((x < 1)) {
+    1
+  } else {
+    (2 * twopower((x - 1)))
+  }}
+
+  def add(x : Int, t : Tree) : (Tree, Int) = {    require((redNodesHaveBlackChildren(t) && blackBalanced(t)));
+locally {
+    val (ir1: Tree, it1: Int) = locally {
+      val (e229: Tree, t239: Int) = ins(x, t)
+      (e229, (1 + t239))
+    }
+    
+    locally {
+      val (r9: Tree, t236: Int) = locally {
+        val (e231: Tree, t241: Int) = makeBlack(ir1)
+        (e231, (1 + t241))
+      }
+      
+      (r9, (t236 + (it1 + 1)))
+    }
+    
+  }
+  } ensuring(res7 => true)
+
+  def size(t : Tree) : Int = {    require(blackBalanced(t));
+(t match {
+    case Empty() =>
+      0
+    case Node(_, l, v, r) =>
+      ((size(l) + 1) + size(r))
+  })} ensuring(res8 => true)
+
+  def ins(x : Int, t : Tree) : (Tree, Int) = {    require((redNodesHaveBlackChildren(t) && blackBalanced(t)));
+if (t.isInstanceOf[Empty]) {
+    (Node(Red(), Empty(), x, Empty()), (1 + 4))
+  } else {
+    locally {
+      val (e238: Tree, t248: Int) = if ((x < t.value)) {
+        locally {
+          val (e240: Tree, t250: Int) = locally {
+            val (ir2: Tree, it2: Int) = locally {
+              val (e243: Tree, t254: Int) = ins(x, t.left)
+              (e243, (1 + (1 + t254)))
+            }
+            
+            locally {
+              val (r10: Tree, t251: Int) = locally {
+                val (e249: Tree, t260: Int) = balance(t.color, ir2, t.value, t.right)
+                (e249, (1 + (1 + (1 + (1 + t260)))))
+              }
+              
+              (r10, (t251 + (it2 + 1)))
+            }
+            
+          }
+          
+          (e240, (2 + t250))
+        }
+        
+      } else {
+        locally {
+          val (e253: Tree, t264: Int) = if ((x == t.value)) {
+            (Node(t.color, t.left, t.value, t.right), (2 + 5))
+          } else {
+            locally {
+              val (e264: Tree, t275: Int) = locally {
+                val (ir3: Tree, it3: Int) = locally {
+                  val (e267: Tree, t279: Int) = ins(x, t.right)
+                  (e267, (1 + (1 + t279)))
+                }
+                
+                locally {
+                  val (r11: Tree, t276: Int) = locally {
+                    val (e273: Tree, t285: Int) = balance(t.color, t.left, t.value, ir3)
+                    (e273, (1 + (1 + (1 + (1 + t285)))))
+                  }
+                  
+                  (r11, (t276 + (it3 + 1)))
+                }
+                
+              }
+              
+              (e264, (2 + t275))
+            }
+            
+          }
+          (e253, (2 + t264))
+        }
+        
+      }
+      (e238, (1 + t248))
+    }
+    
+  }} ensuring(res9 => true)
+
+  def blackBalanced(t : Tree) : Boolean = {(t match {
+    case Node(_, l, _, r) =>
+      (blackBalanced(l) && blackBalanced(r) && (blackHeight(l) == blackHeight(r)))
+    case _ =>
+      true
+  })}
+
+  def makeBlack(n : Tree) : (Tree, Int) = {if ((n.isInstanceOf[Node] && n.color.isInstanceOf[Red])) {
+    (Node(Black(), n.left, n.value, n.right), (4 + 5))
+  } else {
+    (n, 4)
+  }}
+
+  def balance(co : Color, l : Tree, x : Int, r : Tree) : (Tree, Int) = {locally {
+    val ir = Node(co, l, x, r)
+    locally {
+      val (r8: Node, t23: Int) = if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.left.isInstanceOf[Node] && ir.left.color.isInstanceOf[Red] && ir.left.left.isInstanceOf[Node] && ir.left.left.color.isInstanceOf[Red])) {
+        (Node(Red(), Node(Black(), ir.left.left.left, ir.left.left.value, ir.left.left.right), ir.left.value, Node(Black(), ir.left.right, ir.value, ir.right)), (16 + 21))
+      } else {
+        locally {
+          val (e48: Node, t57: Int) = if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.left.isInstanceOf[Node] && ir.left.color.isInstanceOf[Red] && ir.left.right.isInstanceOf[Node] && ir.left.right.color.isInstanceOf[Red])) {
+            (Node(Red(), Node(Black(), ir.left.left, ir.left.value, ir.left.right.left), ir.left.right.value, Node(Black(), ir.left.right.right, ir.value, ir.right)), (16 + 21))
+          } else {
+            locally {
+              val (e78: Node, t87: Int) = if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.right.isInstanceOf[Node] && ir.right.color.isInstanceOf[Red] && ir.right.left.isInstanceOf[Node] && ir.right.left.color.isInstanceOf[Red])) {
+                (Node(Red(), Node(Black(), ir.left, ir.value, ir.right.left.left), ir.right.left.value, Node(Black(), ir.right.left.right, ir.right.value, ir.right.right)), (16 + 21))
+              } else {
+                locally {
+                  val (e108: Node, t117: Int) = if ((ir.isInstanceOf[Node] && ir.color.isInstanceOf[Black] && ir.right.isInstanceOf[Node] && ir.right.color.isInstanceOf[Red] && ir.right.right.isInstanceOf[Node] && ir.right.right.color.isInstanceOf[Red])) {
+                    (Node(Red(), Node(Black(), ir.left, ir.value, ir.right.left), ir.right.value, Node(Black(), ir.right.right.left, ir.right.right.value, ir.right.right.right)), (16 + 21))
+                  } else {
+                    (Node(co, l, x, r), (16 + 1))
+                  }
+                  (e108, (16 + t117))
+                }
+                
+              }
+              (e78, (16 + t87))
+            }
+            
+          }
+          (e48, (16 + t57))
+        }
+        
+      }
+      (r8, (t23 + 2))
+    }
+    
+  }
+  }
+
+  def isBlack(t : Tree) : Boolean = {(t match {
+    case Empty() =>
+      true
+    case Node(Black(), _, _, _) =>
+      true
+    case _ =>
+      false
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: add template --> (res7._2 ≤ ((a?2 * blackHeight(t)) + b?2))
+Function: size template --> (twopower(blackHeight(t)) ≤ ((a? * res8) + b?))
+Function: ins template --> (res9._2 ≤ ((a?1 * blackHeight(t)) + b?1))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(redNodesHaveBlackChildren, redDescHaveBlackChildren, blackHeight, blackBalanced, ins, twopower, size, add)
+[[34m Info  [0m] - considering function ins...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Empty])
+            (Node(Red(), Empty(), x, Empty()), (1 + 4))
+          else
+            (let (e238,t248 := if ((x < t.value))
+              (let (e240,t250 := (let (ir2,it2 := (let (e243,t254 := ins(x, t.left)) in
+                (e243, (1 + (1 + t254))))) in
+                (let (r10,t251 := (let (e249,t260 := balance(t.color, ir2, t.value, t.right)) in
+                  (e249, (1 + (1 + (1 + (1 + t260))))))) in
+                  (r10, (t251 + (it2 + 1)))))) in
+                (e240, (2 + t250)))
+            else
+              (let (e253,t264 := if ((x == t.value))
+                (Node(t.color, t.left, t.value, t.right), (2 + 5))
+              else
+                (let (e264,t275 := (let (ir3,it3 := (let (e267,t279 := ins(x, t.right)) in
+                  (e267, (1 + (1 + t279))))) in
+                  (let (r11,t276 := (let (e273,t285 := balance(t.color, t.left, t.value, ir3)) in
+                    (e273, (1 + (1 + (1 + (1 + t285))))))) in
+                    (r11, (t276 + (it3 + 1)))))) in
+                  (e264, (2 + t275)))) in
+                (e253, (2 + t264)))) in
+              (e238, (1 + t248)))
+[[34m Info  [0m] Post: true
+falttened Body: (r12 && (r12 == redNodesHaveBlackChildren(t)) && r13 && (r13 == blackBalanced(t)) && (res9 == ifres) && ((ci && (ci == t.isInstanceOf[Empty]) && (ifres == tp) && (cc == Red()) && (cc2 == Empty()) && (tp == (cc3, arg)) && (arg == (1 + 4)) && (cc3 == Node(cc, cc1, x, cc2)) && (cc1 == Empty())) || (!(ci1) && (ci1 == t.isInstanceOf[Empty]) && (ifres == tp1) && (arg1 == (1 + t248)) && (tp1 == (e238, arg1)) && (((x < cs) && (cs == t.value) && (ifres1 == tp2) && (arg2 == (2 + t250)) && (tp2 == (e240, arg2)) && (t250 == (t251 + (it2 + 1))) && (tres1 == r14) && (cs1 == t.left) && (r14 == ins(x, cs1)) && (t254 == ts) && (ts == tres1._2) && (e243 == ts1) && (ts1 == tres1._1) && (t251 == (1 + (1 + (1 + (1 + t260))))) && (e240 == r10) && (r10 == e249) && (t260 == ts2) && (ts2 == tres._2) && (it2 == (1 + (1 + t254))) && (e249 == ts3) && (ts3 == tres._1) && (tres == r15) && (cs2 == t.color) && (cs3 == t.value) && (cs4 == t.right) && (r15 == balance(cs2, ir2, cs3, cs4)) && (ir2 == e243)) || ((x >= cs5) && (cs5 == t.value) && (ifres1 == tp3) && (arg3 == (2 + t264)) && (tp3 == (e253, arg3)) && (((x == cs6) && (cs6 == t.value) && (ifres2 == tp4) && (tp4 == (cc4, arg4)) && (arg4 == (2 + 5)) && (cs9 == t.value) && (cs7 == t.color) && (cs10 == t.right) && (cs8 == t.left) && (cc4 == Node(cs7, cs8, cs9, cs10))) || ((((x < cs11) && (cs11 == t.value)) || ((x > cs12) && (cs12 == t.value))) && (ifres2 == tp5) && (arg5 == (2 + t275)) && (tp5 == (e264, arg5)) && (e264 == r11) && (r11 == e273) && (ir3 == e267) && (e273 == ts4) && (ts4 == tres2._1) && (t276 == (1 + (1 + (1 + (1 + t285))))) && (t275 == (t276 + (it3 + 1))) && (tres2 == r16) && (cs13 == t.color) && (cs14 == t.left) && (cs15 == t.value) && (r16 == balance(cs13, cs14, cs15, ir3)) && (it3 == (1 + (1 + t279))) && (tres3 == r17) && (cs16 == t.right) && (r17 == ins(x, cs16)) && (t279 == ts5) && (ts5 == tres3._2) && (t285 == ts6) && (ts6 == tres2._2) && (e267 == ts7) && (ts7 == tres3._1))) && (e253 == ts8) && (ts8 == ifres2._1) && (t264 == ts9) && (ts9 == ifres2._2))) && (e238 == ts10) && (ts10 == ifres1._1) && (t248 == ts11) && (ts11 == ifres1._2))))
+Flattened Post: ((ts12 > ((a?1 * r18) + b?1)) && (ts12 == res9._2) && (r18 == blackHeight(t)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 49
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.012s
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + -12) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 46
+[[34m Info  [0m] Number of equal calls: 9
+# of atomic predicates: 9 + 9
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/7
+Unrolled calls: Set((r12 <=> redNodesHaveBlackChildren(t)), (r13 <=> blackBalanced(t)), (r15 == balance(cs2, ir2, cs3, cs4)), (r18 == blackHeight(t)))
+Creating VC for redNodesHaveBlackChildren
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function redNodesHaveBlackChildren : (a?3 ≤ 0)
+Unrolling (r12 <=> redNodesHaveBlackChildren(t))
+Creating VC for blackBalanced
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function blackBalanced : (a?4 ≤ 0)
+Unrolling (r13 <=> blackBalanced(t))
+Inlining (r15 == balance(cs2, ir2, cs3, cs4))
+Creating VC for blackHeight
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function blackHeight : (((a?6 * #res) + a?5) ≤ 0)
+Unrolling (r18 == blackHeight(t))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((1 * res9._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 969
+[[34m Info  [0m] Number of equal calls: 47
+# of atomic predicates: 15 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+ins-->((((8 * res9._2) + (-1 * blackHeight(t))) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + 407) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 15 + 15
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((1 * blackHeight(t)) + (2 * res9._2)) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(53 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 30
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((-107 * blackHeight(t)) + (2 * res9._2)) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 21
+# of atomic predicates: 12 + 37
+solving...
+solved... in 0.012s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/57
+Unrolled calls: Set((r58 == blackHeight(cs62)), (r57 == blackHeight(cs61)), (r29 <=> isBlack(cs28)), (r75 == blackHeight(cs1)))
+Unrolling (r58 == blackHeight(cs62))
+Unrolling (r57 == blackHeight(cs61))
+Inlining (r29 <=> isBlack(cs28))
+Unrolling (r75 == blackHeight(cs1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((1 * res9._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 326
+[[34m Info  [0m] Number of equal calls: 28
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((-16 * blackHeight(t)) + (8 * res9._2)) + -97) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 14 + 22
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((2 * res9._2) + (8 * blackHeight(t))) + -37) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 276
+[[34m Info  [0m] Number of equal calls: 27
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 35 + 36
+solving...
+solved... in 0.011s
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + -14) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + 1) ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 71
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/59
+Unrolled calls: Set((r16 == balance(cs13, cs14, cs15, ir3)), (r38 <=> isBlack(cs41)), (r37 <=> isBlack(cs40)), (r72 == blackHeight(cs16)))
+Inlining (r16 == balance(cs13, cs14, cs15, ir3))
+Inlining (r38 <=> isBlack(cs41))
+Inlining (r37 <=> isBlack(cs40))
+Unrolling (r72 == blackHeight(cs16))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 231
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (8 * res9._2)) + -97) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 14 + 22
+solving...
+solved... in 0.006s
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (2 * res9._2)) + -37) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 546
+[[34m Info  [0m] Number of equal calls: 44
+# of atomic predicates: 26 + 36
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (2 * res9._2)) + -25) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + 1) ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 62
+solving...
+solved... in 0.009s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/57
+Unrolled calls: Set((r69 == blackHeight(cs211)), (r56 <=> blackBalanced(cs60)), (r14 == ins(x, cs1)), (r40 <=> redNodesHaveBlackChildren(cs43)), (r55 <=> blackBalanced(cs59)), (r39 <=> redNodesHaveBlackChildren(cs42)))
+Unrolling (r55 <=> blackBalanced(cs59))
+Unrolling (r40 <=> redNodesHaveBlackChildren(cs43))
+Unrolling (r39 <=> redNodesHaveBlackChildren(cs42))
+Unrolling (r56 <=> blackBalanced(cs60))
+Unrolling (r14 == ins(x, cs1))
+Unrolling (r69 == blackHeight(cs211))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 503
+[[34m Info  [0m] Number of equal calls: 34
+# of atomic predicates: 26 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((3 * blackHeight(t)) + (4 * res9._2)) + -63) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 17 + 26
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((1 * res9._2) + (-6 * blackHeight(t))) + -6) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + 1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2174
+[[34m Info  [0m] Number of equal calls: 79
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 40 + 43
+solving...
+solved... in 0.012s
+candidate Invariants
+ins-->((((-84 * blackHeight(t)) + (1 * res9._2)) + -15) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 667
+[[34m Info  [0m] Number of equal calls: 46
+# of atomic predicates: 26 + 83
+solving...
+solved... in 0.015s
+candidate Invariants
+ins-->((((-6 * blackHeight(t)) + (1 * res9._2)) + -12) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 109
+solving...
+solved... in 0.021s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/101
+Unrolled calls: Set((r99 == blackHeight(cs377)), (r100 == blackHeight(cs378)), (r134 == blackHeight(cs420)), (r133 == blackHeight(cs419)))
+Unrolling (r99 == blackHeight(cs377))
+Unrolling (r100 == blackHeight(cs378))
+Unrolling (r134 == blackHeight(cs420))
+Unrolling (r133 == blackHeight(cs419))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((1 * res9._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1607
+[[34m Info  [0m] Number of equal calls: 58
+# of atomic predicates: 44 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((8 * res9._2) + (11 * blackHeight(t))) + -147) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 17 + 44
+solving...
+solved... in 0.009s
+candidate Invariants
+ins-->((((1 * res9._2) + (-11 * blackHeight(t))) + -8) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + 1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2762
+[[34m Info  [0m] Number of equal calls: 81
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 55 + 61
+solving...
+solved... in 0.014s
+candidate Invariants
+ins-->((((65536 * res9._2) + (-8192 * blackHeight(t))) + -786776) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 116
+solving...
+solved... in 0.015s
+candidate Invariants
+ins-->((((-50 * blackHeight(t)) + (1 * res9._2)) + -69) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2837
+[[34m Info  [0m] Number of equal calls: 78
+# of atomic predicates: 44 + 123
+solving...
+solved... in 0.02s
+candidate Invariants
+ins-->((((-52 * blackHeight(t)) + (1 * res9._2)) + -71) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1729
+[[34m Info  [0m] Number of equal calls: 67
+# of atomic predicates: 44 + 167
+solving...
+solved... in 0.027s
+candidate Invariants
+ins-->((((-80 * blackHeight(t)) + (1 * res9._2)) + -99) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3473
+[[34m Info  [0m] Number of equal calls: 89
+# of atomic predicates: 44 + 211
+solving...
+solved... in 0.032s
+candidate Invariants
+ins-->((((1 * res9._2) + (-100 * blackHeight(t))) + -119) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 642
+[[34m Info  [0m] Number of equal calls: 47
+# of atomic predicates: 26 + 255
+solving...
+solved... in 0.076s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/111
+Unrolled calls: Set((r143 == balance(cs428, ir6, cs429, cs430)), (r164 == blackHeight(cs431)))
+Inlining (r143 == balance(cs428, ir6, cs429, cs430))
+Unrolling (r164 == blackHeight(cs431))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 833
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 44 + 0
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((2 * res9._2) + (-1 * blackHeight(t))) + -7) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((1 * #res) + 8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 923
+[[34m Info  [0m] Number of equal calls: 41
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 56 + 44
+solving...
+solved... in 0.021s
+candidate Invariants
+ins-->((((2 * res9._2) + (-28 * blackHeight(t))) + 1) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 100
+solving...
+solved... in 0.022s
+candidate Invariants
+ins-->((((2 * res9._2) + (-28 * blackHeight(t))) + 1) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3099
+[[34m Info  [0m] Number of equal calls: 82
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 60 + 107
+solving...
+solved... in 0.032s
+candidate Invariants
+ins-->((((-84 * blackHeight(t)) + (1 * res9._2)) + 199) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 748
+[[34m Info  [0m] Number of equal calls: 43
+# of atomic predicates: 42 + 167
+solving...
+solved... in 0.04s
+candidate Invariants
+ins-->((((1 * res9._2) + (-84 * blackHeight(t))) + 73) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3156
+[[34m Info  [0m] Number of equal calls: 87
+# of atomic predicates: 50 + 209
+solving...
+solved... in 0.051s
+candidate Invariants
+ins-->((((-100 * blackHeight(t)) + (1 * res9._2)) + 89) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 12 + 259
+solving...
+solved... in 0.053s
+candidate Invariants
+ins-->((((1 * res9._2) + (-100 * blackHeight(t))) + -6) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2013
+[[34m Info  [0m] Number of equal calls: 77
+# of atomic predicates: 54 + 271
+solving...
+solved... in 0.064s
+candidate Invariants
+ins-->((((16 * res9._2) + (-2 * blackHeight(t))) + 8) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 325
+solving...
+solved... in 0.136s
+candidate Invariants
+ins-->((((-100 * blackHeight(t)) + (1 * res9._2)) + -6) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2157
+[[34m Info  [0m] Number of equal calls: 75
+# of atomic predicates: 58 + 332
+solving...
+solved... in 0.196s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 19/111
+Unrolled calls: Set((r156 == blackHeight(cs457)), (r34 <=> redNodesHaveBlackChildren(cs35)), (r160 == blackHeight(cs469)), (r81 == blackHeight(cs217)), (r91 == blackHeight(cs370)), (r154 == blackHeight(cs451)), (r68 == blackHeight(cs208)), (r66 == blackHeight(cs202)), (r157 == blackHeight(cs460)), (r33 <=> redNodesHaveBlackChildren(cs34)), (r159 == blackHeight(cs466)), (r161 == blackHeight(cs472)), (r83 == blackHeight(cs223)), (r155 == blackHeight(cs454)), (r158 == blackHeight(cs463)), (r82 == blackHeight(cs220)), (r92 == blackHeight(cs373)), (r80 == blackHeight(cs214)), (r17 == ins(x, cs16)))
+Unrolling (r82 == blackHeight(cs220))
+Unrolling (r66 == blackHeight(cs202))
+Unrolling (r17 == ins(x, cs16))
+Unrolling (r155 == blackHeight(cs454))
+Unrolling (r154 == blackHeight(cs451))
+Unrolling (r159 == blackHeight(cs466))
+Unrolling (r81 == blackHeight(cs217))
+Unrolling (r68 == blackHeight(cs208))
+Unrolling (r160 == blackHeight(cs469))
+Unrolling (r34 <=> redNodesHaveBlackChildren(cs35))
+Unrolling (r92 == blackHeight(cs373))
+Unrolling (r156 == blackHeight(cs457))
+Unrolling (r83 == blackHeight(cs223))
+Unrolling (r161 == blackHeight(cs472))
+Unrolling (r157 == blackHeight(cs460))
+Unrolling (r80 == blackHeight(cs214))
+Unrolling (r91 == blackHeight(cs370))
+Unrolling (r158 == blackHeight(cs463))
+Unrolling (r33 <=> redNodesHaveBlackChildren(cs34))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((1 * res9._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+ins-->((((-1 * blackHeight(t)) + (8 * res9._2)) + -83) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((1 * #res) + 2) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1820
+[[34m Info  [0m] Number of equal calls: 58
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 11
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 56 + 22
+solving...
+solved... in 0.015s
+candidate Invariants
+ins-->((((8 * res9._2) + (4 * blackHeight(t))) + 2) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 78
+solving...
+solved... in 0.019s
+candidate Invariants
+ins-->((((8 * blackHeight(t)) + (8 * res9._2)) + -1) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 93
+solving...
+solved... in 0.024s
+candidate Invariants
+ins-->((((1 * res9._2) + (-1 * blackHeight(t))) + -9) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 644
+[[34m Info  [0m] Number of equal calls: 45
+# of atomic predicates: 26 + 100
+solving...
+solved... in 0.029s
+candidate Invariants
+ins-->((((1 * res9._2) + (-1 * blackHeight(t))) + -84) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3358
+[[34m Info  [0m] Number of equal calls: 95
+# of atomic predicates: 42 + 126
+solving...
+solved... in 0.036s
+candidate Invariants
+ins-->((((1 * res9._2) + (-66 * blackHeight(t))) + 55) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 12 + 168
+solving...
+solved... in 0.029s
+candidate Invariants
+ins-->((((-66 * blackHeight(t)) + (1 * res9._2)) + -341) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3971
+[[34m Info  [0m] Number of equal calls: 98
+# of atomic predicates: 58 + 180
+solving...
+solved... in 0.057s
+candidate Invariants
+ins-->((((-66 * blackHeight(t)) + (1 * res9._2)) + -22) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 747
+[[34m Info  [0m] Number of equal calls: 50
+# of atomic predicates: 26 + 238
+solving...
+solved... in 0.121s
+candidate Invariants
+ins-->((((-521 * blackHeight(t)) + (8 * res9._2)) + -3824) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6143
+[[34m Info  [0m] Number of equal calls: 117
+# of atomic predicates: 52 + 264
+solving...
+solved... in 0.066s
+candidate Invariants
+ins-->((((-84 * blackHeight(t)) + (1 * res9._2)) + -599) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7211
+[[34m Info  [0m] Number of equal calls: 128
+# of atomic predicates: 52 + 316
+solving...
+solved... in 0.081s
+candidate Invariants
+ins-->((((-100 * blackHeight(t)) + (1 * res9._2)) + -711) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2229
+[[34m Info  [0m] Number of equal calls: 77
+# of atomic predicates: 42 + 368
+solving...
+solved... in 0.103s
+candidate Invariants
+ins-->((((-100 * blackHeight(t)) + (1 * res9._2)) + -85) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4285
+[[34m Info  [0m] Number of equal calls: 101
+# of atomic predicates: 58 + 410
+solving...
+solved... in 0.305s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/152
+Unrolled calls: Set((r244 <=> isBlack(cs749)), (r167 == blackHeight(cs443)), (r243 <=> isBlack(cs748)), (r196 == balance(cs626, ir9, cs627, cs628)), (r145 == balance(cs440, cs441, cs442, ir7)), (r216 <=> isBlack(cs685)), (r215 <=> isBlack(cs684)))
+Inlining (r196 == balance(cs626, ir9, cs627, cs628))
+Unrolling (r167 == blackHeight(cs443))
+Inlining (r243 <=> isBlack(cs748))
+Inlining (r215 <=> isBlack(cs684))
+Inlining (r145 == balance(cs440, cs441, cs442, ir7))
+Inlining (r244 <=> isBlack(cs749))
+Inlining (r216 <=> isBlack(cs685))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((1 * res9._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 160
+[[34m Info  [0m] Number of equal calls: 24
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+ins-->((((8 * res9._2) + (-1 * blackHeight(t))) + -83) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((1 * #res) + 2) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2426
+[[34m Info  [0m] Number of equal calls: 67
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 76 + 22
+solving...
+solved... in 0.017s
+candidate Invariants
+ins-->((((4 * blackHeight(t)) + (8 * res9._2)) + 2) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 98
+solving...
+solved... in 0.026s
+candidate Invariants
+ins-->((((8 * res9._2) + (8 * blackHeight(t))) + -1) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 113
+solving...
+solved... in 0.039s
+candidate Invariants
+ins-->((((1 * res9._2) + (-1 * blackHeight(t))) + -9) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 594
+[[34m Info  [0m] Number of equal calls: 45
+# of atomic predicates: 26 + 120
+solving...
+solved... in 0.029s
+candidate Invariants
+ins-->((((-1 * blackHeight(t)) + (1 * res9._2)) + -83) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1629
+[[34m Info  [0m] Number of equal calls: 78
+# of atomic predicates: 40 + 146
+solving...
+solved... in 0.038s
+candidate Invariants
+ins-->((((-5 * blackHeight(t)) + (1 * res9._2)) + -83) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5600
+[[34m Info  [0m] Number of equal calls: 122
+# of atomic predicates: 64 + 186
+solving...
+solved... in 0.051s
+candidate Invariants
+ins-->((((-50 * blackHeight(t)) + (1 * res9._2)) + -261) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3851
+[[34m Info  [0m] Number of equal calls: 100
+# of atomic predicates: 71 + 250
+solving...
+solved... in 0.087s
+candidate Invariants
+ins-->((((-1 * blackHeight(t)) + (8 * res9._2)) + -704) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4082
+[[34m Info  [0m] Number of equal calls: 104
+# of atomic predicates: 71 + 321
+solving...
+solved... in 0.221s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/153
+Unrolled calls: Set((r198 == balance(cs638, cs639, cs640, ir10)), (r273 == blackHeight(cs637)))
+Inlining (r198 == balance(cs638, cs639, cs640, ir10))
+Unrolling (r273 == blackHeight(cs637))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((0 * blackHeight(t)) + (1 * res9._2)) + 0) ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 231
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 22 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+ins-->((((8 * res9._2) + (0 * blackHeight(t))) + -97) ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 14 + 22
+solving...
+solved... in 0.006s
+candidate Invariants
+ins-->((((2 * res9._2) + (0 * blackHeight(t))) + -37) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3891
+[[34m Info  [0m] Number of equal calls: 97
+# of atomic predicates: 70 + 36
+solving...
+solved... in 4.303s
+candidate Invariants
+ins-->((((-4784 * blackHeight(t)) + (25 * res9._2)) + -275) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-208 * #res) + -25) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 747
+[[34m Info  [0m] Number of equal calls: 50
+# of atomic predicates: 26 + 106
+solving...
+solved... in 4.192s
+candidate Invariants
+ins-->((((-3082 * blackHeight(t)) + (25 * res9._2)) + -2125) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-134 * #res) + -25) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5614
+[[34m Info  [0m] Number of equal calls: 125
+# of atomic predicates: 63 + 132
+solving...
+solved... in 1.331s
+candidate Invariants
+ins-->((((-129 * blackHeight(t)) + (1 * res9._2)) + -85) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -1) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6620
+[[34m Info  [0m] Number of equal calls: 134
+# of atomic predicates: 69 + 195
+solving...
+solved... in 0.106s
+candidate Invariants
+ins-->((((1 * res9._2) + (-131 * blackHeight(t))) + -85) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2837
+[[34m Info  [0m] Number of equal calls: 74
+# of atomic predicates: 64 + 264
+solving...
+solved... in 0.132s
+candidate Invariants
+ins-->((((-131 * blackHeight(t)) + (1 * res9._2)) + -142) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3079
+[[34m Info  [0m] Number of equal calls: 101
+# of atomic predicates: 54 + 328
+solving...
+solved... in 0.158s
+candidate Invariants
+ins-->((((1 * res9._2) + (-155 * blackHeight(t))) + -166) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4763
+[[34m Info  [0m] Number of equal calls: 109
+# of atomic predicates: 72 + 382
+solving...
+solved... in 0.184s
+candidate Invariants
+ins-->((((-155 * blackHeight(t)) + (1 * res9._2)) + -245) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 5550
+[[34m Info  [0m] Number of equal calls: 120
+# of atomic predicates: 53 + 454
+solving...
+solved... in 0.223s
+candidate Invariants
+ins-->((((-177 * blackHeight(t)) + (1 * res9._2)) + -267) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6971
+[[34m Info  [0m] Number of equal calls: 140
+# of atomic predicates: 63 + 507
+solving...
+solved... in 0.259s
+candidate Invariants
+ins-->((((1 * res9._2) + (-179 * blackHeight(t))) + -269) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 179
+Found new upper bound: 88
+Found new upper bound: 43
+Found new upper bound: 20
+Found new upper bound: 9
+Found new upper bound: 3
+Found new upper bound: 0
+Found new upper bound: -2
+Found new upper bound: -5
+Found new upper bound: -11
+Found new upper bound: -23
+Found new upper bound: -47
+Found new upper bound: -95
+Found new upper bound: -191
+Found new upper bound: -383
+Found new upper bound: -767
+Found new upper bound: -1535
+Minimizing variable: b?1 Initial upperbound: -1
+Found new upper bound: -3
+Found new upper bound: -7
+Found new upper bound: -15
+Found new upper bound: -31
+Found new upper bound: -63
+Found new upper bound: -127
+Found new upper bound: -255
+Found new upper bound: -511
+Found new upper bound: -1023
+Found new upper bound: -2047
+Found new upper bound: -4095
+Found new upper bound: -8191
+Found new upper bound: -16383
+Found new upper bound: -32767
+Found new upper bound: -65535
+Found new upper bound: -131071
+Minimization complete...
+candidate Invariants
+ins-->((((1 * res9._2) + (1535 * blackHeight(t))) + 131071) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + 1) ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 570
+solving...
+solved... in 0.234s
+candidate Invariants
+ins-->((((1 * res9._2) + (-179 * blackHeight(t))) + -269) ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-4 * #res) + -8) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: b?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 179
+Found new lower bound: 89
+Found new lower bound: 134
+Found new lower bound: 156
+Found new lower bound: 167
+Found new lower bound: 173
+Found new lower bound: 176
+Found new lower bound: 177
+Found new upper bound: 178
+Minimizing variable: b?1 Initial upperbound: 90
+Found new lower bound: 45
+Found new lower bound: 67
+Found new lower bound: 78
+Found new upper bound: 84
+Found new lower bound: 81
+Found new lower bound: 82
+Found new lower bound: 83
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: ins --> ((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) <= 0)
+[[34m Info  [0m] - Found inductive invariant: redNodesHaveBlackChildren --> (-1 <= 0)
+[[34m Info  [0m] - Found inductive invariant: blackBalanced --> (-1 <= 0)
+[[34m Info  [0m] - Found inductive invariant: blackHeight --> (((-6 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function size...
+[[34m Info  [0m] Body: t match {
+            case Empty() => 0
+            case Node(_, l, v, r) => ((size(l) + 1) + size(r))
+          }
+[[34m Info  [0m] Post: true
+falttened Body: (r301 && (r301 == blackBalanced(t)) && (res8 == ifres159) && ((ci704 && (ci704 == t.isInstanceOf[Empty]) && (ifres159 == 0)) || (!(ci705) && (ci705 == t.isInstanceOf[Empty]) && (ifres159 == ((r302 + 1) + r303)) && (cs1173 == t.left) && (r302 == size(cs1173)) && (cs1174 == t.right) && (r303 == size(cs1174)))))
+Flattened Post: ((r305 > ((a? * res8) + b?)) && (r304 == blackHeight(t)) && (r305 == twopower(r304)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+size-->((((0 * res8) + (1 * twopower(blackHeight(t)))) + 0) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/5
+Unrolled calls: Set((r301 <=> blackBalanced(t)), (r304 == blackHeight(t)), (r305 == twopower(r304)))
+Creating VC for blackBalanced
+Unrolling (r301 <=> blackBalanced(t))
+Creating VC for blackHeight
+Unrolling (r304 == blackHeight(t))
+Creating VC for twopower
+[[34m Info  [0m] - Number of new terms enumerated: 1
+[[34m Info  [0m] - Template generated for function twopower : ((((a?9 * x) + (a?8 * #res)) + a?7) ≤ 0)
+Unrolling (r305 == twopower(r304))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+size-->((((1 * twopower(blackHeight(t))) + (0 * res8)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+twopower-->((((0 * x) + (0 * #res)) + 0) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+size-->((((0 * res8) + (2 * twopower(blackHeight(t)))) + 1) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+twopower-->((((0 * x) + (1 * #res)) + 27) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: twopower--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 14
+solving...
+solved... in 0.006s
+candidate Invariants
+size-->((((2 * twopower(blackHeight(t))) + (0 * res8)) + 1) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + 5) ≤ 0)
+twopower-->((((-4 * x) + (0 * #res)) + -1) ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 8 + 33
+solving...
+solved... in 0.006s
+candidate Invariants
+size-->((((2 * twopower(blackHeight(t))) + (0 * res8)) + -7) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+twopower-->((((-2 * x) + (0 * #res)) + 1) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 53
+[[34m Info  [0m] Number of equal calls: 15
+Function: twopower--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 31 + 41
+solving...
+solved... in 0.009s
+candidate Invariants
+size-->((((-11 * res8) + (2 * twopower(blackHeight(t)))) + -4) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+twopower-->((((-1 * x) + (0 * #res)) + -1) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 61
+[[34m Info  [0m] Number of equal calls: 13
+# of atomic predicates: 21 + 72
+solving...
+solved... in 0.019s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 6/34
+Unrolled calls: Set((r335 == blackHeight(cs1173)), (r336 == twopower(r335)), (r338 == blackHeight(cs1174)), (r320 == blackHeight(cs1187)), (r321 == blackHeight(cs1188)), (r339 == twopower(r338)))
+Unrolling (r321 == blackHeight(cs1188))
+Unrolling (r336 == twopower(r335))
+Unrolling (r338 == blackHeight(cs1174))
+Unrolling (r320 == blackHeight(cs1187))
+Unrolling (r339 == twopower(r338))
+Unrolling (r335 == blackHeight(cs1173))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+size-->((((0 * res8) + (1 * twopower(blackHeight(t)))) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+twopower-->((((0 * x) + (0 * #res)) + 0) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+size-->((((0 * res8) + (2 * twopower(blackHeight(t)))) + 1) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+twopower-->((((0 * x) + (1 * #res)) + 27) ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: twopower--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 18 + 14
+solving...
+solved... in 0.007s
+candidate Invariants
+size-->((((1 * twopower(blackHeight(t))) + (0 * res8)) + -1) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + 27) ≤ 0)
+twopower-->((((0 * x) + (2 * #res)) + -8) ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: twopower--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 22 + 32
+solving...
+solved... in 0.008s
+candidate Invariants
+size-->((((0 * res8) + (8 * twopower(blackHeight(t)))) + -51) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+twopower-->((((8 * x) + (-256 * #res)) + 16) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 254
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 37 + 54
+solving...
+solved... in 0.011s
+candidate Invariants
+size-->((((0 * res8) + (1 * twopower(blackHeight(t)))) + -2) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((36 * #res) + -1) ≤ 0)
+twopower-->((((2 * x) + (-8 * #res)) + 4) ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+# of atomic predicates: 10 + 91
+solving...
+solved... in 0.019s
+candidate Invariants
+size-->((((-3 * res8) + (1 * twopower(blackHeight(t)))) + -2) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+twopower-->((((2 * x) + (-8 * #res)) + 4) ≤ 0)
+Nesting level: a?-->0
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 3
+Found new upper bound: 1
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: b? Initial upperbound: 1
+Found new lower bound: 0
+Minimization complete...
+candidate Invariants
+size-->((((1 * twopower(blackHeight(t))) + (0 * res8)) + -1) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+twopower-->((((1 * x) + (-2 * #res)) + 2) ≤ 0)
+Function: size--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 208
+[[34m Info  [0m] Number of equal calls: 22
+# of atomic predicates: 34 + 101
+solving...
+solved... in 0.022s
+candidate Invariants
+size-->((((1 * twopower(blackHeight(t))) + (-2 * res8)) + -2) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+twopower-->((((2 * x) + (-8 * #res)) + 4) ≤ 0)
+Nesting level: a?-->0
+Nesting level: b?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimizing variable: b? Initial upperbound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: size --> ((((1 * twopower(blackHeight(t))) + (-1 * res8)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: blackBalanced --> (-1 <= 0)
+[[34m Info  [0m] - Found inductive invariant: blackHeight --> (((-1 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: twopower --> ((((2 * x) + (-8 * #res)) + 4) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[31m Error [0m] - Unable to prove or disprove invariant, the invariant is probably true
+[[34m Info  [0m] - considering function add...
+[[34m Info  [0m] Body: (let (ir1,it1 := (let (e229,t239 := ins(x, t)) in
+            (e229, (1 + t239)))) in
+            (let (r9,t236 := (let (e231,t241 := makeBlack(ir1)) in
+              (e231, (1 + t241)))) in
+              (r9, (t236 + (it1 + 1)))))
+[[34m Info  [0m] Post: true
+falttened Body: (r378 && (r378 == redNodesHaveBlackChildren(t)) && r379 && (r379 == blackBalanced(t)) && (res7 == tp72) && (arg76 == (t236 + (it1 + 1))) && (tp72 == (r9, arg76)) && (tres13 == r380) && (r380 == ins(x, t)) && (e231 == ts165) && (ts165 == tres12._1) && (ir1 == e229) && (e229 == ts166) && (ts166 == tres13._1) && (it1 == (1 + t239)) && (t236 == (1 + t241)) && (r9 == e231) && (tres12 == r381) && (r381 == makeBlack(ir1)) && (t241 == ts167) && (ts167 == tres12._2) && (t239 == ts168) && (ts168 == tres13._2))
+Flattened Post: ((ts169 > ((a?2 * r382) + b?2)) && (ts169 == res7._2) && (r382 == blackHeight(t)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 15
+[[34m Info  [0m] Number of equal calls: 3
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 5/5
+Unrolled calls: Set((r382 == blackHeight(t)), (r378 <=> redNodesHaveBlackChildren(t)), (r380 == ins(x, t)), (r379 <=> blackBalanced(t)), (r381 == makeBlack(ir1)))
+Creating VC for blackHeight
+Unrolling (r382 == blackHeight(t))
+Creating VC for blackBalanced
+Unrolling (r379 <=> blackBalanced(t))
+Creating VC for ins
+Unrolling (r380 == ins(x, t))
+Creating VC for redNodesHaveBlackChildren
+Unrolling (r378 <=> redNodesHaveBlackChildren(t))
+Inlining (r381 == makeBlack(ir1))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 81
+[[34m Info  [0m] Number of equal calls: 12
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 309
+[[34m Info  [0m] Number of equal calls: 29
+# of atomic predicates: 0 + 0
+solving...
+solved... in 0.004s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 10/62
+Unrolled calls: Set((r410 <=> redNodesHaveBlackChildren(t)), (r439 <=> isBlack(cs1320)), (r420 == balance(cs1282, ir16, cs1283, cs1284)), (r411 <=> blackBalanced(t)), (r416 == blackHeight(t)), (r449 == blackHeight(t)), (r401 == blackHeight(cs1256)), (r400 == blackHeight(cs1255)), (r440 <=> isBlack(cs1321)), (r414 == balance(cs1276, cs1277, cs1278, ir15)))
+Inlining (r439 <=> isBlack(cs1320))
+Inlining (r414 == balance(cs1276, cs1277, cs1278, ir15))
+Unrolling (r401 == blackHeight(cs1256))
+Unrolling (r416 == blackHeight(t))
+Inlining (r440 <=> isBlack(cs1321))
+Inlining (r420 == balance(cs1282, ir16, cs1283, cs1284))
+Unrolling (r410 <=> redNodesHaveBlackChildren(t))
+Unrolling (r400 == blackHeight(cs1255))
+Unrolling (r449 == blackHeight(t))
+Unrolling (r411 <=> blackBalanced(t))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 152
+[[34m Info  [0m] Number of equal calls: 21
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 450
+[[34m Info  [0m] Number of equal calls: 42
+# of atomic predicates: 31 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + -1) ≤ 0)
+add-->((((8 * res7._2) + (0 * blackHeight(t))) + -745) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 14 + 31
+solving...
+solved... in 0.006s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 1) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + -97) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 45
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 7/94
+Unrolled calls: Set((r422 == balance(cs1294, cs1295, cs1296, ir17)), (r495 == blackHeight(cs1293)), (r477 == blackHeight(cs1645)), (r413 == balance(cs1265, ir14, cs1266, cs1267)), (r476 == blackHeight(cs1644)), (r431 <=> isBlack(cs1308)), (r486 == blackHeight(cs1264)))
+Unrolling (r477 == blackHeight(cs1645))
+Unrolling (r495 == blackHeight(cs1293))
+Unrolling (r476 == blackHeight(cs1644))
+Inlining (r431 <=> isBlack(cs1308))
+Inlining (r422 == balance(cs1294, cs1295, cs1296, ir17))
+Inlining (r413 == balance(cs1265, ir14, cs1266, cs1267))
+Unrolling (r486 == blackHeight(cs1264))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 881
+[[34m Info  [0m] Number of equal calls: 47
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1066
+[[34m Info  [0m] Number of equal calls: 55
+# of atomic predicates: 49 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((1 * #res) + -8) ≤ 0)
+add-->((((0 * blackHeight(t)) + (356 * res7._2)) + -36929) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 17 + 49
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+add-->((((0 * blackHeight(t)) + (712 * res7._2)) + -72665) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 66
+solving...
+solved... in 0.009s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 1) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1424 * res7._2)) + -138205) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 73
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/95
+Unrolled calls: Set((r492 == blackHeight(cs1281)), (r463 <=> isBlack(cs1622)), (r462 <=> isBlack(cs1621)), (r489 == blackHeight(cs1279)))
+Unrolling (r492 == blackHeight(cs1281))
+Inlining (r463 <=> isBlack(cs1622))
+Inlining (r462 <=> isBlack(cs1621))
+Unrolling (r489 == blackHeight(cs1279))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 375
+[[34m Info  [0m] Number of equal calls: 30
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1085
+[[34m Info  [0m] Number of equal calls: 62
+# of atomic predicates: 51 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+add-->((((8 * res7._2) + (0 * blackHeight(t))) + -1565) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 14 + 51
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+add-->((((2 * res7._2) + (0 * blackHeight(t))) + -393) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 849
+[[34m Info  [0m] Number of equal calls: 48
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1401
+[[34m Info  [0m] Number of equal calls: 64
+# of atomic predicates: 71 + 65
+solving...
+solved... in 0.035s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 19/95
+Unrolled calls: Set((r399 <=> blackBalanced(cs1254)), (r398 <=> blackBalanced(cs1253)), (r441 <=> redNodesHaveBlackChildren(cs1322)), (r453 == blackHeight(cs1469)), (r456 == blackHeight(cs1478)), (r465 <=> redNodesHaveBlackChildren(cs1624)), (r506 == blackHeight(cs1665)), (r475 <=> blackBalanced(cs1643)), (r464 <=> redNodesHaveBlackChildren(cs1623)), (r387 == blackHeight(cs1241)), (r473 == blackHeight(cs1640)), (r502 == blackHeight(cs1653)), (r412 == ins(x, cs1264)), (r510 == blackHeight(cs1937)), (r442 <=> redNodesHaveBlackChildren(cs1323)), (r504 == blackHeight(cs1659)), (r474 <=> blackBalanced(cs1642)), (r421 == ins(x, cs1293)), (r470 == blackHeight(cs1631)))
+Unrolling (r465 <=> redNodesHaveBlackChildren(cs1624))
+Unrolling (r502 == blackHeight(cs1653))
+Unrolling (r442 <=> redNodesHaveBlackChildren(cs1323))
+Unrolling (r464 <=> redNodesHaveBlackChildren(cs1623))
+Unrolling (r453 == blackHeight(cs1469))
+Unrolling (r510 == blackHeight(cs1937))
+Unrolling (r399 <=> blackBalanced(cs1254))
+Unrolling (r470 == blackHeight(cs1631))
+Unrolling (r412 == ins(x, cs1264))
+Unrolling (r475 <=> blackBalanced(cs1643))
+Unrolling (r474 <=> blackBalanced(cs1642))
+Unrolling (r456 == blackHeight(cs1478))
+Unrolling (r504 == blackHeight(cs1659))
+Unrolling (r473 == blackHeight(cs1640))
+Unrolling (r387 == blackHeight(cs1241))
+Unrolling (r441 <=> redNodesHaveBlackChildren(cs1322))
+Unrolling (r506 == blackHeight(cs1665))
+Unrolling (r421 == ins(x, cs1293))
+Unrolling (r398 <=> blackBalanced(cs1253))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 532
+[[34m Info  [0m] Number of equal calls: 35
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1221
+[[34m Info  [0m] Number of equal calls: 64
+# of atomic predicates: 51 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1424 * res7._2)) + -145247) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 17 + 51
+solving...
+solved... in 0.008s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+add-->((((1424 * res7._2) + (0 * blackHeight(t))) + -151655) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1772
+[[34m Info  [0m] Number of equal calls: 78
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1417
+[[34m Info  [0m] Number of equal calls: 65
+# of atomic predicates: 57 + 68
+solving...
+solved... in 0.014s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + -1) ≤ 0)
+add-->((((-863 * blackHeight(t)) + (4 * res7._2)) + 1) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 125
+solving...
+solved... in 0.014s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 1) ≤ 0)
+add-->((((-839 * blackHeight(t)) + (4 * res7._2)) + 1) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2521
+[[34m Info  [0m] Number of equal calls: 83
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2648
+[[34m Info  [0m] Number of equal calls: 85
+# of atomic predicates: 71 + 132
+solving...
+solved... in 0.049s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 9/190
+Unrolled calls: Set((r640 == blackHeight(cs2142)), (r641 == blackHeight(cs2143)), (r575 == blackHeight(cs2027)), (r593 == blackHeight(cs2060)), (r603 == blackHeight(cs2070)), (r592 == blackHeight(cs2059)), (r586 == balance(cs2041, ir22, cs2042, cs2043)), (r574 == blackHeight(cs2026)), (r602 == blackHeight(cs2069)))
+Unrolling (r593 == blackHeight(cs2060))
+Unrolling (r575 == blackHeight(cs2027))
+Unrolling (r592 == blackHeight(cs2059))
+Unrolling (r603 == blackHeight(cs2070))
+Unrolling (r574 == blackHeight(cs2026))
+Inlining (r586 == balance(cs2041, ir22, cs2042, cs2043))
+Unrolling (r602 == blackHeight(cs2069))
+Unrolling (r641 == blackHeight(cs2143))
+Unrolling (r640 == blackHeight(cs2142))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1447
+[[34m Info  [0m] Number of equal calls: 63
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2196
+[[34m Info  [0m] Number of equal calls: 74
+# of atomic predicates: 75 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+add-->((((-8 * blackHeight(t)) + (8 * res7._2)) + -1739) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1
+[[34m Info  [0m] Number of equal calls: 1
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 17 + 75
+solving...
+solved... in 0.01s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+add-->((((2 * res7._2) + (1 * blackHeight(t))) + -418) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2750
+[[34m Info  [0m] Number of equal calls: 87
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1300
+[[34m Info  [0m] Number of equal calls: 56
+# of atomic predicates: 102 + 92
+solving...
+solved... in 0.023s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+add-->((((1 * blackHeight(t)) + (2 * res7._2)) + 1) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 194
+solving...
+solved... in 0.066s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 19/209
+Unrolled calls: Set((r384 == blackHeight(cs1232)), (r435 <=> redNodesHaveBlackChildren(cs1314)), (r667 == blackHeight(cs2178)), (r415 == ins(x, cs1279)), (r666 == blackHeight(cs2175)), (r663 == blackHeight(cs2166)), (r665 == blackHeight(cs2172)), (r419 == ins(x, cs1281)), (r454 == blackHeight(cs1472)), (r472 == blackHeight(cs1637)), (r436 <=> redNodesHaveBlackChildren(cs1315)), (r660 == blackHeight(cs2157)), (r659 == blackHeight(cs2154)), (r670 == blackHeight(cs2316)), (r661 == blackHeight(cs2160)), (r386 == blackHeight(cs1238)), (r672 == blackHeight(cs2322)), (r674 == blackHeight(cs2328)), (r522 == blackHeight(cs1953)))
+Unrolling (r436 <=> redNodesHaveBlackChildren(cs1315))
+Unrolling (r386 == blackHeight(cs1238))
+Unrolling (r522 == blackHeight(cs1953))
+Unrolling (r659 == blackHeight(cs2154))
+Unrolling (r384 == blackHeight(cs1232))
+Unrolling (r663 == blackHeight(cs2166))
+Unrolling (r472 == blackHeight(cs1637))
+Unrolling (r435 <=> redNodesHaveBlackChildren(cs1314))
+Unrolling (r660 == blackHeight(cs2157))
+Unrolling (r672 == blackHeight(cs2322))
+Unrolling (r661 == blackHeight(cs2160))
+Unrolling (r415 == ins(x, cs1279))
+Unrolling (r670 == blackHeight(cs2316))
+Unrolling (r674 == blackHeight(cs2328))
+Unrolling (r419 == ins(x, cs1281))
+Unrolling (r665 == blackHeight(cs2172))
+Unrolling (r666 == blackHeight(cs2175))
+Unrolling (r667 == blackHeight(cs2178))
+Unrolling (r454 == blackHeight(cs1472))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (0 * blackHeight(t))) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3945
+[[34m Info  [0m] Number of equal calls: 102
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 884
+[[34m Info  [0m] Number of equal calls: 59
+# of atomic predicates: 92 + 0
+solving...
+solved... in 0.011s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+add-->((((-4 * blackHeight(t)) + (4 * res7._2)) + -1101) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 11
+[[34m Info  [0m] Number of equal calls: 3
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 17 + 92
+solving...
+solved... in 0.011s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+add-->((((2 * res7._2) + (2 * blackHeight(t))) + -535) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 15 + 109
+solving...
+solved... in 0.019s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 3/252
+Unrolled calls: Set((r724 <=> isBlack(cs2390)), (r723 <=> isBlack(cs2389)), (r741 == balance(cs2429, cs2430, cs2431, ir28)))
+Inlining (r724 <=> isBlack(cs2390))
+Inlining (r723 <=> isBlack(cs2389))
+Inlining (r741 == balance(cs2429, cs2430, cs2431, ir28))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2645
+[[34m Info  [0m] Number of equal calls: 85
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 297
+[[34m Info  [0m] Number of equal calls: 34
+# of atomic predicates: 76 + 0
+solving...
+solved... in 0.011s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+add-->((((4 * res7._2) + (-4 * blackHeight(t))) + -1091) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 76
+solving...
+solved... in 0.009s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+add-->((((2 * res7._2) + (1 * blackHeight(t))) + -550) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3572
+[[34m Info  [0m] Number of equal calls: 98
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3404
+[[34m Info  [0m] Number of equal calls: 86
+# of atomic predicates: 138 + 95
+solving...
+solved... in 0.036s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+add-->((((-8 * blackHeight(t)) + (32 * res7._2)) + -4) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 233
+solving...
+solved... in 0.123s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 4/261
+Unrolled calls: Set((r680 == blackHeight(cs2053)), (r773 == blackHeight(cs2420)), (r589 == balance(cs2054, cs2055, cs2056, ir23)), (r739 == balance(cs2417, ir27, cs2418, cs2419)))
+Unrolling (r680 == blackHeight(cs2053))
+Unrolling (r773 == blackHeight(cs2420))
+Inlining (r589 == balance(cs2054, cs2055, cs2056, ir23))
+Inlining (r739 == balance(cs2417, ir27, cs2418, cs2419))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((0 * #res) + 0) ≤ 0)
+add-->((((0 * blackHeight(t)) + (1 * res7._2)) + 0) ≤ 0)
+blackBalanced-->(0 ≤ 0)
+redNodesHaveBlackChildren-->(0 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1018
+[[34m Info  [0m] Number of equal calls: 42
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 297
+[[34m Info  [0m] Number of equal calls: 34
+# of atomic predicates: 70 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((2 * #res) + -8) ≤ 0)
+add-->((((4 * res7._2) + (-4 * blackHeight(t))) + -1091) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 7
+[[34m Info  [0m] Number of equal calls: 2
+Function: redNodesHaveBlackChildren--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 19 + 70
+solving...
+solved... in 0.009s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-2 * #res) + 1) ≤ 0)
+add-->((((2 * res7._2) + (1 * blackHeight(t))) + -550) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackHeight--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3404
+[[34m Info  [0m] Number of equal calls: 86
+# of atomic predicates: 77 + 89
+solving...
+solved... in 0.029s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+add-->((((1 * res7._2) + (-1 * blackHeight(t))) + -22) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: ins--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 2545
+[[34m Info  [0m] Number of equal calls: 84
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 1221
+[[34m Info  [0m] Number of equal calls: 64
+# of atomic predicates: 74 + 166
+solving...
+solved... in 0.04s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + -1) ≤ 0)
+add-->((((32 * res7._2) + (8 * blackHeight(t))) + -4) ≤ 0)
+blackBalanced-->(1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: blackBalanced--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 7 + 240
+solving...
+solved... in 0.094s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((-1 * blackHeight(t)) + (1 * res7._2)) + -97) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3404
+[[34m Info  [0m] Number of equal calls: 105
+# of atomic predicates: 46 + 247
+solving...
+solved... in 0.123s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (-49 * blackHeight(t))) + -97) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 3272
+[[34m Info  [0m] Number of equal calls: 106
+# of atomic predicates: 60 + 293
+solving...
+solved... in 0.167s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((-178 * blackHeight(t)) + (1 * res7._2)) + -97) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 178
+Found new upper bound: 177/2
+Found new upper bound: 87/2
+Found new upper bound: 41/2
+Found new upper bound: 19/2
+Found new upper bound: 7/2
+Found new upper bound: 1/2
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: b?2 Initial upperbound: 275
+Found new lower bound: 137
+Found new lower bound: 206
+Found new lower bound: 240
+Found new lower bound: 257
+Found new lower bound: 266
+Found new lower bound: 270
+Found new lower bound: 272
+Found new lower bound: 273
+Found new upper bound: 274
+Minimization complete...
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (0 * blackHeight(t))) + -274) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4778
+[[34m Info  [0m] Number of equal calls: 115
+# of atomic predicates: 72 + 353
+solving...
+solved... in 0.205s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (-178 * blackHeight(t))) + -97) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 178
+Found new upper bound: 355/4
+Found new upper bound: 175/4
+Found new upper bound: 83/4
+Found new upper bound: 39/4
+Found new upper bound: 15/4
+Found new upper bound: 3/4
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: b?2 Initial upperbound: 453
+Found new lower bound: 226
+Found new lower bound: 339
+Found new lower bound: 396
+Found new lower bound: 424
+Found new lower bound: 438
+Found new lower bound: 445
+Found new lower bound: 449
+Found new lower bound: 451
+Found new upper bound: 452
+Minimization complete...
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((1 * res7._2) + (0 * blackHeight(t))) + -452) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Function: add--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 4854
+[[34m Info  [0m] Number of equal calls: 113
+# of atomic predicates: 74 + 425
+solving...
+solved... in 0.29s
+candidate Invariants
+ins-->((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) ≤ 0)
+blackHeight-->(((-1 * #res) + 0) ≤ 0)
+add-->((((-178 * blackHeight(t)) + (1 * res7._2)) + -97) ≤ 0)
+blackBalanced-->(-1 ≤ 0)
+redNodesHaveBlackChildren-->(-1 ≤ 0)
+Nesting level: a?2-->1
+Nesting level: b?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 178
+Found new lower bound: 89
+Found new lower bound: 133
+Found new lower bound: 155
+Found new lower bound: 166
+Found new lower bound: 172
+Found new lower bound: 175
+Found new lower bound: 176
+Found new lower bound: 177
+Minimizing variable: b?2 Initial upperbound: 97
+Found new lower bound: 48
+Found new lower bound: 72
+Found new lower bound: 84
+Found new lower bound: 90
+Found new lower bound: 93
+Found new lower bound: 95
+Found new upper bound: 96
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: ins --> ((((-178 * blackHeight(t)) + (1 * res9._2)) + -84) <= 0)
+[[34m Info  [0m] - Found inductive invariant: blackHeight --> (((-4 * #res) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: add --> ((((1 * res7._2) + (-178 * blackHeight(t))) + -96) <= 0)
+[[34m Info  [0m] - Found inductive invariant: blackBalanced --> (-1 <= 0)
+[[34m Info  [0m] - Found inductive invariant: redNodesHaveBlackChildren --> (-1 <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

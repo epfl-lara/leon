@@ -1,0 +1,2985 @@
+After Depth Instrumentation: 
+object ParallelBinaryTrie {
+  case class Node(nvalue: Int, left: Tree, right: Tree) extends Tree
+
+  sealed abstract class IList
+
+  case class Leaf() extends Tree
+
+  case class Cons(head: Int, tail: IList) extends IList
+
+  sealed abstract class Tree
+
+  case class Nil() extends IList
+
+  def height(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(x, l, r) =>
+      locally {
+        val hl = height(l)
+        locally {
+          val hr = height(r)
+          if ((hl > hr)) {
+            (hl + 1)
+          } else {
+            (hr + 1)
+          }
+        }
+        
+      }
+      
+  })}
+
+  def insert(inp : IList, t : Tree) : (Tree, Int) = {locally {
+    val dcond9 = 1
+    if (t.isInstanceOf[Leaf]) {
+      locally {
+        val (rthen9: Tree, dthen9: Int) = locally {
+          val dcond10 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (t, if ((dcond10 >= 0)) {
+              dcond10
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse9: Node, delse9: Int) = locally {
+                val (vr2: Tree, vd2: Int) = locally {
+                  val (e1: Tree, d73: Int) = insert(inp.tail, Leaf())
+                  (e1, (2 + d73))
+                }
+                
+                locally {
+                  val (br2: Node, bd2: Int) = locally {
+                    val dcond11 = (1 + vd2)
+                    if (vr2.isInstanceOf[Leaf]) {
+                      (Node(inp.head, Leaf(), Leaf()), if ((dcond11 >= 2)) {
+                        dcond11
+                      } else {
+                        2
+                      })
+                    } else {
+                      locally {
+                        val (relse10: Node, delse10: Int) = locally {
+                          val dcond12 = (1 + if (((1 + vd2) >= 0)) {
+                            (1 + vd2)
+                          } else {
+                            0
+                          })
+                          if ((vr2.nvalue > 0)) {
+                            (Node(inp.head, vr2, Leaf()), if ((dcond12 >= (1 + if ((if ((1 >= vd2)) {
+                              1
+                            } else {
+                              vd2
+                            } >= 1)) {
+                              if ((1 >= vd2)) {
+                                1
+                              } else {
+                                vd2
+                              }
+                            } else {
+                              1
+                            }))) {
+                              dcond12
+                            } else {
+                              (1 + if ((if ((1 >= vd2)) {
+                                1
+                              } else {
+                                vd2
+                              } >= 1)) {
+                                if ((1 >= vd2)) {
+                                  1
+                                } else {
+                                  vd2
+                                }
+                              } else {
+                                1
+                              })
+                            })
+                          } else {
+                            (Node(vr2.nvalue, Leaf(), vr2), if ((dcond12 >= (1 + if ((if (((1 + vd2) >= 1)) {
+                              (1 + vd2)
+                            } else {
+                              1
+                            } >= vd2)) {
+                              if (((1 + vd2) >= 1)) {
+                                (1 + vd2)
+                              } else {
+                                1
+                              }
+                            } else {
+                              vd2
+                            }))) {
+                              dcond12
+                            } else {
+                              (1 + if ((if (((1 + vd2) >= 1)) {
+                                (1 + vd2)
+                              } else {
+                                1
+                              } >= vd2)) {
+                                if (((1 + vd2) >= 1)) {
+                                  (1 + vd2)
+                                } else {
+                                  1
+                                }
+                              } else {
+                                vd2
+                              })
+                            })
+                          }
+                        }
+                        
+                        (relse10, if ((dcond11 >= delse10)) {
+                          dcond11
+                        } else {
+                          delse10
+                        })
+                      }
+                      
+                    }
+                  }
+                  
+                  (br2, (bd2 + 1))
+                }
+                
+              }
+              
+              (relse9, if ((dcond10 >= delse9)) {
+                dcond10
+              } else {
+                delse9
+              })
+            }
+            
+          }
+        }
+        
+        (rthen9, if ((dcond9 >= dthen9)) {
+          dcond9
+        } else {
+          dthen9
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse12: Tree, delse12: Int) = locally {
+          val dcond13 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (t, if ((dcond13 >= 0)) {
+              dcond13
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse13: Tree, delse13: Int) = locally {
+                val dcond14 = 3
+                if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+                  (t, if ((dcond14 >= 0)) {
+                    dcond14
+                  } else {
+                    0
+                  })
+                } else {
+                  locally {
+                    val (relse14: Tree, delse14: Int) = locally {
+                      val dcond15 = 3
+                      if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                        locally {
+                          val (rthen15: Node, dthen15: Int) = locally {
+                            val (vr3: Tree, vd3: Int) = locally {
+                              val dcond16 = 3
+                              if ((inp.tail.head > 0)) {
+                                (t.left, if ((dcond16 >= 1)) {
+                                  dcond16
+                                } else {
+                                  1
+                                })
+                              } else {
+                                (t.right, if ((dcond16 >= 1)) {
+                                  dcond16
+                                } else {
+                                  1
+                                })
+                              }
+                            }
+                            
+                            locally {
+                              val (br3: Node, bd3: Int) = locally {
+                                val dcond17 = 3
+                                if ((inp.tail.head > 0)) {
+                                  locally {
+                                    val (rthen17: Node, dthen17: Int) = locally {
+                                      val (r116: Tree, d113: Int) = locally {
+                                        val (e2: Tree, d118: Int) = insert(inp.tail, vr3)
+                                        (e2, ((1 + d118) + if ((1 >= vd3)) {
+                                          1
+                                        } else {
+                                          vd3
+                                        }))
+                                      }
+                                      
+                                      (Node(t.nvalue, r116, t.right), (1 + if ((if ((1 >= d113)) {
+                                        1
+                                      } else {
+                                        d113
+                                      } >= 1)) {
+                                        if ((1 >= d113)) {
+                                          1
+                                        } else {
+                                          d113
+                                        }
+                                      } else {
+                                        1
+                                      }))
+                                    }
+                                    
+                                    (rthen17, if ((dcond17 >= dthen17)) {
+                                      dcond17
+                                    } else {
+                                      dthen17
+                                    })
+                                  }
+                                  
+                                } else {
+                                  locally {
+                                    val (relse16: Node, delse16: Int) = locally {
+                                      val (r125: Tree, d123: Int) = locally {
+                                        val (e3: Tree, d126: Int) = insert(inp.tail, vr3)
+                                        (e3, ((1 + d126) + if ((1 >= vd3)) {
+                                          1
+                                        } else {
+                                          vd3
+                                        }))
+                                      }
+                                      
+                                      (Node(t.nvalue, t.left, r125), (1 + if ((1 >= d123)) {
+                                        1
+                                      } else {
+                                        d123
+                                      }))
+                                    }
+                                    
+                                    (relse16, if ((dcond17 >= delse16)) {
+                                      dcond17
+                                    } else {
+                                      delse16
+                                    })
+                                  }
+                                  
+                                }
+                              }
+                              
+                              (br3, (bd3 + 1))
+                            }
+                            
+                          }
+                          
+                          (rthen15, if ((dcond15 >= dthen15)) {
+                            dcond15
+                          } else {
+                            dthen15
+                          })
+                        }
+                        
+                      } else {
+                        (t, if ((dcond15 >= 0)) {
+                          dcond15
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse14, if ((dcond14 >= delse14)) {
+                      dcond14
+                    } else {
+                      delse14
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse13, if ((dcond13 >= delse13)) {
+                dcond13
+              } else {
+                delse13
+              })
+            }
+            
+          }
+        }
+        
+        (relse12, if ((dcond9 >= delse12)) {
+          dcond9
+        } else {
+          delse12
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def create(inp : IList) : (Tree, Int) = {locally {
+    val (e4: Tree, d132: Int) = insert(inp, Leaf())
+    (e4, (2 + d132))
+  }
+  } ensuring(res => true)
+
+  def find(inp : IList, t : Tree) : (Tree, Int) = {locally {
+    val dcond18 = 1
+    if (inp.isInstanceOf[Nil]) {
+      (t, if ((dcond18 >= 0)) {
+        dcond18
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse18: Tree, delse18: Int) = locally {
+          val dcond19 = 3
+          if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+            (t, if ((dcond19 >= 0)) {
+              dcond19
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse19: Tree, delse19: Int) = locally {
+                val dcond20 = 3
+                if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                  locally {
+                    val (rthen20: Tree, dthen20: Int) = locally {
+                      val dcond21 = 1
+                      if (t.isInstanceOf[Leaf]) {
+                        (t, if ((dcond21 >= 0)) {
+                          dcond21
+                        } else {
+                          0
+                        })
+                      } else {
+                        locally {
+                          val (relse20: Tree, delse20: Int) = locally {
+                            val dcond22 = 3
+                            if ((inp.tail.head > 0)) {
+                              locally {
+                                val (rthen22: Tree, dthen22: Int) = locally {
+                                  val (e5: Tree, d151: Int) = find(inp.tail, t.left)
+                                  (e5, (2 + d151))
+                                }
+                                
+                                (rthen22, if ((dcond22 >= dthen22)) {
+                                  dcond22
+                                } else {
+                                  dthen22
+                                })
+                              }
+                              
+                            } else {
+                              locally {
+                                val (relse21: Tree, delse21: Int) = locally {
+                                  val (e6: Tree, d156: Int) = find(inp.tail, t.right)
+                                  (e6, (2 + d156))
+                                }
+                                
+                                (relse21, if ((dcond22 >= delse21)) {
+                                  dcond22
+                                } else {
+                                  delse21
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (relse20, if ((dcond21 >= delse20)) {
+                            dcond21
+                          } else {
+                            delse20
+                          })
+                        }
+                        
+                      }
+                    }
+                    
+                    (rthen20, if ((dcond20 >= dthen20)) {
+                      dcond20
+                    } else {
+                      dthen20
+                    })
+                  }
+                  
+                } else {
+                  (t, if ((dcond20 >= 0)) {
+                    dcond20
+                  } else {
+                    0
+                  })
+                }
+              }
+              
+              (relse19, if ((dcond19 >= delse19)) {
+                dcond19
+              } else {
+                delse19
+              })
+            }
+            
+          }
+        }
+        
+        (relse18, if ((dcond18 >= delse18)) {
+          dcond18
+        } else {
+          delse18
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def delete(inp : IList, t : Tree) : (Tree, Int) = {locally {
+    val dcond = 1
+    if (t.isInstanceOf[Leaf]) {
+      locally {
+        val (rthen: Leaf, dthen: Int) = locally {
+          val dcond1 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (Leaf(), if ((dcond1 >= 1)) {
+              dcond1
+            } else {
+              1
+            })
+          } else {
+            (Leaf(), if ((dcond1 >= 1)) {
+              dcond1
+            } else {
+              1
+            })
+          }
+        }
+        
+        (rthen, if ((dcond >= dthen)) {
+          dcond
+        } else {
+          dthen
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse1: Tree, delse1: Int) = locally {
+          val dcond2 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (t, if ((dcond2 >= 0)) {
+              dcond2
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse2: Tree, delse2: Int) = locally {
+                val dcond3 = 3
+                if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+                  locally {
+                    val (rthen3: Tree, dthen3: Int) = locally {
+                      val dcond4 = 3
+                      if (((t.left == Leaf()) && (t.right == Leaf()))) {
+                        (Leaf(), if ((dcond4 >= 1)) {
+                          dcond4
+                        } else {
+                          1
+                        })
+                      } else {
+                        (t, if ((dcond4 >= 0)) {
+                          dcond4
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (rthen3, if ((dcond3 >= dthen3)) {
+                      dcond3
+                    } else {
+                      dthen3
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse4: Tree, delse4: Int) = locally {
+                      val dcond5 = 3
+                      if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                        locally {
+                          val (rthen5: Tree, dthen5: Int) = locally {
+                            val (vr: Tree, vd: Int) = locally {
+                              val dcond6 = 3
+                              if ((inp.tail.head > 0)) {
+                                (t.left, if ((dcond6 >= 1)) {
+                                  dcond6
+                                } else {
+                                  1
+                                })
+                              } else {
+                                (t.right, if ((dcond6 >= 1)) {
+                                  dcond6
+                                } else {
+                                  1
+                                })
+                              }
+                            }
+                            
+                            locally {
+                              val (br: Tree, bd: Int) = locally {
+                                val (vr1: Tree, vd1: Int) = locally {
+                                  val (e: Tree, d29: Int) = delete(inp.tail, vr)
+                                  (e, ((1 + d29) + if ((1 >= vd)) {
+                                    1
+                                  } else {
+                                    vd
+                                  }))
+                                }
+                                
+                                locally {
+                                  val (br1: Tree, bd1: Int) = locally {
+                                    val dcond7 = (1 + if (((1 + if ((vd1 >= 1)) {
+                                      vd1
+                                    } else {
+                                      1
+                                    }) >= 5)) {
+                                      (1 + if ((vd1 >= 1)) {
+                                        vd1
+                                      } else {
+                                        1
+                                      })
+                                    } else {
+                                      5
+                                    })
+                                    if (((vr1 == Leaf()) && (((inp.tail.head > 0) && (t.right == Leaf())) || ((inp.tail.head <= 0) && (t.left == Leaf()))))) {
+                                      (Leaf(), if ((dcond7 >= 1)) {
+                                        dcond7
+                                      } else {
+                                        1
+                                      })
+                                    } else {
+                                      locally {
+                                        val (relse6: Node, delse6: Int) = locally {
+                                          val dcond8 = 3
+                                          if ((inp.tail.head > 0)) {
+                                            (Node(t.nvalue, vr1, t.right), if ((dcond8 >= (1 + if ((if ((1 >= vd1)) {
+                                              1
+                                            } else {
+                                              vd1
+                                            } >= 1)) {
+                                              if ((1 >= vd1)) {
+                                                1
+                                              } else {
+                                                vd1
+                                              }
+                                            } else {
+                                              1
+                                            }))) {
+                                              dcond8
+                                            } else {
+                                              (1 + if ((if ((1 >= vd1)) {
+                                                1
+                                              } else {
+                                                vd1
+                                              } >= 1)) {
+                                                if ((1 >= vd1)) {
+                                                  1
+                                                } else {
+                                                  vd1
+                                                }
+                                              } else {
+                                                1
+                                              })
+                                            })
+                                          } else {
+                                            (Node(t.nvalue, t.left, vr1), if ((dcond8 >= (1 + if ((1 >= vd1)) {
+                                              1
+                                            } else {
+                                              vd1
+                                            }))) {
+                                              dcond8
+                                            } else {
+                                              (1 + if ((1 >= vd1)) {
+                                                1
+                                              } else {
+                                                vd1
+                                              })
+                                            })
+                                          }
+                                        }
+                                        
+                                        (relse6, if ((dcond7 >= delse6)) {
+                                          dcond7
+                                        } else {
+                                          delse6
+                                        })
+                                      }
+                                      
+                                    }
+                                  }
+                                  
+                                  (br1, (bd1 + 1))
+                                }
+                                
+                              }
+                              
+                              (br, (bd + 1))
+                            }
+                            
+                          }
+                          
+                          (rthen5, if ((dcond5 >= dthen5)) {
+                            dcond5
+                          } else {
+                            dthen5
+                          })
+                        }
+                        
+                      } else {
+                        (t, if ((dcond5 >= 0)) {
+                          dcond5
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse4, if ((dcond3 >= delse4)) {
+                      dcond3
+                    } else {
+                      delse4
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse2, if ((dcond2 >= delse2)) {
+                dcond2
+              } else {
+                delse2
+              })
+            }
+            
+          }
+        }
+        
+        (relse1, if ((dcond >= delse1)) {
+          dcond
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res => true)
+
+  def listSize(l : IList) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(x, xs) =>
+      (1 + listSize(xs))
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Defined fun: height
+Defined fun: insert
+Defined fun: create
+Defined fun: find
+Defined fun: delete
+Defined fun: listSize
+Defined fun: max
+FunMap: Map(find -> find, create -> create, max -> max, insert -> insert, listSize -> listSize, delete -> delete, height -> height)
+After Time Instrumentation: 
+object ParallelBinaryTrie {
+  case class Node(nvalue: Int, left: Tree, right: Tree) extends Tree
+
+  sealed abstract class IList
+
+  case class Leaf() extends Tree
+
+  case class Cons(head: Int, tail: IList) extends IList
+
+  sealed abstract class Tree
+
+  case class Nil() extends IList
+
+  def height(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(x, l, r) =>
+      locally {
+        val hl = height(l)
+        locally {
+          val hr = height(r)
+          if ((hl > hr)) {
+            (hl + 1)
+          } else {
+            (hr + 1)
+          }
+        }
+        
+      }
+      
+  })}
+
+  def insert(inp : IList, t : Tree) : (Tree, Int) = {locally {
+    val dcond9 = 1
+    if (t.isInstanceOf[Leaf]) {
+      locally {
+        val (rthen9: Tree, dthen9: Int) = locally {
+          val dcond10 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (t, if ((dcond10 >= 0)) {
+              dcond10
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse9: Node, delse9: Int) = locally {
+                val (vr2: Tree, vd2: Int) = locally {
+                  val (e1: Tree, d73: Int) = insert(inp.tail, Leaf())
+                  (e1, (2 + d73))
+                }
+                
+                locally {
+                  val (br2: Node, bd2: Int) = locally {
+                    val dcond11 = (1 + vd2)
+                    if (vr2.isInstanceOf[Leaf]) {
+                      (Node(inp.head, Leaf(), Leaf()), if ((dcond11 >= 2)) {
+                        dcond11
+                      } else {
+                        2
+                      })
+                    } else {
+                      locally {
+                        val (relse10: Node, delse10: Int) = locally {
+                          val dcond12 = (1 + if (((1 + vd2) >= 0)) {
+                            (1 + vd2)
+                          } else {
+                            0
+                          })
+                          if ((vr2.nvalue > 0)) {
+                            (Node(inp.head, vr2, Leaf()), if ((dcond12 >= (1 + if ((if ((1 >= vd2)) {
+                              1
+                            } else {
+                              vd2
+                            } >= 1)) {
+                              if ((1 >= vd2)) {
+                                1
+                              } else {
+                                vd2
+                              }
+                            } else {
+                              1
+                            }))) {
+                              dcond12
+                            } else {
+                              (1 + if ((if ((1 >= vd2)) {
+                                1
+                              } else {
+                                vd2
+                              } >= 1)) {
+                                if ((1 >= vd2)) {
+                                  1
+                                } else {
+                                  vd2
+                                }
+                              } else {
+                                1
+                              })
+                            })
+                          } else {
+                            (Node(vr2.nvalue, Leaf(), vr2), if ((dcond12 >= (1 + if ((if (((1 + vd2) >= 1)) {
+                              (1 + vd2)
+                            } else {
+                              1
+                            } >= vd2)) {
+                              if (((1 + vd2) >= 1)) {
+                                (1 + vd2)
+                              } else {
+                                1
+                              }
+                            } else {
+                              vd2
+                            }))) {
+                              dcond12
+                            } else {
+                              (1 + if ((if (((1 + vd2) >= 1)) {
+                                (1 + vd2)
+                              } else {
+                                1
+                              } >= vd2)) {
+                                if (((1 + vd2) >= 1)) {
+                                  (1 + vd2)
+                                } else {
+                                  1
+                                }
+                              } else {
+                                vd2
+                              })
+                            })
+                          }
+                        }
+                        
+                        (relse10, if ((dcond11 >= delse10)) {
+                          dcond11
+                        } else {
+                          delse10
+                        })
+                      }
+                      
+                    }
+                  }
+                  
+                  (br2, (bd2 + 1))
+                }
+                
+              }
+              
+              (relse9, if ((dcond10 >= delse9)) {
+                dcond10
+              } else {
+                delse9
+              })
+            }
+            
+          }
+        }
+        
+        (rthen9, if ((dcond9 >= dthen9)) {
+          dcond9
+        } else {
+          dthen9
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse12: Tree, delse12: Int) = locally {
+          val dcond13 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (t, if ((dcond13 >= 0)) {
+              dcond13
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse13: Tree, delse13: Int) = locally {
+                val dcond14 = 3
+                if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+                  (t, if ((dcond14 >= 0)) {
+                    dcond14
+                  } else {
+                    0
+                  })
+                } else {
+                  locally {
+                    val (relse14: Tree, delse14: Int) = locally {
+                      val dcond15 = 3
+                      if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                        locally {
+                          val (rthen15: Node, dthen15: Int) = locally {
+                            val (vr3: Tree, vd3: Int) = locally {
+                              val dcond16 = 3
+                              if ((inp.tail.head > 0)) {
+                                (t.left, if ((dcond16 >= 1)) {
+                                  dcond16
+                                } else {
+                                  1
+                                })
+                              } else {
+                                (t.right, if ((dcond16 >= 1)) {
+                                  dcond16
+                                } else {
+                                  1
+                                })
+                              }
+                            }
+                            
+                            locally {
+                              val (br3: Node, bd3: Int) = locally {
+                                val dcond17 = 3
+                                if ((inp.tail.head > 0)) {
+                                  locally {
+                                    val (rthen17: Node, dthen17: Int) = locally {
+                                      val (r116: Tree, d113: Int) = locally {
+                                        val (e2: Tree, d118: Int) = insert(inp.tail, vr3)
+                                        (e2, ((1 + d118) + if ((1 >= vd3)) {
+                                          1
+                                        } else {
+                                          vd3
+                                        }))
+                                      }
+                                      
+                                      (Node(t.nvalue, r116, t.right), (1 + if ((if ((1 >= d113)) {
+                                        1
+                                      } else {
+                                        d113
+                                      } >= 1)) {
+                                        if ((1 >= d113)) {
+                                          1
+                                        } else {
+                                          d113
+                                        }
+                                      } else {
+                                        1
+                                      }))
+                                    }
+                                    
+                                    (rthen17, if ((dcond17 >= dthen17)) {
+                                      dcond17
+                                    } else {
+                                      dthen17
+                                    })
+                                  }
+                                  
+                                } else {
+                                  locally {
+                                    val (relse16: Node, delse16: Int) = locally {
+                                      val (r125: Tree, d123: Int) = locally {
+                                        val (e3: Tree, d126: Int) = insert(inp.tail, vr3)
+                                        (e3, ((1 + d126) + if ((1 >= vd3)) {
+                                          1
+                                        } else {
+                                          vd3
+                                        }))
+                                      }
+                                      
+                                      (Node(t.nvalue, t.left, r125), (1 + if ((1 >= d123)) {
+                                        1
+                                      } else {
+                                        d123
+                                      }))
+                                    }
+                                    
+                                    (relse16, if ((dcond17 >= delse16)) {
+                                      dcond17
+                                    } else {
+                                      delse16
+                                    })
+                                  }
+                                  
+                                }
+                              }
+                              
+                              (br3, (bd3 + 1))
+                            }
+                            
+                          }
+                          
+                          (rthen15, if ((dcond15 >= dthen15)) {
+                            dcond15
+                          } else {
+                            dthen15
+                          })
+                        }
+                        
+                      } else {
+                        (t, if ((dcond15 >= 0)) {
+                          dcond15
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse14, if ((dcond14 >= delse14)) {
+                      dcond14
+                    } else {
+                      delse14
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse13, if ((dcond13 >= delse13)) {
+                dcond13
+              } else {
+                delse13
+              })
+            }
+            
+          }
+        }
+        
+        (relse12, if ((dcond9 >= delse12)) {
+          dcond9
+        } else {
+          delse12
+        })
+      }
+      
+    }
+  }
+  } ensuring(res11 => true)
+
+  def create(inp : IList) : (Tree, Int) = {locally {
+    val (e4: Tree, d132: Int) = insert(inp, Leaf())
+    (e4, (2 + d132))
+  }
+  } ensuring(res10 => true)
+
+  def find(inp : IList, t : Tree) : (Tree, Int) = {locally {
+    val dcond18 = 1
+    if (inp.isInstanceOf[Nil]) {
+      (t, if ((dcond18 >= 0)) {
+        dcond18
+      } else {
+        0
+      })
+    } else {
+      locally {
+        val (relse18: Tree, delse18: Int) = locally {
+          val dcond19 = 3
+          if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+            (t, if ((dcond19 >= 0)) {
+              dcond19
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse19: Tree, delse19: Int) = locally {
+                val dcond20 = 3
+                if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                  locally {
+                    val (rthen20: Tree, dthen20: Int) = locally {
+                      val dcond21 = 1
+                      if (t.isInstanceOf[Leaf]) {
+                        (t, if ((dcond21 >= 0)) {
+                          dcond21
+                        } else {
+                          0
+                        })
+                      } else {
+                        locally {
+                          val (relse20: Tree, delse20: Int) = locally {
+                            val dcond22 = 3
+                            if ((inp.tail.head > 0)) {
+                              locally {
+                                val (rthen22: Tree, dthen22: Int) = locally {
+                                  val (e5: Tree, d151: Int) = find(inp.tail, t.left)
+                                  (e5, (2 + d151))
+                                }
+                                
+                                (rthen22, if ((dcond22 >= dthen22)) {
+                                  dcond22
+                                } else {
+                                  dthen22
+                                })
+                              }
+                              
+                            } else {
+                              locally {
+                                val (relse21: Tree, delse21: Int) = locally {
+                                  val (e6: Tree, d156: Int) = find(inp.tail, t.right)
+                                  (e6, (2 + d156))
+                                }
+                                
+                                (relse21, if ((dcond22 >= delse21)) {
+                                  dcond22
+                                } else {
+                                  delse21
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (relse20, if ((dcond21 >= delse20)) {
+                            dcond21
+                          } else {
+                            delse20
+                          })
+                        }
+                        
+                      }
+                    }
+                    
+                    (rthen20, if ((dcond20 >= dthen20)) {
+                      dcond20
+                    } else {
+                      dthen20
+                    })
+                  }
+                  
+                } else {
+                  (t, if ((dcond20 >= 0)) {
+                    dcond20
+                  } else {
+                    0
+                  })
+                }
+              }
+              
+              (relse19, if ((dcond19 >= delse19)) {
+                dcond19
+              } else {
+                delse19
+              })
+            }
+            
+          }
+        }
+        
+        (relse18, if ((dcond18 >= delse18)) {
+          dcond18
+        } else {
+          delse18
+        })
+      }
+      
+    }
+  }
+  } ensuring(res9 => true)
+
+  def delete(inp : IList, t : Tree) : (Tree, Int) = {locally {
+    val dcond = 1
+    if (t.isInstanceOf[Leaf]) {
+      locally {
+        val (rthen: Leaf, dthen: Int) = locally {
+          val dcond1 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (Leaf(), if ((dcond1 >= 1)) {
+              dcond1
+            } else {
+              1
+            })
+          } else {
+            (Leaf(), if ((dcond1 >= 1)) {
+              dcond1
+            } else {
+              1
+            })
+          }
+        }
+        
+        (rthen, if ((dcond >= dthen)) {
+          dcond
+        } else {
+          dthen
+        })
+      }
+      
+    } else {
+      locally {
+        val (relse1: Tree, delse1: Int) = locally {
+          val dcond2 = 1
+          if (inp.isInstanceOf[Nil]) {
+            (t, if ((dcond2 >= 0)) {
+              dcond2
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse2: Tree, delse2: Int) = locally {
+                val dcond3 = 3
+                if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+                  locally {
+                    val (rthen3: Tree, dthen3: Int) = locally {
+                      val dcond4 = 3
+                      if (((t.left == Leaf()) && (t.right == Leaf()))) {
+                        (Leaf(), if ((dcond4 >= 1)) {
+                          dcond4
+                        } else {
+                          1
+                        })
+                      } else {
+                        (t, if ((dcond4 >= 0)) {
+                          dcond4
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (rthen3, if ((dcond3 >= dthen3)) {
+                      dcond3
+                    } else {
+                      dthen3
+                    })
+                  }
+                  
+                } else {
+                  locally {
+                    val (relse4: Tree, delse4: Int) = locally {
+                      val dcond5 = 3
+                      if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                        locally {
+                          val (rthen5: Tree, dthen5: Int) = locally {
+                            val (vr: Tree, vd: Int) = locally {
+                              val dcond6 = 3
+                              if ((inp.tail.head > 0)) {
+                                (t.left, if ((dcond6 >= 1)) {
+                                  dcond6
+                                } else {
+                                  1
+                                })
+                              } else {
+                                (t.right, if ((dcond6 >= 1)) {
+                                  dcond6
+                                } else {
+                                  1
+                                })
+                              }
+                            }
+                            
+                            locally {
+                              val (br: Tree, bd: Int) = locally {
+                                val (vr1: Tree, vd1: Int) = locally {
+                                  val (e: Tree, d29: Int) = delete(inp.tail, vr)
+                                  (e, ((1 + d29) + if ((1 >= vd)) {
+                                    1
+                                  } else {
+                                    vd
+                                  }))
+                                }
+                                
+                                locally {
+                                  val (br1: Tree, bd1: Int) = locally {
+                                    val dcond7 = (1 + if (((1 + if ((vd1 >= 1)) {
+                                      vd1
+                                    } else {
+                                      1
+                                    }) >= 5)) {
+                                      (1 + if ((vd1 >= 1)) {
+                                        vd1
+                                      } else {
+                                        1
+                                      })
+                                    } else {
+                                      5
+                                    })
+                                    if (((vr1 == Leaf()) && (((inp.tail.head > 0) && (t.right == Leaf())) || ((inp.tail.head <= 0) && (t.left == Leaf()))))) {
+                                      (Leaf(), if ((dcond7 >= 1)) {
+                                        dcond7
+                                      } else {
+                                        1
+                                      })
+                                    } else {
+                                      locally {
+                                        val (relse6: Node, delse6: Int) = locally {
+                                          val dcond8 = 3
+                                          if ((inp.tail.head > 0)) {
+                                            (Node(t.nvalue, vr1, t.right), if ((dcond8 >= (1 + if ((if ((1 >= vd1)) {
+                                              1
+                                            } else {
+                                              vd1
+                                            } >= 1)) {
+                                              if ((1 >= vd1)) {
+                                                1
+                                              } else {
+                                                vd1
+                                              }
+                                            } else {
+                                              1
+                                            }))) {
+                                              dcond8
+                                            } else {
+                                              (1 + if ((if ((1 >= vd1)) {
+                                                1
+                                              } else {
+                                                vd1
+                                              } >= 1)) {
+                                                if ((1 >= vd1)) {
+                                                  1
+                                                } else {
+                                                  vd1
+                                                }
+                                              } else {
+                                                1
+                                              })
+                                            })
+                                          } else {
+                                            (Node(t.nvalue, t.left, vr1), if ((dcond8 >= (1 + if ((1 >= vd1)) {
+                                              1
+                                            } else {
+                                              vd1
+                                            }))) {
+                                              dcond8
+                                            } else {
+                                              (1 + if ((1 >= vd1)) {
+                                                1
+                                              } else {
+                                                vd1
+                                              })
+                                            })
+                                          }
+                                        }
+                                        
+                                        (relse6, if ((dcond7 >= delse6)) {
+                                          dcond7
+                                        } else {
+                                          delse6
+                                        })
+                                      }
+                                      
+                                    }
+                                  }
+                                  
+                                  (br1, (bd1 + 1))
+                                }
+                                
+                              }
+                              
+                              (br, (bd + 1))
+                            }
+                            
+                          }
+                          
+                          (rthen5, if ((dcond5 >= dthen5)) {
+                            dcond5
+                          } else {
+                            dthen5
+                          })
+                        }
+                        
+                      } else {
+                        (t, if ((dcond5 >= 0)) {
+                          dcond5
+                        } else {
+                          0
+                        })
+                      }
+                    }
+                    
+                    (relse4, if ((dcond3 >= delse4)) {
+                      dcond3
+                    } else {
+                      delse4
+                    })
+                  }
+                  
+                }
+              }
+              
+              (relse2, if ((dcond2 >= delse2)) {
+                dcond2
+              } else {
+                delse2
+              })
+            }
+            
+          }
+        }
+        
+        (relse1, if ((dcond >= delse1)) {
+          dcond
+        } else {
+          delse1
+        })
+      }
+      
+    }
+  }
+  } ensuring(res12 => true)
+
+  def listSize(l : IList) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(x, xs) =>
+      (1 + listSize(xs))
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+New Prog: 
+object ParallelBinaryTrie {
+  case class Node(nvalue: Int, left: Tree, right: Tree) extends Tree
+
+  sealed abstract class IList
+
+  case class Leaf() extends Tree
+
+  case class Cons(head: Int, tail: IList) extends IList
+
+  sealed abstract class Tree
+
+  case class Nil() extends IList
+
+  def height(t : Tree) : Int = {(t match {
+    case Leaf() =>
+      0
+    case Node(x, l, r) =>
+      locally {
+        val hl = height(l)
+        locally {
+          val hr = height(r)
+          if ((hl > hr)) {
+            (hl + 1)
+          } else {
+            (hr + 1)
+          }
+        }
+        
+      }
+      
+  })}
+
+  def insert(inp : IList, t : Tree) : (Tree, Int) = {if (t.isInstanceOf[Leaf]) {
+    locally {
+      val (rthen9: Tree, dthen9: Int) = if (inp.isInstanceOf[Nil]) {
+        (t, if ((1 >= 0)) {
+          1
+        } else {
+          0
+        })
+      } else {
+        locally {
+          val (relse9: Node, delse9: Int) = locally {
+            val (vr2: Tree, vd2: Int) = locally {
+              val (e1: Tree, d73: Int) = insert(inp.tail, Leaf())
+              (e1, (2 + d73))
+            }
+            
+            locally {
+              val (br2: Node, bd2: Int) = locally {
+                val dcond11 = (1 + vd2)
+                if (vr2.isInstanceOf[Leaf]) {
+                  (Node(inp.head, Leaf(), Leaf()), if ((dcond11 >= 2)) {
+                    dcond11
+                  } else {
+                    2
+                  })
+                } else {
+                  locally {
+                    val (relse10: Node, delse10: Int) = locally {
+                      val dcond12 = (1 + if (((1 + vd2) >= 0)) {
+                        (1 + vd2)
+                      } else {
+                        0
+                      })
+                      if ((vr2.nvalue > 0)) {
+                        (Node(inp.head, vr2, Leaf()), if ((dcond12 >= (1 + if ((if ((1 >= vd2)) {
+                          1
+                        } else {
+                          vd2
+                        } >= 1)) {
+                          if ((1 >= vd2)) {
+                            1
+                          } else {
+                            vd2
+                          }
+                        } else {
+                          1
+                        }))) {
+                          dcond12
+                        } else {
+                          (1 + if ((if ((1 >= vd2)) {
+                            1
+                          } else {
+                            vd2
+                          } >= 1)) {
+                            if ((1 >= vd2)) {
+                              1
+                            } else {
+                              vd2
+                            }
+                          } else {
+                            1
+                          })
+                        })
+                      } else {
+                        (Node(vr2.nvalue, Leaf(), vr2), if ((dcond12 >= (1 + if ((if (((1 + vd2) >= 1)) {
+                          (1 + vd2)
+                        } else {
+                          1
+                        } >= vd2)) {
+                          if (((1 + vd2) >= 1)) {
+                            (1 + vd2)
+                          } else {
+                            1
+                          }
+                        } else {
+                          vd2
+                        }))) {
+                          dcond12
+                        } else {
+                          (1 + if ((if (((1 + vd2) >= 1)) {
+                            (1 + vd2)
+                          } else {
+                            1
+                          } >= vd2)) {
+                            if (((1 + vd2) >= 1)) {
+                              (1 + vd2)
+                            } else {
+                              1
+                            }
+                          } else {
+                            vd2
+                          })
+                        })
+                      }
+                    }
+                    
+                    (relse10, if ((dcond11 >= delse10)) {
+                      dcond11
+                    } else {
+                      delse10
+                    })
+                  }
+                  
+                }
+              }
+              
+              (br2, (bd2 + 1))
+            }
+            
+          }
+          
+          (relse9, if ((1 >= delse9)) {
+            1
+          } else {
+            delse9
+          })
+        }
+        
+      }
+      (rthen9, if ((1 >= dthen9)) {
+        1
+      } else {
+        dthen9
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse12: Tree, delse12: Int) = if (inp.isInstanceOf[Nil]) {
+        (t, if ((1 >= 0)) {
+          1
+        } else {
+          0
+        })
+      } else {
+        locally {
+          val (relse13: Tree, delse13: Int) = if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+            (t, if ((3 >= 0)) {
+              3
+            } else {
+              0
+            })
+          } else {
+            locally {
+              val (relse14: Tree, delse14: Int) = if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                locally {
+                  val (rthen15: Node, dthen15: Int) = locally {
+                    val (vr3: Tree, vd3: Int) = if ((inp.tail.head > 0)) {
+                      (t.left, if ((3 >= 1)) {
+                        3
+                      } else {
+                        1
+                      })
+                    } else {
+                      (t.right, if ((3 >= 1)) {
+                        3
+                      } else {
+                        1
+                      })
+                    }
+                    locally {
+                      val (br3: Node, bd3: Int) = if ((inp.tail.head > 0)) {
+                        locally {
+                          val (rthen17: Node, dthen17: Int) = locally {
+                            val (r116: Tree, d113: Int) = locally {
+                              val (e2: Tree, d118: Int) = insert(inp.tail, vr3)
+                              (e2, ((1 + d118) + if ((1 >= vd3)) {
+                                1
+                              } else {
+                                vd3
+                              }))
+                            }
+                            
+                            (Node(t.nvalue, r116, t.right), (1 + if ((if ((1 >= d113)) {
+                              1
+                            } else {
+                              d113
+                            } >= 1)) {
+                              if ((1 >= d113)) {
+                                1
+                              } else {
+                                d113
+                              }
+                            } else {
+                              1
+                            }))
+                          }
+                          
+                          (rthen17, if ((3 >= dthen17)) {
+                            3
+                          } else {
+                            dthen17
+                          })
+                        }
+                        
+                      } else {
+                        locally {
+                          val (relse16: Node, delse16: Int) = locally {
+                            val (r125: Tree, d123: Int) = locally {
+                              val (e3: Tree, d126: Int) = insert(inp.tail, vr3)
+                              (e3, ((1 + d126) + if ((1 >= vd3)) {
+                                1
+                              } else {
+                                vd3
+                              }))
+                            }
+                            
+                            (Node(t.nvalue, t.left, r125), (1 + if ((1 >= d123)) {
+                              1
+                            } else {
+                              d123
+                            }))
+                          }
+                          
+                          (relse16, if ((3 >= delse16)) {
+                            3
+                          } else {
+                            delse16
+                          })
+                        }
+                        
+                      }
+                      (br3, (bd3 + 1))
+                    }
+                    
+                  }
+                  
+                  (rthen15, if ((3 >= dthen15)) {
+                    3
+                  } else {
+                    dthen15
+                  })
+                }
+                
+              } else {
+                (t, if ((3 >= 0)) {
+                  3
+                } else {
+                  0
+                })
+              }
+              (relse14, if ((3 >= delse14)) {
+                3
+              } else {
+                delse14
+              })
+            }
+            
+          }
+          (relse13, if ((1 >= delse13)) {
+            1
+          } else {
+            delse13
+          })
+        }
+        
+      }
+      (relse12, if ((1 >= delse12)) {
+        1
+      } else {
+        delse12
+      })
+    }
+    
+  }} ensuring(res11 => true)
+
+  def create(inp : IList) : (Tree, Int) = {locally {
+    val (e4: Tree, d132: Int) = insert(inp, Leaf())
+    (e4, (2 + d132))
+  }
+  } ensuring(res10 => true)
+
+  def find(inp : IList, t : Tree) : (Tree, Int) = {if (inp.isInstanceOf[Nil]) {
+    (t, if ((1 >= 0)) {
+      1
+    } else {
+      0
+    })
+  } else {
+    locally {
+      val (relse18: Tree, delse18: Int) = if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+        (t, if ((3 >= 0)) {
+          3
+        } else {
+          0
+        })
+      } else {
+        locally {
+          val (relse19: Tree, delse19: Int) = if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+            locally {
+              val (rthen20: Tree, dthen20: Int) = if (t.isInstanceOf[Leaf]) {
+                (t, if ((1 >= 0)) {
+                  1
+                } else {
+                  0
+                })
+              } else {
+                locally {
+                  val (relse20: Tree, delse20: Int) = if ((inp.tail.head > 0)) {
+                    locally {
+                      val (rthen22: Tree, dthen22: Int) = locally {
+                        val (e5: Tree, d151: Int) = find(inp.tail, t.left)
+                        (e5, (2 + d151))
+                      }
+                      
+                      (rthen22, if ((3 >= dthen22)) {
+                        3
+                      } else {
+                        dthen22
+                      })
+                    }
+                    
+                  } else {
+                    locally {
+                      val (relse21: Tree, delse21: Int) = locally {
+                        val (e6: Tree, d156: Int) = find(inp.tail, t.right)
+                        (e6, (2 + d156))
+                      }
+                      
+                      (relse21, if ((3 >= delse21)) {
+                        3
+                      } else {
+                        delse21
+                      })
+                    }
+                    
+                  }
+                  (relse20, if ((1 >= delse20)) {
+                    1
+                  } else {
+                    delse20
+                  })
+                }
+                
+              }
+              (rthen20, if ((3 >= dthen20)) {
+                3
+              } else {
+                dthen20
+              })
+            }
+            
+          } else {
+            (t, if ((3 >= 0)) {
+              3
+            } else {
+              0
+            })
+          }
+          (relse19, if ((3 >= delse19)) {
+            3
+          } else {
+            delse19
+          })
+        }
+        
+      }
+      (relse18, if ((1 >= delse18)) {
+        1
+      } else {
+        delse18
+      })
+    }
+    
+  }} ensuring(res9 => true)
+
+  def delete(inp : IList, t : Tree) : (Tree, Int) = {if (t.isInstanceOf[Leaf]) {
+    locally {
+      val (rthen: Leaf, dthen: Int) = if (inp.isInstanceOf[Nil]) {
+        (Leaf(), if ((1 >= 1)) {
+          1
+        } else {
+          1
+        })
+      } else {
+        (Leaf(), if ((1 >= 1)) {
+          1
+        } else {
+          1
+        })
+      }
+      (rthen, if ((1 >= dthen)) {
+        1
+      } else {
+        dthen
+      })
+    }
+    
+  } else {
+    locally {
+      val (relse1: Tree, delse1: Int) = if (inp.isInstanceOf[Nil]) {
+        (t, if ((1 >= 0)) {
+          1
+        } else {
+          0
+        })
+      } else {
+        locally {
+          val (relse2: Tree, delse2: Int) = if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Nil])) {
+            locally {
+              val (rthen3: Tree, dthen3: Int) = if (((t.left == Leaf()) && (t.right == Leaf()))) {
+                (Leaf(), if ((3 >= 1)) {
+                  3
+                } else {
+                  1
+                })
+              } else {
+                (t, if ((3 >= 0)) {
+                  3
+                } else {
+                  0
+                })
+              }
+              (rthen3, if ((3 >= dthen3)) {
+                3
+              } else {
+                dthen3
+              })
+            }
+            
+          } else {
+            locally {
+              val (relse4: Tree, delse4: Int) = if ((inp.isInstanceOf[Cons] && inp.tail.isInstanceOf[Cons])) {
+                locally {
+                  val (rthen5: Tree, dthen5: Int) = locally {
+                    val (vr: Tree, vd: Int) = if ((inp.tail.head > 0)) {
+                      (t.left, if ((3 >= 1)) {
+                        3
+                      } else {
+                        1
+                      })
+                    } else {
+                      (t.right, if ((3 >= 1)) {
+                        3
+                      } else {
+                        1
+                      })
+                    }
+                    locally {
+                      val (br: Tree, bd: Int) = locally {
+                        val (vr1: Tree, vd1: Int) = locally {
+                          val (e: Tree, d29: Int) = delete(inp.tail, vr)
+                          (e, ((1 + d29) + if ((1 >= vd)) {
+                            1
+                          } else {
+                            vd
+                          }))
+                        }
+                        
+                        locally {
+                          val (br1: Tree, bd1: Int) = locally {
+                            val dcond7 = (1 + if (((1 + if ((vd1 >= 1)) {
+                              vd1
+                            } else {
+                              1
+                            }) >= 5)) {
+                              (1 + if ((vd1 >= 1)) {
+                                vd1
+                              } else {
+                                1
+                              })
+                            } else {
+                              5
+                            })
+                            if (((vr1 == Leaf()) && (((inp.tail.head > 0) && (t.right == Leaf())) || ((inp.tail.head <= 0) && (t.left == Leaf()))))) {
+                              (Leaf(), if ((dcond7 >= 1)) {
+                                dcond7
+                              } else {
+                                1
+                              })
+                            } else {
+                              locally {
+                                val (relse6: Node, delse6: Int) = if ((inp.tail.head > 0)) {
+                                  (Node(t.nvalue, vr1, t.right), if ((3 >= (1 + if ((if ((1 >= vd1)) {
+                                    1
+                                  } else {
+                                    vd1
+                                  } >= 1)) {
+                                    if ((1 >= vd1)) {
+                                      1
+                                    } else {
+                                      vd1
+                                    }
+                                  } else {
+                                    1
+                                  }))) {
+                                    3
+                                  } else {
+                                    (1 + if ((if ((1 >= vd1)) {
+                                      1
+                                    } else {
+                                      vd1
+                                    } >= 1)) {
+                                      if ((1 >= vd1)) {
+                                        1
+                                      } else {
+                                        vd1
+                                      }
+                                    } else {
+                                      1
+                                    })
+                                  })
+                                } else {
+                                  (Node(t.nvalue, t.left, vr1), if ((3 >= (1 + if ((1 >= vd1)) {
+                                    1
+                                  } else {
+                                    vd1
+                                  }))) {
+                                    3
+                                  } else {
+                                    (1 + if ((1 >= vd1)) {
+                                      1
+                                    } else {
+                                      vd1
+                                    })
+                                  })
+                                }
+                                (relse6, if ((dcond7 >= delse6)) {
+                                  dcond7
+                                } else {
+                                  delse6
+                                })
+                              }
+                              
+                            }
+                          }
+                          
+                          (br1, (bd1 + 1))
+                        }
+                        
+                      }
+                      
+                      (br, (bd + 1))
+                    }
+                    
+                  }
+                  
+                  (rthen5, if ((3 >= dthen5)) {
+                    3
+                  } else {
+                    dthen5
+                  })
+                }
+                
+              } else {
+                (t, if ((3 >= 0)) {
+                  3
+                } else {
+                  0
+                })
+              }
+              (relse4, if ((3 >= delse4)) {
+                3
+              } else {
+                delse4
+              })
+            }
+            
+          }
+          (relse2, if ((1 >= delse2)) {
+            1
+          } else {
+            delse2
+          })
+        }
+        
+      }
+      (relse1, if ((1 >= delse1)) {
+        1
+      } else {
+        delse1
+      })
+    }
+    
+  }} ensuring(res12 => true)
+
+  def listSize(l : IList) : Int = {(l match {
+    case Nil() =>
+      0
+    case Cons(x, xs) =>
+      (1 + listSize(xs))
+  })}
+
+  def max(x : Int, y : Int) : Int = {if ((x >= y)) {
+    x
+  } else {
+    y
+  }}
+}
+
+Function: insert template --> (res11._2 ≤ ((a?1 * listSize(inp)) + c?1))
+Function: create template --> (res10._2 ≤ ((a?2 * listSize(inp)) + c?2))
+Function: find template --> (res9._2 ≤ ((a? * listSize(inp)) + c?))
+Function: delete template --> (res12._2 ≤ ((a?3 * listSize(inp)) + c?3))
+[[34m Info  [0m] Running Invariant Inference Phase...
+[[34m Info  [0m] Analysis Order: List(height, listSize, insert, delete, create, find)
+[[34m Info  [0m] - considering function insert...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (let (rthen9,dthen9 := if (inp.isInstanceOf[Nil])
+              (t, if ((1 ≥ 0))
+                1
+              else
+                0)
+            else
+              (let (relse9,delse9 := (let (vr2,vd2 := (let (e1,d73 := insert(inp.tail, Leaf())) in
+                (e1, (2 + d73)))) in
+                (let (br2,bd2 := (let (dcond11 := (1 + vd2)) in
+                  if (vr2.isInstanceOf[Leaf])
+                    (Node(inp.head, Leaf(), Leaf()), if ((dcond11 ≥ 2))
+                      dcond11
+                    else
+                      2)
+                  else
+                    (let (relse10,delse10 := (let (dcond12 := (1 + if (((1 + vd2) ≥ 0))
+                      (1 + vd2)
+                    else
+                      0)) in
+                      if ((vr2.nvalue > 0))
+                        (Node(inp.head, vr2, Leaf()), if ((dcond12 ≥ (1 + if ((if ((1 ≥ vd2))
+                          1
+                        else
+                          vd2 ≥ 1))
+                          if ((1 ≥ vd2))
+                            1
+                          else
+                            vd2
+                        else
+                          1)))
+                          dcond12
+                        else
+                          (1 + if ((if ((1 ≥ vd2))
+                            1
+                          else
+                            vd2 ≥ 1))
+                            if ((1 ≥ vd2))
+                              1
+                            else
+                              vd2
+                          else
+                            1))
+                      else
+                        (Node(vr2.nvalue, Leaf(), vr2), if ((dcond12 ≥ (1 + if ((if (((1 + vd2) ≥ 1))
+                          (1 + vd2)
+                        else
+                          1 ≥ vd2))
+                          if (((1 + vd2) ≥ 1))
+                            (1 + vd2)
+                          else
+                            1
+                        else
+                          vd2)))
+                          dcond12
+                        else
+                          (1 + if ((if (((1 + vd2) ≥ 1))
+                            (1 + vd2)
+                          else
+                            1 ≥ vd2))
+                            if (((1 + vd2) ≥ 1))
+                              (1 + vd2)
+                            else
+                              1
+                          else
+                            vd2)))) in
+                      (relse10, if ((dcond11 ≥ delse10))
+                        dcond11
+                      else
+                        delse10)))) in
+                  (br2, (bd2 + 1))))) in
+                (relse9, if ((1 ≥ delse9))
+                  1
+                else
+                  delse9))) in
+              (rthen9, if ((1 ≥ dthen9))
+                1
+              else
+                dthen9))
+          else
+            (let (relse12,delse12 := if (inp.isInstanceOf[Nil])
+              (t, if ((1 ≥ 0))
+                1
+              else
+                0)
+            else
+              (let (relse13,delse13 := if ((inp.isInstanceOf[Cons] ∧ inp.tail.isInstanceOf[Nil]))
+                (t, if ((3 ≥ 0))
+                  3
+                else
+                  0)
+              else
+                (let (relse14,delse14 := if ((inp.isInstanceOf[Cons] ∧ inp.tail.isInstanceOf[Cons]))
+                  (let (rthen15,dthen15 := (let (vr3,vd3 := if ((inp.tail.head > 0))
+                    (t.left, if ((3 ≥ 1))
+                      3
+                    else
+                      1)
+                  else
+                    (t.right, if ((3 ≥ 1))
+                      3
+                    else
+                      1)) in
+                    (let (br3,bd3 := if ((inp.tail.head > 0))
+                      (let (rthen17,dthen17 := (let (r116,d113 := (let (e2,d118 := insert(inp.tail, vr3)) in
+                        (e2, ((1 + d118) + if ((1 ≥ vd3))
+                          1
+                        else
+                          vd3)))) in
+                        (Node(t.nvalue, r116, t.right), (1 + if ((if ((1 ≥ d113))
+                          1
+                        else
+                          d113 ≥ 1))
+                          if ((1 ≥ d113))
+                            1
+                          else
+                            d113
+                        else
+                          1)))) in
+                        (rthen17, if ((3 ≥ dthen17))
+                          3
+                        else
+                          dthen17))
+                    else
+                      (let (relse16,delse16 := (let (r125,d123 := (let (e3,d126 := insert(inp.tail, vr3)) in
+                        (e3, ((1 + d126) + if ((1 ≥ vd3))
+                          1
+                        else
+                          vd3)))) in
+                        (Node(t.nvalue, t.left, r125), (1 + if ((1 ≥ d123))
+                          1
+                        else
+                          d123)))) in
+                        (relse16, if ((3 ≥ delse16))
+                          3
+                        else
+                          delse16))) in
+                      (br3, (bd3 + 1))))) in
+                    (rthen15, if ((3 ≥ dthen15))
+                      3
+                    else
+                      dthen15))
+                else
+                  (t, if ((3 ≥ 0))
+                    3
+                  else
+                    0)) in
+                  (relse14, if ((3 ≥ delse14))
+                    3
+                  else
+                    delse14))) in
+                (relse13, if ((1 ≥ delse13))
+                  1
+                else
+                  delse13))) in
+              (relse12, if ((1 ≥ delse12))
+                1
+              else
+                delse12))
+[[34m Info  [0m] Post: true
+falttened Body: ((res11 == ifres) && ((ci && (ci == t.isInstanceOf[Leaf]) && (ifres == tp) && (tp == (rthen9, ifres1)) && ((ci1 && (ci1 == inp.isInstanceOf[Nil]) && (ifres2 == tp1) && (tp1 == (t, ifres3)) && (((1 >= 0) && (ifres3 == 1)) || ((1 < 0) && (ifres3 == 0)))) || (!(ci2) && (ci2 == inp.isInstanceOf[Nil]) && (ifres2 == tp2) && (tp2 == (relse9, ifres4)) && (vd2 == (2 + d73)) && (relse9 == br2) && (e1 == ts) && (ts == tres._1) && (d73 == ts1) && (ts1 == tres._2) && (dcond11 == (1 + vd2)) && (vr2 == e1) && (((1 >= delse9) && (ifres4 == 1)) || ((1 < delse9) && (ifres4 == delse9))) && (br2 == ts2) && (ts2 == ifres5._1) && (delse9 == (bd2 + 1)) && (bd2 == ts3) && (ts3 == ifres5._2) && (tres == r157) && (cs == inp.tail) && (cc == Leaf()) && (r157 == insert(cs, cc)) && ((ci3 && (ci3 == vr2.isInstanceOf[Leaf]) && (ifres5 == tp3) && (tp3 == (cc3, ifres6)) && (cc3 == Node(cs1, cc1, cc2)) && (cs1 == inp.head) && (cc1 == Leaf()) && (cc2 == Leaf()) && (((dcond11 >= 2) && (ifres6 == dcond11)) || ((dcond11 < 2) && (ifres6 == 2)))) || (!(ci4) && (ci4 == vr2.isInstanceOf[Leaf]) && (ifres5 == tp4) && (tp4 == (relse10, ifres7)) && (relse10 == ts4) && (ts4 == ifres8._1) && ((((1 + vd2) >= 0) && (ifres35 == (1 + vd2))) || (((1 + vd2) < 0) && (ifres35 == 0))) && (((dcond11 >= delse10) && (ifres7 == dcond11)) || ((dcond11 < delse10) && (ifres7 == delse10))) && (dcond12 == (1 + ifres35)) && (delse10 == ts5) && (ts5 == ifres8._2) && (((cs2 > 0) && (cs2 == vr2.nvalue) && (ifres8 == tp5) && (cs3 == inp.head) && (cc4 == Leaf()) && (cc5 == Node(cs3, vr2, cc4)) && (tp5 == (cc5, ifres9)) && (((dcond12 >= (1 + ifres10)) && (((ifres11 >= 1) && (((1 >= vd2) && (ifres11 == 1)) || ((1 < vd2) && (ifres11 == vd2))) && (ifres10 == ifres12) && (((1 >= vd2) && (ifres12 == 1)) || ((1 < vd2) && (ifres12 == vd2)))) || ((ifres13 < 1) && (((1 >= vd2) && (ifres13 == 1)) || ((1 < vd2) && (ifres13 == vd2))) && (ifres10 == 1))) && (ifres9 == dcond12)) || ((dcond12 < (1 + ifres14)) && (((ifres15 >= 1) && (((1 >= vd2) && (ifres15 == 1)) || ((1 < vd2) && (ifres15 == vd2))) && (ifres14 == ifres16) && (((1 >= vd2) && (ifres16 == 1)) || ((1 < vd2) && (ifres16 == vd2)))) || ((ifres17 < 1) && (((1 >= vd2) && (ifres17 == 1)) || ((1 < vd2) && (ifres17 == vd2))) && (ifres14 == 1))) && (ifres9 == (1 + ifres18)) && (((ifres19 >= 1) && (((1 >= vd2) && (ifres19 == 1)) || ((1 < vd2) && (ifres19 == vd2))) && (ifres18 == ifres20) && (((1 >= vd2) && (ifres20 == 1)) || ((1 < vd2) && (ifres20 == vd2)))) || ((ifres21 < 1) && (((1 >= vd2) && (ifres21 == 1)) || ((1 < vd2) && (ifres21 == vd2))) && (ifres18 == 1)))))) || ((cs4 <= 0) && (cs4 == vr2.nvalue) && (ifres8 == tp6) && (cs5 == vr2.nvalue) && (cc6 == Leaf()) && (cc7 == Node(cs5, cc6, vr2)) && (tp6 == (cc7, ifres22)) && (((dcond12 >= (1 + ifres23)) && (((ifres24 >= vd2) && ((((1 + vd2) >= 1) && (ifres24 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres24 == 1))) && (ifres23 == ifres25) && ((((1 + vd2) >= 1) && (ifres25 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres25 == 1)))) || ((ifres26 < vd2) && ((((1 + vd2) >= 1) && (ifres26 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres26 == 1))) && (ifres23 == vd2))) && (ifres22 == dcond12)) || ((dcond12 < (1 + ifres27)) && (((ifres28 >= vd2) && ((((1 + vd2) >= 1) && (ifres28 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres28 == 1))) && (ifres27 == ifres29) && ((((1 + vd2) >= 1) && (ifres29 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres29 == 1)))) || ((ifres30 < vd2) && ((((1 + vd2) >= 1) && (ifres30 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres30 == 1))) && (ifres27 == vd2))) && (ifres22 == (1 + ifres31)) && (((ifres32 >= vd2) && ((((1 + vd2) >= 1) && (ifres32 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres32 == 1))) && (ifres31 == ifres33) && ((((1 + vd2) >= 1) && (ifres33 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres33 == 1)))) || ((ifres34 < vd2) && ((((1 + vd2) >= 1) && (ifres34 == (1 + vd2))) || (((1 + vd2) < 1) && (ifres34 == 1))) && (ifres31 == vd2))))))))))) && (rthen9 == ts6) && (ts6 == ifres2._1) && (dthen9 == ts7) && (ts7 == ifres2._2) && (((1 >= dthen9) && (ifres1 == 1)) || ((1 < dthen9) && (ifres1 == dthen9)))) || (!(ci5) && (ci5 == t.isInstanceOf[Leaf]) && (ifres == tp7) && (tp7 == (relse12, ifres36)) && ((ci6 && (ci6 == inp.isInstanceOf[Nil]) && (ifres37 == tp8) && (tp8 == (t, ifres38)) && (((1 >= 0) && (ifres38 == 1)) || ((1 < 0) && (ifres38 == 0)))) || (!(ci7) && (ci7 == inp.isInstanceOf[Nil]) && (ifres37 == tp9) && (tp9 == (relse13, ifres39)) && ((ci8 && (ci8 == inp.isInstanceOf[Cons]) && ci9 && (cs6 == inp.tail) && (ci9 == cs6.isInstanceOf[Nil]) && (ifres40 == tp10) && (tp10 == (t, ifres41)) && (((3 >= 0) && (ifres41 == 3)) || ((3 < 0) && (ifres41 == 0)))) || (((!(ci10) && (ci10 == inp.isInstanceOf[Cons])) || (!(ci11) && (cs7 == inp.tail) && (ci11 == cs7.isInstanceOf[Nil]))) && (ifres40 == tp11) && (tp11 == (relse14, ifres42)) && ((ci12 && (ci12 == inp.isInstanceOf[Cons]) && ci13 && (cs8 == inp.tail) && (ci13 == cs8.isInstanceOf[Cons]) && (ifres43 == tp12) && (tp12 == (rthen15, ifres44)) && (bd3 == ts8) && (ts8 == ifres45._2) && (((cs10 > 0) && (cs9 == inp.tail) && (cs10 == cs9.head) && (ifres55 == tp13) && (cs11 == t.left) && (tp13 == (cs11, ifres56)) && (((3 >= 1) && (ifres56 == 3)) || ((3 < 1) && (ifres56 == 1)))) || ((cs13 <= 0) && (cs12 == inp.tail) && (cs13 == cs12.head) && (ifres55 == tp14) && (cs14 == t.right) && (tp14 == (cs14, ifres57)) && (((3 >= 1) && (ifres57 == 3)) || ((3 < 1) && (ifres57 == 1))))) && (((cs16 > 0) && (cs15 == inp.tail) && (cs16 == cs15.head) && (ifres45 == tp15) && (tp15 == (rthen17, ifres46)) && (e2 == ts9) && (ts9 == tres1._1) && (tres1 == r158) && (cs17 == inp.tail) && (r158 == insert(cs17, vr3)) && (((1 >= vd3) && (ifres51 == 1)) || ((1 < vd3) && (ifres51 == vd3))) && (r116 == e2) && (dthen17 == (1 + ifres47)) && (d113 == ((1 + d118) + ifres51)) && (((3 >= dthen17) && (ifres46 == 3)) || ((3 < dthen17) && (ifres46 == dthen17))) && (rthen17 == cc8) && (cs18 == t.nvalue) && (cs19 == t.right) && (cc8 == Node(cs18, r116, cs19)) && (d118 == ts10) && (ts10 == tres1._2) && (((ifres48 >= 1) && (((1 >= d113) && (ifres48 == 1)) || ((1 < d113) && (ifres48 == d113))) && (ifres47 == ifres49) && (((1 >= d113) && (ifres49 == 1)) || ((1 < d113) && (ifres49 == d113)))) || ((ifres50 < 1) && (((1 >= d113) && (ifres50 == 1)) || ((1 < d113) && (ifres50 == d113))) && (ifres47 == 1)))) || ((cs21 <= 0) && (cs20 == inp.tail) && (cs21 == cs20.head) && (ifres45 == tp16) && (tp16 == (relse16, ifres52)) && (d126 == ts11) && (ts11 == tres2._2) && (relse16 == cc9) && (cs22 == t.nvalue) && (cs23 == t.left) && (cc9 == Node(cs22, cs23, r125)) && (delse16 == (1 + ifres53)) && (tres2 == r159) && (cs24 == inp.tail) && (r159 == insert(cs24, vr3)) && (d123 == ((1 + d126) + ifres54)) && (((3 >= delse16) && (ifres52 == 3)) || ((3 < delse16) && (ifres52 == delse16))) && (e3 == ts12) && (ts12 == tres2._1) && (r125 == e3) && (((1 >= d123) && (ifres53 == 1)) || ((1 < d123) && (ifres53 == d123))) && (((1 >= vd3) && (ifres54 == 1)) || ((1 < vd3) && (ifres54 == vd3))))) && (vd3 == ts13) && (ts13 == ifres55._2) && (dthen15 == (bd3 + 1)) && (rthen15 == br3) && (br3 == ts14) && (ts14 == ifres45._1) && (vr3 == ts15) && (ts15 == ifres55._1) && (((3 >= dthen15) && (ifres44 == 3)) || ((3 < dthen15) && (ifres44 == dthen15)))) || (((!(ci14) && (ci14 == inp.isInstanceOf[Cons])) || (!(ci15) && (cs25 == inp.tail) && (ci15 == cs25.isInstanceOf[Cons]))) && (ifres43 == tp17) && (tp17 == (t, ifres58)) && (((3 >= 0) && (ifres58 == 3)) || ((3 < 0) && (ifres58 == 0))))) && (relse14 == ts16) && (ts16 == ifres43._1) && (delse14 == ts17) && (ts17 == ifres43._2) && (((3 >= delse14) && (ifres42 == 3)) || ((3 < delse14) && (ifres42 == delse14))))) && (relse13 == ts18) && (ts18 == ifres40._1) && (delse13 == ts19) && (ts19 == ifres40._2) && (((1 >= delse13) && (ifres39 == 1)) || ((1 < delse13) && (ifres39 == delse13))))) && (relse12 == ts20) && (ts20 == ifres37._1) && (delse12 == ts21) && (ts21 == ifres37._2) && (((1 >= delse12) && (ifres36 == 1)) || ((1 < delse12) && (ifres36 == delse12))))))
+Flattened Post: ((ts22 > ((a?1 * r160) + c?1)) && (ts22 == res11._2) && (r160 == listSize(inp)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * listSize(inp)) + (1 * res11._2)) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 28
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+insert-->((((0 * listSize(inp)) + (1 * res11._2)) + -6) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 198
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 12 + 10
+solving...
+solved... in 0.013s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/4
+Unrolled calls: Set((r160 == listSize(inp)))
+Creating VC for listSize
+[[34m Info  [0m] - Number of new terms enumerated: 2
+[[34m Info  [0m] - Template generated for function listSize : (((a?5 * #res) + a?4) ≤ 0)
+Unrolling (r160 == listSize(inp))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((0 * listSize(inp)) + (1 * res11._2)) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 30
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+insert-->((((-8 * listSize(inp)) + (16 * res11._2)) + -2) ≤ 0)
+listSize-->(((-8 * #res) + 78) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 64
+[[34m Info  [0m] Number of equal calls: 13
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 23 + 10
+solving...
+solved... in 0.01s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/8
+Unrolled calls: Set((r165 == listSize(cs)))
+Unrolling (r165 == listSize(cs))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+insert-->((((1 * res11._2) + (0 * listSize(inp))) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 30
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 13 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+insert-->((((-2 * listSize(inp)) + (16 * res11._2)) + -8) ≤ 0)
+listSize-->(((-32 * #res) + 1392) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 104
+[[34m Info  [0m] Number of equal calls: 15
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 26 + 13
+solving...
+solved... in 0.015s
+candidate Invariants
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -4) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new upper bound: 5
+Minimizing variable: c?1 Initial upperbound: 4
+Found new upper bound: 7/4
+Found new upper bound: -1/16
+Found new upper bound: -33/32
+Found new lower bound: -3
+Minimization complete...
+candidate Invariants
+insert-->((((-160 * listSize(inp)) + (32 * res11._2)) + 33) ≤ 0)
+listSize-->(((-8 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 227
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 18 + 39
+solving...
+solved... in 0.023s
+candidate Invariants
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -4) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new lower bound: 5
+Minimizing variable: c?1 Initial upperbound: 4
+Found new upper bound: 1
+Found new upper bound: 0
+Found new upper bound: -5/4
+Found new upper bound: -3
+Found new lower bound: -6
+Found new lower bound: -5
+Found new lower bound: -4
+Minimization complete...
+candidate Invariants
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + 3) ≤ 0)
+listSize-->(((-1 * #res) + 0) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 227
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 16 + 57
+solving...
+solved... in 0.024s
+candidate Invariants
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -4) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new lower bound: 5
+Minimizing variable: c?1 Initial upperbound: 4
+Found new upper bound: 1
+Found new upper bound: -1/4
+Found new upper bound: -9/8
+Found new lower bound: -3
+Minimization complete...
+candidate Invariants
+insert-->((((-48 * listSize(inp)) + (8 * res11._2)) + 9) ≤ 0)
+listSize-->(((-8 * #res) + -1) ≤ 0)
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 11 + 73
+solving...
+solved... in 0.022s
+candidate Invariants
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -4) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?1-->1
+Nesting level: c?1-->0
+minimizing...
+Minimizing variable: a?1 Initial upperbound: 6
+Found new lower bound: 3
+Found new lower bound: 4
+Found new lower bound: 5
+Minimizing variable: c?1 Initial upperbound: 4
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: insert --> ((((-6 * listSize(inp)) + (1 * res11._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: listSize --> (((-2 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function delete...
+[[34m Info  [0m] Body: if (t.isInstanceOf[Leaf])
+            (let (rthen,dthen := if (inp.isInstanceOf[Nil])
+              (Leaf(), if ((1 ≥ 1))
+                1
+              else
+                1)
+            else
+              (Leaf(), if ((1 ≥ 1))
+                1
+              else
+                1)) in
+              (rthen, if ((1 ≥ dthen))
+                1
+              else
+                dthen))
+          else
+            (let (relse1,delse1 := if (inp.isInstanceOf[Nil])
+              (t, if ((1 ≥ 0))
+                1
+              else
+                0)
+            else
+              (let (relse2,delse2 := if ((inp.isInstanceOf[Cons] ∧ inp.tail.isInstanceOf[Nil]))
+                (let (rthen3,dthen3 := if (((t.left == Leaf()) ∧ (t.right == Leaf())))
+                  (Leaf(), if ((3 ≥ 1))
+                    3
+                  else
+                    1)
+                else
+                  (t, if ((3 ≥ 0))
+                    3
+                  else
+                    0)) in
+                  (rthen3, if ((3 ≥ dthen3))
+                    3
+                  else
+                    dthen3))
+              else
+                (let (relse4,delse4 := if ((inp.isInstanceOf[Cons] ∧ inp.tail.isInstanceOf[Cons]))
+                  (let (rthen5,dthen5 := (let (vr,vd := if ((inp.tail.head > 0))
+                    (t.left, if ((3 ≥ 1))
+                      3
+                    else
+                      1)
+                  else
+                    (t.right, if ((3 ≥ 1))
+                      3
+                    else
+                      1)) in
+                    (let (br,bd := (let (vr1,vd1 := (let (e,d29 := delete(inp.tail, vr)) in
+                      (e, ((1 + d29) + if ((1 ≥ vd))
+                        1
+                      else
+                        vd)))) in
+                      (let (br1,bd1 := (let (dcond7 := (1 + if (((1 + if ((vd1 ≥ 1))
+                        vd1
+                      else
+                        1) ≥ 5))
+                        (1 + if ((vd1 ≥ 1))
+                          vd1
+                        else
+                          1)
+                      else
+                        5)) in
+                        if (((vr1 == Leaf()) ∧ (((inp.tail.head > 0) ∧ (t.right == Leaf())) ∨ ((inp.tail.head ≤ 0) ∧ (t.left == Leaf())))))
+                          (Leaf(), if ((dcond7 ≥ 1))
+                            dcond7
+                          else
+                            1)
+                        else
+                          (let (relse6,delse6 := if ((inp.tail.head > 0))
+                            (Node(t.nvalue, vr1, t.right), if ((3 ≥ (1 + if ((if ((1 ≥ vd1))
+                              1
+                            else
+                              vd1 ≥ 1))
+                              if ((1 ≥ vd1))
+                                1
+                              else
+                                vd1
+                            else
+                              1)))
+                              3
+                            else
+                              (1 + if ((if ((1 ≥ vd1))
+                                1
+                              else
+                                vd1 ≥ 1))
+                                if ((1 ≥ vd1))
+                                  1
+                                else
+                                  vd1
+                              else
+                                1))
+                          else
+                            (Node(t.nvalue, t.left, vr1), if ((3 ≥ (1 + if ((1 ≥ vd1))
+                              1
+                            else
+                              vd1)))
+                              3
+                            else
+                              (1 + if ((1 ≥ vd1))
+                                1
+                              else
+                                vd1))) in
+                            (relse6, if ((dcond7 ≥ delse6))
+                              dcond7
+                            else
+                              delse6)))) in
+                        (br1, (bd1 + 1))))) in
+                      (br, (bd + 1))))) in
+                    (rthen5, if ((3 ≥ dthen5))
+                      3
+                    else
+                      dthen5))
+                else
+                  (t, if ((3 ≥ 0))
+                    3
+                  else
+                    0)) in
+                  (relse4, if ((3 ≥ delse4))
+                    3
+                  else
+                    delse4))) in
+                (relse2, if ((1 ≥ delse2))
+                  1
+                else
+                  delse2))) in
+              (relse1, if ((1 ≥ delse1))
+                1
+              else
+                delse1))
+[[34m Info  [0m] Post: true
+falttened Body: ((res12 == ifres62) && ((ci22 && (ci22 == t.isInstanceOf[Leaf]) && (ifres62 == tp18) && (tp18 == (rthen, ifres63)) && ((ci23 && (ci23 == inp.isInstanceOf[Nil]) && (ifres64 == tp19) && (cc10 == Leaf()) && (tp19 == (cc10, ifres65)) && (((1 >= 1) && (ifres65 == 1)) || ((1 < 1) && (ifres65 == 1)))) || (!(ci24) && (ci24 == inp.isInstanceOf[Nil]) && (ifres64 == tp20) && (cc11 == Leaf()) && (tp20 == (cc11, ifres66)) && (((1 >= 1) && (ifres66 == 1)) || ((1 < 1) && (ifres66 == 1))))) && (rthen == ts40) && (ts40 == ifres64._1) && (dthen == ts41) && (ts41 == ifres64._2) && (((1 >= dthen) && (ifres63 == 1)) || ((1 < dthen) && (ifres63 == dthen)))) || (!(ci25) && (ci25 == t.isInstanceOf[Leaf]) && (ifres62 == tp21) && (tp21 == (relse1, ifres67)) && ((ci26 && (ci26 == inp.isInstanceOf[Nil]) && (ifres68 == tp22) && (tp22 == (t, ifres69)) && (((1 >= 0) && (ifres69 == 1)) || ((1 < 0) && (ifres69 == 0)))) || (!(ci27) && (ci27 == inp.isInstanceOf[Nil]) && (ifres68 == tp23) && (tp23 == (relse2, ifres70)) && ((ci28 && (ci28 == inp.isInstanceOf[Cons]) && ci29 && (cs29 == inp.tail) && (ci29 == cs29.isInstanceOf[Nil]) && (ifres71 == tp24) && (tp24 == (rthen3, ifres72)) && (((cs30 == cc12) && (cs30 == t.left) && (cc12 == Leaf()) && (cs31 == cc13) && (cs31 == t.right) && (cc13 == Leaf()) && (ifres73 == tp25) && (cc14 == Leaf()) && (tp25 == (cc14, ifres74)) && (((3 >= 1) && (ifres74 == 3)) || ((3 < 1) && (ifres74 == 1)))) || ((((cs32 != cc15) && (cs32 == t.left) && (cc15 == Leaf())) || ((cs33 != cc16) && (cs33 == t.right) && (cc16 == Leaf()))) && (ifres73 == tp26) && (tp26 == (t, ifres75)) && (((3 >= 0) && (ifres75 == 3)) || ((3 < 0) && (ifres75 == 0))))) && (rthen3 == ts42) && (ts42 == ifres73._1) && (dthen3 == ts43) && (ts43 == ifres73._2) && (((3 >= dthen3) && (ifres72 == 3)) || ((3 < dthen3) && (ifres72 == dthen3)))) || (((!(ci30) && (ci30 == inp.isInstanceOf[Cons])) || (!(ci31) && (cs34 == inp.tail) && (ci31 == cs34.isInstanceOf[Nil]))) && (ifres71 == tp27) && (tp27 == (relse4, ifres76)) && ((ci32 && (ci32 == inp.isInstanceOf[Cons]) && ci33 && (cs35 == inp.tail) && (ci33 == cs35.isInstanceOf[Cons]) && (ifres77 == tp28) && (tp28 == (rthen5, ifres78)) && (vr1 == e) && (d29 == ts44) && (ts44 == tres3._2) && (((1 >= vd) && (ifres104 == 1)) || ((1 < vd) && (ifres104 == vd))) && (vd == ts45) && (ts45 == ifres105._2) && (vr == ts46) && (ts46 == ifres105._1) && (((vr1 == cc17) && (cc17 == Leaf()) && (((cs37 > 0) && (cs36 == inp.tail) && (cs37 == cs36.head) && (cs38 == cc18) && (cs38 == t.right) && (cc18 == Leaf())) || ((cs40 <= 0) && (cs39 == inp.tail) && (cs40 == cs39.head) && (cs41 == cc19) && (cs41 == t.left) && (cc19 == Leaf()))) && (ifres79 == tp29) && (cc20 == Leaf()) && (tp29 == (cc20, ifres80)) && (((dcond7 >= 1) && (ifres80 == dcond7)) || ((dcond7 < 1) && (ifres80 == 1)))) || ((((vr1 != cc21) && (cc21 == Leaf())) || ((((cs43 <= 0) && (cs42 == inp.tail) && (cs43 == cs42.head)) || ((cs44 != cc22) && (cs44 == t.right) && (cc22 == Leaf()))) && (((cs46 > 0) && (cs45 == inp.tail) && (cs46 == cs45.head)) || ((cs47 != cc23) && (cs47 == t.left) && (cc23 == Leaf()))))) && (ifres79 == tp30) && (tp30 == (relse6, ifres81)) && (((cs49 > 0) && (cs48 == inp.tail) && (cs49 == cs48.head) && (ifres82 == tp31) && (cs50 == t.nvalue) && (cs51 == t.right) && (cc24 == Node(cs50, vr1, cs51)) && (tp31 == (cc24, ifres83)) && (((3 >= (1 + ifres84)) && (((ifres85 >= 1) && (((1 >= vd1) && (ifres85 == 1)) || ((1 < vd1) && (ifres85 == vd1))) && (ifres84 == ifres86) && (((1 >= vd1) && (ifres86 == 1)) || ((1 < vd1) && (ifres86 == vd1)))) || ((ifres87 < 1) && (((1 >= vd1) && (ifres87 == 1)) || ((1 < vd1) && (ifres87 == vd1))) && (ifres84 == 1))) && (ifres83 == 3)) || ((3 < (1 + ifres88)) && (((ifres89 >= 1) && (((1 >= vd1) && (ifres89 == 1)) || ((1 < vd1) && (ifres89 == vd1))) && (ifres88 == ifres90) && (((1 >= vd1) && (ifres90 == 1)) || ((1 < vd1) && (ifres90 == vd1)))) || ((ifres91 < 1) && (((1 >= vd1) && (ifres91 == 1)) || ((1 < vd1) && (ifres91 == vd1))) && (ifres88 == 1))) && (ifres83 == (1 + ifres92)) && (((ifres93 >= 1) && (((1 >= vd1) && (ifres93 == 1)) || ((1 < vd1) && (ifres93 == vd1))) && (ifres92 == ifres94) && (((1 >= vd1) && (ifres94 == 1)) || ((1 < vd1) && (ifres94 == vd1)))) || ((ifres95 < 1) && (((1 >= vd1) && (ifres95 == 1)) || ((1 < vd1) && (ifres95 == vd1))) && (ifres92 == 1)))))) || ((cs53 <= 0) && (cs52 == inp.tail) && (cs53 == cs52.head) && (ifres82 == tp32) && (cs54 == t.nvalue) && (cs55 == t.left) && (cc25 == Node(cs54, cs55, vr1)) && (tp32 == (cc25, ifres96)) && (((3 >= (1 + ifres97)) && (((1 >= vd1) && (ifres97 == 1)) || ((1 < vd1) && (ifres97 == vd1))) && (ifres96 == 3)) || ((3 < (1 + ifres98)) && (((1 >= vd1) && (ifres98 == 1)) || ((1 < vd1) && (ifres98 == vd1))) && (ifres96 == (1 + ifres99)) && (((1 >= vd1) && (ifres99 == 1)) || ((1 < vd1) && (ifres99 == vd1))))))) && (relse6 == ts47) && (ts47 == ifres82._1) && (delse6 == ts48) && (ts48 == ifres82._2) && (((dcond7 >= delse6) && (ifres81 == dcond7)) || ((dcond7 < delse6) && (ifres81 == delse6))))) && (((3 >= dthen5) && (ifres78 == 3)) || ((3 < dthen5) && (ifres78 == dthen5))) && (tres3 == r181) && (cs56 == inp.tail) && (r181 == delete(cs56, vr)) && (vd1 == ((1 + d29) + ifres104)) && ((((1 + ifres101) >= 5) && (((vd1 >= 1) && (ifres101 == vd1)) || ((vd1 < 1) && (ifres101 == 1))) && (ifres100 == (1 + ifres102)) && (((vd1 >= 1) && (ifres102 == vd1)) || ((vd1 < 1) && (ifres102 == 1)))) || (((1 + ifres103) < 5) && (((vd1 >= 1) && (ifres103 == vd1)) || ((vd1 < 1) && (ifres103 == 1))) && (ifres100 == 5))) && (rthen5 == br) && (((cs58 > 0) && (cs57 == inp.tail) && (cs58 == cs57.head) && (ifres105 == tp33) && (cs59 == t.left) && (tp33 == (cs59, ifres106)) && (((3 >= 1) && (ifres106 == 3)) || ((3 < 1) && (ifres106 == 1)))) || ((cs61 <= 0) && (cs60 == inp.tail) && (cs61 == cs60.head) && (ifres105 == tp34) && (cs62 == t.right) && (tp34 == (cs62, ifres107)) && (((3 >= 1) && (ifres107 == 3)) || ((3 < 1) && (ifres107 == 1))))) && (bd1 == ts49) && (ts49 == ifres79._2) && (e == ts50) && (ts50 == tres3._1) && (dcond7 == (1 + ifres100)) && (bd == (bd1 + 1)) && (br == br1) && (br1 == ts51) && (ts51 == ifres79._1) && (dthen5 == (bd + 1))) || (((!(ci34) && (ci34 == inp.isInstanceOf[Cons])) || (!(ci35) && (cs63 == inp.tail) && (ci35 == cs63.isInstanceOf[Cons]))) && (ifres77 == tp35) && (tp35 == (t, ifres108)) && (((3 >= 0) && (ifres108 == 3)) || ((3 < 0) && (ifres108 == 0))))) && (relse4 == ts52) && (ts52 == ifres77._1) && (delse4 == ts53) && (ts53 == ifres77._2) && (((3 >= delse4) && (ifres76 == 3)) || ((3 < delse4) && (ifres76 == delse4))))) && (relse2 == ts54) && (ts54 == ifres71._1) && (delse2 == ts55) && (ts55 == ifres71._2) && (((1 >= delse2) && (ifres70 == 1)) || ((1 < delse2) && (ifres70 == delse2))))) && (relse1 == ts56) && (ts56 == ifres68._1) && (delse1 == ts57) && (ts57 == ifres68._2) && (((1 >= delse1) && (ifres67 == 1)) || ((1 < delse1) && (ifres67 == delse1))))))
+Flattened Post: ((ts58 > ((a?3 * r182) + c?3)) && (ts58 == res12._2) && (r182 == listSize(inp)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+delete-->((((0 * listSize(inp)) + (1 * res12._2)) + 0) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.01s
+candidate Invariants
+delete-->((((0 * listSize(inp)) + (1 * res12._2)) + -3) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 196
+[[34m Info  [0m] Number of equal calls: 23
+# of atomic predicates: 14 + 9
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/2
+Unrolled calls: Set((r182 == listSize(inp)))
+Creating VC for listSize
+Unrolling (r182 == listSize(inp))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+delete-->((((1 * res12._2) + (0 * listSize(inp))) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.009s
+candidate Invariants
+delete-->((((-2 * listSize(inp)) + (16 * res12._2)) + -8) ≤ 0)
+listSize-->(((-2 * #res) + 152) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 225
+[[34m Info  [0m] Number of equal calls: 26
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 26 + 14
+solving...
+solved... in 0.011s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/4
+Unrolled calls: Set((r187 == listSize(cs56)))
+Unrolling (r187 == listSize(cs56))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+delete-->((((0 * listSize(inp)) + (1 * res12._2)) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 57
+[[34m Info  [0m] Number of equal calls: 11
+# of atomic predicates: 14 + 0
+solving...
+solved... in 0.006s
+candidate Invariants
+delete-->((((8 * res12._2) + (2 * listSize(inp))) + -4) ≤ 0)
+listSize-->(((16 * #res) + 360) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 236
+[[34m Info  [0m] Number of equal calls: 27
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 29 + 14
+solving...
+solved... in 0.018s
+candidate Invariants
+delete-->((((1 * res12._2) + (-15 * listSize(inp))) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: c?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 15
+Found new upper bound: 5
+Found new upper bound: 1
+Found new upper bound: 0
+Found new upper bound: -2
+Found new upper bound: -5
+Found new upper bound: -11
+Found new upper bound: -23
+Found new upper bound: -47
+Found new upper bound: -95
+Found new upper bound: -191
+Found new upper bound: -383
+Found new upper bound: -767
+Found new upper bound: -1535
+Found new upper bound: -3071
+Found new upper bound: -6143
+Found new upper bound: -12287
+Minimizing variable: c?3 Initial upperbound: -1/4
+Found new upper bound: -2
+Found new upper bound: -5
+Found new upper bound: -11
+Found new upper bound: -23
+Found new upper bound: -47
+Found new upper bound: -95
+Found new upper bound: -191
+Found new upper bound: -383
+Found new upper bound: -767
+Found new upper bound: -1535
+Found new upper bound: -3071
+Found new upper bound: -6143
+Found new upper bound: -12287
+Found new upper bound: -24575
+Found new upper bound: -49151
+Found new upper bound: -98303
+Minimization complete...
+candidate Invariants
+delete-->((((12287 * listSize(inp)) + (1 * res12._2)) + 98303) ≤ 0)
+listSize-->(((0 * #res) + 1) ≤ 0)
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 43
+solving...
+solved... in 0.011s
+candidate Invariants
+delete-->((((-15 * listSize(inp)) + (1 * res12._2)) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: c?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 15
+Found new upper bound: 5
+Found new upper bound: 1
+Found new upper bound: 0
+Found new lower bound: -1
+Minimizing variable: c?3 Initial upperbound: 9
+Found new lower bound: 4
+Found new lower bound: 6
+Found new lower bound: 7
+Found new upper bound: 8
+Minimization complete...
+candidate Invariants
+delete-->((((0 * listSize(inp)) + (1 * res12._2)) + -8) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 236
+[[34m Info  [0m] Number of equal calls: 27
+# of atomic predicates: 20 + 51
+solving...
+solved... in 0.021s
+candidate Invariants
+delete-->((((-10 * listSize(inp)) + (1 * res12._2)) + -9) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: c?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 10
+Found new lower bound: 5
+Found new lower bound: 7
+Found new upper bound: 8
+Minimizing variable: c?3 Initial upperbound: 9
+Found new upper bound: 4
+Found new upper bound: 3/2
+Found new upper bound: 0
+Found new lower bound: -1
+Minimization complete...
+candidate Invariants
+delete-->((((1 * res12._2) + (-8 * listSize(inp))) + 0) ≤ 0)
+listSize-->(((-1 * #res) + 0) ≤ 0)
+Function: delete--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 10
+[[34m Info  [0m] Number of equal calls: 4
+# of atomic predicates: 10 + 71
+solving...
+solved... in 0.021s
+candidate Invariants
+delete-->((((1 * res12._2) + (-10 * listSize(inp))) + -9) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?3-->1
+Nesting level: c?3-->0
+minimizing...
+Minimizing variable: a?3 Initial upperbound: 10
+Found new lower bound: 5
+Found new lower bound: 7
+Found new upper bound: 8
+Minimizing variable: c?3 Initial upperbound: 9
+Found new upper bound: 4
+Found new upper bound: 3/2
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: delete --> ((((2 * res12._2) + (-16 * listSize(inp))) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: listSize --> (((-8 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function create...
+[[34m Info  [0m] Body: (let (e4,d132 := insert(inp, Leaf())) in
+            (e4, (2 + d132)))
+[[34m Info  [0m] Post: true
+falttened Body: ((res10 == tp36) && (arg == (2 + d132)) && (tp36 == (e4, arg)) && (tres4 == r201) && (cc26 == Leaf()) && (r201 == insert(inp, cc26)) && (e4 == ts74) && (ts74 == tres4._1) && (d132 == ts75) && (ts75 == tres4._2))
+Flattened Post: ((ts76 > ((a?2 * r202) + c?2)) && (ts76 == res10._2) && (r202 == listSize(inp)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+create-->((((1 * res10._2) + (0 * listSize(inp))) + 0) ≤ 0)
+Function: create--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 6
+[[34m Info  [0m] Number of equal calls: 2
+# of atomic predicates: 9 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/2
+Unrolled calls: Set((r201 == insert(inp, cc26)), (r202 == listSize(inp)))
+Creating VC for insert
+Unrolling (r201 == insert(inp, cc26))
+Creating VC for listSize
+Unrolling (r202 == listSize(inp))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+create-->((((0 * listSize(inp)) + (1 * res10._2)) + 0) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: create--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 147
+[[34m Info  [0m] Number of equal calls: 18
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 28
+[[34m Info  [0m] Number of equal calls: 7
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/10
+Unrolled calls: Set((r217 == listSize(inp)), (r209 == listSize(inp)))
+Unrolling (r217 == listSize(inp))
+Unrolling (r209 == listSize(inp))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+create-->((((1 * res10._2) + (0 * listSize(inp))) + 0) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: create--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 128
+[[34m Info  [0m] Number of equal calls: 20
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 227
+[[34m Info  [0m] Number of equal calls: 26
+# of atomic predicates: 21 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+create-->((((-216 * listSize(inp)) + (24 * res10._2)) + 13) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((-1 * #res) + 2) ≤ 0)
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 8 + 21
+solving...
+solved... in 0.007s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 2/16
+Unrolled calls: Set((r224 == listSize(cs93)), (r227 == listSize(cs83)))
+Unrolling (r224 == listSize(cs93))
+Unrolling (r227 == listSize(cs83))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+create-->((((0 * listSize(inp)) + (1 * res10._2)) + 0) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: create--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 137
+[[34m Info  [0m] Number of equal calls: 20
+Function: insert--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 30
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 24 + 0
+solving...
+solved... in 0.007s
+candidate Invariants
+create-->((((3 * res10._2) + (-15 * listSize(inp))) + -2) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((-1 * #res) + 1) ≤ 0)
+Function: create--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 137
+[[34m Info  [0m] Number of equal calls: 20
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 28 + 24
+solving...
+solved... in 0.015s
+candidate Invariants
+create-->((((-7 * listSize(inp)) + (1 * res10._2)) + -2) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((-2 * #res) + -1) ≤ 0)
+Function: create--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 37
+[[34m Info  [0m] Number of equal calls: 8
+# of atomic predicates: 13 + 52
+solving...
+solved... in 0.018s
+candidate Invariants
+create-->((((1 * res10._2) + (-7 * listSize(inp))) + -4) ≤ 0)
+insert-->((((-6 * listSize(inp)) + (1 * res11._2)) + -1) ≤ 0)
+listSize-->(((-3 * #res) + -1) ≤ 0)
+Nesting level: a?2-->1
+Nesting level: c?2-->0
+minimizing...
+Minimizing variable: a?2 Initial upperbound: 7
+Found new lower bound: 3
+Found new lower bound: 5
+Found new upper bound: 6
+Minimizing variable: c?2 Initial upperbound: 4
+Found new lower bound: 2
+Found new upper bound: 3
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: create --> ((((-6 * listSize(inp)) + (1 * res10._2)) + -3) <= 0)
+[[34m Info  [0m] - Found inductive invariant: insert --> ((((-6 * listSize(inp)) + (1 * res11._2)) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: listSize --> (((-3 * #res) + -1) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+[[34m Info  [0m] - considering function find...
+[[34m Info  [0m] Body: if (inp.isInstanceOf[Nil])
+            (t, if ((1 ≥ 0))
+              1
+            else
+              0)
+          else
+            (let (relse18,delse18 := if ((inp.isInstanceOf[Cons] ∧ inp.tail.isInstanceOf[Nil]))
+              (t, if ((3 ≥ 0))
+                3
+              else
+                0)
+            else
+              (let (relse19,delse19 := if ((inp.isInstanceOf[Cons] ∧ inp.tail.isInstanceOf[Cons]))
+                (let (rthen20,dthen20 := if (t.isInstanceOf[Leaf])
+                  (t, if ((1 ≥ 0))
+                    1
+                  else
+                    0)
+                else
+                  (let (relse20,delse20 := if ((inp.tail.head > 0))
+                    (let (rthen22,dthen22 := (let (e5,d151 := find(inp.tail, t.left)) in
+                      (e5, (2 + d151)))) in
+                      (rthen22, if ((3 ≥ dthen22))
+                        3
+                      else
+                        dthen22))
+                  else
+                    (let (relse21,delse21 := (let (e6,d156 := find(inp.tail, t.right)) in
+                      (e6, (2 + d156)))) in
+                      (relse21, if ((3 ≥ delse21))
+                        3
+                      else
+                        delse21))) in
+                    (relse20, if ((1 ≥ delse20))
+                      1
+                    else
+                      delse20))) in
+                  (rthen20, if ((3 ≥ dthen20))
+                    3
+                  else
+                    dthen20))
+              else
+                (t, if ((3 ≥ 0))
+                  3
+                else
+                  0)) in
+                (relse19, if ((3 ≥ delse19))
+                  3
+                else
+                  delse19))) in
+              (relse18, if ((1 ≥ delse18))
+                1
+              else
+                delse18))
+[[34m Info  [0m] Post: true
+falttened Body: ((res9 == ifres236) && ((ci86 && (ci86 == inp.isInstanceOf[Nil]) && (ifres236 == tp73) && (tp73 == (t, ifres237)) && (((1 >= 0) && (ifres237 == 1)) || ((1 < 0) && (ifres237 == 0)))) || (!(ci87) && (ci87 == inp.isInstanceOf[Nil]) && (ifres236 == tp74) && (tp74 == (relse18, ifres238)) && ((ci88 && (ci88 == inp.isInstanceOf[Cons]) && ci89 && (cs125 == inp.tail) && (ci89 == cs125.isInstanceOf[Nil]) && (ifres239 == tp75) && (tp75 == (t, ifres240)) && (((3 >= 0) && (ifres240 == 3)) || ((3 < 0) && (ifres240 == 0)))) || (((!(ci90) && (ci90 == inp.isInstanceOf[Cons])) || (!(ci91) && (cs126 == inp.tail) && (ci91 == cs126.isInstanceOf[Nil]))) && (ifres239 == tp76) && (tp76 == (relse19, ifres241)) && ((ci92 && (ci92 == inp.isInstanceOf[Cons]) && ci93 && (cs127 == inp.tail) && (ci93 == cs127.isInstanceOf[Cons]) && (ifres242 == tp77) && (tp77 == (rthen20, ifres243)) && ((ci94 && (ci94 == t.isInstanceOf[Leaf]) && (ifres244 == tp78) && (tp78 == (t, ifres245)) && (((1 >= 0) && (ifres245 == 1)) || ((1 < 0) && (ifres245 == 0)))) || (!(ci95) && (ci95 == t.isInstanceOf[Leaf]) && (ifres244 == tp79) && (tp79 == (relse20, ifres246)) && (((cs129 > 0) && (cs128 == inp.tail) && (cs129 == cs128.head) && (ifres247 == tp80) && (tp80 == (rthen22, ifres248)) && (dthen22 == (2 + d151)) && (e5 == ts146) && (ts146 == tres11._1) && (tres11 == r244) && (cs130 == inp.tail) && (cs131 == t.left) && (r244 == find(cs130, cs131)) && (((3 >= dthen22) && (ifres248 == 3)) || ((3 < dthen22) && (ifres248 == dthen22))) && (d151 == ts147) && (ts147 == tres11._2) && (rthen22 == e5)) || ((cs133 <= 0) && (cs132 == inp.tail) && (cs133 == cs132.head) && (ifres247 == tp81) && (tp81 == (relse21, ifres249)) && (tres12 == r245) && (cs134 == inp.tail) && (cs135 == t.right) && (r245 == find(cs134, cs135)) && (delse21 == (2 + d156)) && (d156 == ts148) && (ts148 == tres12._2) && (relse21 == e6) && (((3 >= delse21) && (ifres249 == 3)) || ((3 < delse21) && (ifres249 == delse21))) && (e6 == ts149) && (ts149 == tres12._1))) && (relse20 == ts150) && (ts150 == ifres247._1) && (delse20 == ts151) && (ts151 == ifres247._2) && (((1 >= delse20) && (ifres246 == 1)) || ((1 < delse20) && (ifres246 == delse20))))) && (rthen20 == ts152) && (ts152 == ifres244._1) && (dthen20 == ts153) && (ts153 == ifres244._2) && (((3 >= dthen20) && (ifres243 == 3)) || ((3 < dthen20) && (ifres243 == dthen20)))) || (((!(ci96) && (ci96 == inp.isInstanceOf[Cons])) || (!(ci97) && (cs136 == inp.tail) && (ci97 == cs136.isInstanceOf[Cons]))) && (ifres242 == tp82) && (tp82 == (t, ifres250)) && (((3 >= 0) && (ifres250 == 3)) || ((3 < 0) && (ifres250 == 0))))) && (relse19 == ts154) && (ts154 == ifres242._1) && (delse19 == ts155) && (ts155 == ifres242._2) && (((3 >= delse19) && (ifres241 == 3)) || ((3 < delse19) && (ifres241 == delse19))))) && (relse18 == ts156) && (ts156 == ifres239._1) && (delse18 == ts157) && (ts157 == ifres239._2) && (((1 >= delse18) && (ifres238 == 1)) || ((1 < delse18) && (ifres238 == delse18))))))
+Flattened Post: ((ts158 > ((a? * r246) + c?)) && (ts158 == res9._2) && (r246 == listSize(inp)))
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+find-->((((1 * res9._2) + (0 * listSize(inp))) + 0) ≤ 0)
+Function: find--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 130
+[[34m Info  [0m] Number of equal calls: 17
+# of atomic predicates: 11 + 0
+solving...
+solved... in 0.005s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/3
+Unrolled calls: Set((r246 == listSize(inp)))
+Creating VC for listSize
+Unrolling (r246 == listSize(inp))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+find-->((((0 * listSize(inp)) + (1 * res9._2)) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: find--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 12
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 10 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+find-->((((16 * res9._2) + (-8 * listSize(inp))) + -2) ≤ 0)
+listSize-->(((-8 * #res) + 78) ≤ 0)
+Function: find--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 154
+[[34m Info  [0m] Number of equal calls: 20
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 23 + 10
+solving...
+solved... in 0.01s
+[[34m Info  [0m] - More unrollings for invariant inference
+Unrolling: 1/6
+Unrolled calls: Set((r250 == listSize(cs130)))
+Unrolling (r250 == listSize(cs130))
+[[34m Info  [0m] Number of axiom instances: 0
+[[34m Info  [0m] Number of axiom instances: 0
+candidate Invariants
+find-->((((0 * listSize(inp)) + (1 * res9._2)) + 0) ≤ 0)
+listSize-->(((0 * #res) + 0) ≤ 0)
+Function: find--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 12
+[[34m Info  [0m] Number of equal calls: 5
+# of atomic predicates: 12 + 0
+solving...
+solved... in 0.005s
+candidate Invariants
+find-->((((16 * res9._2) + (-2 * listSize(inp))) + -8) ≤ 0)
+listSize-->(((-32 * #res) + 1136) ≤ 0)
+Function: find--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 163
+[[34m Info  [0m] Number of equal calls: 21
+Function: listSize--Found candidate invariant is not a real invariant! 
+[[34m Info  [0m] Number of compatible calls: 0
+[[34m Info  [0m] Number of equal calls: 0
+# of atomic predicates: 25 + 12
+solving...
+solved... in 0.013s
+candidate Invariants
+find-->((((-3 * listSize(inp)) + (1 * res9._2)) + -6) ≤ 0)
+listSize-->(((-1 * #res) + -1) ≤ 0)
+Nesting level: a?-->1
+Nesting level: c?-->0
+minimizing...
+Minimizing variable: a? Initial upperbound: 3
+Found new lower bound: 1
+Found new upper bound: 2
+Minimizing variable: c? Initial upperbound: 5
+Found new upper bound: 2
+Found new upper bound: 1
+Found new lower bound: 0
+Minimization complete...
+[[34m Info  [0m] - Found inductive invariant: find --> ((((1 * res9._2) + (-2 * listSize(inp))) + -1) <= 0)
+[[34m Info  [0m] - Found inductive invariant: listSize --> (((-1 * #res) + 0) <= 0)
+[[34m Info  [0m] - Verifying Invariants... 
+[[34m Info  [0m] - Invariant verified
+Inferrence did not succeeded for functions: List()
+[[34m Info  [0m] - Dumping statistics
+[[34m Info  [0m] . ┌─────────┐
+          ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
+          ║ └─────────┘                                                                       ║
+          
+          ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+          ║ total: 0      valid: 0      invalid: 0      unknown 0                       0.000 ║
+          ╚═══════════════════════════════════════════════════════════════════════════════════╝

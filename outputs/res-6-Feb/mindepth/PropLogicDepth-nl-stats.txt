@@ -1,0 +1,58 @@
+Total Time: 35.103s
+Min Time: 0.115s
+VC refinements : 29
+Avg VC size : 1177.5862068965516
+Max VC size : 4289
+Avg UIF-ADT size : 297.2758620689655
+Max UIF-ADT size : 1127
+avgTempVars : 3.7241379310344827
+maxTempVars : 4
+### Farkas solver stats ####
+Disjunct Explorations : 110
+Total retries: 0
+avgFarkaSize : 66.42727272727272
+maxFarkaSize : 261
+avgFarkaTime : 0.027209090909090912s
+maxFarkaTime : 0.144s
+avgNLSize : 6.636363636363637
+maxNLSize : 19
+avgDijSize : 44.3
+maxDijSize : 122
+avgElimvars : 24.772727272727273
+maxElimvars : 87
+avgElimAtoms : 30.754545454545454
+maxElimAtoms : 99
+avgExploreTime : 0.16926363636363634s
+maxExploreTime : 1.896s
+avgCompatCalls : 123.93636363636364
+maxCompatCalls : 1536
+avgLemmaApps : 0.0
+maxLemmaApps : 0
+### Cegis solver stats #### 
+# of bounds tried: 0
+cegis iterations: 0
+avgTemplateCtrSize : NaN
+maxTemplateCtrSize : 0
+########## Outputs ############
+Invariants for Function: simplify
+simplify --> ((((-4 * nestingDepth(f)) + (1 * res9._2)) + 3) ≤ 0)
+nestingDepth --> (((-1 * #res) + 0) ≤ 0)
+
+Invariants for Function: isSimplified
+isSimplified --> ((((1 * res10._2) + (-3 * nestingDepth(f))) + 2) ≤ 0)
+nestingDepth --> (((-1 * #res) + 1) ≤ 0)
+
+Invariants for Function: nnf
+nnf --> ((((1 * res12._2) + (-5 * nestingDepth(formula))) + 2) ≤ 0)
+nestingDepth --> (((-1 * #res) + 1) ≤ 0)
+
+Invariants for Function: isNNF
+isNNF --> ((((1 * res11._2) + (-3 * nestingDepth(f))) + 0) ≤ 0)
+nestingDepth --> (((-1 * #res) + 1) ≤ 0)
+
+
+########## Lower Bounds ############
+simplify: 	(a?->3), (b?->-4), 
+isSimplified: 	(a?1->2), (b?1->-3), 
+nnf: 	(a?2->4), (b?2->-3), 
+isNNF: 	(a?3->2), (b?3->-1), 
