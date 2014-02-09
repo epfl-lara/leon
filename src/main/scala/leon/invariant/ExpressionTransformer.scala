@@ -102,29 +102,25 @@ object ExpressionTransformer {
     
     def transform(e: Expr) : (Expr,Set[Expr]) = {     
       e match {
+        //handles division by constant
         case Division(lhs, rhs@IntLiteral(v)) => {
-          val dv = TVarFactory.createTemp("dv").setType(Int32Type).toVariable          
-          val (nlhs, ncjs1) = transform(lhs)              
-          var conjuncts = Seq[Expr]()          
-          val mand = Times(rhs,dv)
-          conjuncts :+= LessEquals(mand, nlhs)
-          conjuncts :+= LessThan(nlhs, Plus(mand ,this.one))                    
-          (dv, ncjs1 ++ conjuncts)
-        }
+          //this models floor and not integer division
+          val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
+          val prod = Times(rhs,quo)
+          val newexpr = Or(Equals(prod, lhs), Equals(Plus(prod,this.one), lhs))
+          val resset = transform(newexpr)          
+          (quo, resset._2 + resset._1)          
+        }        
+        //handles division by variables
         case Division(lhs, rhs) => {
-          //reduce division to multiplication by introduction fresh variables and creating bounds
-          //TODO: this is sound only for positive integers
-          val dv = TVarFactory.createTemp("dv").setType(Int32Type).toVariable          
-          val (nlhs, ncjs1) = transform(lhs)
-          val (nrhs, ncjs2) = transform(rhs)          
-          var conjuncts = Seq[Expr]()
-          
+          //this models floor and not integer division          
           import NonlinearityEliminationPhase._
           
-          val mand = FunctionInvocation(multFun, Seq(dv, nrhs))
-          conjuncts :+= LessEquals(mand, nlhs)
-          conjuncts :+= LessThan(nlhs, Plus(mand ,this.one))                    
-          (dv, (ncjs1 ++ ncjs2) ++ conjuncts)
+          val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
+          val prod = FunctionInvocation(multFun, Seq(quo, rhs))
+          val newexpr = Or(Equals(prod, lhs), Equals(Plus(prod,this.one), lhs))
+          val resset = transform(newexpr)          
+          (quo, resset._2 + resset._1)          
         }
         case Equals(_, _) | Iff(_, _) => {
           val BinaryOperator(lhs, rhs, _) = e
@@ -134,10 +130,8 @@ object ExpressionTransformer {
         }
         case IfExpr(cond, thn, elze) => {
           val freshvar = TVarFactory.createTemp("ifres").setType(e.getType).toVariable          
-          val newexpr = Or(And(cond,Equals(freshvar,thn)),And(Not(cond),Equals(freshvar,elze)))
-          
-          val resset = transform(newexpr)
-          
+          val newexpr = Or(And(cond,Equals(freshvar,thn)),And(Not(cond),Equals(freshvar,elze)))          
+          val resset = transform(newexpr)          
           (freshvar, resset._2 + resset._1) 
         }
         //handle assumes specifically
