@@ -107,9 +107,8 @@ class ConstraintTracker(rootFun : FunDef) {
               //val template = LinearConstraintUtil.exprToTemplate(ie)
               val template = LinearConstraintUtil.tryExprToTemplate(ie)
               if(!template.isDefined) {
-                //here the expression reduced to true
-                //TODO: can the expression reduce to false ??
-                node.boolCtrs += new BoolConstraint(tru)
+                //here the expression reduced to true so drop it (note we are in nnf form)
+                //TODO: can the expression reduce to false ??                
               } else{
                 if(template.get.isInstanceOf[LinearConstraint])
             	  node.constraints += template.get.asInstanceOf[LinearConstraint]
