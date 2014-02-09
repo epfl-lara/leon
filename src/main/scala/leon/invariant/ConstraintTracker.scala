@@ -104,10 +104,17 @@ class ConstraintTracker(rootFun : FunDef) {
               node.adtCtrs += ADTConstraint(ie)
             }
             case _ => {
-              val template = LinearConstraintUtil.exprToTemplate(ie)
-              if(template.isInstanceOf[LinearConstraint])
-            	  node.constraints += template.asInstanceOf[LinearConstraint]
-              else node.templates += template            
+              //val template = LinearConstraintUtil.exprToTemplate(ie)
+              val template = LinearConstraintUtil.tryExprToTemplate(ie)
+              if(!template.isDefined) {
+                //here the expression reduced to true
+                //TODO: can the expression reduce to false ??
+                node.boolCtrs += new BoolConstraint(tru)
+              } else{
+                if(template.get.isInstanceOf[LinearConstraint])
+            	  node.constraints += template.get.asInstanceOf[LinearConstraint]
+                else node.templates += template.get
+              }                          
             } 
           }          
           node.addChildren(endnode)
