@@ -70,7 +70,8 @@ object MergeSort {
       	 
       case _ => list
    	 
-  }} ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + c)) 
+  }} ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))
+  //ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + c)) 
       //template((a,b) => time <= a*size(list) + b))
     
   //ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))   
