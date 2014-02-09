@@ -106,8 +106,10 @@ object ExpressionTransformer {
         case Division(lhs, rhs@IntLiteral(v)) => {
           //this models floor and not integer division
           val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
-          val prod = Times(rhs,quo)
-          val newexpr = Or(Equals(prod, lhs), Equals(Plus(prod,this.one), lhs))
+          val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable
+          val divsem = Equals(lhs,Plus(Times(rhs,quo),rem)) 
+          //val newexpr = Or(Equals(prod, lhs), Equals(Plus(prod,this.one), lhs))
+          val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))
           val resset = transform(newexpr)          
           (quo, resset._2 + resset._1)          
         }        

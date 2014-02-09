@@ -57,15 +57,16 @@ object MergeSort {
    	 }   
   }) ensuring(res => size(aList)+size(bList) == size(res) template((a,b,c) => time <= a*size(aList) + b*size(bList) + c))  
 
-  def mergeSort(list:List, len: Int):List = {
-    require(len == size(list))  
+  def mergeSort(list:List):List = {
+    //require(len == )  
   
     list match {      
       case Cons(x,Nil()) => list
       case Cons(_,Cons(_,_)) =>
-         val l = len/2
-    	 val (fst,snd) = split(list,l)     	  
-      	 merge(mergeSort(fst,l), mergeSort(snd,len - l))
+         val lby2 = length(list)/2
+    	 val (fst,snd) = split(list,lby2)     	  
+      	 //merge(mergeSort(fst,l), mergeSort(snd,len - l))
+    	 merge(mergeSort(fst),mergeSort(snd))
       	 
       case _ => list
    	 
