@@ -113,7 +113,7 @@ class NLTemplateSolver(context : LeonContext,
     
     solverWithCtr.free()    
     //For stats, add lowerbounds to the stats
-    Stats.addLowerBound(rootFun, this.lowerBoundMap)
+    //Stats.addLowerBound(rootFun, this.lowerBoundMap)
     sol
   }
 

@@ -69,15 +69,17 @@ object Stats {
   
   //minimization stats
   var lowerBounds = Map[FunDef, Map[Variable, RealLiteral]]()
+  var lowerBoundsOutput = Map[FunDef, String]()
   
   var output : String = ""    
   def addOutput(out : String) = {
     output += out + "\n"
   }
   
-  def addLowerBound(fd: FunDef, lbMap : Map[Variable,RealLiteral]) = {
+  def addLowerBoundStats(fd: FunDef, lbMap : Map[Variable,RealLiteral], out: String) = {
     lowerBounds += (fd -> lbMap)
-  }
+    lowerBoundsOutput += (fd -> out)
+  }  
   
   def cumMax(cum : Long, max: Long, newval : Long) : (Long,Long) = {    
     (cum + newval, if(max < newval) newval else max)
@@ -110,8 +112,9 @@ object Stats {
       lbMap.foreach((entry) => {
         pr.print("("+entry._1+"->"+entry._2+"), ")
       })
+      pr.print("\t Test results: "+lowerBoundsOutput(fd))
       pr.println()
-    })    
+    })        
     pr.flush()       
   }
   
