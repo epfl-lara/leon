@@ -166,31 +166,8 @@ class InferenceEngineGenerator(program: Program,
               //return the invariant for the root function
               (Some(true), Some(res.get))
             }
-          }
-          
-          //now verify the lower bounds                  
-          val lbModel = tempSolver.lowerBoundMap.map((entry) => (entry._1.id -> entry._2.asInstanceOf[Expr]))
-          val lbExpr = TemplateInstantiator.getAllInvariants(lbModel, Map(funDef -> tempFactory.getTemplate(funDef).get))
-          val counterRes = verifyInvariant(lbExpr, funDef)         
-          counterRes._1 match {
-            case Some(false) => {
-              val out = "Found stronger inductive invariant: "+lbExpr
-              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
-              reporter.error("- " + out)          
-            }
-            case Some(true) => {
-              val out = "Found counter example for lower bound"
-              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
-              reporter.error(out )             
-            }
-            case _ => {
-              val out = "Timeout on disproving lower bound"
-              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
-              //the solver timed out here
-              reporter.error("- "+out)              
-            }            
-          }         
-          
+          }                            
+          //check for invariant strength          
           finalRes
           
         } else {
@@ -304,4 +281,29 @@ class InferenceEngineGenerator(program: Program,
     //    }
     sat
   }
+  
+//  def testInvairantStrength(tempSolver: TemplateSolver, invs: Map[Identifier,Expr], rootFun : FunDef) : Unit = {
+//    //now verify the lower bounds                  
+//          val lbModel = tempSolver.lowerBoundMap.map((entry) => (entry._1.id -> entry._2.asInstanceOf[Expr]))
+//          val lbExpr = TemplateInstantiator.getAllInvariants(lbModel, Map(funDef -> tempFactory.getTemplate(funDef).get))
+//          val counterRes = verifyInvariant(lbExpr, funDef)         
+//          counterRes._1 match {
+//            case Some(false) => {
+//              val out = "Found stronger inductive invariant: "+lbExpr
+//              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
+//              reporter.error("- " + out)          
+//            }
+//            case Some(true) => {
+//              val out = "Found counter example for lower bound"
+//              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
+//              reporter.error(out )             
+//            }
+//            case _ => {
+//              val out = "Timeout on disproving lower bound"
+//              Stats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, out)
+//              //the solver timed out here
+//              reporter.error("- "+out)              
+//            }            
+//          }
+//  }
 }

@@ -112,13 +112,14 @@ class NLTemplateSolver(context : LeonContext,
     val sol = recSolve(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
     
     solverWithCtr.free()    
-    //For stats, add lowerbounds to the stats
-    //Stats.addLowerBound(rootFun, this.lowerBoundMap)
+    //For stats, add lowerbounds to the stats    
     sol
   }
 
   var minStarted = false
   var minStartTime: Long = 0
+  
+  
   //TODO: this code is very ugly, fix this asap
   def recSolve(model: Map[Identifier, Expr],
     funcVCs: Map[FunDef, Expr],
@@ -381,10 +382,10 @@ class NLTemplateSolver(context : LeonContext,
               //for stats
               minStarted = false
               Stats.minimizationTime = System.currentTimeMillis() - minStartTime 
+              minimumModel = minModel
               
               (Some(getAllInvariants(minModel)), None)
-            }
-              
+            }              
             else
               recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
           }

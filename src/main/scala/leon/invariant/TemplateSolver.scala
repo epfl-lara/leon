@@ -41,9 +41,9 @@ import leon.purescala.ScalaPrinter
 abstract class TemplateSolver (
     context : LeonContext, 
     program : Program,
-    rootFun : FunDef,
+    val rootFun : FunDef,
     ctrTracker : ConstraintTracker, 
-    tempFactory: TemplateFactory,    
+    val tempFactory: TemplateFactory,    
     timeout: Int) {   
   
   protected val reporter = context.reporter  
@@ -222,6 +222,7 @@ abstract class TemplateSolver (
   //for statistics and output
   //store the lowerbounds for each template variables in the template of the rootFun provided it is a time template
   var lowerBoundMap = Map[Variable,RealLiteral]()
+  var minimumModel = Map[Identifier, Expr]()
   
   import RealValuedExprInterpreter._
   def tightenTimeBounds(inputCtr: Expr, initModel: Map[Identifier, Expr]): Map[Identifier, Expr] = {
@@ -402,6 +403,9 @@ abstract class TemplateSolver (
     functionNesting(template)
     nestMap
   }
+  
+  //def testInvariantStrength()
+ 
 }
 
 //class ParallelTemplateSolver(

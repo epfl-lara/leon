@@ -186,8 +186,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       var remFuncs = functionsToAnalyze
       //increment cegis bound iteratively
       //var b = 1
-      //var b = 200
-      var b=1000000000
+      var b = 200
+      //var b=1
+      var maxCegisBound=200
       breakable {
         while (b <= maxCegisBound) {
           //for stats          
@@ -195,6 +196,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           //create a solver factory, ignoring timeouts here                   
           val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory, rootFun: FunDef) => {
             new CegisSolver(context, program, rootFun, constTracker, tempFactory, 10000, Some(b))
+            //new CegisSolver(context, program, rootFun, constTracker, tempFactory, 10000, None)
           }
           val succeededFuncs = analyseProgram(remFuncs, templateSolverFactory)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)

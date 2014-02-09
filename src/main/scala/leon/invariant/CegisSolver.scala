@@ -32,15 +32,16 @@ import leon.invariant._
 import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
+import RealValuedExprInterpreter._
 
-class CegisSolver(context : LeonContext, 
-    program : Program,
-    rootFun : FunDef,
-    ctrTracker : ConstraintTracker, 
-    tempFactory: TemplateFactory,    
-    timeout: Int,
-    bound: Option[Int] = None) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
-        
+class CegisSolver(context: LeonContext,
+  program: Program,
+  rootFun: FunDef,
+  ctrTracker: ConstraintTracker,
+  tempFactory: TemplateFactory,
+  timeout: Int,
+  bound: Option[Int] = None) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
+
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     val initCtr = if (bound.isDefined) {
@@ -50,12 +51,12 @@ class CegisSolver(context : LeonContext,
         And(Implies(LessThan(idvar, zero), GreaterEquals(idvar, IntLiteral(-bound.get))),
           Implies(GreaterEquals(idvar, zero), LessEquals(idvar, IntLiteral(bound.get))))
       }).toSeq)
-      
+
     } else tru
-    
+
     val funcs = funcVCs.keys
     val formula = Or(funcs.map(funcVCs.apply _).toSeq)
-    
+
     //using reals with bounds does not converge and also results in overflow
     val (res, _, model) = (new CegisCore(context, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
@@ -64,34 +65,34 @@ class CegisSolver(context : LeonContext,
       case _ => //timed out
         throw IllegalStateException("Timeout!!")
     }
-  }  
+  }
 }
 
+class CegisCore(context: LeonContext,
+  program: Program,
+  timeout: Int, 
+  cegisSolver: TemplateSolver) {
 
-class CegisCore(context : LeonContext, 
-    program : Program,
-    timeout: Int, cegisSolver: TemplateSolver) {
-  
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
   val zero = IntLiteral(0)
   val timeoutMillis = timeout.toLong * 1000
-  val dumpCandidateInvs = false
-  
+  val dumpCandidateInvs = true
+  val minimizeSum = true
+
   /**
    * Finds a model for the template variables in the 'formula' so that 'formula' is falsified
    * subject to the constraints on the template variables given by the 'envCtrs'
    *
-   * The parameter solveAsInt when set to true will convert the template constraints 
-   * to integer constraints and solve. This should be enabled when bounds are used to constrain the variables   
+   * The parameter solveAsInt when set to true will convert the template constraints
+   * to integer constraints and solve. This should be enabled when bounds are used to constrain the variables
    */
-  def solve(tempIds: Set[Identifier], formula: Expr, initCtr: Expr, solveAsInt : Boolean, 
-      initModel : Option[Map[Identifier, Expr]] = None)
-  	: (Option[Boolean], Expr, Map[Identifier, Expr]) = {
-    
+  def solve(tempIds: Set[Identifier], formula: Expr, initCtr: Expr, solveAsInt: Boolean,
+    initModel: Option[Map[Identifier, Expr]] = None): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
+
     //start a timer
     val startTime = System.currentTimeMillis()
-    
+
     //for some sanity checks
     var oldModels = Set[Expr]()
     def addModel(m: Map[Identifier, Expr]) = {
@@ -106,15 +107,22 @@ class CegisCore(context : LeonContext,
       tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
     }
     addModel(simplestModel)
-     
-    
+
+    val tempVarSum = if (minimizeSum) {
+      //compute the sum of the tempIds
+      val rootTempIds = InvariantUtil.getTemplateVars(cegisSolver.tempFactory.getTemplate(cegisSolver.rootFun).get)
+      if (rootTempIds.size >= 1) {
+        rootTempIds.tail.foldLeft(rootTempIds.head.asInstanceOf[Expr])((acc, tvar) => Plus(acc, tvar))
+      } else zero
+    } else zero
+
     //convert initCtr to a real-constraint
     val initRealCtr = ExpressionTransformer.convertIntLiteralToReal(initCtr)
-    if(InvariantUtil.hasInts(initRealCtr)) 
+    if (InvariantUtil.hasInts(initRealCtr))
       throw IllegalStateException("Initial constraints have integer terms: " + initRealCtr)
 
     def cegisRec(model: Map[Identifier, Expr], prevctr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
-      
+
       val elapsedTime = (System.currentTimeMillis() - startTime)
       if (elapsedTime >= timeoutMillis - 100) {
         //if we have timed out return the present set of constrains and the current model we have
@@ -136,13 +144,12 @@ class CegisCore(context : LeonContext,
         //sanity checks
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
         if (!spuriousTempIds.isEmpty)
-          throw IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)              
+          throw IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
         if (InvariantUtil.hasReals(instFormula))
           throw IllegalStateException("Reals in instFormula: " + instFormula)
 
-
         //println("solving instantiated vcs...")
-        val t1 = System.currentTimeMillis()                
+        val t1 = System.currentTimeMillis()
         val solver1 = new UIFZ3Solver(context, program)
         solver1.assertCnstr(instFormula)
         val res = solver1.check
@@ -170,13 +177,13 @@ class CegisCore(context : LeonContext,
                 case _ => e
               })(Not(formula))
             solver1.free()
-            
+
             //sanity checks
             val spuriousProgIds = variablesOf(satctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
             if (!spuriousProgIds.isEmpty)
-              throw IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)            
-            
-            val tempctrs = if(!solveAsInt) ExpressionTransformer.convertIntLiteralToReal(satctrs) else satctrs
+              throw IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)
+
+            val tempctrs = if (!solveAsInt) ExpressionTransformer.convertIntLiteralToReal(satctrs) else satctrs
             val newctr = And(tempctrs, prevctr)
             //println("Newctr: " +newctr)
 
@@ -189,21 +196,30 @@ class CegisCore(context : LeonContext,
             val t3 = System.currentTimeMillis()
             val elapsedTime = (t3 - startTime)
             val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(
-              SolverFactory(() => new UIFZ3Solver(context, program)),
-              timeoutMillis - elapsedTime))
+              SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis - elapsedTime))
 
             val (res1, newModel) = if (solveAsInt) {
               //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
               val rti = new RealToInt()
-              val (res1, intModel) = solver2.solveSAT(rti.mapRealToInt(And(newctr, initRealCtr)))
+              val intctr = rti.mapRealToInt(And(newctr, initRealCtr))
+              val intObjective = rti.mapRealToInt(tempVarSum)
+              val (res1, intModel) = if (minimizeSum) {
+                minimizeIntegers(intctr, intObjective)
+              } else {
+                solver2.solveSAT(intctr)
+              }
               (res1, rti.unmapModel(intModel))
             } else {
-              
+
               /*if(InvariantUtil.hasInts(tempctrs)) 
             	throw IllegalStateException("Template constraints have integer terms: " + tempctrs)*/
-              solver2.solveSAT(And(newctr, initRealCtr))
-            } 
-            
+              if (minimizeSum) {
+                minimizeReals(And(newctr, initRealCtr), tempVarSum)
+              } else {
+                solver2.solveSAT(And(newctr, initRealCtr))
+              }
+            }
+
             val t4 = System.currentTimeMillis()
             println("2: " + (if (res1.isDefined) "solved" else "timed out") + "... in " + (t4 - t3) / 1000.0 + "s")
 
@@ -229,7 +245,7 @@ class CegisCore(context : LeonContext,
             (Some(true), prevctr, model)
           } case _ => {
             solver1.free()
-            throw IllegalStateException("Cannot solve instFormula: "+instFormula)
+            throw IllegalStateException("Cannot solve instFormula: " + instFormula)
           }
         }
       }
@@ -237,7 +253,187 @@ class CegisCore(context : LeonContext,
     //note: initRealCtr is used inside 'cegisRec'
     cegisRec(simplestModel, tru)
   }
+
+  /**
+   * Performs minimization
+   */
+  val MaxIter = 16 //note we may not be able to represent anything beyond 2^16  
+  val MaxInt = Int.MaxValue
+  val sqrtMaxInt = 45000
+  val half = RealLiteral(1, 2)
+  val two = RealLiteral(2, 1)
+  val rzero = RealLiteral(0, 1)
+  val mone = RealLiteral(-1, 1)
+  val debugMinimization = true
+
+  def minimizeReals(inputCtr: Expr, objective: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
+    //val t1 = System.currentTimeMillis()             
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+    val (res, model1) = sol.solveSAT(inputCtr)
+    res match {
+      case Some(true) => {
+        //do a binary search on sequentially on each of these tempvars      
+        println("minimizing " + objective + " ...")
+        val idMap: Map[Expr, Expr] = variablesOf(objective).map(id => (id.toVariable -> model1(id))).toMap
+        var upperBound: RealLiteral = evaluate(replace(idMap, objective))
+        var lowerBound: Option[RealLiteral] = None
+        var currentModel = model1
+        var continue = true
+        var iter = 0
+        do {
+          iter += 1
+          //here we perform some sanity checks to prevent overflow
+          if (!boundSanityChecks(upperBound, lowerBound)) {
+            continue = false
+          } else {
+            if (lowerBound.isDefined && evaluateRealPredicate(GreaterEquals(lowerBound.get, upperBound))) {
+              continue = false
+            } else {
+
+              val currval = if (lowerBound.isDefined) {
+                val midval = evaluate(Times(half, Plus(upperBound, lowerBound.get)))
+                floor(midval)
+
+              } else {
+                val rlit @ RealLiteral(n, d) = upperBound
+                if (isGEZ(rlit)) {
+                  if (n == 0) {
+                    //make the upper bound negative 
+                    mone
+                  } else {
+                    floor(evaluate(Times(half, upperBound)))
+                  }
+                } else floor(evaluate(Times(two, upperBound)))
+
+              }
+              val boundCtr = LessEquals(objective, currval)
+              //val t1 = System.currentTimeMillis()             
+              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+              val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
+              //val t2 = System.currentTimeMillis()
+              //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
+              res match {
+                case Some(true) => {
+                  //here we have a new upper bound
+                  currentModel = newModel
+                  val idMap: Map[Expr, Expr] = variablesOf(objective).map(id => (id.toVariable -> newModel(id))).toMap
+                  val value = RealValuedExprInterpreter.evaluate(replace(idMap, objective))
+                  upperBound = value
+                  if (this.debugMinimization)
+                    println("Found new upper bound: " + upperBound)
+                }
+                case _ => {
+                  //here we have a new lower bound : currval
+                  lowerBound = Some(currval)
+                  if (this.debugMinimization)
+                    println("Found new lower bound: " + currval)
+                }
+              }
+            }
+          }
+        } while (continue && iter < MaxIter)
+        //here, we found a best-effort minimum                          
+        println("Minimization complete...")
+        (Some(true), currentModel)
+      }
+      case _ => (res, model1)
+    }
+  }
+
+  def boundSanityChecks(ub: RealLiteral, lb: Option[RealLiteral]): Boolean = {
+    val RealLiteral(n, d) = ub
+    if (n <= (MaxInt / 2)) {
+      if (lb.isDefined) {
+        val RealLiteral(n2, _) = lb.get
+        (n2 <= sqrtMaxInt && d <= sqrtMaxInt)
+      } else {
+        (d <= (MaxInt / 2))
+      }
+    } else false
+  }
+
+  def minimizeIntegers(inputCtr: Expr, objective: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
+    //val t1 = System.currentTimeMillis()             
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+    val (res, model1) = sol.solveSAT(inputCtr)
+    res match {
+      case Some(true) => {
+        //do a binary search on sequentially on each of these tempvars      
+        println("minimizing " + objective + " ...")
+        val idMap: Map[Expr, Expr] = variablesOf(objective).map(id => (id.toVariable -> model1(id))).toMap
+        var upperBound = simplifyArithmetic(replace(idMap, objective)).asInstanceOf[IntLiteral].value
+        var lowerBound: Option[Int] = None
+        var currentModel = model1
+        var continue = true
+        var iter = 0
+        do {
+          iter += 1
+          //here we perform some sanity checks to prevent overflow
+          //          if (!boundSanityChecks(upperBound, lowerBound)) {
+          //            continue = false
+          //          } else {
+          if (lowerBound.isDefined && lowerBound.get >= upperBound -1) {
+            continue = false
+          } else {
+
+            val currval = if (lowerBound.isDefined) {
+              val sum = (upperBound + lowerBound.get)
+              floorDiv(sum, 2)
+            } else {
+              if (upperBound >= 0) {
+                if (upperBound == 0) {
+                  //make the upper bound negative 
+                  -1
+                } else {
+                  floorDiv(upperBound, 2)
+                }
+              } else 2 * upperBound
+            }
+            val boundCtr = LessEquals(objective, IntLiteral(currval))
+            //val t1 = System.currentTimeMillis()             
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+            val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
+            //val t2 = System.currentTimeMillis()
+            //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
+            res match {
+              case Some(true) => {
+                //here we have a new upper bound
+                currentModel = newModel
+                val idMap: Map[Expr, Expr] = variablesOf(objective).map(id => (id.toVariable -> newModel(id))).toMap
+                val value = simplifyArithmetic(replace(idMap, objective)).asInstanceOf[IntLiteral].value
+                upperBound = value
+                if (this.debugMinimization)
+                  println("Found new upper bound: " + upperBound)
+              }
+              case _ => {
+                //here we have a new lower bound : currval
+                lowerBound = Some(currval)
+                if (this.debugMinimization)
+                  println("Found new lower bound: " + currval)
+              }
+            }
+          }
+        } while (continue && iter < MaxIter)
+        //here, we found a best-effort minimum                          
+        println("Minimization complete...")
+        (Some(true), currentModel)
+      }
+      case _ => (res, model1)
+    }
+  }
+
+  def floorDiv(did: Int, div: Int): Int = {
+    if (div <= 0) throw IllegalStateException("Invalid divisor")
+    if (did < 0) {
+      if (did % div != 0) did / div - 1
+      else did / div
+    } else {
+      did / div
+    }
+  }
+
 }
+
 
 /**
  * TODO: Can we optimize timeout cases ?
