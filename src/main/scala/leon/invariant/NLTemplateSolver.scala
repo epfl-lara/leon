@@ -58,7 +58,7 @@ class NLTemplateSolver(context : LeonContext,
   val printReducedFormula = false    
   val dumpInstantiatedVC = false 
   val debugAxioms = false      
-  val disableCegis = true
+  val disableCegis = false
 
   /**
    * This function computes invariants belonging to the given templates incrementally.
