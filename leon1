@@ -1,7 +1,0 @@
-#!/bin/bash --posix
-source $LEON_HOME/setupenv
-SCALACLASSPATH="$LEON_HOME/jars/leon_2.10-2.0.jar:$LEON_HOME/jars/cafebabe_2.10-1.2.jar:$LEON_HOME/jars/scalaz3.jar:$LEON_HOME/jars/insynth_2.10-2.1.jar:$LEON_HOME/jars/vanuatoo_2.10-0.1.jar:$LEON_HOME/jars/akka-actor_2.10-2.2.0.jar:$LEON_HOME/jars/config-1.0.2.jar:$LEON_HOME/jars/lib/scala-library.jar:$LEON_HOME/jars/lib/scala-compiler.jar:$LEON_HOME/jars/lib/scala-reflect.jar"
-
-#SCALACLASSPATH="$LEON_HOME/jars/*.jar"
-
-java -Xmx5G -Xss1G -classpath ${SCALACLASSPATH} -Dscala.home="$SCALA_HOME" -Dscala.usejavacp=true scala.tools.nsc.MainGenericRunner leon.Main $@ 2>&1 
