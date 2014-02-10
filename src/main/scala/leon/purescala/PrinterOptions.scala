@@ -1,4 +1,7 @@
-package leon.purescala
+package leon
+package purescala
+
+import utils._
 
 case class PrinterOptions (
   baseIndent: Int = 0,
@@ -6,3 +9,17 @@ case class PrinterOptions (
   printTypes: Boolean = false,
   printUniqueIds: Boolean = false
 )
+
+object PrinterOptions {
+  def fromContext(ctx: LeonContext): PrinterOptions = {
+    val debugTrees     = ctx.settings.debugSections contains DebugSectionTrees
+    val debugPositions = ctx.settings.debugSections contains DebugSectionPositions
+
+    PrinterOptions(
+      baseIndent     = 0,
+      printPositions = debugPositions,
+      printTypes     = debugTrees,
+      printUniqueIds = debugTrees
+    )
+  }
+}

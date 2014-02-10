@@ -531,6 +531,11 @@ abstract class PrettyPrinterFactory {
     printer.pp(tree, None)(opts.baseIndent)
     printer.toString
   }
+
+  def apply(tree: Tree, ctx: LeonContext): String = {
+    val opts = PrinterOptions.fromContext(ctx)
+    apply(tree, opts)
+  }
 }
 
 object PrettyPrinter extends PrettyPrinterFactory {

@@ -19,6 +19,12 @@ object Common {
       }
       this
     }
+
+    override def toString: String = PrettyPrinter(this)
+
+    def asString(implicit ctx: LeonContext): String = {
+      ScalaPrinter(this, ctx)
+    }
   }
 
   // the type is left blank (Untyped) for Identifiers that are not variables

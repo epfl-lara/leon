@@ -38,7 +38,7 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
   def check : Option[Boolean] = theConstraint.map { expr =>
     val solver = underlyings.getNewSolver//SimpleSolverAPI(underlyings)
 
-    debugS("Check called on " + expr + "...")
+    debugS("Check called on " + expr.asString + "...")
 
     val template = getTemplate(expr)
 

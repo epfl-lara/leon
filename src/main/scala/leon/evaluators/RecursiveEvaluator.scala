@@ -367,7 +367,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
       import solvers.z3.FairZ3Solver
       import purescala.TreeOps.simplestValue
 
-      implicit val debugSection = DebugSectionSynthesis
+      implicit val debugSection = utils.DebugSectionSynthesis
 
       val p = synthesis.Problem.fromChoose(choose)
 
@@ -401,7 +401,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
             val total = System.currentTimeMillis-tStart;
 
             ctx.reporter.debug("Synthesis took "+total+"ms")
-            ctx.reporter.debug("Finished synthesis with "+leonRes)
+            ctx.reporter.debug("Finished synthesis with "+leonRes.asString(ctx))
 
             leonRes
           case Some(false) =>

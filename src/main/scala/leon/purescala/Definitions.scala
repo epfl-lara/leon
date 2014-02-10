@@ -13,7 +13,6 @@ object Definitions {
 
   sealed abstract class Definition extends Tree {
     val id: Identifier
-    override def toString: String = PrettyPrinter(this)
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
       case t : Definition => t.id == this.id
@@ -55,15 +54,6 @@ object Definitions {
     def transitiveCallees(f1: FunDef) = mainModule.transitiveCallees.getOrElse(f1, Set())
     def isRecursive(f1: FunDef) = mainModule.isRecursive(f1)
     def caseClassDef(name: String) = mainModule.caseClassDef(name)
-
-    def writeScalaFile(filename: String) {
-      import java.io.FileWriter
-      import java.io.BufferedWriter
-      val fstream = new FileWriter(filename)
-      val out = new BufferedWriter(fstream)
-      out.write(ScalaPrinter(this))
-      out.close
-    }
 
     def duplicate = {
       copy(mainModule = mainModule.copy(defs = mainModule.defs.collect {

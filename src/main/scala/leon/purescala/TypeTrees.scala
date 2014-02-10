@@ -49,9 +49,7 @@ object TypeTrees {
   }
     
 
-  sealed abstract class TypeTree extends Tree {
-    override def toString: String = PrettyPrinter(this)
-  }
+  sealed abstract class TypeTree extends Tree
 
   // returns the number of distinct values that inhabit a type
   sealed abstract class TypeSize extends Serializable

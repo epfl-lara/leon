@@ -15,9 +15,7 @@ object Trees {
 
 
   /* EXPRESSIONS */
-  abstract class Expr extends Tree with Typed with Serializable {
-    override def toString: String = PrettyPrinter(this)
-  }
+  abstract class Expr extends Tree with Typed with Serializable
 
   trait Terminal {
     self: Expr =>

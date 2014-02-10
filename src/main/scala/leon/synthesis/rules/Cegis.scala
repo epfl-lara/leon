@@ -559,7 +559,7 @@ case object CEGIS extends Rule("CEGIS") {
               sctx.reporter.ifDebug { debug =>
                 debug("UNROLLING: ")
                 for (c <- clauses) {
-                  debug(" - " + c)
+                  debug(" - " + c.asString(sctx.context))
                 }
                 debug("CLOSED Bs "+closedBs)
               }
