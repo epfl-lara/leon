@@ -53,9 +53,6 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
     var printPos = opts.printPositions
 
     tree match {
-      case Variable(id) => 
-        pp(id, p)
-
       case LetTuple(ids,d,e) =>
         optBraces { implicit lvl =>
           sb.append("val (" )

@@ -69,11 +69,15 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
       case Variable(id) =>
-        //sb.append("(")
-        pp(id, p)
-        //sb.append(": ")
-        //pp(id.getType, p)
-        //sb.append(")")
+        if (opts.printTypes) {
+          sb.append("(")
+          pp(id, p)
+          sb.append(": ")
+          pp(id.getType, p)
+          sb.append(")")
+        } else {
+          pp(id, p)
+        }
 
       case LetTuple(bs,d,e) =>
         sb.append("(let ")
@@ -483,7 +487,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         pp(tp, p)
 
       case TypeParameter(id) =>
-        sb.append(id.uniqueName)
+        pp(id, p)
 
       case _ => sb.append("Tree? (" + tree.getClass + ")")
     }

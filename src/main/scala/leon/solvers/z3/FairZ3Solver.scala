@@ -225,6 +225,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       // define an activating boolean...
       val template = getTemplate(expr)
 
+
       val z3args = for (vd <- template.tfd.args) yield {
         variables.getZ3(Variable(vd.id)) match {
           case Some(ast) =>
