@@ -149,9 +149,9 @@ class SimpleSearch(synth: Synthesizer,
 
 
   def searchStep() {
-    val t = new Timer().start
+    val timer = synth.context.timers.synthesis.nextLeaf.start()
     val nl = nextLeaf()
-    synth.context.timers.get("Synthesis NextLeaf") += t
+    timer.stop()
 
     nl match {
       case Some(l)  =>
@@ -159,15 +159,15 @@ class SimpleSearch(synth: Synthesizer,
           case al: g.AndLeaf =>
             val sub = expandAndTask(al.task)
 
-            t.restart
+            val timer = synth.context.timers.synthesis.expand.start()
             onExpansion(al, sub)
-            synth.context.timers.get("Synthesis Expand") += t
+            timer.stop()
           case ol: g.OrLeaf =>
             val sub = expandOrTask(ol.task)
 
-            t.restart
+            val timer = synth.context.timers.synthesis.expand.start()
             onExpansion(ol, sub)
-            synth.context.timers.get("Synthesis Expand") += t
+            timer.stop()
         }
       case None =>
         stop()

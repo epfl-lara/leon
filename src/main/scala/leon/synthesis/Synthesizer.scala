@@ -41,18 +41,11 @@ class Synthesizer(val context : LeonContext,
         }
       }
 
-    val ts = System.currentTimeMillis()
+    val t = context.timers.synthesis.search.start()
 
     val res = search.search()
 
-    search match {
-      case pr: ParallelSearch =>
-        context.timers.add(pr.expandTimers)
-        context.timers.add(pr.sendWorkTimers)
-      case _ =>
-    }
-
-    val diff = System.currentTimeMillis()-ts
+    val diff = t.stop()
     reporter.info("Finished in "+diff+"ms")
 
     if (options.generateDerivationTrees) {

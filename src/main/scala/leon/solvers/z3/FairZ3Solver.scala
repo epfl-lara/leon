@@ -414,9 +414,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       //reporter.debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
       //reporter.debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
 
+      val timer = context.timers.solvers.z3.check.start()
       solver.push() // FIXME: remove when z3 bug is fixed
       val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.z3CurrentZ3Blockers) :_*)
       solver.pop()  // FIXME: remove when z3 bug is fixed
+      timer.stop()
 
       reporter.debug(" - Finished search with blocked literals")
 
@@ -503,9 +505,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               reporter.debug(" - Running search without blocked literals (w/o lucky test)")
             }
 
+            val timer = context.timers.solvers.z3.check.start()
             solver.push() // FIXME: remove when z3 bug is fixed
             val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
             solver.pop()  // FIXME: remove when z3 bug is fixed
+            timer.stop
 
             res2 match {
               case Some(false) =>

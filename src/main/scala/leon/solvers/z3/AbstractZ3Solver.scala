@@ -181,7 +181,8 @@ trait AbstractZ3Solver
   var isInitialized = false
   protected[leon] def initZ3() {
     if (!isInitialized) {
-      val initTime     = new Timer().start
+      val timer = context.timers.solvers.z3.init.start()
+
       counter = 0
 
       z3 = new Z3Context(z3cfg)
@@ -199,8 +200,7 @@ trait AbstractZ3Solver
 
       isInitialized = true
 
-      initTime.stop
-      context.timers.get("Z3Solver init") += initTime
+      timer.stop()
     }
   }
 

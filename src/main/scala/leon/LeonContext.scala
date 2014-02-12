@@ -16,5 +16,5 @@ case class LeonContext(
   settings: Settings = Settings(),
   options: Seq[LeonOption] = Seq(),
   files: Seq[File] = Seq(),
-  timers: TimerCollections = new TimerCollections
+  timers: TimerStorage = new TimerStorage
 )

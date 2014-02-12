@@ -22,9 +22,6 @@ abstract class AndOrGraphParallelSearch[WC,
 
   var system: ActorSystem = _
 
-  val sendWorkTimers = new TimerCollection("Synthesis-par SendWork")
-  val expandTimers   = new TimerCollection("Synthesis-par Expand")
-
   def search(): Option[(S, Boolean)] = {
     system = ActorSystem("ParallelSearch")
 
@@ -96,8 +93,6 @@ abstract class AndOrGraphParallelSearch[WC,
 
       assert(idleWorkers.size > 0)
 
-      val t = new Timer().start
-
       getNextLeaves(idleWorkers, workingWorkers) match {
         case Nil =>
           if (workingWorkers.isEmpty) {
@@ -118,8 +113,6 @@ abstract class AndOrGraphParallelSearch[WC,
             }
           }
       }
-
-      sendWorkTimers += t
     }
 
     context.setReceiveTimeout(10.seconds)
@@ -136,9 +129,7 @@ abstract class AndOrGraphParallelSearch[WC,
       case WorkerAndTaskDone(w, res) =>
         workers.get(w) match {
           case Some(Some(l: g.AndLeaf)) =>
-            val t = new Timer().start
             onExpansion(l, res)
-            expandTimers += t
             workers += w -> None
           case _ =>
         }
@@ -147,9 +138,7 @@ abstract class AndOrGraphParallelSearch[WC,
       case WorkerOrTaskDone(w, res) =>
         workers.get(w) match {
           case Some(Some(l: g.OrLeaf)) =>
-            val t = new Timer().start
             onExpansion(l, res)
-            expandTimers += t
             workers += w -> None
           case _ =>
         }

@@ -47,6 +47,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   private var modelMap = Map[Identifier, Expr]()
 
   def check: Option[Boolean] = {
+    val timer = context.timers.solvers.enum.check.start()
     val res = try {
       datagen = Some(new VanuatooDataGen(context, program))
       if (interrupted) {
@@ -71,6 +72,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
         None
     }
     datagen = None
+    timer.stop()
     res
   }
 

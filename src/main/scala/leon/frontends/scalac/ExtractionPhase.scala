@@ -18,6 +18,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
   implicit val debug = DebugSectionTrees
 
   def run(ctx: LeonContext)(args: List[String]): Program = {
+    val timer = ctx.timers.frontend.start()
 
     val settings = new NSCSettings
 
@@ -55,10 +56,13 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       //   )
       // }
 
+
       val compiler = new ScalaCompiler(settings, ctx)
       val run = new compiler.Run
       run.compile(command.files)
 
+
+      timer.stop()
 
       val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.modules)
       ctx.reporter.debug(pgm.asString(ctx))

@@ -222,8 +222,6 @@ object Main {
   }
 
   def main(args : Array[String]) {
-    val timer     = new Timer().start
-
     val argsl = args.toList
 
     // By default we add --library from Main
@@ -256,12 +254,10 @@ object Main {
     try {
       ctx.interruptManager.registerSignalHandler()
 
-      ctx.timers.get("Leon Opts") += timer
-
       // Compute leon pipeline
       val pipeline = computePipeline(ctx.settings)
 
-      timer.restart
+      val timer = ctx.timers.total.start()
 
       // Run pipeline
       pipeline.run(ctx)(args.toList) match {
@@ -274,16 +270,10 @@ object Main {
         case _ =>
       }
 
-      ctx.timers.get("Leon Run") += timer
+      timer.stop()
 
       ctx.reporter.whenDebug(DebugSectionTimers) { debug =>
-        debug("-"*80)
-        debug("Times:")
-        debug("-"*80)
-        for ((name, swc) <- ctx.timers.getAll.toSeq.sortBy(_._1)) {
-          debug(swc.toString)
-        }
-        debug("-"*80)
+        ctx.timers.outputTable(debug)
       }
 
     } catch {
