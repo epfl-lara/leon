@@ -1,5 +1,8 @@
 LEON_HOME="/home/kandhada/leon/leon"
 
+#Folds
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/Folds.scala --stats-suffix=-nl-stats" > folds-nl-out.txt
+
 #Insertion Sort
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/InsertionSort.scala  --stats-suffix=-nl-stats" > inssort-nl-out.txt
 
@@ -23,6 +26,9 @@ runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testc
 
 #concat variations
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/ConcatVariations.scala --stats-suffix=-nl-stats" > concatvars-nl-out.txt
+
+#Speed Benchmarks
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/SpeedBenchmarks.scala --stats-suffix=-nl-stats" > speed-nl-out.txt
 
 #Binomial Heap
 runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/timing/BinomialHeap.scala --stats-suffix=-nl-stats" > binomialheap-nl-out.txt

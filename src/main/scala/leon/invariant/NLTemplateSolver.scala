@@ -226,7 +226,7 @@ class NLTemplateSolver(context: LeonContext,
             timeout * 1000))
 
         if (this.dumpNLCtrsAsSMTLIB) {          
-          val filename = program.mainObject.id+"-nlctr" + FileCountGUID.getID + ".smt2"
+          val filename = program.mainObject.id+"-nlctr" + FileCountGUID.getID + ".smt2"          
           if ((newSize + inputSize) >= 10)
             InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
           println("NLctrs dumped to: " + filename)
