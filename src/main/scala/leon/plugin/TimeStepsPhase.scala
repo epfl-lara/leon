@@ -20,7 +20,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
   val description = "Expose runtime steps for each function"  
 
   def run(ctx: LeonContext)(program: Program) : Program = {
-                
+                    
     // Map from old fundefs to new fundefs
 	var funMap = Map[FunDef, FunDef]()
   
@@ -57,7 +57,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         funMap += (fd -> newfd)
       }
     }
-	println("FunMap: "+funMap.map((elem) => (elem._1.id, elem._2.id)))
+	//println("FunMap: "+funMap.map((elem) => (elem._1.id, elem._2.id)))
 
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
@@ -123,8 +123,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         d
     }
 
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
+    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))    
+    //println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
     /*newprog.definedFunctions.foreach((fd) => 

@@ -154,9 +154,8 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
       case d => d
     } ++  (if(addMult) Seq(multFun, pivMultFun) else Seq())
 
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    //println("Program: "+newprog)
-    println("New Prog: \n"+ScalaPrinter.apply(newprog))
+    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))    
+    println("After Nonlinearity Elimination: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
     newprog.definedFunctions.foreach((fd) => 

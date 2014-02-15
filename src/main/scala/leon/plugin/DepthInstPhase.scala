@@ -134,10 +134,10 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     } :+ maxFun
     
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    println("After Depth Instrumentation: \n"+ScalaPrinter.apply(newprog))
+    //println("After Depth Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
-    newprog.definedFunctions.foreach((fd) => println("Defined fun: "+fd.id)) 
+    //newprog.definedFunctions.foreach((fd) => println("Defined fun: "+fd.id)) 
       /*if(FunctionInfoFactory.hasTemplate(fd))
         println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
         )*/
