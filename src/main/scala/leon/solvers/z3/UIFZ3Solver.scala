@@ -21,13 +21,16 @@ import purescala.TypeTrees._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete : Boolean = true)
+class UIFZ3Solver(val context : LeonContext, val program: Program, 
+    autoComplete : Boolean = true,
+    useBitvectors : Boolean = false,
+    bitvecSize: Int = 32)
   extends AbstractZ3Solver
      with Z3ModelReconstruction {
-
+  
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
-  override val AUTOCOMPLETEMODELS : Boolean = autoComplete
+  override val AUTOCOMPLETEMODELS : Boolean = autoComplete  
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
@@ -71,12 +74,17 @@ class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete 
   }
 
   private var variables = Set[Identifier]()
-  private var containsFunCalls = false
 
   def assertCnstr(expression: Expr) {
     variables ++= variablesOf(expression)
-    //containsFunCalls ||= containsFunctionCalls(expression)
-    solver.assertCnstr(toZ3Formula(expression).get)
+    
+    if(useBitvectors){
+      val bform = toBitVectorFormula(expression, bitvecSize).get     
+      solver.assertCnstr(bform)
+    } 
+    else {
+      solver.assertCnstr(toZ3Formula(expression).get)
+    }    
   }
 
   def innerCheck: Option[Boolean] = {
@@ -85,7 +93,12 @@ class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete 
 
   def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
     variables ++= assumptions.flatMap(variablesOf(_))
-    solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)
+    
+    if(useBitvectors){
+      solver.checkAssumptions(assumptions.toSeq.map(toBitVectorFormula(_, bitvecSize).get) : _*)
+    } else {
+      solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)  
+    }
   }
 
   def getModel = {
@@ -107,7 +120,11 @@ class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete 
   }
 
   def evalExpr(expr: Expr): Option[Expr] = {    
-    val ast = toZ3Formula(expr).get
+    val ast = if(useBitvectors) {
+      toBitVectorFormula(expr, bitvecSize).get
+    } else {
+      toZ3Formula(expr).get
+    }
     //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
     val model = solver.getModel
     val res = model.eval(ast, true)
@@ -115,17 +132,21 @@ class UIFZ3Solver(val context : LeonContext, val program: Program, autoComplete 
       Some(fromZ3Formula(model, res.get, Some(expr.getType)))
     else None
   }
-  
+
   /**
    * Evaluates the given boolean expression using the model
    */
-  def evalBoolExpr(expr: Expr) : Option[Boolean] = {    
-      val ast = toZ3Formula(expr).get      
-      //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
-      val model = solver.getModel
-      val res = model.eval(ast, true)
-      model.context.getBoolValue(res.get)
-   }
+  def evalBoolExpr(expr: Expr): Option[Boolean] = {
+    val ast = if (useBitvectors) {
+      toBitVectorFormula(expr, bitvecSize).get
+    } else {
+      toZ3Formula(expr).get
+    }
+    //println("Evaluating: "+ast+" using: "+solver.getModel+" Result: "+solver.getModel.eval(ast, true))
+    val model = solver.getModel
+    val res = model.eval(ast, true)
+    model.context.getBoolValue(res.get)
+  }
   
   def ctrsToString(logic : String) : String = {        
     z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)

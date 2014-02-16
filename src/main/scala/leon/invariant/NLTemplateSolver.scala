@@ -44,6 +44,9 @@ class NLTemplateSolver(context: LeonContext,
   tightBounds: Boolean) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
 
   private val farkasSolver = new FarkasLemmaSolver()
+  
+  val disableCegis = false
+  val solveAsBitvectors = true
 
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -56,10 +59,8 @@ class NLTemplateSolver(context: LeonContext,
   val dumpNLCtrsAsSMTLIB = true
   val printCallConstriants = false
   val printReducedFormula = false
-  val dumpInstantiatedVC = false
+  val dumpInstantiatedVC = false 
   val debugAxioms = false
-  val disableCegis = false
-
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -221,14 +222,23 @@ class NLTemplateSolver(context: LeonContext,
         println("# of atomic predicates: " + newSize + " + " + inputSize)
         val combCtr = And(prevCtr, newPart)
 
-        val solver = SimpleSolverAPI(
-          new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
-            timeout * 1000))
+        val innerSolver = if(solveAsBitvectors) {
+          new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = 8)
+        } else {
+          new UIFZ3Solver(context, program)
+        }
+        val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 
         if (this.dumpNLCtrsAsSMTLIB) {          
           val filename = program.mainObject.id+"-nlctr" + FileCountGUID.getID + ".smt2"          
-          if ((newSize + inputSize) >= 10)
-            InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
+          //if ((newSize + inputSize) >= 10)
+            //InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
+          val writer = new PrintWriter(filename)
+          val tempSolver = new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = 8) 
+          tempSolver.assertCnstr(combCtr)
+          writer.println(tempSolver.ctrsToString("QF_BVA"))
+          writer.flush()
+          writer.close()          
           println("NLctrs dumped to: " + filename)
         }
         println("solving...")

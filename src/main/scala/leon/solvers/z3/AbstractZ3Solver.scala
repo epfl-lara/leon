@@ -4,7 +4,6 @@ package leon
 package solvers.z3
 
 import leon.utils._
-
 import z3.scala._
 import solvers._
 import purescala.Common._
@@ -14,7 +13,6 @@ import purescala.TypeTreeOps._
 import xlang.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
-
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 
@@ -645,6 +643,98 @@ trait AbstractZ3Solver
         reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException
       }
+    }
+
+    try {
+      val res = Some(rec(expr))
+      res
+    } catch {
+      case e: CantTranslateException => None
+    }
+  }
+  
+  
+  /**
+   * This converts Intergers/reals in the expr to bit vectors of a specified size and 
+   * converts the arithmetic operations accordingly
+   */
+  protected[leon] var exprToZ3BitVec : Map[Expr,Z3AST] = Map.empty
+  protected[leon] def toBitVectorFormula(expr: Expr, bitvecSize: Int) : Option[Z3AST] = {   
+    class CantTranslateException extends Exception
+   
+    val varsInformula: Set[Identifier] = variablesOf(expr)
+
+    var z3Vars: Map[Identifier,Z3AST] = {
+      exprToZ3BitVec.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+    }
+    
+    var bvsort = z3.mkBVSort(bitvecSize)    
+
+    def rec(ex: Expr): Z3AST = { 
+      //println("Stacking up call for:")
+      //println(ex)
+      val recResult = (ex match {        
+        case v @ Variable(id) => z3Vars.get(id) match {
+          case Some(ast) => {           
+            ast
+          }
+          case None => {
+            if (id.getType == Int32Type || id.getType == RealType) {              
+              val newAST = z3.mkFreshConst(id.uniqueName, bvsort)
+              z3Vars = z3Vars + (id -> newAST)
+              exprToZ3BitVec += (v -> newAST)
+              z3IdToExpr += (newAST -> v)
+              
+              println("Creating a bitvector sort for: "+id+" sort: "+newAST.getSort)
+              newAST
+            } else {
+              reporter.warning("non-numerical variable: "+v)
+              throw new CantTranslateException  
+            }            
+          }
+        }
+        //logical operations
+        case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
+        case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
+        case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
+        case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
+        case Iff(l, r) => {
+          val rl = rec(l)
+          val rr = rec(r)
+          // z3.mkIff used to trigger a bug
+          // z3.mkAnd(z3.mkImplies(rl, rr), z3.mkImplies(rr, rl))
+          z3.mkIff(rl, rr)
+        }
+        case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
+        case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
+        case Not(e) => z3.mkNot(rec(e))
+        
+        //arithmetic operations
+        case IntLiteral(v) => z3.mkNumeral("{"+v+"}", bvsort)
+        case rl@RealLiteral(num,denom) => if(denom == 1) {
+          z3.mkNumeral("{"+num+"}", bvsort)          
+        } else {
+          reporter.warning("denominator not one: "+rl)
+          throw new CantTranslateException
+        }
+        case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()        
+        case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
+        case Plus(l, r) => z3.mkBVAdd(rec(l), rec(r))
+        case Minus(l, r) => z3.mkBVSub(rec(l), rec(r))
+        case Times(l, r) => z3.mkBVMul(rec(l), rec(r))
+        case Division(l, r) => z3.mkBVSdiv(rec(l), rec(r))        
+        case UMinus(e) => z3.mkBVSub(z3.mkNumeral("{0}", bvsort), rec(e))
+        case LessThan(l, r) => z3.mkBVSlt(rec(l), rec(r))
+        case LessEquals(l, r) => z3.mkBVSle(rec(l), rec(r))
+        case GreaterThan(l, r) => z3.mkBVSgt(rec(l), rec(r))
+        case GreaterEquals(l, r) => z3.mkBVSge(rec(l), rec(r))
+          
+        case _ => {
+          reporter.warning("Can't handle this in translation to Z3: " + ex)
+          throw new CantTranslateException
+        }
+      })
+      recResult
     }
 
     try {
