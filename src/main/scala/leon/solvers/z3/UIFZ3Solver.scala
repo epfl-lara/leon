@@ -21,10 +21,10 @@ import purescala.TypeTrees._
  *    - otherwise it returns UNKNOWN
  *  Results should come back very quickly.
  */
-class UIFZ3Solver(val context : LeonContext, val program: Program, 
-    autoComplete : Boolean = true,
+class UIFZ3Solver(val context : LeonContext, val program: Program,     
     useBitvectors : Boolean = false,
-    bitvecSize: Int = 32)
+    bitvecSize: Int = 32,
+    autoComplete : Boolean = true)
   extends AbstractZ3Solver
      with Z3ModelReconstruction {
   

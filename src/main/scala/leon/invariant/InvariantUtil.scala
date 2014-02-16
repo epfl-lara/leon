@@ -238,9 +238,12 @@ object InvariantUtil {
     else gcd(y % x, x)
   }  
   
-  def toZ3SMTLIB(expr: Expr, filename: String, theory: String, ctx: LeonContext, pgm: Program)  = {
+  def toZ3SMTLIB(expr: Expr, filename: String, 
+      theory: String, ctx: LeonContext, pgm: Program,
+      useBitvectors : Boolean = false, 
+      bitvecSize :Int = 32)  = {
     //create new solver, assert constraints and print
-    val printSol = new UIFZ3Solver(ctx, pgm)
+    val printSol = new UIFZ3Solver(ctx, pgm, useBitvectors, bitvecSize)
     printSol.assertCnstr(expr)    
     val writer = new PrintWriter(filename)
     writer.println(printSol.ctrsToString(theory))

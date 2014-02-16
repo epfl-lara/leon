@@ -47,6 +47,7 @@ class NLTemplateSolver(context: LeonContext,
   
   val disableCegis = false
   val solveAsBitvectors = true
+  val bvsize = 5
 
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -223,7 +224,7 @@ class NLTemplateSolver(context: LeonContext,
         val combCtr = And(prevCtr, newPart)
 
         val innerSolver = if(solveAsBitvectors) {
-          new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = 8)
+          new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = bvsize)
         } else {
           new UIFZ3Solver(context, program)
         }
@@ -231,15 +232,12 @@ class NLTemplateSolver(context: LeonContext,
 
         if (this.dumpNLCtrsAsSMTLIB) {          
           val filename = program.mainObject.id+"-nlctr" + FileCountGUID.getID + ".smt2"          
-          //if ((newSize + inputSize) >= 10)
-            //InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
-          val writer = new PrintWriter(filename)
-          val tempSolver = new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = 8) 
-          tempSolver.assertCnstr(combCtr)
-          writer.println(tempSolver.ctrsToString("QF_BVA"))
-          writer.flush()
-          writer.close()
-          tempSolver.free
+          if ((newSize + inputSize) >= 10) {
+            if (solveAsBitvectors)
+              InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
+            else
+              InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
+          }
           println("NLctrs dumped to: " + filename)
         }
         println("solving...")
