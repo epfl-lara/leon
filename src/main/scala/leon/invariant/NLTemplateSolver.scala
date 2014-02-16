@@ -238,7 +238,8 @@ class NLTemplateSolver(context: LeonContext,
           tempSolver.assertCnstr(combCtr)
           writer.println(tempSolver.ctrsToString("QF_BVA"))
           writer.flush()
-          writer.close()          
+          writer.close()
+          tempSolver.free
           println("NLctrs dumped to: " + filename)
         }
         println("solving...")

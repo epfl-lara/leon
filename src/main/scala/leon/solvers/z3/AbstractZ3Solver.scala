@@ -685,7 +685,7 @@ trait AbstractZ3Solver
               exprToZ3BitVec += (v -> newAST)
               z3IdToExpr += (newAST -> v)
               
-              println("Creating a bitvector sort for: "+id+" sort: "+newAST.getSort)
+              //println("Creating a bitvector sort for: "+id+" sort: "+newAST.getSort)
               newAST
             } else {
               reporter.warning("non-numerical variable: "+v)
@@ -712,7 +712,7 @@ trait AbstractZ3Solver
         //arithmetic operations
         case IntLiteral(v) => z3.mkNumeral("{"+v+"}", bvsort)
         case rl@RealLiteral(num,denom) => if(denom == 1) {
-          z3.mkNumeral("{"+num+"}", bvsort)          
+          z3.mkNumeral(num.toString, bvsort)          
         } else {
           reporter.warning("denominator not one: "+rl)
           throw new CantTranslateException
@@ -723,7 +723,7 @@ trait AbstractZ3Solver
         case Minus(l, r) => z3.mkBVSub(rec(l), rec(r))
         case Times(l, r) => z3.mkBVMul(rec(l), rec(r))
         case Division(l, r) => z3.mkBVSdiv(rec(l), rec(r))        
-        case UMinus(e) => z3.mkBVSub(z3.mkNumeral("{0}", bvsort), rec(e))
+        case UMinus(e) => z3.mkBVSub(z3.mkNumeral("0", bvsort), rec(e))
         case LessThan(l, r) => z3.mkBVSlt(rec(l), rec(r))
         case LessEquals(l, r) => z3.mkBVSle(rec(l), rec(r))
         case GreaterThan(l, r) => z3.mkBVSgt(rec(l), rec(r))
