@@ -667,7 +667,8 @@ trait AbstractZ3Solver
       exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
     }
     
-    var bvsort = z3.mkBVSort(bitvecSize)    
+    var bvsort = z3.mkBVSort(bitvecSize)
+    var constsort = z3.mkBVSort(bitvecSize)
 
     def rec(ex: Expr): Z3AST = { 
       //println("Stacking up call for:")
@@ -709,9 +710,9 @@ trait AbstractZ3Solver
         case Not(e) => z3.mkNot(rec(e))
         
         //arithmetic operations
-        case IntLiteral(v) => z3.mkNumeral(v.toString, bvsort)
+        case IntLiteral(v) => z3.mkNumeral(v.toString, constsort)
         case rl@RealLiteral(num,denom) => if(denom == 1) {
-          val ast = z3.mkNumeral(num.toString, bvsort)
+          val ast = z3.mkNumeral(num.toString, constsort)
           //println("Converted: "+num+" to "+ast)
           ast
         } else {

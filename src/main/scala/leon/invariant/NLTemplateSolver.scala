@@ -47,7 +47,7 @@ class NLTemplateSolver(context: LeonContext,
   
   val disableCegis = false
   val solveAsBitvectors = true
-  val bvsize = 5
+  val bvsize = 2
 
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
