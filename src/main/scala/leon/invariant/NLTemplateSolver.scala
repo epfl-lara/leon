@@ -45,9 +45,9 @@ class NLTemplateSolver(context: LeonContext,
 
   private val farkasSolver = new FarkasLemmaSolver()
   
-  val disableCegis = false
-  val solveAsBitvectors = true
-  val bvsize = 2
+  val disableCegis = true
+  val solveAsBitvectors = false
+  val bvsize = 5
 
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -232,13 +232,13 @@ class NLTemplateSolver(context: LeonContext,
 
         if (this.dumpNLCtrsAsSMTLIB) {          
           val filename = program.mainObject.id+"-nlctr" + FileCountGUID.getID + ".smt2"          
-          if ((newSize + inputSize) >= 10) {
+          if ((newSize + inputSize) >= 5) {
             if (solveAsBitvectors)
               InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
             else
               InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
+            println("NLctrs dumped to: " + filename)
           }
-          println("NLctrs dumped to: " + filename)
         }
         println("solving...")
         val t1 = System.currentTimeMillis()

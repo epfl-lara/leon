@@ -428,7 +428,7 @@ object Trees {
     def hasOverflow = overflow
   }
   
-  //a warpper for real and interger literals (that are wholenumbers and not fractions)
+  //a wrapper for real and interger literals (that are wholenumbers and not fractions)
   object WholeNumber{
     def apply(x: Int) : IntLiteral = IntLiteral(x)
     def unapply(e : Expr) : Option[Int] = e match {

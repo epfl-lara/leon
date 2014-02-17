@@ -15,6 +15,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
+import leon.purescala.Extractors._
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
@@ -652,7 +653,48 @@ trait AbstractZ3Solver
       case e: CantTranslateException => None
     }
   }
+   
+  var encodedAsBV = false
+  var bvSize = 0
+  var maxval = 0
+  var maxBits = 800
   
+  def computationBits(expr: Expr, varsize : Int) : Int = {
+    
+    def max(x: Int, y: Int) = if(x >= y) x else y
+
+    def bitsInVal(x: Int): Int = {
+      var count = 0;
+      var value = x
+      while (value > 0) {
+        count += 1
+        value = value >> 1;
+      }
+      count
+    }
+
+    def rec(expr: Expr): Int = {
+      val bits = expr match {
+        case IntLiteral(v) => bitsInVal(v)
+        //here assuming that denominator is 1
+        case RealLiteral(num,dnum) => bitsInVal(num)
+        case BooleanLiteral(_) => 1
+        case t : Terminal => varsize
+        case Plus(a1,a2) =>  max(rec(a1), rec(a2)) + 1
+        case Minus(a1,a2) =>  max(rec(a1), rec(a2)) + 1
+        case Times(a1,a2) =>  rec(a1) + rec(a2)        
+        case UnaryOperator(a, _) => rec(a)
+        case BinaryOperator(a1, a2, _) => max(rec(a1), rec(a2))
+        case NAryOperator(args, _) => args.tail.foldLeft(rec(args.head))((acc, arg) => max(acc, rec(arg)))
+      }
+      if(bits > maxBits) {
+        //println("Computation requires more than 16bits: "+ expr)
+        maxBits        
+      } else 
+    	 bits
+    }
+    rec(expr)
+  }
   
   /**
    * This converts Integers/reals in the expr to bit vectors of a specified size and 
@@ -667,8 +709,20 @@ trait AbstractZ3Solver
       exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
     }
     
-    var bvsort = z3.mkBVSort(bitvecSize)
-    var constsort = z3.mkBVSort(bitvecSize)
+    //set the bit vector flags for later use
+    encodedAsBV = true
+    bvSize = bitvecSize
+    maxval = (1 << (bitvecSize - 1)) - 1
+    var lb = IntLiteral(-maxval)
+    var ub = IntLiteral(maxval)
+    var boundedExpr = And(varsInformula.foldLeft(Seq(expr))((acc, id) => 
+      acc ++ Seq(LessEquals(lb, id.toVariable),LessEquals(id.toVariable, ub)))) 
+      
+   //over-approximate the bits required for the computation
+   //this is necessary for soundness
+   val cbits = computationBits(expr, bitvecSize)
+   reporter.info("Bits required for the computation: "+cbits)
+   var bvsort = z3.mkBVSort(cbits)   
 
     def rec(ex: Expr): Z3AST = { 
       //println("Stacking up call for:")
@@ -710,9 +764,9 @@ trait AbstractZ3Solver
         case Not(e) => z3.mkNot(rec(e))
         
         //arithmetic operations
-        case IntLiteral(v) => z3.mkNumeral(v.toString, constsort)
+        case IntLiteral(v) => z3.mkNumeral(v.toString, bvsort)
         case rl@RealLiteral(num,denom) => if(denom == 1) {
-          val ast = z3.mkNumeral(num.toString, constsort)
+          val ast = z3.mkNumeral(num.toString, bvsort)
           //println("Converted: "+num+" to "+ast)
           ast
         } else {
@@ -740,7 +794,7 @@ trait AbstractZ3Solver
     }
 
     try {
-      val res = Some(rec(expr))
+      val res = Some(rec(boundedExpr))
       res
     } catch {
       case e: CantTranslateException => None
@@ -862,142 +916,6 @@ trait AbstractZ3Solver
       }
     }
     rec(tree)
-  }
-
-  /**
-   * Converts an arbitrary Z3 formula to a Leon expression
-   */
-  protected[leon] def fromZ3Formula2(tree: Z3AST, nameToId : (String,TypeTree) => Identifier): Expr = {
-
-   def rec(t: Z3AST, expType: Option[TypeTree] = None): Expr = {
-      if (t == unitValue)
-        UnitLiteral
-      else z3.getASTKind(t) match {
-        case Z3AppAST(decl, args) => {
-          val argsSize = args.size
-          if (argsSize == 0 && z3IdToExpr.isDefinedAt(t)) {
-            val toRet = z3IdToExpr(t)
-            // println("Map says I should replace " + t + " by " + toRet)
-            toRet
-          } else if (isKnownDecl(decl)) {
-            val fd = functionDeclToDef(decl)
-            assert(fd.args.size == argsSize)
-            FunctionInvocation(fd, (args zip fd.args).map(p => rec(p._1, Some(p._2.tpe))))
-          } else if (argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
-            CaseClassInstanceOf(reverseADTTesters(decl), rec(args(0)))
-          } else if (argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
-            val (ccd, fid) = reverseADTFieldSelectors(decl)
-            CaseClassSelector(ccd, rec(args(0)), fid)
-          } else if (reverseADTConstructors.isDefinedAt(decl)) {
-            val ccd = reverseADTConstructors(decl)
-            assert(argsSize == ccd.fields.size)
-            CaseClass(ccd, (args zip ccd.fields).map(p => rec(p._1, Some(p._2.tpe))))
-          } else if (reverseTupleConstructors.isDefinedAt(decl)) {
-            val TupleType(subTypes) = reverseTupleConstructors(decl)
-            val rargs = args.zip(subTypes).map(p => rec(p._1, Some(p._2)))
-            Tuple(rargs)
-          } else {
-            import Z3DeclKind._
-            val rargs = args.map(rec(_))
-            z3.getDeclKind(decl) match {
-              case OpTrue => BooleanLiteral(true)
-              case OpFalse => BooleanLiteral(false)
-              case OpEq => Equals(rargs(0), rargs(1))
-              case OpITE => {
-                assert(argsSize == 3)
-                val r0 = rargs(0)
-                val r1 = rargs(1)
-                val r2 = rargs(2)
-                try {
-                  IfExpr(r0, r1, r2).setType(leastUpperBound(r1.getType, r2.getType).get)
-                } catch {
-                  case e => {
-                    println("I was asking for lub because of this.")
-                    println(t)
-                    println("which was translated as")
-                    println(IfExpr(r0, r1, r2))
-                    throw e
-                  }
-                }
-              }
-              case OpAnd => And(rargs)
-              case OpOr => Or(rargs)
-              case OpIff => Iff(rargs(0), rargs(1))
-              case OpXor => Not(Iff(rargs(0), rargs(1)))
-              case OpNot => Not(rargs(0))
-              case OpImplies => Implies(rargs(0), rargs(1))
-              case OpLE => LessEquals(rargs(0), rargs(1))
-              case OpGE => GreaterEquals(rargs(0), rargs(1))
-              case OpLT => LessThan(rargs(0), rargs(1))
-              case OpGT => GreaterThan(rargs(0), rargs(1))
-              case OpAdd => {                
-                val head :: tail = rargs
-                tail.foldLeft(head)((acc,rarg) => Plus(acc,rarg))                
-                //Plus(rargs(0), rargs(1))
-              }
-              case OpSub => {
-                assert(argsSize == 2)
-                Minus(rargs(0), rargs(1))
-              }
-              case OpUMinus => UMinus(rargs(0))
-              case OpMul => {                
-                /*assert(argsSize == 2)
-                Times(rargs(0), rargs(1))*/
-                val head :: tail = rargs
-                tail.foldLeft(head)((acc,rarg) => Times(acc,rarg))
-              }
-              case OpDiv => {
-                assert(argsSize == 2)
-                Division(rargs(0), rargs(1))
-              }
-              case OpIDiv => {
-                assert(argsSize == 2)
-                Division(rargs(0), rargs(1))
-              }
-              case OpMod => {
-                assert(argsSize == 2)
-                Modulo(rargs(0), rargs(1))
-              }
-              case OpAsArray => {
-                assert(argsSize == 0)
-                throw new Exception("encountered OpAsArray")
-              }
-              case OpUninterpreted => {
-                //this might be a variable
-                //System.err.println("Treating this as a variable : "+ decl)
-                //get the type
-                val treeType = if (decl.getRange.isBoolSort) BooleanType
-                else if (decl.getRange.isIntSort) Int32Type
-                else {
-                  System.err.println("Unknown type: " + decl.getRange)
-                  throw new CantTranslateException(t)
-                }
-                val name = decl.getName.toString
-                val id = nameToId(name,treeType)
-                Variable(id)
-              }
-              case other => {
-                System.err.println("Don't know what to do with this declKind : " + other)
-                System.err.println("The arguments are : " + args)
-                throw new CantTranslateException(t)
-              }
-            }
-          }
-        }
-
-        case Z3NumeralAST(Some(v)) => IntLiteral(v)
-        case Z3NumeralAST(None) => {
-          reporter.info("Cannot read exact model from Z3: Integer does not fit in machine word")
-          reporter.info("Exiting procedure now")
-          sys.exit(0)
-        }
-        case other @ _ => {
-          System.err.println("Don't know what this is " + other)
-          throw new CantTranslateException(t)
-        }
-      }
-    }
-    rec(tree, None)
   }
   
   // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because

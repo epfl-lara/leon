@@ -219,23 +219,19 @@ object BinomialHeap {
                   if (rank(t) < rank(head1))
                     ConsHeap(t, ConsHeap(head1, merge(tail1, h2)))
                   else 
-                    mergeWithCarry(link(t, head1), tail1, h2)
-                    //ConsHeap(link(t, head1), merge(tail1, h2))
-                  
+                    mergeWithCarry(link(t, head1), tail1, h2)                                     
                 } else if (rank(head2) < rank(head1)) {
                   
                   if (rank(t) < rank(head2))
                     ConsHeap(t, ConsHeap(head2, merge(h1, tail2)))
                   else
-                    mergeWithCarry(link(t, head2), h1, tail2)
-                    //ConsHeap(link(t, head2), merge(h1, tail2))
+                    mergeWithCarry(link(t, head2), h1, tail2)                   
                   
                 } else {
                   ConsHeap(t, mergeWithCarry(link(head1, head2), tail1, tail2))
                 }
               }
-              case NilHeap() => {
-                //merge(ConsHeap(t,NilHeap()), h1)
+              case NilHeap() => {              
                 insTree(t, h1)
               }
             }
