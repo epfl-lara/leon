@@ -29,7 +29,7 @@ class LoaderTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(fileName)) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
@@ -64,7 +64,7 @@ class LoaderTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(fileName)) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
@@ -97,11 +97,11 @@ class LoaderTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(fileName)) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
-      val varsInScope = funDef.args.map(_.id).toList //problem.as)
+      val varsInScope = funDef.params.map(_.id).toList //problem.as)
       assertTrue(varsInScope.size >= 3)
 
 	    val loader = new LeonLoader(program, varsInScope, false)

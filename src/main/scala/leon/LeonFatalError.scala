@@ -2,4 +2,8 @@
 
 package leon
 
-case class LeonFatalError(msg: String) extends Exception(msg)
+case class LeonFatalError(msg: Option[String]) extends Exception(msg.getOrElse(""))
+
+object LeonFatalError {
+  def apply(msg: String) = new LeonFatalError(Some(msg))
+}

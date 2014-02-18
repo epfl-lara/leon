@@ -102,7 +102,7 @@ case object CEGIS extends Rule("CEGIS") {
           // Prevents recursive calls
           val isRecursiveCall = sctx.functionContext match {
             case Some(cfd) =>
-              (sctx.program.transitiveCallers(cfd) + cfd) contains fd
+              (sctx.program.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
             case None =>
               false
@@ -138,7 +138,7 @@ case object CEGIS extends Rule("CEGIS") {
         }
 
         funcs.map{ tfd =>
-            val ids = tfd.args.map(vd => FreshIdentifier("c", true).setType(vd.tpe))
+            val ids = tfd.params.map(vd => FreshIdentifier("c", true).setType(vd.tpe))
             (FunctionInvocation(tfd, ids.map(Variable(_))), ids.toSet)
           }.toList
       } else {

@@ -44,7 +44,7 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
                                  And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
               val preOut = subst(inductOn -> Variable(origId), preIn)
 
-              val newFun = new FunDef(FreshIdentifier("rec", true), Nil, tpe, Seq(VarDecl(inductOn, inductOn.getType)))
+              val newFun = new FunDef(FreshIdentifier("rec", true), Nil, tpe, Seq(ValDef(inductOn, inductOn.getType)))
               val idPost = FreshIdentifier("res").setType(tpe)
 
               newFun.precondition = Some(preIn)

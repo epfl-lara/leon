@@ -72,7 +72,7 @@ trait AbstractZ3Solver
 
   def functionDefToDecl(tfd: TypedFunDef): Z3FuncDecl = {
     functions.toZ3OrCompute(tfd) {
-      val sortSeq    = tfd.args.map(vd => typeToSort(vd.tpe))
+      val sortSeq    = tfd.params.map(vd => typeToSort(vd.tpe))
       val returnSort = typeToSort(tfd.returnType)
 
       z3.mkFreshFuncDecl(tfd.id.uniqueName, sortSeq, returnSort)
@@ -661,7 +661,7 @@ trait AbstractZ3Solver
             variables.toLeon(t)
           } else if(functions containsZ3 decl) {
             val tfd = functions.toLeon(decl)
-            assert(tfd.args.size == argsSize)
+            assert(tfd.params.size == argsSize)
             FunctionInvocation(tfd, args.map(rec))
           } else if(argsSize == 1 && (reverseADTTesters contains decl)) {
             val cct = reverseADTTesters(decl)

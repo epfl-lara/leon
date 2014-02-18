@@ -166,7 +166,7 @@ object TypeTrees {
       if (tmap.isEmpty) {
         classDef.fields
       } else {
-        classDef.fields.map(vd => VarDecl(vd.id, instantiateType(vd.tpe, tmap)))
+        classDef.fields.map(vd => ValDef(vd.id, instantiateType(vd.tpe, tmap)))
       }
     }
 
@@ -179,7 +179,7 @@ object TypeTrees {
     lazy val parent = classDef.parent.map {
       pct => instantiateType(pct, (classDef.tparams zip tps).toMap) match {
         case act: AbstractClassType  => act
-        case t  => throw new LeonFatalError("Unexpected translated parent type: "+t)
+        case t  => throw LeonFatalError("Unexpected translated parent type: "+t)
       }
     }
 

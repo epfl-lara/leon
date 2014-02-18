@@ -64,6 +64,26 @@ object Trees {
   case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
     val fixedType = tfd.returnType
   }
+
+  case class MethodInvocation(rec: Expr, cd: ClassDef, tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
+    val fixedType = {
+      // We need ot instanciate the type based on the type of the function as well as receiver
+      val fdret = tfd.returnType
+      val extraMap: Map[TypeParameterDef, TypeTree] = rec.getType match {
+        case ct: ClassType =>
+          (cd.tparams zip ct.tps).toMap  
+        case _ =>
+          Map()
+      }
+
+      instantiateType(fdret, extraMap)
+    }
+  }
+
+  case class This(ct: ClassType) extends Expr with FixedType with Terminal {
+    val fixedType = ct
+  }
+
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
     val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse{
       AnyType

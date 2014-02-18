@@ -19,7 +19,7 @@ object SubtypingPhase extends LeonPhase[Program, Program] {
     pgm.definedFunctions.foreach(fd => {
 
       fd.precondition = {
-        val argTypesPreconditions = fd.args.flatMap(arg => arg.tpe match {
+        val argTypesPreconditions = fd.params.flatMap(arg => arg.tpe match {
           case cct : CaseClassType => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
           case _ => Seq()
         })
@@ -37,7 +37,7 @@ object SubtypingPhase extends LeonPhase[Program, Program] {
 
           fd.postcondition match {
             case Some((id, p)) =>
-              Some((id, And(CaseClassInstanceOf(cct, Variable(id)), p)))
+              Some((id, And(CaseClassInstanceOf(cct, Variable(id)).setPos(p), p).setPos(p)))
 
             case None =>
               val resId = FreshIdentifier("res").setType(cct)

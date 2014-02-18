@@ -132,7 +132,7 @@ class EvaluationTest extends FunSuite {
 
     for ((sctx, funDef, problem) <- forProgram(mergeSortWithTwoExamples)) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       expectResult(1) { problem.xs.size }
       val resultVariable = problem.xs.head
@@ -188,7 +188,7 @@ class EvaluationTest extends FunSuite {
 
     for ((sctx, funDef, problem) <- forProgram(mergeSortWithTwoExamples)) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       expectResult(1) { problem.xs.size }
       val resultVariable = problem.xs.head
@@ -219,7 +219,7 @@ class EvaluationTest extends FunSuite {
           import TreeOps._
 
           val newFunId = FreshIdentifier("tempIntroducedFunction")
-          val newFun = new FunDef(newFunId, Nil, funDef.returnType, funDef.args)
+          val newFun = new FunDef(newFunId, Nil, funDef.returnType, funDef.params)
           newFun.precondition = funDef.precondition
           newFun.postcondition = funDef.postcondition
 
@@ -251,7 +251,7 @@ class EvaluationTest extends FunSuite {
         val params = CodeGenParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
-          program.copy(mainModule = program.mainModule.copy(defs = program.mainModule.defs ++ pairs.map(_._2)))
+          program.copy(modules = ModuleDef(FreshIdentifier("new"), pairs.map(_._2)) :: program.modules)
           , params)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {
@@ -278,7 +278,7 @@ class EvaluationTest extends FunSuite {
           import TreeOps._
 
           val newFunId = FreshIdentifier("tempIntroducedFunction")
-          val newFun = new FunDef(newFunId, Nil, funDef.returnType, funDef.args)
+          val newFun = new FunDef(newFunId, Nil, funDef.returnType, funDef.params)
           newFun.precondition = funDef.precondition
           newFun.postcondition = funDef.postcondition
 
@@ -305,7 +305,7 @@ class EvaluationTest extends FunSuite {
         val params = CodeGenParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
-          program.copy(mainModule = program.mainModule.copy(defs = program.mainModule.defs ++ pairs.map(_._2)))
+          program.copy(modules = ModuleDef(FreshIdentifier("new"), pairs.map(_._2)) :: program.modules)
           , params)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {

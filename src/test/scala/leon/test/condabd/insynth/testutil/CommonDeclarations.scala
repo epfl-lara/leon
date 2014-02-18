@@ -9,7 +9,7 @@ import org.junit.Ignore
 import leon.synthesis.condabd.insynth.leon.loader.DeclarationFactory._
 import leon.synthesis.condabd.insynth.leon._
 
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ModuleDef }
+import leon.purescala.Definitions.{ FunDef, ValDef, Program, ModuleDef }
 import leon.purescala.Common.{ FreshIdentifier }
 import leon.purescala.TypeTrees._
 import leon.purescala.Trees._
@@ -42,7 +42,7 @@ object CommonDeclarations {
       FreshIdentifier("function1"),
       Nil,
       Int32Type,
-      List( VarDecl(FreshIdentifier("var"), BooleanType))
+      List( ValDef(FreshIdentifier("var"), BooleanType))
     )
   
   val functionBoolToIntType =
@@ -58,7 +58,7 @@ object CommonDeclarations {
       FreshIdentifier("function2"),
       Nil,
       UnitType,
-      List( VarDecl(FreshIdentifier("var"), functionBoolToIntType))
+      List( ValDef(FreshIdentifier("var"), functionBoolToIntType))
     )  
   
   val functionFun1ToUnitType =
@@ -74,7 +74,7 @@ object CommonDeclarations {
   
   val functionIntToIntFunDef= {
     val varId = FreshIdentifier("var")
-    val varDec = VarDecl(varId, Int32Type)
+    val varDec = ValDef(varId, Int32Type)
     
     val funDef = new FunDef(
       FreshIdentifier("functionRec"),
@@ -102,9 +102,9 @@ object CommonDeclarations {
       Nil,
       Int32Type,
       List(
-        VarDecl(FreshIdentifier("var_1"), Int32Type),
-        VarDecl(FreshIdentifier("var_2"), Int32Type),
-        VarDecl(FreshIdentifier("var_3"), BooleanType)
+        ValDef(FreshIdentifier("var_1"), Int32Type),
+        ValDef(FreshIdentifier("var_2"), Int32Type),
+        ValDef(FreshIdentifier("var_3"), BooleanType)
       )
     )
   

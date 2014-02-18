@@ -4,7 +4,7 @@ import leon.synthesis.condabd.insynth.leon.query.{ LeonQueryBuilder => QueryBuil
 import leon.synthesis.condabd.insynth.leon._
 import insynth.reconstruction.stream._
 
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ModuleDef }
+import leon.purescala.Definitions.{ FunDef, ValDef, Program, ModuleDef }
 import leon.purescala.Common.{ FreshIdentifier }
 import leon.purescala.TypeTrees._
 import leon.purescala.Trees.{ Variable => _, _ }

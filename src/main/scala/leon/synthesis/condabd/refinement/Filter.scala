@@ -51,7 +51,7 @@ class Filter(program: Program, holeFunDef: TypedFunDef, refiner: VariableRefiner
     
   val pureRecurentExpression: Expr = 
 	  if (holeFunDef.hasBody) {
-	    FunctionInvocation(holeFunDef, holeFunDef.args map { _.toVariable })
+	    FunctionInvocation(holeFunDef, holeFunDef.params map { _.toVariable })
 	  } else
 	    Error("Hole FunDef should have a body")
   fine("Refiner initialized. Recursive call: " + pureRecurentExpression)
@@ -61,7 +61,7 @@ class Filter(program: Program, holeFunDef: TypedFunDef, refiner: VariableRefiner
       fine("Pure recurrent expression detected: " + pureRecurentExpression)
       true
     case FunctionInvocation(`holeFunDef`, args) =>
-      (0 /: (args zip holeFunDef.args.map(_.id))) {
+      (0 /: (args zip holeFunDef.params.map(_.id))) {
         case (res, (arg, par)) if res == 0 => isLess(arg, par)
         case (res, _) => res
       } >= 0

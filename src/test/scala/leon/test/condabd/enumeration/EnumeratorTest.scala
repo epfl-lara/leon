@@ -89,7 +89,7 @@ class EnumeratorTest extends JUnitSuite {
     loader: LeonLoader, allDeclarations: List[LeonDeclaration], reporter: Reporter) = {	    
 	  val nilAbstractClassDef = program.definedClasses.find(_.id.name == "Nil").
 	  	get.asInstanceOf[CaseClassDef]
-    val listVal = funDef.args.head.toVariable
+    val listVal = funDef.params.head.toVariable
 
     val variableRefiner = 
 			new VariableRefinerStructure(loader.directSubclassesMap,
@@ -114,7 +114,7 @@ class EnumeratorTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
@@ -180,7 +180,7 @@ class EnumeratorTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
       val reporter = sctx.reporter
 
       assertEquals(1, problem.xs.size)
@@ -216,7 +216,7 @@ class EnumeratorTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "AddressesMergeAddressBooks.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
       val reporter = sctx.reporter
 
       assertEquals(1, problem.xs.size)
@@ -250,7 +250,7 @@ class EnumeratorTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "ListConcat.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
       val reporter = sctx.reporter
 
       assertEquals(1, problem.xs.size)
@@ -292,7 +292,7 @@ class EnumeratorTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
       val reporter = sctx.reporter
 
       assertEquals(1, problem.xs.size)
@@ -338,7 +338,7 @@ class EnumeratorTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(lesynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
@@ -386,7 +386,7 @@ class EnumeratorTest extends JUnitSuite {
       file <- files;
     	(sctx, funDef, problem) <- forFile(file)) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
       val reporter = sctx.reporter
 
       assertEquals(1, problem.xs.size)

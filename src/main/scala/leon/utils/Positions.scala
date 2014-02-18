@@ -12,15 +12,25 @@ abstract class Position {
     (this.file == that.file) && (this.line < that.line || this.col < that.col)
   }
 
-  override def toString = line+":"+col
-  def isDefined = true
+  def isDefined: Boolean
 }
 
-case class OffsetPosition(line: Int, col: Int, point: Int, file: File) extends Position
+abstract class DefinedPosition extends Position {
+  override def toString = line+":"+col
+  override def isDefined = true
+
+  def focusBegin: OffsetPosition
+  def focusEnd: OffsetPosition
+}
+
+case class OffsetPosition(line: Int, col: Int, point: Int, file: File) extends DefinedPosition {
+  def focusBegin = this
+  def focusEnd = this
+}
 
 case class RangePosition(lineFrom: Int, colFrom: Int, pointFrom: Int,
                          lineTo: Int, colTo: Int, pointTo: Int,
-                         file: File) extends Position {
+                         file: File) extends DefinedPosition {
 
   def focusEnd = OffsetPosition(lineTo, colTo, pointTo, file)
   def focusBegin = OffsetPosition(lineFrom, colFrom, pointFrom, file)

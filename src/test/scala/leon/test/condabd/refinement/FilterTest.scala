@@ -109,10 +109,10 @@ class FilterTest extends JUnitSuite {
 	  val filter = this.filter
 	    import filter.isLess
 	    
-	    assertEquals(2, tfunDef.args.size)
+	    assertEquals(2, tfunDef.params.size)
 	    
-	    val variable1 = tfunDef.args.head
-	    val variable2 = tfunDef.args(1)
+	    val variable1 = tfunDef.params.head
+	    val variable2 = tfunDef.params(1)
 	    
 	    assertEquals(+1, isLess(cons(List(UnitLiteral, variable1.toVariable)), variable1.id))
 	    assertEquals(+1, isLess(cons(List(UnitLiteral, variable1.toVariable)), variable2.id))
@@ -132,14 +132,14 @@ class FilterTest extends JUnitSuite {
 	  val filter = this.filter
     import filter.isCallAvoidableBySize
     
-    assertEquals(2, tfunDef.args.size)
+    assertEquals(2, tfunDef.params.size)
     
-    val arg1 = tfunDef.args.head.toVariable
-    val arg2 = tfunDef.args(1).toVariable
+    val arg1 = tfunDef.params.head.toVariable
+    val arg2 = tfunDef.params(1).toVariable
     
     def makeFunctionCall(arg1: Expr, arg2: Expr) = FunctionInvocation(tfunDef, Seq(arg1, arg2)) 
     
-    val arguments = tfunDef.args.map(_.id).toList
+    val arguments = tfunDef.params.map(_.id).toList
     
     assertEquals(true, isCallAvoidableBySize(makeFunctionCall(nil, nil), arguments))
     assertEquals(true, isCallAvoidableBySize(makeFunctionCall(arg1, arg2), arguments))
@@ -159,10 +159,10 @@ class FilterTest extends JUnitSuite {
 	  val filter = this.filter
     import filter.hasDoubleRecursion
     
-    assertEquals(2, tfunDef.args.size)
+    assertEquals(2, tfunDef.params.size)
     
-    val arg1 = tfunDef.args.head.toVariable
-    val arg2 = tfunDef.args(1).toVariable
+    val arg1 = tfunDef.params.head.toVariable
+    val arg2 = tfunDef.params(1).toVariable
     
     def makeFunctionCall(arg1: Expr, arg2: Expr) = FunctionInvocation(tfunDef, Seq(arg1, arg2)) 
     
@@ -187,14 +187,14 @@ class FilterTest extends JUnitSuite {
     val filter = this.filter
     import filter.isAvoidable
     
-    assertEquals(2, tfunDef.args.size)
+    assertEquals(2, tfunDef.params.size)
     
-    val arg1 = tfunDef.args.head.toVariable
-    val arg2 = tfunDef.args(1).toVariable
+    val arg1 = tfunDef.params.head.toVariable
+    val arg2 = tfunDef.params(1).toVariable
     
     def makeFunctionCall(arg1: Expr, arg2: Expr) = FunctionInvocation(tfunDef, Seq(arg1, arg2))  
     
-    val arguments = tfunDef.args.map(_.id).toList
+    val arguments = tfunDef.params.map(_.id).toList
     
     assertEquals(true, isAvoidable(makeFunctionCall(nil, nil), arguments))
     assertEquals(true, isAvoidable(makeFunctionCall(arg1, arg2), arguments))
@@ -216,9 +216,9 @@ class FilterTest extends JUnitSuite {
     val filter = this.filter
     import filter.isAvoidable
     
-    val arg1 = funDef.args.head.toVariable
-    val arg2 = tfunDef.args(1).toVariable
-    val arguments = tfunDef.args.map(_.id).toList
+    val arg1 = funDef.params.head.toVariable
+    val arg2 = tfunDef.params(1).toVariable
+    val arguments = tfunDef.params.map(_.id).toList
     
     val tpe = cons(List(Error("temp"))).getType match {
       case cct: CaseClassType => cct

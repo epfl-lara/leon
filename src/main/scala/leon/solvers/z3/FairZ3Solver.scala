@@ -83,7 +83,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
             val (cses, default) = p._2 
             val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
                             And(
-                              q._1.zip(tfd.args).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
+                              q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
                             ),
                             fromZ3Formula(model, q._2),
                             expr))
@@ -145,7 +145,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   private def getTemplate(body: Expr): FunctionTemplate = {
     exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
+      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => ValDef(id, id.getType)))
       fakeFunDef.body = Some(body)
 
       val res = FunctionTemplate.mkTemplate(this, fakeFunDef.typed, false)
@@ -226,7 +226,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       val template = getTemplate(expr)
 
 
-      val z3args = for (vd <- template.tfd.args) yield {
+      val z3args = for (vd <- template.tfd.params) yield {
         variables.getZ3(Variable(vd.id)) match {
           case Some(ast) =>
             ast

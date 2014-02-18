@@ -98,7 +98,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
       val evArgs = args.map(a => se(a))
 
       // build a mapping for the function...
-      val frame = rctx.withVars((tfd.args.map(_.id) zip evArgs).toMap)
+      val frame = rctx.withVars((tfd.params.map(_.id) zip evArgs).toMap)
       
       if(tfd.hasPrecondition) {
         se(matchToIfThenElse(tfd.precondition.get))(frame, gctx) match {

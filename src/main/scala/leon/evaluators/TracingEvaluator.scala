@@ -47,7 +47,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
           val evArgs = args.map(a => se(a))
 
           // build a mapping for the function...
-          val frame = new TracingRecContext((tfd.args.map(_.id) zip evArgs).toMap, rctx.tracingFrames-1)
+          val frame = new TracingRecContext((tfd.params.map(_.id) zip evArgs).toMap, rctx.tracingFrames-1)
 
           if(tfd.hasPrecondition) {
             se(matchToIfThenElse(tfd.precondition.get))(frame, gctx) match {

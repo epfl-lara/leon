@@ -56,7 +56,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 			      case _ => fail("could not extract isEmpty"); null
 			    }
 			    
-		    val listVal = funDef.args.head.toVariable
+		    val listVal = funDef.params.head.toVariable
 			  val listLeonDeclaration = LeonDeclaration(
 			    ImmediateExpression( "tempVar", listVal ), 
 			    TypeTransformer(listAbstractClass), listAbstractClass
@@ -112,7 +112,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 			      case _ => fail("could not extract hasContent"); null
 			    }
 			    
-		    val listVal = funDef.args.head.toVariable
+		    val listVal = funDef.params.head.toVariable
 			  val listLeonDeclaration = LeonDeclaration(
 			    ImmediateExpression( "tempVar", listVal ), 
 			    TypeTransformer(listAbstractClass), listAbstractClass
@@ -176,7 +176,7 @@ class VariableSolverRefinerTest extends FunSpec with GivenWhenThen {
 			      case _ => fail("could not extract isEmpty"); null
 			    }
 			    
-		    val listVal = funDef.args.head.toVariable
+		    val listVal = funDef.params.head.toVariable
 			  val listLeonDeclaration = LeonDeclaration(
 			    ImmediateExpression( "tempVar", listVal ), 
 			    TypeTransformer(listAbstractClass), listAbstractClass

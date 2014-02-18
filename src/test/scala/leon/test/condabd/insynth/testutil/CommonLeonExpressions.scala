@@ -1,6 +1,6 @@
 package leon.test.condabd.insynth.testutil
 
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ModuleDef }
+import leon.purescala.Definitions.{ FunDef, ValDef, Program, ModuleDef }
 import leon.purescala.Common.{ FreshIdentifier }
 import leon.purescala.TypeTrees._
 import leon.purescala.Trees.{ Variable => _, _ }

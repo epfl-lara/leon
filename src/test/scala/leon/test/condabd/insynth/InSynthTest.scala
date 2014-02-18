@@ -95,7 +95,7 @@ class InSynthTest extends JUnitSuite {
   	
     for ((sctx, funDef, problem) <- forFile(insynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
@@ -141,7 +141,7 @@ class InSynthTest extends JUnitSuite {
       	
     for ((sctx, funDef, problem) <- forFile(insynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
@@ -187,7 +187,7 @@ class InSynthTest extends JUnitSuite {
       	
     for ((sctx, funDef, problem) <- forFile(insynthTestDir + "Addresses.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val varsInScope = problem.as
@@ -224,11 +224,11 @@ class InSynthTest extends JUnitSuite {
       	
     for ((sctx, funDef, problem) <- forFile(insynthTestDir + "AddressesWithAddition.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
-      // note problem.as does not contain function arguments, thus we use funDef.args
+      // note problem.as does not contain function arguments, thus we use funDef.params
       //val varsInScope = problem.as
 
 	    val loader = new LeonLoader(program, arguments.toList, false)
@@ -262,11 +262,11 @@ class InSynthTest extends JUnitSuite {
       	
     for ((sctx, funDef, problem) <- forFile(insynthTestDir + "AddressesWithAddition.scala")) {
       val program = sctx.program
-      val arguments = funDef.args.map(_.id)
+      val arguments = funDef.params.map(_.id)
 
       assertEquals(1, problem.xs.size)
       val resultVariable = problem.xs.head
-      // note problem.as does not contain function arguments, thus we use funDef.args
+      // note problem.as does not contain function arguments, thus we use funDef.params
       //val varsInScope = problem.as
 
 	    val loader = new LeonLoader(program, arguments.toList, false)
