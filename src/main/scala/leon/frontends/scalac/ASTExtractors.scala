@@ -575,14 +575,6 @@ trait ASTExtractors {
       }
     }
 
-    // used for case classes selectors.
-    object ExParameterlessMethodCall {
-      def unapply(tree: Select): Option[(Tree,Name)] = tree match {
-        case Select(lhs, n) => Some((lhs, n))
-        case _ => None
-      }
-    }
-
     object ExPatternMatching {
       def unapply(tree: Match): Option[(Tree,List[CaseDef])] =
         if(tree != null) Some((tree.selector, tree.cases)) else None

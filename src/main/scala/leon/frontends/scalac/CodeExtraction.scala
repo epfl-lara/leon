@@ -667,22 +667,6 @@ trait CodeExtraction extends ASTExtractors {
               outOfSubsetError(current, "Unknown case object "+sym.name)
           }
 
-
-        case ExParameterlessMethodCall(t,n) if extractTree(t).getType.isInstanceOf[CaseClassType] =>
-          val selector = extractTree(t)
-          val selType = selector.getType.asInstanceOf[CaseClassType]
-
-
-          val fieldID = selType.fields.find(_.id.name == n.toString) match {
-            case None =>
-              outOfSubsetError(current, "Invalid method or field invocation (not a case class arg?)")
-
-            case Some(vd) =>
-              vd.id
-          }
-
-          CaseClassSelector(selType, selector, fieldID)
-
         case ExTuple(tpes, exprs) =>
           val tupleExprs = exprs.map(e => extractTree(e))
           val tupleType = TupleType(tupleExprs.map(expr => expr.getType))
@@ -1111,6 +1095,12 @@ trait CodeExtraction extends ASTExtractors {
               val newTps = tps.map(t => extractType(t.tpe))
 
               MethodInvocation(rec, cd, fd.typed(newTps), args)
+
+            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.fields.exists(_.id.name == name) =>
+
+              val fieldID = cct.fields.find(_.id.name == name).get.id
+
+              CaseClassSelector(cct, rec, fieldID)
 
             case (IsTyped(_, SetType(base)), "min", Nil) =>
               SetMin(rrec).setType(base)
