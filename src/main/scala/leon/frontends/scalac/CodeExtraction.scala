@@ -234,6 +234,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private var isMethod = Set[Symbol]()
+    private var methodToClass = Map[FunDef, LeonClassDef]()
 
     def extractClassDef(sym: Symbol, args: Seq[(String, Tree)], tmpl: Template): LeonClassDef = {
       val id = FreshIdentifier(sym.name.toString).setPos(sym.pos)
@@ -318,6 +319,7 @@ trait CodeExtraction extends ASTExtractors {
           val fd = defineFunDef(fsym)(defCtx)
 
           isMethod += fsym
+          methodToClass += fd -> cd
 
           cd.registerMethod(fd)
 
@@ -1040,7 +1042,7 @@ trait CodeExtraction extends ASTExtractors {
               IfExpr(r1, r2, r3).setType(lub)
 
             case None =>
-              outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types")
+              outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
           }
 
         case ExIsInstanceOf(tt, cc) => {
@@ -1104,10 +1106,11 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(rec, ct: ClassType), _, args) if isMethod(sym) =>
               val fd = getFunDef(sym, c.pos)
+              val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t.tpe))
 
-              MethodInvocation(rec, fd.typed(newTps), args)
+              MethodInvocation(rec, cd, fd.typed(newTps), args)
 
             case (IsTyped(_, SetType(base)), "min", Nil) =>
               SetMin(rrec).setType(base)

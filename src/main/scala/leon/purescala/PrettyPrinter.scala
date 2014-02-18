@@ -152,7 +152,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         sb.append(".")
         pp(id, p)
 
-      case MethodInvocation(rec, tfd, args) =>
+      case MethodInvocation(rec, _, tfd, args) =>
         pp(rec, p)
         sb.append(".")
         pp(tfd.id, p)

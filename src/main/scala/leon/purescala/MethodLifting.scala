@@ -68,7 +68,7 @@ object MethodLifting extends TransformationPhase {
             case None =>
               ctx.reporter.fatalError("`this` used out of a method context?!?")
           }
-        case mi @ MethodInvocation(rec, tfd, args) =>
+        case mi @ MethodInvocation(rec, cd, tfd, args) =>
           rec match {
             case IsTyped(rec, ct: ClassType) =>
               Some(FunctionInvocation(mdToFds(tfd.fd).typed(ct.tps ++ tfd.tps), rec +: args).setPos(mi))
