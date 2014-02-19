@@ -132,8 +132,9 @@ Using Leon in Eclipse
 
 Type: ```sbt eclipse```
 
-This should create all the necessary metadata about the Leon Eclipse project inside the Leon directory.
-You should now be able to [import the project](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
+This should create all the necessary metadata about the *Leon Eclipse project* inside the Leon directory.
+Specifically, two Eclipse projects should be generated: the main *Leon* project is generated in the Leon root directory, while the *Leon library* is generated in the ```library``` directory.
+You should now be able to [import the projects](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) (both of them) into your Eclipse workspace.
 
 *Note*: Leon uses Scala, thus you should have the [Scala IDE](http://scala-ide.org/) plugin installed.
 
