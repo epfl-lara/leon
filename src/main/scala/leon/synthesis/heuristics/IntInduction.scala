@@ -24,12 +24,13 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
         val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
 
         val newPhi     = subst(origId -> Variable(inductOn), p.phi)
+        val newPc      = subst(origId -> Variable(inductOn), p.pc)
         val postCondGT = substAll(postXsMap + (origId -> Minus(Variable(inductOn), IntLiteral(1))), p.phi)
         val postCondLT = substAll(postXsMap + (origId -> Plus(Variable(inductOn), IntLiteral(1))), p.phi)
 
-        val subBase = Problem(List(), p.pc, subst(origId -> IntLiteral(0), p.phi), p.xs)
-        val subGT   = Problem(inductOn :: postXs, And(Seq(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, p.pc)), newPhi, p.xs)
-        val subLT   = Problem(inductOn :: postXs, And(Seq(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, p.pc)), newPhi, p.xs)
+        val subBase = Problem(List(), subst(origId -> IntLiteral(0), p.pc), subst(origId -> IntLiteral(0), p.phi), p.xs)
+        val subGT   = Problem(inductOn :: postXs, And(Seq(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, newPc)), newPhi, p.xs)
+        val subLT   = Problem(inductOn :: postXs, And(Seq(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, newPc)), newPhi, p.xs)
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case List(base, gt, lt) =>
@@ -43,7 +44,7 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
                                  And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
               val preOut = subst(inductOn -> Variable(origId), preIn)
 
-              val newFun = new FunDef(FreshIdentifier("rec", true), tpe, Seq(VarDecl(inductOn, inductOn.getType)))
+              val newFun = new FunDef(FreshIdentifier("rec", true), Nil, tpe, Seq(VarDecl(inductOn, inductOn.getType)))
               val idPost = FreshIdentifier("res").setType(tpe)
 
               newFun.precondition = Some(preIn)
@@ -53,12 +54,12 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
                 IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
                   base.toExpr,
                 IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
-                  LetTuple(postXs, FunctionInvocation(newFun, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
-                , LetTuple(postXs, FunctionInvocation(newFun, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
+                  LetTuple(postXs, FunctionInvocation(newFun.typed, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
+                , LetTuple(postXs, FunctionInvocation(newFun.typed, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
               )
 
 
-              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun, Seq(Variable(origId)))))
+              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun.typed, Seq(Variable(origId)))))
             }
           case _ =>
             None

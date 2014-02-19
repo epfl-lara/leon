@@ -17,11 +17,12 @@ case object ADTSplit extends Rule("ADT Split.") {
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 200L))
 
     val candidates = p.as.collect {
-      case IsTyped(id, AbstractClassType(cd)) =>
+      case IsTyped(id, act @ AbstractClassType(cd, tpes)) =>
 
         val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
-            val toSat = And(p.pc, CaseClassInstanceOf(ccd, Variable(id)))
+            val cct = CaseClassType(ccd, tpes)
+            val toSat = And(p.pc, CaseClassInstanceOf(cct, Variable(id)))
 
             val isImplied = solver.solveSAT(toSat) match {
               case (Some(false), _) => true
@@ -40,25 +41,27 @@ case object ADTSplit extends Rule("ADT Split.") {
         val cases = optCases.flatten
 
         if (!cases.isEmpty) {
-          Some((id, cases))
+          Some((id, act, cases))
         } else {
           None
         }
     }
 
     candidates.collect{ _ match {
-      case Some((id, cases)) =>
+      case Some((id, act, cases)) =>
         val oas = p.as.filter(_ != id)
 
         val subInfo = for(ccd <- cases) yield {
-           val args   = ccd.fieldsIds.map(id => FreshIdentifier(id.name, true).setType(id.getType)).toList
+           val cct    = CaseClassType(ccd, act.tps)
 
-           val subPhi = subst(id -> CaseClass(ccd, args.map(Variable(_))), p.phi)
-           val subPC  = subst(id -> CaseClass(ccd, args.map(Variable(_))), p.pc)
+           val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, true).setType(vd.tpe) }.toList
+
+           val subPhi = subst(id -> CaseClass(cct, args.map(Variable(_))), p.phi)
+           val subPC  = subst(id -> CaseClass(cct, args.map(Variable(_))), p.pc)
            val subProblem = Problem(args ::: oas, subPC, subPhi, p.xs)
-           val subPattern = CaseClassPattern(None, ccd, args.map(id => WildcardPattern(Some(id))))
+           val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
 
-           (ccd, subProblem, subPattern)
+           (cct, subProblem, subPattern)
         }
 
 
@@ -66,8 +69,8 @@ case object ADTSplit extends Rule("ADT Split.") {
           case sols =>
             var globalPre = List[Expr]()
 
-            val cases = for ((sol, (ccd, problem, pattern)) <- (sols zip subInfo)) yield {
-              globalPre ::= And(CaseClassInstanceOf(ccd, Variable(id)), sol.pre)
+            val cases = for ((sol, (cct, problem, pattern)) <- (sols zip subInfo)) yield {
+              globalPre ::= And(CaseClassInstanceOf(cct, Variable(id)), sol.pre)
 
               SimpleCase(pattern, sol.term)
             }

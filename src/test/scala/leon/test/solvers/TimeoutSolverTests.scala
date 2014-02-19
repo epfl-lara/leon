@@ -4,6 +4,7 @@ package leon.test
 package solvers
 
 import leon._
+import leon.utils.Interruptible
 import leon.solvers._
 import leon.solvers.combinators._
 import leon.purescala.Common._
@@ -12,13 +13,13 @@ import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
 class TimeoutSolverTests extends LeonTestSuite {
-  private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with TimeoutSolver {
+  private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with Interruptible{
     val name = "Idiotic"
     val description = "Loops"
 
     var interrupted = false
 
-    def innerCheck = {
+    override def check: Option[Boolean] = {
       while(!interrupted) {
         Thread.sleep(100)
       }
@@ -41,7 +42,7 @@ class TimeoutSolverTests extends LeonTestSuite {
   }
 
   private def getTOSolver : SolverFactory[Solver] = {
-    SolverFactory(() => new IdioticSolver(testContext, Program.empty).setTimeout(1000L))
+    SolverFactory(() => (new IdioticSolver(testContext, Program.empty) with TimeoutSolver).setTimeout(1000L))
   }
 
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {

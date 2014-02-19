@@ -152,14 +152,14 @@ class EvaluationTest extends FunSuite {
       }
 
       val body1 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun1").get.body.get)
 
       val body2 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun2").get.body.get)
 
-      val evaluationStrategy = new CodeGenEvaluationStrategy(program, funDef, sctx.context, 500)
+      val evaluationStrategy = new CodeGenEvaluationStrategy(program, funDef.typed, sctx.context, 500)
 
       val candidates = IndexedSeq(body1, body2) map (b => Output(b, 0))
 
@@ -206,10 +206,10 @@ class EvaluationTest extends FunSuite {
       }
 
       val body1 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun1").get.body.get)
       val body2 =
-        searchAndReplace(replaceFun)(
+        postMap(replaceFun)(
           program.definedFunctions.find(_.id.name == "testFun2").get.body.get)
 
       // evaluate expressions with let
@@ -219,16 +219,16 @@ class EvaluationTest extends FunSuite {
           import TreeOps._
 
           val newFunId = FreshIdentifier("tempIntroducedFunction")
-          val newFun = new FunDef(newFunId, funDef.returnType, funDef.args)
+          val newFun = new FunDef(newFunId, Nil, funDef.returnType, funDef.args)
           newFun.precondition = funDef.precondition
           newFun.postcondition = funDef.postcondition
 
           def replaceFunDef(expr: Expr) = expr match {
             case FunctionInvocation(`funDef`, args) =>
-              Some(FunctionInvocation(newFun, args))
+              Some(FunctionInvocation(newFun.typed, args))
             case _ => None
           }
-          val newBody = searchAndReplace(replaceFunDef)(expr)
+          val newBody = postMap(replaceFunDef)(expr)
 
           newFun.body = Some(newBody)
 
@@ -251,7 +251,7 @@ class EvaluationTest extends FunSuite {
         val params = CodeGenParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
-          program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2)))
+          program.copy(mainModule = program.mainModule.copy(defs = program.mainModule.defs ++ pairs.map(_._2)))
           , params)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {
@@ -278,16 +278,16 @@ class EvaluationTest extends FunSuite {
           import TreeOps._
 
           val newFunId = FreshIdentifier("tempIntroducedFunction")
-          val newFun = new FunDef(newFunId, funDef.returnType, funDef.args)
+          val newFun = new FunDef(newFunId, Nil, funDef.returnType, funDef.args)
           newFun.precondition = funDef.precondition
           newFun.postcondition = funDef.postcondition
 
           def replaceFunDef(expr: Expr) = expr match {
             case FunctionInvocation(`funDef`, args) =>
-              Some(FunctionInvocation(newFun, args))
+              Some(FunctionInvocation(newFun.typed, args))
             case _ => None
           }
-          val newBody = searchAndReplace(replaceFunDef)(expr)
+          val newBody = postMap(replaceFunDef)(expr)
 
           newFun.body = Some(newBody)
 
@@ -305,7 +305,7 @@ class EvaluationTest extends FunSuite {
         val params = CodeGenParams(maxFunctionInvocations = 500, checkContracts = true)
 
         val evaluator = new CodeGenEvaluator(sctx.context,
-          program.copy(mainObject = program.mainObject.copy(defs = program.mainObject.defs ++ pairs.map(_._2)))
+          program.copy(mainModule = program.mainModule.copy(defs = program.mainModule.defs ++ pairs.map(_._2)))
           , params)
 
         val eval1 = (for (ind <- 0 until inputExamples.size) yield {

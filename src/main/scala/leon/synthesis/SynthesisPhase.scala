@@ -7,6 +7,7 @@ import purescala.TreeOps._
 import solvers.z3._
 
 import purescala.Trees._
+import purescala.Common._
 import purescala.ScalaPrinter
 import purescala.Definitions.{Program, FunDef}
 
@@ -99,7 +100,11 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     }
 
     if (options.manualSearch) {
-      options = options.copy(rules = rules.AsChoose +: options.rules)
+      options = options.copy(
+        rules = rules.AsChoose +:
+                condabd.rules.ConditionAbductionSynthesisTwoPhase +:
+                options.rules
+      )
     }
 
     options
@@ -114,10 +119,19 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     var chooses = ChooseInfo.extractFromProgram(ctx, p, options).filter(toProcess)
 
+    var functions = Set[FunDef]()
+
     val results = chooses.map { ci =>
       val (sol, isComplete) = ci.synthesizer.synthesize()
 
-      ci -> sol.toSimplifiedExpr(ctx, p)
+      val fd = ci.fd
+
+      val expr = sol.toSimplifiedExpr(ctx, p)
+      fd.body = fd.body.map(b => replace(Map(ci.ch -> expr), b))
+
+      functions += fd
+
+      ci -> expr
     }.toMap
 
     if (options.inPlace) {
@@ -125,15 +139,12 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         new FileInterface(ctx.reporter).updateFile(file, results)
       }
     } else {
-      for ((ci, ex) <- results) {
-        val middle = " In "+ci.fd.id.toString+", synthesis of: "
-
+      for (fd <- functions) {
+        val middle = " "+fd.id.name+" "
         val remSize = (80-middle.length)
-
         ctx.reporter.info("-"*math.floor(remSize/2).toInt+middle+"-"*math.ceil(remSize/2).toInt)
-        ctx.reporter.info(ci.ch)
-        ctx.reporter.info("-"*35+" Result: "+"-"*36)
-        ctx.reporter.info(ScalaPrinter(ex))
+
+        ctx.reporter.info(ScalaPrinter(fd))
         ctx.reporter.info("")
       }
     }

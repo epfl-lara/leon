@@ -85,7 +85,7 @@ abstract class Rule(val name: String) {
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
 
-  implicit val debugSection = DebugSectionSynthesis
+  implicit val debugSection = leon.utils.DebugSectionSynthesis
 
   val forward: List[Solution] => Option[Solution] = {
     case List(s) =>

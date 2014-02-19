@@ -63,7 +63,7 @@ object Extractors {
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
-      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPosInfo(mg)))
+      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPos(mg)))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
@@ -84,7 +84,7 @@ object Extractors {
 
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
-      case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPosInfo(fi))))
+      case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
@@ -188,83 +188,6 @@ object Extractors {
 
   trait NAryExtractable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)];
-  }
-
-  object SimplePatternMatching {
-    def isSimple(me: MatchExpr) : Boolean = unapply(me).isDefined
-
-    // (scrutinee, classtype, list((caseclassdef, variable, list(variable), rhs)))
-    def unapply(e: MatchExpr) : Option[(Expr,ClassType,Seq[(CaseClassDef,Identifier,Seq[Identifier],Expr)])] = {
-      val MatchExpr(scrutinee, cases) = e
-      val sType = scrutinee.getType
-
-      if(sType.isInstanceOf[TupleType]) {
-        None
-      } else if(sType.isInstanceOf[AbstractClassType]) {
-        val cCD = sType.asInstanceOf[AbstractClassType].classDef
-        if(cases.size == cCD.knownChildren.size && cases.forall(!_.hasGuard)) {
-          var seen = Set.empty[ClassTypeDef]
-          
-          var lle : List[(CaseClassDef,Identifier,List[Identifier],Expr)] = Nil
-          for(cse <- cases) {
-            cse match {
-              case SimpleCase(CaseClassPattern(binder, ccd, subPats), rhs) if subPats.forall(_.isInstanceOf[WildcardPattern]) => {
-                seen = seen + ccd
-
-                val patID : Identifier = if(binder.isDefined) {
-                  binder.get
-                } else {
-                  FreshIdentifier("cse", true).setType(CaseClassType(ccd))
-                }
-
-                val argIDs : List[Identifier] = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
-                  p._2.binder.get
-                } else {
-                  FreshIdentifier("pat", true).setType(p._1.tpe)
-                }).toList
-
-                lle = (ccd, patID, argIDs, rhs) :: lle
-              }
-              case _ => ;
-            }
-          }
-          lle = lle.reverse
-
-          if(seen.size == cases.size) {
-            Some((scrutinee, sType.asInstanceOf[AbstractClassType], lle))
-          } else {
-            None
-          }
-        } else {
-          None
-        }
-      } else {
-        val cCD = sType.asInstanceOf[CaseClassType].classDef
-        if(cases.size == 1 && !cases(0).hasGuard) {
-          val SimpleCase(pat,rhs) = cases(0).asInstanceOf[SimpleCase]
-          pat match {
-            case CaseClassPattern(binder, ccd, subPats) if (ccd == cCD && subPats.forall(_.isInstanceOf[WildcardPattern])) => {
-              val patID : Identifier = if(binder.isDefined) {
-                binder.get
-              } else {
-                FreshIdentifier("cse", true).setType(CaseClassType(ccd))
-              }
-
-              val argIDs : List[Identifier] = (ccd.fields zip subPats.map(_.asInstanceOf[WildcardPattern])).map(p => if(p._2.binder.isDefined) {
-                p._2.binder.get
-              } else {
-                FreshIdentifier("pat", true).setType(p._1.tpe)
-              }).toList
-
-              Some((scrutinee, CaseClassType(cCD), List((cCD, patID, argIDs, rhs))))
-            }
-            case _ => None
-          }
-        } else {
-          None
-        }
-      }
-    }
   }
 
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)

@@ -33,15 +33,15 @@ class DNFSolver(val context: LeonContext,
 
     var result : Option[Boolean] = None
 
-    debugS("Before NNF:\n" + expr)
+    debugS("Before NNF:\n" + expr.asString)
 
     val nnfed = nnf(expr, false)
 
-    debugS("After NNF:\n" + nnfed)
+    debugS("After NNF:\n" + nnfed.asString)
 
     val dnfed = dnf(nnfed)
 
-    debugS("After DNF:\n" + dnfed)
+    debugS("After DNF:\n" + dnfed.asString)
 
     val candidates : Seq[Expr] = dnfed match {
       case Or(es) => es

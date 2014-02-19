@@ -2,6 +2,8 @@
 
 package leon
 
+import utils._
+
 import purescala.Definitions.Definition
 import purescala.Trees.Expr
 import purescala.PrettyPrinter
@@ -85,25 +87,6 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
   def debugFunction(msg: Any)   = output(reline(debugPfx, msg.toString))
   def fatalErrorFunction(msg: Any) = {
     output(reline(fatalPfx, msg.toString));
-    throw LeonFatalError()
+    throw LeonFatalError(msg.toString)
   }
-}
-
-@implicitNotFound("No implicit debug section found in scope. You need define an implicit DebugSection to use debug/ifDebug")
-sealed abstract class DebugSection(val name: String, val mask: Int)
-
-case object DebugSectionSolver       extends DebugSection("solver",       1 << 0)
-case object DebugSectionSynthesis    extends DebugSection("synthesis",    1 << 1)
-case object DebugSectionTimers       extends DebugSection("timers",       1 << 2)
-case object DebugSectionOptions      extends DebugSection("options",      1 << 3)
-case object DebugSectionVerification extends DebugSection("verification", 1 << 4)
-
-object DebugSections {
-  val all = Set[DebugSection](
-    DebugSectionSolver,
-    DebugSectionSynthesis,
-    DebugSectionTimers,
-    DebugSectionOptions,
-    DebugSectionVerification
-  )
 }

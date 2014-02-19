@@ -19,20 +19,17 @@ object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Program, Map[
     def noop(u:Expr, u2: Expr) = u
 
 
-    def actOnChoose(f: FunDef)(e: Expr, a: Expr): Expr = e match {
+    def actOnChoose(f: FunDef)(e: Expr) = e match {
       case ch @ Choose(vars, pred) =>
         val problem = Problem.fromChoose(ch)
 
         results += f -> (results.getOrElse(f, Seq()) :+ problem)
-
-        a
       case _ =>
-        a
     }
 
     // Look for choose()
     for (f <- p.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) {
-      treeCatamorphism(x => x, noop, actOnChoose(f), f.body.get)
+      preTraversal(actOnChoose(f))(f.body.get)
     }
 
     (p, results)

@@ -17,19 +17,19 @@ object Candidate {
   
   def getFreshResultVariable(tpe: TypeTree) = _freshResultVariable = FreshIdentifier("result", true).setType(tpe)
   
-  def makeDefaultCandidates(candidatePairs: IndexedSeq[Output], bodyBuilder: Expr => Expr, funDef: FunDef) = {
-    getFreshResultVariable(funDef.body.get.getType)
+  def makeDefaultCandidates(candidatePairs: IndexedSeq[Output], bodyBuilder: Expr => Expr, tfd: TypedFunDef) = {
+    getFreshResultVariable(tfd.returnType)
     candidatePairs map {
       pair =>
-      	DefaultCandidate(pair.getSnippet, bodyBuilder(pair.getSnippet), pair.getWeight, funDef)
+      	DefaultCandidate(pair.getSnippet, bodyBuilder(pair.getSnippet), pair.getWeight, tfd)
     }
   }
   
-  def makeCodeGenCandidates(candidatePairs: IndexedSeq[Output], bodyBuilder: Expr => Expr, funDef: FunDef) = {
-    getFreshResultVariable(funDef.body.get.getType)
+  def makeCodeGenCandidates(candidatePairs: IndexedSeq[Output], bodyBuilder: Expr => Expr, tfd: TypedFunDef) = {
+    getFreshResultVariable(tfd.returnType)
     candidatePairs map {
       pair =>
-      	CodeGenCandidate(pair.getSnippet, bodyBuilder(pair.getSnippet), pair.getWeight, funDef)
+      	CodeGenCandidate(pair.getSnippet, bodyBuilder(pair.getSnippet), pair.getWeight, tfd)
     }
   }
 }
@@ -42,7 +42,7 @@ abstract class Candidate(weight: Weight) {
   def getWeight = weight
 }
 
-case class DefaultCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunDef: FunDef)
+case class DefaultCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, tfd: TypedFunDef)
 	extends Candidate(weight) with HasLogger {
   import Candidate._
     
@@ -54,7 +54,7 @@ case class DefaultCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
     assert(bodyExpr.getType != Untyped)
     val resFresh = freshResultVariable//.setType(expr.getType)
 
-    val (id, post) = holeFunDef.postcondition.get
+    val (id, post) = tfd.postcondition.get
 
     // body can contain (self-)recursive calls
     Let(resFresh, bodyExpr,
@@ -64,15 +64,15 @@ case class DefaultCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
   
   override def prepareExpression = {
     // set appropriate body to the function for the correct evaluation due to recursive calls
-    holeFunDef.body = Some(bodyExpr)
+    tfd.fd.body = Some(bodyExpr)
     
-//    finest("going to evaluate candidate for: " + holeFunDef)
+//    finest("going to evaluate candidate for: " + tfd)
 //    finest("going to evaluate candidate for: " + expressionToEvaluate)
     expressionToEvaluate
   }
 }
 
-case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunDef: FunDef)
+case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, tfd: TypedFunDef)
 	extends Candidate(weight) with HasLogger {
   import Candidate._
     
@@ -80,18 +80,19 @@ case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
 
   lazy val (expressionToEvaluate, newFunDef) = {
     import TreeOps._
+    val fd = tfd.fd
     
     val newFunId = FreshIdentifier("tempIntroducedFunction")
-    val newFun = new FunDef(newFunId, holeFunDef.returnType, holeFunDef.args)
-    newFun.precondition = holeFunDef.precondition
-    newFun.postcondition = holeFunDef.postcondition
+    val newFun = new FunDef(newFunId, fd.tparams, fd.returnType, fd.args)
+    newFun.precondition = fd.precondition
+    newFun.postcondition = fd.postcondition
     
     def replaceFunDef(expr: Expr) = expr match {
-      case FunctionInvocation(`holeFunDef`, args) =>
-        Some(FunctionInvocation(newFun, args))
+      case FunctionInvocation(`tfd`, args) =>
+        Some(FunctionInvocation(newFun.typed(tfd.tps), args))
       case _ => None
     }
-    val newBody = searchAndReplace(replaceFunDef)(bodyExpr)
+    val newBody = postMap(replaceFunDef)(bodyExpr)
     
     newFun.body = Some(newBody)
     
@@ -109,7 +110,7 @@ case class CodeGenCandidate(expr: Expr, bodyExpr: Expr, weight: Weight, holeFunD
   }
   
   override def prepareExpression = {
-//    finest("going to evaluate candidate for: " + holeFunDef)
+//    finest("going to evaluate candidate for: " + tfd)
 //    finest("going to evaluate candidate for: " + expressionToEvaluate)
     expressionToEvaluate
   }

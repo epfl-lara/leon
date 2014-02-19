@@ -13,67 +13,43 @@ import purescala.Extractors._
 
 object TreeOps {
 
-  //checking whether the expr is pure, that is do not contains any non-pure construct: assign, while, blocks, array, ...
-  //this is expected to be true when entering the "backend" of Leon
-  def isPure(expr: Expr): Boolean = {
-    def convert(t: Expr) : Boolean = t match {
-      case Block(_, _) => false
-      case Assignment(_, _) => false
-      case While(_, _) => false
-      case LetVar(_, _, _) => false
-      case LetDef(_, _) => false
-      case ArrayUpdate(_, _, _) => false
-      case ArrayMake(_) => false
-      case ArrayClone(_) => false
-      case Epsilon(_) => false
-      case _ => true
-    }
-    def combine(b1: Boolean, b2: Boolean) = b1 && b2
-    def compute(e: Expr, b: Boolean) = e match {
-      case Block(_, _) => false
-      case Assignment(_, _) => false
-      case While(_, _) => false
-      case LetVar(_, _, _) => false
-      case LetDef(_, _) => false
-      case ArrayUpdate(_, _, _) => false
-      case ArrayMake(_) => false
-      case ArrayClone(_) => false
-      case Epsilon(_) => false
-      case _ => b
-    }
-    treeCatamorphism(convert, combine, compute, expr)
+  //checking whether the expr is not pure, that is it contains any non-pure construct: 
+  // assign, while, blocks, array, ...
+  def isXLang(expr: Expr): Boolean = {
+    exists { _ match {
+      case Block(_, _) => true
+      case Assignment(_, _) => true
+      case While(_, _) => true
+      case LetVar(_, _, _) => true
+      case LetDef(_, _) => true
+      case ArrayUpdate(_, _, _) => true
+      case ArrayMake(_) => true
+      case ArrayClone(_) => true
+      case Epsilon(_) => true
+      case _ => false
+    }}(expr)
   }
 
-  def containsEpsilon(expr: Expr): Boolean = {
-    def convert(t : Expr) : Boolean = t match {
-      case (l : Epsilon) => true
+  def containsEpsilon(e: Expr) = exists{ _ match {
+      case (l: Epsilon) => true
       case _ => false
-    }
-    def combine(c1 : Boolean, c2 : Boolean) : Boolean = c1 || c2
-    def compute(t : Expr, c : Boolean) = t match {
-      case (l : Epsilon) => true
-      case _ => c
-    }
-    treeCatamorphism(convert, combine, compute, expr)
-  }
+  }}(e)
 
   def flattenBlocks(expr: Expr): Expr = {
-    def applyToTree(expr: Expr): Option[Expr] = expr match {
-      case Block(exprs, last) => {
+    postMap({
+      case Block(exprs, last) =>
         val nexprs = (exprs :+ last).flatMap{
           case Block(es2, el) => es2 :+ el
           case UnitLiteral => Seq()
           case e2 => Seq(e2)
         }
-        val fexpr = nexprs match {
+        Some(nexprs match {
           case Seq() => UnitLiteral
           case Seq(e) => e
           case es => Block(es.init, es.last).setType(es.last.getType)
-        }
-        Some(fexpr)
-      }
-      case _ => None
-    }
-    searchAndReplaceDFS(applyToTree)(expr)
+        })
+      case _ =>
+        None
+    })(expr)
   }
 }

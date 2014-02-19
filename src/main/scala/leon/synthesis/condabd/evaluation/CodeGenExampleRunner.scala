@@ -7,7 +7,7 @@ import leon._
 import leon.evaluators._
 import leon.evaluators.EvaluationResults._
 import leon.purescala.Trees._
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
+import leon.purescala.Definitions.{ TypedFunDef, FunDef, VarDecl, Program, ModuleDef }
 import leon.purescala.Common.{ Identifier, FreshIdentifier }
 import leon.purescala.TreeOps
 import leon.codegen.CodeGenParams
@@ -17,7 +17,7 @@ import ranking._
 
 import _root_.insynth.util.logging.HasLogger
 
-case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonContext,
+case class CodeGenExampleRunner(program: Program, tfd: TypedFunDef, ctx: LeonContext,
   candidates: Seq[Candidate], inputExamples: Seq[Example],
   params: CodeGenParams = CodeGenParams(maxFunctionInvocations = 200, checkContracts = true)) extends ExampleRunner(inputExamples) with HasLogger {
 
@@ -25,7 +25,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
 
   val evaluationContext = ctx
   
-  fine("building codegen evaluator with program:\n" + program)
+  fine("building codegen evaluator with params " + params + " and program: " + program)
   lazy val _evaluator = new CodeGenEvaluator(evaluationContext, program, params)
   override def getEvaluator = _evaluator
   
@@ -33,7 +33,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     examples.map(
       ex => {
         val map = ex.map
-	    for(id <- funDef.args.map(_.id)) yield
+	    for(id <- tfd.args.map(_.id)) yield
 	      map(id)
       }
     )
@@ -44,7 +44,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     StopwatchCollections.get("Compilation").newStopwatch profile getEvaluator.compile(expr, ids).get
   }
     
-  val candidateClosures = candidates.map(cand => compile(cand.prepareExpression, funDef.args.map(_.id)))
+  val candidateClosures = candidates.map(cand => compile(cand.prepareExpression, tfd.args.map(_.id)))
   
   override def evaluate(candidateInd: Int, exampleInd: Int) = {
     val closure = candidateClosures(candidateInd)    
@@ -64,24 +64,24 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
   def evaluate(expr: Expr, args: Seq[Expr]) {
     fine("to evaluate: " + expr + " for: " + args)
     
-    val closure = compile(expr, funDef.args.map(_.id))
+    val closure = compile(expr, tfd.args.map(_.id))
     evaluate(closure, args)
   }
     
   override def evaluate(expr: Expr, mapping: Map[Identifier, Expr]) = {
     fine("to evaluate: " + expr + " for mapping: " + mapping)
     
-    val closure = compile(expr, funDef.args.map(_.id))
+    val closure = compile(expr, tfd.args.map(_.id))
     
-    evaluate(closure, funDef.args.map(arg => mapping(arg.id)))
+    evaluate(closure, tfd.args.map(arg => mapping(arg.id)))
   }
     
   override def evaluateToResult(expr: Expr, mapping: Map[Identifier, Expr]): Result = {
     fine("to evaluate: " + expr + " for mapping: " + mapping)
     
-    val closure = compile(expr, funDef.args.map(_.id))
+    val closure = compile(expr, tfd.args.map(_.id))
     
-    closure(funDef.args.map(arg => mapping(arg.id)))     
+    closure(tfd.args.map(arg => mapping(arg.id)))     
   }
 
   def evaluate(evalClosure: Seq[Expr] => Result, args: Seq[Expr]) = {
@@ -106,7 +106,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
     entering("filter(" + prec + ")")
     fine("Old counterExamples.size: " + examples.size)
     
-    val closure = compile(prec, funDef.args.map(_.id))
+    val closure = compile(prec, tfd.args.map(_.id))
     
     val (newTransformed, newExamples) = ((_examples zip examples) filter {
       case ((transformedExample, _)) =>
@@ -123,7 +123,7 @@ case class CodeGenExampleRunner(program: Program, funDef: FunDef, ctx: LeonConte
   override def countPassed(expressionToCheck: Expr) = {
     fine("expressionToCheck: " + expressionToCheck)
 
-    val closure = compile(expressionToCheck, funDef.args.map(_.id))
+    val closure = compile(expressionToCheck, tfd.args.map(_.id))
     
     val (passed, failed) = (_examples zip examples).partition(
       pair => evaluate(closure, pair._1)

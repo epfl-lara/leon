@@ -25,7 +25,7 @@ class CodeGeneratorTest extends JUnitSuite {
     val codeGenResult = codeGenerator(constructBooleanToIntIntermediateLambda.head)
       
     assertEquals(
-      FunctionInvocation(functionBoolToIntFunDef, List(BooleanLiteral(false))),
+      FunctionInvocation(functionBoolToIntFunDef.typed, List(BooleanLiteral(false))),
       codeGenResult
     )
   }     
@@ -37,20 +37,20 @@ class CodeGeneratorTest extends JUnitSuite {
 	    for (intermediateTree <- constructThreeParFunctionIntermediateLambda(4))
 	    	yield codeGenerator(intermediateTree)
     
-    val baseCase = FunctionInvocation(threeParFunctionDef, List(IntLiteral(0), IntLiteral(0), BooleanLiteral(false)))
+    val baseCase = FunctionInvocation(threeParFunctionDef.typed, List(IntLiteral(0), IntLiteral(0), BooleanLiteral(false)))
     
     val message = "Generated:\n" + generated.mkString("\n")
     
     assertTrue(baseCase + " not found. " + message, generated contains baseCase)
     
-    val oneLevCase1 = FunctionInvocation(threeParFunctionDef, List(baseCase, IntLiteral(0), BooleanLiteral(false)))
-    val oneLevCase2 = FunctionInvocation(threeParFunctionDef, List(baseCase, baseCase, BooleanLiteral(false)))
+    val oneLevCase1 = FunctionInvocation(threeParFunctionDef.typed, List(baseCase, IntLiteral(0), BooleanLiteral(false)))
+    val oneLevCase2 = FunctionInvocation(threeParFunctionDef.typed, List(baseCase, baseCase, BooleanLiteral(false)))
     
     assertTrue(oneLevCase1 + " not found. " + message, generated contains oneLevCase1)
     assertTrue(oneLevCase2 + " not found. " + message, generated contains oneLevCase2)
         
-    val twoLevCase1 = FunctionInvocation(threeParFunctionDef, List(oneLevCase1, IntLiteral(0), BooleanLiteral(false)))
-    val twoLevCase2 = FunctionInvocation(threeParFunctionDef, List(baseCase, oneLevCase2, BooleanLiteral(false)))
+    val twoLevCase1 = FunctionInvocation(threeParFunctionDef.typed, List(oneLevCase1, IntLiteral(0), BooleanLiteral(false)))
+    val twoLevCase2 = FunctionInvocation(threeParFunctionDef.typed, List(baseCase, oneLevCase2, BooleanLiteral(false)))
     
     assertTrue(twoLevCase1 + " not found. " + message, generated contains twoLevCase1)
     assertTrue(twoLevCase2 + " not found. " + message, generated contains twoLevCase2)

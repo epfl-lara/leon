@@ -45,7 +45,10 @@ class InterruptManager(reporter: Reporter) {
     }
   }
 
-  def registerForInterrupts(i: Interruptible) {
+  def registerForInterrupts(i: Interruptible) = synchronized {
+    if (interrupted.get) {
+      i.interrupt()
+    }
     interruptibles.put(i, true)
   }
 

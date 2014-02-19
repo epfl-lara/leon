@@ -2,6 +2,8 @@
 
 package leon
 
+import utils.DebugSection
+
 case class Settings(
   val strictCompilation: Boolean       = true, // Terminates Leon in case an error occured during extraction
   val debugSections: Set[DebugSection] = Set(), // Enables debug message for the following sections

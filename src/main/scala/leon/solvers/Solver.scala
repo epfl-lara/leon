@@ -12,6 +12,8 @@ trait Solver {
   def name: String
   val context: LeonContext
 
+  implicit lazy val leonContext = context
+
   def assertCnstr(expression: Expr): Unit
 
   def check: Option[Boolean]

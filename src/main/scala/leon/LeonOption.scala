@@ -56,7 +56,7 @@ object ListValue {
     if (value == "off") {
       None
     } else {
-      Some(value.split(':').map(_.trim).filter(!_.isEmpty))
+      Some(value.split("[:,]").map(_.trim).filter(!_.isEmpty))
     }
   }
 }

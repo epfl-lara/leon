@@ -20,7 +20,7 @@ object SubtypingPhase extends LeonPhase[Program, Program] {
 
       fd.precondition = {
         val argTypesPreconditions = fd.args.flatMap(arg => arg.tpe match {
-          case cct@CaseClassType(cd) => Seq(CaseClassInstanceOf(cd, arg.id.toVariable))
+          case cct : CaseClassType => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
           case _ => Seq()
         })
         argTypesPreconditions match {
@@ -33,16 +33,16 @@ object SubtypingPhase extends LeonPhase[Program, Program] {
       }
 
       fd.postcondition = fd.returnType match {
-        case cct@CaseClassType(cd) => {
+        case cct : CaseClassType => {
 
           fd.postcondition match {
             case Some((id, p)) =>
-              Some((id, And(CaseClassInstanceOf(cd, Variable(id)), p)))
+              Some((id, And(CaseClassInstanceOf(cct, Variable(id)), p)))
 
             case None =>
               val resId = FreshIdentifier("res").setType(cct)
 
-              Some((resId, CaseClassInstanceOf(cd, Variable(resId))))
+              Some((resId, CaseClassInstanceOf(cct, Variable(resId))))
           }
         }
         case _ => fd.postcondition

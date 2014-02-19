@@ -10,14 +10,17 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
+import utils.Interruptible
+
 import scala.collection.mutable.{Map=>MutableMap}
 
-class UnrollingSolver(val context: LeonContext,
-                      underlyings: SolverFactory[Solver],
-                      maxUnrollings: Int = 3) extends Solver {
+class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[IncrementalSolver]) 
+        extends Solver with Interruptible {
 
   private var theConstraint : Option[Expr] = None
   private var theModel : Option[Map[Identifier,Expr]] = None
+
+  private var stop: Boolean = false
 
   def name = "Unr("+underlyings.name+")"
 
@@ -33,9 +36,9 @@ class UnrollingSolver(val context: LeonContext,
   }
 
   def check : Option[Boolean] = theConstraint.map { expr =>
-    val simpleSolver = SimpleSolverAPI(underlyings)
+    val solver = underlyings.getNewSolver//SimpleSolverAPI(underlyings)
 
-    debugS("Check called on " + expr + "...")
+    debugS("Check called on " + expr.asString + "...")
 
     val template = getTemplate(expr)
 
@@ -43,39 +46,24 @@ class UnrollingSolver(val context: LeonContext,
     var allClauses : Seq[Expr] = Nil
     var allBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
-    def fullOpenExpr : Expr = {
-      // And(Variable(aVar), And(allClauses.reverse))
-      // Let's help the poor underlying guy a little bit...
-      // Note that I keep aVar around, because it may negate one of the blockers, and we can't miss that!
-      And(Variable(aVar), replace(Map(Variable(aVar) -> BooleanLiteral(true)), And(allClauses.reverse)))
-    }
-
-    def fullClosedExpr : Expr = {
-      val blockedVars : Seq[Expr] = allBlockers.toSeq.map(p => Variable(p._1))
-
-      And(
-        replace(blockedVars.map(v => (v -> BooleanLiteral(false))).toMap, fullOpenExpr),
-        And(blockedVars.map(Not(_)))
-      )
-    }
-
-    def unrollOneStep() {
+    def unrollOneStep() : List[Expr] = {
       val blockersBefore = allBlockers
 
       var newClauses : List[Seq[Expr]] = Nil
       var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
-      for(blocker <- allBlockers.keySet; FunctionInvocation(funDef, args) <- allBlockers(blocker)) {
-        val (nc, nb) = getTemplate(funDef).instantiate(blocker, args)
+      for(blocker <- allBlockers.keySet; FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
+        val (nc, nb) = getTemplate(tfd).instantiate(blocker, args)
         newClauses = nc :: newClauses
         newBlockers = newBlockers ++ nb
       }
 
       allClauses = newClauses.flatten ++ allClauses
       allBlockers = newBlockers
+      newClauses.flatten
     }
 
-    val (nc, nb) = template.instantiate(aVar, template.funDef.args.map(a => Variable(a.id)))
+    val (nc, nb) = template.instantiate(aVar, template.tfd.args.map(a => Variable(a.id)))
 
     allClauses = nc.reverse
     allBlockers = nb
@@ -84,19 +72,26 @@ class UnrollingSolver(val context: LeonContext,
     var done : Boolean = false
     var result : Option[Boolean] = None
 
+    solver.assertCnstr(Variable(aVar))
+    solver.assertCnstr(And(allClauses))
     // We're now past the initial step.
-    while(!done && unrollingCount < maxUnrollings) {
+    while(!done && !stop) {
       debugS("At lvl : " + unrollingCount)
-      val closed : Expr = fullClosedExpr
 
-      debugS("Going for SAT with this:\n" + closed)
+      solver.push()
+      //val closed : Expr = fullClosedExpr
+      solver.assertCnstr(And(allBlockers.keySet.toSeq.map(id => Not(id.toVariable))))
 
-      simpleSolver.solveSAT(closed) match {
-        case (Some(false), _) =>
-          val open = fullOpenExpr
-          debugS("Was UNSAT... Going for UNSAT with this:\n" + open)
-          simpleSolver.solveSAT(open) match {
-            case (Some(false), _) =>
+      debugS("Going for SAT with this:\n")
+
+      solver.check match {
+
+        case Some(false) =>
+          solver.pop(1)
+          //val open = fullOpenExpr
+          debugS("Was UNSAT... Going for UNSAT with this:\n")
+          solver.check match {
+            case Some(false) =>
               debugS("Was UNSAT... Done !")
               done = true
               result = Some(false)
@@ -104,16 +99,19 @@ class UnrollingSolver(val context: LeonContext,
             case _ =>
               debugS("Was SAT or UNKNOWN. Let's unroll !")
               unrollingCount += 1
-              unrollOneStep()
+              val newClauses = unrollOneStep()
+              solver.assertCnstr(And(newClauses))
           }
 
-        case (Some(true), model) =>
+        case Some(true) =>
+          val model = solver.getModel
           debugS("WAS SAT ! We're DONE !")
           done = true
           result = Some(true)
           theModel = Some(model)
 
-        case (None, model) =>
+        case None =>
+          val model = solver.getModel
           debugS("WAS UNKNOWN ! We're DONE !")
           done = true
           result = Some(true)
@@ -131,23 +129,31 @@ class UnrollingSolver(val context: LeonContext,
     theModel.getOrElse(Map.empty).filter(p => vs(p._1))
   }
 
-  private val funDefTemplateCache : MutableMap[FunDef, FunctionTemplate] = MutableMap.empty
+  override def interrupt(): Unit = {
+    stop = true
+  }
+
+  override def recoverInterrupt(): Unit = {
+    stop = false
+  }
+
+  private val tfdTemplateCache : MutableMap[TypedFunDef, FunctionTemplate] = MutableMap.empty
   private val exprTemplateCache : MutableMap[Expr, FunctionTemplate] = MutableMap.empty
 
-  private def getTemplate(funDef: FunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(funDef, {
-      val res = FunctionTemplate.mkTemplate(funDef, true)
-      funDefTemplateCache += funDef -> res
+  private def getTemplate(tfd: TypedFunDef): FunctionTemplate = {
+    tfdTemplateCache.getOrElse(tfd, {
+      val res = FunctionTemplate.mkTemplate(tfd, true)
+      tfdTemplateCache += tfd -> res
       res
     })
   }
 
   private def getTemplate(body: Expr): FunctionTemplate = {
     exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
+      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => VarDecl(id, id.getType)))
       fakeFunDef.body = Some(body)
 
-      val res = FunctionTemplate.mkTemplate(fakeFunDef, false)
+      val res = FunctionTemplate.mkTemplate(fakeFunDef.typed, false)
       exprTemplateCache += body -> res
       res
     })

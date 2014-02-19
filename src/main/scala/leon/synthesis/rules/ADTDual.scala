@@ -17,11 +17,11 @@ case object ADTDual extends NormalizingRule("ADTDual") {
 
 
     val (toRemove, toAdd) = exprs.collect {
-      case eq @ Equals(cc @ CaseClass(cd, args), e) if (variablesOf(e) -- as).isEmpty && !(variablesOf(cc) & xs).isEmpty =>
-        (eq, CaseClassInstanceOf(cd, e) +: (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) } )
+      case eq @ Equals(cc @ CaseClass(ct, args), e) if (variablesOf(e) -- as).isEmpty && !(variablesOf(cc) & xs).isEmpty =>
+        (eq, CaseClassInstanceOf(ct, e) +: (ct.fields zip args).map{ case (vd, ex) => Equals(ex, CaseClassSelector(ct, e, vd.id)) } )
 
-      case eq @ Equals(e, cc @ CaseClass(cd, args)) if (variablesOf(e) -- as).isEmpty && !(variablesOf(cc) & xs).isEmpty =>
-        (eq, CaseClassInstanceOf(cd, e) +: (cd.fieldsIds zip args).map{ case (id, ex) => Equals(ex, CaseClassSelector(cd, e, id)) } )
+      case eq @ Equals(e, cc @ CaseClass(ct, args)) if (variablesOf(e) -- as).isEmpty && !(variablesOf(cc) & xs).isEmpty =>
+        (eq, CaseClassInstanceOf(ct, e) +: (ct.fields zip args).map{ case (vd, ex) => Equals(ex, CaseClassSelector(ct, e, vd.id)) } )
     }.unzip
 
     if (!toRemove.isEmpty) {

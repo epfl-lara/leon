@@ -12,6 +12,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.TypeTrees._
 import purescala.TreeOps._
+import purescala.TypeTreeOps._
 import purescala.Extractors._
 import purescala.ScalaPrinter
 
@@ -60,21 +61,22 @@ case object CEGIS extends Rule("CEGIS") {
               List((Tuple(ids.map(Variable(_))), ids.toSet))
             }
 
-          case CaseClassType(cd) =>
+          case cct @ CaseClassType(cd, _) =>
             { () =>
-              val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
-              List((CaseClass(cd, ids.map(Variable(_))), ids.toSet))
+              val ids = cct.fields.map { vd => FreshIdentifier("c", true).setType(vd.tpe) }
+              List((CaseClass(cct, ids.map(Variable(_))), ids.toSet))
             }
 
-          case AbstractClassType(cd) =>
+          case AbstractClassType(cd, tpes) =>
             { () =>
               val alts: Seq[(Expr, Set[Identifier])] = cd.knownDescendents.flatMap(i => i match {
                   case acd: AbstractClassDef =>
                     sctx.reporter.error("Unnexpected abstract class in descendants!")
                     None
                   case cd: CaseClassDef =>
-                    val ids = cd.fieldsIds.map(i => FreshIdentifier("c", true).setType(i.getType))
-                    Some((CaseClass(cd, ids.map(Variable(_))), ids.toSet))
+                    val cct = CaseClassType(cd, tpes)
+                    val ids = cct.fields.map{ vd => FreshIdentifier("c", true).setType(vd.tpe) }
+                    Some((CaseClass(cct, ids.map(Variable(_))), ids.toSet))
               })
               alts.toList
             }
@@ -92,11 +94,11 @@ case object CEGIS extends Rule("CEGIS") {
       p.as.filter(a => isSubtypeOf(a.getType, t)).map(id => (Variable(id) : Expr, Set[Identifier]()))
     }
 
-    val funcCache: MutableMap[TypeTree, Seq[FunDef]] = MutableMap.empty
+    val funcCache: MutableMap[TypeTree, Seq[TypedFunDef]] = MutableMap.empty
 
     def funcAlternatives(t: TypeTree): List[(Expr, Set[Identifier])] = {
       if (useFunGenerators) {
-        def isCandidate(fd: FunDef): Boolean = {
+        def isCandidate(fd: FunDef): Option[TypedFunDef] = {
           // Prevents recursive calls
           val isRecursiveCall = sctx.functionContext match {
             case Some(cfd) =>
@@ -108,29 +110,36 @@ case object CEGIS extends Rule("CEGIS") {
 
           val isNotSynthesizable = fd.body match {
             case Some(b) =>
-              collectChooses(b).isEmpty
+              !containsChoose(b)
 
             case None =>
               false
           }
 
-
-
-          isSubtypeOf(fd.returnType, t) && !isRecursiveCall && isNotSynthesizable
+          if (!isRecursiveCall && isNotSynthesizable) {
+            canBeSubtypeOf(fd.returnType, fd.tparams, t) match {
+              case Some(tps) =>
+                Some(fd.typed(tps))
+              case None =>
+                None
+            }
+          } else {
+            None
+          }
         }
 
         val funcs = funcCache.get(t) match {
           case Some(alts) =>
             alts
           case None =>
-            val alts = sctx.program.definedFunctions.filter(isCandidate)
+            val alts = sctx.program.definedFunctions.flatMap(isCandidate)
             funcCache += t -> alts
             alts
         }
 
-        funcs.map{ fd =>
-            val ids = fd.args.map(vd => FreshIdentifier("c", true).setType(vd.getType))
-            (FunctionInvocation(fd, ids.map(Variable(_))), ids.toSet)
+        funcs.map{ tfd =>
+            val ids = tfd.args.map(vd => FreshIdentifier("c", true).setType(vd.tpe))
+            (FunctionInvocation(tfd, ids.map(Variable(_))), ids.toSet)
           }.toList
       } else {
         Nil
@@ -550,7 +559,7 @@ case object CEGIS extends Rule("CEGIS") {
               sctx.reporter.ifDebug { debug =>
                 debug("UNROLLING: ")
                 for (c <- clauses) {
-                  debug(" - " + c)
+                  debug(" - " + c.asString(sctx.context))
                 }
                 debug("CLOSED Bs "+closedBs)
               }

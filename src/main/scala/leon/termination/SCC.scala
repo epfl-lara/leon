@@ -6,7 +6,7 @@ package termination
 /** This could be defined anywhere, it's just that the
     termination checker is the only place where it is used. */
 object SCC {
-  def scc[T](graph : Map[T,Set[T]]) : (Array[Set[T]],Map[T,Int],Map[Int,Set[Int]]) = {
+  def scc[T](graph : Map[T,Set[T]]) : List[Set[T]] = {
     // The first part is a shameless adaptation from Wikipedia
     val allVertices : Set[T] = graph.keySet ++ graph.values.flatten
 
@@ -50,21 +50,6 @@ object SCC {
       }  
     }
 
-    // At this point, we have our components.
-    // We finish by building a graph between them.
-    // In the graph, components are represented as arrays indices.
-    val asArray = components.toArray
-    val cSize = asArray.length
-
-    val vertIDs : Map[T,Int] = allVertices.map(v =>
-      v -> (0 until cSize).find(i => asArray(i)(v)).get
-    ).toMap
-
-    val bigCallGraph : Map[Int,Set[Int]] = (0 until cSize).map({ i =>
-      val dsts = asArray(i).flatMap(v => graph.getOrElse(v, Set.empty)).map(vertIDs(_))
-      i -> dsts
-    }).toMap
-
-    (asArray,vertIDs,bigCallGraph)
+    components
   }
 }

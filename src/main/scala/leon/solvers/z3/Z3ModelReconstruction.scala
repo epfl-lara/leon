@@ -16,45 +16,28 @@ trait Z3ModelReconstruction {
   // exprToZ3Id, softFromZ3Formula, reporter
 
   private final val AUTOCOMPLETEMODELS : Boolean = true
-  private final val SIMPLESTCOMPLETION : Boolean = true // if true, use 0, Nil(), etc., else random
 
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
     
-    if(exprToZ3Id.isDefinedAt(id.toVariable)) {
-      val z3ID : Z3AST = exprToZ3Id(id.toVariable)
-
+    variables.getZ3(id.toVariable).flatMap { z3ID =>
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
         case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
-          case Some(t) => softFromZ3Formula(model, t, expectedType)
+          case Some(t) => softFromZ3Formula(model, t)
         }
       }
-    } else None
+    }
   }
-
-  // def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
-  //   val expectedType = if(tpe == null) id.getType else tpe
-  //   
-  //   if(exprToZ3Id.isDefinedAt(id.toVariable)) {
-  //     val z3ID : Z3AST = exprToZ3Id(id.toVariable)
-
-
-  //     rec(z3ID, expectedType)
-  //   } else None
-  // }
 
   def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
     var asMap = Map.empty[Identifier,Expr]
 
-    def completeID(id : Identifier) : Unit = if (SIMPLESTCOMPLETION) {
-      asMap = asMap + ((id -> simplestValue(id.toVariable)))
+    def completeID(id : Identifier) : Unit = {
+      asMap = asMap + ((id -> simplestValue(id.getType)))
       reporter.info("Completing variable '" + id + "' to simplest value")
-    } else {
-      asMap = asMap + ((id -> randomValue(id.toVariable)))
-      reporter.info("Completing variable '" + id + "' to random value")
     }
 
     for(id <- ids) {

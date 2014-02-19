@@ -1,6 +1,6 @@
 package leon.synthesis.condabd
 
-import leon.purescala.Definitions.{ FunDef, VarDecl, Program, ObjectDef }
+import leon.purescala.Definitions.{ TypedFunDef, VarDecl, Program, ModuleDef }
 
 trait Report {
   def summaryString: String
@@ -21,7 +21,7 @@ case object EmptyReport extends Report {
   override def isSuccess = false
 }
 
-case class FullReport(val function: FunDef, val synthInfo: SynthesisInfo) extends Report {
+case class FullReport(val function: TypedFunDef, val synthInfo: SynthesisInfo) extends Report {
 
   import SynthesisInfo.Action._
   import Report._

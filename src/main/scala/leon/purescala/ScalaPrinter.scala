@@ -8,7 +8,7 @@ import TypeTrees._
 import Definitions._
 
 /** This pretty-printer only print valid scala syntax */
-class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb) {
+class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, sb) {
   import Common._
   import Trees._
   import TypeTrees._
@@ -16,348 +16,278 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
 
   import java.lang.StringBuffer
 
+  override def ppBinary(left: Tree, right: Tree, op: String)(implicit  parent: Option[Tree], lvl: Int) {
+    pp(left, parent)
+    sb.append(op)
+    pp(right, parent)
+  }
+
   // EXPRESSIONS
   // all expressions are printed in-line
-  override def pp(tree: Expr, lvl: Int): Unit = tree match {
-    case Variable(id) => sb.append(idToString(id))
-    case DeBruijnIndex(idx) => sys.error("Not Valid Scala")
-    case LetTuple(ids,d,e) =>
-      sb.append("locally {\n")
-      ind(lvl+1)
-      sb.append("val (" )
-      for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-          sb.append(idToString(id)+": ")
-          pp(tpe, lvl)
-          if (i != ids.size-1) {
-              sb.append(", ")
-          }
-      }
-      sb.append(") = ")
-      pp(d, lvl+1)
-      sb.append("\n")
-      ind(lvl+1)
-      pp(e, lvl+1)
-      sb.append("\n")
-      ind(lvl)
-      sb.append("}\n")
-      ind(lvl)
+  override def pp(tree: Tree, parent: Option[Tree])(implicit lvl: Int): Unit = {
+    implicit val p = Some(tree)
 
-    case Let(b,d,e) =>
-      sb.append("locally {\n")
-      ind(lvl+1)
-      sb.append("val " + b + " = ")
-      pp(d, lvl+1)
-      sb.append("\n")
-      ind(lvl+1)
-      pp(e, lvl+1)
-      sb.append("\n")
-      ind(lvl)
-      sb.append("}\n")
-      ind(lvl)
-
-    case LetDef(fd, body) =>
-      sb.append("{\n")
-      pp(fd, lvl+1)
-      sb.append("\n")
-      sb.append("\n")
-      ind(lvl)
-      pp(body, lvl)
-      sb.append("}\n")
-
-    case And(exprs) => ppNary(exprs, "(", " && ", ")", lvl)            // \land
-    case Or(exprs) => ppNary(exprs, "(", " || ", ")", lvl)             // \lor
-    case Not(Equals(l, r)) => ppBinary(l, r, " != ", lvl)    // \neq
-    case UMinus(expr) => ppUnary(expr, "-(", ")", lvl)
-    case Equals(l,r) => ppBinary(l, r, " == ", lvl)
-
-    case IntLiteral(v) => sb.append(v)
-    case BooleanLiteral(v) => sb.append(v)
-    case StringLiteral(s) => sb.append("\"" + s + "\"")
-    case UnitLiteral => sb.append("()")
-
-    /* These two aren't really supported in Scala, but we know how to encode them. */
-    case Implies(l,r) => pp(Or(Not(l), r), lvl)
-    case Iff(l,r) => ppBinary(l, r, " == ", lvl)
-
-    case Tuple(exprs) => ppNary(exprs, "(", ", ", ")", lvl)
-    case TupleSelect(t, i) =>
-      pp(t, lvl)
-      sb.append("._" + i)
-
-    case CaseClass(cd, args) =>
-      sb.append(idToString(cd.id))
-      if (cd.isCaseObject) {
-        ppNary(args, "", "", "", lvl)
-      } else {
-        ppNary(args, "(", ", ", ")", lvl)
-      }
-
-    case CaseClassInstanceOf(cd, e) =>
-      pp(e, lvl)
-      sb.append(".isInstanceOf[" + idToString(cd.id) + "]")
-
-    case CaseClassSelector(_, cc, id) =>
-      pp(cc, lvl)
-      sb.append("." + idToString(id))
-
-    case FunctionInvocation(fd, args) =>
-      sb.append(idToString(fd.id))
-      ppNary(args, "(", ", ", ")", lvl)
-
-    case Plus(l,r) => ppBinary(l, r, " + ", lvl)
-    case Minus(l,r) => ppBinary(l, r, " - ", lvl)
-    case Times(l,r) => ppBinary(l, r, " * ", lvl)
-    case Division(l,r) => ppBinary(l, r, " / ", lvl)
-    case Modulo(l,r) => ppBinary(l, r, " % ", lvl)
-    case LessThan(l,r) => ppBinary(l, r, " < ", lvl)
-    case GreaterThan(l,r) => ppBinary(l, r, " > ", lvl)
-    case LessEquals(l,r) => ppBinary(l, r, " <= ", lvl)      // \leq
-    case GreaterEquals(l,r) => ppBinary(l, r, " >= ", lvl)   // \geq
-    case FiniteSet(rs) => ppNary(rs, "Set(", ", ", ")", lvl)
-    case FiniteMultiset(rs) => ppNary(rs, "{|", ", ", "|}", lvl)
-    case EmptyMultiset(_) => sys.error("Not Valid Scala")
-    case ElementOfSet(e, s) => ppBinary(s, e, " contains ", lvl)
-    //case ElementOfSet(s,e) => ppBinary(s, e, " \u2208 ", lvl)    // \in
-    //case SubsetOf(l,r) => ppBinary(l, r, " \u2286 ", lvl)        // \subseteq
-    //case Not(SubsetOf(l,r)) => ppBinary(l, r, " \u2288 ", lvl)        // \notsubseteq
-    case SetMin(s) =>
-      pp(s, lvl)
-      sb.append(".min")
-    case SetMax(s) =>
-      pp(s, lvl)
-      sb.append(".max")
-    case SetUnion(l,r) => ppBinary(l, r, " ++ ", lvl)        // \cup
-   // case MultisetUnion(l,r) => ppBinary(l, r, " \u222A ", lvl)   // \cup
-   // case MapUnion(l,r) => ppBinary(l, r, " \u222A ", lvl)        // \cup
-   case SetDifference(l,r) => ppBinary(l, r, " -- ", lvl)       
-   // case MultisetDifference(l,r) => ppBinary(l, r, " \\ ", lvl)       
-   case SetIntersection(l,r) => ppBinary(l, r, " & ", lvl) // \cap
-   // case MultisetIntersection(l,r) => ppBinary(l, r, " \u2229 ", lvl) // \cap
-    case SetCardinality(t) => ppUnary(t, "", ".size", lvl)
-   // case MultisetCardinality(t) => ppUnary(t, "|", "|", lvl)
-   // case MultisetPlus(l,r) => ppBinary(l, r, " \u228E ", lvl)    // U+
-   // case MultisetToSet(e) => pp(e, lvl).append(".toSet")
-    case FiniteMap(rs) =>
-      sb.append("{")
-      val sz = rs.size
-      var c = 0
-      rs.foreach{case (k, v) => {
-        pp(k, lvl); sb.append(" -> "); pp(v, lvl); c += 1 ; if(c < sz) sb.append(", ")
-      }}
-      sb.append("}")
-
-    case MapGet(m,k) =>
-      pp(m, lvl)
-      ppNary(Seq(k), "(", ",", ")", lvl)
-
-    case MapIsDefinedAt(m,k) => {
-      pp(m, lvl)
-      sb.append(".isDefinedAt")
-      ppNary(Seq(k), "(", ",", ")", lvl)
+    def optParentheses(body: => Unit) {
+      val rp = requiresParentheses(tree, parent)
+      if (rp) sb.append("(")
+      body
+      if (rp) sb.append(")")
     }
-    case ArrayLength(a) =>
-      pp(a, lvl)
-      sb.append(".length")
 
-    case ArrayClone(a) =>
-      pp(a, lvl)
-      sb.append(".clone")
-
-    case ArrayFill(size, v) =>
-      sb.append("Array.fill(")
-      pp(size, lvl)
-      sb.append(")(")
-      pp(v, lvl)
-      sb.append(")")
-
-    case ArrayMake(v) => sys.error("Not Scala Code")
-    case ArraySelect(ar, i) =>
-      pp(ar, lvl)
-      sb.append("(")
-      pp(i, lvl)
-      sb.append(")")
-
-    case ArrayUpdated(ar, i, v) =>
-      pp(ar, lvl)
-      sb.append(".updated(")
-      pp(i, lvl)
-      sb.append(", ")
-      pp(v, lvl)
-      sb.append(")")
-
-    case FiniteArray(exprs) =>
-      ppNary(exprs, "Array(", ", ", ")", lvl)
-
-    case Distinct(exprs) =>
-      sb.append("distinct")
-      ppNary(exprs, "(", ", ", ")", lvl)
-    
-    case IfExpr(c, t, e) =>
-      sb.append("if (")
-      pp(c, lvl)
-      sb.append(") {\n")
-      ind(lvl+1)
-      pp(t, lvl+1)
-      sb.append("\n")
-      ind(lvl)
-      sb.append("} else {\n")
-      ind(lvl+1)
-      pp(e, lvl+1)
-      sb.append("\n")
-      ind(lvl)
-      sb.append("}")
-
-    case Choose(ids, pred) =>
-      sb.append("(choose { (")
-      for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
-          sb.append(idToString(id)+": ")
-          pp(tpe, lvl)
-          if (i != ids.size-1) {
-              sb.append(", ")
-          }
-      }
-      sb.append(") =>\n")
-      ind(lvl+1)
-      pp(pred, lvl+1)
-      sb.append("\n")
-      ind(lvl)
-      sb.append("})")
-
-    case mex @ MatchExpr(s, csc) => {
-      def ppc(p: Pattern): Unit = p match {
-        //case InstanceOfPattern(None,     ctd) =>
-        //case InstanceOfPattern(Some(id), ctd) =>
-        case CaseClassPattern(bndr,     ccd, subps) => {
-          bndr.foreach(b => sb.append(b + " @ "))
-          sb.append(idToString(ccd.id)).append("(")
-          var c = 0
-          val sz = subps.size
-          subps.foreach(sp => {
-            ppc(sp)
-            if(c < sz - 1)
-              sb.append(", ")
-            c = c + 1
-          })
-          sb.append(")")
-        }
-        case WildcardPattern(None)     => sb.append("_")
-        case WildcardPattern(Some(id)) => sb.append(idToString(id))
-        case InstanceOfPattern(bndr, ccd) => {
-          bndr.foreach(b => sb.append(b + " : "))
-          sb.append(idToString(ccd.id))
-        }
-        case TuplePattern(bndr, subPatterns) => {
-          bndr.foreach(b => sb.append(b + " @ "))
-          sb.append("(")
-          subPatterns.init.foreach(p => {
-            ppc(p)
-            sb.append(", ")
-          })
-          ppc(subPatterns.last)
-          sb.append(")")
-        }
-        case _ => sb.append("Pattern?")
-      }
-
-      sb.append("(")
-      pp(s, lvl)
-      // if(mex.posInfo != "") {
-      //   sb.append(" match@(" + mex.posInfo + ") {\n")
-      // } else {
-        sb.append(" match {\n")
-      // }
-
-      csc.foreach(cs => {
+    def optBraces(body: Int => Unit) {
+      val rp = requiresBraces(tree, parent)
+      if (rp) {
+        sb.append("{\n")
         ind(lvl+1)
-        sb.append("case ")
-        ppc(cs.pattern)
-        cs.theGuard.foreach(g => {
-          sb.append(" if ")
-          pp(g, lvl+1)
-        })
-        sb.append(" =>\n")
-        ind(lvl+2)
-        pp(cs.rhs, lvl+2)
+
+        body(lvl+1)
+
         sb.append("\n")
-      })
-      ind(lvl)
-      sb.append("}")
-      sb.append(")")
-    }
-
-    case Not(expr) => ppUnary(expr, "!(", ")", lvl)               // \neg
-
-    case e @ Error(desc) => {
-      sb.append("leon.Utils.error[")
-      pp(e.getType, lvl)
-      sb.append("](\"" + desc + "\")")
-    }
-
-    case (expr: PrettyPrintable) => expr.printWith(lvl, this)
-
-    case _ => sb.append("Expr?")
-  }
-
-  // TYPE TREES
-  // all type trees are printed in-line
-
-  override def pp(tpe: TypeTree, lvl: Int): Unit = tpe match {
-    case Untyped => sb.append("???")
-    case UnitType => sb.append("Unit")
-    case Int32Type => sb.append("Int")
-    case BooleanType => sb.append("Boolean")
-    case ArrayType(bt) =>
-      sb.append("Array[")
-      pp(bt, lvl)
-      sb.append("]")
-    case SetType(bt) =>
-      sb.append("Set[")
-      pp(bt, lvl)
-      sb.append("]")
-    case MapType(ft,tt) =>
-      sb.append("Map[")
-      pp(ft, lvl)
-      sb.append(",")
-      pp(tt, lvl)
-      sb.append("]")
-    case MultisetType(bt) =>
-      sb.append("Multiset[")
-      pp(bt, lvl)
-      sb.append("]")
-    case TupleType(tpes) => ppNaryType(tpes, "(", ", ", ")", lvl)
-    case FunctionType(fts, tt) =>
-      if (fts.size > 1) {
-        ppNaryType(fts, "(", ", ", ")", lvl)
-      } else if (fts.size == 1) {
-        pp(fts.head, lvl)
-      }
-      sb.append(" => ")
-      pp(tt, lvl)
-    case c: ClassType => sb.append(idToString(c.classDef.id))
-    case _ => sb.append("Type?")
-  }
-
-  // DEFINITIONS
-  // all definitions are printed with an end-of-line
-  override def pp(defn: Definition, lvl: Int): Unit = {
-
-    defn match {
-      case Program(id, mainObj) => {
-        assert(lvl == 0)
-        pp(mainObj, lvl)
-      }
-
-      case ObjectDef(id, defs, invs) => {
         ind(lvl)
+        sb.append("}\n")
+      } else {
+        body(lvl)
+      }
+    }
+
+    var printPos = opts.printPositions
+
+    tree match {
+      case LetTuple(ids,d,e) =>
+        optBraces { implicit lvl =>
+          sb.append("val (" )
+          for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
+              pp(id, p)
+              sb.append(": ")
+              pp(tpe, p)
+              if (i != ids.size-1) {
+                  sb.append(", ")
+              }
+          }
+          sb.append(") = ")
+          pp(d, p)
+          sb.append("\n")
+          ind
+          pp(e, p)
+          sb.append("\n")
+        }
+
+      case Let(b,d,e) =>
+        optBraces { implicit lvl =>
+          sb.append("val " + b + " = ")
+          pp(d, p)
+          sb.append("\n")
+          ind
+          pp(e, p)
+          sb.append("\n")
+        }
+
+      case LetDef(fd, body) =>
+        optBraces { implicit lvl =>
+          pp(fd, p)
+          sb.append("\n")
+          sb.append("\n")
+          ind
+          pp(body, p)
+        }
+
+      case And(exprs)           => optParentheses { ppNary(exprs, "", " && ", "") }
+      case Or(exprs)            => optParentheses { ppNary(exprs, "", " || ", "") }
+      case Not(Equals(l, r))    => optParentheses { ppBinary(l, r, " != ") }
+      case UMinus(expr)         => ppUnary(expr, "-(", ")")
+      case Equals(l,r)          => optParentheses { ppBinary(l, r, " == ") }
+
+      case IntLiteral(v)        => sb.append(v)
+      case BooleanLiteral(v)    => sb.append(v)
+      case StringLiteral(s)     => sb.append("\"" + s + "\"")
+      case UnitLiteral          => sb.append("()")
+
+      /* These two aren't really supported in Scala, but we know how to encode them. */
+      case Implies(l,r)         => pp(Or(Not(l), r), p)
+      case Iff(l,r)             => optParentheses { ppBinary(l, r, " == ") }
+
+      case Tuple(exprs)         => ppNary(exprs, "(", ", ", ")")
+      case TupleSelect(t, i)    =>
+        pp(t, p)
+        sb.append("._" + i)
+
+      case FunctionInvocation(tfd, args) =>
+        pp(tfd.id, p)
+
+        if (tfd.tps.nonEmpty) {
+          ppNary(tfd.tps, "[", ", ", "]")
+        }
+
+        ppNary(args, "(", ", ", ")")
+
+      case Plus(l,r)            => optParentheses { ppBinary(l, r, " + ") }
+      case Minus(l,r)           => optParentheses { ppBinary(l, r, " - ") }
+      case Times(l,r)           => optParentheses { ppBinary(l, r, " * ") }
+      case Division(l,r)        => optParentheses { ppBinary(l, r, " / ") }
+      case Modulo(l,r)          => optParentheses { ppBinary(l, r, " % ") }
+      case LessThan(l,r)        => optParentheses { ppBinary(l, r, " < ") }
+      case GreaterThan(l,r)     => optParentheses { ppBinary(l, r, " > ") }
+      case LessEquals(l,r)      => optParentheses { ppBinary(l, r, " <= ") }
+      case GreaterEquals(l,r)   => optParentheses { ppBinary(l, r, " >= ") }
+      case fs @ FiniteSet(rs)        =>
+        if (rs.isEmpty) {
+          fs.getType match {
+            case SetType(b) =>
+              sb.append("Set[")
+              pp(b, p)
+              sb.append("]()")
+            case _ =>
+              sb.append("Set()")
+          }
+        } else {
+          ppNary(rs, "Set(", ", ", ")")
+        }
+      case FiniteMultiset(rs)   => ppNary(rs, "{|", ", ", "|}")
+      case EmptyMultiset(_)     => sys.error("Not Valid Scala")
+      case ElementOfSet(e, s)   => optParentheses { ppBinary(s, e, " contains ") }
+      case SetUnion(l,r)        => optParentheses { ppBinary(l, r, " ++ ") }
+      case SetDifference(l,r)   => optParentheses { ppBinary(l, r, " -- ") }
+      case SetIntersection(l,r) => optParentheses { ppBinary(l, r, " & ") }
+      case SetMin(s) =>
+        pp(s, p)
+        sb.append(".min")
+      case SetMax(s) =>
+        pp(s, p)
+        sb.append(".max")
+      case SetCardinality(t) => ppUnary(t, "", ".size")
+      case FiniteMap(rs) =>
+        sb.append("{")
+        val sz = rs.size
+        var c = 0
+        rs.foreach{case (k, v) => {
+          pp(k, p); sb.append(" -> "); pp(v, p); c += 1 ; if(c < sz) sb.append(", ")
+        }}
+        sb.append("}")
+
+      case MapGet(m,k) =>
+        pp(m, p)
+        ppNary(Seq(k), "(", ",", ")")
+
+      case MapIsDefinedAt(m,k) => {
+        pp(m, p)
+        sb.append(".isDefinedAt")
+        ppNary(Seq(k), "(", ",", ")")
+      }
+      case ArrayLength(a) =>
+        pp(a, p)
+        sb.append(".length")
+
+      case ArrayClone(a) =>
+        pp(a, p)
+        sb.append(".clone")
+
+      case ArrayFill(size, v) =>
+        sb.append("Array.fill(")
+        pp(size, p)
+        sb.append(")(")
+        pp(v, p)
+        sb.append(")")
+
+      case ArrayMake(v) => sys.error("Not Scala Code")
+      case ArraySelect(ar, i) =>
+        pp(ar, p)
+        sb.append("(")
+        pp(i, p)
+        sb.append(")")
+
+      case ArrayUpdated(ar, i, v) =>
+        pp(ar, p)
+        sb.append(".updated(")
+        pp(i, p)
+        sb.append(", ")
+        pp(v, p)
+        sb.append(")")
+
+      case FiniteArray(exprs) =>
+        ppNary(exprs, "Array(", ", ", ")")
+
+      case Distinct(exprs) =>
+        sb.append("distinct")
+        ppNary(exprs, "(", ", ", ")")
+      
+      case IfExpr(c, t, e) =>
+        optParentheses {
+          sb.append("if (")
+          pp(c, p)
+          sb.append(") {\n")
+          ind(lvl+1)
+          pp(t, p)(lvl+1)
+          sb.append("\n")
+          ind(lvl)
+          sb.append("} else {\n")
+          ind(lvl+1)
+          pp(e, p)(lvl+1)
+          sb.append("\n")
+          ind(lvl)
+          sb.append("}")
+        }
+
+      case Choose(ids, pred) =>
+        optParentheses {
+          sb.append("choose { (")
+          for (((id, tpe), i) <- ids.map(id => (id, id.getType)).zipWithIndex) {
+              pp(id, p)
+              sb.append(": ")
+              pp(tpe, p)
+              if (i != ids.size-1) {
+                  sb.append(", ")
+              }
+          }
+          sb.append(") =>\n")
+          ind(lvl+1)
+          pp(pred, p)(lvl+1)
+          sb.append("\n")
+          ind(lvl)
+          sb.append("}")
+        }
+
+      case mex @ MatchExpr(s, csc) => {
+        optParentheses {
+          pp(s, p)
+          sb.append(" match {\n")
+
+          csc.foreach { cs =>
+            ind(lvl+1)
+            pp(cs, p)(lvl+1)
+            sb.append("\n")
+          }
+
+          ind(lvl)
+          sb.append("}")
+        }
+      }
+
+      case Not(expr) => sb.append("!"); optParentheses { pp(expr, p) }
+
+      case e @ Error(desc) => {
+        sb.append("leon.Utils.error[")
+        pp(e.getType, p)
+        sb.append("](\"" + desc + "\")")
+      }
+
+      case (expr: PrettyPrintable) => expr.printWith(this)
+
+      // Definitions
+      case Program(id, mainObj) =>
+        assert(lvl == 0)
+        pp(mainObj, p)
+
+      case ModuleDef(id, defs, invs) =>
         sb.append("object ")
-        sb.append(idToString(id))
+        pp(id, p)
         sb.append(" {\n")
 
         var c = 0
         val sz = defs.size
 
         defs.foreach(df => {
-          pp(df, lvl+1)
+          ind(lvl+1)
+          pp(df, p)(lvl+1)
           if(c < sz - 1) {
             sb.append("\n\n")
           }
@@ -367,114 +297,133 @@ class ScalaPrinter(sb: StringBuffer = new StringBuffer) extends PrettyPrinter(sb
         sb.append("\n")
         ind(lvl)
         sb.append("}\n")
-      }
 
-      case AbstractClassDef(id, parent) =>
-        ind(lvl)
+      case AbstractClassDef(id, tparams, parent) =>
         sb.append("sealed abstract class ")
-        sb.append(idToString(id))
-        parent.foreach(p => sb.append(" extends " + p.id))
+        pp(id, p)
 
-      case CaseClassDef(id, parent, varDecls) =>
-        ind(lvl)
-        sb.append("case class ")
-        sb.append(idToString(id))
-        sb.append("(")
-        var c = 0
-        val sz = varDecls.size
+        if (tparams.nonEmpty) {
+          ppNary(tparams, "[", ",", "]")
+        }
 
-        varDecls.foreach(vd => {
-          sb.append(idToString(vd.id))
-          sb.append(": ")
-          pp(vd.tpe, lvl)
-          if(c < sz - 1) {
-            sb.append(", ")
-          }
-          c = c + 1
-        })
-        sb.append(")")
-        parent.foreach(p => sb.append(" extends " + idToString(p.id)))
+        parent.foreach{ par =>
+          sb.append(" extends ")
+          pp(par.id, p)
+        }
+
+      case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
+        if (isObj) {
+          sb.append("case object ")
+        } else {
+          sb.append("case class ")
+        }
+
+        pp(id, p)
+
+        if (tparams.nonEmpty) {
+          ppNary(tparams, "[", ", ", "]")
+        }
+
+        if (!isObj) {
+          ppNary(ccd.fields, "(", ", ", ")")
+        }
+
+        parent.foreach{ par =>
+          sb.append(" extends ")
+          pp(par.id, p)
+        }
+
+      case vd: VarDecl =>
+        pp(vd.id, p)
+        sb.append(": ")
+        pp(vd.tpe, p)
 
       case fd: FunDef =>
-
-        ind(lvl)
         sb.append("def ")
-        sb.append(idToString(fd.id))
-        sb.append("(")
+        pp(fd.id, p)
 
-        val sz = fd.args.size
-        var c = 0
-        
-        fd.args.foreach(arg => {
-          sb.append(idToString(arg.id))
-          sb.append(" : ")
-          pp(arg.tpe, lvl)
+        if (fd.tparams.nonEmpty) {
+          ppNary(fd.tparams, "[", ", ", "]")
+        }
 
-          if(c < sz - 1) {
-            sb.append(", ")
-          }
-          c = c + 1
-        })
+        ppNary(fd.args, "(", ", ", ")")
 
-        sb.append(") : ")
-        pp(fd.returnType, lvl)
-        sb.append(" = {")
+        sb.append(": ")
+        pp(fd.returnType, p)
+        sb.append(" = {\n")
+        ind(lvl+1)
 
         fd.precondition match {
           case None =>
           case Some(prec) =>
-            ind(lvl+1)
             sb.append("require(")
-            pp(prec, lvl+1)
+            pp(prec, p)(lvl+1)
             sb.append(");\n")
+            ind(lvl+1)
         }
 
         fd.body match {
           case Some(body) =>
-            pp(body, lvl)
+            pp(body, p)(lvl+1)
           case None =>
             sb.append("???")
         }
+
+        sb.append("\n")
+        ind
 
         fd.postcondition match {
           case None =>
             sb.append("}")
 
           case Some((id, postc)) =>
-            sb.append("} ensuring(")
-            pp(Variable(id), lvl)
+            sb.append("} ensuring { ")
+            pp(Variable(id), p)
             sb.append(" => ")
-            pp(postc, lvl)
-            sb.append(")")
+            pp(postc, p)
+            sb.append(" }")
         }
 
-      case _ => sb.append("Defn?")
+      case _ =>
+        super.pp(tree, parent)(lvl)
+        // Parent will already print
+        printPos = false
     }
+
+    if (printPos) {
+      ppos(tree.getPos)
+    }
+  }
+
+  private def requiresBraces(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
+    case (_, None) => false
+    case (_, Some(_: Definition)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef)) => false
+    case (_, _) => true
+  }
+
+  private def precedence(ex: Expr): Int = ex match {
+    case (_: ElementOfSet) => 0
+    case (_: Or) => 1
+    case (_: And) => 3
+    case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
+    case (_: Equals | _: Iff | _: Not) => 5
+    case (_: Plus | _: Minus | _: SetUnion| _: SetDifference) => 6
+    case (_: Times | _: Division | _: Modulo) => 7
+    case _ => 7
+  }
+
+  private def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
+    case (_, None) => false
+    case (_, Some(_: Definition)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr)) => false
+    case (_, Some(_: FunctionInvocation)) => false
+    case (ie: IfExpr, _) => true
+    case (e1: Expr, Some(e2: Expr)) if precedence(e1) > precedence(e2) => false
+    case (_, _) => true
   }
 }
 
-object ScalaPrinter {
-  def apply(tree: Expr, indent: Int): String = {
-    val printer = new ScalaPrinter()
-    printer.pp(tree, indent)
-    printer.toString
-  }
-
-  def apply(tree: Expr): String = {
-    val printer = new ScalaPrinter()
-    printer.pp(tree, 0)
-    printer.toString
-  }
-
-  def apply(tpe: TypeTree): String = {
-    val printer = new ScalaPrinter()
-    printer.pp(tpe, 0)
-    printer.toString
-  }
-
-  def apply(defn: Definition): String = {
-    val printer = new ScalaPrinter()
-    printer.pp(defn, 0)
-    printer.toString
-  }
+object ScalaPrinter extends PrettyPrinterFactory {
+  def create(opts: PrinterOptions) = new ScalaPrinter(opts)
 }

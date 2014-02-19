@@ -32,42 +32,13 @@ object ArrayTransformation extends TransformationPhase {
   }
 
 
-  def transform(expr: Expr): Expr = expr match {
-    case sel@ArraySelect(a, i) => {
-      val ra = transform(a)
-      val ri = transform(i)
-      val length = ArrayLength(ra)
-      val res = IfExpr(
-        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        ArraySelect(ra, ri).setType(sel.getType).setPosInfo(sel),
-        Error("Index out of bound").setType(sel.getType).setPosInfo(sel)
-      ).setType(sel.getType)
-      res
-    }
+  def transform(expr: Expr): Expr = (expr match {
     case up@ArrayUpdate(a, i, v) => {
       val ra = transform(a)
       val ri = transform(i)
       val rv = transform(v)
       val Variable(id) = ra
-      val length = ArrayLength(ra)
-      val res = IfExpr(
-        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPosInfo(up)),
-        Error("Index out of bound").setType(UnitType).setPosInfo(up)
-      ).setType(UnitType)
-      res
-    }
-    case up@ArrayUpdated(a, i, v) => {
-      val ra = transform(a)
-      val ri = transform(i)
-      val rv = transform(v)
-      val length = ArrayLength(ra)
-      val res = IfExpr(
-        And(LessEquals(IntLiteral(0), ri), LessThan(ri, length)),
-        ArrayUpdated(ra, ri, rv).setType(ra.getType).setPosInfo(up),
-        Error("Index out of bound").setType(ra.getType).setPosInfo(up)
-      ).setType(ra.getType)
-      res
+      Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up))
     }
     case ArrayClone(a) => {
       val ra = transform(a)
@@ -96,7 +67,7 @@ object ArrayTransformation extends TransformationPhase {
     case wh@While(c, e) => {
       val newWh = While(transform(c), transform(e))
       newWh.invariant = wh.invariant.map(i => transform(i))
-      newWh.setPosInfo(wh)
+      newWh.setPos(wh)
       newWh
     }
 
@@ -114,7 +85,7 @@ object ArrayTransformation extends TransformationPhase {
         case GuardedCase(pat, guard, rhs) => GuardedCase(pat, transform(guard), transform(rhs))
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).setType(tpe).setPosInfo(m)
+      MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
     }
     case LetDef(fd, b) => {
       fd.precondition = fd.precondition.map(transform)
@@ -129,6 +100,6 @@ object ArrayTransformation extends TransformationPhase {
 
     case (t: Terminal) => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in ArrayTransformation: " + unhandled)
-  }
+  }).setPos(expr)
 
 }
