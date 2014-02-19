@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object ChooseArith {
   def c1(a : Int) : (Int, Int) = 

@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
-import leon.Annotations._
-import leon.Utils._
+import leon.annotation._
+import leon.lang._
 
 object ManyTimeSec { 
   case class Time(h:Int,m:Int,s:Int)

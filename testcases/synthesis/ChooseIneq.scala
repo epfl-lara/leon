@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object ChooseIneq {
   def c1(a: Int, b: Int): (Int, Int) = { 

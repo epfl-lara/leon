@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object Numeric {
   // division by 0 loops

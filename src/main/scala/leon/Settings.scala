@@ -11,6 +11,7 @@ case class Settings(
   val synthesis: Boolean               = false,
   val xlang: Boolean                   = false,
   val verify: Boolean                  = true,
+  val injectLibrary: Boolean           = false,
   val classPath: List[String]          = Settings.defaultClassPath()
 )
 
@@ -20,13 +21,6 @@ object Settings {
   // one for the leon runtime library.
 
   private def defaultClassPath() = {
-    val leonLib = System.getenv("LEON_LIBRARY_PATH")
-    if (leonLib == "" || leonLib == null) {
-      sys.error("LEON_LIBRARY_PATH env variable is undefined")
-    }
-
-    val leonCPs = leonLib
-
     val scalaHome = System.getenv("SCALA_HOME")
     val scalaCPs = if (scalaHome != "") {
       val f = new java.io.File(scalaHome+"/lib")
@@ -39,6 +33,11 @@ object Settings {
       Nil
     }
 
-    leonCPs :: scalaCPs
+    scalaCPs
   }
+
+  private[leon] def defaultLibFiles() = {
+    Option(System.getenv("LEON_LIBFILES")).map(_.split(" ").toList).getOrElse(Nil)
+  }
+
 }

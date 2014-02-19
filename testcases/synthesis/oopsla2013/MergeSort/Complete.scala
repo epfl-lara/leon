@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
 
-import leon.Utils._
+import leon.lang._
 
 object MergeSort {
   sealed abstract class List

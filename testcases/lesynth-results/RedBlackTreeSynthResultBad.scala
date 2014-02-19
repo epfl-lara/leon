@@ -1,5 +1,5 @@
-import leon.Annotations._
-import leon.Utils._
+import leon.annotation._
+import leon.lang._
 
 object RedBlackTree { 
   sealed abstract class Color
@@ -85,7 +85,7 @@ object RedBlackTree {
           }
       })
     } else {
-      leon.Utils.error[Tree]("Precondition failed")
+      leon.lang.error[Tree]("Precondition failed")
     }
   } ensuring (res => content(res) == content(t) ++ Set(x) 
                    && size(t) <= size(res) && size(res) <= size(t) + 1

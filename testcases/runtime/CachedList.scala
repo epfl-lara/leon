@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object SortedList {
   abstract class List

@@ -19,6 +19,7 @@ object TemporaryInputPhase extends LeonPhase[(String, List[String]), List[String
     out.write(content)
     out.close
 
-    file.getAbsolutePath() :: opts
+
+    (file.getAbsolutePath() :: opts)
   }
 }

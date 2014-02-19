@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object Termination {
   def f1(x: Int, b: Boolean) : Int = {

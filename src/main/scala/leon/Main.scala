@@ -30,6 +30,7 @@ object Main {
       LeonFlagOptionDef ("termination", "--termination",        "Check program termination"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
+      LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
       LeonFlagOptionDef ("help",        "--help",               "Show help")
     )
@@ -128,8 +129,6 @@ object Main {
         Some(LeonValueOption(vod.name, value))
     }.toSeq
 
-
-
     var settings  = Settings()
 
     // Process options we understand:
@@ -138,6 +137,8 @@ object Main {
         settings = settings.copy(termination = value)
       case LeonFlagOption("synthesis", value) =>
         settings = settings.copy(synthesis = value)
+      case LeonFlagOption("library", value) =>
+        settings = settings.copy(injectLibrary = value)
       case LeonFlagOption("xlang", value) =>
         settings = settings.copy(xlang = value)
       case LeonValueOption("debug", ListValue(sections)) =>
@@ -213,8 +214,17 @@ object Main {
   def main(args : Array[String]) {
     val timer     = new Timer().start
 
+    val argsl = args.toList
+
+    // By default we add --library from Main
+    val realArgs = if (!args.exists(_.contains("--library"))) {
+      "--library" :: argsl
+    } else {
+      argsl
+    }
+
     // Process options
-    val ctx = processOptions(args.toList)
+    val ctx = processOptions(realArgs)
 
     try {
       ctx.interruptManager.registerSignalHandler()

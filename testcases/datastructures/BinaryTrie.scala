@@ -4,7 +4,7 @@
  * Date: 20.11.2013
  **/
 
-import leon.Utils._
+import leon.lang._
 
 object BinaryTrie {
   sealed abstract class Tree

@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object Viktor {
   def transitive(x: Boolean, y: Boolean, z: Boolean) : Boolean = {

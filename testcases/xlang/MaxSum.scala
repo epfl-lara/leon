@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 /* VSTTE 2010 challenge 1 */
 

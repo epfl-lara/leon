@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
-import leon.Utils._
-import leon.Annotations._
+import leon.lang._
+import leon.annotation._
 
 object ForElimination { 
 

@@ -1,6 +1,6 @@
 import scala.collection.immutable.Set
 
-import leon.Utils._
+import leon.lang._
 
 object BatchedQueue {
   sealed abstract class List
