@@ -55,9 +55,18 @@ class FileInterface(reporter: Reporter) {
         val before = str.substring(0, from)
         val after  = str.substring(to, str.length)
 
-        val newCode = ScalaPrinter(toTree, PrinterOptions(baseIndent = fromTree.getPos.col/2))
+        // Get base indentation of last line:
+        val lineChars = before.substring(before.lastIndexOf('\n')+1).toList
 
-        before + newCode + after
+        println(lineChars)
+        println(lineChars.takeWhile(_ == ' '))
+
+        val indent = lineChars.takeWhile(_ == ' ').size
+
+        val p = new ScalaPrinter(PrinterOptions())
+        p.pp(toTree, Some(fromTree))(indent/2)
+
+        before + p.toString + after
 
       case p =>
         sys.error("Substitution requires RangePos on the input tree: "+fromTree +": "+fromTree.getClass+" GOT" +p)
