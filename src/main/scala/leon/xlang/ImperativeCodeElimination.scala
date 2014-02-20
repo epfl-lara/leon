@@ -252,8 +252,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
       }
       case c @ Choose(ids, b) => {
         //Recall that Choose cannot mutate variables from the scope
-        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        (bodyRes, (b2: Expr) => Choose(ids, bodyScope(b2)).copiedFrom(c), bodyFun)
+        (c, (b2: Expr) => b2, Map())
       }
       case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
       case n @ NAryOperator(args, recons) => {
