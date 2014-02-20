@@ -38,3 +38,6 @@ logBuffered in Test := false
 testOptions in Test += Tests.Argument("-oD")
 
 sourcesInBase in Compile := false
+
+// do not skip parent Eclipse project definition
+EclipseKeys.skipParents in ThisBuild := false

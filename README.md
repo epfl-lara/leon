@@ -127,6 +127,18 @@ Scala compiler.
 Now we can make sure that the build went fine. Leon comes with a test suite.
 Use ```sbt test``` to run all the tests.
 
+Using Leon in Eclipse
+---------------------
+
+Type: ```sbt eclipse```
+
+This should create all the necessary metadata for using Leon as a project in Eclipse.
+Specifically, two Eclipse projects are generated in corresponding directories: the main *Leon* project in the Leon root directory, and the *Leon library* project in the ```library``` subdirectory.
+You should now be able to [import the projects](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
+Since the main Leon project depends on the library, you should import both of them.
+
+*Note*: Leon uses Scala, thus you should have the [Scala IDE](http://scala-ide.org/) plugin installed.
+
 Changelog
 ---------
 
