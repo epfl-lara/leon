@@ -1101,8 +1101,8 @@ object TreeOps {
       if(matcher.isDefinedAt(e)) {
         val res = matcher(e)
         results = results :+ (res, And(path))
-        e
-      } else super.rec(e, path)
+      }
+      super.rec(e, path)
     }
 
     def traverse(e: Expr) = {
