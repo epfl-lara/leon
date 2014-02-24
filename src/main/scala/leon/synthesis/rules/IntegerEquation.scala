@@ -110,7 +110,13 @@ case object IntegerEquation extends Rule("Integer Equation") {
               None
           }
 
-          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
+
+          if (subproblemxs.isEmpty) {
+            // we directly solve
+            List(RuleInstantiation.immediateSuccess(problem, this, onSuccess(List(Solution(And(eqPre, problem.pc), Set(), Tuple(Seq())))).get))
+          } else {
+            List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
+          }
         }
       }
     }

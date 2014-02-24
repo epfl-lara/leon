@@ -58,9 +58,6 @@ class FileInterface(reporter: Reporter) {
         // Get base indentation of last line:
         val lineChars = before.substring(before.lastIndexOf('\n')+1).toList
 
-        println(lineChars)
-        println(lineChars.takeWhile(_ == ' '))
-
         val indent = lineChars.takeWhile(_ == ' ').size
 
         val p = new ScalaPrinter(PrinterOptions())
