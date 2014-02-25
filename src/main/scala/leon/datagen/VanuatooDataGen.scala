@@ -87,11 +87,12 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       unit.jvmClassToLeonClass(cc.getClass.getName) match {
         case Some(ccd: CaseClassDef) =>
+          val cct = CaseClassType(ccd, ct.tps)
           val c = ct match {
             case act : AbstractClassType =>
-              getConstructorFor(CaseClassType(ccd, ct.tps), act)
+              getConstructorFor(cct, act)
             case cct : CaseClassType =>
-              getConstructors(CaseClassType(ccd, ct.tps))(0)
+              getConstructors(cct)(0)
           }
 
           val fields = cc.productElements()
@@ -99,7 +100,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           val elems = for (i <- 0 until fields.length) yield {
             if (((r >> i) & 1) == 1) {
               // has been read
-              valueToPattern(fields(i), ct.fieldsTypes(i))
+              valueToPattern(fields(i), cct.fieldsTypes(i))
             } else {
               (AnyPattern[Expr, TypeTree](), false)
             }
@@ -158,6 +159,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
           (EvaluationResults.Successful(result), if (!pattern._2) Some(pattern._1) else None)
         } catch {
+          case e : ClassCastException  =>
+            (EvaluationResults.RuntimeError(e.getMessage), None)
+
           case e : ArithmeticException =>
             (EvaluationResults.RuntimeError(e.getMessage), None)
 
@@ -228,7 +232,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
 
       def computeNext(): Option[Seq[Expr]] = {
-        while(total < maxEnumerated && found < maxValid && it.hasNext) {
+        while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
           val model = it.next.asInstanceOf[Tuple]
 
           if (model eq null) {
@@ -250,10 +254,10 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
             }
 
             if (!failed) {
-              println("Got model:")
-              for ((i, v) <- (ins zip model.exprs)) {
-                println(" - "+i+" -> "+v)
-              }
+              //println("Got model:")
+              //for ((i, v) <- (ins zip model.exprs)) {
+              //  println(" - "+i+" -> "+v)
+              //}
 
               found += 1
 
@@ -264,9 +268,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
               return Some(model.exprs);
             }
 
-            if (total % 1000 == 0) {
-              println("... "+total+" ...")
-            }
+            //if (total % 1000 == 0) {
+            //  println("... "+total+" ...")
+            //}
           }
         }
         None

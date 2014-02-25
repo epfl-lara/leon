@@ -118,6 +118,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
 
       naryProduct(ins.map(id => generate(id.getType, bounds)))
         .take(maxEnumerated)
+        .takeWhile(s => !interrupted.get)
         .filter{s => evalFun(s) == sat }
         .take(maxValid)
         .iterator
