@@ -56,4 +56,72 @@ object PropositionalLogic {
 //      case Literal(i) => Set[Int](i)
 //    }
 //  }
+  
+  def simplify(f: Formula): Formula = (f match {
+    case And(lhs, rhs) => {
+      val sl = simplify(lhs)
+      val sr = simplify(rhs)
+      
+      //if lhs or rhs is false, return false      
+      //if lhs is true return rhs
+      //if rhs is true return lhs
+      (sl,sr) match {
+        case (False(), _) => False()
+        case (_, False()) => False()
+        case (True(), _) => sr
+        case (_, True()) => sl
+        case _ => And(sl, sr)
+      }
+    }
+    case Or(lhs, rhs) => {
+      val sl = simplify(lhs)
+      val sr = simplify(rhs)
+      
+      //if lhs or rhs is true, return true
+      //if lhs is false return rhs
+      //if rhs is false return lhs
+      (sl,sr) match {
+        case (True(), _) => True()
+        case (_, True()) => True()
+        case (False(), _) => sr
+        case (_, False()) => sl
+        case _ => Or(sl, sr)
+      }
+    }
+    case Implies(lhs, rhs) => {
+      val sl = simplify(lhs)
+      val sr = simplify(rhs)
+      
+      //if lhs is false return true
+      //if rhs is true return true
+      //if lhs is true return rhs      
+      //if rhs is false return Not(rhs)
+      (sl,sr) match {
+        case (False(), _) => True()
+        case (_, True()) => True()
+        case (True(), _) => sr
+        case (_, False()) => Not(sl)
+        case _ => Implies(sl, sr)
+      }
+    }
+    case Not(True()) => False()
+    case Not(False()) => True()    
+    case _ => f
+    
+  }) ensuring((res) => true template((a,b) => time <= a*size(f) + b))
+
+/*  def value(lit: Formula, model: List) : Boolean = (model match {
+    case Cons(x,xs) => if(x.f == lit) x.b else value(lit, xs)
+    case Nil() => false    
+  }) ensuring(res => true template((a,b) => depth <= a*listSize(model) + b))
+   
+  
+  def evaluate(f: Formula, model: List): Boolean = (f match {
+    case And(lhs, rhs) => evaluate(lhs, model) && evaluate(rhs, model)
+    case Or(lhs, rhs) => evaluate(lhs, model) || evaluate(rhs, model)
+    case Implies(lhs, rhs) => (!evaluate(lhs, model)) || evaluate(rhs, model)
+    case Not(f) => !evaluate(f, model)
+    case Literal(_) => value(f, model)
+    case _ => false
+  }) ensuring((res) => true template((a,b) => depth <= a*(size(f)*listSize(model)) + b))*/
 }

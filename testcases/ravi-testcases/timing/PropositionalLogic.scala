@@ -10,6 +10,8 @@ object PropositionalLogic {
   case class Implies(lhs: Formula, rhs: Formula) extends Formula
   case class Not(f: Formula) extends Formula
   case class Literal(id: Int) extends Formula
+  case class True() extends Formula
+  case class False() extends Formula
   
   case class Pair(f: Formula, b: Boolean)
   
@@ -22,31 +24,17 @@ object PropositionalLogic {
     case Or(lhs, rhs) => size(lhs) + size(rhs) + 1
     case Implies(lhs, rhs) => size(lhs) + size(rhs) + 1
     case Not(f) => size(f) + 1
-    case Literal(_) => 1    
+    case _ => 1    
   }) 
-  
-  def listSize(l: List) : Int = (l match {
-    case Cons(_, xs) => 1 + listSize(xs)
-    case Nil() => 0
-  })
 
   def removeImplies(f: Formula): Formula = (f match {
     case And(lhs, rhs) => And(removeImplies(lhs), removeImplies(rhs))
     case Or(lhs, rhs) => Or(removeImplies(lhs), removeImplies(rhs))
     case Implies(lhs, rhs) => Or(Not(removeImplies(lhs)),removeImplies(rhs))
     case Not(f) => Not(removeImplies(f))
-    case Literal(_) => f
+    case _ => f
     
   }) ensuring((res) => true template((a,b) => time <= a*size(f) + b))
-
-  def isSimplified(f: Formula): Boolean = {f match {
-    case And(lhs, rhs) => isSimplified(lhs) && isSimplified(rhs)
-    case Or(lhs, rhs) => isSimplified(lhs) && isSimplified(rhs)
-    case Implies(_,_) => false
-    case Not(f) => isSimplified(f)
-    case Literal(_) => true
-    
-  }} ensuring((res) => true template((a,b) => time <= a*size(f) + b))
 
   def nnf(formula: Formula): Formula = (formula match {
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
@@ -58,32 +46,70 @@ object PropositionalLogic {
     case Not(Not(f)) => nnf(f)
     case Not(Literal(_)) => formula
     case Literal(_) => formula
+    case Not(True()) => False()
+    case Not(False()) => True()
     case _ => formula
   }) ensuring((res) => true template((a,b) => time <= a*size(formula) + b))
 
   def isNNF(f: Formula): Boolean = { f match {
     case And(lhs, rhs) => isNNF(lhs) && isNNF(rhs)
     case Or(lhs, rhs) => isNNF(lhs) && isNNF(rhs)
-    case Implies(lhs, rhs) => isNNF(lhs) && isNNF(rhs)
+    case Implies(lhs, rhs) => false
     case Not(Literal(_)) => true
     case Not(_) => false
-    case Literal(_) => true
-    case _ => false
-    
+    case _ => true      
   }} ensuring((res) => true template((a,b) => time <= a*size(f) + b))
-
-/*  def value(lit: Formula, model: List) : Boolean = (model match {
-    case Cons(x,xs) => if(x.f == lit) x.b else value(lit, xs)
-    case Nil() => false    
-  }) ensuring(res => true template((a,b) => depth <= a*listSize(model) + b))
-   
   
-  def evaluate(f: Formula, model: List): Boolean = (f match {
-    case And(lhs, rhs) => evaluate(lhs, model) && evaluate(rhs, model)
-    case Or(lhs, rhs) => evaluate(lhs, model) || evaluate(rhs, model)
-    case Implies(lhs, rhs) => (!evaluate(lhs, model)) || evaluate(rhs, model)
-    case Not(f) => !evaluate(f, model)
-    case Literal(_) => value(f, model)
-    case _ => false
-  }) ensuring((res) => true template((a,b) => depth <= a*(size(f)*listSize(model)) + b))*/
+  def simplify(f: Formula): Formula = (f match {
+    case And(lhs, rhs) => {
+      val sl = simplify(lhs)
+      val sr = simplify(rhs)
+      
+      //if lhs or rhs is false, return false      
+      //if lhs is true return rhs
+      //if rhs is true return lhs
+      (sl,sr) match {
+        case (False(), _) => False()
+        case (_, False()) => False()
+        case (True(), _) => sr
+        case (_, True()) => sl
+        case _ => And(sl, sr)
+      }
+    }
+    case Or(lhs, rhs) => {
+      val sl = simplify(lhs)
+      val sr = simplify(rhs)
+      
+      //if lhs or rhs is true, return true
+      //if lhs is false return rhs
+      //if rhs is false return lhs
+      (sl,sr) match {
+        case (True(), _) => True()
+        case (_, True()) => True()
+        case (False(), _) => sr
+        case (_, False()) => sl
+        case _ => Or(sl, sr)
+      }
+    }
+    case Implies(lhs, rhs) => {
+      val sl = simplify(lhs)
+      val sr = simplify(rhs)
+      
+      //if lhs is false return true
+      //if rhs is true return true
+      //if lhs is true return rhs      
+      //if rhs is false return Not(rhs)
+      (sl,sr) match {
+        case (False(), _) => True()
+        case (_, True()) => True()
+        case (True(), _) => sr
+        case (_, False()) => Not(sl)
+        case _ => Implies(sl, sr)
+      }
+    }
+    case Not(True()) => False()
+    case Not(False()) => True()    
+    case _ => f
+    
+  }) ensuring((res) => true template((a,b) => time <= a*size(f) + b))
 }
