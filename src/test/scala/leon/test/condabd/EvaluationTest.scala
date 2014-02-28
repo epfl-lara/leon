@@ -27,7 +27,7 @@ class EvaluationTest extends FunSuite {
   import Scaffold._
 
   val mergeSortWithTwoExamples = """
-				import leon.Utils._
+				import leon.lang._
 				
 				object MergeSort {
 				  sealed abstract class List

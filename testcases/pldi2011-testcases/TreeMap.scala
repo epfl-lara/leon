@@ -1,5 +1,5 @@
 import scala.collection.immutable.Set
-import leon.Utils._
+import leon.lang._
 
 object TreeMap {
   sealed abstract class TreeMap

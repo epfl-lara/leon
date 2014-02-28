@@ -24,7 +24,15 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     settings.classpath.value = ctx.settings.classPath.mkString(":")
     settings.skip.value      = List("patmat")
 
-    val compilerOpts = args.filterNot(_.startsWith("--"))
+    val libFiles = Settings.defaultLibFiles()
+
+    val injected = if (ctx.settings.injectLibrary) {
+      libFiles
+    } else {
+      libFiles.filter(f => f.contains("/lang/") || f.contains("/annotation/"))
+    }
+
+    val compilerOpts = injected ::: args.filterNot(_.startsWith("--"))
 
     val command = new CompilerCommand(compilerOpts, settings) {
       override val cmdName = "leon"

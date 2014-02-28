@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object ArrayBubbleSort {
   def sorted(a: Array[Int], l: Int, u: Int): Boolean = {

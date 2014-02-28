@@ -126,8 +126,8 @@ class SynthesisSuite extends LeonTestSuite {
   forProgram("Cegis 1")(
     """
 import scala.collection.immutable.Set
-import leon.Annotations._
-import leon.Utils._
+import leon.annotation._
+import leon.lang._
 
 object Injection {
   sealed abstract class List
@@ -151,8 +151,8 @@ object Injection {
   forProgram("Cegis 2")(
     """
 import scala.collection.immutable.Set
-import leon.Annotations._
-import leon.Utils._
+import leon.annotation._
+import leon.lang._
 
 object Injection {
   sealed abstract class List
@@ -188,7 +188,7 @@ object Injection {
 
 
   synthesize("Lists")("""
-import leon.Utils._
+import leon.lang._
 
 object SortedList {
   sealed abstract class List
@@ -253,7 +253,7 @@ object SortedList {
   }
 
   synthesize("Church")("""
-import leon.Utils._
+import leon.lang._
 object ChurchNumerals {
   sealed abstract class Num
   case object Z extends Num
@@ -286,7 +286,7 @@ object ChurchNumerals {
   }
 
   synthesize("Church")("""
-import leon.Utils._
+import leon.lang._
 object ChurchNumerals {
   sealed abstract class Num
   case object Z extends Num

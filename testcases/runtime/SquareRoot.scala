@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object SquareRoot {
 
@@ -13,7 +13,7 @@ object SquareRoot {
       0
     } else {
       if ((x < 0)) {
-        leon.Utils.error[(Int)]("(((y * y) ≤ x) ∧ (((y + 1) * (y + 1)) ≥ x)) is UNSAT!")
+        leon.lang.error[(Int)]("(((y * y) ≤ x) ∧ (((y + 1) * (y + 1)) ≥ x)) is UNSAT!")
       } else {
         (choose { (y: Int) =>
           (((y * y) <= x) && (((y + 1) * (y + 1)) >= x))

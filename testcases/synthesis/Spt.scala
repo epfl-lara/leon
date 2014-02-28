@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 // Examples taken from http://lara.epfl.ch/~psuter/spt/
 object SynthesisProceduresToolkit {
@@ -38,7 +38,7 @@ object SynthesisProceduresToolkit {
   def e6(a: Nat, b: Nat): (Nat, NatList) = if ((a == Succ(b))) {
   (Z(), Nil())
 } else {
-  leon.Utils.error[(Nat, NatList)]("Precondition failed")
+  leon.lang.error[(Nat, NatList)]("Precondition failed")
 }
 
   def e7(a1 : NatList, a2 : Nat, a3 : NatList): (Nat, NatList, Nat, NatList) = (choose { (x1: Nat, x2: NatList, x3: Nat, x4: NatList) =>
@@ -49,7 +49,7 @@ object SynthesisProceduresToolkit {
   case Succ(n150) =>
     n150
   case _ =>
-    leon.Utils.error[(Nat)]("Precondition failed")
+    leon.lang.error[(Nat)]("Precondition failed")
 })
 
   abstract class Nat

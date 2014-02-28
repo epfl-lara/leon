@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object Numeric {
   def looping1(x: Int): Int = looping2(x - 1)

@@ -1,5 +1,5 @@
 import scala.collection.immutable.Set
-import leon.Annotations._
+import leon.annotation._
 
 object RedBlackTree { 
   sealed abstract class Color

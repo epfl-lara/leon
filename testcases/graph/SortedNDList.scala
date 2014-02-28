@@ -1,7 +1,7 @@
 import scala.collection.immutable._
 
-import leon.Annotations._
-import leon.Utils._
+import leon.annotation._
+import leon.lang._
 
 /** Tests for SortedNDList
  */

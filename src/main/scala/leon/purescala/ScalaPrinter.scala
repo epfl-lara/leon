@@ -179,7 +179,6 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
         pp(v, p)
         sb.append(")")
 
-      case ArrayMake(v) => sys.error("Not Scala Code")
       case ArraySelect(ar, i) =>
         pp(ar, p)
         sb.append("(")
@@ -256,7 +255,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case Not(expr) => sb.append("!"); optParentheses { pp(expr, p) }
 
       case e @ Error(desc) => {
-        sb.append("leon.Utils.error[")
+        sb.append("leon.lang.error[")
         pp(e.getType, p)
         sb.append("](\"" + desc + "\")")
       }

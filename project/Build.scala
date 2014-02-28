@@ -43,11 +43,6 @@ object Leon extends Build {
 
     val ldLibPath = if (is64) ldLibraryDir64.absolutePath else ldLibraryDir32.absolutePath
 
-    val leonLibPath = depsPaths.find(_.endsWith("/library/target/scala-2.10/classes")) match {
-      case None => throw new Exception("Couldn't find leon-library in the classpath.")
-      case Some(p) => p
-    }
-
     // One ugly hack... Likely to fail for Windows, but it's a Bash script anyway.
     s.log.info("Will use " + scalaHomeDir + " as SCALA_HOME.")
 
@@ -66,7 +61,10 @@ object Leon extends Build {
       sfw.write("fi"+ nl)
     }
     sfw.write("export LD_LIBRARY_PATH=\""+ldLibPath+"\"" + nl)
-    sfw.write("export LEON_LIBRARY_PATH=\""+leonLibPath+"\"" + nl)
+
+    val libFiles = file("library") ** "*.scala"
+
+    sfw.write("export LEON_LIBFILES=\""+libFiles.getPaths.mkString(" ")+"\"" + nl)
     sfw.write("export SCALA_HOME=\""+scalaHomeDir+"\"" + nl)
     sfw.close
     setupScriptFile.setExecutable(true)
@@ -121,8 +119,5 @@ object Leon extends Build {
     id = "leon",
     base = file("."),
     settings = Project.defaultSettings ++ LeonProject.settings
-  ) aggregate(leonLibrary) dependsOn(leonLibrary) 
-
-  lazy val leonLibrary = Project(id = "leon-library", base = file("./library"))
-
+  )
 }

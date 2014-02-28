@@ -430,7 +430,7 @@ class EvaluatorsTests extends LeonTestSuite {
 
   test("Executing Chooses") {
     val p = """|object Program {
-               |  import leon.Utils._
+               |  import leon.lang._
                |
                |  def c(i : Int) : Int = choose { (j : Int) => j > i && j < i + 2 }
                |}
@@ -448,7 +448,7 @@ class EvaluatorsTests extends LeonTestSuite {
     import codegen._
 
     val p = """|object Program {
-               |  import leon.Utils._
+               |  import leon.lang._
                |
                |  def c(i : Int) : Int = c(i-1)
                |}
@@ -464,7 +464,7 @@ class EvaluatorsTests extends LeonTestSuite {
     import codegen._
 
     val p = """|object Program {
-               |  import leon.Utils._
+               |  import leon.lang._
                |
                |  def c(i : Int) : Int = {
                |    require(i > 0);

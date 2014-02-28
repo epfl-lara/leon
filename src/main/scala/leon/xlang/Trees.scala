@@ -93,9 +93,6 @@ object Trees {
 
     def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
-        case _: ScalaPrinter =>
-          sys.error("Not Scala Code")
-
         case _ =>
           printer.append("epsilon(x" + this.getPos.line + "_" + this.getPos.col + ". ")
           printer.pp(pred, Some(this))
@@ -157,9 +154,6 @@ object Trees {
 
     def printWith(printer: PrettyPrinter)(implicit lvl: Int) {
       printer match {
-        case _: ScalaPrinter =>
-          sys.error("Not Scala Code")
-
         case _ =>
           printer.append("waypoint_" + i + "(")
           printer.pp(expr, Some(this))
