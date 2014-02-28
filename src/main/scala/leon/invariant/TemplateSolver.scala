@@ -58,7 +58,8 @@ abstract class TemplateSolver (
   protected var callsWithAxioms = Set[Expr]()  
   
   //for debugging 
-  private val dumpVC = false
+  private val dumpVC = true
+  private val dumpVCasSMTLIB = false
   private val debugMinimization = true
       
   /**
@@ -110,12 +111,16 @@ abstract class TemplateSolver (
 
       if (dumpVC) {
         println("Func: " + fd.id + " VC: " + ScalaPrinter(formulaWithAxioms))
-        val filename = "vc-" + FileCountGUID.getID + ".txt"
-        val wr = new PrintWriter(new File(filename))
-        ExpressionTransformer.PrintWithIndentation(wr, simplifyArithmetic(formulaWithAxioms))
-        println("Printed VC of " + fd.id + " to file: " + filename)
+        val filename = "vc-" + FileCountGUID.getID        
+        val wr = new PrintWriter(new File(filename + ".txt"))
+        ExpressionTransformer.PrintWithIndentation(wr, simplifyArithmetic(formulaWithAxioms))        
         wr.flush()
         wr.close()
+
+        if (dumpVCasSMTLIB) {
+          InvariantUtil.toZ3SMTLIB(formulaWithAxioms, filename + ".smt2", "QF_LIA", context, program)
+        }        
+        println("Printed VC of " + fd.id + " to file: " + filename)
       }
       
       //stats      

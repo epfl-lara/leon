@@ -275,6 +275,33 @@ object InvariantUtil {
       }
     } else None
   }
+  
+  def collectUNSATCores(ine : Expr, ctx: LeonContext, prog: Program) : Set[Expr] ={
+    var exprs = Seq[Expr]()
+    val solver = new UIFZ3Solver(ctx, prog)
+    val newe = simplePostTransform((e: Expr) => e match {
+      case And(_) | Or(_) => {
+        val v = FreshIdentifier("a",true).setType(BooleanType).toVariable
+        //exprs :+= Equals(v, e)
+        solver.assertCnstr(Equals(v, e))
+        v
+      }      
+      case _ => e 
+    })(ine)
+    solver.assertCnstr(newe)
+    
+    val filename = "vc-"+FileCountGUID.getID+".smt2"
+    val writer = new PrintWriter(filename)
+    writer.println(solver.ctrsToString("", false))    
+    writer.flush()
+    writer.close()
+    
+    println("Printed to file: " + filename)
+    val res = solver.check
+    val cores = solver.getUnsatCore
+    solver.free
+    cores
+  }
 }
 
 /**

@@ -11,12 +11,27 @@ object MergeSort {
   
   @monotonic
   def log(x: Int) : Int = {
-    //require(x >= 0)    
+    require(x >= 0)
+    
     if(x <= 1) 0
-    else 1 + log(x/2)    
-  } //ensuring(res=> true template((b) => res >= b))
+    else {
+      val k = x/2
+      1 + log(x - k)    
+    }
+  } 
   
-  def size(list:List): Int = {list match {
+  def recur(x:Int):Int = {
+    require(x >= 0)
+    
+    if(x <= 1) 1
+    else {
+      val k = x/2      
+      recur(k) + recur(x - k)
+    }  
+   	 
+  } ensuring(res => true template((a,b) => time <= 0*(x*log(x)) + 5))
+  
+/*  def size(list:List): Int = {list match {
     case Nil() => 0
     case Cons(x,xs) => 1 + size(xs)
   }} ensuring(res => res >= 0)
@@ -70,7 +85,8 @@ object MergeSort {
       	 
       case _ => list
    	 
-  }} ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + c))
+  }} ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))*/
+  //ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + c))
   //ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))   
       //template((a,b) => time <= a*size(list) + b))        
 }

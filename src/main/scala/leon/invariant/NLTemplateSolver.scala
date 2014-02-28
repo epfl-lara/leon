@@ -440,6 +440,10 @@ class NLTemplateSolver(context: LeonContext,
         throw IllegalStateException("cannot check the satisfiability of " + instVC)
       }
       case Some(false) => {
+        
+        val cores = InvariantUtil.collectUNSATCores(instVC, context, program)
+        println("Unsatcore: "+cores)
+        
         solEval.free()
         //do not generate any constraints
         ((fls, Set()), tru)

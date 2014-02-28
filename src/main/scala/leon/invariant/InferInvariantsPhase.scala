@@ -89,17 +89,6 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //      case LeonValueOption("functions", ListValue(fs)) =>
       //        functionsToAnalyse ++= fs
 
-//      case LeonValueOption("monotones", ListValue(fs)) => {
-//        val names = fs.toSet
-//        program.definedFunctions.foreach((fd) => {
-//          //here, checking for name equality without identifiers
-//          if (names.contains(fd.id.name)) {
-//            FunctionInfoFactory.setMonotonicity(fd)
-//            println("Marking " + fd.id + " as monotonic")
-//          }
-//        })
-//      }
-
       case LeonFlagOption("wholeprogram", true) => {
         //do not do a modular analysis        
         modularlyAnalyze =false

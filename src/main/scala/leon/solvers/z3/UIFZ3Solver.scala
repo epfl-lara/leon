@@ -35,6 +35,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
     "MODEL" -> true,
+    "UNSAT_CORE" -> true,
     //"NLSAT" -> true,
     //"MBQI" -> false,
     "TYPE_CHECK" -> true,
@@ -148,7 +149,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     model.context.getBoolValue(res.get)
   }
   
-  def ctrsToString(logic : String) : String = {        
+  def ctrsToString(logic : String, pruneDefs : Boolean = true) : String = {        
     z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)    
     var i = 0
     var smtstr = solver.getAssertions().toSeq.foldLeft("")((acc, asser) => {      
@@ -158,16 +159,21 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
         //remove from the string the headers and also redeclaration of template variables
         //split based on newline to get a list of strings
         val strs = str.split("\n")
-        val newstrs = strs.filter((line) => {
-          if (line == "; benchmark") false
-          else if (line.startsWith("(set")) false
-          else if (line.startsWith("(declare-fun")) {
-            val fields = line.split(" ")
-            if (!fields(1).startsWith("l"))
-              false
-            else true
-          } else true
-        })
+        val newstrs =
+          strs.filter((line) => {
+            if (line == "; benchmark") false
+            else if (line.startsWith("(set")) false
+            else {
+              if (pruneDefs) {
+                if (line.startsWith("(declare-fun")) {
+                  val fields = line.split(" ")
+                  if (!fields(1).startsWith("l"))
+                    false
+                  else true
+                } else true
+              } else true
+            }
+          })                
         newstrs.foldLeft("")((acc, line) => acc + "\n" + line)
       } else str
       
