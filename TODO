@@ -1,4 +1,3 @@
-* Moving from integer to real worlds may cause some problems, are we fully addressing them ?? 
 * Make all the intermediate template auotmatically synthesized and solved as postconditions
 * Incorporate CEGAR using template based interpolant into the tool
 * Perform modular analysis
