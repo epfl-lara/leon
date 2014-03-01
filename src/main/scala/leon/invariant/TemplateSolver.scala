@@ -58,7 +58,7 @@ abstract class TemplateSolver (
   protected var callsWithAxioms = Set[Expr]()  
   
   //for debugging 
-  private val dumpVC = true
+  private val dumpVC = false
   private val dumpVCasSMTLIB = false
   private val debugMinimization = true
       

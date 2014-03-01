@@ -282,7 +282,7 @@ object InvariantUtil {
     val newe = simplePostTransform((e: Expr) => e match {
       case And(_) | Or(_) => {
         val v = FreshIdentifier("a",true).setType(BooleanType).toVariable
-        //exprs :+= Equals(v, e)
+        //exprs :+= Equals(v, e)        
         solver.assertCnstr(Equals(v, e))
         v
       }      
@@ -292,7 +292,7 @@ object InvariantUtil {
     
     val filename = "vc-"+FileCountGUID.getID+".smt2"
     val writer = new PrintWriter(filename)
-    writer.println(solver.ctrsToString("", false))    
+    writer.println(solver.ctrsToString("", unsatcore = true))    
     writer.flush()
     writer.close()
     

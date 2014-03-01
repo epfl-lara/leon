@@ -148,41 +148,39 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     val res = model.eval(ast, true)
     model.context.getBoolValue(res.get)
   }
-  
-  def ctrsToString(logic : String, pruneDefs : Boolean = true) : String = {        
-    z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)    
-    var i = 0
-    var smtstr = solver.getAssertions().toSeq.foldLeft("")((acc, asser) => {      
-      val str = z3.benchmarkToSMTLIBString("benchmark", logic, "unknown", "", Seq(), asser)
 
-      val newstr = if (i > 0) {
-        //remove from the string the headers and also redeclaration of template variables
-        //split based on newline to get a list of strings
-        val strs = str.split("\n")
-        val newstrs =
-          strs.filter((line) => {
-            if (line == "; benchmark") false
-            else if (line.startsWith("(set")) false
-            else {
-              if (pruneDefs) {
-                if (line.startsWith("(declare-fun")) {
-                  val fields = line.split(" ")
-                  if (!fields(1).startsWith("l"))
-                    false
-                  else true
-                } else true
-              } else true
-            }
-          })                
-        newstrs.foldLeft("")((acc, line) => acc + "\n" + line)
-      } else str
-      
-      i += 1
-      acc + newstr
+  def ctrsToString(logic: String, unsatcore: Boolean = false): String = {
+    z3.setAstPrintMode(Z3Context.AstPrintMode.Z3_PRINT_SMTLIB2_COMPLIANT)
+    var seenHeaders = Set[String]()
+    var headers = Seq[String]()
+    var asserts = Seq[String]()
+    solver.getAssertions().toSeq.foreach((asser) => {
+      val str = z3.benchmarkToSMTLIBString("benchmark", logic, "unknown", "", Seq(), asser)
+      //println("str: "+ str)
+      //remove from the string the headers and also redeclaration of template variables
+      //split based on newline to get a list of strings
+      val strs = str.split("\n")
+      val newstrs = strs.filter((line) => !seenHeaders.contains(line))
+      var newHeaders = Seq[String]()
+      newstrs.foreach((line) => {
+        if (line == "; benchmark") newHeaders :+= line
+        else if (line.startsWith("(set")) newHeaders :+= line
+        else if (line.startsWith("(declare")) newHeaders :+= line
+        else if(line.startsWith("(check-sat)")) {} //do nothing        
+        else asserts :+= line
+      })
+      headers ++= newHeaders
+      seenHeaders ++= newHeaders
+      //newstrs.foldLeft("")((acc, line) => acc + "\n" + line)      
     })
-    
-    //finally add a get-model query
-    smtstr +=  "(get-model)"
+    val initstr = if (unsatcore) {
+      "(set-option :produce-unsat-cores true)"
+    } else ""
+    val smtstr = headers.foldLeft(initstr)((acc, hdr) => acc + "\n" + hdr) + "\n" +
+      asserts.foldLeft("")((acc, asrt) => acc + "\n" + asrt) + "\n" +
+      "(check-sat)" + "\n" +
+      (if (!unsatcore) "(get-model)"
+      else "(get-unsat-core)")
     smtstr
   } 
 }
