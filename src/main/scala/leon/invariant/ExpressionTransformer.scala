@@ -492,6 +492,12 @@ object ExpressionTransformer {
           tempMap += (v -> rhs)
           tru
         }
+      case Iff(v @ Variable(id), rhs @ _) if !freevars.contains(id) =>
+        if (tempMap.contains(v)) e
+        else {
+          tempMap += (v -> rhs)
+          tru
+        }
       case _ => e
     })(ine)
     //println("Map: " + tempMap)

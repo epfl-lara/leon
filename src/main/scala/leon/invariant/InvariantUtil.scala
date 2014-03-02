@@ -276,31 +276,57 @@ object InvariantUtil {
     } else None
   }
   
-  def collectUNSATCores(ine : Expr, ctx: LeonContext, prog: Program) : Set[Expr] ={
-    var exprs = Seq[Expr]()
+  def collectUNSATCores(ine : Expr, ctx: LeonContext, prog: Program) : Expr ={
+    var controlVars = Map[Variable, Expr]()
+    var newEqs = Map[Expr,Expr]()
     val solver = new UIFZ3Solver(ctx, prog)
     val newe = simplePostTransform((e: Expr) => e match {
       case And(_) | Or(_) => {
-        val v = FreshIdentifier("a",true).setType(BooleanType).toVariable
-        //exprs :+= Equals(v, e)        
-        solver.assertCnstr(Equals(v, e))
+        val v = TVarFactory.createTemp("a").setType(BooleanType).toVariable
+        val newe = Equals(v, e)        
+        newEqs += (v -> newe)
+        
+        //create new variable and add it in disjunction
+        val cvar = FreshIdentifier("ctrl",true).setType(BooleanType).toVariable
+        controlVars += (cvar -> newe)        
+        solver.assertCnstr(Or(newe, cvar))
         v
       }      
       case _ => e 
     })(ine)
-    solver.assertCnstr(newe)
+    //create new variable and add it in disjunction
+    val cvar = FreshIdentifier("ctrl", true).setType(BooleanType).toVariable
+    controlVars += (cvar -> newe)
+    solver.assertCnstr(Or(newe, cvar))    
     
-    val filename = "vc-"+FileCountGUID.getID+".smt2"
-    val writer = new PrintWriter(filename)
-    writer.println(solver.ctrsToString("", unsatcore = true))    
-    writer.flush()
-    writer.close()
+//    val filename = "vc-"+FileCountGUID.getID+".smt2"
+//    val writer = new PrintWriter(filename)
+//    writer.println(solver.ctrsToString("", unsatcore = true))    
+//    writer.flush()
+//    writer.close()    
+//    println("Printed to file: " + filename)
     
-    println("Printed to file: " + filename)
-    val res = solver.check
-    val cores = solver.getUnsatCore
+    val res = solver.checkAssumptions(controlVars.keySet.map(Not.apply _))
+    println("Result: "+res)
+    val coreExprs = solver.getUnsatCore
+    val simpcores = coreExprs.foldLeft(Seq[Expr]())((acc, coreExp) => {
+      val Not(cvar@Variable(_)) = coreExp
+      val newexp = controlVars(cvar)
+      //println("newexp: "+newexp)
+      newexp match {
+        case Iff(v@Variable(_),rhs) if(newEqs.contains(v)) => acc
+        case _ => {          
+          acc :+ newexp
+        }
+      }      
+    })
+    println("simpcores:"+simpcores)
+    val cores = InvariantUtil.fix((e: Expr) => replace(newEqs, e))(And(simpcores.toSeq))
+    
     solver.free
     cores
+//    ExpressionTransformer.unFlatten(cores,
+//        variablesOf(ine).filterNot(TVarFactory.isTemporary _))
   }
 }
 
