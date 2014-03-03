@@ -416,7 +416,7 @@ object Trees {
   }
 
   case class StringLiteral(value: String) extends Literal[String]
-  case object UnitLiteral extends Literal[Unit] with FixedType {
+  case class UnitLiteral() extends Literal[Unit] with FixedType {
     val fixedType = UnitType
     val value = ()
   }

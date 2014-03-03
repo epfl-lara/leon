@@ -628,7 +628,7 @@ object TreeOps {
           (realCond, newRhs)
         }
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").setType(bestRealType(m.getType)).setPos(m))((p1, ex) => {
+        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").copiedFrom(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
@@ -1153,6 +1153,8 @@ object TreeOps {
         } else {
           None
         }
+      case ft : FunctionType => None // FIXME
+
       case a : AbstractClassType => None
       case c : CaseClassType     =>
         // This is really just one big assertion. We don't rewrite class defs.
@@ -1166,7 +1168,7 @@ object TreeOps {
         } else {
           None
         }
-      case Untyped | AnyType | BottomType | BooleanType | Int32Type | UnitType => None  
+      case Untyped | AnyType | BottomType | BooleanType | Int32Type | UnitType | TypeParameter(_) => None  
     }
 
     var idMap     = Map[Identifier, Identifier]()
@@ -1200,7 +1202,7 @@ object TreeOps {
     }
 
     def pre(e : Expr) : Expr = e match {
-      case Tuple(Seq()) => UnitLiteral
+      case Tuple(Seq()) => UnitLiteral()
       case Variable(id) if idMap contains id => Variable(idMap(id))
 
       case Tuple(Seq(s)) => pre(s)

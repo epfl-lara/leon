@@ -57,7 +57,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val newId = FreshIdentifier(id.name).copiedFrom(id)
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
         val scope = (body: Expr) => rhsScope(Let(newId, rhsVal, body).copiedFrom(expr))
-        (UnitLiteral, scope, rhsFun + (id -> newId))
+        (UnitLiteral(), scope, rhsFun + (id -> newId))
       }
 
       case ite@IfExpr(cond, tExpr, eExpr) => {
@@ -150,7 +150,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val modifiedVars: Seq[Identifier] = condBodyFun.keys.toSet.intersect(varInScope).toSeq
 
         if(modifiedVars.isEmpty)
-          (UnitLiteral, (b: Expr) => b, Map())
+          (UnitLiteral(), (b: Expr) => b, Map())
         else {
           val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
@@ -210,7 +210,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
                         b))))
           })
 
-          (UnitLiteral, finalScope, modifiedVars.zip(finalVars).toMap)
+          (UnitLiteral(), finalScope, modifiedVars.zip(finalVars).toMap)
         }
       }
 

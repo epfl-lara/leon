@@ -65,6 +65,7 @@ object TypeTrees {
     case Int32Type => InfiniteSize
     case ListType(_) => InfiniteSize
     case ArrayType(_) => InfiniteSize
+    case TypeParameter(_) => InfiniteSize
     case TupleType(bases) => {
       val baseSizes = bases.map(domainSize(_))
       baseSizes.find(_ == InfiniteSize) match {
@@ -104,32 +105,10 @@ object TypeTrees {
 
   case class TypeParameter(id: Identifier) extends TypeTree
 
-  class TupleType private (val bases: Seq[TypeTree]) extends TypeTree {
+  case class TupleType(val bases: Seq[TypeTree]) extends TypeTree {
     lazy val dimension: Int = bases.length
-
-    override def equals(other: Any): Boolean = {
-      other match {
-        case (t: TupleType) => t.bases == bases
-        case _ => false
-      }
-    }
-
-    override def hashCode: Int = {
-      bases.foldLeft(42)((acc, t) => acc + t.hashCode)
-    }
-
   }
-  object TupleType {
-    def apply(bases: Seq[TypeTree]): TupleType = {
-      new TupleType(bases.map(bestRealType(_)))
-    }
-    //TODO: figure out which of the two unapply is better
-    //def unapply(t: TypeTree): Option[Seq[TypeTree]] = t match {
-    //  case (tt: TupleType) => Some(tt.bases)
-    //  case _ => None
-    //}
-    def unapply(tt: TupleType): Option[Seq[TypeTree]] = if(tt == null) None else Some(tt.bases)
-  }
+
   object TupleOneType {
     def unapply(tt : TupleType) : Option[TypeTree] = if(tt == null) None else {
       if(tt.bases.size == 1) {
@@ -204,7 +183,6 @@ object TypeTrees {
       case TupleType(ts) => Some((ts, TupleType(_)))
       case ListType(t) => Some((Seq(t), ts => ListType(ts.head)))
       case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
-      case TupleType(ts) => Some((ts, TupleType(_)))
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
       case MultisetType(t) => Some((Seq(t), ts => MultisetType(ts.head)))
       case MapType(from,to) => Some((Seq(from, to), t => MapType(t(0), t(1))))

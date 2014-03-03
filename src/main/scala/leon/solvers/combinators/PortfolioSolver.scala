@@ -55,11 +55,15 @@ class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[Solve
     val res = Await.result(result, 10.days) match {
       case Some((s, r, m)) =>
         modelMap = m
+        context.reporter.debug("Solved with "+s.name)
         solversInsts.foreach(_.interrupt)
         r
       case None =>
         None
     }
+
+    // Block until all solvers finished
+    Await.result(Future.fold(fs)(0){ (i, r) => i+1 }, 10.days);
 
     solversInsts.foreach(_.free)
 

@@ -34,9 +34,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     ConstructorPattern[Expr, TypeTree](c, args)
   }
 
-  private var ccConstructors = Map[CaseClassType, Constructor[Expr, TypeTree]]()
-  private var acConstructors = Map[AbstractClassType, List[Constructor[Expr, TypeTree]]]()
-  private var tConstructors  = Map[TupleType, Constructor[Expr, TypeTree]]()
+  private var constructors   = Map[TypeTree, List[Constructor[Expr, TypeTree]]]()
 
   private def getConstructorFor(t: CaseClassType, act: AbstractClassType): Constructor[Expr, TypeTree] = {
     // We "up-cast" the returnType of the specific caseclass generator to match its superclass
@@ -45,30 +43,66 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
 
   private def getConstructors(t: TypeTree): List[Constructor[Expr, TypeTree]] = t match {
+    case UnitType =>
+      constructors.getOrElse(t, {
+        val cs = List(Constructor[Expr, TypeTree](List(), t, s => UnitLiteral(), "()"))
+        constructors += t -> cs
+        cs
+      })
+
+    case at @ ArrayType(sub) =>
+      constructors.getOrElse(at, {
+        val cs = for (size <- List(0, 1, 2, 5)) yield {
+          Constructor[Expr, TypeTree]((1 to size).map(i => sub).toList, at, s => FiniteArray(s).setType(at), at.toString+"@"+size)
+        }
+        constructors += at -> cs
+        cs
+      })
+
     case tt @ TupleType(parts) =>
-      List(tConstructors.getOrElse(tt, {
-        val c = Constructor[Expr, TypeTree](parts, tt, s => Tuple(s).setType(tt), tt.toString)
-        tConstructors += tt -> c
-        c
-      }))
+      constructors.getOrElse(tt, {
+        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => Tuple(s).setType(tt), tt.toString))
+        constructors += tt -> cs
+        cs
+      })
+
+    case mt @ MapType(from, to) =>
+      constructors.getOrElse(mt, {
+        val cs = for (size <- List(0, 1, 2, 5)) yield {
+          val subs   = (1 to size).flatMap(i => List(from, to)).toList
+
+          Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toSeq).setType(mt), mt.toString+"@"+size)
+        }
+        constructors += mt -> cs
+        cs
+      })
+
+    case tp: TypeParameter =>
+      constructors.getOrElse(tp, {
+        val cs = for (i <- List(1, 2)) yield {
+          Constructor[Expr, TypeTree](List(), tp, s => GenericValue(tp, i), tp.id+"#"+i)
+        }
+        constructors += tp -> cs
+        cs
+      })
 
     case act: AbstractClassType =>
-      acConstructors.getOrElse(act, {
+      constructors.getOrElse(act, {
         val cs = act.knownCCDescendents.map {
           cct => getConstructorFor(cct, act)
         }.toList
 
-        acConstructors += act -> cs
+        constructors += act -> cs
 
         cs
       })
 
     case cct: CaseClassType =>
-      List(ccConstructors.getOrElse(cct, {
-        val c = Constructor[Expr, TypeTree](cct.fieldsTypes, cct, s => CaseClass(cct, s), cct.id.name)
-        ccConstructors += cct -> c
+      constructors.getOrElse(cct, {
+        val c = List(Constructor[Expr, TypeTree](cct.fieldsTypes, cct, s => CaseClass(cct, s), cct.id.name))
+        constructors += cct -> c
         c
-      }))
+      })
 
     case _ =>
       ctx.reporter.error("Unknown type to generate constructor for: "+t)
@@ -128,8 +162,10 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       (ConstructorPattern(c, elems.map(_._1)), elems.forall(_._2))
 
-    case _ =>
-      sys.error("Unsupported value, can't paternify : "+v+" : "+expType)
+    case (gv: GenericValue, t: TypeParameter) =>
+      (cPattern(getConstructors(t)(gv.id-1), List()), true)
+    case (v, t) =>
+      sys.error("Unsupported value, can't paternify : "+v+" ("+v.getClass+") : "+t)
   }
 
   type InstrumentedResult = (EvaluationResults.Result, Option[vanuatoo.Pattern[Expr, TypeTree]])

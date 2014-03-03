@@ -299,7 +299,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
     case f @ FiniteSet(els) => FiniteSet(els.map(se(_)).distinct).setType(f.getType)
     case i @ IntLiteral(_) => i
     case b @ BooleanLiteral(_) => b
-    case u @ UnitLiteral => u
+    case u @ UnitLiteral() => u
 
     case f @ ArrayFill(length, default) => {
       val rDefault = se(default)

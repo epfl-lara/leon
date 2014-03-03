@@ -23,13 +23,16 @@ object TypeTreeOps {
   }
 
   def bestRealType(t: TypeTree) : TypeTree = t match {
-    case c: ClassType if c.classDef.isInstanceOf[CaseClassDef] => {
+    case c: CaseClassType =>
       c.classDef.parent match {
-        case None => CaseClassType(c.classDef.asInstanceOf[CaseClassDef], c.tps)
-        case Some(p) => instantiateType(p, (c.classDef.tparams zip c.tps).toMap)
+        case None    =>
+          c
+
+        case Some(p) =>
+          instantiateType(p, (c.classDef.tparams zip c.tps).toMap)
       }
-    }
-    case other => other
+
+    case NAryType(tps, builder) => builder(tps.map(bestRealType))
   }
 
   def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
@@ -181,6 +184,9 @@ object TypeTreeOps {
                 val newOb = ob.map(id => freshId(id, expTpe))
 
                 (WildcardPattern(newOb), (ob zip newOb).toMap)
+
+              case _ =>
+                sys.error("woot!?")
             }
 
             MatchExpr(srec(e), cases.map(trCase)).copiedFrom(m)

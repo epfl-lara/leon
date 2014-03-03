@@ -60,7 +60,7 @@ class FilterTest extends JUnitSuite {
     tail = 
       loader.extractFields.find { 
 	      _.expression match {
-	        case ure: UnaryReconstructionExpression => ure(UnitLiteral).toString.contains(".tail")
+	        case ure: UnaryReconstructionExpression => ure(UnitLiteral()).toString.contains(".tail")
 	        case _ => false
 	      }
 	    } match {
@@ -71,7 +71,7 @@ class FilterTest extends JUnitSuite {
     head = 
       loader.extractFields.find { 
 	      _.expression match {
-	        case ure: UnaryReconstructionExpression => ure(UnitLiteral).toString.contains(".head")
+	        case ure: UnaryReconstructionExpression => ure(UnitLiteral()).toString.contains(".head")
 	        case _ => false
 	      }
 	    } match {
@@ -82,7 +82,7 @@ class FilterTest extends JUnitSuite {
     cons = 
       loader.extractCaseClasses.find { 
 	      _.expression match {
-	        case nre: NaryReconstructionExpression => nre(List(UnitLiteral, UnitLiteral)).toString.contains("Cons")
+	        case nre: NaryReconstructionExpression => nre(List(UnitLiteral(), UnitLiteral())).toString.contains("Cons")
 	        case _ => false
 	      }
 	    } match {
@@ -114,8 +114,8 @@ class FilterTest extends JUnitSuite {
 	    val variable1 = tfunDef.params.head
 	    val variable2 = tfunDef.params(1)
 	    
-	    assertEquals(+1, isLess(cons(List(UnitLiteral, variable1.toVariable)), variable1.id))
-	    assertEquals(+1, isLess(cons(List(UnitLiteral, variable1.toVariable)), variable2.id))
+	    assertEquals(+1, isLess(cons(List(UnitLiteral(), variable1.toVariable)), variable1.id))
+	    assertEquals(+1, isLess(cons(List(UnitLiteral(), variable1.toVariable)), variable2.id))
 	    assertEquals(-1, isLess(tail(variable1.toVariable), variable1.id))
 	    assertEquals(+1, isLess(head(variable1.toVariable), variable1.id))
 	    assertEquals(0, isLess(variable1.toVariable, variable1.id))

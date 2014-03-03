@@ -40,11 +40,11 @@ object TreeOps {
       case Block(exprs, last) =>
         val nexprs = (exprs :+ last).flatMap{
           case Block(es2, el) => es2 :+ el
-          case UnitLiteral => Seq()
+          case UnitLiteral() => Seq()
           case e2 => Seq(e2)
         }
         Some(nexprs match {
-          case Seq() => UnitLiteral
+          case Seq() => UnitLiteral()
           case Seq(e) => e
           case es => Block(es.init, es.last).setType(es.last.getType)
         })

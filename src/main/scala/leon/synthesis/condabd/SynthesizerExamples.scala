@@ -167,7 +167,7 @@ class SynthesizerForRuleExamples(
         info("####################################")
         info("# precondition is: " + tfd.precondition.getOrElse(BooleanLiteral(true)))
         info("# accumulatingCondition is: " + accumulatingCondition)
-        info("# accumulatingExpression(Unit) is: " + accumulatingExpression(UnitLiteral))
+        info("# accumulatingExpression(Unit) is: " + accumulatingExpression(UnitLiteral()))
         info("####################################")
         interactivePause
 

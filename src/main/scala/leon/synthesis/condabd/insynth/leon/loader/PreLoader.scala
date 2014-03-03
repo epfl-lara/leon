@@ -250,7 +250,7 @@ object PreLoader extends ( (Boolean) => List[Declaration] ) {
     ) 
 //    case u @ UnitLiteral => u
     list += makeLiteral(
-      IE( "UnitLit", UnitLiteral ),
+      IE( "UnitLit", UnitLiteral() ),
       UnitType
     ) 
     

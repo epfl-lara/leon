@@ -740,7 +740,7 @@ trait CodeExtraction extends ASTExtractors {
               val nctx = dctx.withNewVar(vs -> (() => Variable(newID)))
               extractTree(rst)(nctx)
             }
-            case None => UnitLiteral
+            case None => UnitLiteral()
           }
 
           rest = None
@@ -764,7 +764,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val restTree = rest match {
             case Some(rst) => extractTree(rst)
-            case None => UnitLiteral
+            case None => UnitLiteral()
           }
           rest = None
           LetDef(funDefWithBody, restTree)
@@ -793,7 +793,7 @@ trait CodeExtraction extends ASTExtractors {
               val nctx = dctx.withNewVar(nv).withNewMutableVar(nv)
               extractTree(rst)(nctx)
             }
-            case None => UnitLiteral
+            case None => UnitLiteral()
           }
 
           rest = None
@@ -873,7 +873,7 @@ trait CodeExtraction extends ASTExtractors {
           BooleanLiteral(v)
 
         case ExUnitLiteral() =>
-          UnitLiteral
+          UnitLiteral()
 
         case ExLocally(body) =>
           extractTree(body)

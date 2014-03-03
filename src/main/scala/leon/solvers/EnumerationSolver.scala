@@ -19,13 +19,15 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
 
   val maxTried = 10000;
 
-  var datagen: DataGenerator = _
+  var datagen: Option[DataGenerator] = None
+
+  private var interrupted = false;
 
   var freeVars    = List[Identifier]()
   var constraints = List[Expr]()
 
   def assertCnstr(expression: Expr): Unit = {
-    constraints ::= expression
+    constraints = constraints :+ expression
 
     val newFreeVars = (variablesOf(expression) -- freeVars).toList
     freeVars = freeVars ::: newFreeVars
@@ -34,25 +36,29 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   private var modelMap = Map[Identifier, Expr]()
 
   def check: Option[Boolean] = {
-    try { 
-      val muteContext = context.copy(reporter = new DefaultReporter(context.settings))
-      datagen = new VanuatooDataGen(muteContext, program)
-
-      modelMap = Map()
-
-      val it = datagen.generateFor(freeVars, And(constraints.reverse), 1, maxTried)
-
-      if (it.hasNext) {
-        val model = it.next
-        modelMap = (freeVars zip model).toMap
-        Some(true)
-      } else {
+    val res = try {
+      datagen = Some(new VanuatooDataGen(context, program))
+      if (interrupted) {
         None
+      } else {
+        modelMap = Map()
+
+        val it = datagen.get.generateFor(freeVars, And(constraints), 1, maxTried)
+
+        if (it.hasNext) {
+          val model = it.next
+          modelMap = (freeVars zip model).toMap
+          Some(true)
+        } else {
+          None
+        }
       }
     } catch {
       case e: codegen.CompilationException =>
         None
     }
+    datagen = None
+    res
   }
 
   def getModel: Map[Identifier, Expr] = {
@@ -64,10 +70,14 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   }
 
   def interrupt(): Unit = {
-    Option(datagen).foreach(_.interrupt)
+    interrupted = true;
+
+    datagen.foreach{ s =>
+      s.interrupt
+    }
   }
 
   def recoverInterrupt(): Unit = {
-    Option(datagen).foreach(_.recoverInterrupt)
+    datagen.foreach(_.recoverInterrupt)
   }
 }

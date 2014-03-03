@@ -116,7 +116,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case IntLiteral(v) => sb.append(v)
       case BooleanLiteral(v) => sb.append(v)
       case StringLiteral(s) => sb.append("\"" + s + "\"")
-      case UnitLiteral => sb.append("()")
+      case UnitLiteral() => sb.append("()")
       case GenericValue(tp, id) =>
         pp(tp, p)
         sb.append("#"+id)

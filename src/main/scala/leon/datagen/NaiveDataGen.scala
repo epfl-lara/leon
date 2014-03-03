@@ -55,6 +55,8 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
   private def intStream : Stream[Expr] = Stream.cons(IntLiteral(0), intStream0(1))
   private def intStream0(n : Int) : Stream[Expr] = Stream.cons(IntLiteral(n), intStream0(if(n > 0) -n else -(n-1)))
 
+  private def tpStream(tp: TypeParameter, i: Int = 1): Stream[Expr] = Stream.cons(GenericValue(tp, i), tpStream(tp, i+1))
+
   def natStream : Stream[Expr] = natStream0(0)
   private def natStream0(n : Int) : Stream[Expr] = Stream.cons(IntLiteral(n), natStream0(n+1))
 
@@ -76,6 +78,9 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
 
       case Int32Type =>
         intStream
+
+      case tp: TypeParameter =>
+        tpStream(tp)
 
       case TupleType(bses) =>
         naryProduct(bses.map(generate(_, bounds))).map(Tuple)

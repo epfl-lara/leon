@@ -30,7 +30,7 @@ object CommonDeclarations {
       Int32Type
   )
   
-  val unit = UnitLiteral
+  val unit = UnitLiteral()
     
   val unitDeclaration = makeDeclaration(
       ImmediateExpression("unit", unit),

@@ -100,7 +100,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case IntLiteral(v)        => sb.append(v)
       case BooleanLiteral(v)    => sb.append(v)
       case StringLiteral(s)     => sb.append("\"" + s + "\"")
-      case UnitLiteral          => sb.append("()")
+      case UnitLiteral()        => sb.append("()")
 
       /* These two aren't really supported in Scala, but we know how to encode them. */
       case Implies(l,r)         => pp(Or(Not(l), r), p)
