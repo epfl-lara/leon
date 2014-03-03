@@ -113,22 +113,19 @@ object ExpressionTransformer {
           }
           //compute the disjunction of all possibs
           val newexpr = Or(possibs)
-          //println("newexpr: "+newexpr)
-          /*val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable
-          val divsem = Equals(lhs,Plus(Times(rhs,quo),rem))
-          val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))*/
+          //println("newexpr: "+newexpr)          
           val resset = transform(newexpr)          
           (quo, resset._2 + resset._1)          
         }        
         //handles division by variables
-        case Division(lhs, rhs) => {
-          //TODO: handle division in a precise way as above
+        case Division(lhs, rhs) => {          
           //this models floor and not integer division          
-          import NonlinearityEliminationPhase._
-          
           val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
-          val prod = FunctionInvocation(multFun, Seq(quo, rhs))
-          val newexpr = Or(Equals(prod, lhs), Equals(Plus(prod,this.one), lhs))
+          val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable
+          val mult = FunctionInvocation(NonlinearityEliminationPhase.multFun, Seq(quo, rhs))
+          val divsem = Equals(lhs,Plus(mult,rem))
+          //TODO: here, we have to use |rhs|
+          val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))          
           val resset = transform(newexpr)          
           (quo, resset._2 + resset._1)          
         }

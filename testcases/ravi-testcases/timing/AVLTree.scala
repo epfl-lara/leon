@@ -39,7 +39,7 @@ object AVLTree  {
         max(hl,hr) + 1
       }
     }
-  } ensuring(res => res >= 0)
+  } 
 
   def size(t: Tree): Int = {
     //require(isAVL(t))    
@@ -48,7 +48,7 @@ object AVLTree  {
       case Node(l, _, r,_) => size(l) + 1 + size(r)
     })
     
-  } ensuring(res => res >= 0)
+  } 
   //ensuring (res => true template((a,b) => height(t) <= a*res + b))  
   
   def rankHeight(t: Tree) : Boolean = t match {

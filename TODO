@@ -13,7 +13,11 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 * Extend the approach to graph algorithms
 
 ############Short term goals###############
-* Try bit vectors
+* Save the lower bounds found in the previous iterations and resuse them
+* Profile and check if we can improve performace
+* Should we need a better way to instantiate axioms? Try adding dist. + monotonicity for mergesort. Provide a way to enable/disable axioms/
+  May be make multiplication, as something that is commutative, associative, distributive and monotonic.
+  What if we use multiplication as it is in the VC ?? Something to try
 * Fix warnings
 * How to redesign NLTemplateSolver ? It is getting ugly
 * rebase to newer version of leon

@@ -17,18 +17,7 @@ object MergeSort {
       val k = x/2
       1 + log(x - k)    
     }    
-  } 
-  
-  /*def recur(x:Int):Int = {
-    //require(x >= 0)    
-    if(x <= 1) 1
-    else {
-      val k = x/2      
-      recur(k) + recur(x - k)
-      recur(x-1) + 1
-    }  
-   	 
-  } ensuring(res => true template((a,b) => res <= 0*(x*log(x)) + 2))*/   
+  }   
   
   def size(list:List): Int = {list match {
     case Nil() => 0
