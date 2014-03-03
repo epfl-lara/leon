@@ -1,4 +1,4 @@
-Leon 2.2
+Leon 2.3
 ==========
 
 Getting Started
@@ -140,6 +140,17 @@ Since the main Leon project depends on the library, you should import both of th
 
 Changelog
 ---------
+
+#### v2.3
+*Released 03.03.2014*
+
+* Accept multiple files with multiple modules/classes. Support class
+  definitions with methods.
+* Introduce the Leon library with common generic datastructures, List and
+  Option for now.
+* Add PortfolioSolver which tries a list of solvers (--solvers) in parallel.
+* Add EnumerationSolver which uses Vanuatoo to guess models.
+* Add documentation and sbt support for development under Eclipse,
 
 #### v2.2
 *Released 04.02.2014*
