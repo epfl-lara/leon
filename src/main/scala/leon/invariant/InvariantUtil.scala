@@ -283,8 +283,8 @@ object InvariantUtil {
     val newe = simplePostTransform((e: Expr) => e match {
       case And(_) | Or(_) => {
         val v = TVarFactory.createTemp("a").setType(BooleanType).toVariable
+        newEqs += (v -> e)
         val newe = Equals(v, e)        
-        newEqs += (v -> newe)
         
         //create new variable and add it in disjunction
         val cvar = FreshIdentifier("ctrl",true).setType(BooleanType).toVariable
@@ -320,13 +320,12 @@ object InvariantUtil {
         }
       }      
     })
-    println("simpcores:"+simpcores)
-    val cores = InvariantUtil.fix((e: Expr) => replace(newEqs, e))(And(simpcores.toSeq))
+    val cores = InvariantUtil.fix((e: Expr) => replace(newEqs, e))(And(simpcores.toSeq))    
     
     solver.free
-    cores
-//    ExpressionTransformer.unFlatten(cores,
-//        variablesOf(ine).filterNot(TVarFactory.isTemporary _))
+    //cores
+    ExpressionTransformer.unFlatten(cores,
+        variablesOf(ine).filterNot(TVarFactory.isTemporary _))
   }
 }
 

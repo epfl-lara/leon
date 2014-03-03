@@ -112,8 +112,7 @@ class NLTemplateSolver(context: LeonContext,
     }
     val sol = recSolve(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
 
-    solverWithCtr.free()
-    //For stats, add lowerbounds to the stats    
+    solverWithCtr.free()   
     sol
   }
 
@@ -439,11 +438,7 @@ class NLTemplateSolver(context: LeonContext,
         solEval.free()
         throw IllegalStateException("cannot check the satisfiability of " + instVC)
       }
-      case Some(false) => {
-        
-        val cores = InvariantUtil.collectUNSATCores(instVC, context, program)
-        println("Unsatcore: "+cores)
-        
+      case Some(false) => {        
         solEval.free()
         //do not generate any constraints
         ((fls, Set()), tru)
@@ -520,40 +515,41 @@ class NLTemplateSolver(context: LeonContext,
         //check if two calls satisfy an axiom 
         val generateAxiom = (call1: Expr, call2: Expr) => {
 
-          //check if these are function calls belong to callsWithAxioms 
-          //TODO: this is a hack for now
-          if (callsWithAxioms.contains(call1) && callsWithAxioms.contains(call2)) {
-            val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
-            val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
+          if (this.disableAxioms) {
+            //check if these function calls have an axiom that needs to be instantiated           
+            if (callsWithAxioms.contains(call1) && callsWithAxioms.contains(call2)) {
+              val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
+              val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
 
-            if (this.debugAxioms) {
-              println("Calls: (" + call1 + "," + call2 + ")")
-              println("Model: " + (args1 ++ args2 ++ Seq(r1, r2)).map((v) => (v, model(v.asInstanceOf[Variable].id))))
-            }
-            val (ants1, conseq1) = this.monotonizeCalls(call1, call2)
-            val ant1 = And(ants1)
-            if (evaluator(ant1, conseq1)) {
-              //for debugging
-              //if(this.debugAxioms)
-              println("Axiom pre1 implied ")
-
-              Some(And(ant1, conseq1))
-            } else {
-              val (ants2, conseq2) = this.monotonizeCalls(call2, call1)
-              val ant2 = And(ants2)
-              if (evaluator(ant2, conseq2)) {
+              if (this.debugAxioms) {
+                println("Calls: (" + call1 + "," + call2 + ")")
+                println("Model: " + (args1 ++ args2 ++ Seq(r1, r2)).map((v) => (v, model(v.asInstanceOf[Variable].id))))
+              }
+              val (ants1, conseq1) = this.monotonizeCalls(call1, call2)
+              val ant1 = And(ants1)
+              if (evaluator(ant1, conseq1)) {
                 //for debugging
                 //if(this.debugAxioms)
-                println("Axiom pre2 implied ")
+                println("Axiom pre1 implied ")
 
-                Some(And(ant2, conseq2))
+                Some(And(ant1, conseq1))
               } else {
-                //if(this.debugAxioms)
-                println("Axiom pre not implied ")
-                //we need to say that arg1 and arg2 are incomparable
-                Some(And(Not(ant1), Not(ant2)))
+                val (ants2, conseq2) = this.monotonizeCalls(call2, call1)
+                val ant2 = And(ants2)
+                if (evaluator(ant2, conseq2)) {
+                  //for debugging
+                  //if(this.debugAxioms)
+                  println("Axiom pre2 implied ")
+
+                  Some(And(ant2, conseq2))
+                } else {
+                  //if(this.debugAxioms)
+                  println("Axiom pre not implied ")
+                  //we need to say that arg1 and arg2 are incomparable
+                  Some(And(Not(ant1), Not(ant2)))
+                }
               }
-            }
+            } else None
           } else None
         }
 
@@ -1087,9 +1083,9 @@ class NLTemplateSolver(context: LeonContext,
   def mayAlias(e1: Expr, e2: Expr): Boolean = {
     //check if call and call2 are compatible
     (e1, e2) match {
-      case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) if (fd1 == fd2) => true
-      case (Iff(_, FunctionInvocation(fd1, _)), Iff(_, FunctionInvocation(fd2, _))) if (fd1 == fd2) => true
-      case (Equals(_, CaseClass(cd1, _)), Equals(_, CaseClass(cd2, _))) if (cd1 == cd2) => true
+      case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
+      case (Iff(_, FunctionInvocation(fd1, _)), Iff(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
+      case (Equals(_, CaseClass(cd1, _)), Equals(_, CaseClass(cd2, _))) if (cd1.id == cd2.id) => true
       case (Equals(_, tp1 @ Tuple(e1)), Equals(_, tp2 @ Tuple(e2))) if (tp1.getType == tp2.getType) => true
       case _ => false
     }

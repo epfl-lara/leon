@@ -49,6 +49,10 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   //TODO: Ideally these info should stored in a distributed way inside the nodes of the constraint tree
   private var untemplatedCalls = Set[Call]()  
   private var unspecdCalls = Set[Call]()
+  
+  //debugging flags
+  private val dumpInlinedSummary = false
+  //private val dumpUnrolledVC = false 
 
   /**
   * This creates an initial abstraction 
@@ -130,7 +134,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     } else headCalls
     
     println("Unrolling: "+ callsToProcess.size+"/"+headCalls.size)
-    println("Unrolled calls: "+callsToProcess.map(_.expr))
+    //println("Unrolled calls: "+callsToProcess.map(_.expr))
     
     val unrolls = callsToProcess.foldLeft(Set[Call]())((acc, call) => {      
 
@@ -261,6 +265,9 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
       Equals(InvariantUtil.getFunctionReturnVariable(callee), freshBody)       
     val argmap1 = InvariantUtil.formalToAcutal(call)
     val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary))
+    
+    if(this.dumpInlinedSummary)
+    	println("Inlined Summary: "+inlinedSummary)
 
     //create a constraint tree for the summary
     val summaryTree = CtrNode()      

@@ -106,15 +106,23 @@ object ExpressionTransformer {
         case Division(lhs, rhs@IntLiteral(v)) => {
           //this models floor and not integer division
           val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
-          val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable
-          val divsem = Equals(lhs,Plus(Times(rhs,quo),rem)) 
-          //val newexpr = Or(Equals(prod, lhs), Equals(Plus(prod,this.one), lhs))
-          val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))
+          var possibs = Seq[Expr]()
+          for(i <- v-1 to 0 by -1) {
+            if(i==0) possibs :+= Equals(lhs,Times(rhs, quo))
+            else possibs :+= Equals(lhs,Plus(Times(rhs, quo),IntLiteral(i)))
+          }
+          //compute the disjunction of all possibs
+          val newexpr = Or(possibs)
+          //println("newexpr: "+newexpr)
+          /*val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable
+          val divsem = Equals(lhs,Plus(Times(rhs,quo),rem))
+          val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))*/
           val resset = transform(newexpr)          
           (quo, resset._2 + resset._1)          
         }        
         //handles division by variables
         case Division(lhs, rhs) => {
+          //TODO: handle division in a precise way as above
           //this models floor and not integer division          
           import NonlinearityEliminationPhase._
           

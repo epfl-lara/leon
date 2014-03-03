@@ -11,27 +11,26 @@ object MergeSort {
   
   @monotonic
   def log(x: Int) : Int = {
-    require(x >= 0)
-    
+    require(x >= 0)    
     if(x <= 1) 0
     else {
       val k = x/2
       1 + log(x - k)    
-    }
+    }    
   } 
   
-  def recur(x:Int):Int = {
-    require(x >= 0)
-    
+  /*def recur(x:Int):Int = {
+    //require(x >= 0)    
     if(x <= 1) 1
     else {
       val k = x/2      
       recur(k) + recur(x - k)
+      recur(x-1) + 1
     }  
    	 
-  } ensuring(res => true template((a,b) => time <= 0*(x*log(x)) + 5))
+  } ensuring(res => true template((a,b) => res <= 0*(x*log(x)) + 2))*/   
   
-/*  def size(list:List): Int = {list match {
+  def size(list:List): Int = {list match {
     case Nil() => 0
     case Cons(x,xs) => 1 + size(xs)
   }} ensuring(res => res >= 0)
@@ -41,7 +40,7 @@ object MergeSort {
       case Nil() => 0
       case Cons(x,xs) => 1 + length(xs)
     }
-  } ensuring(res => res >= 0 && res == size(l) template((a,b) => time <= a*size(l) + b))
+  } ensuring(res => res == size(l) template((a,b) => time <= a*size(l) + b))
 
   def split(l:List,n:Int): (List,List) = {
     require(n >= 0 && n <= size(l))    
@@ -85,8 +84,5 @@ object MergeSort {
       	 
       case _ => list
    	 
-  }} ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))*/
-  //ensuring(res => size(res) == size(list) template((a,b,c) => time <= a*(size(list)*size(list)) + c))
-  //ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))   
-      //template((a,b) => time <= a*size(list) + b))        
+  }} ensuring(res => true template((a,b) => time <= a*(size(list)*log(size(list))) + b))  
 }
