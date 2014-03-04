@@ -10,6 +10,8 @@ object Tokens {
   case object TLT extends Token
   case object TIf extends Token
   case object TElse extends Token
+  case object TLAnd extends Token
+  case object TLOr extends Token
   case object TLeftBrace extends Token
   case object TRightBrace extends Token
   case object TLeftPar extends Token
@@ -22,6 +24,8 @@ object Trees {
   abstract class Expr
   case class Times(lhs: Expr, rhs: Expr) extends Expr
   case class Plus(lhs: Expr, rhs: Expr) extends Expr
+  case class And(lhs: Expr, rhs: Expr) extends Expr
+  case class Or(lhs: Expr, rhs: Expr) extends Expr
   case class Var(id: Int) extends Expr
   case class IntLiteral(v: Int) extends Expr
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr
@@ -46,7 +50,29 @@ object Parser {
   }
 
   def parseGoal(ts: List[Token]): Option[(Expr, List[Token])] = {
-    parseLT(ts)
+    parseOr(ts)
+  }
+
+  def parseOr(ts: List[Token]): Option[(Expr, List[Token])] = {
+    parseAnd(ts) match {
+      case Some((lhs, Cons(TLOr, r))) =>
+        parseAnd(r) match {
+          case Some((rhs, ts2)) => Some((Or(lhs, rhs), ts2))
+          case None() => None()
+        }
+      case r => r
+    }
+  }
+
+  def parseAnd(ts: List[Token]): Option[(Expr, List[Token])] = {
+    parseLT(ts) match {
+      case Some((lhs, Cons(TLAnd, r))) =>
+        parseLT(r) match {
+          case Some((rhs, ts2)) => Some((And(lhs, rhs), ts2))
+          case None() => None()
+        }
+      case r => r
+    }
   }
 
   def parseLT(ts: List[Token]): Option[(Expr, List[Token])] = {
@@ -110,38 +136,36 @@ object Parser {
   }
 }
 
+object TypeChecker {
+  import Trees._
+  import Types._
+
+  def typeChecks(e: Expr, exp: Option[Type]): Boolean = e match {
+    case Times(l, r)    => (exp.getOrElse(IntType) == IntType)   && typeChecks(l, Some(IntType))  && typeChecks(r, Some(IntType))
+    case Plus(l, r)     => (exp.getOrElse(IntType) == IntType)   && typeChecks(l, Some(IntType))  && typeChecks(r, Some(IntType))
+    case And(l, r)      => (exp.getOrElse(BoolType) == BoolType) && typeChecks(l, Some(BoolType)) && typeChecks(r, Some(BoolType))
+    case Or(l, r)       => (exp.getOrElse(BoolType) == BoolType) && typeChecks(l, Some(BoolType)) && typeChecks(r, Some(BoolType))
+    case LessThan(l, r) => (exp.getOrElse(BoolType) == BoolType) && typeChecks(l, Some(IntType))  && typeChecks(r, Some(IntType))
+    case Ite(c, th, el) => typeChecks(c, Some(BoolType)) && typeChecks(th, exp) && typeChecks(el, exp)
+    case IntLiteral(_)  => exp.getOrElse(IntType) == IntType
+    case Var(_)         => exp.getOrElse(IntType) == IntType
+  }
+
+  def typeChecks(e: Expr): Boolean = typeChecks(e, None())
+}
+
 object Compiler {
   import Tokens._
   import Trees._
   import Types._
   import Parser._
+  import TypeChecker._
 
-  @proxy
-  def tokenize(s: String): List[Token] = {
-    Cons(TInt(12), Cons(TLT, Cons(TInt(32), Nil())))
-  }
 
   def parse(ts: List[Token]): Option[Expr] = {
     parsePhrase(ts)
-  } ensuring { res => res match {
-    case Some(res) => typeChecks(res, BoolType)
-    case None() => true
+  } ensuring { _ match {
+    case Some(tree) => typeChecks(tree)
+    case None()     => true
   }}
-
-  def typeChecks(e: Expr, t: Type): Boolean = e match {
-    case Times(l, r) => (t == IntType) && typeChecks(l, IntType) && typeChecks(r, IntType)
-    case Plus(l, r) => (t == IntType) && typeChecks(l, IntType) && typeChecks(r, IntType)
-    case LessThan(l, r) => (t == BoolType) && typeChecks(l, IntType) && typeChecks(r, IntType)
-    case Ite(c, th, el) => typeChecks(c, BoolType) && typeChecks(th, t) && typeChecks(el, t)
-    case IntLiteral(_) => t == IntType
-    case Var(_) => t == IntType
-  }
-
-  @proxy
-  def run(s: String) = {
-    val ts = tokenize(s)
-    val e = parse(ts)
-    e
-  }
-
 }

@@ -9,7 +9,7 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
-class TracingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog) {
+class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) extends RecursiveEvaluator(ctx, prog) {
   type RC = TracingRecContext
   type GC = TracingGlobalContext
 
@@ -20,7 +20,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
   }
 
   def initGC = {
-    val gc = new TracingGlobalContext(stepsLeft = 50000, Nil)
+    val gc = new TracingGlobalContext(stepsLeft = maxSteps, Nil)
     lastGlobalContext = Some(gc)
     gc
   }
@@ -36,21 +36,25 @@ class TracingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = {
     try {
       val (res, recordedRes) = expr match {
-        case Let(i,e,b) =>
+        case Let(i,ex,b) =>
           // We record the value of the val at the position of Let, not the value of the body.
-          val first = se(e)
-          val res = se(b)(rctx.withNewVar(i, first), gctx)
+          val first = e(ex)
+          val res = e(b)(rctx.withNewVar(i, first), gctx)
           (res, first)
 
         case fi @ FunctionInvocation(tfd, args) =>
+          if (gctx.stepsLeft < 0) {
+            throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
+          }
+          gctx.stepsLeft -= 1
 
-          val evArgs = args.map(a => se(a))
+          val evArgs = args.map(a => e(a))
 
           // build a mapping for the function...
           val frame = new TracingRecContext((tfd.params.map(_.id) zip evArgs).toMap, rctx.tracingFrames-1)
 
           if(tfd.hasPrecondition) {
-            se(matchToIfThenElse(tfd.precondition.get))(frame, gctx) match {
+            e(matchToIfThenElse(tfd.precondition.get))(frame, gctx) match {
               case BooleanLiteral(true) =>
               case BooleanLiteral(false) =>
                 throw RuntimeError("Precondition violation for " + tfd.id.name + " reached in evaluation.: " + tfd.precondition.get)
@@ -63,7 +67,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
           }
 
           val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-          val callResult = se(matchToIfThenElse(body))(frame, gctx)
+          val callResult = e(matchToIfThenElse(body))(frame, gctx)
 
           if(tfd.hasPostcondition) {
             val (id, post) = tfd.postcondition.get
@@ -71,7 +75,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
             val freshResID = FreshIdentifier("result").setType(tfd.returnType)
             val postBody = replace(Map(Variable(id) -> Variable(freshResID)), matchToIfThenElse(post))
 
-            se(matchToIfThenElse(post))(frame.withNewVar(id, callResult), gctx) match {
+            e(matchToIfThenElse(post))(frame.withNewVar(id, callResult), gctx) match {
               case BooleanLiteral(true) =>
               case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
               case other => throw EvalError(typeErrorMsg(other, BooleanType))
