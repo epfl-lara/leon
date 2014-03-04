@@ -97,9 +97,8 @@ abstract class TemplateSolver (
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
   def solveTemplates(): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
-        
-    //for stats
-    Stats.outerIterations += 1
+           
+    Stats.updateCounter(1, "VC-refinement")
     
     //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs        
@@ -138,19 +137,13 @@ abstract class TemplateSolver (
         }        
         println("Printed VC of " + fd.id + " to file: " + filename)
       }
-      
-      //stats      
+                
       if (InferInvariantsPhase.dumpStats) {
         val plainVCsize = InvariantUtil.atomNum(formula)
-        val vcsize = InvariantUtil.atomNum(formulaWithAxioms)
-        val (cum, max) = Stats.cumMax(Stats.cumVCsize, Stats.maxVCsize, vcsize)
-        Stats.cumVCsize = cum; Stats.maxVCsize = max
-
-        val (cum2, max2) = Stats.cumMax(Stats.cumUIFADTs, Stats.maxUIFADTs, InvariantUtil.numUIFADT(formula))
-        Stats.cumUIFADTs = cum2; Stats.maxUIFADTs = max2
-
-        val (cum1, max1) = Stats.cumMax(Stats.cumLemmaApps, Stats.maxLemmaApps, vcsize - plainVCsize)
-        Stats.cumLemmaApps = cum1; Stats.maxLemmaApps = max1
+        val vcsize = InvariantUtil.atomNum(formulaWithAxioms)        
+        Stats.updateCounterStats(vcsize, "VC-size", "VC-refinement")
+        Stats.updateCounterStats(vcsize - plainVCsize, "AxiomBlowup", "VC-refinement")
+        Stats.updateCounterStats(InvariantUtil.numUIFADT(formula), "UIF+ADT", "VC-refinement")
       }            
       
       (fd -> formulaWithAxioms)
@@ -162,12 +155,8 @@ abstract class TemplateSolver (
       if (!tempOption.isDefined) acc
       else acc ++ variablesOf(tempOption.get).filter(TemplateIdFactory.IsTemplateIdentifier _)      
     })
-
-    //stats
-    if (InferInvariantsPhase.dumpStats) {
-      val (cum3, max3) = Stats.cumMax(Stats.cumTempVars, Stats.maxTempVars, tempIds.size)
-      Stats.cumTempVars = cum3; Stats.maxTempVars = max3
-    }      
+    
+    Stats.updateCounterStats(tempIds.size, "TemplateIds", "VC-refinement")           
        
     val solution = solve(tempIds, funcExprs)        
     solution

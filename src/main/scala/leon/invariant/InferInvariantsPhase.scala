@@ -180,8 +180,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       var maxCegisBound=200
       breakable {
         while (b <= maxCegisBound) {
-          //for stats          
-          Stats.boundsTried += 1                    
+
+          Stats.updateCumStats(1, "CegisBoundsTried")
+          
           //create a solver factory, ignoring timeouts here                   
           val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory, rootFun: FunDef) => {
             new CegisSolver(context, program, rootFun, constTracker, tempFactory, 10000, Some(b))
@@ -199,21 +200,16 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     }
    
     val t2 = System.currentTimeMillis()
-    Stats.totalTime = t2 - t1
+    Stats.updateCumTime(t2-t1, "TotalTime")
+    
     //dump stats 
     if (dumpStats) {
       reporter.info("- Dumping statistics")
       val pw = new PrintWriter(program.mainObject.id +statsSuff+".txt")
-      Stats.dumpStats(pw)
-      if (useCegis) {
-        Stats.dumpCegisStats(pw)
-      } else {
-        Stats.dumpFarkasStats(pw)
-        Stats.dumpCegisStats(pw)        
-      }
-      Stats.dumpOutputs(pw)
+      Stats.dumpStats(pw)      
+      SpecificStats.dumpOutputs(pw)
       if(tightBounds) {
-        Stats.dumpMinimizationStats(pw)
+        SpecificStats.dumpMinimizationStats(pw)
       }
     }
 
@@ -239,6 +235,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       //skip the function if it has been analyzed or those that are theory operations
       if (!analyzedSet.contains(funDef)) {
         if (funDef.hasBody && funDef.hasPostcondition) {
+          
+          Stats.updateCounter(1, "procs")
+          
           val body = funDef.nondetBody.get
           val (resvar, post) = funDef.postcondition.get
 

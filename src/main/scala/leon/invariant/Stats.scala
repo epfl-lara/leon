@@ -7,7 +7,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
-import scala.collection.mutable.{ Set => MutableSet }
+import scala.collection.mutable.{ Map => MutableMap }
 import scala.collection.immutable.Stack
 import leon.evaluators._
 import java.io._
@@ -22,133 +22,120 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
-import scala.collection.mutable.{Set => MutableSet}
+import scala.collection.mutable.{ Set => MutableSet }
 import java.io._
 
+/**
+ * A generic statistics object that provides:
+ * (a) Temporal variables that change over time. We track the total sum and max of the values the variable takes over time
+ * (b) Counters that are incremented over time. Variables can be associated with counters. 
+ *     We track the averages value of a variable over time w.r.t to the counters with which it is associated. 
+ */
 object Stats {
-  //stats  
-  var totalTime : Long = 0
-  var minimizationTime : Long = 0
-  var outerIterations = 0
-  var innerIterations = 0
-  var retries = 0
-  
-  //per outer iteration statistics
-  var cumVCsize : Long = 0
-  var maxVCsize : Long = 0
-  var cumUIFADTs : Long = 0
-  var maxUIFADTs : Long = 0
-  var cumTempVars : Long = 0
-  var maxTempVars : Long= 0
-  
-  //non-linear solver stats    
-  var cumFarkaSize : Long = 0
-  var maxFarkaSize : Long = 0
-  var cumFarkaTime : Long = 0
-  var maxFarkaTime : Long = 0  
-  var cumNLsize : Long = 0
-  var maxNLsize : Long = 0
-  var cumDijsize : Long = 0
-  var maxDijsize : Long = 0
-  var cumExploreTime: Long  = 0
-  var maxExploreTime: Long  = 0
-  var cumCompatCalls : Long = 0
-  var maxCompatCalls : Long = 0
-  var cumElimVars: Long  = 0
-  var maxElimVars: Long  = 0
-  var cumElimAtoms: Long  = 0
-  var maxElimAtoms: Long  = 0  
-  var cumLemmaApps: Long = 0
-  var maxLemmaApps: Long  = 0
-  
-  //cegis solver stats
-  var cegisIterations = 0
-  var cumTemplateCtrSize : Long = 0  
-  var maxTemplateCtrSize : Long = 0
-  var boundsTried = 0
-  
+  val keystats = MutableMap[String, (Long, Long)]()
+  val counterMap = MutableMap[String, Seq[String]]()
+  var cumKeys = Seq[String]()
+  var timekeys = Set[String]() //this may be inner, outer or cumkey
+
+  private def updateStats(newval: Long, key: String, cname: Option[String]) = {
+    val (cum, max) = keystats.getOrElse(key, {
+      val init = (0: Long, 0: Long)
+      keystats += (key -> (0, 0))
+
+      if (cname.isDefined) {
+        val presentKeys = counterMap(cname.get)
+        counterMap.update(cname.get, presentKeys :+ key)
+      } else {
+        cumKeys :+= key
+      }
+      init
+    })
+    val newcum = cum + newval
+    val newmax = if (max < newval) newval else max
+    keystats.update(key, (newcum, newmax))
+  }
+  //a special method for adding times
+  private def updateTimeStats(newval: Long, key: String, cname: Option[String]) = {
+    if (!timekeys.contains(key))
+      timekeys += key
+    updateStats(newval, key, cname)
+  }
+
+  def updateCumStats(newval: Long, key: String) = updateStats(newval, key, None)
+  def updateCumTime(newval: Long, key: String) = updateTimeStats(newval, key, None)
+  def updateCounter(incr: Long, key: String) = {
+    if (!counterMap.contains(key)) {
+      counterMap.update(key, Seq())
+    }
+    //counters are considered as cumulative stats
+    updateStats(incr, key, None)
+  }
+  def updateCounterStats(newval: Long, key: String, cname: String) = updateStats(newval, key, Some(cname))
+  def updateCounterTime(newval: Long, key: String, cname: String) = updateTimeStats(newval, key, Some(cname))
+
+  private def getCum(key: String): Long = keystats(key)._1
+  private def getMax(key: String): Long = keystats(key)._2
+
+  def dumpStats(pr: PrintWriter) = {
+    //Print cumulative stats
+    cumKeys.foreach(key => {
+      if (timekeys.contains(key)) {
+        pr.println(key + ": " + (getCum(key).toDouble / 1000.0) + "s")
+      } else
+        pr.println(key + ": " + getCum(key))
+    })
+
+    //dump the averages and maximum of all stats associated with counters
+    counterMap.keys.foreach((ckey) => {
+      pr.println("### Statistics for counter: " + ckey + " ####")
+      val counterval = getCum(ckey)
+      val assocKeys = counterMap(ckey)
+      assocKeys.foreach((key) => {
+        if (timekeys.contains(key)) {
+          pr.println("Avg." + key + ": " + (getCum(key).toDouble / (counterval * 1000.0)) + "s")
+          pr.println("Max." + key + ": " + (getMax(key).toDouble / 1000.0) + "s")
+        } else {
+          pr.println("Avg." + key + ": " + (getCum(key).toDouble / counterval))
+          pr.println("Max." + key + ": " + getMax(key))
+        }
+      })
+    })
+  }
+}
+
+/**
+ * Statistics specific for this application
+ */
+object SpecificStats {
+
+  var output: String = ""
+  def addOutput(out: String) = {
+    output += out + "\n"
+  }
+  def dumpOutputs(pr: PrintWriter) {
+    pr.println("########## Outputs ############")
+    pr.println(output)
+    pr.flush()
+  }
+
   //minimization stats
   var lowerBounds = Map[FunDef, Map[Variable, RealLiteral]]()
   var lowerBoundsOutput = Map[FunDef, String]()
-  
-  var output : String = ""    
-  def addOutput(out : String) = {
-    output += out + "\n"
-  }
-  
-  def addLowerBoundStats(fd: FunDef, lbMap : Map[Variable,RealLiteral], out: String) = {
+  def addLowerBoundStats(fd: FunDef, lbMap: Map[Variable, RealLiteral], out: String) = {
     lowerBounds += (fd -> lbMap)
     lowerBoundsOutput += (fd -> out)
-  }  
-  
-  def cumMax(cum : Long, max: Long, newval : Long) : (Long,Long) = {    
-    (cum + newval, if(max < newval) newval else max)
   }
-  
-  def dumpStats(pr : PrintWriter) ={
-    //outer iteration statistics
-    pr.println("Total Time: "+(totalTime/1000.0)+"s")
-    pr.println("Min Time: "+(minimizationTime/1000.0)+"s")
-    pr.println("VC refinements : "+outerIterations)    
-    pr.println("Avg VC size : "+ (cumVCsize.toDouble / outerIterations))
-    pr.println("Max VC size : "+maxVCsize)
-    pr.println("Avg UIF-ADT size : "+ (cumUIFADTs.toDouble / outerIterations))
-    pr.println("Max UIF-ADT size : "+ maxUIFADTs)        
-    pr.println("avgTempVars : "+(cumTempVars.toDouble / outerIterations))
-    pr.println("maxTempVars : "+maxTempVars)    
-  }
-  
-  def dumpOutputs(pr : PrintWriter) {
-    pr.println("########## Outputs ############")
-    pr.println(output)
-    pr.flush()       
-  }
-  
-  def dumpMinimizationStats(pr : PrintWriter) {
+  def dumpMinimizationStats(pr: PrintWriter) {
     pr.println("########## Lower Bounds ############")
     lowerBounds.foreach((pair) => {
-      val (fd,lbMap) = pair
-      pr.print(fd.id +": \t")
+      val (fd, lbMap) = pair
+      pr.print(fd.id + ": \t")
       lbMap.foreach((entry) => {
-        pr.print("("+entry._1+"->"+entry._2+"), ")
+        pr.print("(" + entry._1 + "->" + entry._2 + "), ")
       })
-      pr.print("\t Test results: "+lowerBoundsOutput(fd))
+      pr.print("\t Test results: " + lowerBoundsOutput(fd))
       pr.println()
-    })        
-    pr.flush()       
-  }
-  
-  def dumpFarkasStats(pr : PrintWriter) ={
-    pr.println("### Farkas solver stats ####")
-    pr.println("Disjunct Explorations : "+innerIterations)
-    pr.println("Total retries: "+retries)    
-    //inner iteration statistics
-    pr.println("avgFarkaSize : "+(cumFarkaSize.toDouble / innerIterations))
-    pr.println("maxFarkaSize : "+maxFarkaSize)
-    pr.println("avgFarkaTime : "+((cumFarkaTime.toDouble / innerIterations))/1000.0 +"s")
-    pr.println("maxFarkaTime : "+(maxFarkaTime)/1000.0+"s")
-    pr.println("avgNLSize : "+(cumNLsize.toDouble / innerIterations))
-    pr.println("maxNLSize : "+maxNLsize)           
-    pr.println("avgDijSize : "+(cumDijsize.toDouble / innerIterations))
-    pr.println("maxDijSize : "+maxDijsize)
-    pr.println("avgElimvars : "+(cumElimVars.toDouble / innerIterations))
-    pr.println("maxElimvars : "+maxElimVars)
-    pr.println("avgElimAtoms : "+(cumElimAtoms.toDouble / innerIterations))
-    pr.println("maxElimAtoms : "+maxElimAtoms)
-    pr.println("avgExploreTime : "+((cumExploreTime.toDouble / innerIterations))/1000.0 +"s")
-    pr.println("maxExploreTime : "+maxExploreTime/1000.0+"s")
-    pr.println("avgCompatCalls : "+(cumCompatCalls.toDouble / innerIterations))
-    pr.println("maxCompatCalls : "+maxCompatCalls)
-    pr.println("avgLemmaApps : "+(cumLemmaApps.toDouble / innerIterations))
-    pr.println("maxLemmaApps : "+maxLemmaApps)            
-  }
-  
-  def dumpCegisStats(pr : PrintWriter) ={
-    pr.println("### Cegis solver stats #### ")
-    //inner iteration statistics
-    pr.println("# of bounds tried: "+boundsTried)
-    pr.println("cegis iterations: "+cegisIterations)
-    pr.println("avgTemplateCtrSize : "+(cumTemplateCtrSize.toDouble / cegisIterations))
-    pr.println("maxTemplateCtrSize : "+maxTemplateCtrSize)               
+    })
+    pr.flush()
   }
 }

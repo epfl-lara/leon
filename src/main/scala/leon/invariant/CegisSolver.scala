@@ -78,7 +78,7 @@ class CegisCore(context: LeonContext,
   val zero = IntLiteral(0)
   val timeoutMillis = timeout.toLong * 1000
   val dumpCandidateInvs = true
-  val minimizeSum = true
+  val minimizeSum = false
 
   /**
    * Finds a model for the template variables in the 'formula' so that 'formula' is falsified
@@ -130,8 +130,7 @@ class CegisCore(context: LeonContext,
       } else {
 
         //println("elapsedTime: "+elapsedTime / 1000+" timeout: "+timeout)
-        if (InferInvariantsPhase.dumpStats)
-          Stats.cegisIterations += 1
+        Stats.updateCounter(1, "CegisIters")                        
 
         if (dumpCandidateInvs) {
           println("candidate Invariants")
@@ -188,8 +187,7 @@ class CegisCore(context: LeonContext,
             //println("Newctr: " +newctr)
 
             if (InferInvariantsPhase.dumpStats) {
-              val (cum, max) = Stats.cumMax(Stats.cumTemplateCtrSize, Stats.maxTemplateCtrSize, InvariantUtil.atomNum(newctr))
-              Stats.cumTemplateCtrSize = cum; Stats.maxTemplateCtrSize = max;
+              Stats.updateCounterStats(InvariantUtil.atomNum(newctr), "CegisTemplateCtrs", "CegisIters")              
             }
 
             //println("solving template constraints...")

@@ -22,6 +22,7 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
   May be make multiplication, as something that is commutative, associative, distributive and monotonic.
   What if we use multiplication as it is in the VC ?? Something to try
 * use ?(0) as a lightweight syntax for templates.
+* Fix the divide by zero erros happening because of integer overflows.
 * Fix warnings
 * How to redesign NLTemplateSolver ? It is getting ugly
 * Should we try to use other optimization functions for CEGIS
