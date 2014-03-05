@@ -44,6 +44,7 @@ class NLTemplateSolver(context: LeonContext,
   tightBounds: Boolean) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
 
   private val farkasSolver = new FarkasLemmaSolver()
+  private val minimizer = new Minimizer(context, program, timeout)
   
   val disableCegis = true
   val solveAsBitvectors = false
@@ -112,7 +113,11 @@ class NLTemplateSolver(context: LeonContext,
     }
     val sol = recSolve(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
 
-    solverWithCtr.free()   
+    solverWithCtr.free()
+
+    //set lowebound map
+    if (this.tightBounds)
+      SpecificStats.addLowerBoundStats(rootFun, minimizer.lowerBoundMap, "")
     sol
   }
 
@@ -352,14 +357,16 @@ class NLTemplateSolver(context: LeonContext,
       }
       case Some(false) => {
         //here, the vcs are unsatisfiable when instantiated with the invariant
-        if (tightBounds) {
+        val template = tempFactory.getTemplate(rootFun)
+        //TODO: need to assert that the templates are time templates
+        if (tightBounds && template.isDefined) {
           //for stats
           if (!minStarted) {
             minStarted = true
             minStartTime = System.currentTimeMillis()
           }
           //try to find a minimum model: if the minimum is same as the current model then return, otherwise recurse with the minimum model          
-          val minModel = tightenTimeBounds(inputCtr, model)
+          val minModel = minimizer.tightenTimeBounds(template.get, inputCtr, model)
           val minVarMap: Map[Expr, Expr] = minModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
           if (minModel == model)
             (Some(getAllInvariants(model)), None)
@@ -397,6 +404,8 @@ class NLTemplateSolver(context: LeonContext,
   /**
    * Returns the counter example disjunct
    */
+  val evaluator = new DefaultEvaluator(context, program)
+  
   def getNLConstraints(fd: FunDef, instVC: Expr, tempVarMap: Map[Expr, Expr]): ((Expr, Set[Call]), Expr) = {
     //For debugging
     if (this.dumpInstantiatedVC) {
@@ -417,24 +426,25 @@ class NLTemplateSolver(context: LeonContext,
     //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
 
     //this creates a new solver and does not work with the SimpleSolverAPI
-    val solEval = new UIFZ3Solver(context, program)
-    solEval.assertCnstr(instVC)
+    /*val solEval = new UIFZ3Solver(context, program)
+    solEval.assertCnstr(instVC)*/
+    
+    val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
     
     reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()    
-    val res = solEval.check    
+    //val res = solEval.check
+    val (res, model) = solver.solveSAT(instVC)
     val t2 = System.currentTimeMillis()
     reporter.info("checked VC inst... in "+(t2-t1)/1000.0+"s")
     Stats.updateCounterTime((t2-t1),"VC-check-time","disjuncts")
     
     t1 = System.currentTimeMillis()     
     res  match {
-      case None => {
-        solEval.free()
+      case None => {        
         throw IllegalStateException("cannot check the satisfiability of " + instVC)
       }
-      case Some(false) => {        
-        solEval.free()
+      case Some(false) => {                
         //do not generate any constraints
         ((fls, Set()), tru)
       }
@@ -461,6 +471,7 @@ class NLTemplateSolver(context: LeonContext,
                 throw IllegalStateException("Node expression has reals: " + nodeExpr)*/                                        
               
               val t1 = System.currentTimeMillis()
+              //val exprRes = solEval.evalBoolExpr(nodeExpr)
               val exprRes = solEval.evalBoolExpr(nodeExpr)
               val t2 = System.currentTimeMillis()
               

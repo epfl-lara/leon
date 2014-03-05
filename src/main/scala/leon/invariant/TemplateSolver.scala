@@ -56,6 +56,8 @@ abstract class TemplateSolver (
   
   //this is populated lazily by instantiateAxioms
   protected var callsWithAxioms = Set[Expr]()
+  //a mapping from booleans to conjunction of atoms
+  protected var guards = Map[Variable, Seq[Expr]]()
   
   //disable axiom instantiation
   protected val disableAxioms = false
@@ -64,7 +66,7 @@ abstract class TemplateSolver (
   private val debugInstantiation = false
   private val dumpVC = false
   private val dumpVCasSMTLIB = false
-  private val debugMinimization = true 
+  
       
   /**
    * Completes a model by adding mapping to new template variables
@@ -91,7 +93,7 @@ abstract class TemplateSolver (
     })
     TemplateInstantiator.getAllInvariants(model, templates.toMap)
   }   
-
+ 
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -146,7 +148,10 @@ abstract class TemplateSolver (
         Stats.updateCounterStats(InvariantUtil.numUIFADT(formula), "UIF+ADT", "VC-refinement")
       }            
       
-      (fd -> formulaWithAxioms)
+      //instrument the formula with booleans baurgs
+      val finalvc = instrumentWithGuards(formulaWithAxioms)
+      (fd -> finalvc)
+      //(fd -> formulaWithAxioms)
     }).toMap  
     
     //Assign some values for the template variables at random (actually use the simplest value for the type)
@@ -237,210 +242,54 @@ abstract class TemplateSolver (
       debugSolver.get.free
     }
     
-    val axiomInst = ExpressionTransformer.TransformNot(And(axiomInstances))
+    import ExpressionTransformer._
+    val axiomInst = pullAndOrs(TransformNot(And(axiomInstances)))
     And(formula, axiomInst)
   }
 
-  /**
-   * Here we are assuming that that initModel is a model for ctrs
-   * TODO: make sure that the template for rootFun is the time template   
-   * TODO: assuming that the value of coefficients in +ve in the solution
-   */         
-  val MaxIter = 16 //note we may not be able to represent anything beyond 2^16
-  val MaxInt = Int.MaxValue
-  val sqrtMaxInt = 45000 //this is a number that is close a sqrt of 2^31
-  val half= RealLiteral(1,2)
-  val two= RealLiteral(2,1)
-  val rzero = RealLiteral(0,1)
-  val mone = RealLiteral(-1,1)
-  
-  //for statistics and output
-  //store the lowerbounds for each template variables in the template of the rootFun provided it is a time template
-  var lowerBoundMap = Map[Variable,RealLiteral]()
-  def updateLowerBound(tvar: Variable, rval: RealLiteral) = {
-    //record the lower bound if it exist
-    if (lowerBoundMap.contains(tvar)) {
-      lowerBoundMap -= tvar
-    }
-    lowerBoundMap += (tvar -> rval)
-  }
-  
-  import RealValuedExprInterpreter._
-  def tightenTimeBounds(inputCtr: Expr, initModel: Map[Identifier, Expr]): Map[Identifier, Expr] = {
-    val rootFd = rootFun
-    val template = tempFactory.getTemplate(rootFd)
-    if (template.isDefined) {
-
-      //the order in which the template variables are minimized is based on the level of nesting of the  terms
-      val tempvarNestMap: Map[Variable, Int] = computeCompositionLevel(template.get)      
-      val orderedTempVars = tempvarNestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
-
-      //do a binary search on sequentially on each of these tempvars      
-      val solver = SimpleSolverAPI(
-        new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
-          timeout * 1000))
-
-      println("minimizing...")
-      var currentModel = initModel
-      orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
-                            
-        var upperBound = if(currentModel.contains(tvar.id)) {
-          currentModel(tvar.id).asInstanceOf[RealLiteral]          
-        } else {
-          initModel(tvar.id).asInstanceOf[RealLiteral]
-        }
-        //note: the lower bound is an integer by construction
-        var lowerBound : Option[RealLiteral] = if(lowerBoundMap.contains(tvar)) Some(lowerBoundMap(tvar)) else None
-        
-        if(this.debugMinimization) {
-          println("Minimizing variable: "+ tvar+" Initial upperbound: "+upperBound)          
-        }
-
-        //TODO: use incremental solving of z3 here (however make sure there is no bug)
-        var continue = true
-        var iter = 0
-        do {
-          iter += 1
-
-          //here we perform some sanity checks to prevent overflow
-          if (!boundSanityChecks(upperBound, lowerBound)) {
-            continue = false
-          } else {
-            //we make sure that curr val is an integer
-            val currval = if (lowerBound.isDefined) {
-              val midval = evaluate(Times(half, Plus(upperBound, lowerBound.get)))
-              floor(midval)
-
-            } else {
-              val rlit @ RealLiteral(n, d) = upperBound
-              if (isGEZ(rlit)) {
-                if (n == 0) {
-                  //make the upper bound negative 
-                  mone
-                } else {
-                  floor(evaluate(Times(half, upperBound)))
-                }
-              } else floor(evaluate(Times(two, upperBound)))
+  def instrumentWithGuards(formula: Expr): Expr = {
+    //Assuming that VC is in negation normal form and And/Ors have been pulled up
+    var implications = Seq[Expr]()
+    val f1 = simplePostTransform((e: Expr) => e match {
+      case Or(args) => {
+        val newargs = args.map(arg => {
+          if (arg.isInstanceOf[Variable] && guards.contains(arg.asInstanceOf[Variable])) arg
+          else {
+            val atoms = if (arg.isInstanceOf[Variable])
+              Seq(arg)
+            else {
+              val And(atms) = arg
+              atms
             }
-
-            //check if the lowerbound, if it exists, is < currval
-            if (lowerBound.isDefined && evaluateRealPredicate(GreaterEquals(lowerBound.get, currval))) {
-              continue = false
-            } else {
-              val boundCtr = if (lowerBound.isDefined) {
-                And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound.get))
-              } else LessEquals(tvar, currval)
-
-              //val t1 = System.currentTimeMillis()
-              val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
-              //val t2 = System.currentTimeMillis()
-              //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
-              res match {
-                case Some(true) => {
-                  //here we have a new upper bound and also a newmodel
-                  val newval = newModel(tvar.id).asInstanceOf[RealLiteral]
-                  if (newval.hasOverflow) {
-                    if (this.debugMinimization)
-                      println("Aborting due to overflow.")
-                    continue = false
-                  } else {
-                    upperBound = newval
-                    //complete the new model if necessary
-                    currentModel = newModel            
-                    if (this.debugMinimization)
-                      println("Found new upper bound: " + upperBound)
-                  }
-                }
-                case _ => {
-                  //here we have a new lower bound: currval
-                  lowerBound = Some(currval)
-
-                  if (this.debugMinimization)
-                    println("Found new lower bound: " + currval)
-                }
-              }
-            }
+            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+            val newe = Equals(g, arg)
+            guards += (g -> atoms)
+            implications :+= newe
+            g
           }
-        } while (continue && iter < MaxIter)
-        //here, we found a best-effort minimum
-        if(lowerBound.isDefined) {         
-          updateLowerBound(tvar,lowerBound.get)          
-        }
-          
-        And(acc, Equals(tvar, currentModel(tvar.id)))
-      })
-      println("Minimization complete...")
-      initModel.keys.map((id) => {
-        if (currentModel.contains(id))
-          (id -> currentModel(id))
-        else
-          (id -> initModel(id))
-      }).toMap
-    } else
-      initModel
-  }
-  
-  /**
-   * These checks are performed to avoid an overflow during the computation of currval
-   */
-  def boundSanityChecks(ub: RealLiteral, lb: Option[RealLiteral]) : Boolean = {
-    val RealLiteral(n,d) = ub
-    if(n <= (MaxInt / 2)) {
-      if(lb.isDefined) {
-        val RealLiteral(n2, _) = lb.get
-        (n2 <= sqrtMaxInt && d <= sqrtMaxInt)        
-      } else {
-        (d <= (MaxInt /2))
+        })
+        //create a temporary for Or
+        //TODO: do we have to store a map of conjuncts as well ?
+        val tor = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+        val newor = Equals(tor, Or(newargs))
+        implications :+= newor
+        tor
       }
-    } else false
-  }
-
-  /**
-   * The following code is little tricky
-   */
-  def computeCompositionLevel(template: Expr): Map[Variable, Int] = {
-    var nestMap = Map[Variable, Int]()
-
-    def updateMax(v: Variable, level: Int) = {
-      println("Nesting level: "+v+"-->"+level)
-      if (nestMap.contains(v)) {
-        if (nestMap(v) < level) {
-          nestMap -= v
-          nestMap += (v -> level)
-        }
-      } else
-        nestMap += (v -> level)
-    }
-
-    def functionNesting(e: Expr): Int = {
-      //println("NestExpr: " + e)
-      e match {
-
-        case Times(e1, v @ Variable(id)) if (TemplateIdFactory.IsTemplateIdentifier(id)) => {
-          val nestLevel = functionNesting(e1)
-          updateMax(v, nestLevel)
-          nestLevel
-        }
-        case Times(v @ Variable(id), e2) if (TemplateIdFactory.IsTemplateIdentifier(id)) => {
-          val nestLevel = functionNesting(e2)
-          updateMax(v, nestLevel)
-          nestLevel
-        }
-        case v @ Variable(id) if (TemplateIdFactory.IsTemplateIdentifier(id)) => {
-          updateMax(v, 0)
-          0
-        }
-        case FunctionInvocation(_, args) => 1 + args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
-        case t: Terminal => 0
-        case UnaryOperator(arg, _) => functionNesting(arg)
-        case BinaryOperator(a1, a2, _) => functionNesting(a1) + functionNesting(a2)
-        case NAryOperator(args, _) => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
+      case _ => e
+    })(formula)
+    val f2 = f1 match {
+      case And(args) => {
+        val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+        val newe = Equals(g, f1)
+        guards += (g -> args)
+        implications :+= newe
+        g
       }
+      case _ => f1
     }
-    functionNesting(template)
-    nestMap
+    val instruFormula = And(implications :+ f2)
+    instruFormula
   }
-   
 }
 
 //class ParallelTemplateSolver(

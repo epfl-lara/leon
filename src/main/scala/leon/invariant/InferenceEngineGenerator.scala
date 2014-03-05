@@ -143,9 +143,7 @@ class InferenceEngineGenerator(program: Program,
             output += fd.id + " --> " + simpInv + "\n"
           })
           //add invariants to stats
-          SpecificStats.addOutput(output)
-          //set lowebound map
-          SpecificStats.addLowerBoundStats(funDef, tempSolver.lowerBoundMap, "")
+          SpecificStats.addOutput(output)          
 
           reporter.info("- Verifying Invariants... ")
 
