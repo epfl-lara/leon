@@ -415,32 +415,38 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractMethodDefs(defs: List[Tree]) = {
       // We collect defined function bodies
+      def extractFromClass(csym: Symbol, tmpl: Template) {
+        val cd = classesToClasses(csym)
+
+        val ctparams = csym.tpe match {
+          case TypeRef(_, _, tps) =>
+            extractTypeParams(tps).map(_._1)
+          case _ =>
+            Nil
+        }
+
+        val ctparamsMap = ctparams zip cd.tparams.map(_.tp)
+
+        for (d <- tmpl.body) d match {
+          case ExFunctionDef(sym, tparams, params, _, body) if !sym.isSynthetic && !sym.isAccessor =>
+            val fd = defsToDefs(sym)
+
+            val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap ++ ctparamsMap
+
+            if(body != EmptyTree) {
+              extractFunBody(fd, params, body)(DefContext(tparamsMap))
+            }
+
+          case _ =>
+
+        }
+      }
       for (d <- defs) d match {
         case ExAbstractClass(_, csym, tmpl) =>
-          val cd = classesToClasses(csym)
+          extractFromClass(csym, tmpl)
 
-          val ctparams = csym.tpe match {
-            case TypeRef(_, _, tps) =>
-              extractTypeParams(tps).map(_._1)
-            case _ =>
-              Nil
-          }
-
-          val ctparamsMap = ctparams zip cd.tparams.map(_.tp)
-
-          for (d <- tmpl.body) d match {
-            case ExFunctionDef(sym, tparams, params, _, body) =>
-              val fd = defsToDefs(sym)
-
-              val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap ++ ctparamsMap
-
-              if(body != EmptyTree) {
-                extractFunBody(fd, params, body)(DefContext(tparamsMap))
-              }
-
-            case _ =>
-
-          }
+        case ExCaseClass(_, csym, _, tmpl) =>
+          extractFromClass(csym, tmpl)
 
         case _ =>
       }
