@@ -378,8 +378,7 @@ class NLTemplateSolver(context: LeonContext,
               val mintime = (System.currentTimeMillis() - minStartTime)
               Stats.updateCounterTime(mintime, "minimization-time", "procs")
               Stats.updateCumTime(mintime, "Total-Min-Time")
-              
-              minimumModel = minModel
+                            
               (Some(getAllInvariants(minModel)), None)
             } else
               recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
@@ -451,17 +450,23 @@ class NLTemplateSolver(context: LeonContext,
             case CtrLeaf() => true
             case cn @ CtrNode(_) => {
 
-              //note the expr may have template variables so replace them with the candidate values
+              //note the expr may have template variables so replace them with the candidate values              
               val nodeExpr = if (!cn.templates.isEmpty) {
                 //the node has templates
                 TemplateInstantiator.instantiate(cn.toExpr, tempVarMap)
               } else cn.toExpr
 
               //throw an exception if the expression has reals
-              if (InvariantUtil.hasReals(nodeExpr))
-                throw IllegalStateException("Node expression has reals: " + nodeExpr)
-
-              solEval.evalBoolExpr(nodeExpr) match {
+              /*if (InvariantUtil.hasReals(nodeExpr))
+                throw IllegalStateException("Node expression has reals: " + nodeExpr)*/                                        
+              
+              val t1 = System.currentTimeMillis()
+              val exprRes = solEval.evalBoolExpr(nodeExpr)
+              val t2 = System.currentTimeMillis()
+              
+              Stats.updateCumTime((t2-t1), "solEval-Time")
+              
+               exprRes match {
                 case None => throw IllegalStateException("cannot evaluate " + cn.toExpr + " on " + solEval.getModel)
                 case Some(b) => b
               }
@@ -581,9 +586,7 @@ class NLTemplateSolver(context: LeonContext,
     /**Kept around for debugging **/
     evalSolver: UIFZ3Solver): ((Expr, Set[Call]), Expr) = {
 
-    //create an incremental solver, the solver is pushed and popped constraints as the paths in the DNFTree are explored
-    //val solver = new UIFZ3Solver(context, program)    
-
+    var visitedNodes = Set[CtrNode]()
     /**
      * A utility function that converts a constraint + calls into a expression.
      * Note: adds the uifs in conjunction to the ctrs
@@ -598,23 +601,32 @@ class NLTemplateSolver(context: LeonContext,
      * Traverses the children until one child with a non-true constraint is found
      */
     def traverseChildren[T](parent: CtrNode, childTrees: Iterable[CtrTree], pred: CtrTree => (T, Expr)): (T, Expr) = {
-      val trees = selector(parent, childTrees)
       var ctr: Expr = tru
       var data: T = null.asInstanceOf[T]
-      breakable {
-        trees.foreach((tree) => {
-          val res = pred(tree)
-          res match {
-            case (_, BooleanLiteral(true)) => ;
-            case (dis, nlctr) => {
-              data = dis
-              ctr = nlctr
-              break;
+
+      //important: Do a DFS here to avoid visiting nodes multiple times
+      if (visitedNodes.contains(parent)) {
+        //this node was already visited and found to be unsat
+        (data, ctr)
+      } else {
+        val trees = selector(parent, childTrees)
+        breakable {
+          trees.foreach((tree) => {
+            val res = pred(tree)
+            res match {
+              case (_, BooleanLiteral(true)) => ; //here the path is already unsat                
+              case (dis, nlctr) => {
+                data = dis
+                ctr = nlctr
+                break;
+              }
             }
-          }
-        })
+          })
+        }
+        //here add parent node to visited
+        visitedNodes += parent
+        (data, ctr)
       }
-      (data, ctr)
     }
 
     /**
@@ -780,6 +792,8 @@ class NLTemplateSolver(context: LeonContext,
       val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, doesAlias, generateAxiom)
       val t2 = System.currentTimeMillis() 
       reporter.info("completed axiomatization...in "+(t2 - t1)/1000.0+"s")      
+      
+      Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
       
       val uifroot = if (!uifCtrs.isEmpty) {
 

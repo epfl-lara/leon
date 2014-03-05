@@ -110,7 +110,7 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
 
   override def toString(): String = {
     prettyPrint(0)
-  }
+  }   
   
   //TODO: should we dump the tree in a graph format ??
 }

@@ -257,7 +257,13 @@ abstract class TemplateSolver (
   //for statistics and output
   //store the lowerbounds for each template variables in the template of the rootFun provided it is a time template
   var lowerBoundMap = Map[Variable,RealLiteral]()
-  var minimumModel = Map[Identifier, Expr]()
+  def updateLowerBound(tvar: Variable, rval: RealLiteral) = {
+    //record the lower bound if it exist
+    if (lowerBoundMap.contains(tvar)) {
+      lowerBoundMap -= tvar
+    }
+    lowerBoundMap += (tvar -> rval)
+  }
   
   import RealValuedExprInterpreter._
   def tightenTimeBounds(inputCtr: Expr, initModel: Map[Identifier, Expr]): Map[Identifier, Expr] = {
@@ -284,7 +290,7 @@ abstract class TemplateSolver (
           initModel(tvar.id).asInstanceOf[RealLiteral]
         }
         //note: the lower bound is an integer by construction
-        var lowerBound : Option[RealLiteral] = None
+        var lowerBound : Option[RealLiteral] = if(lowerBoundMap.contains(tvar)) Some(lowerBoundMap(tvar)) else None
         
         if(this.debugMinimization) {
           println("Minimizing variable: "+ tvar+" Initial upperbound: "+upperBound)          
@@ -357,12 +363,8 @@ abstract class TemplateSolver (
           }
         } while (continue && iter < MaxIter)
         //here, we found a best-effort minimum
-        if(lowerBound.isDefined) {
-          //record the lower bound if it exist
-          if(lowerBoundMap.contains(tvar)) {
-            lowerBoundMap -= tvar            
-          } 
-          lowerBoundMap += (tvar -> lowerBound.get)          
+        if(lowerBound.isDefined) {         
+          updateLowerBound(tvar,lowerBound.get)          
         }
           
         And(acc, Equals(tvar, currentModel(tvar.id)))
