@@ -117,7 +117,11 @@ object TypeTreeOps {
 
       def rec(idsMap: Map[Identifier, Identifier])(e: Expr): Expr = {
         def freshId(id: Identifier, newTpe: TypeTree) = {
-          FreshIdentifier(id.name, true).setType(newTpe).copiedFrom(id)
+          if (id.getType != newTpe) {
+            FreshIdentifier(id.name, true).setType(newTpe).copiedFrom(id)
+          } else {
+            id
+          }
         }
 
         // Simple rec without affecting map
@@ -139,6 +143,14 @@ object TypeTreeOps {
           case l @ Let(id, value, body) =>
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
+
+          case l @ LetTuple(ids, value, body) =>
+            val newIds = ids.map(id => freshId(id, tpeSub(id.getType)))
+            LetTuple(newIds, srec(value), rec(idsMap ++ (ids zip newIds))(body)).copiedFrom(l)
+
+          case c @ Choose(xs, pred) =>
+            val newXs = xs.map(id => freshId(id, tpeSub(id.getType)))
+            Choose(newXs, rec(idsMap ++ (xs zip newXs))(pred)).copiedFrom(c)
 
           case m @ MatchExpr(e, cases) =>
             val newTpe = tpeSub(e.getType)
