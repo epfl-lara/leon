@@ -56,8 +56,6 @@ abstract class TemplateSolver (
   
   //this is populated lazily by instantiateAxioms
   protected var callsWithAxioms = Set[Expr]()
-  //a mapping from booleans to conjunction of atoms
-  protected var guards = Map[Variable, Seq[Expr]]()
   
   //disable axiom instantiation
   protected val disableAxioms = false
@@ -148,10 +146,8 @@ abstract class TemplateSolver (
         Stats.updateCounterStats(InvariantUtil.numUIFADT(formula), "UIF+ADT", "VC-refinement")
       }            
       
-      //instrument the formula with booleans baurgs
-      val finalvc = instrumentWithGuards(formulaWithAxioms)
-      (fd -> finalvc)
-      //(fd -> formulaWithAxioms)
+      //instrument the formula with booleans baurgs      
+      (fd -> formulaWithAxioms)      
     }).toMap  
     
     //Assign some values for the template variables at random (actually use the simplest value for the type)
@@ -247,49 +243,6 @@ abstract class TemplateSolver (
     And(formula, axiomInst)
   }
 
-  def instrumentWithGuards(formula: Expr): Expr = {
-    //Assuming that VC is in negation normal form and And/Ors have been pulled up
-    var implications = Seq[Expr]()
-    val f1 = simplePostTransform((e: Expr) => e match {
-      case Or(args) => {
-        val newargs = args.map(arg => {
-          if (arg.isInstanceOf[Variable] && guards.contains(arg.asInstanceOf[Variable])) arg
-          else {
-            val atoms = if (arg.isInstanceOf[Variable])
-              Seq(arg)
-            else {
-              val And(atms) = arg
-              atms
-            }
-            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-            val newe = Equals(g, arg)
-            guards += (g -> atoms)
-            implications :+= newe
-            g
-          }
-        })
-        //create a temporary for Or
-        //TODO: do we have to store a map of conjuncts as well ?
-        val tor = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-        val newor = Equals(tor, Or(newargs))
-        implications :+= newor
-        tor
-      }
-      case _ => e
-    })(formula)
-    val f2 = f1 match {
-      case And(args) => {
-        val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-        val newe = Equals(g, f1)
-        guards += (g -> args)
-        implications :+= newe
-        g
-      }
-      case _ => f1
-    }
-    val instruFormula = And(implications :+ f2)
-    instruFormula
-  }
 }
 
 //class ParallelTemplateSolver(
