@@ -803,6 +803,8 @@ class NLTemplateSolver(context: LeonContext,
    */
   //TODO: important: optimize this code it seems to take a lot of time 
   //TODO: Fix the current incomplete way of handling ADTs and UIFs  
+  //val makeEfficient = true //this will happen at the expense of completeness
+  
   def constraintsForUIFs(calls: Set[Expr], model: Map[Identifier, Expr],
     doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
     
@@ -861,19 +863,21 @@ class NLTemplateSolver(context: LeonContext,
       //This also serves to reduce the generated lambdas
       if (eqGraph.containsEdge(call1, call2)) {
 
-        val (lhs, rhs) = if (InvariantUtil.isCallExpr(call1)) {
+        val eqs = if (InvariantUtil.isCallExpr(call1)) {
           //println("Equal calls ")
-          axiomatizeCalls(call1, call2)
+          val (_, rhs) = axiomatizeCalls(call1, call2)
+          Seq(rhs)          
         } else {
-          //here it is an ADT constructor call
-          axiomatizeADTCons(call1, call2)
+          //here it is an ADT constructor call          
+          val (lhs, rhs) = axiomatizeADTCons(call1, call2)
+          lhs :+ rhs
         }
         //remove self equalities. 
-        val preds = (rhs +: lhs).filter(_ match {
+        val preds = eqs.filter(_ match {
           case BinaryOperator(Variable(lid), Variable(rid), _) => {
             if (lid == rid) false
             else {
-              if (lid.getType == Int32Type || lid.getType == RealType) true
+              if (lid.getType == Int32Type || lid.getType == RealType  || lid.getType == BooleanType) true
               else false
             }
           }
@@ -881,7 +885,10 @@ class NLTemplateSolver(context: LeonContext,
         })
         acc ++ preds
 
-      } else if (neqSet.contains(pair)) {
+      } /*else if(this.callsWithAxioms.contains(call1)) {
+    	//TODO: find out why this works
+        acc 
+      }*/else if (neqSet.contains(pair)) {
         //println("unequal calls: "+call1+" , "+call2)                
         val (ants, _) = if (InvariantUtil.isCallExpr(call1)) {
           //println("Equal calls ")
@@ -890,34 +897,52 @@ class NLTemplateSolver(context: LeonContext,
           //here it is an ADT constructor call
           axiomatizeADTCons(call1, call2)
         }
-        var unsatIntEq: Option[Expr] = None
-        var unsatADTEq: Option[Expr] = None
-        ants.foreach(eq =>
-          if (!unsatADTEq.isDefined) {
-            eq match {
-              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
-                if (lhs.getType != Int32Type && lhs.getType != RealType)
+
+        /*if (makeEfficient && ants.exists(_ match {
+          case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
+          case _ => false
+        })) {
+          //do not generate dis-equality constriants
+          //TODO: this is incomplete but seems to be efficient, investigate if this efficiency can be achived with completeness
+          acc
+        } else {*/
+          var unsatIntEq: Option[Expr] = None
+          var unsatADTEq: Option[Expr] = None
+          ants.foreach(eq =>
+            if (!unsatADTEq.isDefined) {
+              eq match {
+                case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
+                  if (lhs.getType != Int32Type && lhs.getType != RealType)
+                    unsatADTEq = Some(eq)
+                  else if (!unsatIntEq.isDefined)
+                    unsatIntEq = Some(eq)
+                }
+                case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
                   unsatADTEq = Some(eq)
-                else if (!unsatIntEq.isDefined)
-                  unsatIntEq = Some(eq)
+                case _ => ;
               }
-              case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
-                unsatADTEq = Some(eq)
-              case _ => ;
-            }
-          })
-        if (unsatADTEq.isDefined) acc //need not add any constraint
-        else if (unsatIntEq.isDefined) {
-          //pick the constraint a < b or a > b that is satisfied
-          val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
-          val IntLiteral(lval) = model(lid)
-          val IntLiteral(rval) = model(rid)
-          val atom = if (lval < rval) LessThan(lhs, rhs)
-          else GreaterThan(lhs, rhs)
-          acc :+ atom
-        }
-        else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
-      } else acc
+            })
+          if (unsatADTEq.isDefined) acc //need not add any constraint
+          else if (unsatIntEq.isDefined) {
+            //pick the constraint a < b or a > b that is satisfied
+            val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
+            val IntLiteral(lval) = model(lid)
+            val IntLiteral(rval) = model(rid)
+            val atom = if (lval < rval) LessThan(lhs, rhs)
+            		   else if(lval > rval) GreaterThan(lhs, rhs)
+            		   else throw IllegalStateException("Models are equal!!")
+
+          if(ants.exists(_ match {
+            case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
+            case _ => false
+          })) {
+            Stats.updateCumStats(1, "Diseq-blowup")
+          }
+          
+            acc :+ atom
+          } else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
+        //}
+      } else acc      
     })
     newctrs
   }

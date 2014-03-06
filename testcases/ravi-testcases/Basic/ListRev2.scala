@@ -23,15 +23,15 @@ object ListRev2 {
         case Nil() => l
         case Cons(hd,tl) => append(reverse(tl),Cons(hd,Nil()))
       }
-    } ensuring(res => size(res) == size(l))    
-    //ensuring(res => (size(res) == size(l)) template((a,b) => time <= a*mult(size(l),size(l)) + b))
+    } ensuring(res => size(res) == size(l) template((a,b) => time <= 5*(size(l)*size(l)) + 3))    
+    //ensuring(res => (size(res) == size(l)) )
     //ensuring(res => (size(res) == size(l)) && time <= 5*mult(size(l),size(l)) + 3)
     //ensuring(res => (size(res) == size(l)) template((a,b) => time <= a*mult(size(l),size(l)) + b))    
     
     def append(l1 : List, l2 : List) : List = (l1 match {
       case Nil() => l2
       case Cons(x,xs) => Cons(x, append(xs, l2))
-    }) ensuring(res => size(l1) + size(l2)  == size(res)) 
+    }) ensuring(res => size(l1) + size(l2)  == size(res) template((c,d) => time <= 4*size(l1) + 2)) 
     //template((c,d) => time <= c*size(l1) + d))
     //ensuring(res => size(l1) + size(l2)  == size(res) template((c,d) => time <= c*size(l1) + d))
     //ensuring(res => size(l1) + size(l2)  == size(res) && time <= 4*size(l1) + 2) 
