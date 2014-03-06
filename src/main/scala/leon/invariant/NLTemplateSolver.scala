@@ -577,27 +577,15 @@ class NLTemplateSolver(context: LeonContext,
    * (a) a child selector function that decides which children to consider.
    * (b) a doesAlias function that decides which function / ADT constructor calls to consider.
    */
-  private def generateNumericalCtrs(fd: FunDef, model: Map[Identifier,Expr], doesAlias: (Expr, Expr) => Boolean)
-  	: ((Expr, Set[Call]), Expr) = {
-
-    var visitedNodes = Set[CtrNode]()
-    /**
-     * A utility function that converts a constraint + calls into a expression.
-     * Note: adds the uifs in conjunction to the ctrs
-     */
-    def constraintsToExpr(ctrs: Seq[LinearConstraint], calls: Set[Call], auxConjuncts: Seq[Expr]): Expr = {
-      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.toExpr)))
-      val uifExpr = And(calls.map((call) => Equals(call.retexpr, call.fi)).toSeq)
-      And(Seq(pathExpr, uifExpr) ++ auxConjuncts)
-    }
-
+  private def generateNumericalCtrs(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
+    
     def traverseOrs(gd: Variable): Seq[Variable] = {
-      val e@Or(guards) = conjuncts(gd)
+      val e @ Or(guards) = conjuncts(gd)
       //pick one guard that is true
-      val guard = guards.collectFirst{ case g@Variable(id) if(model(id) == tru) => g }
-      if(!guard.isDefined)
-        throw IllegalStateException("No satisfiable guard found: "+e)
-      guard.get +: traverseAnds(guard.get)      
+      val guard = guards.collectFirst { case g @ Variable(id) if (model(id) == tru) => g }
+      if (!guard.isDefined)
+        throw IllegalStateException("No satisfiable guard found: " + e)
+      guard.get +: traverseAnds(guard.get)
     }
 
     def traverseAnds(gd: Variable): Seq[Variable] = {
@@ -620,237 +608,154 @@ class NLTemplateSolver(context: LeonContext,
       traverseOrs(root)
     else traverseAnds(root)
     val satCtrs = satGuards.flatMap(g => disjuncts(g))
-    
+
     //exclude guards, separate calls and cons from the rest
     var atoms = Seq[Constraint]()
     var calls = Seq[Expr]()
     var cons = Seq[Expr]()
     satCtrs.foreach(ctr => ctr match {
-      case BoolConstraint(v@Variable(_)) if(conjuncts.contains(v)) => ; //ignore these
-      case t : Call => calls :+= t.expr
-      case t : ADTConstraint if(t.cons.isDefined) => cons :+= t.cons.get
+      case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => ; //ignore these
+      case t: Call => calls :+= t.expr
+      case t: ADTConstraint if (t.cons.isDefined) => cons :+= t.cons.get
       case _ => atoms :+= ctr
     })
-    
-    val pathctrs = atoms.map(_.toExpr) ++ calls ++ cons     
+
+    val pathctrs = atoms.map(_.toExpr) ++ calls ++ cons
+    //for debugging
+    if (this.printPathToConsole || this.dumpPathAsSMTLIB) {
+      val plainFormula = And(pathctrs)
+      val pathcond = simplifyArithmetic(plainFormula)
 
       //for debugging
-      if (this.printPathToConsole || this.dumpPathAsSMTLIB) {        
-        val plainFormula = And(pathctrs)
-        val pathcond = simplifyArithmetic(plainFormula)
-
-        //for debugging
-        if (this.verifyInvariant) {
-          println("checking invariant for path...")
-          InvariantUtil.checkInvariant(pathcond, context, program)
-        }
-
-        if (this.printPathToConsole) {
-          //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
-          val simpcond = pathcond
-          println("Full-path: " + ScalaPrinter(simpcond))
-          val filename = "full-path-" + FileCountGUID.getID + ".txt"
-          val wr = new PrintWriter(new File(filename))
-          ExpressionTransformer.PrintWithIndentation(wr, simpcond)
-          println("Printed to file: " + filename)
-          wr.flush()
-          wr.close()
-        }
-
-        if (this.dumpPathAsSMTLIB) {
-          val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-          InvariantUtil.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
-          println("Path dumped to: " + filename)
-        }
-      }
-      
-      //for stats
-      reporter.info("starting axiomatization...")
-      val t1 = System.currentTimeMillis()           
-      val uifCtrs = constraintsForUIFs(calls ++ cons, model, doesAlias)
-      val t2 = System.currentTimeMillis() 
-      reporter.info("completed axiomatization...in "+(t2 - t1)/1000.0+"s")      
-      
-      Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
-      
-      val uifroot = if (!uifCtrs.isEmpty) {
-
-        val uifCtr = And(uifCtrs)
-
-        if (this.printCallConstriants)
-          println("UIF constraints: " + uifCtr)
-
-        //push not inside
-        val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
-        //check if the two formula's are equivalent
-        /*val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
-        val (res,_) = solver.solveSAT(And(uifCtr,Not(nnfExpr)))
-        if(res == Some(false)) 
-          println("Both the formulas are equivalent!! ")
-         else throw new IllegalStateException("Transformer Formula: "+nnfExpr+" is not equivalent")*/
-        /*uifCtrs.foreach((ctr) => {
-        	if(evalSolver.evalBoolExpr(ctr) != Some(true))
-        		throw new IllegalStateException("Formula not sat by the model: "+ctr)
-        })*/
-
-        //create the root of the UIF tree
-        val newnode = CtrNode()
-        //add the nnfExpr as a DNF formulae        
-        ctrTracker.addConstraintRecur(nnfExpr, newnode)
-        newnode
-
-      } else CtrLeaf()
-    
-        
-    /**
-     * Eliminates the calls using the theory of uninterpreted functions
-     * this could take 2^(n^2) time
-     */
-    def uifsConstraintsGen(ants: Seq[LinearConstraint],
-      antTemps: Seq[LinearTemplate],
-      antAuxs: Seq[Expr],
-      calls: Set[Call],
-      adtCons: Seq[Expr],
-      conseqs: Seq[LinearConstraint],
-      conseqTemps: Seq[LinearTemplate],
-      conseqAuxs: Seq[Expr]): (Expr, Expr) = {
-
-      def traverseTree(tree: CtrTree,
-        ants: Seq[LinearConstraint], antTemps: Seq[LinearTemplate],
-        conseqs: Seq[LinearConstraint], conseqTemps: Seq[LinearTemplate],
-        boolCtrs: Seq[Expr]): (Expr, Expr) = {
-
-        tree match {
-          case n @ CtrNode(_) => {
-            //println("Traversing UIF Tree: node id: "+n.id)                        
-            val newants = ants ++ n.constraints
-            val newBools = boolCtrs ++ n.boolCtrs.map(_.expr)
-            //note: other constraints are  possible
-
-            //recurse into children
-            traverseChildren(n, n.Children, (child: CtrTree) =>
-              traverseTree(child, newants, antTemps, conseqs, conseqTemps, newBools))
-          }
-          case CtrLeaf() => {
-            //pipe to the end point that invokes the constraint solver
-            endpoint(ants, antTemps, conseqs, conseqTemps)
-          }
-        }
+      if (this.verifyInvariant) {
+        println("checking invariant for path...")
+        InvariantUtil.checkInvariant(pathcond, context, program)
       }
 
-      
+      if (this.printPathToConsole) {
+        //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
+        val simpcond = pathcond
+        println("Full-path: " + ScalaPrinter(simpcond))
+        val filename = "full-path-" + FileCountGUID.getID + ".txt"
+        val wr = new PrintWriter(new File(filename))
+        ExpressionTransformer.PrintWithIndentation(wr, simpcond)
+        println("Printed to file: " + filename)
+        wr.flush()
+        wr.close()
+      }
 
-      traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq())
+      if (this.dumpPathAsSMTLIB) {
+        val filename = "pathcond" + FileCountGUID.getID + ".smt2"
+        InvariantUtil.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
+        println("Path dumped to: " + filename)
+      }
     }
 
-    /**
-     * Endpoint of the pipeline. Invokes the actual constraint solver.
-     */
-    def endpoint(ants: Seq[LinearConstraint],
-      antTemps: Seq[LinearTemplate],
-      conseqs: Seq[LinearConstraint],
-      conseqTemps: Seq[LinearTemplate]): (Expr, Expr) = {
-      //here we are invalidating A^~(B)            
-      if (antTemps.isEmpty && conseqTemps.isEmpty) {
-        //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
-        (And((ants ++ conseqs).map(_.template)), fls)
-      } else {
+    //for stats
+    reporter.info("starting axiomatization...")
+    val t1 = System.currentTimeMillis()
+    val theoryCtrs = constraintsForUIFs(calls ++ cons, model, doesAlias)
+    val t2 = System.currentTimeMillis()
+    reporter.info("completed axiomatization...in " + (t2 - t1) / 1000.0 + "s")
 
-        val lnctrs = ants ++ conseqs
-        val temps = antTemps ++ conseqTemps
+    Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
 
-        if (this.debugElimination) {
-          //println("Path Constraints (before elim): "+(lnctrs ++ temps))
-          if (this.verifyInvariant) {
-            println("checking invariant for disjunct before elimination...")
-            InvariantUtil.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
-          }
+    val (data, nlctr) = processNumCtrs(ants, antTemps, conseqs, conseqTemps)
+    (data, nlctr)
+  }
+
+  /**
+   * Endpoint of the pipeline. Invokes the actual constraint solver.
+   */
+  def processNumCtrs(lnctrs: Seq[LinearConstraint], temps: Seq[LinearTemplate]): (Expr, Expr) = {
+    //here we are invalidating A^~(B)            
+    if (temps.isEmpty) {
+      //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
+      (And(lnctrs.map(_.toExpr)), fls)
+    } else {
+
+      if (this.debugElimination) {
+        //println("Path Constraints (before elim): "+(lnctrs ++ temps))
+        if (this.verifyInvariant) {
+          println("checking invariant for disjunct before elimination...")
+          InvariantUtil.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
         }
+      }
 
-        //TODO: try some optimizations here to reduce the number of constraints to be considered
-        // Note: this uses the interpolation property of arithmetics        
+      //TODO: try some optimizations here to reduce the number of constraints to be considered
+      // Note: this uses the interpolation property of arithmetics        
 
-        //compute variables to be eliminated
-        val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.expr))
-      toE val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))
-        val elimVars = ctrVars.diff(tempVars)
+      //compute variables to be eliminated
+      val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.toExpr))
+      val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))
+      val elimVars = ctrVars.diff(tempVars)
 
-        //For debugging
-        /*if (debugElimination) {
+      //For debugging
+      /*if (debugElimination) {
           reporter.info("Number of linear constraints: " + lnctrs.size)
           reporter.info("Number of template constraints: " + temps.size)
           reporter.info("Number of elimVars: " + elimVars.size)
         } */
 
-        val debugger = if (debugElimination && verifyInvariant) {
-          Some((ctrs: Seq[LinearConstraint]) => {
-            //println("checking disjunct before elimination...")
-            //println("ctrs: "+ctrs)
-            val debugRes = InvariantUtil.checkInvariant(And((ctrs ++ temps).map(_.template)), context, program)
-          })
-        } else None
-        val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
-
-        //for stats
-        var elimCtrCount = 0
-        var elimCtrs = Seq[LinearConstraint]()
-        var elimRems = Set[Identifier]()
-        elimLnctrs.foreach((lc) => {
-          val evars = variablesOf(lc.expr).intersetoEt(elimVars)
-          if (!evars.isEmpty) {
-            elimCtrs :+= lc
-            elimCtrCount += 1
-            elimRems ++= evars
-          }
+      val debugger = if (debugElimination && verifyInvariant) {
+        Some((ctrs: Seq[LinearConstraint]) => {
+          //println("checking disjunct before elimination...")
+          //println("ctrs: "+ctrs)
+          val debugRes = InvariantUtil.checkInvariant(And((ctrs ++ temps).map(_.template)), context, program)
         })
-        if (this.debugElimination) {
-          /*reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)          
+      } else None
+      val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
+
+      //for stats
+      var elimCtrCount = 0
+      var elimCtrs = Seq[LinearConstraint]()
+      var elimRems = Set[Identifier]()
+      elimLnctrs.foreach((lc) => {
+        val evars = variablesOf(lc.toExpr).intersect(elimVars)
+        if (!evars.isEmpty) {
+          elimCtrs :+= lc
+          elimCtrCount += 1
+          elimRems ++= evars
+        }
+      })
+      if (this.debugElimination) {
+        /*reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)          
           reporter.info("Number of constraints with elimVars: " + elimCtrCount)
           reporter.info("constraints with elimVars: " + elimCtrs)
           reporter.info("Number of remaining elimVars: " + elimRems.size)*/
-          //println("Elim vars: "+elimVars)
-          println("Path constriants (after elimination): " + elimLnctrs)
-          if (this.verifyInvariant) {
-            println("checking invariant for disjunct after elimination...")
-            InvariantUtil.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
-          }
-
-        }
-        //for stats
-        if (InferInvariantsPhase.dumpStats) {
-          Stats.updateCounterStats((elimVars.size - elimRems.size), "Eliminated-Vars", "disjuncts")
-          Stats.updateCounterStats((lnctrs.size - elimLnctrs.size), "Eliminated-Atoms", "disjuncts")
-          Stats.updateCounterStats(temps.size, "Param-Atoms", "disjuncts")
-          Stats.updateCounterStats(lnctrs.size, "NonParam-Atoms", "disjuncts")
-        }
-        val newLnctrs = elimLnctrs.toSet.toSeq
-
-        //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
-        // and what can never be implied by solving for the templates                       
-        val disjunct = And((newLnctrs ++ temps).map(_.template))
-        val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
-
-        //for debugging
-        if (this.debugReducedFormula) {
-          println("Final Path Constraints: " + disjunct)
-          if (this.verifyInvariant) {
-            println("checking invariant for final disjunct... ")
-            InvariantUtil.checkInvariant(disjunct, context, program)
-          }
+        //println("Elim vars: "+elimVars)
+        println("Path constriants (after elimination): " + elimLnctrs)
+        if (this.verifyInvariant) {
+          println("checking invariant for disjunct after elimination...")
+          InvariantUtil.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
         }
 
-        (disjunct, implCtrs)
       }
+      //for stats
+      if (InferInvariantsPhase.dumpStats) {
+        Stats.updateCounterStats((elimVars.size - elimRems.size), "Eliminated-Vars", "disjuncts")
+        Stats.updateCounterStats((lnctrs.size - elimLnctrs.size), "Eliminated-Atoms", "disjuncts")
+        Stats.updateCounterStats(temps.size, "Param-Atoms", "disjuncts")
+        Stats.updateCounterStats(lnctrs.size, "NonParam-Atoms", "disjuncts")
+      }
+      val newLnctrs = elimLnctrs.toSet.toSeq
+
+      //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
+      // and what can never be implied by solving for the templates                       
+      val disjunct = And((newLnctrs ++ temps).map(_.template))
+      val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
+
+      //for debugging
+      if (this.debugReducedFormula) {
+        println("Final Path Constraints: " + disjunct)
+        if (this.verifyInvariant) {
+          println("checking invariant for final disjunct... ")
+          InvariantUtil.checkInvariant(disjunct, context, program)
+        }
+      }
+
+      (disjunct, implCtrs)
     }
-    //print the body and the post tree    
-    val (data, nlctr) = traverseBodyTree(bodyRoot, Seq(), Set(), Seq(), Seq(), Seq())
-    //for debugging
-    /*println("NOn linear Ctr: "+nonLinearCtr)
-        val (res, model, unsatCore) = uiSolver.solveSATWithFunctionCalls(nonLinearCtr)
-              if(res.isDefined && res.get == true){
-                println("Found solution for constraints: "+model)
-              }*/
-    (data, nlctr)
   }
 
   /**
@@ -860,14 +765,11 @@ class NLTemplateSolver(context: LeonContext,
    */
   //TODO: important: optimize this code it seems to take a lot of time 
   //TODO: Fix the current incomplete way of handling ADTs and UIFs  
-  def constraintsForUIFs(calls: Seq[Expr], precond: Expr,
-    doesAliasInCE: (Expr, Expr) => Boolean,
-    generateAxiom: (Expr, Expr) => Option[Expr]): Seq[Expr] = {
-    //solverWithPrecond : UIFZ3Solvers
+  def constraintsForUIFs(calls: Seq[Expr], model: Map[Identifier,Expr], 
+      doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
+       
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
     var neqSet = Set[(Expr, Expr)]()
-    //a mapping from call pairs to the axioms they satisfy
-    var axiomSet = Map[(Expr, Expr), Expr]()
 
     //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
     val vec = calls.toArray
@@ -893,26 +795,19 @@ class NLTemplateSolver(context: LeonContext,
     })
     
     reporter.info("Number of compatible calls: " + product.size)
-    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")    
+    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
 
     product.foreach((pair) => {
       val (call1, call2) = (pair._1, pair._2)
-
       //println("Assertionizing "+call1+" , call2: "+call2)      
-      if (!eqGraph.BFSReach(call1, call2)
-        && !neqSet.contains((call1, call2))
-        && !axiomSet.contains(call1, call2)) {
-
+      if (!eqGraph.BFSReach(call1, call2) 
+          && !neqSet.contains((call1, call2))
+          && !neqSet.contains((call2, call1))) {
+        
         if (doesAliasInCE(call1, call2)) {
           eqGraph.addEdge(call1, call2)
         } else {
-          //check if the call satisfies some of its axioms 
-          val axiom = generateAxiom(call1, call2)
-          if (axiom.isDefined) {
-            axiomSet += (call1, call2) -> axiom.get
-          } else {
-            neqSet ++= Set((call1, call2), (call2, call1))
-          }
+          neqSet ++= Set((call1, call2))
         }
       }
     })
@@ -935,62 +830,47 @@ class NLTemplateSolver(context: LeonContext,
           //here it is an ADT constructor call
           axiomatizeADTCons(call1, call2)
         }
-        //remove self equalities.
+        //remove self equalities. 
         val preds = (rhs +: lhs).filter(_ match {
           case BinaryOperator(Variable(lid), Variable(rid), _) => {
             if (lid == rid) false
-            else true
+            else {
+              if (lid.getType == Int32Type || lid.getType == RealType) true
+              else false
+            }
           }
           case e @ _ => throw new IllegalStateException("Not an equality or Iff: " + e)
         })
+        acc ++ preds
 
-        //Finally, removing predicates on ADTs (this introduces incompleteness)
-        //TODO: fix this (does not require any big change)
-        acc ++ preds.filter((eq) => {
-          val BinaryOperator(lhs, rhs, op) = eq
-          (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
-        })
-      } else if (axiomSet.contains(pair)) {
-        //here simply add the axiom to the resulting constraints
-        acc :+ axiomSet(pair)
       } else if (neqSet.contains(pair)) {
-
-        //println("unequal calls: "+call1+" , "+call2)
-        if (InvariantUtil.isCallExpr(call1)) {
-
-          //println("Unequal calls ")
-          val (ants, _) = axiomatizeCalls(call1, call2)
-          //drop everything if there exists ADTs (note here the antecedent is negated so cannot retain integer predicates)
-          //TODO: fix this (this requires mapping of ADTs to integer world and introducing a < total order)
-          /*val intEqs = ants.filter((eq) => {
-            val BinaryOperator(lhs, rhs, _) = eq
-            (lhs.getType == Int32Type || lhs.getType == RealType || lhs.getType == BooleanType)
-          })*/
-          val adtEqs = ants.filter((eq) => if (eq.isInstanceOf[Equals]) {
-            val Equals(lhs, rhs) = eq
-            (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != BooleanType)
-          } else false)
-
-          if (adtEqs.isEmpty) acc :+ Not(And(ants))
-          else {
-            //drop everything
-            acc
-          }
-
+        //println("unequal calls: "+call1+" , "+call2)                
+        val (ants, _) = if (InvariantUtil.isCallExpr(call1)) {
+          //println("Equal calls ")
+          axiomatizeCalls(call1, call2)
         } else {
-          //here call1 and call2 are ADTs                    
-          val (lhs, rhs) = axiomatizeADTCons(call1, call2)
-
-          val adtEqs = lhs.filter((eq) => if (eq.isInstanceOf[Equals]) {
-            val Equals(lhs, rhs) = eq
-            (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != BooleanType)
-          } else false)
-
-          //note the rhs is always of ADT type (so we are ignoring it) for completeness we must have 'And(Not(rhs),Not(And(lhs)))'
-          //TODO: fix this
-          if (adtEqs.isEmpty) acc :+ Not(And(lhs))
-          else acc
+          //here it is an ADT constructor call
+          axiomatizeADTCons(call1, call2)
         }
+        var unsatIntEq: Option[Expr] = None
+        var unsatADTEq: Option[Expr] = None
+        ants.foreach(eq =>
+          if (!unsatADTEq.isDefined) {
+            eq match {
+              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
+                if (lhs.getType != Int32Type && lhs.getType != RealType)
+                  unsatADTEq = Some(eq)
+                else if (!unsatIntEq.isDefined)
+                  unsatIntEq = Some(eq)
+              }
+              case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
+                unsatADTEq = Some(eq)
+              case _ => ;
+            }
+          })
+        if (unsatADTEq.isDefined) acc //need not add any constraint
+        else if (unsatIntEq.isDefined) acc :+ unsatIntEq.get
+        else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
       } else acc
     })
     newctrs
