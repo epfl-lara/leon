@@ -47,16 +47,19 @@ object GlobalNodeCounter {
 
 case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
 
-	//constraints
-  var constraints = Set[LinearConstraint]()
-  //templates that aren't constraints
-  var templates = Set[LinearTemplate]()
-  //UI function calls
+//  //constraints
+//  var constraints = Set[LinearConstraint]()
+//  //templates that aren't constraints
+//  var templates = Set[LinearTemplate]()
+//  //UI function calls
+//  var uifs = Set[Call]()
+//  //Abstract Data type constraints
+//  var adtCtrs = Set[ADTConstraint]()
+//  //Boolean Constraints
+//  var boolCtrs = Set[BoolConstraint]()
+  
   var uifs = Set[Call]()
-  //Abstract Data type constraints
-  var adtCtrs = Set[ADTConstraint]()
-  //Boolean Constraints
-  var boolCtrs = Set[BoolConstraint]()
+  var atoms = Seq[Expr]()
 
   //children in the DNF tree
   private var children = Set[CtrTree](CtrLeaf())
@@ -88,11 +91,11 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
 
   override def prettyPrint(level : Int) : String = {
     var str = "Id: "+id     
-    if(!constraints.isEmpty) str += " Ctrs: " + constraints
+    if(!atoms.isEmpty) str += " Atoms: " + atoms
     if(!uifs.isEmpty) str+= " Calls: " + uifs
-    if(!templates.isEmpty) str += " Temps: " + templates
-    if(!adtCtrs.isEmpty) str += " Adts: "+ adtCtrs
-    if(!boolCtrs.isEmpty) str += " Bools: "+boolCtrs
+//    if(!templates.isEmpty) str += " Temps: " + templates
+//    if(!adtCtrs.isEmpty) str += " Adts: "+ adtCtrs
+//    if(!boolCtrs.isEmpty) str += " Bools: "+boolCtrs
 
     str += " children: "
     children.foldLeft(str)((g: String, node: CtrTree) => { g + "\n" + " " * level +  node.prettyPrint(level + 1) })
@@ -100,12 +103,8 @@ case class CtrNode(id : Int = GlobalNodeCounter.getUID) extends CtrTree {
   
   def toExpr : Expr={    
     val tru = BooleanLiteral(true)
-    val expr = constraints.foldLeft(tru : Expr)((acc, ctr) => if(acc == tru) ctr.expr else And(acc,ctr.expr))
-    val expr2 = templates.foldLeft(expr)((acc, temp) => if(acc == tru) temp.template else And(acc,temp.template))
-    val expr3 = uifs.foldLeft(expr2)((acc, call) =>if(acc == tru) call.expr  else And(acc,call.expr))
-    val expr4 = adtCtrs.foldLeft(expr3)((acc, adtCtr) =>if(acc == tru) adtCtr.expr  else And(acc,adtCtr.expr))
-    val expr5 = boolCtrs.foldLeft(expr4)((acc, boolCtr) =>if(acc == tru) boolCtr.expr  else And(acc,boolCtr.expr))  
-    expr5
+    val expr = And(atoms ++ uifs.map(_.expr).toSeq)     
+    expr
   } 
 
   override def toString(): String = {
@@ -222,26 +221,7 @@ object TreeUtil {
     }    
   }
   
-  //This takes exponential time !!
-/*  def toExpr(root: CtrTree) : Expr = root match {        
-	case n@CtrNode(_) => {	 	  
-       val childrenExpr = n.Children.foldLeft(tru: Expr)((acc, child) => {
-         val chExpr = toExpr(child)
-         chExpr match{
-           case BooleanLiteral(tru) => acc
-           case _ => if(acc == tru) chExpr else Or(acc, chExpr)
-         }
-       })
-       val nodeExpr = n.toExpr
-       
-       //println("NOde: "+n.id+" Children expr: "+childrenExpr)
-       if(childrenExpr== tru) nodeExpr
-       else if(nodeExpr == tru) childrenExpr
-       else And(nodeExpr,childrenExpr)          
-	}   
-    case CtrLeaf() => tru
-  }*/
-
+  
   def preorderVisit(root: CtrTree, visitor: CtrNode => Unit) = {
     var visited = Set[CtrNode]()
 

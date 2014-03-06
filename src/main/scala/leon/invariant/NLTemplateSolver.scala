@@ -128,7 +128,7 @@ class NLTemplateSolver(context: LeonContext,
   } 
   
   //a mapping from booleans to conjunction of atoms
-  protected var disjuncts = Map[Variable, Seq[Expr]]()
+  protected var disjuncts = Map[Variable, Seq[Constraint]]()
   protected var conjuncts = Map[Variable, Expr]()
   protected var rootGuards = Map[FunDef, Variable]()
   
@@ -148,7 +148,7 @@ class NLTemplateSolver(context: LeonContext,
             }
             val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
             val newe = Equals(g, arg)
-            disjuncts += (g -> atoms)
+            disjuncts += (g -> atoms.map(ConstraintUtil.createConstriant _))
             implications :+= newe
             g
           }
@@ -167,7 +167,7 @@ class NLTemplateSolver(context: LeonContext,
       case And(args) => {
         val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
         val newe = Equals(g, f1)
-        disjuncts += (g -> args)
+        disjuncts += (g -> args.map(ConstraintUtil.createConstriant _))
         implications :+= newe
         g
       }
@@ -577,7 +577,8 @@ class NLTemplateSolver(context: LeonContext,
    * (a) a child selector function that decides which children to consider.
    * (b) a doesAlias function that decides which function / ADT constructor calls to consider.
    */
-  private def generateNumericalCtrs(fd: FunDef, doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
+  private def generateNumericalCtrs(fd: FunDef, model: Map[Identifier,Expr], doesAlias: (Expr, Expr) => Boolean)
+  	: ((Expr, Set[Call]), Expr) = {
 
     var visitedNodes = Set[CtrNode]()
     /**
@@ -585,130 +586,122 @@ class NLTemplateSolver(context: LeonContext,
      * Note: adds the uifs in conjunction to the ctrs
      */
     def constraintsToExpr(ctrs: Seq[LinearConstraint], calls: Set[Call], auxConjuncts: Seq[Expr]): Expr = {
-      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.expr)))
+      val pathExpr = And(ctrs.foldLeft(Seq[Expr]())((acc, ctr) => (acc :+ ctr.toExpr)))
       val uifExpr = And(calls.map((call) => Equals(call.retexpr, call.fi)).toSeq)
       And(Seq(pathExpr, uifExpr) ++ auxConjuncts)
     }
 
-    /**
-     * Traverses the children until one child with a non-true constraint is found
-     */
-    def traverseChildren[T](parent: CtrNode, childTrees: Iterable[CtrTree], pred: CtrTree => (T, Expr)): (T, Expr) = {
-      var ctr: Expr = tru
-      var data: T = null.asInstanceOf[T]
+    def traverseOrs(gd: Variable): Seq[Variable] = {
+      val e@Or(guards) = conjuncts(gd)
+      //pick one guard that is true
+      val guard = guards.collectFirst{ case g@Variable(id) if(model(id) == tru) => g }
+      if(!guard.isDefined)
+        throw IllegalStateException("No satisfiable guard found: "+e)
+      guard.get +: traverseAnds(guard.get)      
+    }
 
-      //important: Do a DFS here to avoid visiting nodes multiple times
-      if (visitedNodes.contains(parent)) {
-        //this node was already visited and found to be unsat
-        (data, ctr)
-      } else {
-        val trees = selector(parent, childTrees)
-        breakable {
-          trees.foreach((tree) => {
-            val res = pred(tree)
-            res match {
-              case (_, BooleanLiteral(true)) => ; //here the path is already unsat                
-              case (dis, nlctr) => {
-                data = dis
-                ctr = nlctr
-                break;
-              }
-            }
-          })
-        }
-        //here add parent node to visited
-        visitedNodes += parent
-        (data, ctr)
+    def traverseAnds(gd: Variable): Seq[Variable] = {
+      val ctrs = disjuncts(gd)
+      val orGuards = ctrs.collect {
+        case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => v
+      }
+      if (orGuards.isEmpty) Seq()
+      else {
+        orGuards.foldLeft(Seq[Variable]())((acc, g) => {
+          if (model(g.id) != tru)
+            throw IllegalStateException("Not a satisfiable guard: " + g)
+          acc ++ traverseOrs(g)
+        })
       }
     }
 
-    /**
-     * The overall flow:
-     * Body --pipe---> post --pipe---> uifConstraintGen --pipe---> endPoint
-     */
-    //this tree could have 2^n paths, where 'n' is the number of atomic predicates in the body formula
-    def traverseOrs(tree: CtrTree,
-      currentCtrs: Seq[LinearConstraint],
-      currentUIFs: Set[Call],
-      currentTemps: Seq[LinearTemplate],
-      adtCons: Seq[Expr],
-      auxCtrs: Seq[Expr]): ((Expr, Set[Call]), Expr) = {
+    val root = rootGuards(fd)
+    val satGuards = if (conjuncts.contains(root))
+      traverseOrs(root)
+    else traverseAnds(root)
+    val satCtrs = satGuards.flatMap(g => disjuncts(g))
+    
+    //exclude guards, separate calls and cons from the rest
+    var atoms = Seq[Constraint]()
+    var calls = Seq[Expr]()
+    var cons = Seq[Expr]()
+    satCtrs.foreach(ctr => ctr match {
+      case BoolConstraint(v@Variable(_)) if(conjuncts.contains(v)) => ; //ignore these
+      case t : Call => calls :+= t.expr
+      case t : ADTConstraint if(t.cons.isDefined) => cons :+= t.cons.get
+      case _ => atoms :+= ctr
+    })
+    
+    val pathctrs = atoms.map(_.toExpr) ++ calls ++ cons     
 
-      tree match {
-        case n @ CtrNode(_) => {
-          //println("Traversing Body Tree")
-          val addCtrs = n.constraints.toSeq
-          val addCalls = n.uifs
-          val addCons = n.adtCtrs.collect { case adtctr @ _ if adtctr.cons.isDefined => adtctr.cons.get }.toSeq
-          val addAuxs = n.boolCtrs.map(_.expr) ++ n.adtCtrs.collect { case ac @ _ if !ac.cons.isDefined => ac.expr }.toSeq
+      //for debugging
+      if (this.printPathToConsole || this.dumpPathAsSMTLIB) {        
+        val plainFormula = And(pathctrs)
+        val pathcond = simplifyArithmetic(plainFormula)
 
-          //create a path constraint and assert it in the solver
-          //solver.push()
-          val nodeExpr = constraintsToExpr(addCtrs, addCalls, addCons ++ addAuxs)
-          //solver.assertCnstr(nodeExpr)
-
-          //recurse into children and collect all the constraints
-          val newCtrs = currentCtrs ++ addCtrs
-          val newTemps = currentTemps ++ n.templates
-          val newUIFs = currentUIFs ++ addCalls
-          val cons = adtCons ++ addCons
-          val newAuxs = auxCtrs ++ addAuxs
-          traverseChildren(n, n.Children, (child: CtrTree) =>
-            traverseBodyTree(child, newCtrs, newUIFs, newTemps, cons, newAuxs))
+        //for debugging
+        if (this.verifyInvariant) {
+          println("checking invariant for path...")
+          InvariantUtil.checkInvariant(pathcond, context, program)
         }
-        case CtrLeaf() => {
-          //pipe this to the post tree                     
-          traversePostTree(postRoot, currentCtrs, currentTemps, auxCtrs, currentUIFs, adtCons, Seq(), Seq(), Seq())
+
+        if (this.printPathToConsole) {
+          //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
+          val simpcond = pathcond
+          println("Full-path: " + ScalaPrinter(simpcond))
+          val filename = "full-path-" + FileCountGUID.getID + ".txt"
+          val wr = new PrintWriter(new File(filename))
+          ExpressionTransformer.PrintWithIndentation(wr, simpcond)
+          println("Printed to file: " + filename)
+          wr.flush()
+          wr.close()
         }
-      }
-    }
 
-    //this tree could have 2^n paths
-    def traversePostTree(tree: CtrTree,
-      ants: Seq[LinearConstraint],
-      antTemps: Seq[LinearTemplate],
-      antAuxs: Seq[Expr],
-      currUIFs: Set[Call],
-      adtCons: Seq[Expr],
-      conseqs: Seq[LinearConstraint],
-      currTemps: Seq[LinearTemplate],
-      currAuxs: Seq[Expr]): ((Expr, Set[Call]), Expr) = {
-
-      tree match {
-        case n @ CtrNode(_) => {
-          //println("Traversing Post Tree")
-          val addCtrs = n.constraints.toSeq
-          val addCalls = n.uifs
-          val addCons = n.adtCtrs.collect { case adtctr @ _ if adtctr.cons.isDefined => adtctr.cons.get }.toSeq
-          val addAuxs = (n.boolCtrs.map(_.expr) ++ n.adtCtrs.collect { case adtctr @ _ if !adtctr.cons.isDefined => adtctr.expr }).toSeq
-
-          //create a path constraint and assert it in the solver
-          //solver.push()
-          val nodeExpr = constraintsToExpr(addCtrs, addCalls, addCons ++ addAuxs)
-          //solver.assertCnstr(nodeExpr)
-
-          //recurse into children and collect all the constraints
-          val newconstrs = conseqs ++ addCtrs
-          val newuifs = currUIFs ++ addCalls
-          val newtemps = currTemps ++ n.templates
-          val newCons = adtCons ++ addCons
-          val newAuxs = currAuxs ++ addAuxs
-          val resExpr = traverseChildren(n, n.Children, (child: CtrTree) =>
-            traversePostTree(child, ants, antTemps, antAuxs, newuifs, newCons, newconstrs, newtemps, newAuxs))
-
-          //pop the nodeExpr 
-          //solver.pop()          
-          resExpr
-        }
-        case CtrLeaf() => {
-          //pipe to the uif constraint generator           
-          //println("Path: "+ currUIFs+","+adtCons+","+(antAuxs ++ currAuxs)+","+(ants ++ conseqs)+","+(antTemps ++ currTemps))
-          val res = uifsConstraintsGen(ants, antTemps, antAuxs, currUIFs, adtCons, conseqs, currTemps, currAuxs)
-          ((res._1, currUIFs), res._2)
+        if (this.dumpPathAsSMTLIB) {
+          val filename = "pathcond" + FileCountGUID.getID + ".smt2"
+          InvariantUtil.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
+          println("Path dumped to: " + filename)
         }
       }
-    }
+      
+      //for stats
+      reporter.info("starting axiomatization...")
+      val t1 = System.currentTimeMillis()           
+      val uifCtrs = constraintsForUIFs(calls ++ cons, model, doesAlias)
+      val t2 = System.currentTimeMillis() 
+      reporter.info("completed axiomatization...in "+(t2 - t1)/1000.0+"s")      
+      
+      Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
+      
+      val uifroot = if (!uifCtrs.isEmpty) {
 
+        val uifCtr = And(uifCtrs)
+
+        if (this.printCallConstriants)
+          println("UIF constraints: " + uifCtr)
+
+        //push not inside
+        val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
+        //check if the two formula's are equivalent
+        /*val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
+        val (res,_) = solver.solveSAT(And(uifCtr,Not(nnfExpr)))
+        if(res == Some(false)) 
+          println("Both the formulas are equivalent!! ")
+         else throw new IllegalStateException("Transformer Formula: "+nnfExpr+" is not equivalent")*/
+        /*uifCtrs.foreach((ctr) => {
+        	if(evalSolver.evalBoolExpr(ctr) != Some(true))
+        		throw new IllegalStateException("Formula not sat by the model: "+ctr)
+        })*/
+
+        //create the root of the UIF tree
+        val newnode = CtrNode()
+        //add the nnfExpr as a DNF formulae        
+        ctrTracker.addConstraintRecur(nnfExpr, newnode)
+        newnode
+
+      } else CtrLeaf()
+    
+        
     /**
      * Eliminates the calls using the theory of uninterpreted functions
      * this could take 2^(n^2) time
@@ -745,76 +738,7 @@ class NLTemplateSolver(context: LeonContext,
         }
       }
 
-      val pathctr = constraintsToExpr(ants ++ conseqs, calls, adtCons ++ antAuxs ++ conseqAuxs)
-      val uifexprs = calls.map((call) => Equals(call.retexpr, call.fi)).toSeq
-
-      //for debugging
-      if (this.printPathToConsole || this.dumpPathAsSMTLIB) {
-        val pathexprsWithTemplate = (ants ++ antTemps ++ conseqs ++ conseqTemps).map(_.template)
-        val plainFormula = And(antAuxs ++ conseqAuxs ++ adtCons ++ uifexprs ++ pathexprsWithTemplate)
-        val pathcond = simplifyArithmetic(plainFormula)
-
-        //for debugging
-        if (this.verifyInvariant) {
-          println("checking invariant for path...")
-          InvariantUtil.checkInvariant(pathcond, context, program)
-        }
-
-        if (this.printPathToConsole) {
-          //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
-          val simpcond = pathcond
-          println("Full-path: " + ScalaPrinter(simpcond))
-          val filename = "full-path-" + FileCountGUID.getID + ".txt"
-          val wr = new PrintWriter(new File(filename))
-          ExpressionTransformer.PrintWithIndentation(wr, simpcond)
-          println("Printed to file: " + filename)
-          wr.flush()
-          wr.close()
-        }
-
-        if (this.dumpPathAsSMTLIB) {
-          val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-          InvariantUtil.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
-          println("Path dumped to: " + filename)
-        }
-      }
       
-      //for stats
-      reporter.info("starting axiomatization...")
-      val t1 = System.currentTimeMillis()      
-      val uifCtrs = constraintsForUIFs(uifexprs ++ adtCons, pathctr, doesAlias, generateAxiom)
-      val t2 = System.currentTimeMillis() 
-      reporter.info("completed axiomatization...in "+(t2 - t1)/1000.0+"s")      
-      
-      Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
-      
-      val uifroot = if (!uifCtrs.isEmpty) {
-
-        val uifCtr = And(uifCtrs)
-
-        if (this.printCallConstriants)
-          println("UIF constraints: " + uifCtr)
-
-        //push not inside
-        val nnfExpr = ExpressionTransformer.TransformNot(uifCtr)
-        //check if the two formula's are equivalent
-        /*val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context,program)))
-        val (res,_) = solver.solveSAT(And(uifCtr,Not(nnfExpr)))
-        if(res == Some(false)) 
-          println("Both the formulas are equivalent!! ")
-         else throw new IllegalStateException("Transformer Formula: "+nnfExpr+" is not equivalent")*/
-        /*uifCtrs.foreach((ctr) => {
-        	if(evalSolver.evalBoolExpr(ctr) != Some(true))
-        		throw new IllegalStateException("Formula not sat by the model: "+ctr)
-        })*/
-
-        //create the root of the UIF tree
-        val newnode = CtrNode()
-        //add the nnfExpr as a DNF formulae        
-        ctrTracker.addConstraintRecur(nnfExpr, newnode)
-        newnode
-
-      } else CtrLeaf()
 
       traverseTree(uifroot, ants, antTemps, conseqs, conseqTemps, Seq())
     }
@@ -848,7 +772,7 @@ class NLTemplateSolver(context: LeonContext,
 
         //compute variables to be eliminated
         val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.expr))
-        val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))
+      toE val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))
         val elimVars = ctrVars.diff(tempVars)
 
         //For debugging
@@ -872,7 +796,7 @@ class NLTemplateSolver(context: LeonContext,
         var elimCtrs = Seq[LinearConstraint]()
         var elimRems = Set[Identifier]()
         elimLnctrs.foreach((lc) => {
-          val evars = variablesOf(lc.expr).intersect(elimVars)
+          val evars = variablesOf(lc.expr).intersetoEt(elimVars)
           if (!evars.isEmpty) {
             elimCtrs :+= lc
             elimCtrCount += 1

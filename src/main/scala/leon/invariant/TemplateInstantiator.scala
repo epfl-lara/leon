@@ -135,6 +135,6 @@ object TemplateInstantiator {
     val intConst = if (const.isDefined) Some(scaleNum(const.get)) else None
 
     val linearCtr = new LinearConstraint(linearTemp.op, intCoeffMap, intConst)
-    linearCtr.expr
+    linearCtr.toExpr
   }
 }

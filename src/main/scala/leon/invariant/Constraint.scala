@@ -27,7 +27,8 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
-trait Template { 
+trait Constraint { 
+  def toExpr : Expr 
 }
 /**
  * Class representing linear templates which is a constraint of the form 
@@ -37,7 +38,7 @@ trait Template {
  */
 class LinearTemplate(oper: (Expr,Expr) => Expr,
     coeffTemp : Map[Expr, Expr],
-    constTemp: Option[Expr]) extends Template {
+    constTemp: Option[Expr]) extends Constraint {
 
   val zero = IntLiteral(0)
 
@@ -95,6 +96,8 @@ class LinearTemplate(oper: (Expr,Expr) => Expr,
     }
   }
 
+  override def toExpr : Expr = template
+  
   override def toString(): String = {
 
     val coeffStr = if (coeffTemplate.isEmpty) ""
@@ -154,15 +157,14 @@ class LinearConstraint(opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], constant
     assert(variablesOf(c).isEmpty)
     c
   })
-
-  def expr : Expr = template
 }
 
-class BoolConstraint(e : Expr) extends Template {
+case class BoolConstraint(e : Expr) extends Constraint {
   val expr = {
     assert(e match{ 
       case Variable(_) => true
       case Not(Variable(_)) => true
+      case t : BooleanLiteral => true
       case _ => false
       })
     e
@@ -171,6 +173,8 @@ class BoolConstraint(e : Expr) extends Template {
   override def toString(): String = {
     expr.toString
   }
+  
+  def toExpr : Expr = expr
 }
 
 object ADTConstraint {
@@ -237,10 +241,48 @@ object ADTConstraint {
 class ADTConstraint(val expr: Expr,
   val cons: Option[Expr] = None,
   val inst: Option[Expr] = None,
-  val comp: Option[Expr] = None) extends Template {
+  val comp: Option[Expr] = None) extends Constraint {
 
   override def toString(): String = {
     expr.toString
   }
+  
+  override def toExpr = expr
 }
 
+case class Call(retexpr: Expr, fi: FunctionInvocation) extends Constraint {
+  val expr = Equals(retexpr,fi)   
+  
+  override def toExpr = expr
+}
+
+object ConstraintUtil {
+
+  def createConstriant(ie: Expr): Constraint = {
+    ie match {
+      case Variable(_) | Not(Variable(_)) => BoolConstraint(ie)
+      case Iff(Variable(_), CaseClassInstanceOf(_, _)) | Equals(Variable(_), CaseClassSelector(_, _, _))
+        | Iff(Variable(_), CaseClassSelector(_, _, _)) | Equals(Variable(_), CaseClass(_, _))
+        | Equals(Variable(_), TupleSelect(_, _)) | Iff(Variable(_), TupleSelect(_, _))
+        | Equals(Variable(_), Tuple(_)) => {
+
+        ADTConstraint(ie)
+      }
+      case Equals(lhs, rhs) if (lhs.getType != Int32Type && lhs.getType != RealType) => {
+        //println("ADT constraint: "+ie)
+        ADTConstraint(ie)
+      }
+      case Not(Equals(lhs, rhs)) if (lhs.getType != Int32Type && lhs.getType != RealType) => {
+        ADTConstraint(ie)
+      }
+      case _ => {
+        val template = LinearConstraintUtil.tryExprToTemplate(ie)
+        if(template.isDefined) template.get
+        else {
+          //TODO: can this be false
+          BoolConstraint(BooleanLiteral(true))
+        }
+      }
+    }
+  }
+}

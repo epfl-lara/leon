@@ -48,10 +48,11 @@ class ConstraintTracker(rootFun : FunDef) {
   }
 
   //adds a constraint in conjunction with  the constraint represented by parentNode
+  //TODO: overhaul the entire VC refinement procedure
   def addConstraintRecur(inexpr: Expr, parentNode : CtrNode) : Unit = {
 
     //returns a node that represents the root of the constraint
-    //this is passed an end node: the node that represents the last  children of the sub-tree
+    //this is passed an end node: the node that represents the last  children of the sub-tree    
     def addCtr(ie: Expr, endnode: CtrNode): CtrNode = {
       ie match {
         case Or(subexprs) => {
@@ -64,7 +65,7 @@ class ConstraintTracker(rootFun : FunDef) {
           val rootnode = CtrNode()          
           children.foreach((child) => { rootnode.addChildren(child); })                   
           rootnode
-        }
+        }       
         case And(subexprs) => {
           val rootnode = subexprs.foldRight(None: Option[CtrNode])((sube, acc) => {
             val currentNode = if (acc == None) addCtr(sube, endnode)
@@ -75,46 +76,10 @@ class ConstraintTracker(rootFun : FunDef) {
         }        	    
         case _ => {
           val node = CtrNode()          
-          ie match {
-            case Variable(_) => { 
-              node.boolCtrs += new BoolConstraint(ie)
-            }
-            case Not(Variable(_)) => {
-             node.boolCtrs += new BoolConstraint(ie)            
-            }
-            case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => {
-            	node.uifs += Call(v,fi)
-            }
-            //need to handle boolean calls as well
-            case Iff(v@Variable(_),fi@FunctionInvocation(_,_)) => {
-            	node.uifs += Call(v,fi)
-            }
-            case Iff(Variable(_),CaseClassInstanceOf(_,_)) | Equals(Variable(_),CaseClassSelector(_,_,_))
-            	 | Iff(Variable(_),CaseClassSelector(_,_,_)) | Equals(Variable(_),CaseClass(_,_)) 
-            	 | Equals(Variable(_),TupleSelect(_,_)) | Iff(Variable(_),TupleSelect(_,_)) 
-            	 | Equals(Variable(_),Tuple(_)) => {
-
-              node.adtCtrs += ADTConstraint(ie)
-            }
-            case Equals(lhs,rhs) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-              //println("ADT constraint: "+ie)
-              node.adtCtrs += ADTConstraint(ie)
-            }
-            case Not(Equals(lhs,rhs)) if(lhs.getType != Int32Type && lhs.getType != RealType) => {
-              node.adtCtrs += ADTConstraint(ie)
-            }
-            case _ => {
-              //val template = LinearConstraintUtil.exprToTemplate(ie)
-              val template = LinearConstraintUtil.tryExprToTemplate(ie)
-              if(!template.isDefined) {
-                //here the expression reduced to true so drop it (note we are in nnf form)
-                //TODO: can the expression reduce to false ??                
-              } else{
-                if(template.get.isInstanceOf[LinearConstraint])
-            	  node.constraints += template.get.asInstanceOf[LinearConstraint]
-                else node.templates += template.get
-              }                          
-            } 
+          ie match {            
+            case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => node.uifs += Call(v,fi)           
+            case Iff(v@Variable(_),fi@FunctionInvocation(_,_)) => node.uifs += Call(v,fi)            
+            case _ => node.atoms :+= ie         
           }          
           node.addChildren(endnode)
           node

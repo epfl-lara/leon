@@ -274,7 +274,7 @@ object LinearConstraintUtil {
   def replaceInCtr(replaceMap : Map[Expr,Expr], lc : LinearConstraint) : Option[LinearConstraint] = {
     
     //println("Replacing in "+lc+" repMap: "+replaceMap)    
-    val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(replaceMap, lc.expr)))
+    val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(replaceMap, lc.toExpr)))
     //println("new expression: "+newexpr)
     
     if(newexpr == tru) None
@@ -283,7 +283,7 @@ object LinearConstraintUtil {
       if(res.isEmpty) None
       else {
         val resctr = res.get.asInstanceOf[LinearConstraint]        
-        if(ExpressionTransformer.simplify(resctr.expr) == tru) None
+        if(ExpressionTransformer.simplify(resctr.toExpr) == tru) None
         else Some(resctr)
       }      
     }
@@ -321,7 +321,7 @@ object LinearConstraintUtil {
     //collect all relevant constraints
     val emptySeq = Seq[LinearConstraint]()
     val (relCtrs, rest) = linearCtrs.foldLeft((emptySeq,emptySeq))((acc,lc) => {
-      if(variablesOf(lc.expr).contains(elimVar)) {
+      if(variablesOf(lc.toExpr).contains(elimVar)) {
         (lc +: acc._1,acc._2)        
       } else {
         (acc._1,lc +: acc._2)
@@ -339,7 +339,7 @@ object LinearConstraintUtil {
 
     relCtrs.foreach((lc) => {
       //check for an equality      
-      if (lc.expr.isInstanceOf[Equals] && lc.coeffMap.contains(elimVar.toVariable)) {
+      if (lc.toExpr.isInstanceOf[Equals] && lc.coeffMap.contains(elimVar.toVariable)) {
         foundEquality = true
 
         //if (!elimExpr.isDefined || (lc.coeffMap.size == 1) || (!elimExpr.get.isInstanceOf[Terminal] && lc.coeffMap.size==2)) {
@@ -379,7 +379,7 @@ object LinearConstraintUtil {
             }
           }
         }
-      } else if ((lc.expr.isInstanceOf[LessEquals] || lc.expr.isInstanceOf[LessThan])
+      } else if ((lc.toExpr.isInstanceOf[LessEquals] || lc.toExpr.isInstanceOf[LessThan])
         && lc.coeffMap.contains(elimVar.toVariable)) {
 
         val IntLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
@@ -392,7 +392,7 @@ object LinearConstraintUtil {
         }
       } else {
         //here, we assume that the operators are normalized to Equals, LessThan and LessEquals
-        throw new IllegalStateException("LinearConstraint not in expeceted form : " + lc.expr)
+        throw new IllegalStateException("LinearConstraint not in expeceted form : " + lc.toExpr)
       }      
     })
 

@@ -76,8 +76,8 @@ class FarkasLemmaSolver {
     
 
     //Optimization 1: Check if ants are unsat (already handled)    
-    val pathVC = And(antsSimple.map(_.expr).toSeq ++ conseqsSimple.map(_.expr).toSeq)
-    val notPathVC = And(And(antsSimple.map(_.expr).toSeq),Not(And(conseqsSimple.map(_.expr).toSeq)))
+    val pathVC = And(antsSimple.map(_.toExpr).toSeq ++ conseqsSimple.map(_.toExpr).toSeq)
+    val notPathVC = And(And(antsSimple.map(_.toExpr).toSeq),Not(And(conseqsSimple.map(_.toExpr).toSeq)))
     val (satVC, _) = uisolver.solveSAT(pathVC)
     val (satNVC,_) = uisolver.solveSAT(notPathVC)
 
