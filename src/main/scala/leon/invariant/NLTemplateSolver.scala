@@ -45,8 +45,8 @@ class NLTemplateSolver(context: LeonContext,
   tightBounds: Boolean) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
 
   private val farkasSolver = new FarkasLemmaSolver()
-  private val minimizer = new Minimizer(context, program, timeout)  
-  
+  private val minimizer = new Minimizer(context, program, timeout)
+
   val disableCegis = true
   val solveAsBitvectors = false
   val bvsize = 5
@@ -62,7 +62,7 @@ class NLTemplateSolver(context: LeonContext,
   val dumpNLCtrsAsSMTLIB = false
   val printCallConstriants = false
   val printReducedFormula = false
-  val dumpInstantiatedVC = false 
+  val dumpInstantiatedVC = false
   val debugAxioms = false
   /**
    * This function computes invariants belonging to the given templates incrementally.
@@ -107,7 +107,7 @@ class NLTemplateSolver(context: LeonContext,
     })*/
     val solverWithCtr = new UIFZ3Solver(this.context, program)
     solverWithCtr.assertCnstr(tru)
-    
+
     val ivcs = funcVCs.map((entry) => {
       val (fd, vc) = entry
       (fd -> instrumentWithGuards(fd, vc))
@@ -125,16 +125,16 @@ class NLTemplateSolver(context: LeonContext,
     if (this.tightBounds)
       SpecificStats.addLowerBoundStats(rootFun, minimizer.lowerBoundMap, "")
     sol
-  } 
-  
+  }
+
   //a mapping from booleans to conjunction of atoms
   protected var disjuncts = Map[Variable, Seq[Constraint]]()
   protected var conjuncts = Map[Variable, Expr]()
   protected var rootGuards = Map[FunDef, Variable]()
-  
-  def instrumentWithGuards(fd : FunDef, formula: Expr): Expr = {
+
+  def instrumentWithGuards(fd: FunDef, formula: Expr): Expr = {
     //Assuming that VC is in negation normal form and And/Ors have been pulled up
-    var implications = Seq[Expr]()        
+    var implications = Seq[Expr]()
     val f1 = simplePostTransform((e: Expr) => e match {
       case Or(args) => {
         val newargs = args.map(arg => {
@@ -156,7 +156,7 @@ class NLTemplateSolver(context: LeonContext,
         //create a temporary for Or
         val gor = TVarFactory.createTemp("b").setType(BooleanType).toVariable
         val newor = Or(newargs)
-        val newe = Equals(gor, newor)        
+        val newe = Equals(gor, newor)
         conjuncts += (gor -> newor)
         implications :+= newe
         gor
@@ -171,10 +171,10 @@ class NLTemplateSolver(context: LeonContext,
         implications :+= newe
         g
       }
-      case t : Variable => t
-      case _ => throw IllegalStateException("f1 not a variable or conjunction: "+f1)
-    }    
-    rootGuards += (fd -> f2)    
+      case t: Variable => t
+      case _ => throw IllegalStateException("f1 not a variable or conjunction: " + f1)
+    }
+    rootGuards += (fd -> f2)
     val instruFormula = And(implications :+ f2)
     instruFormula
   }
@@ -221,7 +221,7 @@ class NLTemplateSolver(context: LeonContext,
     var callsInPaths = Set[Call]()
     def disableADisjunct(prevCtr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
 
-      Stats.updateCounter(1,"disjuncts")
+      Stats.updateCounter(1, "disjuncts")
 
       var blockedCEs = false
       var confFunctions = Set[FunDef]()
@@ -277,18 +277,18 @@ class NLTemplateSolver(context: LeonContext,
 
         if (this.debugIncremental)
           solverWithCtr.assertCnstr(newPart)
-        
+
         //here we need to solve for the newctrs + inputCtrs
         val combCtr = And(prevCtr, newPart)
-        val innerSolver = if(solveAsBitvectors) {
+        val innerSolver = if (solveAsBitvectors) {
           new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = bvsize)
         } else {
           new UIFZ3Solver(context, program)
         }
         val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 
-        if (this.dumpNLCtrsAsSMTLIB) {          
-          val filename = program.mainObject.id+"-nlctr" + FileCountGUID.getID + ".smt2"          
+        if (this.dumpNLCtrsAsSMTLIB) {
+          val filename = program.mainObject.id + "-nlctr" + FileCountGUID.getID + ".smt2"
           if ((newSize + inputSize) >= 5) {
             if (solveAsBitvectors)
               InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
@@ -301,9 +301,9 @@ class NLTemplateSolver(context: LeonContext,
         val t1 = System.currentTimeMillis()
         val (res, newModel) = solver.solveSAT(combCtr)
         val t2 = System.currentTimeMillis()
-        println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")        
+        println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
         Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")
-        
+
         res match {
           case None => {
             //here we have timed out while solving the non-linear constraints
@@ -342,15 +342,15 @@ class NLTemplateSolver(context: LeonContext,
                 }
                 //timed out??
                 case _ => {
-                  reporter.info("cegis timed-out on the disjunct... retrying...")                  
-                  Stats.updateCumStats(1,"retries")
-                  
+                  reporter.info("cegis timed-out on the disjunct... retrying...")
+                  Stats.updateCumStats(1, "retries")
+
                   //disable this disjunct and retry but, use the inputCtrs + the constraints generated by cegis from the next iteration
                   disableADisjunct(And(inputCtr, cegisCtr2))
                 }
               }
-            } else {              
-              Stats.updateCumStats(1,"retries")                 
+            } else {
+              Stats.updateCumStats(1, "retries")
               disableADisjunct(inputCtr)
             }
             //} 
@@ -438,12 +438,12 @@ class NLTemplateSolver(context: LeonContext,
                 case _ => false
               }
             })
-            if (isInv) {              
+            if (isInv) {
               minStarted = false
               val mintime = (System.currentTimeMillis() - minStartTime)
               Stats.updateCounterTime(mintime, "minimization-time", "procs")
               Stats.updateCumTime(mintime, "Total-Min-Time")
-                            
+
               (Some(getAllInvariants(minModel)), None)
             } else
               recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
@@ -463,7 +463,7 @@ class NLTemplateSolver(context: LeonContext,
    * Returns the counter example disjunct
    */
   val boolEval = new DefaultEvaluator(context, program)
-  
+
   def getNLConstraints(fd: FunDef, instVC: Expr, tempVarMap: Map[Expr, Expr]): ((Expr, Set[Call]), Expr) = {
     //For debugging
     if (this.dumpInstantiatedVC) {
@@ -480,29 +480,22 @@ class NLTemplateSolver(context: LeonContext,
     if (InvariantUtil.hasReals(instVC))
       throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
 
-    //println("verification condition for" + fd.id + " : " + cande)
-    //println("Solution: "+uiSolver.solveSATWithFunctionCalls(cande))
-
-    //this creates a new solver and does not work with the SimpleSolverAPI
-    /*val solEval = new UIFZ3Solver(context, program)
-    solEval.assertCnstr(instVC)*/
-    
     val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
-    
+
     reporter.info("checking VC inst ...")
-    var t1 = System.currentTimeMillis()    
+    var t1 = System.currentTimeMillis()
     //val res = solEval.check
     val (res, model) = solver.solveSAT(instVC)
     val t2 = System.currentTimeMillis()
-    reporter.info("checked VC inst... in "+(t2-t1)/1000.0+"s")
-    Stats.updateCounterTime((t2-t1),"VC-check-time","disjuncts")
-    
-    t1 = System.currentTimeMillis()     
-    res  match {
-      case None => {        
+    reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
+    Stats.updateCounterTime((t2 - t1), "VC-check-time", "disjuncts")
+
+    t1 = System.currentTimeMillis()
+    res match {
+      case None => {
         throw IllegalStateException("cannot check the satisfiability of " + instVC)
       }
-      case Some(false) => {                
+      case Some(false) => {
         //do not generate any constraints
         ((fls, Set()), tru)
       }
@@ -512,36 +505,12 @@ class NLTemplateSolver(context: LeonContext,
         //val counterExample = solEval.getModel
         //println("Counter-example: "+counterExample)
 
-        //try to get the paths that lead to the error 
-        /*val satChooser = (parent: CtrNode, ch: Iterable[CtrTree]) => {
-          ch.filter((child) => child match {
-            case CtrLeaf() => true
-            case cn @ CtrNode(_) => {                            
-              val nodeExpr = if (!cn.templates.isEmpty) throw IllegalStateException("Node has templates!! " + cn.toExpr)
-              else cn.toExpr
-
-              val t1 = System.currentTimeMillis()
-              //val exprRes = solEval.evalBoolExpr(nodeExpr)
-              val exprRes = boolEval.eval(nodeExpr, model)
-              val t2 = System.currentTimeMillis()
-              Stats.updateCumTime((t2 - t1), "solEval-Time")
-
-              exprRes.result match {
-                case None => throw IllegalStateException("Cannot evaluate " + cn.toExpr + " on " + model)
-                case Some(tru) => true
-                case Some(fls) => false
-                case _ => throw IllegalStateException("Unknown evaluation result " + cn.toExpr + " on " + model)
-              }
-            }
-          })
-        }*/
-
         //check if two calls (to functions or ADT cons) have the same value in the model 
         val doesAlias = (call1: Expr, call2: Expr) => {
           //first check if the return values are equal
-          val BinaryOperator(Variable(r1@ _), _, _) = call1
-          val BinaryOperator(Variable(r2@ _), _, _) = call2
-          val resEquals = (model(r1) == model(r2))         
+          val BinaryOperator(Variable(r1 @ _), _, _) = call1
+          val BinaryOperator(Variable(r2 @ _), _, _) = call2
+          val resEquals = (model(r1) == model(r2))
           if (resEquals) {
             //for function calls do additional checks
             if (InvariantUtil.isCallExpr(call1)) {
@@ -556,16 +525,16 @@ class NLTemplateSolver(context: LeonContext,
             } else true
           } else false
         }
-                
+
         //get the disjuncts that are satisfied
-        val (data, newctr) = generateNumericalCtrs(fd, doesAlias)
+        val (data, newctr) = generateNumericalCtrs(fd, model, doesAlias)
         if (newctr == tru)
-          throw IllegalStateException("Cannot find a counter-example path!!")        
-        
+          throw IllegalStateException("Cannot find a counter-example path!!")
+
         val t2 = System.currentTimeMillis()
         Stats.updateCounterTime((t2 - t1), "Disj-choosing-time", "disjuncts")
         Stats.updateCumTime((t2 - t1), "Total-Choose-Time")
-        
+
         (data, newctr)
       }
     }
@@ -578,7 +547,7 @@ class NLTemplateSolver(context: LeonContext,
    * (b) a doesAlias function that decides which function / ADT constructor calls to consider.
    */
   private def generateNumericalCtrs(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
-    
+
     def traverseOrs(gd: Variable): Seq[Variable] = {
       val e @ Or(guards) = conjuncts(gd)
       //pick one guard that is true
@@ -611,16 +580,20 @@ class NLTemplateSolver(context: LeonContext,
 
     //exclude guards, separate calls and cons from the rest
     var atoms = Seq[Constraint]()
-    var calls = Seq[Expr]()
+    var calls = Seq[Call]()
+    var callExprs = Seq[Expr]()
     var cons = Seq[Expr]()
     satCtrs.foreach(ctr => ctr match {
       case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => ; //ignore these
-      case t: Call => calls :+= t.expr
+      case t: Call => {
+        calls :+= t
+        callExprs :+= t.expr
+      }
       case t: ADTConstraint if (t.cons.isDefined) => cons :+= t.cons.get
       case _ => atoms :+= ctr
     })
 
-    val pathctrs = atoms.map(_.toExpr) ++ calls ++ cons
+    val pathctrs = atoms.map(_.toExpr) ++ callExprs ++ cons
     //for debugging
     if (this.printPathToConsole || this.dumpPathAsSMTLIB) {
       val plainFormula = And(pathctrs)
@@ -654,20 +627,25 @@ class NLTemplateSolver(context: LeonContext,
     //for stats
     reporter.info("starting axiomatization...")
     val t1 = System.currentTimeMillis()
-    val theoryCtrs = constraintsForUIFs(calls ++ cons, model, doesAlias)
+    val theoryEqs = constraintsForUIFs(callExprs ++ cons, model, doesAlias)
     val t2 = System.currentTimeMillis()
     reporter.info("completed axiomatization...in " + (t2 - t1) / 1000.0 + "s")
 
     Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
 
-    val (data, nlctr) = processNumCtrs(ants, antTemps, conseqs, conseqTemps)
-    (data, nlctr)
+    val numTemps = (atoms ++ theoryEqs.map(ConstraintUtil.createConstriant _)).collect { case t: LinearTemplate => t }
+    val (data, nlctr) = processNumCtrs(numTemps)
+    ((data, calls.toSet), nlctr)
   }
 
   /**
-   * Endpoint of the pipeline. Invokes the actual constraint solver.
+   * Endpoint of the pipeline. Invokes the Farkas Lemma constraint generation.
    */
-  def processNumCtrs(lnctrs: Seq[LinearConstraint], temps: Seq[LinearTemplate]): (Expr, Expr) = {
+  def processNumCtrs(numTemps: Seq[LinearTemplate]): (Expr, Expr) = {
+
+    val lnctrs = numTemps.collect { case t: LinearConstraint => t }
+    val temps = numTemps.filterNot(_.isInstanceOf[LinearConstraint])
+
     //here we are invalidating A^~(B)            
     if (temps.isEmpty) {
       //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
@@ -683,7 +661,7 @@ class NLTemplateSolver(context: LeonContext,
       }
 
       //TODO: try some optimizations here to reduce the number of constraints to be considered
-      // Note: this uses the interpolation property of arithmetics        
+      // Note: we can use the interpolation property of arithmetics        
 
       //compute variables to be eliminated
       val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.toExpr))
@@ -765,9 +743,9 @@ class NLTemplateSolver(context: LeonContext,
    */
   //TODO: important: optimize this code it seems to take a lot of time 
   //TODO: Fix the current incomplete way of handling ADTs and UIFs  
-  def constraintsForUIFs(calls: Seq[Expr], model: Map[Identifier,Expr], 
-      doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
-       
+  def constraintsForUIFs(calls: Seq[Expr], model: Map[Identifier, Expr],
+    doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
+
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
     var neqSet = Set[(Expr, Expr)]()
 
@@ -793,17 +771,17 @@ class NLTemplateSolver(context: LeonContext,
       j += 1
       acc ++ pairs
     })
-    
+
     reporter.info("Number of compatible calls: " + product.size)
     Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
 
     product.foreach((pair) => {
       val (call1, call2) = (pair._1, pair._2)
       //println("Assertionizing "+call1+" , call2: "+call2)      
-      if (!eqGraph.BFSReach(call1, call2) 
-          && !neqSet.contains((call1, call2))
-          && !neqSet.contains((call2, call1))) {
-        
+      if (!eqGraph.BFSReach(call1, call2)
+        && !neqSet.contains((call1, call2))
+        && !neqSet.contains((call2, call1))) {
+
         if (doesAliasInCE(call1, call2)) {
           eqGraph.addEdge(call1, call2)
         } else {
