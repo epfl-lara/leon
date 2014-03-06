@@ -34,7 +34,6 @@ import scala.util.control.Breaks._
 import leon.solvers._
 import leon.purescala.ScalaPrinter
 import leon.plugin.DepthInstPhase
-import leon.invariant.CtrTree
 
 class NLTemplateSolver(context: LeonContext,
   program: Program,
@@ -51,21 +50,25 @@ class NLTemplateSolver(context: LeonContext,
   val solveAsBitvectors = false
   val bvsize = 5
 
-  //flags controlling debugging and statistics generation
+  //flags controlling debugging
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false
-  val debugInstrumentation = true
+  val debugInstrumentation = false
   val debugElimination = false
   val debugChooseDisjunct = false
+  val debugAxioms = false
   val verifyInvariant = false
   val debugReducedFormula = false
+  
+  //print flags
+  val printCounterExample = false
   val printPathToConsole = false
   val dumpPathAsSMTLIB = false  
   val dumpNLCtrsAsSMTLIB = false
   val printCallConstriants = false
   val printReducedFormula = false
   val dumpInstantiatedVC = false
-  val debugAxioms = false
+  
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -166,10 +169,12 @@ class NLTemplateSolver(context: LeonContext,
               case And(atms) => atms
               case _ => Seq(arg)
             }              
-            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-            val newe = Equals(g, arg)            
+            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable                        
             val ctrs = getCtrsFromExprs(atoms)            
-            disjuncts += (g -> ctrs)            
+            disjuncts += (g -> ctrs) 
+            
+            //important: here we cannot directly use "atoms" as conversion to constraints performs some syntactic changes 
+            val newe = Equals(g, And(ctrs.map(_.toExpr)))
             implications :+= newe
             g
           }
@@ -193,8 +198,9 @@ class NLTemplateSolver(context: LeonContext,
           case _ => Seq(f1)
         }
         val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-        val newe = Equals(g, f1)
-        disjuncts += (g -> getCtrsFromExprs(atoms))
+        val ctrs = getCtrsFromExprs(atoms)
+        disjuncts += (g -> ctrs)
+        val newe = Equals(g, And(ctrs.map(_.toExpr)))
         implications :+= newe
         g
       }
@@ -532,13 +538,8 @@ class NLTemplateSolver(context: LeonContext,
       case Some(true) => {
         //For debugging purposes.
         println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")                
-        //println("Counter-example: "+counterExample)
-        
-        if(this.debugChooseDisjunct) {
-          println("Model: "+model)
-          val unassignedVars = variablesOf(instVC).filterNot(model.contains _)
-          if(!unassignedVars.isEmpty)
-            throw new IllegalStateException("Variables not bound to values: "+unassignedVars)          
+        if(this.printCounterExample) {
+          println("Model: "+model)                    
         }    
 
         //check if two calls (to functions or ADT cons) have the same value in the model 
@@ -563,7 +564,7 @@ class NLTemplateSolver(context: LeonContext,
         }
 
         //get the disjuncts that are satisfied
-        val (data, newctr) = generateNumericalCtrs(fd, model, doesAlias)
+        val (data, newctr) = generateCtrsFromDisjunct(fd, model, doesAlias)
         if (newctr == tru)
           throw IllegalStateException("Cannot find a counter-example path!!")
 
@@ -591,7 +592,7 @@ class NLTemplateSolver(context: LeonContext,
       }
     }
   
-  private def generateNumericalCtrs(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
+  private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
 
     def traverseOrs(gd: Variable): Seq[Variable] = {
       val e @ Or(guards) = conjuncts(gd)
@@ -687,6 +688,7 @@ class NLTemplateSolver(context: LeonContext,
     (atoms ++ theoryEqs.map(ConstraintUtil.createConstriant _)).foreach(_ match {
       case t: LinearConstraint => lnctrs :+= t
       case t: LinearTemplate => temps :+= t
+      case _ => ;
     })
 
     if (this.debugChooseDisjunct) {
