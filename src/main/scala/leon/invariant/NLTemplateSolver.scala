@@ -54,11 +54,13 @@ class NLTemplateSolver(context: LeonContext,
   //flags controlling debugging and statistics generation
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
   val debugIncremental = false
+  val debugInstrumentation = true
   val debugElimination = false
+  val debugChooseDisjunct = false
   val verifyInvariant = false
   val debugReducedFormula = false
   val printPathToConsole = false
-  val dumpPathAsSMTLIB = false
+  val dumpPathAsSMTLIB = false  
   val dumpNLCtrsAsSMTLIB = false
   val printCallConstriants = false
   val printReducedFormula = false
@@ -133,22 +135,41 @@ class NLTemplateSolver(context: LeonContext,
   protected var rootGuards = Map[FunDef, Variable]()
 
   def instrumentWithGuards(fd: FunDef, formula: Expr): Expr = {
+    
+    def getCtrsFromExprs(exprs: Seq[Expr]) : Seq[Constraint] = {
+      var break = false
+      exprs.foldLeft(Seq[Constraint]())((acc, e) => {
+        if (break) acc
+        else {
+          val ctr = ConstraintUtil.createConstriant(e)
+          ctr match {
+            case BoolConstraint(BooleanLiteral(true)) => acc
+            case BoolConstraint(BooleanLiteral(false)) => {
+              break = true
+              Seq(ctr)
+            }
+            case _ => acc :+ ctr
+          }
+        }
+      })
+    }
+    
     //Assuming that VC is in negation normal form and And/Ors have been pulled up
     var implications = Seq[Expr]()
     val f1 = simplePostTransform((e: Expr) => e match {
       case Or(args) => {
-        val newargs = args.map(arg => {
-          if (arg.isInstanceOf[Variable] && disjuncts.contains(arg.asInstanceOf[Variable])) arg
-          else {
-            val atoms = if (arg.isInstanceOf[Variable])
-              Seq(arg)
-            else {
-              val And(atms) = arg
-              atms
-            }
+        val newargs = args.map(arg => arg match {
+          case v: Variable if (disjuncts.contains(v)) => arg
+          case v: Variable if (conjuncts.contains(v)) => throw IllegalStateException("or gaurd inside conjunct: "+e+" or-guard: "+v)
+          case _ => {
+            val atoms = arg  match {
+              case And(atms) => atms
+              case _ => Seq(arg)
+            }              
             val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-            val newe = Equals(g, arg)
-            disjuncts += (g -> atoms.map(ConstraintUtil.createConstriant _))
+            val newe = Equals(g, arg)            
+            val ctrs = getCtrsFromExprs(atoms)            
+            disjuncts += (g -> ctrs)            
             implications :+= newe
             g
           }
@@ -163,19 +184,30 @@ class NLTemplateSolver(context: LeonContext,
       }
       case _ => e
     })(formula)
-    val f2 = f1 match {
-      case And(args) => {
+    val rootvar = f1 match {      
+      case v: Variable if(conjuncts.contains(v)) => v
+      case v: Variable if(disjuncts.contains(v)) => throw IllegalStateException("f1 is a disjunct guard: "+v)
+      case _ => {
+        val atoms = f1 match {
+          case And(atms) => atms
+          case _ => Seq(f1)
+        }
         val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
         val newe = Equals(g, f1)
-        disjuncts += (g -> args.map(ConstraintUtil.createConstriant _))
+        disjuncts += (g -> getCtrsFromExprs(atoms))
         implications :+= newe
         g
       }
-      case t: Variable => t
-      case _ => throw IllegalStateException("f1 not a variable or conjunction: " + f1)
     }
-    rootGuards += (fd -> f2)
-    val instruFormula = And(implications :+ f2)
+    rootGuards += (fd -> rootvar)
+    
+    if(this.debugInstrumentation) {
+      println("VC for :"+fd.id)
+      implications.foreach(println _ )
+      println(rootvar)
+    }
+      
+    val instruFormula = And(implications :+ rootvar)
     instruFormula
   }
 
@@ -462,8 +494,6 @@ class NLTemplateSolver(context: LeonContext,
   /**
    * Returns the counter example disjunct
    */
-  val boolEval = new DefaultEvaluator(context, program)
-
   def getNLConstraints(fd: FunDef, instVC: Expr, tempVarMap: Map[Expr, Expr]): ((Expr, Set[Call]), Expr) = {
     //For debugging
     if (this.dumpInstantiatedVC) {
@@ -501,27 +531,33 @@ class NLTemplateSolver(context: LeonContext,
       }
       case Some(true) => {
         //For debugging purposes.
-        println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
-        //val counterExample = solEval.getModel
+        println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")                
         //println("Counter-example: "+counterExample)
+        
+        if(this.debugChooseDisjunct) {
+          println("Model: "+model)
+          val unassignedVars = variablesOf(instVC).filterNot(model.contains _)
+          if(!unassignedVars.isEmpty)
+            throw new IllegalStateException("Variables not bound to values: "+unassignedVars)          
+        }    
 
         //check if two calls (to functions or ADT cons) have the same value in the model 
         val doesAlias = (call1: Expr, call2: Expr) => {
           //first check if the return values are equal
-          val BinaryOperator(Variable(r1 @ _), _, _) = call1
-          val BinaryOperator(Variable(r2 @ _), _, _) = call2
+          val BinaryOperator(Variable(r1), _, _) = call1
+          val BinaryOperator(Variable(r2), _, _) = call2
           val resEquals = (model(r1) == model(r2))
           if (resEquals) {
             //for function calls do additional checks
             if (InvariantUtil.isCallExpr(call1)) {
               val (ants, _) = axiomatizeCalls(call1, call2)
-              val antExpr = And(ants)
-              boolEval.eval(antExpr, model).result match {
-                case None => throw IllegalStateException("Cannot evaluate " + antExpr + " on " + model)
-                case Some(tru) => true
-                case Some(fls) => false
-                case _ => throw IllegalStateException("Unknown evaluation result " + antExpr + " on " + model)
-              }
+              //println("Checking calls: "+(call1,call2))
+              val antsHold = ants.forall(ant => {
+                val BinaryOperator(Variable(lid), Variable(rid), _) = ant
+                (model(lid) == model(rid))
+              })
+              //if(antsHold) println("Ants hold: "+ants)
+              antsHold
             } else true
           } else false
         }
@@ -546,6 +582,15 @@ class NLTemplateSolver(context: LeonContext,
    * (a) a child selector function that decides which children to consider.
    * (b) a doesAlias function that decides which function / ADT constructor calls to consider.
    */
+  val evaluator = new DefaultEvaluator(context, program)
+  //a helper method 
+    def doesSatisfyModel(expr: Expr, model: Map[Identifier,Expr]): Boolean = {
+      evaluator.eval(expr, model).result match {
+        case Some(BooleanLiteral(true)) => true
+        case _ => false
+      }
+    }
+  
   private def generateNumericalCtrs(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
 
     def traverseOrs(gd: Variable): Seq[Variable] = {
@@ -573,9 +618,7 @@ class NLTemplateSolver(context: LeonContext,
     }
 
     val root = rootGuards(fd)
-    val satGuards = if (conjuncts.contains(root))
-      traverseOrs(root)
-    else traverseAnds(root)
+    val satGuards = root +: (if(conjuncts.contains(root)) traverseOrs(root) else traverseAnds(root)) 
     val satCtrs = satGuards.flatMap(g => disjuncts(g))
 
     //exclude guards, separate calls and cons from the rest
@@ -592,14 +635,20 @@ class NLTemplateSolver(context: LeonContext,
       case t: ADTConstraint if (t.cons.isDefined) => cons :+= t.cons.get
       case _ => atoms :+= ctr
     })
-
-    val pathctrs = atoms.map(_.toExpr) ++ callExprs ++ cons
-    //for debugging
-    if (this.printPathToConsole || this.dumpPathAsSMTLIB) {
+       
+    //for debugging        
+    if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
+      val pathctrs = atoms.map(_.toExpr) ++ callExprs ++ cons
       val plainFormula = And(pathctrs)
       val pathcond = simplifyArithmetic(plainFormula)
 
-      //for debugging
+      if (this.debugChooseDisjunct) {
+        atoms.filter(_.isInstanceOf[LinearConstraint]).map(_.toExpr).foreach((ctr) => {
+          if (!doesSatisfyModel(ctr, model))
+            throw IllegalStateException("Path ctr not satisfied by model: " + ctr)
+        })
+      }
+      
       if (this.verifyInvariant) {
         println("checking invariant for path...")
         InvariantUtil.checkInvariant(pathcond, context, program)
@@ -633,19 +682,28 @@ class NLTemplateSolver(context: LeonContext,
 
     Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
 
-    val numTemps = (atoms ++ theoryEqs.map(ConstraintUtil.createConstriant _)).collect { case t: LinearTemplate => t }
-    val (data, nlctr) = processNumCtrs(numTemps)
+    var lnctrs = Seq[LinearConstraint]()
+    var temps = Seq[LinearTemplate]()
+    (atoms ++ theoryEqs.map(ConstraintUtil.createConstriant _)).foreach(_ match {
+      case t: LinearConstraint => lnctrs :+= t
+      case t: LinearTemplate => temps :+= t
+    })
+
+    if (this.debugChooseDisjunct) {
+      lnctrs.map(_.toExpr).foreach((ctr) => {
+        if (!doesSatisfyModel(ctr, model))
+          throw IllegalStateException("Ctr not satisfied by model: " + ctr)
+      })
+    }  
+    
+    val (data, nlctr) = processNumCtrs(lnctrs, temps)
     ((data, calls.toSet), nlctr)
   }
 
   /**
    * Endpoint of the pipeline. Invokes the Farkas Lemma constraint generation.
    */
-  def processNumCtrs(numTemps: Seq[LinearTemplate]): (Expr, Expr) = {
-
-    val lnctrs = numTemps.collect { case t: LinearConstraint => t }
-    val temps = numTemps.filterNot(_.isInstanceOf[LinearConstraint])
-
+  def processNumCtrs(lnctrs: Seq[LinearConstraint], temps: Seq[LinearTemplate]): (Expr, Expr) = {
     //here we are invalidating A^~(B)            
     if (temps.isEmpty) {
       //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
@@ -782,7 +840,7 @@ class NLTemplateSolver(context: LeonContext,
         && !neqSet.contains((call1, call2))
         && !neqSet.contains((call2, call1))) {
 
-        if (doesAliasInCE(call1, call2)) {
+        if (doesAliasInCE(call1, call2)) {          
           eqGraph.addEdge(call1, call2)
         } else {
           neqSet ++= Set((call1, call2))
@@ -847,7 +905,15 @@ class NLTemplateSolver(context: LeonContext,
             }
           })
         if (unsatADTEq.isDefined) acc //need not add any constraint
-        else if (unsatIntEq.isDefined) acc :+ unsatIntEq.get
+        else if (unsatIntEq.isDefined) {
+          //pick the constraint a < b or a > b that is satisfied
+          val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
+          val IntLiteral(lval) = model(lid)
+          val IntLiteral(rval) = model(rid)
+          val atom = if (lval < rval) LessThan(lhs, rhs)
+          else GreaterThan(lhs, rhs)
+          acc :+ atom
+        }
         else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
       } else acc
     })
