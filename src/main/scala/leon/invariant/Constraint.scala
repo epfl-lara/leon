@@ -260,7 +260,9 @@ object ConstraintUtil {
 
   def createConstriant(ie: Expr): Constraint = {
     ie match {
-      case Variable(_) | Not(Variable(_)) => BoolConstraint(ie)
+      case Variable(_) | Not(Variable(_)) => BoolConstraint(ie)   
+      case Equals(v@Variable(_),fi@FunctionInvocation(_,_)) => Call(v,fi)           
+      case Iff(v@Variable(_),fi@FunctionInvocation(_,_)) => Call(v,fi)
       case Iff(Variable(_), CaseClassInstanceOf(_, _)) | Equals(Variable(_), CaseClassSelector(_, _, _))
         | Iff(Variable(_), CaseClassSelector(_, _, _)) | Equals(Variable(_), CaseClass(_, _))
         | Equals(Variable(_), TupleSelect(_, _)) | Iff(Variable(_), TupleSelect(_, _))
