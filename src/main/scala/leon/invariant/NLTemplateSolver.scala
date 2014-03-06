@@ -624,16 +624,16 @@ class NLTemplateSolver(context: LeonContext,
 
     //exclude guards, separate calls and cons from the rest
     var atoms = Seq[Constraint]()
-    var calls = Seq[Call]()
-    var callExprs = Seq[Expr]()
-    var cons = Seq[Expr]()
+    var calls = Set[Call]()
+    var callExprs = Set[Expr]()
+    var cons = Set[Expr]()
     satCtrs.foreach(ctr => ctr match {
       case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => ; //ignore these
       case t: Call => {
-        calls :+= t
-        callExprs :+= t.expr
+        calls += t
+        callExprs += t.expr
       }
-      case t: ADTConstraint if (t.cons.isDefined) => cons :+= t.cons.get
+      case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
       case _ => atoms :+= ctr
     })
        
@@ -677,17 +677,17 @@ class NLTemplateSolver(context: LeonContext,
     //for stats
     reporter.info("starting axiomatization...")
     val t1 = System.currentTimeMillis()
-    val theoryEqs = constraintsForUIFs(callExprs ++ cons, model, doesAlias)
+    val theoryEqs = constraintsForUIFs((callExprs ++ cons).toSet, model, doesAlias)
     val t2 = System.currentTimeMillis()
     reporter.info("completed axiomatization...in " + (t2 - t1) / 1000.0 + "s")
 
     Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
 
-    var lnctrs = Seq[LinearConstraint]()
-    var temps = Seq[LinearTemplate]()
+    var lnctrs = Set[LinearConstraint]()
+    var temps = Set[LinearTemplate]()
     (atoms ++ theoryEqs.map(ConstraintUtil.createConstriant _)).foreach(_ match {
-      case t: LinearConstraint => lnctrs :+= t
-      case t: LinearTemplate => temps :+= t
+      case t: LinearConstraint => lnctrs += t
+      case t: LinearTemplate => temps += t
       case _ => ;
     })
 
@@ -698,8 +698,8 @@ class NLTemplateSolver(context: LeonContext,
       })
     }  
     
-    val (data, nlctr) = processNumCtrs(lnctrs, temps)
-    ((data, calls.toSet), nlctr)
+    val (data, nlctr) = processNumCtrs(lnctrs.toSeq, temps.toSeq)
+    ((data, calls), nlctr)
   }
 
   /**
@@ -803,9 +803,9 @@ class NLTemplateSolver(context: LeonContext,
    */
   //TODO: important: optimize this code it seems to take a lot of time 
   //TODO: Fix the current incomplete way of handling ADTs and UIFs  
-  def constraintsForUIFs(calls: Seq[Expr], model: Map[Identifier, Expr],
+  def constraintsForUIFs(calls: Set[Expr], model: Map[Identifier, Expr],
     doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
-
+    
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
     var neqSet = Set[(Expr, Expr)]()
 
