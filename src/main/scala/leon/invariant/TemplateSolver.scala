@@ -131,7 +131,8 @@ abstract class TemplateSolver (
               case And(atms) => atms
               case _ => Seq(arg)
             }              
-            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable                        
+            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable  
+            //println("atoms: "+atoms)
             val ctrs = getCtrsFromExprs(atoms)            
             disjuncts += (g -> ctrs) 
             

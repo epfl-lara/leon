@@ -52,22 +52,22 @@ class NLTemplateSolver(context: LeonContext,
 
   //flags controlling debugging
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
-  val debugIncremental = false  
+  val debugIncremental = false
   val debugElimination = false
   val debugChooseDisjunct = false
   val debugAxioms = false
   val verifyInvariant = false
   val debugReducedFormula = false
-  
+
   //print flags
   val printCounterExample = false
   val printPathToConsole = false
-  val dumpPathAsSMTLIB = false  
+  val dumpPathAsSMTLIB = false
   val dumpNLCtrsAsSMTLIB = false
   val printCallConstriants = false
   val printReducedFormula = false
   val dumpInstantiatedVC = false
-  
+
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -110,7 +110,7 @@ class NLTemplateSolver(context: LeonContext,
       tsolver.free()
     })*/
     val solverWithCtr = new UIFZ3Solver(this.context, program)
-    solverWithCtr.assertCnstr(tru)    
+    solverWithCtr.assertCnstr(tru)
 
     val initModel = {
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
@@ -126,7 +126,6 @@ class NLTemplateSolver(context: LeonContext,
     sol
   }
 
-  
   var minStarted = false
   var minStartTime: Long = 0
 
@@ -433,7 +432,7 @@ class NLTemplateSolver(context: LeonContext,
     //val res = solEval.check
     val (res, model) = solver.solveSAT(instVC)
     val t2 = System.currentTimeMillis()
-    reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
+    //reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "VC-check-time", "disjuncts")
 
     t1 = System.currentTimeMillis()
@@ -447,34 +446,13 @@ class NLTemplateSolver(context: LeonContext,
       }
       case Some(true) => {
         //For debugging purposes.
-        println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")                
-        if(this.printCounterExample) {
-          println("Model: "+model)                    
-        }    
-
-        //check if two calls (to functions or ADT cons) have the same value in the model 
-        val doesAlias = (call1: Expr, call2: Expr) => {
-          //first check if the return values are equal
-          val BinaryOperator(Variable(r1), _, _) = call1
-          val BinaryOperator(Variable(r2), _, _) = call2
-          val resEquals = (model(r1) == model(r2))
-          if (resEquals) {
-            //for function calls do additional checks
-            if (InvariantUtil.isCallExpr(call1)) {
-              val (ants, _) = axiomatizeCalls(call1, call2)
-              //println("Checking calls: "+(call1,call2))
-              val antsHold = ants.forall(ant => {
-                val BinaryOperator(Variable(lid), Variable(rid), _) = ant
-                (model(lid) == model(rid))
-              })
-              //if(antsHold) println("Ants hold: "+ants)
-              antsHold
-            } else true
-          } else false
+        println("Function: " + fd.id + "--Found candidate invariant is not a real invariant! ")
+        if (this.printCounterExample) {
+          println("Model: " + model)
         }
 
         //get the disjuncts that are satisfied
-        val (data, newctr) = generateCtrsFromDisjunct(fd, model, doesAlias)
+        val (data, newctr) = generateCtrsFromDisjunct(fd, model)
         if (newctr == tru)
           throw IllegalStateException("Cannot find a counter-example path!!")
 
@@ -495,19 +473,19 @@ class NLTemplateSolver(context: LeonContext,
    */
   val evaluator = new DefaultEvaluator(context, program) //as of now used only for debugging
   //a helper method 
-    def doesSatisfyModel(expr: Expr, model: Map[Identifier,Expr]): Boolean = {
-      evaluator.eval(expr, model).result match {
-        case Some(BooleanLiteral(true)) => true
-        case _ => false
-      }
+  def doesSatisfyModel(expr: Expr, model: Map[Identifier, Expr]): Boolean = {
+    evaluator.eval(expr, model).result match {
+      case Some(BooleanLiteral(true)) => true
+      case _ => false
     }
-   
+  }
+
   /**
-   * 'root' is required to be a guard variable 
+   * 'root' is required to be a guard variable
    */
-  def pickSatDisjunct(root: Variable, model: Map[Identifier,Expr]) : Seq[Constraint] = {
-    
-    def traverseOrs(gd: Variable, model: Map[Identifier,Expr]): Seq[Variable] = {
+  def pickSatDisjunct(root: Variable, model: Map[Identifier, Expr]): Seq[Constraint] = {
+
+    def traverseOrs(gd: Variable, model: Map[Identifier, Expr]): Seq[Variable] = {
       val e @ Or(guards) = conjuncts(gd)
       //pick one guard that is true
       val guard = guards.collectFirst { case g @ Variable(id) if (model(id) == tru) => g }
@@ -516,7 +494,7 @@ class NLTemplateSolver(context: LeonContext,
       guard.get +: traverseAnds(guard.get, model)
     }
 
-    def traverseAnds(gd: Variable, model: Map[Identifier,Expr]): Seq[Variable] = {
+    def traverseAnds(gd: Variable, model: Map[Identifier, Expr]): Seq[Variable] = {
       val ctrs = disjuncts(gd)
       val orGuards = ctrs.collect {
         case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => v
@@ -531,17 +509,17 @@ class NLTemplateSolver(context: LeonContext,
       }
     }
     //if root is unsat return empty
-    if(model(root.id) == fls) Seq()
+    if (model(root.id) == fls) Seq()
     else {
-     val satGuards = if(conjuncts.contains(root)) traverseOrs(root, model) 
-    		 		 else (root +: traverseAnds(root, model))
-    satGuards.flatMap(g => disjuncts(g))   
-    }  
+      val satGuards = if (conjuncts.contains(root)) traverseOrs(root, model)
+      else (root +: traverseAnds(root, model))
+      satGuards.flatMap(g => disjuncts(g))
+    }
   }
-      
-  private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
 
-    val satCtrs = pickSatDisjunct(rootGuards(fd), model)    
+  private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
+
+    val satCtrs = pickSatDisjunct(rootGuards(fd), model)
     //for debugging        
     if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
       val pathctrs = satCtrs.map(_.toExpr)
@@ -554,7 +532,7 @@ class NLTemplateSolver(context: LeonContext,
             throw IllegalStateException("Path ctr not satisfied by model: " + ctr)
         })
       }
-      
+
       if (this.verifyInvariant) {
         println("checking invariant for path...")
         InvariantUtil.checkInvariant(pathcond, context, program)
@@ -578,35 +556,35 @@ class NLTemplateSolver(context: LeonContext,
         println("Path dumped to: " + filename)
       }
     }
-    
-    var calls = Set[Call]()        
+
+    var calls = Set[Call]()
     var cons = Set[Expr]()
     satCtrs.foreach(ctr => ctr match {
-      case t: Call => calls += t        
+      case t: Call => calls += t
       case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
       case _ => ;
     })
-    val callExprs = calls.map(_.toExpr)    
-          
-    reporter.info("choosing axioms...")
+    val callExprs = calls.map(_.toExpr)
+
+    //reporter.info("choosing axioms...")
     var t1 = System.currentTimeMillis()
     val axiomCtrs = axiomsForPath(callExprs, model)
     var t2 = System.currentTimeMillis()
-    reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
+    //reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")
-    
+
     //for stats
-    reporter.info("starting UF/ADT elimination...")
+    //reporter.info("starting UF/ADT elimination...")
     t1 = System.currentTimeMillis()
-    val callCtrs = constraintsForCalls((callExprs ++ cons), model, doesAlias).map(ConstraintUtil.createConstriant _)
+    val callCtrs = constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
     t2 = System.currentTimeMillis()
-    reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
+    //reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")
-    
+
     //exclude guards, separate calls and cons from the rest
     var lnctrs = Set[LinearConstraint]()
-    var temps = Set[LinearTemplate]()       
-    (satCtrs ++ callCtrs ++ axiomCtrs).foreach(ctr => ctr match {      
+    var temps = Set[LinearTemplate]()
+    (satCtrs ++ callCtrs ++ axiomCtrs).foreach(ctr => ctr match {
       case t: LinearConstraint => lnctrs += t
       case t: LinearTemplate => temps += t
       case _ => ;
@@ -617,8 +595,8 @@ class NLTemplateSolver(context: LeonContext,
         if (!doesSatisfyModel(ctr, model))
           throw IllegalStateException("Ctr not satisfied by model: " + ctr)
       })
-    }  
-    
+    }
+
     val (data, nlctr) = processNumCtrs(lnctrs.toSeq, temps.toSeq)
     ((data, calls), nlctr)
   }
@@ -701,6 +679,7 @@ class NLTemplateSolver(context: LeonContext,
 
       //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
       // and what can never be implied by solving for the templates                       
+      //TODO: are we checking enough ? Can we eliminate more ?
       val disjunct = And((newLnctrs ++ temps).map(_.template))
       val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
 
@@ -722,12 +701,10 @@ class NLTemplateSolver(context: LeonContext,
    * The calls could be functions calls or ADT constructor calls.
    * The parameter 'doesAliasInCE' is an abbreviation for 'Does Alias in Counter Example'
    */
-  //TODO: important: optimize this code it seems to take a lot of time 
-  //TODO: Fix the current incomplete way of handling ADTs and UIFs  
-  //val makeEfficient = true //this will happen at the expense of completeness  
-  def constraintsForCalls(calls: Set[Expr], model: Map[Identifier, Expr],
-    doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
-    
+  //TODO: important: optimize this code it seems to take a lot of time    
+  val makeEfficient = true //this will happen at the expense of completeness  
+  def constraintsForCalls(calls: Set[Expr], model: Map[Identifier, Expr]): Seq[Expr] = {
+
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
     var neqSet = Set[(Expr, Expr)]()
 
@@ -753,121 +730,127 @@ class NLTemplateSolver(context: LeonContext,
       j += 1
       acc ++ pairs
     })
-
     reporter.info("Number of compatible calls: " + product.size)
     Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
 
-    product.foreach((pair) => {
+    //check if two calls (to functions or ADT cons) have the same value in the model 
+    def doesAlias(call1: Expr, call2: Expr): Boolean = {
+      val BinaryOperator(Variable(r1), _, _) = call1
+      val BinaryOperator(Variable(r2), _, _) = call2
+      val resEquals = (model(r1) == model(r2))
+      if (resEquals) {
+        if (InvariantUtil.isCallExpr(call1)) {
+          val (ants, _) = axiomatizeCalls(call1, call2)
+          val antsHold = ants.forall(ant => {
+            val BinaryOperator(Variable(lid), Variable(rid), _) = ant
+            (model(lid) == model(rid))
+          })
+          antsHold
+        } else true
+      } else false
+    }
+
+    def predForEquality(call1: Expr, call2: Expr): Seq[Expr] = {
+
+      val eqs = if (InvariantUtil.isCallExpr(call1)) {        
+        val (_, rhs) = axiomatizeCalls(call1, call2)
+        Seq(rhs)
+      } else {
+        val (lhs, rhs) = axiomatizeADTCons(call1, call2)
+        lhs :+ rhs
+      }
+      //remove self equalities. 
+      val preds = eqs.filter(_ match {
+        case BinaryOperator(Variable(lid), Variable(rid), _) => {
+          if (lid == rid) false
+          else {
+            if (lid.getType == Int32Type || lid.getType == RealType) true
+            else false
+          }
+        }
+        case e @ _ => throw new IllegalStateException("Not an equality or Iff: " + e)
+      })
+      preds
+    }
+
+    //TODO: This has an incomplete way of handling ADTs for efficiency. Can this be fixed ?
+    def predForDisequality(call1: Expr, call2: Expr): Seq[Expr] = {
+      
+      val (ants, _) = if (InvariantUtil.isCallExpr(call1)) {
+        axiomatizeCalls(call1, call2)
+      } else {
+        axiomatizeADTCons(call1, call2)
+      }
+
+      if (makeEfficient && ants.exists(_ match {
+        case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
+        case _ => false
+      })) {
+        Seq()
+      } else {
+        var unsatIntEq: Option[Expr] = None
+        var unsatOtherEq: Option[Expr] = None
+        ants.foreach(eq =>
+          if (!unsatOtherEq.isDefined) {
+            eq match {
+              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
+                if (lhs.getType != Int32Type && lhs.getType != RealType)
+                  unsatOtherEq = Some(eq)
+                else if (!unsatIntEq.isDefined)
+                  unsatIntEq = Some(eq)
+              }
+              case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
+                unsatOtherEq = Some(eq)
+              case _ => ;
+            }
+          })
+        if (unsatOtherEq.isDefined) Seq() //need not add any constraint
+        else if (unsatIntEq.isDefined) {
+          //pick the constraint a < b or a > b that is satisfied
+          val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
+          val IntLiteral(lval) = model(lid)
+          val IntLiteral(rval) = model(rid)
+          val atom = if (lval < rval) LessThan(lhs, rhs)
+          else if (lval > rval) GreaterThan(lhs, rhs)
+          else throw IllegalStateException("Models are equal!!")
+
+          /*if (ants.exists(_ match {
+              case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
+              case _ => false
+            })) {
+              Stats.updateCumStats(1, "Diseq-blowup")
+            }*/
+          Seq(atom)
+        } else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
+      }
+    }
+    
+    val newctrs = product.foldLeft(Seq[Expr]())((acc, pair) => {
       val (call1, call2) = (pair._1, pair._2)
       //println("Assertionizing "+call1+" , call2: "+call2)      
-      if (!eqGraph.BFSReach(call1, call2)
-        && !neqSet.contains((call1, call2))
-        && !neqSet.contains((call2, call1))) {
-
-        if (doesAliasInCE(call1, call2)) {          
+      if (!eqGraph.BFSReach(call1, call2) && !neqSet.contains((call1, call2)) && !neqSet.contains((call2, call1))) {
+        if (doesAlias(call1, call2)) {
           eqGraph.addEdge(call1, call2)
-        } else {
+          //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
+          //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
+          acc ++ predForEquality(call1, call2)
+
+        } /*else if(this.callsWithAxioms.contains(call1)) {
+    	    //is this complete? 
+    	     * acc
+    	     * }*/ 
+        else {
           neqSet ++= Set((call1, call2))
+          acc ++ predForDisequality(call1, call2)
         }
-      }
+      } else acc
     })
-
+    
     reporter.info("Number of equal calls: " + eqGraph.getEdgeCount)
-
-    //For equal calls, the constraints are just equalities between the arguments and return values, 
-    //For unequal calls, it is the disjunction of disequalities between args   
-    val newctrs = product.foldLeft(Seq[Expr]())((acc, pair) => {
-      val (call1, call2) = pair
-      //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
-      //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
-      //This also serves to reduce the generated lambdas
-      if (eqGraph.containsEdge(call1, call2)) {
-
-        val eqs = if (InvariantUtil.isCallExpr(call1)) {
-          //println("Equal calls ")
-          val (_, rhs) = axiomatizeCalls(call1, call2)
-          Seq(rhs)          
-        } else {
-          //here it is an ADT constructor call          
-          val (lhs, rhs) = axiomatizeADTCons(call1, call2)
-          lhs :+ rhs
-        }
-        //remove self equalities. 
-        val preds = eqs.filter(_ match {
-          case BinaryOperator(Variable(lid), Variable(rid), _) => {
-            if (lid == rid) false
-            else {
-              if (lid.getType == Int32Type || lid.getType == RealType) true
-              else false
-            }
-          }
-          case e @ _ => throw new IllegalStateException("Not an equality or Iff: " + e)
-        })
-        acc ++ preds
-
-      } /*else if(this.callsWithAxioms.contains(call1)) {
-    	//TODO: find out why this works
-        acc 
-      }*/else if (neqSet.contains(pair)) {
-        //println("unequal calls: "+call1+" , "+call2)                
-        val (ants, _) = if (InvariantUtil.isCallExpr(call1)) {
-          //println("Equal calls ")
-          axiomatizeCalls(call1, call2)
-        } else {
-          //here it is an ADT constructor call
-          axiomatizeADTCons(call1, call2)
-        }
-
-        /*if (makeEfficient && ants.exists(_ match {
-          case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
-          case _ => false
-        })) {
-          //do not generate dis-equality constriants
-          //TODO: this is incomplete but seems to be efficient, investigate if this efficiency can be achived with completeness
-          acc
-        } else {*/
-          var unsatIntEq: Option[Expr] = None
-          var unsatADTEq: Option[Expr] = None
-          ants.foreach(eq =>
-            if (!unsatADTEq.isDefined) {
-              eq match {
-                case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
-                  if (lhs.getType != Int32Type && lhs.getType != RealType)
-                    unsatADTEq = Some(eq)
-                  else if (!unsatIntEq.isDefined)
-                    unsatIntEq = Some(eq)
-                }
-                case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
-                  unsatADTEq = Some(eq)
-                case _ => ;
-              }
-            })
-          if (unsatADTEq.isDefined) acc //need not add any constraint
-          else if (unsatIntEq.isDefined) {
-            //pick the constraint a < b or a > b that is satisfied
-            val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
-            val IntLiteral(lval) = model(lid)
-            val IntLiteral(rval) = model(rid)
-            val atom = if (lval < rval) LessThan(lhs, rhs)
-            		   else if(lval > rval) GreaterThan(lhs, rhs)
-            		   else throw IllegalStateException("Models are equal!!")
-
-          if(ants.exists(_ match {
-            case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
-            case _ => false
-          })) {
-            Stats.updateCumStats(1, "Diseq-blowup")
-          }
-          
-            acc :+ atom
-          } else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
-        //}
-      } else acc      
-    })
     newctrs
   }
 
-  def axiomsForPath(calls: Set[Expr], model: Map[Identifier, Expr]) : Seq[Constraint] = {
+  def axiomsForPath(calls: Set[Expr], model: Map[Identifier, Expr]): Seq[Constraint] = {
     //using the axiom roots for now
     //TODO: is there a better way to implement this 
     val vec = calls.toArray
@@ -877,15 +860,15 @@ class NLTemplateSolver(context: LeonContext,
       var satDisj = Set[Constraint]()
       for (i <- j + 1 until size) {
         val call2 = vec(i)
-        val axRoot = axiomRoots.get((call1,call2))
-        if (axRoot.isDefined) 
-          satDisj ++= pickSatDisjunct(axRoot.get, model)                  
+        val axRoot = axiomRoots.get((call1, call2))
+        if (axRoot.isDefined)
+          satDisj ++= pickSatDisjunct(axRoot.get, model)
       }
       j += 1
       acc ++ satDisj
     })
   }
-  
+
   /**
    * This function actually checks if two non-primitive expressions could have the same value
    * (when some constraints on their arguments hold).
