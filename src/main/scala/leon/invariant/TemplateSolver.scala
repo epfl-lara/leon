@@ -61,7 +61,8 @@ abstract class TemplateSolver (
   protected val disableAxioms = false
   
   //for debugging
-  private val debugInstantiation = false
+  protected val debugInstrumentation = false
+  private val debugAxiomInstantiation = false
   private val dumpVC = false
   private val dumpVCasSMTLIB = false
   
@@ -91,7 +92,92 @@ abstract class TemplateSolver (
     })
     TemplateInstantiator.getAllInvariants(model, templates.toMap)
   }   
- 
+   
+  //a mapping from booleans to conjunction of atoms  
+  protected var disjuncts = Map[Variable, Seq[Constraint]]()
+  protected var conjuncts = Map[Variable, Expr]()
+  //a mapping from function defs to the root variables of the VC (before instantiation axioms)
+  protected var rootGuards = Map[FunDef, Variable]()
+
+  def instrumentWithGuards(formula: Expr): (Variable, Expr) = {
+    
+    def getCtrsFromExprs(exprs: Seq[Expr]) : Seq[Constraint] = {
+      var break = false
+      exprs.foldLeft(Seq[Constraint]())((acc, e) => {
+        if (break) acc
+        else {
+          val ctr = ConstraintUtil.createConstriant(e)
+          ctr match {
+            case BoolConstraint(BooleanLiteral(true)) => acc
+            case BoolConstraint(BooleanLiteral(false)) => {
+              break = true
+              Seq(ctr)
+            }
+            case _ => acc :+ ctr
+          }
+        }
+      })
+    }
+    
+    //Assuming that VC is in negation normal form and And/Ors have been pulled up
+    var implications = Seq[Expr]()
+    val f1 = simplePostTransform((e: Expr) => e match {
+      case Or(args) => {
+        val newargs = args.map(arg => arg match {
+          case v: Variable if (disjuncts.contains(v)) => arg
+          case v: Variable if (conjuncts.contains(v)) => throw IllegalStateException("or gaurd inside conjunct: "+e+" or-guard: "+v)
+          case _ => {
+            val atoms = arg  match {
+              case And(atms) => atms
+              case _ => Seq(arg)
+            }              
+            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable                        
+            val ctrs = getCtrsFromExprs(atoms)            
+            disjuncts += (g -> ctrs) 
+            
+            //important: here we cannot directly use "atoms" as conversion to constraints performs some syntactic changes 
+            val newe = Equals(g, And(ctrs.map(_.toExpr)))
+            implications :+= newe
+            g
+          }
+        })
+        //create a temporary for Or
+        val gor = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+        val newor = Or(newargs)
+        val newe = Equals(gor, newor)
+        conjuncts += (gor -> newor)
+        implications :+= newe
+        gor
+      }
+      case _ => e
+    })(formula)
+    val rootvar = f1 match {      
+      case v: Variable if(conjuncts.contains(v)) => v
+      case v: Variable if(disjuncts.contains(v)) => throw IllegalStateException("f1 is a disjunct guard: "+v)
+      case _ => {
+        val atoms = f1 match {
+          case And(atms) => atms
+          case _ => Seq(f1)
+        }
+        val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+        val ctrs = getCtrsFromExprs(atoms)
+        disjuncts += (g -> ctrs)
+        val newe = Equals(g, And(ctrs.map(_.toExpr)))
+        implications :+= newe
+        g
+      }
+    }    
+    
+    if(this.debugInstrumentation) {
+      println("After Instrumentation: ")
+      implications.foreach(println _ )
+      println(rootvar)
+    }
+      
+    val instruFormula = And(implications :+ rootvar)
+    (rootvar, instruFormula)
+  }
+  
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -107,9 +193,10 @@ abstract class TemplateSolver (
       val bexpr = TreeUtil.toExpr(btree)
       val pexpr = TreeUtil.toExpr(ptree)
       
-      val formula = And(bexpr, pexpr)
+      val (rg, formula) = instrumentWithGuards(And(bexpr, pexpr))
+      rootGuards += (fd -> rg)
       
-      if(this.debugInstantiation) {
+      if(this.debugAxiomInstantiation) {
         println("Func: " + fd.id + " VC before instantiation: " + formula)
         val filename = "plainVC-" + FileCountGUID.getID        
         val wr = new PrintWriter(new File(filename + ".txt"))
@@ -120,11 +207,11 @@ abstract class TemplateSolver (
         wr.close()
         println("Printed plain VC of " + fd.id + " to file: " + filename)
       }
-      
+                 
       //apply (instantiate) the axioms of functions in the verification condition
       val formulaWithAxioms = if(this.disableAxioms) formula else instantiateAxioms(formula)
 
-      if (this.debugInstantiation || this.dumpVC) {
+      if (this.debugAxiomInstantiation || this.dumpVC) {
         println("Func: " + fd.id + " VC: " + formulaWithAxioms)
         val filename = "vc-" + FileCountGUID.getID        
         val wr = new PrintWriter(new File(filename + ".txt"))
@@ -166,7 +253,7 @@ abstract class TemplateSolver (
   }
   
   def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : (Option[Map[FunDef,Expr]], Option[Set[Call]])
-
+  
   def monotonizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
     val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
     val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
@@ -182,9 +269,12 @@ abstract class TemplateSolver (
     (ant, conseq)
   }
   
+  //a mapping from axioms keys (for now pairs of calls) to the guards
+  protected var axiomRoots = Map[(Expr,Expr),Variable]()
+  
   def instantiateAxioms(formula: Expr): Expr = {
 
-    val debugSolver = if (this.debugInstantiation) {
+    val debugSolver = if (this.debugAxiomInstantiation) {
       val sol = new UIFZ3Solver(context, program)
       sol.assertCnstr(formula)
       Some(sol)
@@ -216,14 +306,21 @@ abstract class TemplateSolver (
     })    
     val axiomInstances = product.foldLeft(Seq[Expr]())((acc, pair) => {      
       val (ants, conseq) = monotonizeCalls(pair._1, pair._2)
-      acc :+ Implies(And(ants), conseq)
+      
+      import ExpressionTransformer._
+      val nnfAxiom = pullAndOrs(TransformNot(Implies(And(ants), conseq)))
+      
+      val (axroot, axiomCtr) = instrumentWithGuards(nnfAxiom)
+      axiomRoots += (pair -> axroot)
+      
+      acc :+ axiomCtr
     })
     
     //for debugging
     reporter.info("Number of axiom instances: "+2 * axiomCallsInFormula.size * axiomCallsInFormula.size)
     //println("Axioms: "+axiomInstances)
    
-    if(this.debugInstantiation) {
+    if(this.debugAxiomInstantiation) {
       println("Instantiated Axioms")
       axiomInstances.foreach((ainst) => {        
         println(ainst)
@@ -237,9 +334,7 @@ abstract class TemplateSolver (
       })
       debugSolver.get.free
     }
-    
-    import ExpressionTransformer._
-    val axiomInst = pullAndOrs(TransformNot(And(axiomInstances)))
+    val axiomInst = And(axiomInstances)
     And(formula, axiomInst)
   }
 

@@ -52,8 +52,7 @@ class NLTemplateSolver(context: LeonContext,
 
   //flags controlling debugging
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
-  val debugIncremental = false
-  val debugInstrumentation = false
+  val debugIncremental = false  
   val debugElimination = false
   val debugChooseDisjunct = false
   val debugAxioms = false
@@ -111,18 +110,13 @@ class NLTemplateSolver(context: LeonContext,
       tsolver.free()
     })*/
     val solverWithCtr = new UIFZ3Solver(this.context, program)
-    solverWithCtr.assertCnstr(tru)
-
-    val ivcs = funcVCs.map((entry) => {
-      val (fd, vc) = entry
-      (fd -> instrumentWithGuards(fd, vc))
-    })
+    solverWithCtr.assertCnstr(tru)    
 
     val initModel = {
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
       simplestModel
     }
-    val sol = recSolve(initModel, ivcs, tru, Seq(), solverWithCtr, Set())
+    val sol = recSolve(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
 
     solverWithCtr.free()
 
@@ -132,91 +126,7 @@ class NLTemplateSolver(context: LeonContext,
     sol
   }
 
-  //a mapping from booleans to conjunction of atoms
-  protected var disjuncts = Map[Variable, Seq[Constraint]]()
-  protected var conjuncts = Map[Variable, Expr]()
-  protected var rootGuards = Map[FunDef, Variable]()
-
-  def instrumentWithGuards(fd: FunDef, formula: Expr): Expr = {
-    
-    def getCtrsFromExprs(exprs: Seq[Expr]) : Seq[Constraint] = {
-      var break = false
-      exprs.foldLeft(Seq[Constraint]())((acc, e) => {
-        if (break) acc
-        else {
-          val ctr = ConstraintUtil.createConstriant(e)
-          ctr match {
-            case BoolConstraint(BooleanLiteral(true)) => acc
-            case BoolConstraint(BooleanLiteral(false)) => {
-              break = true
-              Seq(ctr)
-            }
-            case _ => acc :+ ctr
-          }
-        }
-      })
-    }
-    
-    //Assuming that VC is in negation normal form and And/Ors have been pulled up
-    var implications = Seq[Expr]()
-    val f1 = simplePostTransform((e: Expr) => e match {
-      case Or(args) => {
-        val newargs = args.map(arg => arg match {
-          case v: Variable if (disjuncts.contains(v)) => arg
-          case v: Variable if (conjuncts.contains(v)) => throw IllegalStateException("or gaurd inside conjunct: "+e+" or-guard: "+v)
-          case _ => {
-            val atoms = arg  match {
-              case And(atms) => atms
-              case _ => Seq(arg)
-            }              
-            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable                        
-            val ctrs = getCtrsFromExprs(atoms)            
-            disjuncts += (g -> ctrs) 
-            
-            //important: here we cannot directly use "atoms" as conversion to constraints performs some syntactic changes 
-            val newe = Equals(g, And(ctrs.map(_.toExpr)))
-            implications :+= newe
-            g
-          }
-        })
-        //create a temporary for Or
-        val gor = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-        val newor = Or(newargs)
-        val newe = Equals(gor, newor)
-        conjuncts += (gor -> newor)
-        implications :+= newe
-        gor
-      }
-      case _ => e
-    })(formula)
-    val rootvar = f1 match {      
-      case v: Variable if(conjuncts.contains(v)) => v
-      case v: Variable if(disjuncts.contains(v)) => throw IllegalStateException("f1 is a disjunct guard: "+v)
-      case _ => {
-        val atoms = f1 match {
-          case And(atms) => atms
-          case _ => Seq(f1)
-        }
-        val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-        val ctrs = getCtrsFromExprs(atoms)
-        disjuncts += (g -> ctrs)
-        val newe = Equals(g, And(ctrs.map(_.toExpr)))
-        implications :+= newe
-        g
-      }
-    }
-    rootGuards += (fd -> rootvar)
-    
-    if(this.debugInstrumentation) {
-      println("VC for :"+fd.id)
-      implications.foreach(println _ )
-      println(rootvar)
-    }
-      
-    val instruFormula = And(implications :+ rootvar)
-    instruFormula
-  }
-
+  
   var minStarted = false
   var minStartTime: Long = 0
 
@@ -583,7 +493,7 @@ class NLTemplateSolver(context: LeonContext,
    * (a) a child selector function that decides which children to consider.
    * (b) a doesAlias function that decides which function / ADT constructor calls to consider.
    */
-  val evaluator = new DefaultEvaluator(context, program)
+  val evaluator = new DefaultEvaluator(context, program) //as of now used only for debugging
   //a helper method 
     def doesSatisfyModel(expr: Expr, model: Map[Identifier,Expr]): Boolean = {
       evaluator.eval(expr, model).result match {
@@ -591,19 +501,22 @@ class NLTemplateSolver(context: LeonContext,
         case _ => false
       }
     }
-  
-  private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
-
-    def traverseOrs(gd: Variable): Seq[Variable] = {
+   
+  /**
+   * 'root' is required to be a guard variable 
+   */
+  def pickSatDisjunct(root: Variable, model: Map[Identifier,Expr]) : Seq[Constraint] = {
+    
+    def traverseOrs(gd: Variable, model: Map[Identifier,Expr]): Seq[Variable] = {
       val e @ Or(guards) = conjuncts(gd)
       //pick one guard that is true
       val guard = guards.collectFirst { case g @ Variable(id) if (model(id) == tru) => g }
       if (!guard.isDefined)
         throw IllegalStateException("No satisfiable guard found: " + e)
-      guard.get +: traverseAnds(guard.get)
+      guard.get +: traverseAnds(guard.get, model)
     }
 
-    def traverseAnds(gd: Variable): Seq[Variable] = {
+    def traverseAnds(gd: Variable, model: Map[Identifier,Expr]): Seq[Variable] = {
       val ctrs = disjuncts(gd)
       val orGuards = ctrs.collect {
         case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => v
@@ -613,38 +526,30 @@ class NLTemplateSolver(context: LeonContext,
         orGuards.foldLeft(Seq[Variable]())((acc, g) => {
           if (model(g.id) != tru)
             throw IllegalStateException("Not a satisfiable guard: " + g)
-          acc ++ traverseOrs(g)
+          acc ++ traverseOrs(g, model)
         })
       }
     }
+    //if root is unsat return empty
+    if(model(root.id) == fls) Seq()
+    else {
+     val satGuards = if(conjuncts.contains(root)) traverseOrs(root, model) 
+    		 		 else (root +: traverseAnds(root, model))
+    satGuards.flatMap(g => disjuncts(g))   
+    }  
+  }
+      
+  private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr], doesAlias: (Expr, Expr) => Boolean): ((Expr, Set[Call]), Expr) = {
 
-    val root = rootGuards(fd)
-    val satGuards = root +: (if(conjuncts.contains(root)) traverseOrs(root) else traverseAnds(root)) 
-    val satCtrs = satGuards.flatMap(g => disjuncts(g))
-
-    //exclude guards, separate calls and cons from the rest
-    var atoms = Seq[Constraint]()
-    var calls = Set[Call]()
-    var callExprs = Set[Expr]()
-    var cons = Set[Expr]()
-    satCtrs.foreach(ctr => ctr match {
-      case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => ; //ignore these
-      case t: Call => {
-        calls += t
-        callExprs += t.expr
-      }
-      case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
-      case _ => atoms :+= ctr
-    })
-       
+    val satCtrs = pickSatDisjunct(rootGuards(fd), model)    
     //for debugging        
     if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
-      val pathctrs = atoms.map(_.toExpr) ++ callExprs ++ cons
+      val pathctrs = satCtrs.map(_.toExpr)
       val plainFormula = And(pathctrs)
       val pathcond = simplifyArithmetic(plainFormula)
 
       if (this.debugChooseDisjunct) {
-        atoms.filter(_.isInstanceOf[LinearConstraint]).map(_.toExpr).foreach((ctr) => {
+        satCtrs.filter(_.isInstanceOf[LinearConstraint]).map(_.toExpr).foreach((ctr) => {
           if (!doesSatisfyModel(ctr, model))
             throw IllegalStateException("Path ctr not satisfied by model: " + ctr)
         })
@@ -673,19 +578,35 @@ class NLTemplateSolver(context: LeonContext,
         println("Path dumped to: " + filename)
       }
     }
-
+    
+    var calls = Set[Call]()        
+    var cons = Set[Expr]()
+    satCtrs.foreach(ctr => ctr match {
+      case t: Call => calls += t        
+      case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
+      case _ => ;
+    })
+    val callExprs = calls.map(_.toExpr)    
+          
+    reporter.info("choosing axioms...")
+    var t1 = System.currentTimeMillis()
+    val axiomCtrs = axiomsForPath(callExprs, model)
+    var t2 = System.currentTimeMillis()
+    reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
+    Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")
+    
     //for stats
-    reporter.info("starting axiomatization...")
-    val t1 = System.currentTimeMillis()
-    val theoryEqs = constraintsForUIFs((callExprs ++ cons).toSet, model, doesAlias)
-    val t2 = System.currentTimeMillis()
-    reporter.info("completed axiomatization...in " + (t2 - t1) / 1000.0 + "s")
-
-    Stats.updateCumTime((t2 - t1), "Total-Axiomatize-Time")
-
+    reporter.info("starting UF/ADT elimination...")
+    t1 = System.currentTimeMillis()
+    val callCtrs = constraintsForCalls((callExprs ++ cons), model, doesAlias).map(ConstraintUtil.createConstriant _)
+    t2 = System.currentTimeMillis()
+    reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
+    Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")
+    
+    //exclude guards, separate calls and cons from the rest
     var lnctrs = Set[LinearConstraint]()
-    var temps = Set[LinearTemplate]()
-    (atoms ++ theoryEqs.map(ConstraintUtil.createConstriant _)).foreach(_ match {
+    var temps = Set[LinearTemplate]()       
+    (satCtrs ++ callCtrs ++ axiomCtrs).foreach(ctr => ctr match {      
       case t: LinearConstraint => lnctrs += t
       case t: LinearTemplate => temps += t
       case _ => ;
@@ -803,9 +724,8 @@ class NLTemplateSolver(context: LeonContext,
    */
   //TODO: important: optimize this code it seems to take a lot of time 
   //TODO: Fix the current incomplete way of handling ADTs and UIFs  
-  //val makeEfficient = true //this will happen at the expense of completeness
-  
-  def constraintsForUIFs(calls: Set[Expr], model: Map[Identifier, Expr],
+  //val makeEfficient = true //this will happen at the expense of completeness  
+  def constraintsForCalls(calls: Set[Expr], model: Map[Identifier, Expr],
     doesAliasInCE: (Expr, Expr) => Boolean): Seq[Expr] = {
     
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
@@ -877,7 +797,7 @@ class NLTemplateSolver(context: LeonContext,
           case BinaryOperator(Variable(lid), Variable(rid), _) => {
             if (lid == rid) false
             else {
-              if (lid.getType == Int32Type || lid.getType == RealType  || lid.getType == BooleanType) true
+              if (lid.getType == Int32Type || lid.getType == RealType) true
               else false
             }
           }
@@ -947,6 +867,25 @@ class NLTemplateSolver(context: LeonContext,
     newctrs
   }
 
+  def axiomsForPath(calls: Set[Expr], model: Map[Identifier, Expr]) : Seq[Constraint] = {
+    //using the axiom roots for now
+    //TODO: is there a better way to implement this 
+    val vec = calls.toArray
+    val size = calls.size
+    var j = 0
+    vec.foldLeft(Seq[Constraint]())((acc, call1) => {
+      var satDisj = Set[Constraint]()
+      for (i <- j + 1 until size) {
+        val call2 = vec(i)
+        val axRoot = axiomRoots.get((call1,call2))
+        if (axRoot.isDefined) 
+          satDisj ++= pickSatDisjunct(axRoot.get, model)                  
+      }
+      j += 1
+      acc ++ satDisj
+    })
+  }
+  
   /**
    * This function actually checks if two non-primitive expressions could have the same value
    * (when some constraints on their arguments hold).
