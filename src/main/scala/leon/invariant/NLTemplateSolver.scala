@@ -120,7 +120,7 @@ class NLTemplateSolver(context: LeonContext,
 
     solverWithCtr.free()
 
-    //set lowebound map
+    //set lowerbound map
     if (this.tightBounds)
       SpecificStats.addLowerBoundStats(rootFun, minimizer.lowerBoundMap, "")
     sol

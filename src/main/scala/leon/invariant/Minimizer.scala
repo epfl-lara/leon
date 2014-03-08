@@ -89,7 +89,8 @@ class Minimizer(
       var lowerBound: Option[RealLiteral] = if (lowerBoundMap.contains(tvar)) Some(lowerBoundMap(tvar)) else None
 
       if (this.debugMinimization) {
-        println("Minimizing variable: " + tvar + " Initial upperbound: " + upperBound)
+        println("Minimizing variable: " + tvar + " Initial Bounds: [" + upperBound +","+
+            (if(lowerBound.isDefined) lowerBound.get else "_")+"]")
       }
 
       //TODO: use incremental solving of z3 here (however make sure there is no bug)
