@@ -126,8 +126,24 @@ class NLTemplateSolver(context: LeonContext,
     sol
   }
 
+  //state for minimization 
   var minStarted = false
   var minStartTime: Long = 0
+  var minimized = false
+  
+  def minimizationInProgress {
+    if (!minStarted) {
+      minStarted = true
+      minStartTime = System.currentTimeMillis()
+    }
+  }
+
+  def minimizationCompleted {
+    minStarted = false
+    val mintime = (System.currentTimeMillis() - minStartTime)
+    Stats.updateCounterTime(mintime, "minimization-time", "procs")
+    Stats.updateCumTime(mintime, "Total-Min-Time")
+  }
 
   //TODO: this code is very ugly, fix this asap
   def recSolve(model: Map[Identifier, Expr],
@@ -366,41 +382,51 @@ class NLTemplateSolver(context: LeonContext,
         //TODO: need to assert that the templates are time templates
         if (tightBounds && template.isDefined) {
           //for stats
-          if (!minStarted) {
-            minStarted = true
-            minStartTime = System.currentTimeMillis()
-          }
-          //try to find a minimum model: if the minimum is same as the current model then return, otherwise recurse with the minimum model          
-          val minModel = minimizer.tightenTimeBounds(template.get, inputCtr, model)
-          val minVarMap: Map[Expr, Expr] = minModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-          if (minModel == model)
+          minimizationInProgress          
+          
+          if (minimized) {            
+            minimizationCompleted
             (Some(getAllInvariants(model)), None)
+          } 
           else {
-            val isInv = funcVCs.keys.forall((fd) => {
-              val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), minVarMap))
-              val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
-              val (res, _) = solver.solveSAT(instVC)
-              res match {
-                case Some(false) => true
-                case _ => false
-              }
-            })
-            if (isInv) {
-              minStarted = false
-              val mintime = (System.currentTimeMillis() - minStartTime)
-              Stats.updateCounterTime(mintime, "minimization-time", "procs")
-              Stats.updateCumTime(mintime, "Total-Min-Time")
-
-              (Some(getAllInvariants(minModel)), None)
-            } else
+            val minModel = minimizer.tightenTimeBounds(template.get, inputCtr, model)
+            minimized = true
+            if (minModel == model){
+              minimizationCompleted
+              (Some(getAllInvariants(model)), None)
+            }
+            else {
               recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
-          }
+            }
+          }          
+//          val minVarMap: Map[Expr, Expr] = minModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
+//          else {
+//            val isInv = funcVCs.keys.forall((fd) => {
+//              val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), minVarMap))
+//              val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
+//              val (res, _) = solver.solveSAT(instVC)
+//              res match {
+//                case Some(false) => true
+//                case _ => false
+//              }
+//            })
+//            if (isInv) {
+//              minStarted = false
+//              val mintime = (System.currentTimeMillis() - minStartTime)
+//              Stats.updateCounterTime(mintime, "minimization-time", "procs")
+//              Stats.updateCumTime(mintime, "Total-Min-Time")
+//
+//              (Some(getAllInvariants(minModel)), None)
+//            } else
+//              recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
+//          }
         } else {
           (Some(getAllInvariants(model)), None)
         }
       }
       case Some(true) => {
         //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
+        minimized = false
         recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, solverWithCtr, seenCalls ++ callsInPaths)
       }
     }
