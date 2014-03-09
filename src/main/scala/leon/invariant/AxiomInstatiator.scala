@@ -38,7 +38,7 @@ import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
 import leon.plugin.NonlinearityEliminationPhase
 
-class AxiomInstantiator (ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {   
+class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {   
     
   //some constants
   protected val fls = BooleanLiteral(false)
