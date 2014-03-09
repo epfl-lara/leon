@@ -37,10 +37,7 @@ class ConstraintTracker(rootFun : FunDef, context:LeonContext, program: Program,
   protected val tru = BooleanLiteral(true)
   
   //for debugging
-  protected val debugInstrumentation = false
-  private val debugAxiomInstantiation = false
-  private val dumpVC = false
-  private val dumpVCasSMTLIB = false
+  protected val debugInstrumentation = false  
   
   //a mapping from guards to conjunction of atoms  
   protected var disjuncts = Map[Variable, Seq[Constraint]]()
@@ -141,17 +138,17 @@ class ConstraintTracker(rootFun : FunDef, context:LeonContext, program: Program,
     (rootvar, instruFormula)
   }
  
+  def conjoinWithVC(fd: FunDef, vcPart: Expr) {
+     val vcList = funcVCs(fd)
+     funcVCs -= fd
+     funcVCs += (fd -> (vcPart +: vcList))                   
+  }
+  
   def addVC(fd: FunDef, vc: Expr) = {
     val (rg, formula) = instrumentWithGuards(vc)
     vcRoots += (fd -> rg)    
-    funcVCs += (fd -> List(formula))
-    
-    //add axioms
-    
-//    if (dumpVCasSMTLIB) {
-//          InvariantUtil.toZ3SMTLIB(formulaWithAxioms, filename + ".smt2", "QF_LIA", context, program)
-//        }        
-//        println("Printed VC of " + fd.id + " to file: " + filename)
+    funcVCs += (fd -> List(formula))   
+    //add axioms    
   }
 
   def refineVCs(toUnrollCalls: Option[Set[Call]]) : Set[Call]  = {

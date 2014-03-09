@@ -206,6 +206,18 @@ object InvariantUtil {
     count
   } 
   
+  def getCallExprs(ine: Expr) : Set[Expr] = {
+    var calls = Set[Expr]()
+    simplePostTransform((e: Expr) => e match {  
+      case call @ _ if (InvariantUtil.isCallExpr(e)) => {
+        calls += e
+        call
+      }
+      case _ => e
+    })(ine)
+    calls
+  }
+  
   def isCallExpr(e: Expr) : Boolean = e match {
     case Equals(Variable(_),FunctionInvocation(_,_)) => true
     case Iff(Variable(_),FunctionInvocation(_,_)) => true
