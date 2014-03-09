@@ -38,6 +38,7 @@ class Formula(initexpr: Expr) {
   protected var root : Variable = addConstraints(initexpr)._1
   
   def disjunctsInFormula = disjuncts 
+  def getRoot = root
   
   //return the root variable and the sequence of disjunct guards added 
   //(which includes the root variable incase it respresents a disjunct)
@@ -107,7 +108,8 @@ class Formula(initexpr: Expr) {
     (rootvar, newDisjGuards)
   }
   
-  def pickSatDisjunct(model: Map[Identifier, Expr]): Seq[Constraint] = {
+  //'satGuard' is required to a guard variable
+  def pickSatDisjunct(startGaurd : Variable, model: Map[Identifier, Expr]): Seq[Constraint] = {
         
     def traverseOrs(gd: Variable, model: Map[Identifier, Expr]): Seq[Variable] = {
       val e @ Or(guards) = conjuncts(gd)
@@ -137,11 +139,11 @@ class Formula(initexpr: Expr) {
         })
       }
     }
-    //if root is unsat return empty
-    if (model(root.id) == fls) Seq()
+    //if startGuard is unsat return empty
+    if (model(startGaurd.id) == fls) Seq()
     else {
-      val satGuards = if (conjuncts.contains(root)) traverseOrs(root, model)
-      else (root +: traverseAnds(root, model))
+      val satGuards = if (conjuncts.contains(startGaurd)) traverseOrs(startGaurd, model)
+      else (startGaurd +: traverseAnds(startGaurd, model))
       satGuards.flatMap(g => disjuncts(g))
     }
   }

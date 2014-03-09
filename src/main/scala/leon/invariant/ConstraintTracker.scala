@@ -27,7 +27,7 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
  
-class ConstraintTracker(rootFun : FunDef, context:LeonContext, program: Program, temFactory: TemplateFactory) {
+class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef, temFactory: TemplateFactory) {
   
   //for debugging  
   protected val disableAxioms = false
@@ -46,7 +46,7 @@ class ConstraintTracker(rootFun : FunDef, context:LeonContext, program: Program,
     funcVCs += (fd -> new Formula(vc))     
   }
   
-  def initilize = {
+  def initialize = {
     //initialize unrolling
     vcRefiner.initialize
     //add axioms 

@@ -179,33 +179,6 @@ case class BoolConstraint(e : Expr) extends Constraint {
 
 object ADTConstraint {
   
-/*  def handleClassSelector(r: Expr, cd: CaseClassDef, ccvar: Expr, ccfld: Identifier): ADTConstraint = {
-    //convert this to a cons by creating dummy variables        
-    val args = cd.fieldsIds.map((fld) => {
-      if (fld == ccfld) r
-      else {
-        //create a dummy identifier there
-        TVarFactory.createDummy.setType(fld.getType).toVariable
-      }
-    })
-    val ccExpr = Equals(ccvar, CaseClass(cd, args))
-    new ADTConstraint(ccExpr, Some(ccExpr))
-  }
-
-  def handleTupleSelect(r: Expr, tpvar: Expr, index: Int): ADTConstraint = {
-    //convert this to a Tuple by creating dummy variables        
-    val tupleType = tpvar.getType.asInstanceOf[TupleType]
-    val args = (1 until tupleType.dimension + 1).map((i) => {
-      if (i == index) r
-      else {
-        //create a dummy identifier there (note that here we have to use i-1)
-        TVarFactory.createDummy.setType(tupleType.bases(i - 1)).toVariable
-      }
-    })
-    val tpExpr = Equals(tpvar, Tuple(args))
-    new ADTConstraint(tpExpr, Some(tpExpr))
-  }*/
-  
   def apply(e: Expr): ADTConstraint = e match {
 
     //is this a tuple or case class select ?

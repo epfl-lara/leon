@@ -37,9 +37,8 @@ import leon.plugin.NonlinearityEliminationPhase
  * @author ravi
  * This phase performs automatic invariant inference.
  * TODO: Fix the handling of getting a template for a function, the current code is very obscure
+ * TODO: Do we need to also assert that time is >= 0
  */
-//TODO: handle direct equality and inequality on ADTs
-//TODO: Do we need to also assert that time is >= 0
 class InferenceEngineGenerator(program: Program,
   context: LeonContext,  
   tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver,
@@ -49,10 +48,6 @@ class InferenceEngineGenerator(program: Program,
   val fls = BooleanLiteral(false)
 
   def getInferenceEngine(funDef: FunDef, tempFactory: TemplateFactory): (() => (Option[Boolean], Option[Map[FunDef,Expr]])) = {
-
-    //Create and initialize a constraint tracker
-    val constTracker = new ConstraintTracker(funDef)
-
     //create a body and post of the function
     val body = funDef.nondetBody.get
     val (resid, post) = funDef.postcondition.get
@@ -67,8 +62,7 @@ class InferenceEngineGenerator(program: Program,
     //flatten the functions in the body           
     val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)    
     //for debugging
-    println("falttened Body: " + ScalaPrinter(flatBody))
-    constTracker.addBodyConstraints(funDef, flatBody)
+    println("falttened Body: " + ScalaPrinter(flatBody))   
 
     //create a postcondition template if the function is recursive or if a template is provided for the function
     val postExpr = matchToIfThenElse(post)
@@ -77,7 +71,6 @@ class InferenceEngineGenerator(program: Program,
 
       //this is a way to create an idenitity map :-))
       val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
-
       val temp = tempFactory.constructTemplate(argmap, funDef)
       Some(ExpressionTransformer.normalizeExpr(Not(temp)))
     } else None
@@ -88,19 +81,19 @@ class InferenceEngineGenerator(program: Program,
       if (npost == fls) npostTemp.get
       else Or(npost, npostTemp.get)
     } else npost
-
     if (fullPost == fls) {
       throw new IllegalStateException("post is true, nothing to be proven!!")
     }
-
     //for debugging
     println("Flattened Post: " + ScalaPrinter(fullPost))
-    constTracker.addPostConstraints(funDef, fullPost)
+    
+    //Create and initialize a constraint tracker
+    val constTracker = new ConstraintTracker(context, program, funDef, tempFactory)
+    constTracker.addVC(funDef, And(flatBody,fullPost))
+    constTracker.initialize
 
     //create entities that uses the constraint tracker
     val tempSolver = tempSolverFactory(constTracker, tempFactory, funDef)
-    val vcRefiner = new RefinementEngine(program, constTracker, tempFactory, reporter)
-    vcRefiner.initialize()
 
     //refinement engine state
     var refinementStep: Int = 0
@@ -118,7 +111,7 @@ class InferenceEngineGenerator(program: Program,
           reporter.info("- More unrollings for invariant inference")
 
           val toUnrollCalls = if(targettedUnroll) toRefineCalls else None
-          val unrolledCalls = vcRefiner.refineAbstraction(toUnrollCalls)          
+          val unrolledCalls = constTracker.refineVCs(toUnrollCalls)          
           if (unrolledCalls.isEmpty) {
             reporter.info("- Cannot do more unrollings, reached unroll bound")
             false

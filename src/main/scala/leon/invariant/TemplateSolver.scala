@@ -38,34 +38,19 @@ import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
 import leon.plugin.NonlinearityEliminationPhase
 
-abstract class TemplateSolver (
-    context : LeonContext, 
-    program : Program,
-    val rootFun : FunDef,
-    ctrTracker : ConstraintTracker, 
-    val tempFactory: TemplateFactory,    
-    timeout: Int) {   
+abstract class TemplateSolver (context : LeonContext, program : Program,val rootFun : FunDef,
+    ctrTracker : ConstraintTracker, val tempFactory: TemplateFactory, timeout: Int) {   
   
   protected val reporter = context.reporter  
-  protected val cg = CallGraphUtil.constructCallGraph(program)
+  //protected val cg = CallGraphUtil.constructCallGraph(program)
   
   //some constants
   protected val fls = BooleanLiteral(false)
   protected val tru = BooleanLiteral(true)    
-  protected val zero = IntLiteral(0)   
-  
-  //this is populated lazily by instantiateAxioms
-  protected var callsWithAxioms = Set[Expr]()
-  
-  //disable axiom instantiation
-  protected val disableAxioms = false
-  
-  //for debugging
-  protected val debugInstrumentation = false
-  private val debugAxiomInstantiation = false
+  //protected val zero = IntLiteral(0)   
+    
   private val dumpVC = false
-  private val dumpVCasSMTLIB = false
-  
+  private val dumpVCasSMTLIB = false  
       
   /**
    * Completes a model by adding mapping to new template variables
@@ -104,52 +89,27 @@ abstract class TemplateSolver (
     //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs        
     val funcExprs = funcs.map((fd) => {
-      val (btree, ptree) = ctrTracker.getVC(fd)
-      val bexpr = TreeUtil.toExpr(btree)
-      val pexpr = TreeUtil.toExpr(ptree)
+      val vc = ctrTracker.getVC(fd).toExpr
       
-      val (rg, formula) = instrumentWithGuards(And(bexpr, pexpr))
-      rootGuards += (fd -> rg)
-      
-      if(this.debugAxiomInstantiation) {
-        println("Func: " + fd.id + " VC before instantiation: " + formula)
-        val filename = "plainVC-" + FileCountGUID.getID        
-        val wr = new PrintWriter(new File(filename + ".txt"))
-        val printableExpr = simplifyArithmetic(formula) 
-            //variablesOf(formula).filterNot(TVarFactory.isTemporary _))
-        ExpressionTransformer.PrintWithIndentation(wr, printableExpr)        
-        wr.flush()
-        wr.close()
-        println("Printed plain VC of " + fd.id + " to file: " + filename)
-      }
-                 
-      //apply (instantiate) the axioms of functions in the verification condition
-      val formulaWithAxioms = if(this.disableAxioms) formula else instantiateAxioms(formula)
-
-      if (this.debugAxiomInstantiation || this.dumpVC) {
-        println("Func: " + fd.id + " VC: " + formulaWithAxioms)
+      if (this.dumpVC) {
+        val simpForm = simplifyArithmetic(vc)
+        println("Func: " + fd.id + " VC: " + simpForm)
         val filename = "vc-" + FileCountGUID.getID        
         val wr = new PrintWriter(new File(filename + ".txt"))
-        ExpressionTransformer.PrintWithIndentation(wr, simplifyArithmetic(formulaWithAxioms))        
+        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
         wr.flush()
         wr.close()
-
         if (dumpVCasSMTLIB) {
-          InvariantUtil.toZ3SMTLIB(formulaWithAxioms, filename + ".smt2", "QF_LIA", context, program)
+          InvariantUtil.toZ3SMTLIB(simpForm, filename + ".smt2", "QF_LIA", context, program)
         }        
         println("Printed VC of " + fd.id + " to file: " + filename)
       }
                 
-      if (InferInvariantsPhase.dumpStats) {
-        val plainVCsize = InvariantUtil.atomNum(formula)
-        val vcsize = InvariantUtil.atomNum(formulaWithAxioms)        
-        Stats.updateCounterStats(vcsize, "VC-size", "VC-refinement")
-        Stats.updateCounterStats(vcsize - plainVCsize, "AxiomBlowup", "VC-refinement")
-        Stats.updateCounterStats(InvariantUtil.numUIFADT(formula), "UIF+ADT", "VC-refinement")
+      if (InferInvariantsPhase.dumpStats) {                
+        Stats.updateCounterStats(InvariantUtil.atomNum(vc), "VC-size", "VC-refinement")        
+        Stats.updateCounterStats(InvariantUtil.numUIFADT(vc), "UIF+ADT", "VC-refinement")
       }            
-      
-      //instrument the formula with booleans baurgs      
-      (fd -> formulaWithAxioms)      
+      (fd -> vc)      
     }).toMap  
     
     //Assign some values for the template variables at random (actually use the simplest value for the type)
@@ -168,91 +128,6 @@ abstract class TemplateSolver (
   }
   
   def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : (Option[Map[FunDef,Expr]], Option[Set[Call]])
-  
-  def monotonizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
-    val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
-    val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
-    
-    if(fd1.id != fd2.id) 
-      throw IllegalStateException("Monotonizing calls to different functions: "+call1+","+call2)
-   
-    val ant = (args1 zip args2).foldLeft(Seq[Expr]())((acc, pair) => {
-      val lesse = LessEquals(pair._1, pair._2)
-      lesse +: acc
-    })
-    val conseq = LessEquals(r1, r2)
-    (ant, conseq)
-  }
-  
-  //a mapping from axioms keys (for now pairs of calls) to the guards
-  protected var axiomRoots = Map[(Expr,Expr),Variable]()
-  
-  def instantiateAxioms(formula: Expr): Expr = {
-
-    val debugSolver = if (this.debugAxiomInstantiation) {
-      val sol = new UIFZ3Solver(context, program)
-      sol.assertCnstr(formula)
-      Some(sol)
-    } else None    
-    
-    var axiomCallsInFormula = Set[Expr]()    
-    //collect all calls with axioms    
-    simplePostTransform((e: Expr) => e match {
-      case call @ _ if (InvariantUtil.isCallExpr(e)) => {
-        val BinaryOperator(_, FunctionInvocation(fd, _), _) = call
-        if (FunctionInfoFactory.isMonotonic(fd)) {
-          callsWithAxioms += call
-          axiomCallsInFormula += call
-        }          
-        call
-      }
-      case _ => e
-    })(formula)    
-        
-    var product = Seq[(Expr,Expr)]() 
-    axiomCallsInFormula.foreach((call1) =>{
-      axiomCallsInFormula.foreach((call2) => {
-        //important: check if the two calls refer to the same function
-        val BinaryOperator(_, FunctionInvocation(fd1, _), _) = call1
-        val BinaryOperator(_, FunctionInvocation(fd2, _), _) = call2               
-        if((fd1.id == fd2.id) && (call1 != call2))
-          product = (call1, call2) +: product
-      })
-    })    
-    val axiomInstances = product.foldLeft(Seq[Expr]())((acc, pair) => {      
-      val (ants, conseq) = monotonizeCalls(pair._1, pair._2)
-      
-      import ExpressionTransformer._
-      val nnfAxiom = pullAndOrs(TransformNot(Implies(And(ants), conseq)))
-      
-      val (axroot, axiomCtr) = instrumentWithGuards(nnfAxiom)
-      axiomRoots += (pair -> axroot)
-      
-      acc :+ axiomCtr
-    })
-    
-    //for debugging
-    reporter.info("Number of axiom instances: "+2 * axiomCallsInFormula.size * axiomCallsInFormula.size)
-    //println("Axioms: "+axiomInstances)
-   
-    if(this.debugAxiomInstantiation) {
-      println("Instantiated Axioms")
-      axiomInstances.foreach((ainst) => {        
-        println(ainst)
-        debugSolver.get.assertCnstr(ainst)
-        val res = debugSolver.get.check
-        res match {
-          case Some(false) => 
-            println("adding axiom made formula unsat!!")            
-          case _ => ;
-        }
-      })
-      debugSolver.get.free
-    }
-    val axiomInst = And(axiomInstances)
-    And(formula, axiomInst)
-  }
-
 }
 
 //class ParallelTemplateSolver(

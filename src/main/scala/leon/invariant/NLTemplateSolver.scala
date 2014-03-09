@@ -35,20 +35,9 @@ import leon.solvers._
 import leon.purescala.ScalaPrinter
 import leon.plugin.DepthInstPhase
 
-class NLTemplateSolver(context: LeonContext,
-  program: Program,
-  rootFun: FunDef,
-  ctrTracker: ConstraintTracker,
-  tempFactory: TemplateFactory,
-  timeout: Int,
-  tightBounds: Boolean) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
-
-  private val farkasSolver = new FarkasLemmaSolver()
-  private val minimizer = new Minimizer(context, program, timeout)
-
-  val disableCegis = true
-  val solveAsBitvectors = false
-  val bvsize = 5
+class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
+  ctrTracker: ConstraintTracker, tempFactory: TemplateFactory, timeout: Int, tightBounds: Boolean) 
+  extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
 
   //flags controlling debugging
   //TODO: there is serious bug in using incremental solving. Report this to z3 community
@@ -67,7 +56,12 @@ class NLTemplateSolver(context: LeonContext,
   val printCallConstriants = false
   val printReducedFormula = false
   val dumpInstantiatedVC = false
-
+  
+  private val farkasSolver = new FarkasLemmaSolver()
+  private val minimizer = new Minimizer(context, program, timeout)
+  private val disableCegis = true
+  private val solveAsBitvectors = false
+  private val bvsize = 5
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -506,11 +500,10 @@ class NLTemplateSolver(context: LeonContext,
     }
   }
 
-  
-
   private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
 
-    val satCtrs = pickSatDisjunct(rootGuards(fd), model)
+    val formula = ctrTracker.getVC(fd)
+    val satCtrs = formula.pickSatDisjunct(formula.getRoot, model)
     //for debugging        
     if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
       val pathctrs = satCtrs.map(_.toExpr)
@@ -559,7 +552,7 @@ class NLTemplateSolver(context: LeonContext,
 
     //reporter.info("choosing axioms...")
     var t1 = System.currentTimeMillis()
-    val axiomCtrs = axiomsForPath(callExprs, model)
+    val axiomCtrs = axiomsForPath(formula, calls, model)
     var t2 = System.currentTimeMillis()
     //reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")
@@ -841,9 +834,8 @@ class NLTemplateSolver(context: LeonContext,
     newctrs
   }
 
-  def axiomsForPath(calls: Set[Expr], model: Map[Identifier, Expr]): Seq[Constraint] = {
-    //using the axiom roots for now
-    //TODO: is there a better way to implement this 
+  def axiomsForPath(formula: Formula, calls: Set[Call], model: Map[Identifier, Expr]): Seq[Constraint] = {
+    val ainstr = ctrTracker.axiomInstantiator
     val vec = calls.toArray
     val size = calls.size
     var j = 0
@@ -851,9 +843,9 @@ class NLTemplateSolver(context: LeonContext,
       var satDisj = Set[Constraint]()
       for (i <- j + 1 until size) {
         val call2 = vec(i)
-        val axRoot = axiomRoots.get((call1, call2))
+        val axRoot = ainstr.getAxiomRoot((call1, call2))
         if (axRoot.isDefined)
-          satDisj ++= pickSatDisjunct(axRoot.get, model)
+          satDisj ++= formula.pickSatDisjunct(axRoot.get, model)
       }
       j += 1
       acc ++ satDisj

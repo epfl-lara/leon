@@ -47,6 +47,8 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   //a mapping from axioms keys (for now pairs of calls) to the guards
   protected var axiomRoots = Map[(Call,Call),Variable]()
    
+  def getAxiomRoot(key: (Call,Call)) : Option[Variable] =  axiomRoots.get(key)
+  
   def instantiate() = {
                  
     val funcs = ctrTracker.getFuncs        

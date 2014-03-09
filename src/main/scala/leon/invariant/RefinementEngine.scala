@@ -24,10 +24,14 @@ import leon.verification.VerificationReport
 import leon.invariant._
 import leon.purescala.ScalaPrinter
 
-class CallData(val guard : Variable, val parents: List[FunDef]) {  
+/**
+ * Note: the formula and the guard are used to locate the disjunct for unrolling the call
+ */
+class CallData(val formula: Formula, val guard : Variable, val parents: List[FunDef]) {  
 }
 
 //TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
+//TODO: there is a better way to compute heads, which is to consider all guards not previous seen
 class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory) {
     
   val tru = BooleanLiteral(true)
@@ -55,11 +59,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
   //a set of calls for which templates or specifications have not been assumed
   private var untemplatedCalls = Set[Call]()  
   private var unspecdCalls = Set[Call]()
-
-  //TODO: there is a better way to compute heads, which is to consider all guards not previous seen
-  /**
-  * This creates an initial abstraction 
-  **/
+  
   def initialize() : Unit = {
     
     //we can use templates for all the functions in the ctrTracker
@@ -92,7 +92,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     guards.flatMap(g => {
       val calls = disjuncts(g).collect { case c: Call => c }
       calls.foreach((call) => {
-        callDataMap += (call -> new CallData(g, parents))
+        callDataMap += (call -> new CallData(formula, g, parents))
       })
       calls
     }).toSet
@@ -225,13 +225,13 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
                    
         //Here, unroll the call into the caller tree
         println("Unrolling " + Equals(call.retexpr,call.fi))
-        newheads ++= inilineCall(call, calldata.ctrnode, calldata.parents)          
+        newheads ++= inilineCall(call, calldata.formula, calldata.guard, calldata.parents)          
         newheads
       }
       else {        
         //here we are unrolling a non-recursive function
         println("Inlining "+Equals(call.retexpr,call.fi))               
-        inilineCall(call, calldata.ctrnode, calldata.parents)        
+        inilineCall(call, calldata.formula, calldata.guard, calldata.parents)        
       }                
     } else Set()    
   }
@@ -239,10 +239,9 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
   /**
   * The parameter 'resVar' is the result variable of the body
   **/
-  def inilineCall(call : Call, ctrnode: CtrNode, parents : List[FunDef]) : Set[Call] = {    
-    //here inline the body && Post and add it to the tree of the rec caller
-    val callee = call.fi.funDef
-    //val post = callee.postcondition
+  def inilineCall(call : Call, formula: Formula, guard: Variable, parents : List[FunDef]) : Set[Call] = {    
+    //here inline the body and conjoin it with the guard
+    val callee = call.fi.funDef   
     
     //Important: make sure we use a fresh body expression here    
     val freshBody = freshenLocals(matchToIfThenElse(callee.nondetBody.get))
@@ -254,23 +253,17 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     if(this.dumpInlinedSummary)
     	println("Inlined Summary: "+inlinedSummary)
 
-    //create a constraint tree for the summary
-    val summaryTree = CtrNode()      
-    ctrTracker.addConstraintRecur(inlinedSummary, summaryTree)          
-
-    //Find new heads (note: should not insert summaryTree and then call findheads)
-    //note: For memory efficiency, the callee is prepended to parents and not appended
-    val newheads = findHeads(summaryTree, (callee +: parents))
-
-    //insert the tree
-    TreeUtil.insertTree(ctrnode, summaryTree)        
-
+    //conjoin the summary with the disjunct corresponding to the 'guard'
+    val (_, newguards) = formula.conjoinWithDisjunct(guard, inlinedSummary) 
+              
+    //Find new heads     
+    val newheads = findHeads(formula, newguards, (callee +: parents))
     newheads
   }
 
   /**
    * This function refines the constraint tree by assuming the specifications/templates for calls in
-   * the body and post tree.
+   * the formula
    * Here, assume (pre => post ^ template)
    * Important: adding templates for unspecdCalls of the previous iterations is empirically more effective
    */
@@ -284,15 +277,9 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
       //first get the spec for the call if it exists 
       val spec = specForCall(call)
       if (spec.isDefined && spec.get != tru) {
-        //create the root of a new  tree          
-        val specTree = CtrNode()        
-        ctrTracker.addConstraintRecur(spec.get, specTree)
-
-        //find new heads            
-        val cdata = callDataMap(call)
-        foundheads ++= findHeads(specTree, cdata.parents)
-        //insert the templateTree after this node
-        TreeUtil.insertTree(cdata.ctrnode, specTree)
+    	val cdata = callDataMap(call)
+        val (_, newguards) = cdata.formula.conjoinWithDisjunct(cdata.guard, spec.get)        
+        foundheads ++= findHeads(cdata.formula, newguards, cdata.parents)
       }
     })
 
@@ -302,15 +289,10 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
       //first get the template for the call if one needs to be added
       if (useTemplates.contains(call.fi.funDef)) {
         val temp = templateForCall(call)
-        //create the root of a new  tree          
-        val tempTree = CtrNode()        
-        ctrTracker.addConstraintRecur(temp, tempTree)
-
-        //find new heads            
         val cdata = callDataMap(call)
-        foundheads ++= findHeads(tempTree, cdata.parents)
-        //insert the templateTree after this node
-        TreeUtil.insertTree(cdata.ctrnode, tempTree)
+        val (_, newguards) = cdata.formula.conjoinWithDisjunct(cdata.guard, temp)        
+        foundheads ++= findHeads(cdata.formula, newguards, cdata.parents)
+        
       } else {
         newUntemplatedCalls += call
       }
@@ -344,9 +326,6 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     }
   }
 
-  /**
-   * A helper function that creates templates for a call
-   */
   def templateForCall(call: Call): Expr = {
     val argmap = InvariantUtil.formalToAcutal(call)
     val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
