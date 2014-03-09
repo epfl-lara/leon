@@ -506,42 +506,7 @@ class NLTemplateSolver(context: LeonContext,
     }
   }
 
-  /**
-   * 'root' is required to be a guard variable
-   */
-  def pickSatDisjunct(root: Variable, model: Map[Identifier, Expr]): Seq[Constraint] = {
-
-    def traverseOrs(gd: Variable, model: Map[Identifier, Expr]): Seq[Variable] = {
-      val e @ Or(guards) = conjuncts(gd)
-      //pick one guard that is true
-      val guard = guards.collectFirst { case g @ Variable(id) if (model(id) == tru) => g }
-      if (!guard.isDefined)
-        throw IllegalStateException("No satisfiable guard found: " + e)
-      guard.get +: traverseAnds(guard.get, model)
-    }
-
-    def traverseAnds(gd: Variable, model: Map[Identifier, Expr]): Seq[Variable] = {
-      val ctrs = disjuncts(gd)
-      val orGuards = ctrs.collect {
-        case BoolConstraint(v @ Variable(_)) if (conjuncts.contains(v)) => v
-      }
-      if (orGuards.isEmpty) Seq()
-      else {
-        orGuards.foldLeft(Seq[Variable]())((acc, g) => {
-          if (model(g.id) != tru)
-            throw IllegalStateException("Not a satisfiable guard: " + g)
-          acc ++ traverseOrs(g, model)
-        })
-      }
-    }
-    //if root is unsat return empty
-    if (model(root.id) == fls) Seq()
-    else {
-      val satGuards = if (conjuncts.contains(root)) traverseOrs(root, model)
-      else (root +: traverseAnds(root, model))
-      satGuards.flatMap(g => disjuncts(g))
-    }
-  }
+  
 
   private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
 

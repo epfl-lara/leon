@@ -28,7 +28,6 @@ class CallData(val ctrnode : CtrNode, val parents: List[FunDef]) {
 }
 
 //TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
-//TODO: Try targeted unrolling
 class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory, reporter : Reporter) {
     
   val tru = BooleanLiteral(true)
