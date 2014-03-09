@@ -24,15 +24,20 @@ import leon.verification.VerificationReport
 import leon.invariant._
 import leon.purescala.ScalaPrinter
 
-class CallData(val ctrnode : CtrNode, val parents: List[FunDef]) {  
+class CallData(val guard : Variable, val parents: List[FunDef]) {  
 }
 
 //TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
-class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory, reporter : Reporter) {
+class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory) {
     
   val tru = BooleanLiteral(true)
+  val reporter = ctx.reporter
+  
   //this count indicates the number of times we unroll a recursive call
   private val MAX_UNROLLS = 2
+  
+  //debugging flags
+  private val dumpInlinedSummary = false
   
   //a mapping from a call to the node containing the call (plus some additional data like the list of transitive callers etc.)
   private var callDataMap = Map[Call, CallData]()
@@ -48,10 +53,6 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
   //TODO: Ideally these info should stored in a distributed way inside the nodes of the constraint tree
   private var untemplatedCalls = Set[Call]()  
   private var unspecdCalls = Set[Call]()
-  
-  //debugging flags
-  private val dumpInlinedSummary = false
-  //private val dumpUnrolledVC = false 
 
   /**
   * This creates an initial abstraction 
@@ -62,7 +63,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     useTemplates ++= ctrTracker.getFuncs
     
     //This procedure has side-effects on many fields.
-    headCalls = findAllHeads(ctrTracker)
+    headCalls = findAllHeads
     
     //for debugging
     //println("Head-Calls: "+headCallPtrs.keys.toSeq)
@@ -72,12 +73,11 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
     headCalls ++= assumeSpecifications(headCalls)
   }
 
-  private def findAllHeads(ctrTracker: ConstraintTracker) : Set[Call] ={  
-    var heads = Set[Call]()
-    
+  private def findAllHeads : Set[Call] ={  
+    var heads = Set[Call]()    
     ctrTracker.getFuncs.foreach((fd) => {
-      val (btree,ptree) = ctrTracker.getVC(fd)      
-      heads ++= (findHeads(btree, List(fd)) ++ findHeads(ptree, List(fd)))
+      val formula = ctrTracker.getVC(fd)      
+      //heads ++= (findHeads(formula, List(fd)) ++ findHeads(formula, List(fd)))
     })        
     heads    
   }
@@ -87,7 +87,7 @@ class RefinementEngine(prog: Program, ctrTracker: ConstraintTracker, tempFactory
    * The argument parents represents the functions in the chain of unrolls that resulted in the 'ctrTree'  node.
    * This procedure has side-effects on 'callDataMap'
    */
-  private def findHeads(ctrTree: CtrTree, parents: List[FunDef]): Set[Call] = {
+  private def findHeads(formula : Formula, parents: List[FunDef]): Set[Call] = {
     var heads = Set[Call]()
 
     def visitor: (CtrNode => Unit) =

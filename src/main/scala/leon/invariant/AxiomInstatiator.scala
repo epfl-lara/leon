@@ -11,8 +11,6 @@ import purescala.Extractors._
 import purescala.TypeTrees._
 import solvers.{ Solver, TimeoutSolver }
 import solvers.z3.FairZ3Solver
-import scala.collection.mutable.{ Set => MutableSet }
-import scala.collection.mutable.{ Map => MutableMap }
 import leon.evaluators._
 import java.io._
 import leon.solvers.z3.UninterpretedZ3Solver
@@ -38,145 +36,115 @@ import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
 import leon.plugin.NonlinearityEliminationPhase
 
-class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {   
-    
-  //some constants
-  protected val fls = BooleanLiteral(false)
-  protected val tru = BooleanLiteral(true)    
-  protected val zero = IntLiteral(0)     
+class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {              
     
   protected val debugAxiomInstantiation = false
     
-  //a mapping from functions to the index of the vcList that has been processed
-  protected var exploredVCIndex = Map[FunDef,Int]()
-  //calls with axioms so far been encountered
-  protected var callsWithAxioms = Set[Expr]() 
+  //the guards of the set of calls that were already processed
+  protected var exploredGuards = Set[Variable]()
+  //calls with axioms so far seen
+  protected var callsWithAxioms = Set[Call]() 
   //a mapping from axioms keys (for now pairs of calls) to the guards
-  protected var axiomRoots = Map[(Expr,Expr),Variable]()
+  protected var axiomRoots = Map[(Call,Call),Variable]()
    
   def instantiate() = {
                  
     val funcs = ctrTracker.getFuncs        
     funcs.foreach((fd) => {
-      val vcList = ctrTracker.getVC(fd)      
-      //the index of the vc list that is processed by the instantiator
-      val prevIndex = this.exploredVCIndex.getOrElse(fd, {
-        exploredVCIndex += (fd -> 0)
-        0
-      })        
-      val newParts = vcList.slice(prevIndex, vcList.size)      
+      val formula = ctrTracker.getVC(fd)      
       
-      if(this.debugAxiomInstantiation) {
-        val simpForm = simplifyArithmetic(And(newParts))
-        println("Instantianting: " + simpForm)
-        val filename = "instFormula-" + FileCountGUID.getID        
-        val wr = new PrintWriter(new File(filename + ".txt"))
-        //val printableExpr = variablesOf(formula).filterNot(TVarFactory.isTemporary _))
-        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
-        wr.flush()
-        wr.close()
-        println("Printed instFormula to file: " + filename)
-      }
+      //collect the blockers of the new disjuncts
+      val disjuncts = formula.disjunctsInFormula
+      val newguards = disjuncts.keySet.diff(exploredGuards)      
+      val newCalls = newguards.flatMap(g => disjuncts(g).collect{ case c: Call => c })      
       
-      val newInstantiations = instantiateAxioms(And(vcList), And(newParts))
-      //update previous index
-      exploredVCIndex -= fd
-      exploredVCIndex += (fd -> vcList.size)
-      //add new axioms to the vc
-      ctrTracker.conjoinWithVC(fd, newInstantiations)
-
-      if (this.debugAxiomInstantiation) {
-        val simpForm = simplifyArithmetic(newInstantiations)
-        println("Axioms added: " + simpForm)
-        val filename = "axiomInst-" + FileCountGUID.getID        
-        val wr = new PrintWriter(new File(filename + ".txt"))
-        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
-        wr.flush()
-        wr.close()        
-        println("Printed axioms instantiated to file: " + filename)
-      }                
-      Stats.updateCounterStats(InvariantUtil.atomNum(newInstantiations), "AxiomBlowup", "VC-refinement")              
+//      if(this.debugAxiomInstantiation) {        
+//        println("Instantianting axioms over: " + newCalls)
+//        val filename = "instFormula-" + FileCountGUID.getID        
+//        val wr = new PrintWriter(new File(filename + ".txt"))
+//        //val printableExpr = variablesOf(formula).filterNot(TVarFactory.isTemporary _))
+//        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
+//        wr.flush()
+//        wr.close()
+//        println("Printed instFormula to file: " + filename)
+//      }
+      
+      instantiateAxioms(formula, newCalls)
+      exploredGuards ++= newguards
     })    
   }
    
-  def monotonizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
-    val BinaryOperator(r1 @ Variable(_), fi1 @ FunctionInvocation(fd1, args1), _) = call1
-    val BinaryOperator(r2 @ Variable(_), fi2 @ FunctionInvocation(fd2, args2), _) = call2
-    
-    if(fd1.id != fd2.id) 
+  def monotonizeCalls(call1: Call, call2: Call): (Seq[Expr], Expr) = {
+    if(call1.fi.funDef.id != call2.fi.funDef.id) 
       throw IllegalStateException("Monotonizing calls to different functions: "+call1+","+call2)
    
-    val ant = (args1 zip args2).foldLeft(Seq[Expr]())((acc, pair) => {
+    val ant = (call1.fi.args zip call2.fi.args).foldLeft(Seq[Expr]())((acc, pair) => {
       val lesse = LessEquals(pair._1, pair._2)
       lesse +: acc
     })
-    val conseq = LessEquals(r1, r2)
+    val conseq = LessEquals(call1.retexpr, call2.retexpr)
     (ant, conseq)
   }
    
-  def instantiateAxioms(formula: Expr, newPart: Expr): Expr = {
+  def instantiateAxioms(formula: Formula, calls: Set[Call]) = {
 
     val debugSolver = if (this.debugAxiomInstantiation) {
       val sol = new UIFZ3Solver(ctx, program)
-      sol.assertCnstr(formula)
+      sol.assertCnstr(formula.toExpr)
       Some(sol)
-    } else None    
-        
-    val newCalls = InvariantUtil.getCallExprs(newPart).filter(_ match {
-      case BinaryOperator(_, FunctionInvocation(fd, _), _) => {
-        //for now handling only monotonicity axiom
-         FunctionInfoFactory.isMonotonic(fd)
-      }
+    } else None
+
+    val newCallsWithAxioms = calls.filter(call => {
+      //for now handling only monotonicity axiom
+      FunctionInfoFactory.isMonotonic(call.fi.funDef)
     })
 
-    def isInstatiable(call1: Expr, call2: Expr): Boolean = {
-      //important: check if the two calls refer to the same function
-      val BinaryOperator(_, FunctionInvocation(fd1, _), _) = call1
-      val BinaryOperator(_, FunctionInvocation(fd2, _), _) = call2
-      (fd1.id == fd2.id) && (call1 != call2)
+    def isInstantiable(call1: Call, call2: Call): Boolean = {
+      //important: check if the two calls refer to the same function      
+      (call1.fi.funDef.id == call2.fi.funDef.id) && (call1 != call2)
     }
         
-    def cross(a : Set[Expr], b: Set[Expr]) : Set[(Expr,Expr)] = {
-      (for (x<-a; y<-b) yield (x,y)).filter(pair => isInstatiable(pair._1,pair._2))
+    def cross(a : Set[Call], b: Set[Call]) : Set[(Call,Call)] = {
+      (for (x<-a; y<-b) yield (x,y)).filter(pair => isInstantiable(pair._1,pair._2))
     } 
       
-    val product = cross(newCalls,callsWithAxioms).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
-      cross(newCalls,newCalls).map(p => (p._1,p._2))
+    val product = cross(newCallsWithAxioms,callsWithAxioms).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
+      cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
     
     //update calls with axioms
-    callsWithAxioms ++= newCalls
+    callsWithAxioms ++= newCallsWithAxioms
             
     val axiomInstances = product.foldLeft(Seq[Expr]())((acc, pair) => {      
       val (ants, conseq) = monotonizeCalls(pair._1, pair._2)
-     
-      import ExpressionTransformer._
-      val nnfAxiom = pullAndOrs(TransformNot(Implies(And(ants), conseq)))
+      val axiomInst = Implies(And(ants), conseq) 
       
-      val (axroot, axiomInst) = ctrTracker.instrumentWithGuards(nnfAxiom)
+      import ExpressionTransformer._
+      val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
+      
+      val axroot = formula.conjoinWithRoot(nnfAxiom)
       axiomRoots += (pair -> axroot)
       
       acc :+ axiomInst
     })
     
-    //for debugging
+    Stats.updateCounterStats(InvariantUtil.atomNum(And(axiomInstances)), "AxiomBlowup", "VC-refinement")
     ctx.reporter.info("Number of axiom instances: "+axiomInstances.size)
-    //println("Axioms: "+axiomInstances)
-   
-    if(this.debugAxiomInstantiation) {
-      println("Instantiated Axioms")
-      axiomInstances.foreach((ainst) => {        
+
+    if (this.debugAxiomInstantiation) {
+      println("Instantianting axioms over: " + newCallsWithAxioms)
+      println("Instantiated Axioms: ")
+      axiomInstances.foreach((ainst) => {
         println(ainst)
         debugSolver.get.assertCnstr(ainst)
         val res = debugSolver.get.check
         res match {
-          case Some(false) => 
-            println("adding axiom made formula unsat!!")            
+          case Some(false) =>
+            println("adding axiom made formula unsat!!")
           case _ => ;
         }
       })
       debugSolver.get.free
-    }
-    And(axiomInstances)    
+    }       
   }
 
 }
