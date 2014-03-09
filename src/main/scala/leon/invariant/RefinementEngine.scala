@@ -46,14 +46,17 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
   //However, these calls except those given by the unspecdCalls have been specified
   private var headCalls = Set[Call]()
 
+  //the guards of disjuncts that were already processed
+  private var exploredGuards = Set[Variable]()
+  
   //a set of functions for which we can assume templates
   private var useTemplates = Set[FunDef]()
   
   //a set of calls for which templates or specifications have not been assumed
-  //TODO: Ideally these info should stored in a distributed way inside the nodes of the constraint tree
   private var untemplatedCalls = Set[Call]()  
   private var unspecdCalls = Set[Call]()
 
+  //TODO: there is a better way to compute heads, which is to consider all guards not previous seen
   /**
   * This creates an initial abstraction 
   **/
@@ -62,7 +65,6 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     //we can use templates for all the functions in the ctrTracker
     useTemplates ++= ctrTracker.getFuncs
     
-    //This procedure has side-effects on many fields.
     headCalls = findAllHeads
     
     //for debugging
@@ -73,33 +75,27 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     headCalls ++= assumeSpecifications(headCalls)
   }
 
-  private def findAllHeads : Set[Call] ={  
-    var heads = Set[Call]()    
-    ctrTracker.getFuncs.foreach((fd) => {
-      val formula = ctrTracker.getVC(fd)      
-      //heads ++= (findHeads(formula, List(fd)) ++ findHeads(formula, List(fd)))
-    })        
-    heads    
+  private def findAllHeads: Set[Call] = {
+    ctrTracker.getFuncs.flatMap((fd) => {
+      val formula = ctrTracker.getVC(fd)
+      findHeads(formula, formula.disjunctsInFormula.keys.toSeq, List(fd))
+    }).toSet
   }
 
   /**
    * Heads are procedure calls whose target definitions have not been inlined.
-   * The argument parents represents the functions in the chain of unrolls that resulted in the 'ctrTree'  node.
+   * The argument 'parents' represents the functions in the chain of unrolls that resulted in the 'ctrTree'  node.
    * This procedure has side-effects on 'callDataMap'
    */
-  private def findHeads(formula : Formula, parents: List[FunDef]): Set[Call] = {
-    var heads = Set[Call]()
-
-    def visitor: (CtrNode => Unit) =
-      (node: CtrNode) => {
-        val calls = node.uifs
-        calls.foreach((call) => {
-          callDataMap += (call -> new CallData(node, parents))
-          heads += call
-        })
-      }
-    TreeUtil.preorderVisit(ctrTree, visitor)
-    heads
+  private def findHeads(formula: Formula, guards: Seq[Variable], parents: List[FunDef]): Set[Call] = {
+    val disjuncts = formula.disjunctsInFormula
+    guards.flatMap(g => {
+      val calls = disjuncts(g).collect { case c: Call => c }
+      calls.foreach((call) => {
+        callDataMap += (call -> new CallData(g, parents))
+      })
+      calls
+    }).toSet
   }    
 
   /**
@@ -113,9 +109,10 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     val callsToProcess = if(toRefineCalls.isDefined){
       
       //pick only those calls that have been least unrolled      
-      val relevCalls = headCalls.intersect(toRefineCalls.get)
-      var minUnrollings = MAX_UNROLLS
+      val relevCalls = headCalls.intersect(toRefineCalls.get)      
+      //minCalls are calls that have been least unrolled
       var minCalls = Set[Call]()
+      var minUnrollings = MAX_UNROLLS
       relevCalls.foreach((call) => {
         val calldata = callDataMap(call)            
         val occurrences  = calldata.parents.count(_ == call.fi.funDef)
@@ -127,7 +124,6 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
           minCalls += call
         }        
       })
-      //minCalls are calls that have been least unrolled
       minCalls
       
     } else headCalls
@@ -144,7 +140,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
         newheads ++= unrollCall(call, calldata)
         acc + call
       } else {
-    	 //if the call is a recursive, unroll iff the number of times the recursive function occurs in the context is < MAX-UNROLL        
+    	 //if the call is recursive, unroll iff the number of times the recursive function occurs in the context is < MAX-UNROLL        
         if(occurrences < MAX_UNROLLS)
         {
           newheads ++= unrollCall(call, calldata)
@@ -167,8 +163,8 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     unrolls
   }
   
-  def shouldCreateCtrTree(recFun: FunDef) : Boolean = {
-    if(ctrTracker.hasCtrTree(recFun)) false
+  def shouldCreateVC(recFun: FunDef) : Boolean = {
+    if(ctrTracker.hasVC(recFun)) false
     else {
       //need not create trees for theory operations
       if(FunctionInfoFactory.isTheoryOperation(recFun)) {
@@ -183,8 +179,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
    * Returns a set of unrolled calls and a set of new head functions   
    * here we unroll the methods in the current abstraction by one step.
    * This procedure has side-effects on 'headCalls' and 'callDataMap'
-   */  
-  //private var unrollCounts = MutableMap[Call,Int]()
+   */   
   def unrollCall(call : Call, calldata : CallData): Set[Call] = {                
 
     //println("Processing: "+call)
@@ -198,12 +193,9 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
         val recFun = fi.funDef
                 
         //check if we need to create a constraint tree for the call's target
-        //if (!ctrTracker.hasCtrTree(recFun) ) {                     
-        if (shouldCreateCtrTree(recFun)) {
+        if (shouldCreateVC(recFun)) {
           useTemplates += recFun
-          /**
-           * create a new verification condition for this recursive function
-           */
+          //create a new verification condition for this recursive function          
           println("Creating VC for "+fi.funDef.id)
           val freshBody = freshenLocals(matchToIfThenElse(recFun.nondetBody.get))
           val resvar = if (recFun.hasPostcondition) {
@@ -219,22 +211,16 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
           val bodyExpr = ExpressionTransformer.normalizeExpr(if (recFun.hasPrecondition) {
             And(matchToIfThenElse(recFun.precondition.get), plainBody)
           } else plainBody)
-          
-          //add body constraints
-          ctrTracker.addBodyConstraints(recFun, bodyExpr)
-
-          //add (negated) post condition template for the function                              
+                                        
           val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
-
           val postTemp = tempFactory.constructTemplate(argmap, recFun)
           val npostTemp = ExpressionTransformer.normalizeExpr(Not(postTemp))
-          //print the negated post
-          //println("Negated Post: "+npostTemp)
-          ctrTracker.addPostConstraints(recFun,npostTemp)
+          
+          ctrTracker.addVC(recFun, And(bodyExpr,npostTemp))
 
           //Find new heads
-          val (btree,ptree) = ctrTracker.getVC(recFun)
-          newheads ++= (findHeads(btree, List(recFun)) ++ findHeads(ptree, List(recFun)))          
+          val formula = ctrTracker.getVC(recFun)
+          newheads ++= findHeads(formula, formula.disjunctsInFormula.keys.toSeq, List(recFun))           
         }        
                    
         //Here, unroll the call into the caller tree

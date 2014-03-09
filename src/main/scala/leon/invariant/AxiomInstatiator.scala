@@ -121,7 +121,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
       import ExpressionTransformer._
       val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
       
-      val axroot = formula.conjoinWithRoot(nnfAxiom)
+      val (axroot,_) = formula.conjoinWithRoot(nnfAxiom)
       axiomRoots += (pair -> axroot)
       
       acc :+ axiomInst

@@ -35,11 +35,15 @@ class Formula(initexpr: Expr) {
   
   protected var disjuncts = Map[Variable, Seq[Constraint]]() //a mapping from guards to conjunction of atoms
   protected var conjuncts = Map[Variable, Expr]() //a mapping from guards to disjunction of atoms
-  protected var root : Variable = addConstraints(initexpr)
+  protected var root : Variable = addConstraints(initexpr)._1
   
   def disjunctsInFormula = disjuncts 
   
-  def addConstraints(ine: Expr) : Variable = {
+  //return the root variable and the sequence of disjunct guards added 
+  //(which includes the root variable incase it respresents a disjunct)
+  def addConstraints(ine: Expr) : (Variable, Seq[Variable]) = {
+    
+    var newDisjGuards = Seq[Variable]()    
     
     def getCtrsFromExprs(exprs: Seq[Expr]) : Seq[Constraint] = {
       var break = false
@@ -69,10 +73,11 @@ class Formula(initexpr: Expr) {
               case And(atms) => atms
               case _ => Seq(arg)
             }              
-            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable  
+            val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+            newDisjGuards :+= g
             //println("atoms: "+atoms)
             val ctrs = getCtrsFromExprs(atoms)            
-            disjuncts += (g -> ctrs)             
+            disjuncts += (g -> ctrs)                
             g
           }
         })
@@ -94,11 +99,12 @@ class Formula(initexpr: Expr) {
         }
         val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
         val ctrs = getCtrsFromExprs(atoms)
+        newDisjGuards :+= g
         disjuncts += (g -> ctrs)        
         g
       }
     }
-    rootvar
+    (rootvar, newDisjGuards)
   }
   
   def pickSatDisjunct(model: Map[Identifier, Expr]): Seq[Constraint] = {
@@ -141,25 +147,25 @@ class Formula(initexpr: Expr) {
   }
   
   //'neweexpr' is required to be in negation normal form and And/Ors have been pulled up  
-  def conjoinWithDisjunct(guard: Variable, newexpr: Expr) : Variable = {
-     val disjGuard = addConstraints(newexpr)
+  def conjoinWithDisjunct(guard: Variable, newexpr: Expr) : (Variable, Seq[Variable]) = {
+     val (exprRoot, newGaurds) = addConstraints(newexpr)
      //add 'newguard' in conjunction with 'disjuncts(guard)'
      val ctrs = disjuncts(guard)
      disjuncts -= guard
-     disjuncts += (guard -> (BoolConstraint(disjGuard) +: ctrs))
-     disjGuard
+     disjuncts += (guard -> (BoolConstraint(exprRoot) +: ctrs))
+     (exprRoot, newGaurds)
   }
   
-  def conjoinWithRoot(newexpr: Expr) : Variable = {
+  def conjoinWithRoot(newexpr: Expr) : (Variable, Seq[Variable]) = {
     if(disjuncts.contains(root))  
       conjoinWithDisjunct(root, newexpr)
     else {
-      val disjGuard = addConstraints(newexpr)
+      val (exprRoot, newGaurds) = addConstraints(newexpr)
       //update root
       val newRoot = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-      disjuncts += (newRoot -> Seq(BoolConstraint(root), BoolConstraint(disjGuard)))
+      disjuncts += (newRoot -> Seq(BoolConstraint(root), BoolConstraint(exprRoot)))
       root = newRoot      
-      disjGuard
+      (exprRoot, newGaurds)
     }
   }
   
