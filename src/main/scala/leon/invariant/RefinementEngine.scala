@@ -208,15 +208,15 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
             Variable(FreshIdentifier("res", true).setType(recFun.returnType))
           }          
           val plainBody = Equals(resvar,freshBody)
-          val bodyExpr = ExpressionTransformer.normalizeExpr(if (recFun.hasPrecondition) {
+          val bodyExpr = if (recFun.hasPrecondition) {
             And(matchToIfThenElse(recFun.precondition.get), plainBody)
-          } else plainBody)
-                                        
-          val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
-          val postTemp = tempFactory.constructTemplate(argmap, recFun)
-          val npostTemp = ExpressionTransformer.normalizeExpr(Not(postTemp))
-          
-          ctrTracker.addVC(recFun, And(bodyExpr,npostTemp))
+          } else plainBody
+                    
+          val idmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
+          val postTemp = tempFactory.constructTemplate(idmap, recFun)
+          val vcExpr =  ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(postTemp)))
+          ctrTracker.addVC(recFun, vcExpr)
+          //val npostTemp = ExpressionTransformer.normalizeExpr(Not(postTemp))
 
           //Find new heads
           val formula = ctrTracker.getVC(recFun)

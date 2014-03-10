@@ -46,26 +46,41 @@ class InferenceEngineGenerator(program: Program,
 
   val reporter = context.reporter
   val fls = BooleanLiteral(false)
+  val tru = BooleanLiteral(true)
 
   def getInferenceEngine(funDef: FunDef, tempFactory: TemplateFactory): (() => (Option[Boolean], Option[Map[FunDef,Expr]])) = {
     //create a body and post of the function
     val body = funDef.nondetBody.get
     val (resid, post) = funDef.postcondition.get
     val resvar = resid.toVariable
-
-    //val resFresh = Variable(FreshIdentifier("result", true).setType(body.getType))      
+         
     val simpBody = matchToIfThenElse(body)
     val plainBody = Equals(resvar, simpBody)    
     val bodyExpr = if (funDef.hasPrecondition) {
       And(matchToIfThenElse(funDef.precondition.get), plainBody)
-    } else plainBody    
-    //flatten the functions in the body           
-    val flatBody = ExpressionTransformer.normalizeExpr(bodyExpr)    
+    } else plainBody        
+    
+    val postExpr = matchToIfThenElse(post)       
+    //create a postcondition template if the function is recursive or if a template is provided for the function
+    val postTemp = if (program.isRecursive(funDef) || FunctionInfoFactory.hasTemplate(funDef)) {
+      //this is a way to create an idenitity map :-))
+      val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
+      Some(tempFactory.constructTemplate(argmap, funDef))      
+    } else None    
+    val fullPost = if (postTemp.isDefined) {
+      if (postExpr == tru) postTemp.get
+      else And(postExpr, postTemp.get)
+    } else postExpr
+    if (fullPost == tru) {
+      throw new IllegalStateException("post is true, nothing to be proven!!")
+    }
+    
+    val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(fullPost)))
     //for debugging
-    println("falttened Body: " + ScalaPrinter(flatBody))   
+    println("falttened VC: " + ScalaPrinter(vcExpr))   
 
     //create a postcondition template if the function is recursive or if a template is provided for the function
-    val postExpr = matchToIfThenElse(post)
+    /*val postExpr = matchToIfThenElse(post)
     val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
     val npostTemp = if (program.isRecursive(funDef) || FunctionInfoFactory.hasTemplate(funDef)) {
 
@@ -73,24 +88,11 @@ class InferenceEngineGenerator(program: Program,
       val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
       val temp = tempFactory.constructTemplate(argmap, funDef)
       Some(ExpressionTransformer.normalizeExpr(Not(temp)))
-    } else None
-
-    //add the negation of the post-condition "or" the template
-    //note that we need to use Or as we are using the negation of the disjunction
-    val fullPost = if (npostTemp.isDefined) {
-      if (npost == fls) npostTemp.get
-      else Or(npost, npostTemp.get)
-    } else npost
-    if (fullPost == fls) {
-      throw new IllegalStateException("post is true, nothing to be proven!!")
-    }
-    //for debugging
-    println("Flattened Post: " + ScalaPrinter(fullPost))
+    } else None*/    
     
     //Create and initialize a constraint tracker
     val constTracker = new ConstraintTracker(context, program, funDef, tempFactory)
-    constTracker.addVC(funDef, And(flatBody,fullPost))
-    constTracker.initialize
+    constTracker.addVC(funDef, vcExpr)    
 
     //create entities that uses the constraint tracker
     val tempSolver = tempSolverFactory(constTracker, tempFactory, funDef)
@@ -101,6 +103,7 @@ class InferenceEngineGenerator(program: Program,
     
     val inferenceEngine = () => {
 
+      Stats.updateCounter(1, "VC-refinement")
       /* uncomment if we want to bound refinements
        * if (refinementStep >= 5)
           throw IllegalStateException("Done 4 refinements")*/
@@ -116,7 +119,11 @@ class InferenceEngineGenerator(program: Program,
             reporter.info("- Cannot do more unrollings, reached unroll bound")
             false
           } else true
-        } else true
+          
+        } else {          
+          constTracker.initialize
+          true
+        } 
 
       refinementStep += 1
 

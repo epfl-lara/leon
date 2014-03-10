@@ -83,24 +83,25 @@ abstract class TemplateSolver (context : LeonContext, program : Program,val root
    * The result is a mapping from function definitions to the corresponding invariants.
    */  
   def solveTemplates(): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
-           
-    Stats.updateCounter(1, "VC-refinement")
     
     //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs        
     val funcExprs = funcs.map((fd) => {
-      val vc = ctrTracker.getVC(fd).toExpr
+      val vcFormula = ctrTracker.getVC(fd)
+      val vc = vcFormula.toExpr
       
       if (this.dumpVC) {
-        val simpForm = simplifyArithmetic(vc)
-        println("Func: " + fd.id + " VC: " + simpForm)
+        //val simpForm = simplifyArithmetic(vc)
+        val vcstr = vcFormula.toString
+        println("Func: " + fd.id + " VC: " + vcstr)
         val filename = "vc-" + FileCountGUID.getID        
         val wr = new PrintWriter(new File(filename + ".txt"))
-        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
+        //ExpressionTransformer.PrintWithIndentation(wr, vcstr)
+        wr.println(vcstr)
         wr.flush()
         wr.close()
         if (dumpVCasSMTLIB) {
-          InvariantUtil.toZ3SMTLIB(simpForm, filename + ".smt2", "QF_LIA", context, program)
+          InvariantUtil.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", context, program)
         }        
         println("Printed VC of " + fd.id + " to file: " + filename)
       }

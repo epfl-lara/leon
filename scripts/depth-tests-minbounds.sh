@@ -1,10 +1,10 @@
 LEON_HOME="/home/kandhada/leon/leon"
 
 #Tree maps
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/Folds.scala --stats-suffix=-nl-stats --minbounds" > folds-nl-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/Folds.scala --stats-suffix=-nl-stats --minbounds" > folds-nl-out.txt
 
 #Propositional logic
-#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/PropLogicDepth.scala --stats-suffix=-nl-stats --minbounds" > proplogic-nl-out.txt
+runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/PropLogicDepth.scala --stats-suffix=-nl-stats --minbounds" > proplogic-nl-out.txt
 
 #Quick sort
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/QSortDepth.scala --stats-suffix=-nl-stats --minbounds" > qsort-nl-out.txt
