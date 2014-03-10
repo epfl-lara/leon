@@ -47,7 +47,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   //a mapping from axioms keys (for now pairs of calls) to the guards
   protected var axiomRoots = Map[(Call,Call),Variable]()
    
-  def getAxiomRoot(key: (Call,Call)) : Option[Variable] =  axiomRoots.get(key)
+  //def getAxiomRoot(key: (Call,Call)) : Option[Variable] =  axiomRoots.get(key)
   
   def instantiate() = {
                  
@@ -88,6 +88,9 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
     (ant, conseq)
   }
    
+  /**
+   * TODO: Use least common ancestor etc. to avoid axiomatizing calls along different disjuncts
+   */
   def instantiateAxioms(formula: Formula, calls: Set[Call]) = {
 
     val debugSolver = if (this.debugAxiomInstantiation) {
@@ -147,6 +150,22 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
       })
       debugSolver.get.free
     }       
+  }
+    
+  /**
+   * Note: taking a formula as input may not be necessary. We can store it as a part of the state
+   * TODO: can we use transitivity here to optimize ?
+   */
+  def axiomsForCalls(formula: Formula, calls: Set[Call], model: Map[Identifier, Expr]): Seq[Constraint] = {    
+    (for (x<-calls; y<-calls) yield (x,y)).foldLeft(Seq[Constraint]())((acc, pair) => {      
+      val (c1,c2) = pair
+      if(c1 != c2){
+        val axRoot = axiomRoots.get(pair)
+        if (axRoot.isDefined)
+          acc ++ formula.pickSatDisjunct(axRoot.get, model)
+        else acc        
+      } else acc      
+    })
   }
 
 }

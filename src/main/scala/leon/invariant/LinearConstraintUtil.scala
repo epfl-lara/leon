@@ -87,18 +87,18 @@ object LinearConstraintUtil {
       }
     }
    
-    val linearExpr = MakeLinear(expr)
-
-    //the top most operator should be a relation
-    val BinaryOperator(lhs, IntLiteral(0), op) = linearExpr
-    if (lhs.isInstanceOf[IntLiteral])
-      throw IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)
-
     //recurse into plus and get all minterms
     def getMinTerms(lexpr: Expr): Seq[Expr] = lexpr match {
       case Plus(e1, e2) => getMinTerms(e1) ++ getMinTerms(e2)      
       case _ => Seq(lexpr)
     }
+    
+    val linearExpr = MakeLinear(expr)    
+    //the top most operator should be a relation
+    val BinaryOperator(lhs, IntLiteral(0), op) = linearExpr
+    if (lhs.isInstanceOf[IntLiteral])
+      throw IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)
+
     val minterms =  getMinTerms(lhs)
 
     //handle each minterm
@@ -132,8 +132,7 @@ object LinearConstraintUtil {
     })
     
     if(coeffMap.isEmpty && constant.isEmpty) {
-      //here the generated template reduced to true 
-      //Some(new LinearTemplate(LessEquals, Map(), Some(IntLiteral(-1))))
+      //here the generated template reduced to true      
       None
     } else if(isTemplate) {  
       Some(new LinearTemplate(op, coeffMap.toMap, constant))

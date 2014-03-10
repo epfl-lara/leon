@@ -148,7 +148,7 @@ class LinearConstraint(opr: (Expr,Expr) => Expr, cMap: Map[Expr, Expr], constant
       acc && variablesOf(e).isEmpty
     }))
     
-    //TODO: here we should try to simplify reduce the constant expressions    
+    //TODO: here we should try to simplify the constant expressions    
     cMap
   }
   
@@ -251,12 +251,18 @@ object ConstraintUtil {
         ADTConstraint(ie)
       }
       case _ => {
-        val template = LinearConstraintUtil.tryExprToTemplate(ie)
-        if(template.isDefined) template.get
-        else {
-          //TODO: can this be false
-          BoolConstraint(BooleanLiteral(true))
-        }
+        val simpe = simplifyArithmetic(ie)
+        simpe match {
+          case b: BooleanLiteral => BoolConstraint(b)
+          case _ => {
+            val template = LinearConstraintUtil.tryExprToTemplate(ie)
+            if (template.isDefined) template.get
+            else {
+              //TODO: can this be false
+              BoolConstraint(BooleanLiteral(true))
+            }
+          }
+        }        
       }
     }
   }

@@ -393,27 +393,6 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
               recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
             }
           }          
-//          val minVarMap: Map[Expr, Expr] = minModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-//          else {
-//            val isInv = funcVCs.keys.forall((fd) => {
-//              val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), minVarMap))
-//              val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
-//              val (res, _) = solver.solveSAT(instVC)
-//              res match {
-//                case Some(false) => true
-//                case _ => false
-//              }
-//            })
-//            if (isInv) {
-//              minStarted = false
-//              val mintime = (System.currentTimeMillis() - minStartTime)
-//              Stats.updateCounterTime(mintime, "minimization-time", "procs")
-//              Stats.updateCumTime(mintime, "Total-Min-Time")
-//
-//              (Some(getAllInvariants(minModel)), None)
-//            } else
-//              recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
-//          }
         } else {
           (Some(getAllInvariants(model)), None)
         }
@@ -454,6 +433,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     val t2 = System.currentTimeMillis()
     //reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "VC-check-time", "disjuncts")
+    Stats.updateCumTime((t2 - t1), "TotalVCCTime")
 
     t1 = System.currentTimeMillis()
     res match {
@@ -503,7 +483,8 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
 
     val formula = ctrTracker.getVC(fd)
-    val satCtrs = formula.pickSatDisjunct(formula.getRoot, model)
+    //this picks the satisfiable disjunct of the VC modulo axioms
+    val satCtrs = formula.pickSatDisjunct(formula.firstRoot, model)
     //for debugging        
     if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
       val pathctrs = satCtrs.map(_.toExpr)
@@ -552,7 +533,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
     //reporter.info("choosing axioms...")
     var t1 = System.currentTimeMillis()
-    val axiomCtrs = axiomsForPath(formula, calls, model)
+    val axiomCtrs = ctrTracker.axiomInstantiator.axiomsForCalls(formula, calls, model)
     var t2 = System.currentTimeMillis()
     //reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")
@@ -594,7 +575,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
       (And(lnctrs.map(_.toExpr)), fls)
     } else {
-
+      
       if (this.debugElimination) {
         //println("Path Constraints (before elim): "+(lnctrs ++ temps))
         if (this.verifyInvariant) {
@@ -602,21 +583,11 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
           InvariantUtil.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
         }
       }
-
-      //TODO: try some optimizations here to reduce the number of constraints to be considered
-      // Note: we can use the interpolation property of arithmetics        
-
       //compute variables to be eliminated
+      val t1 = System.currentTimeMillis()
       val ctrVars = lnctrs.foldLeft(Set[Identifier]())((acc, lc) => acc ++ variablesOf(lc.toExpr))
       val tempVars = temps.foldLeft(Set[Identifier]())((acc, lt) => acc ++ variablesOf(lt.template))
       val elimVars = ctrVars.diff(tempVars)
-
-      //For debugging
-      /*if (debugElimination) {
-          reporter.info("Number of linear constraints: " + lnctrs.size)
-          reporter.info("Number of template constraints: " + temps.size)
-          reporter.info("Number of elimVars: " + elimVars.size)
-        } */
 
       val debugger = if (debugElimination && verifyInvariant) {
         Some((ctrs: Seq[LinearConstraint]) => {
@@ -626,44 +597,43 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         })
       } else None
       val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
-
-      //for stats
-      var elimCtrCount = 0
-      var elimCtrs = Seq[LinearConstraint]()
-      var elimRems = Set[Identifier]()
-      elimLnctrs.foreach((lc) => {
-        val evars = variablesOf(lc.toExpr).intersect(elimVars)
-        if (!evars.isEmpty) {
-          elimCtrs :+= lc
-          elimCtrCount += 1
-          elimRems ++= evars
-        }
-      })
-      if (this.debugElimination) {
-        /*reporter.info("Number of linear constraints (after elim): " + elimLnctrs.size)          
-          reporter.info("Number of constraints with elimVars: " + elimCtrCount)
-          reporter.info("constraints with elimVars: " + elimCtrs)
-          reporter.info("Number of remaining elimVars: " + elimRems.size)*/
-        //println("Elim vars: "+elimVars)
+      val t2 = System.currentTimeMillis()
+            
+      if (this.debugElimination) {        
         println("Path constriants (after elimination): " + elimLnctrs)
         if (this.verifyInvariant) {
           println("checking invariant for disjunct after elimination...")
           InvariantUtil.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
         }
-
       }
       //for stats
       if (InferInvariantsPhase.dumpStats) {
+        var elimCtrCount = 0
+        var elimCtrs = Seq[LinearConstraint]()
+        var elimRems = Set[Identifier]()
+        elimLnctrs.foreach((lc) => {
+          val evars = variablesOf(lc.toExpr).intersect(elimVars)
+          if (!evars.isEmpty) {
+            elimCtrs :+= lc
+            elimCtrCount += 1
+            elimRems ++= evars
+          }
+        })
         Stats.updateCounterStats((elimVars.size - elimRems.size), "Eliminated-Vars", "disjuncts")
         Stats.updateCounterStats((lnctrs.size - elimLnctrs.size), "Eliminated-Atoms", "disjuncts")
         Stats.updateCounterStats(temps.size, "Param-Atoms", "disjuncts")
         Stats.updateCounterStats(lnctrs.size, "NonParam-Atoms", "disjuncts")
+        Stats.updateCumTime((t2 - t1), "ElimTime")
       }
       val newLnctrs = elimLnctrs.toSet.toSeq
-
-      //TODO: one idea: use the dependence chains in the formulas to identify what to assertionize 
+      
+      //TODO: simplify the formulas and remove implied conjuncts if possible (note the formula is satisfiable, so there can be no inconsistencies) 
+      //e.g, remove: a <= b if we have a = b or if a < b
+      //Also, enrich the rules for quantifier elimination: try z3 quantifier elimination on variables that have an equality. 
+      
+      //TODO: Use the dependence chains in the formulas to identify what to assertionize 
       // and what can never be implied by solving for the templates                       
-      //TODO: are we checking enough ? Can we eliminate more ?
+      
       val disjunct = And((newLnctrs ++ temps).map(_.template))
       val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
 
@@ -685,7 +655,6 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
    * The calls could be functions calls or ADT constructor calls.
    * The parameter 'doesAliasInCE' is an abbreviation for 'Does Alias in Counter Example'
    */
-  //TODO: important: optimize this code it seems to take a lot of time    
   val makeEfficient = true //this will happen at the expense of completeness  
   def constraintsForCalls(calls: Set[Expr], model: Map[Identifier, Expr]): Seq[Expr] = {
 
@@ -833,24 +802,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     reporter.info("Number of equal calls: " + eqGraph.getEdgeCount)
     newctrs
   }
-
-  def axiomsForPath(formula: Formula, calls: Set[Call], model: Map[Identifier, Expr]): Seq[Constraint] = {
-    val ainstr = ctrTracker.axiomInstantiator
-    val vec = calls.toArray
-    val size = calls.size
-    var j = 0
-    vec.foldLeft(Seq[Constraint]())((acc, call1) => {
-      var satDisj = Set[Constraint]()
-      for (i <- j + 1 until size) {
-        val call2 = vec(i)
-        val axRoot = ainstr.getAxiomRoot((call1, call2))
-        if (axRoot.isDefined)
-          satDisj ++= formula.pickSatDisjunct(axRoot.get, model)
-      }
-      j += 1
-      acc ++ satDisj
-    })
-  }
+  
 
   /**
    * This function actually checks if two non-primitive expressions could have the same value
