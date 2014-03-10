@@ -110,7 +110,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
       simplestModel
     }
-    val sol = recSolve(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
+    val sol = solveUNSAT(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
 
     solverWithCtr.free()
 
@@ -139,27 +139,68 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     Stats.updateCumTime(mintime, "Total-Min-Time")
   }
 
-  //TODO: this code is very ugly, fix this asap
-  def recSolve(model: Map[Identifier, Expr],
-    funcVCs: Map[FunDef, Expr],
-    inputCtr: Expr,
-    solvedDisjs: Seq[Expr],
-    //cegisIncrSolver : CegisIncrSolver,
-    solverWithCtr: UIFZ3Solver,
-    seenCalls: Set[Call]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
+  def solveUNSAT(model: Map[Identifier, Expr], funcVCs: Map[FunDef, Expr], inputCtr: Expr, solvedDisjs: Seq[Expr],
+    solverWithCtr: UIFZ3Solver, seenCalls: Set[Call]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
-    //Information: printing the candidate invariants found at this step
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
 
-    val funcs = funcVCs.keys
+    //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
+    if (this.debugIncremental) {
+      solverWithCtr.assertCnstr(inputCtr)
+    }
+
+    val (res, newCtr, newModel, newdisjs, newcalls) = invalidateSATDisjunct(inputCtr, funcVCs, model)
+    res match {
+      case None => {
+        //here, we cannot proceed and have to return unknown
+        //However, we can return the calls that need to be unrolled                       
+        (None, Some(seenCalls ++ newcalls))
+      }
+      case Some(false) => {
+        //here, the vcs are unsatisfiable when instantiated with the invariant
+        val template = tempFactory.getTemplate(rootFun)
+        //TODO: need to assert that the templates are time templates
+        if (tightBounds && template.isDefined) {
+          //for stats
+          minimizationInProgress
+
+          if (minimized) {
+            minimizationCompleted
+            (Some(getAllInvariants(model)), None)
+          } else {
+            val minModel = minimizer.tightenTimeBounds(template.get, inputCtr, model)
+            minimized = true
+            if (minModel == model) {
+              minimizationCompleted
+              (Some(getAllInvariants(model)), None)
+            } else {
+              solveUNSAT(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
+            }
+          }
+        } else {
+          (Some(getAllInvariants(model)), None)
+        }
+      }
+      case Some(true) => {
+        //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
+        minimized = false
+        solveUNSAT(newModel, funcVCs, newCtr, solvedDisjs ++ newdisjs, solverWithCtr, seenCalls ++ newcalls)
+      }
+    }
+  }
+
+  //TODO: this code does too much imperative update.
+  //TODO: use guard to block a path and not use the path itself
+  def invalidateSATDisjunct(inputCtr: Expr, funcVCs: Map[FunDef, Expr], model: Map[Identifier, Expr]): (Option[Boolean], Expr, Map[Identifier, Expr], Seq[Expr], Set[Call]) = {
+
     val tempIds = model.keys
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val inputSize = InvariantUtil.atomNum(inputCtr)
 
     var disjsSolvedInIter = Seq[Expr]()
-    var conflictingFuns = funcs.toSet
+    var conflictingFuns = funcVCs.keySet
     //mapping from the functions to the counter-example paths that were seen
     var seenPaths = MutableMap[FunDef, Seq[Expr]]()
     def updateSeenPaths(fd: FunDef, cePath: Expr): Unit = {
@@ -170,13 +211,8 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       }
     }
 
-    //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
-    if (this.debugIncremental) {
-      solverWithCtr.assertCnstr(inputCtr)
-    }
-
     var callsInPaths = Set[Call]()
-    def disableADisjunct(prevCtr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
+    def invalidateDisjRecr(prevCtr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
 
       Stats.updateCounter(1, "disjuncts")
 
@@ -193,7 +229,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
           Not(Or(seenPaths(fd)))
         } else tru
         val instVCmodCE = And(instVC, disableCounterExs)
-        val (data, ctrsForFun) = getNLConstraints(fd, instVCmodCE, tempVarMap)
+        val (data, ctrsForFun) = getNLConstraints(fd, instVCmodCE)
         val (disjunct, callsInPath) = data
         if (ctrsForFun == tru) acc
         else {
@@ -232,34 +268,12 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         Stats.updateCounterStats((newSize + inputSize), "NLsize", "disjuncts")
         println("# of atomic predicates: " + newSize + " + " + inputSize)
 
-        if (this.debugIncremental)
-          solverWithCtr.assertCnstr(newPart)
+        /*if (this.debugIncremental)
+          solverWithCtr.assertCnstr(newPart)*/
 
         //here we need to solve for the newctrs + inputCtrs
         val combCtr = And(prevCtr, newPart)
-        val innerSolver = if (solveAsBitvectors) {
-          new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = bvsize)
-        } else {
-          new UIFZ3Solver(context, program)
-        }
-        val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
-
-        if (this.dumpNLCtrsAsSMTLIB) {
-          val filename = program.mainObject.id + "-nlctr" + FileCountGUID.getID + ".smt2"
-          if ((newSize + inputSize) >= 5) {
-            if (solveAsBitvectors)
-              InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
-            else
-              InvariantUtil.toZ3SMTLIB(combCtr, filename, "QF_NRA", context, program)
-            println("NLctrs dumped to: " + filename)
-          }
-        }
-        println("solving...")
-        val t1 = System.currentTimeMillis()
-        val (res, newModel) = solver.solveSAT(combCtr)
-        val t2 = System.currentTimeMillis()
-        println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
-        Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")
+        val (res, newModel) = solveNLConstraints(combCtr)
 
         res match {
           case None => {
@@ -268,50 +282,31 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
               reporter.info("NLsolver timed-out on the disjunct... starting cegis phase...")
             else
               reporter.info("NLsolver timed-out on the disjunct... blocking this disjunct...")
-            //run cegis on all the disjuncts collected thus far.            
-            //This phase can only look for sat. It cannot prove unsat
-            /*val (cgRes, _, cgModel) =  cegisIncrSolver.solveInSteps(tempIds.toSet, Or(solvedDisjs ++ confDisjuncts))
-            cgRes match {
-              //cegis found a model ??
-              case Some(true) => {
-                //note we have the cegisCtr stored in the 'cegisIncr' solver
-                (Some(true), inputCtr, cgModel)
-              }                            
-              //cegis timed out?? note that 'cgRes' can never be false. 
-              case _ => {
-                reporter.info("Plain cegis timed-out on the disjunct... starting combined phase...")*/
 
             if (!this.disableCegis) {
-              val cegisSolver = new CegisCore(context, program, timeout, this)
-              val (cegisRes2, cegisCtr2, cegisModel2) = cegisSolver.solve(tempIds.toSet, Or(confDisjuncts), inputCtr,
-                solveAsInt = false, initModel = Some(model))
-              cegisRes2 match {
-                //found a model ??
+              val (cres, cctr, cmodel) = solveWithCegis(tempIds.toSet, Or(confDisjuncts), inputCtr, Some(model))
+              cres match {
                 case Some(true) => {
                   disjsSolvedInIter ++= confDisjuncts
-                  (Some(true), And(inputCtr, cegisCtr2), cegisModel2)
+                  (Some(true), And(inputCtr, cctr), cmodel)
                 }
-                //there exists no model ??
                 case Some(false) => {
                   disjsSolvedInIter ++= confDisjuncts
                   //here also return the calls that needs to be unrolled
                   (None, fls, Map())
                 }
-                //timed out??
                 case _ => {
-                  reporter.info("cegis timed-out on the disjunct... retrying...")
+                  reporter.info("retrying...")
                   Stats.updateCumStats(1, "retries")
-
                   //disable this disjunct and retry but, use the inputCtrs + the constraints generated by cegis from the next iteration
-                  disableADisjunct(And(inputCtr, cegisCtr2))
+                  invalidateDisjRecr(And(inputCtr, cctr))
                 }
               }
             } else {
+              reporter.info("retrying...")
               Stats.updateCumStats(1, "retries")
-              disableADisjunct(inputCtr)
+              invalidateDisjRecr(inputCtr)
             }
-            //} 
-            //}
           }
           case Some(false) => {
             //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
@@ -330,7 +325,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
             }
           */
             //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
-            if (debugIncremental) {
+            /*if (debugIncremental) {
               println("Found a model1: " + newModel)
               val model2 = solverWithCtr.getModel
               println("Found a model2: " + model2)
@@ -346,7 +341,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
               solverWithCtr.pop()
             }
-
+*/
             disjsSolvedInIter ++= confDisjuncts
             //new model may not have mappings for all the template variables, hence, use the mappings from earlier models            
             val compModel = tempIds.map((id) => {
@@ -355,60 +350,56 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
               else
                 (id -> model(id))
             }).toMap
-
-            //println("New model: "+ newModel + " Completed Model: "+compModel)
             (Some(true), combCtr, compModel)
           }
         }
       }
     }
+    val (res, newctr, newmodel) = invalidateDisjRecr(inputCtr)
+    (res, newctr, newmodel, disjsSolvedInIter, callsInPaths)
+  }
 
-    val (res, newCtr, newModel) = disableADisjunct(inputCtr)
-    res match {
-      case None => {
-        //here, we cannot proceed and have to return unknown
-        //However, we can return the calls that need to be unrolled                       
-        (None, Some(seenCalls ++ callsInPaths))
-      }
-      case Some(false) => {
-        //here, the vcs are unsatisfiable when instantiated with the invariant
-        val template = tempFactory.getTemplate(rootFun)
-        //TODO: need to assert that the templates are time templates
-        if (tightBounds && template.isDefined) {
-          //for stats
-          minimizationInProgress          
-          
-          if (minimized) {            
-            minimizationCompleted
-            (Some(getAllInvariants(model)), None)
-          } 
-          else {
-            val minModel = minimizer.tightenTimeBounds(template.get, inputCtr, model)
-            minimized = true
-            if (minModel == model){
-              minimizationCompleted
-              (Some(getAllInvariants(model)), None)
-            }
-            else {
-              recSolve(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
-            }
-          }          
-        } else {
-          (Some(getAllInvariants(model)), None)
-        }
-      }
-      case Some(true) => {
-        //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
-        minimized = false
-        recSolve(newModel, funcVCs, newCtr, solvedDisjs ++ disjsSolvedInIter, solverWithCtr, seenCalls ++ callsInPaths)
+  def solveWithCegis(tempIds: Set[Identifier], expr: Expr, precond: Expr, initModel: Option[Map[Identifier, Expr]])
+  	: (Option[Boolean], Expr, Map[Identifier, Expr]) = {
+
+    val cegisSolver = new CegisCore(context, program, timeout, this)
+    val (res, ctr, model) = cegisSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
+    if (!res.isDefined)
+      reporter.info("cegis timed-out on the disjunct...")
+    (res, ctr, model)
+  }
+
+  def solveNLConstraints(nlctrs: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
+    val innerSolver = if (solveAsBitvectors) {
+      new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = bvsize)
+    } else {
+      new UIFZ3Solver(context, program)
+    }
+    val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
+
+    if (this.dumpNLCtrsAsSMTLIB) {
+      val filename = program.mainObject.id + "-nlctr" + FileCountGUID.getID + ".smt2"
+      if (InvariantUtil.atomNum(nlctrs) >= 5) {
+        if (solveAsBitvectors)
+          InvariantUtil.toZ3SMTLIB(nlctrs, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
+        else
+          InvariantUtil.toZ3SMTLIB(nlctrs, filename, "QF_NRA", context, program)
+        println("NLctrs dumped to: " + filename)
       }
     }
+    println("solving...")
+    val t1 = System.currentTimeMillis()
+    val (res, model) = solver.solveSAT(nlctrs)
+    val t2 = System.currentTimeMillis()
+    println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
+    Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")
+    (res, model)
   }
 
   /**
    * Returns the counter example disjunct
    */
-  def getNLConstraints(fd: FunDef, instVC: Expr, tempVarMap: Map[Expr, Expr]): ((Expr, Set[Call]), Expr) = {
+  def getNLConstraints(fd: FunDef, instVC: Expr): ((Expr, Set[Call]), Expr) = {
     //For debugging
     if (this.dumpInstantiatedVC) {
       val wr = new PrintWriter(new File("formula-dump.txt"))
