@@ -192,7 +192,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   }
 
   //TODO: this code does too much imperative update.
-  //TODO: use guard to block a path and not use the path itself
+  //TODO: use guard to block a path and not use the path itself 
   def invalidateSATDisjunct(inputCtr: Expr, funcVCs: Map[FunDef, Expr], model: Map[Identifier, Expr]): (Option[Boolean], Expr, Map[Identifier, Expr], Seq[Expr], Set[Call]) = {
 
     val tempIds = model.keys
@@ -200,6 +200,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     val inputSize = InvariantUtil.atomNum(inputCtr)
 
     var disjsSolvedInIter = Seq[Expr]()
+    var callsInPaths = Set[Call]()
     var conflictingFuns = funcVCs.keySet
     //mapping from the functions to the counter-example paths that were seen
     var seenPaths = MutableMap[FunDef, Seq[Expr]]()
@@ -211,7 +212,6 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       }
     }
 
-    var callsInPaths = Set[Call]()
     def invalidateDisjRecr(prevCtr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
 
       Stats.updateCounter(1, "disjuncts")
