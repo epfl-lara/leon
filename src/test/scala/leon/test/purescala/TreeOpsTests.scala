@@ -119,6 +119,23 @@ class TreeOpsTests extends LeonTestSuite {
     assert(eq4 != None)
     assert(eq4.get === eq)
     assert(extractEquals(r4)._1 === None)
-
   }
+
+  test("pre and post traversal") {
+    val expr = Plus(IntLiteral(1), Minus(IntLiteral(2), IntLiteral(3)))
+    var res = ""
+    def f(e: Expr): Unit = e match {
+      case IntLiteral(i) => res += i
+      case _ : Plus      => res += "P"
+      case _ : Minus     => res += "M"
+    }
+
+    preTraversal(f)(expr)
+    assert(res === "P1M23")
+
+    res = ""
+    postTraversal(f)(expr)
+    assert(res === "123MP")
+  }
+
 }
