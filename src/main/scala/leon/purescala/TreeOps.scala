@@ -93,7 +93,7 @@ object TreeOps {
    *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
    */
   def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
-    val rec = preTraversal(f) _
+    val rec = postTraversal(f) _
 
     e match {
       case t: Terminal =>
