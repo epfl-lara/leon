@@ -715,6 +715,8 @@ object TreeOps {
    */
   def hoistIte(expr: Expr): Expr = {
     def transform(expr: Expr): Option[Expr] = expr match {
+      case IfExpr(c, t, e) => None
+
       case uop@UnaryOperator(IfExpr(c, t, e), op) =>
         Some(IfExpr(c, op(t).copiedFrom(uop), op(e).copiedFrom(uop)).copiedFrom(uop))
 
@@ -1090,24 +1092,48 @@ object TreeOps {
     def traverse(e: Expr): T
   }
 
-  class CollectorWithPaths[T](matcher: PartialFunction[Expr, T]) extends TransformerWithPC with Traverser[Seq[(T, Expr)]]{
+  object CollectorWithPaths {
+    def apply[T](p: PartialFunction[Expr,T]): CollectorWithPaths[(T, Expr)] = new CollectorWithPaths[(T, Expr)] {
+      def collect(e: Expr, path: Seq[Expr]): Option[(T, Expr)] = if (!p.isDefinedAt(e)) None else {
+        Some(p(e) -> And(path))
+      }
+    }
+  }
+
+  trait CollectorWithPaths[T] extends TransformerWithPC with Traverser[Seq[T]] {
     type C = Seq[Expr]
-    val initC = Nil
+    val initC : C = Nil
     def register(e: Expr, path: C) = path :+ e
 
-    var results: Seq[(T, Expr)] = Nil
+    private var results: Seq[T] = Nil
 
-    override def rec(e: Expr, path: C) = {
-      if(matcher.isDefinedAt(e)) {
-        val res = matcher(e)
-        results = results :+ (res, And(path))
+    def collect(e: Expr, path: Seq[Expr]): Option[T]
+
+    def walk(e: Expr, path: Seq[Expr]): Option[Expr] = None
+
+    override final def rec(e: Expr, path: Seq[Expr]) = {
+      collect(e, path).foreach { results :+= _ }
+      walk(e, path) match {
+        case Some(r) => r
+        case _ => super.rec(e, path)
       }
-      super.rec(e, path)
     }
 
-    def traverse(e: Expr) = {
+    def traverse(funDef: FunDef): Seq[T] = {
+      val precondition = funDef.precondition.map(e => matchToIfThenElse(e)).toSeq
+      val precTs = funDef.precondition.map(e => traverse(e)).toSeq.flatten
+      val bodyTs = funDef.body.map(e => traverse(e, precondition)).toSeq.flatten
+      val postTs = funDef.postcondition.map(p => traverse(p._2)).toSeq.flatten
+      precTs ++ bodyTs ++ postTs
+    }
+
+    def traverse(e: Expr): Seq[T] = traverse(e, initC)
+
+    def traverse(e: Expr, init: Expr): Seq[T] = traverse(e, Seq(init))
+
+    def traverse(e: Expr, init: Seq[Expr]): Seq[T] = {
       results = Nil
-      rec(e, initC)
+      rec(e, init)
       results
     }
   }
@@ -1121,7 +1147,11 @@ object TreeOps {
       case _ => false
     }
   }
-  class ChooseCollectorWithPaths extends CollectorWithPaths[Choose](ChooseMatch)
+
+  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
+    val matcher = ChooseMatch.lift
+    def collect(e: Expr, path: Seq[Expr]) = matcher(e).map(_ -> And(path))
+  }
 
   /**
    * Eliminates tuples of arity 0 and 1.
