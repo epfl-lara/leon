@@ -1,7 +1,7 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
-package termination
+package utils
 
 /** This could be defined anywhere, it's just that the
     termination checker is the only place where it is used. */
@@ -47,7 +47,7 @@ object SCC {
     for(v <- allVertices) {
       if(!indices.isDefinedAt(v)) {
         strongConnect(v)
-      }  
+      }
     }
 
     components
