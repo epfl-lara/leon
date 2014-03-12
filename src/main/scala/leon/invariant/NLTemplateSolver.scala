@@ -39,9 +39,8 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   ctrTracker: ConstraintTracker, tempFactory: TemplateFactory, timeout: Int, tightBounds: Boolean) 
   extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
 
-  //flags controlling debugging
-  //TODO: there is serious bug in using incremental solving. Report this to z3 community
-  val debugIncremental = false
+  //flags controlling debugging  
+  val debugIncrementalVC = true
   val debugElimination = false
   val debugChooseDisjunct = false
   val debugAxioms = false
@@ -57,62 +56,53 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   val printReducedFormula = false
   val dumpInstantiatedVC = false
   
+  //flag controlling behavior
   private val farkasSolver = new FarkasLemmaSolver()
-  private val minimizer = new Minimizer(context, program, timeout)
+  private val minimizer = new Minimizer(context, program, timeout)  
   private val disableCegis = true
   private val solveAsBitvectors = false
   private val bvsize = 5
+  private val useIncrementalSolvingForVCs = true
+  private val useIncrementalSolvingForNLctrs = false
+  
+  //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'
+  private var funcVCs = Map[FunDef, Expr]()  
+  //TODO: can incremental solving be trusted ? There were problems earlier.
+  private var vcSolvers = Map[FunDef, UIFZ3Solver]()
+  private var paramParts = Map[FunDef, Expr]()   
+  private var solverWithNLctrs : UIFZ3Solver = null //not used as of now
+    
+  def initVCSolvers  {
+    funcVCs.keys.foreach(fd => {
+      val vcFormula = ctrTracker.getVC(fd)
+      val (paramPart, rest) = vcFormula.splitParamPart
+
+      if (debugIncrementalVC) {
+        assert(!InvariantUtil.isTemplateExpr(rest))
+      }
+      val vcSolver = new UIFZ3Solver(context, program)
+      vcSolver.assertCnstr(rest)
+      vcSolvers += (fd -> vcSolver)
+      paramParts += (fd -> paramPart)
+    })
+  }
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
-    /*For debugging:
-     * here we can plug-in the desired invariant and check if it falsifies 
-     * the verification condition      
-     * */
-    /*var tempMap = Map[Expr,Expr]()
-    funcVCs.foreach((pair)=> {
-      val (fd, vc)=pair      
-      if(fd.id.name.contains("size")) {
-        variablesOf(vc).foreach((id) => 
-          if(TemplateIdFactory.IsTemplateIdentifier(id) && id.name.contains("d"))
-            tempMap += (id.toVariable -> RealLiteral(0,1))
-          )          
-      }
-      else if(fd.id.name.contains("nnf")) {
-        variablesOf(vc).foreach((id) => 
-          if(TemplateIdFactory.IsTemplateIdentifier(id)){
-            if(id.name == "a?") tempMap += (id.toVariable -> RealLiteral(2,1))
-            if(id.name == "b?") tempMap += (id.toVariable -> RealLiteral(-1,1))
-          })
-      }
-    })
-    funcVCs.keys.foreach((fd) => {
-      val ivc = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempMap))
-      val tsolver = new UIFZ3Solver(context, program, autoComplete = false)
-      tsolver.assertCnstr(ivc)
-      if (!(tsolver.check == Some(false))) {
-        println("verification condition is not inductive for: " + fd.id)
-        val (dis, _) = getNLConstraints(fd, ivc, tempMap)
-        val disj = simplifyArithmetic(dis)
-        println("disjunct: " + disj)
-        println("inst-disjunct: " + simplifyArithmetic(TemplateInstantiator.instantiate(disj, tempMap)))      
-        System.console.readLine()
-      }      
-      tsolver.free()
-    })*/
-    val solverWithCtr = new UIFZ3Solver(this.context, program)
-    solverWithCtr.assertCnstr(tru)
-
+    //initialize vcs of functions
+    this.funcVCs = funcVCs
+    
+    if(useIncrementalSolvingForVCs) {
+      initVCSolvers
+    } 
     val initModel = {
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
       simplestModel
     }
-    val sol = solveUNSAT(initModel, funcVCs, tru, Seq(), solverWithCtr, Set())
-
-    solverWithCtr.free()
+    val sol = solveUNSAT(initModel, tru, Seq(), Set())    
 
     //set lowerbound map
     if (this.tightBounds)
@@ -139,8 +129,8 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     Stats.updateCumTime(mintime, "Total-Min-Time")
   }
 
-  def solveUNSAT(model: Map[Identifier, Expr], funcVCs: Map[FunDef, Expr], inputCtr: Expr, solvedDisjs: Seq[Expr],
-    solverWithCtr: UIFZ3Solver, seenCalls: Set[Call]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
+  def solveUNSAT(model: Map[Identifier, Expr], inputCtr: Expr, solvedDisjs: Seq[Expr], seenCalls: Set[Call])
+  : (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
@@ -192,7 +182,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   }
 
   //TODO: this code does too much imperative update.
-  //TODO: use guard to block a path and not use the path itself 
+  //TODO: use guards to block a path and not use the path itself 
   def invalidateSATDisjunct(inputCtr: Expr, funcVCs: Map[FunDef, Expr], model: Map[Identifier, Expr]): (Option[Boolean], Expr, Map[Identifier, Expr], Seq[Expr], Set[Call]) = {
 
     val tempIds = model.keys
@@ -532,7 +522,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     //for stats
     //reporter.info("starting UF/ADT elimination...")
     t1 = System.currentTimeMillis()
-    val callCtrs = constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
+    val callCtrs = (new UFADTEliminator(context, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
     t2 = System.currentTimeMillis()
     //reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")
@@ -641,220 +631,4 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     }
   }
 
-  /**
-   * Convert the theory formula into linear arithmetic formula.
-   * The calls could be functions calls or ADT constructor calls.
-   * The parameter 'doesAliasInCE' is an abbreviation for 'Does Alias in Counter Example'
-   */
-  val makeEfficient = true //this will happen at the expense of completeness  
-  def constraintsForCalls(calls: Set[Expr], model: Map[Identifier, Expr]): Seq[Expr] = {
-
-    var eqGraph = new UndirectedGraph[Expr]() //an equality graph
-    var neqSet = Set[(Expr, Expr)]()
-
-    //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
-    val vec = calls.toArray
-    val size = calls.size
-    var j = 0
-    val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
-
-      //an optimization: here we can exclude calls to maxFun from axiomatization, they will be inlined anyway
-      /*val shouldConsider = if(InvariantUtil.isCallExpr(call)) {
-        val BinaryOperator(_,FunctionInvocation(calledFun,_), _) = call
-        if(calledFun == DepthInstPhase.maxFun) false
-        else true               
-      } else true*/
-      var pairs = Set[(Expr, Expr)]()
-      for (i <- j + 1 until size) {
-        val call2 = vec(i)
-        if (mayAlias(call, call2)) {
-          pairs ++= Set((call, call2))
-        }
-      }
-      j += 1
-      acc ++ pairs
-    })
-    reporter.info("Number of compatible calls: " + product.size)
-    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
-
-    //check if two calls (to functions or ADT cons) have the same value in the model 
-    def doesAlias(call1: Expr, call2: Expr): Boolean = {
-      val BinaryOperator(Variable(r1), _, _) = call1
-      val BinaryOperator(Variable(r2), _, _) = call2
-      val resEquals = (model(r1) == model(r2))
-      if (resEquals) {
-        if (InvariantUtil.isCallExpr(call1)) {
-          val (ants, _) = axiomatizeCalls(call1, call2)
-          val antsHold = ants.forall(ant => {
-            val BinaryOperator(Variable(lid), Variable(rid), _) = ant
-            (model(lid) == model(rid))
-          })
-          antsHold
-        } else true
-      } else false
-    }
-
-    def predForEquality(call1: Expr, call2: Expr): Seq[Expr] = {
-
-      val eqs = if (InvariantUtil.isCallExpr(call1)) {        
-        val (_, rhs) = axiomatizeCalls(call1, call2)
-        Seq(rhs)
-      } else {
-        val (lhs, rhs) = axiomatizeADTCons(call1, call2)
-        lhs :+ rhs
-      }
-      //remove self equalities. 
-      val preds = eqs.filter(_ match {
-        case BinaryOperator(Variable(lid), Variable(rid), _) => {
-          if (lid == rid) false
-          else {
-            if (lid.getType == Int32Type || lid.getType == RealType) true
-            else false
-          }
-        }
-        case e @ _ => throw new IllegalStateException("Not an equality or Iff: " + e)
-      })
-      preds
-    }
-
-    //TODO: This has an incomplete way of handling ADTs for efficiency. Can this be fixed ?
-    def predForDisequality(call1: Expr, call2: Expr): Seq[Expr] = {
-      
-      val (ants, _) = if (InvariantUtil.isCallExpr(call1)) {
-        axiomatizeCalls(call1, call2)
-      } else {
-        axiomatizeADTCons(call1, call2)
-      }
-
-      if (makeEfficient && ants.exists(_ match {
-        case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
-        case _ => false
-      })) {
-        Seq()
-      } else {
-        var unsatIntEq: Option[Expr] = None
-        var unsatOtherEq: Option[Expr] = None
-        ants.foreach(eq =>
-          if (!unsatOtherEq.isDefined) {
-            eq match {
-              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
-                if (lhs.getType != Int32Type && lhs.getType != RealType)
-                  unsatOtherEq = Some(eq)
-                else if (!unsatIntEq.isDefined)
-                  unsatIntEq = Some(eq)
-              }
-              case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
-                unsatOtherEq = Some(eq)
-              case _ => ;
-            }
-          })
-        if (unsatOtherEq.isDefined) Seq() //need not add any constraint
-        else if (unsatIntEq.isDefined) {
-          //pick the constraint a < b or a > b that is satisfied
-          val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
-          val IntLiteral(lval) = model(lid)
-          val IntLiteral(rval) = model(rid)
-          val atom = if (lval < rval) LessThan(lhs, rhs)
-          else if (lval > rval) GreaterThan(lhs, rhs)
-          else throw IllegalStateException("Models are equal!!")
-
-          /*if (ants.exists(_ match {
-              case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
-              case _ => false
-            })) {
-              Stats.updateCumStats(1, "Diseq-blowup")
-            }*/
-          Seq(atom)
-        } else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
-      }
-    }
-    
-    val newctrs = product.foldLeft(Seq[Expr]())((acc, pair) => {
-      val (call1, call2) = (pair._1, pair._2)
-      //println("Assertionizing "+call1+" , call2: "+call2)      
-      if (!eqGraph.BFSReach(call1, call2) && !neqSet.contains((call1, call2)) && !neqSet.contains((call2, call1))) {
-        if (doesAlias(call1, call2)) {
-          eqGraph.addEdge(call1, call2)
-          //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
-          //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
-          acc ++ predForEquality(call1, call2)
-
-        } /*else if(this.callsWithAxioms.contains(call1)) {
-    	    //is this complete? 
-    	     * acc
-    	     * }*/ 
-        else {
-          neqSet ++= Set((call1, call2))
-          acc ++ predForDisequality(call1, call2)
-        }
-      } else acc
-    })
-    
-    reporter.info("Number of equal calls: " + eqGraph.getEdgeCount)
-    newctrs
-  }
-  
-
-  /**
-   * This function actually checks if two non-primitive expressions could have the same value
-   * (when some constraints on their arguments hold).
-   * Remark: notice  that when the expressions have ADT types, then this is basically a form of may-alias check.
-   */
-  def mayAlias(e1: Expr, e2: Expr): Boolean = {
-    //check if call and call2 are compatible
-    (e1, e2) match {
-      case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
-      case (Iff(_, FunctionInvocation(fd1, _)), Iff(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
-      case (Equals(_, CaseClass(cd1, _)), Equals(_, CaseClass(cd2, _))) if (cd1.id == cd2.id) => true
-      case (Equals(_, tp1 @ Tuple(e1)), Equals(_, tp2 @ Tuple(e2))) if (tp1.getType == tp2.getType) => true
-      case _ => false
-    }
-  }
-
-  /**
-   * This procedure generates constraints for the calls to be equal
-   */
-  def axiomatizeCalls(call1: Expr, call2: Expr): (Seq[Expr], Expr) = {
-
-    val (v1, fi1, v2, fi2) = if (call1.isInstanceOf[Equals]) {
-      val Equals(r1, f1 @ FunctionInvocation(_, _)) = call1
-      val Equals(r2, f2 @ FunctionInvocation(_, _)) = call2
-      (r1, f1, r2, f2)
-    } else {
-      val Iff(r1, f1 @ FunctionInvocation(_, _)) = call1
-      val Iff(r2, f2 @ FunctionInvocation(_, _)) = call2
-      (r1, f1, r2, f2)
-    }
-
-    val ants = (fi1.args.zip(fi2.args)).foldLeft(Seq[Expr]())((acc, pair) => {
-      val (arg1, arg2) = pair
-      acc :+ Equals(arg1, arg2)
-    })
-    val conseq = Equals(v1, v2)
-    (ants, conseq)
-  }
-
-  /**
-   * The returned pairs should be interpreted as a bidirectional implication
-   */
-  def axiomatizeADTCons(sel1: Expr, sel2: Expr): (Seq[Expr], Expr) = {
-
-    val (v1, args1, v2, args2) = sel1 match {
-      case Equals(r1 @ Variable(_), CaseClass(_, a1)) => {
-        val Equals(r2 @ Variable(_), CaseClass(_, a2)) = sel2
-        (r1, a1, r2, a2)
-      }
-      case Equals(r1 @ Variable(_), Tuple(a1)) => {
-        val Equals(r2 @ Variable(_), Tuple(a2)) = sel2
-        (r1, a1, r2, a2)
-      }
-    }
-
-    val ants = (args1.zip(args2)).foldLeft(Seq[Expr]())((acc, pair) => {
-      val (arg1, arg2) = pair
-      acc :+ Equals(arg1, arg2)
-    })
-    val conseq = Equals(v1, v2)
-    (ants, conseq)
-  }
 }

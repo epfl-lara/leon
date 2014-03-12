@@ -165,6 +165,25 @@ class Formula(initexpr: Expr) {
     (exprRoot, newGaurds)
   }
   
+  /**
+   * The first return value is param part and the second one is the 
+   * non-parametric part
+   */
+  def splitParamPart : (Expr, Expr) = {    
+    var paramPart = Seq[Expr]()
+    var rest = Seq[Expr]()
+    disjuncts.foreach(entry => {
+      val (g,ctrs) = entry
+      val ctrExpr = And(ctrs.map(_.toExpr))
+      if(InvariantUtil.isTemplateExpr(ctrExpr)) 
+        paramPart :+= ctrExpr
+      else 
+        rest :+= ctrExpr
+    })    
+    val conjs = conjuncts.map((entry) => Equals(entry._1, entry._2)).toSeq ++ roots    
+    (And(paramPart), And(rest ++ conjs ++ roots))
+  }  
+  
   def toExpr : Expr={
     val disjs = disjuncts.map((entry) => {
       val (g,ctrs) = entry

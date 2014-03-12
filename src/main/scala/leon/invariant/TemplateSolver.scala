@@ -120,7 +120,7 @@ abstract class TemplateSolver (context : LeonContext, program : Program,val root
       else acc ++ variablesOf(tempOption.get).filter(TemplateIdFactory.IsTemplateIdentifier _)      
     })
     
-    Stats.updateCounterStats(tempIds.size, "TemplateIds", "VC-refinement")           
+    Stats.updateCounterStats(tempIds.size, "TemplateIds", "VC-refinement")       
        
     val solution = solve(tempIds, funcExprs)        
     solution
