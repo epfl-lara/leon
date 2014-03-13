@@ -101,6 +101,11 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
       solver.checkAssumptions(assumptions.toSeq.map(toZ3Formula(_).get) : _*)  
     }
   }
+  
+  def getAssertions : Expr = {
+    val assers = solver.getAssertions.map((ast) => fromZ3Formula(null, ast))
+    And(assers)
+  }
 
   def getModel = {
     modelToMap(solver.getModel, variables)

@@ -136,12 +136,12 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
 
-    //TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
+    /*//TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
     if (this.debugIncremental) {
       solverWithCtr.assertCnstr(inputCtr)
-    }
+    }*/
 
-    val (res, newCtr, newModel, newdisjs, newcalls) = invalidateSATDisjunct(inputCtr, funcVCs, model)
+    val (res, newCtr, newModel, newdisjs, newcalls) = invalidateSATDisjunct(inputCtr, model)
     res match {
       case None => {
         //here, we cannot proceed and have to return unknown
@@ -166,7 +166,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
               minimizationCompleted
               (Some(getAllInvariants(model)), None)
             } else {
-              solveUNSAT(minModel, funcVCs, inputCtr, solvedDisjs, solverWithCtr, seenCalls)
+              solveUNSAT(minModel, inputCtr, solvedDisjs, seenCalls)
             }
           }
         } else {
@@ -176,14 +176,15 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       case Some(true) => {
         //here, we have found a new candidate invariant. Hence, the above process needs to be repeated
         minimized = false
-        solveUNSAT(newModel, funcVCs, newCtr, solvedDisjs ++ newdisjs, solverWithCtr, seenCalls ++ newcalls)
+        solveUNSAT(newModel, newCtr, solvedDisjs ++ newdisjs, seenCalls ++ newcalls)
       }
     }
   }
 
   //TODO: this code does too much imperative update.
   //TODO: use guards to block a path and not use the path itself 
-  def invalidateSATDisjunct(inputCtr: Expr, funcVCs: Map[FunDef, Expr], model: Map[Identifier, Expr]): (Option[Boolean], Expr, Map[Identifier, Expr], Seq[Expr], Set[Call]) = {
+  def invalidateSATDisjunct(inputCtr: Expr, model: Map[Identifier, Expr])
+  : (Option[Boolean], Expr, Map[Identifier, Expr], Seq[Expr], Set[Call]) = {
 
     val tempIds = model.keys
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
@@ -212,14 +213,15 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
       val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
 
-        val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
-        //here, block the counter-examples seen thus far for the function
+        //val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
+        //here, block the counter-examples seen thus far for the function        
+        //val instVCmodCE = And(instVC, disableCounterExs)
+        //val (data, ctrsForFun) = getNLConstraints(fd, instVCmodCE)
         val disableCounterExs = if (seenPaths.contains(fd)) {
           blockedCEs = true
           Not(Or(seenPaths(fd)))
         } else tru
-        val instVCmodCE = And(instVC, disableCounterExs)
-        val (data, ctrsForFun) = getNLConstraints(fd, instVCmodCE)
+        val (data, ctrsForFun) = getUNSATConstraints(fd, model, disableCounterExs)
         val (disjunct, callsInPath) = data
         if (ctrsForFun == tru) acc
         else {
@@ -389,28 +391,43 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   /**
    * Returns the counter example disjunct
    */
-  def getNLConstraints(fd: FunDef, instVC: Expr): ((Expr, Set[Call]), Expr) = {
+  def getUNSATConstraints(fd: FunDef, inModel: Map[Identifier, Expr], disableCounterExs: Expr): ((Expr, Set[Call]), Expr) = {
+    
+    val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
+    val innerSolver = if(this.useIncrementalSolvingForVCs) vcSolvers(fd)
+    			 else new UIFZ3Solver(context, program)
+    val instExpr = if (this.useIncrementalSolvingForVCs) {
+      val instParamPart = simplifyArithmetic(TemplateInstantiator.instantiate(this.paramParts(fd), tempVarMap))
+      instParamPart
+    } else {
+      val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
+      instVC
+    }                
+    
     //For debugging
-    if (this.dumpInstantiatedVC) {
+    if (this.dumpInstantiatedVC) {      
       val wr = new PrintWriter(new File("formula-dump.txt"))
-      println("Instantiated VC of " + fd.id + " is: " + instVC)
+      val fullExpr = if(this.useIncrementalSolvingForVCs) {
+        And(innerSolver.getAssertions,instExpr)
+      } else 
+        instExpr
+      println("Instantiated VC of " + fd.id + " is: " + fullExpr)
       wr.println("Function name: " + fd.id)
       wr.println("Formula expr: ")
-      ExpressionTransformer.PrintWithIndentation(wr, instVC)
+      ExpressionTransformer.PrintWithIndentation(wr, fullExpr)
       wr.flush()
       wr.close()
     }
-
     //throw an exception if the candidate expression has reals
-    if (InvariantUtil.hasReals(instVC))
-      throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instVC)
+    if (InvariantUtil.hasReals(instExpr))
+      throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instExpr)
 
-    val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program)))
+    val solver = SimpleSolverAPI(SolverFactory(() => innerSolver))
 
     reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()
     //val res = solEval.check
-    val (res, model) = solver.solveSAT(instVC)
+    val (res, model) = solver.solveSAT(instExpr)
     val t2 = System.currentTimeMillis()
     //reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "VC-check-time", "disjuncts")
@@ -419,7 +436,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     t1 = System.currentTimeMillis()
     res match {
       case None => {
-        throw IllegalStateException("cannot check the satisfiability of " + instVC)
+        throw IllegalStateException("cannot check the satisfiability of " + funcVCs(fd))
       }
       case Some(false) => {
         //do not generate any constraints
