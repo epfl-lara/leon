@@ -174,11 +174,12 @@ class Formula(initexpr: Expr) {
     var rest = Seq[Expr]()
     disjuncts.foreach(entry => {
       val (g,ctrs) = entry
-      val ctrExpr = And(ctrs.map(_.toExpr))
-      if(InvariantUtil.isTemplateExpr(ctrExpr)) 
-        paramPart :+= ctrExpr
-      else 
+      val ctrExpr = Equals(g,And(ctrs.map(_.toExpr)))
+      if(InvariantUtil.getTemplateVars(ctrExpr).isEmpty) 
         rest :+= ctrExpr
+      else
+        paramPart :+= ctrExpr
+        
     })    
     val conjs = conjuncts.map((entry) => Equals(entry._1, entry._2)).toSeq ++ roots    
     (And(paramPart), And(rest ++ conjs ++ roots))

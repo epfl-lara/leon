@@ -78,7 +78,11 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       val (paramPart, rest) = vcFormula.splitParamPart
 
       if (debugIncrementalVC) {
-        assert(!InvariantUtil.isTemplateExpr(rest))
+        assert(InvariantUtil.getTemplateVars(rest).isEmpty)
+        /*println("For function: "+fd.id)
+        //println("vc: "+vcFormula)
+        println("Param part: "+paramPart)
+        println("Rest: "+rest)*/
       }
       val vcSolver = new UIFZ3Solver(context, program)
       vcSolver.assertCnstr(rest)
@@ -86,6 +90,11 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       paramParts += (fd -> paramPart)
     })
   }
+  
+  def freeVCSolvers  {
+    vcSolvers.foreach(entry => entry._2.free)
+  }
+
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
@@ -102,7 +111,11 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
       simplestModel
     }
-    val sol = solveUNSAT(initModel, tru, Seq(), Set())    
+    val sol = solveUNSAT(initModel, tru, Seq(), Set())
+        
+    if(useIncrementalSolvingForVCs) {
+      freeVCSolvers
+    }
 
     //set lowerbound map
     if (this.tightBounds)
@@ -398,10 +411,10 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     			 else new UIFZ3Solver(context, program)
     val instExpr = if (this.useIncrementalSolvingForVCs) {
       val instParamPart = simplifyArithmetic(TemplateInstantiator.instantiate(this.paramParts(fd), tempVarMap))
-      instParamPart
+      And(instParamPart, disableCounterExs)
     } else {
       val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
-      instVC
+      And(instVC,disableCounterExs)
     }                
     
     //For debugging
@@ -422,12 +435,22 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     if (InvariantUtil.hasReals(instExpr))
       throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instExpr)
 
-    val solver = SimpleSolverAPI(SolverFactory(() => innerSolver))
-
     reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()
     //val res = solEval.check
-    val (res, model) = solver.solveSAT(instExpr)
+    val (res, model) = if (this.useIncrementalSolvingForVCs) {
+      innerSolver.push
+      innerSolver.assertCnstr(instExpr)
+      val solRes = innerSolver.check
+      innerSolver.pop()
+      solRes match {
+        case Some(true) => (solRes, innerSolver.getModel)
+        case _ => (solRes, Map[Identifier,Expr]())
+      }
+    } else {
+      val solver = SimpleSolverAPI(SolverFactory(() => innerSolver))
+      solver.solveSAT(instExpr)
+    }
     val t2 = System.currentTimeMillis()
     //reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "VC-check-time", "disjuncts")
