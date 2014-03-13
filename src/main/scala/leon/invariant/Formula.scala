@@ -88,6 +88,19 @@ class Formula(initexpr: Expr) {
         conjuncts += (gor -> newor)
         gor
       }
+      case And(args) => {
+        val newargs = args.map(arg => if (InvariantUtil.getTemplateVars(e).isEmpty) {
+          arg
+        } else {
+          //if the expression has template variables then we separate it using guards
+          val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
+          newDisjGuards :+= g
+          val ctrs = getCtrsFromExprs(Seq(arg))
+          disjuncts += (g -> ctrs)
+          g
+        })
+        And(newargs)
+      }       
       case _ => e
     })(ExpressionTransformer.simplify(simplifyArithmetic(ine)))
     

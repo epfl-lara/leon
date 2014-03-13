@@ -40,7 +40,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
 
   //flags controlling debugging  
-  val debugIncrementalVC = true
+  val debugIncrementalVC = false
   val debugElimination = false
   val debugChooseDisjunct = false
   val debugAxioms = false
@@ -79,10 +79,9 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
       if (debugIncrementalVC) {
         assert(InvariantUtil.getTemplateVars(rest).isEmpty)
-        /*println("For function: "+fd.id)
-        //println("vc: "+vcFormula)
+        println("For function: "+fd.id)        
         println("Param part: "+paramPart)
-        println("Rest: "+rest)*/
+        //println("Rest: "+rest)
       }
       val vcSolver = new UIFZ3Solver(context, program)
       vcSolver.assertCnstr(rest)
