@@ -703,8 +703,9 @@ trait ASTExtractors {
     object ExUpdate {
       def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
         case Apply(
-              Select(lhs, update),
-              index :: newValue :: Nil) if(update.toString == "update") => Some((lhs, index, newValue))
+              s @ Select(lhs, update),
+              index :: newValue :: Nil) if(s.symbol.fullName.endsWith("Array.update")) => 
+            Some((lhs, index, newValue))
         case _ => None
       }
     }
