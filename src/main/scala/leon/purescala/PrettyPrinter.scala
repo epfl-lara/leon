@@ -472,6 +472,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case th: This =>
         sb.append("this")
 
+      case tfd: TypedFunDef =>
+        sb.append("typed def ")
+        pp(tfd.id, p)
+        ppNary(tfd.tps, "[", ", ", "]")
+
       case fd: FunDef =>
         for(a <- fd.annotations) {
           ind
