@@ -1,4 +1,4 @@
-Leon 2.3
+Leon 2.3 [![Build Status](https://travis-ci.org/epfl-lara/leon.png?branch=master)](https://travis-ci.org/epfl-lara/leon)
 ==========
 
 Getting Started
