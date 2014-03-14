@@ -43,8 +43,7 @@ class Minimizer(
   private val debugMinimization = true
   /**
    * Here we are assuming that that initModel is a model for ctrs
-   * TODO: make sure that the template for rootFun is the time template
-   * TODO: assuming that the value of coefficients in +ve in the solution
+   * TODO: make sure that the template for rootFun is the time template      
    */
   val MaxIter = 16 //note we may not be able to represent anything beyond 2^16
   val MaxInt = Int.MaxValue
@@ -69,25 +68,26 @@ class Minimizer(
   def tightenTimeBounds(timeTemplate: Expr, inputCtr: Expr, initModel: Map[Identifier, Expr]): Map[Identifier, Expr] = {
     //the order in which the template variables are minimized is based on the level of nesting of the  terms
     val tempvarNestMap: Map[Variable, Int] = computeCompositionLevel(timeTemplate)
-    val orderedTempVars = tempvarNestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
+    val orderedTempVars = tempvarNestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)    
 
     //do a binary search on sequentially on each of these tempvars      
     val solver = SimpleSolverAPI(
       new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
-        timeout * 1000))
+        timeout * 1000))       
 
     println("minimizing...")
-    var currentModel = initModel
+    var currentModel = initModel    
     orderedTempVars.foldLeft(inputCtr: Expr)((acc, tvar) => {
-
+     
       var upperBound = if (currentModel.contains(tvar.id)) {
         currentModel(tvar.id).asInstanceOf[RealLiteral]
       } else {
         initModel(tvar.id).asInstanceOf[RealLiteral]
       }
       //note: the lower bound is an integer by construction
-      var lowerBound: Option[RealLiteral] = if (lowerBoundMap.contains(tvar)) Some(lowerBoundMap(tvar)) else None
-
+      var lowerBound: Option[RealLiteral] = if (tvar == orderedTempVars(0) && lowerBoundMap.contains(tvar)) 
+    	  										Some(lowerBoundMap(tvar)) 
+    	  										else None
       if (this.debugMinimization) {
         println("Minimizing variable: " + tvar + " Initial Bounds: [" + upperBound +","+
             (if(lowerBound.isDefined) lowerBound.get else "_")+"]")
@@ -128,8 +128,8 @@ class Minimizer(
               And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound.get))
             } else LessEquals(tvar, currval)
 
-            //val t1 = System.currentTimeMillis()
-            val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
+            //val t1 = System.currentTimeMillis()            
+            val (res,newModel) = solver.solveSAT(And(acc,boundCtr))              
             //val t2 = System.currentTimeMillis()
             //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
             res match {
@@ -151,21 +151,20 @@ class Minimizer(
               case _ => {
                 //here we have a new lower bound: currval
                 lowerBound = Some(currval)
-
                 if (this.debugMinimization)
                   println("Found new lower bound: " + currval)
               }
             }
           }
-        }
+        }        
       } while (continue && iter < MaxIter)
       //here, we found a best-effort minimum
       if (lowerBound.isDefined) {
         updateLowerBound(tvar, lowerBound.get)
       }
-
       And(acc, Equals(tvar, currentModel(tvar.id)))
-    })
+    })        
+    
     println("Minimization complete...")
     initModel.keys.map((id) => {
       if (currentModel.contains(id))

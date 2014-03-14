@@ -71,7 +71,7 @@ object TemplateInstantiator {
         instantiateTemplate(linearTemp, tempVarMap)
       }
       case _ => tempExpr
-    })(expr)
+    })(expr)    
     inv
   }
   

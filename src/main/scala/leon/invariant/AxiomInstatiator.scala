@@ -47,8 +47,6 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   //a mapping from axioms keys (for now pairs of calls) to the guards
   protected var axiomRoots = Map[(Call,Call),Variable]()
    
-  //def getAxiomRoot(key: (Call,Call)) : Option[Variable] =  axiomRoots.get(key)
-  
   def instantiate() = {
                  
     val funcs = ctrTracker.getFuncs        
@@ -75,6 +73,8 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
       exploredGuards ++= newguards
     })    
   }
+  
+  //TODO: adding distributivity axiom
    
   def monotonizeCalls(call1: Call, call2: Call): (Seq[Expr], Expr) = {
     if(call1.fi.funDef.id != call2.fi.funDef.id) 

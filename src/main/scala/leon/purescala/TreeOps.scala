@@ -1441,6 +1441,7 @@ object TreeOps {
 
     def fix[A](f: (A) => A)(a: A): A = {
       val na = f(a)
+      //println("New value: "+na)
       if(a == na) a else fix(f)(na)
     }
 

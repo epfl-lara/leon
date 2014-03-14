@@ -26,13 +26,15 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
 
 //A set of implications
-//'initexpr' is required to be in negation normal form and And/Ors have been pulled up   
+//'initexpr' is required to be in negation normal form and And/Ors have been pulled up
+//TODO: optimize the representation so that we use fewer guards.
 class Formula(initexpr: Expr) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
-  //protected val debugInstrumentation = false
+  val useImplies = true
   
+  val combiningOp = if(useImplies) Implies.apply _ else Equals.apply _  
   protected var disjuncts = Map[Variable, Seq[Constraint]]() //a mapping from guards to conjunction of atoms
   protected var conjuncts = Map[Variable, Expr]() //a mapping from guards to disjunction of atoms  
   val firstRoot : Variable = addConstraints(initexpr)._1  
@@ -187,32 +189,72 @@ class Formula(initexpr: Expr) {
     var rest = Seq[Expr]()
     disjuncts.foreach(entry => {
       val (g,ctrs) = entry
-      val ctrExpr = Equals(g,And(ctrs.map(_.toExpr)))
+      val ctrExpr = combiningOp(g,And(ctrs.map(_.toExpr)))
       if(InvariantUtil.getTemplateVars(ctrExpr).isEmpty) 
         rest :+= ctrExpr
       else
         paramPart :+= ctrExpr
         
     })    
-    val conjs = conjuncts.map((entry) => Equals(entry._1, entry._2)).toSeq ++ roots    
+    val conjs = conjuncts.map((entry) => combiningOp(entry._1, entry._2)).toSeq ++ roots    
     (And(paramPart), And(rest ++ conjs ++ roots))
   }  
   
   def toExpr : Expr={
     val disjs = disjuncts.map((entry) => {
       val (g,ctrs) = entry
-      Equals(g, And(ctrs.map(_.toExpr)))
+      combiningOp(g, And(ctrs.map(_.toExpr)))
     }).toSeq
-    val conjs = conjuncts.map((entry) => Equals(entry._1, entry._2)).toSeq
+    val conjs = conjuncts.map((entry) => combiningOp(entry._1, entry._2)).toSeq
     And(disjs ++ conjs ++ roots)
   } 
+  
+  //unpack the disjunct and conjuncts by removing all guards
+  def unpackedExpr : Expr = {
+    //replace all conjunct guards in disjuncts by their mapping
+    val disjs : Map[Expr,Expr] = disjuncts.map((entry) => {
+      val (g,ctrs) = entry
+      val newctrs = ctrs.map(_ match {
+        case BoolConstraint(g@Variable(_)) if conjuncts.contains(g) => conjuncts(g)
+        case ctr@_ => ctr.toExpr 
+      })
+      (g, And(newctrs))
+    })
+    val rootexprs = roots.map(_ match {
+        case g@Variable(_) if conjuncts.contains(g) => conjuncts(g)
+        case e@_ => e 
+      })    
+    //replace every guard in the 'disjs' by its disjunct. DO this as long as every guard is replaced in every disjunct
+    var unpackedDisjs = disjs
+    var replacedGuard = true
+    //var removeGuards = Seq[Variable]()
+    while(replacedGuard) {      
+      replacedGuard = false
+      
+      val newDisjs = unpackedDisjs.map(entry => {
+        val (g,d) = entry
+        val guards = variablesOf(d).collect{ case id@_ if disjuncts.contains(id.toVariable) => id.toVariable }
+        if (guards.isEmpty) entry
+        else {
+          /*println("Disunct: "+d)
+          println("guard replaced: "+guards)*/
+          replacedGuard = true
+          //removeGuards ++= guards
+          (g, replace(unpackedDisjs, d))
+        }           
+      })
+      unpackedDisjs = newDisjs
+    }   
+    //replace all the 'guards' in root using 'unpackedDisjs'
+    replace(unpackedDisjs, And(rootexprs))
+  }
   
   override def toString : String = {
     val disjStrs = disjuncts.map((entry) => {
       val (g,ctrs) = entry
-      simplifyArithmetic(Equals(g, And(ctrs.map(_.toExpr)))).toString
+      simplifyArithmetic(combiningOp(g, And(ctrs.map(_.toExpr)))).toString
     }).toSeq
-    val conjStrs = conjuncts.map((entry) => Equals(entry._1, entry._2).toString).toSeq
+    val conjStrs = conjuncts.map((entry) => combiningOp(entry._1, entry._2).toString).toSeq
     val rootStrs = roots.map(_.toString)
     (disjStrs ++ conjStrs ++ rootStrs).foldLeft("")((acc,str) => acc + "\n" + str)
   } 

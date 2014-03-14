@@ -46,6 +46,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   val debugAxioms = false
   val verifyInvariant = false
   val debugReducedFormula = false
+  val trackUnpackedVCCTime = false
 
   //print flags
   val printCounterExample = false
@@ -81,7 +82,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         assert(InvariantUtil.getTemplateVars(rest).isEmpty)
         println("For function: "+fd.id)        
         println("Param part: "+paramPart)
-        //println("Rest: "+rest)
+        //println("Rest: "+rest)        
       }
       val vcSolver = new UIFZ3Solver(context, program)
       vcSolver.assertCnstr(rest)
@@ -409,13 +410,13 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     val innerSolver = if(this.useIncrementalSolvingForVCs) vcSolvers(fd)
     			 else new UIFZ3Solver(context, program)
     val instExpr = if (this.useIncrementalSolvingForVCs) {
-      val instParamPart = simplifyArithmetic(TemplateInstantiator.instantiate(this.paramParts(fd), tempVarMap))
-      And(instParamPart, disableCounterExs)
+      val instParamPart = TemplateInstantiator.instantiate(this.paramParts(fd), tempVarMap)      
+      val simpPart = simplifyArithmetic(instParamPart)      
+      And(simpPart, disableCounterExs)
     } else {
       val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
       And(instVC,disableCounterExs)
-    }                
-    
+    }                    
     //For debugging
     if (this.dumpInstantiatedVC) {      
       val wr = new PrintWriter(new File("formula-dump.txt"))
@@ -436,7 +437,6 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
     reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()
-    //val res = solEval.check
     val (res, model) = if (this.useIncrementalSolvingForVCs) {
       innerSolver.push
       innerSolver.assertCnstr(instExpr)
@@ -449,11 +449,26 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     } else {
       val solver = SimpleSolverAPI(SolverFactory(() => innerSolver))
       solver.solveSAT(instExpr)
+    }    
+    val vccTime = (System.currentTimeMillis() -t1)
+    reporter.info("checked VC inst... in " + vccTime / 1000.0 + "s")
+    Stats.updateCounterTime(vccTime, "VC-check-time", "disjuncts")
+    Stats.updateCumTime(vccTime, "TotalVCCTime")
+
+    //for debugging
+    if (this.trackUnpackedVCCTime) {      
+      val upVCinst = simplifyArithmetic(TemplateInstantiator.instantiate(ctrTracker.getVC(fd).unpackedExpr, tempVarMap))
+      Stats.updateCounterStats(InvariantUtil.atomNum(upVCinst), "UP-VC-size", "disjuncts")
+      
+      t1 = System.currentTimeMillis()
+      val (res2, _) = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program))).solveSAT(upVCinst)
+      val unpackedTime = System.currentTimeMillis() - t1
+      if(res != res2) {
+        throw IllegalStateException("Unpacked VC produces different result: "+upVCinst)
+      }
+      Stats.updateCumTime(unpackedTime, "TotalUPVCCTime")
+      reporter.info("checked UP-VC inst... in " + unpackedTime / 1000.0 + "s")
     }
-    val t2 = System.currentTimeMillis()
-    //reporter.info("checked VC inst... in " + (t2 - t1) / 1000.0 + "s")
-    Stats.updateCounterTime((t2 - t1), "VC-check-time", "disjuncts")
-    Stats.updateCumTime((t2 - t1), "TotalVCCTime")
 
     t1 = System.currentTimeMillis()
     res match {
