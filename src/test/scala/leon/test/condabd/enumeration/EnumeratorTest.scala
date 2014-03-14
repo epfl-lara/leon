@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 package leon.test.condabd
 
 import leon.synthesis.condabd.insynth.InSynth

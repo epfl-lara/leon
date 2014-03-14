@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 import leon.lang._
 
 /* The calculus of Computation textbook */

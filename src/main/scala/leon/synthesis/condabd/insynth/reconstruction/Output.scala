@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 package leon.synthesis.condabd.insynth.reconstruction
 
 import insynth.structures.Weight._

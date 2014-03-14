@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 package leon.test.condabd.insynth.testutil
 
 import leon.synthesis.condabd.insynth.leon.query.{ LeonQueryBuilder => QueryBuilder, _ }

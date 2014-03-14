@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 object Fibonacci {
   def fib(x: Int) : Int = {
     require(x >= 0)

@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 package leon.synthesis.condabd.insynth.leon
 
 import leon.purescala.TypeTrees.{ TypeTree => LeonType }

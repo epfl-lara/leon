@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 package leon.synthesis.condabd
 
 import scala.collection.mutable.{ Map => MutableMap, Set => MutableSet }

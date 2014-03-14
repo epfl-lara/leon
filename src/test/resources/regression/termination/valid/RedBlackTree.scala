@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 import scala.collection.immutable.Set
 //import scala.collection.immutable.Multiset
 

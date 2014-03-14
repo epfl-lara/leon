@@ -1,0 +1,5 @@
+#!/bin/bash --posix
+SCALACLASSPATH="/home/ekneuss/git/leon/src/main/resources:/home/ekneuss/git/leon/target/scala-2.10/classes:/home/ekneuss/git/leon/unmanaged/64/vanuatoo_2.10-0.1.jar:/home/ekneuss/git/leon/unmanaged/64/scalaz3-unix-64b-2.1.jar:/home/ekneuss/git/leon/unmanaged/64/insynth_2.10-2.1.jar:/home/ekneuss/git/leon/unmanaged/64/cafebabe_2.10-1.2.jar:/home/ekneuss/.sbt/boot/scala-2.10.2/lib/scala-library.jar:/home/ekneuss/.sbt/boot/scala-2.10.2/lib/scala-compiler.jar:/home/ekneuss/.ivy2/cache/org.scala-lang/scala-reflect/jars/scala-reflect-2.10.2.jar:/home/ekneuss/.ivy2/cache/com.typesafe.akka/akka-actor_2.10/jars/akka-actor_2.10-2.2.0.jar:/home/ekneuss/.ivy2/cache/com.typesafe/config/bundles/config-1.0.2.jar"
+
+source /home/ekneuss/git/leon/./setupenv
+valgrind --trace-children=yes java -Xmx2G -Xms512M -classpath ${SCALACLASSPATH} -Dscala.home="$SCALA_HOME" -Dscala.usejavacp=true scala.tools.nsc.MainGenericRunner -classpath ${SCALACLASSPATH} leon.Main $@ 2>&1 | tee last.log

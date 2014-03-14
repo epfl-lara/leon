@@ -1,3 +1,5 @@
+/* Copyright 2009-2014 EPFL, Lausanne */
+
 package leon.synthesis.condabd.insynth.leon
 
 import insynth.structures.{ SuccinctType, Const, Arrow, TSet }

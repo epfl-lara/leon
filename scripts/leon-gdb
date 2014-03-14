@@ -1,0 +1,2 @@
+#!/bin/bash --posix
+gdb /opt/oracle-jdk-bin-1.7.0.45/bin/java `ps aux | grep java | grep leon | awk '{ print $2}'`
