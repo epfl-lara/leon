@@ -10,11 +10,10 @@ import purescala.TypeTrees._
 
 class FunctionInfo(val fundef : FunDef) {
   var template : Option[Expr] = None
-  var isMonotonic : Boolean = false
-  //TODO: handle monotonicity in the presence of time etc.
-  //Provide ways for specifying other lemmas about a function
-  //more information to be added here
   var isTheoryOperation = false
+  var isMonotonic : Boolean = false
+  var isCommutative : Boolean = false
+  var isDistributive: Boolean = false
 }
 
 object FunctionInfoFactory {
@@ -58,24 +57,12 @@ object FunctionInfoFactory {
     }
   }
   
-  def isMonotonic(fd: FunDef ) ={ 
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.isMonotonic
-    } else false
-  }  
-  
   def getOrMakeInfo(fd: FunDef) : FunctionInfo = {
     functionInfos.getOrElse(fd, { 
       val info = new FunctionInfo(fd)
       functionInfos += (fd -> info)
       info
     })
-  }
-  
-  def setMonotonicity(fd: FunDef) = {
-    val funinfo = getOrMakeInfo(fd) 
-    funinfo.isMonotonic = true 
   }
   
   def setTheoryOperation(fd: FunDef) = {
@@ -87,6 +74,30 @@ object FunctionInfoFactory {
     if(functionInfos.contains(fd)) {
       val info = functionInfos(fd)
       info.isTheoryOperation
+    } else false
+  }
+  
+  def setMonotonicity(fd: FunDef) = {
+    val funinfo = getOrMakeInfo(fd) 
+    funinfo.isMonotonic = true 
+  }
+  
+  def isMonotonic(fd: FunDef ) ={ 
+    if(functionInfos.contains(fd)) {
+      val info = functionInfos(fd)
+      info.isMonotonic
+    } else false
+  }
+  
+  def setCommutativity(fd: FunDef) = {
+    val funinfo = getOrMakeInfo(fd) 
+    funinfo.isCommutative = true 
+  }
+  
+  def isCommutative(fd: FunDef ) ={ 
+    if(functionInfos.contains(fd)) {
+      val info = functionInfos(fd)
+      info.isCommutative
     } else false
   }
 }

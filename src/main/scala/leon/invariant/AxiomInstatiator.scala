@@ -39,24 +39,28 @@ import leon.plugin.NonlinearityEliminationPhase
 class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {              
     
   protected val debugAxiomInstantiation = false
+  
+  protected var callsWithAxioms = Set[Call]() //calls with axioms so far seen
+  type AxiomKey = Seq[Call]
+  protected var axiomRoots = Map[AxiomKey,Variable]() //a mapping from axioms keys (for now pairs of calls) to the guards     
     
-  //the guards of the set of calls that were already processed
-  protected var exploredGuards = Set[Variable]()
-  //calls with axioms so far seen
-  protected var callsWithAxioms = Set[Call]() 
-  //a mapping from axioms keys (for now pairs of calls) to the guards
-  protected var axiomRoots = Map[(Call,Call),Variable]()
+  protected var exploredGuards = Set[Variable]() //the guards of the set of calls that were already processed
+  def explored(guards: Set[Variable]) = {
+    exploredGuards ++= guards
+  }
+
+  def getUnexploredCalls(formula: Formula): Set[(Variable,Call)] = {    
+    val disjuncts = formula.disjunctsInFormula
+    val newguards = disjuncts.keySet.diff(exploredGuards)
+    newguards.flatMap(g => disjuncts(g).collect { case c: Call => (g,c) })    
+  }
    
-  def instantiate() = {
-                 
+  def instantiate() = {                 
     val funcs = ctrTracker.getFuncs        
     funcs.foreach((fd) => {
-      val formula = ctrTracker.getVC(fd)      
-      
-      //collect the blockers of the new disjuncts
-      val disjuncts = formula.disjunctsInFormula
-      val newguards = disjuncts.keySet.diff(exploredGuards)      
-      val newCalls = newguards.flatMap(g => disjuncts(g).collect{ case c: Call => c })      
+      val formula = ctrTracker.getVC(fd)                  
+      val newEntries = getUnexploredCalls(formula)
+      val newguards = newEntries.map(_._1)     
       
 //      if(this.debugAxiomInstantiation) {        
 //        println("Instantianting axioms over: " + newCalls)
@@ -69,40 +73,69 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
 //        println("Printed instFormula to file: " + filename)
 //      }
       
-      instantiateAxioms(formula, newCalls)
-      exploredGuards ++= newguards
+      instantiateAxioms(formula, newEntries)
+      explored(newguards)
     })    
   }
   
-  //TODO: adding distributivity axiom
-   
-  def monotonizeCalls(call1: Call, call2: Call): (Seq[Expr], Expr) = {
-    if(call1.fi.funDef.id != call2.fi.funDef.id) 
-      throw IllegalStateException("Monotonizing calls to different functions: "+call1+","+call2)
-   
-    val ant = (call1.fi.args zip call2.fi.args).foldLeft(Seq[Expr]())((acc, pair) => {
-      val lesse = LessEquals(pair._1, pair._2)
-      lesse +: acc
-    })
-    val conseq = LessEquals(call1.retexpr, call2.retexpr)
-    (ant, conseq)
-  }
-   
-  /**
-   * TODO: Use least common ancestor etc. to avoid axiomatizing calls along different disjuncts
-   */
-  def instantiateAxioms(formula: Formula, calls: Set[Call]) = {
-
+  def instantiateAxioms(formula: Formula, callGuardPairs: Set[(Variable,Call)]) = {
+    
     val debugSolver = if (this.debugAxiomInstantiation) {
       val sol = new UIFZ3Solver(ctx, program)
       sol.assertCnstr(formula.toExpr)
       Some(sol)
     } else None
+    
+    val (cd1,inst1) = instantiateUnaryAxioms(formula,callGuardPairs)
+    val (cd2,inst2) = instantiateBinaryAxioms(formula,callGuardPairs.map(_._2))
+        
+    callsWithAxioms ++= (cd1 ++ cd2)     
+    val axiomInsts = inst1 ++ inst2 //this is a disjoint union as keys are different for 'inst1' and 'inst2'                    
+    
+    Stats.updateCounterStats(InvariantUtil.atomNum(And(axiomInsts)), "AxiomBlowup", "VC-refinement")
+    ctx.reporter.info("Number of axiom instances: "+axiomInsts.size)
 
-    val newCallsWithAxioms = calls.filter(call => {
-      //for now handling only monotonicity axiom
-      FunctionInfoFactory.isMonotonic(call.fi.funDef)
-    })
+    if (this.debugAxiomInstantiation) {
+      println("Instantianting axioms over: " + (cd1 ++ cd2))
+      println("Instantiated Axioms: ")
+      axiomInsts.foreach((ainst) => {
+        println(ainst)
+        debugSolver.get.assertCnstr(ainst)
+        val res = debugSolver.get.check
+        res match {
+          case Some(false) =>
+            println("adding axiom made formula unsat!!")
+          case _ => ;
+        }
+      })
+      debugSolver.get.free
+    }
+  }
+  
+  def instantiateUnaryAxioms(formula: Formula, callGuardPairs: Set[(Variable,Call)]) : (Set[Call], Seq[Expr]) = {
+    val callToAxioms = callGuardPairs.collect {
+      case (g, call) if (hasUnaryAxiom(call)) => {
+        val axiomInst = unaryAxiom(call)
+
+        import ExpressionTransformer._
+        val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
+        val (_, _) = formula.conjoinWithDisjunct(g, nnfAxiom)
+        //note: we need not update axiom roots here.
+        (call, axiomInst)
+      }
+    }.toMap
+    (callToAxioms.keySet, callToAxioms.values.toSeq)
+  }
+  
+  /**
+   * Here, we assume that axioms do not introduce calls. 
+   * If this does not hold then 'guards' have to be used while instantiating axioms so as
+   * to compute correct verification conditions. 
+   * TODO: Use least common ancestor etc. to avoid axiomatizing calls along different disjuncts
+   */
+  def instantiateBinaryAxioms(formula: Formula, calls: Set[Call]) = {
+
+    val newCallsWithAxioms = calls.filter(hasBinaryAxiom _)
 
     def isInstantiable(call1: Call, call2: Call): Boolean = {
       //important: check if the two calls refer to the same function      
@@ -115,57 +148,86 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
       
     val product = cross(newCallsWithAxioms,callsWithAxioms).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
       cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
-    
-    //update calls with axioms
-    callsWithAxioms ++= newCallsWithAxioms
-            
-    val axiomInstances = product.foldLeft(Seq[Expr]())((acc, pair) => {      
-      val (ants, conseq) = monotonizeCalls(pair._1, pair._2)
-      val axiomInst = Implies(And(ants), conseq) 
+             
+    val axiomInsts = product.foldLeft(Seq[Expr]())((acc,pair) => {      
+      val axiomInst = binaryAxiom(pair._1, pair._2)
       
       import ExpressionTransformer._
-      val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
-      
+      val nnfAxiom = pullAndOrs(TransformNot(axiomInst))      
       val (axroot,_) = formula.conjoinWithRoot(nnfAxiom)
-      axiomRoots += (pair -> axroot)
+      axiomRoots += (Seq(pair._1,pair._2) -> axroot)
       
-      acc :+ axiomInst
+      acc :+ axiomInst    
     })
     
-    Stats.updateCounterStats(InvariantUtil.atomNum(And(axiomInstances)), "AxiomBlowup", "VC-refinement")
-    ctx.reporter.info("Number of axiom instances: "+axiomInstances.size)
-
-    if (this.debugAxiomInstantiation) {
-      println("Instantianting axioms over: " + newCallsWithAxioms)
-      println("Instantiated Axioms: ")
-      axiomInstances.foreach((ainst) => {
-        println(ainst)
-        debugSolver.get.assertCnstr(ainst)
-        val res = debugSolver.get.check
-        res match {
-          case Some(false) =>
-            println("adding axiom made formula unsat!!")
-          case _ => ;
-        }
-      })
-      debugSolver.get.free
-    }       
+    (newCallsWithAxioms, axiomInsts)
   }
-    
+  
   /**
    * Note: taking a formula as input may not be necessary. We can store it as a part of the state
    * TODO: can we use transitivity here to optimize ?
    */
-  def axiomsForCalls(formula: Formula, calls: Set[Call], model: Map[Identifier, Expr]): Seq[Constraint] = {    
+  def axiomsForCalls(formula: Formula, calls: Set[Call], model: Map[Identifier, Expr]): Seq[Constraint] = {  
+    //note: unary axioms need not be instantiated     
+    //consider only binary axioms
     (for (x<-calls; y<-calls) yield (x,y)).foldLeft(Seq[Constraint]())((acc, pair) => {      
       val (c1,c2) = pair
       if(c1 != c2){
-        val axRoot = axiomRoots.get(pair)
+        val axRoot = axiomRoots.get(Seq(c1,c2))
         if (axRoot.isDefined)
           acc ++ formula.pickSatDisjunct(axRoot.get, model)
         else acc        
       } else acc      
     })
   }
-
+  
+  //Add more axioms here, if necessary
+  var commuCalls = Set[Call]()
+  def hasUnaryAxiom(call: Call) : Boolean = {
+    //important: here we need to avoid apply commutativity on the axioms instances
+    (FunctionInfoFactory.isCommutative(call.fi.funDef) && !commuCalls.contains(call)) 
+  }
+  
+  def hasBinaryAxiom(call: Call) : Boolean = {
+	FunctionInfoFactory.isMonotonic(call.fi.funDef)   
+  }
+  
+  def unaryAxiom(call: Call) : Expr = {
+    val callee = call.fi.funDef
+    if(FunctionInfoFactory.isCommutative(callee)) {
+      //note: commutativity is defined only for binary operations
+      val Seq(a1,a2) = call.fi.args
+      val newret = TVarFactory.createTemp("cm").toVariable
+      val newfi = FunctionInvocation(callee,Seq(a2,a1))
+      val newcall = Equals(newret,newfi)
+      
+      commuCalls += Call(newret, newfi)
+      
+      And(newcall, Equals(newret, call.retexpr))
+    } else 
+      throw IllegalStateException("Call does not have unary axiom: "+call)
+  }
+  
+  def binaryAxiom(call1: Call, call2: Call) : Expr = {    
+    
+    if(call1.fi.funDef.id != call2.fi.funDef.id) 
+      throw IllegalStateException("Instantiating binary axiom on calls to different functions: "+call1+","+call2)
+    
+    val callee = call1.fi.funDef
+    if(FunctionInfoFactory.isMonotonic(callee)) {
+      monotonizeCalls(call1,call2)      
+    } else 
+      throw IllegalStateException("Call does not have binary axiom: "+call1)
+  }
+  
+  def monotonizeCalls(call1: Call, call2: Call): Expr = {    
+    val ant = (call1.fi.args zip call2.fi.args).foldLeft(Seq[Expr]())((acc, pair) => {
+      val lesse = LessEquals(pair._1, pair._2)
+      lesse +: acc
+    })
+    val conseq = LessEquals(call1.retexpr, call2.retexpr)
+    Implies(And(ant), conseq)    
+  }
+   
+  //TODO: add distributivity axiom
 }
