@@ -36,22 +36,20 @@ class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef,
   protected var funcVCs = Map[FunDef,Formula]()
   
   val vcRefiner = new RefinementEngine(context, program, this, temFactory)
-  val axiomInstantiator = new AxiomInstantiator(context, program, this)
+  val specInstantiator = new AxiomInstantiator(context, program, this)
   
   def getFuncs : Seq[FunDef] = funcVCs.keys.toSeq
   def hasVC(fdef: FunDef) = funcVCs.contains(fdef)  
   def getVC(fd: FunDef) : Formula = funcVCs(fd)
   
   def addVC(fd: FunDef, vc: Expr) = {       
-    funcVCs += (fd -> new Formula(vc))     
+    funcVCs += (fd -> new Formula(fd, vc))     
   }
   
-  def initialize = {
-    //initialize unrolling
-    vcRefiner.initialize
+  def initialize = {    
     //add axioms 
     if(!disableAxioms) {
-      this.axiomInstantiator.instantiate
+      this.specInstantiator.instantiate
     }
   }
 
@@ -59,7 +57,7 @@ class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef,
     val unrolledCalls = vcRefiner.refineAbstraction(toUnrollCalls)    
     //add axioms
     if(!disableAxioms) {
-      this.axiomInstantiator.instantiate
+      this.specInstantiator.instantiate
     }
     unrolledCalls
   }  

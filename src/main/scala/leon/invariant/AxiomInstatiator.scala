@@ -132,6 +132,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
    * If this does not hold then 'guards' have to be used while instantiating axioms so as
    * to compute correct verification conditions. 
    * TODO: Use least common ancestor etc. to avoid axiomatizing calls along different disjuncts
+   * TODO: can we avoid axioms like (a <= b ^ x<=y => p <= q), (x <= y ^ a<=b => p <= q), ...
    */
   def instantiateBinaryAxioms(formula: Formula, calls: Set[Call]) = {
 
@@ -184,7 +185,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   //Add more axioms here, if necessary
   var commuCalls = Set[Call]()
   def hasUnaryAxiom(call: Call) : Boolean = {
-    //important: here we need to avoid apply commutativity on the axioms instances
+    //important: here we need to avoid applying commutativity on the calls produced by axioms instantiation
     (FunctionInfoFactory.isCommutative(call.fi.funDef) && !commuCalls.contains(call)) 
   }
   
@@ -231,3 +232,201 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
    
   //TODO: add distributivity axiom
 }
+
+//a set of functions for which we can assume templates
+  private var useTemplates = Set[FunDef]()
+  
+  //a set of calls for which templates or specifications have not been assumed
+  private var untemplatedCalls = Set[Call]()  
+  private var unspecdCalls = Set[Call]()
+  
+  def initialize() : Unit = {
+    
+    //we can use templates for all the functions in the ctrTracker
+    useTemplates ++= ctrTracker.getFuncs
+       
+    //initialize all heads
+    headCalls = findNewHeads        
+    
+    //for debugging
+    //println("Head-Calls: "+headCallPtrs.keys.toSeq)
+    //System.exit(0)
+    
+    //This procedure has side-effects on many fields.   
+    assumeSpecifications(headCalls)
+  }
+
+  //this has a side-effect on 'exploredGuards'
+  private def findNewHeads: Set[Call] = {
+    ctrTracker.getFuncs.flatMap((fd) => {
+      val formula = ctrTracker.getVC(fd)
+      val newguards = formula.disjunctsInFormula.keySet.diff(exploredGuards)
+      val newheads = findHeads(formula, newguards.toSeq, List(fd))
+      exploredGuards ++= newguards
+      newheads
+    }).toSet
+  }
+
+  /**
+   * Heads are procedure calls whose target definitions have not been inlined.
+   * The argument 'parents' represents the functions in the chain of unrolls that resulted in the 'ctrTree'  node.
+   * This procedure has side-effects on 'callDataMap'
+   */
+  private def findHeads(formula: Formula, guards: Seq[Variable], parents: List[FunDef]): Set[Call] = {
+    val disjuncts = formula.disjunctsInFormula
+    guards.flatMap(g => {
+      val calls = disjuncts(g).collect { case c: Call => c }
+      calls.foreach((call) => {
+        callDataMap += (call -> new CallData(formula, g, parents))
+      })
+      calls
+    }).toSet
+  }    
+
+  /**
+   * This procedure refines the existing abstraction.
+   * Currently, the refinement happens by unrolling the head functions.   
+   */
+  def refineAbstraction(toRefineCalls : Option[Set[Call]]): Set[Call] = {
+    
+    //collect all new heads
+    var newheads = findNewHeads
+    headCalls ++= newheads
+    
+    //unroll each call in the head pointers (and in toRefineCalls)
+    val callsToProcess = if(toRefineCalls.isDefined){
+      
+      //pick only those calls that have been least unrolled      
+      val relevCalls = headCalls.intersect(toRefineCalls.get)      
+      //minCalls are calls that have been least unrolled
+      var minCalls = Set[Call]()
+      var minUnrollings = MAX_UNROLLS
+      relevCalls.foreach((call) => {
+        val calldata = callDataMap(call)            
+        val occurrences  = calldata.parents.count(_ == call.fi.funDef)
+        if(occurrences < minUnrollings) {
+          minUnrollings = occurrences
+          minCalls = Set(call)
+        }
+        else if(occurrences == minUnrollings) {
+          minCalls += call
+        }        
+      })
+      minCalls
+      
+    } else headCalls
+    
+    println("Unrolling: "+ callsToProcess.size+"/"+headCalls.size)
+    //println("Unrolled calls: "+callsToProcess.map(_.expr))
+    
+    val unrolls = callsToProcess.foldLeft(Set[Call]())((acc, call) => {      
+
+      val calldata = callDataMap(call)            
+      val occurrences  = calldata.parents.count(_ == call.fi.funDef)
+      //if the call is not a recursive call, unroll it unconditionally      
+      if(occurrences == 0) {
+        newheads ++= unrollCall(call, calldata)
+        acc + call
+      } else {
+    	 //if the call is recursive, unroll iff the number of times the recursive function occurs in the context is < MAX-UNROLL        
+        if(occurrences < MAX_UNROLLS)
+        {
+          newheads ++= unrollCall(call, calldata)
+          acc + call
+        } else{
+          //otherwise, drop the call. Here we are not unrolling the call
+          acc 
+        }         
+      }
+      //TODO: are there better ways of unrolling ??      
+    })
+    
+    //update the head functions 
+    headCalls = headCalls.diff(callsToProcess) ++ newheads
+
+    if (!unrolls.isEmpty) {
+      //assume the post-conditions for the newcalls in the VCs
+      assumeSpecifications(newheads)
+    }    
+    unrolls
+  }
+
+
+  /**
+   * This function refines the constraint tree by assuming the specifications/templates for calls in
+   * the formula
+   * Here, assume (pre => post ^ template)
+   * Important: adding templates for unspecdCalls of the previous iterations is empirically more effective
+   */
+  def assumeSpecifications(newheads : Set[Call]): Set[Call] = {    
+    //initialized unspecd calls
+    unspecdCalls ++= newheads   
+    
+    var foundheads = Set[Call]()    
+    //assume specifications    
+    unspecdCalls.foreach((call) => {
+      //first get the spec for the call if it exists 
+      val spec = specForCall(call)
+      if (spec.isDefined && spec.get != tru) {
+    	val cdata = callDataMap(call)
+        val (_, newguards) = cdata.formula.conjoinWithDisjunct(cdata.guard, spec.get)        
+        foundheads ++= findHeads(cdata.formula, newguards, cdata.parents)
+      }
+    })
+
+    //try to assume templates for all the current un-templated calls    
+    var newUntemplatedCalls = Set[Call]()    
+    untemplatedCalls.foreach((call) => {
+      //first get the template for the call if one needs to be added
+      if (useTemplates.contains(call.fi.funDef)) {
+        val temp = templateForCall(call)
+        val cdata = callDataMap(call)
+        val (_, newguards) = cdata.formula.conjoinWithDisjunct(cdata.guard, temp)        
+        foundheads ++= findHeads(cdata.formula, newguards, cdata.parents)
+        
+      } else {
+        newUntemplatedCalls += call
+      }
+    })
+    untemplatedCalls = newUntemplatedCalls    
+    
+    //add unspecd calls to untemplatedcalls
+    untemplatedCalls ++= unspecdCalls
+    //update unspecd calls
+    unspecdCalls = foundheads
+    foundheads
+  }
+
+  def specForCall(call: Call): Option[Expr] = {
+    val argmap = InvariantUtil.formalToAcutal(call)
+    val callee = call.fi.funDef
+    if (callee.hasPostcondition) {
+      val (resvar, post) = callee.postcondition.get
+      val freshPost = freshenLocals(matchToIfThenElse(post))
+
+      val spec = if (callee.hasPrecondition) {
+        val freshPre = freshenLocals(matchToIfThenElse(callee.precondition.get))
+        Implies(freshPre, freshPost)
+      } else {
+        freshPost
+      }
+      val inlinedSpec = ExpressionTransformer.normalizeExpr(replace(argmap, spec))
+      Some(inlinedSpec)
+    } else {
+      None
+    }
+  }
+
+  def templateForCall(call: Call): Expr = {
+    val argmap = InvariantUtil.formalToAcutal(call)
+    val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
+    val template = if (call.fi.funDef.hasPrecondition) {
+      val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(call.fi.funDef.precondition.get)))
+      Implies(freshPre, tempExpr)
+    } else {
+      tempExpr
+    }
+    //flatten functions
+    //TODO: should we freshen locals here ??
+    ExpressionTransformer.normalizeExpr(template)
+  }

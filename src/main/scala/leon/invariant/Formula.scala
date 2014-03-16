@@ -25,10 +25,16 @@ import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 
+/**
+ * Data associated with a call
+ */
+class CallData(val guard : Variable, val parents: List[FunDef]) {  
+}
+
 //A set of implications
 //'initexpr' is required to be in negation normal form and And/Ors have been pulled up
 //TODO: optimize the representation so that we use fewer guards.
-class Formula(initexpr: Expr) {
+class Formula(fd: FunDef, initexpr: Expr) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
@@ -37,18 +43,24 @@ class Formula(initexpr: Expr) {
   val combiningOp = if(useImplies) Implies.apply _ else Equals.apply _  
   protected var disjuncts = Map[Variable, Seq[Constraint]]() //a mapping from guards to conjunction of atoms
   protected var conjuncts = Map[Variable, Expr]() //a mapping from guards to disjunction of atoms  
-  val firstRoot : Variable = addConstraints(initexpr)._1  
+  val firstRoot : Variable = addConstraints(initexpr, List(fd))._1  
   protected var roots : Seq[Variable] = Seq(firstRoot) //a list of roots, the formula is a conjunction of formula of each root
     
+  //a mapping from a 'call' to the 'guard' guarding the call plus the list of transitive callers of 'call'
+  //Note: this is used during unrolling of calls
+  private var callDataMap = Map[Call, CallData]()  
+  
   def disjunctsInFormula = disjuncts   
+  
+  def callData(call: Call) : CallData = callDataMap(call)
   
   //return the root variable and the sequence of disjunct guards added 
   //(which includes the root variable incase it respresents a disjunct)
-  def addConstraints(ine: Expr) : (Variable, Seq[Variable]) = {
+  def addConstraints(ine: Expr, callParents : List[FunDef]) : (Variable, Seq[Variable]) = {
     
     var newDisjGuards = Seq[Variable]()    
     
-    def getCtrsFromExprs(exprs: Seq[Expr]) : Seq[Constraint] = {
+    def getCtrsFromExprs(guard: Variable, exprs: Seq[Expr]) : Seq[Constraint] = {
       var break = false
       exprs.foldLeft(Seq[Constraint]())((acc, e) => {
         if (break) acc
@@ -59,6 +71,15 @@ class Formula(initexpr: Expr) {
             case BoolConstraint(BooleanLiteral(false)) => {
               break = true
               Seq(ctr)
+            }
+            case call@Call(_,_) => {
+              
+              if(callParents.isEmpty) 
+                throw new IllegalArgumentException("Parent not specified for call: "+ctr)
+              else {
+                callDataMap += (call -> new CallData(guard, callParents))
+              }
+              acc :+ call
             }
             case _ => acc :+ ctr
           }
@@ -79,7 +100,7 @@ class Formula(initexpr: Expr) {
             val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
             newDisjGuards :+= g
             //println("atoms: "+atoms)
-            val ctrs = getCtrsFromExprs(atoms)            
+            val ctrs = getCtrsFromExprs(g, atoms)            
             disjuncts += (g -> ctrs)                
             g
           }
@@ -97,7 +118,7 @@ class Formula(initexpr: Expr) {
           //if the expression has template variables then we separate it using guards
           val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
           newDisjGuards :+= g
-          val ctrs = getCtrsFromExprs(Seq(arg))
+          val ctrs = getCtrsFromExprs(g, Seq(arg))
           disjuncts += (g -> ctrs)
           g
         })
@@ -115,7 +136,7 @@ class Formula(initexpr: Expr) {
           case _ => Seq(f1)
         }
         val g = TVarFactory.createTemp("b").setType(BooleanType).toVariable
-        val ctrs = getCtrsFromExprs(atoms)
+        val ctrs = getCtrsFromExprs(g, atoms)
         newDisjGuards :+= g
         disjuncts += (g -> ctrs)        
         g
@@ -165,8 +186,8 @@ class Formula(initexpr: Expr) {
   }
   
   //'neweexpr' is required to be in negation normal form and And/Ors have been pulled up  
-  def conjoinWithDisjunct(guard: Variable, newexpr: Expr) : (Variable, Seq[Variable]) = {
-     val (exprRoot, newGaurds) = addConstraints(newexpr)
+  def conjoinWithDisjunct(guard: Variable, newexpr: Expr, callParents: List[FunDef]) : (Variable, Seq[Variable]) = {
+     val (exprRoot, newGaurds) = addConstraints(newexpr, callParents)
      //add 'newguard' in conjunction with 'disjuncts(guard)'
      val ctrs = disjuncts(guard)
      disjuncts -= guard
@@ -174,8 +195,8 @@ class Formula(initexpr: Expr) {
      (exprRoot, newGaurds)
   }
 
-  def conjoinWithRoot(newexpr: Expr): (Variable, Seq[Variable]) = {
-    val (exprRoot, newGaurds) = addConstraints(newexpr)       
+  def conjoinWithRoot(newexpr: Expr, callParents: List[FunDef]): (Variable, Seq[Variable]) = {
+    val (exprRoot, newGaurds) = addConstraints(newexpr, callParents)       
     roots :+= exprRoot
     (exprRoot, newGaurds)
   }
