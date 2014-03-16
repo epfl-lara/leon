@@ -28,9 +28,6 @@ import leon.verification.Tactic
 import leon.verification.VerificationReport
  
 class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef, temFactory: TemplateFactory) {
-  
-  //for debugging  
-  protected val disableAxioms = false
     
   //a mapping from functions to its VCs represented as a CNF formula
   protected var funcVCs = Map[FunDef,Formula]()
@@ -47,18 +44,13 @@ class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef,
   }
   
   def initialize = {    
-    //add axioms 
-    if(!disableAxioms) {
-      this.specInstantiator.instantiate
-    }
+    //assume specifications 
+    specInstantiator.instantiate    
   }
 
   def refineVCs(toUnrollCalls: Option[Set[Call]]) : Set[Call]  = {
-    val unrolledCalls = vcRefiner.refineAbstraction(toUnrollCalls)    
-    //add axioms
-    if(!disableAxioms) {
-      this.specInstantiator.instantiate
-    }
+    val unrolledCalls = vcRefiner.refineAbstraction(toUnrollCalls)        
+    specInstantiator.instantiate   
     unrolledCalls
   }  
 }

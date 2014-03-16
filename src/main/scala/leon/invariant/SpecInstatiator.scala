@@ -38,6 +38,9 @@ import leon.plugin.NonlinearityEliminationPhase
 
 class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker, tempFactory : TemplateFactory) {               
     
+  protected val disableAxioms = false
+  protected val debugAxiomInstantiation = false  
+  
   val tru = BooleanLiteral(true)
   val axiomFactory = new AxiomFactory(ctx,program) //handles instantiation of axiomatic specification
   
@@ -66,8 +69,8 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
 //        wr.close()
 //        println("Printed instFormula to file: " + filename)
 //      }
-            
-      instantiateAxioms(formula, newcalls)      
+      if(!disableAxioms)      
+    	  instantiateAxioms(formula, newcalls)      
     })    
   }  
 
@@ -141,11 +144,8 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
     ExpressionTransformer.normalizeExpr(template)
   }
   
-  //axiomatic specification
-  protected val debugAxiomInstantiation = false  
-  protected var callsWithAxioms = Set[Call]() //calls with axioms so far seen  
-  protected var axiomRoots = Map[Seq[Call],Variable]() //a mapping from axioms keys (a sequence of calls) to the guards
-  
+  //axiomatic specification     
+  protected var axiomRoots = Map[Seq[Call],Variable]() //a mapping from axioms keys (a sequence of calls) to the guards  
   def instantiateAxioms(formula: Formula, calls: Set[Call]) = {
     
     val debugSolver = if (this.debugAxiomInstantiation) {
@@ -154,17 +154,15 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       Some(sol)
     } else None
     
-    val (cd1, inst1) = instantiateUnaryAxioms(formula,calls)
-    val (cd2, inst2) = instantiateBinaryAxioms(formula,calls)
-        
-    callsWithAxioms ++= (cd1 ++ cd2)     
-    val axiomInsts = inst1 ++ inst2 //this is a disjoint union as keys are different for 'inst1' and 'inst2'                    
+    val inst1 = instantiateUnaryAxioms(formula,calls)
+    val inst2 = instantiateBinaryAxioms(formula,calls)         
+    val axiomInsts = inst1 ++ inst2                     
     
     Stats.updateCounterStats(InvariantUtil.atomNum(And(axiomInsts)), "AxiomBlowup", "VC-refinement")
     ctx.reporter.info("Number of axiom instances: "+axiomInsts.size)
 
     if (this.debugAxiomInstantiation) {
-      println("Instantianting axioms over: " + (cd1 ++ cd2))
+      println("Instantianting axioms over: " + calls)
       println("Instantiated Axioms: ")
       axiomInsts.foreach((ainst) => {
         println(ainst)
@@ -182,8 +180,8 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
   
   //this code is similar to assuming specifications
   def instantiateUnaryAxioms(formula: Formula, calls: Set[Call]) = {
-    val callToAxioms = calls.collect {
-      case call@_ if axiomFactory.hasUnaryAxiom(call) => {
+    val axioms = calls.collect {
+      case call@_ if axiomFactory.hasUnaryAxiom(call) => {        
         val axiomInst = axiomFactory.unaryAxiom(call)
 
         import ExpressionTransformer._
@@ -191,10 +189,10 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
         
         val cdata = formula.callData(call)
         formula.conjoinWithDisjunct(cdata.guard, nnfAxiom, cdata.parents)        
-        (call, axiomInst)
+        axiomInst
       }
-    }.toMap
-    (callToAxioms.keySet, callToAxioms.values.toSeq)
+    }
+    axioms.toSeq
   }
   
   /**
@@ -203,7 +201,9 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
    * to compute correct verification conditions. 
    * TODO: Use least common ancestor etc. to avoid axiomatizing calls along different disjuncts
    * TODO: can we avoid axioms like (a <= b ^ x<=y => p <= q), (x <= y ^ a<=b => p <= q), ...
+   * TODO: can we have axiomatic specifications relating two different functions ?
    */
+  protected var binaryAxiomCalls = Set[Call]() //calls with axioms so far seen
   def instantiateBinaryAxioms(formula: Formula, calls: Set[Call]) = {
 
     val newCallsWithAxioms = calls.filter(axiomFactory.hasBinaryAxiom _)
@@ -217,7 +217,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       (for (x<-a; y<-b) yield (x,y)).filter(pair => isInstantiable(pair._1,pair._2))
     } 
       
-    val product = cross(newCallsWithAxioms,callsWithAxioms).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
+    val product = cross(newCallsWithAxioms,binaryAxiomCalls).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
       cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
              
     val axiomInsts = product.foldLeft(Seq[Expr]())((acc, pair) => {      
@@ -236,7 +236,8 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       acc :+ axiomInst    
     })
     
-    (newCallsWithAxioms, axiomInsts)
+    binaryAxiomCalls ++= newCallsWithAxioms
+    axiomInsts
   }  
   
   /**
