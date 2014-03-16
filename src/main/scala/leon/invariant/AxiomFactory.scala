@@ -46,9 +46,10 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     (FunctionInfoFactory.isCommutative(call.fi.funDef) && !commuCalls.contains(call)) 
   }
   
+  var distriCalls = Set[Call]()
   def hasBinaryAxiom(call: Call) : Boolean = {
 	FunctionInfoFactory.isMonotonic(call.fi.funDef) ||
-		FunctionInfoFactory.isDistributive(call.fi.funDef)
+		(FunctionInfoFactory.isDistributive(call.fi.funDef) && !distriCalls.contains(call))
   }
   
   def unaryAxiom(call: Call) : Expr = {
@@ -58,12 +59,12 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
       val Seq(a1, a2) = call.fi.args
       val newret = TVarFactory.createTemp("cm").toVariable
       val newfi = FunctionInvocation(callee,Seq(a2,a1))
-      val newcall = Equals(newret,newfi)
+      val newcall = Call(newret,newfi)
       
       //note: calls added by this axiom cannot be again considered by this axiom
-      commuCalls += Call(newret, newfi)
+      commuCalls += newcall
       
-      And(newcall, Equals(newret, call.retexpr))
+      And(newcall.toExpr, Equals(newret, call.retexpr))
     } else 
       throw IllegalStateException("Call does not have unary axiom: "+call)
   }
@@ -107,8 +108,15 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     val r1 = call1.retexpr
     val r2 = call2.retexpr
     
-    val axiom1 = Implies(LessEquals(a1,a2), LessEquals(Plus(r1,r2),FunctionInvocation(fd,Seq(a2,Plus(b1,b2))))) 
-    val axiom2 = Implies(LessEquals(b1,b2), LessEquals(Plus(r1,r2),FunctionInvocation(fd,Seq(Plus(a1,a2),b2))))
+    val dret1 = TVarFactory.createTemp("dt").toVariable
+    val dret2 = TVarFactory.createTemp("dt").toVariable
+    val dcall1 = Call(dret1, FunctionInvocation(fd,Seq(a2,Plus(b1,b2))))
+    val dcall2 = Call(dret2, FunctionInvocation(fd,Seq(Plus(a1,a2),b2)))
+    
+    distriCalls ++= Set(dcall1, dcall2)    
+    
+    val axiom1 = Implies(LessEquals(a1,a2), And(LessEquals(Plus(r1,r2),dret1), dcall1.toExpr)) 
+    val axiom2 = Implies(LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
     And(axiom1,axiom2) 
   }
 }
