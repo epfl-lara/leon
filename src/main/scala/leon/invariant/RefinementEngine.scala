@@ -63,6 +63,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
       val formula = ctrTracker.getVC(fd)
       val disjuncts = formula.disjunctsInFormula
       val newguards = formula.disjunctsInFormula.keySet.diff(exploredGuards)
+      exploredGuards ++= newguards
 
       val newheads = newguards.flatMap(g => disjuncts(g).collect { case c: Call => c })
       val allheads = headCalls(fd) ++ newheads
