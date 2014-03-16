@@ -38,6 +38,7 @@ import leon.plugin.NonlinearityEliminationPhase
 
 class AxiomFactory(ctx : LeonContext, program : Program) {                       
   
+  val tru = BooleanLiteral(true)
   //Add more axioms here, if necessary
   var commuCalls = Set[Call]()
   def hasUnaryAxiom(call: Call) : Boolean = {
@@ -46,7 +47,8 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
   }
   
   def hasBinaryAxiom(call: Call) : Boolean = {
-	FunctionInfoFactory.isMonotonic(call.fi.funDef)   
+	FunctionInfoFactory.isMonotonic(call.fi.funDef) ||
+		FunctionInfoFactory.isDistributive(call.fi.funDef)
   }
   
   def unaryAxiom(call: Call) : Expr = {
@@ -65,17 +67,27 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     } else 
       throw IllegalStateException("Call does not have unary axiom: "+call)
   }
-  
-  def binaryAxiom(call1: Call, call2: Call) : Expr = {    
+
+  def binaryAxiom(call1: Call, call2: Call): Expr = {
+
+    if (call1.fi.funDef.id != call2.fi.funDef.id)
+      throw IllegalStateException("Instantiating binary axiom on calls to different functions: " + call1 + "," + call2)
+
+    if (!hasBinaryAxiom(call1))
+      throw IllegalStateException("Call does not have binary axiom: " + call1)
+
+    val callee = call1.fi.funDef    
+    //monotonicity
+    val axiom1 = if (FunctionInfoFactory.isMonotonic(callee)) {
+      monotonizeCalls(call1, call2)
+    } else tru
     
-    if(call1.fi.funDef.id != call2.fi.funDef.id) 
-      throw IllegalStateException("Instantiating binary axiom on calls to different functions: "+call1+","+call2)
+    //distributivity
+    val axiom2 = if (FunctionInfoFactory.isDistributive(callee)) {
+      undistributeCalls(call1, call2)
+    } else tru
     
-    val callee = call1.fi.funDef
-    if(FunctionInfoFactory.isMonotonic(callee)) {
-      monotonizeCalls(call1,call2)      
-    } else 
-      throw IllegalStateException("Call does not have binary axiom: "+call1)
+    And(Seq(axiom1, axiom2))
   }
   
   def monotonizeCalls(call1: Call, call2: Call): Expr = {    
@@ -87,5 +99,16 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     Implies(And(ant), conseq)    
   }
    
-  //TODO: add distributivity axiom
+  //this is applicable only to binary operations
+  def undistributeCalls(call1: Call, call2: Call): Expr = {    
+    val fd = call1.fi.funDef
+    val Seq(a1,b1) = call1.fi.args
+    val Seq(a2,b2) = call2.fi.args
+    val r1 = call1.retexpr
+    val r2 = call2.retexpr
+    
+    val axiom1 = Implies(LessEquals(a1,a2), LessEquals(Plus(r1,r2),FunctionInvocation(fd,Seq(a2,Plus(b1,b2))))) 
+    val axiom2 = Implies(LessEquals(b1,b2), LessEquals(Plus(r1,r2),FunctionInvocation(fd,Seq(Plus(a1,a2),b2))))
+    And(axiom1,axiom2) 
+  }
 }

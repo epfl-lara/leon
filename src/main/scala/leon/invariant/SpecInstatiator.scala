@@ -193,8 +193,9 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       case call@_ if axiomFactory.hasUnaryAxiom(call) => {        
         val axiomInst = axiomFactory.unaryAxiom(call)
 
-        import ExpressionTransformer._
-        val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
+//        import ExpressionTransformer._
+//        val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
+        val nnfAxiom = ExpressionTransformer.normalizeExpr(axiomInst)
         
         val cdata = formula.callData(call)
         formula.conjoinWithDisjunct(cdata.guard, nnfAxiom, cdata.parents)        
@@ -243,12 +244,13 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
     val axiomInsts = product.foldLeft(Seq[Expr]())((acc, pair) => {      
       val axiomInst = axiomFactory.binaryAxiom(pair._1, pair._2)
       
-      import ExpressionTransformer._
-      val nnfAxiom = pullAndOrs(TransformNot(axiomInst))      
+      //import ExpressionTransformer._
+      //val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
+      val nnfAxiom = ExpressionTransformer.normalizeExpr(axiomInst)
             
       //union the parents of the two calls
-      //val parents = formula.callData(pair._1).parents ++ formula.callData(pair._2).parents       				
-      val (axroot,_) = formula.conjoinWithRoot(nnfAxiom, List())
+      val parents = formula.callData(pair._1).parents ++ formula.callData(pair._2).parents       				
+      val (axroot,_) = formula.conjoinWithRoot(nnfAxiom, parents)
       
       //important: here we need to update the axiom roots
       axiomRoots += (Seq(pair._1,pair._2) -> axroot)

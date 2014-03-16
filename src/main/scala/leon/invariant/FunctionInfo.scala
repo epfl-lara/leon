@@ -100,4 +100,16 @@ object FunctionInfoFactory {
       info.isCommutative
     } else false
   }
+  
+  def setDistributivity(fd: FunDef) = {
+    val funinfo = getOrMakeInfo(fd) 
+    funinfo.isDistributive = true 
+  }
+  
+  def isDistributive(fd: FunDef ) ={ 
+    if(functionInfos.contains(fd)) {
+      val info = functionInfos(fd)
+      info.isDistributive
+    } else false
+  }
 }
