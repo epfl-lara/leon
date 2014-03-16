@@ -36,7 +36,7 @@ class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef,
   protected var funcVCs = Map[FunDef,Formula]()
   
   val vcRefiner = new RefinementEngine(context, program, this, temFactory)
-  val specInstantiator = new AxiomInstantiator(context, program, this)
+  val specInstantiator = new SpecInstantiator(context, program, this)
   
   def getFuncs : Seq[FunDef] = funcVCs.keys.toSeq
   def hasVC(fdef: FunDef) = funcVCs.contains(fdef)  

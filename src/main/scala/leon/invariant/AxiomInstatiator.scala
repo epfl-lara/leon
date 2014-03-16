@@ -36,18 +36,21 @@ import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
 import leon.plugin.NonlinearityEliminationPhase
 
-class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {              
-    
-  protected val debugAxiomInstantiation = false
-  
-  protected var callsWithAxioms = Set[Call]() //calls with axioms so far seen
-  type AxiomKey = Seq[Call]
-  protected var axiomRoots = Map[AxiomKey,Variable]() //a mapping from axioms keys (for now pairs of calls) to the guards     
+class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker) {               
     
   protected var exploredGuards = Set[Variable]() //the guards of the set of calls that were already processed
   def explored(guards: Set[Variable]) = {
     exploredGuards ++= guards
   }
+  
+  //normal specification
+  
+  
+  //axiomatic specification
+  protected val debugAxiomInstantiation = false  
+  protected var callsWithAxioms = Set[Call]() //calls with axioms so far seen
+  type AxiomKey = Seq[Call]
+  protected var axiomRoots = Map[AxiomKey,Variable]() //a mapping from axioms keys (for now pairs of calls) to the guards
 
   def getUnexploredCalls(formula: Formula): Set[(Variable,Call)] = {    
     val disjuncts = formula.disjunctsInFormula
@@ -80,14 +83,14 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   
   def instantiateAxioms(formula: Formula, callGuardPairs: Set[(Variable,Call)]) = {
     
-    val debugSolver = if (this.debugAxiomInstantiation) {
+    val debugSolver = if (SpecInstantiator.this.debugAxiomInstantiation) {
       val sol = new UIFZ3Solver(ctx, program)
       sol.assertCnstr(formula.toExpr)
       Some(sol)
     } else None
     
-    val (cd1,inst1) = instantiateUnaryAxioms(formula,callGuardPairs)
-    val (cd2,inst2) = instantiateBinaryAxioms(formula,callGuardPairs.map(_._2))
+    val (cd1, inst1) = instantiateUnaryAxioms(formula,callGuardPairs)
+    val (cd2, inst2) = instantiateBinaryAxioms(formula,callGuardPairs.map(_._2))
         
     callsWithAxioms ++= (cd1 ++ cd2)     
     val axiomInsts = inst1 ++ inst2 //this is a disjoint union as keys are different for 'inst1' and 'inst2'                    
@@ -95,7 +98,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
     Stats.updateCounterStats(InvariantUtil.atomNum(And(axiomInsts)), "AxiomBlowup", "VC-refinement")
     ctx.reporter.info("Number of axiom instances: "+axiomInsts.size)
 
-    if (this.debugAxiomInstantiation) {
+    if (SpecInstantiator.this.debugAxiomInstantiation) {
       println("Instantianting axioms over: " + (cd1 ++ cd2))
       println("Instantiated Axioms: ")
       axiomInsts.foreach((ainst) => {
@@ -114,12 +117,12 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   
   def instantiateUnaryAxioms(formula: Formula, callGuardPairs: Set[(Variable,Call)]) : (Set[Call], Seq[Expr]) = {
     val callToAxioms = callGuardPairs.collect {
-      case (g, call) if (hasUnaryAxiom(call)) => {
+      case (g, call) if hasUnaryAxiom(call)) => {
         val axiomInst = unaryAxiom(call)
 
         import ExpressionTransformer._
         val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
-        val (_, _) = formula.conjoinWithDisjunct(g, nnfAxiom)
+        val (_, (_, _) = formula.conjoinWithDisjunct(g, nnfAxiom) match(_, _) = formula.conjoinWithDisjunct(g, nnfAxiom)
         //note: we need not update axiom roots here.
         (call, axiomInst)
       }
@@ -150,7 +153,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
     val product = cross(newCallsWithAxioms,callsWithAxioms).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
       cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
              
-    val axiomInsts = product.foldLeft(Seq[Expr]())((acc,pair) => {      
+    val axiomInsts = product.foldLeft(Seq[Expr]())((acc, pair) => {      
       val axiomInst = binaryAxiom(pair._1, pair._2)
       
       import ExpressionTransformer._
@@ -197,7 +200,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
     val callee = call.fi.funDef
     if(FunctionInfoFactory.isCommutative(callee)) {
       //note: commutativity is defined only for binary operations
-      val Seq(a1,a2) = call.fi.args
+      val Seq(a1, a2) = call.fi.args
       val newret = TVarFactory.createTemp("cm").toVariable
       val newfi = FunctionInvocation(callee,Seq(a2,a1))
       val newcall = Equals(newret,newfi)
@@ -224,7 +227,7 @@ class AxiomInstantiator(ctx : LeonContext, program : Program, ctrTracker : Const
   def monotonizeCalls(call1: Call, call2: Call): Expr = {    
     val ant = (call1.fi.args zip call2.fi.args).foldLeft(Seq[Expr]())((acc, pair) => {
       val lesse = LessEquals(pair._1, pair._2)
-      lesse +: acc
+      lesse +: alesse +: acc
     })
     val conseq = LessEquals(call1.retexpr, call2.retexpr)
     Implies(And(ant), conseq)    
