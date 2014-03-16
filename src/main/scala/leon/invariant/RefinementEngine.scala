@@ -204,6 +204,6 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     //conjoin the summary with the disjunct corresponding to the 'guard'
     //note: the parents of the summary are the parents of the call plus the callee function
     val calldata = formula.callData(call)
-    val (_, newguards) = formula.conjoinWithDisjunct(calldata.guard, inlinedSummary, (callee +: calldata.parents))                   
+    formula.conjoinWithDisjunct(calldata.guard, inlinedSummary, (callee +: calldata.parents))                   
   }
 }

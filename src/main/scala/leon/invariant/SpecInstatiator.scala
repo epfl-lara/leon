@@ -223,6 +223,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       binaryAxiomCalls += (fd -> calls)
     }
   }
+  
   def instantiateBinaryAxioms(formula: Formula, calls: Set[Call]) = {
 
     val newCallsWithAxioms = calls.filter(axiomFactory.hasBinaryAxiom _)
