@@ -80,7 +80,17 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
    * Important: adding templates for 'newcalls' of the previous iterations is empirically more effective
    */
    //a set of calls for which templates or specifications have not been assumed
-  private var untemplatedCalls = Set[Call]()
+  private var untemplatedCalls = Map[FunDef,Set[Call]]()
+  def getUntempCalls(fd: FunDef) = if(untemplatedCalls.contains(fd)) untemplatedCalls(fd) else Set()
+  def resetUntempCalls(fd: FunDef, calls: Set[Call]) = {
+    if (untemplatedCalls.contains(fd)) {
+      untemplatedCalls -= fd
+      untemplatedCalls += (fd -> calls)
+    } else {
+      untemplatedCalls += (fd -> calls)
+    }
+  }
+  
   def instantiateSpecs(formula: Formula, calls : Set[Call], funcsWithVC: Set[FunDef]) = {    
 
     //assume specifications    
@@ -95,7 +105,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
 
     //try to assume templates for all the current un-templated calls    
     var newUntemplatedCalls = Set[Call]()    
-    untemplatedCalls.foreach((call) => {
+    getUntempCalls(formula.fd).foreach((call) => {
       //first get the template for the call if one needs to be added
       if (funcsWithVC.contains(call.fi.funDef)) {
         val temp = templateForCall(call)
@@ -106,8 +116,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
         newUntemplatedCalls += call
       }
     })
-    untemplatedCalls = newUntemplatedCalls    
-    untemplatedCalls ++= calls    
+    resetUntempCalls(formula.fd, newUntemplatedCalls ++ calls)        
   }
 
   def specForCall(call: Call): Option[Expr] = {
@@ -203,7 +212,17 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
    * TODO: can we avoid axioms like (a <= b ^ x<=y => p <= q), (x <= y ^ a<=b => p <= q), ...
    * TODO: can we have axiomatic specifications relating two different functions ?
    */
-  protected var binaryAxiomCalls = Set[Call]() //calls with axioms so far seen
+  protected var binaryAxiomCalls = Map[FunDef,Set[Call]]() //calls with axioms so far seen
+  def getBinaxCalls(fd: FunDef) = if(binaryAxiomCalls.contains(fd)) binaryAxiomCalls(fd) else Set[Call]()
+  def appendBinaxCalls(fd: FunDef, calls: Set[Call]) = {
+    if (binaryAxiomCalls.contains(fd)) {
+      val oldcalls = binaryAxiomCalls(fd)
+      binaryAxiomCalls -= fd
+      binaryAxiomCalls += (fd -> (oldcalls ++ calls))
+    } else {
+      binaryAxiomCalls += (fd -> calls)
+    }
+  }
   def instantiateBinaryAxioms(formula: Formula, calls: Set[Call]) = {
 
     val newCallsWithAxioms = calls.filter(axiomFactory.hasBinaryAxiom _)
@@ -217,7 +236,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       (for (x<-a; y<-b) yield (x,y)).filter(pair => isInstantiable(pair._1,pair._2))
     } 
       
-    val product = cross(newCallsWithAxioms,binaryAxiomCalls).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
+    val product = cross(newCallsWithAxioms,getBinaxCalls(formula.fd)).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
       cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
              
     val axiomInsts = product.foldLeft(Seq[Expr]())((acc, pair) => {      
@@ -236,7 +255,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       acc :+ axiomInst    
     })
     
-    binaryAxiomCalls ++= newCallsWithAxioms
+    appendBinaxCalls(formula.fd, newCallsWithAxioms)
     axiomInsts
   }  
   

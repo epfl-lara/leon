@@ -34,7 +34,7 @@ class CallData(val guard : Variable, val parents: List[FunDef]) {
 //A set of implications
 //'initexpr' is required to be in negation normal form and And/Ors have been pulled up
 //TODO: optimize the representation so that we use fewer guards.
-class Formula(fd: FunDef, initexpr: Expr) {
+class Formula(val fd: FunDef, initexpr: Expr) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
@@ -42,13 +42,11 @@ class Formula(fd: FunDef, initexpr: Expr) {
   
   val combiningOp = if(useImplies) Implies.apply _ else Equals.apply _  
   protected var disjuncts = Map[Variable, Seq[Constraint]]() //a mapping from guards to conjunction of atoms
-  protected var conjuncts = Map[Variable, Expr]() //a mapping from guards to disjunction of atoms  
+  protected var conjuncts = Map[Variable, Expr]() //a mapping from guards to disjunction of atoms   
+  private var callDataMap = Map[Call, CallData]() //a mapping from a 'call' to the 'guard' guarding the call plus the list of transitive callers of 'call'
+  
   val firstRoot : Variable = addConstraints(initexpr, List(fd))._1  
   protected var roots : Seq[Variable] = Seq(firstRoot) //a list of roots, the formula is a conjunction of formula of each root
-    
-  //a mapping from a 'call' to the 'guard' guarding the call plus the list of transitive callers of 'call'
-  //Note: this is used during unrolling of calls
-  private var callDataMap = Map[Call, CallData]()  
   
   def disjunctsInFormula = disjuncts   
   

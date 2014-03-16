@@ -568,7 +568,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
     //reporter.info("choosing axioms...")
     var t1 = System.currentTimeMillis()
-    val axiomCtrs = ctrTracker.axiomInstantiator.axiomsForCalls(formula, calls, model)
+    val axiomCtrs = ctrTracker.specInstantiator.axiomsForCalls(formula, calls, model)
     var t2 = System.currentTimeMillis()
     //reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")

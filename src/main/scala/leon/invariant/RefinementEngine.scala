@@ -35,15 +35,15 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
   private val MAX_UNROLLS = 2
   
   //debugging flags
-  private val dumpInlinedSummary = false  
+  private val dumpInlinedSummary = false
+  
+  //the guards of disjuncts that were already processed
+  private var exploredGuards = Set[Variable]()
   
   //a set of calls that have not been unrolled (these are potential unroll candidates)
   //However, these calls except those given by the unspecdCalls have been assumed specifications
-  private var headCalls = Map[FunDef,Set[Call]]()
-
-  //the guards of disjuncts that were already processed
-  private var exploredGuards = Set[Variable]()  
-
+  private var headCalls = Map[FunDef,Set[Call]]()  
+  def getHeads(fd: FunDef) =  if(headCalls.contains(fd)) headCalls(fd) else Set()
   def resetHeads(fd: FunDef, heads: Set[Call]) = {
     if (headCalls.contains(fd)) {
       headCalls -= fd
@@ -66,7 +66,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
       exploredGuards ++= newguards
 
       val newheads = newguards.flatMap(g => disjuncts(g).collect { case c: Call => c })
-      val allheads = headCalls(fd) ++ newheads
+      val allheads = getHeads(fd) ++ newheads      				 
 
       //unroll each call in the head pointers and in toRefineCalls
       val callsToProcess = if (toRefineCalls.isDefined) {
