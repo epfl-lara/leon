@@ -247,8 +247,8 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       val nnfAxiom = pullAndOrs(TransformNot(axiomInst))      
             
       //union the parents of the two calls
-      val parents = formula.callData(pair._1).parents ++ formula.callData(pair._2).parents       				
-      val (axroot,_) = formula.conjoinWithRoot(nnfAxiom, parents)
+      //val parents = formula.callData(pair._1).parents ++ formula.callData(pair._2).parents       				
+      val (axroot,_) = formula.conjoinWithRoot(nnfAxiom, List())
       
       //important: here we need to update the axiom roots
       axiomRoots += (Seq(pair._1,pair._2) -> axroot)
