@@ -127,7 +127,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = tuple.hashCode + index.hashCode
+    override def hashCode: Int = tuple.hashCode + index.hashCode + 1
   }
 
   object MatchExpr {
@@ -160,7 +160,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = scrutinee.hashCode+cases.hashCode
+    override def hashCode: Int = scrutinee.hashCode + cases.hashCode + 2
   }
 
   sealed abstract class MatchCase extends Tree {
@@ -236,7 +236,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = exprs.hashCode
+    override def hashCode: Int = exprs.hashCode + 3
   }
 
   object Or {
@@ -279,7 +279,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = exprs.hashCode
+    override def hashCode: Int = exprs.hashCode + 4
   }
 
   object Iff {
@@ -304,7 +304,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = left.hashCode + right.hashCode
+    override def hashCode: Int = left.hashCode + right.hashCode + 5
   }
 
   object Implies {
@@ -322,17 +322,13 @@ object Trees {
 
   class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
-    // if(left.getType != BooleanType || right.getType != BooleanType) {
-    //   println("culprits: " + left.getType + ", " + right.getType)
-    //   assert(false)
-    // }
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Iff => t.left == left
+      case t: Implies => t.left == left && t.right == right
       case _ => false
     })
 
-    override def hashCode: Int = left.hashCode + right.hashCode
+    override def hashCode: Int = left.hashCode + right.hashCode + 6
   }
 
   object Not {
@@ -355,7 +351,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode : Int = expr.hashCode ^ Int.MinValue
+    override def hashCode : Int = expr.hashCode + 7
   }
 
   object Equals {
@@ -390,7 +386,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = left.hashCode+right.hashCode
+    override def hashCode: Int = left.hashCode + right.hashCode + 8
   }
   
   case class Variable(id: Identifier) extends Expr with Terminal {
@@ -455,7 +451,7 @@ object Trees {
       case _ => false
     })
 
-    override def hashCode: Int = (classType, caseClass, selector).hashCode
+    override def hashCode: Int = (classType, caseClass, selector).hashCode + 9
   }
 
   /* Arithmetic */
