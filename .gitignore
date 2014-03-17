@@ -14,3 +14,14 @@ derivation*.dot
 
 # leon
 last.log
+
+#eclipse
+.cache
+.classpath
+.project
+.settings/
+.worksheet/
+testingSheet.sc
+
+#z3
+.z3-trace

@@ -133,10 +133,26 @@ Using Leon in Eclipse
 Type: ```sbt eclipse```
 
 This should create all the necessary metadata for using Leon as a project in Eclipse.
-Specifically, two Eclipse projects are generated in corresponding directories: the main *Leon* project in the Leon root directory, and the *Leon library* project in the ```library``` subdirectory.
-You should now be able to [import the projects](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
-Since the main Leon project depends on the library, you should import both of them.
 
+You should now be able to [import the project](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
+
+Some advice for when using Eclipse: 
+-
+* For each run configuration you create, you should setup environment variables according to the script ```setupenv``` you have created with ```sbt script```.
+* If you want to use ScalaTest from within Eclipse, download the ScalaTest plugin. For instructions, see [here](http://www.scalatest.org/user_guide/using_scalatest_with_eclipse). 
+  Do NOT declare your test packages as nested packages in separate lines, because ScalaTest won't see them for some reason. E.g. don't write 
+
+  <pre>
+    package leon
+    package test
+    package myTestPackage 
+  </pre>
+
+  but instead
+
+  <pre>
+    package leon.test.myTestPackage
+  </pre>
 
 Changelog
 ---------

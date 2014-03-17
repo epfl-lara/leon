@@ -36,7 +36,7 @@ logBuffered in Test := false
 
 testOptions in Test += Tests.Argument("-oDF")
 
-javaOptions in Test += "-Xss32M"
+javaOptions in (Test,run) += "-Xss32M"
 
 parallelExecution in test := false
 
