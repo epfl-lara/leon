@@ -50,7 +50,7 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
     mfd.postcondition = Some((resvar.id, And(Seq(post0, post1))))
     //create axioms (for now only monotonicity)      
     FunctionInfoFactory.setMonotonicity(mfd)
-    FunctionInfoFactory.setDistributivity(mfd)
+    //FunctionInfoFactory.setDistributivity(mfd)
 
     //make this a theory operation
     FunctionInfoFactory.setTheoryOperation(mfd)
