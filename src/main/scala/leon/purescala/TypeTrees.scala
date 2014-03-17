@@ -58,8 +58,6 @@ object TypeTrees {
 
   def domainSize(typeTree: TypeTree) : TypeSize = typeTree match {
     case Untyped => FiniteSize(0)
-    case AnyType => InfiniteSize
-    case BottomType => FiniteSize(0)
     case BooleanType => FiniteSize(2)
     case UnitType => FiniteSize(1)
     case Int32Type => InfiniteSize
@@ -97,8 +95,6 @@ object TypeTrees {
   }
 
   case object Untyped extends TypeTree
-  case object AnyType extends TypeTree
-  case object BottomType extends TypeTree // This type is useful when we need an underlying type for None, Set.empty, etc. It should always be removed after parsing, though.
   case object BooleanType extends TypeTree
   case object Int32Type extends TypeTree
   case object UnitType extends TypeTree

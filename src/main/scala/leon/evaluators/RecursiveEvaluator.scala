@@ -290,7 +290,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
       val sr = e(s)
       sr match {
         case FiniteSet(els) => IntLiteral(els.size)
-        case _ => throw EvalError(typeErrorMsg(sr, SetType(AnyType)))
+        case _ => throw EvalError(typeErrorMsg(sr, SetType(Untyped)))
       }
 
     case f @ FiniteSet(els) => FiniteSet(els.map(e(_)).distinct).setType(f.getType)

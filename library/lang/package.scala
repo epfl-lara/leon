@@ -34,5 +34,7 @@ object lang {
   def choose[A, B, C, D](predicate: (A, B, C, D) => Boolean): (A, B, C, D) = noChoose
   def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noChoose
 
+  def ???[A]: A = throw new RuntimeException("Implementation not supported")
+
   def error[T](reason: String): T = sys.error(reason)
 }

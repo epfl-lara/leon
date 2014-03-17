@@ -4,7 +4,7 @@ package leon.synthesis.condabd.insynth.leon
 
 import insynth.structures._
 
-import leon.purescala.TypeTrees.{ TypeTree => LeonType, BottomType => LeonBottomType, _ }
+import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Definitions._
 
@@ -28,11 +28,10 @@ object DomainTypeTransformer extends ( LeonType => DomainType ) {
 
     leonType match {
       case Untyped => throw new RuntimeException("Should not happen at this point")
-      case AnyType => Atom(Const("Any"))
-      case LeonBottomType => Atom(BottomType) //Atom(Const("Bottom"))
       case BooleanType => Atom(Const("Boolean"))
       case UnitType => Atom(Const("Unit"))
       case Int32Type => Atom(Const("Int"))
+      case TypeParameter(id) => Atom(Const(id.name))
       case ListType(baseType) => Atom(InSynthTypeTransformer(leonType))
       case ArrayType(baseType) => Atom(InSynthTypeTransformer(leonType))
       case TupleType(baseTypes) => Atom(InSynthTypeTransformer(leonType))
@@ -49,8 +48,6 @@ object DomainTypeTransformer extends ( LeonType => DomainType ) {
       transformFunction(to, params ++ froms)
     case Untyped => throw new RuntimeException("Should not happen at this point")
     // query will have this
-    case LeonBottomType =>
-      Function( params map this, this(fun) )
     case t =>
       Function( params map this, this(t) )
   }

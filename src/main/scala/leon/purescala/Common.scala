@@ -53,10 +53,6 @@ object Common {
 
     def toVariable : Variable = Variable(this)
 
-    private var _islb: Boolean = false
-    def markAsLetBinder : Identifier = { _islb = true; this }
-    def isLetBinder : Boolean = _islb
-
     def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).copiedFrom(this)
   }
 

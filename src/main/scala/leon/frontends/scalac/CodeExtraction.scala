@@ -896,6 +896,10 @@ trait CodeExtraction extends ASTExtractors {
               outOfSubsetError(tr, "Unidentified variable "+sym+" "+sym.id+".")
           }
 
+        case chs @ ExHole(tpe) =>
+          val cTpe  = extractType(tpe)
+          Hole().setType(cTpe)
+
         case chs @ ExChooseExpression(args, tpe, body, select) =>
           val cTpe  = extractType(tpe)
 
@@ -1195,7 +1199,7 @@ trait CodeExtraction extends ASTExtractors {
         UnitType
 
       case tpe if tpe == NothingClass.tpe =>
-        BottomType
+        Untyped
 
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) =>
         SetType(extractType(btt))

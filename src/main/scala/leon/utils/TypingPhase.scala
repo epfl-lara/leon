@@ -4,20 +4,31 @@ package leon
 package utils
 
 import purescala.Common._
+import purescala.TreeOps.preTraversal
 import purescala.TypeTrees._
 import purescala.Trees._
 import purescala.Definitions._
 
-object SubtypingPhase extends LeonPhase[Program, Program] {
+object TypingPhase extends LeonPhase[Program, Program] {
 
-  val name = "Subtyping"
-  val description = "Protection of function arguments with subtypes"
+  val name = "Typing"
+  val description = "Ensure and enforce certain Leon typing rules"
 
-  //note that this will mutate the existing program functions and
-  //not return a new different program
+  /**
+   * This phase does 2 different things:
+   *
+   * 1) Ensure that functions that take and/or return a specific ADT subtype
+   *    have this encoded explicitly in pre/postconditions. Solvers such as Z3
+   *    unify types, which means that we need to ensure models are consistent
+   *    with the original type constraints.
+   *
+   * 2) Report warnings in case parts of the tree are not correctly typed
+   *    (Untyped).
+   */
   def run(ctx: LeonContext)(pgm: Program): Program = {
     pgm.definedFunctions.foreach(fd => {
 
+      // Part (1)
       fd.precondition = {
         val argTypesPreconditions = fd.params.flatMap(arg => arg.tpe match {
           case cct : CaseClassType => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
@@ -46,6 +57,15 @@ object SubtypingPhase extends LeonPhase[Program, Program] {
           }
         }
         case _ => fd.postcondition
+      }
+
+      // Part (2)
+      fd.body.foreach {
+        preTraversal{
+          case t if !t.isTyped =>
+            ctx.reporter.warning("Tree "+t.asString(ctx)+" is not properly typed ("+t.getPos.fullString+")")
+          case _ =>
+        }
       }
 
     })

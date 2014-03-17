@@ -9,7 +9,7 @@ object Main {
   lazy val allPhases: List[LeonPhase[_, _]] = {
     List(
       frontends.scalac.ExtractionPhase,
-      SubtypingPhase,
+      utils.TypingPhase,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
@@ -191,8 +191,9 @@ object Main {
     val pipeBegin : Pipeline[List[String],Program] =
       frontends.scalac.ExtractionPhase andThen
       purescala.MethodLifting andThen
-      utils.SubtypingPhase andThen
-      purescala.CompleteAbstractDefinitions
+      utils.TypingPhase andThen
+      purescala.CompleteAbstractDefinitions andThen
+      synthesis.ConvertHoles
 
     val pipeProcess: Pipeline[Program, Any] =
       if (settings.synthesis) {

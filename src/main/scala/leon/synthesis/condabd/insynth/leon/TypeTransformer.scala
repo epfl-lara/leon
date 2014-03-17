@@ -4,7 +4,7 @@ package leon.synthesis.condabd.insynth.leon
 
 import insynth.structures._
 
-import leon.purescala.TypeTrees.{ TypeTree => LeonType, BottomType => LeonBottomType, _ }
+import leon.purescala.TypeTrees.{ TypeTree => LeonType, _ }
 import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Definitions._
 
@@ -28,10 +28,9 @@ object TypeTransformer extends ( LeonType => SuccinctType ) {
 
     leonType match {
       case Untyped => throw new RuntimeException("Should not happen at this point")
-      case AnyType => Const("Any")
-      case LeonBottomType => BottomType //Const("Bottom")
       case BooleanType => Const("Boolean")
       case UnitType => Const("Unit")
+      case TypeParameter(id) => Const(id.name)
       case Int32Type => Const("Int")
       case ListType(baseType) => Instance("List", this(baseType) ) 
       case ArrayType(baseType) => Instance("Array", this(baseType) )
@@ -49,8 +48,6 @@ object TypeTransformer extends ( LeonType => SuccinctType ) {
       transformFunction(to, params ++ froms)
     case Untyped => throw new RuntimeException("Should not happen at this point")
     // query will have this
-    case LeonBottomType =>
-      Arrow( TSet(params map this distinct), this(fun) )
     case t =>
       Arrow( TSet(params map this distinct), this(t) )
   }

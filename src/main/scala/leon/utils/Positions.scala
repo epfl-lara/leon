@@ -14,11 +14,14 @@ abstract class Position {
     (this.file == that.file) && (this.line < that.line || this.col < that.col)
   }
 
+  def fullString: String
+
   def isDefined: Boolean
 }
 
 abstract class DefinedPosition extends Position {
   override def toString = line+":"+col
+  override def fullString = file.getPath+":"+line+":"+col
   override def isDefined = true
 
   def focusBegin: OffsetPosition
@@ -47,6 +50,7 @@ case object NoPosition extends Position {
   val file = null
 
   override def toString = "?:?"
+  override def fullString = "?:?:?"
   override def isDefined = false
 }
 

@@ -249,6 +249,14 @@ trait ASTExtractors {
       }
     }
 
+    object ExHole {
+      def unapply(tree: TypeApply) : Option[Type] = tree match {
+        case a @ TypeApply(s @ ExSelected("leon", "lang", _), List(tpe)) if s.symbol.name.decoded == "???"  =>
+            Some(a.tpe)
+        case _ => None
+      }
+    }
+
     object ExChooseExpression {
       def unapply(tree: Apply) : Option[(List[(Type, Symbol)], Type, Tree, Tree)] = tree match {
         case a @ Apply(

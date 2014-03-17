@@ -26,6 +26,8 @@ object Trees {
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal
 
+  case class Hole() extends Expr with Terminal
+
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
 
     assert(!vars.isEmpty)
@@ -39,13 +41,10 @@ object Trees {
 
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr with FixedType {
-    binder.markAsLetBinder
-
     val fixedType = body.getType
   }
 
   case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr with FixedType {
-    binders.foreach(_.markAsLetBinder)
     assert(value.getType.isInstanceOf[TupleType],
            "The definition value in LetTuple must be of some tuple type; yet we got [%s]. In expr: \n%s".format(value.getType, this))
 
@@ -86,7 +85,7 @@ object Trees {
 
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
     val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse{
-      AnyType
+      Untyped
     }
   }
 
@@ -119,7 +118,7 @@ object Trees {
         ts(index - 1)
 
       case _ =>
-        AnyType
+        Untyped
     }
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
@@ -150,7 +149,7 @@ object Trees {
     assert(cases.nonEmpty)
 
     val fixedType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse{
-      AnyType
+      Untyped
     }
 
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
@@ -560,7 +559,7 @@ object Trees {
       case ArrayType(base) =>
         base
       case _ =>
-        AnyType
+        Untyped
     }
 
   }
@@ -571,9 +570,9 @@ object Trees {
 
     val fixedType = array.getType match {
       case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(AnyType)
+        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped)
       case _ =>
-        AnyType
+        Untyped
     }
   }
 

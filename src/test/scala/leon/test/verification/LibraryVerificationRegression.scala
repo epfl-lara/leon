@@ -10,7 +10,7 @@ class LibraryVerificationRegression extends LeonTestSuite {
   test("Verify the library") {
       val pipeline = leon.frontends.scalac.ExtractionPhase andThen
                      leon.purescala.MethodLifting andThen
-                     leon.utils.SubtypingPhase andThen
+                     leon.utils.TypingPhase andThen
                      leon.purescala.CompleteAbstractDefinitions andThen
                      leon.verification.AnalysisPhase
 

@@ -111,7 +111,6 @@ object Trees {
 
   //same as let, buf for mutable variable declaration
   case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr with BinaryExtractable with PrettyPrintable {
-    binder.markAsLetBinder
     val et = body.getType
     if(et != Untyped)
       setType(et)

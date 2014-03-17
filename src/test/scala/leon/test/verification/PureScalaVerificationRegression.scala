@@ -17,7 +17,7 @@ class PureScalaVerificationRegression extends LeonTestSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.frontends.scalac.ExtractionPhase andThen leon.utils.SubtypingPhase andThen leon.verification.AnalysisPhase
+    leon.frontends.scalac.ExtractionPhase andThen leon.utils.TypingPhase andThen leon.verification.AnalysisPhase
 
   private def mkTest(file : File, leonOptions : Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()

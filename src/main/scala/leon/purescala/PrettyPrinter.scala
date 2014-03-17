@@ -126,6 +126,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         pp(t, p)
         sb.append("._" + i)
 
+      case h @ Hole() =>
+        sb.append("???[")
+        pp(h.getType, p)
+        sb.append("]")
+
       case c@Choose(vars, pred) =>
         sb.append("choose(")
         ppNary(vars, "", ", ", "")
@@ -341,8 +346,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
 
       // Types
-      case Untyped => sb.append("???")
-      case BottomType => sb.append("Nothing")
+      case Untyped => sb.append("<untyped>")
       case UnitType => sb.append("Unit")
       case Int32Type => sb.append("Int")
       case BooleanType => sb.append("Boolean")

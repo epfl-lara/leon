@@ -16,7 +16,7 @@ import leon.purescala.TypeTrees._
 
 class TransformationTests extends LeonTestSuite {
 
-  val pipeline = ExtractionPhase andThen leon.utils.SubtypingPhase
+  val pipeline = ExtractionPhase andThen leon.utils.TypingPhase
 
   filesInResourceDir("regression/transformations").foreach { file =>
     val ctx = testContext.copy(

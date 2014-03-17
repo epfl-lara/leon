@@ -1168,7 +1168,7 @@ object TreeOps {
         } else {
           None
         }
-      case Untyped | AnyType | BottomType | BooleanType | Int32Type | UnitType | TypeParameter(_) => None  
+      case Untyped | BooleanType | Int32Type | UnitType | TypeParameter(_) => None  
     }
 
     var idMap     = Map[Identifier, Identifier]()
