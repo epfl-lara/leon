@@ -15,11 +15,22 @@ object Definitions {
 
   sealed abstract class Definition extends Tree {
     val id: Identifier
+    var enclosing : Option[Definition] = None // The definition/scope enclosing this definition
+    def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
       case t : Definition => t.id == this.id
       case _ => false
     }
+    override def copiedFrom(o : Tree) : this.type = {
+      super.copiedFrom(o)
+      o match {
+        case df : Definition => enclosing = df.enclosing
+        case _ => // FIXME should this ever happen?
+      }
+      this
+    }
+
   }
 
   /** A ValDef declares a new identifier to be of a certain type. */
@@ -28,6 +39,7 @@ object Definitions {
 
     val fixedType = tpe
 
+    def subDefinitions = Seq()
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
       case t : ValDef => t.id == this.id
@@ -40,6 +52,9 @@ object Definitions {
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
   case class Program(id: Identifier, modules: List[ModuleDef]) extends Definition {
+    enclosing = None
+    def subDefinitions = modules
+    
     def definedFunctions    = modules.flatMap(_.definedFunctions)
     def definedClasses      = modules.flatMap(_.definedClasses)
     def classHierarchyRoots = modules.flatMap(_.classHierarchyRoots)
@@ -77,12 +92,16 @@ object Definitions {
   }
 
   case class TypeParameterDef(tp: TypeParameter) extends Definition {
+    def subDefinitions = Seq()
     val id = tp.id
   }
 
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ModuleDef(id: Identifier, defs : Seq[Definition]) extends Definition {
+    
+    def subDefinitions = defs
+    
     lazy val definedFunctions : Seq[FunDef] = defs.collect { case fd: FunDef => fd }
 
     lazy val definedClasses : Seq[ClassDef] = defs.collect { case ctd: ClassDef => ctd }
@@ -106,6 +125,8 @@ object Definitions {
   sealed trait ClassDef extends Definition {
     self =>
 
+    def subDefinitions = methods
+      
     val id: Identifier
     val tparams: Seq[TypeParameterDef]
     def fields: Seq[ValDef]
@@ -206,6 +227,8 @@ object Definitions {
       fullBody = withPostcondition(fullBody, op)
     }
 
+    def subDefinitions = Seq()
+
     // Metadata kept here after transformations
     var parent: Option[FunDef] = None
     var orig: Option[FunDef] = None
@@ -220,6 +243,7 @@ object Definitions {
       this.fullBody       = from.fullBody
       this.parent         = from.parent
       this.orig           = from.orig
+      this.enclosing      = from.enclosing
       this.addAnnotation(from.annotations.toSeq : _*)
     }
 

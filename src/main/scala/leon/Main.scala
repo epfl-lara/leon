@@ -11,6 +11,7 @@ object Main {
       frontends.scalac.ExtractionPhase,
       utils.TypingPhase,
       FileOutputPhase,
+      ScopingPhase,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
