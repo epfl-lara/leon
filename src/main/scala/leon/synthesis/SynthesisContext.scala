@@ -4,6 +4,7 @@ package leon
 package synthesis
 
 import solvers._
+import solvers.combinators.PortfolioSolver
 import solvers.z3._
 
 import purescala.Trees._
@@ -20,15 +21,29 @@ case class SynthesisContext(
   reporter: Reporter
 ) {
 
+  val allSolvers: Map[String, SolverFactory[SynthesisContext.SynthesisSolver]] = Map(
+    "fairz3" -> SolverFactory(() => new FairZ3Solver(context, program) with TimeoutAssumptionSolver),
+    "enum"   -> SolverFactory(() => new EnumerationSolver(context, program) with TimeoutAssumptionSolver)
+  )
+
+  val solversToUse = allSolvers.filterKeys(options.selectedSolvers)
+
+  val solverFactory: SolverFactory[SynthesisContext.SynthesisSolver] = if (solversToUse.isEmpty) {
+    reporter.fatalError("No solver selected. Aborting")
+  } else if (solversToUse.size == 1) {
+    solversToUse.values.head
+  } else {
+    SolverFactory( () => new PortfolioSolver(context, solversToUse.values.toSeq) with TimeoutAssumptionSolver)
+  }
+
   def newSolver: SynthesisContext.SynthesisSolver = {
-    new FairZ3Solver(context, program) with TimeoutAssumptionSolver
+    solverFactory.getNewSolver()
   }
 
   def newFastSolver: SynthesisContext.SynthesisSolver = {
     new UninterpretedZ3Solver(context, program) with TimeoutAssumptionSolver
   }
 
-  val solverFactory = SolverFactory(() => newSolver)
   val fastSolverFactory = SolverFactory(() => newFastSolver)
 
 }
