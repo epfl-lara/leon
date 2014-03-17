@@ -12,6 +12,7 @@ object Main {
       utils.TypingPhase,
       FileOutputPhase,
       ScopingPhase,
+      purescala.RestoreMethods,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
@@ -212,7 +213,7 @@ object Main {
       } else if (settings.verify) {
         AnalysisPhase
       } else {
-        utils.FileOutputPhase
+        purescala.RestoreMethods andThen utils.FileOutputPhase
       }
     }
 
