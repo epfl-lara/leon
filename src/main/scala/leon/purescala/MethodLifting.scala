@@ -24,10 +24,10 @@ object MethodLifting extends TransformationPhase {
         // We import class type params
         val ctParams = cd.tparams
 
-        val id = FreshIdentifier(cd.id.name+"."+fd.id.name).setPos(fd.id)
+        val id = FreshIdentifier(cd.id.name+"$"+fd.id.name).setPos(fd.id)
         val recType = classDefToClassType(cd, ctParams.map(_.tp))
 
-        val receiver = FreshIdentifier("this").setType(recType).setPos(cd.id)
+        val receiver = FreshIdentifier("$this").setType(recType).setPos(cd.id)
 
         val nfd = new FunDef(id, ctParams ++ fd.tparams, fd.returnType, ValDef(receiver, recType) +: fd.params)
         nfd.postcondition = fd.postcondition
