@@ -23,15 +23,13 @@ class SynthesisSuite extends LeonTestSuite {
     counter
   }
 
-  def forProgram(title: String)(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
+  def forProgram(title: String, opts: SynthesisOptions = SynthesisOptions())(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
 
     val ctx = testContext.copy(settings = Settings(
         synthesis = true,
         xlang     = false,
         verify    = false
       ))
-
-    val opts = SynthesisOptions()
 
     val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen SynthesisProblemExtractionPhase
 
@@ -121,6 +119,31 @@ class SynthesisSuite extends LeonTestSuite {
         assert(false, "Rule did not succeed")
         None
     }
+  }
+
+  forProgram("Ground Enum", SynthesisOptions(selectedSolvers = Set("enum")))(
+    """
+import scala.collection.immutable.Set
+import leon.annotation._
+import leon.lang._
+
+object Injection {
+  sealed abstract class List
+  case class Cons(tail: List) extends List
+  case class Nil() extends List
+
+  // proved with unrolling=0
+  def size(l: List) : Int = (l match {
+      case Nil() => 0
+      case Cons(t) => 1 + size(t)
+  }) ensuring(res => res >= 0)
+
+  def simple() = choose{out: List => size(out) == 2 }
+}
+    """
+  ) {
+    case (sctx, fd, p) =>
+      assertAllAlternativesSucceed(sctx, rules.Ground.instantiateOn(sctx, p))
   }
 
   forProgram("Cegis 1")(

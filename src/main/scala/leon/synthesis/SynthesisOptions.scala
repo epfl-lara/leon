@@ -14,6 +14,7 @@ case class SynthesisOptions(
   rules: Seq[Rule]                    = Rules.all ++ Heuristics.all,
   manualSearch: Boolean               = false,
   searchBound: Option[Int]            = None,
+  selectedSolvers: Set[String]        = Set("fairz3"),
 
   // Cegis related options
   cegisUseUninterpretedProbe: Boolean = false,

@@ -18,31 +18,32 @@ import scala.collection.mutable.{Map=>MutableMap}
 
 import ExecutionContext.Implicits.global
 
-class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[Solver with Interruptible]])
-        extends Solver with Interruptible {
+class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[AssumptionSolver with IncrementalSolver with Interruptible]])
+        extends Solver with IncrementalSolver with Interruptible with NaiveAssumptionSolver {
 
   val name = "Pfolio"
 
   var constraints = List[Expr]()
 
+  private var modelMap = Map[Identifier, Expr]()
+  private var solversInsts = solvers.map(_.getNewSolver)
+
   def assertCnstr(expression: Expr): Unit = {
-    constraints ::= expression
+    solversInsts.foreach(_.assertCnstr(expression))
   }
 
-  private var modelMap = Map[Identifier, Expr]()
-  private var solversInsts = Seq[Solver with Interruptible]()
+  def push(): Unit = {
+    solversInsts.foreach(_.push())
+  }
+
+  def pop(lvl: Int): Unit = {
+    solversInsts.foreach(_.pop(lvl))
+  }
 
   def check: Option[Boolean] = {
     modelMap = Map()
 
-    // create fresh solvers
-    solversInsts = solvers.map(_.getNewSolver)
-
-    // assert
-    solversInsts.foreach { s =>
-      s.assertCnstr(And(constraints.reverse))
-    }
-
+    context.reporter.debug("Running portfolio check")
     // solving
     val fs = solversInsts.map { s =>
       Future {
@@ -65,17 +66,18 @@ class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[Solve
     // Block until all solvers finished
     Await.result(Future.fold(fs)(0){ (i, r) => i+1 }, 10.days);
 
-    solversInsts.foreach(_.free)
-
     res
+  }
+
+  def free() = {
+    solversInsts.foreach(_.free)
+    solversInsts = Nil
+    modelMap = Map()
+    constraints = Nil
   }
 
   def getModel: Map[Identifier, Expr] = {
     modelMap
-  }
-
-  def free() = {
-    constraints = Nil
   }
 
   def interrupt(): Unit = {
