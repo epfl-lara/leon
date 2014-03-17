@@ -125,27 +125,49 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     }
   }
 
-  def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
-
-    tree match {
-      case id: Identifier =>
-        if (opts.printUniqueIds) {
-          p"${id.uniqueName}"
+  def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
+    
+      case id: Identifier =>    
+        val name = if (opts.printUniqueIds) {
+          id.uniqueName
         } else {
-          p"${id.toString}"
+          id.toString
         }
-
+        val alphaNumDollar = "[\\w\\$]"
+        // FIXME this does not account for class names with operator symbols
+        def isLegalScalaId(id : String) = id.matches(
+          s"${alphaNumDollar}+|[${alphaNumDollar}+_]?[!@#%^&*+-\\|~/?><:]+"
+        )
+        // Replace $opname with operator symbols
+        val candidate = scala.reflect.NameTransformer.decode(name)
+        
+        if (isLegalScalaId(candidate)) p"$candidate" else p"$name"
+        
       case Variable(id) =>
         p"$id"
 
       case LetTuple(bs,d,e) =>
-        p"""|val ($bs) = $d;
-            |$e"""
-
+        e match {
+          case _:LetDef | _ : Let | _ : LetTuple =>
+            p"""|val ($bs) = {
+                |  $d
+                |}
+                |$e"""
+          case _ =>
+            p"""|val ($bs) = $d;
+                |$e"""
+        }
       case Let(b,d,e) =>
-        p"""|val $b = $d;
-            |$e"""
-
+        e match {
+          case _:LetDef | _ : Let | _ : LetTuple =>
+            p"""|val $b = {
+                |  $d
+                |}
+                |$e"""
+          case _ =>
+            p"""|val $b = $d;
+                |$e"""
+        }
       case LetDef(fd,body) =>
         p"""|$fd
             |$body"""
@@ -391,7 +413,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
         parent.foreach{ par =>
-          p" extends ${par.id}"
+          if (par.tps.nonEmpty){
+            p" extends ${par.id}[${par.tps}]"
+          } else {
+            p" extends ${par.id}"
+          }
         }
 
         if (ccd.methods.nonEmpty) {
@@ -435,7 +461,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case (tree: PrettyPrintable) => tree.printWith(ctx)
 
       case _ => sb.append("Tree? (" + tree.getClass + ")")
-    }
+    
   }
 
   def requiresBraces(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
@@ -471,6 +497,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr)) => false
     case (_, Some(_: FunctionInvocation)) => false
     case (ie: IfExpr, _) => true
+    case (me: MatchExpr, _ ) => true
     case (e1: Expr, Some(e2: Expr)) if precedence(e1) > precedence(e2) => false
     case (_, _) => true
   }

@@ -12,8 +12,15 @@ import PrinterHelpers._
 
 /** This pretty-printer only print valid scala syntax */
 class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, sb) {
+  import Common._
+  import Trees._
+  import TypeTrees._
+  import Definitions._
+
+  import java.lang.StringBuffer
 
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
+   
     tree match {
       case Not(Equals(l, r))    => p"$l != $r"
       case Iff(l,r)             => p"$l == $r"
@@ -25,6 +32,14 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
             p"Set[$ut]($rs)"
           case _ =>
             p"Set($rs)"
+        }
+      }
+      case m @ FiniteMap(els) => {
+        m.getType match {
+          case MapType(k,v) =>
+            p"Map[$k,$v]($els)"
+          case _ =>
+            p"Map($els)"
         }
       }
       case ElementOfSet(e,s)    => p"$s.contains(e)"

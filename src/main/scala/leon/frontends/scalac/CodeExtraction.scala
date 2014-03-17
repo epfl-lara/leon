@@ -108,7 +108,7 @@ trait CodeExtraction extends ASTExtractors {
   class Extraction(units: List[CompilationUnit]) {
     private var currentFunDef: FunDef = null
 
-    //This is a bit missleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
+    //This is a bit misleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
     //that it can have any owner
     private var owners: Map[Identifier, Option[FunDef]] = Map() 
 
