@@ -140,4 +140,20 @@ class TreeOpsTests extends LeonTestSuite {
     assert(res === "123MP")
   }
 
+  test("pre- and postMap") {
+    val expr = Plus(IntLiteral(1), Minus(IntLiteral(2), IntLiteral(3)))
+    def op(e : Expr ) = e match {
+      case Minus(IntLiteral(2), e2) => Some(IntLiteral(2))
+      case IntLiteral(1) => Some(IntLiteral(2))
+      case IntLiteral(2) => Some(IntLiteral(42))
+      case _ => None
+    }
+    
+    assert( preMap(op, false)(expr) == Plus(IntLiteral(2),  IntLiteral(2))  )
+    assert( preMap(op, true )(expr) == Plus(IntLiteral(42), IntLiteral(42)) )
+    assert( postMap(op, false)(expr) == Plus(IntLiteral(2),  Minus(IntLiteral(42), IntLiteral(3))) )
+    assert( postMap(op, true)(expr)  == Plus(IntLiteral(42), Minus(IntLiteral(42), IntLiteral(3))) )
+    
+  }
+  
 }

@@ -115,6 +115,10 @@ object TreeOps {
    * pre-transformation of the tree, takes a partial function of replacements.
    * Substitutes *before* recursing down the trees.
    *
+   * Supports two modes : 
+   * 
+   * - If applyRec is false (default), will only substitute once on each level.
+   * 
    * e.g.
    *
    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
@@ -122,11 +126,28 @@ object TreeOps {
    * will yield:
    *
    *   Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
+   *   
+   * - If applyRec is true, it will substitute multiple times on each level:
+   * 
+   * e.g.
+   *
+   *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+   *
+   * will yield:
+   *
+   *   Add(a, f)  
+   *   
+   * WARNING: The latter mode can diverge if f is not well formed
    */
-  def preMap(f: Expr => Option[Expr])(e: Expr): Expr = {
-    val rec = preMap(f) _
+  def preMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
+    val rec = preMap(f, applyRec) _
 
-    val newV = f(e).getOrElse(e)
+    val newV = if (applyRec) {
+      // Apply f as long as it returns Some()
+      fixpoint { e : Expr => f(e) getOrElse e } (e) 
+    } else {
+      f(e) getOrElse e
+    }
 
     newV match {
       case u @ UnaryOperator(e, builder) =>
@@ -166,6 +187,9 @@ object TreeOps {
    * post-transformation of the tree, takes a partial function of replacements.
    * Substitutes *after* recursing down the trees.
    *
+   * Supports two modes : 
+   * - If applyRec is false (default), will only substitute once on each level.
+   *
    * e.g.
    *
    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
@@ -173,9 +197,22 @@ object TreeOps {
    * will yield:
    *
    *   Add(a, Minus(e, c))
+   *   
+   * If applyRec is true, it will substitute multiple times on each level:
+   * 
+   * e.g.
+   *
+   *   Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
+   *
+   * will yield:
+   *
+   *   Add(a, f)  
+   *   
+   * WARNING: The latter mode can diverge if f is not well formed
    */
-  def postMap(f: Expr => Option[Expr])(e: Expr): Expr = {
-    val rec = postMap(f) _
+
+  def postMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
+    val rec = postMap(f, applyRec) _
 
     val newV = e match {
       case u @ UnaryOperator(e, builder) =>
@@ -210,7 +247,13 @@ object TreeOps {
         t
     }
 
-    f(newV).getOrElse(newV)
+    if (applyRec) {
+      // Apply f as long as it returns Some()
+      fixpoint { e : Expr => f(e) getOrElse e } (newV) 
+    } else {
+      f(newV) getOrElse newV
+    }
+
   }
 
   /*
@@ -228,6 +271,11 @@ object TreeOps {
     v2
   }
 
+  
+  
+  
+  
+  
   ///*
   // * Turn a total function returning Option[A] into a partial function
   // * returning A.
@@ -279,6 +327,7 @@ object TreeOps {
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
     postMap(substs.lift)(expr)
   }
+
 
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap( {
@@ -1870,6 +1919,31 @@ object TreeOps {
     case _                                  => None
   }
 
+  /*
+   * Apply an expression operation on all expressions contained in a FunDef
+   */
+  def applyOnFunDef(operation : Expr => Expr)(funDef : FunDef): FunDef = {
+    val newFunDef = funDef.duplicate 
+    newFunDef.body          = funDef.body           map operation
+    newFunDef.precondition  = funDef.precondition   map operation
+    newFunDef.postcondition = funDef.postcondition  map { case (id, ex) => (id, operation(ex))}
+    newFunDef
+  }
+    
+  /**
+   * Apply preMap on all expressions contained in a FunDef
+   */
+  def preMapOnFunDef(repl : Expr => Option[Expr], applyRec : Boolean = false )(funDef : FunDef) : FunDef = {
+    applyOnFunDef(preMap(repl, applyRec))(funDef)  
+  }
+ 
+  /**
+   * Apply postMap on all expressions contained in a FunDef
+   */
+  def postMapOnFunDef(repl : Expr => Option[Expr], applyRec : Boolean = false )(funDef : FunDef) : FunDef = {
+    applyOnFunDef(postMap(repl, applyRec))(funDef)  
+  }
+  
 
   /**
    * Deprecated API
