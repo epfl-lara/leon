@@ -1,9 +1,9 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon.test
-package solvers
+package leon.test.solvers
 
 import leon._
+import leon.test._
 import leon.utils.Interruptible
 import leon.solvers._
 import leon.solvers.combinators._

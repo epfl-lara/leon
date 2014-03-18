@@ -1,8 +1,7 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon
-package test
-package synthesis
+package leon.test.synthesis
+import leon.test._
 
 import leon._
 import leon.purescala.Definitions._
@@ -33,7 +32,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
 
       val opts = SynthesisOptions(searchBound = Some(bound), allSeeing = true)
 
-      val pipeline = frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
+      val pipeline = leon.frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
 
       val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 

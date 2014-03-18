@@ -1,7 +1,7 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon
-package test
+package leon.test
+import leon.{DefaultReporter,Settings}
 
 class TestSilentReporter extends DefaultReporter(Settings()) {
   var lastErrors: List[String] = Nil

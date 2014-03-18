@@ -1,8 +1,9 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon
-package test
-package verification
+package leon.test.verification
+
+import leon._
+import leon.test._
 
 import leon.verification.{AnalysisPhase,VerificationReport}
 

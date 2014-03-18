@@ -1,8 +1,7 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon.test
-package synthesis
-
+package leon.test.synthesis
+import leon.test._
 import leon._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._

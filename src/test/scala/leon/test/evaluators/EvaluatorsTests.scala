@@ -1,11 +1,9 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon.test
-package evaluators
+package leon.test.evaluators
 
 import leon._
-
-import leon.evaluators._
+import leon.evaluators._ 
 
 import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
 import leon.frontends.scalac.ExtractionPhase
@@ -15,7 +13,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
-class EvaluatorsTests extends LeonTestSuite {
+class EvaluatorsTests extends leon.test.LeonTestSuite {
   private implicit lazy val leonContext = testContext
 
   private val evaluatorConstructors : List[(LeonContext,Program)=>Evaluator] = List(
@@ -446,7 +444,7 @@ class EvaluatorsTests extends LeonTestSuite {
   }
 
   test("Infinite Recursion") {
-    import codegen._
+    import leon.codegen._
 
     val p = """|object Program {
                |  import leon.lang._
@@ -462,7 +460,7 @@ class EvaluatorsTests extends LeonTestSuite {
   }
 
   test("Wrong Contracts") {
-    import codegen._
+    import leon.codegen._
 
     val p = """|object Program {
                |  import leon.lang._

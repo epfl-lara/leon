@@ -1,8 +1,9 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon
-package test
+package leon.test
 
+import leon._
+import leon.{LeonContext,Settings}
 import leon.utils._
 
 import scala.io.Source
@@ -14,6 +15,12 @@ import org.scalatest.exceptions.TestFailedException
 import java.io.File
 
 trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
+  
+  // Hard-code output directory, for Eclipse purposes
+  def outputDirHard(path : String) = new File("target/scala-2.10/test-classes/regression/" + path)
+  // Hard-code resource directory, for Eclipse purposes
+  val resourceDirHard = "src/test/resources/regression/"
+  
   def now() = {
     System.currentTimeMillis
   }
@@ -129,18 +136,35 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
     }
   }
 
-  private val all : String=>Boolean = (s : String) => true
+  protected val all : String=>Boolean = (s : String) => true
 
-  def filesInResourceDir(dir : String, filter : String=>Boolean = all) : Iterable[File] = {
+ 
+  def resourceDir(dir : String) : File = {
     import scala.collection.JavaConversions._
 
     val d = this.getClass.getClassLoader.getResource(dir)
 
     if(d == null || d.getProtocol != "file") {
-      assert(false, "Tests have to be run from within `sbt`, for otherwise the test files will be harder to access (and we dislike that).")
+      // We are in Eclipse. The only way we are saved is by hard-coding the path
+      new File(resourceDirHard + dir)
     }
+    else {
+      new File(d.toURI())
+    }
+  }
 
-    val asFile = new File(d.toURI())
+
+  
+  
+  def filesInResourceDir(dir : String, filter : String=>Boolean = all) : Iterable[File] = {
+    import scala.collection.JavaConversions._
+
+    val d = this.getClass.getClassLoader.getResource(dir)
+
+    val asFile = if(d == null || d.getProtocol != "file") {
+      // We are in Eclipse. The only way we are saved is by hard-coding the path
+      new File(resourceDirHard + dir)
+    } else new File(d.toURI())
 
     asFile.listFiles().filter(f => filter(f.getPath()))
   }

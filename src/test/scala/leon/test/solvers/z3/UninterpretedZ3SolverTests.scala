@@ -1,7 +1,8 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon.test
-package solvers.z3
+package leon.test.solvers.z3
+
+import leon.test._
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
