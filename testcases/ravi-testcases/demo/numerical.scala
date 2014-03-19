@@ -17,6 +17,5 @@ object SeeSaw
 	  else {
 	    s(x+2,y+1)
 	  }
-	} ensuring(res => (100 - x  <= 2*res) )	
-	//inductive generalization (100 - x  <= 2*(res - y))
+	} ensuring(res => (100 - x  <= 2*res) )		
 } 
