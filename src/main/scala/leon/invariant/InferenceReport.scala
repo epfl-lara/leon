@@ -6,8 +6,10 @@ package invariant
 import purescala.Definitions.FunDef
 import leon.verification._
 import leon.purescala.Trees._
+import leon.purescala.TreeOps._
 import leon.purescala.Definitions._
 import leon.purescala.Common._
+
 
 class InferenceCondition(val invariant: Option[Expr], funDef: FunDef) 
 	extends VerificationCondition(BooleanLiteral(true), funDef, null, null, "") {
@@ -19,7 +21,7 @@ class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
   
   override def status : String = invariant match {
     case None => "unknown"
-    case _ => invariant.get.toString    
+    case _ => simplifyArithmetic(invariant.get).toString
   }
 
   override def tacticStr = throw new IllegalStateException("should not be called!")
@@ -36,8 +38,8 @@ class InferenceReport(fvcs: Map[FunDef, List[VerificationCondition]])
     conditions.map(InferenceReport.infoLine).mkString("\n", "\n", "\n") +
     InferenceReport.infoSep +
     ("║ total: %-4d   inferred: %-4d   unknown %-4d " +
-      (" " * 16) +
-      " %7.3f ║\n").format(totalConditions, totalValid, totalUnknown, totalTime) +
+      (" " * 31) +
+      " %-3.3f ║\n").format(totalConditions, totalValid, totalUnknown, totalTime) +
     InferenceReport.infoFooter
   } else {
     "No verification conditions were analyzed."
@@ -64,8 +66,8 @@ object InferenceReport {
   private def infoLine(vc : VerificationCondition) : String = {
     val timeStr = vc.time.map(t => "%-3.3f".format(t)).getOrElse("")
 
-    "║ %-25s %9s %-8s║".format(
-      fit(vc.funDef.id.toString, 25),      
+    "║ %-15s %-57s %-8s║".format(
+      fit(vc.funDef.id.toString, 15),      
       vc.status,            
       timeStr)
   }

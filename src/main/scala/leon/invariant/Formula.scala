@@ -21,7 +21,6 @@ import leon.LeonValueOption
 import leon.ListValue
 import leon.Reporter
 import leon.verification.DefaultTactic
-import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 

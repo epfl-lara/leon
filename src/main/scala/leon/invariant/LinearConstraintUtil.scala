@@ -21,7 +21,6 @@ import leon.LeonValueOption
 import leon.ListValue
 import leon.Reporter
 import leon.verification.DefaultTactic
-import leon.verification.ExtendedVC
 
 //a collections of utility methods that manipulate the templates
 object LinearConstraintUtil {
