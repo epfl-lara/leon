@@ -16,7 +16,9 @@ import z3.scala._
 
 import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
 
-case class Z3FunctionInvocation(tfd: TypedFunDef, args: Seq[Z3AST])
+case class Z3FunctionInvocation(tfd: TypedFunDef, args: Seq[Z3AST]) {
+  override def toString = tfd.signature + args.mkString("(", ",", ")")
+}
 
 class FunctionTemplate private(
   solver: FairZ3Solver,

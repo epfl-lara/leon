@@ -162,29 +162,27 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
     def blockersInfo = blockersInfoStack.head
 
-    // Note that this computes cumulated sets.
-    private var unlockedStack : List[MutableSet[Z3AST]] = List(MutableSet())
-    def unlockedSet : MutableSet[Z3AST] = unlockedStack.head
-    def wasUnlocked(id : Z3AST) : Boolean = unlockedStack.head(id)
-
     def push() {
       blockersInfoStack = (MutableMap() ++ blockersInfo) :: blockersInfoStack
-      unlockedStack     = (MutableSet() ++ unlockedStack.head) :: unlockedStack
     }
 
     def pop(lvl: Int) {
       blockersInfoStack = blockersInfoStack.drop(lvl)
-      unlockedStack     = unlockedStack.drop(lvl)
     }
 
     def z3CurrentZ3Blockers = blockersInfo.map(_._2._3)
+
+    def finfo(fi: Z3FunctionInvocation) = {
+      fi.tfd.id.uniqueName+fi.args.mkString("(", ", ", ")")
+    }
 
     def dumpBlockers = {
       blockersInfo.groupBy(_._2._1).toSeq.sortBy(_._1).foreach { case (gen, entries) =>
         reporter.debug("--- "+gen)
 
+
         for (((bast), (gen, origGen, ast, fis)) <- entries) {
-          reporter.debug(".     "+bast +" ~> "+fis.map(_.tfd.signature))
+          reporter.debug(f".     $bast%15s ~> "+fis.map(finfo).mkString(", "))
         }
       }
     }
@@ -202,20 +200,18 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
 
     private def registerBlocker(gen: Int, id: Z3AST, fis: Set[Z3FunctionInvocation]) {
-      if (!wasUnlocked(id)) {
-        val z3ast = z3.mkNot(id)
-        blockersInfo.get(id) match {
-          case Some((exGen, origGen, _, exFis)) =>
-            // PS: when recycling `b`s, this assertion becomes dangerous.
-            // It's better to simply take the max of the generations.
-            // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
+      val z3ast = z3.mkNot(id)
+      blockersInfo.get(id) match {
+        case Some((exGen, origGen, _, exFis)) =>
+          // PS: when recycling `b`s, this assertion becomes dangerous.
+          // It's better to simply take the max of the generations.
+          // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
 
-            val maxGen = gen max exGen
+          val minGen = gen min exGen
 
-            blockersInfo(id) = ((maxGen, origGen, z3ast, fis++exFis))
-          case None =>
-            blockersInfo(id) = ((gen, gen, z3ast, fis))
-        }
+          blockersInfo(id) = ((minGen, origGen, z3ast, fis++exFis))
+        case None =>
+          blockersInfo(id) = ((gen, gen, z3ast, fis))
       }
     }
 
@@ -267,35 +263,61 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       }
     }
 
-    def unlock(id: Z3AST) : Seq[Z3AST] = {
-      assert(blockersInfo contains id)
-      assert(!wasUnlocked(id))
+    private var defBlockers = Map[Z3FunctionInvocation, Z3AST]()
 
-      val (gen, origGen, _, fis) = blockersInfo(id)
-
-      blockersInfo -= id
+    def unlock(ids: Seq[Z3AST]) : Seq[Z3AST] = {
+      assert(ids.forall(id => blockersInfo contains id))
 
       var newClauses : Seq[Z3AST] = Seq.empty
 
-      var reintroducedSelf : Boolean = false
+      for (id <- ids) {
+        val (gen, _, _, fis) = blockersInfo(id)
 
-      for(fi <- fis) {
-        val template              = getTemplate(fi.tfd)
-        val (newExprs, newBlocks) = template.instantiate(id, fi.args)
+        blockersInfo -= id
 
-        for((i, fis2) <- newBlocks) {
-          registerBlocker(nextGeneration(gen), i, fis2)
-          if(i == id) {
-            reintroducedSelf = true
+        var reintroducedSelf = false
+
+        for (fi <- fis) {
+          val defBlocker = defBlockers.get(fi) match {
+            case Some(defBlocker) =>
+              // we already have defBlocker => f(args) = body
+              defBlocker
+            case None =>
+              // we need to define this defBlocker and link it to definition
+              val defBlocker = z3.mkFreshConst("d", z3.mkBoolSort)
+              defBlockers += fi -> defBlocker
+
+              val template              = getTemplate(fi.tfd)
+              val (newExprs, newBlocks) = template.instantiate(defBlocker, fi.args)
+
+              for((i, fis2) <- newBlocks) {
+                registerBlocker(nextGeneration(gen), i, fis2)
+              }
+
+              newClauses ++= newExprs
+              defBlocker
+          }
+
+          // We connect it to the defBlocker:   blocker => defBlocker
+          if (defBlocker != id) {
+            newClauses ++= List(z3.mkImplies(id, defBlocker))
           }
         }
 
-        newClauses ++= newExprs
       }
 
-      if(!reintroducedSelf) {
-        unlockedSet += id
-      }
+      context.reporter.debug(s"   - ${newClauses.size} new clauses")
+      //context.reporter.ifDebug { debug =>
+      //  debug(s" - new clauses:")
+      //  debug("@@@@")
+      //  for (cl <- newClauses) {
+      //    debug(""+cl)
+      //  }
+      //  debug("////")
+      //}
+
+      //dumpBlockers
+      //readLine()
 
       newClauses
     }
@@ -387,9 +409,9 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       reporter.debug(" - Running Z3 search...")
 
-      // reporter.debug("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
-      // reporter.debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
-      // reporter.debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
+      //reporter.debug("Searching in:\n"+solver.getAssertions.toSeq.mkString("\nAND\n"))
+      //reporter.debug("Unroll.  Assumptions:\n"+unrollingBank.z3CurrentZ3Blockers.mkString("  &&  "))
+      //reporter.debug("Userland Assumptions:\n"+assumptionsAsZ3.mkString("  &&  "))
 
       solver.push() // FIXME: remove when z3 bug is fixed
       val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.z3CurrentZ3Blockers) :_*)
@@ -515,12 +537,10 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
             reporter.debug(" - more unrollings")
 
-            for(id <- toRelease) {
-              val newClauses = unrollingBank.unlock(id)
+            val newClauses = unrollingBank.unlock(toRelease)
 
-              for(ncl <- newClauses) {
-                solver.assertCnstr(ncl)
-              }
+            for(ncl <- newClauses) {
+              solver.assertCnstr(ncl)
             }
 
             reporter.debug(" - finished unrolling")
