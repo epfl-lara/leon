@@ -9,22 +9,24 @@ Note that this has program variables which are integers. To solve this we can ac
 guaranteed to find stronger one. But will we eventually find one ? (unless the invariant polygon is bounded, finding a real is equivalent to finding an integer.)
 If its a bounded polygon all that we need to do is check if its diameter is atleast one (this enforces an integer to be present in the polygon).
 
-
+* Abstract interpretation over programs with arbitrary recursive functions
 * Handling "sets" and "maps"
 * Infer templates using quantifier elimination and abduction
 * Extend the approach to graph algorithms
 
 ############Short term goals###############
-* Save the lower bounds found in the previous iterations and resuse them
+* How to scale up minimization
+* Can we use guards to block disjuncts ? In this case, we cannot block selective cases of UFADT axiom but only on the whole
+* Eliminate transitivity when choosing axioms (for distributivity or monotonicity)
+* Why isn't distributivity working ??
 * Add support for finding counter examples for inferred time bounds
 * Profile and check if we can improve performace
-* Should we need a better way to instantiate axioms? Try adding dist. + monotonicity for mergesort. Provide a way to enable/disable axioms/
+* Try adding dist. + monotonicity for mergesort. Provide a way to enable/disable axioms/
   May be make multiplication, as something that is commutative, associative, distributive and monotonic.
-  What if we use multiplication as it is in the VC ?? Something to try
+* What if we use multiplication as it is in the VC ?? Something to try
 * use ?(0) as a lightweight syntax for templates.
-* Fix the divide by zero erros happening because of integer overflows.
+* Fix the divide by zero errors happening because of integer overflows.
 * Fix warnings
-* How to redesign NLTemplateSolver ? It is getting ugly
 * Should we try to use other optimization functions for CEGIS
 * rebase to newer version of leon
 	- Take note of nondet, assume, AbsZ3Solver, FairZ3Solver, Phases, Bugfixes in match-to-if-then-else, fresenLocals, etc. 

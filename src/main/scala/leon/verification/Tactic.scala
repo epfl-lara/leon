@@ -10,10 +10,7 @@ abstract class Tactic(reporter: Reporter) {
   val shortDescription : String
 
   def setProgram(program: Program) : Unit = {}
-  def generatePostconditions(function: FunDef) : Seq[VerificationCondition]
-  def generateExtendedVCs(function: FunDef) : Seq[ExtendedVC] = {
-    throw NotImplementedException("generate Extended VCs not implemented")
-  }
+  def generatePostconditions(function: FunDef) : Seq[VerificationCondition] 
   def generatePreconditions(function: FunDef) : Seq[VerificationCondition]
   def generatePatternMatchingExhaustivenessChecks(function: FunDef) : Seq[VerificationCondition]
   def generateMiscCorrectnessConditions(function: FunDef) : Seq[VerificationCondition]

@@ -37,11 +37,6 @@ class VerificationCondition(val condition: Expr, val funDef: FunDef, val kind: V
   }
 }
 
-/** extended vc */
-class ExtendedVC(val body: Expr, val post: Expr, val funDef1: FunDef, val kind1: VCKind.Value, val tactic1: Tactic, val info1: String = "") 
-	extends VerificationCondition(Implies(body,post),funDef1,kind1,tactic1,info1) {
- }
-
 object VCKind extends Enumeration {
   val Precondition = Value("precond.")
   val Postcondition = Value("postcond.")
@@ -52,5 +47,6 @@ object VCKind extends Enumeration {
   val InvariantInd = Value("inv ind.")
   val InvariantPost = Value("inv post.")
   val InvariantPre = Value("inv pre.")
+  val Inference = Value("inference")
 }
 	

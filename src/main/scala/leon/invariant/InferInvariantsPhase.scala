@@ -21,7 +21,6 @@ import leon.LeonValueOption
 import leon.ListValue
 import leon.Reporter
 import leon.verification.DefaultTactic
-import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.invariant._
@@ -32,6 +31,9 @@ import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
 import leon.verification.VerificationReport
 import scala.util.control.Breaks._
+import leon.verification.VCKind
+import leon.verification.DefaultTactic
+import leon.verification.VerificationCondition
 
 /**
  * @author ravi
@@ -47,7 +49,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var program : Program = null
   var context : LeonContext = null
   var reporter : Reporter = null
-  var timeout: Int = 20  //default timeout is 10s
+  var timeout: Int = 15  //default timeout is 10s
   
   //defualt true flags
   var modularlyAnalyze = true
@@ -137,6 +139,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       case _ =>
     }
 
+    //register a shutdownhook
+    if (dumpStats) {
+      sys.ShutdownHookThread({ dumpStats(statsSuff) })
+    }
+
     val t1 = System.currentTimeMillis()
 
     //compute functions to analyze by sorting based on topological order
@@ -157,6 +164,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       }        
     })
     
+    var results : Map[FunDef,InferenceCondition] = null
     //perform the invariant inference
     if(!useCegis) {
       
@@ -167,9 +175,8 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       /*val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
         new ParallelTemplateSolver(context, program, constTracker, tempFactory, timeout)
       }*/
-      val succeededFuncs = analyseProgram(functionsToAnalyze, templateSolverFactory)
-      
-      println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))      
+      results = analyseProgram(functionsToAnalyze, templateSolverFactory)      
+      //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))      
     } else {      
       //here iterate on a bound
       var remFuncs = functionsToAnalyze
@@ -195,7 +202,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           //increase bounds in steps of 5
           b += 5
         }
-        println("Inferrence did not succeeded for functions: " + remFuncs.map(_.id))
+        //println("Inferrence did not succeeded for functions: " + remFuncs.map(_.id))
       }
     }
    
@@ -205,38 +212,44 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //dump stats 
     if (dumpStats) {
       reporter.info("- Dumping statistics")
-      val pw = new PrintWriter(program.mainObject.id +statsSuff+".txt")
-      Stats.dumpStats(pw)      
-      SpecificStats.dumpOutputs(pw)
-      if(tightBounds) {
-        SpecificStats.dumpMinimizationStats(pw)
-      }
+      dumpStats(statsSuff)
     }
-
-    VerificationReport.emptyReport
+   
+    new InferenceReport(results.map(pair => {
+      val (fd, ic) = pair
+      (fd -> List[VerificationCondition](ic))
+    }))
+  }
+  
+  def dumpStats(statsSuffix: String) = {    
+    val pw = new PrintWriter(program.mainObject.id + statsSuffix + ".txt")
+    Stats.dumpStats(pw)
+    SpecificStats.dumpOutputs(pw)
+    if (tightBounds) {
+      SpecificStats.dumpMinimizationStats(pw)
+    }
   }
 
  
   //return a set of functions whose inference succeeded
   def analyseProgram(functionsToAnalyze : Seq[FunDef], 
-      tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) : Set[FunDef] = {
+      tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) : Map[FunDef,InferenceCondition] = {
 
     //this is an inference engine that checks if there exists an invariant belonging to the current templates 
     val infEngineGen = new InferenceEngineGenerator(program, context, tempSolverFactory, targettedUnroll)
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
     val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
     
-    var analyzedSet = Set[FunDef]()
-    //add all theory operations to analyzed set
-    analyzedSet ++= functionsToAnalyze.filter(FunctionInfoFactory.isTheoryOperation _)
+    var analyzedSet = Map[FunDef, InferenceCondition]()    
     
-    functionsToAnalyze.foreach((funDef) => {
+    functionsToAnalyze.filterNot(FunctionInfoFactory.isTheoryOperation _).foreach((funDef) => {
 
       //skip the function if it has been analyzed or those that are theory operations
-      if (!analyzedSet.contains(funDef)) {
+      if (!analyzedSet.contains(funDef)) {        
         if (funDef.hasBody && funDef.hasPostcondition) {
           
           Stats.updateCounter(1, "procs")
+          val t1 = System.currentTimeMillis()
           
           val body = funDef.nondetBody.get
           val (resvar, post) = funDef.postcondition.get
@@ -275,11 +288,11 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               }
               case _ => throw new IllegalStateException("This case is not possible")
             }
-          }                   
+          }
+          val funcTime = (System.currentTimeMillis() - t1)/1000.0
 
           if (solved.get) {
-            val inferredFds = (infRes._2.get.keys.toSeq :+ funDef)
-            analyzedSet ++= inferredFds
+            val inferredFds = (infRes._2.get.keys.toSeq :+ funDef)            
             //here, if modularize flag is set then update the templates with the inferred invariant for the analyzed functions
             if (modularlyAnalyze) {
               infRes._2.get.foreach((pair) => {
@@ -288,11 +301,26 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
                 	tempFactory.setTemplate(fd, inv)
               })
             }
+            //update some statistics
+            var first = 0
+            analyzedSet ++= infRes._2.get.map((pair) => {
+              first += 1
+              val (fd, inv) = pair
+              val ic = new InferenceCondition(Some(inv), fd)
+              ic.time = if (first == 1) Some(funcTime) else Some(0.0)
+              (fd -> ic)
+            })
           }
           else {
-            reporter.info("- Exhausted all templates, cannot infer invariants")            
+            reporter.info("- Exhausted all templates, cannot infer invariants")
+            val ic = new InferenceCondition(None, funDef)
+            ic.time = Some(funcTime)
+            analyzedSet += (funDef -> ic)
           }
-        } else analyzedSet += funDef
+        } else {
+          val ic = new InferenceCondition(None, funDef)            
+          analyzedSet += (funDef -> ic)          
+        }
       }
     })
     analyzedSet

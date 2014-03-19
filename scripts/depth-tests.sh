@@ -7,7 +7,7 @@ LEON_HOME="/home/kandhada/leon/leon"
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/PropLogicDepth.scala --stats-suffix=-nl-stats" > proplogic-nl-out.txt
 
 #Quick sort
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/QSortDepth.scala --stats-suffix=-nl-stats" > qsort-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/QSortDepth.scala --stats-suffix=-nl-stats" > qsort-nl-out.txt
 
 #Merge sort
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/MergeSort.scala --stats-suffix=-nl-stats" > mergesort-nl-out.txt
@@ -37,7 +37,7 @@ runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testc
 #runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/BinomialHeap.scala --stats-suffix=-nl-stats" > binomialheap-nl-out.txt
 
 #ForElimination
-runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/ForElimination.scala --stats-suffix=-nl-stats" > forelim-nl-out.txt
+#runlim -t 1800 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/ForElimination.scala --stats-suffix=-nl-stats" > forelim-nl-out.txt
 
 #Speed benchmarks
 #runlim -t 200 ${LEON_HOME}/leon "--inferInv "${LEON_HOME}"/testcases/ravi-testcases/depth/SpeedBenchmarks.scala --stats-suffix=-nl-stats" > speed-nl-out.txt

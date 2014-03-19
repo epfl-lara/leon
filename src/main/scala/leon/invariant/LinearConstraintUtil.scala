@@ -335,13 +335,13 @@ object LinearConstraintUtil {
     var allUpperBounds : Boolean = true
     var allLowerBounds : Boolean = true
     var foundEquality : Boolean = false
+    var skippingEquality : Boolean = false
 
     relCtrs.foreach((lc) => {
       //check for an equality      
       if (lc.toExpr.isInstanceOf[Equals] && lc.coeffMap.contains(elimVar.toVariable)) {
         foundEquality = true
-
-        //if (!elimExpr.isDefined || (lc.coeffMap.size == 1) || (!elimExpr.get.isInstanceOf[Terminal] && lc.coeffMap.size==2)) {
+      
         //here, sometimes we replace an existing expression with a better one if available                    
         if (!elimExpr.isDefined || shouldReplace(elimExpr.get, lc, elimVar)) {
           //if the coeffcient of elimVar is +ve the the sign of the coeff of every other term should be changed
@@ -376,6 +376,8 @@ object LinearConstraintUtil {
             if (debugElimination) {
               println("Using ctr: " + lc + " found mapping: " + elimVar + " --> " + substExpr)
             }
+          } else {
+            skippingEquality = true
           }
         }
       } else if ((lc.toExpr.isInstanceOf[LessEquals] || lc.toExpr.isInstanceOf[LessThan])
@@ -413,7 +415,11 @@ object LinearConstraintUtil {
       //here, drop all relCtrs. None of them are important
       Seq()
     } else {
-      //cannot eliminate the variable
+      //for stats
+      if(skippingEquality) {
+        Stats.updateCumStats(1,"SkippedVar")
+      }
+      //cannot eliminate the variable      
       relCtrs
     }
     val resctrs = (newctrs ++ rest)
@@ -452,4 +458,9 @@ object LinearConstraintUtil {
       }      
     } else false      
   }
+  
+  //remove transitive axioms
+  
 }
+  
+  

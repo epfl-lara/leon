@@ -23,7 +23,6 @@ import leon.LeonValueOption
 import leon.ListValue
 import leon.Reporter
 import leon.verification.DefaultTactic
-import leon.verification.ExtendedVC
 import leon.verification.Tactic
 import leon.verification.VerificationReport
 import leon.solvers.SimpleSolverAPI
@@ -662,6 +661,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       }
       val newLnctrs = elimLnctrs.toSet.toSeq
       
+      //TODO:Remove transitive facts. E.g. a <= b, b <= c, a <=c can be simplified by dropping a <= c            
       //TODO: simplify the formulas and remove implied conjuncts if possible (note the formula is satisfiable, so there can be no inconsistencies) 
       //e.g, remove: a <= b if we have a = b or if a < b
       //Also, enrich the rules for quantifier elimination: try z3 quantifier elimination on variables that have an equality. 
@@ -684,5 +684,4 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       (disjunct, implCtrs)
     }
   }
-
 }
