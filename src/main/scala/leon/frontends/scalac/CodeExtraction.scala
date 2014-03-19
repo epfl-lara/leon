@@ -173,44 +173,48 @@ trait CodeExtraction extends ASTExtractors {
 
     def extractModules: List[LeonModuleDef] = {
       try {
-        val templates: List[(String, List[Tree])] = units.reverse.flatMap { u => u.body match {
-          case PackageDef(name, lst) =>
-            var standaloneDefs = List[Tree]()
+        val templates: List[(String, List[Tree])] = {
+          
+          var standaloneDefs = List[Tree]()
+          
+          val modules = units.reverse.flatMap { u => u.body match {
+        
+            case PackageDef(name, lst) =>
+  
+              lst.flatMap { _ match {
+                
+                case t if isIgnored(t.symbol) =>
+                  None
+   
+                case PackageDef(_, List(ExObjectDef(n, templ))) =>
+                  Some((n.toString, templ.body))
 
-            val modules: List[(String, List[Tree])] = lst.flatMap { _ match {
-              case t if isIgnored(t.symbol) =>
-                None
-
-              case PackageDef(_, List(ExObjectDef(n, templ))) =>
-                Some((n.toString, templ.body))
-
-              case ExObjectDef(n, templ) =>
-                Some((n.toString, templ.body))
-
-              case d @ ExAbstractClass(_, _, _) =>
-                standaloneDefs ::= d
-                None
-
-              case d @ ExCaseClass(_, _, _, _) =>
-                standaloneDefs ::= d
-                None
-
-              case d @ ExCaseClassSyntheticJunk() =>
-                None
-
-              case other =>
-                outOfSubsetError(other, "Expected: top-level object/class.")
-                None
-            }}.toList
-
-            val extraModules: List[(String, List[Tree])] = if (standaloneDefs.isEmpty) {
-              Nil
-            } else {
-              List(("standalone", standaloneDefs.reverse))
-            }
-
-            modules ++ extraModules
-        }}
+                case ExObjectDef(n, templ) =>
+                  Some((n.toString, templ.body))
+  
+                case d @ ExAbstractClass(_, _, _) =>
+                  standaloneDefs ::= d
+                  None
+  
+                case d @ ExCaseClass(_, _, _, _) =>
+                  standaloneDefs ::= d
+                  None
+  
+                case d @ ExCaseClassSyntheticJunk() =>
+                  None
+  
+                case other =>
+                  outOfSubsetError(other, "Expected: top-level object/class.")
+                  None
+              }}.toList
+  
+          }}
+          
+          
+          // Combine all standalone definitions into one module
+          if (standaloneDefs.isEmpty) modules
+          else modules :+  ("standalone$", standaloneDefs.reverse) 
+        }
 
         // Phase 1, we detect classes/types
         templates.foreach{ case (name, templ) => collectClassSymbols(templ) }
