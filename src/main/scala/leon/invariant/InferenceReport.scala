@@ -27,27 +27,20 @@ class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
   override def tacticStr = throw new IllegalStateException("should not be called!")
 
   override def solverStr = throw new IllegalStateException("should not be called!")
-
 }
 
 class InferenceReport(fvcs: Map[FunDef, List[VerificationCondition]]) 
-	extends VerificationReport(fvcs) {      
+	extends VerificationReport(fvcs) {
+  
+  private def infoSep(size: Int)    : String = "╟" + ("┄" * size) + "╢\n"
+  private def infoFooter(size: Int) : String = "╚" + ("═" * size) + "╝"
+  private def infoHeader(size: Int) : String = ". ┌─────────┐\n" +
+                                    			"╔═╡ Summary ╞" + ("═" * (size - 12)) + "╗\n" +
+                                    			"║ └─────────┘" + (" " * (size - 12)) + "║"
 
-  override def summaryString : String = if(totalConditions >= 0) {
-    InferenceReport.infoHeader +
-    conditions.map(InferenceReport.infoLine).mkString("\n", "\n", "\n") +
-    InferenceReport.infoSep +
-    ("║ total: %-4d   inferred: %-4d   unknown %-4d " +
-      (" " * 31) +
-      " %-3.3f ║\n").format(totalConditions, totalValid, totalUnknown, totalTime) +
-    InferenceReport.infoFooter
-  } else {
-    "No verification conditions were analyzed."
+  private def infoLine(str: String, size: Int) : String = {    
+    "║ "+ str + (" " * (size - str.size - 2)) + " ║"
   }
-}
-
-object InferenceReport {
-  def emptyReport : VerificationReport = new VerificationReport(Map())
 
   private def fit(str : String, maxLength : Int) : String = {
     if(str.length <= maxLength) {
@@ -56,19 +49,24 @@ object InferenceReport {
       str.substring(0, maxLength - 1) + "…"
     }
   }
-
-  private val infoSep    : String = "╟" + ("┄" * 83) + "╢\n"
-  private val infoFooter : String = "╚" + ("═" * 83) + "╝"
-  private val infoHeader : String = ". ┌─────────┐\n" +
-                                    "╔═╡ Summary ╞" + ("═" * 71) + "╗\n" +
-                                    "║ └─────────┘" + (" " * 71) + "║"
-
-  private def infoLine(vc : VerificationCondition) : String = {
-    val timeStr = vc.time.map(t => "%-3.3f".format(t)).getOrElse("")
-
-    "║ %-15s %-57s %-8s║".format(
-      fit(vc.funDef.id.toString, 15),      
-      vc.status,            
-      timeStr)
+  
+  override def summaryString : String = if(totalConditions >= 0) {
+    val maxTempSize = (conditions.map(_.status.size).max + 3)
+    val outputStrs = conditions.map(vc => {
+      val timeStr = vc.time.map(t => "%-3.3f".format(t)).getOrElse("")
+      "%-15s %s %-4s".format(fit(vc.funDef.id.toString, 15), vc.status + (" "*(maxTempSize-vc.status.size)), timeStr)
+    }) 
+    val entrySize = (outputStrs.map(_.size).max + 2)     
+    
+    infoHeader(entrySize) +
+    outputStrs.map(str => infoLine(str, entrySize)).mkString("\n", "\n", "\n") +
+    infoSep(entrySize) +
+    {
+      val summaryStr = "total: %-4d  inferred: %-4d  unknown: %-4d  time: %-3.3f".format(totalConditions, totalValid, totalUnknown, totalTime)
+      "║ "+ summaryStr + (" " * (entrySize - summaryStr.size - 2)) + " ║\n"      
+    } +    
+    infoFooter(entrySize)
+  } else {
+    "No verification conditions were analyzed."
   }
 }
