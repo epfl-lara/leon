@@ -18,6 +18,7 @@ object Rules {
     OnePoint,
     Ground,
     CaseSplit,
+    IfSplit,
     UnusedInput,
     UnconstrainedOutput,
     OptimisticGround,
