@@ -29,9 +29,9 @@ libraryDependencies ++= Seq(
     "com.typesafe.akka" %% "akka-actor" % "2.2.0" excludeAll(ExclusionRule(organization="org.scala-lang"))
 )
 
-fork in run := true
+Keys.fork in run := true
 
-fork in test := true
+Keys.fork in test := true
 
 logBuffered in Test := false
 
