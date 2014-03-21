@@ -51,17 +51,17 @@ object ConvertHoles extends LeonPhase[Program, Program] {
         holes = holes.reverse
 
         if (holes.nonEmpty) {
-          val res = FreshIdentifier("b", true).setType(body.getType)
+          val res = FreshIdentifier("b", true).copiedFrom(body)
           val (pid, pbody) = fd.postcondition.get
 
           val c = Choose(holes, Let(res, body, replaceFromIDs(Map(pid -> res.toVariable), pbody)))
 
           if (holes.size > 1) {
             val newHoles = holes.map(_.freshen)
-            fd.body = Some(LetTuple(newHoles, c, replaceFromIDs((holes zip newHoles.map(_.toVariable)).toMap, body)))
+            fd.body = Some(LetTuple(newHoles, c.setPos(body), replaceFromIDs((holes zip newHoles.map(_.toVariable)).toMap, body)).setPos(body))
           } else {
             fd.body = Some(preMap {
-              case h @ Hole() => Some(c)
+              case h @ Hole() => Some(c.setPos(h))
               case _ => None
             }(fd.body.get))
           }

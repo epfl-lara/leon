@@ -898,7 +898,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case chs @ ExHole(tpe) =>
           val cTpe  = extractType(tpe)
-          Hole().setType(cTpe)
+          Hole().setType(cTpe).setPos(chs.pos)
 
         case chs @ ExChooseExpression(args, tpe, body, select) =>
           val cTpe  = extractType(tpe)
