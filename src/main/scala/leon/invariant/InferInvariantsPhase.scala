@@ -49,7 +49,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   var program : Program = null
   var context : LeonContext = null
   var reporter : Reporter = null
-  var timeout: Int = 15  //default timeout is 10s
+  var timeout: Int = 20  //default timeout is 10s
   
   //defualt true flags
   var modularlyAnalyze = true
