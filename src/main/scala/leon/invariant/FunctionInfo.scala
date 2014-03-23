@@ -8,120 +8,102 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
 
-//TODO: are these fields copied
-class FunctionInfo(val fundef : FunDef) {  
-  var template : Option[Expr] = None
-  var timevar : Option[Expr] = None
-  var isTheoryOperation = false
-  var isMonotonic : Boolean = false
-  var isCommutative : Boolean = false
-  var isDistributive: Boolean = false
+/**
+ * Can all of this be made vals ?
+ */
+class FunctionInfo(val fundef: FunDef) {
+  //expressions
+  private var template: Option[Expr] = None
+  private var timeexpr: Option[Expr] = None
+  private var depthexpr: Option[Expr] = None
+
+  //flags
+  private var isTheoryOperation = false
+  private var isMonotonic: Boolean = false
+  private var isCommutative: Boolean = false
+  private var isDistributive: Boolean = false
+
+  /**
+   * creates a new function info object by
+   * (a) copying the flags to the passed object
+   * (b) copying the expressions part to the passed object
+   * after transforming it using the passed function
+   */
+  def copyFuncInfo(fd: FunDef, transform: (Expr => Expr)) : FunctionInfo = {
+    val newinfo = new FunctionInfo(fd)
+    //copying flags
+    newinfo.isTheoryOperation = isTheoryOperation
+    newinfo.isMonotonic = isMonotonic
+    newinfo.isCommutative = isCommutative
+    newinfo.isDistributive = isDistributive
+
+    //copying expr state
+    newinfo.template = template.map(transform)
+    newinfo.timeexpr = timeexpr.map(transform)
+    newinfo.depthexpr = depthexpr.map(transform)
+    newinfo
+  }
+
+  def isTheoryOp = isTheoryOperation
+  def doesCommute = isCommutative
+  def hasMonotonicity = isMonotonic
+  def hasDistributivity = isDistributive
+
+  def setTheoryOperation = isTheoryOperation = true
+  def setCommutativity = isCommutative = true
+  def setMonotonicity = isMonotonic = true
+  def setDistributivity = isDistributive = true
+
+  def setTemplate(tempExpr: Expr) = {    
+      template = Some(tempExpr)
+//    } else
+//      throw IllegalStateException("Template already set for function: " + fundef)
+  }
+  def hasTemplate: Boolean = template.isDefined
+  def getTemplate = template.get
+
+  def setTimeexpr(timeexp: Expr) = {
+    if (!timeexpr.isDefined) {
+      timeexpr = Some(timeexp)
+    } else
+      throw IllegalStateException("Timeexpr already set for function: " + fundef)
+  }
+  def hasTimeexpr = timeexpr.isDefined
+  def getTimeexpr = timeexpr.get
+
+  def setDepthexpr(dexpr: Expr) = {
+    if (!depthexpr.isDefined) depthexpr = Some(dexpr)
+    else throw IllegalStateException("Depthexpr already set for function: " + fundef)
+  }
+  def hasDepthexpr = depthexpr.isDefined
+  def getDepthexpr = depthexpr.get
 }
 
 object FunctionInfoFactory {
 
-  var functionInfos = Map[FunDef,FunctionInfo]()
-  
-  /**
-   * Sets a new template for the functions
-   */
-  def setTemplate(fd:FunDef, tempExpr :Expr, timeexpr: Option[Expr]) = {
-    
-    val funinfo = functionInfos.getOrElse(fd, { 
+  private var functionInfos = Map[FunDef, FunctionInfo]()
+
+  def getFunctionInfo(fd: FunDef): Option[FunctionInfo] = {
+    functionInfos.get(fd)
+  }
+
+  def getOrMakeInfo(fd: FunDef): FunctionInfo = {
+    functionInfos.getOrElse(fd, {
       val info = new FunctionInfo(fd)
       functionInfos += (fd -> info)
       info
     })
-    if(!funinfo.template.isDefined) {
-    	funinfo.template = Some(tempExpr)
-    	funinfo.timevar = timeexpr
-    }
-    else 
-    	throw IllegalStateException("Template already set for function: "+fd)
   }
-  
-  def hasTemplate(fd: FunDef) : Boolean = {
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.template.isDefined
-    } else false
-  }
-  
-  def getTemplate(fd: FunDef) : Expr = {
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.template.get
-      
-    } else throw IllegalStateException("cannot find templates!!")
-  }
-  
-  def getTimevar(fd: FunDef) : Option[Expr] = {
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.timevar      
-    } else None
-  } 
-    
-  
-  def templateMap : Map[FunDef, Expr] = {
+
+  def templateMap: Map[FunDef, Expr] = {
     functionInfos.collect {
-      case pair@_ if pair._2.template.isDefined => (pair._1 -> pair._2.template.get)                   
+      case pair @ _ if pair._2.hasTemplate => (pair._1 -> pair._2.getTemplate)
     }
   }
   
-  def getOrMakeInfo(fd: FunDef) : FunctionInfo = {
-    functionInfos.getOrElse(fd, { 
-      val info = new FunctionInfo(fd)
-      functionInfos += (fd -> info)
-      info
-    })
-  }
-  
-  def setTheoryOperation(fd: FunDef) = {
-    val funcinfo = getOrMakeInfo(fd)
-    funcinfo.isTheoryOperation = true
-  }
-  
-  def isTheoryOperation(fd: FunDef) = {
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.isTheoryOperation
-    } else false
-  }
-  
-  def setMonotonicity(fd: FunDef) = {
-    val funinfo = getOrMakeInfo(fd) 
-    funinfo.isMonotonic = true 
-  }
-  
-  def isMonotonic(fd: FunDef ) ={ 
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.isMonotonic
-    } else false
-  }
-  
-  def setCommutativity(fd: FunDef) = {
-    val funinfo = getOrMakeInfo(fd) 
-    funinfo.isCommutative = true 
-  }
-  
-  def isCommutative(fd: FunDef ) ={ 
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.isCommutative
-    } else false
-  }
-  
-  def setDistributivity(fd: FunDef) = {
-    val funinfo = getOrMakeInfo(fd) 
-    funinfo.isDistributive = true 
-  }
-  
-  def isDistributive(fd: FunDef ) ={ 
-    if(functionInfos.contains(fd)) {
-      val info = functionInfos(fd)
-      info.isDistributive
-    } else false
+  def createFunctionInfo(fd: FunDef, transform: (Expr => Expr), from: FunctionInfo): FunctionInfo = {
+    val newinfo = from.copyFuncInfo(fd, transform)
+    functionInfos += (fd -> newinfo)
+    newinfo
   }
 }

@@ -39,7 +39,7 @@ object TemplateInstantiator {
       val freevars = variablesOf(t)
       val template = ExpressionTransformer.FlattenFunction(t)
 
-      val tempvars = InvariantUtil.getTemplateVars(template)
+      val tempvars = Util.getTemplateVars(template)
       val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
         (v, model(v.id))
       }).toMap
@@ -63,7 +63,7 @@ object TemplateInstantiator {
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
         || e.isInstanceOf[GreaterEquals]) 
         && 
-        !InvariantUtil.getTemplateVars(tempExpr).isEmpty) => {
+        !Util.getTemplateVars(tempExpr).isEmpty) => {
 
         //println("Template Expression: "+tempExpr)
         val linearTemp = LinearConstraintUtil.exprToTemplate(tempExpr)
@@ -116,7 +116,7 @@ object TemplateInstantiator {
     val denoms = realValues.foldLeft(Set[Int]())((acc, entry) => { acc + getDenom(entry) })
     
     //compute the LCM of the denominators
-    val gcd = denoms.foldLeft(1)((acc, d) => InvariantUtil.gcd(acc,d))        
+    val gcd = denoms.foldLeft(1)((acc, d) => Util.gcd(acc,d))        
     val lcm = denoms.foldLeft(1)((acc, d) => {
       val product = (acc * d)
       if(product % gcd == 0) 

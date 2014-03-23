@@ -109,7 +109,7 @@ class Formula(val fd: FunDef, initexpr: Expr) {
         gor
       }
       case And(args) => {
-        val newargs = args.map(arg => if (InvariantUtil.getTemplateVars(e).isEmpty) {
+        val newargs = args.map(arg => if (Util.getTemplateVars(e).isEmpty) {
           arg
         } else {
           //if the expression has template variables then we separate it using guards
@@ -208,7 +208,7 @@ class Formula(val fd: FunDef, initexpr: Expr) {
     disjuncts.foreach(entry => {
       val (g,ctrs) = entry
       val ctrExpr = combiningOp(g,And(ctrs.map(_.toExpr)))
-      if(InvariantUtil.getTemplateVars(ctrExpr).isEmpty) 
+      if(Util.getTemplateVars(ctrExpr).isEmpty) 
         rest :+= ctrExpr
       else
         paramPart :+= ctrExpr

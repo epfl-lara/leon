@@ -122,7 +122,8 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     if(ctrTracker.hasVC(recFun)) false
     else {
       //need not create trees for theory operations
-      if(FunctionInfoFactory.isTheoryOperation(recFun)) {
+      val funinfo = FunctionInfoFactory.getFunctionInfo(recFun)
+      if(funinfo.isDefined && funinfo.get.isTheoryOp) {
         false
       } else {
         true 
@@ -167,7 +168,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
           } else plainBody
                     
           //note: here we are only adding the template as the postcondition
-          val idmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
+          val idmap = Util.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
           val postTemp = tempFactory.constructTemplate(idmap, recFun)
           val vcExpr =  ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(postTemp)))
           ctrTracker.addVC(recFun, vcExpr)
@@ -193,8 +194,8 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     //Important: make sure we use a fresh body expression here    
     val freshBody = freshenLocals(matchToIfThenElse(callee.nondetBody.get))
     val calleeSummary = 
-      Equals(InvariantUtil.getFunctionReturnVariable(callee), freshBody)       
-    val argmap1 = InvariantUtil.formalToAcutal(call)
+      Equals(Util.getFunctionReturnVariable(callee), freshBody)       
+    val argmap1 = Util.formalToAcutal(call)
     val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary))
     
     if(this.dumpInlinedSummary)

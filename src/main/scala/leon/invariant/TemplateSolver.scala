@@ -100,14 +100,14 @@ abstract class TemplateSolver (context : LeonContext, program : Program,val root
         wr.flush()
         wr.close()
         if (dumpVCasSMTLIB) {
-          InvariantUtil.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", context, program)
+          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", context, program)
         }        
         println("Printed VC of " + fd.id + " to file: " + filename)
       }
                 
       if (InferInvariantsPhase.dumpStats) {                
-        Stats.updateCounterStats(InvariantUtil.atomNum(vc), "VC-size", "VC-refinement")        
-        Stats.updateCounterStats(InvariantUtil.numUIFADT(vc), "UIF+ADT", "VC-refinement")
+        Stats.updateCounterStats(Util.atomNum(vc), "VC-size", "VC-refinement")        
+        Stats.updateCounterStats(Util.numUIFADT(vc), "UIF+ADT", "VC-refinement")
       }            
       (fd -> vc)      
     }).toMap  

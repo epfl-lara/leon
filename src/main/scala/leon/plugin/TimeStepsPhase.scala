@@ -31,10 +31,15 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 	      && ExpressionTransformer.isSubExpr(TimeVariable(), fd.postcondition.get._2)) {
 	    rootFuncs += fd
 	  } 
-	  else if(FunctionInfoFactory.hasTemplate(fd) 
-	      && ExpressionTransformer.isSubExpr(TimeVariable(), FunctionInfoFactory.getTemplate(fd))) {
-	    rootFuncs += fd
-	  }	    
+	  else {
+	    val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+        //	    if(FunctionInfoFactory.hasTemplate(fd) 
+        //	      && ExpressionTransformer.isSubExpr(TimeVariable(), FunctionInfoFactory.getTemplate(fd))) {
+        if (funinfo.isDefined && funinfo.get.hasTemplate
+          && ExpressionTransformer.isSubExpr(TimeVariable(), funinfo.get.getTemplate)) {
+          rootFuncs += fd
+        }	
+	  }     
 	})
 	//find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
 	val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
@@ -92,15 +97,24 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         }
         val toCond = mapCalls(replace(substsMap, fromCond))
 
-        //important also update the templates here         
-        if (FunctionInfoFactory.hasTemplate(from)) {
-          val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
-          //creating new template                     
-          FunctionInfoFactory.setTemplate(to, toTemplate,
-              if(substsMap.contains(TimeVariable())) 
-                Some(substsMap(TimeVariable()))            
-              else None)          
+        //important also update the function info here
+        val frominfo = FunctionInfoFactory.getFunctionInfo(from)
+        if (frominfo.isDefined) {
+          val transfunc = (e: Expr) => mapCalls(replace(substsMap, e))
+          FunctionInfoFactory.createFunctionInfo(to, transfunc, frominfo.get)
+        }          
+        //update the timeexpr of toinfo
+        if (substsMap.contains(TimeVariable())) {
+          val toinfo = FunctionInfoFactory.getOrMakeInfo(to)
+          toinfo.setTimeexpr(substsMap(TimeVariable()))
         }
+
+        //          val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
+        //          //creating new template                     
+        //          FunctionInfoFactory.setTemplate(to, toTemplate,
+        //              if(substsMap.contains(TimeVariable())) 
+        //                Some(substsMap(TimeVariable()))            
+        //              else None)          
         Some((toResId, toCond))
         
       } else None
@@ -120,10 +134,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     }
     
     val newDefs = program.mainObject.defs.map {
-      case fd: FunDef =>
-        funMap(fd)
-      case d =>
-        d
+      case fd: FunDef => funMap(fd)
+      case d => d
     }
 
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))    

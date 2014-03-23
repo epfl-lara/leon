@@ -94,8 +94,9 @@ object CallGraphUtil {
             funExpr = Tuple(Seq(funExpr, fd.postcondition.get._2))
         }
 
-        if (withTemplates && FunctionInfoFactory.hasTemplate(fd)) {
-          funExpr = Tuple(Seq(funExpr, FunctionInfoFactory.getTemplate(fd)))
+        val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+        if (withTemplates && funinfo.isDefined && funinfo.get.hasTemplate) {
+          funExpr = Tuple(Seq(funExpr, funinfo.get.getTemplate))
         }
 
         //introduce a new edge for every callee

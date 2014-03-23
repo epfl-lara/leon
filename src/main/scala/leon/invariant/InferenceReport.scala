@@ -12,26 +12,12 @@ import leon.purescala.Common._
 
 
 class InferenceCondition(val invariant: Option[Expr], funDef: FunDef) 
-	extends VerificationCondition(BooleanLiteral(true), funDef, null, null, "") {
-        
-  value = invariant match {
-    case None => None
-    case _ => Some(true)
-  }
+	extends VerificationCondition(BooleanLiteral(true), funDef, null, null, "") {   
   
   override def status : String = invariant match {
     case None => "unknown"
-    case _ => {
-      //replace the time instrument variable by TimeVariable()
-      val inv = simplifyArithmetic(invariant.get)
-      val timeexpr = FunctionInfoFactory.getTimevar(funDef)
-      val timeinv = if(timeexpr.isDefined) {
-        replace(Map(timeexpr.get -> TimeVariable()), inv)        
-      } else inv
-      //replace "res" anything by "ResultVariable"
-      val prettyInv = simplePostTransform(e => e match { 
-        case Variable(id) if (id.name == "res") => ResultVariable()
-        case _ => e})(timeinv)
+    case Some(inv) => {      
+      val prettyInv = Util.replaceInstruVars(inv, funDef)
       prettyInv.toString
     }
   }

@@ -26,6 +26,7 @@ import java.io._
 import leon.solvers.z3.UIFZ3Solver
 import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
+import leon.plugin._
 
 object FileCountGUID {
 	 var fileCount = 0
@@ -84,7 +85,7 @@ object TVarFactory {
   def isDummy(id: Identifier) : Boolean = dummyIds.contains(id)  
 }
 
-object InvariantUtil {
+object Util {
   
   val zero = IntLiteral(0)
   val one = IntLiteral(1)
@@ -208,7 +209,7 @@ object InvariantUtil {
   def getCallExprs(ine: Expr) : Set[Expr] = {
     var calls = Set[Expr]()
     simplePostTransform((e: Expr) => e match {  
-      case call @ _ if (InvariantUtil.isCallExpr(e)) => {
+      case call @ _ if Util.isCallExpr(e) => {
         calls += e
         call
       }
@@ -327,12 +328,43 @@ object InvariantUtil {
         }
       }      
     })
-    val cores = InvariantUtil.fix((e: Expr) => replace(newEqs, e))(And(simpcores.toSeq))    
+    val cores = Util.fix((e: Expr) => replace(newEqs, e))(And(simpcores.toSeq))    
     
     solver.free
     //cores
     ExpressionTransformer.unFlatten(cores,
         variablesOf(ine).filterNot(TVarFactory.isTemporary _))
+  }
+  
+  //replaces occurrences of mult by Times
+  def multToTimes(ine: Expr) : Expr ={
+    simplePostTransform((e: Expr) => e match {
+      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.multFun => {
+        Times(args(0), args(1))
+      }
+      case _ => e
+    })(ine)
+  }
+
+
+  def replaceInstruVars(e: Expr, fd: FunDef): Expr = {
+    //replace the time instrument variable by TimeVariable()
+    val simpe = simplifyArithmetic(e)
+    val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+    val withTime = if (funinfo.isDefined && funinfo.get.hasTimeexpr) {
+      replace(Map(funinfo.get.getTimeexpr -> TimeVariable()), simpe)
+    } else simpe
+
+    //replace depth instrument variable by DepthVariable()    
+    val withTimeAndDepth = if (funinfo.isDefined && funinfo.get.hasDepthexpr) {
+      replace(Map(funinfo.get.getDepthexpr -> DepthVariable()), withTime)
+    } else withTime
+
+    //replace "res" ids by "ResultVariable"
+    simplePostTransform(e => e match {
+      case Variable(id) if (id.name == "res") => ResultVariable()
+      case _ => e
+    })(withTimeAndDepth)
   }
 }
 

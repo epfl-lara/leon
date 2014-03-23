@@ -119,7 +119,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
   }
 
   def specForCall(call: Call): Option[Expr] = {
-    val argmap = InvariantUtil.formalToAcutal(call)
+    val argmap = Util.formalToAcutal(call)
     val callee = call.fi.funDef
     if (callee.hasPostcondition) {
       val (resvar, post) = callee.postcondition.get
@@ -139,7 +139,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
   }
 
   def templateForCall(call: Call): Expr = {
-    val argmap = InvariantUtil.formalToAcutal(call)
+    val argmap = Util.formalToAcutal(call)
     val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
     val template = if (call.fi.funDef.hasPrecondition) {
       val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(call.fi.funDef.precondition.get)))
@@ -166,7 +166,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
     val inst2 = instantiateBinaryAxioms(formula,calls)         
     val axiomInsts = inst1 ++ inst2                     
     
-    Stats.updateCounterStats(InvariantUtil.atomNum(And(axiomInsts)), "AxiomBlowup", "VC-refinement")
+    Stats.updateCounterStats(Util.atomNum(And(axiomInsts)), "AxiomBlowup", "VC-refinement")
     ctx.reporter.info("Number of axiom instances: "+axiomInsts.size)
 
     if (this.debugAxiomInstantiation) {

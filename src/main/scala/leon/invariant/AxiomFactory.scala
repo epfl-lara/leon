@@ -42,18 +42,21 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
   var commuCalls = Set[Call]()
   def hasUnaryAxiom(call: Call) : Boolean = {
     //important: here we need to avoid applying commutativity on the calls produced by axioms instantiation
-    (FunctionInfoFactory.isCommutative(call.fi.funDef) && !commuCalls.contains(call)) 
+    val funinfo = FunctionInfoFactory.getFunctionInfo(call.fi.funDef)
+    (funinfo.isDefined && funinfo.get.doesCommute && !commuCalls.contains(call)) 
   }
   
   var distriCalls = Set[Call]()
   def hasBinaryAxiom(call: Call) : Boolean = {
-	FunctionInfoFactory.isMonotonic(call.fi.funDef) ||
-		(FunctionInfoFactory.isDistributive(call.fi.funDef) && !distriCalls.contains(call))
+    val funinfo = FunctionInfoFactory.getFunctionInfo(call.fi.funDef)
+    (funinfo.isDefined && 
+        (funinfo.get.hasMonotonicity || (funinfo.get.hasDistributivity && !distriCalls.contains(call))))
   }
   
   def unaryAxiom(call: Call) : Expr = {
     val callee = call.fi.funDef
-    if(FunctionInfoFactory.isCommutative(callee)) {
+    val funinfo = FunctionInfoFactory.getFunctionInfo(callee)
+    if(funinfo.isDefined && funinfo.get.doesCommute) {
       //note: commutativity is defined only for binary operations
       val Seq(a1, a2) = call.fi.args
       val newret = TVarFactory.createTemp("cm").toVariable
@@ -77,13 +80,14 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
       throw IllegalStateException("Call does not have binary axiom: " + call1)
 
     val callee = call1.fi.funDef    
+    val funinfo = FunctionInfoFactory.getFunctionInfo(callee)
     //monotonicity
-    val axiom1 = if (FunctionInfoFactory.isMonotonic(callee)) {
+    val axiom1 = if (funinfo.get.hasMonotonicity) {
       monotonizeCalls(call1, call2)
     } else tru
     
     //distributivity
-    val axiom2 = if (FunctionInfoFactory.isDistributive(callee)) {
+    val axiom2 = if (funinfo.get.hasDistributivity) {
       undistributeCalls(call1, call2)
     } else tru
     

@@ -42,11 +42,13 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
 	  if(fd.hasPostcondition 
 	      && ExpressionTransformer.isSubExpr(DepthVariable(), fd.postcondition.get._2)) {
 	    rootFuncs += fd
-	  } 
-	  else if(FunctionInfoFactory.hasTemplate(fd) 
-	      && ExpressionTransformer.isSubExpr(DepthVariable(), FunctionInfoFactory.getTemplate(fd))) {
-	    rootFuncs += fd
-	  }	    
+	  } else {
+        val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+        if (funinfo.isDefined && funinfo.get.hasTemplate &&
+          ExpressionTransformer.isSubExpr(DepthVariable(), funinfo.get.getTemplate)) {
+          rootFuncs += fd
+        }
+      }     
 	})
 	//find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
 	val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
@@ -102,16 +104,25 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         }
         val toCond = mapCalls(replace(substsMap, fromCond))
 
-        //important also update the templates here         
-        if (FunctionInfoFactory.hasTemplate(from)) {
-          val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
-          //creating new template
-          val timeexpr = FunctionInfoFactory.getTimevar(from)
-          val newTimeExpr = if(timeexpr.isDefined) {
-            Some(replace(substsMap, timeexpr.get))
-          } else None
-          FunctionInfoFactory.setTemplate(to, toTemplate, newTimeExpr)
+        //important also update the function info here
+        val frominfo = FunctionInfoFactory.getFunctionInfo(from)
+        if (frominfo.isDefined) {
+          val transfunc = (e: Expr) => mapCalls(replace(substsMap, e))
+          FunctionInfoFactory.createFunctionInfo(to, transfunc, frominfo.get)
         }
+          
+        //set the depth information
+        if (substsMap.contains(DepthVariable())) {
+          val toinfo = FunctionInfoFactory.getOrMakeInfo(to)
+          toinfo.setDepthexpr(substsMap(DepthVariable()))
+        }
+        //          //creating new template
+        //          val timeexpr = FunctionInfoFactory.getTimevar(from)
+        //          val newTimeExpr = if(timeexpr.isDefined) {
+        //            Some(replace(substsMap, timeexpr.get))
+        //          } else None
+        //          FunctionInfoFactory.setTemplate(to, toTemplate, newTimeExpr)
+        //        }
         Some((toResId, toCond))
         
       } else None
@@ -131,10 +142,8 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     }
     
     val newDefs = program.mainObject.defs.map {
-      case fd: FunDef =>
-        funMap(fd)
-      case d =>
-        d
+      case fd: FunDef => funMap(fd)
+      case d => d
     } :+ maxFun
     
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))

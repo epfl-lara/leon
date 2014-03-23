@@ -84,9 +84,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     reporter = ctx.reporter
     program = prog
     reporter.info("Running Invariant Inference Phase...")
-
     
     var statsSuff = "-stats" + FileCountGUID.getID
+    
+    //process options
     for (opt <- ctx.options) opt match {
       //      case LeonValueOption("functions", ListValue(fs)) =>
       //        functionsToAnalyse ++= fs
@@ -138,6 +139,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
         
       case _ =>
     }
+    
+    //process annotations
+    program.definedFunctions.foreach((fd) => {
+      if(fd.annotations.contains("monotonic")){
+        val funinfo = FunctionInfoFactory.getOrMakeInfo(fd) 
+        funinfo.setMonotonicity        
+      }        
+    })
 
     //register a shutdownhook
     if (dumpStats) {
@@ -156,14 +165,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       callgraph.topologicalOrder.reverse
     } 
 
-    reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
-    //initialize Function info factory
-    functionsToAnalyze.foreach((fd) => {
-      if(fd.annotations.contains("monotonic")){
-        FunctionInfoFactory.setMonotonicity(fd)        
-      }        
-    })
-    
+    reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))       
     var results : Map[FunDef,InferenceCondition] = null
     //perform the invariant inference
     if(!useCegis) {
@@ -240,11 +242,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
     val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
     
-    var analyzedSet = Map[FunDef, InferenceCondition]()    
-    
-    functionsToAnalyze.filterNot(FunctionInfoFactory.isTheoryOperation _).foreach((funDef) => {
+    var analyzedSet = Map[FunDef, InferenceCondition]()
 
-      //skip the function if it has been analyzed or those that are theory operations
+    functionsToAnalyze.filterNot((fd) => {
+      val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+      (funinfo.isDefined && funinfo.get.isTheoryOp)
+    }).foreach((funDef) => {    
+
+      //skip the function if it has been analyzed
       if (!analyzedSet.contains(funDef)) {        
         if (funDef.hasBody && funDef.hasPostcondition) {
           
@@ -290,27 +295,30 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             }
           }
           val funcTime = (System.currentTimeMillis() - t1)/1000.0
-
+          
           if (solved.get) {
             val inferredFds = (infRes._2.get.keys.toSeq :+ funDef)            
             //here, if modularize flag is set then update the templates with the inferred invariant for the analyzed functions
             if (modularlyAnalyze) {
               infRes._2.get.foreach((pair) => {
                 val (fd, inv) = pair
-                if(FunctionInfoFactory.hasTemplate(fd))
+                val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+                if(funinfo.isDefined && funinfo.get.hasTemplate)
                 	tempFactory.setTemplate(fd, inv)
               })
             }
             //update some statistics
             var first = 0
             infRes._2.get.foreach(_ match {
-              case (fd, inv) if (!analyzedSet.contains(fd) && FunctionInfoFactory.hasTemplate(fd)) => {
-                first += 1
-                val ic = new InferenceCondition(Some(inv), fd)
-                ic.time = if (first == 1) Some(funcTime) else Some(0.0)
-                analyzedSet += (fd -> ic)
+              case (fd, inv) => {
+                val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+                if (!analyzedSet.contains(fd) && funinfo.isDefined && funinfo.get.hasTemplate) {
+                  first += 1
+                  val ic = new InferenceCondition(Some(inv), fd)
+                  ic.time = if (first == 1) Some(funcTime) else Some(0.0)
+                  analyzedSet += (fd -> ic)
+                }
               }
-              case _ => ;
             })
           }
           else {

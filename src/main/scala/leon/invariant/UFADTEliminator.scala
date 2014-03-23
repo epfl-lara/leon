@@ -79,7 +79,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       val BinaryOperator(Variable(r2), _, _) = call2
       val resEquals = (model(r1) == model(r2))
       if (resEquals) {
-        if (InvariantUtil.isCallExpr(call1)) {
+        if (Util.isCallExpr(call1)) {
           val (ants, _) = axiomatizeCalls(call1, call2)
           val antsHold = ants.forall(ant => {
             val BinaryOperator(Variable(lid), Variable(rid), _) = ant
@@ -92,7 +92,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
 
     def predForEquality(call1: Expr, call2: Expr): Seq[Expr] = {
 
-      val eqs = if (InvariantUtil.isCallExpr(call1)) {        
+      val eqs = if (Util.isCallExpr(call1)) {        
         val (_, rhs) = axiomatizeCalls(call1, call2)
         Seq(rhs)
       } else {
@@ -116,7 +116,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     //TODO: This has an incomplete way of handling ADTs for efficiency. Can this be fixed ?
     def predForDisequality(call1: Expr, call2: Expr): Seq[Expr] = {
       
-      val (ants, _) = if (InvariantUtil.isCallExpr(call1)) {
+      val (ants, _) = if (Util.isCallExpr(call1)) {
         axiomatizeCalls(call1, call2)
       } else {
         axiomatizeADTCons(call1, call2)

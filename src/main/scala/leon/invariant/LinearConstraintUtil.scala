@@ -102,7 +102,7 @@ object LinearConstraintUtil {
 
     //handle each minterm
     minterms.foreach((minterm: Expr) => minterm match {
-      case _ if (InvariantUtil.isTemplateExpr(minterm)) => {
+      case _ if (Util.isTemplateExpr(minterm)) => {
         addConstant(minterm)
       }
       case Times(e1, e2) => {
@@ -114,7 +114,7 @@ object LinearConstraintUtil {
         }
         e1 match {
           //case c @ IntLiteral(_) => addCoefficient(e2, c)
-          case _ if (InvariantUtil.isTemplateExpr(e1)) => {
+          case _ if (Util.isTemplateExpr(e1)) => {
             addCoefficient(e2, e1)            
           }
           case _ => throw IllegalStateException("Coefficient not a constant or template expression: " + e1)
@@ -214,7 +214,7 @@ object LinearConstraintUtil {
             || e.isInstanceOf[GreaterEquals])) => {
 
           //check if the expression has real valued sub-expressions
-          val isReal = InvariantUtil.hasReals(e1) || InvariantUtil.hasReals(e2) 
+          val isReal = Util.hasReals(e1) || Util.hasReals(e2) 
           //doing something else ... ?
           val (newe, newop) = e match {
             case t: Equals => (Minus(e1, e2), op)
@@ -248,9 +248,9 @@ object LinearConstraintUtil {
         case Times(e1, e2) => {
           val (r1, r2) = (mkLinearRecur(e1), mkLinearRecur(e2))
           
-          if(InvariantUtil.isTemplateExpr(r1)) {
+          if(Util.isTemplateExpr(r1)) {
             PushTimes(r1, r2)
-          } else if(InvariantUtil.isTemplateExpr(r2)){
+          } else if(Util.isTemplateExpr(r2)){
             PushTimes(r2, r1)
           } else 
             throw IllegalStateException("Expression not linear: " + Times(r1, r2))                     

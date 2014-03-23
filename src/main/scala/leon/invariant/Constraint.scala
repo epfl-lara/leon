@@ -47,7 +47,7 @@ class LinearTemplate(oper: (Expr,Expr) => Expr,
   val coeffTemplate = {
     //assert if the coefficients are templated expressions
     assert(coeffTemp.values.foldLeft(true)((acc, e) => {
-      acc && InvariantUtil.isTemplateExpr(e)
+      acc && Util.isTemplateExpr(e)
     }))
     
     //print the template mapping
@@ -59,7 +59,7 @@ class LinearTemplate(oper: (Expr,Expr) => Expr,
   val constTemplate  = {
     assert(constTemp match {
       case None => true
-      case Some(e) => InvariantUtil.isTemplateExpr(e)
+      case Some(e) => Util.isTemplateExpr(e)
     })
     constTemp
   }
@@ -82,7 +82,7 @@ class LinearTemplate(oper: (Expr,Expr) => Expr,
   }        
 
   def templateVars : Set[Variable]  = {
-    InvariantUtil.getTemplateVars(template)
+    Util.getTemplateVars(template)
   }
 		
   def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {

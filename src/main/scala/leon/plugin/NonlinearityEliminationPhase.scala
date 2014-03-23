@@ -12,10 +12,10 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
-object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
+object NonlinearityEliminationPhase extends LeonPhase[Program, Program] {
   val name = "Nonlinearity Elimination Phase"
   val description = "Reduces nonlinear functions to recursive functions with axioms"
-  val one = IntLiteral(1)   
+  val one = IntLiteral(1)
   val zero = IntLiteral(0)
 
   //a recursive function that represents multiplication of two positive arguments
@@ -48,12 +48,13 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
     val post1 = Implies(guard, defn2)
 
     mfd.postcondition = Some((resvar.id, And(Seq(post0, post1))))
-    //create axioms (for now only monotonicity)      
-    FunctionInfoFactory.setMonotonicity(mfd)
-    //FunctionInfoFactory.setDistributivity(mfd)
 
-    //make this a theory operation
-    FunctionInfoFactory.setTheoryOperation(mfd)
+    //set function info properties
+    val mfdinfo = FunctionInfoFactory.getOrMakeInfo(mfd)
+    mfdinfo.setTheoryOperation
+    //create axioms (for now only monotonicity)
+    mfdinfo.setMonotonicity
+    //mfdinfo.setDistributivity
     mfd
   }
 
@@ -80,40 +81,44 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
     val body = Let(res, call, IfExpr(Or(bothPive, bothNive), res.toVariable, UMinus(res.toVariable)))
     fd.body = Some(body)
 
-    //make this a theory operation
-    FunctionInfoFactory.setTheoryOperation(fd)
+    //set function info properties
+    val funinfo = FunctionInfoFactory.getOrMakeInfo(fd)
+    funinfo.setTheoryOperation
     fd
-  } 
+  }
 
   //TOOD: note associativity property of multiplication is not taken into account
-  def run(ctx: LeonContext)(program: Program) : Program = {
-           
+  def run(ctx: LeonContext)(program: Program): Program = {
+
     //create a fundef for each function in the program
     val newFundefs = program.mainObject.definedFunctions.map((fd) => {
       val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.returnType, fd.args)
       (fd, newfd)
-    }).toMap 
+    }).toMap
 
+    //note, handling templates variables is slightly tricky as we need to preserve a*x as it is
     var addMult = false
-    val replaceFun = (e: Expr) => e match {      
-      case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
-        FunctionInvocation(newFundefs(fd1), args)
-              
-      case Times(Variable(id), e2) if(TemplateIdFactory.IsTemplateIdentifier(id)) => e
-      case Times(e1, Variable(id)) if(TemplateIdFactory.IsTemplateIdentifier(id)) => e
-      
-      case Times(e1, e2) if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral]) => {
-        //replace times by a mult function
-        addMult = true        
-        FunctionInvocation(multFun, Seq(e1, e2))
-      }      
-      //note: include mult function if division operation is encountered
-      //division is handled during verification condition generation.
-      case Division(_, _) => {
-        addMult = true
-        e
-      }
-      case _ => e
+    def replaceFun(ine: Expr) : Expr = {      
+      simplePostTransform(e => e match {
+        case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
+          FunctionInvocation(newFundefs(fd1), args)
+
+        case Times(Variable(id), e2) if (TemplateIdFactory.IsTemplateIdentifier(id)) => e
+        case Times(e1, Variable(id)) if (TemplateIdFactory.IsTemplateIdentifier(id)) => e
+
+        case Times(e1, e2) if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral]) => {
+          //replace times by a mult function
+          addMult = true
+          FunctionInvocation(multFun, Seq(e1, e2))
+        }
+        //note: include mult function if division operation is encountered
+        //division is handled during verification condition generation.
+        case Division(_, _) => {
+          addMult = true
+          e
+        }
+        case _ => e
+      })(ine)
     }
 
     //create a body, pre, post for each newfundef
@@ -123,46 +128,47 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
       //add a new precondition
       newfd.precondition =
         if (fd.precondition.isDefined)
-          Some(simplePostTransform(replaceFun)(fd.precondition.get))
+          Some(replaceFun(fd.precondition.get))
         else None
 
       //add a new body
-      newfd.body = if (fd.hasBody){
+      newfd.body = if (fd.hasBody) {
         //replace variables by constants if possible
         val simpBody = simplifyLets(fd.body.get)
-        Some(simplePostTransform(replaceFun)(simpBody))        
-      }        
-      else None
+        Some(replaceFun(simpBody))
+      } else None
 
       //add a new postcondition                        
       newfd.postcondition = if (fd.postcondition.isDefined) {
         val (resvar, pexpr) = fd.postcondition.get
-        Some(resvar, simplePostTransform(replaceFun)(pexpr))
+        Some(resvar, replaceFun(pexpr))
       } else None
 
-      //important: also set the templates for newfd 
-      //note handling templates is slightly tricky as we need to preserve a*x as it is
-      if (FunctionInfoFactory.hasTemplate(fd)) {
-        val toTemplate = simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))
-        FunctionInfoFactory.setTemplate(newfd, toTemplate, FunctionInfoFactory.getTimevar(fd))
+      //important: update function info of 'newfd'       
+      val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+      if (funinfo.isDefined && funinfo.get.hasTemplate) {        
+        FunctionInfoFactory.createFunctionInfo(newfd, replaceFun, funinfo.get)
+        //        val toTemplate = simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))
+        //        FunctionInfoFactory.setTemplate(newfd, toTemplate, FunctionInfoFactory.getTimevar(fd))
       }
-      
+
       fd.annotations.foreach((str) => newfd.addAnnotation(str))
     })
 
     val newDefs = program.mainObject.defs.map {
       case fd: FunDef => newFundefs(fd)
       case d => d
-    } ++  (if(addMult) Seq(multFun, pivMultFun) else Seq())
+    } ++ (if (addMult) Seq(multFun, pivMultFun) else Seq())
 
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))    
-    println("After Nonlinearity Elimination: \n"+ScalaPrinter.apply(newprog))
-    
+    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
+
     //print all the templates
-    newprog.definedFunctions.foreach((fd) => 
-      if(FunctionInfoFactory.hasTemplate(fd))
-        println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
-        )
+    newprog.definedFunctions.foreach((fd) => {
+      val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+      if (funinfo.isDefined && funinfo.get.hasTemplate)
+        println("Function: " + fd.id + " template --> " + funinfo.get.getTemplate)
+    })
     newprog
   }
 }

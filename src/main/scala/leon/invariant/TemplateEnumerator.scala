@@ -112,7 +112,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
           }
         })
         
-        val resVar = InvariantUtil.getFunctionReturnVariable(rootFun)
+        val resVar = Util.getFunctionReturnVariable(rootFun)
         if (newTerms.contains(rootFun.returnType)) {
           newTerms(rootFun.returnType).add(resVar)
         } else {

@@ -506,7 +506,7 @@ object ExpressionTransformer {
     })(ine)
     //println("Map: " + tempMap)
     val closure = (e: Expr) => replace(tempMap, e)
-    InvariantUtil.fix(closure)(newinst)
+    Util.fix(closure)(newinst)
   }
   
   /**

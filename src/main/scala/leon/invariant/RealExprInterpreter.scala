@@ -52,7 +52,7 @@ object RealValuedExprInterpreter {
     val RealLiteral(num, denom) = rl
     val modNum = if (num < 0) -num else num
     val modDenom = if (denom < 0) -denom else denom
-    val divisor = InvariantUtil.gcd(modNum, modDenom)
+    val divisor = Util.gcd(modNum, modDenom)
     //val divisor = BigInt(num).gcd(BigInt(denom)).intValue     
     val simpNum = num / divisor
     val simpDenom = denom / divisor

@@ -95,7 +95,7 @@ class CegisCore(context: LeonContext,
     //for some sanity checks
     var oldModels = Set[Expr]()
     def addModel(m: Map[Identifier, Expr]) = {
-      val mexpr = InvariantUtil.modelToExpr(m)
+      val mexpr = Util.modelToExpr(m)
       if (oldModels.contains(mexpr))
         throw IllegalStateException("repeating model !!:" + m)
       else oldModels += mexpr
@@ -109,7 +109,7 @@ class CegisCore(context: LeonContext,
 
     val tempVarSum = if (minimizeSum) {
       //compute the sum of the tempIds
-      val rootTempIds = InvariantUtil.getTemplateVars(cegisSolver.tempFactory.getTemplate(cegisSolver.rootFun).get)
+      val rootTempIds = Util.getTemplateVars(cegisSolver.tempFactory.getTemplate(cegisSolver.rootFun).get)
       if (rootTempIds.size >= 1) {
         rootTempIds.tail.foldLeft(rootTempIds.head.asInstanceOf[Expr])((acc, tvar) => Plus(acc, tvar))
       } else zero
@@ -117,7 +117,7 @@ class CegisCore(context: LeonContext,
 
     //convert initCtr to a real-constraint
     val initRealCtr = ExpressionTransformer.convertIntLiteralToReal(initCtr)
-    if (InvariantUtil.hasInts(initRealCtr))
+    if (Util.hasInts(initRealCtr))
       throw IllegalStateException("Initial constraints have integer terms: " + initRealCtr)
 
     def cegisRec(model: Map[Identifier, Expr], prevctr: Expr): (Option[Boolean], Expr, Map[Identifier, Expr]) = {
@@ -143,7 +143,7 @@ class CegisCore(context: LeonContext,
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
         if (!spuriousTempIds.isEmpty)
           throw IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
-        if (InvariantUtil.hasReals(instFormula))
+        if (Util.hasReals(instFormula))
           throw IllegalStateException("Reals in instFormula: " + instFormula)
 
         //println("solving instantiated vcs...")
@@ -186,7 +186,7 @@ class CegisCore(context: LeonContext,
             //println("Newctr: " +newctr)
 
             if (InferInvariantsPhase.dumpStats) {
-              Stats.updateCounterStats(InvariantUtil.atomNum(newctr), "CegisTemplateCtrs", "CegisIters")              
+              Stats.updateCounterStats(Util.atomNum(newctr), "CegisTemplateCtrs", "CegisIters")              
             }
 
             //println("solving template constraints...")

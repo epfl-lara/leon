@@ -78,7 +78,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       val (paramPart, rest) = vcFormula.splitParamPart
 
       if (debugIncrementalVC) {
-        assert(InvariantUtil.getTemplateVars(rest).isEmpty)
+        assert(Util.getTemplateVars(rest).isEmpty)
         println("For function: "+fd.id)        
         println("Param part: "+paramPart)
         //println("Rest: "+rest)        
@@ -200,7 +200,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
     val tempIds = model.keys
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
-    val inputSize = InvariantUtil.atomNum(inputCtr)
+    val inputSize = Util.atomNum(inputCtr)
 
     var disjsSolvedInIter = Seq[Expr]()
     var callsInPaths = Set[Call]()
@@ -268,7 +268,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       } else {
 
         val newPart = And(newctrs)
-        val newSize = InvariantUtil.atomNum(newPart)
+        val newSize = Util.atomNum(newPart)
         Stats.updateCounterStats((newSize + inputSize), "NLsize", "disjuncts")
         println("# of atomic predicates: " + newSize + " + " + inputSize)
 
@@ -383,11 +383,11 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
     if (this.dumpNLCtrsAsSMTLIB) {
       val filename = program.mainObject.id + "-nlctr" + FileCountGUID.getID + ".smt2"
-      if (InvariantUtil.atomNum(nlctrs) >= 5) {
+      if (Util.atomNum(nlctrs) >= 5) {
         if (solveAsBitvectors)
-          InvariantUtil.toZ3SMTLIB(nlctrs, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
+          Util.toZ3SMTLIB(nlctrs, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
         else
-          InvariantUtil.toZ3SMTLIB(nlctrs, filename, "QF_NRA", context, program)
+          Util.toZ3SMTLIB(nlctrs, filename, "QF_NRA", context, program)
         println("NLctrs dumped to: " + filename)
       }
     }
@@ -431,7 +431,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       wr.close()
     }
     //throw an exception if the candidate expression has reals
-    if (InvariantUtil.hasReals(instExpr))
+    if (Util.hasReals(instExpr))
       throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instExpr)
 
     reporter.info("checking VC inst ...")
@@ -457,7 +457,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     //for debugging
     if (this.trackUnpackedVCCTime) {      
       val upVCinst = simplifyArithmetic(TemplateInstantiator.instantiate(ctrTracker.getVC(fd).unpackedExpr, tempVarMap))
-      Stats.updateCounterStats(InvariantUtil.atomNum(upVCinst), "UP-VC-size", "disjuncts")
+      Stats.updateCounterStats(Util.atomNum(upVCinst), "UP-VC-size", "disjuncts")
       
       t1 = System.currentTimeMillis()
       val (res2, _) = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program))).solveSAT(upVCinst)
@@ -534,7 +534,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
       if (this.verifyInvariant) {
         println("checking invariant for path...")
-        InvariantUtil.checkInvariant(pathcond, context, program)
+        Util.checkInvariant(pathcond, context, program)
       }
 
       if (this.printPathToConsole) {
@@ -551,7 +551,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
       if (this.dumpPathAsSMTLIB) {
         val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-        InvariantUtil.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
+        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
         println("Path dumped to: " + filename)
       }
     }
@@ -614,7 +614,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         //println("Path Constraints (before elim): "+(lnctrs ++ temps))
         if (this.verifyInvariant) {
           println("checking invariant for disjunct before elimination...")
-          InvariantUtil.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
+          Util.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
         }
       }
       //compute variables to be eliminated
@@ -627,7 +627,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         Some((ctrs: Seq[LinearConstraint]) => {
           //println("checking disjunct before elimination...")
           //println("ctrs: "+ctrs)
-          val debugRes = InvariantUtil.checkInvariant(And((ctrs ++ temps).map(_.template)), context, program)
+          val debugRes = Util.checkInvariant(And((ctrs ++ temps).map(_.template)), context, program)
         })
       } else None
       val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
@@ -637,7 +637,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         println("Path constriants (after elimination): " + elimLnctrs)
         if (this.verifyInvariant) {
           println("checking invariant for disjunct after elimination...")
-          InvariantUtil.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
+          Util.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
         }
       }
       //for stats
@@ -677,7 +677,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         println("Final Path Constraints: " + disjunct)
         if (this.verifyInvariant) {
           println("checking invariant for final disjunct... ")
-          InvariantUtil.checkInvariant(disjunct, context, program)
+          Util.checkInvariant(disjunct, context, program)
         }
       }
 

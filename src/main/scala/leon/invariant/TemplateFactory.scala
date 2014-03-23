@@ -98,7 +98,7 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) 
 
     //just consider all the arguments, return values that are integers
     val baseTerms = fd.args.filter((vardecl) => vardecl.tpe == Int32Type).map(_.toVariable) ++ 
-    					(if(fd.returnType == Int32Type) Seq(InvariantUtil.getFunctionReturnVariable(fd)) 
+    					(if(fd.returnType == Int32Type) Seq(Util.getFunctionReturnVariable(fd)) 
     					 else Seq())        
     					
     val lhs = baseTerms.foldLeft(TemplateIdFactory.freshTemplateVar() : Expr)((acc, t)=> {       
@@ -108,12 +108,6 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) 
     tempExpr
   }
   
-  /**
-   * Returns an object that incrementally generates templates
-   *//*
-  def getTemplateGenerator(prog: Program) : TemplateGenerator = {
-    new TemplateEnumerator(prog)
-  }*/
   
   /**
    * Constructs a template using a mapping from the formals to actuals.

@@ -163,13 +163,16 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
         val toCond = if(callers.contains(from)) Implies(toResId.toVariable, cond)
         			  else  cond
 
-        //important also update the templates here         
-        if (FunctionInfoFactory.hasTemplate(from)) {
-          val template = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
-          val toTemplate = if(callers.contains(from)) Implies(toResId.toVariable, template)
-          					else template
-          //creating new template          
-          FunctionInfoFactory.setTemplate(to, toTemplate, FunctionInfoFactory.getTimevar(from))
+        //important: also transform function info here
+        val frominfo = 	FunctionInfoFactory.getFunctionInfo(from)		
+        if (frominfo.isDefined) {
+          val transfunc = (e: Expr) => mapCalls(replace(substsMap, e))
+          val toinfo = FunctionInfoFactory.createFunctionInfo(to, transfunc, frominfo.get)
+          
+          //here, we need to handle templates of 'nondet' functions specially
+          if(toinfo.hasTemplate && callers.contains(from)) {          
+            toinfo.setTemplate(Implies(toResId.toVariable, toinfo.getTemplate))
+          }          	
         }
         Some((toResId, toCond))
         

@@ -6,6 +6,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
+import Util._
 import purescala.Extractors._
 import purescala.TypeTrees._
 import solvers._
@@ -30,7 +31,7 @@ import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
 import leon.verification.VerificationReport
-import leon.plugin.NonlinearityEliminationPhase
+import leon.plugin._
 
 /**
  * @author ravi
@@ -61,9 +62,10 @@ class InferenceEngineGenerator(program: Program,
     
     val postExpr = matchToIfThenElse(post)       
     //create a postcondition template if the function is recursive or if a template is provided for the function
-    val postTemp = if (program.isRecursive(funDef) || FunctionInfoFactory.hasTemplate(funDef)) {
+    val funinfo = FunctionInfoFactory.getFunctionInfo(funDef)
+    val postTemp = if (program.isRecursive(funDef) || (funinfo.isDefined && funinfo.get.hasTemplate)) {
       //this is a way to create an idenitity map :-))
-      val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
+      val argmap = Util.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
       Some(tempFactory.constructTemplate(argmap, funDef))      
     } else None    
     val fullPost = if (postTemp.isDefined) {
@@ -77,17 +79,6 @@ class InferenceEngineGenerator(program: Program,
     val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(fullPost)))
     //for debugging
     println("falttened VC: " + ScalaPrinter(vcExpr))   
-
-    //create a postcondition template if the function is recursive or if a template is provided for the function
-    /*val postExpr = matchToIfThenElse(post)
-    val npost = ExpressionTransformer.normalizeExpr(Not(postExpr))
-    val npostTemp = if (program.isRecursive(funDef) || FunctionInfoFactory.hasTemplate(funDef)) {
-
-      //this is a way to create an idenitity map :-))
-      val argmap = InvariantUtil.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
-      val temp = tempFactory.constructTemplate(argmap, funDef)
-      Some(ExpressionTransformer.normalizeExpr(Not(temp)))
-    } else None*/    
     
     //Create and initialize a constraint tracker
     val constTracker = new ConstraintTracker(context, program, funDef, tempFactory)
@@ -136,8 +127,8 @@ class InferenceEngineGenerator(program: Program,
 
           var output = "Invariants for Function: " + funDef.id + "\n"
           res.get.foreach((pair) => {
-            val (fd, inv) = pair
-            val simpInv = multToTimes(inv)
+            val (fd, inv) = pair                                    
+            val simpInv = simplifyArithmetic(replaceInstruVars(multToTimes(inv),fd))
             reporter.info("- Found inductive invariant: " + fd.id + " --> " + ScalaPrinter(simpInv))
             output += fd.id + " --> " + simpInv + "\n"
           })
@@ -178,16 +169,6 @@ class InferenceEngineGenerator(program: Program,
     inferenceEngine
   }
   
-  //replaces occurrences of mult by Times
-  def multToTimes(ine: Expr) : Expr ={
-    simplePostTransform((e: Expr) => e match {
-      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.multFun => {
-        Times(args(0), args(1))
-      }
-      case _ => e
-    })(ine)
-  }
-
   /**
    * This function creates a new program with each functions postcondition strengthened by
    * the inferred postcondition   
