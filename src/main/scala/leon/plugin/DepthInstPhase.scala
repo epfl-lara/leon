@@ -105,8 +105,12 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         //important also update the templates here         
         if (FunctionInfoFactory.hasTemplate(from)) {
           val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
-          //creating new template          
-          FunctionInfoFactory.setTemplate(to, toTemplate)
+          //creating new template
+          val timeexpr = FunctionInfoFactory.getTimevar(from)
+          val newTimeExpr = if(timeexpr.isDefined) {
+            Some(replace(substsMap, timeexpr.get))
+          } else None
+          FunctionInfoFactory.setTemplate(to, toTemplate, newTimeExpr)
         }
         Some((toResId, toCond))
         

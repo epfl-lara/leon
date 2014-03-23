@@ -139,13 +139,13 @@ object NonlinearityEliminationPhase extends LeonPhase[Program,Program] {
         val (resvar, pexpr) = fd.postcondition.get
         Some(resvar, simplePostTransform(replaceFun)(pexpr))
       } else None
-      
+
       //important: also set the templates for newfd 
       //note handling templates is slightly tricky as we need to preserve a*x as it is
       if (FunctionInfoFactory.hasTemplate(fd)) {
-          val toTemplate =  simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))                 
-          FunctionInfoFactory.setTemplate(newfd, toTemplate)
-        }
+        val toTemplate = simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))
+        FunctionInfoFactory.setTemplate(newfd, toTemplate, FunctionInfoFactory.getTimevar(fd))
+      }
       
       fd.annotations.foreach((str) => newfd.addAnnotation(str))
     })

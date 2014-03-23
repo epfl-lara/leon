@@ -169,7 +169,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
           val toTemplate = if(callers.contains(from)) Implies(toResId.toVariable, template)
           					else template
           //creating new template          
-          FunctionInfoFactory.setTemplate(to, toTemplate)
+          FunctionInfoFactory.setTemplate(to, toTemplate, FunctionInfoFactory.getTimevar(from))
         }
         Some((toResId, toCond))
         

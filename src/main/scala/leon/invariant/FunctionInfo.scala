@@ -8,8 +8,10 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
 
-class FunctionInfo(val fundef : FunDef) {
+//TODO: are these fields copied
+class FunctionInfo(val fundef : FunDef) {  
   var template : Option[Expr] = None
+  var timevar : Option[Expr] = None
   var isTheoryOperation = false
   var isMonotonic : Boolean = false
   var isCommutative : Boolean = false
@@ -23,15 +25,17 @@ object FunctionInfoFactory {
   /**
    * Sets a new template for the functions
    */
-  def setTemplate(fd:FunDef, tempExpr :Expr) = {
+  def setTemplate(fd:FunDef, tempExpr :Expr, timeexpr: Option[Expr]) = {
     
     val funinfo = functionInfos.getOrElse(fd, { 
       val info = new FunctionInfo(fd)
       functionInfos += (fd -> info)
       info
     })
-    if(!funinfo.template.isDefined)
-    	funinfo.template = Some(tempExpr) 
+    if(!funinfo.template.isDefined) {
+    	funinfo.template = Some(tempExpr)
+    	funinfo.timevar = timeexpr
+    }
     else 
     	throw IllegalStateException("Template already set for function: "+fd)
   }
@@ -50,6 +54,14 @@ object FunctionInfoFactory {
       
     } else throw IllegalStateException("cannot find templates!!")
   }
+  
+  def getTimevar(fd: FunDef) : Option[Expr] = {
+    if(functionInfos.contains(fd)) {
+      val info = functionInfos(fd)
+      info.timevar      
+    } else None
+  } 
+    
   
   def templateMap : Map[FunDef, Expr] = {
     functionInfos.collect {

@@ -21,7 +21,19 @@ class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
   
   override def status : String = invariant match {
     case None => "unknown"
-    case _ => simplifyArithmetic(invariant.get).toString
+    case _ => {
+      //replace the time instrument variable by TimeVariable()
+      val inv = simplifyArithmetic(invariant.get)
+      val timeexpr = FunctionInfoFactory.getTimevar(funDef)
+      val timeinv = if(timeexpr.isDefined) {
+        replace(Map(timeexpr.get -> TimeVariable()), inv)        
+      } else inv
+      //replace "res" anything by "ResultVariable"
+      val prettyInv = simplePostTransform(e => e match { 
+        case Variable(id) if (id.name == "res") => ResultVariable()
+        case _ => e})(timeinv)
+      prettyInv.toString
+    }
   }
 
   override def tacticStr = throw new IllegalStateException("should not be called!")

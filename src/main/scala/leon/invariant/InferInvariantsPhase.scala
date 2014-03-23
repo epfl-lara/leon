@@ -303,14 +303,15 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
             }
             //update some statistics
             var first = 0
-            analyzedSet ++= infRes._2.get.collect {
-              case (fd, inv) if (FunctionInfoFactory.hasTemplate(fd)) => {
+            infRes._2.get.foreach(_ match {
+              case (fd, inv) if (!analyzedSet.contains(fd) && FunctionInfoFactory.hasTemplate(fd)) => {
                 first += 1
                 val ic = new InferenceCondition(Some(inv), fd)
                 ic.time = if (first == 1) Some(funcTime) else Some(0.0)
-                (fd -> ic)
+                analyzedSet += (fd -> ic)
               }
-            }
+              case _ => ;
+            })
           }
           else {
             reporter.info("- Exhausted all templates, cannot infer invariants")

@@ -95,8 +95,11 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         //important also update the templates here         
         if (FunctionInfoFactory.hasTemplate(from)) {
           val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
-          //creating new template          
-          FunctionInfoFactory.setTemplate(to, toTemplate)
+          //creating new template                     
+          FunctionInfoFactory.setTemplate(to, toTemplate,
+              if(substsMap.contains(TimeVariable())) 
+                Some(substsMap(TimeVariable()))            
+              else None)          
         }
         Some((toResId, toCond))
         
