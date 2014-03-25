@@ -151,7 +151,7 @@ object LinearConstraintUtil {
     //pushes the minus inside the arithmetic terms
     //we assume that inExpr is in linear form
     def PushMinus(inExpr: Expr): Expr = {
-      require(inExpr.getType == Int32Type || inExpr.getType == RealType)
+      require(inExpr.getType == Int32Type || inExpr.getType == RealType)      
 
       inExpr match {
         case IntLiteral(v) => IntLiteral(-v)
@@ -260,9 +260,8 @@ object LinearConstraintUtil {
         case fi: FunctionInvocation => fi
         case _ => throw IllegalStateException("Expression not linear: " + inExpr)
       }
-    }
-    val rese = mkLinearRecur(atom)
-    //println("Unnormalized Linearized expression: "+unnormLinear)
+    }    
+    val rese = mkLinearRecur(atom)   
     rese
   }
   

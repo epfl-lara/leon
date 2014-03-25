@@ -37,7 +37,7 @@ class Formula(val fd: FunDef, initexpr: Expr) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
-  val useImplies = false
+  val useImplies = true
   
   val combiningOp = if(useImplies) Implies.apply _ else Equals.apply _  
   protected var disjuncts = Map[Variable, Seq[Constraint]]() //a mapping from guards to conjunction of atoms
