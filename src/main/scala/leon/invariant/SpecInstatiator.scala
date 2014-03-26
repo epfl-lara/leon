@@ -240,6 +240,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
     val product = cross(newCallsWithAxioms,getBinaxCalls(formula.fd)).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
       cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
              
+    ctx.reporter.info("Calls To Instantiate: "+product.size)
     val axiomInsts = product.foldLeft(Seq[Expr]())((acc, pair) => {      
       val axiomInst = axiomFactory.binaryAxiom(pair._1, pair._2)
       
