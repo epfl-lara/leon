@@ -16,6 +16,7 @@ abstract class Reporter(settings: Settings) {
   case object WARNING extends Severity
   case object ERROR   extends Severity
   case object FATAL   extends Severity
+  case object INTERNAL extends Severity
   case class  DEBUG(section: DebugSection) extends Severity
 
   case class Message(severity: Severity, position: Position, msg: Any);
@@ -28,9 +29,9 @@ abstract class Reporter(settings: Settings) {
 
   def account(msg: Message): Message = {
     msg.severity match {
-      case WARNING       => _warningCount += 1
-      case ERROR | FATAL => _errorCount += 1
-      case _             =>
+      case WARNING                  => _warningCount += 1
+      case ERROR | FATAL | INTERNAL => _errorCount += 1
+      case _                        =>
     }
 
     msg
@@ -49,6 +50,15 @@ abstract class Reporter(settings: Settings) {
   final def fatalError(pos: Position, msg: Any): Nothing = {
     emit(account(Message(FATAL, pos, msg)))
     onFatal()
+  }
+  final def internalError(pos: Position, msg : Any) : Nothing = {
+    emit(account(Message(INTERNAL, pos, msg.toString + 
+      "\nPlease inform the authors of Leon about this message"
+    ))) 
+    onFatal()
+  }
+  final def internalAssertion(cond : Boolean, pos: Position, msg : Any) : Unit = {
+    if (!cond) internalError(pos,msg)
   }
 
   def terminateIfError() = {
@@ -87,6 +97,8 @@ abstract class Reporter(settings: Settings) {
   final def warning(msg: Any): Unit       = warning(NoPosition, msg)
   final def error(msg: Any): Unit         = error(NoPosition, msg)
   final def fatalError(msg: Any): Nothing = fatalError(NoPosition, msg)
+  final def internalError(msg: Any) : Nothing = internalError(NoPosition, msg)
+  final def internalAssertion(cond : Boolean, msg: Any) : Unit = internalAssertion(cond,NoPosition, msg)
   final def debug(msg: => Any)(implicit section: DebugSection): Unit = debug(NoPosition, msg)
 }
 
@@ -96,6 +108,7 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
     case WARNING  => "["+Console.YELLOW           +"Warning"+Console.RESET+"]"
     case INFO     => "["+Console.BLUE             +" Info  "+Console.RESET+"]"
     case FATAL    => "["+Console.RED+Console.BOLD +" Fatal "+Console.RESET+"]"
+    case INTERNAL => "["+            Console.BOLD +"Internal"+Console.RESET+"]"
     case DEBUG(_) => "["+Console.MAGENTA          +" Debug "+Console.RESET+"]"
   }
 
@@ -163,4 +176,5 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
   protected def reline(pfx: String, msg: String) : String = {
     pfx+" "+msg.replaceAll("\n", "\n" + (" " * prefixSize))
   }
+
 }
