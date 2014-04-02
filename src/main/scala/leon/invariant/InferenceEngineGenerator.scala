@@ -84,9 +84,7 @@ class InferenceEngineGenerator(program: Program,
     val constTracker = new ConstraintTracker(context, program, funDef, tempFactory)
     constTracker.addVC(funDef, vcExpr)    
 
-    //create entities that uses the constraint tracker
     val tempSolver = tempSolverFactory(constTracker, tempFactory, funDef)
-
     //refinement engine state
     var refinementStep: Int = 0
     var toRefineCalls : Option[Set[Call]] = None

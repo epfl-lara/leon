@@ -53,8 +53,8 @@ object NonlinearityEliminationPhase extends LeonPhase[Program, Program] {
     val mfdinfo = FunctionInfoFactory.getOrMakeInfo(mfd)
     mfdinfo.setTheoryOperation
     //create axioms (for now only monotonicity)
-    //mfdinfo.setMonotonicity
-    mfdinfo.setDistributivity
+    mfdinfo.setMonotonicity
+    //mfdinfo.setDistributivity
     mfd
   }
 

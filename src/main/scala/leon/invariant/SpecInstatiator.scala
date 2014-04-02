@@ -206,7 +206,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
   
   /**
    * Here, we assume that axioms do not introduce calls. 
-   * If this does not hold then 'guards' have to be used while instantiating axioms so as
+   * If this does not hold, 'guards' have to be used while instantiating axioms so as
    * to compute correct verification conditions. 
    * TODO: Use least common ancestor etc. to avoid axiomatizing calls along different disjuncts
    * TODO: can we avoid axioms like (a <= b ^ x<=y => p <= q), (x <= y ^ a<=b => p <= q), ...
@@ -240,26 +240,73 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
     val product = cross(newCallsWithAxioms,getBinaxCalls(formula.fd)).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
       cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
              
-    ctx.reporter.info("Calls To Instantiate: "+product.size)
-    val axiomInsts = product.foldLeft(Seq[Expr]())((acc, pair) => {      
-      val axiomInst = axiomFactory.binaryAxiom(pair._1, pair._2)
-      
-      //import ExpressionTransformer._
-      //val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
-      val nnfAxiom = ExpressionTransformer.normalizeExpr(axiomInst)
-            
+    ctx.reporter.info("# of compatible axioms: "+product.size)
+    Stats.updateCumStats(product.size, "potential-axiom-instances")
+    
+    
+    //collect variables that depend on the inputs
+    val indepVars = formula.independentVars
+    println("Independent variables: "+indepVars)
+    val nonparamSolver = new UIFZ3Solver(this.ctx, this.program)    
+    nonparamSolver.assertCnstr(formula.splitParamPart._2)
+
+    /**
+     * Returns 'true' if the axiomPre is implied by the Formula
+     * 'false' if axiomPre is not implied by the Formula
+     * 'None' if axiomPre could be implied by the Formula depending on the assignment for parameters
+     * TODO: should be try and eliminate those that are related by template variables ?
+     */
+    def impliedByFormula(axiomPre: Expr): Option[Boolean] = {      
+      nonparamSolver.push
+      nonparamSolver.assertCnstr(Not(axiomPre))      
+      val res = nonparamSolver.check match {
+        case Some(false) => {//here the axiomPre is implied          
+          //println("Implied")
+          Some(true)
+        }
+        case _ => //here the aximoPre is not implied
+          if (variablesOf(axiomPre).diff(indepVars).isEmpty) {
+            //println("Not implied")
+            //here we can for sure say that the axiom will not be implied by any assignment of values to template variables
+            //TODO: this does not hold if we start considering templates with disjunctions in the postcondition  
+            Some(false)
+          } else {
+            None
+          }
+      }
+      nonparamSolver.pop()
+      res
+    }
+
+    val addedAxioms = product.flatMap(pair => {
       //union the parents of the two calls
-      val parents = formula.callData(pair._1).parents ++ formula.callData(pair._2).parents       				
-      val (axroot,_) = formula.conjoinWithRoot(nnfAxiom, parents)
-      
-      //important: here we need to update the axiom roots
-      axiomRoots += (Seq(pair._1,pair._2) -> axroot)
-      
-      acc :+ axiomInst    
-    })
+      val parents = formula.callData(pair._1).parents ++ formula.callData(pair._2).parents
+      val axiomInsts = axiomFactory.binaryAxiom(pair._1, pair._2)
+      //select axioms based on whether the axiom ant could be implied by the formula
+      axiomInsts.collect {
+        case (ant, conseq) if (impliedByFormula(ant) == Some(true)) => {
+          //add the consequence alone to the root
+          //TODO: should we use the guard here ??
+          formula.conjoinWithRoot(ExpressionTransformer.normalizeExpr(conseq), parents)
+          conseq
+        }
+        case (ant, conseq) if (!impliedByFormula(ant).isDefined) => {
+          val axiom = Implies(ant, conseq)
+          val nnfAxiom = ExpressionTransformer.normalizeExpr(axiom)
+          val (axroot, _) = formula.conjoinWithRoot(nnfAxiom, parents)
+          //important: here we need to update the axiom roots
+          axiomRoots += (Seq(pair._1, pair._2) -> axroot)
+          axiom
+        }
+        //need not do anything if impliedByFormula(ant) is false 
+      }
+    })    
+    
+    //free the solver
+    nonparamSolver.free
     
     appendBinaxCalls(formula.fd, newCallsWithAxioms)
-    axiomInsts
+    addedAxioms
   }  
   
   /**

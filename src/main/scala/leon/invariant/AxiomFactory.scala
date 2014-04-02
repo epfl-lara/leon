@@ -71,7 +71,7 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
       throw IllegalStateException("Call does not have unary axiom: "+call)
   }
 
-  def binaryAxiom(call1: Call, call2: Call): Expr = {
+  def binaryAxiom(call1: Call, call2: Call): Seq[(Expr,Expr)] = {
 
     if (call1.fi.funDef.id != call2.fi.funDef.id)
       throw IllegalStateException("Instantiating binary axiom on calls to different functions: " + call1 + "," + call2)
@@ -82,30 +82,30 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     val callee = call1.fi.funDef    
     val funinfo = FunctionInfoFactory.getFunctionInfo(callee)
     //monotonicity
-    val axiom1 = if (funinfo.get.hasMonotonicity) {
-      monotonizeCalls(call1, call2)
-    } else tru
+    var axioms = if (funinfo.get.hasMonotonicity) {
+      Seq(monotonizeCalls(call1, call2))
+    } else Seq()
     
     //distributivity
-    val axiom2 = if (funinfo.get.hasDistributivity) {
+    axioms ++= (if (funinfo.get.hasDistributivity) {
       //println("Applying distributivity on: "+(call1,call2))
-      undistributeCalls(call1, call2)
-    } else tru
+      Seq(undistributeCalls(call1, call2))
+    } else Seq())
     
-    And(Seq(axiom1, axiom2))
+    axioms
   }
   
-  def monotonizeCalls(call1: Call, call2: Call): Expr = {    
-    val ant = (call1.fi.args zip call2.fi.args).foldLeft(Seq[Expr]())((acc, pair) => {
+  def monotonizeCalls(call1: Call, call2: Call): (Expr,Expr) = {    
+    val ants = (call1.fi.args zip call2.fi.args).foldLeft(Seq[Expr]())((acc, pair) => {
       val lesse = LessEquals(pair._1, pair._2)
       lesse +: acc
     })
     val conseq = LessEquals(call1.retexpr, call2.retexpr)
-    Implies(And(ant), conseq)    
+    (And(ants), conseq)    
   }
    
   //this is applicable only to binary operations
-  def undistributeCalls(call1: Call, call2: Call): Expr = {    
+  def undistributeCalls(call1: Call, call2: Call): (Expr,Expr) = {    
     val fd = call1.fi.funDef
     val Seq(a1,b1) = call1.fi.args
     val Seq(a2,b2) = call2.fi.args
@@ -120,8 +120,8 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     distriCalls ++= Set(dcall1, dcall2)    
     
     //val axiom1 = Implies(LessEquals(a1,a2), And(LessEquals(Plus(r1,r2),dret1), dcall1.toExpr)) 
-    val axiom2 = Implies(LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
+    //val axiom2 = Implies(LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
 //    And(axiom1,axiom2)
-    axiom2
+    (LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
   }
 }
