@@ -38,19 +38,17 @@ import leon.plugin.NonlinearityEliminationPhase
 class AxiomFactory(ctx : LeonContext, program : Program) {                       
   
   val tru = BooleanLiteral(true)
-  //Add more axioms here, if necessary
-  var commuCalls = Set[Call]()
+  //Add more axioms here, if necessary  
   def hasUnaryAxiom(call: Call) : Boolean = {
     //important: here we need to avoid applying commutativity on the calls produced by axioms instantiation
     val funinfo = FunctionInfoFactory.getFunctionInfo(call.fi.funDef)
-    (funinfo.isDefined && funinfo.get.doesCommute && !commuCalls.contains(call)) 
+    (funinfo.isDefined && funinfo.get.doesCommute) 
   }
-  
-  var distriCalls = Set[Call]()
+    
   def hasBinaryAxiom(call: Call) : Boolean = {
     val funinfo = FunctionInfoFactory.getFunctionInfo(call.fi.funDef)
     (funinfo.isDefined && 
-        (funinfo.get.hasMonotonicity || (funinfo.get.hasDistributivity && !distriCalls.contains(call))))
+        (funinfo.get.hasMonotonicity || funinfo.get.hasDistributivity))
   }
   
   def unaryAxiom(call: Call) : Expr = {
@@ -61,11 +59,7 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
       val Seq(a1, a2) = call.fi.args
       val newret = TVarFactory.createTemp("cm").toVariable
       val newfi = FunctionInvocation(callee,Seq(a2,a1))
-      val newcall = Call(newret,newfi)
-      
-      //note: calls added by this axiom cannot be again considered by this axiom
-      commuCalls += newcall
-      
+      val newcall = Call(newret,newfi)      
       And(newcall.toExpr, Equals(newret, call.retexpr))
     } else 
       throw IllegalStateException("Call does not have unary axiom: "+call)
@@ -115,10 +109,7 @@ class AxiomFactory(ctx : LeonContext, program : Program) {
     val dret1 = TVarFactory.createTemp("dt").setType(Int32Type).toVariable
     val dret2 = TVarFactory.createTemp("dt").setType(Int32Type).toVariable
     val dcall1 = Call(dret1, FunctionInvocation(fd,Seq(a2,Plus(b1,b2))))
-    val dcall2 = Call(dret2, FunctionInvocation(fd,Seq(Plus(a1,a2),b2)))
-    
-    distriCalls ++= Set(dcall1, dcall2)    
-    
+    val dcall2 = Call(dret2, FunctionInvocation(fd,Seq(Plus(a1,a2),b2)))    
     //val axiom1 = Implies(LessEquals(a1,a2), And(LessEquals(Plus(r1,r2),dret1), dcall1.toExpr)) 
     //val axiom2 = Implies(LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
 //    And(axiom1,axiom2)

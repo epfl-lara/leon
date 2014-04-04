@@ -31,7 +31,7 @@ import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
 import leon.verification.VerificationReport
-import leon.plugin._
+import leon.invariant.NonlinearityEliminationPhase
 
 /**
  * @author ravi
@@ -42,7 +42,7 @@ import leon.plugin._
 class InferenceEngineGenerator(program: Program,
   context: LeonContext,  
   tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver,
-  targettedUnroll: Boolean) {
+  targettedUnroll: Boolean, withmult : Boolean) {
 
   val reporter = context.reporter
   val fls = BooleanLiteral(false)
@@ -75,7 +75,7 @@ class InferenceEngineGenerator(program: Program,
     if (fullPost == tru) {
       throw new IllegalStateException("post is true, nothing to be proven!!")
     }
-    
+        
     val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(fullPost)))
     //for debugging
     println("falttened VC: " + ScalaPrinter(vcExpr))   

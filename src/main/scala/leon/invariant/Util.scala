@@ -27,6 +27,7 @@ import leon.solvers.z3.UIFZ3Solver
 import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.plugin._
+import leon.invariant.NonlinearityEliminationPhase
 
 object FileCountGUID {
 	 var fileCount = 0

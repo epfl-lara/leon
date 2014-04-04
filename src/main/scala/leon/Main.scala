@@ -3,10 +3,7 @@
 package leon
 
 import leon.utils._
-import leon.plugin.TimeStepsPhase
-import leon.plugin.NondeterminismConverter
-import leon.plugin.NonlinearityEliminationPhase
-import leon.plugin.DepthInstPhase
+import leon.plugin._
 
 object Main {
 

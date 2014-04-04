@@ -498,13 +498,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       }
     }
   }
-
-  /**
-   * Returns a disjunct and a set of non linear constraints whose solution will invalidate the disjunct.
-   * This is parametrized by two closure
-   * (a) a child selector function that decides which children to consider.
-   * (b) a doesAlias function that decides which function / ADT constructor calls to consider.
-   */
+  
   val evaluator = new DefaultEvaluator(context, program) //as of now used only for debugging
   //a helper method 
   def doesSatisfyModel(expr: Expr, model: Map[Identifier, Expr]): Boolean = {
@@ -514,7 +508,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     }
   }
 
-  private def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
+  protected def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
 
     val formula = ctrTracker.getVC(fd)
     //this picks the satisfiable disjunct of the VC modulo axioms

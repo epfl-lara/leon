@@ -1,5 +1,5 @@
 package leon
-package plugin
+package invariant
 
 import purescala.ScalaPrinter
 import purescala.Common._
@@ -12,9 +12,8 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
-object NonlinearityEliminationPhase extends LeonPhase[Program, Program] {
-  val name = "Nonlinearity Elimination Phase"
-  val description = "Reduces nonlinear functions to recursive functions with axioms"
+object NonlinearityEliminationPhase {
+  
   val one = IntLiteral(1)
   val zero = IntLiteral(0)
 
@@ -61,34 +60,36 @@ object NonlinearityEliminationPhase extends LeonPhase[Program, Program] {
   //a function that represents multiplication, this transitively calls pmult 
   val multFun = {
     val xid = FreshIdentifier("x").setType(Int32Type)
-    val yid = FreshIdentifier("y").setType(Int32Type)
-    val varx = xid.toVariable
-    val vary = yid.toVariable
+    val yid = FreshIdentifier("y").setType(Int32Type)    
     val args = Seq(xid, yid)
     val fd = new FunDef(FreshIdentifier("mult", false), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
 
-    //the body is defined as mult(x,y) = val px = if(x < 0) -x else x; 
-    //val py = if(y<0) -y else y;  val r = pmult(px,py); 
-    //if(x < 0 && y < 0 || x >= 0 && y >= 0) r else -r
-    val modx = IfExpr(LessThan(varx, zero), UMinus(varx), varx)
-    val mody = IfExpr(LessThan(vary, zero), UMinus(vary), vary)
-    val px = FreshIdentifier("px", false).setType(Int32Type)
-    val py = FreshIdentifier("py", false).setType(Int32Type)
-    val call = Let(px, modx, Let(py, mody, FunctionInvocation(pivMultFun, Seq(px, py).map(_.toVariable))))
-    val bothPive = And(GreaterEquals(varx, zero), GreaterEquals(vary, zero))
-    val bothNive = And(LessThan(varx, zero), LessThan(vary, zero))
-    val res = FreshIdentifier("r", false).setType(Int32Type)
-    val body = Let(res, call, IfExpr(Or(bothPive, bothNive), res.toVariable, UMinus(res.toVariable)))
-    fd.body = Some(body)
+    if (!makeUninterpreted) {
+      //the body is defined as mult(x,y) = val px = if(x < 0) -x else x; 
+      //val py = if(y<0) -y else y;  val r = pmult(px,py); 
+      //if(x < 0 && y < 0 || x >= 0 && y >= 0) r else -r
+      val varx = xid.toVariable
+      val vary = yid.toVariable
+      val modx = IfExpr(LessThan(varx, zero), UMinus(varx), varx)
+      val mody = IfExpr(LessThan(vary, zero), UMinus(vary), vary)
+      val px = FreshIdentifier("px", false).setType(Int32Type)
+      val py = FreshIdentifier("py", false).setType(Int32Type)
+      val call = Let(px, modx, Let(py, mody, FunctionInvocation(pivMultFun, Seq(px, py).map(_.toVariable))))
+      val bothPive = And(GreaterEquals(varx, zero), GreaterEquals(vary, zero))
+      val bothNive = And(LessThan(varx, zero), LessThan(vary, zero))
+      val res = FreshIdentifier("r", false).setType(Int32Type)
+      val body = Let(res, call, IfExpr(Or(bothPive, bothNive), res.toVariable, UMinus(res.toVariable)))
+      fd.body = Some(body)
 
-    //set function info properties
-    val funinfo = FunctionInfoFactory.getOrMakeInfo(fd)
-    funinfo.setTheoryOperation
+      //set function info properties
+      val funinfo = FunctionInfoFactory.getOrMakeInfo(fd)
+      funinfo.setTheoryOperation
+    }
     fd
   }
 
   //TOOD: note associativity property of multiplication is not taken into account
-  def run(ctx: LeonContext)(program: Program): Program = {
+  def apply(program: Program): Program = {
 
     //create a fundef for each function in the program
     val newFundefs = program.mainObject.definedFunctions.map((fd) => {

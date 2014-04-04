@@ -33,7 +33,6 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
-import leon.plugin.NonlinearityEliminationPhase
 
 class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker, tempFactory : TemplateFactory) {               
     

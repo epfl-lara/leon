@@ -25,7 +25,6 @@ import scala.collection.mutable.{Set => MutableSet}
 import scala.collection.mutable.{Map => MutableMap}
 import java.io._
 import leon.purescala.ScalaPrinter
-import leon.plugin.NonlinearityEliminationPhase
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -97,7 +96,7 @@ object ExpressionTransformer {
    * Assumed that that given expression has boolean type 
    * converting if-then-else and let into a logical formula
    */
-  def reduceLangBlocks(inexpr: Expr) : Expr = {
+  def reduceLangBlocks(inexpr: Expr) = {
     
     def transform(e: Expr) : (Expr,Set[Expr]) = {     
       e match {
@@ -120,8 +119,8 @@ object ExpressionTransformer {
         case Division(lhs, rhs) => {          
           //this models floor and not integer division          
           val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
-          val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable
-          val mult = FunctionInvocation(NonlinearityEliminationPhase.multFun, Seq(quo, rhs))
+          val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable          
+          val mult = InferInvariantsPhase.multOp(quo, rhs)
           val divsem = Equals(lhs,Plus(mult,rem))
           //TODO: here, we have to use |rhs|
           val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))          
@@ -226,7 +225,7 @@ object ExpressionTransformer {
      * set of new conjuncts
      */
     def flattenFunc(e: Expr): (Expr,Set[Expr]) = {
-      e match {
+      e match {        
         case fi @ FunctionInvocation(fd, args) => {
           //now also flatten the args. The following is slightly tricky            
           val (newargs, newConjuncts) = flattenArgs(args)                        
@@ -520,7 +519,6 @@ object ExpressionTransformer {
     simplePostTransform(transformer)(inexpr)
   }
   
-  
   /**
    * A hacky way to implement subexpression check. 
    * TODO: fix this
@@ -557,8 +555,7 @@ object ExpressionTransformer {
       case _ => e
     })(expr)    
   }
-    
-  
+      
 
   /**
    * Input expression is assumed to be in nnf form
