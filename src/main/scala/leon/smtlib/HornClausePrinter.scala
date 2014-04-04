@@ -239,7 +239,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     val nnfExpr = {
       ExpressionTransformer.pullAndOrs(
     	ExpressionTransformer.TransformNot(
-          ExpressionTransformer.reduceLangBlocks(simpExpr), retainNEQ = true //, retainIff = true
+          ExpressionTransformer.reduceLangBlocks(simpExpr,Times), retainNEQ = true //, retainIff = true
           )
        )
     }

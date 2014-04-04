@@ -32,13 +32,9 @@ import leon.purescala.UndirectedGraph
 import scala.util.control.Breaks._
 import leon.solvers._
 import leon.purescala.ScalaPrinter
-import leon.plugin.NonlinearityEliminationPhase
 
-class Minimizer(
-  context: LeonContext,
-  program: Program,
-  timeout: Int) {
-
+class Minimizer(ctx: InferenceContext) {
+  
   private val debugMinimization = true
   /**
    * Here we are assuming that that initModel is a model for ctrs
@@ -51,6 +47,9 @@ class Minimizer(
   val two = RealLiteral(2, 1)
   val rzero = RealLiteral(0, 1)
   val mone = RealLiteral(-1, 1)
+  
+  private val program = ctx.program
+  private val leonctx = ctx.leonContext 
 
   //for statistics and output
   //store the lowerbounds for each template variables in the template of the rootFun provided it is a time template
@@ -71,8 +70,7 @@ class Minimizer(
 
     //do a binary search on sequentially on each of these tempvars      
     val solver = SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)),
-        timeout * 1000))       
+      new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(leonctx, program)),ctx.timeout * 1000))       
 
     println("minimizing...")
     var currentModel = initModel    

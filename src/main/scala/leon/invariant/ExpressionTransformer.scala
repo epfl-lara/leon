@@ -96,7 +96,7 @@ object ExpressionTransformer {
    * Assumed that that given expression has boolean type 
    * converting if-then-else and let into a logical formula
    */
-  def reduceLangBlocks(inexpr: Expr) = {
+  def reduceLangBlocks(inexpr: Expr, multop: (Expr,Expr) => Expr) = {
     
     def transform(e: Expr) : (Expr,Set[Expr]) = {     
       e match {
@@ -120,7 +120,7 @@ object ExpressionTransformer {
           //this models floor and not integer division          
           val quo = TVarFactory.createTemp("q").setType(Int32Type).toVariable
           val rem = TVarFactory.createTemp("r").setType(Int32Type).toVariable          
-          val mult = InferInvariantsPhase.multOp(quo, rhs)
+          val mult = multop(quo, rhs)
           val divsem = Equals(lhs,Plus(mult,rem))
           //TODO: here, we have to use |rhs|
           val newexpr = And(Seq(divsem,LessEquals(zero,rem),LessEquals(rem,Minus(rhs,one))))          
@@ -463,12 +463,12 @@ object ExpressionTransformer {
   /**
    * Normalizes the expressions
    */
-  def normalizeExpr(expr: Expr) : Expr = {
+  def normalizeExpr(expr: Expr, multOp: (Expr,Expr) => Expr) : Expr = {
     
     //convert to negated normal form         
     //val nnfExpr = TransformNot(expr)    
     //reduce the language before applying flatten function
-    val redex = reduceLangBlocks(expr)
+    val redex = reduceLangBlocks(expr, multOp)
     //println("Redex: "+ScalaPrinter(redex))
     val nnfExpr = TransformNot(redex)
     //println("NNFexpr: "+ScalaPrinter(nnfExpr))

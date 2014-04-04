@@ -33,13 +33,12 @@ import scala.util.control.Breaks._
 import leon.solvers._
 import RealValuedExprInterpreter._
 
-class CegisSolver(context: LeonContext,
-  program: Program,
+class CegisSolver(ctx: InferenceContext,  
   rootFun: FunDef,
   ctrTracker: ConstraintTracker,
-  tempFactory: TemplateFactory,
-  timeout: Int,
-  bound: Option[Int] = None) extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
+  tempFactory: TemplateFactory,  
+  timeout : Int,
+  bound: Option[Int] = None) extends TemplateSolver(ctx, rootFun, ctrTracker, tempFactory) {
 
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
@@ -57,7 +56,7 @@ class CegisSolver(context: LeonContext,
     val formula = Or(funcs.map(funcVCs.apply _).toSeq)
 
     //using reals with bounds does not converge and also results in overflow
-    val (res, _, model) = (new CegisCore(context, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
+    val (res, _, model) = (new CegisCore(ctx, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
       case Some(true) => (Some(getAllInvariants(model)), None)
       case Some(false) => (None, None) //no solution exists 
@@ -67,8 +66,7 @@ class CegisSolver(context: LeonContext,
   }
 }
 
-class CegisCore(context: LeonContext,
-  program: Program,
+class CegisCore(ctx: InferenceContext,
   timeout: Int, 
   cegisSolver: TemplateSolver) {
 
@@ -78,6 +76,8 @@ class CegisCore(context: LeonContext,
   val timeoutMillis = timeout.toLong * 1000
   val dumpCandidateInvs = true
   val minimizeSum = false
+  val program = ctx.program
+  val context = ctx.leonContext
 
   /**
    * Finds a model for the template variables in the 'formula' so that 'formula' is falsified
@@ -185,7 +185,7 @@ class CegisCore(context: LeonContext,
             val newctr = And(tempctrs, prevctr)
             //println("Newctr: " +newctr)
 
-            if (InferInvariantsPhase.dumpStats) {
+            if (ctx.dumpStats) {
               Stats.updateCounterStats(Util.atomNum(newctr), "CegisTemplateCtrs", "CegisIters")              
             }
 

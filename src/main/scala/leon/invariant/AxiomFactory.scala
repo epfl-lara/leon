@@ -33,11 +33,10 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
-import leon.plugin.NonlinearityEliminationPhase
 
-class AxiomFactory(ctx : LeonContext, program : Program) {                       
+class AxiomFactory(ctx : InferenceContext) {                       
   
-  val tru = BooleanLiteral(true)
+  val tru = BooleanLiteral(true)  
   //Add more axioms here, if necessary  
   def hasUnaryAxiom(call: Call) : Boolean = {
     //important: here we need to avoid applying commutativity on the calls produced by axioms instantiation

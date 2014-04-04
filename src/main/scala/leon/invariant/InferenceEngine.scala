@@ -34,7 +34,6 @@ import scala.util.control.Breaks._
 import leon.verification.VCKind
 import leon.verification.DefaultTactic
 import leon.verification.VerificationCondition
-import leon.invariant.NonlinearityEliminationPhase
 
 /**
  * @author ravi
@@ -42,111 +41,14 @@ import leon.invariant.NonlinearityEliminationPhase
  * TODO: Fix the handling of getting a template for a function, the current code is very obscure
  * TODO: should time be implicitly made positive
  */
-object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
-  val name = "InferInv"
-  val description = "Invariant Inference"
-          
-  //set by the run method
-  var program : Program = null
-  var context : LeonContext = null
-  var reporter : Reporter = null
-  var timeout: Int = 20  //default timeout is 10s
+class InferenceEngine(ctx: InferenceContext)  {
   
-  //defualt true flags
-  var modularlyAnalyze = true
-  var targettedUnroll = true
-  
-  //default false flags
-  var tightBounds = false
-  var withmult = true
-  var inferTemp = false
-  var enumerationRelation : (Expr,Expr) => Expr = LessEquals  
-  var useCegis = false
-  //var maxCegisBound = 200 //maximum bound for the constants in cegis
-  var maxCegisBound = 1000000000
+  def run(): VerificationReport = {
     
-  //control printing of statistics
-  val dumpStats = true
-  val multOp : ((Expr,Expr) => Expr) = (e1,e2) => FunctionInvocation(NonlinearityEliminationPhase.multFun, Seq(e1, e2))
-  
-  override val definedOptions: Set[LeonOptionDef] = Set(
-    //LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
-    //LeonValueOptionDef("monotones", "--monotones=f1:f2", "Monotonic functions f1,f2,..."),
-    LeonFlagOptionDef("wholeprogram", "--wholeprogram", "Perform an non-modular whole program analysis"),
-    LeonFlagOptionDef("fullunroll", "--fullunroll", "Unroll all calls in every unroll step"),
-    LeonFlagOptionDef("withmult", "--withmult", "Multiplication is not converted to a recursive function in VCs"),
-    LeonFlagOptionDef("minbounds", "--minbounds", "tighten time bounds"),
-    LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
-    LeonFlagOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
-    LeonFlagOptionDef("cegis", "--cegis=True/false", "use cegis instead of farkas"),
-    LeonValueOptionDef("stats-suffix", "--stats-suffix=<suffix string>", "the suffix of the statistics file"))
-
-  //TODO provide options for analyzing only selected functions
-  def run(ctx: LeonContext)(prog: Program): VerificationReport = {
-
-    context = ctx
-    reporter = ctx.reporter    
+    val reporter = ctx.reporter
+    val program = ctx.program
     reporter.info("Running Invariant Inference Phase...")
-    
-    var statsSuff = "-stats" + FileCountGUID.getID
-    
-    //process options
-    for (opt <- ctx.options) opt match {
-      //      case LeonValueOption("functions", ListValue(fs)) =>
-      //        functionsToAnalyse ++= fs
-
-      case LeonFlagOption("wholeprogram", true) => {
-        //do not do a modular analysis        
-        modularlyAnalyze =false
-      }
-      
-      case LeonFlagOption("fullunroll", true) => {
-        //do not do a modular analysis
-        targettedUnroll =false
-      }
-      
-      case LeonFlagOption("minbounds", true) => {          
-        tightBounds = true
-      }
-      
-      case LeonFlagOption("withmult", true) => {          
-        withmult = true
-      }
-
-      case v @ LeonFlagOption("inferTemp", true) => {
-
-        inferTemp = true
-        var foundStrongest = false
-        //go over all post-conditions and pick the strongest relation
-        program.definedFunctions.foreach((fd) => {
-          if (!foundStrongest && fd.hasPostcondition) {
-            val cond = fd.postcondition.get._2
-            simplePostTransform((e) => e match {
-              case Equals(_, _) => {
-                enumerationRelation = Equals.apply _
-                foundStrongest = true
-                e
-              }
-              case _ => e
-            })(cond)
-          }
-        })
-      }
-
-      case v @ LeonFlagOption("cegis", true) => {        
-        useCegis = true
-      }
-
-      case v @ LeonValueOption("timeout", _) =>
-        timeout = v.asInt(ctx).get
-
-      case v @ LeonValueOption("stats-suffix", ListValue(fs)) => {
-        statsSuff = fs(0)
-      }
-        
-      case _ =>
-    }
-    
+           
     //process annotations
     program.definedFunctions.foreach((fd) => {
       if(fd.annotations.contains("monotonic")){
@@ -156,20 +58,17 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     })
 
     //register a shutdownhook
-    if (dumpStats) {
-      sys.ShutdownHookThread({ dumpStats(statsSuff) })
+    if (ctx.dumpStats) {
+      sys.ShutdownHookThread({ dumpStats(ctx.statsSuffix) })
     }
 
     val t1 = System.currentTimeMillis()
         
-    //eliminate nonlinearity if required
-    program = NonlinearityEliminationPhase.run(ctx)(prog)
-    		  
     //compute functions to analyze by sorting based on topological order
     val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates = true)
 
     //sort the functions in topological order (this is an ascending topological order)
-    val functionsToAnalyze = if(modularlyAnalyze) {
+    val functionsToAnalyze = if(ctx.modularlyAnalyze) {
       callgraph.topologicalOrder      
     } else {
       callgraph.topologicalOrder.reverse
@@ -178,14 +77,14 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))       
     var results : Map[FunDef,InferenceCondition] = null
     //perform the invariant inference
-    if(!useCegis) {
+    if(!ctx.useCegis) {
 
       //create a solver factory
       val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory, rootFun: FunDef) => {
-        if (this.withmult) {
-          new NLTemplateSolverWithMult(context, program, rootFun, constTracker, tempFactory, timeout, tightBounds)
+        if (ctx.withmult) {
+          new NLTemplateSolverWithMult(ctx, rootFun, constTracker, tempFactory)
         } else {
-          new NLTemplateSolver(context, program, rootFun, constTracker, tempFactory, timeout, tightBounds)
+          new NLTemplateSolver(ctx, rootFun, constTracker, tempFactory)
         }
       }
       /*val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory) => {
@@ -208,7 +107,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           
           //create a solver factory, ignoring timeouts here                   
           val templateSolverFactory = (constTracker: ConstraintTracker, tempFactory: TemplateFactory, rootFun: FunDef) => {
-            new CegisSolver(context, program, rootFun, constTracker, tempFactory, 10000, Some(b))
+            new CegisSolver(ctx, rootFun, constTracker, tempFactory, 10000, Some(b))
             //new CegisSolver(context, program, rootFun, constTracker, tempFactory, 10000, None)
           }
           val succeededFuncs = analyseProgram(remFuncs, templateSolverFactory)
@@ -226,9 +125,9 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     Stats.updateCumTime(t2-t1, "TotalTime")
     
     //dump stats 
-    if (dumpStats) {
+    if (ctx.dumpStats) {
       reporter.info("- Dumping statistics")
-      dumpStats(statsSuff)
+      dumpStats(ctx.statsSuffix)
     }
    
     new InferenceReport(results.map(pair => {
@@ -238,23 +137,23 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
   }
   
   def dumpStats(statsSuffix: String) = {    
-    val pw = new PrintWriter(program.mainObject.id + statsSuffix + ".txt")
+    val pw = new PrintWriter(ctx.program.mainObject.id + statsSuffix + ".txt")
     Stats.dumpStats(pw)
     SpecificStats.dumpOutputs(pw)
-    if (tightBounds) {
+    if (ctx.tightBounds) {
       SpecificStats.dumpMinimizationStats(pw)
     }
   }
-
  
   //return a set of functions whose inference succeeded
   def analyseProgram(functionsToAnalyze : Seq[FunDef], 
       tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) : Map[FunDef,InferenceCondition] = {
 
+    val reporter = ctx.reporter
     //this is an inference engine that checks if there exists an invariant belonging to the current templates 
-    val infEngineGen = new InferenceEngineGenerator(program, context, tempSolverFactory, targettedUnroll)
+    val infEngineGen = new InferenceEngineGenerator(ctx, tempSolverFactory)
     //A template generator that generates templates for the functions (here we are generating templates by enumeration)          
-    val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(program, reporter, enumerationRelation)), reporter)
+    val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(ctx)), ctx.reporter)
     
     var analyzedSet = Map[FunDef, InferenceCondition]()
 
@@ -299,7 +198,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
               case Some(false) => {
                 reporter.info("- Template not solvable!!")
                 //refine the templates if necesary
-                if (inferTemp) {
+                if(ctx.inferTemp) {
                   val refined = tempFactory.refineTemplates()
                   if (refined) None
                   else Some(false)
@@ -313,7 +212,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
           if (solved.get) {
             val inferredFds = (infRes._2.get.keys.toSeq :+ funDef)            
             //here, if modularize flag is set then update the templates with the inferred invariant for the analyzed functions
-            if (modularlyAnalyze) {
+            if (ctx.modularlyAnalyze) {
               infRes._2.get.foreach((pair) => {
                 val (fd, inv) = pair
                 val funinfo = FunctionInfoFactory.getFunctionInfo(fd)

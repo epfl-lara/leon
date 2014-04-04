@@ -25,10 +25,11 @@ import leon.purescala.ScalaPrinter
 
 //TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
 //TODO: there is a better way to compute heads, which is to consider all guards not previous seen
-class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory) {
+class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tempFactory : TemplateFactory) {
     
   val tru = BooleanLiteral(true)
   val reporter = ctx.reporter
+  val prog = ctx.program
   
   //this count indicates the number of times we unroll a recursive call
   private val MAX_UNROLLS = 2
@@ -170,7 +171,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
           //note: here we are only adding the template as the postcondition
           val idmap = Util.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
           val postTemp = tempFactory.constructTemplate(idmap, recFun)
-          val vcExpr =  ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(postTemp)))
+          val vcExpr =  ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(postTemp)), ctx.multOp)
           ctrTracker.addVC(recFun, vcExpr)
         }        
                    
@@ -196,7 +197,7 @@ class RefinementEngine(ctx: LeonContext, prog: Program, ctrTracker: ConstraintTr
     val calleeSummary = 
       Equals(Util.getFunctionReturnVariable(callee), freshBody)       
     val argmap1 = Util.formalToAcutal(call)
-    val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary))
+    val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary), ctx.multOp)
     
     if(this.dumpInlinedSummary)
     	println("Inlined Summary: "+inlinedSummary)

@@ -35,12 +35,11 @@ import scala.concurrent._
 import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
-import leon.plugin.NonlinearityEliminationPhase
 
-abstract class TemplateSolver (context : LeonContext, program : Program,val rootFun : FunDef,
-    ctrTracker : ConstraintTracker, val tempFactory: TemplateFactory, timeout: Int) {   
+abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
+    ctrTracker : ConstraintTracker, val tempFactory: TemplateFactory) {   
   
-  protected val reporter = context.reporter  
+  protected val reporter = ctx.reporter  
   //protected val cg = CallGraphUtil.constructCallGraph(program)
   
   //some constants
@@ -100,12 +99,12 @@ abstract class TemplateSolver (context : LeonContext, program : Program,val root
         wr.flush()
         wr.close()
         if (dumpVCasSMTLIB) {
-          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", context, program)
+          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
         }        
         println("Printed VC of " + fd.id + " to file: " + filename)
       }
                 
-      if (InferInvariantsPhase.dumpStats) {                
+      if (ctx.dumpStats) {                
         Stats.updateCounterStats(Util.atomNum(vc), "VC-size", "VC-refinement")        
         Stats.updateCounterStats(Util.numUIFADT(vc), "UIF+ADT", "VC-refinement")
       }            

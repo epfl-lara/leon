@@ -39,7 +39,9 @@ import scala.collection.mutable.{ Map => MutableMap }
    * 
    * For now this is incomplete 
    */
-class TemplateEnumerator(prog: Program, reporter : Reporter, op: (Expr,Expr) => Expr) extends TemplateGenerator {
+class TemplateEnumerator(ctx: InferenceContext) extends TemplateGenerator {
+  val prog = ctx.program
+  val reporter = ctx.reporter
   
     //create a call graph for the program 
     //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
@@ -55,7 +57,7 @@ class TemplateEnumerator(prog: Program, reporter : Reporter, op: (Expr,Expr) => 
 	def getNextTemplate(fd : FunDef) : Expr = {
 	  if(tempEnumMap.contains(fd)) tempEnumMap(fd).getNextTemplate()
 	  else {
-	    val enumerator = new FunctionTemplateEnumerator(fd, prog, op,  callGraph, reporter)
+	    val enumerator = new FunctionTemplateEnumerator(fd, prog, ctx.enumerationRelation,  callGraph, reporter)
 	    tempEnumMap += (fd -> enumerator)
 	    enumerator.getNextTemplate()
 	  }	    

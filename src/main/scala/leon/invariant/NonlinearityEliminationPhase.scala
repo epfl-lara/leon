@@ -12,7 +12,7 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
-object NonlinearityEliminationPhase {
+class NonlinearityEliminator(makeUninterpreted : Boolean) {
   
   val one = IntLiteral(1)
   val zero = IntLiteral(0)

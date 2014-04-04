@@ -27,7 +27,6 @@ import leon.solvers.z3.UIFZ3Solver
 import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.plugin._
-import leon.invariant.NonlinearityEliminationPhase
 
 object FileCountGUID {
 	 var fileCount = 0
@@ -338,9 +337,9 @@ object Util {
   }
   
   //replaces occurrences of mult by Times
-  def multToTimes(ine: Expr) : Expr ={
+  def multToTimes(ine: Expr, ctx: InferenceContext) : Expr ={
     simplePostTransform((e: Expr) => e match {
-      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.multFun => {
+      case FunctionInvocation(fd, args) if fd == ctx.multfun => {
         Times(args(0), args(1))
       }
       case _ => e

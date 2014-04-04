@@ -31,7 +31,6 @@ import leon.solvers.SimpleSolverAPI
 import leon.solvers.SolverFactory
 import leon.solvers.z3.UIFZ3Solver
 import leon.verification.VerificationReport
-import leon.invariant.NonlinearityEliminationPhase
 
 /**
  * @author ravi
@@ -39,12 +38,11 @@ import leon.invariant.NonlinearityEliminationPhase
  * TODO: Fix the handling of getting a template for a function, the current code is very obscure
  * TODO: Do we need to also assert that time is >= 0
  */
-class InferenceEngineGenerator(program: Program,
-  context: LeonContext,  
-  tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver,
-  targettedUnroll: Boolean, withmult : Boolean) {
+class InferenceEngineGenerator(ctx: InferenceContext, 
+    tempSolverFactory : (ConstraintTracker, TemplateFactory, FunDef) => TemplateSolver) {
 
-  val reporter = context.reporter
+  val reporter = ctx.reporter
+  val program = ctx.program
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
 
@@ -76,12 +74,12 @@ class InferenceEngineGenerator(program: Program,
       throw new IllegalStateException("post is true, nothing to be proven!!")
     }
         
-    val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(fullPost)))
+    val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(fullPost)), ctx.multOp)
     //for debugging
     println("falttened VC: " + ScalaPrinter(vcExpr))   
     
     //Create and initialize a constraint tracker
-    val constTracker = new ConstraintTracker(context, program, funDef, tempFactory)
+    val constTracker = new ConstraintTracker(ctx, funDef, tempFactory)
     constTracker.addVC(funDef, vcExpr)    
 
     val tempSolver = tempSolverFactory(constTracker, tempFactory, funDef)
@@ -101,7 +99,7 @@ class InferenceEngineGenerator(program: Program,
 
           reporter.info("- More unrollings for invariant inference")
 
-          val toUnrollCalls = if(targettedUnroll) toRefineCalls else None
+          val toUnrollCalls = if(ctx.targettedUnroll) toRefineCalls else None
           val unrolledCalls = constTracker.refineVCs(toUnrollCalls)          
           if (unrolledCalls.isEmpty) {
             reporter.info("- Cannot do more unrollings, reached unroll bound")
@@ -126,7 +124,7 @@ class InferenceEngineGenerator(program: Program,
           var output = "Invariants for Function: " + funDef.id + "\n"
           res.get.foreach((pair) => {
             val (fd, inv) = pair                                    
-            val simpInv = simplifyArithmetic(replaceInstruVars(multToTimes(inv),fd))
+            val simpInv = simplifyArithmetic(replaceInstruVars(multToTimes(inv, ctx),fd))
             reporter.info("- Found inductive invariant: " + fd.id + " --> " + ScalaPrinter(simpInv))
             output += fd.id + " --> " + simpInv + "\n"
           })
@@ -173,10 +171,9 @@ class InferenceEngineGenerator(program: Program,
    */
   def verifyInvariant(newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier, Expr]) = {
 
-    import NonlinearityEliminationPhase._
     //create a fundef for each function in the program that is not "mult"
     val newFundefs = program.mainObject.definedFunctions.collect {
-      case fd @ _ if (fd != multFun && fd != pivMultFun) => {
+      case fd @ _ if (fd != ctx.multfun && fd != ctx.pivmultfun) => {
         val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.returnType, fd.args)
         (fd, newfd)
       }
@@ -184,7 +181,7 @@ class InferenceEngineGenerator(program: Program,
 
     //note important, we must also replace "mult" function by "Times"
     val replaceFun = (e: Expr) => e match {
-      case FunctionInvocation(fd, args) if fd == NonlinearityEliminationPhase.multFun => {
+      case FunctionInvocation(fd, args) if fd == ctx.multfun => {
         Times(args(0), args(1))
       }
       case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
@@ -242,7 +239,7 @@ class InferenceEngineGenerator(program: Program,
 
     val verifyTimeout = 5
     val fairZ3 = new SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() => new FairZ3Solver(context, newprog)),
+      new TimeoutSolverFactory(SolverFactory(() => new FairZ3Solver(ctx.leonContext, newprog)),
         verifyTimeout * 1000))
     //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
     val sat = fairZ3.solveSAT(Not(vc.condition))

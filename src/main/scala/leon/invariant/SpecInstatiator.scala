@@ -34,13 +34,14 @@ import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
 import leon.purescala.ScalaPrinter
 
-class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : ConstraintTracker, tempFactory : TemplateFactory) {               
+class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, tempFactory : TemplateFactory) {               
     
   protected val disableAxioms = false
   protected val debugAxiomInstantiation = false  
   
   val tru = BooleanLiteral(true)
-  val axiomFactory = new AxiomFactory(ctx,program) //handles instantiation of axiomatic specification
+  val axiomFactory = new AxiomFactory(ctx) //handles instantiation of axiomatic specification
+  val program = ctx.program
   
   //the guards of the set of calls that were already processed
   protected var exploredGuards = Set[Variable]()   
@@ -130,7 +131,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       } else {
         freshPost
       }
-      val inlinedSpec = ExpressionTransformer.normalizeExpr(replace(argmap, spec))
+      val inlinedSpec = ExpressionTransformer.normalizeExpr(replace(argmap, spec),ctx.multOp)
       Some(inlinedSpec)
     } else {
       None
@@ -148,7 +149,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
     }
     //flatten functions
     //TODO: should we freshen locals here ??
-    ExpressionTransformer.normalizeExpr(template)
+    ExpressionTransformer.normalizeExpr(template, ctx.multOp)
   }
   
   //axiomatic specification     
@@ -156,7 +157,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
   def instantiateAxioms(formula: Formula, calls: Set[Call]) = {
     
     val debugSolver = if (this.debugAxiomInstantiation) {
-      val sol = new UIFZ3Solver(ctx, program)
+      val sol = new UIFZ3Solver(ctx.leonContext, program)
       sol.assertCnstr(formula.toExpr)
       Some(sol)
     } else None
@@ -193,7 +194,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
 
 //        import ExpressionTransformer._
 //        val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
-        val nnfAxiom = ExpressionTransformer.normalizeExpr(axiomInst)
+        val nnfAxiom = ExpressionTransformer.normalizeExpr(axiomInst, ctx.multOp)
         
         val cdata = formula.callData(call)
         formula.conjoinWithDisjunct(cdata.guard, nnfAxiom, cdata.parents)        
@@ -252,7 +253,7 @@ class SpecInstantiator(ctx : LeonContext, program : Program, ctrTracker : Constr
       axiomInsts.foldLeft(Seq[Expr]())((acc, inst) => {
         val (ant, conseq) = inst
         val axiom = Implies(ant, conseq)
-        val nnfAxiom = ExpressionTransformer.normalizeExpr(axiom)
+        val nnfAxiom = ExpressionTransformer.normalizeExpr(axiom, ctx.multOp)
         val (axroot, _) = formula.conjoinWithRoot(nnfAxiom, parents)
         //important: here we need to update the axiom roots
         axiomRoots += (Seq(pair._1, pair._2) -> axroot)

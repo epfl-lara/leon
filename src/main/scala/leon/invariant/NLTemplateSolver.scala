@@ -34,9 +34,8 @@ import leon.solvers._
 import leon.purescala.ScalaPrinter
 import leon.plugin.DepthInstPhase
 
-class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
-  ctrTracker: ConstraintTracker, tempFactory: TemplateFactory, timeout: Int, tightBounds: Boolean) 
-  extends TemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout) {
+class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: ConstraintTracker, tempFactory: TemplateFactory) 
+  extends TemplateSolver(ctx, rootFun, ctrTracker, tempFactory) {
 
   //flags controlling debugging  
   val debugIncrementalVC = false
@@ -56,9 +55,13 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   val printReducedFormula = false
   val dumpInstantiatedVC = false
   
-  //flag controlling behavior
+  private val program = ctx.program
+  private val timeout = ctx.timeout
+  private val leonctx = ctx.leonContext
+  
+  //flag controlling behavior  
   private val farkasSolver = new FarkasLemmaSolver()
-  private val minimizer = new Minimizer(context, program, timeout)  
+  private val minimizer = new Minimizer(ctx)  
   private val disableCegis = true
   private val solveAsBitvectors = false
   private val bvsize = 5
@@ -83,7 +86,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         println("Param part: "+paramPart)
         //println("Rest: "+rest)        
       }
-      val vcSolver = new UIFZ3Solver(context, program)
+      val vcSolver = new UIFZ3Solver(leonctx, program)
       vcSolver.assertCnstr(rest)
       vcSolvers += (fd -> vcSolver)
       paramParts += (fd -> paramPart)
@@ -117,7 +120,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     }
 
     //set lowerbound map
-    if (this.tightBounds)
+    if (ctx.tightBounds)
       SpecificStats.addLowerBoundStats(rootFun, minimizer.lowerBoundMap, "")
     sol
   }
@@ -164,7 +167,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         //here, the vcs are unsatisfiable when instantiated with the invariant
         val template = tempFactory.getTemplate(rootFun)
         //TODO: need to assert that the templates are time templates
-        if (tightBounds && template.isDefined) {
+        if (ctx.tightBounds && template.isDefined) {
           //for stats
           minimizationInProgress
 
@@ -366,7 +369,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
   def solveWithCegis(tempIds: Set[Identifier], expr: Expr, precond: Expr, initModel: Option[Map[Identifier, Expr]])
   	: (Option[Boolean], Expr, Map[Identifier, Expr]) = {
 
-    val cegisSolver = new CegisCore(context, program, timeout, this)
+    val cegisSolver = new CegisCore(ctx, timeout, this)
     val (res, ctr, model) = cegisSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
     if (!res.isDefined)
       reporter.info("cegis timed-out on the disjunct...")
@@ -375,9 +378,9 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
   def solveNLConstraints(nlctrs: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
     val innerSolver = if (solveAsBitvectors) {
-      new UIFZ3Solver(context, program, useBitvectors = true, bitvecSize = bvsize)
+      new UIFZ3Solver(leonctx, program, useBitvectors = true, bitvecSize = bvsize)
     } else {
-      new UIFZ3Solver(context, program)
+      new UIFZ3Solver(leonctx, program)
     }
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 
@@ -385,9 +388,9 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       val filename = program.mainObject.id + "-nlctr" + FileCountGUID.getID + ".smt2"
       if (Util.atomNum(nlctrs) >= 5) {
         if (solveAsBitvectors)
-          Util.toZ3SMTLIB(nlctrs, filename, "QF_BV", context, program, useBitvectors = true, bitvecSize = bvsize)
+          Util.toZ3SMTLIB(nlctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)
         else
-          Util.toZ3SMTLIB(nlctrs, filename, "QF_NRA", context, program)
+          Util.toZ3SMTLIB(nlctrs, filename, "QF_NRA", leonctx, program)
         println("NLctrs dumped to: " + filename)
       }
     }
@@ -407,7 +410,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val innerSolver = if(this.useIncrementalSolvingForVCs) vcSolvers(fd)
-    			 else new UIFZ3Solver(context, program)
+    			 else new UIFZ3Solver(leonctx, program)
     val instExpr = if (this.useIncrementalSolvingForVCs) {
       val instParamPart = TemplateInstantiator.instantiate(this.paramParts(fd), tempVarMap)      
       val simpPart = simplifyArithmetic(instParamPart)      
@@ -460,7 +463,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
       Stats.updateCounterStats(Util.atomNum(upVCinst), "UP-VC-size", "disjuncts")
       
       t1 = System.currentTimeMillis()
-      val (res2, _) = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(context, program))).solveSAT(upVCinst)
+      val (res2, _) = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(leonctx, program))).solveSAT(upVCinst)
       val unpackedTime = System.currentTimeMillis() - t1
       if(res != res2) {
         throw IllegalStateException("Unpacked VC produces different result: "+upVCinst)
@@ -499,7 +502,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     }
   }
   
-  val evaluator = new DefaultEvaluator(context, program) //as of now used only for debugging
+  val evaluator = new DefaultEvaluator(leonctx, program) //as of now used only for debugging
   //a helper method 
   def doesSatisfyModel(expr: Expr, model: Map[Identifier, Expr]): Boolean = {
     evaluator.eval(expr, model).result match {
@@ -528,7 +531,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
       if (this.verifyInvariant) {
         println("checking invariant for path...")
-        Util.checkInvariant(pathcond, context, program)
+        Util.checkInvariant(pathcond, leonctx, program)
       }
 
       if (this.printPathToConsole) {
@@ -545,7 +548,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
 
       if (this.dumpPathAsSMTLIB) {
         val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
+        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", leonctx, program)
         println("Path dumped to: " + filename)
       }
     }
@@ -569,7 +572,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
     //for stats
     //reporter.info("starting UF/ADT elimination...")
     t1 = System.currentTimeMillis()
-    val callCtrs = (new UFADTEliminator(context, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
+    val callCtrs = (new UFADTEliminator(leonctx, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
     t2 = System.currentTimeMillis()
     //reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")
@@ -608,7 +611,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         //println("Path Constraints (before elim): "+(lnctrs ++ temps))
         if (this.verifyInvariant) {
           println("checking invariant for disjunct before elimination...")
-          Util.checkInvariant(And((lnctrs ++ temps).map(_.template)), context, program)
+          Util.checkInvariant(And((lnctrs ++ temps).map(_.template)), leonctx, program)
         }
       }
       //compute variables to be eliminated
@@ -621,7 +624,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         Some((ctrs: Seq[LinearConstraint]) => {
           //println("checking disjunct before elimination...")
           //println("ctrs: "+ctrs)
-          val debugRes = Util.checkInvariant(And((ctrs ++ temps).map(_.template)), context, program)
+          val debugRes = Util.checkInvariant(And((ctrs ++ temps).map(_.template)), leonctx, program)
         })
       } else None
       val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
@@ -631,11 +634,11 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         println("Path constriants (after elimination): " + elimLnctrs)
         if (this.verifyInvariant) {
           println("checking invariant for disjunct after elimination...")
-          Util.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), context, program)
+          Util.checkInvariant(And((elimLnctrs ++ temps).map(_.template)), leonctx, program)
         }
       }
       //for stats
-      if (InferInvariantsPhase.dumpStats) {
+      if (ctx.dumpStats) {
         var elimCtrCount = 0
         var elimCtrs = Seq[LinearConstraint]()
         var elimRems = Set[Identifier]()
@@ -671,7 +674,7 @@ class NLTemplateSolver(context: LeonContext, program: Program, rootFun: FunDef,
         println("Final Path Constraints: " + disjunct)
         if (this.verifyInvariant) {
           println("checking invariant for final disjunct... ")
-          Util.checkInvariant(disjunct, context, program)
+          Util.checkInvariant(disjunct, leonctx, program)
         }
       }
 

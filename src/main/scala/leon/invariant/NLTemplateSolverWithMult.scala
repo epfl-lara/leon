@@ -34,10 +34,13 @@ import leon.solvers._
 import leon.purescala.ScalaPrinter
 import leon.plugin.DepthInstPhase
 
-class NLTemplateSolverWithMult(context: LeonContext, program: Program, rootFun: FunDef,
-  ctrTracker: ConstraintTracker, tempFactory: TemplateFactory, timeout: Int, tightBounds: Boolean) 
-  extends NLTemplateSolver(context, program, rootFun, ctrTracker, tempFactory, timeout, tightBounds) {
+class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
+  ctrTracker: ConstraintTracker, tempFactory: TemplateFactory) 
+  extends NLTemplateSolver(ctx, rootFun, ctrTracker, tempFactory) {
  
+  val program = ctx.program
+  val leonctx = ctx.leonContext
+  
   override def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
 
     val formula = ctrTracker.getVC(fd)
@@ -58,7 +61,7 @@ class NLTemplateSolverWithMult(context: LeonContext, program: Program, rootFun: 
 
       if (this.verifyInvariant) {
         println("checking invariant for path...")
-        Util.checkInvariant(pathcond, context, program)
+        Util.checkInvariant(pathcond, leonctx, program)
       }
 
       if (this.printPathToConsole) {
@@ -75,7 +78,7 @@ class NLTemplateSolverWithMult(context: LeonContext, program: Program, rootFun: 
 
       if (this.dumpPathAsSMTLIB) {
         val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", context, program)
+        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", leonctx, program)
         println("Path dumped to: " + filename)
       }
     }
@@ -99,7 +102,7 @@ class NLTemplateSolverWithMult(context: LeonContext, program: Program, rootFun: 
     //for stats
     //reporter.info("starting UF/ADT elimination...")
     t1 = System.currentTimeMillis()
-    val callCtrs = (new UFADTEliminator(context, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
+    val callCtrs = (new UFADTEliminator(leonctx, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
     t2 = System.currentTimeMillis()
     //reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")

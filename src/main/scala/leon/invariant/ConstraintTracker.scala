@@ -26,13 +26,13 @@ import leon.verification.DefaultTactic
 import leon.verification.Tactic
 import leon.verification.VerificationReport
  
-class ConstraintTracker(context:LeonContext, program: Program, rootFun : FunDef, temFactory: TemplateFactory) {
+class ConstraintTracker(ctx : InferenceContext, rootFun : FunDef, temFactory: TemplateFactory) {
     
   //a mapping from functions to its VCs represented as a CNF formula
   protected var funcVCs = Map[FunDef,Formula]()
   
-  val vcRefiner = new RefinementEngine(context, program, this, temFactory)
-  val specInstantiator = new SpecInstantiator(context, program, this, temFactory)
+  val vcRefiner = new RefinementEngine(ctx, this, temFactory)
+  val specInstantiator = new SpecInstantiator(ctx, this, temFactory)
   
   def getFuncs : Seq[FunDef] = funcVCs.keys.toSeq
   def hasVC(fdef: FunDef) = funcVCs.contains(fdef)  
