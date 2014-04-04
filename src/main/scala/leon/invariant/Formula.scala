@@ -281,29 +281,33 @@ class Formula(val fd: FunDef, initexpr: Expr) {
    * Computes the set of variables that are either inputs or are derived from inputs.
    * TODO: should we exclude variables that directly become a term in the template (not through functions etc.)
    */
-  def independentVars: Set[Identifier] = {
-    
-    def indepVars(knownVars: Set[Identifier]) : Set[Identifier] = {
+  /*def independentVars: Set[Identifier] = {
+    def findDepenedentVars(knownVars: Set[Identifier]): Set[Identifier] = {
       disjuncts.foldLeft(knownVars)((acc, entry) => {
         val (_, ctrs) = entry
-        ctrs.foldLeft(acc)((newvars, ctr) => ctr match {
-          case lc: LinearConstraint if lc.toExpr.isInstanceOf[Equals] => {
-            val diffVars = lc.coeffMap.keySet.collect { case Variable(id) => id }.diff(newvars)
-            if (diffVars.size == 1)
-              newvars + diffVars.toSeq(0)
-            else newvars
+        ctrs.foldLeft(acc)((newvars, ctr) => {
+          ctr match {
+            case lc: LinearConstraint => {
+              val lcvars = lc.coeffMap.keySet.collect { case Variable(id) => id }
+              if (lcvars.intersect(newvars).isEmpty) newvars 
+              else newvars ++ lcvars                                           
+            }
+            case lt: LinearTemplate => {              
+              newvars ++ variablesOf(lt.template)
+            }
+            case adtctr: ADTConstraint => {
+              val adtvars = variablesOf(adtctr.expr)
+              if (!adtvars.intersect(newvars).isEmpty) newvars ++ adtvars
+              else newvars              
+            }
+            case Call(rexp, _) => newvars ++ variablesOf(rexp)            
+            case _ => newvars             
           }
-          case adtctr: ADTConstraint => {
-            val diffVars = variablesOf(adtctr.expr).diff(newvars)
-            if (diffVars.size == 1)
-              newvars + diffVars.toSeq(0)
-            else newvars
-          }
-          case _ => newvars
         })
       })
     }
     //start the fixpoint computation with the inputs 
-    Util.fix(indepVars)(fd.args.map(_.id).toSet)
-  }
+    val depvars = Util.fix(findDepenedentVars)(Set()) -- fd.args.map(_.id).toSet     
+    variablesOf(this.toExpr) -- depvars
+  }*/
 }

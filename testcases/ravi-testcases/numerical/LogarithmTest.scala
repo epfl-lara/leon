@@ -3,7 +3,7 @@ import leon.Annotations._
 
 object LogarithmTest {
   
-  @monotonic
+  /*@monotonic
   def log(x: Int) : Int = {
     require(x >= 0)    
     if(x <= 1) 0
@@ -18,7 +18,7 @@ object LogarithmTest {
     else {
       1 + logFour(x/3)
     }
-  } ensuring(res => true template((a,b) => time <= a*log(x) + b))
+  } ensuring(res => true template((a,b) => time <= a*log(x) + b))*/
   
   @monotonic
   def ceillog(x: Int) : Int = {
