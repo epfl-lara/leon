@@ -41,7 +41,7 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
   val intToReal = new IntToReal() 
   val axiomFactory = new AxiomFactory(ctx)
   
-  override def getVCForFun(fd: FunDef): Expr = {
+  override def getVCForFun(fd: FunDef): Expr = {    
     val plainvc = ctrTracker.getVC(fd).toExpr
     val nlvc = Util.multToTimes(plainvc, ctx)
     //convert all variables and constants to reals
