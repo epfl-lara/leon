@@ -156,7 +156,7 @@ object Util {
   
   /**
    * Checks if the expression has real valued sub-expressions.
-   * Note: important, <, <=, > etc have be default int type.
+   * Note: important, <, <=, > etc have default int type.
    * However, they can also be applied over real arguments
    * So check only if all terminals are real
    */
@@ -170,6 +170,10 @@ object Util {
       case _ => e
     })(expr)
     foundInt
+  }
+  
+  def hasMixedIntReals(expr : Expr) : Boolean = {
+    hasInts(expr) && hasReals(expr)
   }
   
   
@@ -339,7 +343,7 @@ object Util {
   //replaces occurrences of mult by Times
   def multToTimes(ine: Expr, ctx: InferenceContext) : Expr ={
     simplePostTransform((e: Expr) => e match {
-      case FunctionInvocation(fd, args) if fd == ctx.multfun => {
+      case FunctionInvocation(fd, args) if (fd == ctx.multfun || fd == ctx.pivmultfun) => {
         Times(args(0), args(1))
       }
       case _ => e
@@ -366,6 +370,18 @@ object Util {
       case _ => e
     })(withTimeAndDepth)
   }
+
+  /**
+   * A cross product with an optional filter
+   */
+  def cross[U, V](a: Set[U], b: Set[V], selector: Option[(U,V) => Boolean] = None): Set[(U, V)] = {
+    
+    val product = (for (x <- a; y <- b) yield (x, y))
+    if(selector.isDefined) 
+      product.filter(pair => selector.get(pair._1,pair._2))
+    else 
+      product
+  } 
 }
 
 /**
@@ -408,5 +424,113 @@ class RealToInt {
        else pair
        (key -> value)
      })
+  }  
+}
+
+class IntToReal {
+    
+  var intToRealDef = Map[ClassTypeDef,ClassTypeDef]() 
+  var intToRealFun = Map[FunDef, FunDef]()
+  var intToRealId = Map[Identifier, Identifier]()
+  var realToIntId = Map[Identifier, Identifier]()
+
+  /**
+   * Maps integer variables and constants to reals
+   * Here, we assume that
+   */
+  def mapIntToReal(inexpr: Expr): Expr = {
+
+    def intToRealClass[T <: ClassTypeDef](cdef: T): T = {
+      //println("Processing Def: "+cdef)
+      if (intToRealDef.contains(cdef)) {
+        intToRealDef(cdef).asInstanceOf[T]
+      } else {
+        cdef match {
+          case ccdef: CaseClassDef => 
+            val newclassDef = new CaseClassDef(FreshIdentifier(ccdef.id.name,true))
+            intToRealDef += (ccdef -> newclassDef)
+            
+            newclassDef.fields = ccdef.fields.map(vdecl => new VarDecl(vdecl.id.freshen, intToRealType(vdecl.tpe)))
+            if (ccdef.hasParent){
+              //println("Parent: "+ccdef.parent)
+              newclassDef.setParent(intToRealClass(ccdef.parent.get))
+            }
+            newclassDef.asInstanceOf[T]
+            
+          case acdef: AbstractClassDef =>
+            val newClassDef = new AbstractClassDef(FreshIdentifier(acdef.id.name,true))
+            intToRealDef += (acdef -> newClassDef)
+            if (acdef.hasParent) {
+              //println("AbsParent: "+acdef.parent)
+              newClassDef.setParent(intToRealClass(acdef.parent.get))
+            }
+            newClassDef.asInstanceOf[T]
+        }
+      }
+    }
+
+    def intToRealType(tpe: TypeTree): TypeTree = {
+      //println("Processing Type: "+tpe)
+      tpe match {
+        case Int32Type => RealType
+        case AbstractClassType(adef) => AbstractClassType(intToRealClass(adef))
+        case CaseClassType(cdef) => CaseClassType(intToRealClass(cdef))
+        case TupleType(bases) => TupleType(bases.map(intToRealType))
+        case _ => tpe
+      }
+    }
+
+    /**
+     * Assuming that the tuple-select and case-class-select have been reduced
+     */
+    def postTransformer(e: Expr): Expr = e match {
+      case IntLiteral(v) => RealLiteral(v, 1)
+      case v @ Variable(intId) => {
+        val newtype = intToRealType(v.getType)
+        if (newtype == v.getType) {
+          v
+        } else {
+          val newId = intToRealId.getOrElse(intId, {
+            val freshId = FreshIdentifier(intId.name, true).setType(newtype)
+            intToRealId += (intId -> freshId)
+            realToIntId += (freshId -> intId)
+            freshId
+          })
+          Variable(newId)
+        }
+      }
+      case FunctionInvocation(intfd, args) => {
+        val newargs = args.map(postTransformer)
+        val newfd = intToRealFun.getOrElse(intfd, {
+          val realfd = new FunDef(FreshIdentifier(intfd.id.name,true), intToRealType(intfd.returnType),
+            intfd.args.map(arg => new VarDecl(arg.id.freshen, intToRealType(arg.tpe))))
+          intToRealFun += (intfd -> realfd)
+          realfd
+        })
+        FunctionInvocation(newfd, newargs)
+      }      
+      case CaseClass(classDef, args) => {        
+        CaseClass(intToRealClass(classDef),args.map(postTransformer))
+      }
+      case CaseClassInstanceOf(classDef, expr) => {
+        CaseClassInstanceOf(intToRealClass(classDef),postTransformer(expr))
+      }
+      case t : Terminal => t
+      case UnaryOperator(arg, op) => op(postTransformer(arg))
+      case BinaryOperator(arg1, arg2, op) => op(postTransformer(arg1), postTransformer(arg2))
+      case NAryOperator(args, op) => op(args.map(postTransformer))
+    }
+    val newexpr = postTransformer(inexpr)
+    println("Transformed Expression: "+newexpr)
+    newexpr
+  }
+
+  def unmapModel(model: Map[Identifier, Expr]): Map[Identifier, Expr] = {
+    model.map((pair) => {
+      val (key, value) = if (realToIntId.contains(pair._1)) {
+        (realToIntId(pair._1), pair._2)
+      } else pair
+      (key -> value)
+    })
   }  
 }

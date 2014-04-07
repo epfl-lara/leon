@@ -190,10 +190,11 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
   def instantiateUnaryAxioms(formula: Formula, calls: Set[Call]) = {
     val axioms = calls.collect {
       case call@_ if axiomFactory.hasUnaryAxiom(call) => {        
-        val axiomInst = axiomFactory.unaryAxiom(call)
+        val (ant,conseq) = axiomFactory.unaryAxiom(call)
+        val axiomInst = Implies(ant,conseq)
 
 //        import ExpressionTransformer._
-//        val nnfAxiom = pullAndOrs(TransformNot(axiomInst))
+//        val nnfAxiom = pullAndOrs(TransformNot(axiomInst))       
         val nnfAxiom = ExpressionTransformer.normalizeExpr(axiomInst, ctx.multOp)
         
         val cdata = formula.callData(call)
@@ -231,14 +232,10 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
     def isInstantiable(call1: Call, call2: Call): Boolean = {
       //important: check if the two calls refer to the same function      
       (call1.fi.funDef.id == call2.fi.funDef.id) && (call1 != call2)
-    }
-        
-    def cross(a : Set[Call], b: Set[Call]) : Set[(Call,Call)] = {
-      (for (x<-a; y<-b) yield (x,y)).filter(pair => isInstantiable(pair._1,pair._2))
-    } 
+    }           
       
-    val product = cross(newCallsWithAxioms,getBinaxCalls(formula.fd)).flatMap(p => Seq((p._1,p._2),(p._2,p._1))) ++
-      cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
+    val product = Util.cross[Call,Call](newCallsWithAxioms,getBinaxCalls(formula.fd),Some(isInstantiable)).flatMap(
+        p => Seq((p._1,p._2),(p._2,p._1))) ++ Util.cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
              
     ctx.reporter.info("# of pairs with axioms: "+product.size)
     //Stats.updateCumStats(product.size, "Call-pairs-with-axioms")

@@ -98,7 +98,10 @@ object TypeTrees {
   case object BooleanType extends TypeTree
   case object Int32Type extends TypeTree  
   case object UnitType extends TypeTree
-  case object RealType extends TypeTree //A real variable. This is used only in Farka's Lemma
+  
+  trait NumericType 
+  case object Int32Type extends TypeTree with NumericType
+  case object RealType extends TypeTree with NumericType //A real variable. 
 
   case class TypeParameter(id: Identifier) extends TypeTree
 

@@ -74,7 +74,11 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
       else acc :+ (fd, tempOption.get)      
     })
     TemplateInstantiator.getAllInvariants(model, templates.toMap)
-  }   
+  }
+  
+  protected def getVCForFun(fd: FunDef) : Expr = {
+    ctrTracker.getVC(fd).toExpr
+  }
    
   /**
    * This function computes invariants belonging to the given templates incrementally.
@@ -84,13 +88,12 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
     
     //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs        
-    val funcExprs = funcs.map((fd) => {
-      val vcFormula = ctrTracker.getVC(fd)
-      val vc = vcFormula.toExpr
+    val funcExprs = funcs.map((fd) => {      
+      val vc = getVCForFun(fd)
       
       if (this.dumpVC) {
         //val simpForm = simplifyArithmetic(vc)
-        val vcstr = vcFormula.toString
+        val vcstr = vc.toString
         println("Func: " + fd.id + " VC: " + vcstr)
         val filename = "vc-" + FileCountGUID.getID        
         val wr = new PrintWriter(new File(filename + ".txt"))

@@ -12,7 +12,7 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
-class NonlinearityEliminator(makeUninterpreted : Boolean) {
+class NonlinearityEliminator(skipAxioms : Boolean) {
   
   val one = IntLiteral(1)
   val zero = IntLiteral(0)
@@ -47,44 +47,45 @@ class NonlinearityEliminator(makeUninterpreted : Boolean) {
     val post1 = Implies(guard, defn2)
 
     mfd.postcondition = Some((resvar.id, And(Seq(post0, post1))))
-
+    
     //set function info properties
     val mfdinfo = FunctionInfoFactory.getOrMakeInfo(mfd)
     mfdinfo.setTheoryOperation
-    //create axioms (for now only monotonicity)
-    mfdinfo.setMonotonicity
-    //mfdinfo.setDistributivity
+
+    if (!skipAxioms) {
+      //create axioms (for now only monotonicity)
+      mfdinfo.setMonotonicity
+      //mfdinfo.setDistributivity
+    }
     mfd
   }
 
   //a function that represents multiplication, this transitively calls pmult 
   val multFun = {
     val xid = FreshIdentifier("x").setType(Int32Type)
-    val yid = FreshIdentifier("y").setType(Int32Type)    
+    val yid = FreshIdentifier("y").setType(Int32Type)
     val args = Seq(xid, yid)
     val fd = new FunDef(FreshIdentifier("mult", false), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
 
-    if (!makeUninterpreted) {
-      //the body is defined as mult(x,y) = val px = if(x < 0) -x else x; 
-      //val py = if(y<0) -y else y;  val r = pmult(px,py); 
-      //if(x < 0 && y < 0 || x >= 0 && y >= 0) r else -r
-      val varx = xid.toVariable
-      val vary = yid.toVariable
-      val modx = IfExpr(LessThan(varx, zero), UMinus(varx), varx)
-      val mody = IfExpr(LessThan(vary, zero), UMinus(vary), vary)
-      val px = FreshIdentifier("px", false).setType(Int32Type)
-      val py = FreshIdentifier("py", false).setType(Int32Type)
-      val call = Let(px, modx, Let(py, mody, FunctionInvocation(pivMultFun, Seq(px, py).map(_.toVariable))))
-      val bothPive = And(GreaterEquals(varx, zero), GreaterEquals(vary, zero))
-      val bothNive = And(LessThan(varx, zero), LessThan(vary, zero))
-      val res = FreshIdentifier("r", false).setType(Int32Type)
-      val body = Let(res, call, IfExpr(Or(bothPive, bothNive), res.toVariable, UMinus(res.toVariable)))
-      fd.body = Some(body)
+    //the body is defined as mult(x,y) = val px = if(x < 0) -x else x; 
+    //val py = if(y<0) -y else y;  val r = pmult(px,py); 
+    //if(x < 0 && y < 0 || x >= 0 && y >= 0) r else -r
+    val varx = xid.toVariable
+    val vary = yid.toVariable
+    val modx = IfExpr(LessThan(varx, zero), UMinus(varx), varx)
+    val mody = IfExpr(LessThan(vary, zero), UMinus(vary), vary)
+    val px = FreshIdentifier("px", false).setType(Int32Type)
+    val py = FreshIdentifier("py", false).setType(Int32Type)
+    val call = Let(px, modx, Let(py, mody, FunctionInvocation(pivMultFun, Seq(px, py).map(_.toVariable))))
+    val bothPive = And(GreaterEquals(varx, zero), GreaterEquals(vary, zero))
+    val bothNive = And(LessThan(varx, zero), LessThan(vary, zero))
+    val res = FreshIdentifier("r", false).setType(Int32Type)
+    val body = Let(res, call, IfExpr(Or(bothPive, bothNive), res.toVariable, UMinus(res.toVariable)))
+    fd.body = Some(body)
 
-      //set function info properties
-      val funinfo = FunctionInfoFactory.getOrMakeInfo(fd)
-      funinfo.setTheoryOperation
-    }
+    //set function info properties
+    val funinfo = FunctionInfoFactory.getOrMakeInfo(fd)
+    funinfo.setTheoryOperation
     fd
   }
 

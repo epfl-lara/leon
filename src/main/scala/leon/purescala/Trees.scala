@@ -428,15 +428,15 @@ object Trees {
     def hasOverflow = overflow
   }
   
-  //a wrapper for real and interger literals (that are wholenumbers and not fractions)
-  object WholeNumber{
+  //a wrapper for real and integer literals (that are wholenumbers and not fractions)
+  /*object WholeNumber{
     def apply(x: Int) : IntLiteral = IntLiteral(x)
     def unapply(e : Expr) : Option[Int] = e match {
       case IntLiteral(x) => Some(x)
       case RealLiteral(x,1) => Some(x)
       case _ => None
     }
-  }
+  }*/
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
@@ -486,23 +486,29 @@ object Trees {
   }
 
   /* Arithmetic */
-  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {    
+    //val fixedType = Int32Type
+    val fixedType = lhs.getType
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val fixedType = lhs.getType
   }
   case class UMinus(expr: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val fixedType = expr.getType
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val fixedType = lhs.getType
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val fixedType = lhs.getType
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    //val fixedType = Int32Type
+    val fixedType = lhs.getType
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType

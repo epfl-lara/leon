@@ -41,9 +41,10 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
   
   /**
    * Convert the theory formula into linear arithmetic formula.
-   * The calls could be functions calls or ADT constructor calls.
-   */  
-  def constraintsForCalls(calls: Set[Expr], model: Map[Identifier, Expr]): Seq[Expr] = {
+   * The calls could be functions calls or ADT constructor calls.  
+   * 'predEval' is an evaluator that evaluates a predicate to a boolean value
+   */      
+  def constraintsForCalls(calls: Set[Expr], predEval: (Expr => Boolean)): Seq[Expr] = {
 
     var eqGraph = new UndirectedGraph[Expr]() //an equality graph
     var neqSet = Set[(Expr, Expr)]()
@@ -75,15 +76,16 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
 
     //check if two calls (to functions or ADT cons) have the same value in the model 
     def doesAlias(call1: Expr, call2: Expr): Boolean = {
-      val BinaryOperator(Variable(r1), _, _) = call1
-      val BinaryOperator(Variable(r2), _, _) = call2
-      val resEquals = (model(r1) == model(r2))
+      val BinaryOperator(r1@Variable(_), _, _) = call1
+      val BinaryOperator(r2@Variable(_), _, _) = call2
+      val resEquals = predEval(Equals(r1,r2))
       if (resEquals) {
         if (Util.isCallExpr(call1)) {
           val (ants, _) = axiomatizeCalls(call1, call2)
           val antsHold = ants.forall(ant => {
-            val BinaryOperator(Variable(lid), Variable(rid), _) = ant
-            (model(lid) == model(rid))
+            val BinaryOperator(lvar@Variable(_), rvar@Variable(_), _) = ant
+            //(model(lid) == model(rid))
+            predEval(Equals(lvar,rvar))
           })
           antsHold
         } else true
@@ -133,13 +135,13 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         ants.foreach(eq =>
           if (!unsatOtherEq.isDefined) {
             eq match {
-              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) => {
+              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if !predEval(Equals(lhs,rhs)) => {
                 if (lhs.getType != Int32Type && lhs.getType != RealType)
                   unsatOtherEq = Some(eq)
                 else if (!unsatIntEq.isDefined)
                   unsatIntEq = Some(eq)
               }
-              case Iff(lhs @ Variable(_), rhs @ Variable(_)) if (model(lhs.id) != model(rhs.id)) =>
+              case Iff(lhs @ Variable(_), rhs @ Variable(_)) if !predEval(Equals(lhs,rhs)) =>
                 unsatOtherEq = Some(eq)
               case _ => ;
             }
@@ -147,12 +149,15 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         if (unsatOtherEq.isDefined) Seq() //need not add any constraint
         else if (unsatIntEq.isDefined) {
           //pick the constraint a < b or a > b that is satisfied
-          val Equals(lhs @ Variable(lid), rhs @ Variable(rid)) = unsatIntEq.get
-          val IntLiteral(lval) = model(lid)
+          val Equals(lhs @ Variable(_), rhs @ Variable(_)) = unsatIntEq.get
+          val lLTr = LessThan(lhs,rhs)
+          val atom = if(predEval(lLTr)) lLTr
+          			 else GreaterThan(lhs,rhs)
+          /*val IntLiteral(lval) = model(lid)
           val IntLiteral(rval) = model(rid)
           val atom = if (lval < rval) LessThan(lhs, rhs)
           else if (lval > rval) GreaterThan(lhs, rhs)
-          else throw IllegalStateException("Models are equal!!")
+          else throw IllegalStateException("Models are equal!!")*/
 
           /*if (ants.exists(_ match {
               case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType) => true
@@ -161,7 +166,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
               Stats.updateCumStats(1, "Diseq-blowup")
             }*/
           Seq(atom)
-        } else throw IllegalStateException("All arguments are equal: " + call1 + " in " + model)
+        } else throw IllegalStateException("All arguments are equal: " + call1)
       }
     }
     

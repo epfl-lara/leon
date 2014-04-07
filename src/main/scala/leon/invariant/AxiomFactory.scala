@@ -50,7 +50,7 @@ class AxiomFactory(ctx : InferenceContext) {
         (funinfo.get.hasMonotonicity || funinfo.get.hasDistributivity))
   }
   
-  def unaryAxiom(call: Call) : Expr = {
+  def unaryAxiom(call: Call) : (Expr,Expr) = {
     val callee = call.fi.funDef
     val funinfo = FunctionInfoFactory.getFunctionInfo(callee)
     if(funinfo.isDefined && funinfo.get.doesCommute) {
@@ -59,7 +59,7 @@ class AxiomFactory(ctx : InferenceContext) {
       val newret = TVarFactory.createTemp("cm").toVariable
       val newfi = FunctionInvocation(callee,Seq(a2,a1))
       val newcall = Call(newret,newfi)      
-      And(newcall.toExpr, Equals(newret, call.retexpr))
+      (tru, And(newcall.toExpr, Equals(newret, call.retexpr)))
     } else 
       throw IllegalStateException("Call does not have unary axiom: "+call)
   }

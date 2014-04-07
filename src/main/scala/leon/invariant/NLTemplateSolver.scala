@@ -69,17 +69,20 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   private val useIncrementalSolvingForNLctrs = false
   
   //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'
-  private var funcVCs = Map[FunDef, Expr]()  
+  protected var funcVCs = Map[FunDef, Expr]()  
   //TODO: can incremental solving be trusted ? There were problems earlier.
-  private var vcSolvers = Map[FunDef, UIFZ3Solver]()
-  private var paramParts = Map[FunDef, Expr]()   
+  protected var vcSolvers = Map[FunDef, UIFZ3Solver]()
+  protected var paramParts = Map[FunDef, Expr]()   
   private var solverWithNLctrs : UIFZ3Solver = null //not used as of now
+  
+  protected def splitVC(fd: FunDef) : (Expr,Expr) = {
+    ctrTracker.getVC(fd).splitParamPart
+  }
     
   def initVCSolvers  {
-    funcVCs.keys.foreach(fd => {
-      val vcFormula = ctrTracker.getVC(fd)
-      val (paramPart, rest) = vcFormula.splitParamPart
-
+    funcVCs.keys.foreach(fd => {      
+      val (paramPart, rest) = splitVC(fd)
+      
       if (debugIncrementalVC) {
         assert(Util.getTemplateVars(rest).isEmpty)
         println("For function: "+fd.id)        
@@ -403,6 +406,10 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     (res, model)
   }
 
+  protected def instantiateTemplate(e: Expr, tempVarMap: Map[Expr, Expr]) : Expr = {
+    simplifyArithmetic(TemplateInstantiator.instantiate(e, tempVarMap))
+  }
+  
   /**
    * Returns the counter example disjunct
    */
@@ -411,12 +418,11 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val innerSolver = if(this.useIncrementalSolvingForVCs) vcSolvers(fd)
     			 else new UIFZ3Solver(leonctx, program)
-    val instExpr = if (this.useIncrementalSolvingForVCs) {
-      val instParamPart = TemplateInstantiator.instantiate(this.paramParts(fd), tempVarMap)      
-      val simpPart = simplifyArithmetic(instParamPart)      
-      And(simpPart, disableCounterExs)
+    val instExpr = if (this.useIncrementalSolvingForVCs) {      
+      val instParamPart = instantiateTemplate(this.paramParts(fd), tempVarMap)
+      And(instParamPart, disableCounterExs)      
     } else {
-      val instVC = simplifyArithmetic(TemplateInstantiator.instantiate(funcVCs(fd), tempVarMap))
+      val instVC = instantiateTemplate(funcVCs(fd), tempVarMap)
       And(instVC,disableCounterExs)
     }                    
     //For debugging
@@ -434,8 +440,8 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       wr.close()
     }
     //throw an exception if the candidate expression has reals
-    if (Util.hasReals(instExpr))
-      throw IllegalStateException("Instantiated VC of " + fd.id + " contains reals: " + instExpr)
+    if (Util.hasMixedIntReals(instExpr))
+      throw IllegalStateException("Instantiated VC of " + fd.id + " contains mixed integer/reals: " + instExpr)
 
     reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()
@@ -504,12 +510,37 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   
   val evaluator = new DefaultEvaluator(leonctx, program) //as of now used only for debugging
   //a helper method 
-  def doesSatisfyModel(expr: Expr, model: Map[Identifier, Expr]): Boolean = {
+  protected def doesSatisfyModel(expr: Expr, model: Map[Identifier, Expr]): Boolean = {
     evaluator.eval(expr, model).result match {
       case Some(BooleanLiteral(true)) => true
       case _ => false
     }
   }
+
+  /**
+   * Evaluator for a predicate that is a simple equality/inequality between two variables
+   */
+  protected def predEval(model: Map[Identifier, Expr]) : (Expr => Boolean) = {
+    def modelVal(id: Identifier): Int = {
+      val IntLiteral(v) = model(id)
+      v
+    }
+    (e:Expr) => e match {
+      case Iff(Variable(id1), Variable(id2)) => model(id1) == model(id2) 
+      case Equals(Variable(id1), Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
+      case LessEquals(Variable(id1), Variable(id2)) => modelVal(id1) <= modelVal(id2)
+      case GreaterEquals(Variable(id1), Variable(id2)) => modelVal(id1) >= modelVal(id2)
+      case GreaterThan(Variable(id1), Variable(id2)) => modelVal(id1) > modelVal(id2)
+      case LessThan(Variable(id1), Variable(id2)) => modelVal(id1) < modelVal(id2)      
+      case _ => throw IllegalStateException("Predicate not handled: " + e)
+    }
+  }
+  
+  /**
+   * This solver does not use any theories other than UF/ADT. It assumes that other theories are axiomatized in the VC.
+   * This method can overloaded by the subclasses.
+   */
+  protected def axiomsForTheory(formula : Formula, calls: Set[Call], model: Map[Identifier,Expr]) : Seq[Constraint] = Seq()
 
   protected def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
 
@@ -552,7 +583,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
         println("Path dumped to: " + filename)
       }
     }
-
+       
     var calls = Set[Call]()
     var cons = Set[Expr]()
     satCtrs.foreach(ctr => ctr match {
@@ -561,26 +592,31 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       case _ => ;
     })
     val callExprs = calls.map(_.toExpr)
-
-    //reporter.info("choosing axioms...")
+       
     var t1 = System.currentTimeMillis()
     val axiomCtrs = ctrTracker.specInstantiator.axiomsForCalls(formula, calls, model)
-    var t2 = System.currentTimeMillis()
-    //reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
+    var t2 = System.currentTimeMillis()    
     Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")
-
-    //for stats
-    //reporter.info("starting UF/ADT elimination...")
+    
+    //here, handle theory operations by reducing them to axioms.
+    //Note: uninterpreted calls/ADTs are handled below as they are more general. Here, we handle 
+    //other theory axioms like: multiplication, sets, arrays, maps etc.
     t1 = System.currentTimeMillis()
-    val callCtrs = (new UFADTEliminator(leonctx, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
+    val theoryCtrs = axiomsForTheory(formula, calls, model)
     t2 = System.currentTimeMillis()
-    //reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
-    Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")
+    Stats.updateCumTime((t2 - t1), "Total-TheoryAxiomatization-Time")
+
+    //Finally, eliminate UF/ADT
+    t1 = System.currentTimeMillis()
+    val callCtrs = (new UFADTEliminator(leonctx, program)).constraintsForCalls((callExprs ++ cons), 
+        predEval(model)).map(ConstraintUtil.createConstriant _)
+    t2 = System.currentTimeMillis()    
+    Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")            
 
     //exclude guards, separate calls and cons from the rest
     var lnctrs = Set[LinearConstraint]()
     var temps = Set[LinearTemplate]()
-    (satCtrs ++ callCtrs ++ axiomCtrs).foreach(ctr => ctr match {
+    (satCtrs ++ callCtrs ++ axiomCtrs ++ theoryCtrs).foreach(ctr => ctr match {
       case t: LinearConstraint => lnctrs += t
       case t: LinearTemplate => temps += t
       case _ => ;

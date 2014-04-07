@@ -37,93 +37,103 @@ import leon.plugin.DepthInstPhase
 class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
   ctrTracker: ConstraintTracker, tempFactory: TemplateFactory) 
   extends NLTemplateSolver(ctx, rootFun, ctrTracker, tempFactory) {
- 
-  val program = ctx.program
-  val leonctx = ctx.leonContext
+   
+  val intToReal = new IntToReal() 
+  val axiomFactory = new AxiomFactory(ctx)
   
-  override def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
-
-    val formula = ctrTracker.getVC(fd)
-    //this picks the satisfiable disjunct of the VC modulo axioms
-    val satCtrs = formula.pickSatDisjunct(formula.firstRoot, model)
-    //for debugging        
-    if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
-      val pathctrs = satCtrs.map(_.toExpr)
-      val plainFormula = And(pathctrs)
-      val pathcond = simplifyArithmetic(plainFormula)
-
-      if (this.debugChooseDisjunct) {
-        satCtrs.filter(_.isInstanceOf[LinearConstraint]).map(_.toExpr).foreach((ctr) => {
-          if (!doesSatisfyModel(ctr, model))
-            throw IllegalStateException("Path ctr not satisfied by model: " + ctr)
-        })
-      }
-
-      if (this.verifyInvariant) {
-        println("checking invariant for path...")
-        Util.checkInvariant(pathcond, leonctx, program)
-      }
-
-      if (this.printPathToConsole) {
-        //val simpcond = ExpressionTransformer.unFlatten(pathcond, variablesOf(pathcond).filterNot(TVarFactory.isTemporary _))
-        val simpcond = pathcond
-        println("Full-path: " + ScalaPrinter(simpcond))
-        val filename = "full-path-" + FileCountGUID.getID + ".txt"
-        val wr = new PrintWriter(new File(filename))
-        ExpressionTransformer.PrintWithIndentation(wr, simpcond)
-        println("Printed to file: " + filename)
-        wr.flush()
-        wr.close()
-      }
-
-      if (this.dumpPathAsSMTLIB) {
-        val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", leonctx, program)
-        println("Path dumped to: " + filename)
-      }
-    }
-
-    var calls = Set[Call]()
-    var cons = Set[Expr]()
-    satCtrs.foreach(ctr => ctr match {
-      case t: Call => calls += t
-      case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
-      case _ => ;
-    })
-    val callExprs = calls.map(_.toExpr)
-
-    //reporter.info("choosing axioms...")
-    var t1 = System.currentTimeMillis()
-    val axiomCtrs = ctrTracker.specInstantiator.axiomsForCalls(formula, calls, model)
-    var t2 = System.currentTimeMillis()
-    //reporter.info("chosen axioms...in " + (t2 - t1) / 1000.0 + "s")
-    Stats.updateCumTime((t2 - t1), "Total-AxiomChoose-Time")
-
-    //for stats
-    //reporter.info("starting UF/ADT elimination...")
-    t1 = System.currentTimeMillis()
-    val callCtrs = (new UFADTEliminator(leonctx, program)).constraintsForCalls((callExprs ++ cons), model).map(ConstraintUtil.createConstriant _)
-    t2 = System.currentTimeMillis()
-    //reporter.info("completed UF/ADT elimination...in " + (t2 - t1) / 1000.0 + "s")
-    Stats.updateCumTime((t2 - t1), "Total-ElimUF-Time")
-
-    //exclude guards, separate calls and cons from the rest
-    var lnctrs = Set[LinearConstraint]()
-    var temps = Set[LinearTemplate]()
-    (satCtrs ++ callCtrs ++ axiomCtrs).foreach(ctr => ctr match {
-      case t: LinearConstraint => lnctrs += t
-      case t: LinearTemplate => temps += t
-      case _ => ;
-    })
-
-    if (this.debugChooseDisjunct) {
-      lnctrs.map(_.toExpr).foreach((ctr) => {
-        if (!doesSatisfyModel(ctr, model))
-          throw IllegalStateException("Ctr not satisfied by model: " + ctr)
-      })
-    }
-
-    val (data, nlctr) = processNumCtrs(lnctrs.toSeq, temps.toSeq)
-    ((data, calls), nlctr)
+  override def getVCForFun(fd: FunDef): Expr = {
+    val plainvc = ctrTracker.getVC(fd).toExpr
+    val nlvc = Util.multToTimes(plainvc, ctx)
+    //convert all variables and constants to reals
+    val realvc = intToReal.mapIntToReal(nlvc)
+    realvc
   }
+  
+  override def splitVC(fd: FunDef) : (Expr,Expr) = {
+    val (paramPart, rest) = ctrTracker.getVC(fd).splitParamPart   
+    (intToReal.mapIntToReal(Util.multToTimes(paramPart, ctx)), 
+        intToReal.mapIntToReal(Util.multToTimes(rest, ctx)))
+  }
+    
+  override def instantiateTemplate(e: Expr, tempVarMap: Map[Expr, Expr]) : Expr = {
+    replace(tempVarMap, e)
+  }
+  
+  override def predEval(model: Map[Identifier, Expr]): (Expr => Boolean) = {
+    val unmapModel = intToReal.unmapModel(model)
+    def modelVal(id: Identifier): RealLiteral = unmapModel(id).asInstanceOf[RealLiteral]
+    
+    (e: Expr) => e match {
+      case Iff(Variable(id1),Variable(id2)) => unmapModel(id1) == unmapModel(id2)
+      case Equals(Variable(id1),Variable(id2)) => unmapModel(id1) == unmapModel(id2) //note: ADTs can also be compared for equality
+      case BinaryOperator(Variable(id1), Variable(id2), op) if (e.isInstanceOf[LessThan] 
+        || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
+        || e.isInstanceOf[GreaterEquals]) => {
+          
+        	RealValuedExprInterpreter.evaluateRealPredicate(op(modelVal(id1),modelVal(id2)))
+        }      
+      case _ => throw IllegalStateException("Predicate not handled: " + e)
+    }
+  }
+  
+  //TODO: for soundness we need to override 'doesSatisfyModel' as well
+  
+  override def axiomsForTheory(formula : Formula, calls: Set[Call], model: Map[Identifier,Expr]) : Seq[Constraint] = {
+  
+    //in the sequel we instantiate axioms for multiplication
+    val inst1 = unaryMultAxioms(formula, calls, predEval(model))
+    val inst2 = binaryMultAxioms(formula,calls, predEval(model))         
+    val multCtrs = (inst1 ++ inst2).map(ConstraintUtil.createConstriant _)                     
+    
+    Stats.updateCounterStats(multCtrs.size, "MultAxiomBlowup", "disjuncts")
+    ctx.reporter.info("Number of multiplication induced predicates: "+multCtrs.size)
+    multCtrs
+  }
+
+  def chooseSATPredicate(expr: Expr, predEval: (Expr => Boolean)): Expr = {
+    val norme = ExpressionTransformer.normalizeExpr(expr,ctx.multOp)
+    val preds = norme match {
+      case Or(args) => args
+      case BinaryOperator(_, _, _) => Seq(norme)
+      case _ => throw IllegalStateException("Not(ant) is not in expected format: " + norme)
+    }
+    //pick the first predicate that holds true
+    preds.collectFirst { case pred @ _ if predEval(pred) => pred }.get
+
+  } 
+  
+  def isMultOp(call : Call) : Boolean = {
+    (call.fi.funDef == ctx.multfun || call.fi.funDef == ctx.pivmultfun) 
+  }
+  
+  def unaryMultAxioms(formula: Formula, calls: Set[Call], predEval: (Expr => Boolean)) : Seq[Expr] = {
+    val axioms = calls.flatMap {
+      case call@_ if (isMultOp(call) && axiomFactory.hasUnaryAxiom(call)) => {        
+        val (ant,conseq) = axiomFactory.unaryAxiom(call)
+        if(predEval(ant)) 
+          Seq(ant,conseq)
+        else 
+          Seq(chooseSATPredicate(Not(ant), predEval))
+      }
+    }
+    axioms.toSeq
+  }
+  
+  def binaryMultAxioms(formula: Formula, calls: Set[Call], predEval: (Expr => Boolean)) : Seq[Expr] = {
+
+    val mults = calls.filter(call => isMultOp(call) && axiomFactory.hasBinaryAxiom(call))    
+    val product = Util.cross(mults,mults).collect{ case (c1,c2) if c1 != c2 => (c1,c2) }
+    
+    ctx.reporter.info("Theory axioms: "+product.size)
+    Stats.updateCumStats(product.size, "-Total-theory-axioms")
+
+    val newpreds = product.flatMap(pair => {      
+      val axiomInsts = axiomFactory.binaryAxiom(pair._1, pair._2)      
+      axiomInsts.flatMap {        
+        case (ant,conseq) if predEval(ant) => Seq(ant,conseq) 			//if axiom-pre holds. 
+        case (ant,_) => Seq(chooseSATPredicate(Not(ant), predEval))		//if axiom-pre does not hold.
+      }
+    })                    
+    newpreds.toSeq
+  }  
 }
