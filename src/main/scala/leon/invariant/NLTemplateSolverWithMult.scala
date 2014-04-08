@@ -33,39 +33,34 @@ import scala.util.control.Breaks._
 import leon.solvers._
 import leon.purescala.ScalaPrinter
 import leon.plugin.DepthInstPhase
+import ExpressionTransformer._
 
 class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
   ctrTracker: ConstraintTracker, tempFactory: TemplateFactory) 
   extends NLTemplateSolver(ctx, rootFun, ctrTracker, tempFactory) {
-   
-  val intToReal = new IntToReal() 
+     
   val axiomFactory = new AxiomFactory(ctx)
   
   override def getVCForFun(fd: FunDef): Expr = {    
     val plainvc = ctrTracker.getVC(fd).toExpr
     val nlvc = Util.multToTimes(plainvc, ctx)
-    //convert all variables and constants to reals
-    val realvc = intToReal.mapIntToReal(nlvc)
-    realvc
+    IntLiteralToReal(nlvc)
   }
   
   override def splitVC(fd: FunDef) : (Expr,Expr) = {
     val (paramPart, rest) = ctrTracker.getVC(fd).splitParamPart   
-    (intToReal.mapIntToReal(Util.multToTimes(paramPart, ctx)), 
-        intToReal.mapIntToReal(Util.multToTimes(rest, ctx)))
+    (IntLiteralToReal(Util.multToTimes(paramPart, ctx)),IntLiteralToReal(Util.multToTimes(rest, ctx)))
   }
     
   override def instantiateTemplate(e: Expr, tempVarMap: Map[Expr, Expr]) : Expr = {
     replace(tempVarMap, e)
   }
   
-  override def predEval(model: Map[Identifier, Expr]): (Expr => Boolean) = {
-    val unmapModel = intToReal.unmapModel(model)
-    def modelVal(id: Identifier): RealLiteral = unmapModel(id).asInstanceOf[RealLiteral]
-    
+  override def predEval(model: Map[Identifier, Expr]): (Expr => Boolean) = {        
+    def modelVal(id: Identifier): RealLiteral = model(id).asInstanceOf[RealLiteral]    
     (e: Expr) => e match {
-      case Iff(Variable(id1),Variable(id2)) => unmapModel(id1) == unmapModel(id2)
-      case Equals(Variable(id1),Variable(id2)) => unmapModel(id1) == unmapModel(id2) //note: ADTs can also be compared for equality
+      case Iff(Variable(id1),Variable(id2)) => model(id1) == model(id2)
+      case Equals(Variable(id1),Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
       case BinaryOperator(Variable(id1), Variable(id2), op) if (e.isInstanceOf[LessThan] 
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
         || e.isInstanceOf[GreaterEquals]) => {

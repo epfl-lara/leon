@@ -511,7 +511,7 @@ object ExpressionTransformer {
   /**
    * converts all integer constants to real constants
    */
-  def convertIntLiteralToReal(inexpr: Expr): Expr = {    
+  def IntLiteralToReal(inexpr: Expr): Expr = {    
     val transformer = (e: Expr) => e match {
       case IntLiteral(v) => RealLiteral(v, 1)      
       case _ => e

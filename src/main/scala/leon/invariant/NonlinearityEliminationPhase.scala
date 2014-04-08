@@ -12,19 +12,19 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
-class NonlinearityEliminator(skipAxioms : Boolean) {
+class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with NumericType) {
   
   val one = IntLiteral(1)
   val zero = IntLiteral(0)
 
   //a recursive function that represents multiplication of two positive arguments
   val pivMultFun = {
-    val xid = FreshIdentifier("x").setType(Int32Type)
-    val yid = FreshIdentifier("y").setType(Int32Type)
+    val xid = FreshIdentifier("x").setType(domain)
+    val yid = FreshIdentifier("y").setType(domain)
     val varx = xid.toVariable
     val vary = yid.toVariable
     val args = Seq(xid, yid)
-    val mfd = new FunDef(FreshIdentifier("pmult", false), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
+    val mfd = new FunDef(FreshIdentifier("pmult", false), domain, args.map((arg) => VarDecl(arg, arg.getType)))
 
     //define precondition (not necessary)
     //mfd.precondition = Some(And(GreaterEquals(varx, zero),GreaterEquals(vary, zero)))
@@ -37,7 +37,7 @@ class NonlinearityEliminator(skipAxioms : Boolean) {
     mfd.body = Some(IfExpr(cond, zero, elze))
 
     //add postcondition
-    val resvar = FreshIdentifier("res").setType(Int32Type).toVariable
+    val resvar = FreshIdentifier("res").setType(domain).toVariable
     val post0 = GreaterEquals(resvar, zero)
 
     //define alternate definitions of multiplication as postconditions                  
@@ -62,10 +62,10 @@ class NonlinearityEliminator(skipAxioms : Boolean) {
 
   //a function that represents multiplication, this transitively calls pmult 
   val multFun = {
-    val xid = FreshIdentifier("x").setType(Int32Type)
-    val yid = FreshIdentifier("y").setType(Int32Type)
+    val xid = FreshIdentifier("x").setType(domain)
+    val yid = FreshIdentifier("y").setType(domain)
     val args = Seq(xid, yid)
-    val fd = new FunDef(FreshIdentifier("mult", false), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
+    val fd = new FunDef(FreshIdentifier("mult", false), domain, args.map((arg) => VarDecl(arg, arg.getType)))
 
     //the body is defined as mult(x,y) = val px = if(x < 0) -x else x; 
     //val py = if(y<0) -y else y;  val r = pmult(px,py); 
@@ -74,12 +74,12 @@ class NonlinearityEliminator(skipAxioms : Boolean) {
     val vary = yid.toVariable
     val modx = IfExpr(LessThan(varx, zero), UMinus(varx), varx)
     val mody = IfExpr(LessThan(vary, zero), UMinus(vary), vary)
-    val px = FreshIdentifier("px", false).setType(Int32Type)
-    val py = FreshIdentifier("py", false).setType(Int32Type)
+    val px = FreshIdentifier("px", false).setType(domain)
+    val py = FreshIdentifier("py", false).setType(domain)
     val call = Let(px, modx, Let(py, mody, FunctionInvocation(pivMultFun, Seq(px, py).map(_.toVariable))))
     val bothPive = And(GreaterEquals(varx, zero), GreaterEquals(vary, zero))
     val bothNive = And(LessThan(varx, zero), LessThan(vary, zero))
-    val res = FreshIdentifier("r", false).setType(Int32Type)
+    val res = FreshIdentifier("r", false).setType(domain)
     val body = Let(res, call, IfExpr(Or(bothPive, bothNive), res.toVariable, UMinus(res.toVariable)))
     fd.body = Some(body)
 
@@ -148,7 +148,7 @@ class NonlinearityEliminator(skipAxioms : Boolean) {
 
       //important: update function info of 'newfd'       
       val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
-      if (funinfo.isDefined && funinfo.get.hasTemplate) {        
+      if (funinfo.isDefined) {        
         FunctionInfoFactory.createFunctionInfo(newfd, replaceFun, funinfo.get)
         //        val toTemplate = simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))
         //        FunctionInfoFactory.setTemplate(newfd, toTemplate, FunctionInfoFactory.getTimevar(fd))
@@ -163,14 +163,13 @@ class NonlinearityEliminator(skipAxioms : Boolean) {
     } ++ (if (addMult) Seq(multFun, pivMultFun) else Seq())
 
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
-
+    //println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
     //print all the templates
-    newprog.definedFunctions.foreach((fd) => {
+    /*newprog.definedFunctions.foreach((fd) => {
       val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
       if (funinfo.isDefined && funinfo.get.hasTemplate)
         println("Function: " + fd.id + " template --> " + funinfo.get.getTemplate)
-    })
+    })*/
     newprog
   }
 }

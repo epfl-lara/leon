@@ -50,6 +50,12 @@ object TemplateIdFactory {
     freshid
   }
   
+  def copyIdentifier(id: Identifier) : Identifier = {   
+    val freshid = FreshIdentifier(id.name, false).setType(RealType)
+    ids += freshid
+    freshid
+  }
+  
    /**
    * Template variables have real type
    */

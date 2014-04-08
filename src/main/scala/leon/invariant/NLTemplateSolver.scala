@@ -440,8 +440,10 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       wr.close()
     }
     //throw an exception if the candidate expression has reals
-    if (Util.hasMixedIntReals(instExpr))
+    if (Util.hasMixedIntReals(instExpr)){
+      //variablesOf(instExpr).foreach(id => println("Id: "+id+" type: "+id.getType))
       throw IllegalStateException("Instantiated VC of " + fd.id + " contains mixed integer/reals: " + instExpr)
+    }
 
     reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()

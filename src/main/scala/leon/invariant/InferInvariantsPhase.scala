@@ -116,12 +116,19 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
       case _ =>
     }
     
-    val nlelim = new NonlinearityEliminator(withmult)    
-
+    /**
+     * Note: when withmult is specified we convert the program to a real program
+     */
+    val usereals = withmult
+    val newprog = if (usereals) {
+      (new IntToRealProgram())(prog)
+    } else prog
+    val nlelim = new NonlinearityEliminator(withmult, if(usereals) RealType else Int32Type)
+    
     //populate the inference context and invoke inferenceEngine
-    val inferctx = new InferenceContext(nlelim(prog), ctx, timeout, nlelim.multFun, nlelim.pivMultFun,
+    val inferctx = new InferenceContext(nlelim(newprog), ctx, nlelim.multFun, nlelim.pivMultFun,      
       enumerationRelation = LessEquals, modularlyAnalyze, targettedUnroll,
-      dumpStats, tightBounds, withmult, inferTemp, useCegis, maxCegisBound, statsSuff)
+      dumpStats, tightBounds, withmult, usereals, inferTemp, useCegis, timeout, maxCegisBound, statsSuff)
     (new InferenceEngine(inferctx)).run()
   }
 }

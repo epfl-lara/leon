@@ -61,6 +61,7 @@ object TypeTrees {
     case BooleanType => FiniteSize(2)
     case UnitType => FiniteSize(1)
     case Int32Type => InfiniteSize
+    case RealType => InfiniteSize
     case ListType(_) => InfiniteSize
     case ArrayType(_) => InfiniteSize
     case TypeParameter(_) => InfiniteSize

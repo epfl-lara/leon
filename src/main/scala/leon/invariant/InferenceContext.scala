@@ -10,8 +10,7 @@ import leon.purescala.Trees._
  */
 class InferenceContext(
   val program : Program,    
-  val leonContext : LeonContext, 
-  val timeout: Int, //in secs
+  val leonContext : LeonContext,   
   val multfun : FunDef,
   val pivmultfun : FunDef,  
   val enumerationRelation : (Expr,Expr) => Expr,
@@ -20,8 +19,10 @@ class InferenceContext(
   val dumpStats : Boolean ,
   val tightBounds : Boolean,
   val withmult : Boolean,
+  val usereals : Boolean,
   val inferTemp : Boolean,  
-  val useCegis : Boolean,    
+  val useCegis : Boolean,
+  val timeout: Int, //in secs
   val maxCegisBound : Int,
   val statsSuffix : String)  {  
   

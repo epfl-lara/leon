@@ -197,6 +197,6 @@ class FarkasLemmaSolver {
       val nonLinearCtrs = tail.foldLeft(createCtrs(Some(head)))((acc, conseq) => And(acc, createCtrs(Some(conseq))))
       nonLinearCtrs
     }
-    ExpressionTransformer.convertIntLiteralToReal(ctrs)
+    ExpressionTransformer.IntLiteralToReal(ctrs)
   }
 }

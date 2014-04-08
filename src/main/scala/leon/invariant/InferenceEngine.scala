@@ -191,8 +191,7 @@ class InferenceEngine(ctx: InferenceContext)  {
             } while (!infRes._1.isDefined)
               
             solved = infRes._1 match {
-              case Some(true) => {                                
-                
+              case Some(true) => {                                                
                 Some(true)
               }
               case Some(false) => {

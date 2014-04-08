@@ -427,17 +427,17 @@ class RealToInt {
   }  
 }
 
-class IntToReal {
+/*class IntToReal {
     
   var intToRealDef = Map[ClassTypeDef,ClassTypeDef]() 
   var intToRealFun = Map[FunDef, FunDef]()
   var intToRealId = Map[Identifier, Identifier]()
   var realToIntId = Map[Identifier, Identifier]()
 
-  /**
+  *//**
    * Maps integer variables and constants to reals
    * Here, we assume that
-   */
+   *//*
   def mapIntToReal(inexpr: Expr): Expr = {
 
     def intToRealClass[T <: ClassTypeDef](cdef: T): T = {
@@ -480,9 +480,9 @@ class IntToReal {
       }
     }
 
-    /**
+    *//**
      * Assuming that the tuple-select and case-class-select have been reduced
-     */
+     *//*
     def postTransformer(e: Expr): Expr = e match {
       case IntLiteral(v) => RealLiteral(v, 1)
       case v @ Variable(intId) => {
@@ -532,5 +532,5 @@ class IntToReal {
       } else pair
       (key -> value)
     })
-  }  
-}
+  } 
+}*/

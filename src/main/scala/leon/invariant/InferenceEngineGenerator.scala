@@ -166,7 +166,7 @@ class InferenceEngineGenerator(ctx: InferenceContext,
   }
   
   /**
-   * This function creates a new program with each functions postcondition strengthened by
+   * This function creates a new program with each function postcondition strengthened by
    * the inferred postcondition   
    */
   def verifyInvariant(newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier, Expr]) = {
@@ -229,7 +229,14 @@ class InferenceEngineGenerator(ctx: InferenceContext,
       case d if(!d.isInstanceOf[FunDef]) => d
     }
 
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    val augmentedProg = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    
+    //convert the program back to an integer program if necessary
+    val newprog = if (ctx.usereals) {
+      (new RealToIntProgram())(augmentedProg)
+    } else {
+      augmentedProg
+    }
     //println("Program: "+newprog)
     //println(ScalaPrinter(newprog))
 

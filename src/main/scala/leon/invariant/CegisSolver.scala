@@ -116,7 +116,7 @@ class CegisCore(ctx: InferenceContext,
     } else zero
 
     //convert initCtr to a real-constraint
-    val initRealCtr = ExpressionTransformer.convertIntLiteralToReal(initCtr)
+    val initRealCtr = ExpressionTransformer.IntLiteralToReal(initCtr)
     if (Util.hasInts(initRealCtr))
       throw IllegalStateException("Initial constraints have integer terms: " + initRealCtr)
 
@@ -181,7 +181,7 @@ class CegisCore(ctx: InferenceContext,
             if (!spuriousProgIds.isEmpty)
               throw IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)
 
-            val tempctrs = if (!solveAsInt) ExpressionTransformer.convertIntLiteralToReal(satctrs) else satctrs
+            val tempctrs = if (!solveAsInt) ExpressionTransformer.IntLiteralToReal(satctrs) else satctrs
             val newctr = And(tempctrs, prevctr)
             //println("Newctr: " +newctr)
 
