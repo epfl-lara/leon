@@ -10,6 +10,7 @@ object Main {
     List(
       frontends.scalac.ExtractionPhase,
       utils.TypingPhase,
+      FileOutputPhase,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
@@ -32,6 +33,7 @@ object Main {
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
+      LeonFlagOptionDef ("noop",        "--noop",               "No operation performed, just output program"),
       LeonFlagOptionDef ("help",        "--help",               "Show help")
     )
 
@@ -156,6 +158,8 @@ object Main {
           }
         }
         settings = settings.copy(debugSections = debugSections.toSet)
+      case LeonFlagOption("noop", true) =>
+        settings = settings.copy(verify = false)
       case LeonFlagOption("help", true) =>
         displayHelp(initReporter)
       case _ =>
@@ -207,7 +211,7 @@ object Main {
       } else if (settings.verify) {
         AnalysisPhase
       } else {
-        NoopPhase()
+        utils.FileOutputPhase
       }
     }
 

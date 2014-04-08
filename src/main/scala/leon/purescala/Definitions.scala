@@ -58,6 +58,15 @@ object Definitions {
         case d => d
       })))
     }
+    
+    def writeScalaFile(filename: String) {
+      import java.io.FileWriter
+      import java.io.BufferedWriter
+      val fstream = new FileWriter(filename)
+      val out = new BufferedWriter(fstream)
+      out.write(ScalaPrinter(this))
+      out.close
+    }
   }
 
   object Program {
