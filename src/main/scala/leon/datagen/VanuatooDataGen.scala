@@ -109,6 +109,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       Nil
   }
 
+  // Returns the pattern and whether it is fully precise
   private def valueToPattern(v: AnyRef, expType: TypeTree): (VPattern[Expr, TypeTree], Boolean) = (v, expType) match {
     case (i: Integer, Int32Type) =>
       (cPattern(intConstructor(i), List()), true)
@@ -143,7 +144,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           (ConstructorPattern(c, elems.map(_._1)), elems.forall(_._2))
 
         case _ =>
-          sys.error("Could not retreive type for :"+cc.getClass.getName)
+          ctx.reporter.error("Could not retreive type for :"+cc.getClass.getName)
+          (AnyPattern[Expr, TypeTree](), false)
       }
 
     case (t: codegen.runtime.Tuple, tt @ TupleType(parts)) =>
@@ -165,7 +167,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case (gv: GenericValue, t: TypeParameter) =>
       (cPattern(getConstructors(t)(gv.id-1), List()), true)
     case (v, t) =>
-      sys.error("Unsupported value, can't paternify : "+v+" ("+v.getClass+") : "+t)
+      ctx.reporter.debug("Unsupported value, can't paternify : "+v+" ("+v.getClass+") : "+t)
+      (AnyPattern[Expr, TypeTree](), false)
   }
 
   type InstrumentedResult = (EvaluationResults.Result, Option[vanuatoo.Pattern[Expr, TypeTree]])

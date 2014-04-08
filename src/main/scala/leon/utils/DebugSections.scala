@@ -16,6 +16,7 @@ case object DebugSectionVerification extends DebugSection("verification", 1 << 4
 case object DebugSectionTermination  extends DebugSection("termination",  1 << 5)
 case object DebugSectionTrees        extends DebugSection("trees",        1 << 6)
 case object DebugSectionPositions    extends DebugSection("positions",    1 << 7)
+case object DebugSectionDataGen      extends DebugSection("datagen",      1 << 8)
 
 object DebugSections {
   val all = Set[DebugSection](
@@ -26,6 +27,7 @@ object DebugSections {
     DebugSectionVerification,
     DebugSectionTermination,
     DebugSectionTrees,
-    DebugSectionPositions
+    DebugSectionPositions,
+    DebugSectionDataGen
   )
 }
