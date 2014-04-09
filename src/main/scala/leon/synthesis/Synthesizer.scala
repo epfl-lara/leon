@@ -23,8 +23,6 @@ class Synthesizer(val context : LeonContext,
                   val problem: Problem,
                   val options: SynthesisOptions) {
 
-  val rules: Seq[Rule] = options.rules
-
   val reporter = context.reporter
 
   def synthesize(): (Solution, Boolean) = {
@@ -84,7 +82,7 @@ class Synthesizer(val context : LeonContext,
     val solverf = SolverFactory(() => (new FairZ3Solver(context, npr) with TimeoutSolver).setTimeout(timeoutMs))
 
     val vctx = VerificationContext(context, npr, solverf, context.reporter)
-    val vcs = generateVerificationConditions(vctx, fds.map(_.id.name))
+    val vcs = generateVerificationConditions(vctx, Some(fds.map(_.id.name).toSeq))
     val vcreport = checkVerificationConditions(vctx, vcs)
 
     if (vcreport.totalValid == vcreport.totalConditions) {

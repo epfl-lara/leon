@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.lang.synthesis._
 
 object Matching {
   def t1(a: NatList) = choose( (x: Nat) => Cons(x, Nil()) == a)

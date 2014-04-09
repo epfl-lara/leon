@@ -22,7 +22,9 @@ object Settings {
 
   private def defaultClassPath() = {
     val scalaHome = System.getenv("SCALA_HOME")
-    val scalaCPs = if (scalaHome != "") {
+    assert(scalaHome ne null, "SCALA_HOME was not found in the environment, did you run `source setupenv.sh` ?")
+
+    if (scalaHome != "") {
       val f = new java.io.File(scalaHome+"/lib")
 
       f.listFiles().collect {
@@ -32,8 +34,6 @@ object Settings {
     } else {
       Nil
     }
-
-    scalaCPs
   }
 
   private[leon] def defaultLibFiles() = {

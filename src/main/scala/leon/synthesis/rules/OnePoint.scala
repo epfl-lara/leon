@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import purescala.Common._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
@@ -12,10 +13,14 @@ case object OnePoint extends NormalizingRule("One-point") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 
+    def validOnePoint(x: Identifier, e: Expr) = {
+      !(variablesOf(e) contains x) && !usesHoles(e)
+    }
+
     val candidates = exprs.collect {
-      case eq @ Equals(Variable(x), e) if (p.xs contains x) && !(variablesOf(e) contains x) =>
+      case eq @ Equals(Variable(x), e) if (p.xs contains x) && validOnePoint(x, e) =>
         (x, e, eq)
-      case eq @ Equals(e, Variable(x)) if (p.xs contains x) && !(variablesOf(e) contains x) =>
+      case eq @ Equals(e, Variable(x)) if (p.xs contains x) && validOnePoint(x, e) =>
         (x, e, eq)
     }
 

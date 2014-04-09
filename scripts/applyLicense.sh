@@ -9,6 +9,9 @@ for f in $(find {src,library} -name "*.java" -o -name "*.scala") ;do
       else
           cat $f >> /tmp/newfile
       fi
-      mv /tmp/newfile "$f"
+      if ! cmp --silent /tmp/newfile "$f"; then
+          echo $f
+          mv /tmp/newfile "$f"
+      fi
   fi
 done

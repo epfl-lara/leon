@@ -4,7 +4,10 @@ package leon
 package test
 package verification
 
-import leon.verification.{AnalysisPhase,VerificationReport}
+import leon.verification.VerificationReport
+import leon.xlang.XlangAnalysisPhase
+import leon.frontends.scalac.ExtractionPhase
+import leon.utils.PreprocessingPhase
 
 import java.io.File
 
@@ -17,7 +20,9 @@ class XLangVerificationRegression extends LeonTestSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
-    leon.frontends.scalac.ExtractionPhase andThen leon.utils.TypingPhase andThen xlang.XlangAnalysisPhase
+    ExtractionPhase     andThen
+    PreprocessingPhase  andThen
+    XlangAnalysisPhase
 
   private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
     val fullName = file.getPath()

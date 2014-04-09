@@ -1,4 +1,4 @@
-import scala.collection.immutable.Set
+import leon.lang.synthesis._
 import leon.annotation._
 import leon.lang._
 

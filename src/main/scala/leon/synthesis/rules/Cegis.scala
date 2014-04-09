@@ -20,6 +20,7 @@ import scala.collection.mutable.{Map=>MutableMap}
 
 import evaluators._
 import datagen._
+import codegen.CodeGenParams
 
 
 case object CEGIS extends Rule("CEGIS") {
@@ -38,7 +39,8 @@ case object CEGIS extends Rule("CEGIS") {
     val testUpTo              = 5
     val useBssFiltering       = sctx.options.cegisUseBssFiltering
     val filterThreshold       = 1.0/2
-    val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program)
+    val evalParams            = CodeGenParams(maxFunctionInvocations = 2000)
+    val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
 
     val interruptManager      = sctx.context.interruptManager
 
@@ -71,7 +73,7 @@ case object CEGIS extends Rule("CEGIS") {
             { () =>
               val alts: Seq[(Expr, Set[Identifier])] = cd.knownDescendents.flatMap(i => i match {
                   case acd: AbstractClassDef =>
-                    sctx.reporter.error("Unnexpected abstract class in descendants!")
+                    sctx.reporter.error(acd.getPos, "Unnexpected abstract class in descendants!")
                     None
                   case cd: CaseClassDef =>
                     val cct = CaseClassType(cd, tpes)
@@ -110,7 +112,7 @@ case object CEGIS extends Rule("CEGIS") {
 
           val isNotSynthesizable = fd.body match {
             case Some(b) =>
-              !containsChoose(b)
+              !containsChoose(b) && !usesHoles(b)
 
             case None =>
               false
@@ -437,7 +439,7 @@ case object CEGIS extends Rule("CEGIS") {
       def css : Set[Identifier] = mappings.values.map(_._1).toSet ++ guardedTerms.flatMap(_._2)
     }
 
-    List(new RuleInstantiation(p, this, SolutionBuilder.none, "CEGIS") {
+    List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
       def apply(sctx: SynthesisContext): RuleApplicationResult = {
         var result: Option[RuleApplicationResult]   = None
 

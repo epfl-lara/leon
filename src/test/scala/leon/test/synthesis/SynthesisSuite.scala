@@ -11,6 +11,7 @@ import leon.solvers.z3._
 import leon.solvers.Solver
 import leon.synthesis._
 import leon.synthesis.utils._
+import leon.utils.PreprocessingPhase
 
 import org.scalatest.matchers.ShouldMatchers._
 
@@ -31,34 +32,34 @@ class SynthesisSuite extends LeonTestSuite {
         verify    = false
       ))
 
-    val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen SynthesisProblemExtractionPhase
+    try {
+      val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen PreprocessingPhase andThen SynthesisProblemExtractionPhase
 
-    val (program, results) = pipeline.run(ctx)((content, Nil))
+      val (program, results) = pipeline.run(ctx)((content, Nil))
 
-    for ((f, ps) <- results; p <- ps) {
-      test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
-        val sctx = SynthesisContext(ctx,
-                                    opts,
-                                    Some(f),
-                                    program,
-                                    ctx.reporter)
+      for ((f, ps) <- results; p <- ps) {
+        test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
+          val sctx = SynthesisContext(ctx,
+                                      opts,
+                                      Some(f),
+                                      program,
+                                      ctx.reporter)
 
-        block(sctx, f, p)
+          block(sctx, f, p)
+        }
       }
+    } catch {
+      case lfe: LeonFatalError =>
+        test("Synthesizing %3d: %-20s [%s]".format(nextInt(), "", title)) {
+          assert(false, "Failed to compile "+title)
+        }
     }
   }
 
   case class Apply(desc: String, andThen: List[Apply] = Nil)
 
   def synthesizeWith(sctx: SynthesisContext, p: Problem, ss: Apply): Solution = {
-    val (normRules, otherRules) = sctx.options.rules.partition(_.isInstanceOf[NormalizingRule])
-    val normApplications = normRules.flatMap(_.instantiateOn(sctx, p))
-
-    val apps = if (!normApplications.isEmpty) {
-      normApplications
-    } else {
-      otherRules.flatMap { r => r.instantiateOn(sctx, p) }
-    }
+    val apps = Rules.getInstantiations(sctx, p)
 
     def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
       import java.util.regex.Pattern;
@@ -123,9 +124,9 @@ class SynthesisSuite extends LeonTestSuite {
 
   forProgram("Ground Enum", SynthesisOptions(selectedSolvers = Set("enum")))(
     """
-import scala.collection.immutable.Set
 import leon.annotation._
 import leon.lang._
+import leon.lang.synthesis._
 
 object Injection {
   sealed abstract class List
@@ -148,9 +149,9 @@ object Injection {
 
   forProgram("Cegis 1")(
     """
-import scala.collection.immutable.Set
 import leon.annotation._
 import leon.lang._
+import leon.lang.synthesis._
 
 object Injection {
   sealed abstract class List
@@ -173,9 +174,9 @@ object Injection {
 
   forProgram("Cegis 2")(
     """
-import scala.collection.immutable.Set
 import leon.annotation._
 import leon.lang._
+import leon.lang.synthesis._
 
 object Injection {
   sealed abstract class List
@@ -212,6 +213,7 @@ object Injection {
 
   synthesize("Lists")("""
 import leon.lang._
+import leon.lang.synthesis._
 
 object SortedList {
   sealed abstract class List
@@ -277,6 +279,8 @@ object SortedList {
 
   synthesize("Church")("""
 import leon.lang._
+import leon.lang.synthesis._
+
 object ChurchNumerals {
   sealed abstract class Num
   case object Z extends Num
@@ -310,6 +314,8 @@ object ChurchNumerals {
 
   synthesize("Church")("""
 import leon.lang._
+import leon.lang.synthesis._
+
 object ChurchNumerals {
   sealed abstract class Num
   case object Z extends Num

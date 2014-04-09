@@ -130,7 +130,7 @@ object Definitions {
       knownChildren ++ (knownChildren.map(c => c match {
         case acd: AbstractClassDef => acd.knownDescendents
         case _ => Nil
-      }).reduceLeft(_ ++ _))
+      }).foldLeft(List[ClassDef]())(_ ++ _))
     }
 
     def knownCCDescendents: Seq[CaseClassDef] = knownDescendents.collect {

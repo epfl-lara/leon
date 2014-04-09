@@ -1,6 +1,6 @@
-import scala.collection.immutable.Set
 import leon.annotation._
 import leon.lang._
+import leon.lang.synthesis._
 
 object Complete {
   sealed abstract class List

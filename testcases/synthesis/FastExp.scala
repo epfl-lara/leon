@@ -1,4 +1,5 @@
 import leon.annotation._
+import leon.lang.synthesis._
 import leon.lang._
 
 object FastExp {

@@ -1,6 +1,8 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 import leon.lang._
+import leon.lang.synthesis._
+
 object ChurchNumerals {
   sealed abstract class Num
   case object Z extends Num

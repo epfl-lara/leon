@@ -1,5 +1,6 @@
 import leon.annotation._
 import leon.lang._
+import leon.lang.synthesis._
 
 object Union {
   sealed abstract class List

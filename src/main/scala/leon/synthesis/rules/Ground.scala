@@ -13,7 +13,7 @@ import purescala.Extractors._
 case object Ground extends Rule("Ground") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
-      List(new RuleInstantiation(p, this, SolutionBuilder.none, "Ground") {
+      List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
         def apply(sctx: SynthesisContext): RuleApplicationResult = {
           val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 10000L))
 

@@ -24,6 +24,8 @@ object TypingPhase extends LeonPhase[Program, Program] {
    *
    * 2) Report warnings in case parts of the tree are not correctly typed
    *    (Untyped).
+   * 
+   * 3) Make sure that abstract classes have at least one descendent
    */
   def run(ctx: LeonContext)(pgm: Program): Program = {
     pgm.definedFunctions.foreach(fd => {
@@ -63,12 +65,24 @@ object TypingPhase extends LeonPhase[Program, Program] {
       fd.body.foreach {
         preTraversal{
           case t if !t.isTyped =>
-            ctx.reporter.warning("Tree "+t.asString(ctx)+" is not properly typed ("+t.getPos.fullString+")")
+            ctx.reporter.warning(t.getPos, "Tree "+t.asString(ctx)+" is not properly typed ("+t.getPos.fullString+")")
           case _ =>
         }
       }
 
+
     })
+
+    // Part (3)
+    pgm.definedClasses.foreach {
+      case acd: AbstractClassDef =>
+        if (acd.knownCCDescendents.isEmpty) {
+          ctx.reporter.error(acd.getPos, "Class "+acd.id.asString(ctx)+" has no concrete descendent!")
+        }
+      case _ =>
+    }
+
+
     pgm
   }
 

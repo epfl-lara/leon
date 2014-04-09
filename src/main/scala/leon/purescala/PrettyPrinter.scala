@@ -126,10 +126,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         pp(t, p)
         sb.append("._" + i)
 
-      case h @ Hole() =>
+      case h @ Hole(o) =>
         sb.append("???[")
         pp(h.getType, p)
-        sb.append("]")
+        sb.append("](")
+        pp(o, p)
+        sb.append(")")
 
       case c@Choose(vars, pred) =>
         sb.append("choose(")
@@ -329,7 +331,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         sb.append(")")
 
       case WildcardPattern(None)     => sb.append("_")
-      case WildcardPattern(Some(id)) => pp(id, p)
+      case WildcardPattern(Some(id)) => pp(id.toVariable, p)
       case InstanceOfPattern(bndr, cct) =>
         bndr.foreach(b => sb.append(b + " : "))
         pp(cct, p)

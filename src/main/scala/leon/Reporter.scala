@@ -147,7 +147,7 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
               val width = Math.max(ep.col - bp.col, 1)
               ("^" * width)
             } else {
-              val width = Math.max(line.length-bp.col, 1)
+              val width = Math.max(line.length+1-bp.col, 1)
               ("^" * width)+"..."
             }
 

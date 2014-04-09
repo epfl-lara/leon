@@ -21,6 +21,8 @@ case class SynthesisContext(
   reporter: Reporter
 ) {
 
+  val rules = options.rules
+
   val allSolvers: Map[String, SolverFactory[SynthesisContext.SynthesisSolver]] = Map(
     "fairz3" -> SolverFactory(() => new FairZ3Solver(context, program) with TimeoutAssumptionSolver),
     "enum"   -> SolverFactory(() => new EnumerationSolver(context, program) with TimeoutAssumptionSolver)

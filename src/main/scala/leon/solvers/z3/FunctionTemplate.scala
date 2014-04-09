@@ -59,7 +59,7 @@ class FunctionTemplate private(
   }
 
   val asZ3Clauses: Seq[Z3AST] = asClauses.map {
-    solver.toZ3Formula(_, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang?"))
+    cl => solver.toZ3Formula(cl, idToZ3Ids).getOrElse(sys.error("Could not translate to z3. Did you forget --xlang? @"+cl.getPos))
   }
 
   private val blockers : Map[Identifier,Set[FunctionInvocation]] = {
@@ -252,7 +252,6 @@ object FunctionTemplate {
               val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
 
               val ifExpr = partitions.map(Or(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, BooleanLiteral(true), b) }
-
               rec(pathVar, ifExpr)
             } else {
               o
@@ -262,7 +261,7 @@ object FunctionTemplate {
           }
 
         case i @ IfExpr(cond, thenn, elze) => {
-          if(!containsFunctionCalls(cond) && !containsFunctionCalls(thenn) && !containsFunctionCalls(elze)) {
+          if(!containsFunctionCalls(i)) {
             i
           } else {
             val newBool1 : Identifier = FreshIdentifier("b", true).setType(BooleanType)

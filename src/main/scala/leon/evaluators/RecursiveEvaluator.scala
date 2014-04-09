@@ -409,7 +409,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
       }
 
     case other =>
-      context.reporter.error("Error: don't know how to handle " + other + " in Evaluator.")
+      context.reporter.error(other.getPos, "Error: don't know how to handle " + other + " in Evaluator.")
       throw EvalError("Unhandled case in Evaluator : " + other) 
   }
 

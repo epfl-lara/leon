@@ -17,6 +17,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
   override val definedOptions : Set[LeonOptionDef] = Set(
     LeonFlagOptionDef( "inplace",         "--inplace",         "Debug level"),
+    LeonFlagOptionDef( "allseeing",       "--allseeing",       "Also synthesize functions using holes"),
     LeonValueOptionDef("parallel",        "--parallel[=N]",    "Parallel synthesis search using N workers", Some("5")),
     LeonFlagOptionDef( "manual",          "--manual",          "Manual search"),
     LeonFlagOptionDef( "derivtrees",      "--derivtrees",      "Generate derivation trees"),
@@ -42,6 +43,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("manual", v) =>
         options = options.copy(manualSearch = v)
+
+      case LeonFlagOption("allseeing", v) =>
+        options = options.copy(allSeeing = v)
 
       case LeonFlagOption("inplace", v) =>
         options = options.copy(inPlace = v)
@@ -122,11 +126,16 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   def run(ctx: LeonContext)(p: Program): Program = {
     val options = processOptions(ctx)
 
-    def toProcess(ci: ChooseInfo) = {
-      options.filterFuns.isEmpty || options.filterFuns.get.contains(ci.fd.id.toString)
+    def excludeByDefault(fd: FunDef): Boolean = (fd.annotations contains "library")
+
+    val fdFilter = {
+      import OptionsHelpers._
+      val ciTofd = { (ci: ChooseInfo) => ci.fd }
+
+      filterInclusive(options.filterFuns.map(fdMatcher), Some(excludeByDefault _)) compose ciTofd
     }
 
-    var chooses = ChooseInfo.extractFromProgram(ctx, p, options).filter(toProcess)
+    var chooses = ChooseInfo.extractFromProgram(ctx, p, options).filter(fdFilter)
 
     var functions = Set[FunDef]()
 
@@ -136,7 +145,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       val fd = ci.fd
 
       val expr = sol.toSimplifiedExpr(ctx, p)
-      fd.body = fd.body.map(b => replace(Map(ci.ch -> expr), b))
+      fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
 
       functions += fd
 

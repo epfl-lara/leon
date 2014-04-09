@@ -25,15 +25,12 @@ class SynthesisRegressionSuite extends LeonTestSuite {
   }
 
   private def testSynthesis(cat: String, f: File, bound: Int) {
-    val ctx = testContext.copy(settings = Settings(
-        synthesis = true,
-        xlang     = false,
-        verify    = false
-      ))
 
-    val opts = SynthesisOptions(searchBound = Some(bound))
+    val ctx = createLeonContext("--synthesis", "--library")
 
-    val pipeline = frontends.scalac.ExtractionPhase andThen leon.utils.TypingPhase
+    val opts = SynthesisOptions(searchBound = Some(bound), allSeeing = true)
+
+    val pipeline = frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
 
     val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 
@@ -57,11 +54,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     testSynthesis("List", f, 200)
   }
 
-  //forEachFileIn("regression/synthesis/SortedList/") { f =>
-  //  testSynthesis("SortedList", f, 400)
-  //}
-
-  //forEachFileIn("regression/synthesis/StrictSortedList/") { f =>
-  //  testSynthesis("StrictSortedList", f, 400)
-  //}
+  forEachFileIn("regression/synthesis/Holes/") { f =>
+    testSynthesis("Holes", f, 1000)
+  }
 }

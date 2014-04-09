@@ -69,7 +69,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
         // unsupported for now
         e
       } else {
-        MatchExpr(rs, cases.flatMap { c =>
+        val newCases = cases.flatMap { c =>
           val patternExpr = conditionForPattern(rs, c.pattern, includeBinders = true)
 
           if (stillPossible && !contradictedBy(patternExpr, path)) {
@@ -87,7 +87,12 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
           } else {
             None
           }
-        }).copiedFrom(e)
+        }
+        if (newCases.nonEmpty) {
+          MatchExpr(rs, newCases).copiedFrom(e)
+        } else {
+          Error("Unreachable code").copiedFrom(e)
+        }
       }
 
     case Or(es) =>

@@ -110,7 +110,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             }
         }
 
-        Some(HeuristicInstantiation(p, this, subProblemsInfo.map(_._1).toList, onSuccess, "ADT Induction on '"+origId+"'"))
+        Some(RuleInstantiation.immediateDecomp(p, this, subProblemsInfo.map(_._1).toList, onSuccess, "ADT Induction on '"+origId+"'"))
       } else {
         None
       }

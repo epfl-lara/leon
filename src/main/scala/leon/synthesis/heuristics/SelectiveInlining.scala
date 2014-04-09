@@ -38,7 +38,7 @@ case object SelectiveInlining extends Rule("Sel. Inlining") with Heuristic {
 
       val sub = p.copy(phi = And(newExprs))
 
-      Some(HeuristicInstantiation(p, this, List(sub), forward, this.name))
+      Some(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
     } else {
       None
     }

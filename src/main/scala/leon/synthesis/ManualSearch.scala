@@ -7,11 +7,10 @@ import leon.purescala.ScalaPrinter
 
 class ManualSearch(synth: Synthesizer,
                    problem: Problem,
-                   rules: Seq[Rule],
-                   costModel: CostModel) extends SimpleSearch(synth, problem, rules, costModel) {
+                   costModel: CostModel) extends SimpleSearch(synth, problem, costModel) {
 
   def this(synth: Synthesizer, problem: Problem) = {
-    this(synth, problem, synth.rules, synth.options.costModel)
+    this(synth, problem, synth.options.costModel)
   }
 
   import synth.reporter._
@@ -33,24 +32,32 @@ class ManualSearch(synth: Synthesizer,
     def failed(str: String) = "\033[31m"+str+"\033[0m"
     def solved(str: String) = "\033[32m"+str+"\033[0m"
 
+    def displayApp(app: RuleInstantiation): String = {
+      f"(${costModel.ruleAppCost(app).value}%3d) $app"
+    }
+
+    def displayProb(p: Problem): String = {
+      f"(${costModel.problemCost(p).value}%3d) $p"
+    }
+
     def traversePathFrom(n: g.Tree, prefix: List[Int]) {
       n match {
         case l: g.AndLeaf =>
           if (prefix.endsWith(cd.reverse)) {
-            println(pathToString(prefix)+" \u2508 "+l.task.app)
+            println(pathToString(prefix)+" \u2508 "+displayApp(l.task.app))
           }
         case l: g.OrLeaf =>
           if (prefix.endsWith(cd.reverse)) {
-            println(pathToString(prefix)+" \u2508 "+l.task.p)
+            println(pathToString(prefix)+" \u2508 "+displayProb(l.task.p))
           }
         case an: g.AndNode =>
           if (an.isSolved) {
             if (prefix.endsWith(cd.reverse)) {
-              println(solved(pathToString(prefix)+" \u2508 "+an.task.app))
+              println(solved(pathToString(prefix)+" \u2508 "+displayApp(an.task.app)))
             }
           } else {
             if (prefix.endsWith(cd.reverse)) {
-              println(title(pathToString(prefix)+" \u2510 "+an.task.app))
+              println(title(pathToString(prefix)+" \u2510 "+displayApp(an.task.app)))
             }
             for ((st, i) <- an.subTasks.zipWithIndex) {
               traversePathFrom(an.subProblems(st), i :: prefix)
@@ -64,12 +71,12 @@ class ManualSearch(synth: Synthesizer,
             }
           } else {
             if (prefix.endsWith(cd.reverse)) {
-              println(title(pathToString(prefix)+" \u2510 "+on.task.p))
+              println(title(pathToString(prefix)+" \u2510 "+displayProb(on.task.p)))
             }
             for ((at, i) <- on.altTasks.zipWithIndex) {
               if (on.triedAlternatives contains at) {
                 if (prefix.endsWith(cd.reverse)) {
-                  println(failed(pathToString(i :: prefix)+" \u2508 "+at.app))
+                  println(failed(pathToString(i :: prefix)+" \u2508 "+displayApp(at.app)))
                 }
               } else {
                 traversePathFrom(on.alternatives(at), i :: prefix)

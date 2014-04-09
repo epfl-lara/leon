@@ -9,11 +9,10 @@ import synthesis.search._
 
 class SimpleSearch(synth: Synthesizer,
                    problem: Problem,
-                   rules: Seq[Rule],
                    costModel: CostModel) extends AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel))) with Interruptible {
 
   def this(synth: Synthesizer, problem: Problem) = {
-    this(synth, problem, synth.rules, synth.options.costModel)
+    this(synth, problem, synth.options.costModel)
   }
 
   import synth.reporter._
@@ -45,22 +44,12 @@ class SimpleSearch(synth: Synthesizer,
   }
 
   def expandOrTask(t: TaskTryRules): ExpandResult[TaskRunRule] = {
-    val (normRules, otherRules) = rules.partition(_.isInstanceOf[NormalizingRule])
+    val apps = Rules.getInstantiations(sctx, t.p)
 
-    val normApplications = normRules.flatMap(_.instantiateOn(sctx, t.p))
-
-    if (!normApplications.isEmpty) {
-      Expanded(List(TaskRunRule(normApplications.head)))
+    if (apps.nonEmpty) {
+      Expanded(apps.map(TaskRunRule(_)))
     } else {
-      val sub = otherRules.flatMap { r =>
-        r.instantiateOn(sctx, t.p).map(TaskRunRule(_))
-      }
-
-      if (!sub.isEmpty) {
-        Expanded(sub.toList)
-      } else {
-        ExpandFailure()
-      }
+      ExpandFailure()
     }
   }
 

@@ -7,7 +7,7 @@ import leon._
 
 import leon.evaluators._
 
-import leon.utils.TemporaryInputPhase
+import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
 import leon.frontends.scalac.ExtractionPhase
 
 import leon.purescala.Common._
@@ -26,7 +26,7 @@ class EvaluatorsTests extends LeonTestSuite {
   private def prepareEvaluators(implicit ctx : LeonContext, prog : Program) : List[Evaluator] = evaluatorConstructors.map(c => c(leonContext, prog))
 
   private def parseString(str : String) : Program = {
-    val pipeline = TemporaryInputPhase andThen ExtractionPhase
+    val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen PreprocessingPhase
 
     val errorsBefore   = leonContext.reporter.errorCount
     val warningsBefore = leonContext.reporter.warningCount
@@ -431,6 +431,7 @@ class EvaluatorsTests extends LeonTestSuite {
   test("Executing Chooses") {
     val p = """|object Program {
                |  import leon.lang._
+               |  import leon.lang.synthesis._
                |
                |  def c(i : Int) : Int = choose { (j : Int) => j > i && j < i + 2 }
                |}

@@ -9,12 +9,11 @@ import solvers.z3._
 
 class ParallelSearch(synth: Synthesizer,
                      problem: Problem,
-                     rules: Seq[Rule],
                      costModel: CostModel,
                      nWorkers: Int) extends AndOrGraphParallelSearch[SynthesisContext, TaskRunRule, TaskTryRules, Solution](new AndOrGraph(TaskTryRules(problem), SearchCostModel(costModel)), nWorkers) {
 
   def this(synth: Synthesizer, problem: Problem, nWorkers: Int) = {
-    this(synth, problem, synth.rules, synth.options.costModel, nWorkers)
+    this(synth, problem, synth.options.costModel, nWorkers)
   }
 
   import synth.reporter._
@@ -60,22 +59,12 @@ class ParallelSearch(synth: Synthesizer,
   }
 
   def expandOrTask(ref: ActorRef, sctx: SynthesisContext)(t: TaskTryRules) = {
-    val (normRules, otherRules) = rules.partition(_.isInstanceOf[NormalizingRule])
+    val apps = Rules.getInstantiations(sctx, t.p)
 
-    val normApplications = normRules.flatMap(_.instantiateOn(sctx, t.p))
-
-    if (!normApplications.isEmpty) {
-      Expanded(List(TaskRunRule(normApplications.head)))
+    if (apps.nonEmpty) {
+      Expanded(apps.map(TaskRunRule(_)))
     } else {
-      val sub = otherRules.flatMap { r =>
-        r.instantiateOn(sctx, t.p).map(TaskRunRule(_))
-      }
-
-      if (!sub.isEmpty) {
-        Expanded(sub.toList)
-      } else {
-        ExpandFailure()
-      }
+      ExpandFailure()
     }
   }
 }

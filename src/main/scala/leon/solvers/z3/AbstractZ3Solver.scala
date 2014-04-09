@@ -451,7 +451,7 @@ trait AbstractZ3Solver
 
     case other =>
       sorts.toZ3OrCompute(other) {
-        reporter.warning("Resorting to uninterpreted type for : " + other)
+        reporter.warning(other.getPos, "Resorting to uninterpreted type for : " + other)
         val symbol = z3.mkIntSymbol(nextIntForSymbol())
         z3.mkUninterpretedSort(symbol)
       }
@@ -638,8 +638,11 @@ trait AbstractZ3Solver
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))
 
+      case h @ Hole(o) =>
+        rec(OracleTraverser(o, h.getType, program).value)
+
       case _ => {
-        reporter.warning("Can't handle this in translation to Z3: " + ex)
+        reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException
       }
     }

@@ -60,3 +60,39 @@ object ListValue {
     }
   }
 }
+
+object OptionsHelpers {
+  // helper for options that include patterns
+
+  def matcher(patterns: Traversable[String]): String => Boolean = {
+    val regexPatterns = patterns map { s =>
+      import java.util.regex.Pattern
+
+      val p = s.replaceAll("\\.", "\\\\.").replaceAll("_", ".+")
+      Pattern.compile(p)
+    }
+
+    { (name: String) => regexPatterns.exists(p => p.matcher(name).matches()) }
+  }
+
+  import purescala.Definitions.FunDef
+
+  def fdMatcher(patterns: Traversable[String]): FunDef => Boolean = {
+    { (fd: FunDef) => fd.id.name } andThen matcher(patterns)
+  }
+
+  def filterInclusive[T](included: Option[T => Boolean], excluded: Option[T => Boolean]): T => Boolean = {
+    included match {
+      case Some(i) =>
+        i
+      case None =>
+        excluded match {
+          case Some(f) =>
+            { (t: T) => !f(t) }
+
+          case None =>
+            { (t: T) => true }
+        }
+    }
+  }
+}

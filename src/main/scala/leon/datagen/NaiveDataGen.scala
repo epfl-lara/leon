@@ -63,11 +63,16 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
   private val streamCache : MutableMap[TypeTree,Stream[Expr]] = MutableMap.empty
 
   def generate(tpe : TypeTree, bounds : Map[TypeTree,Seq[Expr]] = defaultBounds) : Stream[Expr] = {
-    streamCache.getOrElse(tpe, {
-      val s = generate0(tpe, bounds)
-      streamCache(tpe) = s
-      s
-    })
+    try {
+      streamCache.getOrElse(tpe, {
+        val s = generate0(tpe, bounds)
+        streamCache(tpe) = s
+        s
+      })
+    } catch {
+      case so: StackOverflowError =>
+        Stream.empty
+    }
   }
 
   // TODO We should make sure the cache depends on the bounds (i.e. is not reused for different bounds.)

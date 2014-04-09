@@ -22,6 +22,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     val settings = new NSCSettings
 
     settings.classpath.value = ctx.settings.classPath.mkString(":")
+    settings.usejavacp.value = false
     settings.skip.value      = List("patmat")
 
     val libFiles = Settings.defaultLibFiles()
@@ -50,22 +51,10 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       val run = new compiler.Run
       run.compile(command.files)
 
-      (compiler.leonExtraction.units, compiler.leonExtraction.modules) match {
-        case (Nil, Nil) =>
-          ctx.reporter.fatalError("Error while compiling. Empty input?")
 
-        case (_, Nil) =>
-          ctx.reporter.fatalError("Error while compiling.")
-
-        case (_, modules) =>
-          if (ctx.reporter.errorCount > 0 && ctx.settings.strictCompilation) {
-            ctx.reporter.fatalError("Error while compiling.")
-          } else {
-            val pgm = Program(FreshIdentifier("<program>"), modules)
-            ctx.reporter.debug(pgm.asString(ctx))
-            pgm
-          }
-      }
+      val pgm = Program(FreshIdentifier("<program>"), compiler.leonExtraction.modules)
+      ctx.reporter.debug(pgm.asString(ctx))
+      pgm
     } else {
       ctx.reporter.fatalError("No input program.")
     }

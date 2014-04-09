@@ -4,7 +4,7 @@ package leon.test
 package purescala
 
 import leon._
-import leon.utils.TemporaryInputPhase
+import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
 import leon.frontends.scalac.ExtractionPhase
 
 import leon.purescala.Common._
@@ -19,7 +19,7 @@ import org.scalatest.FunSuite
 
 class DataGen extends LeonTestSuite {
   private def parseString(str : String) : Program = {
-    val pipeline = TemporaryInputPhase andThen ExtractionPhase
+    val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen PreprocessingPhase
 
     val errorsBefore   = testContext.reporter.errorCount
     val warningsBefore = testContext.reporter.warningCount
@@ -67,15 +67,19 @@ class DataGen extends LeonTestSuite {
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
 
-    val listType : TypeTree = classDefToClassType(prog.classHierarchyRoots.head)
-    val sizeDef    : FunDef = prog.definedFunctions.find(_.id.name == "size").get
-    val sortedDef  : FunDef = prog.definedFunctions.find(_.id.name == "isSorted").get
-    val contentDef : FunDef = prog.definedFunctions.find(_.id.name == "content").get
-    val insSpecDef : FunDef = prog.definedFunctions.find(_.id.name == "insertSpec").get
+    // Make sure we target our own lists
+    val module = prog.modules.find(_.id.name == "Program").get
+    val listType : TypeTree = classDefToClassType(module.classHierarchyRoots.head)
+    val sizeDef    : FunDef = module.definedFunctions.find(_.id.name == "size").get
+    val sortedDef  : FunDef = module.definedFunctions.find(_.id.name == "isSorted").get
+    val contentDef : FunDef = module.definedFunctions.find(_.id.name == "content").get
+    val insSpecDef : FunDef = module.definedFunctions.find(_.id.name == "insertSpec").get
 
-    val consDef : CaseClassDef = prog.caseClassDef("Cons")
+    val consDef : CaseClassDef = module.definedClasses.collect {
+      case ccd: CaseClassDef if ccd.id.name == "Cons" => ccd
+    }.head
 
-    generator.generate(listType).take(100).toSet.size === 100
+    assert(generator.generate(listType).take(100).toSet.size === 100, "Should be able to generate 100 different lists")
 
     val evaluator = new CodeGenEvaluator(testContext, prog)
 
@@ -95,14 +99,14 @@ class DataGen extends LeonTestSuite {
       GreaterThan(sizeX, IntLiteral(0)),
       10,
       500
-    ).size === 10)
+    ).size === 10, "Should find 10 non-empty lists in the first 500 enumerated")
 
     assert(generator.generateFor(
       Seq(x.id, y.id),
       And(Equals(contentX, contentY), sortedY),
       10,
       500
-    ).size === 10)
+    ).size === 10, "Should find 2x 10 lists with same content in the first 500 enumerated")
 
     assert(generator.generateFor(
       Seq(x.id, y.id),

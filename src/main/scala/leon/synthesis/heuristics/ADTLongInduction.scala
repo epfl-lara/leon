@@ -71,7 +71,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
                 val newIds = ids.filterNot(_ == id) ++ subIds
                 val newCalls = if (!subIds.isEmpty) {
-                  List(subIds.find(isRec).get)
+                  List(subIds.find(isRec)).flatten
                 } else {
                   List()
                 }
@@ -159,7 +159,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
             }
         }
 
-        Some(HeuristicInstantiation(p, this, subProblemsInfo.map(_._1).toList, onSuccess, "ADT Long Induction on '"+origId+"'"))
+        Some(RuleInstantiation.immediateDecomp(p, this, subProblemsInfo.map(_._1).toList, onSuccess, "ADT Long Induction on '"+origId+"'"))
       } else {
         None
       }

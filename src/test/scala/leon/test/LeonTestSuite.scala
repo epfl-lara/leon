@@ -35,17 +35,16 @@ trait LeonTestSuite extends FunSuite with Timeouts {
   }
 
 
+  def createLeonContext(opts: String*): LeonContext = {
+    val reporter = new TestSilentReporter
+
+    Main.processOptions(opts.toList).copy(reporter = reporter, interruptManager = new InterruptManager(reporter))
+  }
+
   var testContext = generateContext
 
   def generateContext = {
-    val reporter = new TestSilentReporter
-
-    LeonContext(
-      settings = Settings(),
-      files = List(),
-      reporter = reporter,
-      interruptManager = new InterruptManager(reporter)
-    )
+    createLeonContext()
   }
 
   def testIdentifier(name: String): String = {

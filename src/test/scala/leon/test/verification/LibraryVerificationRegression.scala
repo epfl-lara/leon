@@ -6,13 +6,15 @@ package verification
 
 import java.io.File
 
+import leon.frontends.scalac.ExtractionPhase
+import leon.utils.PreprocessingPhase
+import leon.verification.AnalysisPhase
+
 class LibraryVerificationRegression extends LeonTestSuite {
   test("Verify the library") {
-      val pipeline = leon.frontends.scalac.ExtractionPhase andThen
-                     leon.purescala.MethodLifting andThen
-                     leon.utils.TypingPhase andThen
-                     leon.purescala.CompleteAbstractDefinitions andThen
-                     leon.verification.AnalysisPhase
+      val pipeline = ExtractionPhase    andThen
+                     PreprocessingPhase andThen
+                     AnalysisPhase
 
       val ctx = Main.processOptions(Seq("--library", "--functions=_")).copy(reporter = new TestSilentReporter())
 

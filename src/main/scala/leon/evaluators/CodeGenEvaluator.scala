@@ -52,7 +52,7 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
       })
     } catch {
       case t: Throwable =>
-        ctx.reporter.warning("Error while compiling expression: "+t.getMessage)
+        ctx.reporter.warning(expression.getPos, "Error while compiling expression: "+t.getMessage)
         None
     }
   }

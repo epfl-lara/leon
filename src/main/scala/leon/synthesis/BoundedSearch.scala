@@ -5,12 +5,11 @@ package synthesis
 
 class BoundedSearch(synth: Synthesizer,
                    problem: Problem,
-                   rules: Seq[Rule],
                    costModel: CostModel,
-                   searchBound: Int) extends SimpleSearch(synth, problem, rules, costModel) {
+                   searchBound: Int) extends SimpleSearch(synth, problem, costModel) {
 
   def this(synth: Synthesizer, problem: Problem, searchBound: Int) = {
-    this(synth, problem, synth.rules, synth.options.costModel, searchBound)
+    this(synth, problem, synth.options.costModel, searchBound)
   }
 
   override def searchStep() {

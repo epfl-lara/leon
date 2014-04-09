@@ -371,6 +371,58 @@ object TreeOps {
     })(expr)
   }
 
+  def normalizeExpression(expr: Expr) : Expr = {
+    def rec(e: Expr): Option[Expr] = e match {
+      case TupleSelect(Let(id, v, b), ts) =>
+        Some(Let(id, v, TupleSelect(b, ts)))
+
+      case TupleSelect(LetTuple(ids, v, b), ts) =>
+        Some(LetTuple(ids, v, TupleSelect(b, ts)))
+
+      case IfExpr(c, thenn, elze) if (thenn == elze) =>
+        Some(thenn)
+
+      case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
+        Some(c)
+
+      case IfExpr(Not(c), thenn, elze) =>
+        Some(IfExpr(c, elze, thenn).copiedFrom(e))
+
+      case IfExpr(c, BooleanLiteral(false), BooleanLiteral(true)) =>
+        Some(Not(c))
+
+      case FunctionInvocation(tfd, List(IfExpr(c, thenn, elze))) =>
+        Some(IfExpr(c, FunctionInvocation(tfd, List(thenn)), FunctionInvocation(tfd, List(elze))))
+
+      case _ =>
+        None
+    }
+
+    fixpoint(postMap(rec))(expr)
+  }
+
+
+  def evalGround(ctx: LeonContext, program: Program): Expr => Expr = {
+    import evaluators._
+
+    val eval = new DefaultEvaluator(ctx, program)
+
+    def isGround(e: Expr): Boolean = {
+      variablesOf(e).isEmpty  && !usesHoles(e) && !containsChoose(e)
+    }
+
+    def rec(e: Expr): Option[Expr] = e match {
+      case l: Terminal => None
+      case e if isGround(e) => eval.eval(e) match {
+        case EvaluationResults.Successful(v) => Some(v)
+        case _ => None
+      }
+      case _ => None
+    }
+
+    preMap(rec)
+  }
+
   /**
    * Simplifies let expressions:
    *  - removes lets when expression never occurs
@@ -922,12 +974,12 @@ object TreeOps {
             substMap += prefix -> Variable(binder)
             substMap += CaseClassInstanceOf(ct, prefix) -> BooleanLiteral(true)
 
-            val subconds = for (id <- ct.classDef.fieldsIds) yield {
-              val fieldSel = CaseClassSelector(ct, prefix, id)
+            val subconds = for (f <- ct.fields) yield {
+              val fieldSel = CaseClassSelector(ct, prefix, f.id)
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
-                val b = FreshIdentifier(id.name, true).setType(id.getType)
+                val b = FreshIdentifier(f.id.name, true).setType(f.tpe)
                 substMap += fieldSel -> Variable(b)
                 WildcardPattern(Some(b))
               }
@@ -1156,10 +1208,9 @@ object TreeOps {
       case ft : FunctionType => None // FIXME
 
       case a : AbstractClassType => None
-      case c : CaseClassType     =>
+      case cct : CaseClassType     =>
         // This is really just one big assertion. We don't rewrite class defs.
-        val ccd = c.classDef
-        val fieldTypes = ccd.fields.map(_.tpe)
+        val fieldTypes = cct.fields.map(_.tpe)
         if(fieldTypes.exists(t => t match {
           case TupleType(ts) if ts.size <= 1 => true
           case _ => false
@@ -1246,11 +1297,43 @@ object TreeOps {
   }
 
   def containsChoose(e: Expr): Boolean = {
-    simplePreTransform{
+    preTraversal{
       case Choose(_, _) => return true
-      case e => e
+      case _ =>
     }(e)
     false
+  }
+
+  def containsHoles(e: Expr): Boolean = {
+    preTraversal{
+      case Hole(_) => return true
+      case _ =>
+    }(e)
+    false
+  }
+
+  /**
+   * Returns true if the expression directly or indirectly relies on a Hole
+   */
+  def usesHoles(e: Expr): Boolean = {
+    var cache = Map[FunDef, Boolean]()
+
+    def callsHolesExpr(e: Expr): Boolean = {
+      containsHoles(e) || functionCallsOf(e).exists(fi => callsHoles(fi.tfd.fd))
+    }
+
+    def callsHoles(fd: FunDef): Boolean = cache.get(fd) match {
+      case Some(r) => r
+      case None =>
+        cache += fd -> false
+
+        val res = fd.body.map(callsHolesExpr _).getOrElse(false)
+
+        cache += fd -> res
+        res
+    }
+
+    callsHolesExpr(e)
   }
 
   /**

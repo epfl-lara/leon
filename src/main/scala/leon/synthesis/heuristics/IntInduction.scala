@@ -65,7 +65,7 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
             None
         }
 
-        Some(HeuristicInstantiation(p, this, List(subBase, subGT, subLT), onSuccess, "Int Induction on '"+origId+"'"))
+        Some(RuleInstantiation.immediateDecomp(p, this, List(subBase, subGT, subLT), onSuccess, "Int Induction on '"+origId+"'"))
       case _ =>
         None
     }

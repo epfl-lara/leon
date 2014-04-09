@@ -26,8 +26,6 @@ object Trees {
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal
 
-  case class Hole() extends Expr with Terminal
-
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
 
     assert(!vars.isEmpty)
@@ -36,6 +34,13 @@ object Trees {
 
     def extract = {
       Some((pred, (e: Expr) => Choose(vars, e).setPos(this)))
+    }
+  }
+
+  // A hole is like a all-seeing choose
+  case class Hole(oracle: Expr) extends Expr with UnaryExtractable {
+    def extract = {
+      Some((oracle, (o: Expr) => Hole(o).copiedFrom(this)))
     }
   }
 

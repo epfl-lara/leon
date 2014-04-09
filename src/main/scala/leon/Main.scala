@@ -187,26 +187,29 @@ object Main {
 
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
+    import frontends.scalac.ExtractionPhase
+    import synthesis.SynthesisPhase
+    import termination.TerminationPhase
+    import xlang.XlangAnalysisPhase
+    import verification.AnalysisPhase
 
     val pipeBegin : Pipeline[List[String],Program] =
-      frontends.scalac.ExtractionPhase andThen
-      purescala.MethodLifting andThen
-      utils.TypingPhase andThen
-      purescala.CompleteAbstractDefinitions andThen
-      synthesis.ConvertHoles
+      ExtractionPhase andThen
+      PreprocessingPhase
 
-    val pipeProcess: Pipeline[Program, Any] =
+    val pipeProcess: Pipeline[Program, Any] = {
       if (settings.synthesis) {
-        synthesis.SynthesisPhase
+        SynthesisPhase
       } else if (settings.termination) {
-        termination.TerminationPhase
+        TerminationPhase
       } else if (settings.xlang) {
-        xlang.XlangAnalysisPhase
+        XlangAnalysisPhase
       } else if (settings.verify) {
-        verification.AnalysisPhase
+        AnalysisPhase
       } else {
         NoopPhase()
       }
+    }
 
     pipeBegin andThen
     pipeProcess

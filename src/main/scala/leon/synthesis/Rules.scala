@@ -29,9 +29,25 @@ object Rules {
     DetupleOutput,
     DetupleInput,
     ADTSplit,
+    InlineHoles,
     IntegerEquation,
-    IntegerInequalities
+    IntegerInequalities,
+    AngelicHoles
   )
+
+  def getInstantiations(sctx: SynthesisContext, problem: Problem) = {
+    val sub = sctx.rules.flatMap { r =>
+      r.instantiateOn(sctx, problem)
+    }
+
+    val res = sub.groupBy(_.priority).toSeq.sortBy(_._1)
+
+    if (res.nonEmpty) {
+      res.head._2.toList
+    } else {
+      Nil
+    }
+  }
 }
 
 abstract class SolutionBuilder(val arity: Int, val types: Seq[TypeTree]) {
@@ -53,7 +69,13 @@ object SolutionBuilder {
   }
 }
 
-abstract class RuleInstantiation(val problem: Problem, val rule: Rule, val onSuccess: SolutionBuilder, val description: String) {
+abstract class RuleInstantiation(
+  val problem: Problem,
+  val rule: Rule,
+  val onSuccess: SolutionBuilder,
+  val description: String,
+  val priority: RulePriority) {
+
   def apply(sctx: SynthesisContext): RuleApplicationResult
 
   override def toString = description
@@ -64,17 +86,56 @@ case class RuleSuccess(solution: Solution, isTrusted: Boolean = true)  extends R
 case class RuleDecomposed(sub: List[Problem])                          extends RuleApplicationResult
 case object RuleApplicationImpossible                                  extends RuleApplicationResult
 
+sealed abstract class RulePriority(val v: Int) extends Ordered[RulePriority] {
+  def compare(that: RulePriority) = this.v - that.v
+}
+
+case object RulePriorityDefault     extends RulePriority(2)
+case object RulePriorityNormalizing extends RulePriority(0)
+case object RulePriorityHoles       extends RulePriority(1)
+
 object RuleInstantiation {
-  def immediateDecomp(problem: Problem, rule: Rule, sub: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String) = {
+  def immediateDecomp(problem: Problem,
+                      rule: Rule,
+                      sub: List[Problem],
+                      onSuccess: List[Solution] => Option[Solution]): RuleInstantiation = {
+
+    immediateDecomp(problem, rule, sub, onSuccess, rule.name, rule.priority)
+  }
+
+  def immediateDecomp(problem: Problem,
+                      rule: Rule,
+                      sub: List[Problem],
+                      onSuccess: List[Solution] => Option[Solution],
+                      description: String): RuleInstantiation = {
+    immediateDecomp(problem, rule, sub, onSuccess, description, rule.priority)
+  }
+
+  def immediateDecomp(problem: Problem,
+                      rule: Rule,
+                      sub: List[Problem],
+                      onSuccess: List[Solution] => Option[Solution],
+                      description: String,
+                      priority: RulePriority): RuleInstantiation = {
     val subTypes = sub.map(p => TupleType(p.xs.map(_.getType)))
 
-    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess), description) {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess), description, priority) {
       def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
     }
   }
 
-  def immediateSuccess(problem: Problem, rule: Rule, solution: Solution) = {
-    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution)), "Solve with "+solution) {
+  def immediateSuccess(problem: Problem,
+                       rule: Rule,
+                       solution: Solution): RuleInstantiation = {
+    immediateSuccess(problem, rule, solution, rule.priority)
+
+  }
+
+  def immediateSuccess(problem: Problem,
+                       rule: Rule,
+                       solution: Solution,
+                       priority: RulePriority): RuleInstantiation = {
+    new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution)), "Solve with "+solution, priority) {
       def apply(sctx: SynthesisContext) = RuleSuccess(solution)
     }
   }
@@ -82,6 +143,8 @@ object RuleInstantiation {
 
 abstract class Rule(val name: String) {
   def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation]
+
+  val priority: RulePriority = RulePriorityDefault 
 
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
@@ -95,12 +158,21 @@ abstract class Rule(val name: String) {
       None
   }
 
+  def project(firstN: Int): List[Solution] => Option[Solution] = {
+    project(0 until firstN)
+  }
+
+
+  def project(ids: Seq[Int]): List[Solution] => Option[Solution] = {
+    case List(s) =>
+      Some(s.project(ids))
+    case _ =>
+      None
+  }
+
   override def toString = "R: "+name
 }
 
-// Note: Rules that extend NormalizingRule should all be commutative, The will
-// be applied before others in a deterministic order and their application
-// should never fail!
 abstract class NormalizingRule(name: String) extends Rule(name) {
-  override def toString = "N: "+name
+  override val priority = RulePriorityNormalizing
 }

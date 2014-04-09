@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.lang.synthesis._
 
 // Examples taken from http://lara.epfl.ch/~psuter/spt/
 object SynthesisProceduresToolkit {
