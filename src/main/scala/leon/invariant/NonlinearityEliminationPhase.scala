@@ -163,13 +163,13 @@ class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with Numeri
     } ++ (if (addMult) Seq(multFun, pivMultFun) else Seq())
 
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
-    //println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
+    println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
     //print all the templates
-    /*newprog.definedFunctions.foreach((fd) => {
+    newprog.definedFunctions.foreach((fd) => {
       val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
       if (funinfo.isDefined && funinfo.get.hasTemplate)
         println("Function: " + fd.id + " template --> " + funinfo.get.getTemplate)
-    })*/
+    })
     newprog
   }
 }

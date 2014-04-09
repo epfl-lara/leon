@@ -509,11 +509,23 @@ object ExpressionTransformer {
   }
   
   /**
-   * converts all integer constants to real constants
+   * convert all integer constants to real constants
    */
   def IntLiteralToReal(inexpr: Expr): Expr = {    
     val transformer = (e: Expr) => e match {
       case IntLiteral(v) => RealLiteral(v, 1)      
+      case _ => e
+    }
+    simplePostTransform(transformer)(inexpr)
+  }
+  
+  /**
+   * convert all real constants to integers
+   */
+  def RealLiteralToInt(inexpr: Expr): Expr = {    
+    val transformer = (e: Expr) => e match {
+      case RealLiteral(v, 1) => IntLiteral(v)
+      case RealLiteral(_,_) => throw IllegalStateException("cannot convert real literal to integer: "+e)
       case _ => e
     }
     simplePostTransform(transformer)(inexpr)

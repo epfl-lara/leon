@@ -33,7 +33,7 @@ class CallData(val guard : Variable, val parents: List[FunDef]) {
 //A set of implications
 //'initexpr' is required to be in negation normal form and And/Ors have been pulled up
 //TODO: optimize the representation so that we use fewer guards.
-class Formula(val fd: FunDef, initexpr: Expr) {
+class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
   
   val fls = BooleanLiteral(false)
   val tru = BooleanLiteral(true)
@@ -122,7 +122,12 @@ class Formula(val fd: FunDef, initexpr: Expr) {
         And(newargs)
       }       
       case _ => e
-    })(ExpressionTransformer.simplify(simplifyArithmetic(ine)))
+    })(ExpressionTransformer.simplify(simplifyArithmetic(
+        //TODO: this is a hack as of now. Fix this.
+        //Note: it is necessary to convert real literals to integers since the linear constraint cannot handle real literals
+        if(ctx.usereals) ExpressionTransformer.RealLiteralToInt(ine)
+        else ine
+        )))
     
     val rootvar = f1 match {      
       case v: Variable if(conjuncts.contains(v)) => v

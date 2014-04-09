@@ -170,12 +170,10 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
       reporter.info("- Number of new terms enumerated: " + newTerms.size)
 
       //return all the integer valued terms of newTerms
-      val intTerms = if (newTerms.contains(Int32Type)) newTerms(Int32Type)
-      else Set()
-      
-      if(!intTerms.isEmpty) {      
+      val numericTerms = (newTerms.getOrElse(RealType, Seq()) ++ newTerms.getOrElse(Int32Type, Seq())).toSeq            
+      if(!numericTerms.isEmpty) {      
         //create a linear combination of intTerms
-        val newTemp = intTerms.foldLeft(null: Expr)((acc, t) => {
+        val newTemp = numericTerms.foldLeft(null: Expr)((acc, t) => {
           val summand = Times(TemplateIdFactory.freshTemplateVar(), t)
           if (acc == null) summand
           else

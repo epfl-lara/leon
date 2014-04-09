@@ -110,6 +110,7 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
         else 
           Seq(chooseSATPredicate(Not(ant), predEval))
       }
+      case _ => Seq()
     }
     axioms.toSeq
   }

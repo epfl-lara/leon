@@ -74,22 +74,24 @@ abstract class ProgramTypeTransformer {
       (fd, newfd)
     }).toMap
 
+    def transformId(id: Identifier): Identifier = {
+      val newtype = mapType(id.getType)
+      val newId = idmap.getOrElse(id, {
+        //important need to preserve distinction between template variables and ordinary variables
+        val freshId = if (TemplateIdFactory.IsTemplateIdentifier(id)) TemplateIdFactory.copyIdentifier(id)
+        else FreshIdentifier(id.name, true).setType(newtype)
+        idmap += (id -> freshId)
+        freshId
+      })
+      newId
+    }
+
     /**
      * Here, we assume that tuple-select and case-class-select have been reduced
      */
     def transformExpr(e: Expr): Expr = e match {
       case l : Literal[_] => mapLiteral(l)      
-      case v @ Variable(inId) => {
-        val newtype = mapType(v.getType)        
-        val newId = idmap.getOrElse(inId, {
-          //important need to preserve distinction between template variables and ordinary variables
-          val freshId = if (TemplateIdFactory.IsTemplateIdentifier(inId)) TemplateIdFactory.copyIdentifier(inId)
-        		  		else FreshIdentifier(inId.name, false).setType(newtype)
-          idmap += (inId -> freshId)          
-          freshId
-        })
-        newId.toVariable
-      }
+      case v @ Variable(inId) => transformId(inId).toVariable      
       case FunctionInvocation(intfd, args) => FunctionInvocation(newFundefs(intfd), args.map(transformExpr))
       case CaseClass(classDef, args) => CaseClass(mapClass(classDef), args.map(transformExpr))
       case CaseClassInstanceOf(classDef, expr) => CaseClassInstanceOf(mapClass(classDef), transformExpr(expr))
@@ -97,6 +99,9 @@ abstract class ProgramTypeTransformer {
         val newclass = mapClass(classDef)
         CaseClassSelector(newclass, transformExpr(expr), mapField(newclass,fieldId))
       }
+      //need to handle 'let' and 'letTuple' specially
+      case Let(binder, value, body) => Let(transformId(binder), transformExpr(value), transformExpr(body))
+      case LetTuple(binders, value, body) => LetTuple(binders.map(transformId), transformExpr(value), transformExpr(body))
       case t: Terminal => t
       case UnaryOperator(arg, op) => op(transformExpr(arg))
       case BinaryOperator(arg1, arg2, op) => op(transformExpr(arg1), transformExpr(arg2))
@@ -116,15 +121,14 @@ abstract class ProgramTypeTransformer {
       //add a new body
       newfd.body = if (fd.hasBody) {
         //replace variables by constants if possible
-        val simpBody = simplifyLets(fd.body.get)
+        val simpBody = matchToIfThenElse(fd.body.get)
         Some(transformExpr(simpBody))
       } else None
 
       //add a new postcondition                        
       newfd.postcondition = if (fd.postcondition.isDefined) {
-        val (resid, pexpr) = fd.postcondition.get
-        val Variable(newres) = transformExpr(resid.toVariable)        
-        Some(newres, transformExpr(pexpr))
+        val (resid, pexpr) = fd.postcondition.get               
+        Some(transformId(resid), transformExpr(pexpr))
       } else None
 
       //important: update function info of 'newfd'       
@@ -155,13 +159,9 @@ class IntToRealProgram extends ProgramTypeTransformer {
       case _ => tpe
     }
   }
-  
-  /**
-   * For now retain integer literals as it is.
-   * This is because the linear expression converter cannot handle real literals as of now
-   */
+
   def mapLiteral(lit: Literal[_]) : Literal[_] = lit match {
-    //case IntLiteral(v) => RealLiteral(v,1)
+    case IntLiteral(v) => RealLiteral(v,1)
     case _ => lit
   }
   

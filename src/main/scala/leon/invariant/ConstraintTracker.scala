@@ -39,7 +39,7 @@ class ConstraintTracker(ctx : InferenceContext, rootFun : FunDef, temFactory: Te
   def getVC(fd: FunDef) : Formula = funcVCs(fd)
   
   def addVC(fd: FunDef, vc: Expr) = {       
-    funcVCs += (fd -> new Formula(fd, vc))     
+    funcVCs += (fd -> new Formula(fd, vc, ctx))     
   }
   
   def initialize = {    
