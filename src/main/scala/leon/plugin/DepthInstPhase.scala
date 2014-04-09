@@ -144,7 +144,9 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     val newDefs = program.mainObject.defs.map {
       case fd: FunDef => funMap(fd)
       case d => d
-    } :+ maxFun
+    } ++ {
+      if(!rootFuncs.isEmpty) Seq(maxFun) else Seq() 
+    }
     
     val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
     //println("After Depth Instrumentation: \n"+ScalaPrinter.apply(newprog))

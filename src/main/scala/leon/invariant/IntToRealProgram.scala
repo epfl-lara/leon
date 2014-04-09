@@ -15,6 +15,7 @@ import leon.invariant._
 abstract class ProgramTypeTransformer {
   protected var defmap = Map[ClassTypeDef, ClassTypeDef]()  
   protected var idmap = Map[Identifier, Identifier]()  
+  protected var newFundefs = Map[FunDef, FunDef]()
 
   def mapField(cdef : CaseClassDef, fieldId : Identifier) : Identifier = {
     (cdef.fieldsIds.collectFirst {
@@ -47,9 +48,21 @@ abstract class ProgramTypeTransformer {
     }
   }
   
+  def mapId(id: Identifier): Identifier = {
+      val newtype = mapType(id.getType)
+      val newId = idmap.getOrElse(id, {
+        //important need to preserve distinction between template variables and ordinary variables
+        val freshId = if (TemplateIdFactory.IsTemplateIdentifier(id)) TemplateIdFactory.copyIdentifier(id)
+        else FreshIdentifier(id.name, true).setType(newtype)
+        idmap += (id -> freshId)
+        freshId
+      })
+      newId
+    }
+  
   def mapDecl(decl: VarDecl): VarDecl = {
     val newtpe = mapType(decl.tpe)
-    new VarDecl(FreshIdentifier(decl.id.name,false).setType(newtpe), newtpe)
+    new VarDecl(mapId(decl.id), newtpe)
   }
 
   def mapType(tpe: TypeTree): TypeTree = {
@@ -69,29 +82,17 @@ abstract class ProgramTypeTransformer {
   def transform(program: Program): Program = {
     //create a new fundef for each function in the program
     //Unlike functions, classes are created lazily as required.     
-    val newFundefs = program.mainObject.definedFunctions.map((fd) => {
+    newFundefs = program.mainObject.definedFunctions.map((fd) => {
       val newfd = new FunDef(FreshIdentifier(fd.id.name,true), mapType(fd.returnType), fd.args.map(mapDecl))
       (fd, newfd)
-    }).toMap
-
-    def transformId(id: Identifier): Identifier = {
-      val newtype = mapType(id.getType)
-      val newId = idmap.getOrElse(id, {
-        //important need to preserve distinction between template variables and ordinary variables
-        val freshId = if (TemplateIdFactory.IsTemplateIdentifier(id)) TemplateIdFactory.copyIdentifier(id)
-        else FreshIdentifier(id.name, true).setType(newtype)
-        idmap += (id -> freshId)
-        freshId
-      })
-      newId
-    }
+    }).toMap    
 
     /**
      * Here, we assume that tuple-select and case-class-select have been reduced
      */
     def transformExpr(e: Expr): Expr = e match {
       case l : Literal[_] => mapLiteral(l)      
-      case v @ Variable(inId) => transformId(inId).toVariable      
+      case v @ Variable(inId) => mapId(inId).toVariable      
       case FunctionInvocation(intfd, args) => FunctionInvocation(newFundefs(intfd), args.map(transformExpr))
       case CaseClass(classDef, args) => CaseClass(mapClass(classDef), args.map(transformExpr))
       case CaseClassInstanceOf(classDef, expr) => CaseClassInstanceOf(mapClass(classDef), transformExpr(expr))
@@ -100,8 +101,8 @@ abstract class ProgramTypeTransformer {
         CaseClassSelector(newclass, transformExpr(expr), mapField(newclass,fieldId))
       }
       //need to handle 'let' and 'letTuple' specially
-      case Let(binder, value, body) => Let(transformId(binder), transformExpr(value), transformExpr(body))
-      case LetTuple(binders, value, body) => LetTuple(binders.map(transformId), transformExpr(value), transformExpr(body))
+      case Let(binder, value, body) => Let(mapId(binder), transformExpr(value), transformExpr(body))
+      case LetTuple(binders, value, body) => LetTuple(binders.map(mapId), transformExpr(value), transformExpr(body))
       case t: Terminal => t
       case UnaryOperator(arg, op) => op(transformExpr(arg))
       case BinaryOperator(arg1, arg2, op) => op(transformExpr(arg1), transformExpr(arg2))
@@ -128,7 +129,7 @@ abstract class ProgramTypeTransformer {
       //add a new postcondition                        
       newfd.postcondition = if (fd.postcondition.isDefined) {
         val (resid, pexpr) = fd.postcondition.get               
-        Some(transformId(resid), transformExpr(pexpr))
+        Some(mapId(resid), transformExpr(pexpr))
       } else None
 
       //important: update function info of 'newfd'       
@@ -170,7 +171,7 @@ class IntToRealProgram extends ProgramTypeTransformer {
     val newprog = transform(program)
     //reverse the map
     realToIntId = idmap.map(entry => (entry._2 -> entry._1)) 
-    println("After Real Program Conversion: \n" + ScalaPrinter.apply(newprog))
+    //println("After Real Program Conversion: \n" + ScalaPrinter.apply(newprog))
     //print all the templates
     /*newprog.definedFunctions.foreach((fd) => {
       val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
@@ -211,7 +212,7 @@ class RealToIntProgram extends ProgramTypeTransformer {
   def apply(program: Program): Program = {
     
     val newprog = transform(program)
-    //println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
+    //println("Program to Verify: \n" + ScalaPrinter.apply(newprog))
     //print all the templates
     /*newprog.definedFunctions.foreach((fd) => {
       val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
@@ -220,4 +221,6 @@ class RealToIntProgram extends ProgramTypeTransformer {
     })*/
     newprog
   }  
+  
+  def mappedFun(fd: FunDef) : FunDef = newFundefs(fd)
 }

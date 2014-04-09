@@ -48,7 +48,7 @@ class InferenceReport(fvcs: Map[FunDef, List[VerificationCondition]])
     }
   }
   
-  override def summaryString : String = if(totalConditions >= 0) {
+  override def summaryString : String = if(conditions.size > 0) {    
     val maxTempSize = (conditions.map(_.status.size).max + 3)
     val outputStrs = conditions.map(vc => {
       val timeStr = vc.time.map(t => "%-3.3f".format(t)).getOrElse("")
@@ -65,6 +65,6 @@ class InferenceReport(fvcs: Map[FunDef, List[VerificationCondition]])
     } +    
     infoFooter(entrySize)
   } else {
-    "No verification conditions were analyzed."
+    "No user provided templates were solved."
   }
 }

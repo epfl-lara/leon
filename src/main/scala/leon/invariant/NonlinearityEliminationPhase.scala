@@ -108,7 +108,7 @@ class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with Numeri
         case Times(Variable(id), e2) if (TemplateIdFactory.IsTemplateIdentifier(id)) => e
         case Times(e1, Variable(id)) if (TemplateIdFactory.IsTemplateIdentifier(id)) => e
 
-        case Times(e1, e2) if (!e1.isInstanceOf[IntLiteral] && !e2.isInstanceOf[IntLiteral]) => {
+        case Times(e1, e2) if (!e1.isInstanceOf[Literal[_]] && !e2.isInstanceOf[Literal[_]]) => {
           //replace times by a mult function
           addMult = true
           FunctionInvocation(multFun, Seq(e1, e2))

@@ -500,7 +500,8 @@ object Trees {
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type
-    val fixedType = leastUpperBound(lhs.getType,rhs.getType).get
+    val lubType = leastUpperBound(lhs.getType,rhs.getType)
+    val fixedType = if(lubType.isDefined) lubType.get else Int32Type
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     //val fixedType = Int32Type

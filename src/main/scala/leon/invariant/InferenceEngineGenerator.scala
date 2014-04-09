@@ -232,17 +232,19 @@ class InferenceEngineGenerator(ctx: InferenceContext,
     val augmentedProg = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
     
     //convert the program back to an integer program if necessary
-    val newprog = if (ctx.usereals) {
-      (new RealToIntProgram())(augmentedProg)
+    val (newprog, newroot) = if (ctx.usereals) {
+      val realToIntconverter = new RealToIntProgram()
+      val intProg = realToIntconverter(augmentedProg)
+      (intProg, realToIntconverter.mappedFun(newFundefs(rootfd)))      
     } else {
-      augmentedProg
+      (augmentedProg,newFundefs(rootfd))
     }
     //println("Program: "+newprog)
     //println(ScalaPrinter(newprog))
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(newprog)
-    val vc = defaultTactic.generatePostconditions(newFundefs(rootfd))(0)
+    val vc = defaultTactic.generatePostconditions(newroot)(0)
 
     val verifyTimeout = 5
     val fairZ3 = new SimpleSolverAPI(
