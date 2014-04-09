@@ -212,10 +212,15 @@ object Definitions {
 
     def duplicate: FunDef = {
       val fd = new FunDef(id, tparams, returnType, params)
-      fd.fullBody = fullBody
-      fd.parent = parent
-      fd.orig = orig
-      fd
+      fd.copyContentFrom(this)
+      fd.copiedFrom(this)
+    }
+    
+    def copyContentFrom(from : FunDef) {
+      this.fullBody       = from.fullBody
+      this.parent         = from.parent
+      this.orig           = from.orig
+      this.addAnnotation(from.annotations.toSeq : _*)
     }
 
     def hasBody                     = body.isDefined
