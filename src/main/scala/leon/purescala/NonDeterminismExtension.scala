@@ -4,7 +4,7 @@ package purescala
 import Trees._
 import Common._
 import TreeOps._
-import leon.plugin.NondeterminismConverter
+import leon.invariant.transformations.NondeterminismConverter
 import Definitions._
 
 object NondeterminismExtension {

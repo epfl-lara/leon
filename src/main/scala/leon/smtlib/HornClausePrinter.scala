@@ -9,8 +9,9 @@ import TreeOps._
 import TypeTrees._
 import Definitions._
 import SExprs._
-import leon.invariant.ExpressionTransformer
-import leon.invariant.TVarFactory
+import invariant.util.ExpressionTransformer
+import invariant.util.TVarFactory
+import leon.invariant.util.ExpressionTransformer
 
 /** This pretty-printer prints an SMTLIB2 representation of the Purescala program */
 class HornClausePrinter(pgm: Program, removeOrs : Boolean) {

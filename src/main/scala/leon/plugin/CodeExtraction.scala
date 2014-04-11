@@ -11,8 +11,12 @@ import xlang.TreeOps._
 import purescala.TypeTrees._
 import purescala.Common._
 import purescala.TreeOps._
-import invariant._
 import leon.purescala.NondeterminismExtension
+
+import invariant.factories.TemplateIdFactory
+import invariant.structure.FunctionInfoFactory
+import invariant.transformations._
+import invariant.util._
 
 trait CodeExtraction extends Extractors {
   self: AnalysisComponent =>

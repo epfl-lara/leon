@@ -2,8 +2,10 @@
 
 package leon
 
-import leon.utils._
-import leon.plugin._
+import utils._
+import plugin._
+import invariant.transformations._
+import invariant.engine._
 
 object Main {
 
@@ -16,7 +18,7 @@ object Main {
       xlang.ImperativeCodeElimination,
       purescala.FunctionClosure,
       xlang.XlangAnalysisPhase,
-      invariant.InferInvariantsPhase,
+      InferInvariantsPhase,
       smtlib.LeonToHornPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,

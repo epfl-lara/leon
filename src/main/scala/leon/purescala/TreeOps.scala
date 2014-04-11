@@ -5,7 +5,8 @@ package purescala
 
 import leon.solvers._
 import scala.collection.concurrent.TrieMap
-import leon.plugin.NondeterminismConverter
+import leon.invariant.transformations.NondeterminismConverter
+import leon.invariant.transformations.NondeterminismConverter
 
 object TreeOps {
   import Common._
