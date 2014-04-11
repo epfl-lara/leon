@@ -13,10 +13,7 @@ import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
 import java.io._
 
-import invariant.engine._
-import invariant.factories._
 import invariant.util._
-import invariant.structure._
 
 //a collections of utility methods that manipulate the templates
 object LinearConstraintUtil {

@@ -17,8 +17,6 @@ import evaluators._
 import java.io._
 import solvers.z3.UninterpretedZ3Solver
 
-import invariant.engine._
-import invariant.factories._
 import invariant.util._
 
 trait Constraint { 

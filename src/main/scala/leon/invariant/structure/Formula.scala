@@ -15,7 +15,6 @@ import java.io._
 import solvers.z3._
 
 import invariant.engine._
-import invariant.factories._
 import invariant.util._
 
 /**

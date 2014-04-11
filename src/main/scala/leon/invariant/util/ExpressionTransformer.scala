@@ -11,7 +11,9 @@ import java.io._
 import java.io._
 import purescala.ScalaPrinter
 
-import invariant.structure._
+import invariant.structure.FunctionInfoFactory
+import invariant.structure.Call
+
 /**
  * A collection of transformation on expressions and some utility methods.
  * These operations are mostly semantic preserving (specific assumptions/requirements are specified on the operations)
