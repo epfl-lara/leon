@@ -19,12 +19,6 @@ class TransformationTests extends LeonTestSuite {
   val pipeline = ExtractionPhase andThen PreprocessingPhase
 
   filesInResourceDir("regression/transformations").foreach { file =>
-    val ctx = testContext.copy(
-      files   = List(file)
-    )
-
-    val prog = pipeline.run(ctx)(file.getPath :: Nil)
-
     // Configure which file corresponds to which transformation:
 
     val (title: String, transformer: (Expr => Expr)) = file.getName match {
@@ -42,20 +36,27 @@ class TransformationTests extends LeonTestSuite {
         fail("Unknown name "+n)
     }
 
+    test(title) {
+      val ctx = testContext.copy(
+        files   = List(file)
+      )
 
-    // Proceed with the actual tests
-    val inputs = prog.definedFunctions.collect{
-      case fd if fd.id.name.startsWith("input") =>
-        (fd.id.name.substring(5,7), fd)
-    }.toSeq.sortBy(_._1)
+      val prog = pipeline.run(ctx)(file.getPath :: Nil)
 
-    val outputs = prog.definedFunctions.collect{
-      case fd if fd.id.name.startsWith("output") =>
-        (fd.id.name.substring(6,8), fd)
-    }.toMap
 
-    for ((n, fdin) <- inputs) {
-      test(title +" ["+n+"]") {
+      // Proceed with the actual tests
+      val inputs = prog.definedFunctions.collect{
+        case fd if fd.id.name.startsWith("input") =>
+          (fd.id.name.substring(5,7), fd)
+      }.toSeq.sortBy(_._1)
+
+      val outputs = prog.definedFunctions.collect{
+        case fd if fd.id.name.startsWith("output") =>
+          (fd.id.name.substring(6,8), fd)
+      }.toMap
+
+      for ((n, fdin) <- inputs) {
+        info(title +" ["+n+"]")
         val in = fdin.body.get
         outputs.get(n) match {
           case Some(fdexp) =>

@@ -13,7 +13,7 @@ import org.scalatest.exceptions.TestFailedException
 
 import java.io.File
 
-trait LeonTestSuite extends FunSuite with Timeouts {
+trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   def now() = {
     System.currentTimeMillis
   }
@@ -42,10 +42,11 @@ trait LeonTestSuite extends FunSuite with Timeouts {
     Main.processOptions(opts.toList).copy(reporter = reporter, interruptManager = new InterruptManager(reporter))
   }
 
-  var testContext = generateContext
+  var testContext: LeonContext = null
 
-  def generateContext = {
-    createLeonContext()
+  override def beforeEach() = {
+    testContext = createLeonContext()
+    super.beforeEach()
   }
 
   def testIdentifier(name: String): String = {
@@ -103,8 +104,6 @@ trait LeonTestSuite extends FunSuite with Timeouts {
       val id = testIdentifier(name)
 
       val ts = now()
-
-      testContext = generateContext
 
       failAfter(5.minutes) {
         try {

@@ -26,15 +26,19 @@ class SynthesisRegressionSuite extends LeonTestSuite {
 
   private def testSynthesis(cat: String, f: File, bound: Int) {
 
-    val ctx = createLeonContext("--synthesis", "--library")
+    var chooses = List[ChooseInfo]()
 
-    val opts = SynthesisOptions(searchBound = Some(bound), allSeeing = true)
+    test(cat+": "+f.getName()+" Compilation") {
+      val ctx = createLeonContext("--synthesis", "--library")
 
-    val pipeline = frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
+      val opts = SynthesisOptions(searchBound = Some(bound), allSeeing = true)
 
-    val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
+      val pipeline = frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
 
-    var chooses = ChooseInfo.extractFromProgram(ctx, program, opts)
+      val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
+
+      chooses = ChooseInfo.extractFromProgram(ctx, program, opts)
+    }
 
     for (ci <- chooses) {
       test(cat+": "+f.getName()+" - "+ci.fd.id.name) {

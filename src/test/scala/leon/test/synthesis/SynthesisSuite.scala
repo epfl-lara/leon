@@ -26,19 +26,20 @@ class SynthesisSuite extends LeonTestSuite {
 
   def forProgram(title: String, opts: SynthesisOptions = SynthesisOptions())(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
 
-    val ctx = testContext.copy(settings = Settings(
-        synthesis = true,
-        xlang     = false,
-        verify    = false
-      ))
+      test("Synthesizing %3d: [%s]".format(nextInt(), title)) {
+        val ctx = testContext.copy(settings = Settings(
+            synthesis = true,
+            xlang     = false,
+            verify    = false
+          ))
 
-    try {
-      val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen PreprocessingPhase andThen SynthesisProblemExtractionPhase
+        val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen PreprocessingPhase andThen SynthesisProblemExtractionPhase
 
-      val (program, results) = pipeline.run(ctx)((content, Nil))
+        val (program, results) = pipeline.run(ctx)((content, Nil))
 
-      for ((f, ps) <- results; p <- ps) {
-        test("Synthesizing %3d: %-20s [%s]".format(nextInt(), f.id.toString, title)) {
+        for ((f, ps) <- results; p <- ps) {
+          info("%-20s".format(f.id.toString))
+
           val sctx = SynthesisContext(ctx,
                                       opts,
                                       Some(f),
@@ -48,12 +49,6 @@ class SynthesisSuite extends LeonTestSuite {
           block(sctx, f, p)
         }
       }
-    } catch {
-      case lfe: LeonFatalError =>
-        test("Synthesizing %3d: %-20s [%s]".format(nextInt(), "", title)) {
-          assert(false, "Failed to compile "+title)
-        }
-    }
   }
 
   case class Apply(desc: String, andThen: List[Apply] = Nil)
