@@ -4,5 +4,10 @@ package leon
 package test
 
 class TestSilentReporter extends DefaultReporter(Settings()) {
-  override def emit(msg: Message): Unit = { }
+  var lastError: Option[String] = None
+
+  override def emit(msg: Message): Unit = msg match { 
+    case Message(this.ERROR, _, msg) => lastError = Some(msg.toString)
+    case _ =>
+  }
 }

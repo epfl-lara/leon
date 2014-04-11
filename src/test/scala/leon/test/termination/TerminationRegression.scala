@@ -91,6 +91,7 @@ class TerminationRegression extends LeonTestSuite {
     assert(reporter.warningCount === 0)
   }
 
+  /*
   forEachFileIn("unknown") { output =>
     val Output(report, reporter) = output
     val unknown = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("unknown") }
@@ -99,6 +100,7 @@ class TerminationRegression extends LeonTestSuite {
     // assert(reporter.errorCount === 0)
     assert(reporter.warningCount === 0)
   }
+  */
 
   //forEachFileIn("error", true) { output => () }
 

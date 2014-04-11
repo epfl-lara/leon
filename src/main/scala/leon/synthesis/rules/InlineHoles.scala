@@ -58,7 +58,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
     }
 
     if (usesHoles(p.phi)) {
-      val pathsToCalls = new CollectorWithPaths({
+      val pathsToCalls = CollectorWithPaths({
           case fi: FunctionInvocation if usesHoles(fi) => fi
       }).traverse(p.phi).map(_._2)
 

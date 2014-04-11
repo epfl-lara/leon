@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang._
 
 object Numeric3 {
   def looping(x: Int) : Int = if (x > 0) looping(x - 1) else looping(5)

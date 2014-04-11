@@ -9,6 +9,7 @@ import scala.io.Source
 import org.scalatest._
 import org.scalatest.concurrent._
 import org.scalatest.time.SpanSugar._
+import org.scalatest.exceptions.TestFailedException
 
 import java.io.File
 
@@ -106,7 +107,15 @@ trait LeonTestSuite extends FunSuite with Timeouts {
       testContext = generateContext
 
       failAfter(5.minutes) {
-        body
+        try {
+          body
+        } catch {
+          case fe: LeonFatalError =>
+          testContext.reporter match {
+            case sr: TestSilentReporter =>
+              throw new TestFailedException(sr.lastError.getOrElse("Some error"), fe, 5)
+          }
+        }
       }
 
       val total = now()-ts
