@@ -17,12 +17,12 @@ object MergeSort {
       val k = x/2
       1 + log(x - k)    
     }    
-  }   
+  } ensuring(res => true template((a) => res >= 0))   
   
   def size(list:List): Int = {list match {
     case Nil() => 0
     case Cons(x,xs) => 1 + size(xs)
-  }} ensuring(res => res >= 0)
+  }} ensuring(res => true template((a) => res >= 0))
   
   def length(l:List): Int = {
     l match {

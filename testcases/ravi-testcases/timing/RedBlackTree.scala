@@ -26,10 +26,10 @@ object RedBlackTree {
   } ensuring (res => true template((a,b) => twopower(blackHeight(t)) <= a*res + b))
     
   def blackHeight(t : Tree) : Int = {    
-   t match {    
-    case Empty() => 0
+   t match {        
     case Node(Black(), l, _, _) => blackHeight(l) + 1
     case Node(Red(), l, _, _) => blackHeight(l)
+    case _ => 0
    	}
   }
   

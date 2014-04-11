@@ -17,6 +17,7 @@ class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
   override def status : String = invariant match {
     case None => "unknown"
     case Some(inv) => {      
+      this.value = Some(true)
       val prettyInv = Util.replaceInstruVars(inv, funDef)
       prettyInv.toString
     }

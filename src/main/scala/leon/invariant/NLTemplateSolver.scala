@@ -33,6 +33,7 @@ import scala.util.control.Breaks._
 import leon.solvers._
 import leon.purescala.ScalaPrinter
 import leon.plugin.DepthInstPhase
+import ExpressionTransformer._
 
 class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: ConstraintTracker, tempFactory: TemplateFactory) 
   extends TemplateSolver(ctx, rootFun, ctrTracker, tempFactory) {
@@ -81,7 +82,14 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     
   def initVCSolvers  {
     funcVCs.keys.foreach(fd => {      
-      val (paramPart, rest) = splitVC(fd)
+      val (paramPart, rest) = if(ctx.usereals) {
+        val (pp,r) = splitVC(fd)
+        (IntLiteralToReal(pp), IntLiteralToReal(r)) 
+      } else 
+        splitVC(fd)
+            
+      if(Util.hasReals(rest) && Util.hasInts(rest)) 
+        throw IllegalStateException("Non-param Part has both integers and reals: "+rest)
       
       if (debugIncrementalVC) {
         assert(Util.getTemplateVars(rest).isEmpty)
@@ -153,6 +161,12 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
+    /*paramParts.foreach(entry => {
+      val (fd, pp) = entry
+      val ppinst = TemplateInstantiator.instantiate(pp, model.map(entry => (entry._1.toVariable -> entry._2)))
+      val candInv = ExpressionTransformer.unFlatten(ppinst, variablesOf(ppinst).filter(TVarFactory.isTemporary _))
+      println(fd.id + "-->" + candInv)
+    })*/
 
     /*//TODO: There is a serious bug in z3 in incremental solving. The following code is for reproducing the bug            
     if (this.debugIncremental) {
@@ -406,8 +420,10 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     (res, model)
   }
 
-  protected def instantiateTemplate(e: Expr, tempVarMap: Map[Expr, Expr]) : Expr = {
-    simplifyArithmetic(TemplateInstantiator.instantiate(e, tempVarMap))
+  protected def instantiateTemplate(e: Expr, tempVarMap: Map[Expr, Expr]): Expr = {
+    if (ctx.usereals) replace(tempVarMap, e)
+    else
+      simplifyArithmetic(TemplateInstantiator.instantiate(e, tempVarMap))
   }
   
   /**
@@ -450,6 +466,14 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     val (res, model) = if (this.useIncrementalSolvingForVCs) {
       innerSolver.push
       innerSolver.assertCnstr(instExpr)
+      //dump the inst VC as SMTLIB
+      /*val filename = "vc" + FileCountGUID.getID + ".smt2"
+      Util.toZ3SMTLIB(innerSolver.getAssertions, filename, "", leonctx, program)
+      val writer = new PrintWriter(filename)
+      writer.println(innerSolver.ctrsToString(""))
+      writer.close()
+      println("vc dumped to: " + filename)*/
+      
       val solRes = innerSolver.check
       innerSolver.pop()
       solRes match {
@@ -512,6 +536,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   
   val evaluator = new DefaultEvaluator(leonctx, program) //as of now used only for debugging
   //a helper method 
+  //TODO: this should also handle reals
   protected def doesSatisfyModel(expr: Expr, model: Map[Identifier, Expr]): Boolean = {
     evaluator.eval(expr, model).result match {
       case Some(BooleanLiteral(true)) => true
@@ -523,17 +548,42 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
    * Evaluator for a predicate that is a simple equality/inequality between two variables
    */
   protected def predEval(model: Map[Identifier, Expr]) : (Expr => Boolean) = {
+    if(ctx.usereals) realEval(model)
+    else intEval(model)
+  }
+  
+  protected def intEval(model: Map[Identifier, Expr]) : (Expr => Boolean) = {
     def modelVal(id: Identifier): Int = {
       val IntLiteral(v) = model(id)
       v
     }
-    (e:Expr) => e match {
+    def eval: (Expr => Boolean) = e => e match {
+      case And(args) => args.forall(eval)
       case Iff(Variable(id1), Variable(id2)) => model(id1) == model(id2) 
       case Equals(Variable(id1), Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
       case LessEquals(Variable(id1), Variable(id2)) => modelVal(id1) <= modelVal(id2)
       case GreaterEquals(Variable(id1), Variable(id2)) => modelVal(id1) >= modelVal(id2)
       case GreaterThan(Variable(id1), Variable(id2)) => modelVal(id1) > modelVal(id2)
       case LessThan(Variable(id1), Variable(id2)) => modelVal(id1) < modelVal(id2)      
+      case _ => throw IllegalStateException("Predicate not handled: " + e)
+    }
+    eval
+  }
+  
+  protected def realEval(model: Map[Identifier, Expr]): (Expr => Boolean) = {        
+    def modelVal(id: Identifier): RealLiteral = {
+      //println("Identifier: "+id)
+      model(id).asInstanceOf[RealLiteral]    
+    }
+    (e: Expr) => e match {
+      case Iff(Variable(id1),Variable(id2)) => model(id1) == model(id2)
+      case Equals(Variable(id1),Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
+      case BinaryOperator(Variable(id1), Variable(id2), op) if (e.isInstanceOf[LessThan] 
+        || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
+        || e.isInstanceOf[GreaterEquals]) => {
+          
+        	RealValuedExprInterpreter.evaluateRealPredicate(op(modelVal(id1),modelVal(id2)))
+        }      
       case _ => throw IllegalStateException("Predicate not handled: " + e)
     }
   }

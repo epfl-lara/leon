@@ -55,21 +55,26 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
       val newguards = disjuncts.keySet.diff(exploredGuards)
       exploredGuards ++= newguards
       
-      val newcalls = newguards.flatMap(g => disjuncts(g).collect { case c: Call => c })
+      val newcalls = newguards.flatMap(g => disjuncts(g).collect { case c: Call => c })            
       instantiateSpecs(formula, newcalls, funcs.toSet)
-      
-//      if(this.debugAxiomInstantiation) {        
-//        println("Instantianting axioms over: " + newCalls)
-//        val filename = "instFormula-" + FileCountGUID.getID        
-//        val wr = new PrintWriter(new File(filename + ".txt"))
-//        //val printableExpr = variablesOf(formula).filterNot(TVarFactory.isTemporary _))
-//        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
-//        wr.flush()
-//        wr.close()
-//        println("Printed instFormula to file: " + filename)
-//      }
-      if(!disableAxioms)      
-    	  instantiateAxioms(formula, newcalls)      
+
+      //      if(this.debugAxiomInstantiation) {        
+      //        println("Instantianting axioms over: " + newCalls)
+      //        val filename = "instFormula-" + FileCountGUID.getID        
+      //        val wr = new PrintWriter(new File(filename + ".txt"))
+      //        //val printableExpr = variablesOf(formula).filterNot(TVarFactory.isTemporary _))
+      //        ExpressionTransformer.PrintWithIndentation(wr, simpForm)        
+      //        wr.flush()
+      //        wr.close()
+      //        println("Printed instFormula to file: " + filename)
+      //      }
+      if (!disableAxioms) {
+        //remove all multiplication if "withmult" is specified
+        val relavantCalls = if (ctx.withmult) {          
+          newcalls.filter(call => (call.fi.funDef != ctx.pivmultfun) && (call.fi.funDef != ctx.multfun))
+        }else newcalls        
+        instantiateAxioms(formula, relavantCalls)
+      }    	 
     })    
   }  
 
@@ -235,7 +240,8 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
     }           
       
     val product = Util.cross[Call,Call](newCallsWithAxioms,getBinaxCalls(formula.fd),Some(isInstantiable)).flatMap(
-        p => Seq((p._1,p._2),(p._2,p._1))) ++ Util.cross(newCallsWithAxioms,newCallsWithAxioms).map(p => (p._1,p._2))
+        p => Seq((p._1,p._2),(p._2,p._1))) ++ 
+        Util.cross[Call,Call](newCallsWithAxioms,newCallsWithAxioms,Some(isInstantiable)).map(p => (p._1,p._2))
              
     ctx.reporter.info("# of pairs with axioms: "+product.size)
     //Stats.updateCumStats(product.size, "Call-pairs-with-axioms")

@@ -186,9 +186,9 @@ object BinomialHeap {
   
   def minTreeChildren(h: BinomialHeap) : Int = {    
     val (min, _) = removeMinTree(h)
-    min match {
-      case None() => 0
-      case Some(Node(_,_,ch)) => treeNum(ch) 
+    min match {      
+      case Some(Node(_,_,ch)) => treeNum(ch)
+      case _ => 0
 	}
   }
   

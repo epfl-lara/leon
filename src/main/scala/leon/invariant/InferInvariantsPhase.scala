@@ -32,6 +32,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     LeonFlagOptionDef("wholeprogram", "--wholeprogram", "Perform an non-modular whole program analysis"),
     LeonFlagOptionDef("fullunroll", "--fullunroll", "Unroll all calls in every unroll step"),
     LeonFlagOptionDef("withmult", "--withmult", "Multiplication is not converted to a recursive function in VCs"),
+    LeonFlagOptionDef("usereals", "--usereals", "Interpret the input program as a real program"),
     LeonFlagOptionDef("minbounds", "--minbounds", "tighten time bounds"),
     LeonValueOptionDef("timeout", "--timeout=T", "Timeout after T seconds when trying to prove a verification condition."),
     LeonFlagOptionDef("inferTemp", "--inferTemp=True/false", "Infer templates by enumeration"),
@@ -58,6 +59,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     //var maxCegisBound = 200 //maximum bound for the constants in cegis
     var maxCegisBound = 1000000000
     var statsSuff = "-stats" + FileCountGUID.getID
+    var usereals = false
 
     //process options
     for (opt <- ctx.options) opt match {
@@ -80,6 +82,10 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       case LeonFlagOption("withmult", true) => {
         withmult = true
+      }
+      
+      case LeonFlagOption("usereals", true) => {
+        usereals = true
       }
 
       case v @ LeonFlagOption("inferTemp", true) => {
@@ -118,8 +124,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
     
     /**
      * Note: when withmult is specified we convert the program to a real program
-     */
-    val usereals = withmult
+     */    
     val newprog = if (usereals) {
       (new IntToRealProgram())(prog)
     } else prog

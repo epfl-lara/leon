@@ -12,8 +12,8 @@ import leon.LeonContext
 import leon.LeonPhase
 import leon.invariant._
 
-class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with NumericType) {
-  
+class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericType) {
+
   val one = IntLiteral(1)
   val zero = IntLiteral(0)
 
@@ -47,16 +47,14 @@ class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with Numeri
     val post1 = Implies(guard, defn2)
 
     mfd.postcondition = Some((resvar.id, And(Seq(post0, post1))))
-    
+
     //set function info properties
     val mfdinfo = FunctionInfoFactory.getOrMakeInfo(mfd)
     mfdinfo.setTheoryOperation
 
-    if (!skipAxioms) {
-      //create axioms (for now only monotonicity)
-      mfdinfo.setMonotonicity
-      //mfdinfo.setDistributivity
-    }
+    //create axioms (for now only monotonicity)
+    mfdinfo.setMonotonicity
+    //mfdinfo.setDistributivity    
     mfd
   }
 
@@ -100,7 +98,7 @@ class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with Numeri
 
     //note, handling templates variables is slightly tricky as we need to preserve a*x as it is
     var addMult = false
-    def replaceFun(ine: Expr) : Expr = {      
+    def replaceFun(ine: Expr): Expr = {
       simplePostTransform(e => e match {
         case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
           FunctionInvocation(newFundefs(fd1), args)
@@ -148,7 +146,7 @@ class NonlinearityEliminator(skipAxioms : Boolean, domain : TypeTree with Numeri
 
       //important: update function info of 'newfd'       
       val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
-      if (funinfo.isDefined) {        
+      if (funinfo.isDefined) {
         FunctionInfoFactory.createFunctionInfo(newfd, replaceFun, funinfo.get)
         //        val toTemplate = simplePostTransform(replaceFun)(FunctionInfoFactory.getTemplate(fd))
         //        FunctionInfoFactory.setTemplate(newfd, toTemplate, FunctionInfoFactory.getTimevar(fd))

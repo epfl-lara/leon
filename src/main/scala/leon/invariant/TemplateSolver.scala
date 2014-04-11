@@ -88,8 +88,10 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
     
     //traverse each of the functions and collect the VCs
     val funcs = ctrTracker.getFuncs        
-    val funcExprs = funcs.map((fd) => {      
-      val vc = getVCForFun(fd)
+    val funcExprs = funcs.map((fd) => {
+      val vc = if (ctx.usereals)
+        ExpressionTransformer.IntLiteralToReal(getVCForFun(fd))
+      else getVCForFun(fd)
       
       if (this.dumpVC) {
         //val simpForm = simplifyArithmetic(vc)

@@ -44,41 +44,23 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
   override def getVCForFun(fd: FunDef): Expr = {    
     val plainvc = ctrTracker.getVC(fd).toExpr
     val nlvc = Util.multToTimes(plainvc, ctx)
-    IntLiteralToReal(nlvc)
+    nlvc    
   }
   
   override def splitVC(fd: FunDef) : (Expr,Expr) = {
     val (paramPart, rest) = ctrTracker.getVC(fd).splitParamPart   
-    (IntLiteralToReal(Util.multToTimes(paramPart, ctx)),IntLiteralToReal(Util.multToTimes(rest, ctx)))
-  }
-    
-  override def instantiateTemplate(e: Expr, tempVarMap: Map[Expr, Expr]) : Expr = {
-    replace(tempVarMap, e)
-  }
-  
-  override def predEval(model: Map[Identifier, Expr]): (Expr => Boolean) = {        
-    def modelVal(id: Identifier): RealLiteral = model(id).asInstanceOf[RealLiteral]    
-    (e: Expr) => e match {
-      case Iff(Variable(id1),Variable(id2)) => model(id1) == model(id2)
-      case Equals(Variable(id1),Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
-      case BinaryOperator(Variable(id1), Variable(id2), op) if (e.isInstanceOf[LessThan] 
-        || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
-        || e.isInstanceOf[GreaterEquals]) => {
-          
-        	RealValuedExprInterpreter.evaluateRealPredicate(op(modelVal(id1),modelVal(id2)))
-        }      
-      case _ => throw IllegalStateException("Predicate not handled: " + e)
-    }
-  }
-  
-  //TODO: for soundness we need to override 'doesSatisfyModel' as well
+    (Util.multToTimes(paramPart, ctx),Util.multToTimes(rest, ctx))    
+  }      
   
   override def axiomsForTheory(formula : Formula, calls: Set[Call], model: Map[Identifier,Expr]) : Seq[Constraint] = {
   
     //in the sequel we instantiate axioms for multiplication
     val inst1 = unaryMultAxioms(formula, calls, predEval(model))
     val inst2 = binaryMultAxioms(formula,calls, predEval(model))         
-    val multCtrs = (inst1 ++ inst2).map(ConstraintUtil.createConstriant _)                     
+    val multCtrs = (inst1 ++ inst2).flatMap(_ match {
+      case And(args) => args.map(ConstraintUtil.createConstriant _)
+      case e => Seq(ConstraintUtil.createConstriant(e))      
+    })
     
     Stats.updateCounterStats(multCtrs.size, "MultAxiomBlowup", "disjuncts")
     ctx.reporter.info("Number of multiplication induced predicates: "+multCtrs.size)
