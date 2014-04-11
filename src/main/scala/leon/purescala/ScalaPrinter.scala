@@ -24,6 +24,12 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
    
     tree match {
+      case m: ModuleDef =>
+        // Don't print synthetic functions
+        super.pp(m.copy(defs = m.defs.filter {
+          case f:FunDef if f.isSynthetic => false
+          case _ => true
+        }))
       case Not(Equals(l, r))    => p"$l != $r"
       case Implies(l,r)         => pp(or(not(l), r))
       case Choose(pred, None) => p"choose($pred)"

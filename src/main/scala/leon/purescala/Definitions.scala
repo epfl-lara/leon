@@ -55,6 +55,8 @@ object Definitions {
 
     val getType = tpe getOrElse id.getType
 
+    var defaultValue : Option[FunDef] = None
+      
     def subDefinitions = Seq()
 
     // Warning: the variable will not have the same type as the ValDef, but 
@@ -413,6 +415,8 @@ object Definitions {
     def canBeField       = canBeLazyField || canBeStrictField
     def isRealFunction   = !canBeField
 
+    def isSynthetic = annotations contains "synthetic"
+    
     private var annots: Set[String] = Set.empty[String]
     def addAnnotation(as: String*) : FunDef = {
       annots = annots ++ as

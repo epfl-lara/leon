@@ -310,6 +310,18 @@ trait ASTExtractors {
       }
     }
     
+    object ExCompanionObjectSynthetic {
+      def unapply(cd : ClassDef) : Option[(String, Symbol, Template)] = {
+        val sym = cd.symbol 
+        cd match {
+         case ClassDef(_, name, tparams, impl) if sym.isModule && sym.isSynthetic => //FIXME flags?
+           Some((name.toString, sym, impl))
+         case _ => None
+        }
+        
+      }
+    }
+
     object ExCaseClassSyntheticJunk {
       def unapply(cd: ClassDef): Boolean = cd match {
         case ClassDef(_, _, _, _) if (cd.symbol.isSynthetic) => true
@@ -408,6 +420,34 @@ trait ASTExtractors {
       }
       
     }
+    
+    object ExDefaultValueFunction{
+      /** Matches a function that defines the default value of a parameter */
+      def unapply(dd: DefDef): Option[(Symbol, Seq[Symbol], Seq[ValDef], Type, String, Int, Tree)] = {
+        val sym = dd.symbol
+        dd match {
+          case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
+            vparamss.size <= 1 && name != nme.CONSTRUCTOR && sym.isSynthetic 
+          ) => 
+            
+            // Split the name into pieces, to find owner of the parameter + param.index
+            // Form has to be <owner name>$default$<param index>
+            val symPieces = sym.name.toString.reverse.split("\\$",3).reverse map { _.reverse }
+            
+            try {
+              if (symPieces(1) != "default" || symPieces(0) == "copy") throw new IllegalArgumentException("")
+              val ownerString = symPieces(0)
+              val index = symPieces(2).toInt - 1
+              Some((sym, tparams.map(_.symbol), vparamss.headOption.getOrElse(Nil), tpt.tpe, ownerString, index, rhs))
+            } catch {
+              case _ : NumberFormatException | _ : IllegalArgumentException | _ : ArrayIndexOutOfBoundsException =>
+                None 
+            }
+              
+          case _ => None
+        }
+      }
+    } 
 
   }
 
