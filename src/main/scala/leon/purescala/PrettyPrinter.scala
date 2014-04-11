@@ -303,7 +303,16 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"[${tfd.tps}]"
         }
 
-        if (tfd.fd.isRealFunction) p"($args)"
+        // No () for fields
+        if (tfd.fd.isRealFunction) {
+          // The non-present arguments are synthetic function invocations
+          val presentArgs = args filter {
+            case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
+            case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
+            case other => true
+          }
+          p"($presentArgs)"
+        }
 
       case BinaryMethodCall(a, op, b) =>
         optP { p"${a} $op ${b}" }
@@ -316,7 +325,13 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
         if (fd.isRealFunction) {
-          p"($args)"
+          // The non-present arguments are synthetic function invocations
+          val presentArgs = args filter {
+            case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
+            case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
+            case other => true
+          }
+          p"($presentArgs)"
         }
 
       case FunctionInvocation(tfd, args) =>
@@ -326,7 +341,15 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"[${tfd.tps}]"
         }
 
-        if (tfd.fd.isRealFunction) p"($args)"
+        if (tfd.fd.isRealFunction) { 
+          // The non-present arguments are synthetic function invocations
+          val presentArgs = args filter {
+            case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
+            case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
+            case other => true
+          }
+          p"($presentArgs)"
+        }
 
       case Application(caller, args) =>
         p"$caller($args)"
@@ -408,7 +431,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       }
 
       case Not(expr)                 => p"\u00AC$expr"
-      case vd@ValDef(id, _)          => p"$id : ${vd.getType}"
+      case vd@ValDef(id, _)          => vd.defaultValue match {
+        case Some(fd) => p"$id : ${vd.getType} = ${fd.body.get}"
+        case None => p"$id : ${vd.getType}"
+      }
       case This(_)                   => p"this"
       case (tfd: TypedFunDef)        => p"typed def ${tfd.id}[${tfd.tps}]"
       case TypeParameterDef(tp)      => p"$tp"

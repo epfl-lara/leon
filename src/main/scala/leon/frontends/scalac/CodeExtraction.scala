@@ -209,7 +209,6 @@ trait CodeExtraction extends ASTExtractors {
               !isLib(u)
             )
    
-        
           case pd @ PackageDef(refTree, lst) =>
                          
             var standaloneDefs = List[Tree]()
@@ -224,7 +223,22 @@ trait CodeExtraction extends ASTExtractors {
                 
               case ExObjectDef(n, templ) if n != "package" =>
                 Some(TempModule(FreshIdentifier(n), templ.body, false))
-  
+
+              /*
+              case d @ ExCompanionObjectSynthetic(_, sym, templ) => 
+                // Find default param. implementations
+                templ.body foreach { 
+                  case ExDefaultValueFunction(sym, _, _, _, owner, index, _) =>
+                    val namePieces = sym.toString.reverse.split("\\$", 3).reverse map { _.reverse }
+                    assert(namePieces.length == 3 && namePieces(0)== "$lessinit$greater" && namePieces(1) == "default") // FIXME : maybe $lessinit$greater?
+                    val index = namePieces(2).toInt
+                    val theParam = sym.companionClass.paramss.head(index - 1)
+                    paramsToDefaultValues += theParam -> body
+                  case _ => 
+                } 
+                None 
+              */
+
               case d @ ExAbstractClass(_, _, _) =>
                 standaloneDefs ::= d
                 None
@@ -389,6 +403,8 @@ trait CodeExtraction extends ASTExtractors {
           outOfSubsetError(pos, "Class "+className+" is not a case class")
       }
     }
+    
+    private var paramsToDefaultValues = Map[Symbol,FunDef]()
 
     private def collectClassSymbols(defs: List[Tree]) {
       // We collect all defined classes
@@ -450,6 +466,28 @@ trait CodeExtraction extends ASTExtractors {
     private var isMethod = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
 
+    /**
+     * For the function in $defs with name $owner, find its parameter with index $index, 
+     * and registers $fd as the default value function for this parameter.  
+     */
+    private def registerDefaultMethod(
+        defs : List[Tree],
+        matcher : PartialFunction[Tree,Symbol],
+        index : Int,
+        fd : FunDef
+    )  {
+      // Search tmpl to find the function that includes this parameter
+      val paramOwner = defs.collectFirst(matcher).get
+      
+      // assumes single argument list
+      if(paramOwner.paramss.length != 1) {
+        outOfSubsetError(paramOwner.pos, "Multiple argument lists for a function are not allowed")
+      }
+      val theParam = paramOwner.paramss.head(index)
+      paramsToDefaultValues += (theParam -> fd)
+    }
+    
+    
     def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
       val id = FreshIdentifier(sym.name.toString).setPos(sym.pos)
 
@@ -544,6 +582,21 @@ trait CodeExtraction extends ASTExtractors {
 
           cd.registerMethod(fd)
 
+        // Default values for parameters
+        case t@ ExDefaultValueFunction(fsym, _, _, _, owner, index, _) =>          
+          val fd = defineFunDef(fsym)(defCtx)
+          fd.addAnnotation("synthetic")
+                    
+          isMethod += fsym
+          methodToClass += fd -> cd
+
+          cd.registerMethod(fd)       
+          val matcher : PartialFunction[Tree, Symbol] = { 
+            case ExFunctionDef(ownerSym, _ ,_ ,_, _) if ownerSym.name.toString == owner => ownerSym 
+          } 
+          registerDefaultMethod(tmpl.body, matcher, index, fd )
+                   
+          
         // Lazy fields
         case t @ ExLazyAccessorFunction(fsym, _, _)  =>
           if (parent.isDefined) {
@@ -639,6 +692,16 @@ trait CodeExtraction extends ASTExtractors {
         case ExFunctionDef(sym, _, _, _, _) =>
           defineFunDef(sym)(DefContext())
 
+        case t @ ExDefaultValueFunction(sym, _, _, _, owner, index, _) => { 
+          
+          val fd = defineFunDef(sym)(DefContext())
+          fd.addAnnotation("synthetic")
+          val matcher : PartialFunction[Tree, Symbol] = { 
+            case ExFunctionDef(ownerSym, _ ,_ ,_, _) if ownerSym.name.toString == owner => ownerSym 
+          } 
+          registerDefaultMethod(defs, matcher, index, fd)
+           
+        }
         case ExLazyAccessorFunction(sym, _, _)  =>
           defineFieldFunDef(sym,true)(DefContext())
           
@@ -665,6 +728,16 @@ trait CodeExtraction extends ASTExtractors {
 
         for (d <- tmpl.body) d match {
           case ExFunctionDef(sym, tparams, params, _, body) =>
+            val fd = defsToDefs(sym)
+
+            val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap ++ ctparamsMap
+
+            if(body != EmptyTree) {
+              extractFunBody(fd, params, body)(DefContext(tparamsMap))
+            }
+            
+          // Default value functions
+          case ExDefaultValueFunction(sym, tparams, params, _, _, _, body) =>
             val fd = defsToDefs(sym)
 
             val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap ++ ctparamsMap
@@ -722,6 +795,14 @@ trait CodeExtraction extends ASTExtractors {
 
           extractFunBody(fd, params, body)(DefContext(tparamsMap, isExtern = isExtern(sym)))
 
+        case ExDefaultValueFunction(sym, tparams, params, _ ,_ , _, body) =>
+          // Default value functions
+          val fd = defsToDefs(sym)
+
+          val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
+
+          extractFunBody(fd, params, body)(DefContext(tparamsMap))
+          
         case ExLazyAccessorFunction(sym, _, body)  =>
           // Lazy vals
           val fd = defsToDefs(sym)
@@ -763,6 +844,8 @@ trait CodeExtraction extends ASTExtractors {
         // Taking accessor functions will duplicate work for strict fields, but we need them in case of lazy fields
         case ExFunctionDef(sym, tparams, params, _, body) =>
           Some(defsToDefs(sym))
+        case ExDefaultValueFunction(sym, _, _, _, _, _, _) =>
+          Some(defsToDefs(sym))
         case ExLazyAccessorFunction(sym, _, _) =>
           Some(defsToDefs(sym))
         case ExFieldDef(sym, _, _) =>
@@ -780,6 +863,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExConstructorDef() =>
         case ExFunctionDef(_, _, _, _, _) =>
         case ExLazyAccessorFunction(_, _, _) =>
+        case ExDefaultValueFunction(_, _, _, _, _, _, _ ) =>
         case ExFieldDef(_,_,_) =>
         case ExLazyFieldDef() => 
         case ExFieldAccessorFunction() => 
@@ -795,6 +879,10 @@ trait CodeExtraction extends ASTExtractors {
     private def extractFunBody(funDef: FunDef, params: Seq[ValDef], body0 : Tree)(implicit dctx: DefContext): FunDef = {
       currentFunDef = funDef
       
+      // Find defining function for params with default value
+      for ((s,vd) <- params zip funDef.params) {
+        vd.defaultValue = paramsToDefaultValues.get(s.symbol) 
+      }
       
       val newVars = for ((s, vd) <- params zip funDef.params) yield {
         s.symbol -> (() => Variable(vd.id))
@@ -1115,6 +1203,8 @@ trait CodeExtraction extends ASTExtractors {
           rest = None
           LetDef(funDefWithBody, restTree)
 
+        // FIXME case ExDefaultValueFunction
+        
         /**
          * XLang Extractors
          */
@@ -1784,6 +1874,8 @@ trait CodeExtraction extends ASTExtractors {
           case None =>
             outOfSubsetError(tpt.typeSymbol.pos, "Could not extract refined type as PureScala: "+tpt+" ("+tpt.getClass+")")
         }
+
+      case AnnotatedType(_, tpe) => extractType(tpe)
 
       case _ =>
         outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
