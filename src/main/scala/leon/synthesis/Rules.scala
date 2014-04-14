@@ -31,8 +31,8 @@ object Rules {
     ADTSplit,
     InlineHoles,
     IntegerEquation,
-    IntegerInequalities,
-    AngelicHoles
+    IntegerInequalities
+    //AngelicHoles // @EK: Disabled now as it is explicit with withOracle { .. }
   )
 
   def getInstantiations(sctx: SynthesisContext, problem: Problem) = {

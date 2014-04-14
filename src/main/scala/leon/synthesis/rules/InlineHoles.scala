@@ -11,6 +11,7 @@ import leon.utils._
 import solvers._
 
 import purescala.Common._
+import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
@@ -20,6 +21,46 @@ case object InlineHoles extends Rule("Inline-Holes") {
   override val priority = RulePriorityHoles
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+    // When true: withOracle gets converted into a big choose() on result.
+    val discreteHoles = sctx.options.distreteHoles
+
+    if (!discreteHoles) {
+      return Nil;
+    }
+
+    val Some(oracleHead) = sctx.program.definedFunctions.find(_.id.name == "Oracle.head")
+
+    def containsHoles(e: Expr): Boolean = {
+      preTraversal{
+        case FunctionInvocation(TypedFunDef(`oracleHead`, _), _) => return true
+        case _ =>
+      }(e)
+      false
+    }
+
+    /**
+     * Returns true if the expression directly or indirectly relies on a Hole
+     */
+    def usesHoles(e: Expr): Boolean = {
+      var cache = Map[FunDef, Boolean]()
+
+      def callsHolesExpr(e: Expr): Boolean = {
+        containsHoles(e) || functionCallsOf(e).exists(fi => callsHoles(fi.tfd.fd))
+      }
+
+      def callsHoles(fd: FunDef): Boolean = cache.get(fd) match {
+        case Some(r) => r
+        case None =>
+          cache += fd -> false
+
+          val res = fd.body.map(callsHolesExpr _).getOrElse(false)
+
+          cache += fd -> res
+          res
+      }
+
+      callsHolesExpr(e)
+    }
 
     @tailrec
     def inlineUntilHoles(e: Expr): Expr = {
@@ -41,16 +82,15 @@ case object InlineHoles extends Rule("Inline-Holes") {
     }
 
     def inlineHoles(phi: Expr): (List[Identifier], Expr) = {
+
       var newXs = List[Identifier]()
 
       val res = preMap {
-        case h @ Hole(o) =>
-          val tpe = h.getType
+        case h @ FunctionInvocation(TypedFunDef(`oracleHead`, Seq(tpe)), Seq(o)) =>
           val x = FreshIdentifier("h", true).setType(tpe)
           newXs ::= x
 
           Some(x.toVariable)
-
         case _ => None
       }(phi)
 
@@ -86,7 +126,6 @@ case object InlineHoles extends Rule("Inline-Holes") {
       } else {
         None
       }
-
 
       // 2) a version with holes reachable to continue applying itself
       val newPhi                 = inlineUntilHoles(p.phi)

@@ -17,7 +17,7 @@ package object annotation {
   @ignore
   class main       extends StaticAnnotation
   @ignore
-  class proxy      extends StaticAnnotation
+  class extern     extends StaticAnnotation
   @ignore
   class ignore     extends StaticAnnotation
 

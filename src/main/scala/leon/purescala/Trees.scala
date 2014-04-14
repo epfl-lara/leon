@@ -53,10 +53,14 @@ object Trees {
     }
   }
 
-  // A hole is like a all-seeing choose
-  case class Hole(oracle: Expr) extends Expr with UnaryExtractable {
+  // Provide an oracle (synthesizable, all-seeing choose)
+  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with FixedType with UnaryExtractable {
+    assert(!oracles.isEmpty)
+
+    val fixedType = body.getType
+
     def extract = {
-      Some((oracle, (o: Expr) => Hole(o).copiedFrom(this)))
+      Some((body, (e: Expr) => WithOracle(oracles, e).setPos(this)))
     }
   }
 

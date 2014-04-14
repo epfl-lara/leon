@@ -36,10 +36,15 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
   //
   // Indices are 0-indexed
   def project(indices: Seq[Int]): Solution = {
-    val t = FreshIdentifier("t", true).setType(term.getType)
-    val newTerm = Let(t, term, Tuple(indices.map(i => TupleSelect(t.toVariable, i+1))))
+    term.getType match {
+      case TupleType(ts) =>
+        val t = FreshIdentifier("t", true).setType(term.getType)
+        val newTerm = Let(t, term, Tuple(indices.map(i => TupleSelect(t.toVariable, i+1))))
 
-    Solution(pre, defs, newTerm)
+        Solution(pre, defs, newTerm)
+      case _ =>
+        this
+    }
   }
 
 

@@ -415,7 +415,7 @@ object TreeOps {
     val eval = new DefaultEvaluator(ctx, program)
 
     def isGround(e: Expr): Boolean = {
-      variablesOf(e).isEmpty  && !usesHoles(e) && !containsChoose(e)
+      variablesOf(e).isEmpty && !containsChoose(e)
     }
 
     def rec(e: Expr): Option[Expr] = e match {
@@ -1339,38 +1339,6 @@ object TreeOps {
       case _ =>
     }(e)
     false
-  }
-
-  def containsHoles(e: Expr): Boolean = {
-    preTraversal{
-      case Hole(_) => return true
-      case _ =>
-    }(e)
-    false
-  }
-
-  /**
-   * Returns true if the expression directly or indirectly relies on a Hole
-   */
-  def usesHoles(e: Expr): Boolean = {
-    var cache = Map[FunDef, Boolean]()
-
-    def callsHolesExpr(e: Expr): Boolean = {
-      containsHoles(e) || functionCallsOf(e).exists(fi => callsHoles(fi.tfd.fd))
-    }
-
-    def callsHoles(fd: FunDef): Boolean = cache.get(fd) match {
-      case Some(r) => r
-      case None =>
-        cache += fd -> false
-
-        val res = fd.body.map(callsHolesExpr _).getOrElse(false)
-
-        cache += fd -> res
-        res
-    }
-
-    callsHolesExpr(e)
   }
 
   /**

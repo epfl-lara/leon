@@ -14,7 +14,7 @@ case object OnePoint extends NormalizingRule("One-point") {
     val TopLevelAnds(exprs) = p.phi
 
     def validOnePoint(x: Identifier, e: Expr) = {
-      !(variablesOf(e) contains x) && !usesHoles(e)
+      !(variablesOf(e) contains x)
     }
 
     val candidates = exprs.collect {

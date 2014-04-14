@@ -243,13 +243,20 @@ trait AbstractZ3Solver
 
   case class UntranslatableTypeException(msg: String) extends Exception(msg)
 
-  def rootType(ct: ClassType): ClassType = ct.parent match {
-    case Some(p) => rootType(p)
-    case None => ct
+  def rootType(ct: TypeTree): TypeTree = ct match {
+    case ct: ClassType =>
+      ct.parent match {
+        case Some(p) => rootType(p)
+        case None => ct
+      }
+    case t => t
   }
 
   def declareADTSort(ct: ClassType): Z3Sort = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
+
+    //println("///"*40)
+    //println("Declaring for: "+ct)
 
     def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
       case act: AbstractClassType =>
@@ -263,57 +270,63 @@ trait AbstractZ3Solver
         }
     }
 
-    var newHierarchiesMap = Map[ClassType, Seq[CaseClassType]]()
+    def resolveTypes(ct: ClassType) = {
+      var newHierarchiesMap = Map[ClassType, Seq[CaseClassType]]()
 
-    def findDependencies(ct: ClassType): Unit = {
-      val (root, sub) = getHierarchy(ct)
+      def findDependencies(ct: ClassType): Unit = {
+        val (root, sub) = getHierarchy(ct)
 
-      if (!(newHierarchiesMap contains root) && !(sorts containsLeon root)) {
-        newHierarchiesMap += root -> sub
+        if (!(newHierarchiesMap contains root) && !(sorts containsLeon root)) {
+          newHierarchiesMap += root -> sub
 
-        // look for dependencies
-        for (ct <- root +: sub; f <- ct.fields) f.tpe match {
-          case fct: ClassType =>
-            findDependencies(fct)
-          case _ =>
+          // look for dependencies
+          for (ct <- root +: sub; f <- ct.fields) f.tpe match {
+            case fct: ClassType =>
+              findDependencies(fct)
+            case _ =>
+          }
         }
       }
-    }
 
-    // Populates the dependencies of the ADT to define.
-    findDependencies(ct)
+      // Populates the dependencies of the ADT to define.
+      findDependencies(ct)
 
-    val newHierarchies = newHierarchiesMap.toSeq
+      //println("Dependencies: ")
+      //for ((r, sub) <- newHierarchiesMap) {
+      //  println(s" - $r  >:  $sub")
+      //}
 
-    val indexMap: Map[ClassType, Int] = Map()++newHierarchies.map(_._1).zipWithIndex
+      val newHierarchies = newHierarchiesMap.toSeq
 
-    def typeToSortRef(tt: TypeTree): ADTSortReference = tt match {
-      case ct: ClassType if sorts containsLeon rootType(ct) =>
-        RegularSort(sorts.toZ3(rootType(ct)))
+      val indexMap: Map[ClassType, Int] = Map()++newHierarchies.map(_._1).zipWithIndex
 
-      case act : AbstractClassType =>
-        // It has to be here
-        RecursiveType(indexMap(act))
+      def typeToSortRef(tt: TypeTree): ADTSortReference = rootType(tt) match {
+        case ct: ClassType if sorts containsLeon ct =>
+          RegularSort(sorts.toZ3(ct))
 
-      case cct: CaseClassType => cct.parent match {
-        case Some(p) =>
-          typeToSortRef(p)
-        case None =>
-          RecursiveType(indexMap(cct))
+        case act: ClassType =>
+          // It has to be here
+          RecursiveType(indexMap(act))
+
+        case _=>
+          RegularSort(typeToSort(tt))
       }
 
-      case _=>
-        RegularSort(typeToSort(tt))
+      // Define stuff
+      val defs = for ((root, childrenList) <- newHierarchies) yield {
+        (
+         root.id.uniqueName,
+         childrenList.map(ccd => ccd.id.uniqueName),
+         childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.tpe))))
+        )
+      }
+      (defs, newHierarchies)
     }
 
-    // Define stuff
-    val defs = for ((root, childrenList) <- newHierarchies) yield {
-      (
-       root.id.uniqueName,
-       childrenList.map(ccd => ccd.id.uniqueName),
-       childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.tpe))))
-      )
-    }
+    // @EK: the first step is needed to introduce ADT sorts referenced inside Sets of this CT
+    // When defining Map(s: Set[Pos], p: Pos), it will need Pos, but Pos will be defined through Set[Pos] in the first pass
+    resolveTypes(ct)
+    val (defs, newHierarchies) = resolveTypes(ct)
 
     //for ((n, sub, cstrs) <- defs) {
     //  println(n+":")
@@ -342,6 +355,8 @@ trait AbstractZ3Solver
         }
       }
     }
+
+    //println("\\\\\\"*40)
 
     sorts.toZ3(ct)
   }
@@ -403,7 +418,6 @@ trait AbstractZ3Solver
     case tt @ SetType(base) =>
       sorts.toZ3OrCompute(tt) {
         val newSetSort = z3.mkSetSort(typeToSort(base))
-
         val card = z3.mkFreshFuncDecl("card", Seq(newSetSort), typeToSort(Int32Type))
         setCardDecls += tt -> card
 
@@ -566,7 +580,7 @@ trait AbstractZ3Solver
         z3.mkApp(functionDefToDecl(tfd), args.map(rec(_)): _*)
 
       case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
-      case ElementOfSet(e, s) => z3.mkSetSubset(z3.mkSetAdd(z3.mkEmptySet(typeToSort(e.getType)), rec(e)), rec(s))
+      case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
       case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
       case SetIntersection(s1, s2) => z3.mkSetIntersect(rec(s1), rec(s2))
       case SetUnion(s1, s2) => z3.mkSetUnion(rec(s1), rec(s2))
@@ -649,9 +663,6 @@ trait AbstractZ3Solver
 
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))
-
-      case h @ Hole(o) =>
-        rec(OracleTraverser(o, h.getType, program).value)
 
       case _ => {
         reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex)

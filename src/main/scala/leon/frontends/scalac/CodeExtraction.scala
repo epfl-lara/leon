@@ -35,7 +35,9 @@ trait CodeExtraction extends ASTExtractors {
   val reporter = self.ctx.reporter
 
   def annotationsOf(s: Symbol): Set[String] = {
-    (for(a <- s.annotations ++ s.owner.annotations) yield {
+    val actualSymbol = s.accessedOrSelf
+
+    (for(a <- actualSymbol.annotations ++ actualSymbol.owner.annotations) yield {
       val name = a.atp.safeToString.replaceAll("\\.package\\.", ".")
       if (name startsWith "leon.annotation.") {
         Some(name.split("\\.", 3)(2))
@@ -136,14 +138,14 @@ trait CodeExtraction extends ASTExtractors {
         tparams: Map[Symbol, TypeParameter] = Map(),
         vars: Map[Symbol, () => LeonExpr] = Map(),
         mutableVars: Map[Symbol, () => LeonExpr] = Map(),
-        isProxy: Boolean = false
+        isExtern: Boolean = false
       ) {
 
       def union(that: DefContext) = {
         copy(this.tparams ++ that.tparams,
              this.vars ++ that.vars,
              this.mutableVars ++ that.mutableVars,
-             this.isProxy || that.isProxy)
+             this.isExtern || that.isExtern)
       }
 
       def isVariable(s: Symbol) = (vars contains s) || (mutableVars contains s)
@@ -165,8 +167,8 @@ trait CodeExtraction extends ASTExtractors {
       (annotationsOf(s) contains "ignore") || (s.fullName.toString.endsWith(".main"))
     }
 
-    def isProxy(s: Symbol) = {
-      annotationsOf(s) contains "proxy"
+    def isExtern(s: Symbol) = {
+      annotationsOf(s) contains "extern"
     }
 
     def extractModules: List[LeonModuleDef] = {
@@ -239,6 +241,17 @@ trait CodeExtraction extends ASTExtractors {
     private var classesToClasses  = Map[Symbol, LeonClassDef]()
 
 
+    def oracleType(pos: Position, tpe: LeonType) = {
+      classesToClasses.find {
+        case (sym, cl) => (sym.fullName.toString == "leon.lang.synthesis.Oracle")
+      } match {
+        case Some((_, cd)) =>
+          classDefToClassType(cd, List(tpe))
+        case None =>
+          outOfSubsetError(pos, "Could not find class Oracle")
+      }
+    }
+
     def libraryMethod(classname: String, methodName: String): Option[(LeonClassDef, FunDef)] = {
       classesToClasses.values.find(_.id.name == classname).flatMap { cl =>
         cl.methods.find(_.id.name == methodName).map { fd => (cl, fd) }
@@ -289,7 +302,7 @@ trait CodeExtraction extends ASTExtractors {
             if (sym.name.toString == "synthesis") {
               new Exception().printStackTrace()
             }
-            outOfSubsetError(pos, "Class "+sym.name+" not defined?")
+            outOfSubsetError(pos, "Class "+sym.fullName+" not defined?")
           }
       }
     }
@@ -407,7 +420,7 @@ trait CodeExtraction extends ASTExtractors {
       // Type params of the function itself
       val tparams = extractTypeParams(sym.typeParams.map(_.tpe))
 
-      val nctx = dctx.copy(tparams = dctx.tparams ++ tparams.toMap, isProxy = isProxy(sym))
+      val nctx = dctx.copy(tparams = dctx.tparams ++ tparams.toMap, isExtern = isExtern(sym))
 
       val newParams = sym.info.paramss.flatten.map{ sym =>
         val ptpe = toPureScalaType(sym.tpe)(nctx, sym.pos)
@@ -499,7 +512,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
 
-          extractFunBody(fd, params, body)(DefContext(tparamsMap, isProxy = isProxy(sym)))
+          extractFunBody(fd, params, body)(DefContext(tparamsMap, isExtern = isExtern(sym)))
 
         case _ =>
       }
@@ -578,10 +591,10 @@ trait CodeExtraction extends ASTExtractors {
         }
       } catch {
         case e: ImpureCodeEncounteredException =>
-        if (!dctx.isProxy) {
+        if (!dctx.isExtern) {
           e.emit()
           if (ctx.settings.strictCompilation) {
-            reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. (Forgot @proxy ?)")
+            reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. (Forgot @extern ?)")
           } else {
             reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully unavailable to Leon.")
           }
@@ -708,7 +721,7 @@ trait CodeExtraction extends ASTExtractors {
           val b = try {
             extractTree(body)
           } catch {
-            case (e: ImpureCodeEncounteredException) if dctx.isProxy =>
+            case (e: ImpureCodeEncounteredException) if dctx.isExtern =>
               NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
           }
 
@@ -721,7 +734,7 @@ trait CodeExtraction extends ASTExtractors {
           val b = try {
             extractTree(body)
           } catch {
-            case (e: ImpureCodeEncounteredException) if dctx.isProxy =>
+            case (e: ImpureCodeEncounteredException) if dctx.isExtern =>
               NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
           }
 
@@ -741,7 +754,7 @@ trait CodeExtraction extends ASTExtractors {
           val b = try {
             rest.map(extractTree).getOrElse(UnitLiteral())
           } catch {
-            case (e: ImpureCodeEncounteredException) if dctx.isProxy =>
+            case (e: ImpureCodeEncounteredException) if dctx.isExtern =>
               NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
           }
 
@@ -812,7 +825,7 @@ trait CodeExtraction extends ASTExtractors {
 
           fd.addAnnotation(annotationsOf(d.symbol).toSeq : _*)
 
-          val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap, isProxy = isProxy(sym))
+          val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap, isExtern = isExtern(sym))
 
           val oldCurrentFunDef = currentFunDef
 
@@ -949,36 +962,58 @@ trait CodeExtraction extends ASTExtractors {
           }
 
         case hole @ ExHoleExpression(tpt, exprs, os) =>
-          val leonTpe = extractType(tpt)
           val leonExprs = exprs.map(extractTree)
           val leonOracles = os.map(extractTree)
 
+          def rightOf(o: LeonExpr): LeonExpr = {
+            val Some((cl, fd)) = libraryMethod("Oracle", "right")
+            MethodInvocation(o, cl, fd.typed(Nil), Nil)
+          }
+
+          def valueOf(o: LeonExpr): LeonExpr = {
+            val Some((cl, fd)) = libraryMethod("Oracle", "head")
+            MethodInvocation(o, cl, fd.typed(Nil), Nil)
+          }
+
+
           leonExprs match {
             case Nil =>
-              Hole(leonOracles(0)).setType(leonTpe)
+              valueOf(leonOracles(0))
 
             case List(e) =>
-              IfExpr(Hole(leonOracles(0)).setType(BooleanType), e, Hole(leonOracles(1)).setType(leonTpe))
+              IfExpr(valueOf(leonOracles(0)), e, valueOf(leonOracles(1)))
 
             case exs =>
               val l = exs.last
               var o = leonOracles(0)
 
-              def rightOf(o: LeonExpr): LeonExpr = {
-                val Some((cl, fd)) = libraryMethod("Oracle", "right")
-                MethodInvocation(o, cl, fd.typed(Nil), Nil)
-              }
-
               exs.init.foldRight(l)({ (e: LeonExpr, r: LeonExpr) =>
-                val res = IfExpr(Hole(o).setType(BooleanType), e, r)
+                val res = IfExpr(valueOf(leonOracles(0)), e, r)
                 o = rightOf(o)
                 res
               })
           }
 
-        case chs @ ExChooseExpression(args, tpt, body, select) =>
-          val cTpe  = extractType(tpt)
+        case ops @ ExWithOracleExpression(oracles, body) =>
+          val newOracles = oracles map { case (tpt, sym) =>
+            val aTpe  = extractType(tpt)
+            val oTpe  = oracleType(ops.pos, aTpe)
+            val newID = FreshIdentifier(sym.name.toString).setType(oTpe)
+            owners += (newID -> None)
+            newID
+          }
 
+          val newVars = (oracles zip newOracles).map {
+            case ((_, sym), id) =>
+              sym -> (() => Variable(id))
+          }
+
+          val cBody = extractTree(body)(dctx.withNewVars(newVars))
+
+          WithOracle(newOracles, cBody)
+
+
+        case chs @ ExChooseExpression(args, body) =>
           val vars = args map { case (tpt, sym) =>
             val aTpe  = extractType(tpt)
             val newID = FreshIdentifier(sym.name.toString).setType(aTpe)
@@ -1362,7 +1397,7 @@ trait CodeExtraction extends ASTExtractors {
       if (seenClasses contains sym) {
         classDefToClassType(getClassDef(sym, NoPosition), tps)
       } else {
-        if (dctx.isProxy) {
+        if (dctx.isExtern) {
           unknownsToTP.getOrElse(sym, {
             val tp = TypeParameter(FreshIdentifier(sym.name.toString, true))
             unknownsToTP += sym -> tp

@@ -169,6 +169,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |  (${typed(id)}) => $post
             |}"""
 
+      case c @ WithOracle(vars, pred) =>
+        p"""|withOracle { (${typed(vars)}) =>
+            |  $pred
+            |}"""
+
       case CaseClass(cct, args) =>
         if (cct.classDef.isCaseObject) {
           p"$cct"
@@ -190,7 +195,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"${t}._$i"
-      case h @ Hole(o)          => p"???[${h.getType}]($o)"
       case Choose(vars, pred)   => p"choose(($vars) => $pred)"
       case e @ Error(err)       => p"""error[${e.getType}]("$err")"""
       case CaseClassInstanceOf(cct, e)         =>

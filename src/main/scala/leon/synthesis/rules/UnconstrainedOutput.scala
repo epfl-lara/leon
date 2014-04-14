@@ -17,7 +17,14 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
 
       val onSuccess: List[Solution] => Option[Solution] = { 
         case List(s) =>
-          Some(Solution(s.pre, s.defs, LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(id.getType) else Variable(id))))))
+          val term = if (sub.xs.size > 1) {
+            LetTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(id.getType) else Variable(id))))
+          } else if (sub.xs.size == 1) {
+            Let(sub.xs.head, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(id.getType) else Variable(id))))
+          } else {
+            Tuple(p.xs.map(id => simplestValue(id.getType)))
+          }
+          Some(Solution(s.pre, s.defs, term))
         case _ =>
           None
       }

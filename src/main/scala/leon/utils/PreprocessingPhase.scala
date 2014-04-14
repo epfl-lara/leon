@@ -6,6 +6,7 @@ package utils
 import purescala.Definitions.Program
 
 import purescala.{MethodLifting, CompleteAbstractDefinitions}
+import synthesis.{ConvertWithOracle}
 
 object PreprocessingPhase extends TransformationPhase {
 
@@ -17,6 +18,7 @@ object PreprocessingPhase extends TransformationPhase {
     val phases =
       MethodLifting                 andThen
       TypingPhase                   andThen
+      ConvertWithOracle             andThen
       CompleteAbstractDefinitions   andThen
       InjectAsserts
 

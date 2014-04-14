@@ -26,5 +26,8 @@ case class SynthesisOptions(
   cegisUseCETests: Boolean            = true,
   cegisUseCEPruning: Boolean          = true,
   cegisUseBPaths: Boolean             = true,
-  cegisUseVanuatoo: Boolean           = false
+  cegisUseVanuatoo: Boolean           = false,
+
+  // Oracles and holes
+  distreteHoles: Boolean              = false
 )

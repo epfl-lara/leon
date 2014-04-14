@@ -289,11 +289,21 @@ trait ASTExtractors {
     }
 
     object ExChooseExpression {
-      def unapply(tree: Apply) : Option[(List[(Tree, Symbol)], Tree, Tree, Tree)] = tree match {
+      def unapply(tree: Apply) : Option[(List[(Tree, Symbol)], Tree)] = tree match {
         case a @ Apply(
               TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "choose"), types),
               Function(vds, predicateBody) :: Nil) =>
-            Some(((types zip vds.map(_.symbol)).toList, a, predicateBody, s))
+            Some(((types zip vds.map(_.symbol)).toList, predicateBody))
+        case _ => None
+      }
+    }
+
+    object ExWithOracleExpression {
+      def unapply(tree: Apply) : Option[(List[(Tree, Symbol)], Tree)] = tree match {
+        case a @ Apply(
+              TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "withOracle"), types),
+              Function(vds, body) :: Nil) =>
+            Some(((types zip vds.map(_.symbol)).toList, body))
         case _ => None
       }
     }

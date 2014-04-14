@@ -32,7 +32,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonFlagOptionDef( "cegis:bssfilter",  "--cegis:bssfilter",     "Filter non-det programs when tests pruning works well", true),
     LeonFlagOptionDef( "cegis:unsatcores", "--cegis:unsatcores",    "Use UNSAT-cores in pruning", true),
     LeonFlagOptionDef( "cegis:opttimeout", "--cegis:opttimeout",    "Consider a time-out of CE-search as untrusted solution", true),
-    LeonFlagOptionDef( "cegis:vanuatoo",   "--cegis:vanuatoo",      "Generate inputs using new korat-style generator", false)
+    LeonFlagOptionDef( "cegis:vanuatoo",   "--cegis:vanuatoo",      "Generate inputs using new korat-style generator", false),
+    LeonFlagOptionDef( "holes:discrete",   "--holes:discrete",      "Oracles get split", false)
   )
 
   def processOptions(ctx: LeonContext): SynthesisOptions = {
@@ -109,6 +110,9 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
       case LeonFlagOption("cegis:vanuatoo", v) =>
         options = options.copy(cegisUseVanuatoo = v)
+
+      case LeonFlagOption("holes:discrete", v) =>
+        options = options.copy(distreteHoles = v)
 
       case _ =>
     }

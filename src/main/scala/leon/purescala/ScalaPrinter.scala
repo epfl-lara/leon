@@ -16,7 +16,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
     tree match {
       case Not(Equals(l, r))    => p"$l != $r"
-      case Iff(l,r)             => pp(Equals(l, r))
+      case Iff(l,r)             => p"$l == $r"
       case Implies(l,r)         => pp(Or(Not(l), r))
       case Choose(vars, pred)   => p"choose((${typed(vars)}) => $pred)"
       case s @ FiniteSet(rs)    => {

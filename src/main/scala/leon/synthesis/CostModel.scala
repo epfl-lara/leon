@@ -98,11 +98,7 @@ case object WeightedBranchesCostModel extends CostModel("WeightedBranches") {
 
   def problemCost(p: Problem): Cost = new Cost {
     val value = {
-      if (usesHoles(p.phi)) {
-        p.xs.size + 50
-      } else {
-        p.xs.size 
-      }
+      p.xs.size
     }
   }
 
