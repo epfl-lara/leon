@@ -7,11 +7,11 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import invariant._
-
 import invariant.engine._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
+import leon.purescala.ScalaPrinter
 
 /**
  * TODO: is it necessary to create new functions even if it does not use time 
