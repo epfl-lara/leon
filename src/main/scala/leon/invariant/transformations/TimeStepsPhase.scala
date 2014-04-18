@@ -53,13 +53,13 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       if (callees.contains(fd)) {
         val newRetType = TupleType(Seq(fd.returnType, Int32Type))
         val freshId = FreshIdentifier(fd.id.name, false).setType(newRetType)
-        val newfd = new FunDef(freshId, newRetType, fd.args)
+        val newfd = new FunDef(freshId, fd.tparams, newRetType, fd.params)
         funMap += (fd -> newfd)
       } else {
 
         //here we need not augment the return types
         val freshId = FreshIdentifier(fd.id.name, false).setType(fd.returnType)
-        val newfd = new FunDef(freshId, fd.returnType, fd.args)
+        val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
         funMap += (fd -> newfd)
       }
     }
@@ -67,12 +67,12 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(fd, args) =>
+        case FunctionInvocation(tfd, args) =>
 
-          if (callees.contains(fd)) {
-            TupleSelect(FunctionInvocation(funMap(fd), args), 1)
+          if (callees.contains(tfd.fd)) {
+            TupleSelect(FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args), 1)
           } else {
-            val fi = FunctionInvocation(funMap(fd), args)           
+            val fi = FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)           
             fi
           }
 
@@ -147,7 +147,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       if(FunctionInfoFactory.hasTemplate(fd))
         println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
         )*/
-    newprog
+fd    newprog
   }
   
   abstract class CostModel {

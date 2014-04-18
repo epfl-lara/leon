@@ -97,7 +97,7 @@ object TypeTrees {
 
   case object Untyped extends TypeTree
   case object BooleanType extends TypeTree
-  case object Int32Type extends TypeTree  
+  //case object Int32Type extends TypeTree  
   case object UnitType extends TypeTree
   
   trait NumericType 

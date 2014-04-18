@@ -1,6 +1,6 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon
+package leon.lang
 
 import leon.annotation._
 
