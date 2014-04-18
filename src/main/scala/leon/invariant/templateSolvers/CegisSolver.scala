@@ -88,7 +88,7 @@ class CegisCore(ctx: InferenceContext,
 
     //add the initial model    
     val simplestModel = if (initModel.isDefined) initModel.get else {
-      tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
+      tempIds.map((id) => (id -> simplestValue(id.getType))).toMap
     }
     addModel(simplestModel)
 

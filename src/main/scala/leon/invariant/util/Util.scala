@@ -83,6 +83,17 @@ object Util {
   val one = IntLiteral(1)
   val tru = BooleanLiteral(true)
   
+  def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])) : Program = {
+    prog.copy(modules = prog.modules.map(module => module.copy(defs = mapdefs(module.defs))))        
+  }
+  
+  def isNumericType(tpe: TypeTree) : Boolean = {
+    tpe match {
+      case  n : NumericType => true
+      case _ => false
+    }
+  }
+  
   def getFunctionReturnVariable(fd: FunDef) = {
     if(fd.hasPostcondition) fd.postcondition.get._1.toVariable
     else ResultVariable().setType(fd.returnType)
@@ -90,11 +101,11 @@ object Util {
   
   //compute the formal to the actual argument mapping
   def formalToAcutal(call : Call) : Map[Expr, Expr] = {
-    val fd = call.fi.funDef
+    val fd = call.fi.tfd.fd
     val resvar =getFunctionReturnVariable(fd) 
-    val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ fd.args.map(_.id.toVariable).zip(call.fi.args)
+    val argmap: Map[Expr, Expr] = Map(resvar -> call.retexpr) ++ fd.params.map(_.id.toVariable).zip(call.fi.args)
     argmap
-  }
+  }  
   
   /**
    * Checks if the input expression has only template variables as free variables

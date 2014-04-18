@@ -25,11 +25,12 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     val varx = xid.toVariable
     val vary = yid.toVariable
     val args = Seq(xid, yid)
-    val fd = new FunDef(FreshIdentifier("max", true), Int32Type, args.map((arg) => VarDecl(arg, arg.getType)))
+    val fd = new FunDef(FreshIdentifier("max", true), Seq(), Int32Type, args.map((arg) => ValDef(arg, arg.getType)))
     //add a body    
     fd.body = Some(IfExpr(GreaterEquals(varx, vary), varx, vary))
     fd
   }
+  val typedMax = TypedFunDef(maxFun, Seq())
   
   def run(ctx: LeonContext)(program: Program) : Program = {
                 
@@ -61,12 +62,12 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
       if (callees.contains(fd)) {
         val newRetType = TupleType(Seq(fd.returnType, Int32Type))
         val freshId = FreshIdentifier(fd.id.name, false).setType(newRetType)
-        val newfd = new FunDef(freshId, newRetType, fd.args)
+        val newfd = new FunDef(freshId, fd.tparams, newRetType, fd.params)
         funMap += (fd -> newfd)
       } else {
         //here we need not augment the return types
         val freshId = FreshIdentifier(fd.id.name, false).setType(fd.returnType)
-        val newfd = new FunDef(freshId, fd.returnType, fd.args)
+        val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
         funMap += (fd -> newfd)
       }
     }
@@ -74,11 +75,11 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
 
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(fd, args) =>
+        case FunctionInvocation(TypedFunDef(fd, tps), args) =>
           if (callees.contains(fd)) {
-            TupleSelect(FunctionInvocation(funMap(fd), args), 1)
+            TupleSelect(FunctionInvocation(TypedFunDef(funMap(fd),tps), args), 1)
           } else {
-            val fi = FunctionInvocation(funMap(fd), args)           
+            val fi = FunctionInvocation(TypedFunDef(funMap(fd),tps), args)           
             fi
           }
 
@@ -141,14 +142,12 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
       })      
     }
     
-    val newDefs = program.mainObject.defs.map {
+    val newprog = Util.copyProgram(program, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef => funMap(fd)
       case d => d
     } ++ {
       if(!rootFuncs.isEmpty) Seq(maxFun) else Seq() 
-    }
-    
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    })
     //println("After Depth Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
@@ -206,7 +205,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         //optimization: remove duplicates from 'depthIds' as 'max' is an idempotent operation
         val head +: tail = depthIds.distinct
         val summand = tail.foldLeft(head.toVariable : Expr)((acc, id) => {
-          FunctionInvocation(maxFun,Seq(acc, id.toVariable))
+          FunctionInvocation(typedMax,Seq(acc, id.toVariable))
         })
         Plus(costofOp, summand)
       }           
@@ -229,8 +228,8 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
             Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(t)))
           }
           
-          case f@FunctionInvocation(fd,args) => {            
-            val newFunInv = FunctionInvocation(funMap(fd),resIds.map(Variable(_)))
+          case f@FunctionInvocation(TypedFunDef(fd,tps),args) => {            
+            val newFunInv = FunctionInvocation(TypedFunDef(funMap(fd),tps),resIds.map(Variable(_)))
             
             //create a variables to store the result of function invocation
             val resvar = FreshIdentifier("e", true).setType(e.getType)
@@ -315,14 +314,14 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         //transform the then branch        
         val resthen = FreshIdentifier("rthen", true).setType(then.getType)
         val depththen = FreshIdentifier("dthen", true).setType(Int32Type)
-        val depthtres = FunctionInvocation(maxFun, Seq(Variable(depthcond),Variable(depththen)))
+        val depthtres = FunctionInvocation(typedMax, Seq(Variable(depthcond),Variable(depththen)))
         val newthen = LetTuple(Seq(resthen,depththen), transform(then, letIdToDepth), 
             Tuple(Seq(Variable(resthen), depthtres)))
                 
         //similarly transform the else branch 
         val reselse = FreshIdentifier("relse", true).setType(elze.getType)
         val depthelse = FreshIdentifier("delse", true).setType(Int32Type)
-        val deptheres = FunctionInvocation(maxFun, Seq(Variable(depthcond),Variable(depthelse)))
+        val deptheres = FunctionInvocation(typedMax, Seq(Variable(depthcond),Variable(depthelse)))
 
         val newelse = LetTuple(Seq(reselse,depthelse), transform(elze, letIdToDepth), 
             Tuple(Seq(Variable(reselse),deptheres)))

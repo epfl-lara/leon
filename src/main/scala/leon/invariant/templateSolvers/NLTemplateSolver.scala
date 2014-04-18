@@ -110,7 +110,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       initVCSolvers
     } 
     val initModel = {
-      val simplestModel = tempIds.map((id) => (id -> simplestValue(id.toVariable))).toMap
+      val simplestModel = tempIds.map((id) => (id -> simplestValue(id.getType))).toMap
       simplestModel
     }
     val sol = solveUNSAT(initModel, tru, Seq(), Set())
@@ -391,7 +391,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 
     if (this.dumpNLCtrsAsSMTLIB) {
-      val filename = program.mainObject.id + "-nlctr" + FileCountGUID.getID + ".smt2"
+      val filename = program.id + "-nlctr" + FileCountGUID.getID + ".smt2"
       if (Util.atomNum(nlctrs) >= 5) {
         if (solveAsBitvectors)
           Util.toZ3SMTLIB(nlctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)

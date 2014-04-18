@@ -25,6 +25,10 @@ class CallGraph {
   def transitiveCallees(src: FunDef): Set[FunDef] = {
     graph.BFSReachables(src)
   }
+  
+  def isRecursive(fd: FunDef) : Boolean = {
+    transitivelyCalls(fd,fd)
+  }
 
   /**
    * Checks if the src transitively calls the procedure proc
@@ -112,7 +116,7 @@ object CallGraphUtil {
     var callees = Set[FunDef]()
     simplePostTransform((expr) => expr match {
       case FunctionInvocation(callee, args) => {
-        callees += callee
+        callees += callee.fd
         expr
       }
       case _ => expr

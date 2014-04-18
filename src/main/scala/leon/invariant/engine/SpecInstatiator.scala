@@ -57,7 +57,7 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
       if (!disableAxioms) {
         //remove all multiplication if "withmult" is specified
         val relavantCalls = if (ctx.withmult) {          
-          newcalls.filter(call => (call.fi.funDef != ctx.pivmultfun) && (call.fi.funDef != ctx.multfun))
+          newcalls.filter(call => (call.fi.tfd.fd != ctx.pivmultfun) && (call.fi.tfd.fd != ctx.multfun))
         }else newcalls        
         instantiateAxioms(formula, relavantCalls)
       }    	 
@@ -97,7 +97,7 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
     var newUntemplatedCalls = Set[Call]()    
     getUntempCalls(formula.fd).foreach((call) => {
       //first get the template for the call if one needs to be added
-      if (funcsWithVC.contains(call.fi.funDef)) {
+      if (funcsWithVC.contains(call.fi.tfd.fd)) {
         val temp = templateForCall(call)
         val cdata = formula.callData(call)
         formula.conjoinWithDisjunct(cdata.guard, temp, cdata.parents)               
@@ -111,7 +111,7 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
 
   def specForCall(call: Call): Option[Expr] = {
     val argmap = Util.formalToAcutal(call)
-    val callee = call.fi.funDef
+    val callee = call.fi.tfd.fd
     if (callee.hasPostcondition) {
       val (resvar, post) = callee.postcondition.get
       val freshPost = freshenLocals(matchToIfThenElse(post))
@@ -131,9 +131,10 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
 
   def templateForCall(call: Call): Expr = {
     val argmap = Util.formalToAcutal(call)
-    val tempExpr = tempFactory.constructTemplate(argmap, call.fi.funDef)
-    val template = if (call.fi.funDef.hasPrecondition) {
-      val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(call.fi.funDef.precondition.get)))
+    val callee = call.fi.tfd.fd
+    val tempExpr = tempFactory.constructTemplate(argmap, callee)
+    val template = if (callee.hasPrecondition) {
+      val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(callee.precondition.get)))
       Implies(freshPre, tempExpr)
     } else {
       tempExpr
@@ -222,7 +223,7 @@ class SpecInstantiator(ctx : InferenceContext, ctrTracker : ConstraintTracker, t
 
     def isInstantiable(call1: Call, call2: Call): Boolean = {
       //important: check if the two calls refer to the same function      
-      (call1.fi.funDef.id == call2.fi.funDef.id) && (call1 != call2)
+      (call1.fi.tfd.id == call2.fi.tfd.id) && (call1 != call2)
     }           
       
     val product = Util.cross[Call,Call](newCallsWithAxioms,getBinaxCalls(formula.fd),Some(isInstantiable)).flatMap(

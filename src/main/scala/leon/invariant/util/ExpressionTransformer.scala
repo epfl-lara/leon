@@ -419,8 +419,8 @@ object ExpressionTransformer {
       case _ => throw IllegalStateException("Not a case-class-selector call")
     }
     //convert this to a cons by creating dummy variables        
-    val args = cd.fieldsIds.map((fld) => {
-      if (fld == ccfld) r
+    val args = cd.fields.map((fld) => {
+      if (fld.id == ccfld) r
       else {
         //create a dummy identifier there
         TVarFactory.createDummy.setType(fld.getType).toVariable

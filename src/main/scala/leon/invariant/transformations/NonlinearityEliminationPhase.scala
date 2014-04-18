@@ -27,7 +27,8 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
     val varx = xid.toVariable
     val vary = yid.toVariable
     val args = Seq(xid, yid)
-    val mfd = new FunDef(FreshIdentifier("pmult", false), domain, args.map((arg) => VarDecl(arg, arg.getType)))
+    val mfd = new FunDef(FreshIdentifier("pmult", false), Seq(), domain, args.map((arg) => ValDef(arg, arg.getType)))
+    val tmfd = TypedFunDef(mfd, Seq())
 
     //define precondition (not necessary)
     //mfd.precondition = Some(And(GreaterEquals(varx, zero),GreaterEquals(vary, zero)))
@@ -36,7 +37,7 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
     val cond = Or(Equals(varx, zero), Equals(vary, zero))
     val xminus1 = Minus(varx, one)
     val yminus1 = Minus(vary, one)
-    val elze = Plus(FunctionInvocation(mfd, Seq(xminus1, vary)), vary)
+    val elze = Plus(FunctionInvocation(tmfd, Seq(xminus1, vary)), vary)
     mfd.body = Some(IfExpr(cond, zero, elze))
 
     //add postcondition
@@ -46,7 +47,7 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
     //define alternate definitions of multiplication as postconditions                  
     //(a) res = !(x==0 || y==0) => mult(x,y-1) + x
     val guard = Not(cond)
-    val defn2 = Equals(resvar, Plus(FunctionInvocation(mfd, Seq(varx, yminus1)), varx))
+    val defn2 = Equals(resvar, Plus(FunctionInvocation(tmfd, Seq(varx, yminus1)), varx))
     val post1 = Implies(guard, defn2)
 
     mfd.postcondition = Some((resvar.id, And(Seq(post0, post1))))
@@ -66,7 +67,8 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
     val xid = FreshIdentifier("x").setType(domain)
     val yid = FreshIdentifier("y").setType(domain)
     val args = Seq(xid, yid)
-    val fd = new FunDef(FreshIdentifier("mult", false), domain, args.map((arg) => VarDecl(arg, arg.getType)))
+    val fd = new FunDef(FreshIdentifier("mult", false), Seq(), domain, args.map((arg) => ValDef(arg, arg.getType)))    
+    val tpivMultFun = TypedFunDef(pivMultFun, Seq())
 
     //the body is defined as mult(x,y) = val px = if(x < 0) -x else x; 
     //val py = if(y<0) -y else y;  val r = pmult(px,py); 
@@ -77,7 +79,7 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
     val mody = IfExpr(LessThan(vary, zero), UMinus(vary), vary)
     val px = FreshIdentifier("px", false).setType(domain)
     val py = FreshIdentifier("py", false).setType(domain)
-    val call = Let(px, modx, Let(py, mody, FunctionInvocation(pivMultFun, Seq(px, py).map(_.toVariable))))
+    val call = Let(px, modx, Let(py, mody, FunctionInvocation(tpivMultFun, Seq(px, py).map(_.toVariable))))
     val bothPive = And(GreaterEquals(varx, zero), GreaterEquals(vary, zero))
     val bothNive = And(LessThan(varx, zero), LessThan(vary, zero))
     val res = FreshIdentifier("r", false).setType(domain)
@@ -94,17 +96,18 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
   def apply(program: Program): Program = {
 
     //create a fundef for each function in the program
-    val newFundefs = program.mainObject.definedFunctions.map((fd) => {
-      val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.returnType, fd.args)
+    val newFundefs = program.definedFunctions.map((fd) => {
+      val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.tparams, fd.returnType, fd.params)
       (fd, newfd)
     }).toMap
 
     //note, handling templates variables is slightly tricky as we need to preserve a*x as it is
-    var addMult = false
+    val tmult = TypedFunDef(multFun,Seq())
+    var addMult = false    
     def replaceFun(ine: Expr): Expr = {
       simplePostTransform(e => e match {
-        case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
-          FunctionInvocation(newFundefs(fd1), args)
+        case fi @ FunctionInvocation(tfd1, args) if newFundefs.contains(tfd1.fd) =>
+          FunctionInvocation(TypedFunDef(newFundefs(tfd1.fd),tfd1.tps), args)
 
         case Times(Variable(id), e2) if (TemplateIdFactory.IsTemplateIdentifier(id)) => e
         case Times(e1, Variable(id)) if (TemplateIdFactory.IsTemplateIdentifier(id)) => e
@@ -112,7 +115,7 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
         case Times(e1, e2) if (!e1.isInstanceOf[Literal[_]] && !e2.isInstanceOf[Literal[_]]) => {
           //replace times by a mult function
           addMult = true
-          FunctionInvocation(multFun, Seq(e1, e2))
+          FunctionInvocation(tmult, Seq(e1, e2))
         }
         //note: include mult function if division operation is encountered
         //division is handled during verification condition generation.
@@ -158,12 +161,12 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree with NumericT
       fd.annotations.foreach((str) => newfd.addAnnotation(str))
     })
 
-    val newDefs = program.mainObject.defs.map {
-      case fd: FunDef => newFundefs(fd)
-      case d => d
-    } ++ (if (addMult) Seq(multFun, pivMultFun) else Seq())
-
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    val newprog = Util.copyProgram(program, (defs: Seq[Definition]) => {
+      defs.map {
+        case fd: FunDef => newFundefs(fd)
+        case d => d
+      } ++ (if (addMult) Seq(multFun, pivMultFun) else Seq())
+    })
     println("After Nonlinearity Elimination: \n" + ScalaPrinter.apply(newprog))
     //print all the templates
     newprog.definedFunctions.foreach((fd) => {

@@ -51,9 +51,11 @@ class InferenceEngineGenerator(ctx: InferenceContext,
     val postExpr = matchToIfThenElse(post)       
     //create a postcondition template if the function is recursive or if a template is provided for the function
     val funinfo = FunctionInfoFactory.getFunctionInfo(funDef)
-    val postTemp = if (program.isRecursive(funDef) || (funinfo.isDefined && funinfo.get.hasTemplate)) {
+    val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
+    val postTemp = if (cg.isRecursive(funDef) || (funinfo.isDefined && funinfo.get.hasTemplate)) {
       //this is a way to create an idenitity map :-))
-      val argmap = Util.formalToAcutal(Call(resvar, FunctionInvocation(funDef, funDef.args.map(_.toVariable))))
+      val selfInv = FunctionInvocation(TypedFunDef(funDef,funDef.tparams.map(_.tp)) , funDef.params.map(_.toVariable))
+      val argmap = Util.formalToAcutal(Call(resvar, selfInv))
       Some(tempFactory.constructTemplate(argmap, funDef))      
     } else None    
     val fullPost = if (postTemp.isDefined) {
@@ -162,9 +164,9 @@ class InferenceEngineGenerator(ctx: InferenceContext,
   def verifyInvariant(newposts: Map[FunDef, Expr], rootfd: FunDef): (Option[Boolean], Map[Identifier, Expr]) = {
 
     //create a fundef for each function in the program that is not "mult"
-    val newFundefs = program.mainObject.definedFunctions.collect {
+    val newFundefs = program.definedFunctions.collect {
       case fd @ _ if (fd != ctx.multfun && fd != ctx.pivmultfun) => {
-        val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.returnType, fd.args)
+        val newfd = new FunDef(FreshIdentifier(fd.id.name, false), fd.tparams, fd.returnType, fd.params)
         (fd, newfd)
       }
     }.toMap
@@ -174,8 +176,8 @@ class InferenceEngineGenerator(ctx: InferenceContext,
       case FunctionInvocation(fd, args) if fd == ctx.multfun => {
         Times(args(0), args(1))
       }
-      case fi @ FunctionInvocation(fd1, args) if newFundefs.contains(fd1) =>
-        FunctionInvocation(newFundefs(fd1), args)
+      case fi @ FunctionInvocation(tfd1, args) if newFundefs.contains(tfd1.fd) =>
+        FunctionInvocation(TypedFunDef(newFundefs(tfd1.fd), tfd1.tps), args)
       case _ => e
     }
 
@@ -214,12 +216,15 @@ class InferenceEngineGenerator(ctx: InferenceContext,
       } else None
     })
 
-    val newDefs = program.mainObject.defs.collect {
+    val augmentedProg = Util.copyProgram(program, (defs :Seq[Definition]) => defs.collect {
       case fd: FunDef if(newFundefs.contains(fd)) => newFundefs(fd)
       case d if(!d.isInstanceOf[FunDef]) => d
-    }
-
-    val augmentedProg = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    })    
+    /*val newDefs = program.defs.collect {
+      case fd: FunDef if(newFundefs.contains(fd)) => newFundefs(fd)
+      case d if(!d.isInstanceOf[FunDef]) => d
+    }*/
+    //val augmentedProg = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
     
     //convert the program back to an integer program if necessary
     val (newprog, newroot) = if (ctx.usereals) {
@@ -238,7 +243,7 @@ class InferenceEngineGenerator(ctx: InferenceContext,
 
     val verifyTimeout = 5
     val fairZ3 = new SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() => new FairZ3Solver(ctx.leonContext, newprog)),
+      new TimeoutSolverFactory(SolverFactory(() => new FairZ3Solver(ctx.leonContext, newprog) with TimeoutSolver),
         verifyTimeout * 1000))
     //println("Func : "+ vc.funDef + " new vc: "+vc.condition)            
     val sat = fairZ3.solveSAT(Not(vc.condition))

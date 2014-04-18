@@ -40,10 +40,10 @@ object Extractors {
   }
 
   object BinaryOperator {
-    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = { val r = expr match {
-      case Equals(t1,t2) => Some((t1,t2,Equals.apply _))
+    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
+      case Equals(t1,t2) => Some((t1,t2,Equals.apply))
       case Iff(t1,t2) => Some((t1,t2,Iff(_,_)))
-      case Implies(t1,t2) => Some((t1,t2,Implies.apply _))
+      case Implies(t1,t2) => Some((t1,t2,Implies.apply))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
       case Times(t1,t2) => Some((t1,t2,Times))
@@ -76,7 +76,7 @@ object Extractors {
       case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, b)))
       case (ex: BinaryExtractable) => ex.extract
       case _ => None
-    };  r}
+    }
   }
 
   trait BinaryExtractable {

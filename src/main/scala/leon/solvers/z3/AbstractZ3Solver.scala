@@ -706,7 +706,7 @@ trait AbstractZ3Solver
     val varsInformula: Set[Identifier] = variablesOf(expr)
 
     var z3Vars: Map[Identifier,Z3AST] = {
-      exprToZ3Id.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+      variables.leonToZ3.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
     }
     
     //set the bit vector flags for later use
@@ -736,9 +736,7 @@ trait AbstractZ3Solver
             if (id.getType == Int32Type || id.getType == RealType) {              
               val newAST = z3.mkFreshConst(id.uniqueName, bvsort)
               z3Vars = z3Vars + (id -> newAST)
-              exprToZ3Id += (v -> newAST)
-              z3IdToExpr += (newAST -> v)
-              
+              variables += (v -> newAST)                            
               //println("Creating a bitvector sort for: "+id+" sort: "+newAST.getSort)
               newAST
             } else {

@@ -134,12 +134,10 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       })      
     }
     
-    val newDefs = program.mainObject.defs.map {
+    val newprog = Util.copyProgram(program, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef => funMap(fd)
       case d => d
-    }
-
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))    
+    })    
     //println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
@@ -147,7 +145,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       if(FunctionInfoFactory.hasTemplate(fd))
         println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
         )*/
-fd    newprog
+    newprog
   }
   
   abstract class CostModel {
@@ -201,8 +199,8 @@ fd    newprog
         e match {
           case t : Terminal => Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(e)))
           
-          case f@FunctionInvocation(fd,args) => {            
-            val newFunInv = FunctionInvocation(funMap(fd),resIds.map(Variable(_)))
+          case f@FunctionInvocation(tfd,args) => {            
+            val newFunInv = FunctionInvocation(TypedFunDef(funMap(tfd.fd),tfd.tps),resIds.map(Variable(_)))
             
             //create a variables to store the result of function invocation
             val resvar = FreshIdentifier("e", true).setType(e.getType)

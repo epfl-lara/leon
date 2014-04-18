@@ -94,8 +94,8 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], reporter : Reporter) 
   def getDefaultTemplate(fd : FunDef): Expr = {
 
     //just consider all the arguments, return values that are integers
-    val baseTerms = fd.args.filter((vardecl) => isNumericType(vardecl.tpe)).map(_.toVariable) ++ 
-    					(if(isNumericType(fd.returnType)) Seq(Util.getFunctionReturnVariable(fd)) 
+    val baseTerms = fd.params.filter((vardecl) => Util.isNumericType(vardecl.tpe)).map(_.toVariable) ++ 
+    					(if(Util.isNumericType(fd.returnType)) Seq(Util.getFunctionReturnVariable(fd)) 
     					 else Seq())        
     					
     val lhs = baseTerms.foldLeft(TemplateIdFactory.freshTemplateVar() : Expr)((acc, t)=> {       

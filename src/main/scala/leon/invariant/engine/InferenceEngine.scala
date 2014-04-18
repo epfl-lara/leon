@@ -122,7 +122,7 @@ class InferenceEngine(ctx: InferenceContext)  {
   }
   
   def dumpStats(statsSuffix: String) = {    
-    val pw = new PrintWriter(ctx.program.mainObject.id + statsSuffix + ".txt")
+    val pw = new PrintWriter(ctx.program.id + statsSuffix + ".txt")
     Stats.dumpStats(pw)
     SpecificStats.dumpOutputs(pw)
     if (ctx.tightBounds) {

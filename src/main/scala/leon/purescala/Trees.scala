@@ -575,21 +575,8 @@ object Trees {
   case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
   case class MultisetToSet(multiset: Expr) extends Expr
 
-  /* Map operations. */
-  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr {
-    if (!singletons.isEmpty) {
-      //compute the lub of all the key types and value types 
-      val (keyTypes, valTypes) = singletons.foldLeft((Seq[TypeTree](), Seq[TypeTree]()))((acc, elem) => {
-        val (ktpes, vtpes) = acc
-        (ktpes :+ elem._1.getType, vtpes :+ elem._2.getType)
-      })
-      val keylub = TypeTrees.leastUpperBound(keyTypes)
-      val vallub = TypeTrees.leastUpperBound(valTypes)
-      if (keylub.isDefined && vallub.isDefined)
-        this.setType(MapType(keylub.get, vallub.get))
-    }
-  }
-
+  /*Map Ooperations. */  
+  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
   case class MapGet(map: Expr, key: Expr) extends Expr
   case class MapUnion(map1: Expr, map2: Expr) extends Expr 
   case class MapDifference(map: Expr, keys: Expr) extends Expr 

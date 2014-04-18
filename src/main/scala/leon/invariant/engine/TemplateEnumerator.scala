@@ -96,7 +96,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
       if (currTemp == null) {
         //initialize
         //add all the arguments and results of fd to 'typeTermMap'
-        rootFun.args.foreach((vardecl) => {
+        rootFun.params.foreach((vardecl) => {
           val tpe = vardecl.tpe
           val v = vardecl.id.toVariable
           if (newTerms.contains(tpe)) {
@@ -134,7 +134,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
           if (!callGraph.transitivelyCalls(fun, rootFun)) {                        
             
             //check if every argument has at least one satisfying assignment?
-            if (fun.args.filter((vardecl) => !ttCurrent.contains(vardecl.tpe)).isEmpty) {
+            if (fun.params.filter((vardecl) => !ttCurrent.contains(vardecl.tpe)).isEmpty) {
               
               //here compute all the combinations
               val newcalls = generateFunctionCalls(fun)
@@ -190,11 +190,12 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
      * To be called with argIndex of zero and an empty argList
      */
     def genFunctionCallsRecur(argIndex: Int, argList: Seq[Expr]): Set[Expr] = {
-      if (argIndex == fun.args.size) {
+      if (argIndex == fun.params.size) {
         //create a call using argList
-        Set(FunctionInvocation(fun, argList))
+        //TODO: how should we handle generics
+        Set(FunctionInvocation(TypedFunDef(fun, fun.tparams.map(_.tp)), argList))
       } else {
-        val arg = fun.args(argIndex)
+        val arg = fun.params(argIndex)
         val tpe = arg.tpe
         ttCurrent(tpe).foldLeft(Set[Expr]())((acc, term) => acc ++ genFunctionCallsRecur(argIndex + 1, argList :+ term))
       }

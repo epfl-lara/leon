@@ -62,7 +62,7 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
   } 
   
   def isMultOp(call : Call) : Boolean = {
-    (call.fi.funDef == ctx.multfun || call.fi.funDef == ctx.pivmultfun) 
+    (call.fi.tfd.fd == ctx.multfun || call.fi.tfd.fd == ctx.pivmultfun) 
   }
   
   def unaryMultAxioms(formula: Formula, calls: Set[Call], predEval: (Expr => Boolean)) : Seq[Expr] = {

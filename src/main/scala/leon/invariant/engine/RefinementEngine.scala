@@ -21,6 +21,7 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tem
   val tru = BooleanLiteral(true)
   val reporter = ctx.reporter
   val prog = ctx.program
+  val cg = CallGraphUtil.constructCallGraph(prog)
   
   //this count indicates the number of times we unroll a recursive call
   private val MAX_UNROLLS = 2
@@ -68,7 +69,7 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tem
         var minUnrollings = MAX_UNROLLS
         relevCalls.foreach((call) => {
           val calldata = formula.callData(call)
-          val recInvokes = calldata.parents.count(_ == call.fi.funDef)
+          val recInvokes = calldata.parents.count(_ == call.fi.tfd.fd)
           if (recInvokes < minUnrollings) {
             minUnrollings = recInvokes
             minCalls = Set(call)
@@ -86,7 +87,7 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tem
       val unrolls = callsToProcess.foldLeft(Set[Call]())((acc, call) => {
 
         val calldata = formula.callData(call)
-        val recInvokes = calldata.parents.count(_ == call.fi.funDef)
+        val recInvokes = calldata.parents.count(_ == call.fi.tfd.fd)
         //if the call is not a recursive call, unroll it unconditionally      
         if (recInvokes == 0) {
           unrollCall(call, formula)
@@ -132,18 +133,19 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tem
 
     //println("Processing: "+call)
     val fi = call.fi
-    if (fi.funDef.hasBody) {
+    if (fi.tfd.fd.hasBody) {
 
       //freshen the body and the post           
-      val isRecursive = prog.isRecursive(fi.funDef)        
+      val isRecursive = cg.isRecursive(fi.tfd.fd)        
       if(isRecursive) {                               
-        val recFun = fi.funDef
+        val recFun = fi.tfd.fd
+        val recFunTyped = fi.tfd
                 
         //check if we need to create a constraint tree for the call's target
         if (shouldCreateVC(recFun)) {
           
           //create a new verification condition for this recursive function          
-          println("Creating VC for "+fi.funDef.id)
+          println("Creating VC for "+recFun.id)
           val freshBody = freshenLocals(matchToIfThenElse(recFun.nondetBody.get))
           val resvar = if (recFun.hasPostcondition) {
             //create a new result variable here for the same reason as freshening the locals,
@@ -160,7 +162,7 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tem
           } else plainBody
                     
           //note: here we are only adding the template as the postcondition
-          val idmap = Util.formalToAcutal(Call(resvar, FunctionInvocation(recFun, recFun.args.map(_.toVariable))))
+          val idmap = Util.formalToAcutal(Call(resvar, FunctionInvocation(recFunTyped, recFun.params.map(_.toVariable))))
           val postTemp = tempFactory.constructTemplate(idmap, recFun)
           val vcExpr =  ExpressionTransformer.normalizeExpr(And(bodyExpr,Not(postTemp)), ctx.multOp)
           ctrTracker.addVC(recFun, vcExpr)
@@ -181,7 +183,7 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker, tem
   
   def inilineCall(call : Call, formula: Formula) = {    
     //here inline the body and conjoin it with the guard
-    val callee = call.fi.funDef   
+    val callee = call.fi.tfd.fd   
     
     //Important: make sure we use a fresh body expression here    
     val freshBody = freshenLocals(matchToIfThenElse(callee.nondetBody.get))

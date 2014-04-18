@@ -26,7 +26,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     bitvecSize: Int = 32,
     autoComplete : Boolean = true)
   extends AbstractZ3Solver
-     with Z3ModelReconstruction {
+     with Z3ModelReconstruction with TimeoutSolver {
   
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
@@ -43,13 +43,13 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
   )
   toggleWarningMessages(true)
 
-  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
+/*  private var functionMap: Map[FunDef, Z3FuncDecl] = Map.empty
   private var reverseFunctionMap: Map[Z3FuncDecl, FunDef] = Map.empty
   protected[leon] def prepareFunctions : Unit = {
     functionMap        = Map.empty
     reverseFunctionMap = Map.empty
     for(funDef <- program.definedFunctions) {
-      val sortSeq = funDef.args.map(vd => typeToSort(vd.tpe))
+      val sortSeq = funDef.params.map(vd => typeToSort(vd.tpe))
       val returnSort = typeToSort(funDef.returnType)
 
       val z3Decl = z3.mkFreshFuncDecl(funDef.id.name, sortSeq, returnSort)
@@ -59,7 +59,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
   }
   protected[leon] def functionDefToDecl(funDef: FunDef) : Z3FuncDecl = functionMap(funDef)
   protected[leon] def functionDeclToDef(decl: Z3FuncDecl) : FunDef = reverseFunctionMap(decl)
-  protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)
+  protected[leon] def isKnownDecl(decl: Z3FuncDecl) : Boolean = reverseFunctionMap.isDefinedAt(decl)*/
 
   initZ3
 
@@ -74,10 +74,10 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     solver.pop(lvl)    
   }
 
-  private var variables = Set[Identifier]()
+  private var freeVariables = Set[Identifier]()
 
   def assertCnstr(expression: Expr) {
-    variables ++= variablesOf(expression)
+    freeVariables ++= variablesOf(expression)
     
     if(useBitvectors){
       val bform = toBitVectorFormula(expression, bitvecSize).get     
@@ -93,7 +93,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
   }
 
   def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-    variables ++= assumptions.flatMap(variablesOf(_))
+    freeVariables ++= assumptions.flatMap(variablesOf(_))
     
     if(useBitvectors){
       solver.checkAssumptions(assumptions.toSeq.map(toBitVectorFormula(_, bitvecSize).get) : _*)
@@ -108,22 +108,22 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
   }
 
   def getModel = {
-    modelToMap(solver.getModel, variables)
+    modelToMap(solver.getModel, freeVariables)
   }
   
   def compeleteModel(ids : Seq[Identifier]) : Unit = {
     for (id <- ids) {
-      solver.getModel.eval(exprToZ3Id(id.toVariable), true)
+      solver.getModel.eval(variables.leonToZ3(id.toVariable), true)
     }
   }
 
-  def getUnsatCore = {
+  /*def getUnsatCore = {
     solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
       case n @ Not(Variable(_)) => n
       case v @ Variable(_) => v
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
     }).toSet
-  }
+  }*/
 
   def evalExpr(expr: Expr): Option[Expr] = {    
     val ast = if(useBitvectors) {
@@ -135,7 +135,7 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     val model = solver.getModel
     val res = model.eval(ast, true)
     if (res.isDefined)
-      Some(fromZ3Formula(model, res.get, Some(expr.getType)))
+      Some(fromZ3Formula(model, res.get))
     else None
   }
 
