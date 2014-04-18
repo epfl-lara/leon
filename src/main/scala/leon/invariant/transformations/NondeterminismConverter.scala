@@ -39,7 +39,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
     NondeterminismExtension.hasNondet(expr) || {
       var found = false
       simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(fd, _) if nondetProcs.contains(fd) => {
+        case FunctionInvocation(TypedFunDef(fd,_), _) if nondetProcs.contains(fd) => {
           found = true
           e
         }
@@ -81,12 +81,12 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
         //convert the function to a predicate        
         val newres = FreshIdentifier("fres",true).setType(fd.returnType)
         val freshId = FreshIdentifier(fd.id.name, true).setType(BooleanType)
-        val newfd = new FunDef(freshId, BooleanType, fd.args :+ VarDecl(newres, fd.returnType))
+        val newfd = new FunDef(freshId, fd.tparams, BooleanType, fd.params :+ ValDef(newres, fd.returnType))
         funMap += (fd -> newfd)
       } else {
         //here the old and new functiosn are identical
         val freshId = FreshIdentifier(fd.id.name, true).setType(fd.returnType)
-        val newfd = new FunDef(freshId, fd.returnType, fd.args)
+        val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
         funMap += (fd -> newfd)
       }
     }
@@ -95,18 +95,18 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
     def mapCalls(ine: Expr): Expr = {
       
       val callToAssume = (e: Expr) => e match {
-        case fi@FunctionInvocation(fd, args) =>
+        case fi@FunctionInvocation(TypedFunDef(fd,tps), args) =>
           if (callers.contains(fd)) {
             //return the expression { val r = *; assume(newfd(args, r)); r} which is realized as
             //let r = nondet in let _ = assume(newfd(args, r)) in r,
             //where 'r' is a fresh variable
             val cres = FreshIdentifier("ires",true).setType(fi.getType).toVariable           
             val newexpr = Let(FreshIdentifier("$x",true).setType(BooleanType), 
-                Assume(FunctionInvocation(funMap(fd),args :+ cres)), cres)
+                Assume(FunctionInvocation(TypedFunDef(funMap(fd), tps),args :+ cres)), cres)
             val finale = Let(cres.id,NondeterminismExtension.nondetId.setType(cres.getType).toVariable, newexpr)
             finale
           } else {
-            val newfi = FunctionInvocation(funMap(fd), args)           
+            val newfi = FunctionInvocation(TypedFunDef(funMap(fd), tps), args)           
             newfi
           }
         case _ => e
@@ -156,7 +156,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
 
         val substsMap = if (callers.contains(from)) {
           //replace fromRes by lastArg of 'to' in fromCond 
-          Map[Expr, Expr](fromRes.toVariable -> to.args.last.id.toVariable)
+          Map[Expr, Expr](fromRes.toVariable -> to.params.last.id.toVariable)
         } else {
           //replace fromRes by toRes in fromCond
           Map[Expr, Expr](fromRes.toVariable -> toResId.toVariable)
@@ -184,7 +184,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
       //make the bodies predicates
       to.body = if (callers.contains(from)) {                
         from.body.map(body => {
-          Equals(to.args.last.id.toVariable, mapCalls(body))
+          Equals(to.params.last.id.toVariable, mapCalls(body))
         })
       } else{        
         val newbody = from.body.map(mapCalls _)        
@@ -195,14 +195,12 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
       from.annotations.foreach((str) => to.addAnnotation(str))
     }
 
-    val newDefs = program.mainObject.defs.map {
+    val newprog = Util.copyProgram(program, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef =>
         funMap(fd)
       case d =>
         d
-    }
-
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))
+    })
     println("New Prog: \n"+ScalaPrinter.apply(newprog))
     newprog
   }  

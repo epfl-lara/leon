@@ -3,7 +3,6 @@
 package leon
 
 import utils._
-import plugin._
 import invariant.transformations._
 import invariant.engine._
 

@@ -26,11 +26,11 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     bitvecSize: Int = 32,
     autoComplete : Boolean = true)
   extends AbstractZ3Solver
-     with Z3ModelReconstruction with TimeoutSolver {
+     with Z3ModelReconstruction {
   
   val name = "Z3-u"
   val description = "Uninterpreted Z3 Solver"
-  override val AUTOCOMPLETEMODELS : Boolean = autoComplete  
+  val AUTOCOMPLETEMODELS : Boolean = autoComplete  
 
   // this is fixed
   protected[leon] val z3cfg = new Z3Config(
@@ -88,11 +88,11 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     }    
   }
 
-  def innerCheck: Option[Boolean] = {
+  override def check: Option[Boolean] = {
     solver.check
-  }
+  }    
 
-  def innerCheckAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+  def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
     freeVariables ++= assumptions.flatMap(variablesOf(_))
     
     if(useBitvectors){
@@ -117,13 +117,13 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
     }
   }
 
-  /*def getUnsatCore = {
-    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast, None) match {
+  def getUnsatCore = {
+    solver.getUnsatCore.map(ast => fromZ3Formula(null, ast) match {
       case n @ Not(Variable(_)) => n
       case v @ Variable(_) => v
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
     }).toSet
-  }*/
+  }
 
   def evalExpr(expr: Expr): Option[Expr] = {    
     val ast = if(useBitvectors) {

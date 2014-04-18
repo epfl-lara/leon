@@ -177,8 +177,8 @@ class CegisCore(ctx: InferenceContext,
             //println("solving template constraints...")
             val t3 = System.currentTimeMillis()
             val elapsedTime = (t3 - startTime)
-            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(
-              SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis - elapsedTime))
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program) with TimeoutSolver),
+                timeoutMillis - elapsedTime))
 
             val (res1, newModel) = if (solveAsInt) {
               //convert templates to integers and solve. Finally, re-convert integer models for templates to real models
@@ -250,7 +250,7 @@ class CegisCore(ctx: InferenceContext,
 
   def minimizeReals(inputCtr: Expr, objective: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
     //val t1 = System.currentTimeMillis()             
-    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program) with TimeoutSolver), timeoutMillis))
     val (res, model1) = sol.solveSAT(inputCtr)
     res match {
       case Some(true) => {
@@ -290,7 +290,7 @@ class CegisCore(ctx: InferenceContext,
               }
               val boundCtr = LessEquals(objective, currval)
               //val t1 = System.currentTimeMillis()             
-              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+              val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program) with TimeoutSolver), timeoutMillis))
               val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
               //val t2 = System.currentTimeMillis()
               //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
@@ -336,7 +336,7 @@ class CegisCore(ctx: InferenceContext,
 
   def minimizeIntegers(inputCtr: Expr, objective: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
     //val t1 = System.currentTimeMillis()             
-    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+    val sol = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program) with TimeoutSolver), timeoutMillis))
     val (res, model1) = sol.solveSAT(inputCtr)
     res match {
       case Some(true) => {
@@ -373,7 +373,7 @@ class CegisCore(ctx: InferenceContext,
             }
             val boundCtr = LessEquals(objective, IntLiteral(currval))
             //val t1 = System.currentTimeMillis()             
-            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program)), timeoutMillis))
+            val solver2 = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(context, program) with TimeoutSolver), timeoutMillis))
             val (res, newModel) = sol.solveSAT(And(inputCtr, boundCtr))
             //val t2 = System.currentTimeMillis()
             //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")

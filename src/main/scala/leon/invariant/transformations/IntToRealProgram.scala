@@ -14,7 +14,7 @@ import invariant.util._
 import invariant.structure._
 
 abstract class ProgramTypeTransformer {
-  protected var defmap = Map[ClassTypeDef, ClassTypeDef]()  
+  protected var defmap = Map[ClassDef, ClassDef]()  
   protected var idmap = Map[Identifier, Identifier]()  
   protected var newFundefs = Map[FunDef, FunDef]()
 
@@ -24,26 +24,28 @@ abstract class ProgramTypeTransformer {
     }).get
   } 
   
-  def mapClass[T <: ClassTypeDef](cdef: T): T = {
+  def mapClass[T <: ClassDef](cdef: T): T = {
     if (defmap.contains(cdef)) {
       defmap(cdef).asInstanceOf[T]
     } else {
       cdef match {
-        case ccdef: CaseClassDef =>          
-          val newclassDef = new CaseClassDef(FreshIdentifier(ccdef.id.name,true))
+        case ccdef: CaseClassDef =>
+          val newparent = if (ccdef.hasParent) {
+            val absType = ccdef.parent.get
+            Some(AbstractClassType(mapClass(absType.classDef), absType.tps))
+          } else None
+          val newclassDef = ccdef.copy(id = FreshIdentifier(ccdef.id.name,true), parent = newparent)
           defmap += (ccdef -> newclassDef)
-          newclassDef.fields = ccdef.fields.map(mapDecl)
-          if (ccdef.hasParent) {
-            newclassDef.setParent(mapClass(ccdef.parent.get))
-          }
+          newclassDef.setFields(ccdef.fields.map(mapDecl))          
           newclassDef.asInstanceOf[T]
 
         case acdef: AbstractClassDef =>
-          val newClassDef = new AbstractClassDef(FreshIdentifier(acdef.id.name,true))
-          defmap += (acdef -> newClassDef)
-          if (acdef.hasParent) {
-            newClassDef.setParent(mapClass(acdef.parent.get))
-          }
+          val newparent = if (acdef.hasParent) {
+            val absType = acdef.parent.get
+            Some(AbstractClassType(mapClass(absType.classDef), absType.tps))
+          } else None
+          val newClassDef = acdef.copy(id = FreshIdentifier(acdef.id.name,true), parent = newparent)
+          defmap += (acdef -> newClassDef)          
           newClassDef.asInstanceOf[T]
       }
     }
@@ -61,16 +63,16 @@ abstract class ProgramTypeTransformer {
       newId
     }
   
-  def mapDecl(decl: VarDecl): VarDecl = {
+  def mapDecl(decl: ValDef): ValDef = {
     val newtpe = mapType(decl.tpe)
-    new VarDecl(mapId(decl.id), newtpe)
+    new ValDef(mapId(decl.id), newtpe)
   }
 
   def mapType(tpe: TypeTree): TypeTree = {
     tpe match {
       case t : NumericType => mapNumericType(t)
-      case AbstractClassType(adef) => AbstractClassType(mapClass(adef))
-      case CaseClassType(cdef) => CaseClassType(mapClass(cdef))
+      case AbstractClassType(adef, tps) => AbstractClassType(mapClass(adef), tps)
+      case CaseClassType(cdef, tps) => CaseClassType(mapClass(cdef), tps)
       case TupleType(bases) => TupleType(bases.map(mapType))
       case _ => tpe
     }
@@ -83,8 +85,8 @@ abstract class ProgramTypeTransformer {
   def transform(program: Program): Program = {
     //create a new fundef for each function in the program
     //Unlike functions, classes are created lazily as required.     
-    newFundefs = program.mainObject.definedFunctions.map((fd) => {
-      val newfd = new FunDef(FreshIdentifier(fd.id.name,true), mapType(fd.returnType), fd.args.map(mapDecl))
+    newFundefs = program.definedFunctions.map((fd) => {
+      val newfd = new FunDef(FreshIdentifier(fd.id.name,true), fd.tparams, mapType(fd.returnType), fd.params.map(mapDecl))
       (fd, newfd)
     }).toMap    
 
@@ -94,12 +96,12 @@ abstract class ProgramTypeTransformer {
     def transformExpr(e: Expr): Expr = e match {
       case l : Literal[_] => mapLiteral(l)      
       case v @ Variable(inId) => mapId(inId).toVariable      
-      case FunctionInvocation(intfd, args) => FunctionInvocation(newFundefs(intfd), args.map(transformExpr))
-      case CaseClass(classDef, args) => CaseClass(mapClass(classDef), args.map(transformExpr))
-      case CaseClassInstanceOf(classDef, expr) => CaseClassInstanceOf(mapClass(classDef), transformExpr(expr))
-      case CaseClassSelector(classDef, expr, fieldId) => {
-        val newclass = mapClass(classDef)
-        CaseClassSelector(newclass, transformExpr(expr), mapField(newclass,fieldId))
+      case FunctionInvocation(TypedFunDef(intfd, tps), args) => FunctionInvocation(TypedFunDef(newFundefs(intfd), tps), args.map(transformExpr))
+      case CaseClass(CaseClassType(classDef, tps), args) => CaseClass(CaseClassType(mapClass(classDef), tps), args.map(transformExpr))
+      case CaseClassInstanceOf(CaseClassType(classDef, tps), expr) => CaseClassInstanceOf(CaseClassType(mapClass(classDef),tps), transformExpr(expr))
+      case CaseClassSelector(CaseClassType(classDef,tps), expr, fieldId) => {
+        val newtype = CaseClassType(mapClass(classDef), tps)
+        CaseClassSelector(newtype, transformExpr(expr), mapField(newtype.classDef,fieldId))
       }
       //need to handle 'let' and 'letTuple' specially
       case Let(binder, value, body) => Let(mapId(binder), transformExpr(value), transformExpr(body))
@@ -141,12 +143,12 @@ abstract class ProgramTypeTransformer {
 
       fd.annotations.foreach((str) => newfd.addAnnotation(str))
     })
-    val newDefs = program.mainObject.defs.map {
+    
+    val newprog = Util.copyProgram(program, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef => newFundefs(fd)
-      case cd: ClassTypeDef => mapClass(cd)
+      case cd: ClassDef => mapClass(cd)
       case d@_ => throw IllegalStateException("Unknown Definition: "+d)
-    }
-    val newprog = program.copy(mainObject = program.mainObject.copy(defs = newDefs))    
+    })    
     newprog
   }
 }

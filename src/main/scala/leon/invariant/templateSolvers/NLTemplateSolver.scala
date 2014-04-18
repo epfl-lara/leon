@@ -384,9 +384,9 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
 
   def solveNLConstraints(nlctrs: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
     val innerSolver = if (solveAsBitvectors) {
-      new UIFZ3Solver(leonctx, program, useBitvectors = true, bitvecSize = bvsize)
+      new UIFZ3Solver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
-      new UIFZ3Solver(leonctx, program)
+      new UIFZ3Solver(leonctx, program) with TimeoutSolver
     }
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 

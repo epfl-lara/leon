@@ -58,7 +58,7 @@ class Minimizer(ctx: InferenceContext) {
 
     //do a binary search on sequentially on each of these tempvars      
     val solver = SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(leonctx, program)),ctx.timeout * 1000))       
+      new TimeoutSolverFactory(SolverFactory(() => new UIFZ3Solver(leonctx, program) with TimeoutSolver),ctx.timeout * 1000))       
 
     println("minimizing...")
     var currentModel = initModel    

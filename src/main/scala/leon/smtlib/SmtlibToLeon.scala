@@ -47,17 +47,17 @@ object SmtlibToLeon {
             case SList(abs :: subtypes) if abs.isInstanceOf[SSymbol] => {
               
               //create a new abstract type, here 
-              val abstype = AbstractClassType(new AbstractClassDef(FreshIdentifier(abs.asInstanceOf[SSymbol].s, false)))
+              val abstype = AbstractClassType(new AbstractClassDef(FreshIdentifier(abs.asInstanceOf[SSymbol].s, false), Seq(), None),Seq())
               typemap += (abs.asInstanceOf[SSymbol] -> abstype) 
               
               subtypes.foreach((dtdec) => dtdec match {
                 case SList(List(sym @ SSymbol(name))) => {
                   //create a new case class type here
-                  val clstype = CaseClassType(new CaseClassDef(FreshIdentifier(name, false),Some(abstype.classDef)))
+                  val clstype = CaseClassType(new CaseClassDef(FreshIdentifier(name, false), Seq(), Some(abstype), false), Seq())
                   typemap += (sym -> clstype)
                   
                   //create a case class constructor function with zero arguments
-                  val ccCons = new FunDef(FreshIdentifier(sym.s, false), abstype,Seq())
+                  val ccCons = new FunDef(FreshIdentifier(sym.s, false), Seq(), abstype,Seq())
                   funMap += (sym -> ccCons)
                 }
                 case SList(head :: fields) if head.isInstanceOf[SSymbol] => {
@@ -66,8 +66,9 @@ object SmtlibToLeon {
                   //create a new case class type here
                   val clstype = CaseClassType(new CaseClassDef(
                       FreshIdentifier(clssym.s, false),
-                      Some(abstype.classDef)
-                      ))
+                      Seq(),
+                      Some(abstype), false
+                      ), Seq())
                   typemap += (clssym -> clstype)
                   
                   var fieldTypes = Seq[TypeTree]()
@@ -76,8 +77,8 @@ object SmtlibToLeon {
                     case SList(List(fsym@SSymbol(_), ftype@SSymbol(_))) => {
                        if(!funMap.contains(fsym)){
                          val rettype = getType(ftype)                         
-                         val argDecls = Seq(VarDecl(FreshIdentifier("arg",true).setType(abstype), abstype))
-                         val fd = new FunDef(FreshIdentifier(fsym.s, false), rettype,  argDecls) 
+                         val argDecls = Seq(ValDef(FreshIdentifier("arg",true).setType(abstype), abstype))
+                         val fd = new FunDef(FreshIdentifier(fsym.s, false), Seq(), rettype,  argDecls) 
                          funMap += (fsym -> fd)
                                                   
                          fieldTypes :+= rettype
@@ -87,8 +88,8 @@ object SmtlibToLeon {
                   })
                   
                   //create a case class constructor function
-                  val ccCons = new FunDef(FreshIdentifier(clssym.s, false), abstype, 
-                		  					fieldTypes.map((ft) => VarDecl(FreshIdentifier("fld",true).setType(ft), ft)))
+                  val ccCons = new FunDef(FreshIdentifier(clssym.s, false), Seq(), abstype, 
+                		  					fieldTypes.map((ft) => ValDef(FreshIdentifier("fld",true).setType(ft), ft)))
                   funMap += (clssym -> ccCons)
                 }
                 case _ => throw new IllegalStateException("Subtype declaration malformed")
@@ -111,9 +112,9 @@ object SmtlibToLeon {
             val argdecls = sorts.map((argtype) => {
               val tpe = getType(argtype.asInstanceOf[SSymbol])
               val argid = FreshIdentifier("arg",true).setType(tpe)
-              VarDecl(argid, tpe)              
+              ValDef(argid, tpe)              
             })                                    
-            val fundef = new FunDef(funid, rettype, argdecls)
+            val fundef = new FunDef(funid, Seq(), rettype, argdecls)
             funMap += (fun -> fundef)
               //varCtr += 1
             //}                          
@@ -179,11 +180,11 @@ object SmtlibToLeon {
             case SSymbol("<") => LessThan(exprs(0), exprs(1))
             case SSymbol(">=") => GreaterEquals(exprs(0), exprs(1))
             case SSymbol(">") => GreaterThan(exprs(0), exprs(1))
-            case sym@SSymbol(_) if(funMap.contains(sym)) => FunctionInvocation(funMap(sym), exprs)
+            case sym@SSymbol(_) if(funMap.contains(sym)) => FunctionInvocation(TypedFunDef(funMap(sym),Seq()), exprs)
             case SSymbol(str) if(str.startsWith("IS-")) => {
               val typename = str.substring(3)
               val cct = getType(SSymbol(typename)).asInstanceOf[CaseClassType]              
-              CaseClassInstanceOf(cct.classDef, exprs(0))
+              CaseClassInstanceOf(cct, exprs(0))
             }            
             case _ => throw new IllegalStateException("Unknown operator: " + op)
           }
@@ -194,7 +195,7 @@ object SmtlibToLeon {
           else if (idname == "FALSE") BooleanLiteral(false)
           else if (idname == "TRUE") BooleanLiteral(true)          
           else if (idname.startsWith("-")) IntLiteral(idname.toInt)
-          else if (funMap.contains(s)) FunctionInvocation(funMap(s), Seq()) //this could be a constant function
+          else if (funMap.contains(s)) FunctionInvocation(TypedFunDef(funMap(s),Seq()), Seq()) //this could be a constant function
           else throw new IllegalStateException("Cannot find mapping for symbol: " + idname)
         }
         case SInt(i) => IntLiteral(i.toInt)

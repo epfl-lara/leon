@@ -34,12 +34,12 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     errorConstants = Set()
 
     //get all user defined classes
-    val defs: Seq[ClassTypeDef] = pgm.definedClasses
+    val defs: Seq[ClassDef] = pgm.definedClasses
     //println("Classes: "+defs.map(_.id))
     
     //partition them into parent, children
-    val partition: Seq[(ClassTypeDef, Seq[CaseClassDef])] = {
-      val parents: Seq[ClassTypeDef] = defs.filter(!_.hasParent)
+    val partition: Seq[(ClassDef, Seq[CaseClassDef])] = {
+      val parents: Seq[ClassDef] = defs.filter(!_.hasParent)
       parents.map(p => (p, defs.filter(_.isInstanceOf[CaseClassDef]).filter(c => c.parent match {
         case Some(p2) => p == p2
         case None => p == c //here parent and children are the same class
@@ -54,8 +54,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       if (fd.returnType == UnitType)
         throw new IllegalStateException("Return Type of function is unit: " + fd.id)
 
-      val newfd = new FunDef(FreshIdentifier(fd.id.name, true), BooleanType,
-        fd.args :+ VarDecl(FreshIdentifier("res", true).setType(fd.returnType), fd.returnType))
+      val newfd = new FunDef(FreshIdentifier(fd.id.name, true), fd.tparams, BooleanType,
+        fd.params :+ ValDef(FreshIdentifier("res", true).setType(fd.returnType), fd.returnType))
       
       hornRels += newfd
       funs += (fd -> newfd)
@@ -88,7 +88,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
   def getFunDecl(fd: FunDef) : SExpr ={
     val name = id2sym(fd.id)
     val returnSort = tpe2sort(fd.returnType)
-    val varDecls: List[(SSymbol, SExpr)] = fd.args.map(vd => (id2sym(vd.id), tpe2sort(vd.tpe))).toList
+    val varDecls: List[(SSymbol, SExpr)] = fd.params.map(vd => (id2sym(vd.id), tpe2sort(vd.tpe))).toList
     SList(SSymbol("declare-fun"), name, SList(varDecls.map(_._2)), SSymbol("Bool"))
   }
 
@@ -96,10 +96,10 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
    * Given the parent classdef (abstractClassDef) and the children classDef (CaseClassDef)
    * adds a smtlib class def to the classDecl  
    */
-  private def classDeclToSmtlibDecl(parent: ClassTypeDef, children: Seq[CaseClassDef])  = {
+  private def classDeclToSmtlibDecl(parent: ClassDef, children: Seq[CaseClassDef])  = {
     val name = id2sym(parent.id)
     val constructors: List[SExpr] = children.map(child => {
-      val fields: List[SExpr] = child.fields.map { case VarDecl(id, tpe) => SList(id2sym(id), tpe2sort(tpe)) }.toList
+      val fields: List[SExpr] = child.fields.map { case ValDef(id, tpe) => SList(id2sym(id), tpe2sort(tpe)) }.toList
       if (fields.isEmpty) SList(id2sym(child.id)) else SList(id2sym(child.id) :: fields)
     }).toList
 
@@ -117,9 +117,9 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     if(tts.contains(tt)) tts(tt)
     else {
       //create a tuple field name for each field      
-      val tupleFields = tt.bases.map((tpe: TypeTree) => VarDecl(FreshIdentifier("tuple-field", true).setType(tpe), tpe))                
-      val ccd = new CaseClassDef(FreshIdentifier("Tuple", true), None)
-      ccd.fields = tupleFields
+      val tupleFields = tt.bases.map((tpe: TypeTree) => ValDef(FreshIdentifier("tuple-field", true).setType(tpe), tpe))                
+      val ccd = new CaseClassDef(FreshIdentifier("Tuple", true), Seq(), None, false)
+      ccd.setFields(tupleFields)
       
       //add ccd to smtlib decls
       classDeclToSmtlibDecl(ccd, Seq(ccd))
@@ -134,8 +134,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     case Int32Type => SSymbol("Int")
     case BooleanType => SSymbol("Bool")
     case ArrayType(baseTpe) => SList(SSymbol("Array"), SSymbol("Int"), tpe2sort(baseTpe))
-    case AbstractClassType(abs) => id2sym(abs.id)
-    case CaseClassType(cc) => {
+    case AbstractClassType(abs, tps) => id2sym(abs.id)
+    case CaseClassType(cc, tps) => {
       if(cc.parent.isDefined){
         //use the parent        
         id2sym(cc.parent.get.id)
@@ -158,13 +158,13 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     //flattenBody         
     if (fd.hasBody) {
       //convert the body to a horn expression with an auxiliary set of implications
-      val params = fd.args.map(_.id)
+      val params = fd.params.map(_.id)
       val paramsRes = params :+ resid      
       val (hornBody, imps) = leonToHorn(Equals(resvar, fd.body.get))
       implications ++= imps      
       //create an implication that (hornBody => fdRel)
       
-      val bodyRel = FunctionInvocation(funs(fd), paramsRes.map(_.toVariable))      
+      val bodyRel = FunctionInvocation(TypedFunDef(funs(fd), Seq()), paramsRes.map(_.toVariable))      
       implications :+= Implies(hornBody, bodyRel)
       
       if(fd.hasPostcondition && fd.postcondition.get._2 != BooleanLiteral(true)) {
@@ -178,7 +178,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         //create an implication that (postRel ^ HornPost => false)
         val postArgs = variablesOf(postExpr).toSeq.map(_.toVariable)
         val postFd = createNewRelation(postArgs.map(_.getType))
-        val postRel = FunctionInvocation(postFd, postArgs)
+        val postRel = FunctionInvocation(TypedFunDef(postFd,Seq()), postArgs)
         implications :+= Implies(And(postRel, hornPost), BooleanLiteral(false))
         
         if(fd.hasPrecondition) {
@@ -189,7 +189,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
           implications ++= imps      
           //create an implication that (hornPost => postRel)
           val preFd = createNewRelation(preArgs.map(_.getType))
-          val preRel = FunctionInvocation(preFd, preArgs)
+          val preRel = FunctionInvocation(TypedFunDef(preFd,Seq()), preArgs)
           implications :+= Implies(hornPre, preRel)
           
           //add pre ^ body => post
@@ -224,8 +224,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
 
   
   private def createNewRelation(types : Seq[TypeTree]) : FunDef = {
-    val newRel = new FunDef(FreshIdentifier("P",true), BooleanType, 
-        types.map((tpe) => VarDecl(FreshIdentifier("arg",true).setType(tpe),tpe)))
+    val newRel = new FunDef(FreshIdentifier("P",true), Seq(), BooleanType, 
+        types.map((tpe) => ValDef(FreshIdentifier("arg",true).setType(tpe),tpe)))
     
     hornRels += newRel
     funs += (newRel -> newRel)
@@ -257,7 +257,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     
     def isHornPred(p : Expr) : Boolean = {
       p match {
-        case FunctionInvocation(fd, _) => hornRels.contains(fd)
+        case FunctionInvocation(tfd, _) => hornRels.contains(tfd.fd)
         case _ => false
       }      
     }
@@ -281,8 +281,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     //Create a mapping for each boolean valued function/instance-of check, from the return value to the call
     var boolResMap = Map[Variable,Expr]()
     simplePostTransform((e: Expr) => e match {
-      case Iff(r @ Variable(_), fi @ FunctionInvocation(fd, _)) => {
-        if(!hornRels.contains(fd)) 
+      case Iff(r @ Variable(_), fi @ FunctionInvocation(tfd, _)) => {
+        if(!hornRels.contains(tfd.fd)) 
           boolResMap += (r -> fi)
         e
       }          
@@ -303,8 +303,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         ExpressionTransformer.tupleSelToCons(e)
       }
       //retain Iff only if fd is a horn relations
-      case Iff(Variable(_), FunctionInvocation(fd, _)) => {        
-        if(hornRels.contains(fd)) e
+      case Iff(Variable(_), FunctionInvocation(tfd, _)) => {        
+        if(hornRels.contains(tfd.fd)) e
         else tru
       }
       //remove all case-class-instance-of
@@ -314,16 +314,16 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
        
     val hornctr = simplePreTransform((e: Expr) => e match {
       //replace functions calls by predicates 
-      case Equals(r @ Variable(_), fi @ FunctionInvocation(fd, args)) => FunctionInvocation(funs(fd), args :+ r)    
+      case Equals(r @ Variable(_), fi @ FunctionInvocation(TypedFunDef(fd,tps), args)) => FunctionInvocation(TypedFunDef(funs(fd),tps), args :+ r)    
       //if 'r' is a return value of a boolean function then replace 'r' by a predicate
       case Not(r @ Variable(_)) => {        
         if (boolResMap.contains(r)) {
           val boolExpr = boolResMap(r)
           boolExpr match {
-            case FunctionInvocation(fd, args) => FunctionInvocation(funs(fd), args :+ fls)
+            case FunctionInvocation(TypedFunDef(fd,tps), args) => FunctionInvocation(TypedFunDef(funs(fd),tps), args :+ fls)
             case CaseClassInstanceOf(cd, arg) => {
               //make ~(args = ccd(dummy*))
-              val ccArgs = cd.fieldsIds.map((fld) => TVarFactory.createDummy.setType(fld.getType).toVariable)
+              val ccArgs = cd.fields.map((fld) => TVarFactory.createDummy.setType(fld.getType).toVariable)
               Not(Equals(arg, CaseClass(cd, ccArgs)))
             }
             case _ => throw IllegalStateException("boolExpr mismatch: "+boolExpr)
@@ -334,10 +334,10 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         if (boolResMap.contains(r)) {
           val boolExpr = boolResMap(r)
           boolExpr match {
-            case FunctionInvocation(fd, args) => FunctionInvocation(funs(fd), args :+ tru)
+            case FunctionInvocation(TypedFunDef(fd,tps), args) => FunctionInvocation(TypedFunDef(funs(fd),tps), args :+ tru)
             case CaseClassInstanceOf(cd, arg) => {
               //make args = ccd(dummy*)
-              val ccArgs = cd.fieldsIds.map((fld) => TVarFactory.createDummy.setType(fld.getType).toVariable)
+              val ccArgs = cd.fields.map((fld) => TVarFactory.createDummy.setType(fld.getType).toVariable)
               Equals(arg, CaseClass(cd, ccArgs))
             }
             case _ => throw IllegalStateException("boolExpr mismatch: "+boolExpr)
@@ -366,7 +366,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
         }).toSeq
         //create new Relation
         val newRel = createNewRelation(freeVars.map(_.getType))        
-        val relApp = FunctionInvocation(newRel, freeVars.map(_.toVariable))
+        val relApp = FunctionInvocation(TypedFunDef(newRel,Seq()), freeVars.map(_.toVariable))
         
         //here, create a bunch of implications
         implications ++= args.map((arg) => Implies(toHorn(arg),relApp))                
