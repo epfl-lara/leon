@@ -568,6 +568,7 @@ trait CodeExtraction extends ASTExtractors {
           (body2, post)*/                           
           
           val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType).setPos(resSym.pos)
+          val resvar = Variable(resId)
           //here we need to check if the contract body has some templates
           val (postcond, templateSyms, templateBody) = contract match {
             case ExTemplateExpression(pcond, tempSyms, tempBody) => {
@@ -577,19 +578,20 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           //extract the postcondition
-          val post = toPureScala(postcond)(fctx.withNewVar(resSym -> (() => Variable(resId)))).map( r => (resId, r))                    
+          val fctxWithRes = fctx.withNewVar(resSym -> (() => resvar))
+          val post = toPureScala(postcond)(fctxWithRes).map( r => (resId, r))                    
           //if the template body exists then create a template expression          
           if(templateBody.isDefined) {
             
             //create a template variable for each template symbol
             val symmap = templateSyms.map((sym) => (sym,leon.invariant.factories.TemplateIdFactory.freshTemplateVar(sym.nameString))).toMap 
             //creating a new context
-            val newfctx = templateSyms.foldLeft(fctx)((acc,tempSym) => {              
+            val newfctx = templateSyms.foldLeft(fctxWithRes)((acc,tempSym) => {              
               acc.withNewVar(tempSym -> (() => symmap(tempSym)))              
             })
-            //println("variables to be substituted: "+varSubsts.map((x) => (x._1,x._2())))
+            //println("variables to be substituted: "+templateSyms.map(sym => (sym, newfctx.vars(sym)())))
             
-            val tempExpr = toPureScala(templateBody.get)(newfctx)            
+            val tempExpr = toPureScala(templateBody.get)(newfctx)                    
             if(tempExpr == None)
               throw new IllegalStateException("Cannot extract template as pure scala!!")
             //println("Template expression : "+tempExpr)
