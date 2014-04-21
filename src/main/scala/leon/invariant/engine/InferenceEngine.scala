@@ -143,8 +143,12 @@ class InferenceEngine(ctx: InferenceContext)  {
     var analyzedSet = Map[FunDef, InferenceCondition]()
 
     functionsToAnalyze.filterNot((fd) => {
-      val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
-      (funinfo.isDefined && funinfo.get.isTheoryOp)
+      (fd.annotations contains "verified") || 
+      (fd.annotations contains "library") || 
+      {
+        val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
+        (funinfo.isDefined && funinfo.get.isTheoryOp)
+      }
     }).foreach((funDef) => {    
 
       //skip the function if it has been analyzed

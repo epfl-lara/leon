@@ -238,7 +238,6 @@ object Definitions {
       assert(tparams.isEmpty)
       TypedFunDef(this, Nil)
     }
-
   }
 
 

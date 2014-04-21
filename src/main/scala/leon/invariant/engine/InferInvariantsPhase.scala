@@ -120,7 +120,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       case _ =>
     }
-    
+        
     /**
      * Note: when withmult is specified we convert the program to a real program
      */    

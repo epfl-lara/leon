@@ -1,5 +1,4 @@
-import scala.collection.immutable.Set
-import leon.Utils._
+import leon.lang.invariantLang._
 
 object InsertionSort {
   sealed abstract class List

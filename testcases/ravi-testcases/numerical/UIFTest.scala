@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang.invariantLang._
 object UIFTest
 {  
 	def s(x: Int, y: Int) : Int = {

@@ -360,6 +360,7 @@ trait AbstractZ3Solver
     )
 
     sorts += Int32Type -> z3.mkIntSort
+    sorts += RealType -> z3.mkRealSort
     sorts += BooleanType -> z3.mkBoolSort
     sorts += UnitType -> us
 
@@ -386,7 +387,7 @@ trait AbstractZ3Solver
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | UnitType =>
+    case Int32Type | BooleanType | UnitType | RealType =>
       sorts.toZ3(oldtt)
 
     case act: AbstractClassType =>
@@ -521,6 +522,7 @@ trait AbstractZ3Solver
       case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
+      case RealLiteral(num,denom) => z3.mkReal(num, denom)
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case UnitLiteral() => unitValue
       case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
@@ -805,7 +807,31 @@ trait AbstractZ3Solver
       val sort = z3.getSort(t)
 
       kind match {
-        case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+        //case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+        case Z3NumeralIntAST(Some(v)) => {
+          //println("Int AST: "+t+" value: "+v)
+          if (encodedAsBV) {
+            //need to sign extend the value
+            val signMask = maxval + 1
+            if ((v & signMask) > 0) {
+              //here we need to fill up the higher order bits by '1'
+              val newv = v | ~(maxval)
+              IntLiteral(newv)
+
+            } else IntLiteral(v)
+          } else {
+            IntLiteral(v)
+          }
+        }
+        case Z3NumeralRealAST(num: BigInt, dem: BigInt) => {
+          //TODO : denominator could be zero
+          /*if(dem.intValue == 0) 
+              throw IllegalStateException("Denominator is zero!! ")*/
+          val rl = RealLiteral(num.intValue, dem.intValue)
+          if (num < Int.MinValue || num > Int.MaxValue || dem < Int.MinValue || dem > Int.MaxValue)
+            rl.setOverflow
+          rl
+        } 
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsZ3 t)) {

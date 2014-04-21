@@ -44,7 +44,7 @@ object Main {
   lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
 
   def displayHelp(reporter: Reporter) {
-    reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    reporter.info("usage: leon [--xlang] [--termination] [--inferInv] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
       reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
@@ -141,6 +141,8 @@ object Main {
     for(opt <- leonOptions) opt match {
       case LeonFlagOption("termination", value) =>
         settings = settings.copy(termination = value)
+      case LeonFlagOption("inferInv", value) =>
+        settings = settings.copy(inferInv = value)
       case LeonFlagOption("synthesis", value) =>
         settings = settings.copy(synthesis = value)
       case LeonFlagOption("library", value) =>
@@ -208,7 +210,10 @@ object Main {
         SynthesisPhase
       } else if (settings.termination) {
         TerminationPhase
-      } else if (settings.xlang) {
+      } else if (settings.inferInv){
+        InferInvariantsPhase
+      }        
+      else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {
         AnalysisPhase

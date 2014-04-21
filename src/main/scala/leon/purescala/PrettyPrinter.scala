@@ -77,8 +77,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           sb.append(")")
         } else {
           pp(id, p)
-        }
-
+        }      
+        
       case LetTuple(bs,d,e) =>
         sb.append("(let ")
         ppNary(bs, "(", ",", " :=");
@@ -541,7 +541,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case TypeParameter(id) =>
         pp(id, p)
 
-      case _ => sb.append("Tree? (" + tree.getClass + ")")
+      case _ => //sb.append("Tree? (" + tree.getClass + ")")
+        sb.append(tree.toString)
     }
     if (opts.printPositions) {
       ppos(tree.getPos)

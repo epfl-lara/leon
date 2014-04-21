@@ -1,6 +1,4 @@
 import leon.lang.invariantLang._
-import leon.lang._
-import leon._
 
 object SimpleLoop
 {
