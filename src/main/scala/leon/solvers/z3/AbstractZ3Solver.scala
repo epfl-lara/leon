@@ -160,6 +160,8 @@ trait AbstractZ3Solver
   protected[leon] var reverseADTTesters: Map[Z3FuncDecl, CaseClassType] = Map.empty
   protected[leon] var reverseADTConstructors: Map[Z3FuncDecl, CaseClassType] = Map.empty
   protected[leon] var reverseADTFieldSelectors: Map[Z3FuncDecl, (CaseClassType,Identifier)] = Map.empty
+  protected[leon] var reverseTupleConstructors: Map[Z3FuncDecl, TupleType] = Map.empty
+  protected[leon] var reverseTupleSelectors: Map[Z3FuncDecl, (TupleType, Int)] = Map.empty
 
   protected[leon] val mapRangeSorts: MutableMap[TypeTree, Z3Sort] = MutableMap.empty
   protected[leon] val mapRangeSomeConstructors: MutableMap[TypeTree, Z3FuncDecl] = MutableMap.empty
@@ -432,12 +434,22 @@ trait AbstractZ3Solver
       }
     case tt @ TupleType(tpes) =>
       sorts.toZ3OrCompute(tt) {
-        val tpesSorts = tpes.map(typeToSort)
+        /*val tpesSorts = tpes.map(typeToSort)
         val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
 
         tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
 
+        tupleSort*/
+        val tpesSorts = tpes.map(typeToSort)
+        val sortSymbol = z3.mkFreshStringSymbol("Tuple")
+        val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
+        tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
+        //tupleSorts += (tt -> tupleSort)
+        //tupleConstructors += (tt -> consTuple)
+        reverseTupleConstructors += (consTuple -> tt)
+        //tupleSelectors += (tt -> projsTuple)
+        projsTuple.zipWithIndex.foreach{ case (proj, i) => reverseTupleSelectors += (proj -> (tt, i)) }
         tupleSort
       }
 
@@ -852,7 +864,12 @@ trait AbstractZ3Solver
             CaseClass(cct, args.map(rec))
           } else if (generics containsZ3 decl)  {
             generics.toLeon(decl)
-          } else {
+          } else if(reverseTupleConstructors contains decl) {
+              val TupleType(subTypes) = reverseTupleConstructors(decl)
+              val rargs = args.map(rec)
+              Tuple(rargs)
+          } 
+          else {
             sort match {
               case LeonType(tp: TypeParameter) =>
                 val id = t.toString.split("!").last.toInt
@@ -928,7 +945,7 @@ trait AbstractZ3Solver
                   case OpIDiv =>    Division(rargs(0), rargs(1))
                   case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
-                    System.err.println("Don't know what to do with this declKind : " + other)
+                    System.err.println("Don't know what to do with this declKind : " + decl)
                     System.err.println("The arguments are : " + args)
                     throw new CantTranslateException(t)
                 }

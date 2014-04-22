@@ -114,6 +114,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case UMinus(expr) => ppUnary(expr, "-(", ")")
       case Equals(l,r) => ppBinary(l, r, " == ")
       case IntLiteral(v) => sb.append(v)
+      case RealLiteral(n,d) => sb.append(n+"/"+d) 
       case BooleanLiteral(v) => sb.append(v)
       case StringLiteral(s) => sb.append("\"" + s + "\"")
       case UnitLiteral() => sb.append("()")

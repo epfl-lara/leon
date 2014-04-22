@@ -1,5 +1,4 @@
-import leon.Utils._
-import leon.Annotations._
+import leon.lang.invariantLang._
 
 object AmortizedQueue {
   sealed abstract class List

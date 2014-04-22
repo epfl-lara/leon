@@ -203,7 +203,9 @@ object Main {
 
     val pipeBegin : Pipeline[List[String],Program] =
       ExtractionPhase andThen
-      PreprocessingPhase
+      PreprocessingPhase andThen
+      invariant.transformations.TimeStepsPhase andThen
+      invariant.transformations.DepthInstPhase
 
     val pipeProcess: Pipeline[Program, Any] = {
       if (settings.synthesis) {

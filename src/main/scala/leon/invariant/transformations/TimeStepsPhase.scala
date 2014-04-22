@@ -127,6 +127,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         val newbody = from.body.map(mapCalls _)        
         newbody
       } 
+      //println("Fun: "+to)
       
       //copy annotations
       from.annotations.foreach((str) => {       
@@ -138,7 +139,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       case fd: FunDef => funMap(fd)
       case d => d
     })    
-    //println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
+//    /println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
     
     //print all the templates
     /*newprog.definedFunctions.foreach((fd) => 

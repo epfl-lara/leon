@@ -83,8 +83,13 @@ object Util {
   val one = IntLiteral(1)
   val tru = BooleanLiteral(true)
   
+  /**
+   * Here, we exclude empty modules without any definitions
+   */
   def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])) : Program = {
-    prog.copy(modules = prog.modules.map(module => module.copy(defs = mapdefs(module.defs))))        
+    prog.copy(modules = prog.modules.collect {
+      case module if(!module.defs.isEmpty) => module.copy(defs = mapdefs(module.defs))
+    })    
   }
   
   def isNumericType(tpe: TypeTree) : Boolean = {

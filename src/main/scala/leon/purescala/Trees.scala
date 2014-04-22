@@ -423,9 +423,9 @@ object Trees {
     private var overflow = false
     def setOverflow =  {
       overflow = true
-    }
-    
+    }    
     def hasOverflow = overflow
+    override def toString =  numerator + "/" + denominator
   }
   
   //a wrapper for real and integer literals (that are wholenumbers and not fractions)
