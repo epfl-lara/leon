@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang.invariantLang._
 
 object QuickSort {
   sealed abstract class List

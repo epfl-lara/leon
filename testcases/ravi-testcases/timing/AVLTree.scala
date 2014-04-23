@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang.invariantLang._
 
 /**
  * created by manos and modified by ravi.
