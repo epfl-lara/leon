@@ -88,6 +88,11 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       }
       val vcSolver = new UIFZ3Solver(leonctx, program)
       vcSolver.assertCnstr(rest)
+      
+      /*vcSolver.check match {
+        case Some(false) => throw IllegalStateException("Non param-part is unsat "+rest)        
+        case _ => ;
+      }*/
       vcSolvers += (fd -> vcSolver)
       paramParts += (fd -> paramPart)
     })

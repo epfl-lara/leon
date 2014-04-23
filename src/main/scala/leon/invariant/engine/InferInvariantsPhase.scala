@@ -8,12 +8,12 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.TypeTrees._
 import verification.VerificationReport
-
 import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
 import invariant.transformations._
+import leon.purescala.ScalaPrinter
 
 /**
  * @author ravi
@@ -120,7 +120,7 @@ object InferInvariantsPhase extends LeonPhase[Program, VerificationReport] {
 
       case _ =>
     }
-        
+            
     /**
      * Note: when withmult is specified we convert the program to a real program
      */    

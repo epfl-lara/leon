@@ -236,10 +236,12 @@ class InferenceEngineGenerator(ctx: InferenceContext,
     }
     //println("Program: "+newprog)
     //println(ScalaPrinter(newprog))
+    //println("New root: "+newroot)
 
     val defaultTactic = new DefaultTactic(reporter)
     defaultTactic.setProgram(newprog)
     val vc = defaultTactic.generatePostconditions(newroot)(0)
+    //println("VC: "+vc.condition)
 
     val verifyTimeout = 5
     val fairZ3 = new SimpleSolverAPI(

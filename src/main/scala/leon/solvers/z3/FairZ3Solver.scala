@@ -453,6 +453,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               foundAnswer(None, model)
             }
           } else {
+            //val model = modelToMap(z3model, varsInVC)
             //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
             //reporter.debug("- Found a model:")
             //reporter.debug(modelAsString)
