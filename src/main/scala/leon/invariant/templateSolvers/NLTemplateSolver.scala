@@ -31,6 +31,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   val debugIncrementalVC = false
   val debugElimination = false
   val debugChooseDisjunct = false
+  val debugTheoryReduction = false
   val debugAxioms = false
   val verifyInvariant = false
   val debugReducedFormula = false
@@ -589,12 +590,12 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   protected def axiomsForTheory(formula : Formula, calls: Set[Call], model: Map[Identifier,Expr]) : Seq[Constraint] = Seq()
 
   protected def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
-
+    
     val formula = ctrTracker.getVC(fd)
     //this picks the satisfiable disjunct of the VC modulo axioms
     val satCtrs = formula.pickSatDisjunct(formula.firstRoot, model)
     //for debugging        
-    if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB) {
+    if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB || this.verifyInvariant) {
       val pathctrs = satCtrs.map(_.toExpr)
       val plainFormula = And(pathctrs)
       val pathcond = simplifyArithmetic(plainFormula)
@@ -608,7 +609,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
 
       if (this.verifyInvariant) {
         println("checking invariant for path...")
-        Util.checkInvariant(pathcond, leonctx, program)
+        val sat = Util.checkInvariant(pathcond, leonctx, program)       
       }
 
       if (this.printPathToConsole) {
@@ -672,7 +673,15 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       lnctrs.map(_.toExpr).foreach((ctr) => {
         if (!doesSatisfyModel(ctr, model))
           throw IllegalStateException("Ctr not satisfied by model: " + ctr)
-      })
+      })           
+    }
+    
+    if(this.debugTheoryReduction) {
+      val simpPathCond = And((lnctrs ++ temps).map(_.template).toSeq)
+      if (this.verifyInvariant) {
+        println("checking invariant for simp-path...")
+        Util.checkInvariant(simpPathCond, leonctx, program)       
+      }
     }
 
     val (data, nlctr) = processNumCtrs(lnctrs.toSeq, temps.toSeq)

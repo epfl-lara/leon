@@ -5,22 +5,20 @@ object ListWithSize {
     case class Cons(head: Int, tail: List) extends List
     case class Nil() extends List
      
-    def size(l: List) : Int = l match {         
+    def size(l: List) : Int = {l match {         
         case Cons(_, t) => 1 + size(t)
         case _ => 0
-    }
+    }} 
     //ensuring(res => true template((a) => a*res <= 0 ))    
-    //ensuring(res => res >= 0)
+    //ensuring(res => res >= 0 template((a) => true))
     //ensuring(res => true template((a) => a*res <= 0 ))
 
     def append(l1 : List, l2 : List) : List = (l1 match {
       case Nil() => l2
-      case Cons(x,xs) => Cons(x, append(xs, l2))      
-
-    }) ensuring(res => true template((a) => time <= 6*size(l1) + 2))
-    //ensuring(res => true template((a,c) => time <= a*size(l1) + c)) 
+      case Cons(x,xs) => Cons(x, append(xs, l2))                  
+    }) ensuring(res => true template((a,c) => time <= a*size(l1) + c)) 
     //ensuring(res => size(res) == size(l1) + size(l2))    
-    // 
+    // ensuring(res => true template((a) => time <= 6*size(l1) + 2))
     //ensuring(res => true template((a,b,c) => time <= a*size(l1) + b*size(l2) + c)) 
     //ensuring(res => size(res) != size(l1) - 1)
     //template((a,b,c) => a*size(l1) + b*size(res) <= 0)

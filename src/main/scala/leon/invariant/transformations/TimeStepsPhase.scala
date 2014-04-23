@@ -321,17 +321,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     def apply(e: Expr): Expr = {
       //lift all expressions that are used in matches to before matches.
       val newe =  liftExprInMatch(e)
-      // Removes pattern matching by translating to equivalent if-then-else      
-      /*var hasMatch = false
-      simplePostTransform((e: Expr) => e match {
-        case MatchExpr(strut, cases) => hasMatch = true; e
-        case _ => e
-      })(newe)*/
-      //if(hasMatch)
-    	//  println("Before match conversion: "+newe)
+      // Removes pattern matching by translating to equivalent if-then-else            
       val input  = matchToIfThenElse(newe)
-      //if(hasMatch)
-//    	  println("After match conversion: "+input)
       
       // For debugging purposes      
       /*println("#"*80)

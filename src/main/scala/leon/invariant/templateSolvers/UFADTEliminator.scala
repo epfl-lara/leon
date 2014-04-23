@@ -10,11 +10,12 @@ import purescala.TypeTrees._
 import java.io._
 import purescala.UndirectedGraph
 import scala.util.control.Breaks._
-
 import invariant.util._
+import leon.purescala.TypeTreeOps
 
 class UFADTEliminator(ctx: LeonContext, program: Program) {
  
+  val debugAliases = false
   val makeEfficient = true //this will happen at the expense of completeness  
   val reporter = ctx.reporter
   
@@ -44,7 +45,20 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       for (i <- j + 1 until size) {
         val call2 = vec(i)
         if (mayAlias(call, call2)) {
+          
+          if (debugAliases)
+            println("Aliases: " + call + "," + call2)            
+            
           pairs ++= Set((call, call2))
+          
+        } else {
+          if (debugAliases) {
+            (call, call2) match {
+              case (Equals(_, t1 @ Tuple(_)), Equals(_, t2 @ Tuple(_))) =>
+                println("No Aliases: " + t1.getType + "," + t2.getType)
+              case _ => println("No Aliases: " + call + "," + call2)
+            }
+          }
         }
       }
       j += 1
@@ -179,6 +193,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
    * This function actually checks if two non-primitive expressions could have the same value
    * (when some constraints on their arguments hold).
    * Remark: notice  that when the expressions have ADT types, then this is basically a form of may-alias check.
+   * TODO: handling generic can become very trickier here.
    */
   def mayAlias(e1: Expr, e2: Expr): Boolean = {
     //check if call and call2 are compatible
@@ -186,7 +201,16 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
       case (Iff(_, FunctionInvocation(fd1, _)), Iff(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
       case (Equals(_, CaseClass(cd1, _)), Equals(_, CaseClass(cd2, _))) if (cd1.id == cd2.id) => true
-      case (Equals(_, tp1 @ Tuple(e1)), Equals(_, tp2 @ Tuple(e2))) if (tp1.getType == tp2.getType) => true
+      case (Equals(_, tp1 @ Tuple(e1)), Equals(_, tp2 @ Tuple(e2))) => {
+        //get the types and check if the types are compatible
+        val TupleType(tps1) = tp1.getType
+        val TupleType(tps2) = tp2.getType
+        (tps1 zip tps2).forall(pair => {
+          val (t1,t2) = pair
+          val lub = TypeTreeOps.leastUpperBound(t1,t2)
+          (lub == Some(t1) || lub == Some(t2))           
+        })
+      }
       case _ => false
     }
   }

@@ -425,7 +425,10 @@ object Trees {
       overflow = true
     }    
     def hasOverflow = overflow
-    override def toString =  numerator + "/" + denominator
+    override def toString =  {
+      if(denominator == 1) numerator.toString
+      else numerator + "/" + denominator
+    }
   }
   
   //a wrapper for real and integer literals (that are wholenumbers and not fractions)

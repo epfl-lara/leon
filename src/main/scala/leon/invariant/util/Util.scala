@@ -275,9 +275,11 @@ object Util {
   /**
    * A helper function that can be used to hardcode an invariant and see if it unsatifies the paths
    */
-  def checkInvariant(expr: Expr, ctx: LeonContext, prog: Program) : Option[Boolean] = {    
-    val thirty = IntLiteral(30)
-    val idmap: Map[Expr, Expr] = variablesOf(expr).collect { case id @ _ if (id.name.toString == "e?" || id.name.toString == "f?") => (id.toVariable -> thirty) }.toMap
+  def checkInvariant(expr: Expr, ctx: LeonContext, prog: Program) : Option[Boolean] = {        
+    val idmap: Map[Expr, Expr] = variablesOf(expr).collect { 
+      case id@_ if (id.name.toString == "a?") => id.toVariable -> IntLiteral(6)
+      case id@_ if (id.name.toString == "c?") => id.toVariable -> IntLiteral(2)
+      }.toMap
     //println("found ids: " + idmap.keys)
     if (!idmap.keys.isEmpty) {
       val newpathcond = replace(idmap, expr)
@@ -285,11 +287,11 @@ object Util {
       val solver = SimpleSolverAPI(SolverFactory(() => new UIFZ3Solver(ctx, prog)))
       solver.solveSAT(newpathcond)._1 match {
         case Some(true) => {
-          println("Path satisfiable for e?,f? -->30 ")
+          println("Path satisfiable for a?,c? -->6,2 ")
           Some(true)
         }
         case _ => {
-          println("Path unsat for e?,f? --> 30")
+          println("Path unsat for a?,c? --> 6,2")
           Some(false)
         }
       }
