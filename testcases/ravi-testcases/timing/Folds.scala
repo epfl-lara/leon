@@ -13,7 +13,7 @@ object TreeMaps {
     } 
   }
   
-  /*def parallelSearch(elem : Int, t : Tree) : Boolean = {
+  def parallelSearch(elem : Int, t : Tree) : Boolean = {
     t match {      
       case Node(l, x, r) =>
         if(x == elem) true
@@ -25,7 +25,7 @@ object TreeMaps {
         }
       case Leaf() => false
     }
-  } ensuring(res => true template((a,b) => time <= a*size(t) + b))*/
+  } ensuring(res => true template((a,b) => time <= a*size(t) + b))
   
  
   def squareMap(t : Tree) : Tree = {
@@ -38,7 +38,7 @@ object TreeMaps {
     }
   } ensuring (res => true template((a,b) => time <= a*size(t) + b))
   
-  /*sealed abstract class List
+  sealed abstract class List
   case class Cons(head: Int, tail: List) extends List
   case class Nil() extends List
 
@@ -72,5 +72,5 @@ object TreeMaps {
       Cons(f, factMap(t, x-1))      
     }
     
-  }} ensuring(res => true template((a,b) => time <= a*(k*k) + b))*/
+  }} ensuring(res => true template((a,b) => time <= a*(k*k) + b))
 } 

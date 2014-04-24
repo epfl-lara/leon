@@ -86,7 +86,7 @@ trait AbstractZ3Solver
 
   object LeonType {
     def unapply(a: Z3Sort): Option[(TypeTree)] = {
-      sorts.getLeon(a).map(tt => (tt))
+      sorts.getLeon(a).map(tt => (tt))      
     }
   }
 
@@ -434,23 +434,11 @@ trait AbstractZ3Solver
       }
     case tt @ TupleType(tpes) =>
       sorts.toZ3OrCompute(tt) {
-        /*val tpesSorts = tpes.map(typeToSort)
-        val sortSymbol = z3.mkFreshStringSymbol("Tuple")
-        val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
-
-        tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
-
-        tupleSort*/
         val tpesSorts = tpes.map(typeToSort)
         val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
         tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
-        //tupleSorts += (tt -> tupleSort)
-        //tupleConstructors += (tt -> consTuple)
-        reverseTupleConstructors += (consTuple -> tt)
-        //tupleSelectors += (tt -> projsTuple)
-        projsTuple.zipWithIndex.foreach{ case (proj, i) => reverseTupleSelectors += (proj -> (tt, i)) }
-        tupleSort
+        tupleSort        
       }
 
     case tt @ TypeParameter(id) =>
@@ -816,7 +804,7 @@ trait AbstractZ3Solver
   protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST) : Expr = {
     def rec(t: Z3AST): Expr = {
       val kind = z3.getASTKind(t)
-      val sort = z3.getSort(t)
+      val sort = z3.getSort(t)      
 
       kind match {
         //case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
@@ -864,20 +852,20 @@ trait AbstractZ3Solver
             CaseClass(cct, args.map(rec))
           } else if (generics containsZ3 decl)  {
             generics.toLeon(decl)
-          } else if(reverseTupleConstructors contains decl) {
+          } /*else if(reverseTupleConstructors contains decl) {
               val TupleType(subTypes) = reverseTupleConstructors(decl)
               val rargs = args.map(rec)
               Tuple(rargs)
-          } 
+          }*/ 
           else {
-            sort match {
-              case LeonType(tp: TypeParameter) =>
-                val id = t.toString.split("!").last.toInt
-                GenericValue(tp, id)
-
+            sort match {              
               case LeonType(tp: TupleType) =>
                 val rargs = args.map(rec)
                 Tuple(rargs)
+                
+              case LeonType(tp: TypeParameter) =>
+                val id = t.toString.split("!").last.toInt
+                GenericValue(tp, id)              
 
               case LeonType(at @ ArrayType(dt)) =>
                 assert(args.size == 2)
@@ -945,7 +933,7 @@ trait AbstractZ3Solver
                   case OpIDiv =>    Division(rargs(0), rargs(1))
                   case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
-                    System.err.println("Don't know what to do with this declKind : " + decl)
+                    System.err.println("Don't know what to do with this sort : " + sort)
                     System.err.println("The arguments are : " + args)
                     throw new CantTranslateException(t)
                 }
