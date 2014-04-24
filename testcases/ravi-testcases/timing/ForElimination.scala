@@ -1,5 +1,4 @@
 import leon.lang.invariantLang._
-import leon.Annotations._
 
 object ForElimination { 
 

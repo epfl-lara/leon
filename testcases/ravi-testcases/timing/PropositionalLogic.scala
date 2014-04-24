@@ -1,6 +1,5 @@
 import scala.collection.immutable.Set
 import leon.lang.invariantLang._
-import leon.Annotations._
 
 object PropositionalLogic { 
 

@@ -20,6 +20,7 @@ package object annotation {
   class proxy      extends StaticAnnotation
   @ignore
   class ignore     extends StaticAnnotation
-
+  @ignore
+  class monotonic extends StaticAnnotation
 }
 

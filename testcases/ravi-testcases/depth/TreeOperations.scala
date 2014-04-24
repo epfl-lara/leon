@@ -1,4 +1,5 @@
-import leon.Utils._
+import leon.lang.invariantLang._
+import leon.annotation._
 
 object TreeOperations {
 

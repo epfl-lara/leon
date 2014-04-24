@@ -437,7 +437,9 @@ trait AbstractZ3Solver
         val tpesSorts = tpes.map(typeToSort)
         val sortSymbol = z3.mkFreshStringSymbol("Tuple")
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
+
         tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
+
         tupleSort        
       }
 
@@ -489,6 +491,17 @@ trait AbstractZ3Solver
         z3Vars = z3Vars + (i -> re)
         val rb = rec(b)
         z3Vars = z3Vars - i
+        rb
+      }
+      case LetTuple(ids, e, b) => {
+        var ix = 1
+        z3Vars = z3Vars ++ ids.map((id) => {
+          val entry = (id -> rec(TupleSelect(e, ix)))
+          ix += 1
+          entry
+        })
+        val rb = rec(b)
+        z3Vars = z3Vars -- ids
         rb
       }
       case Waypoint(_, e) => rec(e)

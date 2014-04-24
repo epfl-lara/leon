@@ -1,14 +1,4 @@
-/** 
- * Okasaki3_2
- * 
- * Based on the chapter 3.2 of Okasaki's paper Purely Functional Data Structure
- * Implements the "Binomial Heap" data structure described in the chapter.
- * 
- * @author Florian Briant
- **/
-
 import leon.lang.invariantLang._
-import leon.Annotations._
 
 object BinomialHeap {    
   sealed abstract class BinomialTree

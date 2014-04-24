@@ -2,8 +2,7 @@
  * @author Ravi
  **/
 
-import leon.Utils._
-import leon.Annotations._
+import leon.lang.invariantLang._
 
 object BinomialHeap {    
   sealed abstract class BinomialTree
