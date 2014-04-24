@@ -686,8 +686,17 @@ object TreeOps {
           val newRhs = replaceFromIDs(map, cse.rhs)
           (realCond, newRhs)
         }
+        
+        //Remark: this is hack re-introduced by ravi
+        val optCondsAndRhs = if(isMatchExhaustive(m)) {
+          // this is a hackish optimization: because we know all cases are covered, we replace the last condition by true (and that drops the check)
+          val lastExpr = condsAndRhs.last._2
+          condsAndRhs.dropRight(1) ++ Seq((BooleanLiteral(true),lastExpr))
+        } else {
+          condsAndRhs
+        }
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("non-exhaustive match").copiedFrom(m))((p1, ex) => {
+        val bigIte = optCondsAndRhs.foldRight[Expr](Error("non-exhaustive match").copiedFrom(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {

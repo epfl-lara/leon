@@ -1,14 +1,14 @@
 import leon.lang.invariantLang._
 
 object BinomialHeap {    
-  sealed abstract class BinomialTree
-  case class Node(rank: Int, elem: Element, children: BinomialHeap) extends BinomialTree   
+  //sealed abstract class TreeNode
+  case class TreeNode(rank: Int, elem: Element, children: BinomialHeap)    
   
   sealed abstract class ElementAbs
   case class Element(n: Int) extends ElementAbs
   
   sealed abstract class BinomialHeap
-  case class ConsHeap(head: BinomialTree, tail: BinomialHeap) extends BinomialHeap
+  case class ConsHeap(head: TreeNode, tail: BinomialHeap) extends BinomialHeap
   case class NilHeap extends BinomialHeap
   
   sealed abstract class List
@@ -16,7 +16,7 @@ object BinomialHeap {
   case class NilL() extends List
   
   sealed abstract class OptionalTree
-  case class Some(t : BinomialTree) extends OptionalTree
+  case class Some(t : TreeNode) extends OptionalTree
   case class None extends OptionalTree
   
   /* Lower or Equal than for Element structure */
@@ -36,45 +36,37 @@ object BinomialHeap {
   /* isEmpty function of the Binomial Heap */
   def isEmpty(t: BinomialHeap) = t match {
     case ConsHeap(_,_) => false
-    case NilHeap() => true
+    case _ => true
   }
   
-  /* Helper function to determine rank of a BinomialTree */
-  def rank(t: BinomialTree) : Int =  t match {
-    case Node(r, _, _) => r
-  }
+  /* Helper function to determine rank of a TreeNode */
+  def rank(t: TreeNode) : Int = t.rank /*t match {
+    case TreeNode(r, _, _) => r    
+  }*/
   
-  /* Helper function to get the root element of a BinomialTree */
-  def root(t: BinomialTree) : Element = t match {
-    case Node(_, e, _) => e
-  }
-  
-  /* Linking trees of equal ranks depending on the root element */ 
-  def link(t1: BinomialTree, t2: BinomialTree) : BinomialTree = {    
-    t1 match {
-        case Node(r, x1, c1) => {
-          t2 match {
-            case Node(_, x2, c2) => {
-              if (leq(x1,x2)) {
-                  Node(r+1, x1, ConsHeap(t2, c1))  
-              } else {
-                  Node(r+1, x2, ConsHeap(t1, c2))
-              }
-            }
-          }
-        }
+  /* Helper function to get the root element of a TreeNode */
+  def root(t: TreeNode) : Element = t.elem /*t match {
+    case TreeNode(_, e, _) => e
+  }*/
+
+  /* Linking trees of equal ranks depending on the root element */
+  def link(t1: TreeNode, t2: TreeNode): TreeNode = {
+    if (leq(t1.elem, t2.elem)) {
+      TreeNode(t1.rank + 1, t1.elem, ConsHeap(t2, t1.children))
+    } else {
+      TreeNode(t1.rank + 1, t2.elem, ConsHeap(t1, t2.children))
     }
   } 
   
   def treeNum(h: BinomialHeap) : Int = {
     h match {
       case ConsHeap(head, tail) =>  1 + treeNum(tail)
-      case NilHeap() => 0
+      case _ => 0
     }
   }
 
   /* Insert a tree into a binomial heap. The tree should be correct in relation to the heap */
-  def insTree(t: BinomialTree, h: BinomialHeap) : BinomialHeap = {    
+  def insTree(t: TreeNode, h: BinomialHeap) : BinomialHeap = {    
     h match {
       case ConsHeap(head, tail) =>  {
         if (rank(t) < rank(head)) {
@@ -85,7 +77,7 @@ object BinomialHeap {
           insTree(link(t,head), tail)
         }
       }
-      case NilHeap() => ConsHeap(t, NilHeap())
+      case _ => ConsHeap(t, NilHeap())
     }
   } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))
 
@@ -103,46 +95,42 @@ object BinomialHeap {
               mergeWithCarry(link(head1, head2), tail1, tail2)
             }
           }
-          case NilHeap() => h1
+          case _ => h1
         }
       }
-      case NilHeap() => h2
+      case _ => h2
     }
   } ensuring(res => true template((a,b,c) => time <= a*treeNum(h1) + b*treeNum(h2) + c))
 
-  def mergeWithCarry(t: BinomialTree, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {    
-    t match {
-      case Node(r, _, _) => {
-        h1 match {
-          case ConsHeap(head1, tail1) => {
-            h2 match {
-              case ConsHeap(head2, tail2) => {
-                if (rank(head1) < rank(head2)) {
-                  
-                  if (rank(t) < rank(head1))
-                    ConsHeap(t, ConsHeap(head1, merge(tail1, h2)))
-                  else                    
-                    mergeWithCarry(link(t, head1), tail1, h2)
-                  
-                } else if (rank(head2) < rank(head1)) {
-                  
-                  if (rank(t) < rank(head2))
-                    ConsHeap(t, ConsHeap(head2, merge(h1, tail2)))
-                  else                    
-                    mergeWithCarry(link(t, head2), h1, tail2)
-                  
-                } else {
-                  ConsHeap(t, mergeWithCarry(link(head1, head2), tail1, tail2))
-                }
-              }
-              case NilHeap() => {                
-                insTree(t, h1)
-              }
+  def mergeWithCarry(t: TreeNode, h1: BinomialHeap, h2: BinomialHeap): BinomialHeap = {
+    h1 match {
+      case ConsHeap(head1, tail1) => {
+        h2 match {
+          case ConsHeap(head2, tail2) => {
+            if (rank(head1) < rank(head2)) {
+
+              if (rank(t) < rank(head1))
+                ConsHeap(t, ConsHeap(head1, merge(tail1, h2)))
+              else
+                mergeWithCarry(link(t, head1), tail1, h2)
+
+            } else if (rank(head2) < rank(head1)) {
+
+              if (rank(t) < rank(head2))
+                ConsHeap(t, ConsHeap(head2, merge(h1, tail2)))
+              else
+                mergeWithCarry(link(t, head2), h1, tail2)
+
+            } else {
+              ConsHeap(t, mergeWithCarry(link(head1, head2), tail1, tail2))
             }
           }
-          case NilHeap() => insTree(t, h2)
+          case _ => {
+            insTree(t, h1)
+          }
         }
       }
+      case _ => insTree(t, h2)
     }
   } ensuring (res => true template ((d, e, f) => time <= d * treeNum(h1) + e * treeNum(h2) + f))
 
@@ -152,14 +140,14 @@ object BinomialHeap {
       case ConsHeap(head, NilHeap()) => (Some(head), NilHeap())
       case ConsHeap(head1, tail1) => {
         val (opthead2, tail2) = removeMinTree(tail1)
-        opthead2 match {
-          case None() => (Some(head1), tail1)
+        opthead2 match {          
           case Some(head2) =>
             if (leq(root(head1), root(head2))) {
               (Some(head1), tail1)
             } else {
               (Some(head2), ConsHeap(head1, tail2))
             }
+          case _ => (Some(head1), tail1)
         }
       }
       case _ => (None(), NilHeap())
@@ -169,7 +157,7 @@ object BinomialHeap {
   /*def findMin(h: BinomialHeap) : Element = {	  
 	  val (opt, _) = removeMinTree(h)
 	  opt match {
-	    case Some(Node(_,e,ts1)) => e
+	    case Some(TreeNode(_,e,ts1)) => e
 	    case _ => Element(-1)
 	  }	  
   } ensuring(res => true template((a,b) => time <= a*treeNum(h) + b))*/ 
@@ -177,7 +165,7 @@ object BinomialHeap {
   def minTreeChildren(h: BinomialHeap) : Int = {    
     val (min, _) = removeMinTree(h)
     min match {      
-      case Some(Node(_,_,ch)) => treeNum(ch)
+      case Some(TreeNode(_,_,ch)) => treeNum(ch)
       case _ => 0
 	}
   }
@@ -186,7 +174,7 @@ object BinomialHeap {
   def deleteMin(h: BinomialHeap) : BinomialHeap = {	 
 	  val (min, ts2) = removeMinTree(h)
 	  min match {	    
-		case Some(Node(_,_,ts1)) => merge(ts1, ts2)
+		case Some(TreeNode(_,_,ts1)) => merge(ts1, ts2)
 		case _ => h		  
 	  }
   } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c)) 

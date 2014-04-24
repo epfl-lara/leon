@@ -115,7 +115,7 @@ object ExpressionTransformer {
           val resset = transform(newexpr)          
           (quo, resset._2 + resset._1)          
         }
-        case err@Error(msg) => {
+        case err@Error(msg) => {          
           //replace this by a fresh variable of the error type
           (TVarFactory.createTemp("err").setType(err.getType).toVariable, Set[Expr]())
         }

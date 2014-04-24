@@ -439,7 +439,7 @@ trait AbstractZ3Solver
         val (tupleSort, consTuple, projsTuple) = z3.mkTupleSort(sortSymbol, tpesSorts: _*)
 
         tupleMetaDecls += tt -> TupleDecls(consTuple, projsTuple)
-
+        reverseTupleConstructors += (consTuple -> tt)
         tupleSort        
       }
 
@@ -865,11 +865,11 @@ trait AbstractZ3Solver
             CaseClass(cct, args.map(rec))
           } else if (generics containsZ3 decl)  {
             generics.toLeon(decl)
-          } /*else if(reverseTupleConstructors contains decl) {
+          } else if(reverseTupleConstructors contains decl) {
               val TupleType(subTypes) = reverseTupleConstructors(decl)
               val rargs = args.map(rec)
               Tuple(rargs)
-          }*/ 
+          } 
           else {
             sort match {              
               case LeonType(tp: TupleType) =>

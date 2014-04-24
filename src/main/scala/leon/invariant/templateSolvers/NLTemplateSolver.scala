@@ -107,6 +107,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
    */
+  var candidateModel : Option[Map[Identifier,Expr]] = None
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     //initialize vcs of functions
@@ -115,7 +116,13 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     if(useIncrementalSolvingForVCs) {
       initVCSolvers
     } 
-    val initModel = {
+    val initModel = /*if(candidateModel.isDefined) {
+      val candModel = candidateModel.get
+      val simplestModel = tempIds.map((id) => (id -> 
+      	(if(candModel.contains(id)) candModel(id) 
+          else simplestValue(id.getType)))).toMap
+      simplestModel
+    } else*/ {
       val simplestModel = tempIds.map((id) => (id -> simplestValue(id.getType))).toMap
       simplestModel
     }
@@ -156,6 +163,9 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
+    
+    //this is a hack as of now
+    //candidateModel = Some(model)
     /*paramParts.foreach(entry => {
       val (fd, pp) = entry
       val ppinst = TemplateInstantiator.instantiate(pp, model.map(entry => (entry._1.toVariable -> entry._2)))
