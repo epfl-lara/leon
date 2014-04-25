@@ -15,29 +15,22 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 * Extend the approach to graph algorithms
 
 ############Short term goals###############
-* How to scale up minimization
+* Need to handle overflows while translating z3 model to Leon ASTs. One way is to get a different model. 
+  Note that bounding values may only produce small models for integers and not for reals
+* How to scale up minimization ?
 * Can we use guards to block disjuncts ? In this case, we cannot block selective cases of UFADT axiom but only on the whole
-* Eliminate transitivity when choosing axioms (for distributivity or monotonicity)
-* Why isn't distributivity working ??
+* Eliminate transitivite equalities when choosing axioms (for distributivity or monotonicity)
 * Add support for finding counter examples for inferred time bounds
 * Profile and check if we can improve performace
-* Try adding dist. + monotonicity for mergesort. Provide a way to enable/disable axioms/
-  May be make multiplication, as something that is commutative, associative, distributive and monotonic.
-* What if we use multiplication as it is in the VC ?? Something to try
+* Provide a way to enable/disable axioms/. May be make multiplication, as something that is commutative, associative, distributive and monotonic.
 * use ?(0) as a lightweight syntax for templates.
-* Fix the divide by zero errors happening because of integer overflows.
 * Fix warnings
 * Should we try to use other optimization functions for CEGIS
-* rebase to newer version of leon
-	- Take note of nondet, assume, AbsZ3Solver, FairZ3Solver, Phases, Bugfixes in match-to-if-then-else, fresenLocals, etc. 
-* Some programs still to try: HeapSort, MergeSort (needs more axioms) , QuickSort (needs more axioms of multiplication), Union-find, Binary-search
+* Need to check the correctness of the following after rebase: nondet, assume.
+* Some programs still to try: HeapSort, MergeSort (needs more axioms) , QuickSort (needs more axioms of multiplication), Union-find, Binary-search (need random access arrays)
 * Try the space bound examples
 
 #########Experimental comparisons###########
 * Try cegis over the entire program (not the intermediate one) 
 * Try HSF by coding up the numerical versions of the programs as horn-clauses
 * 
-
-
-
-

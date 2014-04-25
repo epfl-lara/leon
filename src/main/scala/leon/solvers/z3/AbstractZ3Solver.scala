@@ -306,6 +306,10 @@ trait AbstractZ3Solver
       case _=>
         RegularSort(typeToSort(tt))
     }
+    
+    for((root, childrenList) <- newHierarchies){
+      println(root+":"+childrenList)      
+    }
 
     // Define stuff
     val defs = for ((root, childrenList) <- newHierarchies) yield {
@@ -316,14 +320,14 @@ trait AbstractZ3Solver
       )
     }
 
-    //for ((n, sub, cstrs) <- defs) {
-    //  println(n+":")
-    //  for ((s,css) <- sub zip cstrs) {
-    //    println("  "+s)
-    //    println("    -> "+css)
-    //  }
-    //}
-
+    for ((n, sub, cstrs) <- defs) {
+      println(n+":")
+      for ((s,css) <- sub zip cstrs) {
+        println("  "+s)
+        println("    -> "+css)
+      }
+    }
+       
     val resultingZ3Info = z3.mkADTSorts(defs)
 
     for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip newHierarchies)) {
@@ -820,7 +824,9 @@ trait AbstractZ3Solver
       val sort = z3.getSort(t)      
 
       kind match {
-        //case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+        case Z3NumeralIntAST(None) => {
+          throw IllegalStateException("Encountered Overflow while translation from z3 to Leon AST: value = "+t)
+        }
         case Z3NumeralIntAST(Some(v)) => {
           //println("Int AST: "+t+" value: "+v)
           if (encodedAsBV) {
@@ -953,7 +959,7 @@ trait AbstractZ3Solver
             }
           }
         case _ =>
-          System.err.println("Can't handle "+t)
+          System.err.println("Can't handle "+t+" kind: "+kind+" sort: "+sort)
           throw new CantTranslateException(t)
       }
     }

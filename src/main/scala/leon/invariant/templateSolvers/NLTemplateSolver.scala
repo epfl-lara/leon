@@ -53,6 +53,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   //flag controlling behavior  
   private val farkasSolver = new FarkasLemmaSolver()
   private val minimizer = new Minimizer(ctx)  
+  private val startFromEarlierModel = false //note: this feature is empirically slower which is counter-intuitive.    
   private val disableCegis = true
   private val solveAsBitvectors = false
   private val bvsize = 5
@@ -65,6 +66,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   protected var vcSolvers = Map[FunDef, UIFZ3Solver]()
   protected var paramParts = Map[FunDef, Expr]()   
   private var solverWithNLctrs : UIFZ3Solver = null //not used as of now
+  private var lastFoundModel : Option[Map[Identifier,Expr]] = None
   
   protected def splitVC(fd: FunDef) : (Expr,Expr) = {
     ctrTracker.getVC(fd).splitParamPart
@@ -81,19 +83,18 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       if(Util.hasReals(rest) && Util.hasInts(rest)) 
         throw IllegalStateException("Non-param Part has both integers and reals: "+rest)
       
-      if (debugIncrementalVC) {
-        assert(Util.getTemplateVars(rest).isEmpty)
-        println("For function: "+fd.id)        
-        println("Param part: "+paramPart)
-        //println("Rest: "+rest)        
-      }
       val vcSolver = new UIFZ3Solver(leonctx, program)
       vcSolver.assertCnstr(rest)
       
-      /*vcSolver.check match {
+      if (debugIncrementalVC) {
+        assert(Util.getTemplateVars(rest).isEmpty)
+        println("For function: " + fd.id)
+        println("Param part: " + paramPart)                       
+        /*vcSolver.check match {
         case Some(false) => throw IllegalStateException("Non param-part is unsat "+rest)        
         case _ => ;
-      }*/
+      	}*/
+      }           
       vcSolvers += (fd -> vcSolver)
       paramParts += (fd -> paramPart)
     })
@@ -106,8 +107,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   /**
    * This function computes invariants belonging to the given templates incrementally.
    * The result is a mapping from function definitions to the corresponding invariants.
-   */
-  var candidateModel : Option[Map[Identifier,Expr]] = None
+   */  
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     //initialize vcs of functions
@@ -116,15 +116,11 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     if(useIncrementalSolvingForVCs) {
       initVCSolvers
     } 
-    val initModel = /*if(candidateModel.isDefined) {
-      val candModel = candidateModel.get
-      val simplestModel = tempIds.map((id) => (id -> 
-      	(if(candModel.contains(id)) candModel(id) 
-          else simplestValue(id.getType)))).toMap
-      simplestModel
-    } else*/ {
-      val simplestModel = tempIds.map((id) => (id -> simplestValue(id.getType))).toMap
-      simplestModel
+    val initModel = if(this.startFromEarlierModel && lastFoundModel.isDefined) {
+      val candModel = lastFoundModel.get
+      tempIds.map(id => (id -> candModel.getOrElse(id, simplestValue(id.getType)))).toMap      
+    } else {
+      tempIds.map((id) => (id -> simplestValue(id.getType))).toMap      
     }
     val sol = solveUNSAT(initModel, tru, Seq(), Set())
         
@@ -164,8 +160,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     val candInvs = getAllInvariants(model)
     candInvs.foreach((entry) => println(entry._1.id + "-->" + entry._2))
     
-    //this is a hack as of now
-    //candidateModel = Some(model)
+    if(this.startFromEarlierModel) this.lastFoundModel = Some(model)
     /*paramParts.foreach(entry => {
       val (fd, pp) = entry
       val ppinst = TemplateInstantiator.instantiate(pp, model.map(entry => (entry._1.toVariable -> entry._2)))

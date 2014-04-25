@@ -31,12 +31,17 @@ abstract class ProgramTypeTransformer {
       cdef match {
         case ccdef: CaseClassDef =>
           val newparent = if (ccdef.hasParent) {
-            val absType = ccdef.parent.get
+            val absType = ccdef.parent.get            
             Some(AbstractClassType(mapClass(absType.classDef), absType.tps))
           } else None
-          val newclassDef = ccdef.copy(id = FreshIdentifier(ccdef.id.name,true), parent = newparent)
+          val newclassDef = ccdef.copy(id = FreshIdentifier(ccdef.id.name, true), parent = newparent)
+          
+          //important: register a child if a parent was newly created.
+          if(newparent.isDefined)
+        	  newparent.get.classDef.registerChildren(newclassDef)
+            
           defmap += (ccdef -> newclassDef)
-          newclassDef.setFields(ccdef.fields.map(mapDecl))          
+          newclassDef.setFields(ccdef.fields.map(mapDecl))
           newclassDef.asInstanceOf[T]
 
         case acdef: AbstractClassDef =>
@@ -44,10 +49,10 @@ abstract class ProgramTypeTransformer {
             val absType = acdef.parent.get
             Some(AbstractClassType(mapClass(absType.classDef), absType.tps))
           } else None
-          val newClassDef = acdef.copy(id = FreshIdentifier(acdef.id.name,true), parent = newparent)
-          defmap += (acdef -> newClassDef)          
+          val newClassDef = acdef.copy(id = FreshIdentifier(acdef.id.name, true), parent = newparent)
+          defmap += (acdef -> newClassDef)
           newClassDef.asInstanceOf[T]
-      }
+      }     
     }
   }
   

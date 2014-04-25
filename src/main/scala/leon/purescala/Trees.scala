@@ -426,7 +426,7 @@ object Trees {
     }    
     def hasOverflow = overflow
     override def toString =  {
-      if(denominator == 1) numerator.toString
+      if(denominator == 1) numerator.toString      
       else numerator + "/" + denominator
     }
   }

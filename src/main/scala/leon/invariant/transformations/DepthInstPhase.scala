@@ -370,7 +370,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     
     def simplifyMax(ine: Expr) : Expr = {
       simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(fd, args) if(fd == maxFun)  => {
+        case FunctionInvocation(tfd, args) if(tfd.fd == maxFun)  => {
           val Seq(arg1, arg2) = args
           (arg1, arg2) match {
             case (a1@IntLiteral(v1), a2@IntLiteral(v2)) => if(v1 >= v2) a1 else a2

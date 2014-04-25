@@ -99,7 +99,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case Equals(l,r)          => optParentheses { ppBinary(l, r, " == ") }
 
       case IntLiteral(v)        => sb.append(v)
-      case RealLiteral(n,d)		=> sb.append(n+"/"+d)
+      case RealLiteral(n,d)		=>  if(d==1) sb.append(n) else sb.append(n+"/"+d)
       case BooleanLiteral(v)    => sb.append(v)
       case StringLiteral(s)     => sb.append("\"" + s + "\"")
       case UnitLiteral()        => sb.append("()")

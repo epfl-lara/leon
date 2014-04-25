@@ -27,5 +27,5 @@ class InferenceContext(
   val statsSuffix : String)  {  
   
   val reporter = leonContext.reporter
-  val multOp: (Expr,Expr) => Expr = (e1, e2) => FunctionInvocation(TypedFunDef(multfun,multfun.params.map(_.tpe)), Seq(e1, e2))
+  val multOp: (Expr,Expr) => Expr = (e1, e2) => FunctionInvocation(TypedFunDef(multfun,multfun.tparams.map(_.tp)), Seq(e1, e2))
 }

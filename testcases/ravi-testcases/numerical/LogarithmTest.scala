@@ -1,5 +1,5 @@
-import leon.Utils._
-import leon.Annotations._
+import leon.lang.invariantLang._
+import leon.annotation._
 
 object LogarithmTest {
   

@@ -171,7 +171,7 @@ object Util {
   def hasInts(expr : Expr) : Boolean = {
     var foundInt = false
     simplePostTransform((e :Expr) => e match {
-      case e : Terminal if(e.getType == Int32Type) => {          
+      case e : Terminal if(e.getType == Int32Type) => {              
         foundInt = true;
         e      
       } 
