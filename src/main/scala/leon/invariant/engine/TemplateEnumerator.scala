@@ -131,7 +131,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
           //Check if adding a call from 'rootFun' to 'fun' creates a mutual recursion by checking if
           //'fun' transitively calls 'rootFun'
           //println("Checking if "+fun.id+ " transitively calls "+rootFun.id)
-          if (!callGraph.transitivelyCalls(fun, rootFun)) {                        
+          if (fun != rootFun && !callGraph.transitivelyCalls(fun, rootFun)) {                        
             
             //check if every argument has at least one satisfying assignment?
             if (fun.params.filter((vardecl) => !ttCurrent.contains(vardecl.tpe)).isEmpty) {

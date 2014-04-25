@@ -26,7 +26,7 @@ class CallGraph {
     graph.BFSReachables(src)
   }
   
-  def isRecursive(fd: FunDef) : Boolean = {
+  def isRecursive(fd: FunDef) : Boolean = {    
     transitivelyCalls(fd,fd)
   }
 
@@ -34,7 +34,8 @@ class CallGraph {
    * Checks if the src transitively calls the procedure proc
    */
   def transitivelyCalls(src: FunDef, proc: FunDef): Boolean = {
-    graph.BFSReach(src, proc)
+    //important: We cannot say that src calls it self even though source is reachable from itself in the callgraph
+    graph.BFSReach(src, proc, excludeSrc = true)
   }
 
   def calls(src: FunDef, proc: FunDef): Boolean = {

@@ -63,7 +63,7 @@ object NondeterminismConverter extends LeonPhase[Program,Program] {
 	})
 	//find all functions that transitively call rootFuncs (here ignore functions called via pre/post conditions)
 	val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
-	val callers = program.definedFunctions.foldLeft(Set[FunDef]())((acc, fd) => {
+	val callers = rootFuncs ++ program.definedFunctions.foldLeft(Set[FunDef]())((acc, fd) => {
 	  if(rootFuncs.exists(cg.transitivelyCalls(fd, _)))
 	      acc + fd
 	      else acc

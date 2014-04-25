@@ -16,7 +16,7 @@ class DirectedGraph[T] {
     edgeCount += 1    
   }
 
-  def BFSReach(src: T, dest: T): Boolean = {
+  def BFSReach(src: T, dest: T, excludeSrc: Boolean = false): Boolean = {
     var queue = List[T]()
     var visited = Set[T]()
     visited += src
@@ -42,7 +42,7 @@ class DirectedGraph[T] {
       }
     }
 
-    if(src == dest) true
+    if(!excludeSrc && src == dest) true
     else BFSReachRecur(src)
   }
   

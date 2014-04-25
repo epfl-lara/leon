@@ -2,10 +2,8 @@ import leon.lang.invariantLang._
 
 object BinomialHeap {    
   //sealed abstract class TreeNode
-  case class TreeNode(rank: Int, elem: Element, children: BinomialHeap)    
-  
-  sealed abstract class ElementAbs
-  case class Element(n: Int) extends ElementAbs
+  case class TreeNode(rank: Int, elem: Element, children: BinomialHeap)      
+  case class Element(n: Int) 
   
   sealed abstract class BinomialHeap
   case class ConsHeap(head: TreeNode, tail: BinomialHeap) extends BinomialHeap
