@@ -491,6 +491,18 @@ trait AbstractZ3Solver
         z3Vars = z3Vars - i
         rb
       }
+
+      case LetTuple(ids, e, b) => {
+        var ix = 1
+        z3Vars = z3Vars ++ ids.map((id) => {
+          val entry = (id -> rec(TupleSelect(e,ix)))
+          ix += 1
+          entry
+        })
+        val rb = rec(b)
+        z3Vars = z3Vars -- ids
+        rb
+      }
       case Waypoint(_, e) => rec(e)
       case e @ Error(_) => {
         val tpe = e.getType
