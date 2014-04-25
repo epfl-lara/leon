@@ -369,19 +369,42 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     }
     
     def simplifyMax(ine: Expr) : Expr = {
-      simplePostTransform((e: Expr) => e match {
+            
+      //assuming that every sub-term used in the term is positive
+      //Note: this is applicable only to expressions involving depth
+      def positiveTermLowerBound(e: Expr) : Int = e match {
+        case IntLiteral(v) => v
+        case Plus(IntLiteral(v),r) => v + positiveTermLowerBound(r)
+        case Plus(l, IntLiteral(v)) => v + positiveTermLowerBound(l)
+        case FunctionInvocation(tfd, args) if(tfd.fd == maxFun) => { 
+          val Seq(arg1, arg2) = args
+          val lb1 = positiveTermLowerBound(arg1)
+          val lb2 = positiveTermLowerBound(arg2)
+          if(lb1 >= lb2) lb1 else lb2
+        }
+        case _ => 0 //other case are not handled as they do not appear
+      }
+      val simpe = simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(tfd, args) if(tfd.fd == maxFun)  => {
           val Seq(arg1, arg2) = args
           (arg1, arg2) match {
             case (a1@IntLiteral(v1), a2@IntLiteral(v2)) => if(v1 >= v2) a1 else a2
-            case _ => {
-               //here inline the maxFun (optimization)
-              IfExpr(GreaterEquals(arg1,arg2), arg1, arg2)
-            }
+            //in the sequel, we are using the fact that 'depth' is positive and 'ine' contains only 'depth' variables            
+            case (IntLiteral(v), r) if (v <= positiveTermLowerBound(r)) => r
+            case (l, IntLiteral(v)) if (v <= positiveTermLowerBound(l)) => l
+            case _ => e 
           }                             
         }
-        case _ => simplifyArithmetic(e)        
-      })(ine)
+        case _ => e        
+      })(simplifyArithmetic(ine))
+      
+      //inline 'max' operations here
+      simplePostTransform((e: Expr) => e match {
+        case FunctionInvocation(tfd, args) if(tfd.fd == maxFun)  =>
+          val Seq(arg1, arg2) = args
+          IfExpr(GreaterEquals(arg1,arg2), arg1, arg2)        
+        case _ => e        
+      })(simpe)      
     }
     
     def liftExprInMatch(ine: Expr) : Expr = {

@@ -305,11 +305,7 @@ trait AbstractZ3Solver
 
       case _=>
         RegularSort(typeToSort(tt))
-    }
-    
-    for((root, childrenList) <- newHierarchies){
-      println(root+":"+childrenList)      
-    }
+    }     
 
     // Define stuff
     val defs = for ((root, childrenList) <- newHierarchies) yield {
@@ -320,13 +316,13 @@ trait AbstractZ3Solver
       )
     }
 
-    for ((n, sub, cstrs) <- defs) {
+    /*for ((n, sub, cstrs) <- defs) {
       println(n+":")
       for ((s,css) <- sub zip cstrs) {
         println("  "+s)
         println("    -> "+css)
       }
-    }
+    }*/
        
     val resultingZ3Info = z3.mkADTSorts(defs)
 
