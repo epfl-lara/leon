@@ -15,6 +15,7 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 * Extend the approach to graph algorithms
 
 ############Short term goals###############
+* Should we add positivity constraints for depth and time variables ?
 * Need to handle overflows while translating z3 model to Leon ASTs. One way is to get a different model. 
   Note that bounding values may only produce small models for integers and not for reals
 * How to scale up minimization ?
@@ -22,12 +23,13 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 * Eliminate transitivite equalities when choosing axioms (for distributivity or monotonicity)
 * Add support for finding counter examples for inferred time bounds
 * Profile and check if we can improve performace
-* Provide a way to enable/disable axioms/. May be make multiplication, as something that is commutative, associative, distributive and monotonic.
+* Provide a way to enable/disable axioms. 
+* Make multiplication, as something that is commutative, associative, distributive and monotonic.
 * use ?(0) as a lightweight syntax for templates.
 * Fix warnings
 * Should we try to use other optimization functions for CEGIS
 * Need to check the correctness of the following after rebase: nondet, assume.
-* Some programs still to try: HeapSort, MergeSort (needs more axioms) , QuickSort (needs more axioms of multiplication), Union-find, Binary-search (need random access arrays)
+* Some programs still to handle: HeapSort, MergeSort (needs more axioms) , QuickSort (needs more axioms of multiplication), Union-find, Binary-search (need random access arrays)
 * Try the space bound examples
 
 #########Experimental comparisons###########
