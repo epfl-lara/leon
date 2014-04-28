@@ -14,6 +14,8 @@ import invariant.structure._
 
 /**
  * TODO: is it necessary to create new functions even if it does not use depth 
+ * TODO: can we use a different strategy for instrumentation. 
+ * Instead of saying: let (x,y) = (let ... in (u,v)) in e2, we can use "let ... in e2[u/x,y/v]. 
  */
 object DepthInstPhase extends LeonPhase[Program,Program] {
   val name = "Expose Depth Phase"

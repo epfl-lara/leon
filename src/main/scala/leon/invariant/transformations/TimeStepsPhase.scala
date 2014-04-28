@@ -14,7 +14,9 @@ import invariant.structure._
 import leon.purescala.ScalaPrinter
 
 /**
- * TODO: is it necessary to create new functions even if it does not use time 
+ * TODO: is it necessary to create new functions even if it does not use time
+ * TODO: can we use a different strategy for instrumentation. 
+ * Instead of saying: let (x,y) = (let ... in (u,v)) in e2, we can use "let ... in e2[u/x,y/v]. 
  */
 object TimeStepsPhase extends LeonPhase[Program,Program] {
   val name = "Expose Time Phase"

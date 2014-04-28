@@ -15,6 +15,7 @@ If its a bounded polygon all that we need to do is check if its diameter is atle
 * Extend the approach to graph algorithms
 
 ############Short term goals###############
+* Can we use a different strategy for instrumentation. Instead of saying: let (x,y) = (let ... in (u,v)) in e2, we can use "let ... in e2[u/x,y/v] ??
 * Should we add positivity constraints for depth and time variables ?
 * Need to handle overflows while translating z3 model to Leon ASTs. One way is to get a different model. 
   Note that bounding values may only produce small models for integers and not for reals
