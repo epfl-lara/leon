@@ -21,7 +21,7 @@ object Main {
       smtlib.LeonToHornPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
-      verification.AnalysisPhase
+      verification.AnalysisPhase      
     )
   }
 
@@ -143,6 +143,8 @@ object Main {
         settings = settings.copy(termination = value)
       case LeonFlagOption("inferInv", value) =>
         settings = settings.copy(inferInv = value)
+      case LeonFlagOption("genHorn", value) =>
+        settings = settings.copy(genHorn = value)
       case LeonFlagOption("synthesis", value) =>
         settings = settings.copy(synthesis = value)
       case LeonFlagOption("library", value) =>
@@ -214,8 +216,9 @@ object Main {
         TerminationPhase
       } else if (settings.inferInv){
         InferInvariantsPhase
-      }        
-      else if (settings.xlang) {
+      } else if (settings.genHorn){
+        smtlib.LeonToHornPhase
+      } else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {
         AnalysisPhase

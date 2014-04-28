@@ -14,7 +14,7 @@ import invariant.util.TVarFactory
 import leon.invariant.util.ExpressionTransformer
 
 /** This pretty-printer prints an SMTLIB2 representation of the Purescala program */
-class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
+class HornClausePrinter(pgm: Program) {
 
   private var errorConstants: Set[(SSymbol, SExpr)] = Set()
   private var classDecls = Seq[SExpr]()  
@@ -38,13 +38,18 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
     //println("Classes: "+defs.map(_.id))
     
     //partition them into parent, children
-    val partition: Seq[(ClassDef, Seq[CaseClassDef])] = {
+    /*val partition: Seq[(ClassDef, Seq[CaseClassDef])] = {
       val parents: Seq[ClassDef] = defs.filter(!_.hasParent)
       parents.map(p => (p, defs.filter(_.isInstanceOf[CaseClassDef]).filter(c => c.parent match {
         case Some(p2) => p == p2
         case None => p == c //here parent and children are the same class
       }).asInstanceOf[Seq[CaseClassDef]]))
-    }
+    }*/    
+    val partition = defs.collect {
+      case root: ClassDef if !root.hasParent => { 
+        (root, root.knownChildren.collect{case t: CaseClassDef => t})
+      }      
+    } 
     //create a smtlib class decl for each parent-children pair
     partition.foreach{ case (parent, children) => classDeclToSmtlibDecl(parent, children)}
 
@@ -76,10 +81,10 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       ( sortDecls ++
         funDecls ++
         sortErrors ++
-        convertedFunDefs ++
+        convertedFunDefs         
         //Seq(SList(SSymbol("check-sat")))
-        Seq(SList(SSymbol("check-sat-using"), SList(SSymbol("with horn :engine tab"))))
-            /*SList(SSymbol("get-model")))*/
+        //++ Seq(SList(SSymbol("check-sat-using"), SList(SSymbol("with horn :engine tab"))))
+        /*SList(SSymbol("get-model")))*/
       )
     ).map(SExprs.toString(_)).mkString("\n")
 
@@ -234,13 +239,12 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
 
   //converts an arbitrary leon expression to a horn clause
   private def leonToHorn(expr: Expr) : (Expr, Seq[Expr]) = {
-    val simpExpr = matchToIfThenElse(expr)   
-    //val flatExpr = ExpressionTransformer.TransformNot(ExpressionTransformer.normalizeExpr(simpExpr))
+    val simpExpr = matchToIfThenElse(expr)       
     //Do not flatten functions here. Flatten them while creating clauses
     val nnfExpr = {
       ExpressionTransformer.pullAndOrs(
     	ExpressionTransformer.TransformNot(
-          ExpressionTransformer.reduceLangBlocks(simpExpr,Times), retainNEQ = true //, retainIff = true
+          ExpressionTransformer.reduceLangBlocks(simpExpr,Times), retainNEQ = true 
           )
        )
     }
@@ -250,8 +254,8 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
   }
   
   private def toHorn(body: Expr) : Expr = {
-    //This is an optimization: separate predicates in the body that are not nested from the rest. Such predicates 
-    // need not be flattened    
+    //This is an optimization: separate predicates in the body that are not nested from the rest.
+    //Such predicates need not be flattened    
     var preds = Seq[Expr]()
     var constraints = Seq[Expr]()
     
@@ -275,7 +279,7 @@ class HornClausePrinter(pgm: Program, removeOrs : Boolean) {
       }      
     }
        
-    //flatten constraints (note this may introduce iff operation, however these are handled specially)
+    //flatten constraints (note this may introduce iff operation which are handled specially)
     val flatCtr = ExpressionTransformer.FlattenFunction(And(constraints))
     
     //Create a mapping for each boolean valued function/instance-of check, from the return value to the call

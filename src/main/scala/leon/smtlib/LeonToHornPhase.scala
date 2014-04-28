@@ -37,43 +37,33 @@ import leon.verification.VerificationReport
  */
 object LeonToHornPhase extends UnitPhase[Program] {
   val name = "genHorn"
-  val description = "Horn clause generation phase"
-  val fls = BooleanLiteral(false)
+  val description = "Horn clause generation phase" 
   
   override val definedOptions: Set[LeonOptionDef] = Set(      
-    LeonValueOptionDef("outfilename", "--outfilename=<filename>", "name of the output file to dump horn clauses"),
-    LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
-    LeonValueOptionDef("removeOrs", "--removeOrs", "Removes disjunctions from the generated horn clauses")
+    LeonValueOptionDef("outfilename", "--outfilename=<filename>", "name of the output file to dump horn clauses")    
   )
 
   def apply(ctx: LeonContext, program: Program) = {
 
     val reporter = ctx.reporter                 
     reporter.info("Running Horn clause generation Phase...")
-
-    //val functionsToAnalyse: MutableSet[String] = MutableSet.empty
-    var outfile = new PrintWriter("horn-clauses.smt2")
+    
+    var outfilename = "horn-clauses.smt2" 
     var removeOrs = true
 
     for (opt <- ctx.options) opt match {
-//      case LeonValueOption("functions", ListValue(fs)) =>
-//        functionsToAnalyse ++= fs
-
       case LeonValueOption("outfilename", ListValue(fs)) => {
-        val name = fs(0)
-        outfile = new PrintWriter(name)
-      }
-      case v@LeonValueOption("removeOrs", value) => {        
-        removeOrs = value.toBoolean
+        outfilename = fs(0)                
       }      
-      case _ =>
+      case _ => ;
     }
-
+    val outfile = new PrintWriter(outfilename)
     val t1 = System.currentTimeMillis()    
-    val smtlibstr = new HornClausePrinter(program, removeOrs).toSmtLib
+    val smtlibstr = new HornClausePrinter(program).toSmtLib
     outfile.print(smtlibstr)
     outfile.flush()
     outfile.close()
-    val t2 = System.currentTimeMillis()   
+    val t2 = System.currentTimeMillis()
+    reporter.info("Completed in "+(t2-t1)/1000.0+"s")
   }
 }
