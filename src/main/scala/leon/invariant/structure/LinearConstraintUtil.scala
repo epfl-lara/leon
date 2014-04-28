@@ -29,12 +29,16 @@ object LinearConstraintUtil {
     })
     fis.toSet
   }
-  
-  def exprToTemplate(expr: Expr): LinearTemplate = {
-    val res = tryExprToTemplate(expr)
-    if(res.isDefined) res.get
-    else throw new IllegalStateException("The expression reduced to True: "+expr)
+
+  def evaluate(lt: LinearTemplate): Option[Boolean] = lt match {
+    case lc: LinearConstraint if (lc.coeffMap.size == 0) =>
+      ExpressionTransformer.simplify(lt.toExpr) match {
+        case BooleanLiteral(v) => Some(v)
+        case _ => None
+      }
+    case _ => None
   }
+    
    /**
    * the expression 'Expr' is required to be a linear atomic predicate (or a template),
    * if not, an exception would be thrown.
@@ -42,7 +46,7 @@ object LinearConstraintUtil {
    * The function returns a linear template or a linear constraint depending
    * on whether the expression has template variables or not
    */
-  def tryExprToTemplate(expr: Expr): Option[LinearTemplate] = {
+  def exprToTemplate(expr: Expr): LinearTemplate = {
     
     //these are the result values
     var coeffMap = MutableMap[Expr, Expr]()
@@ -88,8 +92,8 @@ object LinearConstraintUtil {
     val linearExpr = MakeLinear(expr)    
     //the top most operator should be a relation
     val BinaryOperator(lhs, IntLiteral(0), op) = linearExpr
-    if (lhs.isInstanceOf[IntLiteral])
-      throw IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)
+    /*if (lhs.isInstanceOf[IntLiteral])
+      throw IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)*/
 
     val minterms =  getMinTerms(lhs)
 
@@ -124,15 +128,14 @@ object LinearConstraintUtil {
     })
     
     if(coeffMap.isEmpty && constant.isEmpty) {
-      //here the generated template reduced to true      
-      None
+      //here the generated template the constant term is zero.      
+      new LinearConstraint(op, Map.empty, Some(zero))
     } else if(isTemplate) {  
-      Some(new LinearTemplate(op, coeffMap.toMap, constant))
+      new LinearTemplate(op, coeffMap.toMap, constant)
     } else{
-      Some(new LinearConstraint(op, coeffMap.toMap,constant))      
+      new LinearConstraint(op, coeffMap.toMap,constant)      
     }         
   }
-
   
   /**
    * This method may have to do all sorts of transformation to make the expressions linear constraints.
@@ -257,25 +260,26 @@ object LinearConstraintUtil {
     val rese = mkLinearRecur(atom)   
     rese
   }
-  
+
   /**
    * Replaces an expression by another expression in the terms of the given linear constraint.
    */
-  def replaceInCtr(replaceMap : Map[Expr,Expr], lc : LinearConstraint) : Option[LinearConstraint] = {
-    
+  def replaceInCtr(replaceMap: Map[Expr, Expr], lc: LinearConstraint): Option[LinearConstraint] = {
+
     //println("Replacing in "+lc+" repMap: "+replaceMap)    
     val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(replaceMap, lc.toExpr)))
     //println("new expression: "+newexpr)
-    
-    if(newexpr == tru) None
+    if (newexpr == tru) None
     else {
-      val res = tryExprToTemplate(newexpr)      
-      if(res.isEmpty) None
-      else {
-        val resctr = res.get.asInstanceOf[LinearConstraint]        
-        if(ExpressionTransformer.simplify(resctr.toExpr) == tru) None
-        else Some(resctr)
-      }      
+      val res = exprToTemplate(newexpr)
+      //check if res is true or false
+      evaluate(res) match {
+        case Some(false) => throw IllegalStateException("!!Constraint reduced to false during elimination: " + lc)
+        case Some(true) => None //constraint reduced to true
+        case _ =>
+          val resctr = res.asInstanceOf[LinearConstraint]
+          Some(resctr)
+      }
     }
   }
   

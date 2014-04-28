@@ -17,8 +17,9 @@ import invariant.structure._
  */
 object DepthInstPhase extends LeonPhase[Program,Program] {
   val name = "Expose Depth Phase"
-  val description = "Expose depth of a function"  
-
+  val description = "Expose depth of a function"
+  val debugMaxSimplify = false
+    
   val maxFun = {
     val xid = FreshIdentifier("x").setType(Int32Type)
     val yid = FreshIdentifier("y").setType(Int32Type)
@@ -367,15 +368,14 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
       println(simple)*/
       simple
     }
-    
+        
     def simplifyMax(ine: Expr) : Expr = {
             
       //assuming that every sub-term used in the term is positive
       //Note: this is applicable only to expressions involving depth
       def positiveTermLowerBound(e: Expr) : Int = e match {
-        case IntLiteral(v) => v
-        case Plus(IntLiteral(v),r) => v + positiveTermLowerBound(r)
-        case Plus(l, IntLiteral(v)) => v + positiveTermLowerBound(l)
+        case IntLiteral(v) => v        
+        case Plus(l,r) => positiveTermLowerBound(l) + positiveTermLowerBound(r)
         case FunctionInvocation(tfd, args) if(tfd.fd == maxFun) => { 
           val Seq(arg1, arg2) = args
           val lb1 = positiveTermLowerBound(arg1)
@@ -384,19 +384,53 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         }
         case _ => 0 //other case are not handled as they do not appear
       }
+      //in the sequel, we are using the fact that 'depth' is positive and 'ine' contains only 'depth' variables
       val simpe = simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(tfd, args) if(tfd.fd == maxFun)  => {
-          val Seq(arg1, arg2) = args
-          (arg1, arg2) match {
-            case (a1@IntLiteral(v1), a2@IntLiteral(v2)) => if(v1 >= v2) a1 else a2
-            //in the sequel, we are using the fact that 'depth' is positive and 'ine' contains only 'depth' variables            
-            case (IntLiteral(v), r) if (v <= positiveTermLowerBound(r)) => r
-            case (l, IntLiteral(v)) if (v <= positiveTermLowerBound(l)) => l
-            case _ => e 
-          }                             
+          if(debugMaxSimplify) {
+        	  println("Simplifying: "+e)
+          }          
+          val newargs = args.map(simplifyArithmetic)
+          val Seq(arg1, arg2) = newargs           
+          val simpval = if (!Util.hasCalls(arg1) && !Util.hasCalls(arg2)) {
+            import LinearConstraintUtil._
+            val lt = exprToTemplate(LessEquals(Minus(arg1, arg2), zero))
+            //now, check if all the variables in 'lt' have only positive coefficients  
+            val allPositive = lt.coeffTemplate.forall(entry => entry match {
+              case (k, IntLiteral(v)) if (v >= 0) => true
+              case _ => false
+            }) && (lt.constTemplate match {
+              case None => true
+              case Some(IntLiteral(v)) if (v >= 0) => true
+              case _ => false
+            })
+
+            val allNegative = lt.coeffTemplate.forall(entry => entry match {
+              case (k, IntLiteral(v)) if (v <= 0) => true
+              case _ => false
+            }) && (lt.constTemplate match {
+              case None => true
+              case Some(IntLiteral(v)) if (v <= 0) => true
+              case _ => false
+            })
+
+            if (allPositive) arg1
+            else if (allNegative) arg2
+            else FunctionInvocation(tfd, newargs) //here we cannot do any simplification.
+          } else {
+            (arg1, arg2) match {                          
+              case (IntLiteral(v), r) if (v <= positiveTermLowerBound(r)) => r
+              case (l, IntLiteral(v)) if (v <= positiveTermLowerBound(l)) => l
+              case _ => FunctionInvocation(tfd, newargs)
+            }
+          }
+          if(debugMaxSimplify) {
+            println("Simplified value: "+simpval)
+          }
+          simpval
         }
         case _ => e        
-      })(simplifyArithmetic(ine))
+      })(ine)
       
       //inline 'max' operations here
       simplePostTransform((e: Expr) => e match {

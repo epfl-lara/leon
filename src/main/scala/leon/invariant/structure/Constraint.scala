@@ -27,6 +27,8 @@ trait Constraint {
  * a1*v1 + a2*v2 + .. + an*vn + a0 <= 0 or = 0 or < 0 where ai's are unknown coefficients 
  * which could be any arbitrary expression with template variables as free variables
  * and vi's are variables.
+ * Note: we need atleast one coefficient or one constant to be defined.
+ * Otherwise a NPE will be thrown (in the computation of 'template')
  */
 class LinearTemplate(oper: (Expr,Expr) => Expr,
     coeffTemp : Map[Expr, Expr],
@@ -247,12 +249,11 @@ object ConstraintUtil {
         simpe match {
           case b: BooleanLiteral => BoolConstraint(b)
           case _ => {
-            val template = LinearConstraintUtil.tryExprToTemplate(ie)
-            if (template.isDefined) template.get
-            else {
-              //TODO: can this be false
-              BoolConstraint(BooleanLiteral(true))
-            }
+            val template = LinearConstraintUtil.exprToTemplate(ie)
+            LinearConstraintUtil.evaluate(template) match {
+              case Some(v) => BoolConstraint(BooleanLiteral(v))
+              case _ => template
+            }            
           }
         }        
       }

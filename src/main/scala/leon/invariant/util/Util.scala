@@ -216,7 +216,9 @@ object Util {
       case _ => e
     })(e)
     count
-  } 
+  }
+  
+  def hasCalls(e: Expr) = numUIFADT(e) >= 1  
   
   def getCallExprs(ine: Expr) : Set[Expr] = {
     var calls = Set[Expr]()
@@ -359,7 +361,6 @@ object Util {
       case _ => e
     })(ine)
   }
-
 
   def replaceInstruVars(e: Expr, fd: FunDef): Expr = {
     //replace the time instrument variable by TimeVariable()
