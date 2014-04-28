@@ -360,7 +360,7 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
       // Apply transformations 
       //Initially the mapping from letIdToDepth is empty (optionally we could add parameters with depth 0)
       val res    = transform(input, Map())      
-      val simple = simplifyMax(simplifyLets(res))
+      val simple = inlineMax(simplifyMax(simplifyLets(res)))
 
       // For debugging purposes            
       /*println("-"*80)
@@ -370,8 +370,8 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
     }
         
     def simplifyMax(ine: Expr) : Expr = {
-            
-      //assuming that every sub-term used in the term is positive
+        
+      //computes a lower bound value, assuming that every sub-term used in the term is positive
       //Note: this is applicable only to expressions involving depth
       def positiveTermLowerBound(e: Expr) : Int = e match {
         case IntLiteral(v) => v        
@@ -384,6 +384,18 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
         }
         case _ => 0 //other case are not handled as they do not appear
       }
+
+      //checks if 'sub' is subsumed by 'e' i.e, 'e' will always take a value greater than or equal to 'sub'.
+      //Assuming that every sub-term used in the term is positive
+      def subsumedBy(sub: Expr, e: Expr) : Boolean = e match {
+        case _ if(sub == e)  => true        
+        case Plus(l,r) => subsumedBy(sub,l) || subsumedBy(sub,r) 
+        case FunctionInvocation(tfd, args) if(tfd.fd == maxFun) =>  
+          val Seq(l, r) = args
+          subsumedBy(sub,l) || subsumedBy(sub,r)        
+        case _ => false
+      }  
+      
       //in the sequel, we are using the fact that 'depth' is positive and 'ine' contains only 'depth' variables
       val simpe = simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(tfd, args) if(tfd.fd == maxFun)  => {
@@ -404,23 +416,26 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
               case Some(IntLiteral(v)) if (v >= 0) => true
               case _ => false
             })
-
-            val allNegative = lt.coeffTemplate.forall(entry => entry match {
-              case (k, IntLiteral(v)) if (v <= 0) => true
-              case _ => false
-            }) && (lt.constTemplate match {
-              case None => true
-              case Some(IntLiteral(v)) if (v <= 0) => true
-              case _ => false
-            })
-
             if (allPositive) arg1
-            else if (allNegative) arg2
-            else FunctionInvocation(tfd, newargs) //here we cannot do any simplification.
+            else {
+              val allNegative = lt.coeffTemplate.forall(entry => entry match {
+                case (k, IntLiteral(v)) if (v <= 0) => true
+                case _ => false
+              }) && (lt.constTemplate match {
+                case None => true
+                case Some(IntLiteral(v)) if (v <= 0) => true
+                case _ => false
+              })
+              if (allNegative) arg2
+              else FunctionInvocation(tfd, newargs) //here we cannot do any simplification.
+            } 
+            
           } else {
             (arg1, arg2) match {                          
               case (IntLiteral(v), r) if (v <= positiveTermLowerBound(r)) => r
               case (l, IntLiteral(v)) if (v <= positiveTermLowerBound(l)) => l
+              case (l,r) if subsumedBy(l,r) => r
+              case (l,r) if subsumedBy(r,l) => l
               case _ => FunctionInvocation(tfd, newargs)
             }
           }
@@ -430,15 +445,30 @@ object DepthInstPhase extends LeonPhase[Program,Program] {
           simpval
         }
         case _ => e        
-      })(ine)
-      
+      })(ine)    
+      simpe
+    }
+
+    def inlineMax(ine: Expr): Expr = {
       //inline 'max' operations here
       simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(tfd, args) if(tfd.fd == maxFun)  =>
+        case FunctionInvocation(tfd, args) if (tfd.fd == maxFun) =>
           val Seq(arg1, arg2) = args
-          IfExpr(GreaterEquals(arg1,arg2), arg1, arg2)        
-        case _ => e        
-      })(simpe)      
+          val bindWithLet = (value: Expr, body: (Expr with Terminal) => Expr) => {
+            value match {
+              case t: Terminal => body(t)
+              case Let(id, v, b: Terminal) =>
+                //here we can use 'b' in 'body'
+                Let(id, v, body(b))
+              case _ =>
+                val mt = TVarFactory.createTemp("mt").setType(value.getType)
+                Let(mt, value, body(mt.toVariable))
+            }
+          }
+          bindWithLet(arg1, a1 => bindWithLet(arg2, a2 => IfExpr(GreaterEquals(a1, a2), a1, a2)))
+
+        case _ => e
+      })(ine)
     }
     
     def liftExprInMatch(ine: Expr) : Expr = {
