@@ -1,6 +1,6 @@
 //import scala.collection.immutable.Set
 import leon.lang.invariantLang._
-import leon.annotations._
+import leon.annotation._
 
 object MergeSort {
   sealed abstract class List
