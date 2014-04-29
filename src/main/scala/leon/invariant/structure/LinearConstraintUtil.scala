@@ -21,6 +21,7 @@ object LinearConstraintUtil {
   val one = IntLiteral(1)
   val mone = IntLiteral(-1)
   val tru = BooleanLiteral(true)
+  val fls = BooleanLiteral(false)
   
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
@@ -90,7 +91,7 @@ object LinearConstraintUtil {
     }
     
     val linearExpr = MakeLinear(expr)    
-    //the top most operator should be a relation
+    //the top most operator should be a relation    
     val BinaryOperator(lhs, IntLiteral(0), op) = linearExpr
     /*if (lhs.isInstanceOf[IntLiteral])
       throw IllegalStateException("relation on two integers, not in canonical form: " + linearExpr)*/
@@ -270,6 +271,7 @@ object LinearConstraintUtil {
     val newexpr = ExpressionTransformer.simplify(simplifyArithmetic(replace(replaceMap, lc.toExpr)))
     //println("new expression: "+newexpr)
     if (newexpr == tru) None
+    else if(newexpr == fls) throw IllegalStateException("!!Constraint reduced to false during elimination: " + lc)
     else {
       val res = exprToTemplate(newexpr)
       //check if res is true or false

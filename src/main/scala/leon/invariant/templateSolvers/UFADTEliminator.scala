@@ -159,7 +159,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
               Stats.updateCumStats(1, "Diseq-blowup")
             }*/
           Seq(atom)
-        } else throw IllegalStateException("All arguments are equal: " + call1)
+        } else throw IllegalStateException("All arguments are equal: " + (call1,call2))
       }
     }
     

@@ -413,18 +413,27 @@ object Trees {
 
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
+    
+    //for handling overflows
+    private var overflow = false    
+    def setOverflow = { overflow = true }    
+    def hasOverflow = overflow
   }
   
   //The real constants allowed by the language are only rationals
   case class RealLiteral(numerator: Int, denominator: Int) extends Literal[(Int,Int)] with FixedType {    
     val value = (numerator,denominator)
-    val fixedType = RealType 
-    
+    val fixedType = RealType
+    private var bigRealVal : Option[(BigInt,BigInt)] = None    
     private var overflow = false
-    def setOverflow =  {
+    
+    def setOverflow(n: BigInt, d: BigInt) = {
+      bigRealVal = Some((n,d))
       overflow = true
     }    
     def hasOverflow = overflow
+    def getBigRealValue = bigRealVal  
+    
     override def toString =  {
       if(denominator == 1) numerator.toString      
       else numerator + "/" + denominator

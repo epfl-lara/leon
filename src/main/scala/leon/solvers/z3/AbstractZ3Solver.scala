@@ -16,6 +16,7 @@ import purescala.TypeTrees._
 import scala.collection.mutable.{Map => MutableMap}
 import scala.collection.mutable.{Set => MutableSet}
 import leon.purescala.Extractors._
+import invariant.factories._
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
@@ -43,7 +44,7 @@ trait AbstractZ3Solver
     }
   }
 
-  class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
+  class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)  
 
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
@@ -813,7 +814,17 @@ trait AbstractZ3Solver
       case e: CantTranslateException => None
     }
   }
-
+  
+  //Maximum value of the integers in the extracted model. 
+  //Note that this cannot be added as a range  in the presence of real values as the numerators and denominators
+  //can be arbitrarily large.
+  val maxNumeralVal = Int.MaxValue
+  val minNumeralVal = Int.MinValue  
+    
+  def containedInRange(x: BigInt) : Boolean = {
+    (x >= minNumeralVal && x <= maxNumeralVal)
+  }   
+  
   protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST) : Expr = {
     def rec(t: Z3AST): Expr = {
       val kind = z3.getASTKind(t)
@@ -821,7 +832,10 @@ trait AbstractZ3Solver
 
       kind match {
         case Z3NumeralIntAST(None) => {
-          throw IllegalStateException("Encountered Overflow while translation from z3 to Leon AST: value = "+t)
+          val il = IntLiteral(maxNumeralVal)
+          il.setOverflow
+          il
+          //throw IllegalStateException("Encountered Overflow while translation from z3 to Leon AST: value = "+t)
         }
         case Z3NumeralIntAST(Some(v)) => {
           //println("Int AST: "+t+" value: "+v)
@@ -838,14 +852,12 @@ trait AbstractZ3Solver
             IntLiteral(v)
           }
         }
-        case Z3NumeralRealAST(num: BigInt, dem: BigInt) => {
-          //TODO : denominator could be zero
-          /*if(dem.intValue == 0) 
-              throw IllegalStateException("Denominator is zero!! ")*/
+        case Z3NumeralRealAST(num: BigInt, dem: BigInt) => {          
           val rl = RealLiteral(num.intValue, dem.intValue)
-          if (num < Int.MinValue || num > Int.MaxValue || dem < Int.MinValue || dem > Int.MaxValue)
-            rl.setOverflow
-          rl
+          if (!containedInRange(num) || !containedInRange(dem)) {                          
+              rl.setOverflow(num,dem)              
+          }
+          rl          
         } 
         case Z3AppAST(decl, args) =>
           val argsSize = args.size

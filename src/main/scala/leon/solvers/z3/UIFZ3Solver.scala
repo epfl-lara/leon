@@ -4,15 +4,14 @@ package leon
 package solvers.z3
 
 import z3.scala._
-
 import leon.solvers._
-
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
+import leon.invariant.factories.TemplateIdFactory
 
 /** This is a rather direct mapping to Z3, where all functions are left uninterpreted.
  *  It reports the results as follows (based on the negation of the formula):
@@ -24,7 +23,8 @@ import purescala.TypeTrees._
 class UIFZ3Solver(val context : LeonContext, val program: Program,     
     useBitvectors : Boolean = false,
     bitvecSize: Int = 32,
-    autoComplete : Boolean = true)
+    autoComplete : Boolean = true,
+    handleOverflows: Boolean = false)
   extends AbstractZ3Solver
      with Z3ModelReconstruction {
   
@@ -108,7 +108,62 @@ class UIFZ3Solver(val context : LeonContext, val program: Program,
   }
 
   def getModel = {
-    modelToMap(solver.getModel, freeVariables)
+    if(handleOverflows) 
+      getModelWithoutOverflows
+    else  
+      modelToMap(solver.getModel, freeVariables)    
+  }
+  
+  /**
+   * This getmodel method tries to handle overflows
+   */
+  class OverflowException(msg: String) extends Exception(msg)
+
+  def getModelWithoutOverflows: Map[Identifier, Expr] = {
+
+    def rangeExpr(id: Identifier): Expr = {
+      val (minv, maxv) = if (id.getType == Int32Type) {
+        (IntLiteral(minNumeralVal), IntLiteral(maxNumeralVal))
+      } else if (id.getType == RealType) {
+        (RealLiteral(minNumeralVal, 1), RealLiteral(maxNumeralVal, 1))
+      } else
+        throw IllegalStateException("Unexpected Type: " + id.getType)
+      val idvar = id.toVariable
+      And(GreaterEquals(idvar, minv), LessEquals(idvar, maxv))
+    }
+
+    val model = modelToMap(solver.getModel, freeVariables)
+    //TODO: should we recurse into tuples to discover a overflow ??
+    val newbounds = model.collect {
+      case (id, il @ IntLiteral(_)) if il.hasOverflow => rangeExpr(id)
+      case (id, rl @ RealLiteral(_, _)) if (rl.hasOverflow && TemplateIdFactory.IsTemplateIdentifier(id)) => {
+        val Some((bignum, bigdem)) = rl.getBigRealValue
+        val floor = (bignum / bigdem)
+        if (this.containedInRange(floor)) {
+          //here, use some heuristics to converge to a smaller numerator and denominator
+          println("Large fractions found..."+id+"=("+bignum +"/"+bigdem+")"+" searching for smaller ones...")
+          val intv = floor.intValue
+          val boundExpr = if(intv < 0) GreaterEquals(id.toVariable, RealLiteral(intv, 1)) 
+          				  else LessEquals(id.toVariable, RealLiteral(intv, 1))
+          boundExpr
+        } else
+          rangeExpr(id)
+      }
+    }.toSeq
+
+    if (newbounds.isEmpty)
+      model
+    else {
+      solver.push
+      solver.assertCnstr(toZ3Formula(And(newbounds)).get)
+      solver.check match {
+        case Some(true) =>
+          val newmodel = getModelWithoutOverflows
+          solver.pop()
+          newmodel
+        case _ => throw new OverflowException("Cannot handle overflows!")
+      }
+    }
   }
   
   def compeleteModel(ids : Seq[Identifier]) : Unit = {

@@ -83,7 +83,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
       if(Util.hasReals(rest) && Util.hasInts(rest)) 
         throw IllegalStateException("Non-param Part has both integers and reals: "+rest)
       
-      val vcSolver = new UIFZ3Solver(leonctx, program)
+      val vcSolver = new UIFZ3Solver(leonctx, program, handleOverflows=true)
       vcSolver.assertCnstr(rest)
       
       if (debugIncrementalVC) {
@@ -397,7 +397,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     val innerSolver = if (solveAsBitvectors) {
       new UIFZ3Solver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
-      new UIFZ3Solver(leonctx, program) with TimeoutSolver
+      new UIFZ3Solver(leonctx, program, handleOverflows = true) with TimeoutSolver
     }
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 
@@ -433,7 +433,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val innerSolver = if(this.useIncrementalSolvingForVCs) vcSolvers(fd)
-    			 else new UIFZ3Solver(leonctx, program)
+    			 else new UIFZ3Solver(leonctx, program, handleOverflows = true)
     val instExpr = if (this.useIncrementalSolvingForVCs) {      
       val instParamPart = instantiateTemplate(this.paramParts(fd), tempVarMap)
       And(instParamPart, disableCounterExs)      
@@ -595,7 +595,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   protected def axiomsForTheory(formula : Formula, calls: Set[Call], model: Map[Identifier,Expr]) : Seq[Constraint] = Seq()
 
   protected def generateCtrsFromDisjunct(fd: FunDef, model: Map[Identifier, Expr]): ((Expr, Set[Call]), Expr) = {
-    
+       
     val formula = ctrTracker.getVC(fd)
     //this picks the satisfiable disjunct of the VC modulo axioms
     val satCtrs = formula.pickSatDisjunct(formula.firstRoot, model)
