@@ -8,6 +8,7 @@ import purescala.Common.Tree
 import purescala.Definitions.FunDef
 import purescala.ScalaPrinter
 import purescala.PrinterOptions
+import purescala.PrinterContext
 
 import leon.utils.RangePosition
 
@@ -61,7 +62,7 @@ class FileInterface(reporter: Reporter) {
         val indent = lineChars.takeWhile(_ == ' ').size
 
         val p = new ScalaPrinter(PrinterOptions())
-        p.pp(toTree, Some(fromTree))(indent/2)
+        p.pp(toTree)(PrinterContext(toTree, Some(fromTree), indent/2, p))
 
         before + p.toString + after
 
