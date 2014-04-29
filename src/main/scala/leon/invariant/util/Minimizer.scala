@@ -73,6 +73,16 @@ class Minimizer(ctx: InferenceContext) {
       var lowerBound: Option[RealLiteral] = if (tvar == orderedTempVars(0) && lowerBoundMap.contains(tvar)) 
     	  										Some(lowerBoundMap(tvar)) 
     	  										else None
+
+      //a helper method
+      def updateState(nmodel: Map[Identifier, Expr]) = {
+        upperBound = nmodel(tvar.id).asInstanceOf[RealLiteral]
+        //complete the new model if necessary
+        currentModel = nmodel
+        if (this.debugMinimization)
+          println("Found new upper bound: " + upperBound)
+      }
+      
       if (this.debugMinimization) {
         println("Minimizing variable: " + tvar + " Initial Bounds: [" + upperBound +","+
             (if(lowerBound.isDefined) lowerBound.get else "_")+"]")
@@ -83,11 +93,19 @@ class Minimizer(ctx: InferenceContext) {
       var iter = 0
       do {
         iter += 1
-
         //here we perform some sanity checks to prevent overflow
         if (!boundSanityChecks(upperBound, lowerBound)) {
-          continue = false
-        } else {
+          //println("Escaping as bound sanity checks do not hold: "+lowerBound.get)
+          //here again check if we can continue with the floor                 
+          val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(upperBound))))
+          if (res == Some(true))
+            updateState(newModel)
+          else {
+            println("Bound sanity checks failed")
+            continue = false
+          }
+        }
+        if (continue) {
           //we make sure that curr val is an integer
           val currval = if (lowerBound.isDefined) {
             val midval = evaluate(Times(half, Plus(upperBound, lowerBound.get)))
@@ -114,7 +132,7 @@ class Minimizer(ctx: InferenceContext) {
             } else LessEquals(tvar, currval)
 
             //val t1 = System.currentTimeMillis()            
-            val (res,newModel) = solver.solveSAT(And(acc,boundCtr))              
+            val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
             //val t2 = System.currentTimeMillis()
             //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
             res match {
@@ -122,16 +140,22 @@ class Minimizer(ctx: InferenceContext) {
                 //here we have a new upper bound and also a newmodel
                 val newval = newModel(tvar.id).asInstanceOf[RealLiteral]
                 if (newval.hasOverflow) {
-                  if (this.debugMinimization)
-                    println("Aborting due to overflow.")
-                  continue = false
-                } else {
-                  upperBound = newval
-                  //complete the new model if necessary
-                  currentModel = newModel
-                  if (this.debugMinimization)
-                    println("Found new upper bound: " + upperBound)
-                }
+                  //try to see if the floor (using integer division instead) of the overflowed value is a model
+                  val (n, d) = newval.getBigRealValue.get
+                  val flval = RealLiteral((n / d).intValue, 1)
+                  val (res, secondModel) = solver.solveSAT(And(acc, Equals(tvar, flval)))
+                  res match {
+                    case Some(true) => {
+                      println("handled overflow successfully...")
+                      updateState(secondModel)
+                    }
+                    case _ => {
+                      if (this.debugMinimization)
+                        println("Aborting due to overflow.")
+                      continue = false
+                    }
+                  }
+                } else updateState(newModel)
               }
               case _ => {
                 //here we have a new lower bound: currval
@@ -141,8 +165,18 @@ class Minimizer(ctx: InferenceContext) {
               }
             }
           }
-        }        
+        }
       } while (continue && iter < MaxIter)
+      
+      //this is the last ditch effort to make the upper bound constant smaller.
+      //check if the floor of the upper-bound is a solution
+      val currval@RealLiteral(n,d) = currentModel(tvar.id)
+      if (d != 1) {        
+        val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(currval))))        
+        if(res == Some(true)) 
+          updateState(newModel)          
+      }
+        
       //here, we found a best-effort minimum
       if (lowerBound.isDefined) {
         updateLowerBound(tvar, lowerBound.get)
@@ -158,6 +192,18 @@ class Minimizer(ctx: InferenceContext) {
         (id -> initModel(id))
     }).toMap
   }
+
+  def checkBoundingInteger(tvar: Variable, rl: RealLiteral, nlctr: Expr, solver: SimpleSolverAPI): Option[Map[Identifier, Expr]] = {
+    val nl@RealLiteral(n, d) = normalize(rl)
+    if (d != 1) {      
+      val flval = floor(nl)
+      val (res, newModel) = solver.solveSAT(And(nlctr, Equals(tvar, flval)))
+      res match {
+        case Some(true) => Some(newModel)
+        case _ => None
+      }
+    } else None
+  } 
 
   /**
    * These checks are performed to avoid an overflow during the computation of currval
