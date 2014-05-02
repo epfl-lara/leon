@@ -51,7 +51,9 @@ object Graph {
   }    */  
   
   //a DFS operation on graphs
-  //returns a set of nodes that have been completely processed and a set of visited nodes and 
+  //returns a set of nodes that have been completely processed (all of whose neighbors have been visited),
+  //a set of unfinished nodes: those which are visited but whose neighbors have not been visited.
+  //and a set of visited nodes 
   def reach(src: Node, graph: Graph, finished: Set[Node], visited: Set[Node], someNode: Node) 
   	: (Set[Node], Set[Node], Set[Node]) = ({       
     require(finished.subsetOf(visited))
