@@ -1852,6 +1852,54 @@ object TreeOps {
     simplifyArithmetic(expr0)
   }
 
+  /**
+   * Body manipulation
+   * ========
+   */
+  
+  def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
+    case (Some(newPre), Require(pre, b))                 => Require(newPre, b)
+    case (Some(newPre), Ensuring(Require(pre, b), i, p)) => Ensuring(Require(newPre, b), i, p)
+    case (Some(newPre), Ensuring(b, i, p))               => Ensuring(Require(newPre, b), i, p)
+    case (Some(newPre), b)                               => Require(newPre, b)
+    case (None, Require(pre, b))                         => b
+    case (None, Ensuring(Require(pre, b), i, p))         => Ensuring(b, i, p)
+    case (None, Ensuring(b, i, p))                       => Ensuring(b, i, p)
+    case (None, b)                                       => b
+  }
+
+  def withPostcondition(expr: Expr, oie: Option[(Identifier, Expr)]) = (oie, expr) match {
+    case (Some((nid, npost)), Ensuring(b, id, post))     => Ensuring(b, nid, npost)
+    case (Some((nid, npost)), b)                         => Ensuring(b, nid, npost)
+    case (None, Ensuring(b, i, p))                       => b
+    case (None, b)                                       => b
+  }
+
+  def withBody(expr: Expr, body: Option[Expr]) = expr match {
+    case Require(pre, _)                    => Require(pre, body.getOrElse(NoTree(expr.getType)))
+    case Ensuring(Require(pre, _), i, post) => Ensuring(Require(pre, body.getOrElse(NoTree(expr.getType))), i, post)
+    case Ensuring(_, i, post)               => Ensuring(body.getOrElse(NoTree(expr.getType)), i, post)
+    case _                                  => body.getOrElse(NoTree(expr.getType))
+  }
+
+  def withoutSpec(expr: Expr) = expr match {
+    case Require(pre, b)                    => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case Ensuring(Require(pre, b), i, post) => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case Ensuring(b, i, post)               => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case b                                  => Option(b).filterNot(_.isInstanceOf[NoTree])
+  }
+
+  def preconditionOf(expr: Expr) = expr match {
+    case Require(pre, _)                    => Some(pre)
+    case Ensuring(Require(pre, _), _, _)    => Some(pre)
+    case b                                  => None
+  }
+
+  def postconditionOf(expr: Expr) = expr match {
+    case Ensuring(_, i, post)               => Some((i, post))
+    case _                                  => None
+  }
+
 
   /**
    * Deprecated API

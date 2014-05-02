@@ -560,32 +560,8 @@ trait CodeExtraction extends ASTExtractors {
 
       val fctx = dctx.withNewVars(newVars)
 
-
-      val (body2, ensuring) = body match {
-        case ExEnsuredExpression(body2, resSym, contract) =>
-          val resId = FreshIdentifier(resSym.name.toString).setType(funDef.returnType).setPos(resSym.pos)
-          val post = toPureScala(contract)(fctx.withNewVar(resSym -> (() => Variable(resId)))).map( r => (resId, r))
-
-          (body2, post)
-
-        case t @ ExHoldsExpression(body2) =>
-          val resId = FreshIdentifier("holds").setType(BooleanType).setPos(body.pos)
-          (body2, Some((resId, Variable(resId).setPos(body.pos))))
-
-        case _ =>
-          (body, None)
-      }
-
-      val (body3, require) = body2 match {
-        case ExRequiredExpression(body3, contract) =>
-          (body3, toPureScala(contract)(fctx))
-
-        case _ =>
-          (body2, None)
-      }
-
       val finalBody = try {
-        Some(flattenBlocks(extractTree(body3)(fctx)) match {
+        flattenBlocks(extractTree(body)(fctx)) match {
           case e if e.getType.isInstanceOf[ArrayType] =>
             getOwner(e) match {
               case Some(Some(fd)) if fd == funDef =>
@@ -595,16 +571,14 @@ trait CodeExtraction extends ASTExtractors {
                 e
 
               case _ =>
-                outOfSubsetError(body3, "Function cannot return an array that is not locally defined")
+                outOfSubsetError(body, "Function cannot return an array that is not locally defined")
             }
           case e =>
             e
-        })
+        }
       } catch {
         case e: ImpureCodeEncounteredException =>
-        if (dctx.isProxy) {
-          // We actually expect errors, no point reporting
-        } else {
+        if (!dctx.isProxy) {
           e.emit()
           if (ctx.settings.strictCompilation) {
             reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. (Forgot @proxy ?)")
@@ -614,30 +588,27 @@ trait CodeExtraction extends ASTExtractors {
         }
 
         funDef.addAnnotation("abstract")
-        None
+        NoTree(funDef.returnType)
       }
 
-      val finalRequire = require.filter{ e =>
+      funDef.fullBody = finalBody;
+
+      // Post-extraction sanity checks
+
+      funDef.precondition.foreach { case e =>
         if(containsLetDef(e)) {
-          reporter.warning(body3.pos, "Function precondtion should not contain nested function definition, ignoring.")
-          false
-        } else {
-          true
+          reporter.warning(e.getPos, "Function precondtion should not contain nested function definition, ignoring.")
+          funDef.precondition = None
         }
       }
 
-      val finalEnsuring = ensuring.filter{ case (id, e) =>
+      funDef.postcondition.foreach { case (id, e) =>
         if(containsLetDef(e)) {
-          reporter.warning(body3.pos, "Function postcondition should not contain nested function definition, ignoring.")
-          false
-        } else {
-          true
+          reporter.warning(e.getPos, "Function postcondition should not contain nested function definition, ignoring.")
+          funDef.postcondition = None
         }
       }
 
-      funDef.body          = finalBody
-      funDef.precondition  = finalRequire
-      funDef.postcondition = finalEnsuring
       funDef
     }
 
@@ -730,6 +701,54 @@ trait CodeExtraction extends ASTExtractors {
       var rest = tmpRest
 
       val res = current match {
+        case ExEnsuredExpression(body, resSym, contract) =>
+          val resId = FreshIdentifier(resSym.name.toString).setType(extractType(current)).setPos(resSym.pos)
+          val post = extractTree(contract)(dctx.withNewVar(resSym -> (() => Variable(resId))))
+
+          val b = try {
+            extractTree(body)
+          } catch {
+            case (e: ImpureCodeEncounteredException) if dctx.isProxy =>
+              NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
+          }
+
+          Ensuring(b, resId, post)
+
+        case t @ ExHoldsExpression(body) =>
+          val resId = FreshIdentifier("holds").setType(BooleanType).setPos(current.pos)
+          val post = Variable(resId).setPos(current.pos)
+
+          val b = try {
+            extractTree(body)
+          } catch {
+            case (e: ImpureCodeEncounteredException) if dctx.isProxy =>
+              NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
+          }
+
+          Ensuring(b, resId, post)
+
+        case ExAssertExpression(contract, oerr) =>
+          val const = extractTree(contract)
+          val b     = rest.map(extractTree).getOrElse(UnitLiteral())
+
+          rest = None
+
+          Assert(const, oerr, b)
+
+        case ExRequiredExpression(contract) =>
+          val pre = extractTree(contract)
+
+          val b = try {
+            rest.map(extractTree).getOrElse(UnitLiteral())
+          } catch {
+            case (e: ImpureCodeEncounteredException) if dctx.isProxy =>
+              NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
+          }
+
+          rest = None
+
+          Require(pre, b)
+
         case ExArrayLiteral(tpe, args) =>
           FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)(dctx, current.pos)))
 

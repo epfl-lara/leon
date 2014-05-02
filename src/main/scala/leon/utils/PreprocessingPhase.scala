@@ -17,7 +17,8 @@ object PreprocessingPhase extends TransformationPhase {
     val phases =
       MethodLifting                 andThen
       TypingPhase                   andThen
-      CompleteAbstractDefinitions
+      CompleteAbstractDefinitions   andThen
+      InjectAsserts
 
     phases.run(ctx)(p)
   }

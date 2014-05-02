@@ -140,13 +140,23 @@ trait ASTExtractors {
     object ExRequiredExpression {
       /** Extracts the 'require' contract from an expression (only if it's the
        * first call in the block). */
-      def unapply(tree: Block): Option[(Tree,Tree)] = tree match {
-        case Block(Apply(ExSelected("scala", "Predef", "require"), contractBody :: Nil) :: rest, body) =>
-          if(rest.isEmpty)
-            Some((body,contractBody))
-          else
-            Some((Block(rest,body),contractBody))
+      def unapply(tree: Apply): Option[Tree] = tree match {
+        case Apply(ExSelected("scala", "Predef", "require"), contractBody :: Nil) =>
+         Some(contractBody)
         case _ => None
+      }
+    }
+
+    object ExAssertExpression {
+      /** Extracts the 'assert' contract from an expression (only if it's the
+       * first call in the block). */
+      def unapply(tree: Apply): Option[(Tree, Option[String])] = tree match {
+        case Apply(ExSelected("scala", "Predef", "assert"), contractBody :: Nil) =>
+         Some((contractBody, None))
+        case Apply(ExSelected("scala", "Predef", "assert"), contractBody :: (error: Literal) :: Nil) =>
+         Some((contractBody, Some(error.value.stringValue)))
+        case _ =>
+         None
       }
     }
 

@@ -140,6 +140,13 @@ object FunctionTemplate {
 
     def rec(pathVar : Identifier, expr : Expr) : Expr = {
       expr match {
+        case a @ Assert(cond, _, body) =>
+          storeGuarded(pathVar, rec(pathVar, cond))
+          rec(pathVar, body)
+
+        case e @ Ensuring(body, id, post) =>
+          rec(pathVar, Let(id, body, Assert(post, None, Variable(id))))
+
         case l @ Let(i, e, b) =>
           val newExpr : Identifier = FreshIdentifier("lt", true).setType(i.getType)
           exprVars += newExpr

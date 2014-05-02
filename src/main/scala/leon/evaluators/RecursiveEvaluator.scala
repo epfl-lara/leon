@@ -76,6 +76,12 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
       val first = e(ex)
       e(b)(rctx.withNewVar(i, first), gctx)
 
+    case Assert(cond, oerr, body) =>
+      e(IfExpr(Not(cond), Error(oerr.getOrElse("Assertion failed @"+expr.getPos)), body))
+
+    case Ensuring(body, id, post) =>
+      e(Let(id, body, Assert(post, Some("Ensuring failed"), Variable(id))))
+
     case Error(desc) =>
       throw RuntimeError("Error reached in evaluation: " + desc)
 

@@ -21,10 +21,26 @@ object Trees {
     self: Expr =>
   }
 
+  case class NoTree(tpe: TypeTree) extends Expr with Terminal with FixedType {
+    val fixedType = tpe
+  }
+
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
   case class Error(description: String) extends Expr with Terminal
+
+  case class Require(pred: Expr, body: Expr) extends Expr with FixedType {
+    val fixedType = body.getType
+  }
+
+  case class Ensuring(body: Expr, id: Identifier, pred: Expr) extends Expr with FixedType {
+    val fixedType = body.getType
+  }
+
+  case class Assert(pred: Expr, error: Option[String], body: Expr) extends Expr with FixedType {
+    val fixedType = body.getType
+  }
 
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
 

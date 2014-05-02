@@ -181,10 +181,21 @@ object Definitions {
 
   /** Functions (= 'methods' of objects) */
   class FunDef(val id: Identifier, val tparams: Seq[TypeParameterDef], val returnType: TypeTree, val params: Seq[ValDef]) extends Definition {
-    var body: Option[Expr] = None
-    def implementation : Option[Expr] = body
-    var precondition: Option[Expr] = None
-    var postcondition: Option[(Identifier, Expr)] = None
+
+    var fullBody: Expr = NoTree(returnType)
+
+    def body: Option[Expr] = withoutSpec(fullBody)
+    def body_=(b: Option[Expr]) = fullBody = withBody(fullBody, b)
+
+    def precondition = preconditionOf(fullBody)
+    def precondition_=(oe: Option[Expr]) = {
+      fullBody = withPrecondition(fullBody, oe)
+    }
+
+    def postcondition = postconditionOf(fullBody)
+    def postcondition_=(op: Option[(Identifier, Expr)]) = {
+      fullBody = withPostcondition(fullBody, op)
+    }
 
     // Metadata kept here after transformations
     var parent: Option[FunDef] = None
@@ -192,16 +203,13 @@ object Definitions {
 
     def duplicate: FunDef = {
       val fd = new FunDef(id, tparams, returnType, params)
-      fd.body = body
-      fd.precondition = precondition
-      fd.postcondition = postcondition
+      fd.fullBody = fullBody
       fd.parent = parent
       fd.orig = orig
       fd
     }
 
-    def hasImplementation : Boolean = body.isDefined
-    def hasBody                     = hasImplementation
+    def hasBody                     = body.isDefined
     def hasPrecondition : Boolean   = precondition.isDefined
     def hasPostcondition : Boolean  = postcondition.isDefined
 
@@ -223,6 +231,13 @@ object Definitions {
       assert(tparams.isEmpty)
       TypedFunDef(this, Nil)
     }
+
+    // Deprecated, old API
+    @deprecated("Use .body instead", "2.3")
+    def implementation : Option[Expr] = body
+
+    @deprecated("Use .hasBody instead", "2.3")
+    def hasImplementation : Boolean = hasBody
 
   }
 

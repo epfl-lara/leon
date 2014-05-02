@@ -25,7 +25,7 @@ object Rules {
     EqualitySplit,
     InequalitySplit,
     CEGIS,
-    Assert,
+    rules.Assert,
     DetupleOutput,
     DetupleInput,
     ADTSplit,
