@@ -191,8 +191,14 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"${t}._$i"
       case h @ Hole(o)          => p"???[${h.getType}]($o)"
-      case Choose(vars, pred)   => p"choose($vars => $pred)"
-      case CaseClassInstanceOf(cct, e)         => p"$e.isInstanceOf[$cct]"
+      case Choose(vars, pred)   => p"choose(($vars) => $pred)"
+      case e @ Error(err)       => p"""error[${e.getType}]("$err")"""
+      case CaseClassInstanceOf(cct, e)         =>
+        if (cct.classDef.isCaseObject) {
+          p"($e == ${cct.id})"
+        } else {
+          p"$e.isInstanceOf[$cct]"
+        }
       case CaseClassSelector(_, e, id)         => p"$e.$id"
       case MethodInvocation(rec, _, tfd, args) =>
         p"$rec.${tfd.id}"
@@ -293,11 +299,20 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
       case CaseClassPattern(ob, cct, subps) =>
         ob.foreach { b => p"$b @ " }
-        p"${cct.id}($subps)"
+        if (cct.classDef.isCaseObject) {
+          p"${cct.id}"
+        } else {
+          p"${cct.id}($subps)"
+        }
 
       case InstanceOfPattern(ob, cct) =>
-        ob.foreach { b => p"$b : " }
-        p"$cct"
+        if (cct.classDef.isCaseObject) {
+          ob.foreach { b => p"$b @ " }
+          p"${cct.id}"
+        } else {
+          ob.foreach { b => p"$b : " }
+          p"$cct"
+        }
 
       case TuplePattern(ob, subps) =>
         ob.foreach { b => p"$b @ " }
@@ -419,6 +434,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: Require, _) => true
     case (_: Assert, Some(_: Definition)) => true
     case (_, Some(_: Definition)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef)) => false
     case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef)) => false
     case (_, _) => true
   }

@@ -68,7 +68,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
     }
 
     // Simplify first using stable simplifiers
-    val s = fixpoint(simple)(toExpr)
+    val s = fixpoint(simple, 5)(toExpr)
 
     // Clean up ids/names
     (new ScopeSimplifier).transform(s)

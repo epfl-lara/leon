@@ -64,7 +64,7 @@ class FileInterface(reporter: Reporter) {
         val p = new ScalaPrinter(PrinterOptions())
         p.pp(toTree)(PrinterContext(toTree, Some(fromTree), indent/2, p))
 
-        before + p.toString + after
+        before + "{" + p.toString + "}" + after
 
       case p =>
         sys.error("Substitution requires RangePos on the input tree: "+fromTree +": "+fromTree.getClass+" GOT" +p)
