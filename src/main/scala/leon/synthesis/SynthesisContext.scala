@@ -4,7 +4,7 @@ package leon
 package synthesis
 
 import solvers._
-import solvers.combinators.PortfolioSolver
+import solvers.combinators.PortfolioSolverSynth
 import solvers.z3._
 
 import purescala.Trees._
@@ -35,7 +35,7 @@ case class SynthesisContext(
   } else if (solversToUse.size == 1) {
     solversToUse.values.head
   } else {
-    SolverFactory( () => new PortfolioSolver(context, solversToUse.values.toSeq) with TimeoutAssumptionSolver)
+    SolverFactory( () => new PortfolioSolverSynth(context, solversToUse.values.toSeq) with TimeoutAssumptionSolver)
   }
 
   def newSolver: SynthesisContext.SynthesisSolver = {

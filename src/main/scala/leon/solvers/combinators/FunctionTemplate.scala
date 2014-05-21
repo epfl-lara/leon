@@ -95,8 +95,6 @@ class FunctionTemplate private(
 }
 
 object FunctionTemplate {
-  val splitAndOrImplies = false
-
   def mkTemplate(tfd: TypedFunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
     val condVars : MutableSet[Identifier] = MutableSet.empty
     val exprVars : MutableSet[Identifier] = MutableSet.empty
@@ -138,6 +136,13 @@ object FunctionTemplate {
       res
     }
 
+    def requireDecomposition(e: Expr) = {
+      exists{
+        case (_: FunctionInvocation) | (_: Assert) | (_: Ensuring) | (_: Choose) => true
+        case _ => false
+      }(e)
+    }
+
     def rec(pathVar : Identifier, expr : Expr) : Expr = {
       expr match {
         case a @ Assert(cond, _, body) =>
@@ -175,48 +180,16 @@ object FunctionTemplate {
         case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
 
         case i @ Implies(lhs, rhs) =>
-          if (splitAndOrImplies) {
-            if (containsFunctionCalls(i)) {
-              rec(pathVar, IfExpr(lhs, rhs, BooleanLiteral(true)))
-            } else {
-              i
-            }
-          } else {
-            Implies(rec(pathVar, lhs), rec(pathVar, rhs))
-          }
+          Implies(rec(pathVar, lhs), rec(pathVar, rhs))
 
         case a @ And(parts) =>
-          if (splitAndOrImplies) {
-            if (containsFunctionCalls(a)) {
-              val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
-
-              val ifExpr = partitions.map(And(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, b, BooleanLiteral(false)) }
-
-              rec(pathVar, ifExpr)
-            } else {
-              a
-            }
-          } else {
-            And(parts.map(rec(pathVar, _)))
-          }
+          And(parts.map(rec(pathVar, _)))
 
         case o @ Or(parts) =>
-          if (splitAndOrImplies) {
-            if (containsFunctionCalls(o)) {
-              val partitions = groupWhile((e: Expr) => !containsFunctionCalls(e), parts)
-
-              val ifExpr = partitions.map(Or(_)).reduceRight{ (a: Expr, b: Expr) => IfExpr(a, BooleanLiteral(true), b) }
-
-              rec(pathVar, ifExpr)
-            } else {
-              o
-            }
-          } else {
-            Or(parts.map(rec(pathVar, _)))
-          }
+          Or(parts.map(rec(pathVar, _)))
 
         case i @ IfExpr(cond, thenn, elze) => {
-          if(!containsFunctionCalls(cond) && !containsFunctionCalls(thenn) && !containsFunctionCalls(elze)) {
+          if(!requireDecomposition(i)) {
             i
           } else {
             val newBool1 : Identifier = FreshIdentifier("b", true).setType(BooleanType)

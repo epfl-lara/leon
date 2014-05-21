@@ -18,26 +18,18 @@ import scala.collection.mutable.{Map=>MutableMap}
 
 import ExecutionContext.Implicits.global
 
-class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[AssumptionSolver with IncrementalSolver with Interruptible]])
-        extends Solver with IncrementalSolver with Interruptible with NaiveAssumptionSolver {
+class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, solvers: Seq[SolverFactory[S]])
+        extends Solver with Interruptible {
 
   val name = "Pfolio"
 
   var constraints = List[Expr]()
 
-  private var modelMap = Map[Identifier, Expr]()
-  private var solversInsts = solvers.map(_.getNewSolver)
+  protected var modelMap = Map[Identifier, Expr]()
+  protected var solversInsts: Seq[S] = solvers.map(_.getNewSolver)
 
   def assertCnstr(expression: Expr): Unit = {
     solversInsts.foreach(_.assertCnstr(expression))
-  }
-
-  def push(): Unit = {
-    solversInsts.foreach(_.push())
-  }
-
-  def pop(lvl: Int): Unit = {
-    solversInsts.foreach(_.pop(lvl))
   }
 
   def check: Option[Boolean] = {
@@ -86,5 +78,17 @@ class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[Assum
 
   def recoverInterrupt(): Unit = {
     solversInsts.foreach(_.recoverInterrupt())
+  }
+}
+
+class PortfolioSolverSynth(context: LeonContext, solvers: Seq[SolverFactory[AssumptionSolver with IncrementalSolver with Interruptible]])
+        extends PortfolioSolver[AssumptionSolver with IncrementalSolver with Interruptible](context, solvers) with IncrementalSolver with Interruptible with NaiveAssumptionSolver {
+
+  def push(): Unit = {
+    solversInsts.foreach(_.push())
+  }
+
+  def pop(lvl: Int): Unit = {
+    solversInsts.foreach(_.pop(lvl))
   }
 }

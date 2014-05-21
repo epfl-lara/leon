@@ -1,4 +1,3 @@
-/* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
 package synthesis
@@ -25,7 +24,6 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonValueOptionDef("timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
     LeonValueOptionDef("costmodel",       "--costmodel=cm",    "Use a specific cost model for this search"),
     LeonValueOptionDef("functions",       "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,.."),
-    LeonValueOptionDef("solvers",         "--solvers=s1,s2",   "Use solvers s1 and s2 (fairz3,enum)", default = Some("fairz3")),
     // CEGIS options
     LeonFlagOptionDef( "cegis:gencalls",   "--cegis:gencalls",      "Include function calls in CEGIS generators",      true),
     LeonFlagOptionDef( "cegis:unintprobe", "--cegis:unintprobe",    "Check for UNSAT without bloecks and with uninterpreted functions", false),
@@ -38,8 +36,6 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
   def processOptions(ctx: LeonContext): SynthesisOptions = {
     var options = SynthesisOptions()
-
-    val allSolvers = Set("fairz3", "enum")
 
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("manual", v) =>
@@ -69,13 +65,6 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
             ctx.reporter.fatalError(errorMsg)
         }
-
-      case LeonValueOption("solvers", ListValue(ss)) =>
-        val unknownSolvers = ss.toSet -- allSolvers
-        if (unknownSolvers.nonEmpty) {
-          ctx.reporter.error("Unknown solver(s): "+unknownSolvers.mkString(", ")+" (Available: "+allSolvers.mkString(", ")+")")
-        }
-        options = options.copy(selectedSolvers = Set() ++ ss)
 
       case v @ LeonValueOption("timeout", _) =>
         v.asInt(ctx).foreach { t =>

@@ -20,9 +20,11 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
   private var theConstraint : Option[Expr] = None
   private var theModel : Option[Map[Identifier,Expr]] = None
 
+  val reporter = context.reporter
+
   private var stop: Boolean = false
 
-  def name = "Unr("+underlyings.name+")"
+  def name = "U:"+underlyings.name
 
   def free {}
 
@@ -36,14 +38,11 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
   }
 
   def check : Option[Boolean] = theConstraint.map { expr =>
-    val solver = underlyings.getNewSolver//SimpleSolverAPI(underlyings)
-
-    debugS("Check called on " + expr.asString + "...")
+    val solver = underlyings.getNewSolver
 
     val template = getTemplate(expr)
 
     val aVar : Identifier = template.activatingBool
-    var allClauses : Seq[Expr] = Nil
     var allBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
     def unrollOneStep() : List[Expr] = {
@@ -52,20 +51,24 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
       var newClauses : List[Seq[Expr]] = Nil
       var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
-      for(blocker <- allBlockers.keySet; FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
-        val (nc, nb) = getTemplate(tfd).instantiate(blocker, args)
+      for(blocker <- allBlockers.keySet; fi @ FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
+        val tmpl = getTemplate(tfd)
+
+        val (nc, nb) = tmpl.instantiate(blocker, args)
         newClauses = nc :: newClauses
         newBlockers = newBlockers ++ nb
+        //reporter.debug("Unrolling behind "+fi+" ("+nc.size+")")
+        //for (c <- nc) {
+        //  reporter.debug("  . "+c)
+        //}
       }
 
-      allClauses = newClauses.flatten ++ allClauses
       allBlockers = newBlockers
       newClauses.flatten
     }
 
     val (nc, nb) = template.instantiate(aVar, template.tfd.params.map(a => Variable(a.id)))
 
-    allClauses = nc.reverse
     allBlockers = nb
 
     var unrollingCount : Int = 0
@@ -73,46 +76,42 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
     var result : Option[Boolean] = None
 
     solver.assertCnstr(Variable(aVar))
-    solver.assertCnstr(And(allClauses))
+    solver.assertCnstr(And(nc))
     // We're now past the initial step.
     while(!done && !stop) {
-      debugS("At lvl : " + unrollingCount)
-
       solver.push()
-      //val closed : Expr = fullClosedExpr
+      reporter.debug(" - Searching with blocked literals")
       solver.assertCnstr(And(allBlockers.keySet.toSeq.map(id => Not(id.toVariable))))
-
-      debugS("Going for SAT with this:\n")
-
       solver.check match {
 
         case Some(false) =>
           solver.pop(1)
+          reporter.debug(" - Searching with unblocked literals")
           //val open = fullOpenExpr
-          debugS("Was UNSAT... Going for UNSAT with this:\n")
           solver.check match {
             case Some(false) =>
-              debugS("Was UNSAT... Done !")
               done = true
               result = Some(false)
 
-            case _ =>
-              debugS("Was SAT or UNKNOWN. Let's unroll !")
+            case r =>
               unrollingCount += 1
+              val model = solver.getModel
+              reporter.debug(" - Tentative model: "+model)
+              reporter.debug(" - more unrollings")
               val newClauses = unrollOneStep()
+              reporter.debug(s"   - ${newClauses.size} new clauses")
+              readLine()
               solver.assertCnstr(And(newClauses))
           }
 
         case Some(true) =>
           val model = solver.getModel
-          debugS("WAS SAT ! We're DONE !")
           done = true
           result = Some(true)
           theModel = Some(model)
 
         case None =>
           val model = solver.getModel
-          debugS("WAS UNKNOWN ! We're DONE !")
           done = true
           result = Some(true)
           theModel = Some(model)

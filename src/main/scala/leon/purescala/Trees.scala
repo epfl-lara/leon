@@ -475,7 +475,8 @@ object Trees {
   }
 
   class CaseClassSelector(val classType: CaseClassType, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
-    val fixedType = classType.fieldsTypes(classType.classDef.selectorID2Index(selector))
+    val selectorIndex = classType.classDef.selectorID2Index(selector)
+    val fixedType = classType.fieldsTypes(selectorIndex)
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: CaseClassSelector => (t.classType, t.caseClass, t.selector) == (classType, caseClass, selector)

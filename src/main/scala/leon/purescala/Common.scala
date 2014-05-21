@@ -29,7 +29,7 @@ object Common {
   }
 
   // the type is left blank (Untyped) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, private val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
+  class Identifier private[Common](val name: String, val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
     self : Serializable =>
 
     override def equals(other: Any): Boolean = {

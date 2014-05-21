@@ -51,49 +51,6 @@ object TypeTrees {
 
   sealed abstract class TypeTree extends Tree
 
-  // returns the number of distinct values that inhabit a type
-  sealed abstract class TypeSize extends Serializable
-  case class FiniteSize(size: Int) extends TypeSize
-  case object InfiniteSize extends TypeSize
-
-  def domainSize(typeTree: TypeTree) : TypeSize = typeTree match {
-    case Untyped => FiniteSize(0)
-    case BooleanType => FiniteSize(2)
-    case UnitType => FiniteSize(1)
-    case Int32Type => InfiniteSize
-    case ListType(_) => InfiniteSize
-    case ArrayType(_) => InfiniteSize
-    case TypeParameter(_) => InfiniteSize
-    case TupleType(bases) => {
-      val baseSizes = bases.map(domainSize(_))
-      baseSizes.find(_ == InfiniteSize) match {
-        case Some(_) => InfiniteSize
-        case None => FiniteSize(baseSizes.map(_.asInstanceOf[FiniteSize].size).reduceLeft(_ * _))
-      }
-    }
-    case SetType(base) => domainSize(base) match {
-      case InfiniteSize => InfiniteSize
-      case FiniteSize(n) => FiniteSize(scala.math.pow(2, n).toInt)
-    }
-    case MultisetType(_) => InfiniteSize
-    case MapType(from,to) => (domainSize(from),domainSize(to)) match {
-      case (InfiniteSize,_) => InfiniteSize
-      case (_,InfiniteSize) => InfiniteSize
-      case (FiniteSize(n),FiniteSize(m)) => FiniteSize(scala.math.pow(m+1, n).toInt)
-    }
-    case FunctionType(fts, tt) => {
-      val fromSizes = fts map domainSize
-      val toSize = domainSize(tt)
-      if (fromSizes.exists(_ == InfiniteSize) || toSize == InfiniteSize)
-        InfiniteSize
-      else {
-        val n = toSize.asInstanceOf[FiniteSize].size
-        FiniteSize(scala.math.pow(n, fromSizes.foldLeft(1)((acc, s) => acc * s.asInstanceOf[FiniteSize].size)).toInt)
-      }
-    }
-    case c: ClassType => InfiniteSize
-  }
-
   case object Untyped extends TypeTree
   case object BooleanType extends TypeTree
   case object Int32Type extends TypeTree

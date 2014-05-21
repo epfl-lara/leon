@@ -180,3 +180,13 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
   }
 
 }
+
+class PlainTextReporter(settings: Settings) extends DefaultReporter(settings) {
+  override protected def severityToPrefix(sev: Severity): String = sev match {
+    case ERROR    => "[ Error ]"
+    case WARNING  => "[Warning]"
+    case INFO     => "[ Info  ]"
+    case FATAL    => "[ Fatal ]"
+    case DEBUG(_) => "[ Debug ]"
+  }
+}

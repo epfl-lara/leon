@@ -279,6 +279,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         var reintroducedSelf = false
 
         for (fi <- fis) {
+          var newCls = Seq[Z3AST]()
+
           val defBlocker = defBlockers.get(fi) match {
             case Some(defBlocker) =>
               // we already have defBlocker => f(args) = body
@@ -289,20 +291,28 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               defBlockers += fi -> defBlocker
 
               val template              = getTemplate(fi.tfd)
+              reporter.debug(template)
               val (newExprs, newBlocks) = template.instantiate(defBlocker, fi.args)
 
               for((i, fis2) <- newBlocks) {
                 registerBlocker(nextGeneration(gen), i, fis2)
               }
 
-              newClauses ++= newExprs
+              newCls ++= newExprs
               defBlocker
           }
 
           // We connect it to the defBlocker:   blocker => defBlocker
           if (defBlocker != id) {
-            newClauses ++= List(z3.mkImplies(id, defBlocker))
+            newCls ++= List(z3.mkImplies(id, defBlocker))
           }
+
+          reporter.debug("Unrolling behind "+fi+" ("+newCls.size+")")
+          for (cl <- newCls) {
+          reporter.debug("  . "+cl)
+          }
+
+          newClauses ++= newCls
         }
 
       }
@@ -547,6 +557,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
             for(ncl <- newClauses) {
               solver.assertCnstr(ncl)
             }
+
+            readLine()
 
             reporter.debug(" - finished unrolling")
           }

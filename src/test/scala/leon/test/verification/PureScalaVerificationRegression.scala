@@ -25,7 +25,7 @@ class PureScalaVerificationRegression extends LeonTestSuite {
     PreprocessingPhase  andThen
     AnalysisPhase
 
-  private def mkTest(file : File, leonOptions : Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
+  private def mkTest(file : File, leonOptions : Seq[String], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()
     val start = fullName.indexOf("regression")
 
@@ -39,10 +39,7 @@ class PureScalaVerificationRegression extends LeonTestSuite {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
-      val ctx = testContext.copy(
-        options = leonOptions.toList,
-        files   = List(file)
-      )
+      val ctx = createLeonContext((file.getPath +: leonOptions) :_*)
 
       val pipeline = mkPipeline
 
@@ -65,9 +62,10 @@ class PureScalaVerificationRegression extends LeonTestSuite {
       _.endsWith(".scala"))
 
     for(f <- fs) {
-      mkTest(f, List(LeonFlagOption("feelinglucky", true)), forError)(block)
-      mkTest(f, List(LeonFlagOption("codegen", true), LeonFlagOption("evalground", true), LeonFlagOption("feelinglucky", true)), forError)(block)
-      mkTest(f, List(LeonValueOption("solvers", "fairz3,enum"), LeonFlagOption("codegen", true), LeonFlagOption("evalground", true), LeonFlagOption("feelinglucky", true)), forError)(block)
+      mkTest(f, List("--feelinglucky", "--library=no"), forError)(block)
+      mkTest(f, List("--codegen", "--evalground", "--feelinglucky", "--library=no"), forError)(block)
+      mkTest(f, List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky", "--library=no"), forError)(block)
+      mkTest(f, List("--solvers=smt-z3", "--library=no"), forError)(block)
     }
   }
   

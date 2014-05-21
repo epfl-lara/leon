@@ -3,6 +3,7 @@
 package leon
 
 import leon.utils._
+import solvers.SolverFactory
 
 object Main {
 
@@ -34,6 +35,7 @@ object Main {
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),
+      LeonValueOptionDef("solvers",     "--solvers=s1,s2",      "Use solvers s1 and s2 (fairz3,enum,smt)"),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
       LeonFlagOptionDef ("noop",        "--noop",               "No operation performed, just output program"),
       LeonFlagOptionDef ("help",        "--help",               "Show help")
@@ -145,6 +147,14 @@ object Main {
         settings = settings.copy(injectLibrary = value)
       case LeonFlagOption("xlang", value) =>
         settings = settings.copy(xlang = value)
+      case LeonValueOption("solvers", ListValue(ss)) =>
+        val available = SolverFactory.definedSolvers
+        val unknown = ss.toSet -- available
+        if (unknown.nonEmpty) {
+          initReporter.error("Unknown solver(s): "+unknown.mkString(", ")+" (Available: "+available.mkString(", ")+")")
+        }
+        settings = settings.copy(selectedSolvers = ss.toSet)
+
       case LeonValueOption("debug", ListValue(sections)) =>
         val debugSections = sections.flatMap { s =>
           if (s == "all") {
@@ -168,7 +178,7 @@ object Main {
     }
 
     // Create a new reporter taking settings into account
-    val reporter = new DefaultReporter(settings)
+    val reporter = new PlainTextReporter(settings)
 
     reporter.whenDebug(DebugSectionOptions) { debug =>
 
@@ -275,9 +285,6 @@ object Main {
       ctx.reporter.whenDebug(DebugSectionTimers) { debug =>
         ctx.timers.outputTable(debug)
       }
-
-      println("time: " + smtlib.SMTLIBSolver.time)
-
     } catch {
       case LeonFatalError(None) =>
         sys.exit(1)
