@@ -64,6 +64,26 @@ sealed abstract class List[T] {
       case Cons(x,xs) => xs.reverse :+ x
     }
   } ensuring (res => (res.size == size) && (res.content == content))
+
+  def take(i: Int): List[T] = (this, i) match {
+    case (Nil(), _) => Nil()
+    case (Cons(h, t), i) =>
+      if (i == 0) {
+        Nil()
+      } else {
+        Cons(h, t.take(i-1))
+      }
+  }
+
+  def drop(i: Int): List[T] = (this, i) match {
+    case (Nil(), _) => Nil()
+    case (Cons(h, t), i) =>
+      if (i == 0) {
+        Cons(h, t)
+      } else {
+        t.drop(i-1)
+      }
+  }
 }
 
 
