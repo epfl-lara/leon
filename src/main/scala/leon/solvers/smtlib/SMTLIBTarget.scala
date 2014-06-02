@@ -28,12 +28,12 @@ trait SMTLIBTarget {
 
   val interpreter = getNewInterpreter()
 
-  val out = new java.io.FileWriter(s"vcs-$targetName.log", true)
+  val out = new java.io.FileWriter(s"vcs-$targetName.smt2", true)
   reporter.ifDebug { debug =>
     out.write("; -----------------------------------------------------\n")
   }
 
-  def id2sym(id: Identifier): SSymbol = SSymbol(id.name.toUpperCase+"!"+id.globalId)
+  def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
 
   // metadata for CC, and variables
   val constructors = new Bijection[TypeTree, SSymbol]()
@@ -57,6 +57,11 @@ trait SMTLIBTarget {
       tpe match {
         case BooleanType => SSymbol("Bool")
         case Int32Type => SSymbol("Int")
+        case UnitType =>
+          val s = SSymbol("Unit")
+          val cmd = NonStandardCommand(SList(SSymbol("declare-sort"), s))
+          sendCommand(cmd)
+          s
         case TypeParameter(id) =>
           val s = id2sym(id)
           val cmd = NonStandardCommand(SList(SSymbol("declare-sort"), s))
@@ -276,10 +281,14 @@ trait SMTLIBTarget {
     }
   }
 
+  def extractSpecialSymbols(s: SSymbol): Option[Expr] = {
+    None
+  }
+
   def fromSMT(s: SExpr)(implicit bindings: Map[SSymbol, Expr]): Expr = s match {
     case SInt(n)          => IntLiteral(n.toInt)
-    case SSymbol("TRUE")  => BooleanLiteral(true)
-    case SSymbol("FALSE") => BooleanLiteral(false)
+    case SSymbol("true")  => BooleanLiteral(true)
+    case SSymbol("false") => BooleanLiteral(false)
     case s: SSymbol if constructors.containsB(s) =>
       constructors.toA(s) match {
         case cct: CaseClassType =>
@@ -289,8 +298,10 @@ trait SMTLIBTarget {
       }
 
     case s: SSymbol =>
-      println(s)
-      bindings.getOrElse(s, variables.fromB(s).toVariable)
+      (bindings.get(s) orElse variables.getA(s).map(_.toVariable)
+                       orElse extractSpecialSymbols(s)).getOrElse {
+        unsupported("Unknown symbol: "+s)
+      }
 
     case SList((s: SSymbol) :: args) if(constructors.containsB(s)) => 
       val rargs = args.map(fromSMT)
@@ -303,7 +314,7 @@ trait SMTLIBTarget {
           unsupported("Woot? structural type that is non-structural: "+t)
       }
 
-    case SList(List(SSymbol("LET"), SList(defs), body)) =>
+    case SList(List(SSymbol("let"), SList(defs), body)) =>
       val leonDefs: Seq[(SSymbol, Identifier, Expr)] = defs.map {
         case SList(List(s : SSymbol, value)) =>
           (s, FreshIdentifier(s.s), fromSMT(value))
@@ -342,5 +353,36 @@ trait SMTLIBTarget {
     val response = interpreter.eval(cmd)
     assert(!response.isInstanceOf[Error])
     response
+  }
+
+  override def assertCnstr(expr: Expr): Unit = {
+    variablesOf(expr).foreach(declareVariable)
+    val sexpr = toSMT(expr)(Map())
+    sendCommand(Assert(sexpr))
+  }
+
+  override def check: Option[Boolean] = sendCommand(CheckSat) match {
+    case CheckSatResponse(SatStatus)     => Some(true)
+    case CheckSatResponse(UnsatStatus)   => Some(false)
+    case CheckSatResponse(UnknownStatus) => None
+  }
+
+  override def getModel: Map[Identifier, Expr] = {
+    val syms = variables.bSet.toList
+    val cmd: Command = GetValue(syms.head, syms.tail)
+
+    val GetValueResponse(valuationPairs) = sendCommand(cmd)
+
+    valuationPairs.collect {
+      case (sym: SSymbol, value) if variables.containsB(sym) =>
+        (variables.toA(sym), fromSMT(value)(Map()))
+    }.toMap
+  }
+
+  override def push(): Unit = {
+    sendCommand(Push(1))
+  }
+  override def pop(lvl: Int = 1): Unit = {
+    sendCommand(Pop(1))
   }
 }

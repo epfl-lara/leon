@@ -100,7 +100,7 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
               reporter.debug(" - more unrollings")
               val newClauses = unrollOneStep()
               reporter.debug(s"   - ${newClauses.size} new clauses")
-              readLine()
+              //readLine()
               solver.assertCnstr(And(newClauses))
           }
 
