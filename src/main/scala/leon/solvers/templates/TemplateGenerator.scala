@@ -1,8 +1,10 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
-package solvers.combinators
+package solvers
+package templates
 
+import utils._
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
@@ -12,105 +14,45 @@ import purescala.Definitions._
 
 import evaluators._
 
-import scala.collection.mutable.{Set=>MutableSet,Map=>MutableMap}
+class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
+  private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
+  private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
 
-class FunctionTemplate private(
-  val tfd : TypedFunDef,
-  val activatingBool : Identifier,
-  condVars : Set[Identifier],
-  exprVars : Set[Identifier],
-  guardedExprs : Map[Identifier,Seq[Expr]],
-  isRealFunDef : Boolean) {
-
-  private val funDefArgsIDs : Seq[Identifier] = tfd.params.map(_.id)
-
-  private val asClauses : Seq[Expr] = {
-    (for((b,es) <- guardedExprs; e <- es) yield {
-      Implies(Variable(b), e)
-    }).toSeq
-  }
-
-  val blockers : Map[Identifier,Set[FunctionInvocation]] = {
-    val idCall = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
-
-    Map((for((b, es) <- guardedExprs) yield {
-      val calls = es.foldLeft(Set.empty[FunctionInvocation])((s,e) => s ++ functionCallsOf(e)) - idCall
-      if(calls.isEmpty) {
-        None
-      } else {
-        Some((b, calls))
-      }
-    }).flatten.toSeq : _*)
-  }
-
-  private def idToFreshID(id : Identifier) : Identifier = {
-    FreshIdentifier(id.name, true).setType(id.getType)
-  }
-
-  // We use a cache to create the same boolean variables.
-  private val cache : MutableMap[Seq[Expr],Map[Identifier,Expr]] = MutableMap.empty 
-
-  def instantiate(aVar : Identifier, args : Seq[Expr]) : (Seq[Expr], Map[Identifier,Set[FunctionInvocation]]) = {
-    assert(args.size == tfd.params.size)
-
-    val (wasHit,baseIDSubstMap) = cache.get(args) match {
-      case Some(m) => (true,m)
-      case None =>
-        val newMap : Map[Identifier,Expr] = 
-          (exprVars ++ condVars).map(id => id -> Variable(idToFreshID(id))).toMap ++
-          (funDefArgsIDs zip args)
-        cache(args) = newMap
-        (false, newMap)
+  def mkTemplate(body: Expr): FunctionTemplate[T] = {
+    if (cacheExpr contains body) {
+      return cacheExpr(body);
     }
 
-    val idSubstMap : Map[Identifier,Expr] = baseIDSubstMap + (activatingBool -> Variable(aVar))
-    val exprSubstMap : Map[Expr,Expr] = idSubstMap.map(p => (Variable(p._1), p._2))
+    val fakeFunDef = new FunDef(FreshIdentifier("fake", true),
+                                Nil,
+                                body.getType,
+                                variablesOf(body).toSeq.map(id => ValDef(id, id.getType)))
 
-    val newClauses  = asClauses.map(replace(exprSubstMap, _))
+    fakeFunDef.body = Some(body)
 
-    val newBlockers = blockers.map { case (id, funs) =>
-      val bp = if (id == activatingBool) {
-        aVar
-      } else {
-        // That's not exactly safe...
-        idSubstMap(id).asInstanceOf[Variable].id
-      }
+    val res = mkTemplate(fakeFunDef.typed, false)
+    cacheExpr += body -> res
+    res
+  }
 
-      val newFuns = funs.map(fi => fi.copy(args = fi.args.map(replace(exprSubstMap, _))))
-
-      bp -> newFuns
+  def mkTemplate(tfd: TypedFunDef, isRealFunDef: Boolean = true): FunctionTemplate[T] = {
+    if (cache contains tfd) {
+      return cache(tfd)
     }
 
-    (newClauses, newBlockers)
-  }
-
-  override def toString : String = {
-    "Template for def " + tfd.id + "(" + tfd.params.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " + tfd.returnType + " is :\n" +
-    " * Activating boolean : " + activatingBool + "\n" + 
-    " * Control booleans   : " + condVars.toSeq.map(_.toString).mkString(", ") + "\n" +
-    " * Expression vars    : " + exprVars.toSeq.map(_.toString).mkString(", ") + "\n" +
-    " * \"Clauses\"          : " + "\n    " + asClauses.mkString("\n    ") + "\n" +
-    " * Block-map          : " + blockers.toString
-  }
-}
-
-object FunctionTemplate {
-  def mkTemplate(tfd: TypedFunDef, isRealFunDef : Boolean = true) : FunctionTemplate = {
-    val condVars : MutableSet[Identifier] = MutableSet.empty
-    val exprVars : MutableSet[Identifier] = MutableSet.empty
+    var condVars = Set[Identifier]()
+    var exprVars = Set[Identifier]()
 
     // Represents clauses of the form:
     //    id => expr && ... && expr
-    val guardedExprs : MutableMap[Identifier,Seq[Expr]] = MutableMap.empty
+    var guardedExprs = Map[Identifier, Seq[Expr]]()
 
     def storeGuarded(guardVar : Identifier, expr : Expr) : Unit = {
       assert(expr.getType == BooleanType)
-      if(guardedExprs.isDefinedAt(guardVar)) {
-        val prev : Seq[Expr] = guardedExprs(guardVar)
-        guardedExprs(guardVar) = expr +: prev
-      } else {
-        guardedExprs(guardVar) = Seq(expr)
-      }
+
+      val prev = guardedExprs.getOrElse(guardVar, Nil)
+
+      guardedExprs += guardVar -> (expr +: prev)
     }
 
     // Group elements that satisfy p toghether
@@ -143,7 +85,7 @@ object FunctionTemplate {
       }(e)
     }
 
-    def rec(pathVar : Identifier, expr : Expr) : Expr = {
+    def rec(pathVar: Identifier, expr: Expr): Expr = {
       expr match {
         case a @ Assert(cond, _, body) =>
           storeGuarded(pathVar, rec(pathVar, cond))
@@ -285,7 +227,14 @@ object FunctionTemplate {
 
     }
 
-    new FunctionTemplate(tfd, activatingBool, Set(condVars.toSeq : _*), Set(exprVars.toSeq : _*), Map(guardedExprs.toSeq : _*),
-isRealFunDef)
+    val template = new FunctionTemplate[T](tfd,
+                                           encoder,
+                                           activatingBool,
+                                           Set(condVars.toSeq : _*),
+                                           Set(exprVars.toSeq : _*),
+                                           Map(guardedExprs.toSeq : _*),
+                                           isRealFunDef)
+    cache += tfd -> template
+    template
   }
 }

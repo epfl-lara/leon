@@ -10,152 +10,182 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
+import solvers.templates._
 import utils.Interruptible
 
 import scala.collection.mutable.{Map=>MutableMap}
 
-class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[IncrementalSolver]) 
+class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
         extends Solver with Interruptible {
 
-  private var theConstraint : Option[Expr] = None
-  private var theModel : Option[Map[Identifier,Expr]] = None
+  private var lastCheckResult: (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
 
   val reporter = context.reporter
 
-  private var stop: Boolean = false
+  private var interrupted: Boolean = false
 
-  def name = "U:"+underlyings.name
+  def name = "U:"+underlying.name
 
   def free {}
 
-  import context.reporter._
+  var varsInVC    = List[Set[Identifier]](Set())
 
-  def assertCnstr(expression : Expr) {
-    if(!theConstraint.isEmpty) {
-      fatalError("Multiple assertCnstr(...).")
+  val templateGenerator = new TemplateGenerator(new TemplateEncoder[Expr] {
+    def encodeId(id: Identifier): Expr= {
+      Variable(id.freshen)
     }
-    theConstraint = Some(expression)
+
+    def encodeExpr(bindings: Map[Identifier, Expr])(e: Expr): Expr = {
+      replaceFromIDs(bindings, e)
+    }
+
+    def substitute(substMap: Map[Expr, Expr]): Expr => Expr = {
+      (e: Expr) => replace(substMap, e)
+    }
+
+    def not(e: Expr) = Not(e)
+    def implies(l: Expr, r: Expr) = Implies(l, r)
+  })
+
+  val unrollingBank = new UnrollingBank(reporter, templateGenerator)
+
+  val solver = underlying
+
+  def assertCnstr(expression: Expr) {
+    val freeIds = variablesOf(expression)
+
+    val freeVars = freeIds.map(_.toVariable: Expr)
+
+    val bindings = freeVars.zip(freeVars).toMap
+
+    val newClauses = unrollingBank.getClauses(expression, bindings)
+
+    for (cl <- newClauses) {
+      solver.assertCnstr(cl)
+    }
+
+    varsInVC    = (varsInVC.head ++ freeIds) :: varsInVC.tail
   }
 
-  def check : Option[Boolean] = theConstraint.map { expr =>
-    val solver = underlyings.getNewSolver
 
-    val template = getTemplate(expr)
+  def push() {
+    unrollingBank.push()
+    solver.push()
+    varsInVC = Set[Identifier]() :: varsInVC
+  }
 
-    val aVar : Identifier = template.activatingBool
-    var allBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
+  def pop(lvl: Int = 1) {
+    unrollingBank.pop(lvl)
+    solver.pop(lvl)
+    varsInVC = varsInVC.drop(lvl)
+  }
 
-    def unrollOneStep() : List[Expr] = {
-      val blockersBefore = allBlockers
+  def check: Option[Boolean] = {
+    genericCheck(Set())
+  }
 
-      var newClauses : List[Seq[Expr]] = Nil
-      var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
+  def hasFoundAnswer = lastCheckResult._1
 
-      for(blocker <- allBlockers.keySet; fi @ FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
-        val tmpl = getTemplate(tfd)
+  def foundAnswer(res: Option[Boolean], model: Option[Map[Identifier, Expr]] = None) = {
+    lastCheckResult = (true, res, model)
+  }
 
-        val (nc, nb) = tmpl.instantiate(blocker, args)
-        newClauses = nc :: newClauses
-        newBlockers = newBlockers ++ nb
-        //reporter.debug("Unrolling behind "+fi+" ("+nc.size+")")
-        //for (c <- nc) {
-        //  reporter.debug("  . "+c)
-        //}
-      }
+  def genericCheck(assumptions: Set[Expr]): Option[Boolean] = {
+    lastCheckResult = (false, None, None)
 
-      allBlockers = newBlockers
-      newClauses.flatten
-    }
+    while(!hasFoundAnswer && !interrupted) {
+      reporter.debug(" - Running search...")
 
-    val (nc, nb) = template.instantiate(aVar, template.tfd.params.map(a => Variable(a.id)))
-
-    allBlockers = nb
-
-    var unrollingCount : Int = 0
-    var done : Boolean = false
-    var result : Option[Boolean] = None
-
-    solver.assertCnstr(Variable(aVar))
-    solver.assertCnstr(And(nc))
-    // We're now past the initial step.
-    while(!done && !stop) {
       solver.push()
-      reporter.debug(" - Searching with blocked literals")
-      solver.assertCnstr(And(allBlockers.keySet.toSeq.map(id => Not(id.toVariable))))
-      solver.check match {
+      solver.assertCnstr(And((assumptions ++ unrollingBank.currentBlockers).toSeq))
+      val res = solver.check
+      solver.pop()
+
+      reporter.debug(" - Finished search with blocked literals")
+
+      res match {
+        case None =>
+          reporter.ifDebug { debug =>
+            reporter.debug("Solver returned unknown!?")
+          }
+          foundAnswer(None)
+
+        case Some(true) => // SAT
+          val model = solver.getModel
+
+          foundAnswer(Some(true), Some(model))
+
+        case Some(false) if !unrollingBank.canUnroll =>
+          foundAnswer(Some(false))
 
         case Some(false) =>
-          solver.pop(1)
-          reporter.debug(" - Searching with unblocked literals")
-          //val open = fullOpenExpr
-          solver.check match {
-            case Some(false) =>
-              done = true
-              result = Some(false)
+          //debug("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
+          //debug("UNSAT BECAUSE: "+core.mkString("  AND  "))
 
-            case r =>
-              unrollingCount += 1
-              val model = solver.getModel
-              reporter.debug(" - Tentative model: "+model)
-              reporter.debug(" - more unrollings")
-              val newClauses = unrollOneStep()
-              reporter.debug(s"   - ${newClauses.size} new clauses")
-              //readLine()
-              solver.assertCnstr(And(newClauses))
+          if (!interrupted) {
+            reporter.debug(" - Running search without blocked literals (w/o lucky test)")
+
+            solver.push()
+            solver.assertCnstr(And(assumptions.toSeq))
+            val res2 = solver.check
+            solver.pop()
+
+            res2 match {
+              case Some(false) =>
+                //reporter.debug("UNSAT WITHOUT Blockers")
+                foundAnswer(Some(false))
+
+              case Some(true) =>
+
+              case None =>
+                foundAnswer(None)
+            }
           }
 
-        case Some(true) =>
-          val model = solver.getModel
-          done = true
-          result = Some(true)
-          theModel = Some(model)
+          if(interrupted) {
+            foundAnswer(None)
+          }
 
-        case None =>
-          val model = solver.getModel
-          done = true
-          result = Some(true)
-          theModel = Some(model)
+          if(!hasFoundAnswer) {
+            reporter.debug("- We need to keep going.")
+
+            val toRelease = unrollingBank.getBlockersToUnlock
+
+            reporter.debug(" - more unrollings")
+
+            val newClauses = unrollingBank.unrollBehind(toRelease)
+
+            for(ncl <- newClauses) {
+              solver.assertCnstr(ncl)
+            }
+
+            reporter.debug(" - finished unrolling")
+          }
       }
     }
-    solver.free
-    result
 
-  } getOrElse {
-    Some(true)
+    if(interrupted) {
+      None
+    } else {
+      lastCheckResult._2
+    }
   }
 
-  def getModel : Map[Identifier,Expr] = {
-    val vs : Set[Identifier] = theConstraint.map(variablesOf(_)).getOrElse(Set.empty)
-    theModel.getOrElse(Map.empty).filter(p => vs(p._1))
+  def getModel: Map[Identifier,Expr] = {
+    val allVars = varsInVC.flatten.toSet
+    lastCheckResult match {
+      case (true, Some(true), Some(m)) =>
+        m.filterKeys(allVars)
+      case _ =>
+        Map()
+    }
   }
 
   override def interrupt(): Unit = {
-    stop = true
+    interrupted = true
   }
 
   override def recoverInterrupt(): Unit = {
-    stop = false
-  }
-
-  private val tfdTemplateCache : MutableMap[TypedFunDef, FunctionTemplate] = MutableMap.empty
-  private val exprTemplateCache : MutableMap[Expr, FunctionTemplate] = MutableMap.empty
-
-  private def getTemplate(tfd: TypedFunDef): FunctionTemplate = {
-    tfdTemplateCache.getOrElse(tfd, {
-      val res = FunctionTemplate.mkTemplate(tfd, true)
-      tfdTemplateCache += tfd -> res
-      res
-    })
-  }
-
-  private def getTemplate(body: Expr): FunctionTemplate = {
-    exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => ValDef(id, id.getType)), DefType.MethodDef)
-      fakeFunDef.body = Some(body)
-
-      val res = FunctionTemplate.mkTemplate(fakeFunDef.typed, false)
-      exprTemplateCache += body -> res
-      res
-    })
+    interrupted = false
   }
 }

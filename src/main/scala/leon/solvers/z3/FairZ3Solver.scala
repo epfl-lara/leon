@@ -1,13 +1,12 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
-package solvers.z3
+package solvers
+package z3
 
 import leon.utils._
 
-import z3.scala._
-
-import leon.solvers.{Solver, IncrementalSolver}
+import _root_.z3.scala._
 
 import purescala.Common._
 import purescala.Definitions._
@@ -16,12 +15,11 @@ import purescala.Extractors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
+import solvers.templates._
+
 import evaluators._
 
 import termination._
-
-import scala.collection.mutable.{Map => MutableMap}
-import scala.collection.mutable.{Set => MutableSet}
 
 class FairZ3Solver(val context : LeonContext, val program: Program)
   extends AbstractZ3Solver
@@ -133,206 +131,28 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
   }
 
-  private val funDefTemplateCache : MutableMap[TypedFunDef, FunctionTemplate] = MutableMap.empty
-  private val exprTemplateCache   : MutableMap[Expr       , FunctionTemplate] = MutableMap.empty
-
-  private def getTemplate(tfd: TypedFunDef): FunctionTemplate = {
-    funDefTemplateCache.getOrElse(tfd, {
-      val res = FunctionTemplate.mkTemplate(this, tfd, true)
-      funDefTemplateCache += tfd -> res
-      res
-    })
-  }
-
-  private def getTemplate(body: Expr): FunctionTemplate = {
-    exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => ValDef(id, id.getType)), DefType.MethodDef)
-      fakeFunDef.body = Some(body)
-
-      val res = FunctionTemplate.mkTemplate(this, fakeFunDef.typed, false)
-      exprTemplateCache += body -> res
-      res
-    })
-  }
-
-  class UnrollingBank {
-    // Keep which function invocation is guarded by which guard,
-    // also specify the generation of the blocker.
-
-    private var blockersInfoStack : List[MutableMap[Z3AST,(Int,Int,Z3AST,Set[Z3FunctionInvocation])]] = List(MutableMap())
-
-    def blockersInfo = blockersInfoStack.head
-
-    def push() {
-      blockersInfoStack = (MutableMap() ++ blockersInfo) :: blockersInfoStack
+  val templateGenerator = new TemplateGenerator(new TemplateEncoder[Z3AST] {
+    def encodeId(id: Identifier): Z3AST = {
+      idToFreshZ3Id(id)
     }
 
-    def pop(lvl: Int) {
-      blockersInfoStack = blockersInfoStack.drop(lvl)
-    }
-
-    def z3CurrentZ3Blockers = blockersInfo.map(_._2._3)
-
-    def finfo(fi: Z3FunctionInvocation) = {
-      fi.tfd.id.uniqueName+fi.args.mkString("(", ", ", ")")
-    }
-
-    def dumpBlockers = {
-      blockersInfo.groupBy(_._2._1).toSeq.sortBy(_._1).foreach { case (gen, entries) =>
-        reporter.debug("--- "+gen)
-
-
-        for (((bast), (gen, origGen, ast, fis)) <- entries) {
-          reporter.debug(f".     $bast%15s ~> "+fis.map(finfo).mkString(", "))
-        }
+    def encodeExpr(bindings: Map[Identifier, Z3AST])(e: Expr): Z3AST = {
+      toZ3Formula(e, bindings).getOrElse {
+        reporter.fatalError("Failed to translate "+e+" to z3 ("+e.getClass+")")
       }
     }
 
-    def canUnroll = !blockersInfo.isEmpty
+    def substitute(substMap: Map[Z3AST, Z3AST]): Z3AST => Z3AST = {
+      val (from, to) = substMap.unzip
+      val (fromArray, toArray) = (from.toArray, to.toArray)
 
-    def getZ3BlockersToUnlock: Seq[Z3AST] = {
-      if (!blockersInfo.isEmpty) {
-        val minGeneration = blockersInfo.values.map(_._1).min
-
-        blockersInfo.filter(_._2._1 == minGeneration).toSeq.map(_._1)
-      } else {
-        Seq()
-      }
+      (c: Z3AST) => z3.substitute(c, fromArray, toArray)
     }
 
-    private def registerBlocker(gen: Int, id: Z3AST, fis: Set[Z3FunctionInvocation]) {
-      val z3ast = z3.mkNot(id)
-      blockersInfo.get(id) match {
-        case Some((exGen, origGen, _, exFis)) =>
-          // PS: when recycling `b`s, this assertion becomes dangerous.
-          // It's better to simply take the max of the generations.
-          // assert(exGen == gen, "Mixing the same id "+id+" with various generations "+ exGen+" and "+gen)
+    def not(e: Z3AST) = z3.mkNot(e)
+    def implies(l: Z3AST, r: Z3AST) = z3.mkImplies(l, r)
+  })
 
-          val minGen = gen min exGen
-
-          blockersInfo(id) = ((minGen, origGen, z3ast, fis++exFis))
-        case None =>
-          blockersInfo(id) = ((gen, gen, z3ast, fis))
-      }
-    }
-
-    def scanForNewTemplates(expr: Expr): Seq[Z3AST] = {
-      // OK, now this is subtle. This `getTemplate` will return
-      // a template for a "fake" function. Now, this template will
-      // define an activating boolean...
-      val template = getTemplate(expr)
-
-
-      val z3args = for (vd <- template.tfd.params) yield {
-        variables.getZ3(Variable(vd.id)) match {
-          case Some(ast) =>
-            ast
-          case None =>
-            val ast = idToFreshZ3Id(vd.id)
-            variables += Variable(vd.id) -> ast
-            ast
-        }
-      }
-
-      // ...now this template defines clauses that are all guarded
-      // by that activating boolean. If that activating boolean is 
-      // undefined (or false) these clauses have no effect...
-      val (newClauses, newBlocks) =
-        template.instantiate(template.z3ActivatingBool, z3args)
-
-      for((i, fis) <- newBlocks) {
-        registerBlocker(nextGeneration(0), i, fis)
-      }
-      
-      // ...so we must force it to true!
-      template.z3ActivatingBool +: newClauses
-    }
-
-    def nextGeneration(gen: Int) = gen + 3
-
-    def decreaseAllGenerations() = {
-      for ((block, (gen, origGen, ast, finvs)) <- blockersInfo) {
-        // We also decrease the original generation here
-        blockersInfo(block) = (math.max(1,gen-1), math.max(1,origGen-1), ast, finvs)
-      }
-    }
-
-    def promoteBlocker(b: Z3AST) = {
-      if (blockersInfo contains b) {
-        val (gen, origGen, ast, finvs) = blockersInfo(b)
-        blockersInfo(b) = (1, origGen, ast, finvs)
-      }
-    }
-
-    private var defBlockers = Map[Z3FunctionInvocation, Z3AST]()
-
-    def unlock(ids: Seq[Z3AST]) : Seq[Z3AST] = {
-      assert(ids.forall(id => blockersInfo contains id))
-
-      var newClauses : Seq[Z3AST] = Seq.empty
-
-      for (id <- ids) {
-        val (gen, _, _, fis) = blockersInfo(id)
-
-        blockersInfo -= id
-
-        var reintroducedSelf = false
-
-        for (fi <- fis) {
-          var newCls = Seq[Z3AST]()
-
-          val defBlocker = defBlockers.get(fi) match {
-            case Some(defBlocker) =>
-              // we already have defBlocker => f(args) = body
-              defBlocker
-            case None =>
-              // we need to define this defBlocker and link it to definition
-              val defBlocker = z3.mkFreshConst("d", z3.mkBoolSort)
-              defBlockers += fi -> defBlocker
-
-              val template              = getTemplate(fi.tfd)
-              reporter.debug(template)
-              val (newExprs, newBlocks) = template.instantiate(defBlocker, fi.args)
-
-              for((i, fis2) <- newBlocks) {
-                registerBlocker(nextGeneration(gen), i, fis2)
-              }
-
-              newCls ++= newExprs
-              defBlocker
-          }
-
-          // We connect it to the defBlocker:   blocker => defBlocker
-          if (defBlocker != id) {
-            newCls ++= List(z3.mkImplies(id, defBlocker))
-          }
-
-          reporter.debug("Unrolling behind "+fi+" ("+newCls.size+")")
-          for (cl <- newCls) {
-          reporter.debug("  . "+cl)
-          }
-
-          newClauses ++= newCls
-        }
-
-      }
-
-      context.reporter.debug(s"   - ${newClauses.size} new clauses")
-      //context.reporter.ifDebug { debug =>
-      //  debug(s" - new clauses:")
-      //  debug("@@@@")
-      //  for (cl <- newClauses) {
-      //    debug(""+cl)
-      //  }
-      //  debug("////")
-      //}
-
-      //dumpBlockers
-      //readLine()
-
-      newClauses
-    }
-  }
 
   initZ3
 
@@ -342,7 +162,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   private var frameExpressions = List[List[Expr]](Nil)
 
-  val unrollingBank = new UnrollingBank()
+  val unrollingBank = new UnrollingBank(reporter, templateGenerator)
 
   def push() {
     solver.push()
@@ -370,11 +190,19 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   var definitiveCore   : Set[Expr] = Set.empty
 
   def assertCnstr(expression: Expr) {
-    varsInVC ++= variablesOf(expression)
+    val freeVars = variablesOf(expression)
+    varsInVC ++= freeVars
+
+    // We make sure all free variables are registered as variables
+    freeVars.foreach { v =>
+      variables.toZ3OrCompute(Variable(v)) {
+        templateGenerator.encoder.encodeId(v)
+      }
+    }
 
     frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
 
-    val newClauses = unrollingBank.scanForNewTemplates(expression)
+    val newClauses = unrollingBank.getClauses(expression, variables.leonToZ3)
 
     for (cl <- newClauses) {
       solver.assertCnstr(cl)
@@ -426,7 +254,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       val timer = context.timers.solvers.z3.check.start()
       solver.push() // FIXME: remove when z3 bug is fixed
-      val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.z3CurrentZ3Blockers) :_*)
+      val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.currentBlockers) :_*)
       solver.pop()  // FIXME: remove when z3 bug is fixed
       timer.stop()
 
@@ -548,11 +376,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           if(!foundDefinitiveAnswer) { 
             reporter.debug("- We need to keep going.")
 
-            val toRelease = unrollingBank.getZ3BlockersToUnlock
+            val toRelease = unrollingBank.getBlockersToUnlock
 
             reporter.debug(" - more unrollings")
 
-            val newClauses = unrollingBank.unlock(toRelease)
+            val newClauses = unrollingBank.unrollBehind(toRelease)
 
             for(ncl <- newClauses) {
               solver.assertCnstr(ncl)
