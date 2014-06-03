@@ -576,10 +576,12 @@ object Trees {
   }
 
   /* Array operations */
+  @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr with FixedType {
     val fixedType = ArrayType(defaultValue.getType)
   }
 
+  @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
   case class ArrayMake(defaultValue: Expr) extends Expr with FixedType {
     val fixedType = ArrayType(defaultValue.getType)
   }
@@ -613,6 +615,8 @@ object Trees {
     val fixedType = Int32Type
   }
   case class FiniteArray(exprs: Seq[Expr]) extends Expr
+
+  @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
   case class ArrayClone(array: Expr) extends Expr {
     if(array.getType != Untyped)
       setType(array.getType)

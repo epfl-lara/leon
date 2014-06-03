@@ -12,23 +12,42 @@ import purescala.TypeTrees._
 
 import solvers.templates._
 import utils.Interruptible
+import evaluators._
 
-import scala.collection.mutable.{Map=>MutableMap}
+class UnrollingSolver(val context: LeonContext, program: Program, underlying: IncrementalSolver) extends Solver with Interruptible {
 
-class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
-        extends Solver with Interruptible {
+  val (feelingLucky, useCodeGen) = locally {
+    var lucky            = false
+    var codegen          = false
+
+    for(opt <- context.options) opt match {
+      case LeonFlagOption("feelinglucky", v)       => lucky   = v
+      case LeonFlagOption("codegen", v)            => codegen = v
+      case _ =>
+    }
+
+    (lucky, codegen)
+  }
+
+  private val evaluator : Evaluator = {
+    if(useCodeGen) {
+      new CodeGenEvaluator(context, program)
+    } else {
+      new DefaultEvaluator(context, program)
+    }
+  }
 
   private var lastCheckResult: (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
+  private var varsInVC       = List[Set[Identifier]](Set())
+  private var constraints    = List[List[Expr]](Nil)
+  private var interrupted: Boolean = false
 
   val reporter = context.reporter
-
-  private var interrupted: Boolean = false
 
   def name = "U:"+underlying.name
 
   def free {}
 
-  var varsInVC    = List[Set[Identifier]](Set())
 
   val templateGenerator = new TemplateGenerator(new TemplateEncoder[Expr] {
     def encodeId(id: Identifier): Expr= {
@@ -65,6 +84,7 @@ class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
     }
 
     varsInVC    = (varsInVC.head ++ freeIds) :: varsInVC.tail
+    constraints = (constraints.head ++ newClauses) :: constraints.tail
   }
 
 
@@ -72,12 +92,14 @@ class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
     unrollingBank.push()
     solver.push()
     varsInVC = Set[Identifier]() :: varsInVC
+    constraints = Nil :: constraints
   }
 
   def pop(lvl: Int = 1) {
     unrollingBank.pop(lvl)
     solver.pop(lvl)
     varsInVC = varsInVC.drop(lvl)
+    constraints = constraints.drop(lvl)
   }
 
   def check: Option[Boolean] = {
@@ -90,6 +112,36 @@ class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
     lastCheckResult = (true, res, model)
   }
 
+  def isValidModel(model: Map[Identifier, Expr], silenceErrors: Boolean = false): Boolean = {
+    import EvaluationResults._
+
+    val expr = And(constraints.flatten)
+
+    val fullModel = variablesOf(expr).map(v => v -> model.getOrElse(v, simplestValue(v.getType))).toMap
+
+    evaluator.eval(expr, fullModel) match {
+      case Successful(BooleanLiteral(true)) =>
+        reporter.debug("- Model validated.")
+        true
+
+      case Successful(BooleanLiteral(false)) =>
+        reporter.debug("- Invalid model.")
+        false
+
+      case RuntimeError(msg) =>
+        reporter.debug("- Model leads to runtime error.")
+        false
+
+      case EvaluatorError(msg) => 
+        if (silenceErrors) {
+          reporter.debug("- Model leads to evaluator error: " + msg)
+        } else {
+          reporter.warning("- Model leads to evaluator error: " + msg)
+        }
+        false
+    }
+  }
+
   def genericCheck(assumptions: Set[Expr]): Option[Boolean] = {
     lastCheckResult = (false, None, None)
 
@@ -99,12 +151,13 @@ class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
       solver.push()
       solver.assertCnstr(And((assumptions ++ unrollingBank.currentBlockers).toSeq))
       val res = solver.check
-      solver.pop()
 
       reporter.debug(" - Finished search with blocked literals")
 
       res match {
         case None =>
+          solver.pop()
+
           reporter.ifDebug { debug =>
             reporter.debug("Solver returned unknown!?")
           }
@@ -112,23 +165,29 @@ class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
 
         case Some(true) => // SAT
           val model = solver.getModel
+          solver.pop()
 
           foundAnswer(Some(true), Some(model))
 
         case Some(false) if !unrollingBank.canUnroll =>
+          solver.pop()
           foundAnswer(Some(false))
 
         case Some(false) =>
           //debug("UNSAT BECAUSE: "+solver.getUnsatCore.mkString("\n  AND  \n"))
           //debug("UNSAT BECAUSE: "+core.mkString("  AND  "))
+          solver.pop()
 
           if (!interrupted) {
-            reporter.debug(" - Running search without blocked literals (w/o lucky test)")
+            if (feelingLucky) {
+              reporter.debug(" - Running search without blocked literals (w/ lucky test)")
+            } else {
+              reporter.debug(" - Running search without blocked literals (w/o lucky test)")
+            }
 
             solver.push()
             solver.assertCnstr(And(assumptions.toSeq))
             val res2 = solver.check
-            solver.pop()
 
             res2 match {
               case Some(false) =>
@@ -136,10 +195,19 @@ class UnrollingSolver(val context: LeonContext, underlying: IncrementalSolver)
                 foundAnswer(Some(false))
 
               case Some(true) =>
+                if (feelingLucky && !interrupted) {
+                  val model = solver.getModel
+
+                  // we might have been lucky :D
+                  if (isValidModel(model, silenceErrors = true)) {
+                    foundAnswer(Some(true), Some(model))
+                  }
+                }
 
               case None =>
                 foundAnswer(None)
             }
+            solver.pop()
           }
 
           if(interrupted) {

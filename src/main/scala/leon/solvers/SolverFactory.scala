@@ -34,10 +34,10 @@ object SolverFactory {
         SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
 
       case "smt" | "smt-z3" =>
-        SolverFactory(() => new UnrollingSolver(ctx, new SMTLIBSolver(ctx, program) with SMTLIBZ3Target) with TimeoutSolver)
+        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBZ3Target) with TimeoutSolver)
 
       case "smt-cvc4" =>
-        SolverFactory(() => new UnrollingSolver(ctx, new SMTLIBSolver(ctx, program) with SMTLIBCVC4Target) with TimeoutSolver)
+        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBCVC4Target) with TimeoutSolver)
 
       case _ =>
         ctx.reporter.fatalError("Unknown solver "+name)

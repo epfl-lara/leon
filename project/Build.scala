@@ -79,7 +79,7 @@ object Leon extends Build {
   object Github {
     lazy val bonsai = RootProject(uri("git://github.com/colder/bonsai.git#8f485605785bda98ac61885b0c8036133783290a"))
 
-    private val scalaSmtLibVersion = "90f66cf07aef34b05dc5585bb35aca773b3d0d43"
+    private val scalaSmtLibVersion = "4cc4cb1ce38fe62790b674666ab141d0430b0f00"
     lazy val scalaSmtLib = RootProject(uri("git://github.com/regb/scala-smtlib.git#%s".format(scalaSmtLibVersion)))
   }
 }

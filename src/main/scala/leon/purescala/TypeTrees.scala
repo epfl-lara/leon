@@ -49,7 +49,7 @@ object TypeTrees {
   }
     
 
-  sealed abstract class TypeTree extends Tree
+  abstract class TypeTree extends Tree
 
   case object Untyped extends TypeTree
   case object BooleanType extends TypeTree

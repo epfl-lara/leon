@@ -10,6 +10,7 @@ import Common._
 import Trees._
 import Extractors._
 import TypeTrees._
+import TreeOps.simplestValue
 
 import _root_.smtlib.sexpr.SExprs._
 import _root_.smtlib.interpreters.Z3Interpreter
@@ -26,14 +27,19 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   val extSym = SSymbol("_")
 
   var setSort: Option[SSymbol] = None
+  var mapSort: Option[SSymbol] = None
+  var optionSort: Option[SSymbol] = None
 
   override def declareSort(t: TypeTree): SExpr = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
       tpe match {
+        case MapType(from, to) =>
+          declareMapSort(from, to)
         case SetType(base) =>
           declareSetSort(base)
-        case _ => super.declareSort(t)
+        case _ =>
+          super.declareSort(t)
       }
     }
   }
@@ -53,35 +59,108 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     SList(setSort.get, declareSort(of))
   }
 
-  override def extractSpecialSymbols(s: SSymbol): Option[Expr] = {
-    s.s.split("!").toList.reverse match {
-      case n :: "val" :: rest =>
-        val sort = rest.reverse.mkString("!")
+  def declareOptionSort(of: TypeTree) = {
+    optionSort match {
+      case None =>
+        val t      = SSymbol("T")
 
-        sorts.getA(SSymbol(sort)) match {
-          case Some(tp : TypeParameter) =>
-            Some(GenericValue(tp, n.toInt))
-          case _ =>
-            None
-        }
+        val s      = SSymbol("Option")
+        val some   = SSymbol("Some")
+        val some_v = SSymbol("Some_v")
+        val none   = SSymbol("None")
+
+        val caseSome = SList(some, SList(some_v, t))
+        val caseNone = none
+
+        val cmd = NonStandardCommand(SList(SSymbol("declare-datatypes"), SList(t), SList(SList(s, caseSome, caseNone))))
+        sendCommand(cmd)
+
+        optionSort = Some(s)
       case _ =>
-        None
     }
+
+    SList(optionSort.get, declareSort(of))
   }
 
-  override def fromSMT(s: SExpr)(implicit bindings: Map[SSymbol, Expr]): Expr = s match {
-    case SList(List(`extSym`, SSymbol("as-array"), k: SSymbol)) =>
-      bindings(k)
+  def declareMapSort(from: TypeTree, to: TypeTree) = {
+    mapSort match {
+      case None =>
+        val m = SSymbol("Map")
+        val a = SSymbol("A")
+        val b = SSymbol("B")
+        mapSort = Some(m)
+        declareOptionSort(to)
+
+        val cmd = NonStandardCommand(SList(SSymbol("define-sort"), m, SList(a, b), SList(SSymbol("Array"), a, SList(optionSort.get, b))))
+        sendCommand(cmd)
+      case _ =>
+    }
+
+    SList(mapSort.get, declareSort(from), declareSort(to))
+  }
+
+  override def fromSMT(s: SExpr, tpe: TypeTree)(implicit letDefs: Map[SSymbol, SExpr]): Expr = (s, tpe) match {
+    case (s: SSymbol, tp: TypeParameter) =>
+      val n = s.s.split("!").toList.last
+      GenericValue(tp, n.toInt)
+
+
+    case (SList(List(`extSym`, SSymbol("as-array"), k: SSymbol)), tpe) =>
+      if (letDefs contains k) {
+        // Need to recover value form function model
+        fromRawArray(extractRawArray(letDefs(k)), tpe)
+      } else {
+        unsupported(" as-array on non-function or unknown symbol "+k)
+      }
 
     // SMT representation for empty sets: Array(* -> false)
-    case SList(List(SList(List(SSymbol("as"), SSymbol("const"), SList(List(SSymbol("Array"), s, SSymbol("Bool"))))), SSymbol("false"))) =>
-      FiniteSet(Nil).setType(sorts.fromB(s))
+    case (SList(List(SList(List(SSymbol("as"), SSymbol("const"), SList(List(SSymbol("Array"), k, v)))), defV)), tpe) =>
+      val ktpe = sorts.fromB(k)
+      val vtpe = sorts.fromB(v)
+
+      fromRawArray(RawArrayValue(ktpe, Map(), fromSMT(defV, vtpe)), tpe)
 
     case _ =>
-      super.fromSMT(s)
+      super[SMTLIBTarget].fromSMT(s, tpe)
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, SExpr]) = e match {
+      case a @ FiniteArray(elems) =>
+        val tpe @ ArrayType(base) = normalizeType(a.getType)
+        declareSort(tpe)
+
+        var ar = SList(SList(SSymbol("as"), SSymbol("const"), declareSort(RawArrayType(Int32Type, base))), toSMT(simplestValue(base)))
+
+        for ((e, i) <- elems.zipWithIndex) {
+          ar = SList(SSymbol("store"), ar, toSMT(IntLiteral(i)), toSMT(e))
+        }
+
+        SList(constructors.toB(tpe), toSMT(IntLiteral(elems.size)), ar)
+
+      /**
+       * ===== Map operations =====
+       */
+      case MapGet(m, k) =>
+        declareSort(m.getType)
+        SList(SSymbol("Some_v"), SList(SSymbol("select"), toSMT(m), toSMT(k)))
+
+      case MapIsDefinedAt(m, k) =>
+        declareSort(m.getType)
+        SList(SSymbol("is-Some"), SList(SSymbol("select"), toSMT(m), toSMT(k)))
+
+      case m @ FiniteMap(elems) =>
+        val ms = declareSort(m.getType)
+
+        var res = SList(SList(SSymbol("as"), SSymbol("const"), ms), SSymbol("None"))
+        for ((k, v) <- elems) {
+          res = SList(SSymbol("store"), res, toSMT(k), SList(SSymbol("Some"), toSMT(v)))
+        }
+
+        res
+
+      /**
+       * ===== Set operations =====
+       */
       case fs @ FiniteSet(elems) =>
         val ss = declareSort(fs.getType)
         var res = SList(SList(SSymbol("as"), SSymbol("const"), ss), toSMT(BooleanLiteral(false)))
@@ -92,7 +171,17 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
         res
 
-      case sd @ SetDifference(a, b) =>
+      case SubsetOf(ss, s) =>
+        // a isSubset b   ==>   (a zip b).map(implies) == (* => true)
+        val allTrue    = SList(SList(SSymbol("as"), SSymbol("const"), declareSort(s.getType)), SSymbol("true"))
+        val mapImplies = SList(SList(extSym, SSymbol("map"), SSymbol("implies")), toSMT(ss), toSMT(s))
+
+        SList(SSymbol("="), mapImplies, allTrue)
+
+      case ElementOfSet(e, s) =>
+        SList(SSymbol("select"), toSMT(s), toSMT(e))
+
+      case SetDifference(a, b) =>
         // a -- b
         // becomes:
         // a && not(b)
@@ -107,7 +196,40 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         super.toSMT(e)
   }
 
-  // We use get-model instead
+  def extractRawArray(s: SExpr)(implicit letDefs: Map[SSymbol, SExpr]): RawArrayValue = s match {
+    case SList(List(SSymbol("define-fun"), a: SSymbol, SList(SList(List(arg, akind)) :: Nil), rkind, body)) =>
+      val argTpe = sorts.toA(akind)
+      val retTpe = sorts.toA(rkind)
+
+      def extractCases(e: SExpr): (Map[Expr, Expr], Expr) = e match {
+        case SList(SSymbol("ite") :: SList(SSymbol("=") :: `arg` :: k :: Nil) :: v :: e :: Nil) =>
+          val (cs, d) = extractCases(e)
+          (Map(fromSMT(k, argTpe) -> fromSMT(v, retTpe)) ++ cs, d)
+        case e =>
+          (Map(),fromSMT(e, retTpe))
+      }
+
+      val (cases, default) = extractCases(body)
+
+      RawArrayValue(argTpe, cases, default)
+    case _ =>
+      unsupported("Unable to extract "+s)
+  }
+
+  def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
+    case SetType(base) =>
+      assert(r.default == BooleanLiteral(false) && r.keyTpe == base)
+
+      FiniteSet(r.elems.keySet.toSeq).setType(tpe)
+
+    case RawArrayType(from, to) =>
+      r
+
+    case _ =>
+      unsupported("Unable to extract from raw array for "+tpe)
+  }
+
+  // EK: We use get-model instead in order to extract models for arrays
   override def getModel: Map[Identifier, Expr] = {
 
     val cmd = NonStandardCommand(SList(SSymbol("get-model")))
@@ -119,40 +241,12 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       case _ => Nil
     }
 
-    var maps = Map[SSymbol, TypeTree]()
+    var modelFunDefs = Map[SSymbol, SExpr]()
 
     // First pass to gather functions (arrays defs)
     for (me <- smodel) me match {
-      case SList(List(SSymbol("define-fun"), a: SSymbol, SList(Nil), _, SList(List(`extSym`, SSymbol("as-array"), k: SSymbol)))) =>
-        maps += k -> variables.toA(a).getType
-      case _ =>
-    }
-
-    var bindings = Map[SSymbol, Expr]()
-
-    // Second pass to gather functions (arrays defs)
-    for (me <- smodel) me match {
-      case SList(List(SSymbol("define-fun"), s: SSymbol, SList(SList(List(arg, _)) :: Nil), _, e)) if maps contains s =>
-        def extractCases(e: SExpr): (Map[Expr, Expr], Expr) = e match {
-          case SList(SSymbol("ite") :: SList(SSymbol("=") :: `arg` :: k :: Nil) :: v :: e :: Nil) =>
-            val (cs, d) = extractCases(e)
-            (Map(fromSMT(k)(Map()) -> fromSMT(v)(Map())) ++ cs, d)
-          case e =>
-            (Map(),fromSMT(e)(Map()))
-        }
-
-        def buildValue(cases: Map[Expr, Expr], default: Expr, tpe: TypeTree): Expr = tpe match {
-          case SetType(base) =>
-            assert(default == BooleanLiteral(false))
-            FiniteSet(cases.keySet.toSeq).setType(tpe)
-          case _ =>
-            unsupported("Cannot build array/map model to "+tpe)
-        }
-
-        val tpe = maps(s)
-        val (cases, default) = extractCases(e)
-
-        bindings += s -> buildValue(cases, default, tpe)
+      case SList(List(SSymbol("define-fun"), a: SSymbol, SList(args), _, _)) if args.nonEmpty =>
+        modelFunDefs += a -> me
       case _ =>
     }
 
@@ -161,7 +255,9 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     for (me <- smodel) me match {
       case SList(List(SSymbol("define-fun"), s: SSymbol, SList(args), kind, e)) =>
         if (args.isEmpty) {
-          model += variables.toA(s) -> fromSMT(e)(bindings)
+          val id = variables.toA(s)
+          // EK: this is a little hack, we pass models for array functions as let-defs
+          model += id -> fromSMT(e, id.getType)(modelFunDefs)
         }
 
       case SList(SSymbol("forall") :: _) => // no body
