@@ -8,7 +8,7 @@ import leon.lang._
 import scala.annotation._
 
 @implicitNotFound("No Oracle available for this source of non-determinism, please provide an implicit arg <: Oracle[T]")
-@verified
+@library
 abstract class Oracle[T] {
   def head: T = this match {
     case Node(_, h, _) => h
