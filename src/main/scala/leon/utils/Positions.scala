@@ -5,13 +5,22 @@ package utils
 
 import java.io.File
 
-abstract class Position {
+abstract class Position extends Ordered[Position] {
   val line: Int
   val col: Int
   val file: File
 
-  def < (that: Position) = {
-    (this.file == that.file) && (this.line < that.line || this.col < that.col)
+  def compare(that: Position) = {
+    if (this.file == that.file) {
+      val ld = this.line - that.line
+      if (ld == 0) {
+        this.col - that.col
+      } else {
+        ld
+      }
+    } else {
+      0
+    }
   }
 
   def fullString: String

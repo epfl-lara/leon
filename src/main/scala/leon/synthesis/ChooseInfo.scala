@@ -35,6 +35,6 @@ object ChooseInfo {
       }
     }
 
-    results.sortBy(_.fd.id.toString)
+    results.sortBy(_.source.getPos)
   }
 }
