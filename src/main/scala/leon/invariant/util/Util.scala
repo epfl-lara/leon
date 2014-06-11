@@ -377,7 +377,7 @@ object Util {
 
     //replace "res" ids by "ResultVariable"
     simplePostTransform(e => e match {
-      case Variable(id) if (id.name == "res") => ResultVariable()
+      case Variable(id) if (id.name == "res") => ResultVariable().setType(id.getType)
       case _ => e
     })(withTimeAndDepth)
   }

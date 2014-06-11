@@ -1,6 +1,6 @@
 //import scala.collection.immutable.Set
 import leon.lang.invariantLang._
-import leon.Annotations._
+import leon.annotation._
 
 object Sort {
   sealed abstract class List
