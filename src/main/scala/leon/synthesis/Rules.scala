@@ -141,15 +141,23 @@ object RuleInstantiation {
   }
 }
 
-abstract class Rule(val name: String) {
+abstract class Rule(val name: String) extends RuleHelpers {
   def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation]
 
-  val priority: RulePriority = RulePriorityDefault 
-
-  def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replace(Map(Variable(what._1) -> what._2), in)
-  def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replace(what.map(w => Variable(w._1) -> w._2), in)
+  val priority: RulePriority = RulePriorityDefault
 
   implicit val debugSection = leon.utils.DebugSectionSynthesis
+
+  override def toString = "R: "+name
+}
+
+abstract class NormalizingRule(name: String) extends Rule(name) {
+  override val priority = RulePriorityNormalizing
+}
+
+trait RuleHelpers {
+  def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replaceFromIDs(Map(what), in)
+  def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replaceFromIDs(what, in)
 
   val forward: List[Solution] => Option[Solution] = {
     case List(s) =>
@@ -169,10 +177,4 @@ abstract class Rule(val name: String) {
     case _ =>
       None
   }
-
-  override def toString = "R: "+name
-}
-
-abstract class NormalizingRule(name: String) extends Rule(name) {
-  override val priority = RulePriorityNormalizing
 }

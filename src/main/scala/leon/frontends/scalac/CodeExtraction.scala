@@ -394,8 +394,11 @@ trait CodeExtraction extends ASTExtractors {
 
       // We collect the methods
       for (d <- tmpl.body) d match {
+        case EmptyTree =>
+          // ignore
+
         case t if isIgnored(t.symbol) =>
-          //ignore
+          // ignore
 
         case t @ ExFunctionDef(fsym, _, _, _, _) if !fsym.isSynthetic && !fsym.isAccessor =>
           if (parent.isDefined) {
@@ -1045,10 +1048,6 @@ trait CodeExtraction extends ASTExtractors {
         case ExOr(l, r)            => Or(extractTree(l), extractTree(r))
         case ExNot(e)              => Not(extractTree(e))
         case ExUMinus(e)           => UMinus(extractTree(e))
-        case ExPlus(l, r)          => Plus(extractTree(l), extractTree(r))
-        case ExMinus(l, r)         => Minus(extractTree(l), extractTree(r))
-        case ExTimes(l, r)         => Times(extractTree(l), extractTree(r))
-        case ExDiv(l, r)           => Division(extractTree(l), extractTree(r))
         case ExMod(l, r)           => Modulo(extractTree(l), extractTree(r))
         case ExNotEquals(l, r)     => Not(Equals(extractTree(l), extractTree(r)))
         case ExGreaterThan(l, r)   => GreaterThan(extractTree(l), extractTree(r))
@@ -1213,6 +1212,19 @@ trait CodeExtraction extends ASTExtractors {
               val fieldID = cct.fields.find(_.id.name == name).get.id
 
               CaseClassSelector(cct, rec, fieldID)
+
+            // Int methods
+            case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
+              Plus(a1, a2)
+
+            case (IsTyped(a1, Int32Type), "-", List(IsTyped(a2, Int32Type))) =>
+              Minus(a1, a2)
+
+            case (IsTyped(a1, Int32Type), "*", List(IsTyped(a2, Int32Type))) =>
+              Times(a1, a2)
+
+            case (IsTyped(a1, Int32Type), "/", List(IsTyped(a2, Int32Type))) =>
+              Division(a1, a2)
 
             // Set methods
             case (IsTyped(a1, SetType(b1)), "min", Nil) =>

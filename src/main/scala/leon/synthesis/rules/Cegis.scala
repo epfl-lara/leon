@@ -55,7 +55,19 @@ case object CEGIS extends Rule("CEGIS") {
             { () => List((BooleanLiteral(true), Set()), (BooleanLiteral(false), Set())) }
 
           case Int32Type =>
-            { () => List((IntLiteral(0), Set()), (IntLiteral(1), Set())) }
+            { () =>
+              val ground = List((IntLiteral(0), Set[Identifier]()), (IntLiteral(1), Set[Identifier]()))
+              val ops    = List[Function2[Expr, Expr, Expr]](
+                (a,b) => Plus(a,b),
+                (a,b) => Minus(a,b),
+                (a,b) => Times(a,b)
+              )
+
+              ops.map{f =>
+                val ids = List(FreshIdentifier("a", true).setType(Int32Type), FreshIdentifier("b", true).setType(Int32Type))
+                (f(ids(0).toVariable, ids(1).toVariable), ids.toSet)
+              } ++ ground
+            }
 
           case TupleType(tps) =>
             { () =>
@@ -460,6 +472,8 @@ case object CEGIS extends Rule("CEGIS") {
         // We populate the list of examples with a predefined one
         sctx.reporter.debug("Acquiring list of examples")
 
+        baseExampleInputs ++= p.getTests(sctx).map(_.ins).toSet
+
         if (p.pc == BooleanLiteral(true)) {
           baseExampleInputs = p.as.map(a => simplestValue(a.getType)) +: baseExampleInputs
         } else {
@@ -482,6 +496,12 @@ case object CEGIS extends Rule("CEGIS") {
             }
           } finally {
             solver.free()
+          }
+        }
+
+        sctx.reporter.ifDebug { debug =>
+          baseExampleInputs.foreach { in =>
+            debug("  - "+in.mkString(", "))
           }
         }
 
@@ -509,6 +529,7 @@ case object CEGIS extends Rule("CEGIS") {
           for (prog <- programs) {
             val expr = ndProgram.determinize(prog)
             val res = Equals(Tuple(p.xs.map(Variable(_))), expr)
+
             val solver3 = sctx.newSolver.setTimeout(cexSolverTo)
             solver3.assertCnstr(And(p.pc :: res :: Not(p.phi) :: Nil))
 
@@ -609,7 +630,11 @@ case object CEGIS extends Rule("CEGIS") {
               needMoreUnrolling = true;
             } else if (nPassing <= testUpTo) {
               // Immediate Test
-              result = Some(checkForPrograms(prunedPrograms))
+              checkForPrograms(prunedPrograms) match {
+                case rs: RuleSuccess =>
+                  result = Some(rs)
+                case _ =>
+              }
             } else if (((nPassing < allPrograms*filterThreshold) || didFilterAlready) && useBssFiltering) {
               // We filter the Bss so that the formula we give to z3 is much smalled
               val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
