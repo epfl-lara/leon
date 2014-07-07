@@ -26,7 +26,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
     val fakeFunDef = new FunDef(FreshIdentifier("fake", true),
                                 Nil,
                                 body.getType,
-                                variablesOf(body).toSeq.map(id => ValDef(id, id.getType)))
+                                variablesOf(body).toSeq.map(id => ValDef(id, id.getType)),
+                                DefType.MethodDef)
 
     fakeFunDef.body = Some(body)
 

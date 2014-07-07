@@ -128,6 +128,10 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
         reporter.debug("- Invalid model.")
         false
 
+      case Successful(e) =>
+        reporter.warning("- Model leads unexpected result: "+e)
+        false
+
       case RuntimeError(msg) =>
         reporter.debug("- Model leads to runtime error.")
         false

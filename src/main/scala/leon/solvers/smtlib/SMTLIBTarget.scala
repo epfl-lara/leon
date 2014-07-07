@@ -12,11 +12,13 @@ import TypeTrees._
 import Definitions._
 import utils.Bijection
 
-import _root_.smtlib.{PrettyPrinter => SMTPrinter, Interpreter => SMTInterpreter}
-import _root_.smtlib.Commands.{Identifier => _, _}
-import _root_.smtlib.CommandResponses.{Error => ErrorResponse, _}
-import _root_.smtlib.sexpr.SExprs._
-import _root_.smtlib.interpreters._
+import _root_.smtlib.common._
+import _root_.smtlib.printer.{PrettyPrinter => SMTPrinter}
+import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, _}
+import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
+import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
+import _root_.smtlib.theories._
+import _root_.smtlib.{Interpreter => SMTInterpreter}
 
 trait SMTLIBTarget {
   this: SMTLIBSolver =>
@@ -40,7 +42,7 @@ trait SMTLIBTarget {
   val selectors    = new Bijection[(TypeTree, Int), SSymbol]()
   val testers      = new Bijection[TypeTree, SSymbol]()
   val variables    = new Bijection[Identifier, SSymbol]()
-  val sorts        = new Bijection[TypeTree, SExpr]()
+  val sorts        = new Bijection[TypeTree, Sort]()
   val functions    = new Bijection[TypedFunDef, SSymbol]()
 
   def normalizeType(t: TypeTree): TypeTree = t match {
@@ -59,21 +61,21 @@ trait SMTLIBTarget {
 
   def unsupported(str: Any) = reporter.fatalError(s"Unsupported in smt-$targetName: $str")
 
-  def declareSort(t: TypeTree): SExpr = {
+  def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
       tpe match {
-        case BooleanType => SSymbol("Bool")
-        case Int32Type => SSymbol("Int")
+        case BooleanType => Core.BoolSort()
+        case Int32Type => Ints.IntSort()
 
         case RawArrayType(from, to) =>
-          SList(SSymbol("Array"), declareSort(from), declareSort(to))
+          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(from), declareSort(to)))
 
         case TypeParameter(id) =>
           val s = id2sym(id)
-          val cmd = NonStandardCommand(SList(SSymbol("declare-sort"), s))
+          val cmd = DeclareSort(s, 0)
           sendCommand(cmd)
-          s
+          Sort(SMTIdentifier(s))
         case _: ClassType | _: TupleType | _: ArrayType | UnitType =>
           declareStructuralSort(tpe)
         case _ =>
@@ -85,7 +87,7 @@ trait SMTLIBTarget {
   def freshSym(id: Identifier): SSymbol = freshSym(id.name)
   def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
 
-  def declareStructuralSort(t: TypeTree): SExpr = {
+  def declareStructuralSort(t: TypeTree): Sort = {
 
     def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
       case act: AbstractClassType =>
@@ -125,7 +127,7 @@ trait SMTLIBTarget {
         if (!(datatypes contains t) && !(sorts containsA t)) {
           val sym = freshSym("tuple"+bases.size)
 
-          val c = Constructor(freshSym(sym.s), tt, bases.zipWithIndex.map {
+          val c = Constructor(freshSym(sym.name), tt, bases.zipWithIndex.map {
             case (tpe, i) => (freshSym("_"+(i+1)), tpe)
           })
 
@@ -139,14 +141,14 @@ trait SMTLIBTarget {
 
           val sym = freshSym("Unit")
 
-          datatypes += t -> DataType(sym, Seq(Constructor(freshSym(sym.s), t, Nil)))
+          datatypes += t -> DataType(sym, Seq(Constructor(freshSym(sym.name), t, Nil)))
         }
 
       case at @ ArrayType(base) =>
         if (!(datatypes contains t) && !(sorts containsA t)) {
           val sym = freshSym("array")
 
-          val c = Constructor(freshSym(sym.s), at, List(
+          val c = Constructor(freshSym(sym.name), at, List(
             (freshSym("size"), Int32Type),
             (freshSym("content"), RawArrayType(Int32Type, base))
           ))
@@ -164,28 +166,28 @@ trait SMTLIBTarget {
 
     // We pre-declare ADTs
     for ((tpe, DataType(sym, _)) <- datatypes) {
-      sorts += tpe -> sym
+      sorts += tpe -> Sort(SMTIdentifier(sym))
     }
 
-    def toDecl(c: Constructor): SExpr = {
+    def toDecl(c: Constructor): SMTConstructor = {
       val s = c.sym
 
-      testers += c.tpe -> SSymbol("is-"+s.s)
+      testers += c.tpe -> SSymbol("is-"+s.name)
       constructors += c.tpe -> s
 
-      SList(s :: c.fields.zipWithIndex.map {
+      SMTConstructor(s, c.fields.zipWithIndex.map {
         case ((cs, t), i) =>
           selectors += (c.tpe, i) -> cs
-          SList(cs, declareSort(t))
-      }.toList)
+          (cs, declareSort(t))
+      })
     }
 
     val adts = for ((tpe, DataType(sym, cases)) <- datatypes.toList) yield {
-      SList(sym :: cases.map(toDecl).toList)
+      (sym, cases.map(toDecl))
     }
 
 
-    val cmd = NonStandardCommand(SList(SSymbol("declare-datatypes"), SList(), SList(adts)))
+    val cmd = DeclareDatatypes(adts)
     sendCommand(cmd)
 
     sorts.toB(t)
@@ -194,7 +196,7 @@ trait SMTLIBTarget {
   def declareVariable(id: Identifier): SSymbol = {
     variables.cachedB(id) {
       val s = id2sym(id)
-      val cmd = NonStandardCommand(SList(SSymbol("declare-const"), s, declareSort(id.getType)))
+      val cmd = DeclareFun(s, List(), declareSort(id.getType))
       sendCommand(cmd)
       s
     }
@@ -208,142 +210,149 @@ trait SMTLIBTarget {
         FreshIdentifier(tfd.id.name)
       }
       val s = id2sym(id)
-      sendCommand(DeclareFun(s.s, tfd.params.map(p => declareSort(p.tpe)), declareSort(tfd.returnType)))
+      sendCommand(DeclareFun(s, tfd.params.map(p => declareSort(p.tpe)), declareSort(tfd.returnType)))
       s
     }
   }
 
-  def toSMT(e: Expr)(implicit bindings: Map[Identifier, SExpr]): SExpr = {
+  def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = {
     e match {
       case Variable(id) =>
         declareSort(e.getType)
-        bindings.getOrElse(id, variables.toB(id))
+        bindings.getOrElse(id, QualifiedIdentifier(SMTIdentifier(variables.toB(id))))
 
       case UnitLiteral() =>
         declareSort(UnitType)
-        declareVariable(FreshIdentifier("Unit").setType(UnitType))
+        QualifiedIdentifier(SMTIdentifier(
+          declareVariable(FreshIdentifier("Unit").setType(UnitType))
+        ))
 
-      case IntLiteral(i) => if (i > 0) SInt(i) else SList(SSymbol("-"), SInt(-i))
-      case BooleanLiteral(v) => SSymbol(if (v) "true" else "false")
+      case IntLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case BooleanLiteral(v) => Core.BoolConst(v)
       case StringLiteral(s) => SString(s)
       case Let(b,d,e) =>
         val id      = id2sym(b)
         val value   = toSMT(d)
-        val newBody = toSMT(e)(bindings + (b -> id))
+        val newBody = toSMT(e)(bindings + (b -> QualifiedIdentifier(SMTIdentifier(id))))
 
-        SList(
-          SSymbol("let"),
-          SList(
-            SList(id, value)
-          ),
+        SMTLet(
+          VarBinding(id, value),
+          Seq(),
           newBody
         )
 
       case er @ Error(_) =>
-        declareVariable(FreshIdentifier("error_value").setType(er.getType))
+        val s = declareVariable(FreshIdentifier("error_value").setType(er.getType))
+        QualifiedIdentifier(SMTIdentifier(s))
 
       case s @ CaseClassSelector(cct, e, id) =>
         declareSort(cct)
-        SList(selectors.toB((cct, s.selectorIndex)), toSMT(e))
+        val selector = selectors.toB((cct, s.selectorIndex))
+        FunctionApplication(QualifiedIdentifier(SMTIdentifier(selector)), Seq(toSMT(e)))
 
       case CaseClassInstanceOf(cct, e) =>
         declareSort(cct)
-        SList(testers.toB(cct), toSMT(e))
+        val tester = testers.toB(cct)
+        FunctionApplication(QualifiedIdentifier(SMTIdentifier(tester)), Seq(toSMT(e)))
 
       case CaseClass(cct, es) =>
         declareSort(cct)
+        val constructor = constructors.toB(cct)
         if (es.isEmpty) {
-          constructors.toB(cct)
+          QualifiedIdentifier(SMTIdentifier(constructor))
         } else {
-          SList(constructors.toB(cct) :: es.map(toSMT).toList)
+          FunctionApplication(QualifiedIdentifier(SMTIdentifier(constructor)), es.map(toSMT))
         }
 
       case t @ Tuple(es) =>
         val tpe = normalizeType(t.getType)
         declareSort(tpe)
-        SList(constructors.toB(tpe) :: es.map(toSMT).toList)
+        val constructor = constructors.toB(tpe)
+        FunctionApplication(QualifiedIdentifier(SMTIdentifier(constructor)), es.map(toSMT))
 
       case ts @ TupleSelect(t, i) =>
         val tpe = normalizeType(t.getType)
         declareSort(tpe)
-        SList(selectors.toB((tpe, i-1)), toSMT(t))
+        val selector = selectors.toB((tpe, i-1))
+        FunctionApplication(QualifiedIdentifier(SMTIdentifier(selector)), Seq(toSMT(t)))
 
-      case al @ ArrayLength(a) =>
-        val tpe = normalizeType(a.getType)
-        SList(selectors.toB((tpe, 0)), toSMT(a))
+      //TODO
+      //case al @ ArrayLength(a) =>
+      //  val tpe = normalizeType(a.getType)
+      //  SList(selectors.toB((tpe, 0)), toSMT(a))
 
-      case as @ ArraySelect(a, i) =>
-        val tpe = normalizeType(a.getType)
-        SList(SSymbol("select"), SList(selectors.toB((tpe, 1)), toSMT(a)), toSMT(i))
+      //case as @ ArraySelect(a, i) =>
+      //  val tpe = normalizeType(a.getType)
+      //  SList(SSymbol("select"), SList(selectors.toB((tpe, 1)), toSMT(a)), toSMT(i))
 
-      case as @ ArrayUpdated(a, i, e) =>
-        val tpe = normalizeType(a.getType)
+      //case as @ ArrayUpdated(a, i, e) =>
+      //  val tpe = normalizeType(a.getType)
 
-        val ssize    = SList(selectors.toB((tpe, 0)), toSMT(a))
-        val scontent = SList(selectors.toB((tpe, 1)), toSMT(a))
+      //  val ssize    = SList(selectors.toB((tpe, 0)), toSMT(a))
+      //  val scontent = SList(selectors.toB((tpe, 1)), toSMT(a))
 
-        SList(constructors.toB(tpe), ssize, SList(SSymbol("store"), scontent, toSMT(i), toSMT(e)))
+      //  SList(constructors.toB(tpe), ssize, SList(SSymbol("store"), scontent, toSMT(i), toSMT(e)))
 
 
       case e @ UnaryOperator(u, _) =>
-        val op = e match {
-          case _: Not => SSymbol("not")
-          case _: UMinus => SSymbol("-")
+        e match {
+          case (_: Not) => Core.Not(toSMT(u))
+          case (_: UMinus) => Ints.Neg(toSMT(u))
           case _ => reporter.fatalError("Unhandled unary "+e)
         }
 
-        SList(op :: List(u).map(toSMT))
-
       case e @ BinaryOperator(a, b, _) =>
-        val op = e match {
-          case _: Equals => SSymbol("=")
-          case _: Implies => SSymbol("=>")
-          case _: Iff => SSymbol("=")
-          case _: Plus => SSymbol("+")
-          case _: Minus => SSymbol("-")
-          case _: Times => SSymbol("*")
-          case _: Division => SSymbol("div")
-          case _: Modulo => SSymbol("mod")
-          case _: LessThan => SSymbol("<")
-          case _: LessEquals => SSymbol("<=")
-          case _: GreaterThan => SSymbol(">")
-          case _: GreaterEquals => SSymbol(">=")
+        e match {
+          case (_: Equals) => Core.Equals(toSMT(a), toSMT(b))
+          case (_: Implies) => Core.Implies(toSMT(a), toSMT(b))
+          case (_: Iff) => Core.Equals(toSMT(a), toSMT(b))
+          case (_: Plus) => Ints.Add(toSMT(a), toSMT(b))
+          case (_: Minus) => Ints.Sub(toSMT(a), toSMT(b))
+          case (_: Times) => Ints.Mul(toSMT(a), toSMT(b))
+          case (_: Division) => Ints.Div(toSMT(a), toSMT(b))
+          case (_: Modulo) => Ints.Mod(toSMT(a), toSMT(b))
+          case (_: LessThan) => Ints.LessThan(toSMT(a), toSMT(b))
+          case (_: LessEquals) => Ints.LessEquals(toSMT(a), toSMT(b))
+          case (_: GreaterThan) => Ints.GreaterThan(toSMT(a), toSMT(b))
+          case (_: GreaterEquals) => Ints.GreaterEquals(toSMT(a), toSMT(b))
           case _ => reporter.fatalError("Unhandled binary "+e)
         }
 
-        SList(op :: List(a, b).map(toSMT))
-
       case e @ NAryOperator(sub, _) =>
-        val op = e match {
-          case _: And => SSymbol("and")
-          case _: Or => SSymbol("or")
-          case _: IfExpr => SSymbol("ite")
-          case f: FunctionInvocation => declareFunction(f.tfd)
+        e match {
+          case (_: And) => Core.And(sub.map(toSMT): _*)
+          case (_: Or) => Core.Or(sub.map(toSMT): _*)
+          case (_: IfExpr) => Core.ITE(toSMT(sub(0)), toSMT(sub(1)), toSMT(sub(2))) 
+          case (f: FunctionInvocation) => 
+            FunctionApplication(
+              QualifiedIdentifier(SMTIdentifier(declareFunction(f.tfd))),
+              sub.map(toSMT)
+            )
           case _ => reporter.fatalError("Unhandled nary "+e)
         }
-
-        SList(op :: sub.map(toSMT).toList)
 
 
       case o => unsupported("Tree: " + o)
     }
   }
 
-  def fromSMT(pair: (SExpr, TypeTree))(implicit letDefs: Map[SSymbol, SExpr]): Expr = {
+  def fromSMT(pair: (Term, TypeTree))(implicit letDefs: Map[SSymbol, Term]): Expr = {
     fromSMT(pair._1, pair._2)
   }
 
-  def fromSMT(s: SExpr, tpe: TypeTree)(implicit letDefs: Map[SSymbol, SExpr]): Expr = (s, tpe) match {
+  def fromSMT(s: Term, tpe: TypeTree)(implicit letDefs: Map[SSymbol, Term]): Expr = (s, tpe) match {
     case (_, UnitType) =>
       UnitLiteral()
 
-    case (SInt(n), Int32Type) =>
+    case (SNumeral(n), Int32Type) =>
       IntLiteral(n.toInt)
 
-    case (SSymbol(s), BooleanType)  =>
-      BooleanLiteral(s == "true")
+    case (Core.True(), BooleanType)  => BooleanLiteral(true)
+    case (Core.False(), BooleanType)  => BooleanLiteral(false)
 
-    case (s: SSymbol, _: ClassType) if constructors.containsB(s) =>
+    case (SHexadecimal(hexa), Int32Type) => IntLiteral(hexa.toInt)
+
+    case (SimpleSymbol(s), _: ClassType) if constructors.containsB(s) =>
       constructors.toA(s) match {
         case cct: CaseClassType =>
           CaseClass(cct, Nil)
@@ -351,15 +360,15 @@ trait SMTLIBTarget {
           unsupported("woot? for a single constructor for non-case-object: "+t)
       }
 
-    case (s: SSymbol, tpe) if letDefs contains s =>
+    case (SimpleSymbol(s), tpe) if letDefs contains s =>
       fromSMT(letDefs(s), tpe)
 
-    case (s: SSymbol, _) =>
+    case (SimpleSymbol(s), _) =>
       variables.getA(s).map(_.toVariable).getOrElse {
         unsupported("Unknown symbol: "+s)
       }
 
-    case (SList((s: SSymbol) :: args), tpe) if constructors.containsB(s) =>
+    case (FunctionApplication(SimpleSymbol(s), args), tpe) if constructors.containsB(s) =>
       constructors.toA(s) match {
         case cct: CaseClassType =>
           val rargs = args.zip(cct.fields.map(_.tpe)).map(fromSMT)
@@ -382,16 +391,15 @@ trait SMTLIBTarget {
 
     // EK: Since we have no type information, we cannot do type-directed
     // extraction of defs, instead, we expand them in smt-world
-    case (SList(List(SSymbol("let"), SList(defs), body)), tpe) =>
-      val defsMap: Map[SSymbol, SExpr] = defs.map {
-        case SList(List(s : SSymbol, value)) =>
-          (s, value)
+    case (SMTLet(binding, bindings, body), tpe) =>
+      val defsMap: Map[SSymbol, Term] = (binding +: bindings).map {
+        case VarBinding(s, value) => (s, value)
       }.toMap
 
       fromSMT(body, tpe)(letDefs ++ defsMap)
 
-    case (SList(SSymbol(app) :: args), tpe) => {
-      app match {
+    case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => {
+      name match {
         case "-" =>
           args match {
             case List(a) => UMinus(fromSMT(a, Int32Type))
@@ -403,12 +411,12 @@ trait SMTLIBTarget {
       }
     }
     case _ =>
-      unsupported(s)
+      unsupported("Unhandled case in fromSMT: " + (s, tpe))
   }
 
   def sendCommand(cmd: Command): CommandResponse = {
     reporter.ifDebug { debug =>
-      SMTPrinter(cmd, out)
+      SMTPrinter.printCommand(cmd, out)
       out.write("\n")
       out.flush
     }
@@ -422,24 +430,29 @@ trait SMTLIBTarget {
 
   override def assertCnstr(expr: Expr): Unit = {
     variablesOf(expr).foreach(declareVariable)
-    val sexpr = toSMT(expr)(Map())
-    sendCommand(Assert(sexpr))
+    val term = toSMT(expr)(Map())
+    sendCommand(Assert(term))
   }
 
-  override def check: Option[Boolean] = sendCommand(CheckSat) match {
+  override def check: Option[Boolean] = sendCommand(CheckSat()) match {
     case CheckSatResponse(SatStatus)     => Some(true)
     case CheckSatResponse(UnsatStatus)   => Some(false)
     case CheckSatResponse(UnknownStatus) => None
+    case _                               => None
   }
 
   override def getModel: Map[Identifier, Expr] = {
     val syms = variables.bSet.toList
-    val cmd: Command = GetValue(syms.head, syms.tail)
+    val cmd: Command = 
+      GetValue(QualifiedIdentifier(SMTIdentifier(syms.head)), 
+               syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
+              )
+
 
     val GetValueResponse(valuationPairs) = sendCommand(cmd)
 
     valuationPairs.collect {
-      case (sym: SSymbol, value) if variables.containsB(sym) =>
+      case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
         val id = variables.toA(sym)
 
         (id, fromSMT(value, id.getType)(Map()))
@@ -452,4 +465,14 @@ trait SMTLIBTarget {
   override def pop(lvl: Int = 1): Unit = {
     sendCommand(Pop(1))
   }
+
+  protected object SimpleSymbol {
+
+    def unapply(term: Term): Option[SSymbol] = term match {
+      case QualifiedIdentifier(SMTIdentifier(sym, Seq()), None) => Some(sym)
+      case _ => None
+    }
+
+  }
+
 }
