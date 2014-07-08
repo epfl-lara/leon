@@ -22,6 +22,11 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
    
     tree match {
+      case Program(id,modules) =>
+        p"""|package $id
+            |import leon.lang._
+            |import leon.annotation._
+            |${nary(modules, "\n\n")}"""
       case Not(Equals(l, r))    => p"$l != $r"
       case Iff(l,r)             => p"$l == $r"
       case Implies(l,r)         => pp(Or(Not(l), r))
