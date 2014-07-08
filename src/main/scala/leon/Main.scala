@@ -20,6 +20,8 @@ object Main {
       xlang.XlangAnalysisPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
+      memoization.RemoveVerifiedPhase,
+      memoization.MemoizationPhase,
       verification.AnalysisPhase
     )
   }
@@ -36,13 +38,14 @@ object Main {
       LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
       LeonFlagOptionDef ("noop",        "--noop",               "No operation performed, just output program"),
+      LeonFlagOptionDef ("memo",        "--memo",               "Memoization transformation"),
       LeonFlagOptionDef ("help",        "--help",               "Show help")
     )
 
   lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
 
   def displayHelp(reporter: Reporter) {
-    reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
+    reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--memo] [--noop] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
       reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
@@ -145,6 +148,11 @@ object Main {
         settings = settings.copy(injectLibrary = value)
       case LeonFlagOption("xlang", value) =>
         settings = settings.copy(xlang = value)
+      case LeonFlagOption("memo", value) =>
+        settings = settings.copy(memo  = value)
+      // FIXME is this the correct place to put it? 
+      case LeonFlagOption("no-verify", value) =>
+        settings = settings.copy(verify = !value)
       case LeonValueOption("debug", ListValue(sections)) =>
         val debugSections = sections.flatMap { s =>
           if (s == "all") {
@@ -198,6 +206,9 @@ object Main {
     import termination.TerminationPhase
     import xlang.XlangAnalysisPhase
     import verification.AnalysisPhase
+    import memoization.{RemoveVerifiedPhase, MemoizationPhase}
+    import purescala.RestoreMethods
+    import utils.FileOutputPhase
 
     val pipeBegin : Pipeline[List[String],Program] =
       ExtractionPhase andThen
@@ -210,10 +221,22 @@ object Main {
         TerminationPhase
       } else if (settings.xlang) {
         XlangAnalysisPhase
+      } else if (settings.memo) {
+        if (settings.verify) {
+          AnalysisPhase andThen 
+          RemoveVerifiedPhase andThen 
+          MemoizationPhase andThen 
+          RestoreMethods andThen
+          FileOutputPhase
+        } else {
+          MemoizationPhase andThen 
+          RestoreMethods andThen
+          FileOutputPhase
+        }
       } else if (settings.verify) {
         AnalysisPhase
       } else {
-        purescala.RestoreMethods andThen utils.FileOutputPhase
+        RestoreMethods andThen FileOutputPhase
       }
     }
 

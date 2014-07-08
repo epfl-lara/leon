@@ -168,6 +168,11 @@ object Definitions {
         ccd
     }
 
+    def hierarchyRoot : ClassDef = parent match {
+      case None => this
+      case Some(par) => par.classDef.hierarchyRoot
+    }
+
     val isAbstract: Boolean
     val isCaseObject: Boolean
   }
