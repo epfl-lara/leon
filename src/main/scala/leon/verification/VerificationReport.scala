@@ -3,10 +3,10 @@
 package leon
 package verification
 
-import purescala.Definitions.FunDef
+import purescala.Definitions.{FunDef, Program}
 import purescala.ScalaPrinter
 
-class VerificationReport(val fvcs: Map[FunDef, List[VerificationCondition]]) {
+class VerificationReport(val program: Program, val fvcs: Map[FunDef, List[VerificationCondition]]) {
   import scala.math.Ordering.Implicits._
   val conditions : Seq[VerificationCondition] = fvcs.flatMap(_._2).toSeq.sortBy(vc => (vc.funDef.id.name, vc.kind.toString))
 

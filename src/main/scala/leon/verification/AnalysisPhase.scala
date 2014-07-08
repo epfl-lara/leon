@@ -140,7 +140,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
       }
     }
 
-    val report = new VerificationReport(vcs)
+    val report = new VerificationReport(vctx.program,vcs)
     report
   }
 
