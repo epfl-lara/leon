@@ -56,4 +56,39 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
         None
     }
   }
+
+  def compileRec(expression : Expr, argorder : Seq[Identifier]) : Option[(Expr, Int)=>EvaluationResult] = {
+    import leon.codegen.runtime.LeonCodeGenRuntimeException
+    import leon.codegen.runtime.LeonCodeGenEvaluationException
+
+    try {
+      val ce = unit.compileExpression(expression, argorder)
+
+      Some((arg : Expr, howMany : Int ) => {
+        try {
+          EvaluationResults.Successful(ce.recEval(arg,howMany))
+        } catch {
+          case e : ArithmeticException =>
+            EvaluationResults.RuntimeError(e.getMessage)
+
+          case e : ArrayIndexOutOfBoundsException =>
+            EvaluationResults.RuntimeError(e.getMessage)
+
+          case e : LeonCodeGenRuntimeException =>
+            EvaluationResults.RuntimeError(e.getMessage)
+
+          case e : LeonCodeGenEvaluationException =>
+            EvaluationResults.EvaluatorError(e.getMessage)
+        }
+      })
+    } catch {
+      case t: Throwable =>
+        ctx.reporter.warning("Error while compiling expression: "+t.getMessage)
+        None
+    }
+  }
+ 
+
+
+  
 }

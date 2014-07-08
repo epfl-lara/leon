@@ -70,4 +70,32 @@ class CompiledExpression(unit: CompilationUnit, cf: ClassFile, expression : Expr
       case ite : InvocationTargetException => throw ite.getCause()
     }
   }
+  
+  
+
+  // Apply function recursively howMany times, which is of type (A, Int) => A
+  // Memoization-specific
+  // FIXME: Could write straight bytecode for this
+  def recEval(arg: Expr, howMany : Int) : Expr = {
+    try {
+      // pseudorandom input
+      def psr(i : Int) = (347837 * i + 983876) % 98291
+     
+      val monitor = new codegen.runtime.LeonCodeGenRuntimeMonitor(unit.params.maxFunctionInvocations)
+      var jvmArg = unit.exprToJVM(arg)(monitor)
+      var i = howMany
+      while(i > 0) { 
+        val jvmInp = unit.exprToJVM(IntLiteral(psr(i)))(monitor)
+        jvmArg = evalToJVM(Seq(jvmArg,jvmInp),monitor)
+        i = i - 1
+      }
+
+      unit.jvmToExpr(jvmArg)
+
+    } catch {
+      case ite : InvocationTargetException => throw ite.getCause()
+    }
+  }
+
+
 } 
