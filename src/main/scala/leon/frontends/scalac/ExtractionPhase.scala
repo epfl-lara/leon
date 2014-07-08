@@ -60,7 +60,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       run.compile(command.files)
 
 
-      val pgm = Program(FreshIdentifier("<program>"), compiler.leonExtraction.modules)
+      val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.modules)
       ctx.reporter.debug(pgm.asString(ctx))
       pgm
     } else {

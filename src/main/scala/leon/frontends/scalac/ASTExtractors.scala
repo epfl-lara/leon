@@ -166,7 +166,7 @@ trait ASTExtractors {
        * objects of case classes (or any synthetic class). */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
         case ClassDef(_, name, tparams, impl) if ((cd.symbol.isModuleClass || cd.symbol.hasPackageFlag) && tparams.isEmpty && !cd.symbol.isSynthetic) => {
-          Some((name.toString, impl))
+          Some((if (name.toString == "package") cd.symbol.owner.name.toString else name.toString, impl))
         }
         case _ => None
       }

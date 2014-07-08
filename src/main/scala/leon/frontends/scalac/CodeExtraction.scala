@@ -229,6 +229,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // Phase 6, we create modules and extract bodies
         templates.map{ case (name, templ) => extractObjectDef(name, templ) }
+
       } catch {
         case icee: ImpureCodeEncounteredException =>
           icee.emit()
@@ -1264,6 +1265,9 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, mt: MapType), "updated", List(k, v)) =>
               MapUnion(a1, FiniteMap(Seq((k, v))).setType(mt)).setType(mt)
 
+            case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>
+              MapUnion(a1, a2).setType(mt1)
+              
             case (_, name, _) =>
               outOfSubsetError(tr, "Unknown call to "+name)
           }
