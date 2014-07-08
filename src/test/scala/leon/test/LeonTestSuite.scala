@@ -161,10 +161,10 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
 
     val d = this.getClass.getClassLoader.getResource(dir)
 
-    val asFile = if(d == null || d.getProtocol != "file") {
+    val asFile = //if(d == null || d.getProtocol != "file") {
       // We are in Eclipse. The only way we are saved is by hard-coding the path
       new File(resourceDirHard + dir)
-    } else new File(d.toURI())
+    //} else new File(d.toURI())
 
     asFile.listFiles().filter(f => filter(f.getPath()))
   }
