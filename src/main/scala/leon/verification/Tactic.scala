@@ -6,6 +6,7 @@ package verification
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
+import purescala.TypeTrees.BooleanType
 
 abstract class Tactic(vctx: VerificationContext) {
   val description : String
@@ -35,4 +36,13 @@ abstract class Tactic(vctx: VerificationContext) {
   protected def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
     CollectorWithPaths(f).traverse(expr)
   }
+
+  protected def breakConjunct(e : Expr) : Seq[Expr] = e match {
+    case And(exs) => exs
+    case Let(id,body,cond) if cond.getType == BooleanType =>
+      for (fragment <- breakConjunct(cond)) yield Let(id, body, fragment).setPos(fragment)
+    case _ => Seq(e)
+  }
+
+  def breakIfNeeded(e : Expr) = if (vctx.fineGrain) breakConjunct(e) else Seq(e)
 }

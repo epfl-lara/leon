@@ -81,7 +81,8 @@ class Synthesizer(val context : LeonContext,
 
     val solverf = SolverFactory(() => (new FairZ3Solver(context, npr) with TimeoutSolver).setTimeout(timeoutMs))
 
-    val vctx = VerificationContext(context, npr, solverf, context.reporter)
+    // TODO: We may want to add support for fine-graining here too?
+    val vctx = VerificationContext(context, npr, solverf, false, context.reporter)
     val vcs = generateVerificationConditions(vctx, Some(fds.map(_.id.name).toSeq))
     val vcreport = checkVerificationConditions(vctx, vcs)
 

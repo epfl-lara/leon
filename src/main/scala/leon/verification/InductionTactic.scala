@@ -29,10 +29,13 @@ class InductionTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
   override def generatePostconditions(fd: FunDef): Seq[VerificationCondition] = {
     (fd.body.map(safe), firstAbsClassDef(fd.params), fd.postcondition) match {
       case (Some(b), Some((parentType, arg)), Some((id, p))) =>
-        val post = safe(p)
+        val posts = breakIfNeeded(safe(p)) 
         val body = safe(b)
 
-        for (cct <- parentType.knownCCDescendents) yield {
+        for (
+          cct <- parentType.knownCCDescendents;
+          post <- posts     
+        ) yield {
           val selectors = selectorsOfParentType(parentType, cct, arg.toVariable)
 
           val subCases = selectors.map { sel =>
@@ -44,7 +47,7 @@ class InductionTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
           val vc = Implies(And(CaseClassInstanceOf(cct, arg.toVariable), precOrTrue(fd)), Implies(And(subCases), Let(id, body, post)))
 
-          new VerificationCondition(vc, fd, VCPostcondition, this).setPos(fd)
+          new VerificationCondition(vc, fd, VCPostcondition, this).setPos(post)
         }
 
       case (body, _, post) =>
@@ -66,7 +69,12 @@ class InductionTactic(vctx: VerificationContext) extends DefaultTactic(vctx) {
 
         calls.flatMap {
           case ((fi @ FunctionInvocation(tfd, args), pre), path) =>
-            for (cct <- parentType.knownCCDescendents) yield {
+            val pres = breakIfNeeded(pre) 
+
+            for (
+              cct <- parentType.knownCCDescendents;
+              pre <- pres
+            ) yield {
               val selectors = selectorsOfParentType(parentType, cct, arg.toVariable)
 
               val subCases = selectors.map { sel =>

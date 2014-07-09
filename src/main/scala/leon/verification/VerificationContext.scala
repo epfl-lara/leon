@@ -12,5 +12,6 @@ case class VerificationContext (
   context: LeonContext,
   program: Program,
   solverFactory: SolverFactory[Solver],
+  fineGrain : Boolean,
   reporter: Reporter
 )
