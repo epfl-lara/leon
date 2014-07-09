@@ -11,10 +11,10 @@ object ASCIITables {
       var constraints = Map[(Int, Int), Int]()
 
       var cellsPerRow = 0
-      for((r, i) <- rows.zipWithIndex) r match {
+      for((r, j) <- rows.zipWithIndex) r match {
         case r @ Row(cells) =>
           if (cellsPerRow > 0) {
-            assert(r.cellsSize == cellsPerRow, "Row $i has incompatible number of virtual cells (${r.cellsSize} v.s. $cellsPerRow")
+            assert(r.cellsSize == cellsPerRow, s"Row $j has incompatible number of virtual cells (${r.cellsSize} v.s. $cellsPerRow")
           } else {
             cellsPerRow = r.cellsSize
             constraints += (0, cellsPerRow-1) -> 80
