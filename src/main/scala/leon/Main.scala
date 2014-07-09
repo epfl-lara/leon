@@ -228,7 +228,24 @@ object Main {
     }
 
     // Process options
-    val ctx = processOptions(realArgs)
+    val ctx = try {
+      processOptions(realArgs)
+    } catch {
+      case LeonFatalError(None) =>
+        sys.exit(1)
+
+      case LeonFatalError(Some(msg)) =>
+        // For the special case of fatal errors not sent though Reporter, we
+        // send them through reporter one time
+        try {
+          new DefaultReporter(Settings()).fatalError(msg)
+        } catch {
+          case _: LeonFatalError =>
+        }
+
+        sys.exit(1)
+    }
+
 
     try {
       ctx.interruptManager.registerSignalHandler()
