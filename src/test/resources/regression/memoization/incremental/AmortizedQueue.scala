@@ -6,17 +6,19 @@ import leon.lang._
 import leon.annotation._
 
 object AmortizedQueue {
-  sealed abstract class List
+  sealed abstract class List {
+    val size : Int = (this match {
+      case Nil() => 0
+      case Cons(_, xs) => 1 + xs.size
+    }) ensuring(_ >= 0)
+  }
   case class Cons(head : Int, tail : List) extends List
   case class Nil() extends List
 
   sealed abstract class AbsQueue
   case class Queue(front : List, rear : List) extends AbsQueue
 
-  def size(list : List) : Int = (list match {
-    case Nil() => 0
-    case Cons(_, xs) => 1 + size(xs)
-  }) ensuring(_ >= 0)
+ 
 
   def content(l: List) : Set[Int] = l match {
     case Nil() => Set.empty[Int]
@@ -28,7 +30,7 @@ object AmortizedQueue {
   }
 
   def nth(l:List, n:Int) : Int = {
-    require(0 <= n && n < size(l))
+    require(0 <= n && n < l.size)
     l match {
       case Cons(x,xs) =>
     if (n==0) x else nth(xs, n-1)
@@ -45,25 +47,25 @@ object AmortizedQueue {
   def concat(l1 : List, l2 : List) : List = (l1 match {
     case Nil() => l2
     case Cons(x,xs) => Cons(x, concat(xs, l2))
-  }) ensuring (res => size(res) == size(l1) + size(l2)  && content(res) == content(l1) ++ content(l2))
+  }) ensuring (res => res.size == l1.size + l2.size  && content(res) == content(l1) ++ content(l2))
 
   def concatTest(l1 : List, l2 : List, i:Int) : List = ({
-    require(0 <= i && i < size(l1) + size(l2))
+    require(0 <= i && i < l1.size + l2.size)
     l1 match {
       case Nil() => l2
       case Cons(x,xs) => Cons(x,
                   if (i == 0) concat(xs, l2)
                   else concatTest(xs, l2, i-1))
     }
-  }) ensuring (res => size(res) == size(l1) + size(l2) &&
+  }) ensuring (res => res.size == l1.size + l2.size &&
            content(res) == content(l1) ++ content(l2) &&
-           nth(res,i) == (if (i < size(l1)) nth(l1,i) else nth(l2,i-size(l1))) &&
+           nth(res,i) == (if (i < l1.size) nth(l1,i) else nth(l2,i-l1.size)) &&
            res == concat(l1,l2))
 
   def nthConcat(l1:List, l2:List, i:Int) : Boolean = {
-    require(0 <= i && i < size(l1) + size(l2))
+    require(0 <= i && i < l1.size + l2.size)
     concatTest(l1, l2, i) == concatTest(l1, l2, i) &&
-    nth(concat(l1,l2), i) == (if (i < size(l1)) nth(l1,i) else nth(l2,i-size(l1)))
+    nth(concat(l1,l2), i) == (if (i < l1.size) nth(l1,i) else nth(l2,i-l1.size))
   } holds
 
   def sameUpto(l1:List, l2:List, k:Int) : Boolean = {
@@ -76,7 +78,7 @@ object AmortizedQueue {
     x==y && (if (k==0) true else sameUpto(xs,ys,k-1))
       }
     }
-  } ensuring(res => !(size(l1)==k && size(l2)==k && res) || l1==l2)
+  } ensuring(res => !(l1.size==k && l2.size==k && res) || l1==l2)
 
   @induct
   def concatAssoc(l1:List, l2:List, l3:List) : Boolean = {
@@ -88,19 +90,19 @@ object AmortizedQueue {
   } holds
 
   def isAmortized(queue : AbsQueue) : Boolean = queue match {
-    case Queue(front, rear) => size(front) >= size(rear)
+    case Queue(front, rear) => front.size >= rear.size
   }
 
   def rev1(l : List, acc: List) : List = { l match {
     case Nil() => acc
     case Cons(x,xs) => rev1(xs, Cons(x,acc))
-  }} ensuring { res => size(res) == size(l) + size(acc) && content(res) == content(l) ++ content(acc) }
+  }} ensuring { res => res.size == l.size + acc.size && content(res) == content(l) ++ content(acc) }
 
   def reverse(l : List) : List = { rev1(l, Nil()) 
-  } ensuring (res => content(res) == content(l) && size(res) == size(l))
+  } ensuring (res => content(res) == content(l) && res.size == l.size)
 
   def revConcatNth(l1:List, l2:List, i:Int) : Boolean = {
-    require(0 <= i && i < size(l1)+size(l2))
+    require(0 <= i && i < l1.size+l2.size)
     nth(reverse(concat(l1,l2)),i) == nth(concat(reverse(l2), reverse(l1)),i)
   } holds
 
@@ -109,7 +111,7 @@ object AmortizedQueue {
   } holds
 
   def amortizedQueue(front : List, rear : List) : AbsQueue = {
-    if (size(rear) <= size(front))
+    if (rear.size <= front.size)
       Queue(front, rear)
     else
       Queue(concat(front, reverse(rear)), Nil())
