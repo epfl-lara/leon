@@ -9,7 +9,7 @@ import utils._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
-import purescala.TreeOps.{variablesOf,functionCallsOf,preMap,applyOnFunDef,preMapOnFunDef,replaceFromIDs}
+import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.TypeTreeOps.{typeParamSubst,instantiateType}
 
@@ -36,23 +36,44 @@ object MemoizationPhase extends TransformationPhase {
   private def freshIdentifier (name : String) = FreshIdentifier(name, alwaysShowUniqueId)
 
   private def acceptableParams(f : FunDef) = {
-      f.params.size == 1 ||
-      f.params.size == 2 && f.params.tail.head.id.name == "__isVerified"
+    f.params.size == 1 ||
+    f.params.size == 2 && f.params.tail.head.id.name == "__isVerified"
+  }
+ 
+ 
+  private def isRecClass(ct : ClassType) : Boolean = {
+  
+    // Traverses a typetree to find contained types, but does not go into classTypes.
+    def containedTypes(t : TypeTree) : Seq[TypeTree]= {
+      t match {
+        case c : ClassType => Seq(c)
+        case NAryType(tps, _) => tps flatMap containedTypes
+      }
     }
-  
-  
-  // Take an Identifier and produce a fresh with lowewcase first letter
-  private def idToFreshLowerCase (id : Identifier) = {
-    assert(!id.name.isEmpty)
-    freshIdentifier(nameToLowerCase(id.name))
+
+    // Extract the field types of a class
+    def next (ct : ClassType) : Set[ClassType] = {
+      for (
+        tpe <- ct.knownCCDescendents :+ ct;
+        fld <- tpe.fields;
+        tpe2 <- containedTypes(fld.id.getType)
+      ) yield tpe
+    }.toSet
+    
+    utils.GraphOps.isReachable(next,ct,ct)
   }
   
-  private def nameToLowerCase(name : String ) = {
-    assert(!name.isEmpty)
-    name.updated(0, name(0).toLower)
+  // Signifies whether a type is large (unsuitable for memoization)  
+  def isLargeType(tp : TypeTree) : Boolean = tp match {
+    case ListType(_) | SetType(_) | MultisetType(_) | MapType(_,_) 
+       | FunctionType(_,_) | ArrayType(_) => true
+    case TupleType(subs) => subs exists { isLargeType(_) }
+    case c: ClassType => {
+      isRecClass(c) || ( c.fields exists { f => isLargeType(f.id.getType) } ) 
+    }
+    case _ => false
   }
-
-
+  
   // Find which functions (may) need to get memoized
   private def findCandidateFuns(p: Program) : Set[FunDef]= {
     
@@ -89,15 +110,7 @@ object MemoizationPhase extends TransformationPhase {
       acceptableParams(f) &&
       f.params.head.getType.isInstanceOf[ClassType] &&
       p.callGraph.transitivelyCalls(f,f) &&
-      ( 
-        // TODO : clear out what happens in these cases.   
-        if (f.returnType.isInstanceOf[ClassType]) { 
-          val rootRet   = f.returnType.         asInstanceOf[ClassType].classDef.hierarchyRoot 
-          val rootParam = f.params.head.getType.asInstanceOf[ClassType].classDef.hierarchyRoot 
-          rootRet != rootParam
-        }
-        else true 
-      )
+      !isLargeType(f.returnType)
     }
     
     // Every function that transitively calls a recursive function NOT in this list should be dropped
