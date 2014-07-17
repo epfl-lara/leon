@@ -42,7 +42,7 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
   /** Prints the message with the given position indication. */
   def printMessage(posIn: Position, msg: String, severity: Severity) {
     val pos = if (posIn eq null) NoPosition
-              else if (posIn.isDefined) posIn.inUltimateSource(posIn.source)
+              else if (posIn.isDefined) posIn.finalPosition
               else posIn
     pos match {
       case FakePos(fmsg) =>

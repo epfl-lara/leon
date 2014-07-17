@@ -41,7 +41,7 @@ object ASCIITables {
       for (k @ (from, to) <- toRemove) {
         val min = constraints(k)
 
-        val parts = (from to to).map(i => constraints((i, i)))
+        val parts = (from to to).map(i => constraints.getOrElse((i, i), 1))
 
         var sum = parts.sum
 
@@ -59,7 +59,7 @@ object ASCIITables {
         constraints -= k
       }
 
-      (0 until cellsPerRow).map(i => constraints((i, i)))
+      (0 until cellsPerRow).map(i => constraints.getOrElse((i, i), 1))
     }
 
     def render: String = {

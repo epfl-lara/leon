@@ -21,11 +21,19 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    settings.classpath.value = ctx.settings.classPath.mkString(":")
+    val neededClasses = List[Class[_]](
+      scala.Predef.getClass
+    )
+
+    val urls = neededClasses.map(_.getProtectionDomain().getCodeSource().getLocation())
+    val classpath = urls.map(_.getPath).mkString(":")
+
+    settings.classpath.value = classpath
     settings.usejavacp.value = false
+    settings.Yrangepos.value = true
     settings.skip.value      = List("patmat")
 
-    val libFiles = Settings.defaultLibFiles()
+    val libFiles = Build.libFiles
 
     val injected = if (ctx.settings.injectLibrary) {
       libFiles

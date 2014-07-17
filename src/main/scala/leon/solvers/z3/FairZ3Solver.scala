@@ -110,7 +110,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           reporter.debug("- Model validated.")
           (true, asMap)
 
-        case EvaluationResults.Successful(BooleanLiteral(false)) =>
+        case EvaluationResults.Successful(res) =>
+          assert(res == BooleanLiteral(false), "Checking model returned non-boolean")
           reporter.debug("- Invalid model.")
           (false, asMap)
 

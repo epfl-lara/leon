@@ -120,11 +120,10 @@ trait ASTExtractors {
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
-      def unapply(tree: Apply): Option[(Tree,Symbol,Tree)] = tree match {
-        case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "any2Ensuring"), TypeTree() :: Nil),
-              body :: Nil), ExNamed("ensuring")),
+      def unapply(tree: Apply): Option[(Tree,ValDef,Tree)] = tree match {
+        case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")),
           (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
-          => Some((body, vd.symbol, contractBody))
+          => Some((body, vd, contractBody))
         case _ => None
       }
     }
@@ -166,7 +165,7 @@ trait ASTExtractors {
        * visibility. Does not match on the automatically generated companion
        * objects of case classes (or any synthetic class). */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
-        case ClassDef(_, name, tparams, impl) if ((cd.symbol.isModuleClass || cd.symbol.isPackage) && tparams.isEmpty && !cd.symbol.isSynthetic) => {
+        case ClassDef(_, name, tparams, impl) if ((cd.symbol.isModuleClass || cd.symbol.hasPackageFlag) && tparams.isEmpty && !cd.symbol.isSynthetic) => {
           Some((name.toString, impl))
         }
         case _ => None
@@ -186,14 +185,14 @@ trait ASTExtractors {
     }
 
     object ExCaseClass {
-      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String,Tree)], Template)] = cd match {
+      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String, ValDef)], Template)] = cd match {
         case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8) => {
           val constructor: DefDef = impl.children.find(child => child match {
             case ExConstructorDef() => true
             case _ => false
           }).get.asInstanceOf[DefDef]
 
-          val args = constructor.vparamss.flatten.map(vd => (vd.name.toString, vd.tpt))
+          val args = constructor.vparamss.flatten.map(vd => (vd.name.toString, vd))
 
           Some((name.toString, cd.symbol, args, impl))
         }
@@ -409,7 +408,7 @@ trait ASTExtractors {
             case _ => None
           }
         // Match e1 -> e2
-        case Apply(TypeApply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "any2ArrowAssoc"), List(tpeFrom)), List(from)), ExNamed("$minus$greater")), List(tpeTo)), List(to)) =>
+        case Apply(TypeApply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "ArrowAssoc"), List(tpeFrom)), List(from)), ExNamed("$minus$greater")), List(tpeTo)), List(to)) =>
 
           Some((Seq(tpeFrom.tpe, tpeTo.tpe), Seq(from, to)))
         case _ => None

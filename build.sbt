@@ -4,13 +4,13 @@ version := "2.3"
 
 organization := "ch.epfl.lara"
 
-scalaVersion := "2.10.2"
+scalaVersion := "2.11.1"
 
-scalacOptions += "-deprecation"
-
-scalacOptions += "-unchecked"
-
-scalacOptions += "-feature"
+scalacOptions ++= Seq(
+    "-deprecation",
+    "-unchecked",
+    "-feature"
+)
 
 javacOptions += "-Xlint:unchecked"
 
@@ -23,25 +23,21 @@ if(System.getProperty("sun.arch.data.model") == "64") {
 resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies ++= Seq(
-    "org.scala-lang" % "scala-compiler" % "2.10.2",
-    "org.scalatest" % "scalatest_2.10" % "2.0.M5b" % "test" excludeAll(ExclusionRule(organization="org.scala-lang")),
-    "junit" % "junit" % "4.8" % "test",
-    "com.typesafe.akka" %% "akka-actor" % "2.2.0" excludeAll(ExclusionRule(organization="org.scala-lang"))
+    "org.scala-lang" % "scala-compiler" % "2.11.1",
+    "org.scalatest" %% "scalatest" % "2.2.0" % "test",
+    "com.typesafe.akka" %% "akka-actor" % "2.3.4"
 )
 
 Keys.fork in run := true
 
 Keys.fork in test := true
 
-logBuffered in Test := false
+logBuffered in test := false
 
-testOptions in Test += Tests.Argument("-oD")
+testOptions in test += Tests.Argument("-oD")
 
 javaOptions in test += "-Xss32M"
 
-parallelExecution in Test := false
+parallelExecution in test := false
 
 sourcesInBase in Compile := false
-
-// do not skip parent Eclipse project definition
-EclipseKeys.skipParents in ThisBuild := false

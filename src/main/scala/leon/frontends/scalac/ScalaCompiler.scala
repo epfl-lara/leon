@@ -4,9 +4,9 @@ package leon
 package frontends.scalac
 
 import scala.tools.nsc.{Global,Settings=>NSCSettings}
-import scala.tools.nsc.interactive.RangePositions
+import scala.reflect.internal.Positions
 
-class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(settings, new SimpleReporter(settings, ctx.reporter)) with RangePositions {
+class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(settings, new SimpleReporter(settings, ctx.reporter)) with Positions {
 
   object leonExtraction extends {
     val global: ScalaCompiler.this.type = ScalaCompiler.this

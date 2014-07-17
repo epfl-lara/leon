@@ -11,33 +11,5 @@ case class Settings(
   val synthesis: Boolean               = false,
   val xlang: Boolean                   = false,
   val verify: Boolean                  = true,
-  val injectLibrary: Boolean           = false,
-  val classPath: List[String]          = Settings.defaultClassPath()
+  val injectLibrary: Boolean           = false
 )
-
-object Settings {
-  // This is a list of directories that is passed as class-path of the inner-compiler.
-  // It needs to contain at least a directory containing scala-library.jar, and
-  // one for the leon runtime library.
-
-  private def defaultClassPath() = {
-    val scalaHome = System.getenv("SCALA_HOME")
-    assert(scalaHome ne null, "SCALA_HOME was not found in the environment, did you run `source setupenv.sh` ?")
-
-    if (scalaHome != "") {
-      val f = new java.io.File(scalaHome+"/lib")
-
-      f.listFiles().collect {
-        case f if f.getPath().endsWith(".jar") => f.getAbsolutePath()
-      }.toList
-
-    } else {
-      Nil
-    }
-  }
-
-  private[leon] def defaultLibFiles() = {
-    Option(System.getenv("LEON_LIBFILES")).map(_.split(" ").toList).getOrElse(Nil)
-  }
-
-}

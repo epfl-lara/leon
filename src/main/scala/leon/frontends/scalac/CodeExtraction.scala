@@ -237,7 +237,7 @@ trait CodeExtraction extends ASTExtractors {
 
     }
 
-    private var seenClasses = Map[Symbol, (Seq[(String, Tree)], Template)]()
+    private var seenClasses = Map[Symbol, (Seq[(String, ValDef)], Template)]()
     private var classesToClasses  = Map[Symbol, LeonClassDef]()
 
 
@@ -318,9 +318,8 @@ trait CodeExtraction extends ASTExtractors {
     private var isMethod = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
 
-    def extractClassDef(sym: Symbol, args: Seq[(String, Tree)], tmpl: Template): LeonClassDef = {
+    def extractClassDef(sym: Symbol, args: Seq[(String, ValDef)], tmpl: Template): LeonClassDef = {
       val id = FreshIdentifier(sym.name.toString).setPos(sym.pos)
-
 
       val tparamsMap = sym.tpe match {
         case TypeRef(_, _, tps) =>
@@ -363,7 +362,8 @@ trait CodeExtraction extends ASTExtractors {
         classesToClasses += sym -> ccd
 
         val fields = args.map { case (name, t) =>
-          val tpe = toPureScalaType(t.tpe)(defCtx, sym.pos)
+          val tpt = t.tpt
+          val tpe = toPureScalaType(tpt.tpe)(defCtx, sym.pos)
           LeonValDef(FreshIdentifier(name).setType(tpe).setPos(t.pos), tpe).setPos(t.pos)
         }
 
@@ -714,9 +714,9 @@ trait CodeExtraction extends ASTExtractors {
       var rest = tmpRest
 
       val res = current match {
-        case ExEnsuredExpression(body, resSym, contract) =>
-          val resId = FreshIdentifier(resSym.name.toString).setType(extractType(current)).setPos(resSym.pos)
-          val post = extractTree(contract)(dctx.withNewVar(resSym -> (() => Variable(resId))))
+        case ExEnsuredExpression(body, resVd, contract) =>
+          val resId = FreshIdentifier(resVd.symbol.name.toString).setType(extractType(current)).setPos(resVd.pos)
+          val post = extractTree(contract)(dctx.withNewVar(resVd.symbol -> (() => Variable(resId))))
 
           val b = try {
             extractTree(body)

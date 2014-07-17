@@ -28,9 +28,9 @@ class ManualSearch(synth: Synthesizer,
       }
     }
 
-    def title(str: String) = "\033[1m"+str+"\033[0m"
-    def failed(str: String) = "\033[31m"+str+"\033[0m"
-    def solved(str: String) = "\033[32m"+str+"\033[0m"
+    def title(str: String)  = "\u001b[1m"  + str + "\u001b[0m"
+    def failed(str: String) = "\u001b[31m" + str + "\u001b[0m"
+    def solved(str: String) = "\u001b[32m" + str + "\u001b[0m"
 
     def displayApp(app: RuleInstantiation): String = {
       f"(${costModel.ruleAppCost(app).value}%3d) $app"
@@ -116,7 +116,7 @@ class ManualSearch(synth: Synthesizer,
 
             print("Next action? (q to quit) "+cd.mkString(" ")+" $ ")
             val line = if (cmdQueue.isEmpty) {
-              readLine()
+              scala.io.StdIn.readLine()
             } else {
               val n = cmdQueue.head
               println(n)
