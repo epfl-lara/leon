@@ -1,5 +1,5 @@
 package leon
-package smtlib
+package horncl
 
 object Tokens {
 

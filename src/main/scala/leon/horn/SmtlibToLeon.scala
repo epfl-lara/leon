@@ -1,5 +1,5 @@
 package leon
-package smtlib
+package horncl
 
 import scala.io._
 import java.io._

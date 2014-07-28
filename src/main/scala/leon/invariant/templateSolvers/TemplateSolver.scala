@@ -30,8 +30,9 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
   protected val tru = BooleanLiteral(true)    
   //protected val zero = IntLiteral(0)   
     
-  private val dumpVC = false
-  private val dumpVCasSMTLIB = false  
+  private val dumpVCtoConsole = false
+  private val dumpVCasText = false
+  private val dumpVCasSMTLIB = true  
       
   /**
    * Completes a model by adding mapping to new template variables
@@ -76,18 +77,22 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
         ExpressionTransformer.IntLiteralToReal(getVCForFun(fd))
       else getVCForFun(fd)
       
-      if (this.dumpVC) {
+      if (this.dumpVCasText || this.dumpVCasSMTLIB) {
         //val simpForm = simplifyArithmetic(vc)
-        val vcstr = vc.toString
-        println("Func: " + fd.id + " VC: " + vcstr)
-        val filename = "vc-" + FileCountGUID.getID        
-        val wr = new PrintWriter(new File(filename + ".txt"))
-        //ExpressionTransformer.PrintWithIndentation(wr, vcstr)
-        wr.println(vcstr)
-        wr.flush()
-        wr.close()
+        val vcstr = vc.toString        
+        val filename = "vc-" + FileCountGUID.getID
+        if(dumpVCtoConsole)
+          println("Func: " + fd.id + " VC: " + vcstr)
+        if (dumpVCasText) {
+          val wr = new PrintWriter(new File(filename + ".txt"))
+          //ExpressionTransformer.PrintWithIndentation(wr, vcstr)
+          wr.println(vcstr)
+          wr.flush()
+          wr.close()
+        }
         if (dumpVCasSMTLIB) {
-          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
+          MiscUtil.toBracelogicSMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
+          //Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
         }        
         println("Printed VC of " + fd.id + " to file: " + filename)
       }

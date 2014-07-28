@@ -18,7 +18,7 @@ object Main {
       purescala.FunctionClosure,
       xlang.XlangAnalysisPhase,
       InferInvariantsPhase,
-      smtlib.LeonToHornPhase,
+      horncl.LeonToHornPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase      
@@ -217,7 +217,7 @@ object Main {
       } else if (settings.inferInv){
         InferInvariantsPhase
       } else if (settings.genHorn){
-        smtlib.LeonToHornPhase
+        horncl.LeonToHornPhase
       } else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {

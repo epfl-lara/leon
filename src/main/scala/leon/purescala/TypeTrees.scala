@@ -49,7 +49,7 @@ object TypeTrees {
   }
     
 
-  sealed abstract class TypeTree extends Tree
+  abstract class TypeTree extends Tree
 
   // returns the number of distinct values that inhabit a type
   sealed abstract class TypeSize extends Serializable

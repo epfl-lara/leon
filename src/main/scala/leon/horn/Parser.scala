@@ -1,5 +1,5 @@
 package leon
-package smtlib 
+package horncl 
 
 import Tokens._
 import SExprs._

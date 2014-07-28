@@ -1,5 +1,5 @@
 package leon
-package smtlib
+package horncl
 
 import z3.scala._
 import purescala.Common._

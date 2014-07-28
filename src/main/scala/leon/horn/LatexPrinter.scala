@@ -1,5 +1,5 @@
 package leon
-package smtlib
+package horncl
 
 import purescala.Trees._
 import purescala.Common._
