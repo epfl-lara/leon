@@ -418,13 +418,13 @@ abstract class SMTLIBTarget(context: LeonContext) {
     }
   }
 
-  /*override def assertCnstr(expr: Expr): Unit = {
+  def assertCnstr(expr: Expr): Unit = {
     variablesOf(expr).foreach(declareVariable)
     val sexpr = toSMT(expr)(Map())
     sendCommand(Assert(sexpr))
   }
 
-  override def check: Option[Boolean] = sendCommand(CheckSat) match {
+  /*override def check: Option[Boolean] = sendCommand(CheckSat) match {
     case CheckSatResponse(SatStatus)     => Some(true)
     case CheckSatResponse(UnsatStatus)   => Some(false)
     case CheckSatResponse(UnknownStatus) => None
