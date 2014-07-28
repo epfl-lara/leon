@@ -175,6 +175,32 @@ object BinomialHeap {
 		case Some(TreeNode(_,_,ts1)) => merge(ts1, ts2)
 		case _ => h		  
 	  }
-  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c)) 
+  } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c))
+  
+  def heapSize(h: BinomialHeap) : Int = {
+    h match {
+      NilHeap() => 0
+      ConsHeap(head, tail) =>
+        treeSize(head) + heapSize(tail)
+    }
+  }
+  
+  def treeSize(tree: TreeNode) : Int = {
+    val (_, _, children) = tree
+    heapSize(children) + 1
+  }
+  
+  @monotonic
+  def twopower(x: Int) : Int = {
+    require(x >= 0)
+    if(x < 1) 1    
+    else      
+      2* twopower(x - 1)
+  } 
+  
+  def sizeProperty(tree: TreeNode) : Int = {
+    val (r, _, _) = tree
+    treeSize(tree) == twopower(r)
+  }
    
 }

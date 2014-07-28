@@ -30,7 +30,8 @@ object BigNums {
         if(x == 0) Cons(1, tail)
         else Cons(0, increment(tail)) 
     }
-  } ensuring (res =>  potentialIncr(res) <= potentialIncr(l)+1 template((a,b,c) => (time <= a*incrTime(l) + b) && (incrTime(l) + potentialIncr(res) - potentialIncr(l) <= c)))
+  } ensuring (res => true template((a,b,c) => (time <= a*incrTime(l) + b) && (incrTime(l) + potentialIncr(res) - potentialIncr(l) <= c)))
+    //potentialIncr(res) <= potentialIncr(l)+1 )
   
   /**
    * Nop is the number of operations
