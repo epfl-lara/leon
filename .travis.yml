@@ -2,10 +2,9 @@ language: scala
 
 before_script:
     - sbt script
-    - source setupenv
 
 scala:
-    - 2.10.2
+    - 2.11.2
 jdk:
     - oraclejdk7
 
