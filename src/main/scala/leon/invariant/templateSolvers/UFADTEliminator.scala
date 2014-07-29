@@ -19,16 +19,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
   val makeEfficient = true //this will happen at the expense of completeness  
   val reporter = ctx.reporter
   
-  /**
-   * Convert the theory formula into linear arithmetic formula.
-   * The calls could be functions calls or ADT constructor calls.  
-   * 'predEval' is an evaluator that evaluates a predicate to a boolean value
-   */      
-  def constraintsForCalls(calls: Set[Expr], predEval: (Expr => Boolean)): Seq[Expr] = {
-
-    var eqGraph = new UndirectedGraph[Expr]() //an equality graph
-    var neqSet = Set[(Expr, Expr)]()
-
+  def collectCompatibleCalls(calls: Set[Expr]) = {
     //compute the cartesian product of the calls and select the pairs having the same function symbol and also implied by the precond
     val vec = calls.toArray
     val size = calls.size
@@ -63,9 +54,18 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       }
       j += 1
       acc ++ pairs
-    })
+    })    
     reporter.info("Number of compatible calls: " + product.size)
-    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
+    Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")    
+    product
+  }  
+  
+  /**
+   * Convert the theory formula into linear arithmetic formula.
+   * The calls could be functions calls or ADT constructor calls.  
+   * 'predEval' is an evaluator that evaluates a predicate to a boolean value
+   */      
+  def constraintsForCalls(calls: Set[Expr], predEval: (Expr => Boolean)): Seq[Expr] = {    
 
     //check if two calls (to functions or ADT cons) have the same value in the model 
     def doesAlias(call1: Expr, call2: Expr): Boolean = {
@@ -163,6 +163,9 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       }
     }
     
+    var eqGraph = new UndirectedGraph[Expr]() //an equality graph
+    var neqSet = Set[(Expr, Expr)]()
+    val product = collectCompatibleCalls(calls)       
     val newctrs = product.foldLeft(Seq[Expr]())((acc, pair) => {
       val (call1, call2) = (pair._1, pair._2)
       //println("Assertionizing "+call1+" , call2: "+call2)      
@@ -173,10 +176,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
           //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
           acc ++ predForEquality(call1, call2)
 
-        } /*else if(this.callsWithAxioms.contains(call1)) {
-    	    //is this complete? 
-    	     * acc
-    	     * }*/ 
+        } 
         else {
           neqSet ++= Set((call1, call2))
           acc ++ predForDisequality(call1, call2)

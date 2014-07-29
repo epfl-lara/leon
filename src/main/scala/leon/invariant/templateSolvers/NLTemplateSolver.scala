@@ -42,8 +42,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   val printPathToConsole = false
   val dumpPathAsSMTLIB = false
   val dumpNLCtrsAsSMTLIB = false
-  val printCallConstriants = false
-  val printReducedFormula = false
+  val printCallConstriants = false  
   val dumpInstantiatedVC = false
   
   private val program = ctx.program
@@ -67,6 +66,10 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   protected var paramParts = Map[FunDef, Expr]()   
   private var solverWithNLctrs : UIFZ3Solver = null //not used as of now
   private var lastFoundModel : Option[Map[Identifier,Expr]] = None
+  
+  //for miscellaneous things
+  val trackNumericalDisjuncts = true
+  var numericalDisjuncts = List[Expr]()
   
   protected def splitVC(fd: FunDef) : (Expr,Expr) = {
     ctrTracker.getVC(fd).splitParamPart
@@ -111,7 +114,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
 
     //initialize vcs of functions
-    this.funcVCs = funcVCs
+    this.funcVCs = funcVCs        
     
     if(useIncrementalSolvingForVCs) {
       initVCSolvers
@@ -131,7 +134,19 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     //set lowerbound map
     if (ctx.tightBounds)
       SpecificStats.addLowerBoundStats(rootFun, minimizer.lowerBoundMap, "")
-    sol
+    
+    //miscellaneous stuff
+    if(trackNumericalDisjuncts){             
+      MiscUtil.toBracelogicSMTLIB(Or(numericalDisjuncts), 
+          "vcdisjs-"+FileCountGUID.getID, ctx.leonContext, sol._1)
+      //reset 'numericalDisjuncts'
+      this.numericalDisjuncts = List[Expr]()
+    }
+    sol match {
+      case (None, calls) => (None, calls)
+      case (Some(model), calls) =>
+        (Some(getAllInvariants(model)), calls)
+    }       
   }
 
   //state for minimization 
@@ -154,7 +169,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   }
 
   def solveUNSAT(model: Map[Identifier, Expr], inputCtr: Expr, solvedDisjs: Seq[Expr], seenCalls: Set[Call])
-  : (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
+  : (Option[Map[Identifier, Expr]], Option[Set[Call]]) = {
 
     println("candidate Invariants")
     val candInvs = getAllInvariants(model)
@@ -190,19 +205,19 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
 
           if (minimized) {
             minimizationCompleted
-            (Some(getAllInvariants(model)), None)
+            (Some(model), None)
           } else {
             val minModel = minimizer.tightenTimeBounds(template.get, inputCtr, model)
             minimized = true
             if (minModel == model) {
               minimizationCompleted
-              (Some(getAllInvariants(model)), None)
+              (Some(model), None)
             } else {
               solveUNSAT(minModel, inputCtr, solvedDisjs, seenCalls)
             }
           }
         } else {
-          (Some(getAllInvariants(model)), None)
+          (Some(model), None)
         }
       }
       case Some(true) => {
@@ -687,6 +702,10 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
         println("checking invariant for simp-path...")
         Util.checkInvariant(simpPathCond, leonctx, program)       
       }
+    }
+    
+    if(this.trackNumericalDisjuncts) {
+      numericalDisjuncts :+= And((lnctrs ++ temps).map(_.template).toSeq)       
     }
 
     val (data, nlctr) = processNumCtrs(lnctrs.toSeq, temps.toSeq)

@@ -32,7 +32,7 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
     
   private val dumpVCtoConsole = false
   private val dumpVCasText = false
-  private val dumpVCasSMTLIB = true  
+  private val dumpVCasSMTLIB = false  
       
   /**
    * Completes a model by adding mapping to new template variables
@@ -62,7 +62,7 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
   
   protected def getVCForFun(fd: FunDef) : Expr = {
     ctrTracker.getVC(fd).toExpr
-  }
+  }  
    
   /**
    * This function computes invariants belonging to the given templates incrementally.
@@ -71,38 +71,38 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
   def solveTemplates(): (Option[Map[FunDef, Expr]], Option[Set[Call]]) = {
     
     //traverse each of the functions and collect the VCs
-    val funcs = ctrTracker.getFuncs        
+    val funcs = ctrTracker.getFuncs    
     val funcExprs = funcs.map((fd) => {
       val vc = if (ctx.usereals)
         ExpressionTransformer.IntLiteralToReal(getVCForFun(fd))
       else getVCForFun(fd)
       
-      if (this.dumpVCasText || this.dumpVCasSMTLIB) {
-        //val simpForm = simplifyArithmetic(vc)
-        val vcstr = vc.toString        
+      if (dumpVCtoConsole || dumpVCasText || dumpVCasSMTLIB) {
+        //val simpForm = simplifyArithmetic(vc)             
         val filename = "vc-" + FileCountGUID.getID
-        if(dumpVCtoConsole)
-          println("Func: " + fd.id + " VC: " + vcstr)
+        if(dumpVCtoConsole){          
+          println("Func: " + fd.id + " VC: " + vc)
+        }
         if (dumpVCasText) {
           val wr = new PrintWriter(new File(filename + ".txt"))
           //ExpressionTransformer.PrintWithIndentation(wr, vcstr)
-          wr.println(vcstr)
+          println("Printed VC of " + fd.id + " to file: " + filename)
+          wr.println(vc.toString)
           wr.flush()
           wr.close()
         }
-        if (dumpVCasSMTLIB) {
-          MiscUtil.toBracelogicSMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
-          //Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
-        }        
-        println("Printed VC of " + fd.id + " to file: " + filename)
-      }
+        if (dumpVCasSMTLIB) {          
+          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
+          println("Printed VC of " + fd.id + " to file: " + filename)
+        }                 
+      }      
                 
       if (ctx.dumpStats) {                
         Stats.updateCounterStats(Util.atomNum(vc), "VC-size", "VC-refinement")        
         Stats.updateCounterStats(Util.numUIFADT(vc), "UIF+ADT", "VC-refinement")
       }            
       (fd -> vc)      
-    }).toMap  
+    }).toMap         
     
     //Assign some values for the template variables at random (actually use the simplest value for the type)
     val tempIds = funcs.foldLeft(Set[Identifier]())((acc, fd) => {
@@ -115,11 +115,9 @@ abstract class TemplateSolver (ctx: InferenceContext, val rootFun : FunDef,
        
     val solution = solve(tempIds, funcExprs)        
     solution
-    //uncomment the following if you want to skip solving but are find with any arbitrary choice
-    //Some(getAllInvariants(simplestModel))
   }
   
-  def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : (Option[Map[FunDef,Expr]], Option[Set[Call]])
+  def solve(tempIds : Set[Identifier], funcVCs : Map[FunDef,Expr]) : (Option[Map[FunDef,Expr]], Option[Set[Call]])        
 }
 
 //class ParallelTemplateSolver(

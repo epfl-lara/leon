@@ -33,10 +33,10 @@ object TemplateIdFactory {
   
   def getTemplateIds : Set[Identifier] = ids 
   
-  def freshIdentifier(name : String = "") : Identifier = {
+  def freshIdentifier(name : String = "", idType: TypeTree = RealType) : Identifier = {
     val idname = if(name.isEmpty()) "a?"
     			 else name + "?"
-    val freshid = FreshIdentifier(idname, true).setType(RealType)
+    val freshid = FreshIdentifier(idname, true).setType(idType)
     ids += freshid
     freshid
   }
