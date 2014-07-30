@@ -4,7 +4,7 @@ version := "2.3"
 
 organization := "ch.epfl.lara"
 
-scalaVersion := "2.11.1"
+scalaVersion := "2.11.2"
 
 scalacOptions ++= Seq(
     "-deprecation",
@@ -23,7 +23,7 @@ if(System.getProperty("sun.arch.data.model") == "64") {
 resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
 
 libraryDependencies ++= Seq(
-    "org.scala-lang" % "scala-compiler" % "2.11.1",
+    "org.scala-lang" % "scala-compiler" % "2.11.2",
     "org.scalatest" %% "scalatest" % "2.2.0" % "test",
     "com.typesafe.akka" %% "akka-actor" % "2.3.4"
 )

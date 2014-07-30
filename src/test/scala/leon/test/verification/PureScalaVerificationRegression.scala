@@ -20,8 +20,8 @@ class PureScalaVerificationRegression extends LeonTestSuite {
   private case class Output(report : VerificationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String], VerificationReport] =
-    ExtractionPhase     andThen 
-    PreprocessingPhase  andThen 
+    ExtractionPhase     andThen
+    PreprocessingPhase  andThen
     AnalysisPhase
 
   private def mkTest(file : File, leonOptions : Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
