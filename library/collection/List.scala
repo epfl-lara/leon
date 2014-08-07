@@ -2,6 +2,7 @@
 
 package leon.collection
 
+import leon._
 import leon.lang._
 import leon.annotation._
 
@@ -83,6 +84,203 @@ sealed abstract class List[T] {
       } else {
         t.drop(i-1)
       }
+  }
+
+  def slice(from: Int, to: Int): List[T] = {
+    require(from < to && to < size && from >= 0)
+    drop(from).take(to-from)
+  }
+
+  def replace(from: T, to: T): List[T] = this match {
+    case Nil() => Nil()
+    case Cons(h, t) =>
+      val r = t.replace(from, to)
+      if (h == from) {
+        Cons(to, r)
+      } else {
+        Cons(h, r)
+      }
+  }
+
+  private def chunk0(s: Int, l: List[T], acc: List[T], res: List[List[T]], s0: Int): List[List[T]] = l match {
+    case Nil() =>
+      if (acc.size > 0) {
+        res :+ acc
+      } else {
+        res
+      }
+    case Cons(h, t) =>
+      if (s0 == 0) {
+        chunk0(s, l, Nil(), res :+ acc, s)
+      } else {
+        chunk0(s, t, acc :+ h, res, s0-1)
+      }
+  }
+
+  def chunks(s: Int): List[List[T]] = {
+    require(s > 0)
+
+    chunk0(s, this, Nil(), Nil(), s)
+  }
+
+  def zip[B](that: List[B]): List[(T, B)] = (this, that) match {
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      Cons((h1, h2), t1.zip(t2))
+    case (_) =>
+      Nil()
+  }
+
+  def -(e: T): List[T] = this match {
+    case Cons(h, t) =>
+      if (e == h) {
+        t - e
+      } else {
+        Cons(h, t - e)
+      }
+    case Nil() =>
+      Nil()
+  }
+
+  def --(that: List[T]): List[T] = this match {
+    case Cons(h, t) =>
+      if (that.contains(h)) {
+        t -- that
+      } else {
+        Cons(h, t -- that)
+      }
+    case Nil() =>
+      Nil()
+  }
+
+  def &(that: List[T]): List[T] = this match {
+    case Cons(h, t) =>
+      if (that.contains(h)) {
+        Cons(h, t & that)
+      } else {
+        t & that
+      }
+    case Nil() =>
+      Nil()
+  }
+
+  def pad(s: Int, e: T): List[T] = (this, s) match {
+    case (_, s) if s <= 0 =>
+      this
+    case (Nil(), s) =>
+      Cons(e, Nil().pad(s-1, e))
+    case (Cons(h, t), s) =>
+      Cons(h, t.pad(s-1, e))
+  }
+
+  def find(e: T): Option[Int] = this match {
+    case Nil() => None()
+    case Cons(h, t) =>
+      if (h == e) {
+        Some(0)
+      } else {
+        t.find(e) match {
+          case None()  => None()
+          case Some(i) => Some(i+1)
+        }
+      }
+  }
+
+  def lastOption: Option[T] = this match {
+    case Cons(h, t) =>
+      t.lastOption.orElse(Some(h))
+    case Nil() =>
+      None()
+  }
+
+  def firstOption: Option[T] = this match {
+    case Cons(h, t) =>
+      Some(h)
+    case Nil() =>
+      None()
+  }
+
+  def unique: List[T] = this match {
+    case Nil() => Nil()
+    case Cons(h, t) =>
+      Cons(h, t.unique - h)
+  }
+
+  def splitAt(e: T): List[List[T]] =  split(Cons(e, Nil()))
+
+  def split(seps: List[T]): List[List[T]] = this match {
+    case Cons(h, t) =>
+      if (seps.contains(h)) {
+        Cons(Nil(), t.split(seps))
+      } else {
+        val r = t.split(seps)
+        Cons(Cons(h, r.head), r.tail)
+      }
+    case Nil() =>
+      Cons(Nil(), Nil())
+  }
+
+  def count(e: T): Int = this match {
+    case Cons(h, t) =>
+      if (h == e) {
+        1 + t.count(e)
+      } else {
+        t.count(e)
+      }
+    case Nil() =>
+      0
+  }
+
+  def evenSplit: (List[T], List[T]) = {
+    val c = size/2
+    (take(c), drop(c))
+  }
+
+  def insertAt(pos: Int, l: List[T]): List[T] = {
+    if(pos < 0) {
+      insertAt(size + pos, l)
+    } else if(pos == 0) {
+      l ++ this
+    } else {
+      this match {
+        case Cons(h, t) =>
+          Cons(h, t.insertAt(pos-1, l))
+        case Nil() =>
+          l
+      }
+    }
+  }
+
+  def replaceAt(pos: Int, l: List[T]): List[T] = {
+    if(pos < 0) {
+      replaceAt(size + pos, l)
+    } else if(pos == 0) {
+      l ++ this.drop(l.size)
+    } else {
+      this match {
+        case Cons(h, t) =>
+          Cons(h, t.replaceAt(pos-1, l))
+        case Nil() =>
+          l
+      }
+    }
+  }
+
+  def rotate(s: Int): List[T] = {
+    if (s < 0) {
+      rotate(size+s)
+    } else {
+      val s2 = s % size
+      drop(s2) ++ take(s2)
+    }
+  }
+
+}
+
+@library
+object ListOps {
+  def flatten[T](ls: List[List[T]]): List[T] = ls match {
+    case Cons(l, t) => l ++ flatten(t)
+    case Nil() => Nil()
   }
 }
 
