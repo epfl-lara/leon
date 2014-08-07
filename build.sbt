@@ -30,13 +30,13 @@ libraryDependencies ++= Seq(
 
 Keys.fork in run := true
 
-Keys.fork in test := true
+Keys.fork in Test := true
 
-logBuffered in test := false
+logBuffered in Test := false
 
-testOptions in test += Tests.Argument("-oD")
+testOptions in Test += Tests.Argument("-oDF")
 
-javaOptions in test += "-Xss32M"
+javaOptions in Test += "-Xss32M"
 
 parallelExecution in test := false
 

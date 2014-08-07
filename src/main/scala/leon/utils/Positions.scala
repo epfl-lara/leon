@@ -19,7 +19,13 @@ abstract class Position extends Ordered[Position] {
         ld
       }
     } else {
-      0
+      if (this.file eq null) {
+        -1
+      } else if (that.file eq null) {
+        +1
+      } else {
+        this.file.getPath.compare(that.file.getPath)
+      }
     }
   }
 
