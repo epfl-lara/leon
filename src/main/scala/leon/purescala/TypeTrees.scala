@@ -151,6 +151,8 @@ object TypeTrees {
 
     lazy val fieldsTypes = fields.map(_.tpe)
 
+    lazy val root = parent.getOrElse(this)
+
     lazy val parent = classDef.parent.map {
       pct => instantiateType(pct, (classDef.tparams zip tps).toMap) match {
         case act: AbstractClassType  => act

@@ -130,10 +130,12 @@ case object CEGIS extends Rule("CEGIS") {
               false
           }
 
+
           if (!isRecursiveCall && isNotSynthesizable) {
-            canBeSubtypeOf(fd.returnType, fd.tparams, t) match {
-              case Some(tps) =>
-                Some(fd.typed(tps))
+            val free = fd.tparams.map(_.tp)
+            canBeSubtypeOf(fd.returnType, free, t) match {
+              case Some(tpsMap) =>
+                Some(fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp))))
               case None =>
                 None
             }
