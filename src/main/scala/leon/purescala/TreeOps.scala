@@ -363,15 +363,12 @@ object TreeOps {
    * Returns all Function calls found in an expression
    */
   def functionCallsOf(expr: Expr): Set[FunctionInvocation] = {
-    foldRight[Set[FunctionInvocation]]({
-      case (e, subs) =>
-        val c: Set[FunctionInvocation] = e match {
-          case f: FunctionInvocation => Set(f)
-          case _ => Set()
-        }
-        subs.foldLeft(c)(_ ++ _)
-    })(expr)
+    collect[FunctionInvocation] {
+      case f: FunctionInvocation => Set(f)
+      case _ => Set()
+    }(expr)
   }
+
   def negate(expr: Expr) : Expr = (expr match {
     case Let(i,b,e) => Let(i,b,negate(e))
     case Not(e) => e

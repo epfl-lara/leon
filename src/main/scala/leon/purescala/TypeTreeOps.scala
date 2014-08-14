@@ -65,9 +65,13 @@ object TypeTreeOps {
           val NAryType(ts1, _) = tpe
           val NAryType(ts2, _) = stpe
 
-          unify((ts1 zip ts2).map { case (tp1, tp2) =>
-            canBeSubtypeOf(tp1, freeParams, tp2)
-          })
+          if (ts1.size == ts2.size) {
+            unify((ts1 zip ts2).map { case (tp1, tp2) =>
+              canBeSubtypeOf(tp1, freeParams, tp2)
+            })
+          } else {
+            None
+          }
 
         case (t1, t2) =>
           if (t1 == t2) {

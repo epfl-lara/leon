@@ -12,18 +12,23 @@ import leon.purescala.Common._
 case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifier]) {
   override def toString = "⟦ "+as.mkString(";")+", "+(if (pc != BooleanLiteral(true)) pc+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
 
-  def getTests(sctx: SynthesisContext): Seq[InOutExample] = {
+  def getTests(sctx: SynthesisContext): Seq[InExample] = {
     import purescala.Extractors._
     import evaluators._
 
-    val TopLevelAnds(predicates) = And(pc, phi)
+    val predicates = And(pc, phi)
 
     val ev = new DefaultEvaluator(sctx.context, sctx.program)
 
-    def isValidExample(ex: InOutExample): Boolean = {
-      val mapping = Map((as zip ex.ins) ++ (xs zip ex.outs): _*)
+    def isValidExample(ex: InExample): Boolean = {
+      val (mapping, cond) = ex match {
+        case io: InOutExample =>
+          (Map((as zip io.ins) ++ (xs zip io.outs): _*), And(pc, phi))
+        case i =>
+          ((as zip i.ins).toMap, pc)
+      }
 
-      ev.eval(And(pc, phi), mapping) match {
+      ev.eval(cond, mapping) match {
         case EvaluationResults.Successful(BooleanLiteral(true)) => true
         case _ => false
       }
@@ -74,7 +79,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
       case _ => Nil
     }
 
-    val testClusters = predicates.collect {
+    val testClusters = collect[Map[Identifier, Expr]] {
       case FunctionInvocation(tfd, List(in, out, FiniteMap(inouts))) if tfd.id.name == "passes" =>
         val infos = extractIds(Tuple(Seq(in, out)))
         val exs   = inouts.map{ case (i, o) => Tuple(Seq(i, o)) }
@@ -84,8 +89,11 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
           infos.map{ case (id, f) => id -> f(e) }.toMap
         }
 
-        results
-    }
+        results.toSet
+
+      case _ =>
+        Set()
+    }(predicates)
 
     /**
      * we now need to consolidate different clusters of compatible tests together
@@ -108,7 +116,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
     }
 
     var consolidated = Set[Map[Identifier, Expr]]()
-    for (ts <- testClusters; t <- ts) {
+    for (t <- testClusters) {
       consolidated += t
 
       consolidated = consolidated.map { c =>
@@ -117,12 +125,22 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
     }
 
     // Finally, we keep complete tests covering all as++xs
-    val requiredIds = (as ++ xs).toSet
-    val complete = consolidated.filter{ t => (t.keySet & requiredIds) == requiredIds }
+    val allIds  = (as ++ xs).toSet
+    val insIds  = as.toSet
+    val outsIds = xs.toSet
 
-    complete.toSeq.map { m =>
-      InOutExample(as.map(m), xs.map(m))
-    }.filter(isValidExample)
+    val examples = consolidated.toSeq.flatMap { t =>
+      val ids = t.keySet
+      if ((ids & allIds) == allIds) {
+        Some(new InOutExample(as.map(t), xs.map(t)))
+      } else if ((ids & insIds) == insIds) {
+        Some(new InExample(as.map(t)))
+      } else {
+        None
+      }
+    }
+
+    examples.filter(isValidExample)
   }
 }
 

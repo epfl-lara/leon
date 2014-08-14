@@ -13,26 +13,36 @@ import solvers.TimeoutSolver
 
 import xlang.Trees._
 
-abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evaluator(ctx, prog) {
+abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int) extends Evaluator(ctx, prog) {
   val name = "evaluator"
   val description = "Recursive interpreter for PureScala expressions"
 
   type RC <: RecContext
   type GC <: GlobalContext
 
+  var lastGC: Option[GC] = None
+
   case class EvalError(msg : String) extends Exception
   case class RuntimeError(msg : String) extends Exception
 
-  abstract class RecContext {
-    val mappings: Map[Identifier, Expr]
-
-    def withNewVar(id: Identifier, v: Expr): RC;
+  trait RecContext {
+    def mappings: Map[Identifier, Expr]
 
     def withVars(news: Map[Identifier, Expr]): RC;
+
+    def withNewVar(id: Identifier, v: Expr): RC = {
+      withVars(mappings + (id -> v))
+    }
+
+    def withNewVars(news: Map[Identifier, Expr]): RC = {
+      withVars(mappings ++ news)
+    }
   }
 
-  class GlobalContext(var stepsLeft: Int) {
-    val maxSteps = stepsLeft
+  class GlobalContext {
+    def maxSteps = RecursiveEvaluator.this.maxSteps
+
+    var stepsLeft = maxSteps
   }
 
   def initRC(mappings: Map[Identifier, Expr]): RC
@@ -40,14 +50,20 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program) extends Evalu
 
   def eval(ex: Expr, mappings: Map[Identifier, Expr]) = {
     try {
-      EvaluationResults.Successful(e(ex)(initRC(mappings), initGC))
+      lastGC = Some(initGC)
+      ctx.timers.evaluators.recursive.runtime.start()
+      EvaluationResults.Successful(e(ex)(initRC(mappings), lastGC.get))
     } catch {
       case so: StackOverflowError =>
         EvaluationResults.EvaluatorError("Stack overflow")
       case EvalError(msg) =>
         EvaluationResults.EvaluatorError(msg)
-      case RuntimeError(msg) =>
+      case e @ RuntimeError(msg) =>
         EvaluationResults.RuntimeError(msg)
+      case jre: java.lang.RuntimeException =>
+        EvaluationResults.RuntimeError(jre.getMessage)
+    } finally {
+      ctx.timers.evaluators.recursive.runtime.stop()
     }
   }
 

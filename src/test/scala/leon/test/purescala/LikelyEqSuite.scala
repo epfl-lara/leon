@@ -8,7 +8,7 @@ import leon.purescala.Common._
 import leon.purescala.Trees._
 
 
-class LikelyEqSuite extends LeonTestSuite {
+class LikelyEqSuite extends LeonTestSuite with WithLikelyEq {
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x")

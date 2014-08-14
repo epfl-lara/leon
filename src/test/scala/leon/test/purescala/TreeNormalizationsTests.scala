@@ -12,7 +12,7 @@ import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
 
-class TreeNormalizationsTests extends LeonTestSuite {
+class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
   def i(x: Int) = IntLiteral(x)
 
   val xId = FreshIdentifier("x").setType(Int32Type)

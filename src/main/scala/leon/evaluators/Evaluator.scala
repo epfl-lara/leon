@@ -12,10 +12,10 @@ abstract class Evaluator(val context : LeonContext, val program : Program) exten
   type EvaluationResult = EvaluationResults.Result
 
   /** Evaluates an expression, using `mapping` as a valuation function for the free variables. */
-  def eval(expr : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult
+  def eval(expr: Expr, mapping: Map[Identifier,Expr]) : EvaluationResult
 
   /** Evaluates a ground expression. */
-  final def eval(expr : Expr) : EvaluationResult = eval(expr, Map.empty)
+  final def eval(expr: Expr) : EvaluationResult = eval(expr, Map.empty)
 
   /** Compiles an expression into a function, where the arguments are the free variables in the expression.
     * `argorder` specifies in which order the arguments should be passed.

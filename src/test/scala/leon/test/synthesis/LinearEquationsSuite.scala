@@ -8,13 +8,13 @@ import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.test.purescala.LikelyEq
+import leon.test.purescala.WithLikelyEq
 import leon.evaluators._
 import leon.LeonContext
 
 import leon.synthesis.LinearEquations._
 
-class LinearEquationsSuite extends LeonTestSuite {
+class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
 
   def i(x: Int) = IntLiteral(x)
 

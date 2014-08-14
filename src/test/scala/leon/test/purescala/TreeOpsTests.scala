@@ -15,7 +15,7 @@ import leon.purescala.TreeOps._
 
 import leon.solvers.z3._
 
-class TreeOpsTests extends LeonTestSuite {
+class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
   
   test("Path-aware simplifications") {
     // TODO actually testing something here would be better, sorry

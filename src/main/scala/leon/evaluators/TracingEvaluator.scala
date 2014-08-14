@@ -9,27 +9,17 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
-class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) extends RecursiveEvaluator(ctx, prog) {
+class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) extends RecursiveEvaluator(ctx, prog, maxSteps) {
   type RC = TracingRecContext
   type GC = TracingGlobalContext
 
-  var lastGlobalContext: Option[GC] = None
+  def initRC(mappings: Map[Identifier, Expr]) = TracingRecContext(mappings, 2)
 
-  def initRC(mappings: Map[Identifier, Expr]) = {
-    TracingRecContext(mappings, 2)
-  }
+  def initGC = new TracingGlobalContext(Nil)
 
-  def initGC = {
-    val gc = new TracingGlobalContext(stepsLeft = maxSteps, Nil)
-    lastGlobalContext = Some(gc)
-    gc
-  }
-
-  class TracingGlobalContext(stepsLeft: Int, var values: List[(Expr, Expr)]) extends GlobalContext(stepsLeft)
+  class TracingGlobalContext(var values: List[(Expr, Expr)]) extends GlobalContext
 
   case class TracingRecContext(mappings: Map[Identifier, Expr], tracingFrames: Int) extends RecContext {
-    def withNewVar(id: Identifier, v: Expr) = copy(mappings = mappings + (id -> v))
-
     def withVars(news: Map[Identifier, Expr]) = copy(mappings = news)
   }
 

@@ -25,6 +25,7 @@ object Rules {
     EqualitySplit,
     InequalitySplit,
     CEGIS,
+    TEGIS,
     rules.Assert,
     DetupleOutput,
     DetupleInput,

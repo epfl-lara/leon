@@ -51,7 +51,6 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case FiniteArray(exprs)   => p"Array($exprs)"
       case Distinct(exprs)      => p"distinct($exprs)"
       case Not(expr)            => p"!$expr"
-
       case _ =>
         super.pp(tree)
     }

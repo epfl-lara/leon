@@ -96,11 +96,11 @@ class TimerStorage extends Dynamic {
 
     table += Row(Seq(
         Cell("name"),
-        Cell("min"),
-        Cell("avg"),
-        Cell("max"),
-        Cell("n"),
-        Cell("total")
+        Cell("min",   align = Right),
+        Cell("avg",   align = Right),
+        Cell("max",   align = Right),
+        Cell("n",     align = Right),
+        Cell("total", align = Right)
       ))
     table += Separator
 
@@ -113,8 +113,10 @@ class TimerStorage extends Dynamic {
         } else if (from.isLastKeys(name)) {
           closed += from
           "└ "
-        } else {
+        } else if((from, name) == path.head) {
           "├ "
+        } else {
+          "│ "
         }
       }.reverse.mkString
 
@@ -123,24 +125,24 @@ class TimerStorage extends Dynamic {
           val n   = t.runs.size
           val tot = t.runs.sum
 
-          val (min: String, avg: String, max: String, total: String) = if (n == 0) {
-            ("", "", "", "N/A")
+          val (min: String, avg: String, max: String, n2: String, total: String) = if (n == 0) {
+            ("", "", "", "", "N/A")
           } else if (n > 1) {
             val min = t.runs.min
             val max = t.runs.max
             val avg = tot/n
-            (f"$min%d", f"$avg%d", f"$max%d", f"$tot%d")
+            (f"$min%d ms", f"$avg%d ms", f"$max%d ms", f"$n%d", f"$tot%d ms")
           } else {
-            ("", "", "", f"$tot%d")
+            ("", "", "", "", f"$tot%d ms")
           }
 
           table += Row(Seq(
             Cell(indent+name),
-            Cell(min),
-            Cell(avg),
-            Cell(max),
-            Cell(n),
-            Cell(tot)
+            Cell(min, align = Right),
+            Cell(avg, align = Right),
+            Cell(max, align = Right),
+            Cell(n2,  align = Right),
+            Cell(total, align = Right)
           ))
         case ((_, name) :: _, None) =>
           table += Row(Seq(
