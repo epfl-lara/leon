@@ -61,6 +61,7 @@ object TypeTreeOps {
              (_: SetType, _: SetType) |
              (_: MapType, _: MapType) |
              (_: FunctionType, _: FunctionType) =>
+
           val NAryType(ts1, _) = tpe
           val NAryType(ts2, _) = stpe
 

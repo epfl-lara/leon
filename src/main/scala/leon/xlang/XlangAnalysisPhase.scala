@@ -11,6 +11,9 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
   val name = "xlang analysis"
   val description = "apply analysis on xlang"
 
+  case object VCInvariantPost extends VCKind("invariant postcondition", "inv. post.")
+  case object VCInvariantInd  extends VCKind("invariant inductive",     "inv. ind.")
+
   def run(ctx: LeonContext)(pgm: Program): VerificationReport = {
 
     val pgm1 = ArrayTransformation(ctx, pgm)
@@ -70,7 +73,7 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
         val freshVc = new VerificationCondition(
           vc.condition, 
           funDef.parent.getOrElse(funDef), 
-          if(vc.kind == VCKind.Postcondition) VCKind.InvariantPost else if(vc.kind == VCKind.Precondition) VCKind.InvariantInd else vc.kind,
+          if(vc.kind == VCPostcondition) VCInvariantPost else if(vc.kind == VCPrecondition) VCInvariantInd else vc.kind,
           vc.tactic,
           vc.info).setPos(funDef)
         freshVc.value = vc.value
