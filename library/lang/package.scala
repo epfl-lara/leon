@@ -28,6 +28,7 @@ package object lang {
   @ignore
   def error[T](reason: String): T = sys.error(reason)
 
+  @library
   def passes[A, B](in: A, out: B)(tests: Map[A,B]): Boolean = {
     if (tests contains in) {
       tests(in) == out
