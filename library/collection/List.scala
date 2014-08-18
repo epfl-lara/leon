@@ -279,8 +279,30 @@ sealed abstract class List[T] {
 @library
 object ListOps {
   def flatten[T](ls: List[List[T]]): List[T] = ls match {
-    case Cons(l, t) => l ++ flatten(t)
+    case Cons(h, t) => h ++ flatten(t)
     case Nil() => Nil()
+  }
+
+  def isSorted(ls: List[Int]): Boolean = ls match {
+    case Nil() => true
+    case Cons(_, Nil()) => true
+    case Cons(h1, Cons(h2, _)) if(h1 > h2) => false
+    case Cons(_, t) => isSorted(t)
+  }
+
+  def sorted(ls: List[Int]): List[Int] = ls match {
+    case Cons(h, t) => insSort(sorted(t), h)
+    case Nil() => Nil()
+  }
+
+  def insSort(ls: List[Int], v: Int): List[Int] = ls match {
+    case Nil() => Cons(v, Nil())
+    case Cons(h, t) =>
+      if (v <= h) {
+        Cons(v, t)
+      } else {
+        Cons(h, insSort(t, v))
+      }
   }
 }
 
