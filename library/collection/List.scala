@@ -185,6 +185,15 @@ sealed abstract class List[T] {
       }
   }
 
+  def init: List[T] = (this match {
+    case Cons(h, Nil()) =>
+      Nil[T]()
+    case Cons(h, t) =>
+      Cons[T](h, t.init)
+    case Nil() =>
+      Nil[T]()
+  }) ensuring ( (r: List[T]) => ((r.size < this.size) || (this.size == 0)) )
+
   def lastOption: Option[T] = this match {
     case Cons(h, t) =>
       t.lastOption.orElse(Some(h))
