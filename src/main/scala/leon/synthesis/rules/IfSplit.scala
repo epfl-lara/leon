@@ -15,18 +15,22 @@ case object IfSplit extends Rule("If-Split") {
       case _ => Set[IfExpr]()
     }(p.phi)
 
-    ifs.toList match {
-      case i :: _ =>
-        List(split(i, p, "Split top-level If"))
-      case _ =>
-        Nil
+    val xsSet = p.xs.toSet
+
+    ifs.flatMap { 
+      case i @ IfExpr(cond, _, _) =>
+        if ((variablesOf(cond) & xsSet).isEmpty) {
+          List(split(i, p, "Split If("+cond+")"))
+        } else {
+          Nil
+        }
     }
   }
 
   def split(i: IfExpr, p: Problem, description: String): RuleInstantiation = {
     val subs = List(
-      Problem(p.as, And(p.pc, i.cond), replace(Map(i -> i.thenn), p.pc), p.xs),
-      Problem(p.as, And(p.pc, Not(i.cond)), replace(Map(i -> i.elze), p.pc), p.xs)
+      Problem(p.as, And(p.pc, i.cond), replace(Map(i -> i.thenn), p.phi), p.xs),
+      Problem(p.as, And(p.pc, Not(i.cond)), replace(Map(i -> i.elze), p.phi), p.xs)
     )
 
     val onSuccess: List[Solution] => Option[Solution] = {
