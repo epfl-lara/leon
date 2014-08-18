@@ -63,7 +63,7 @@ object ConvertHoles extends LeonPhase[Program, Program] {
               BooleanLiteral(true)
           }
 
-          val withChoose = letTuple(holes, Choose(cids, pred), newBody)
+          val withChoose = letTuple(holes, tupleChoose(Choose(cids, pred)), newBody)
 
           fd.body = Some(withChoose)
         }

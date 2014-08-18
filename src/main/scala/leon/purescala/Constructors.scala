@@ -24,4 +24,12 @@ object Constructors {
     case xs =>
       LetTuple(xs, value, body)
   }
+
+  def tupleChoose(ch: Choose): Expr = {
+    if (ch.vars.size > 1) {
+      ch
+    } else {
+      Tuple(Seq(ch))
+    }
+  }
 }
