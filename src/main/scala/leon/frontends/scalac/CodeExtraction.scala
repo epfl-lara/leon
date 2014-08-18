@@ -964,38 +964,10 @@ trait CodeExtraction extends ASTExtractors {
               outOfSubsetError(tr, "Unidentified variable "+sym+" "+sym.id+".")
           }
 
-        case hole @ ExHoleExpression(tpt, exprs, os) =>
+        case hole @ ExHoleExpression(tpt, exprs) =>
           val leonExprs = exprs.map(extractTree)
-          val leonOracles = os.map(extractTree)
 
-          def rightOf(o: LeonExpr): LeonExpr = {
-            val Some((cl, fd)) = libraryMethod("Oracle", "right")
-            MethodInvocation(o, cl, fd.typed(Nil), Nil)
-          }
-
-          def valueOf(o: LeonExpr): LeonExpr = {
-            val Some((cl, fd)) = libraryMethod("Oracle", "head")
-            MethodInvocation(o, cl, fd.typed(Nil), Nil)
-          }
-
-
-          leonExprs match {
-            case Nil =>
-              valueOf(leonOracles(0))
-
-            case List(e) =>
-              IfExpr(valueOf(leonOracles(0)), e, valueOf(leonOracles(1)))
-
-            case exs =>
-              val l = exs.last
-              var o = leonOracles(0)
-
-              exs.init.foldRight(l)({ (e: LeonExpr, r: LeonExpr) =>
-                val res = IfExpr(valueOf(leonOracles(0)), e, r)
-                o = rightOf(o)
-                res
-              })
-          }
+          Hole(extractType(tpt), exprs.map(extractTree))
 
         case ops @ ExWithOracleExpression(oracles, body) =>
           val newOracles = oracles map { case (tpt, sym) =>

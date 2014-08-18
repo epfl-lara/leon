@@ -4,6 +4,9 @@ package leon.lang
 
 import leon.annotation._
 
+import scala.language.implicitConversions
+import scala.annotation.implicitNotFound
+
 package object synthesis {
   @ignore
   private def noImpl = throw new RuntimeException("Implementation not supported")
@@ -19,15 +22,16 @@ package object synthesis {
   @ignore
   def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noImpl
 
-  @library
-  def ???[T](implicit o: Oracle[T]): T = o.head
-
-  @library
-  def ?[T](e1: T)(implicit o1: Oracle[Boolean], o2: Oracle[T]): T = if(???[Boolean](o1)) e1 else ???[T](o2)
+  @ignore
+  def ???[T]: T = noImpl
 
   @ignore
-  def ?[T](e1: T, es: T*)(implicit o: Oracle[Boolean]): T = noImpl
+  def ?[T](e1: T): T = if(???[Boolean]) e1 else ???[T]
+
+  @ignore
+  def ?[T](e1: T, es: T*): T = noImpl
 
   @ignore
   def withOracle[A, R](body: Oracle[A] => R): R = noImpl
+
 }

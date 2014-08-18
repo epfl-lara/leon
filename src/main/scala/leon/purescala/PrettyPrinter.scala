@@ -174,6 +174,13 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |  $pred
             |}"""
 
+      case h @ Hole(tpe, es) =>
+        if (es.isEmpty) {
+          p"""|???[$tpe]"""
+        } else {
+          p"""|?($es)"""
+        }
+
       case CaseClass(cct, args) =>
         if (cct.classDef.isCaseObject) {
           p"$cct"

@@ -6,7 +6,7 @@ package utils
 import purescala.Definitions.Program
 
 import purescala.{MethodLifting, CompleteAbstractDefinitions}
-import synthesis.{ConvertWithOracle}
+import synthesis.{ConvertWithOracle, ConvertHoles}
 
 object PreprocessingPhase extends TransformationPhase {
 
@@ -19,6 +19,7 @@ object PreprocessingPhase extends TransformationPhase {
       MethodLifting                 andThen
       TypingPhase                   andThen
       ConvertWithOracle             andThen
+      ConvertHoles                  andThen
       CompleteAbstractDefinitions   andThen
       InjectAsserts
 

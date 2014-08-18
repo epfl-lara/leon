@@ -278,11 +278,11 @@ trait ASTExtractors {
     }
 
     object ExHoleExpression {
-      def unapply(tree: Tree) : Option[(Tree, List[Tree], List[Tree])] = tree match {
-        case a @ Apply(Apply(TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "$qmark"), List(tpt)), args1), args2)  =>
-            Some((tpt, args1, args2))
-        case a @ Apply(TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "$qmark$qmark$qmark"), List(tpt)), List(o)) =>
-            Some((tpt, Nil, List(o)))
+      def unapply(tree: Tree) : Option[(Tree, List[Tree])] = tree match {
+        case a @ Apply(TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "$qmark"), List(tpt)), args1)  =>
+            Some((tpt, args1))
+        case TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "$qmark$qmark$qmark"), List(tpt)) =>
+            Some((tpt, Nil))
         case _ => None
       }
     }
