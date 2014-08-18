@@ -7,6 +7,7 @@ import purescala.Common._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Definitions._
+import purescala.Constructors._
 
 object ConvertWithOracle extends LeonPhase[Program, Program] {
   val name        = "Convert WithOracle to Choose"
@@ -53,11 +54,7 @@ object ConvertWithOracle extends LeonPhase[Program, Program] {
                     BooleanLiteral(true)
                 }
 
-                if (chooseOs.size > 1) {
-                  Some(LetTuple(os, Choose(chooseOs, pred), b))
-                } else {
-                  Some(Let(os.head, Choose(chooseOs, pred), b))
-                }
+                Some(letTuple(os, Choose(chooseOs, pred), b))
               case None =>
                 None
             }

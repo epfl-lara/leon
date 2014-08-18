@@ -8,6 +8,7 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Definitions._
+import purescala.Constructors._
 
 object ConvertHoles extends LeonPhase[Program, Program] {
   val name        = "Convert Holes to Choose"
@@ -62,11 +63,7 @@ object ConvertHoles extends LeonPhase[Program, Program] {
               BooleanLiteral(true)
           }
 
-          val withChoose = if (holes.size > 1) {
-            LetTuple(holes, Choose(cids, pred), newBody)
-          } else {
-            Let(holes.head, Choose(cids, pred), newBody)
-          }
+          val withChoose = letTuple(holes, Choose(cids, pred), newBody)
 
           fd.body = Some(withChoose)
         }

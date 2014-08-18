@@ -10,6 +10,7 @@ import purescala.Common._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object DetupleOutput extends Rule("Detuple Out") {
 
@@ -39,13 +40,12 @@ case object DetupleOutput extends Rule("Detuple Out") {
       }.unzip
 
       val newOuts = subOuts.flatten
-      //sctx.reporter.warning("newOuts: " + newOuts.toString)
 
       val sub = Problem(p.as, p.pc, subProblem, newOuts)
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(sol) =>
-          Some(Solution(sol.pre, sol.defs, LetTuple(newOuts, sol.term, Tuple(outerOuts))))
+          Some(Solution(sol.pre, sol.defs, letTuple(newOuts, sol.term, Tuple(outerOuts))))
         case _ =>
           None
       }
