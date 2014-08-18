@@ -31,7 +31,7 @@ object Addresses {
   }) ensuring (res => res==theseAunique1(as,l))
 
   def disjoint(x:Set[Int],y:Set[Int]):Boolean = {
-    x ** y == Set.empty[Int]
+    (x & y) == Set.empty[Int]
   }
 
   def uniqueAbsentAs(unique:Set[Int],absent:Set[Int],l:List) : Boolean = (l match {
