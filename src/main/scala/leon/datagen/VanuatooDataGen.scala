@@ -11,6 +11,7 @@ import purescala.TypeTrees._
 import purescala.Extractors.TopLevelAnds
 
 import codegen.CompilationUnit
+import codegen.runtime.LeonCodeGenRuntimeMonitor
 import vanuatoo.{Pattern => VPattern, _}
 
 import evaluators._
@@ -189,9 +190,10 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       Some((args : Tuple) => {
         try {
-          val jvmArgs = ce.argsToJVM(Seq(args))
+          val monitor = new LeonCodeGenRuntimeMonitor(unit.params.maxFunctionInvocations)
+          val jvmArgs = ce.argsToJVM(Seq(args), monitor )
 
-          val result  = ce.evalFromJVM(jvmArgs)
+          val result  = ce.evalFromJVM(jvmArgs, monitor)
 
           // jvmArgs is getting updated by evaluating
           val pattern = valueToPattern(jvmArgs(0), ttype)
