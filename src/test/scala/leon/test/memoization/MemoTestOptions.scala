@@ -14,7 +14,7 @@ object MemoTestOptions {
 
   val testOutputValidity  = true  // Test if output file is valid (Pure)Scala
   val testWithVerify      = true  // Verify programs and only memoize unproven functions
-  val testOutputs         = true // See if program outputs match + performance
+  val testOutputs         = false // See if program outputs match + performance
 
   val testOriginal        = false// False to test only new, if original is too slow
   val testOriginalR       = false
