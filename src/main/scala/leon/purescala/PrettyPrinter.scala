@@ -431,11 +431,16 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"""|@$a
               |"""
         }
-
-
-        p"""|def ${fd.id}(${fd.params}): ${fd.returnType} = {
-            |"""
-
+        
+        if (!fd.tparams.isEmpty) {
+          p"""|def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): ${fd.returnType} = {
+              |"""
+        } else {
+          p"""|def ${fd.id}(${fd.params}): ${fd.returnType} = {
+              |"""
+        }
+          
+        
         fd.precondition.foreach { case pre =>
           p"""|  require($pre)
               |"""
