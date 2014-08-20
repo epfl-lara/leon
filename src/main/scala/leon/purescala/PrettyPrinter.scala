@@ -240,7 +240,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"[${tfd.tps}]"
         }
 
-        p"($args)"
+        if (tfd.fd.isRealFunction) p"($args)"
 
       case FunctionInvocation(tfd, args) =>
         p"${tfd.id}"
@@ -249,7 +249,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"[${tfd.tps}]"
         }
 
-        p"($args)"
+        if (tfd.fd.isRealFunction) p"($args)"
 
       case Plus(l,r)                 => optP { p"$l + $r" }
       case Minus(l,r)                => optP { p"$l - $r" }
@@ -431,8 +431,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"""|@$a
               |"""
         }
-        
-        if (!fd.tparams.isEmpty) {
+
+        if (fd.canBeField) {
+          p"""|${fd.defType} ${fd.id}: ${fd.returnType} = {
+              |"""
+        } else if (!fd.tparams.isEmpty) {
           p"""|def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): ${fd.returnType} = {
               |"""
         } else {

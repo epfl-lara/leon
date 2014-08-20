@@ -1,0 +1,69 @@
+package leon.test.frontends
+
+import leon._
+import java.io.File
+
+class FrontEndsTest extends leon.test.LeonTestSuite {
+  
+  val inputFilePath  = "frontends"
+  val outputFilePath = "frontends"
+  
+  private def forEachFileIn(path : String)(block : File => Unit) {
+    val fs = filesInResourceDir(path, _.endsWith(".scala"))
+
+    for(f <- fs) {
+      block(f)
+    } 
+  }
+   
+  val pipeline1 = 
+    frontends.scalac.ExtractionPhase andThen
+    utils.ScopingPhase andThen
+    purescala.MethodLifting andThen
+    utils.TypingPhase andThen
+    purescala.CompleteAbstractDefinitions andThen
+    utils.FileOutputPhase
+   
+  val pipeline2 = 
+    frontends.scalac.ExtractionPhase andThen
+    utils.ScopingPhase andThen
+    purescala.MethodLifting andThen
+    utils.TypingPhase andThen
+    purescala.CompleteAbstractDefinitions andThen
+    purescala.RestoreMethods andThen
+    utils.FileOutputPhase
+    
+  forEachFileIn(inputFilePath ) { f => 
+      testExtr(f)
+  }
+   
+  def testExtr(f : File) {
+    val outFileName1 = outputDirHard(outputFilePath).getAbsolutePath() ++ "/" ++ f.getName 
+    val outFileName2 = outputDirHard(outputFilePath).getAbsolutePath() ++ "/restored" ++ f.getName 
+    test ("Testing " + f.getName) {
+      // Compile original file
+      val timeOut = 2
+      val settings = testContext.settings.copy(   
+        debugSections = Set(), 
+        injectLibrary = false //true
+      )
+      val ctx1 = testContext.copy(
+        // We want a reporter that actually prints some output
+        reporter = new DefaultReporter(settings),
+        settings = settings,
+        options =  testContext.options :+ LeonValueOption("o", outFileName1) //:+ LeonFlagOption("library", true)
+      )
+      
+      val ctx2 = ctx1.copy(
+        reporter = new DefaultReporter(settings),
+        settings = settings,
+        options = testContext.options :+ LeonValueOption("o", outFileName2 ) //:+ LeonFlagOption("library", true)
+      )
+      
+      pipeline1.run(ctx1)(List(f.getAbsolutePath()))
+      pipeline2.run(ctx2)(List(f.getAbsolutePath()))
+
+    }
+    
+  }
+}

@@ -1320,7 +1320,7 @@ object TreeOps {
         val newFD = mapType(funDef.returnType) match {
           case None => funDef
           case Some(rt) =>
-            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), funDef.tparams, rt, funDef.params)
+            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), funDef.tparams, rt, funDef.params, funDef.defType)
             // These will be taken care of in the recursive traversal.
             fd.body = funDef.body
             fd.precondition = funDef.precondition

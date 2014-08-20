@@ -46,7 +46,7 @@ class ScopeSimplifier extends Transformer {
         ValDef(newArg, tpe)
       }
 
-      val newFd = new FunDef(newId, fd.tparams, fd.returnType, newArgs)
+      val newFd = new FunDef(newId, fd.tparams, fd.returnType, newArgs, fd.defType)
 
       newScope = newScope.registerFunDef(fd -> newFd)
 

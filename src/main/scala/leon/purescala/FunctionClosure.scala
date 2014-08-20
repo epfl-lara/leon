@@ -59,7 +59,7 @@ object FunctionClosure extends TransformationPhase {
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.params.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
 
-      val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newValDefs).copiedFrom(fd)
+      val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newValDefs, fd.defType).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
       newFunDef.parent = Some(parent)

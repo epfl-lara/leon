@@ -47,7 +47,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
 
   // def f(fx : Int) : Int = fx + 1
   private val fx   : Identifier = FreshIdentifier("x").setType(Int32Type)
-  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, Int32Type, ValDef(fx, Int32Type) :: Nil)
+  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, Int32Type, ValDef(fx, Int32Type) :: Nil, DefType.MethodDef)
   fDef.body = Some(Plus(Variable(fx), IntLiteral(1)))
 
   private val minimalProgram = Program(

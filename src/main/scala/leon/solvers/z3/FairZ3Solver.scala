@@ -146,7 +146,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   private def getTemplate(body: Expr): FunctionTemplate = {
     exprTemplateCache.getOrElse(body, {
-      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => ValDef(id, id.getType)))
+      val fakeFunDef = new FunDef(FreshIdentifier("fake", true), Nil, body.getType, variablesOf(body).toSeq.map(id => ValDef(id, id.getType)), DefType.MethodDef)
       fakeFunDef.body = Some(body)
 
       val res = FunctionTemplate.mkTemplate(this, fakeFunDef.typed, false)

@@ -191,15 +191,28 @@ trait ASTExtractors {
     }
 
     object ExCaseClass {
+      /*
+<<<<<<< HEAD
       def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String, ValDef)], Template)] = cd match {
+=======
+      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,Tree)], Template)] = cd match {
+>>>>>>> Field Extraction & handling
+*/
+      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,ValDef)], Template)] = cd match {
         case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8) => {
           val constructor: DefDef = impl.children.find(child => child match {
             case ExConstructorDef() => true
             case _ => false
           }).get.asInstanceOf[DefDef]
 
+/*
+<<<<<<< HEAD
           val args = constructor.vparamss.flatten.map(vd => (vd.name.toString, vd))
-
+=======
+          val args = constructor.vparamss.flatten.map(vd => ( vd.symbol, vd.tpt))
+>>>>>>> Field Extraction & handling
+*/
+          val args = constructor.vparamss.flatten.map(vd => ( vd.symbol, vd))
           Some((name.toString, cd.symbol, args, impl))
         }
         case _ => None
@@ -215,7 +228,7 @@ trait ASTExtractors {
         }
       }
     }
-
+    
     object ExCaseClassSyntheticJunk {
       def unapply(cd: ClassDef): Boolean = cd match {
         case ClassDef(_, _, _, _) if (cd.symbol.isSynthetic) => true
@@ -240,13 +253,79 @@ trait ASTExtractors {
     }
 
     object ExFunctionDef {
-      /** Matches a function with a single list of arguments, no type
-       * parameters and regardless of its visibility. */
+      /** Matches a function with a single list of arguments, 
+        * and regardless of its visibility.
+        */
       def unapply(dd: DefDef): Option[(Symbol, Seq[Symbol], Seq[ValDef], Type, Tree)] = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name != nme.CONSTRUCTOR) =>
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
+           name != nme.CONSTRUCTOR && !dd.symbol.isSynthetic && !dd.symbol.isAccessor
+        ) =>
           Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
         case _ => None
       }
+    }
+    
+    object ExLazyAccessorFunction {
+      def unapply(dd: DefDef): Option[(Symbol, Type, Tree)] = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
+          vparamss.size <= 1 && name != nme.CONSTRUCTOR && 
+          !dd.symbol.isSynthetic && dd.symbol.isAccessor && dd.symbol.isLazy
+        ) =>
+          Some((dd.symbol, tpt.tpe, rhs))
+        case _ => None
+      }
+    }
+       
+    object ExFieldDef {
+      /** Matches a definition of a strict field inside a class constructor */
+      def unapply(vd : ValDef) : Option[(Symbol, Type, Tree)] = {
+        val sym = vd.symbol
+        vd match {
+          case ValDef(mods, name, tpt, rhs) if (
+            !sym.isCaseAccessor && !sym.isParamAccessor && 
+            !sym.isLazy && !sym.isSynthetic && !sym.isAccessor 
+          ) =>        
+            // Since scalac uses the accessor symbol all over the place, we pass that instead:
+            Some( (sym.getterIn(sym.owner),tpt.tpe,rhs) )
+          case _ => None
+        }
+      }
+    }
+    
+    object ExLazyFieldDef {
+      /** Matches lazy field definitions.
+       *  WARNING: Do NOT use this as extractor for lazy fields, 
+       *  as it does not contain the body of the lazy definition.
+       *  It is here just to signify a Definition acceptable by Leon
+       */
+      def unapply(vd : ValDef) : Boolean = {
+        val sym = vd.symbol
+        vd match {
+          case ValDef(mods, name, tpt, rhs) if (
+            sym.isLazy && !sym.isCaseAccessor && !sym.isParamAccessor && 
+            !sym.isSynthetic && !sym.isAccessor 
+          ) =>        
+            // Since scalac uses the accessor symbol all over the place, we pass that instead:
+            true
+          case _ => false
+        }
+      }
+    }
+    
+    object ExFieldAccessorFunction{
+      /** Matches the accessor function of a field
+       *  WARNING: This is not meant to be used for any useful purpose,
+       *  other than to satisfy Definition acceptable by Leon
+       */
+      def unapply(dd: DefDef): Boolean = dd match {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
+          vparamss.size <= 1 && name != nme.CONSTRUCTOR && 
+          dd.symbol.isAccessor && !dd.symbol.isLazy
+        ) =>
+          true
+        case _ => false
+      }
+      
     }
 
   }

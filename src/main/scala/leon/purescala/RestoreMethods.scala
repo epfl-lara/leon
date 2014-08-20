@@ -40,7 +40,8 @@ object RestoreMethods extends TransformationPhase {
           id = FreshIdentifier(theName), 
           tparams = fn.tparams diff cd.tparams,
           params = fn.params.tail, // no this$
-          returnType = fn.returnType
+          returnType = fn.returnType,
+          defType = fn.defType
         ).copiedFrom(fn)
         md.copyContentFrom(fn)
 
@@ -62,7 +63,7 @@ object RestoreMethods extends TransformationPhase {
         val mi = MethodInvocation(
           args.head, // "this"
           args.head.getType.asInstanceOf[ClassType].classDef, // this.type
-          md.typed(tfd.tps.takeRight(md.tparams.length)),  // throw away class parameters
+          md.typed(tfd.tps.takeRight(md.tparams.length)),  // throw away class type parameters
           args.tail // rest of the arguments
         )
         Some(mi)

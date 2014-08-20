@@ -209,9 +209,33 @@ object Definitions {
     }
   }
 
-  /** Functions (= 'methods' of objects) */
-  class FunDef(val id: Identifier, val tparams: Seq[TypeParameterDef], val returnType: TypeTree, val params: Seq[ValDef]) extends Definition {
-
+ 
+  // Definition types (see below)
+  object DefType extends Enumeration {
+    type DefType = Value
+    val MethodDef      = Value("def")
+    val StrictFieldDef = Value("val")
+    val LazyFieldDef   = Value("lazy val")
+  } 
+  import DefType._
+  
+  /** Functions
+   *  This class represents methods or fields of objects (as specified by the defType field)
+   *  that appear ONLY in the class/object's body (not the constructors)
+   *  All of these are treated as functions for verification.
+   *  Under circumstances (see canBeField and canBeLazyField methods) 
+   *  they can be differentiated when it comes to code generation/pretty printing.
+   *  
+   *  Default type is DefDef (method)
+   */
+  class FunDef(
+    val id: Identifier, 
+    val tparams: Seq[TypeParameterDef], 
+    val returnType: TypeTree, 
+    val params: Seq[ValDef], 
+    val defType : DefType
+  ) extends Definition {
+    
     var fullBody: Expr = NoTree(returnType)
 
     def body: Option[Expr] = withoutSpec(fullBody)
@@ -234,7 +258,7 @@ object Definitions {
     var orig: Option[FunDef] = None
 
     def duplicate: FunDef = {
-      val fd = new FunDef(id, tparams, returnType, params)
+      val fd = new FunDef(id, tparams, returnType, params, defType)
       fd.copyContentFrom(this)
       fd.copiedFrom(this)
     }
@@ -250,6 +274,15 @@ object Definitions {
     def hasBody                     = body.isDefined
     def hasPrecondition : Boolean   = precondition.isDefined
     def hasPostcondition : Boolean  = postcondition.isDefined
+
+    /**
+     * When this functions has been annotated as a (lazy) field 
+     * and has no arguments, it can be printed/compiled as a field 
+     */
+    def canBeLazyField   = defType == LazyFieldDef    && params.isEmpty && tparams.isEmpty
+    def canBeStrictField = defType == StrictFieldDef  && params.isEmpty && tparams.isEmpty
+    def canBeField       = canBeLazyField || canBeStrictField
+    def isRealFunction   = !canBeField
 
     private var annots: Set[String] = Set.empty[String]
     def addAnnotation(as: String*) : FunDef = {

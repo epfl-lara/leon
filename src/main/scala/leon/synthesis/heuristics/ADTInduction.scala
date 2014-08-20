@@ -77,7 +77,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
           case sols =>
             var globalPre = List[Expr]()
 
-            val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs)
+            val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs, DefType.MethodDef)
 
             val cases = for ((sol, (problem, pre, cct, ids, calls)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= And(pre, sol.pre)

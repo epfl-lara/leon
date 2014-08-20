@@ -127,7 +127,7 @@ class SimpleSearch(synth: Synthesizer,
         Map(Variable(p.xs.head) -> res)
       }
 
-      val fd = new FunDef(FreshIdentifier("chimp", true), Nil, ret, freshAs.map(id => ValDef(id, id.getType)))
+      val fd = new FunDef(FreshIdentifier("chimp", true), Nil, ret, freshAs.map(id => ValDef(id, id.getType)),DefType.MethodDef)
       fd.precondition = Some(replace(map, p.pc))
       fd.postcondition = Some((res.id, replace(map++mapPost, p.phi)))
 
