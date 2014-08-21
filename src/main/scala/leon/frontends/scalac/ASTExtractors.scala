@@ -191,13 +191,6 @@ trait ASTExtractors {
     }
 
     object ExCaseClass {
-      /*
-<<<<<<< HEAD
-      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(String, ValDef)], Template)] = cd match {
-=======
-      def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,Tree)], Template)] = cd match {
->>>>>>> Field Extraction & handling
-*/
       def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,ValDef)], Template)] = cd match {
         case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8) => {
           val constructor: DefDef = impl.children.find(child => child match {
@@ -205,13 +198,6 @@ trait ASTExtractors {
             case _ => false
           }).get.asInstanceOf[DefDef]
 
-/*
-<<<<<<< HEAD
-          val args = constructor.vparamss.flatten.map(vd => (vd.name.toString, vd))
-=======
-          val args = constructor.vparamss.flatten.map(vd => ( vd.symbol, vd.tpt))
->>>>>>> Field Extraction & handling
-*/
           val args = constructor.vparamss.flatten.map(vd => ( vd.symbol, vd))
           Some((name.toString, cd.symbol, args, impl))
         }
@@ -629,81 +615,10 @@ trait ASTExtractors {
         case _ => None
       }
     }
-  
-    object ExNotEquals {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.NE) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-  
-    object ExLessThan {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.LT && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-  
-    object ExLessEqThan {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.LE && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-  
-    object ExGreaterThan {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.GT && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-  
-    object ExGreaterEqThan {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.GE && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
 
     object ExUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n == nme.UNARY_- && hasIntType(t)) => Some(t)
-        case _ => None
-      }
-    }
-
-    object ExPlus {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.ADD && hasIntType(lhs)) =>
-          Some((lhs,rhs))
-        case _ => None
-      }
-    }
-
-    object ExMinus {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.SUB && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-
-    object ExTimes {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.MUL && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-
-    object ExDiv {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.DIV && hasIntType(lhs)) => Some((lhs,rhs))
-        case _ => None
-      }
-    }
-
-    object ExMod {
-      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.MOD && hasIntType(lhs)) => Some((lhs,rhs))
         case _ => None
       }
     }
