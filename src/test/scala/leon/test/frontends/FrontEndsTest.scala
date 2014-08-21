@@ -4,10 +4,9 @@ import leon._
 import java.io.File
 
 class FrontEndsTest extends leon.test.LeonTestSuite {
-  
-  val inputFilePath  = "frontends"
-  val outputFilePath = "frontends"
-  
+  // Hard-code output directory, for Eclipse purposes
+  lazy val tmpPath = java.nio.file.Files.createTempDirectory("leon-frontends");
+
   private def forEachFileIn(path : String)(block : File => Unit) {
     val fs = filesInResourceDir(path, _.endsWith(".scala"))
 
@@ -33,13 +32,13 @@ class FrontEndsTest extends leon.test.LeonTestSuite {
     purescala.RestoreMethods andThen
     utils.FileOutputPhase
     
-  forEachFileIn(inputFilePath ) { f => 
+  forEachFileIn("frontends" ) { f => 
       testExtr(f)
   }
    
   def testExtr(f : File) {
-    val outFileName1 = outputDirHard(outputFilePath).getAbsolutePath() ++ "/" ++ f.getName 
-    val outFileName2 = outputDirHard(outputFilePath).getAbsolutePath() ++ "/restored" ++ f.getName 
+    val outFileName1 = tmpPath.toString ++ "/" ++ f.getName 
+    val outFileName2 = tmpPath.toString ++ "/restored" ++ f.getName 
     test ("Testing " + f.getName) {
       // Compile original file
       val timeOut = 2

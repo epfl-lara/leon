@@ -15,9 +15,6 @@ import org.scalatest.exceptions.TestFailedException
 import java.io.File
 
 trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
-  
-  // Hard-code output directory, for Eclipse purposes
-  def outputDirHard(path : String) = new File("target/scala-2.10/test-classes/regression/" + path)
   // Hard-code resource directory, for Eclipse purposes
   val resourceDirHard = "src/test/resources/regression/"
   
