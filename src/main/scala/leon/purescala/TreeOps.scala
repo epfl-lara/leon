@@ -435,7 +435,7 @@ object TreeOps {
       case TupleSelect(LetTuple(ids, v, b), ts) =>
         Some(LetTuple(ids, v, TupleSelect(b, ts)))
 
-      case IfExpr(c, thenn, elze) if (thenn == elze) =>
+      case IfExpr(c, thenn, elze) if (thenn == elze) && !containsChoose(e) =>
         Some(thenn)
 
       case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
@@ -1943,7 +1943,44 @@ object TreeOps {
   def postMapOnFunDef(repl : Expr => Option[Expr], applyRec : Boolean = false )(funDef : FunDef) : FunDef = {
     applyOnFunDef(postMap(repl, applyRec))(funDef)  
   }
+
+  /**
+   * Used to lift closures introduced by synthesis. Closures already define all
+   * the necessary information as arguments, no need to close them.
+   */
+  def liftClosures(e: Expr): (Set[FunDef], Expr) = {
+    var fds: Set[FunDef] = Set()
+
+    val res = postMap{
+      case LetDef(fd, b) =>
+        fds += fd
+        Some(b)
+      case _ =>
+        None
+    }(e)
+
+    (fds, res)
+  }
   
+  def preTraversalWithParent(f: (Expr, Option[Tree]) => Unit, initParent: Option[Tree] = None)(e: Expr): Unit = {
+    val rec = preTraversalWithParent(f, Some(e)) _
+
+    f(e, initParent)
+
+    e match {
+      case u @ UnaryOperator(e, builder) =>
+        rec(e)
+
+      case b @ BinaryOperator(e1, e2, builder) =>
+        rec(e1)
+        rec(e2)
+
+      case n @ NAryOperator(es, builder) =>
+        es.foreach(rec)
+
+      case t: Terminal =>
+    }
+  }
 
   /**
    * Deprecated API

@@ -48,7 +48,7 @@ object Leon extends Build {
 
   val sourceGen = {
     sourceGenerators in Compile += Def.task {
-      val libFiles = (file("library") ** "*.scala").getPaths.mkString("List(\"", "\", \"", "\")")
+      val libFiles = ((baseDirectory.value / "library") ** "*.scala").getPaths.mkString("List(\"", "\", \"", "\")")
 
       val build = (sourceManaged in Compile).value / "leon" / "Build.scala";
 

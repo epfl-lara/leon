@@ -46,8 +46,7 @@ class FileInterface(reporter: Reporter) {
     }
   }
 
-  def substitute(str: String, fromTree: Tree, toTree: Tree): String = {
-
+  def substitute(str: String, fromTree: Tree, printer: (Int) => String): String = {
     fromTree.getPos match {
       case rp: RangePosition =>
         val from = rp.pointFrom
@@ -61,14 +60,22 @@ class FileInterface(reporter: Reporter) {
 
         val indent = lineChars.takeWhile(_ == ' ').size
 
-        val p = new ScalaPrinter(PrinterOptions())
-        p.pp(toTree)(PrinterContext(toTree, Some(fromTree), indent/2, p))
+        val res = printer(indent/2)
 
-        before + "{" + p.toString + "}" + after
+        before + res + after
 
       case p =>
         sys.error("Substitution requires RangePos on the input tree: "+fromTree +": "+fromTree.getClass+" GOT" +p)
     }
+  }
+
+
+  def substitute(str: String, fromTree: Tree, toTree: Tree): String = {
+    substitute(str, fromTree, (indent: Int) => {
+      val p = new ScalaPrinter(PrinterOptions())
+      p.pp(toTree)(PrinterContext(toTree, None, indent, p))
+      p.toString
+    })
   }
 
   def readFile(file: File): String = {

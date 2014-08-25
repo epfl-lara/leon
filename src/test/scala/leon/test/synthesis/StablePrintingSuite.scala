@@ -6,8 +6,11 @@ package synthesis
 
 import leon._
 import leon.purescala.Definitions._
+import leon.purescala.Common._
 import leon.purescala.Trees._
 import leon.purescala.ScalaPrinter
+import leon.purescala.PrinterContext
+import leon.purescala.PrinterOptions
 import leon.purescala.TreeOps._
 import leon.solvers.z3._
 import leon.solvers.Solver
@@ -75,6 +78,7 @@ class StablePrintingSuite extends LeonTestSuite {
             for (e <- reporter.lastErrors) {
               info(e)
             }
+            info(e.getMessage)
             fail("Compilation failed")
         }
 
@@ -92,7 +96,13 @@ class StablePrintingSuite extends LeonTestSuite {
                   a.onSuccess(sub.map(Solution.choose(_))) match {
                     case Some(sol) =>
                       val result = sol.toSimplifiedExpr(ctx, pgm)
-                      val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, result)
+
+                      val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, (indent: Int) => {
+                        val p = new ScalaPrinter(PrinterOptions())
+                        p.pp(result)(PrinterContext(result, Some(ci.fd), indent, p))
+                        p.toString
+                      })
+
                       workList push Job(newContent, (i to i+sub.size).toSet, a.toString :: j.rules)
                     case None =>
                   }

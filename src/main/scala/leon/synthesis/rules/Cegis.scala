@@ -466,8 +466,8 @@ case object CEGIS extends Rule("CEGIS") {
         var unrolings = 0
         val maxUnrolings = 3
 
-        val exSolverTo  = 3000L
-        val cexSolverTo = 3000L
+        val exSolverTo  = 2000L
+        val cexSolverTo = 2000L
 
         var baseExampleInputs: Seq[Seq[Expr]] = Seq()
 

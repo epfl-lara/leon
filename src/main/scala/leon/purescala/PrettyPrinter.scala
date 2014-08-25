@@ -169,8 +169,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
                 |$e"""
         }
       case LetDef(fd,body) =>
-        p"""|$fd
-            |$body"""
+        optB {
+          p"""|$fd
+              |$body"""
+        }
 
       case Require(pre, body) =>
         p"""|require($pre)
@@ -475,6 +477,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
   def requiresBraces(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresBraces(within)
     case (_, None) => false
+    case (_: LetDef, Some(_: FunDef)) => true
     case (_: Require, Some(_: Ensuring)) => false
     case (_: Require, _) => true
     case (_: Assert, Some(_: Definition)) => true

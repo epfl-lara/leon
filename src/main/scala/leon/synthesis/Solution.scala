@@ -12,21 +12,25 @@ import purescala.ScopeSimplifier
 import solvers.z3._
 import solvers._
 
+import leon.utils.Simplifiers
+
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
 class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
   override def toString = "⟨ "+pre+" | "+defs.mkString(" ")+" "+term+" ⟩" 
 
-  def toExpr = {
-    val result = if (pre == BooleanLiteral(true)) {
+  def guardedTerm = {
+    if (pre == BooleanLiteral(true)) {
       term
     } else if (pre == BooleanLiteral(false)) {
       Error("Impossible program").setType(term.getType)
     } else {
       IfExpr(pre, term, Error("Precondition failed").setType(term.getType))
     }
+  }
 
-    defs.foldLeft(result){ case (t, fd) => LetDef(fd, t) }
+  def toExpr = {
+    defs.foldLeft(guardedTerm){ case (t, fd) => LetDef(fd, t) }
   }
 
   // Projects a solution (ignore several output variables)
@@ -48,35 +52,8 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
   }
 
 
-  def fullTerm =
-    defs.foldLeft(term){ case (t, fd) => LetDef(fd, t) }
-
   def toSimplifiedExpr(ctx: LeonContext, p: Program): Expr = {
-    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, p))
-
-    val simplifiers = List[Expr => Expr](
-      simplifyTautologies(uninterpretedZ3)(_),
-      simplifyLets _,
-      decomposeIfs _,
-      matchToIfThenElse _,
-      simplifyPaths(uninterpretedZ3)(_),
-      patternMatchReconstruction _,
-      rewriteTuples _,
-      evalGround(ctx, p),
-      normalizeExpression _
-    )
-
-    val simple = { expr: Expr =>
-      simplifiers.foldLeft(expr){ case (x, sim) => 
-        sim(x)
-      }
-    }
-
-    // Simplify first using stable simplifiers
-    val s = fixpoint(simple, 5)(toExpr)
-
-    // Clean up ids/names
-    (new ScopeSimplifier).transform(s)
+    Simplifiers.bestEffort(ctx, p)(toExpr)
   }
 }
 
