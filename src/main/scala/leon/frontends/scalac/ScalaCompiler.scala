@@ -30,4 +30,10 @@ class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(set
     )
     phs foreach { phasesSet += _._1 }
   }
+
+  class Run extends super.Run {
+    override def progress(current: Int, total: Int) {
+      ctx.reporter.onCompilerProgress(current, total)
+    }
+  }
 }

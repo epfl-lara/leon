@@ -43,6 +43,8 @@ abstract class Reporter(settings: Settings) {
     throw LeonFatalError(None)
   }
 
+  def onCompilerProgress(current: Int, total: Int) = {}
+
   final def info(pos: Position, msg: Any): Unit    = emit(account(Message(INFO, pos, msg)))
   final def warning(pos: Position, msg: Any): Unit = emit(account(Message(WARNING, pos, msg)))
   final def error(pos: Position, msg: Any): Unit   = emit(account(Message(ERROR, pos, msg)))
