@@ -21,14 +21,15 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     val (pgm3, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm2)
     val pgm4 = purescala.FunctionClosure.run(ctx)(pgm3)
 
-    def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
-      case None => false //meaning, this was a top level function
-      case Some(nested) => wasLoop.contains(nested) //could have been a LetDef originally
+    def functionWasLoop(fd: FunDef): Boolean = fd.origOwner match {
+      case Some(nested : FunDef) => // was a nested function
+        wasLoop.contains(nested)
+      case _ => false //meaning, this was a top level function
     }
 
     var subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
-    pgm4.definedFunctions.foreach { fd => fd.parent match {
-      case Some(p) =>
+    pgm4.definedFunctions.foreach { fd => fd.owner match {
+      case Some(p : FunDef) =>
         subFunctionsOf += p -> (subFunctionsOf(p) + fd)
       case _ =>
     }}
@@ -72,7 +73,7 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
       if(functionWasLoop(funDef)) {
         val freshVc = new VerificationCondition(
           vc.condition, 
-          funDef.parent.getOrElse(funDef), 
+          funDef.owner match { case Some(fd : FunDef) => fd; case _ => funDef }, 
           if(vc.kind == VCPostcondition) VCInvariantPost else if(vc.kind == VCPrecondition) VCInvariantInd else vc.kind,
           vc.tactic,
           vc.info).setPos(funDef)

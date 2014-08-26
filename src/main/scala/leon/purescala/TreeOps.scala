@@ -368,7 +368,15 @@ object TreeOps {
       case _ => Set()
     }(expr)
   }
-
+  
+  /** Returns functions in directly nested LetDefs */
+  def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
+    foldRight[Set[FunDef]]{ 
+      case (LetDef(fd,bd), _) => Set(fd)
+      case (_, subs) => subs.foldLeft(Set[FunDef]())(_ ++ _) 
+    }(e)
+  }
+  
   def negate(expr: Expr) : Expr = (expr match {
     case Let(i,b,e) => Let(i,b,negate(e))
     case Not(e) => e

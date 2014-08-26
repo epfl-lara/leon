@@ -4,6 +4,7 @@ package leon
 package purescala
 
 import utils._
+import Definitions.Definition
 
 object Common {
   import Trees.Variable
@@ -54,6 +55,16 @@ object Common {
     def toVariable : Variable = Variable(this)
 
     def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).copiedFrom(this)
+    
+    var owner : Option[Definition] = None
+    
+    def setOwner(df : Definition) : Identifier = { this.owner = Some(df); this }
+    
+    def ownerChain : List[Identifier] = owner match { 
+      case None => List(this)
+      case Some(ow) => ow.id :: ow.id.ownerChain
+    }
+
   }
 
   private object UniqueCounter {

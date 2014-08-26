@@ -21,7 +21,7 @@ object RestoreMethods extends TransformationPhase {
     var fd2Md = Map[FunDef, FunDef]()
     var whoseMethods = Map[ClassDef, Seq[FunDef]]()
     
-    for ( (Some(cd : ClassDef), funDefs) <- p.definedFunctions.groupBy(_.enclosing).toSeq ) {
+    for ( (Some(cd : ClassDef), funDefs) <- p.definedFunctions.groupBy(_.origOwner).toSeq ) {
       whoseMethods += cd -> funDefs
       for (fn <- funDefs) {
         val theName = try {

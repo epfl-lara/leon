@@ -62,9 +62,9 @@ object FunctionClosure extends TransformationPhase {
       val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newValDefs, fd.defType).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
-      newFunDef.parent = Some(parent)
-      fd.parent        = Some(parent)
-      newFunDef.orig   = Some(fd)
+      newFunDef.setOwner(parent)
+      fd       .setOwner(parent)
+      newFunDef.origOwner   = Some(fd)
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {

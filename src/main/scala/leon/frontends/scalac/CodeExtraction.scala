@@ -672,7 +672,7 @@ trait CodeExtraction extends ASTExtractors {
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
       }
 
-      new LeonModuleDef(FreshIdentifier(nameStr), newDefs)
+      LeonModuleDef(FreshIdentifier(nameStr), newDefs, nameStr contains "$standalone")
     }
 
 
@@ -728,7 +728,7 @@ trait CodeExtraction extends ASTExtractors {
         NoTree(funDef.returnType)
       }
 
-      funDef.fullBody = finalBody;
+      funDef.fullBody = finalBody 
 
       // Post-extraction sanity checks
 
@@ -751,12 +751,12 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractPattern(p: Tree, binder: Option[Identifier] = None)(implicit dctx: DefContext): (Pattern, DefContext) = p match {
       case b @ Bind(name, t @ Typed(pat, tpt)) =>
-        val newID = FreshIdentifier(name.toString).setType(extractType(tpt)).setPos(b.pos)
+        val newID = FreshIdentifier(name.toString).setType(extractType(tpt)).setPos(b.pos).setOwner(currentFunDef)
         val pctx = dctx.withNewVar(b.symbol -> (() => Variable(newID)))
         extractPattern(t, Some(newID))(pctx)
 
       case b @ Bind(name, pat) =>
-        val newID = FreshIdentifier(name.toString).setType(extractType(b)).setPos(b.pos)
+        val newID = FreshIdentifier(name.toString).setType(extractType(b)).setPos(b.pos).setOwner(currentFunDef)
         val pctx = dctx.withNewVar(b.symbol -> (() => Variable(newID)))
         extractPattern(pat, Some(newID))(pctx)
 
@@ -839,7 +839,7 @@ trait CodeExtraction extends ASTExtractors {
 
       val res = current match {
         case ExEnsuredExpression(body, resVd, contract) =>
-          val resId = FreshIdentifier(resVd.symbol.name.toString).setType(extractType(current)).setPos(resVd.pos)
+          val resId = FreshIdentifier(resVd.symbol.name.toString).setType(extractType(current)).setPos(resVd.pos).setOwner(currentFunDef)
           val post = extractTree(contract)(dctx.withNewVar(resVd.symbol -> (() => Variable(resId))))
 
           val b = try {
@@ -852,7 +852,7 @@ trait CodeExtraction extends ASTExtractors {
           Ensuring(b, resId, post)
 
         case t @ ExHoldsExpression(body) =>
-          val resId = FreshIdentifier("holds").setType(BooleanType).setPos(current.pos)
+          val resId = FreshIdentifier("holds").setType(BooleanType).setPos(current.pos).setOwner(currentFunDef)
           val post = Variable(resId).setPos(current.pos)
 
           val b = try {
@@ -918,7 +918,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExValDef(vs, tpt, bdy) =>
           val binderTpe = extractType(tpt)
-          val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
+          val newID = FreshIdentifier(vs.name.toString).setType(binderTpe).setOwner(currentFunDef)
           val valTree = extractTree(bdy)
 
           if(valTree.getType.isInstanceOf[ArrayType]) {
@@ -953,7 +953,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val oldCurrentFunDef = currentFunDef
 
-          val funDefWithBody = extractFunBody(fd, params, b)(newDctx.copy(mutableVars = Map()))
+          val funDefWithBody = extractFunBody(fd, params, b)(newDctx.copy(mutableVars = Map())).setOwner(oldCurrentFunDef)
 
           currentFunDef = oldCurrentFunDef
 
@@ -970,7 +970,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExVarDef(vs, tpt, bdy) => {
           val binderTpe = extractType(tpt)
-          val newID = FreshIdentifier(vs.name.toString).setType(binderTpe)
+          val newID = FreshIdentifier(vs.name.toString).setType(binderTpe).setOwner(currentFunDef)
           val valTree = extractTree(bdy)
 
           if(valTree.getType.isInstanceOf[ArrayType]) {
@@ -1094,7 +1094,7 @@ trait CodeExtraction extends ASTExtractors {
           val newOracles = oracles map { case (tpt, sym) =>
             val aTpe  = extractType(tpt)
             val oTpe  = oracleType(ops.pos, aTpe)
-            val newID = FreshIdentifier(sym.name.toString).setType(oTpe)
+            val newID = FreshIdentifier(sym.name.toString).setType(oTpe).setOwner(currentFunDef)
             owners += (newID -> None)
             newID
           }
@@ -1112,7 +1112,7 @@ trait CodeExtraction extends ASTExtractors {
         case chs @ ExChooseExpression(args, body) =>
           val vars = args map { case (tpt, sym) =>
             val aTpe  = extractType(tpt)
-            val newID = FreshIdentifier(sym.name.toString).setType(aTpe)
+            val newID = FreshIdentifier(sym.name.toString).setType(aTpe).setOwner(currentFunDef)
             owners += (newID -> None)
             newID
           }

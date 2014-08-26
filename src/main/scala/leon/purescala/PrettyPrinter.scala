@@ -372,16 +372,17 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
 
       // Definitions
-      case Program(id, units) =>
-        p"""${nary(units, "\n\n")}"""        
 
+      case Program(id, units) =>
+        p"""${nary(units, "\n\n")}"""
+        
       case UnitDef(id,modules,isBasic) =>
         if (isBasic) {
           p"""|package $id {
               |  ${nary(modules,"\n\n")}
               |}"""
         }
-      case ModuleDef(id, defs) =>
+      case ModuleDef(id, defs, _) =>
         p"""|object $id {
             |  ${nary(defs, "\n\n")}
             |}"""

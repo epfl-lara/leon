@@ -15,7 +15,7 @@ object ScopingPhase extends UnitPhase[Program] {
   }
 
   private def insertScopingInformation(df : Definition , parent : Option[Definition]) {
-    df.enclosing = parent
+    df.origOwner = parent
     for (sub <- df.subDefinitions){
       insertScopingInformation(sub, Some(df))
     }

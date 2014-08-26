@@ -14,8 +14,14 @@ object Definitions {
   import TypeTreeOps._
 
   sealed abstract class Definition extends Tree {
+    
     val id: Identifier
-    var enclosing : Option[Definition] = None // The definition/scope enclosing this definition
+    
+    def owner = id.owner
+    def setOwner(owner : Definition) : this.type = { id.owner = Some(owner); this }
+    
+    var origOwner : Option[Definition] = None // The definition/scope enclosing this definition
+    
     def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
@@ -25,12 +31,15 @@ object Definitions {
     override def copiedFrom(o : Tree) : this.type = {
       super.copiedFrom(o)
       o match {
-        case df : Definition => enclosing = df.enclosing
-        case _ => // FIXME should this ever happen?
+        case df : Definition if df.owner.isDefined => this.setOwner(df.owner.get) 
+        case _ => this // FIXME should this ever happen?
       }
-      this
+      
     }
 
+    // TODO: this seems quite elegant, but make sure it works
+    def setSubDefOwners() = for (df <- subDefinitions) df.setOwner(this)
+    
   }
 
   /** A ValDef declares a new identifier to be of a certain type. */
@@ -47,12 +56,13 @@ object Definitions {
     }
 
     def toVariable : Variable = Variable(id).setType(tpe)
+    setSubDefOwners()
   }
 
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
   case class Program(id: Identifier, units: List[UnitDef]) extends Definition {
-    enclosing = None
+    origOwner = None
     def subDefinitions = units
     
     def definedFunctions    = units.flatMap(_.definedFunctions)
@@ -79,6 +89,7 @@ object Definitions {
       out.write(ScalaPrinter(this))
       out.close
     }
+    setSubDefOwners()
   }
 
   object Program {
@@ -91,9 +102,11 @@ object Definitions {
   case class TypeParameterDef(tp: TypeParameter) extends Definition {
     def subDefinitions = Seq()
     val id = tp.id
+    setSubDefOwners()
   }
 
   
+    
   object UnitDef { 
     def apply(id : Identifier, modules : Seq[ModuleDef]) : UnitDef = UnitDef(id,modules, true)
   }
@@ -124,13 +137,15 @@ object Definitions {
       out.write(ScalaPrinter(this))
       out.close
     }
+    
+    setSubDefOwners()
   }
   
    
   
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  case class ModuleDef(id: Identifier, defs : Seq[Definition]) extends Definition {
+  case class ModuleDef(id: Identifier, defs : Seq[Definition], isSynthetic : Boolean = false) extends Definition {
     
     def subDefinitions = defs
     
@@ -156,6 +171,7 @@ object Definitions {
       case other => other // FIXME: huh?
     }})
     
+    setSubDefOwners()
 
   }
 
@@ -164,7 +180,7 @@ object Definitions {
   sealed trait ClassDef extends Definition {
     self =>
 
-    def subDefinitions = methods
+    def subDefinitions = fields ++ methods ++ tparams 
       
     val id: Identifier
     val tparams: Seq[TypeParameterDef]
@@ -185,6 +201,7 @@ object Definitions {
 
     def registerMethod(fd: FunDef) = {
       _methods = _methods ::: List(fd)
+      fd.setOwner(this)
     }
 
     def clearMethods() {
@@ -228,6 +245,7 @@ object Definitions {
     lazy val definedFunctions : Seq[FunDef] = methods
     lazy val definedClasses = Seq(this)
     lazy val classHierarchyRoots = if (this.hasParent) Seq(this) else Nil
+    
   }
 
   /** Abstract classes. */
@@ -240,7 +258,7 @@ object Definitions {
     val isCaseObject = false
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = Nil
-    
+    setSubDefOwners()
   }
 
   /** Case classes/objects. */
@@ -249,12 +267,13 @@ object Definitions {
                           val parent: Option[AbstractClassType],
                           val isCaseObject: Boolean) extends ClassDef {
 
-    var _fields = Seq[ValDef]()
+    private var _fields = Seq[ValDef]()
 
     def fields = _fields
 
     def setFields(fields: Seq[ValDef]) {
       _fields = fields
+      _fields foreach { _.setOwner(this)}
     }
 
 
@@ -270,7 +289,7 @@ object Definitions {
     }
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
-
+    setSubDefOwners()
   }
 
  
@@ -300,26 +319,31 @@ object Definitions {
     val defType : DefType
   ) extends Definition {
     
-    var fullBody: Expr = NoTree(returnType)
+    private var fullBody_ : Expr = NoTree(returnType)
+    def fullBody = fullBody_
+    def fullBody_= (e : Expr) {
+      fullBody_ = e
+      nestedFuns map {_.setOwner(this)}
+    }
 
     def body: Option[Expr] = withoutSpec(fullBody)
-    def body_=(b: Option[Expr]) = fullBody = withBody(fullBody, b)
+    def body_=(b: Option[Expr]) = {
+      fullBody = withBody(fullBody, b)
+    }
 
     def precondition = preconditionOf(fullBody)
     def precondition_=(oe: Option[Expr]) = {
-      fullBody = withPrecondition(fullBody, oe)
+      fullBody = withPrecondition(fullBody, oe) 
     }
 
     def postcondition = postconditionOf(fullBody)
     def postcondition_=(op: Option[(Identifier, Expr)]) = {
-      fullBody = withPostcondition(fullBody, op)
+      fullBody = withPostcondition(fullBody, op) 
     }
 
-    def subDefinitions = Seq()
-
-    // Metadata kept here after transformations
-    var parent: Option[FunDef] = None
-    var orig: Option[FunDef] = None
+    def nestedFuns = directlyNestedFunDefs(fullBody)
+    
+    def subDefinitions = params ++ tparams ++ nestedFuns.toList
 
     def duplicate: FunDef = {
       val fd = new FunDef(id, tparams, returnType, params, defType)
@@ -328,10 +352,10 @@ object Definitions {
     }
     
     def copyContentFrom(from : FunDef) {
-      this.fullBody       = from.fullBody
-      this.parent         = from.parent
-      this.orig           = from.orig
-      this.enclosing      = from.enclosing
+      this.fullBody  = from.fullBody 
+      //this.parent   = from.parent
+      //this.orig    = from.orig
+      this.origOwner = from.origOwner
       this.addAnnotation(from.annotations.toSeq : _*)
     }
 
@@ -367,6 +391,7 @@ object Definitions {
       TypedFunDef(this, Nil)
     }
 
+    setSubDefOwners()
     // Deprecated, old API
     @deprecated("Use .body instead", "2.3")
     def implementation : Option[Expr] = body
