@@ -68,7 +68,7 @@ class DataGen extends LeonTestSuite {
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
 
     // Make sure we target our own lists
-    val module = prog.modules.find(_.id.name == "Program").get
+    val module = prog.units.flatMap{_.modules}.find(_.id.name == "Program").get
     val listType : TypeTree = classDefToClassType(module.classHierarchyRoots.head)
     val sizeDef    : FunDef = module.definedFunctions.find(_.id.name == "size").get
     val sortedDef  : FunDef = module.definedFunctions.find(_.id.name == "isSorted").get

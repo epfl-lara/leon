@@ -19,7 +19,7 @@ object UnitElimination extends TransformationPhase {
   private var id2FreshId: Map[Identifier, Identifier] = Map()
 
   def apply(ctx: LeonContext, pgm: Program): Program = {
-    val newModules = pgm.modules.map { m =>
+    val newUnits = pgm.units map { u => u.copy(modules = u.modules.map { m =>
       fun2FreshFun = Map()
       val allFuns = m.definedFunctions
 
@@ -45,10 +45,10 @@ object UnitElimination extends TransformationPhase {
       })
 
       ModuleDef(m.id, m.definedClasses ++ newFuns)
-    }
+    })}
 
 
-    Program(pgm.id, newModules)
+    Program(pgm.id, newUnits)
   }
 
   private def simplifyType(tpe: TypeTree): TypeTree = tpe match {

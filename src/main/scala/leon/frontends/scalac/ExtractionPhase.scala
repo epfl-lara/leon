@@ -12,7 +12,7 @@ import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
 
 object ExtractionPhase extends LeonPhase[List[String], Program] {
 
-  val name = "Scalc Extraction"
+  val name = "Scalac Extraction"
   val description = "Extraction of trees from the Scala Compiler"
 
   implicit val debug = DebugSectionTrees
@@ -26,7 +26,8 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       scala.Predef.getClass
     )
 
-    val urls = neededClasses.map(_.getProtectionDomain().getCodeSource().getLocation())
+    val urls = neededClasses.map{ _.getProtectionDomain().getCodeSource().getLocation() }
+      
     val classpath = urls.map(_.getPath).mkString(":")
 
     settings.classpath.value = classpath
@@ -61,10 +62,9 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       val run = new compiler.Run
       run.compile(command.files)
 
-
       timer.stop()
 
-      val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.modules)
+      val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.compiledUnits)
       ctx.reporter.debug(pgm.asString(ctx))
       pgm
     } else {

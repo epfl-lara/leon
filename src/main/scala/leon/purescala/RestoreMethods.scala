@@ -119,7 +119,7 @@ object RestoreMethods extends TransformationPhase {
       m.copy(defs = m.definedClasses ++ newFuns).copiedFrom(m)    
     }
     
-    p.copy(modules = p.modules map refreshModule)
+    p.copy(units = p.units map { u => u.copy(modules = u.modules map refreshModule)})
     
   }
 

@@ -105,6 +105,10 @@ trait CodeExtraction extends ASTExtractors {
     throw new ImpureCodeEncounteredException(t.pos, msg, Some(t))
   }
 
+  // Simple case classes to capture the representation of units/modules after discovering them.
+  case class TempModule(name : String, trees : List[Tree])
+  case class TempUnit(name : String, modules : List[TempModule]) 
+    
   class Extraction(units: List[CompilationUnit]) {
         
     private var currentFunDef: FunDef = null
@@ -173,26 +177,26 @@ trait CodeExtraction extends ASTExtractors {
       annotationsOf(s) contains "extern"
     }
 
-    def extractModules: List[LeonModuleDef] = {
+    def extractUnits: List[UnitDef] = {
       try {
-        val templates: List[(String, List[Tree])] = {
-          
-          var standaloneDefs = List[Tree]()
-          
-          val modules = units.reverse.flatMap { u => u.body match {
+        val templates: List[TempUnit] = units.reverse.map { u => u.body match {
         
-            case PackageDef(name, lst) =>
-  
-              lst.flatMap { _ match {
+            case PackageDef(refTree, lst) =>
+              
+              val name = refTree.name.toString
+              
+              var standaloneDefs = List[Tree]()
+              
+              val modules = lst.flatMap { _ match {
                 
                 case t if isIgnored(t.symbol) =>
                   None
    
                 case PackageDef(_, List(ExObjectDef(n, templ))) =>
-                  Some((n.toString, templ.body))
+                  Some(TempModule(n.toString, templ.body))
 
                 case ExObjectDef(n, templ) =>
-                  Some((n.toString, templ.body))
+                  Some(TempModule(n.toString, templ.body))
   
                 case d @ ExAbstractClass(_, _, _) =>
                   standaloneDefs ::= d
@@ -208,33 +212,41 @@ trait CodeExtraction extends ASTExtractors {
                 case other =>
                   outOfSubsetError(other, "Expected: top-level object/class.")
                   None
-              }}.toList
+              }}
+              
+              TempUnit(name, 
+                if (standaloneDefs.isEmpty) modules 
+                else ( TempModule(name+ "$standalone", standaloneDefs) ) :: modules
+              )
   
-          }}
+          }
+        
           
-          
-          // Combine all standalone definitions into one module
-          if (standaloneDefs.isEmpty) modules
-          else modules :+  ("standalone$", standaloneDefs.reverse) 
         }
 
         // Phase 1, we detect classes/types
-        templates.foreach{ case (name, templ) => collectClassSymbols(templ) }
-
+        for (TempUnit(name,mods) <- templates; mod <- mods) collectClassSymbols(mod.trees)
+                
         // Phase 2, we collect functions signatures
-        templates.foreach{ case (name, templ) => collectFunSigs(templ) }
+        for (TempUnit(name,mods) <- templates; mod <- mods) collectFunSigs(mod.trees)
 
         // Phase 3, we collect classes/types' definitions
-        templates.foreach{ case (name, templ) => extractClassDefs(templ) }
+        for (TempUnit(name,mods) <- templates; mod <- mods) extractClassDefs(mod.trees)
 
         // Phase 4, we collect methods' definitions
-        templates.foreach{ case (name, templ) => extractMethodDefs(templ) }
+        for (TempUnit(name,mods) <- templates; mod <- mods) extractMethodDefs(mod.trees)
 
         // Phase 5, we collect function definitions
-        templates.foreach{ case (name, templ) => extractFunDefs(templ) }
+        for (TempUnit(name,mods) <- templates; mod <- mods) extractFunDefs(mod.trees)
 
         // Phase 6, we create modules and extract bodies
-        templates.map{ case (name, templ) => extractObjectDef(name, templ) }
+        for (TempUnit(name,mods) <- templates) yield { 
+          UnitDef(
+            FreshIdentifier(name), 
+            for( TempModule(name,trees) <- mods) yield extractObjectDef(name, trees), 
+            false
+          )
+        }
 
       } catch {
         case icee: ImpureCodeEncounteredException =>

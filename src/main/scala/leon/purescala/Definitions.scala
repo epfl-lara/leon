@@ -51,15 +51,15 @@ object Definitions {
 
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
-  case class Program(id: Identifier, modules: List[ModuleDef]) extends Definition {
+  case class Program(id: Identifier, units: List[UnitDef]) extends Definition {
     enclosing = None
-    def subDefinitions = modules
+    def subDefinitions = units
     
-    def definedFunctions    = modules.flatMap(_.definedFunctions)
-    def definedClasses      = modules.flatMap(_.definedClasses)
-    def classHierarchyRoots = modules.flatMap(_.classHierarchyRoots)
-    def algebraicDataTypes  = modules.flatMap(_.algebraicDataTypes).toMap
-    def singleCaseClasses   = modules.flatMap(_.singleCaseClasses)
+    def definedFunctions    = units.flatMap(_.definedFunctions)
+    def definedClasses      = units.flatMap(_.definedClasses)
+    def classHierarchyRoots = units.flatMap(_.classHierarchyRoots)
+    def algebraicDataTypes  = units.flatMap(_.algebraicDataTypes).toMap
+    def singleCaseClasses   = units.flatMap(_.singleCaseClasses)
 
     lazy val callGraph      = new CallGraph(this)
 
@@ -68,10 +68,7 @@ object Definitions {
     }.headOption.getOrElse(throw LeonFatalError("Unknown case class '"+name+"'"))
 
     def duplicate = {
-      copy(modules = modules.map(m => m.copy(defs = m.defs.collect {
-        case fd: FunDef => fd.duplicate
-        case d => d
-      })))
+      copy(units = units.map{_.duplicate})
     }
     
     def writeScalaFile(filename: String) {
@@ -96,6 +93,41 @@ object Definitions {
     val id = tp.id
   }
 
+  
+  object UnitDef { 
+    def apply(id : Identifier, modules : Seq[ModuleDef]) : UnitDef = UnitDef(id,modules, true)
+  }
+  
+  case class UnitDef(
+      val id: Identifier, 
+      modules : Seq[ModuleDef],
+      isMainUnit : Boolean // false for libraries/imports
+  ) extends Definition {
+     
+    def subDefinitions = modules
+    
+    def definedFunctions    = modules.flatMap(_.definedFunctions)
+    def definedClasses      = modules.flatMap(_.definedClasses)
+    def classHierarchyRoots = modules.flatMap(_.classHierarchyRoots)
+    def algebraicDataTypes  = modules.flatMap(_.algebraicDataTypes)
+    def singleCaseClasses   = modules.flatMap(_.singleCaseClasses)
+
+    def duplicate = {
+      copy(modules = modules map { _.duplicate } )
+    }
+    
+    def writeScalaFile(filename: String) {
+      import java.io.FileWriter
+      import java.io.BufferedWriter
+      val fstream = new FileWriter(filename)
+      val out = new BufferedWriter(fstream)
+      out.write(ScalaPrinter(this))
+      out.close
+    }
+  }
+  
+   
+  
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
   case class ModuleDef(id: Identifier, defs : Seq[Definition]) extends Definition {
@@ -117,6 +149,13 @@ object Definitions {
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
       case c @ CaseClassDef(_, _, None, _) => c
     }
+    
+    def duplicate = copy(defs = defs map { _ match {
+      case f : FunDef => f.duplicate
+      case cd : ClassDef => cd.duplicate
+      case other => other // FIXME: huh?
+    }})
+    
 
   }
 
@@ -170,6 +209,25 @@ object Definitions {
 
     val isAbstract: Boolean
     val isCaseObject: Boolean
+    
+    def duplicate = this match {
+      case ab : AbstractClassDef => {
+        val ab2 = ab.copy()
+        ab.knownChildren foreach ab2.registerChildren
+        ab.methods foreach { m => ab2.registerMethod(m.duplicate) }
+        ab2
+      }
+      case cc : CaseClassDef => {
+        val cc2 = cc.copy() 
+        cc.methods foreach { m => cc2.registerMethod(m.duplicate) }
+        cc2.setFields(cc.fields map { _.copy() })
+        cc2
+      }
+    }
+    
+    lazy val definedFunctions : Seq[FunDef] = methods
+    lazy val definedClasses = Seq(this)
+    lazy val classHierarchyRoots = if (this.hasParent) Seq(this) else Nil
   }
 
   /** Abstract classes. */
@@ -180,6 +238,9 @@ object Definitions {
     val fields = Nil
     val isAbstract   = true
     val isCaseObject = false
+    
+    lazy val singleCaseClasses : Seq[CaseClassDef] = Nil
+    
   }
 
   /** Case classes/objects. */
@@ -207,6 +268,9 @@ object Definitions {
         scala.sys.error("Could not find '"+id+"' ("+id.uniqueName+") within "+fields.map(_.id.uniqueName).mkString(", "))
       }
     }
+    
+    lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
+
   }
 
  

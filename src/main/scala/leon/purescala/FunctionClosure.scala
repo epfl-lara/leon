@@ -24,7 +24,7 @@ object FunctionClosure extends TransformationPhase {
 
   def apply(ctx: LeonContext, program: Program): Program = {
 
-    val newModules = program.modules.map { m =>
+    val newUnits = program.units.map { u => u.copy(modules = u.modules map { m =>
       pathConstraints = Nil
       enclosingLets  = Nil
       newFunDefs  = Map()
@@ -39,8 +39,8 @@ object FunctionClosure extends TransformationPhase {
       })
 
       ModuleDef(m.id, m.defs ++ topLevelFuns)
-    }
-    val res = Program(program.id, newModules)
+    })}
+    val res = Program(program.id, newUnits)
     res
   }
 

@@ -75,7 +75,7 @@ object MethodLifting extends TransformationPhase {
       }(e)
     }
 
-    val newModules = program.modules map { m =>
+    val newUnits = program.units map { u => u.copy (modules = u.modules map { m =>
       // We remove methods from class definitions and add corresponding functions
       val newDefs = m.defs.flatMap {
         case acd: AbstractClassDef if acd.methods.nonEmpty =>
@@ -99,9 +99,9 @@ object MethodLifting extends TransformationPhase {
       }
 
       ModuleDef(m.id, newDefs)
-    }
+    })}
 
-    Program(program.id, newModules)
+    Program(program.id, newUnits)
   }
 
 }

@@ -49,8 +49,9 @@ class UninterpretedZ3SolverTests extends LeonTestSuite {
 
   private val minimalProgram = Program(
     FreshIdentifier("Minimal"), 
-    List(ModuleDef(FreshIdentifier("Minimal"), Seq(
-      fDef
+    List(UnitDef(
+        FreshIdentifier("Minimal"),
+        List(ModuleDef(FreshIdentifier("Minimal"), Seq(fDef))
     )))
   )
 

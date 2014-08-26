@@ -19,7 +19,7 @@ object CompleteAbstractDefinitions extends TransformationPhase {
     // First we create the appropriate functions from methods:
     var mdToFds  = Map[FunDef, FunDef]()
 
-    program.modules foreach { m =>
+    for (u <- program.units; m <- u.modules ) { 
       // We remove methods from class definitions and add corresponding functions
       m.defs.foreach {
         case fd: FunDef if fd.body.isEmpty =>

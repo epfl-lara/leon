@@ -19,8 +19,8 @@ trait LeonExtraction extends SubComponent with CodeExtraction {
   val ctx: LeonContext
 
 
-  def modules = {
-    new Extraction(units).extractModules
+  def compiledUnits = {
+    new Extraction(units).extractUnits
   }
 
   def newPhase(prev: scala.tools.nsc.Phase): StdPhase = new Phase(prev)
