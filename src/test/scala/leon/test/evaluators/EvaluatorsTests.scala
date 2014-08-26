@@ -32,7 +32,6 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val program = pipeline.run(leonContext)((str, Nil))
 
     assert(leonContext.reporter.errorCount   === errorsBefore)
-    assert(leonContext.reporter.warningCount === warningsBefore)
 
     program
   }
