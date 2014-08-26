@@ -26,10 +26,11 @@ abstract class TransformerWithPC extends Transformer {
       var soFar = path
 
       MatchExpr(rs, cases.map { c =>
-        val patternExpr = conditionForPattern(rs, c.pattern, includeBinders = true)
+        val patternExprPos = conditionForPattern(rs, c.pattern, includeBinders = true)
+        val patternExprNeg = conditionForPattern(rs, c.pattern, includeBinders = false)
 
-        val subPath = register(patternExpr, soFar)
-        soFar = register(Not(patternExpr), soFar)
+        val subPath = register(patternExprPos, soFar)
+        soFar = register(Not(patternExprNeg), soFar)
 
         c match {
           case SimpleCase(p, rhs) =>
