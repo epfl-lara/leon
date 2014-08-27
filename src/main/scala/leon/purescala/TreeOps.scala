@@ -1949,17 +1949,39 @@ object TreeOps {
    * the necessary information as arguments, no need to close them.
    */
   def liftClosures(e: Expr): (Set[FunDef], Expr) = {
-    var fds: Set[FunDef] = Set()
+    var fds: Map[FunDef, FunDef] = Map()
 
-    val res = postMap{
+    val res1 = preMap({
       case LetDef(fd, b) =>
-        fds += fd
+        val nfd = new FunDef(fd.id.freshen, fd.tparams, fd.returnType, fd.params, fd.defType)
+        nfd.copyContentFrom(fd)
+        nfd.copiedFrom(fd)
+
+        fds += fd -> nfd
+
+        Some(LetDef(nfd, b))
+
+      case fi @ FunctionInvocation(tfd, args) =>
+        if (fds contains tfd.fd) {
+          Some(FunctionInvocation(fds(tfd.fd).typed(tfd.tps), args))
+        } else {
+          None
+        }
+
+      case _ =>
+        None
+    })(e)
+
+    // we now remove LetDefs
+    val res2 = preMap({
+      case LetDef(fd, b) =>
         Some(b)
       case _ =>
         None
-    }(e)
+    }, applyRec = true)(res1)
 
-    (fds, res)
+
+    (fds.values.toSet, res2)
   }
   
   def preTraversalWithParent(f: (Expr, Option[Tree]) => Unit, initParent: Option[Tree] = None)(e: Expr): Unit = {
