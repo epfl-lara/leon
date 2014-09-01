@@ -115,7 +115,13 @@ trait CodeExtraction extends ASTExtractors {
 
   // Simple case classes to capture the representation of units/modules after discovering them.
   case class TempModule(name : Identifier, trees : List[Tree])
-  case class TempUnit(name : String, pack : PackageRef, modules : List[TempModule], imports : List[Import]) 
+  case class TempUnit(
+    name : String, 
+    pack : PackageRef, 
+    modules : List[TempModule], 
+    imports : List[Import],
+    isPrintable : Boolean
+  ) 
     
   class Extraction(units: List[CompilationUnit]) {
         
@@ -187,6 +193,8 @@ trait CodeExtraction extends ASTExtractors {
    
     def extractUnits: List[UnitDef] = {
       try {
+        def isLib(u : CompilationUnit) = Build.libFiles contains u.source.file.absolute.path
+        
         val templates: List[TempUnit] = units.reverse.map { u => u.body match {
         
             case pd @ PackageDef(refTree, lst) =>
@@ -227,12 +235,11 @@ trait CodeExtraction extends ASTExtractors {
                 extractPackageRef(refTree),
                 if (standaloneDefs.isEmpty) modules 
                 else ( TempModule(FreshIdentifier(unitName+ "$standalone"), standaloneDefs) ) :: modules,
-                imports.getOrElse(refTree, Nil)
+                imports.getOrElse(refTree, Nil),
+                !isLib(u)
               )
   
           }
-        
-          
         }
 
         // Phase 1, we detect objects/classes/types
@@ -254,11 +261,11 @@ trait CodeExtraction extends ASTExtractors {
         for (temp <- templates; mod <- temp.modules) extractObjectDef(mod.name, mod.trees)
         
         // Phase 7, we wrap modules in units
-        val withoutImports = for (TempUnit(name,pack,mods,imps) <- templates) yield { 
+        val withoutImports = for (TempUnit(name,pack,mods,imps,isPrintable) <- templates) yield { 
           ( UnitDef(
               FreshIdentifier(name), 
               for( TempModule(nm,_) <- mods) yield objects2Objects(nm), 
-              pack, Nil, true
+              pack, Nil, isPrintable
             )
           , imps 
           )

@@ -15,11 +15,11 @@ trait LeonExtraction extends SubComponent with CodeExtraction {
   val phaseName = "leon"
 
   var units: List[CompilationUnit] = Nil
-
+  
   val ctx: LeonContext
 
   var imports : Map[RefTree,List[Import]] = Map()
-
+  
   def setImports( imports : Map[RefTree,List[Import]] ) {  
     this.imports = imports
   }

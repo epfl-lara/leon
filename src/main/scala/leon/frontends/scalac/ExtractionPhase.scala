@@ -36,7 +36,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     settings.skip.value      = List("patmat")
 
     val libFiles = Build.libFiles
-
+    
     val injected = if (ctx.settings.injectLibrary) {
       libFiles
     } else {
@@ -67,7 +67,6 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       compiler.leonExtraction.setImports(compiler.saveImports.imports )
 
       val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.compiledUnits)
-      ctx.reporter.debug(pgm.asString(ctx))
       pgm
     } else {
       ctx.reporter.fatalError("No input program.")
