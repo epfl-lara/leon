@@ -26,7 +26,6 @@ To build, type this:
     $ sbt clean
     $ sbt package # takes a while
     $ sbt script
-    $ source ./setupenv
 
 Then you can try e.g.
 
@@ -132,27 +131,29 @@ Using Leon in Eclipse
 
 Type: ```sbt eclipse```
 
-This should create all the necessary metadata for using Leon as a project in Eclipse.
+This should create all the necessary metadata to load Leon as a project in Eclipse.
 
 You should now be able to [import the project](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
 
-Some advice for when using Eclipse: 
--
-* For each run configuration you create, you should setup environment variables according to the script ```setupenv``` you have created with ```sbt script```.
-* If you want to use ScalaTest from within Eclipse, download the ScalaTest plugin. For instructions, see [here](http://www.scalatest.org/user_guide/using_scalatest_with_eclipse). 
-  Do NOT declare your test packages as nested packages in separate lines, because ScalaTest won't see them for some reason. E.g. don't write 
+Unfortunately, the Scala Library dependency of Leon is not loaded correctly by Eclipse. To fix that, you have to change the classpath of each run configuration you create as follows:
+* Delete the Scala Compiler and Scala Library from the Bootstrap Entries.
+* Click on User Entries, then from the menu on the right choose Advanced -> Add Library -> Scala Library.
+* Then click on Add External Jars and add the Scala Compiler jar. You should find it in the plugins folder in your Eclipse directory.
 
-  <pre>
-    package leon
-    package test
-    package myTestPackage 
-  </pre>
+If you want to use ScalaTest from within Eclipse, download the ScalaTest plugin. For instructions, see [here](http://www.scalatest.org/user_guide/using_scalatest_with_eclipse). 
+Do NOT declare your test packages as nested packages in separate lines, because ScalaTest will not see them for some reason. E.g. don't write 
 
-  but instead
+<pre>
+  package leon
+  package test
+  package myTestPackage 
+</pre>
 
-  <pre>
-    package leon.test.myTestPackage
-  </pre>
+but instead
+
+<pre>
+  package leon.test.myTestPackage
+</pre>
 
 Changelog
 ---------
