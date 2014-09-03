@@ -77,6 +77,6 @@ object Leon extends Build {
   ).dependsOn(Github.bonsai)
 
   object Github {
-    lazy val bonsai = RootProject(uri("git://github.com/colder/bonsai.git#f52c898960bbb343b2138b896f9297848dc2bdb0"))
+    lazy val bonsai = RootProject(uri("git://github.com/colder/bonsai.git#8f485605785bda98ac61885b0c8036133783290a"))
   }
 }
