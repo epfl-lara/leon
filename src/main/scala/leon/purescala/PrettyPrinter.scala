@@ -7,6 +7,7 @@ import Common._
 import Trees._
 import TypeTrees._
 import Definitions._
+import DefOps._
 
 import utils._
 
@@ -16,6 +17,7 @@ import PrinterHelpers._
 case class PrinterContext(
   current: Tree,
   parent: Option[Tree],
+  scope : Option[Definition],
   lvl: Int,
   printer: PrettyPrinter
 )
@@ -66,9 +68,13 @@ object PrinterHelpers {
 
             case ts: Seq[Any] =>
               nary(ts).print(nctx)
-
+   
             case t: Tree =>
-              nctx = nctx.copy(current = t, parent = Some(nctx.current))
+              val newScope = nctx.current match { 
+                case d : Definition => Some(d)
+                case _ => nctx.scope 
+              }
+              nctx = nctx.copy(current = t, parent = Some(nctx.current), scope = newScope)
               printer.pp(t)(nctx)
 
             case p: Printable =>
@@ -91,7 +97,7 @@ object PrinterHelpers {
 
   def typed(t: Tree with Typed): Printable = {
     implicit pctx: PrinterContext =>
-      p"$t: ${t.getType}"
+      p"$t : ${t.getType}"
   }
 
   def typed(ts: Seq[Tree with Typed]): Printable = {
@@ -124,10 +130,28 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       body
     }
   }
-
+  
+  def printWithPath(df: Definition)(implicit ctx : PrinterContext) {
+    ctx.scope match {
+      case Some(scope) => 
+        try {
+          val (pack, defPath) = pathAsVisibleFrom(scope, df)
+          val toPrint = pack ++ (defPath collect { case df if !df.isInstanceOf[UnitDef] => df.id})
+          p"${nary(toPrint, ".")}"
+        } catch {
+          // If we did not manage to find the path, just print the id
+          case _ : NoSuchElementException => p"${df.id}"
+        }
+      case None =>
+        p"${df.id}"
+    } 
+    
+  }
+  
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
     
-      case id: Identifier =>    
+      case id: Identifier =>
+        
         val name = if (opts.printUniqueIds) {
           id.uniqueName
         } else {
@@ -230,7 +254,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case e @ Error(err)       => p"""error[${e.getType}]("$err")"""
       case CaseClassInstanceOf(cct, e)         =>
         if (cct.classDef.isCaseObject) {
-          p"($e == ${cct.id})"
+          p"($e == $cct)"
         } else {
           p"$e.isInstanceOf[$cct]"
         }
@@ -245,7 +269,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         if (tfd.fd.isRealFunction) p"($args)"
 
       case FunctionInvocation(tfd, args) =>
-        p"${tfd.id}"
+        printWithPath(tfd.fd)
 
         if (tfd.tps.nonEmpty) {
           p"[${tfd.tps}]"
@@ -334,20 +358,19 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
       case CaseClassPattern(ob, cct, subps) =>
         ob.foreach { b => p"$b @ " }
-        if (cct.classDef.isCaseObject) {
-          p"${cct.id}"
-        } else {
-          p"${cct.id}($subps)"
-        }
+        // Print only the classDef because we don't want type parameters in patterns
+        printWithPath(cct.classDef)
+        if (!cct.classDef.isCaseObject) p"($subps)"   
 
       case InstanceOfPattern(ob, cct) =>
         if (cct.classDef.isCaseObject) {
           ob.foreach { b => p"$b @ " }
-          p"${cct.id}"
         } else {
           ob.foreach { b => p"$b : " }
-          p"$cct"
         }
+        // It's ok to print the whole type because there are no type parameters for case objects
+        p"$cct"
+        
 
       case TuplePattern(ob, subps) =>
         ob.foreach { b => p"$b @ " }
@@ -365,35 +388,47 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case TupleType(tpes)       => p"($tpes)"
       case FunctionType(fts, tt) => p"($fts) => $tt"
       case c: ClassType =>
-        p"${c.classDef.id}"
+        printWithPath(c.classDef)
         if (c.tps.nonEmpty) {
           p"[${c.tps}]"
         }
 
-
       // Definitions
       case Program(id, units) =>
         p"""${nary(units, "\n\n")}"""
-            
-      // FIXME : this is not the whole path.
-      case PackageImport(pack) => 
-        p"${nary(pack,".")}."
-
-      case SingleImport(df) => 
-        p"$df"
-        
-      case WildcardImport(df) => 
-        p"$df._"
-        
+      
       case UnitDef(id,modules,pack,imports,isBasic) =>
         if (isBasic) {
           if (!pack.isEmpty){
-            p"package ${pack mkString "."}"
+            p"""|package ${pack mkString "."}
+                |"""
           }
           p"""|${nary(imports,"\n")}
               |${nary(modules,"\n\n")}
               |"""
         }
+        
+      case PackageImport(pack) => 
+        import DefOps._
+        val newPack = ( for (
+          scope <- ctx.scope;
+          unit <- inUnit(scope);
+          currentPack = unit.pack
+        ) yield {  
+          if (isSuperPackageOf(currentPack,pack)) 
+            pack drop currentPack.length
+          else 
+            pack
+        }).getOrElse(pack)
+        p"import ${nary(newPack,".")}._"
+
+      case SingleImport(df) => 
+        p"import "; printWithPath(df)
+         
+        
+      case WildcardImport(df) => 
+        p"import "; printWithPath(df); p"._"
+        
       case ModuleDef(id, defs, _) =>
         p"""|object $id {
             |  ${nary(defs, "\n\n")}
@@ -452,7 +487,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
         if (fd.canBeField) {
-          p"""|${fd.defType} ${fd.id}: ${fd.returnType} = {
+          p"""|${fd.defType} ${fd.id} : ${fd.returnType} = {
               |"""
         } else if (!fd.tparams.isEmpty) {
           p"""|def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): ${fd.returnType} = {
@@ -556,9 +591,14 @@ class EquivalencePrettyPrinter(opts: PrinterOptions) extends PrettyPrinter(opts)
 abstract class PrettyPrinterFactory {
   def create(opts: PrinterOptions): PrettyPrinter
 
-  def apply(tree: Tree, opts: PrinterOptions = PrinterOptions()): String = {
+  def apply(tree: Tree, opts: PrinterOptions = PrinterOptions(), scope : Option[Definition] = None): String = {
     val printer = create(opts)
-    val ctx = PrinterContext(tree, None, opts.baseIndent, printer)
+    val scope_ = (tree, scope) match {
+      // Try to find a scope, if we are given none.
+      case (df : Definition, None) => df.owner
+      case _ => None
+    }
+    val ctx = PrinterContext(tree, None, scope_, opts.baseIndent, printer)
     printer.pp(tree)(ctx)
     printer.toString
   }
@@ -567,6 +607,7 @@ abstract class PrettyPrinterFactory {
     val opts = PrinterOptions.fromContext(ctx)
     apply(tree, opts)
   }
+
 }
 
 object PrettyPrinter extends PrettyPrinterFactory {

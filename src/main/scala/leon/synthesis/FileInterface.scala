@@ -5,7 +5,7 @@ package synthesis
 
 import purescala.Trees._
 import purescala.Common.Tree
-import purescala.Definitions.FunDef
+import purescala.Definitions.{Definition,FunDef}
 import purescala.ScalaPrinter
 import purescala.PrinterOptions
 import purescala.PrinterContext
@@ -35,7 +35,7 @@ class FileInterface(reporter: Reporter) {
 
         var newCode = origCode
         for ( (ci, e) <- solutions) {
-          newCode = substitute(newCode, ci.ch, e)
+          newCode = substitute(newCode, ci.ch, e, ci.fd )
         }
 
         val out = new BufferedWriter(new FileWriter(newFile))
@@ -70,10 +70,10 @@ class FileInterface(reporter: Reporter) {
   }
 
 
-  def substitute(str: String, fromTree: Tree, toTree: Tree): String = {
+  def substitute(str: String, fromTree: Tree, toTree: Tree, scope : Definition): String = {
     substitute(str, fromTree, (indent: Int) => {
       val p = new ScalaPrinter(PrinterOptions())
-      p.pp(toTree)(PrinterContext(toTree, None, indent, p))
+      p.pp(toTree)(PrinterContext(toTree, None, Some(scope), indent, p))
       p.toString
     })
   }
