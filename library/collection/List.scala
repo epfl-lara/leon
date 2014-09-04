@@ -52,6 +52,8 @@ sealed abstract class List[T] {
     }
   }
 
+  def ::(t:T): List[T] = Cons(t, this)
+
   def :+(t:T): List[T] = {
     this match {
       case Nil() => Cons(t, this)
