@@ -27,7 +27,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     )
 
     val urls = neededClasses.map{ _.getProtectionDomain().getCodeSource().getLocation() }
-      
+
     val classpath = urls.map(_.getPath).mkString(":")
 
     settings.classpath.value = classpath
@@ -63,6 +63,8 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       run.compile(command.files)
 
       timer.stop()
+
+      compiler.leonExtraction.setImports(compiler.saveImports.imports )
 
       val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.compiledUnits)
       ctx.reporter.debug(pgm.asString(ctx))

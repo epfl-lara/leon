@@ -4,7 +4,8 @@ import leon._
 import leon.purescala.Definitions._
 import leon.purescala.Common._
 import leon.purescala.Trees._
-import leon.purescala.TreeOps.{applyOnFunDef,preMapOnFunDef,replaceFromIDs,functionCallsOf}
+import leon.purescala.TreeOps.{replaceFromIDs,functionCallsOf}
+import leon.purescala.DefOps.{applyOnFunDef,preMapOnFunDef}
 import leon.purescala.TypeTrees._
 import utils.GraphOps._
 

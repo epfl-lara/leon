@@ -372,15 +372,27 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
 
       // Definitions
-
       case Program(id, units) =>
         p"""${nary(units, "\n\n")}"""
+            
+      // FIXME : this is not the whole path.
+      case PackageImport(pack) => 
+        p"${nary(pack,".")}."
+
+      case SingleImport(df) => 
+        p"$df"
         
-      case UnitDef(id,modules,isBasic) =>
+      case WildcardImport(df) => 
+        p"$df._"
+        
+      case UnitDef(id,modules,pack,imports,isBasic) =>
         if (isBasic) {
-          p"""|package $id {
-              |  ${nary(modules,"\n\n")}
-              |}"""
+          if (!pack.isEmpty){
+            p"package ${pack mkString "."}"
+          }
+          p"""|${nary(imports,"\n")}
+              |${nary(modules,"\n\n")}
+              |"""
         }
       case ModuleDef(id, defs, _) =>
         p"""|object $id {

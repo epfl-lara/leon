@@ -15,6 +15,13 @@ class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(set
     val ctx = ScalaCompiler.this.ctx
   } with LeonExtraction
 
+  object saveImports extends {
+    val global: ScalaCompiler.this.type = ScalaCompiler.this
+    val runsAfter = List[String]("pickler")
+    val runsRightAfter = None
+    val ctx = ScalaCompiler.this.ctx
+  } with SaveImports
+  
   override protected def computeInternalPhases() : Unit = {
     val phs = List(
       syntaxAnalyzer          -> "parse source into ASTs, perform simple desugaring",
@@ -25,6 +32,7 @@ class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(set
       superAccessors          -> "add super accessors in traits and nested classes",
       extensionMethods        -> "add extension methods for inline classes",
       pickler                 -> "serialize symbol tables",
+      saveImports             -> "save imports to pass to leonExtraction",
       refChecks               -> "reference/override checking, translate nested objects",
       leonExtraction          -> "extracts leon trees out of scala trees"
     )

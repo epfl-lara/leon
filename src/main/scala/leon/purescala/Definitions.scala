@@ -40,6 +40,7 @@ object Definitions {
     // TODO: this seems quite elegant, but make sure it works
     def setSubDefOwners() = for (df <- subDefinitions) df.setOwner(this)
     
+     
   }
 
   /** A ValDef declares a new identifier to be of a certain type. */
@@ -53,7 +54,7 @@ object Definitions {
     override def equals(that : Any) : Boolean = that match {
       case t : ValDef => t.id == this.id
       case _ => false
-    }
+    } 
 
     def toVariable : Variable = Variable(id).setType(tpe)
     setSubDefOwners()
@@ -104,20 +105,47 @@ object Definitions {
     val id = tp.id
     setSubDefOwners()
   }
+ 
+  type PackageRef = List[String] 
 
-  
+  abstract class Import extends Definition {
+    def subDefinitions = Nil
     
-  object UnitDef { 
-    def apply(id : Identifier, modules : Seq[ModuleDef]) : UnitDef = UnitDef(id,modules, true)
+    lazy val importedDefs = this match {
+      case PackageImport(pack) => {
+        import DefOps._
+        // Ignore standalone objects, assume there are extra imports for them
+        unitsInPackage(inProgram(this),pack) 
+      }
+      case SingleImport(imported) => List(imported)
+      case WildcardImport(imported) => imported.subDefinitions
+    }
+    
+  }
+     
+  // import pack._
+  case class PackageImport(pack : PackageRef) extends Import {
+    val id = FreshIdentifier("import " + (pack mkString "."))
+  }
+  // import pack.(...).df
+  case class SingleImport(df : Definition) extends Import {
+    val id = FreshIdentifier(s"import ${df.id.toString}")
+  }
+  // import pack.(...).df._
+  case class WildcardImport(df : Definition) extends Import {
+    val id = FreshIdentifier(s"import ${df.id.toString}._")
   }
   
+    
   case class UnitDef(
-      val id: Identifier, 
+      id: Identifier, 
       modules : Seq[ModuleDef],
+      pack : PackageRef,
+      imports : Seq[Import],
       isMainUnit : Boolean // false for libraries/imports
   ) extends Definition {
      
-    def subDefinitions = modules
+    def subDefinitions = modules ++ imports
     
     def definedFunctions    = modules.flatMap(_.definedFunctions)
     def definedClasses      = modules.flatMap(_.definedClasses)
@@ -141,11 +169,14 @@ object Definitions {
     setSubDefOwners()
   }
   
-   
+  object UnitDef {
+    def apply(id: Identifier, modules : Seq[ModuleDef]) : UnitDef = 
+      UnitDef(id,modules, Nil,Nil,true)
+  }
   
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  case class ModuleDef(id: Identifier, defs : Seq[Definition], isSynthetic : Boolean = false) extends Definition {
+  case class ModuleDef(id: Identifier, defs : Seq[Definition], isStandalone : Boolean = false) extends Definition {
     
     def subDefinitions = defs
     

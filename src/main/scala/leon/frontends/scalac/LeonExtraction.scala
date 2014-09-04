@@ -18,7 +18,12 @@ trait LeonExtraction extends SubComponent with CodeExtraction {
 
   val ctx: LeonContext
 
+  var imports : Map[RefTree,List[Import]] = Map()
 
+  def setImports( imports : Map[RefTree,List[Import]] ) {  
+    this.imports = imports
+  }
+  
   def compiledUnits = {
     new Extraction(units).extractUnits
   }
