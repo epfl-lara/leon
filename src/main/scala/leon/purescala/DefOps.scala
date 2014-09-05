@@ -25,7 +25,7 @@ object DefOps {
       case other => inProgram(other.owner.get)
     }
   }
-
+    
   def pathFromRoot (df : Definition): List[Definition] ={
     def rec(df : Definition) : List[Definition] = df.owner match {
       case Some(owner) => df :: rec(owner)
@@ -52,7 +52,7 @@ object DefOps {
   def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = 
     (p2.length > p1.length) && 
     ( (p1 zip p2 takeWhile { case (n1,n2) => n1 == n2 }).length == p1.length )
-   
+    
   def packageAsVisibleFrom(df : Definition, p : PackageRef) = {
     val visiblePacks = 
       inPackage(df) +: (inUnit(df).toSeq.flatMap(_.imports) collect { case PackageImport(pack) => pack })

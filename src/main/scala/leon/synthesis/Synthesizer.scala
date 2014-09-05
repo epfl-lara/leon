@@ -113,7 +113,7 @@ class Synthesizer(val context : LeonContext,
     val newDefs = sol.defs + fd
 
     val npr = program.copy(units = program.units map { u =>
-      u.copy(modules = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq) +: u.modules )
+      u.copy(modules = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq, false) +: u.modules )
     })
 
     (npr, newDefs)

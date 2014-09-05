@@ -46,7 +46,7 @@ class FairZ3SolverTests extends LeonTestSuite {
     FreshIdentifier("Minimal"), 
     List(UnitDef(
         FreshIdentifier("Minimal"),
-        List(ModuleDef(FreshIdentifier("Minimal"), Seq(fDef))
+        List(ModuleDef(FreshIdentifier("Minimal"), Seq(fDef), false)
     )))
   )
 

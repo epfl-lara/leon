@@ -44,7 +44,7 @@ object UnitElimination extends TransformationPhase {
         Seq(newFd)
       })
 
-      ModuleDef(m.id, m.definedClasses ++ newFuns)
+      ModuleDef(m.id, m.definedClasses ++ newFuns, m.isStandalone )
     })}
 
 

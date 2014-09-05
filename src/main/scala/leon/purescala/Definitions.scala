@@ -71,7 +71,8 @@ object Definitions {
     def classHierarchyRoots = units.flatMap(_.classHierarchyRoots)
     def algebraicDataTypes  = units.flatMap(_.algebraicDataTypes).toMap
     def singleCaseClasses   = units.flatMap(_.singleCaseClasses)
-
+    def modules             = units.flatMap(_.modules)
+    
     lazy val callGraph      = new CallGraph(this)
 
     def caseClassDef(name: String) = definedClasses.collect {
@@ -106,6 +107,7 @@ object Definitions {
     setSubDefOwners()
   }
  
+  /** A package as a path of names */
   type PackageRef = List[String] 
 
   abstract class Import extends Definition {
@@ -114,15 +116,14 @@ object Definitions {
     lazy val importedDefs = this match {
       case PackageImport(pack) => {
         import DefOps._
-        // Ignore standalone objects, assume there are extra imports for them
+        // Ignore standalone modules, assume there are extra imports for them
         unitsInPackage(inProgram(this),pack) 
       }
       case SingleImport(imported) => List(imported)
       case WildcardImport(imported) => imported.subDefinitions
     }
-    
   }
-     
+   
   // import pack._
   case class PackageImport(pack : PackageRef) extends Import {
     val id = FreshIdentifier("import " + (pack mkString "."))
@@ -176,7 +177,7 @@ object Definitions {
   
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  case class ModuleDef(id: Identifier, defs : Seq[Definition], isStandalone : Boolean = false) extends Definition {
+  case class ModuleDef(id: Identifier, defs : Seq[Definition], val isStandalone : Boolean) extends Definition {
     
     def subDefinitions = defs
     
@@ -201,7 +202,7 @@ object Definitions {
       case cd : ClassDef => cd.duplicate
       case other => other // FIXME: huh?
     }})
-    
+      
     setSubDefOwners()
 
   }

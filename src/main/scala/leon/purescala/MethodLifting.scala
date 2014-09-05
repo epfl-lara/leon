@@ -98,7 +98,7 @@ object MethodLifting extends TransformationPhase {
         case _ =>
       }
 
-      ModuleDef(m.id, newDefs)
+      ModuleDef(m.id, newDefs, m.isStandalone )
     })}
 
     Program(program.id, newUnits)

@@ -23,8 +23,7 @@ import purescala.Common._
 import purescala.Extractors.IsTyped
 import purescala.TreeOps._
 import purescala.TypeTreeOps._
-import purescala.DefOps.inPackage
-
+import purescala.DefOps.{inPackage, inUnit}
 import xlang.Trees.{Block => LeonBlock, _}
 import xlang.TreeOps._
 
@@ -114,7 +113,7 @@ trait CodeExtraction extends ASTExtractors {
   }
 
   // Simple case classes to capture the representation of units/modules after discovering them.
-  case class TempModule(name : Identifier, trees : List[Tree])
+  case class TempModule(name : Identifier, trees : List[Tree], isStandalone : Boolean)
   case class TempUnit(
     name : String, 
     pack : PackageRef, 
@@ -190,57 +189,73 @@ trait CodeExtraction extends ASTExtractors {
     def isExtern(s: Symbol) = {
       annotationsOf(s) contains "extern"
     }
-   
+    
     def extractUnits: List[UnitDef] = {
       try {
         def isLib(u : CompilationUnit) = Build.libFiles contains u.source.file.absolute.path
         
         val templates: List[TempUnit] = units.reverse.map { u => u.body match {
         
-            case pd @ PackageDef(refTree, lst) =>
-                           
-              var standaloneDefs = List[Tree]()
-              
-              val modules = lst.flatMap { _ match {
-                
-                case t if isIgnored(t.symbol) =>
-                  None
+          // Unit with a single package object
+          case PackageDef(refTree, List(PackageDef(inner, List(ExObjectDef(n, templ))))) if n == "package" =>
+            // File name without extension
+            val unitName = extractPackageRef(inner).mkString("$") + "$package"
+            val id = FreshIdentifier(unitName+ "$standalone")
+            TempUnit(unitName,
+              extractPackageRef(refTree) ++ extractPackageRef(inner),
+              List( TempModule(id, templ.body, true) ),
+              imports.getOrElse(refTree, Nil),
+              !isLib(u)
+            )
    
-                case PackageDef(_, List(ExObjectDef(n, templ))) =>
-                  Some(TempModule(FreshIdentifier(n), templ.body))
+        
+          case pd @ PackageDef(refTree, lst) =>
+                         
+            var standaloneDefs = List[Tree]()
+            
+            val modules = lst.flatMap { _ match {
+              
+              case t if isIgnored(t.symbol) =>
+                None
+                
+              case po@ExObjectDef(n, templ) if n == "package" =>  
+                outOfSubsetError(po, "No other definitions are allowed in a file with a package object.")
+                
+              case ExObjectDef(n, templ) if n != "package" =>
+                Some(TempModule(FreshIdentifier(n), templ.body, false))
+  
+              case d @ ExAbstractClass(_, _, _) =>
+                standaloneDefs ::= d
+                None
 
-                case ExObjectDef(n, templ) =>
-                  Some(TempModule(FreshIdentifier(n), templ.body))
-  
-                case d @ ExAbstractClass(_, _, _) =>
-                  standaloneDefs ::= d
-                  None
-  
-                case d @ ExCaseClass(_, _, _, _) =>
-                  standaloneDefs ::= d
-                  None
-                  
-                case d @ ExCaseClassSyntheticJunk() =>
-                  None
-  
-                case other =>
-                  outOfSubsetError(other, "Expected: top-level object/class.")
-                  None
-              }}
-              
-              // File name without extension
-              val unitName = u.source.file.name.replaceFirst("[.][^.]+$", "")
-              
-              TempUnit(unitName,
-                extractPackageRef(refTree),
-                if (standaloneDefs.isEmpty) modules 
-                else ( TempModule(FreshIdentifier(unitName+ "$standalone"), standaloneDefs) ) :: modules,
-                imports.getOrElse(refTree, Nil),
-                !isLib(u)
-              )
-  
-          }
-        }
+              case d @ ExCaseClass(_, _, _, _) =>
+                standaloneDefs ::= d
+                None
+                
+              case d @ ExCaseClassSyntheticJunk() =>
+                None
+
+              case other =>
+                outOfSubsetError(other, "Expected: top-level object/class.")
+                None
+            }}
+            
+            // File name without extension
+            val unitName = u.source.file.name.replaceFirst("[.][^.]+$", "")
+            val finalModules = 
+              if (standaloneDefs.isEmpty) modules 
+              else {
+                val id = FreshIdentifier(unitName+ "$standalone")
+                ( TempModule(id , standaloneDefs, true) ) :: modules
+              }
+            
+            TempUnit(unitName,
+              extractPackageRef(refTree),
+              finalModules,
+              imports.getOrElse(refTree, Nil),
+              !isLib(u)
+            )
+        }}
 
         // Phase 1, we detect objects/classes/types
         for (temp <- templates; mod <- temp.modules) collectClassSymbols(mod.trees)
@@ -258,22 +273,35 @@ trait CodeExtraction extends ASTExtractors {
         for (temp <- templates; mod <- temp.modules) extractFunDefs(mod.trees)
 
         // Phase 6, we create modules and extract bodies
-        for (temp <- templates; mod <- temp.modules) extractObjectDef(mod.name, mod.trees)
+        for (temp <- templates; mod <- temp.modules) extractObjectDef(mod.name, mod.trees, mod.isStandalone)
         
         // Phase 7, we wrap modules in units
+        // We first form the units without valid imports
         val withoutImports = for (TempUnit(name,pack,mods,imps,isPrintable) <- templates) yield { 
           ( UnitDef(
               FreshIdentifier(name), 
-              for( TempModule(nm,_) <- mods) yield objects2Objects(nm), 
+              for( TempModule(nm,_,_) <- mods) yield objects2Objects(nm), 
               pack, Nil, isPrintable
             )
           , imps 
           )
         }
 
+        // With the aid of formed units, we extract the correct imports
+        val objPerPack = objects2Objects map { _._2 } groupBy { inPackage(_)}
         withoutImports map { case (u, imps) =>
-          u.copy(imports = imps flatMap { extractImport(_, u,withoutImports map { _._1}) }
-        )}
+          u.copy(imports = {
+            // Extract imports from source
+            val extracted = imps flatMap { extractImport(_, u,withoutImports map { _._1}) }
+            // Add extra imports for contents of standalone objects
+            val packs = u.pack :: extracted. collect { case PackageImport(pack) => pack } 
+            val additional = objPerPack. collect { 
+              case (p,obs) if packs contains p =>
+                obs filter { _.isStandalone} map WildcardImport
+            }.flatten
+            extracted ++ additional
+          })
+        }
 
       } catch {
         case icee: ImpureCodeEncounteredException =>
@@ -342,14 +370,24 @@ trait CodeExtraction extends ASTExtractors {
         def isWildcard (l : List[String]) = l.length == 1 && l.head == "_"
         if (isWildcard(objectPart)) Some(PackageImport(packagePart))
         else {
-          
+          // FIXME this is terribly inefficient
           def fromName(pack : PackageRef, name : String) : Option[ Definition ] = {
-            objects2Objects find { case (_,v) => 
+            val cand1 = objects2Objects find { case (_,v) => 
               val id = v.id.toString
               val pack_ = inPackage(v)
-              id == objectPart.head &&
-              pack_ == pack
+              id == objectPart.head && pack_ == pack
             } map { _._2 }
+            
+            if (cand1.isDefined) cand1 else {
+              // Search in standalone objects
+              objects2Objects.collect {
+                case (_, LeonModuleDef(_,subDefs, true)) => subDefs 
+              }.flatten.find { v =>
+                val id = v.id.toString
+                val pack_ = inPackage(v)
+                id == objectPart.head && pack_ == pack 
+              }
+            }
           } 
           
           // Finds the correct Definition from a RefPath, starting in df
@@ -755,7 +793,7 @@ trait CodeExtraction extends ASTExtractors {
 
     var objects2Objects = Map[Identifier, LeonModuleDef]()
     
-    private def extractObjectDef(id : Identifier, defs: List[Tree]) {
+    private def extractObjectDef(id : Identifier, defs: List[Tree], isStandalone : Boolean) {
 
       val newDefs = defs.flatMap{ t => t match {
         case t if isIgnored(t.symbol) =>
@@ -795,7 +833,7 @@ trait CodeExtraction extends ASTExtractors {
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
       }
 
-      objects2Objects += id -> LeonModuleDef(id, newDefs, id.toString contains "$standalone")
+      objects2Objects += id -> LeonModuleDef(id, newDefs, isStandalone)
     }
 
 
