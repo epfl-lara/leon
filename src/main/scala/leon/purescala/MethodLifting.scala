@@ -75,31 +75,40 @@ object MethodLifting extends TransformationPhase {
       }(e)
     }
 
-    val newUnits = program.units map { u => u.copy (modules = u.modules map { m =>
-      // We remove methods from class definitions and add corresponding functions
-      val newDefs = m.defs.flatMap {
-        case acd: AbstractClassDef if acd.methods.nonEmpty =>
-          acd +: acd.methods.map(translateMethod(_))
-
-        case ccd: CaseClassDef if ccd.methods.nonEmpty =>
-          ccd +: ccd.methods.map(translateMethod(_))
-
-        case fd: FunDef =>
-          List(translateMethod(fd))
-
-        case d =>
-          List(d)
+    val newUnits = program.units map { u => u.copy (
+      imports = u.imports flatMap {
+        case s@SingleImport(c : ClassDef) =>
+          // If a class is imported, also add the "methods" of this class
+          s :: ( c.methods map { md => SingleImport(mdToFds(md))})    
+        case other => List(other)
+      },
+        
+      modules = u.modules map { m =>
+        // We remove methods from class definitions and add corresponding functions
+        val newDefs = m.defs.flatMap {
+          case acd: AbstractClassDef if acd.methods.nonEmpty =>
+            acd +: acd.methods.map(translateMethod(_))
+  
+          case ccd: CaseClassDef if ccd.methods.nonEmpty =>
+            ccd +: ccd.methods.map(translateMethod(_))
+  
+          case fd: FunDef =>
+            List(translateMethod(fd))
+  
+          case d =>
+            List(d)
+        }
+  
+        // finally, we clear methods from classes
+        m.defs.foreach {
+          case cd: ClassDef =>
+            cd.clearMethods()
+          case _ =>
+        }
+  
+        ModuleDef(m.id, newDefs, m.isStandalone )
       }
-
-      // finally, we clear methods from classes
-      m.defs.foreach {
-        case cd: ClassDef =>
-          cd.clearMethods()
-        case _ =>
-      }
-
-      ModuleDef(m.id, newDefs, m.isStandalone )
-    })}
+    )}
 
     Program(program.id, newUnits)
   }

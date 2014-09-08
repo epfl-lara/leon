@@ -76,6 +76,7 @@ object RestoreMethods extends TransformationPhase {
      * Renew that function map by applying subsituteMethods on its values to obtain correct functions
      */
     val fd2MdFinal = fd2Md.mapValues(substituteMethods)
+    val oldFuns = fd2MdFinal.map{ _._1 }.toSet
     
     // We need a special type of transitive closure, detecting only trans. calls on the same argument
     def transCallsOnSameArg(fd : FunDef) : Set[FunDef] = {
@@ -120,7 +121,15 @@ object RestoreMethods extends TransformationPhase {
       m.copy(defs = m.definedClasses ++ newFuns).copiedFrom(m)    
     }
     
-    p.copy(units = p.units map { u => u.copy(modules = u.modules map refreshModule)})
+    p.copy(units = p.units map { u => u.copy(
+      modules = u.modules map refreshModule,
+      imports = u.imports flatMap {
+        // Don't include imports for functions that became methods
+        case WildcardImport(fd : FunDef) if oldFuns contains fd => None
+        case other => Some(other)
+      }
+    )})
+      
     
   }
 
