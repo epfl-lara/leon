@@ -23,7 +23,7 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
 
   override val definedOptions : Set[LeonOptionDef] = Set(
     LeonValueOptionDef("functions", "--functions=f1:f2", "Limit verification to f1,f2,..."),
-    LeonValueOptionDef("solvers",   "--solvers=s1,s2",   "Use solvers s1 and s2 (fairz3,enum)", default = Some("fairz3")),
+    LeonValueOptionDef("solvers",   "--solvers=s1,s2",   "Use solvers s1 and s2 (fairz3,enum,unroll)", default = Some("fairz3")),
     LeonValueOptionDef("timeout",   "--timeout=T",       "Timeout after T seconds when trying to prove a verification condition.")
   )
 
@@ -151,7 +151,11 @@ object AnalysisPhase extends LeonPhase[Program,VerificationReport] {
 
     val allSolvers = Map(
       "fairz3" -> SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver),
-      "enum"   -> SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
+      "enum"   -> SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver),
+      "unroll" -> {
+        val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, program))
+        SolverFactory(() => new UnrollingSolver(ctx, uninterpretedZ3) with TimeoutSolver)
+      }
     )
 
     val reporter = ctx.reporter

@@ -18,7 +18,7 @@ import scala.collection.mutable.{Map=>MutableMap}
 
 import ExecutionContext.Implicits.global
 
-class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[AssumptionSolver with IncrementalSolver with Interruptible]])
+class PortfolioSolver(val context: LeonContext, solvers: Seq[SolverFactory[Solver with IncrementalSolver with Interruptible]])
         extends Solver with IncrementalSolver with Interruptible with NaiveAssumptionSolver {
 
   val name = "Pfolio"
