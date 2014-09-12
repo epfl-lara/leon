@@ -197,28 +197,32 @@ object DefOps {
         (Nil, fullNameList)
       }
       
-      assert(!objectPart.isEmpty)     
-      
-      val point = program.modules find { mod => 
-        mod.id.toString == objectPart.head && 
-        inPackage(mod)  == packagePart
-      } orElse {
-        onCondition (exploreStandalones) {
-          // Search in standalone objects
-          program.modules.collect {
-            case ModuleDef(_,subDefs,true) => subDefs 
-          }.flatten.find { df =>
-            df.id.toString == objectPart.head && 
-            inPackage(df)  == packagePart 
+      if(objectPart.isEmpty) 
+        // Probably just a package path, or an object imported from a Scala library,
+        // so no definition returned
+        None
+      else {     
+        val point = program.modules find { mod => 
+          mod.id.toString == objectPart.head && 
+          inPackage(mod)  == packagePart
+        } orElse {
+          onCondition (exploreStandalones) {
+            // Search in standalone objects
+            program.modules.collect {
+              case ModuleDef(_,subDefs,true) => subDefs 
+            }.flatten.find { df =>
+              df.id.toString == objectPart.head && 
+              inPackage(df)  == packagePart 
+            }
           }
         }
+    
+        for (
+          startingPoint <- point;
+          path = objectPart.tail;
+          df <- descendDefs(startingPoint,path) 
+        ) yield df
       }
-  
-      for (
-        startingPoint <- point;
-        path = objectPart.tail;
-        df <- descendDefs(startingPoint,path) 
-      ) yield df
     }
     
   }

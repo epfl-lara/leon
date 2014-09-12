@@ -286,6 +286,9 @@ trait CodeExtraction extends ASTExtractors {
           , imps 
           )
         }
+        
+        // Just doing this so everything is in the same program and searches work properly
+        val _ = Program(FreshIdentifier("__program"), withoutImports map { _._1 })
 
         // With the aid of formed units, we extract the correct imports
         val objPerPack = objects2Objects map { _._2 } groupBy { inPackage(_)}
@@ -333,84 +336,19 @@ trait CodeExtraction extends ASTExtractors {
       val allSels = sels map { prefix :+ _.name.toString }
       // Make a different import for each selector at the end of the chain
       allSels flatMap { selectors => 
-        
-        def isPrefixOf[A](pre : List[A],l : List[A]) : Boolean = (pre,l) match {
-          case (Nil, _) => true
-          case (hp :: tp, hl :: tl) if hp == hl => isPrefixOf(tp,tl)
-          case _ => false
+        assert(!selectors.isEmpty)
+        val (thePath, isWild) = selectors.last match {
+          case "_" => (selectors.dropRight(1), true)
+          case _   => (selectors, false)
         }
-        
-        val knownPacks = units map { _.pack }
-        // The correct package has the maximum identifiers
-        
-        // First try to find the correct subpackage 
-        val subPacks = knownPacks collect { 
-          case p if isSuperPackageOf(current.pack , p) =>
-          	p drop current.pack.length
-        } 
-        
-        val (packagePart, objectPart) = subPacks filter { isPrefixOf(_,selectors) } match {
-          // Find the longest match, then re-attach the current package.
-          case packs if !packs.isEmpty => 
-            // Find the longest match, then re-attach the current package.
-            val packNoPrefix = packs.maxBy(_.length)
-            ( current.pack ++ packNoPrefix, selectors drop packNoPrefix.length )
-          case Nil => 
-            // In this case, try to find a package that fits beginning from the root package
-            knownPacks filter { isPrefixOf(_,selectors) } match {
-              case Nil => (Nil, selectors)
-              case nonEmpty => 
-                val pack = nonEmpty.maxBy(_.length)
-                (pack, selectors drop pack.length)   
-            }
-        } 
-
-        assert(!objectPart.isEmpty)
-        
-        def isWildcard (l : List[String]) = l.length == 1 && l.head == "_"
-        if (isWildcard(objectPart)) Some(PackageImport(packagePart))
-        else {
-          // FIXME this is terribly inefficient
-          def fromName(pack : PackageRef, name : String) : Option[ Definition ] = {
-            val cand1 = objects2Objects find { case (_,v) => 
-              val id = v.id.toString
-              val pack_ = inPackage(v)
-              id == objectPart.head && pack_ == pack
-            } map { _._2 }
-            
-            if (cand1.isDefined) cand1 else {
-              // Search in standalone objects
-              objects2Objects.collect {
-                case (_, LeonModuleDef(_,subDefs, true)) => subDefs 
-              }.flatten.find { v =>
-                val id = v.id.toString
-                val pack_ = inPackage(v)
-                id == objectPart.head && pack_ == pack 
-              }
-            }
-          } 
           
-          // Finds the correct Definition from a RefPath, starting in df
-          // true means there is a wildcard in the end
-          def descendDefs (df : Definition, path : List[String]) : (Definition, Boolean) = { 
-            if (isWildcard(path)) (df,true)
-            else { path match {
-              case Nil => (df,false)
-              case hd :: tl => descendDefs(df.subDefinitions.find{_.id.toString == hd}.get, tl)
-            }}
-          }
-          
-          // If we can't find the object/ class, it was imported from some unknown package,
-          // so we drop the import
-          fromName(packagePart,objectPart.head) map { df => 
-            descendDefs(df,objectPart.tail) match {
-              case (theDef, true)  => 
-                WildcardImport(theDef)
-              case (theDef, false) => 
-                SingleImport(theDef)
-            }
-          }
-          
+        val theDef = searchByFullNameRelative(thePath mkString ".", current, reliableVisibility = false)
+        
+        (isWild, theDef) match {
+          case (true, Some(df)) => Some(WildcardImport(df))
+          case (false,Some(df)) => Some(SingleImport(df))
+          case (true, None)     => Some(PackageImport(thePath))
+          case (false,None)     => None // import comes from a Scala library or something... 
         }
       }
     }
