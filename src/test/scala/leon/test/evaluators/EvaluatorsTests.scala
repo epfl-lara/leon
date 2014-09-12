@@ -477,4 +477,54 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams(checkContracts = true))
     checkError(e, mkCall("c", IL(-42)))
   }
+
+  test("Pattern Matching") {
+    val p = """|object Program {
+               |  abstract class List;
+               |  case class Cons(h: Int, t: List) extends List;
+               |  case object Nil extends List;
+               |
+               |  def f1: Int = (Cons(1, Nil): List) match {
+               |    case Cons(h, t) => h
+               |    case Nil => 0
+               |  }
+               |
+               |  def f2: Int = (Cons(1, Nil): List) match {
+               |    case Cons(h, _) => h
+               |    case Nil => 0
+               |  }
+               |
+               |  def f3: Int = (Nil: List) match {
+               |    case _ => 1
+               |  }
+               |
+               |  def f4: Int = (Cons(1, Cons(2, Nil)): List) match {
+               |    case a: Cons => 1
+               |    case _ => 0
+               |  }
+               |
+               |  def f5: Int = ((Cons(1, Nil), Nil): (List, List)) match {
+               |    case (a: Cons, _) => 1
+               |    case _ => 0
+               |  }
+               |
+               |  def f6: Int = (Cons(2, Nil): List) match {
+               |    case Cons(h, t) if h > 0 => 1
+               |    case _ => 0
+               |  }
+               |}""".stripMargin
+
+    implicit val prog = parseString(p)
+    val evaluators = prepareEvaluators
+
+    for(e <- evaluators) {
+      // Some simple math.
+      checkComp(e, mkCall("f1"), IL(1))
+      checkComp(e, mkCall("f2"), IL(1))
+      checkComp(e, mkCall("f3"), IL(1))
+      checkComp(e, mkCall("f4"), IL(1))
+      checkComp(e, mkCall("f5"), IL(1))
+      checkComp(e, mkCall("f6"), IL(1))
+    }
+  }
 }

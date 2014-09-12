@@ -71,11 +71,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case Variable(id) =>
       rctx.mappings.get(id) match {
         case Some(v) =>
-          if(!isGround(v)) {
-            throw EvalError("Substitution for identifier " + id.name + " is not ground.")
-          } else {
-            v
-          }
+          e(v)
         case None =>
           throw EvalError("No value for identifier " + id.name + " in mapping.")
       }
@@ -121,11 +117,12 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val frame = rctx.withVars((tfd.params.map(_.id) zip evArgs).toMap)
       
       if(tfd.hasPrecondition) {
-        e(matchToIfThenElse(tfd.precondition.get))(frame, gctx) match {
+        e(tfd.precondition.get)(frame, gctx) match {
           case BooleanLiteral(true) =>
           case BooleanLiteral(false) =>
             throw RuntimeError("Precondition violation for " + tfd.id.name + " reached in evaluation.: " + tfd.precondition.get)
-          case other => throw RuntimeError(typeErrorMsg(other, BooleanType))
+          case other =>
+            throw RuntimeError(typeErrorMsg(other, BooleanType))
         }
       }
 
@@ -134,15 +131,12 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       }
 
       val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-      val callResult = e(matchToIfThenElse(body))(frame, gctx)
+      val callResult = e(body)(frame, gctx)
 
       if(tfd.hasPostcondition) {
         val (id, post) = tfd.postcondition.get
 
-        val freshResID = FreshIdentifier("result").setType(tfd.returnType)
-        val postBody = replace(Map(Variable(id) -> Variable(freshResID)), matchToIfThenElse(post))
-
-        e(matchToIfThenElse(post))(frame.withNewVar(id, callResult), gctx) match {
+        e(post)(frame.withNewVar(id, callResult), gctx) match {
           case BooleanLiteral(true) =>
           case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
           case other => throw EvalError(typeErrorMsg(other, BooleanType))
@@ -430,15 +424,82 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         solver.free()
       }
 
+    case MatchExpr(scrut, cases) =>
+      val rscrut = e(scrut)
+
+      cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
+        case Some(Some((c, mappings))) =>
+          e(c.rhs)(rctx.withNewVars(mappings), gctx)
+        case _ =>
+          throw RuntimeError("MatchError: "+rscrut+" did not match any of the cases")
+      }
+
     case other =>
       context.reporter.error(other.getPos, "Error: don't know how to handle " + other + " in Evaluator.")
       throw EvalError("Unhandled case in Evaluator : " + other) 
   }
 
+  def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {
+    import purescala.TypeTreeOps.isSubtypeOf
+
+    def matchesPattern(pat: Pattern, e: Expr): Option[Map[Identifier, Expr]] = (pat, e) match {
+      case (InstanceOfPattern(ob, pct), CaseClass(ct, _)) =>
+        if (isSubtypeOf(ct, pct)) {
+          Some(obind(ob, e))
+        } else {
+          None
+        }
+      case (WildcardPattern(ob), e) =>
+        Some(obind(ob, e))
+
+      case (CaseClassPattern(ob, pct, subs), CaseClass(ct, args)) =>
+        if (pct == ct) {
+          val res = (subs zip args).map{ case (s, a) => matchesPattern(s, a) }
+          if (res.forall(_.isDefined)) {
+            Some(obind(ob, e) ++ res.flatten.flatten)
+          } else {
+            None
+          }
+        } else {
+          None
+        }
+      case (TuplePattern(ob, subs), Tuple(args)) =>
+        if (subs.size == args.size) {
+          val res = (subs zip args).map{ case (s, a) => matchesPattern(s, a) }
+          if (res.forall(_.isDefined)) {
+            Some(obind(ob, e) ++ res.flatten.flatten)
+          } else {
+            None
+          }
+        } else {
+          None
+        }
+      case _ => None
+    }
+
+    def obind(ob: Option[Identifier], e: Expr): Map[Identifier, Expr] = {
+      Map[Identifier, Expr]() ++ ob.map(id => id -> e)
+    }
+
+    caze match {
+      case SimpleCase(p, rhs) =>
+        matchesPattern(p, scrut).map( r =>
+          (caze, r)
+        )
+
+
+      case GuardedCase(p, g, rhs) =>
+        matchesPattern(p, scrut).flatMap( r =>
+          e(g)(rctx.withNewVars(r), gctx) match {
+            case BooleanLiteral(true) =>
+              Some((caze, r))
+            case _ =>
+              None
+          }
+        )
+    }
+  }
+
   def typeErrorMsg(tree : Expr, expected : TypeTree) : String = "Type error : expected %s, found %s.".format(expected, tree)
 
-  // quick and dirty.. don't overuse.
-  private def isGround(expr: Expr) : Boolean = {
-    variablesOf(expr) == Set.empty
-  }
 }

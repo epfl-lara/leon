@@ -32,6 +32,20 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           val res = e(b)(rctx.withNewVar(i, first), gctx)
           (res, first)
 
+        case MatchExpr(scrut, cases) =>
+          val rscrut = e(scrut)
+
+          val r = cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
+            case Some(Some((c, mappings))) =>
+              gctx.values ++= mappings.map { case (id, v) => id.toVariable.setPos(id) -> v }
+
+              e(c.rhs)(rctx.withNewVars(mappings), gctx)
+            case _ =>
+              throw RuntimeError("MatchError: "+rscrut+" did not match any of the cases")
+          }
+
+          (r, r)
+
         case fi @ FunctionInvocation(tfd, args) =>
           if (gctx.stepsLeft < 0) {
             throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
@@ -44,7 +58,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           val frame = new TracingRecContext((tfd.params.map(_.id) zip evArgs).toMap, rctx.tracingFrames-1)
 
           if(tfd.hasPrecondition) {
-            e(matchToIfThenElse(tfd.precondition.get))(frame, gctx) match {
+            e(tfd.precondition.get)(frame, gctx) match {
               case BooleanLiteral(true) =>
               case BooleanLiteral(false) =>
                 throw RuntimeError("Precondition violation for " + tfd.id.name + " reached in evaluation.: " + tfd.precondition.get)
@@ -57,15 +71,14 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           }
 
           val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-          val callResult = e(matchToIfThenElse(body))(frame, gctx)
+          val callResult = e(body)(frame, gctx)
 
           if(tfd.hasPostcondition) {
             val (id, post) = tfd.postcondition.get
 
-            val freshResID = FreshIdentifier("result").setType(tfd.returnType)
-            val postBody = replace(Map(Variable(id) -> Variable(freshResID)), matchToIfThenElse(post))
+            gctx.values ::= id.toVariable.setPos(id) -> callResult
 
-            e(matchToIfThenElse(post))(frame.withNewVar(id, callResult), gctx) match {
+            e(post)(frame.withNewVar(id, callResult), gctx) match {
               case BooleanLiteral(true) =>
               case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
               case other => throw EvalError(typeErrorMsg(other, BooleanType))
