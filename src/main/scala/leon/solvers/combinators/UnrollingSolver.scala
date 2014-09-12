@@ -15,9 +15,9 @@ import utils.Interruptible
 import scala.collection.mutable.{Map=>MutableMap}
 
 class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[IncrementalSolver]) 
-        extends Solver with Interruptible {
+        extends Solver with Interruptible with IncrementalSolver {
 
-  private var theConstraint : Option[Expr] = None
+  private var constraints : List[Option[Expr]] = List(None)
   private var theModel : Option[Map[Identifier,Expr]] = None
 
   private var stop: Boolean = false
@@ -26,106 +26,118 @@ class UnrollingSolver(val context: LeonContext, underlyings: SolverFactory[Incre
 
   def free {}
 
+  def push() : Unit = {
+    constraints = None :: constraints
+  }
+
+  def pop(lvl: Int) : Unit = {
+    constraints = constraints.drop(lvl)
+  }
+
   import context.reporter._
 
   def assertCnstr(expression : Expr) {
-    if(!theConstraint.isEmpty) {
+    if(!constraints.head.isEmpty) {
       fatalError("Multiple assertCnstr(...).")
     }
-    theConstraint = Some(expression)
+    constraints = Some(expression) :: constraints.tail
   }
 
-  def check : Option[Boolean] = theConstraint.map { expr =>
+  def check : Option[Boolean] = constraints.head.map { expr =>
     val solver = underlyings.getNewSolver//SimpleSolverAPI(underlyings)
 
-    debugS("Check called on " + expr.asString + "...")
+    try {
+      debugS("Check called on " + expr.asString + "...")
 
-    val template = getTemplate(expr)
+      val template = getTemplate(expr)
 
-    val aVar : Identifier = template.activatingBool
-    var allClauses : Seq[Expr] = Nil
-    var allBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
+      val aVar : Identifier = template.activatingBool
+      var allClauses : Seq[Expr] = Nil
+      var allBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
-    def unrollOneStep() : List[Expr] = {
-      val blockersBefore = allBlockers
+      def unrollOneStep() : List[Expr] = {
+        val blockersBefore = allBlockers
 
-      var newClauses : List[Seq[Expr]] = Nil
-      var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
+        var newClauses : List[Seq[Expr]] = Nil
+        var newBlockers : Map[Identifier,Set[FunctionInvocation]] = Map.empty
 
-      for(blocker <- allBlockers.keySet; FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
-        val (nc, nb) = getTemplate(tfd).instantiate(blocker, args)
-        newClauses = nc :: newClauses
-        newBlockers = newBlockers ++ nb
+        for(blocker <- allBlockers.keySet; FunctionInvocation(tfd, args) <- allBlockers(blocker)) {
+          val (nc, nb) = getTemplate(tfd).instantiate(blocker, args)
+          newClauses = nc :: newClauses
+          newBlockers = newBlockers ++ nb
+        }
+
+        allClauses = newClauses.flatten ++ allClauses
+        allBlockers = newBlockers
+        newClauses.flatten
       }
 
-      allClauses = newClauses.flatten ++ allClauses
-      allBlockers = newBlockers
-      newClauses.flatten
-    }
+      val (nc, nb) = template.instantiate(aVar, template.tfd.params.map(a => Variable(a.id)))
 
-    val (nc, nb) = template.instantiate(aVar, template.tfd.params.map(a => Variable(a.id)))
+      allClauses = nc.reverse
+      allBlockers = nb
 
-    allClauses = nc.reverse
-    allBlockers = nb
+      var unrollingCount : Int = 0
+      var done : Boolean = false
+      var result : Option[Boolean] = None
 
-    var unrollingCount : Int = 0
-    var done : Boolean = false
-    var result : Option[Boolean] = None
+      solver.assertCnstr(Variable(aVar))
+      solver.assertCnstr(And(allClauses))
+      // We're now past the initial step.
+      while(!done && !stop) {
+        debugS("At lvl : " + unrollingCount)
 
-    solver.assertCnstr(Variable(aVar))
-    solver.assertCnstr(And(allClauses))
-    // We're now past the initial step.
-    while(!done && !stop) {
-      debugS("At lvl : " + unrollingCount)
+        solver.push()
+        //val closed : Expr = fullClosedExpr
+        solver.assertCnstr(And(allBlockers.keySet.toSeq.map(id => Not(id.toVariable))))
 
-      solver.push()
-      //val closed : Expr = fullClosedExpr
-      solver.assertCnstr(And(allBlockers.keySet.toSeq.map(id => Not(id.toVariable))))
+        debugS("Going for SAT with this:\n")
 
-      debugS("Going for SAT with this:\n")
+        solver.check match {
 
-      solver.check match {
+          case Some(false) =>
+            solver.pop()
+            //val open = fullOpenExpr
+            debugS("Was UNSAT... Going for UNSAT with this:\n")
+            solver.check match {
+              case Some(false) =>
+                debugS("Was UNSAT... Done !")
+                done = true
+                result = Some(false)
 
-        case Some(false) =>
-          solver.pop(1)
-          //val open = fullOpenExpr
-          debugS("Was UNSAT... Going for UNSAT with this:\n")
-          solver.check match {
-            case Some(false) =>
-              debugS("Was UNSAT... Done !")
-              done = true
-              result = Some(false)
+              case _ =>
+                debugS("Was SAT or UNKNOWN. Let's unroll !")
+                unrollingCount += 1
+                val newClauses = unrollOneStep()
+                solver.assertCnstr(And(newClauses))
+            }
 
-            case _ =>
-              debugS("Was SAT or UNKNOWN. Let's unroll !")
-              unrollingCount += 1
-              val newClauses = unrollOneStep()
-              solver.assertCnstr(And(newClauses))
-          }
+          case Some(true) =>
+            val model = solver.getModel
+            debugS("WAS SAT ! We're DONE !")
+            done = true
+            result = Some(true)
+            theModel = Some(model)
 
-        case Some(true) =>
-          val model = solver.getModel
-          debugS("WAS SAT ! We're DONE !")
-          done = true
-          result = Some(true)
-          theModel = Some(model)
-
-        case None =>
-          val model = solver.getModel
-          debugS("WAS UNKNOWN ! We're DONE !")
-          done = true
-          result = Some(true)
-          theModel = Some(model)
+          case None =>
+            val model = solver.getModel
+            debugS("WAS UNKNOWN ! We're DONE !")
+            done = true
+            result = Some(true)
+            theModel = Some(model)
+        }
       }
+      result
+    } finally {
+      solver.free
     }
-    result
 
   } getOrElse {
     Some(true)
   }
 
   def getModel : Map[Identifier,Expr] = {
-    val vs : Set[Identifier] = theConstraint.map(variablesOf(_)).getOrElse(Set.empty)
+    val vs : Set[Identifier] = constraints.head.map(variablesOf(_)).getOrElse(Set.empty)
     theModel.getOrElse(Map.empty).filter(p => vs(p._1))
   }
 
