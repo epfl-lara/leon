@@ -1121,7 +1121,8 @@ object TreeOps {
               } else {
                 Seq(c)
               }
-            case _ => Seq(c)
+            case _ => 
+              Seq(c)
           }}
 
           var finalMatch = MatchExpr(scrutinee, List(newCases.head)).setType(e.getType)
@@ -1339,6 +1340,7 @@ object TreeOps {
       case Tuple(Seq()) => UnitLiteral()
       case Variable(id) if idMap contains id => Variable(idMap(id))
 
+      case Error(err) => Error(err).setType(mapType(e.getType).getOrElse(e.getType)).copiedFrom(e)
       case Tuple(Seq(s)) => pre(s)
 
       case ts @ TupleSelect(t, 1) => t.getType match {
