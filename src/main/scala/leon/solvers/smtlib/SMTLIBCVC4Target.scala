@@ -39,7 +39,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     }
   }
 
-  override def fromSMT(s: Term, tpe: TypeTree)(implicit letDefs: Map[SSymbol, Term]): Expr = (s, tpe) match {
+  override def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
     case (SimpleSymbol(s), tp: TypeParameter) =>
       val n = s.name.split("_").toList.last
       GenericValue(tp, n.toInt)

@@ -219,13 +219,12 @@ trait SMTLIBTarget {
     e match {
       case Variable(id) =>
         declareSort(e.getType)
-        bindings.getOrElse(id, QualifiedIdentifier(SMTIdentifier(variables.toB(id))))
+        bindings.getOrElse(id, variables.toB(id))
 
       case UnitLiteral() =>
         declareSort(UnitType)
-        QualifiedIdentifier(SMTIdentifier(
-          declareVariable(FreshIdentifier("Unit").setType(UnitType))
-        ))
+
+        declareVariable(FreshIdentifier("Unit").setType(UnitType))
 
       case IntLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
       case BooleanLiteral(v) => Core.BoolConst(v)
@@ -233,7 +232,7 @@ trait SMTLIBTarget {
       case Let(b,d,e) =>
         val id      = id2sym(b)
         val value   = toSMT(d)
-        val newBody = toSMT(e)(bindings + (b -> QualifiedIdentifier(SMTIdentifier(id))))
+        val newBody = toSMT(e)(bindings + (b -> id))
 
         SMTLet(
           VarBinding(id, value),
@@ -243,55 +242,63 @@ trait SMTLIBTarget {
 
       case er @ Error(_) =>
         val s = declareVariable(FreshIdentifier("error_value").setType(er.getType))
-        QualifiedIdentifier(SMTIdentifier(s))
+        s
 
       case s @ CaseClassSelector(cct, e, id) =>
         declareSort(cct)
         val selector = selectors.toB((cct, s.selectorIndex))
-        FunctionApplication(QualifiedIdentifier(SMTIdentifier(selector)), Seq(toSMT(e)))
+        FunctionApplication(selector, Seq(toSMT(e)))
 
       case CaseClassInstanceOf(cct, e) =>
         declareSort(cct)
         val tester = testers.toB(cct)
-        FunctionApplication(QualifiedIdentifier(SMTIdentifier(tester)), Seq(toSMT(e)))
+        FunctionApplication(tester, Seq(toSMT(e)))
 
       case CaseClass(cct, es) =>
         declareSort(cct)
         val constructor = constructors.toB(cct)
         if (es.isEmpty) {
-          QualifiedIdentifier(SMTIdentifier(constructor))
+          constructor
         } else {
-          FunctionApplication(QualifiedIdentifier(SMTIdentifier(constructor)), es.map(toSMT))
+          FunctionApplication(constructor, es.map(toSMT))
         }
 
       case t @ Tuple(es) =>
         val tpe = normalizeType(t.getType)
         declareSort(tpe)
         val constructor = constructors.toB(tpe)
-        FunctionApplication(QualifiedIdentifier(SMTIdentifier(constructor)), es.map(toSMT))
+        FunctionApplication(constructor, es.map(toSMT))
 
       case ts @ TupleSelect(t, i) =>
         val tpe = normalizeType(t.getType)
         declareSort(tpe)
         val selector = selectors.toB((tpe, i-1))
-        FunctionApplication(QualifiedIdentifier(SMTIdentifier(selector)), Seq(toSMT(t)))
+        FunctionApplication(selector, Seq(toSMT(t)))
 
-      //TODO
-      //case al @ ArrayLength(a) =>
-      //  val tpe = normalizeType(a.getType)
-      //  SList(selectors.toB((tpe, 0)), toSMT(a))
+      case al @ ArrayLength(a) =>
+        val tpe = normalizeType(a.getType)
+        val selector = selectors.toB((tpe, 0))
 
-      //case as @ ArraySelect(a, i) =>
-      //  val tpe = normalizeType(a.getType)
-      //  SList(SSymbol("select"), SList(selectors.toB((tpe, 1)), toSMT(a)), toSMT(i))
+        FunctionApplication(selector, Seq(toSMT(a)))
 
-      //case as @ ArrayUpdated(a, i, e) =>
-      //  val tpe = normalizeType(a.getType)
+      case al @ ArraySelect(a, i) =>
+        val tpe = normalizeType(a.getType)
 
-      //  val ssize    = SList(selectors.toB((tpe, 0)), toSMT(a))
-      //  val scontent = SList(selectors.toB((tpe, 1)), toSMT(a))
+        val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(toSMT(a)))
 
-      //  SList(constructors.toB(tpe), ssize, SList(SSymbol("store"), scontent, toSMT(i), toSMT(e)))
+        ArraysEx.Select(scontent, toSMT(i))
+
+      case al @ ArrayUpdated(a, i, e) =>
+        val tpe = normalizeType(a.getType)
+
+        val sa = toSMT(a)
+        val ssize    = FunctionApplication(selectors.toB((tpe, 0)), Seq(sa))
+        val scontent = FunctionApplication(selectors.toB((tpe, 1)), Seq(sa))
+
+        val newcontent = ArraysEx.Store(scontent, toSMT(i), toSMT(e))
+
+        val constructor = constructors.toB(tpe)
+        FunctionApplication(constructor, Seq(ssize, newcontent))
 
 
       case e @ UnaryOperator(u, _) =>
@@ -325,7 +332,7 @@ trait SMTLIBTarget {
           case (_: IfExpr) => Core.ITE(toSMT(sub(0)), toSMT(sub(1)), toSMT(sub(2))) 
           case (f: FunctionInvocation) => 
             FunctionApplication(
-              QualifiedIdentifier(SMTIdentifier(declareFunction(f.tfd))),
+              declareFunction(f.tfd),
               sub.map(toSMT)
             )
           case _ => reporter.fatalError("Unhandled nary "+e)
@@ -336,11 +343,11 @@ trait SMTLIBTarget {
     }
   }
 
-  def fromSMT(pair: (Term, TypeTree))(implicit letDefs: Map[SSymbol, Term]): Expr = {
+  def fromSMT(pair: (Term, TypeTree))(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
     fromSMT(pair._1, pair._2)
   }
 
-  def fromSMT(s: Term, tpe: TypeTree)(implicit letDefs: Map[SSymbol, Term]): Expr = (s, tpe) match {
+  def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
     case (_, UnitType) =>
       UnitLiteral()
 
@@ -360,8 +367,8 @@ trait SMTLIBTarget {
           unsupported("woot? for a single constructor for non-case-object: "+t)
       }
 
-    case (SimpleSymbol(s), tpe) if letDefs contains s =>
-      fromSMT(letDefs(s), tpe)
+    case (SimpleSymbol(s), tpe) if lets contains s =>
+      fromSMT(lets(s), tpe)
 
     case (SimpleSymbol(s), _) =>
       variables.getA(s).map(_.toVariable).getOrElse {
@@ -396,10 +403,10 @@ trait SMTLIBTarget {
         case VarBinding(s, value) => (s, value)
       }.toMap
 
-      fromSMT(body, tpe)(letDefs ++ defsMap)
+      fromSMT(body, tpe)(lets ++ defsMap, letDefs)
 
     case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => {
-      name match {
+      app match {
         case "-" =>
           args match {
             case List(a) => UMinus(fromSMT(a, Int32Type))
@@ -407,9 +414,11 @@ trait SMTLIBTarget {
           }
 
         case _ =>
-          unsupported(s)
+          unsupported("Function "+app+" not handled in fromSMT: "+s)
       }
     }
+    case (QualifiedIdentifier(id, sort), tpe) =>
+      unsupported("Unhandled case in fromSMT: " + id +": "+sort +" ("+tpe+")")
     case _ =>
       unsupported("Unhandled case in fromSMT: " + (s, tpe))
   }
@@ -444,7 +453,7 @@ trait SMTLIBTarget {
   override def getModel: Map[Identifier, Expr] = {
     val syms = variables.bSet.toList
     val cmd: Command = 
-      GetValue(QualifiedIdentifier(SMTIdentifier(syms.head)), 
+      GetValue(syms.head, 
                syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
               )
 
@@ -455,7 +464,7 @@ trait SMTLIBTarget {
       case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
         val id = variables.toA(sym)
 
-        (id, fromSMT(value, id.getType)(Map()))
+        (id, fromSMT(value, id.getType)(Map(), Map()))
     }.toMap
   }
 
@@ -473,6 +482,11 @@ trait SMTLIBTarget {
       case _ => None
     }
 
+  }
+
+  import scala.language.implicitConversions
+  implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = {
+    QualifiedIdentifier(SMTIdentifier(s))
   }
 
 }
