@@ -17,7 +17,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
 
   def initGC = new TracingGlobalContext(Nil)
 
-  class TracingGlobalContext(var values: List[(Expr, Expr)]) extends GlobalContext
+  class TracingGlobalContext(var values: List[(Tree, Expr)]) extends GlobalContext
 
   case class TracingRecContext(mappings: Map[Identifier, Expr], tracingFrames: Int) extends RecContext {
     def withVars(news: Map[Identifier, Expr]) = copy(mappings = news)
@@ -37,7 +37,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
 
           val r = cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
             case Some(Some((c, mappings))) =>
-              gctx.values ++= mappings.map { case (id, v) => id.toVariable.setPos(id) -> v }
+              gctx.values ++= (Map(c.pattern -> rscrut) ++ mappings.map { case (id, v) => id.toVariable.setPos(id) -> v })
 
               e(c.rhs)(rctx.withNewVars(mappings), gctx)
             case _ =>
