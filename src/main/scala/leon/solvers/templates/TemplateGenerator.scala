@@ -18,6 +18,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
   private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
 
+  private[templates] val lambdaManager = new LambdaManager[T](encoder)
+
   def mkTemplate(body: Expr): FunctionTemplate[T] = {
     if (cacheExpr contains body) {
       return cacheExpr(body);
@@ -41,13 +43,82 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
       return cache(tfd)
     }
 
-    var condVars = Set[Identifier]()
-    var exprVars = Set[Identifier]()
+    // The precondition if it exists.
+    val prec : Option[Expr] = tfd.precondition.map(p => matchToIfThenElse(p))
+
+    val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
+
+    val invocation : Expr = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
+
+    val invocationEqualsBody : Option[Expr] = newBody match {
+      case Some(body) if isRealFunDef =>
+        val b : Expr = Equals(invocation, body)
+
+        Some(if(prec.isDefined) {
+          Implies(prec.get, b)
+        } else {
+          b
+        })
+
+      case _ =>
+        None
+    }
+
+    val start : Identifier = FreshIdentifier("start", true).setType(BooleanType)
+    val pathVar : (Identifier, T) = start -> encoder.encodeId(start)
+    val arguments : Seq[(Identifier, T)] = tfd.params.map(vd => vd.id -> encoder.encodeId(vd.id))
+    val substMap : Map[Identifier, T] = arguments.toMap + pathVar
+
+    val (bodyConds, bodyExprs, bodyGuarded, bodyLambdas) = if (isRealFunDef) {
+      invocationEqualsBody.map(expr => mkClauses(start, expr, substMap)).getOrElse {
+        (Map[Identifier,T](), Map[Identifier,T](), Map[Identifier,Seq[Expr]](), Map[T,LambdaTemplate[T]]())
+      }
+    } else {
+      mkClauses(start, newBody.get, substMap)
+    }
+
+    // Now the postcondition.
+    val (condVars, exprVars, guardedExprs, lambdas) = tfd.postcondition match {
+      case Some((id, post)) =>
+        val newPost : Expr = replace(Map(Variable(id) -> invocation), matchToIfThenElse(post))
+
+        val postHolds : Expr =
+          if(tfd.hasPrecondition) {
+            Implies(prec.get, newPost)
+          } else {
+            newPost
+          }
+
+        val (postConds, postExprs, postGuarded, postLambdas) = mkClauses(start, postHolds, substMap)
+        val allGuarded = (bodyGuarded.keys ++ postGuarded.keys).map { k => 
+          k -> (bodyGuarded.getOrElse(k, Seq.empty) ++ postGuarded.getOrElse(k, Seq.empty))
+        }.toMap
+
+        (bodyConds ++ postConds, bodyExprs ++ postExprs, allGuarded, bodyLambdas ++ postLambdas)
+
+      case None =>
+        (bodyConds, bodyExprs, bodyGuarded, bodyLambdas)
+    }
+
+    val template = FunctionTemplate(tfd, encoder, lambdaManager,
+      pathVar, arguments, condVars, exprVars, guardedExprs, lambdas, isRealFunDef)
+    cache += tfd -> template
+    template
+  }
+
+  def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]):
+               (Map[Identifier,T], Map[Identifier,T], Map[Identifier, Seq[Expr]], Map[T, LambdaTemplate[T]]) = {
+
+    var condVars = Map[Identifier, T]()
+    @inline def storeCond(id: Identifier) : Unit = condVars += id -> encoder.encodeId(id)
+    @inline def encodedCond(id: Identifier) : T = substMap.getOrElse(id, condVars(id))
+
+    var exprVars = Map[Identifier, T]()
+    @inline def storeExpr(id: Identifier) : Unit = exprVars += id -> encoder.encodeId(id)
 
     // Represents clauses of the form:
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
-
     def storeGuarded(guardVar : Identifier, expr : Expr) : Unit = {
       assert(expr.getType == BooleanType)
 
@@ -55,6 +126,9 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
       guardedExprs += guardVar -> (expr +: prev)
     }
+
+    var lambdas = Map[T, LambdaTemplate[T]]()
+    @inline def storeLambda(idT: T, lambda: LambdaTemplate[T]) : Unit = lambdas += idT -> lambda
 
     // Group elements that satisfy p toghether
     // List(a, a, a, b, c, a, a), with p = _ == a will produce:
@@ -81,7 +155,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
     def requireDecomposition(e: Expr) = {
       exists{
-        case (_: FunctionInvocation) | (_: Assert) | (_: Ensuring) | (_: Choose) => true
+        case (_: FunctionInvocation) | (_: Assert) | (_: Ensuring) | (_: Choose) | (_: Application) => true
         case _ => false
       }(e)
     }
@@ -97,7 +171,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         case l @ Let(i, e, b) =>
           val newExpr : Identifier = FreshIdentifier("lt", true).setType(i.getType)
-          exprVars += newExpr
+          storeExpr(newExpr)
           val re = rec(pathVar, e)
           storeGuarded(pathVar, Equals(Variable(newExpr), re))
           val rb = rec(pathVar, replace(Map(Variable(i) -> Variable(newExpr)), b))
@@ -105,13 +179,13 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         case l @ LetTuple(is, e, b) =>
           val tuple : Identifier = FreshIdentifier("t", true).setType(TupleType(is.map(_.getType)))
-          exprVars += tuple
+          storeExpr(tuple)
           val re = rec(pathVar, e)
           storeGuarded(pathVar, Equals(Variable(tuple), re))
 
           val mapping = for ((id, i) <- is.zipWithIndex) yield {
             val newId = FreshIdentifier("ti", true).setType(id.getType)
-            exprVars += newId
+            storeExpr(newId)
             storeGuarded(pathVar, Equals(Variable(newId), TupleSelect(Variable(tuple), i+1)))
 
             (Variable(id) -> Variable(newId))
@@ -139,10 +213,10 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
             val newBool2 : Identifier = FreshIdentifier("b", true).setType(BooleanType)
             val newExpr : Identifier = FreshIdentifier("e", true).setType(i.getType)
 
-            condVars += newBool1
-            condVars += newBool2
+            storeCond(newBool1)
+            storeCond(newBool2)
 
-            exprVars += newExpr
+            storeExpr(newExpr)
 
             val crec = rec(pathVar, cond)
             val trec = rec(newBool1, thenn)
@@ -161,7 +235,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         case c @ Choose(ids, cond) =>
           val cid = FreshIdentifier("choose", true).setType(c.getType)
-          exprVars += cid
+          storeExpr(cid)
 
           val m: Map[Expr, Expr] = if (ids.size == 1) {
             Map(Variable(ids.head) -> Variable(cid))
@@ -172,6 +246,24 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           storeGuarded(pathVar, replace(m, cond))
           Variable(cid)
 
+        case l @ Lambda(args, body) =>
+          val idArgs : Seq[Identifier] = args.map(_.id)
+          val trArgs : Seq[T] = idArgs.map(encoder.encodeId(_))
+
+          val lid = FreshIdentifier("lambda", true).setType(l.getType)
+          val clause = Equals(Application(Variable(lid), idArgs.map(Variable(_))), body)
+
+          val localSubst : Map[Identifier, T] = substMap ++ condVars ++ exprVars
+          val clauseSubst : Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
+          val (lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates) = mkClauses(pathVar, clause, clauseSubst)
+
+          val ids: (Identifier, T) = lid -> encoder.encodeId(lid)
+          val dependencies: Set[T] = variablesOf(l).map(localSubst)
+          val template = LambdaTemplate(ids, encoder, lambdaManager, pathVar -> encodedCond(pathVar), idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, localSubst, dependencies, l)
+          storeLambda(ids._2, template)
+
+          Variable(lid)
+
         case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, a))).setType(n.getType)
         case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, a1), rec(pathVar, a2)).setType(b.getType)
         case u @ UnaryOperator(a, r) => r(rec(pathVar, a)).setType(u.getType)
@@ -179,63 +271,10 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
       }
     }
 
-    // The precondition if it exists.
-    val prec : Option[Expr] = tfd.precondition.map(p => matchToIfThenElse(p))
+    val p = rec(pathVar, expr)
+    storeGuarded(pathVar, p)
 
-    val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
-
-    val invocation : Expr = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
-
-    val invocationEqualsBody : Option[Expr] = newBody match {
-      case Some(body) if isRealFunDef =>
-        val b : Expr = Equals(invocation, body)
-
-        Some(if(prec.isDefined) {
-          Implies(prec.get, b)
-        } else {
-          b
-        })
-
-      case _ =>
-        None
-    }
-
-    val activatingBool : Identifier = FreshIdentifier("start", true).setType(BooleanType)
-
-    if (isRealFunDef) {
-      val finalPred : Option[Expr] = invocationEqualsBody.map(expr => rec(activatingBool, expr))
-      finalPred.foreach(p => storeGuarded(activatingBool, p))
-    } else {
-       val newFormula = rec(activatingBool, newBody.get)
-       storeGuarded(activatingBool, newFormula)
-    }
-
-    // Now the postcondition.
-    tfd.postcondition match {
-      case Some((id, post)) =>
-        val newPost : Expr = replace(Map(Variable(id) -> invocation), matchToIfThenElse(post))
-
-        val postHolds : Expr =
-          if(tfd.hasPrecondition) {
-            Implies(prec.get, newPost)
-          } else {
-            newPost
-          }
-
-        val finalPred2 : Expr = rec(activatingBool,  postHolds)
-        storeGuarded(activatingBool, finalPred2)
-      case None =>
-
-    }
-
-    val template = new FunctionTemplate[T](tfd,
-                                           encoder,
-                                           activatingBool,
-                                           Set(condVars.toSeq : _*),
-                                           Set(exprVars.toSeq : _*),
-                                           Map(guardedExprs.toSeq : _*),
-                                           isRealFunDef)
-    cache += tfd -> template
-    template
+    (condVars, exprVars, guardedExprs, lambdas)
   }
+
 }

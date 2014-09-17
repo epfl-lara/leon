@@ -44,33 +44,17 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
     solver.push
   }
 
-
   def pop(lvl: Int = 1) {
     solver.pop(lvl)
   }
 
   private var freeVariables = Set[Identifier]()
-  private var containsFunCalls = false
-
   def assertCnstr(expression: Expr) {
     freeVariables ++= variablesOf(expression)
-    containsFunCalls ||= containsFunctionCalls(expression)
     solver.assertCnstr(toZ3Formula(expression).getOrElse(scala.sys.error("Failed to compile to Z3: "+expression)))
   }
 
-  override def check: Option[Boolean] = {
-    solver.check match {
-      case Some(true) =>
-        if (containsFunCalls) {
-          None
-        } else {
-          Some(true)
-        }
-
-      case r =>
-        r
-    }
-  }
+  override def check: Option[Boolean] = solver.check
 
   override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
     freeVariables ++= assumptions.flatMap(variablesOf(_))

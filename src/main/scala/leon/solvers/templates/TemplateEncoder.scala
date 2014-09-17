@@ -13,6 +13,9 @@ trait TemplateEncoder[T] {
   def substitute(map: Map[T, T]): T => T
 
   // Encodings needed for unrollingbank
-  def not(v: T): T
-  def implies(l: T, r: T): T
+  def mkNot(v: T): T
+  def mkOr(ts: T*): T
+  def mkAnd(ts: T*): T
+  def mkEquals(l: T, r: T): T
+  def mkImplies(l: T, r: T): T
 }

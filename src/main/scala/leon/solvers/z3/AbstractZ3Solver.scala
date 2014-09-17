@@ -463,6 +463,14 @@ trait AbstractZ3Solver
         newTPSort
       }
 
+    case ft @ FunctionType(from, to) =>
+      sorts.toZ3OrCompute(ft) {
+        val fromSort = typeToSort(TupleType(from))
+        val toSort = typeToSort(to)
+
+        z3.mkArraySort(fromSort, toSort)
+      }
+
     case other =>
       sorts.toZ3OrCompute(other) {
         reporter.warning(other.getPos, "Resorting to uninterpreted type for : " + other)
@@ -578,6 +586,9 @@ trait AbstractZ3Solver
 
       case f @ FunctionInvocation(tfd, args) =>
         z3.mkApp(functionDefToDecl(tfd), args.map(rec(_)): _*)
+
+      case fa @ Application(caller, args) =>
+        z3.mkSelect(rec(caller), rec(Tuple(args)))
 
       case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
       case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
@@ -736,12 +747,21 @@ trait AbstractZ3Solver
                 model.getArrayValue(t) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
-                    var values = map.toSeq.map { case (k, v) => (k, z3.getASTKind(v)) }.collect {
+                    val values = map.toSeq.map { case (k, v) => (k, z3.getASTKind(v)) }.collect {
                       case (k, Z3AppAST(cons, arg :: Nil)) if cons == mapRangeSomeConstructors(vt) =>
                         (rec(k), rec(arg))
                     }
 
                     FiniteMap(values).setType(tpe)
+                }
+
+              case LeonType(tpe @ FunctionType(fts, tt)) =>
+                model.getArrayValue(t) match {
+                  case None => throw new CantTranslateException(t)
+                  case Some((map, elseZ3Value)) =>
+                    val leonElseValue = rec(elseZ3Value)
+                    val leonMap = map.toSeq.map(p => rec(p._1) -> rec(p._2))
+                    FiniteLambda(leonElseValue, leonMap, tpe)
                 }
 
               case LeonType(tpe @ SetType(dt)) =>

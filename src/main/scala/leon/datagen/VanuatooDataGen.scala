@@ -78,6 +78,24 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         cs
       })
 
+    case ft @ FunctionType(from, to) =>
+      constructors.getOrElse(ft, {
+        val cs = for (size <- List(1, 2, 3, 5)) yield {
+          val subs = (1 to size).flatMap(_ => from :+ to).toList
+          Constructor[Expr, TypeTree](subs, ft, { s =>
+            val args = from.map(tpe => FreshIdentifier("x", true).setType(tpe))
+            val argsTuple = Tuple(args.map(_.toVariable))
+            val grouped = s.grouped(from.size + 1).toSeq
+            val body = grouped.init.foldRight(grouped.last.last) { case (t, elze) =>
+              IfExpr(Equals(argsTuple, Tuple(t.init)), t.last, elze)
+            }
+            Lambda(args.map(id => ValDef(id, id.getType)), body)
+          }, ft.toString + "@" + size)
+        }
+        constructors += ft -> cs
+        cs
+      })
+
     case tp: TypeParameter =>
       constructors.getOrElse(tp, {
         val cs = for (i <- List(1, 2)) yield {

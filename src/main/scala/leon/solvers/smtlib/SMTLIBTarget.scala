@@ -10,7 +10,7 @@ import Extractors._
 import TreeOps._
 import TypeTrees._
 import Definitions._
-import utils.Bijection
+import utils.IncrementalBijection
 
 import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
@@ -48,12 +48,12 @@ trait SMTLIBTarget {
   def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
 
   // metadata for CC, and variables
-  val constructors = new Bijection[TypeTree, SSymbol]()
-  val selectors    = new Bijection[(TypeTree, Int), SSymbol]()
-  val testers      = new Bijection[TypeTree, SSymbol]()
-  val variables    = new Bijection[Identifier, SSymbol]()
-  val sorts        = new Bijection[TypeTree, Sort]()
-  val functions    = new Bijection[TypedFunDef, SSymbol]()
+  val constructors = new IncrementalBijection[TypeTree, SSymbol]()
+  val selectors    = new IncrementalBijection[(TypeTree, Int), SSymbol]()
+  val testers      = new IncrementalBijection[TypeTree, SSymbol]()
+  val variables    = new IncrementalBijection[Identifier, SSymbol]()
+  val sorts        = new IncrementalBijection[TypeTree, Sort]()
+  val functions    = new IncrementalBijection[TypedFunDef, SSymbol]()
 
   def normalizeType(t: TypeTree): TypeTree = t match {
     case ct: ClassType if ct.parent.isDefined => ct.parent.get
@@ -97,6 +97,9 @@ trait SMTLIBTarget {
 
         case MapType(from, to) =>
           declareMapSort(from, to)
+
+        case FunctionType(from, to) =>
+          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(TupleType(from)), declareSort(to)))
 
         case TypeParameter(id) =>
           val s = id2sym(id)
@@ -424,6 +427,8 @@ trait SMTLIBTarget {
       /**
        * ===== Everything else =====
        */
+      case ap @ Application(caller, args) =>
+        ArraysEx.Select(toSMT(caller), toSMT(Tuple(args)))
 
       case e @ UnaryOperator(u, _) =>
         e match {
@@ -596,9 +601,26 @@ trait SMTLIBTarget {
   }
 
   override def push(): Unit = {
+    constructors.push()
+    selectors.push()
+    testers.push()
+    variables.push()
+    sorts.push()
+    functions.push()
+
     sendCommand(Push(1))
   }
+
   override def pop(lvl: Int = 1): Unit = {
+    assert(lvl == 1, "Current implementation only supports lvl = 1")
+
+    constructors.pop()
+    selectors.pop()
+    testers.pop()
+    variables.pop()
+    sorts.pop()
+    functions.pop()
+
     sendCommand(Pop(1))
   }
 

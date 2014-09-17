@@ -38,7 +38,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   override def free() = {
     interpreter.free()
-    out.close
+    reporter.ifDebug { _ => out.close }
   }
 
 }

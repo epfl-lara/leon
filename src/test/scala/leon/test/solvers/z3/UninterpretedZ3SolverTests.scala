@@ -83,8 +83,12 @@ class UninterpretedZ3SolverTests extends LeonTestSuite {
   assertInvalid(solver, wrong2)
 
   // This is true, but that solver shouldn't know it.
+  // However, since the uninterpreted solver is a nice backend for the unrolling solver,
+  // it makes more sense to allow such formulas even if they are not completely known
+  /*
   private val unknown1 : Expr = Equals(f(x), Plus(x, IntLiteral(1)))
   assertUnknown(solver, unknown1)
+  */
 
   assertValid(solver, Equals(g(x), g(x)))
 }

@@ -19,7 +19,7 @@ object SolverFactory {
     }
   }
 
-  val definedSolvers = Set("fairz3", "enum", "smt", "smt-z3", "smt-cvc4");
+  val definedSolvers = Set("fairz3", "unrollz3", "enum", "smt", "smt-z3", "smt-cvc4");
 
   def getFromSettings[S](ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     import combinators._
@@ -29,6 +29,9 @@ object SolverFactory {
     def getSolver(name: String): SolverFactory[TimeoutSolver] = name match {
       case "fairz3" =>
         SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
+
+      case "unrollz3" =>
+        SolverFactory(() => new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
 
       case "enum"   =>
         SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
