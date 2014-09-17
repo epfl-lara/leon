@@ -30,9 +30,19 @@ trait SMTLIBTarget {
 
   val interpreter = getNewInterpreter()
 
-  val out = new java.io.FileWriter(s"vcs-$targetName.smt2", true)
+  var out: java.io.FileWriter = _
+
   reporter.ifDebug { debug =>
-    out.write("; -----------------------------------------------------\n")
+    val file = context.files.headOption.map(_.getName).getOrElse("NA")  
+    val n    = VCNumbers.getNext(targetName+file)
+
+    val dir = new java.io.File("vcs");
+
+    if (!dir.isDirectory) {
+      dir.mkdir
+    }
+
+    out = new java.io.FileWriter(s"vcs/$targetName-$file-$n.smt2", true)
   }
 
   def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
@@ -489,4 +499,13 @@ trait SMTLIBTarget {
     QualifiedIdentifier(SMTIdentifier(s))
   }
 
+}
+
+object VCNumbers {
+  private var nexts = Map[String, Int]().withDefaultValue(0)
+  def getNext(id: String) = {
+    val n = nexts(id)+1
+    nexts += id -> n
+    n
+  }
 }
