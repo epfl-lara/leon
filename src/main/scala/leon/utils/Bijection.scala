@@ -1,8 +1,8 @@
 package leon.utils
 
 class Bijection[A, B] {
-  var a2b = Map[A, B]()
-  var b2a = Map[B, A]()
+  protected var a2b = Map[A, B]()
+  protected var b2a = Map[B, A]()
 
   def +=(a: A, b: B): Unit = {
     a2b += a -> b

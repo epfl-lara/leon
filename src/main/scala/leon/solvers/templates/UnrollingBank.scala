@@ -18,17 +18,18 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
   implicit val debugSection = utils.DebugSectionSolver
 
   private val encoder = templateGenerator.encoder
+  private val lambdaManager = templateGenerator.lambdaManager
 
   // Keep which function invocation is guarded by which guard,
   // also specify the generation of the blocker.
-  private var blockersInfoStack = List[Map[T, (Int, Int, T, Set[TemplateCallInfo[T]])]](Map())
+  private var blockersInfoStack = List[Map[T, (Int, Int, T, Set[TemplateInfo[T]])]](Map())
 
   // Function instantiations have their own defblocker
-  private var defBlockers       = Map[TemplateCallInfo[T], T]()
+  private var defBlockers       = Map[TemplateInfo[T], T]()
 
   def blockersInfo = blockersInfoStack.head
 
-  def blockersInfo_= (v: Map[T, (Int, Int, T, Set[TemplateCallInfo[T]])]) = {
+  def blockersInfo_= (v: Map[T, (Int, Int, T, Set[TemplateInfo[T]])]) = {
     blockersInfoStack = v :: blockersInfoStack.tail
   }
 
@@ -53,7 +54,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
 
   def canUnroll = !blockersInfo.isEmpty
 
-  def currentBlockers = blockersInfo.map(_._2._3)
+  def currentBlockers = blockersInfo.map(_._2._3).toSeq :+ lambdaManager.assumption
 
   def getBlockersToUnlock: Seq[T] = {
     if (!blockersInfo.isEmpty) {
@@ -65,8 +66,8 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     }
   }
 
-  private def registerBlocker(gen: Int, id: T, fis: Set[TemplateCallInfo[T]]) {
-    val notId = encoder.not(id)
+  private def registerBlocker(gen: Int, id: T, fis: Set[TemplateInfo[T]]) {
+    val notId = encoder.mkNot(id)
 
     blockersInfo.get(id) match {
       case Some((exGen, origGen, _, exFis)) =>
@@ -88,21 +89,25 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     // define an activating boolean...
     val template = templateGenerator.mkTemplate(expr)
 
-
     val trArgs = template.tfd.params.map(vd => bindings(Variable(vd.id)))
+
+    lambdaManager.quantify(template.tfd.params.collect {
+      case vd if vd.tpe.isInstanceOf[FunctionType] =>
+        vd.tpe -> bindings(vd.toVariable)
+    })
 
     // ...now this template defines clauses that are all guarded
     // by that activating boolean. If that activating boolean is 
     // undefined (or false) these clauses have no effect...
     val (newClauses, newBlocks) =
-      template.instantiate(template.trActivatingBool, trArgs)
+      template.instantiate(template.start, trArgs)
 
     for((i, fis) <- newBlocks) {
       registerBlocker(nextGeneration(0), i, fis)
     }
-    
+
     // ...so we must force it to true!
-    template.trActivatingBool +: newClauses
+    template.start +: (newClauses ++ lambdaManager.guards)
   }
 
   def nextGeneration(gen: Int) = gen + 3
@@ -137,41 +142,59 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
       for (fi <- fis) {
         var newCls = Seq[T]()
 
-        val defBlocker = defBlockers.get(fi) match {
-          case Some(defBlocker) =>
-            // we already have defBlocker => f(args) = body
-            defBlocker
-          case None =>
-            // we need to define this defBlocker and link it to definition
-            val defBlocker = encoder.encodeId(FreshIdentifier("d").setType(BooleanType))
-            defBlockers += fi -> defBlocker
+        fi match {
+          case TemplateCallInfo(tfd, args) =>
+            val defBlocker = defBlockers.get(fi) match {
+              case Some(defBlocker) =>
+                // we already have defBlocker => f(args) = body
+                defBlocker
 
-            val template              = templateGenerator.mkTemplate(fi.tfd)
+              case None =>
+                // we need to define this defBlocker and link it to definition
+                val defBlocker = encoder.encodeId(FreshIdentifier("d").setType(BooleanType))
+                defBlockers += fi -> defBlocker
+
+                val template = templateGenerator.mkTemplate(tfd)
+                reporter.debug(template)
+
+                val (newExprs, newBlocks) = template.instantiate(defBlocker, args)
+
+                for((i, fis2) <- newBlocks) {
+                  registerBlocker(nextGeneration(gen), i, fis2)
+                }
+
+                newCls ++= newExprs
+                defBlocker
+            }
+
+            // We connect it to the defBlocker:   blocker => defBlocker
+            if (defBlocker != id) {
+              newCls ++= List(encoder.mkImplies(id, defBlocker))
+            }
+
+          case TemplateAppInfo(template, b, args) =>
             reporter.debug(template)
-            val (newExprs, newBlocks) = template.instantiate(defBlocker, fi.args)
+            val (newExprs, newBlocks) = template.instantiate(b, args)
 
             for((i, fis2) <- newBlocks) {
               registerBlocker(nextGeneration(gen), i, fis2)
             }
 
             newCls ++= newExprs
-            defBlocker
-        }
-
-        // We connect it to the defBlocker:   blocker => defBlocker
-        if (defBlocker != id) {
-          newCls ++= List(encoder.implies(id, defBlocker))
+            newCls :+= id
         }
 
         reporter.debug("Unrolling behind "+fi+" ("+newCls.size+")")
         for (cl <- newCls) {
-        reporter.debug("  . "+cl)
+          reporter.debug("  . "+cl)
         }
 
         newClauses ++= newCls
       }
 
     }
+
+    newClauses ++= lambdaManager.guards
 
     reporter.debug(s"   - ${newClauses.size} new clauses")
     //context.reporter.ifDebug { debug =>

@@ -27,6 +27,8 @@ object Extractors {
       case ArrayLength(a) => Some((a, ArrayLength))
       case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
+      case Lambda(args, body) => Some((body, Lambda(args, _)))
+      case Forall(args, body) => Some((body, Forall(args, _)))
       case (ue: UnaryExtractable) => ue.extract
       case _ => None
     }
@@ -85,6 +87,7 @@ object Extractors {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
       case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
       case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, (as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi))))
+      case fa @ Application(caller, args) => Some((caller +: args), (as => Application(as.head, as.tail).setPos(fa)))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))

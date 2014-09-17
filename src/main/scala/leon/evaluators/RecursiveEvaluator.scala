@@ -79,6 +79,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           throw EvalError("No value for identifier " + id.name + " in mapping.")
       }
 
+    case Application(caller, args) =>
+      e(caller) match {
+        case Lambda(params, body) =>
+          val newArgs = args.map(e)
+          val mapping = (params.map(_.id) zip newArgs).toMap
+          e(body)(rctx.withVars(mapping), gctx)
+        case f =>
+          throw EvalError("Cannot apply non-lambda function " + f)
+      }
+
     case Tuple(ts) =>
       val tsRec = ts.map(e)
       Tuple(tsRec)
@@ -316,6 +326,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case i @ IntLiteral(_) => i
     case b @ BooleanLiteral(_) => b
     case u @ UnitLiteral() => u
+    case l @ Lambda(_, _) => l
 
     case f @ ArrayFill(length, default) =>
       val rDefault = e(default)

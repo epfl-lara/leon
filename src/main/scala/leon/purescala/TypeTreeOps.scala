@@ -200,6 +200,14 @@ object TypeTreeOps {
             val newXs = xs.map(id => freshId(id, tpeSub(id.getType)))
             Choose(newXs, rec(idsMap ++ (xs zip newXs))(pred)).copiedFrom(c)
 
+          case l @ Lambda(args, body) =>
+            val newArgs = args.map { arg =>
+              val tpe = tpeSub(arg.tpe)
+              ValDef(freshId(arg.id, tpe), tpe)
+            }
+            val mapping = args.map(_.id) zip newArgs.map(_.id)
+            Lambda(newArgs, rec(idsMap ++ mapping)(body)).copiedFrom(l)
+
           case m @ MatchExpr(e, cases) =>
             val newTpe = tpeSub(e.getType)
 

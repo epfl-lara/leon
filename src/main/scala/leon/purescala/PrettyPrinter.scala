@@ -315,6 +315,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
         if (tfd.fd.isRealFunction) p"($args)"
 
+      case Application(caller, args) =>
+        p"$caller($args)"
+
+      case Lambda(args, body) =>
+        optP { p"($args) => $body" }
+
       case Plus(l,r)                 => optP { p"$l + $r" }
       case Minus(l,r)                => optP { p"$l - $r" }
       case Times(l,r)                => optP { p"$l * $r" }
@@ -364,6 +370,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case FiniteMap(rs) =>
         p"{$rs}"
 
+      case IfExpr(c, t, ie : IfExpr) =>
+        optP {
+          p"""|if ($c) {
+              |  $t
+              |} else $ie"""
+        }
 
       case IfExpr(c, t, e) =>
         optP {

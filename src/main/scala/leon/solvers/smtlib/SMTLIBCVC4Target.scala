@@ -54,10 +54,16 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))
 
+    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), ft @ FunctionType(from,to)) =>
+      FiniteLambda(fromSMT(elem, to), Seq.empty, ft)
+
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
       val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
-
       RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
+
+    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
+      val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
+      FiniteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), ft)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       FiniteSet(elems.map(fromSMT(_, base)).toSet).setType(tpe)

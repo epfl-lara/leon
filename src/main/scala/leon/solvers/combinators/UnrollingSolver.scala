@@ -37,17 +37,20 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
     }
   }
 
-  private var lastCheckResult: (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
-  private var varsInVC       = List[Set[Identifier]](Set())
-  private var constraints    = List[List[Expr]](Nil)
-  private var interrupted: Boolean = false
+  private var lastCheckResult : (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
+
+  private var varsInVC         = List[Set[Identifier]](Set())
+  private var frameExpressions = List[List[Expr]](Nil)
+
+  private var interrupted : Boolean = false
 
   val reporter = context.reporter
 
   def name = "U:"+underlying.name
 
-  def free {}
-
+  def free {
+    underlying.free
+  }
 
   val templateGenerator = new TemplateGenerator(new TemplateEncoder[Expr] {
     def encodeId(id: Identifier): Expr= {
@@ -62,8 +65,11 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
       (e: Expr) => replace(substMap, e)
     }
 
-    def not(e: Expr) = Not(e)
-    def implies(l: Expr, r: Expr) = Implies(l, r)
+    def mkNot(e: Expr) = Not(e)
+    def mkOr(es: Expr*) = Or(es)
+    def mkAnd(es: Expr*) = And(es)
+    def mkEquals(l: Expr, r: Expr) = Equals(l, r)
+    def mkImplies(l: Expr, r: Expr) = Implies(l, r)
   })
 
   val unrollingBank = new UnrollingBank(reporter, templateGenerator)
@@ -71,7 +77,10 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   val solver = underlying
 
   def assertCnstr(expression: Expr) {
+    frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
+
     val freeIds = variablesOf(expression)
+    varsInVC = (varsInVC.head ++ freeIds) :: varsInVC.tail
 
     val freeVars = freeIds.map(_.toVariable: Expr)
 
@@ -82,24 +91,20 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
     for (cl <- newClauses) {
       solver.assertCnstr(cl)
     }
-
-    varsInVC    = (varsInVC.head ++ freeIds) :: varsInVC.tail
-    constraints = (constraints.head ++ newClauses) :: constraints.tail
   }
-
 
   def push() {
     unrollingBank.push()
     solver.push()
     varsInVC = Set[Identifier]() :: varsInVC
-    constraints = Nil :: constraints
+    frameExpressions = Nil :: frameExpressions
   }
 
   def pop(lvl: Int = 1) {
     unrollingBank.pop(lvl)
     solver.pop(lvl)
     varsInVC = varsInVC.drop(lvl)
-    constraints = constraints.drop(lvl)
+    frameExpressions = frameExpressions.drop(lvl)
   }
 
   def check: Option[Boolean] = {
@@ -115,9 +120,10 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   def isValidModel(model: Map[Identifier, Expr], silenceErrors: Boolean = false): Boolean = {
     import EvaluationResults._
 
-    val expr = And(constraints.flatten)
+    val expr = And(frameExpressions.flatten)
+    val allVars = varsInVC.flatten.toSet
 
-    val fullModel = variablesOf(expr).map(v => v -> model.getOrElse(v, simplestValue(v.getType))).toMap
+    val fullModel = allVars.map(v => v -> model.getOrElse(v, simplestValue(v.getType))).toMap
 
     evaluator.eval(expr, fullModel) match {
       case Successful(BooleanLiteral(true)) =>
@@ -170,7 +176,6 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
         case Some(true) => // SAT
           val model = solver.getModel
           solver.pop()
-
           foundAnswer(Some(true), Some(model))
 
         case Some(false) if !unrollingBank.canUnroll =>

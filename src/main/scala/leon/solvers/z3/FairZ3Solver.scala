@@ -149,8 +149,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       (c: Z3AST) => z3.substitute(c, fromArray, toArray)
     }
 
-    def not(e: Z3AST) = z3.mkNot(e)
-    def implies(l: Z3AST, r: Z3AST) = z3.mkImplies(l, r)
+    def mkNot(e: Z3AST) = z3.mkNot(e)
+    def mkOr(es: Z3AST*) = z3.mkOr(es : _*)
+    def mkAnd(es: Z3AST*) = z3.mkAnd(es : _*)
+    def mkEquals(l: Z3AST, r: Z3AST) = z3.mkEq(l, r)
+    def mkImplies(l: Z3AST, r: Z3AST) = z3.mkImplies(l, r)
   })
 
 
@@ -158,7 +161,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   val solver = z3.mkSolver
 
-  private var varsInVC = Set[Identifier]()
+  private var varsInVC = List[Set[Identifier]](Set())
 
   private var frameExpressions = List[List[Expr]](Nil)
 
@@ -167,12 +170,14 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   def push() {
     solver.push()
     unrollingBank.push()
+    varsInVC = Set[Identifier]() :: varsInVC
     frameExpressions = Nil :: frameExpressions
   }
 
   def pop(lvl: Int = 1) {
     solver.pop(lvl)
     unrollingBank.pop(lvl)
+    varsInVC = varsInVC.drop(lvl)
     frameExpressions = frameExpressions.drop(lvl)
   }
 
@@ -191,7 +196,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   def assertCnstr(expression: Expr) {
     val freeVars = variablesOf(expression)
-    varsInVC ++= freeVars
+    varsInVC = (varsInVC.head ++ freeVars) :: varsInVC.tail
 
     // We make sure all free variables are registered as variables
     freeVars.foreach { v =>
@@ -260,6 +265,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       reporter.debug(" - Finished search with blocked literals")
 
+      lazy val allVars = varsInVC.flatten.toSet
+
       res match {
         case None =>
           reporter.ifDebug { debug => 
@@ -274,7 +281,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           val z3model = solver.getModel
 
           if (this.checkModels) {
-            val (isValid, model) = validateModel(z3model, entireFormula, varsInVC, silenceErrors = false)
+            val (isValid, model) = validateModel(z3model, entireFormula, allVars, silenceErrors = false)
 
             if (isValid) {
               foundAnswer(Some(true), model)
@@ -284,7 +291,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               foundAnswer(None, model)
             }
           } else {
-            val model = modelToMap(z3model, varsInVC)
+            val model = modelToMap(z3model, allVars)
 
             //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
             //reporter.debug("- Found a model:")
@@ -357,7 +364,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
                 //reporter.debug("SAT WITHOUT Blockers")
                 if (this.feelingLucky && !interrupted) {
                   // we might have been lucky :D
-                  val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, varsInVC, silenceErrors = true)
+                  val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, allVars, silenceErrors = true)
 
                   if(wereWeLucky) {
                     foundAnswer(Some(true), cleanModel)

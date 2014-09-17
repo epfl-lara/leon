@@ -31,6 +31,10 @@ trait ASTExtractors {
   protected lazy val arraySym           = classFromName("scala.Array")
   protected lazy val someClassSym       = classFromName("scala.Some")
   protected lazy val function1TraitSym  = classFromName("scala.Function1")
+  protected lazy val function2TraitSym  = classFromName("scala.Function2")
+  protected lazy val function3TraitSym  = classFromName("scala.Function3")
+  protected lazy val function4TraitSym  = classFromName("scala.Function4")
+  protected lazy val function5TraitSym  = classFromName("scala.Function5")
   protected lazy val byNameSym          = classFromName("scala.<byname>")
 
   def isTuple2(sym : Symbol) : Boolean = sym == tuple2Sym
@@ -65,10 +69,11 @@ trait ASTExtractors {
     sym == optionClassSym || sym == someClassSym
   }
 
-  def isFunction1TraitSym(sym : Symbol) : Boolean = {
-    sym == function1TraitSym
-  }
-
+  def isFunction1(sym : Symbol) : Boolean = sym == function1TraitSym
+  def isFunction2(sym : Symbol) : Boolean = sym == function2TraitSym
+  def isFunction3(sym : Symbol) : Boolean = sym == function3TraitSym
+  def isFunction4(sym : Symbol) : Boolean = sym == function4TraitSym
+  def isFunction5(sym : Symbol) : Boolean = sym == function5TraitSym
 
   protected lazy val multisetTraitSym  = try {
       classFromName("scala.collection.immutable.Multiset")
@@ -273,7 +278,7 @@ trait ASTExtractors {
         case _ => None
       }
     }
-    
+
     object ExLazyAccessorFunction {
       def unapply(dd: DefDef): Option[(Symbol, Type, Tree)] = dd match {
         case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
@@ -397,6 +402,23 @@ trait ASTExtractors {
               TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "withOracle"), types),
               Function(vds, body) :: Nil) =>
             Some(((types zip vds.map(_.symbol)).toList, body))
+        case _ => None
+      }
+    }
+
+    object ExLambdaExpression {
+      def unapply(tree: Function) : Option[(Seq[ValDef], Tree)] = tree match {
+        case Function(vds, body) => Some((vds, body))
+        case _ => None
+      }
+    }
+
+    object ExForallExpression {
+      def unapply(tree: Apply) : Option[(List[(Tree, Symbol)], Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "forall"), types),
+            Function(vds, predicateBody) :: Nil) =>
+          Some(((types zip vds.map(_.symbol)).toList, predicateBody))
         case _ => None
       }
     }
