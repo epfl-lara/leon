@@ -93,12 +93,12 @@ object Extractors {
       case And(args) => Some((args, And.apply))
       case Or(args) => Some((args, Or.apply))
       case FiniteSet(args) =>
-        Some((args,
+        Some((args.toSeq,
               { newargs =>
                 if (newargs.isEmpty) {
-                  FiniteSet(Seq()).setType(expr.getType)
+                  FiniteSet(Set()).setType(expr.getType)
                 } else {
-                  FiniteSet(newargs)
+                  FiniteSet(newargs.toSet)
                 }
               }
             ))

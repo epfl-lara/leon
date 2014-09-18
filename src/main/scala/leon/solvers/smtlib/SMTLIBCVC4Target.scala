@@ -45,15 +45,15 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       GenericValue(tp, n.toInt)
 
     case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), SetType(base)) =>
-      FiniteSet(Seq()).setType(tpe)
+      FiniteSet(Set()).setType(tpe)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("setenum")), elems), SetType(base)) =>
-      FiniteSet(elems.map(fromSMT(_, base))).setType(tpe)
+      FiniteSet(elems.map(fromSMT(_, base)).toSet).setType(tpe)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
       FiniteSet(elems.map(fromSMT(_, tpe) match {
         case FiniteSet(elems) => elems
-      }).flatten).setType(tpe)
+      }).flatten.toSet).setType(tpe)
 
     case _ =>
       super[SMTLIBTarget].fromSMT(s, tpe)

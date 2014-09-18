@@ -71,7 +71,7 @@ case object TEGIS extends Rule("TEGIS") {
 
             case st @ SetType(base) =>
               List(
-                Generator(List(base),   { case elems     => FiniteSet(elems).setType(st) }),
+                Generator(List(base),   { case elems     => FiniteSet(elems.toSet).setType(st) }),
                 Generator(List(st, st), { case Seq(a, b) => SetUnion(a, b) }),
                 Generator(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
                 Generator(List(st, st), { case Seq(a, b) => SetDifference(a, b) })

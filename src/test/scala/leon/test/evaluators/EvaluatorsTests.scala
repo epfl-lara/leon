@@ -315,9 +315,9 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val nil = mkCaseClass("Nil")
     val cons12 = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
 
-    val semp = FiniteSet(Seq.empty).setType(SetType(Int32Type))
-    val s123 = FiniteSet(Seq(IL(1), IL(2), IL(3))).setType(SetType(Int32Type))
-    val s246 = FiniteSet(Seq(IL(2), IL(4), IL(6))).setType(SetType(Int32Type))
+    val semp = FiniteSet(Set()).setType(SetType(Int32Type))
+    val s123 = FiniteSet(Set(IL(1), IL(2), IL(3))).setType(SetType(Int32Type))
+    val s246 = FiniteSet(Set(IL(2), IL(4), IL(6))).setType(SetType(Int32Type))
 
     for(e <- evaluators) {
       checkSetComp(e, mkCall("finite"), Set(1, 2, 3))

@@ -234,7 +234,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     case SetType(base) =>
       assert(r.default == BooleanLiteral(false) && r.keyTpe == base)
 
-      FiniteSet(r.elems.keySet.toSeq).setType(tpe)
+      FiniteSet(r.elems.keySet).setType(tpe)
 
     case RawArrayType(from, to) =>
       r

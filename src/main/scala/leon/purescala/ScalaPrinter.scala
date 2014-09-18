@@ -26,7 +26,8 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case Iff(l,r)             => p"$l == $r"
       case Implies(l,r)         => pp(Or(Not(l), r))
       case Choose(vars, pred)   => p"choose((${typed(vars)}) => $pred)"
-      case s @ FiniteSet(rs)    => {
+      case s @ FiniteSet(rss)    => {
+        val rs = rss.toSeq
         s.getType match {
           case SetType(ut) =>
             p"Set[$ut]($rs)"

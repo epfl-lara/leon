@@ -1148,7 +1148,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExFiniteSet(tt, args)  =>
           val underlying = extractType(tt)
-          FiniteSet(args.map(extractTree(_))).setType(SetType(underlying))
+          FiniteSet(args.map(extractTree(_)).toSet).setType(SetType(underlying))
 
         case ExFiniteMultiset(tt, args) =>
           val underlying = extractType(tt)
@@ -1156,7 +1156,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExEmptySet(tt) =>
           val underlying = extractType(tt)
-          FiniteSet(Seq()).setType(SetType(underlying))
+          FiniteSet(Set()).setType(SetType(underlying))
 
         case ExEmptyMultiset(tt) =>
           val underlying = extractType(tt)

@@ -749,7 +749,7 @@ trait AbstractZ3Solver
                   case None => throw new CantTranslateException(t)
                   case Some(set) =>
                     val elems = set.map(e => rec(e))
-                    FiniteSet(elems.toSeq).setType(tpe)
+                    FiniteSet(elems).setType(tpe)
                 }
 
               case LeonType(UnitType) =>

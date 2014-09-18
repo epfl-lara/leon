@@ -255,7 +255,7 @@ object TypeTreeOps {
             Error(desc).setType(tpeSub(e.getType)).copiedFrom(e)
 
           case s @ FiniteSet(elements) if elements.isEmpty =>
-            FiniteSet(Nil).setType(tpeSub(s.getType)).copiedFrom(s)
+            FiniteSet(Set()).setType(tpeSub(s.getType)).copiedFrom(s)
 
           case v @ Variable(id) if idsMap contains id =>
             Variable(idsMap(id)).copiedFrom(v)

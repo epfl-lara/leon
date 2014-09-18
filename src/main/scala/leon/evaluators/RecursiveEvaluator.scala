@@ -273,14 +273,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case SetUnion(s1,s2) =>
       (e(s1), e(s2)) match {
-        case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet((els1 ++ els2).distinct).setType(f.getType)
+        case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet(els1 ++ els2).setType(f.getType)
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
 
     case SetIntersection(s1,s2) =>
       (e(s1), e(s2)) match {
         case (f @ FiniteSet(els1), FiniteSet(els2)) => {
-          val newElems = (els1.toSet intersect els2.toSet).toSeq
+          val newElems = (els1 intersect els2)
           val baseType = f.getType.asInstanceOf[SetType].base
           FiniteSet(newElems).setType(f.getType)
         }
@@ -290,7 +290,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case SetDifference(s1,s2) =>
       (e(s1), e(s2)) match {
         case (f @ FiniteSet(els1),FiniteSet(els2)) => {
-          val newElems = (els1.toSet -- els2.toSet).toSeq
+          val newElems = els1 -- els2
           val baseType = f.getType.asInstanceOf[SetType].base
           FiniteSet(newElems).setType(f.getType)
         }
@@ -312,7 +312,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case _ => throw EvalError(typeErrorMsg(sr, SetType(Untyped)))
       }
 
-    case f @ FiniteSet(els) => FiniteSet(els.map(e(_)).distinct).setType(f.getType)
+    case f @ FiniteSet(els) => FiniteSet(els.map(e(_))).setType(f.getType)
     case i @ IntLiteral(_) => i
     case b @ BooleanLiteral(_) => b
     case u @ UnitLiteral() => u

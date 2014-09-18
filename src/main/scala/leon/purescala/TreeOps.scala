@@ -780,7 +780,7 @@ object TreeOps {
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type                  => IntLiteral(0)
     case BooleanType                => BooleanLiteral(false)
-    case SetType(baseType)          => FiniteSet(Seq()).setType(tpe)
+    case SetType(baseType)          => FiniteSet(Set()).setType(tpe)
     case MapType(fromType, toType)  => FiniteMap(Seq()).setType(tpe)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => ArrayFill(IntLiteral(0), simplestValue(tpe))

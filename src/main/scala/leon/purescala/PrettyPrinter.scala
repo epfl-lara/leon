@@ -262,7 +262,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case GreaterThan(l,r)          => optP { p"$l > $r" }
       case LessEquals(l,r)           => optP { p"$l <= $r" }
       case GreaterEquals(l,r)        => optP { p"$l >= $r" }
-      case FiniteSet(rs)             => p"{$rs}"
+      case FiniteSet(rs)             => p"{${rs.toSeq}}"
       case FiniteMultiset(rs)        => p"{|$rs|)"
       case EmptyMultiset(_)          => p"\u2205"
       case Not(ElementOfSet(e,s))    => p"$e \u2209 $s"
