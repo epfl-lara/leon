@@ -69,6 +69,14 @@ case object TEGIS extends Rule("TEGIS") {
                 Generator[TypeTree, Expr](cct.fields.map(_.getType), { case rs => CaseClass(cct, rs)} )
               }
 
+            case st @ SetType(base) =>
+              List(
+                Generator(List(base),   { case elems     => FiniteSet(elems).setType(st) }),
+                Generator(List(st, st), { case Seq(a, b) => SetUnion(a, b) }),
+                Generator(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
+                Generator(List(st, st), { case Seq(a, b) => SetDifference(a, b) })
+              )
+
             case _ =>
               Nil
           }
