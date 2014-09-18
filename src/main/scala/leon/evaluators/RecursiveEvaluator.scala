@@ -71,8 +71,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
-        case Some(v) =>
+        case Some(v) if (v != expr) =>
           e(v)
+        case Some(v) =>
+          v
         case None =>
           throw EvalError("No value for identifier " + id.name + " in mapping.")
       }

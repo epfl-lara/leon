@@ -79,10 +79,20 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
       case _ => Nil
     }
 
+    val evaluator = new DefaultEvaluator(sctx.context, sctx.program)
+
     val testClusters = collect[Map[Identifier, Expr]] {
       case FunctionInvocation(tfd, List(in, out, FiniteMap(inouts))) if tfd.id.name == "passes" =>
         val infos = extractIds(Tuple(Seq(in, out)))
-        val exs   = inouts.map{ case (i, o) => Tuple(Seq(i, o)) }
+        val exs   = inouts.map{ case (i, o) =>
+          val test = Tuple(Seq(i, o)) 
+          val ids = variablesOf(test)
+          evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {
+            case EvaluationResults.Successful(res) => res
+            case _ =>
+              test
+          }
+        }
 
         // Check whether we can extract all ids from example
         val results = exs.collect { case e if infos.forall(_._2.isDefinedAt(e)) =>
@@ -147,7 +157,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
 object Problem {
   def fromChoose(ch: Choose, pc: Expr = BooleanLiteral(true)): Problem = {
     val xs = ch.vars
-    val phi = ch.pred
+    val phi = simplifyLets(ch.pred)
     val as = (variablesOf(And(pc, phi))--xs).toList
 
     Problem(as, pc, phi, xs)
