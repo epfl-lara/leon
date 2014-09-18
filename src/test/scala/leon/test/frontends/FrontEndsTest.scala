@@ -48,13 +48,13 @@ class FrontEndsTest extends leon.test.LeonTestSuite {
       )
       val ctx1 = testContext.copy(
         // We want a reporter that actually prints some output
-        reporter = new DefaultReporter(settings),
+        //reporter = new DefaultReporter(settings),
         settings = settings,
         options =  testContext.options :+ LeonValueOption("o", outFileName1) //:+ LeonFlagOption("library", true)
       )
       
       val ctx2 = ctx1.copy(
-        reporter = new DefaultReporter(settings),
+        //reporter = new DefaultReporter(settings),
         settings = settings,
         options = testContext.options :+ LeonValueOption("o", outFileName2 ) //:+ LeonFlagOption("library", true)
       )
