@@ -8,6 +8,7 @@ import utils.Simplifiers
 import leon.solvers._
 
 import scala.collection.concurrent.TrieMap
+import DefOps._
 
 object TreeOps {
   import Common._
@@ -1986,6 +1987,51 @@ object TreeOps {
     }, applyRec = true)(res1)
 
     (fds.values.toSet, res2)
+  }
+
+  def isStringLiteral(e: Expr): Option[String] = e match {
+    case CaseClass(cct, args) =>
+      val lib = inProgram(cct.classDef).library
+
+      if (Some(cct.classDef) == lib.String) {
+        listLiteralToList(args(0)) match {
+          case Some(chars) =>
+            val str = chars.map {
+              case CharLiteral(c) => Some(c)
+              case _              => None
+            }
+
+            if (str.forall(_.isDefined)) {
+              Some(str.flatten.mkString)
+            } else {
+              None
+            }
+          case _ =>
+            None
+
+        }
+      } else {
+        None
+      }
+    case _ =>
+      None
+  }
+
+  def listLiteralToList(e: Expr): Option[List[Expr]] = e match {
+    case CaseClass(cct, args) =>
+      val lib = inProgram(cct.classDef).library
+
+      if (Some(cct.classDef) == lib.Nil) {
+        Some(Nil)
+      } else if (Some(cct.classDef) == lib.Cons) {
+        listLiteralToList(args(1)).map { t =>
+          args(0) :: t
+        }
+      } else {
+        None
+      }
+    case _ =>
+      None
   }
 
   /**

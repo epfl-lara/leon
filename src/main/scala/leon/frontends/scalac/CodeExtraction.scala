@@ -367,9 +367,17 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
-    def libraryMethod(classname: String, methodName: String): Option[(LeonClassDef, FunDef)] = {
-      classesToClasses.values.find(_.id.name == classname).flatMap { cl =>
-        cl.methods.find(_.id.name == methodName).map { fd => (cl, fd) }
+    def libraryClass(pos: Position, className: String): LeonClassDef = {
+      classesToClasses.find{ case (s, c) => s.fullName == className }.map(_._2).getOrElse {
+        outOfSubsetError(pos, "Could not find class "+className)
+      }
+    }
+
+    def libraryCaseClass(pos: Position, className: String): CaseClassDef = {
+      libraryClass(pos, className) match {
+        case ccd: CaseClassDef => ccd
+        case _ =>
+          outOfSubsetError(pos, "Class "+className+" is not a case class")
       }
     }
 
@@ -1366,6 +1374,21 @@ trait CodeExtraction extends ASTExtractors {
 
           ArrayUpdated(rar, rk, rv)
 
+        case chr @ ExCharLiteral(c) =>
+          CharLiteral(c)
+
+        case str @ ExStringLiteral(s) =>
+          val chars = s.toList.map(CharLiteral(_))
+          
+          val consChar = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Cons"), Seq(CharType));
+          val nilChar  = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Nil"),  Seq(CharType));
+
+          val charList = chars.foldRight(CaseClass(nilChar, Seq())) {
+            case (c, s) => CaseClass(consChar, Seq(c, s))
+          }
+
+          CaseClass(CaseClassType(libraryCaseClass(str.pos, "leon.lang.string.String"), Seq()), Seq(charList))
+
         case c @ ExCall(rec, sym, tps, args) =>
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) =>
@@ -1536,6 +1559,9 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def extractType(tpt: Type)(implicit dctx: DefContext, pos: Position): LeonType = tpt match {
+      case tpe if tpe == CharClass.tpe =>
+        CharType
+
       case tpe if tpe == IntClass.tpe =>
         Int32Type
 
@@ -1636,7 +1662,7 @@ trait CodeExtraction extends ASTExtractors {
             tp
           })
         } else {
-          outOfSubsetError(NoPosition, "Unknown class "+sym.name)
+          outOfSubsetError(NoPosition, "Unknown class "+sym.fullName)
         }
       }
     }

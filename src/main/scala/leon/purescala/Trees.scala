@@ -434,6 +434,10 @@ object Trees {
     val fixedType = tp
   }
 
+  case class CharLiteral(value: Char) extends Literal[Char] with FixedType {
+    val fixedType = CharType
+  }
+
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }

@@ -40,7 +40,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     val injected = if (ctx.settings.injectLibrary) {
       libFiles
     } else {
-      libFiles.filter(f => f.contains("/lang/") || f.contains("/annotation/"))
+      libFiles.filter(f => (f.contains("/lang/") && !f.contains("/lang/string/")) || f.contains("/annotation/"))
     }
 
     val compilerOpts = injected ::: args.filterNot(_.startsWith("--"))

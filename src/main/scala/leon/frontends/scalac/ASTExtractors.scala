@@ -152,6 +152,16 @@ trait ASTExtractors {
       }
     }
 
+
+    object ExStringLiteral {
+      def unapply(tree: Apply): Option[String] = tree  match {
+        case Apply(ExSelected("leon", "lang", "string", "package", "strToStr"), (str: Literal) :: Nil) =>
+          Some(str.value.stringValue)
+        case _ =>
+          None
+      }
+    }
+
     object ExAssertExpression {
       /** Extracts the 'assert' contract from an expression (only if it's the
        * first call in the block). */
@@ -528,6 +538,13 @@ trait ASTExtractors {
       def unapply(tree: Literal): Option[Boolean] = tree match {
         case Literal(Constant(true)) => Some(true)
         case Literal(Constant(false)) => Some(false)
+        case _ => None
+      }
+    }
+
+    object ExCharLiteral {
+      def unapply(tree: Literal): Option[Char] = tree match {
+        case Literal(c @ Constant(i)) if c.tpe == CharClass.tpe => Some(c.charValue)
         case _ => None
       }
     }

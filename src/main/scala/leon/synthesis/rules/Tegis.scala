@@ -30,7 +30,6 @@ case object TEGIS extends Rule("TEGIS") {
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     var tests = p.getTests(sctx).map(_.ins).distinct
-
     if (tests.nonEmpty) {
       List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
         def apply(sctx: SynthesisContext): RuleApplicationResult = {
@@ -148,7 +147,6 @@ case object TEGIS extends Rule("TEGIS") {
           var candidate: Option[Expr] = None
           var enumLimit = 10000;
 
-
           var n = 1;
           timers.generating.start()
           allExprs.take(enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
@@ -188,8 +186,8 @@ case object TEGIS extends Rule("TEGIS") {
           }
           timers.generating.stop()
 
-          println("Found candidate "+n)
-          println("Compiled: "+evaluator.unit.compiledN)
+          //println("Found candidate "+n)
+          //println("Compiled: "+evaluator.unit.compiledN)
 
           if (candidate.isDefined) {
             RuleSuccess(Solution(BooleanLiteral(true), Set(), candidate.get), isTrusted = false)

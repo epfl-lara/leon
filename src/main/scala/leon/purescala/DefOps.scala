@@ -107,6 +107,17 @@ object DefOps {
     (pack, finalPath)
   }
 
+  def fullName(df: Definition, fromProgram: Option[Program] = None): String = {
+    val p = fromProgram.getOrElse(inProgram(df))
+
+    val (pr, ds) = pathAsVisibleFrom(p, df)
+
+    (pr ::: ds.flatMap{
+      case _: UnitDef => None
+      case m: ModuleDef if m.isStandalone => None
+      case d => Some(d.id.name)
+    }).mkString(".")
+  }
 
   def searchByFullName (
     fullName : String,

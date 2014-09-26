@@ -4,6 +4,7 @@ package leon
 package purescala
 
 import scala.collection.generic.CanBuildFrom
+import utils.Library
 
 object Definitions {
   import Common._
@@ -82,6 +83,8 @@ object Definitions {
     def duplicate = {
       copy(units = units.map{_.duplicate})
     }
+
+    lazy val library = Library(this)
     
     def writeScalaFile(filename: String) {
       import java.io.FileWriter

@@ -13,6 +13,7 @@ import utils._
 
 import java.lang.StringBuffer
 import PrinterHelpers._
+import TreeOps.isStringLiteral
 
 case class PrinterContext(
   current: Tree,
@@ -228,13 +229,23 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         } else {
           p"""|?($es)"""
         }
+      case e @ CaseClass(cct, args) =>
 
-      case CaseClass(cct, args) =>
-        if (cct.classDef.isCaseObject) {
-          p"$cct"
-        } else {
-          p"$cct($args)"
+        isStringLiteral(e) match {
+          case Some(str) =>
+            val q = '"';
+            p"$q$str$q"
+
+          case None =>
+            if (cct.classDef.isCaseObject) {
+              p"$cct"
+            } else {
+              p"$cct($args)"
+            }
         }
+
+
+
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" }
@@ -244,6 +255,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case UMinus(expr)         => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
+      case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case StringLiteral(s)     => p""""$s""""
       case UnitLiteral()        => p"()"
@@ -268,8 +280,23 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
         if (tfd.fd.isRealFunction) p"($args)"
 
+      case BinaryMethodCall(a, op, b) =>
+        optP { p"${a} $op ${b}" }
+
+      case FcallMethodInvocation(rec, fd, id, tps, args) =>
+
+        p"${rec}.${id}"
+        if (tps.nonEmpty) {
+          p"[$tps]"
+        }
+
+        if (fd.isRealFunction) {
+          p"($args)"
+        }
+
+
       case FunctionInvocation(tfd, args) =>
-        printWithPath(tfd.fd)
+        p"${tfd.id}"
 
         if (tfd.tps.nonEmpty) {
           p"[${tfd.tps}]"
@@ -380,6 +407,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Untyped               => p"<untyped>"
       case UnitType              => p"Unit"
       case Int32Type             => p"Int"
+      case CharType              => p"Char"
       case BooleanType           => p"Boolean"
       case ArrayType(bt)         => p"Array[$bt]"
       case SetType(bt)           => p"Set[$bt]"
@@ -526,6 +554,49 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     
   }
 
+  object FcallMethodInvocation {
+    def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, String, Seq[TypeTree], Seq[Expr])] = {
+        val FunctionInvocation(tfd, args) = fi
+        tfd.fd.origOwner match {
+          case Some(cd: ClassDef) =>
+            val (rec, rargs) = (args.head, args.tail)
+
+            val fid = tfd.fd.id
+
+            val maybeClassName = fid.name.substring(0, cd.id.name.length)
+
+            val fname = if (maybeClassName == cd.id.name) {
+              fid.name.substring(cd.id.name.length + 1) // +1 to also remove $
+            } else {
+              fid.name
+            }
+
+            val decoded = scala.reflect.NameTransformer.decode(fname)
+
+            val realtps = tfd.tps.drop(cd.tparams.size)
+
+            Some((rec, tfd.fd, decoded, realtps, rargs))
+          case _ =>
+            None
+        }
+    }
+  }
+
+  object BinaryMethodCall {
+    val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/");
+
+    def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
+      case FcallMethodInvocation(rec, _, name, Nil, List(a)) =>
+
+        if (makeBinary contains name) {
+          Some((rec, name, a))
+        } else {
+          None
+        }
+      case _ => None
+    }
+  }
+
   def requiresBraces(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresBraces(within)
     case (_, None) => false
@@ -541,12 +612,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
   def precedence(ex: Expr): Int = ex match {
     case (pa: PrettyPrintable) => pa.printPrecedence
     case (_: ElementOfSet) => 0
-    case (_: Or) => 1
-    case (_: And) => 3
+    case (_: Or | BinaryMethodCall(_, "||", _)) => 1
+    case (_: And | BinaryMethodCall(_, "&&", _)) => 3
     case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
     case (_: Equals | _: Iff | _: Not) => 5
-    case (_: Plus | _: Minus | _: SetUnion| _: SetDifference) => 6
-    case (_: Times | _: Division | _: Modulo) => 7
+    case (_: Plus | _: Minus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
+    case (_: Times | _: Division | _: Modulo | BinaryMethodCall(_, "*" | "/", _)) => 7
     case _ => 7
   }
 
@@ -558,6 +629,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_, Some(_: Require)) => false
     case (_, Some(_: Definition)) => false
     case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr)) => false
+    case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
+    case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false
     case (ie: IfExpr, _) => true
     case (me: MatchExpr, _ ) => true

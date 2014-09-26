@@ -90,6 +90,7 @@ trait SMTLIBTarget {
       tpe match {
         case BooleanType => Core.BoolSort()
         case Int32Type => Ints.IntSort()
+        case CharType => FixedSizeBitVectors.BitVectorSort(32)
 
         case RawArrayType(from, to) =>
           Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(from), declareSort(to)))
@@ -322,6 +323,7 @@ trait SMTLIBTarget {
         declareVariable(FreshIdentifier("Unit").setType(UnitType))
 
       case IntLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt).get)
       case BooleanLiteral(v) => Core.BoolConst(v)
       case StringLiteral(s) => SString(s)
       case Let(b,d,e) =>
@@ -472,6 +474,9 @@ trait SMTLIBTarget {
   def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
     case (_, UnitType) =>
       UnitLiteral()
+
+    case (SHexadecimal(h), CharType) =>
+      CharLiteral(h.toInt.toChar)
 
     case (SNumeral(n), Int32Type) =>
       IntLiteral(n.toInt)

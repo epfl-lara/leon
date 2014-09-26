@@ -26,7 +26,7 @@ package object lang {
   implicit def while2Invariant(u: Unit) = InvariantFunction
 
   @ignore
-  def error[T](reason: String): T = sys.error(reason)
+  def error[T](reason: java.lang.String): T = sys.error(reason)
 
   @library
   def passes[A, B](in: A, out: B)(tests: Map[A,B]): Boolean = {
