@@ -60,42 +60,42 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
-    //case a @ FiniteArray(elems) =>
-    //  val tpe @ ArrayType(base) = normalizeType(a.getType)
-    //  declareSort(tpe)
+    case a @ FiniteArray(elems) =>
+      val tpe @ ArrayType(base) = normalizeType(a.getType)
+      declareSort(tpe)
 
-    //  var ar: SExpr = declareVariable(FreshIdentifier("arrayconst").setType(RawArrayType(Int32Type, base)))
+      var ar: Term = declareVariable(FreshIdentifier("arrayconst").setType(RawArrayType(Int32Type, base)))
 
-    //  for ((e, i) <- elems.zipWithIndex) {
-    //    ar = SList(SSymbol("store"), ar, toSMT(IntLiteral(i)), toSMT(e))
-    //  }
+      for ((e, i) <- elems.zipWithIndex) {
+        ar = FunctionApplication(SSymbol("store"), Seq(ar, toSMT(IntLiteral(i)), toSMT(e)))
+      }
 
-    //  SList(constructors.toB(tpe), toSMT(IntLiteral(elems.size)), ar)
+      FunctionApplication(constructors.toB(tpe), Seq(toSMT(IntLiteral(elems.size)), ar))
 
-    ///**
-    // * ===== Set operations =====
-    // */
-    //case fs @ FiniteSet(elems) =>
-    //  if (elems.isEmpty) {
-    //    SList(SSymbol("as"), SSymbol("emptyset"), declareSort(fs.getType))
-    //  } else {
-    //    SList(SSymbol("setenum") :: elems.map(toSMT).toList)
-    //  }
+    /**
+     * ===== Set operations =====
+     */
+    case fs @ FiniteSet(elems) =>
+      if (elems.isEmpty) {
+        QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset")), Some(declareSort(fs.getType)))
+      } else {
+        FunctionApplication(SSymbol("singleton"), elems.toSeq.map(toSMT))
+      }
 
-    //case SubsetOf(ss, s) =>
-    //  SList(SSymbol("subseteq"), toSMT(ss), toSMT(s))
+    case SubsetOf(ss, s) =>
+      FunctionApplication(SSymbol("subseteq"), Seq(toSMT(ss), toSMT(s)))
 
-    //case ElementOfSet(e, s) =>
-    //  SList(SSymbol("in"), toSMT(e), toSMT(s))
+    case ElementOfSet(e, s) =>
+      FunctionApplication(SSymbol("in"), Seq(toSMT(e), toSMT(s)))
 
-    //case SetDifference(a, b) =>
-    //  SList(SSymbol("setminus"), toSMT(a), toSMT(b))
+    case SetDifference(a, b) =>
+      FunctionApplication(SSymbol("setminus"), Seq(toSMT(a), toSMT(b)))
 
-    //case SetUnion(a, b) =>
-    //  SList(SSymbol("union"), toSMT(a), toSMT(b))
+    case SetUnion(a, b) =>
+      FunctionApplication(SSymbol("union"), Seq(toSMT(a), toSMT(b)))
 
-    //case SetIntersection(a, b) =>
-    //  SList(SSymbol("intersection"), toSMT(a), toSMT(b))
+    case SetIntersection(a, b) =>
+      FunctionApplication(SSymbol("intersection"), Seq(toSMT(a), toSMT(b)))
 
     case _ =>
       super[SMTLIBTarget].toSMT(e)
