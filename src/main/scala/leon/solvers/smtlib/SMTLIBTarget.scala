@@ -69,6 +69,19 @@ trait SMTLIBTarget {
   // Should NEVER escape past SMT-world
   case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr
 
+  def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
+    case SetType(base) =>
+      assert(r.default == BooleanLiteral(false) && r.keyTpe == base)
+
+      FiniteSet(r.elems.keySet).setType(tpe)
+
+    case RawArrayType(from, to) =>
+      r
+
+    case _ =>
+      unsupported("Unable to extract from raw array for "+tpe)
+  }
+
   def unsupported(str: Any) = reporter.fatalError(s"Unsupported in smt-$targetName: $str")
 
   def declareSort(t: TypeTree): Sort = {
@@ -81,99 +94,164 @@ trait SMTLIBTarget {
         case RawArrayType(from, to) =>
           Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(from), declareSort(to)))
 
+        case MapType(from, to) =>
+          declareMapSort(from, to)
+
         case TypeParameter(id) =>
           val s = id2sym(id)
           val cmd = DeclareSort(s, 0)
           sendCommand(cmd)
           Sort(SMTIdentifier(s))
+
         case _: ClassType | _: TupleType | _: ArrayType | UnitType =>
           declareStructuralSort(tpe)
+
         case _ =>
           unsupported("Sort "+t)
       }
     }
   }
 
-  def freshSym(id: Identifier): SSymbol = freshSym(id.name)
-  def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
+  var mapSort: Option[SSymbol] = None
+  var optionSort: Option[SSymbol] = None
 
-  def declareStructuralSort(t: TypeTree): Sort = {
+  def declareOptionSort(of: TypeTree): Sort = {
+    optionSort match {
+      case None =>
+        val t      = SSymbol("T")
 
-    def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
-      case act: AbstractClassType =>
-        (act, act.knownCCDescendents)
-      case cct: CaseClassType =>
-        cct.parent match {
-          case Some(p) =>
-            getHierarchy(p)
-          case None =>
-            (cct, List(cct))
-        }
-    }
+        val s      = SSymbol("Option")
+        val some   = SSymbol("Some")
+        val some_v = SSymbol("Some_v")
+        val none   = SSymbol("None")
 
-    case class DataType(sym: SSymbol, cases: Seq[Constructor])
-    case class Constructor(sym: SSymbol, tpe: TypeTree, fields: Seq[(SSymbol, TypeTree)])
+        val caseSome = SList(some, SList(some_v, t))
+        val caseNone = SList(none)
 
-    var datatypes = Map[TypeTree, DataType]()
+        val cmd = NonStandardCommand(SList(SSymbol("declare-datatypes"), SList(t), SList(SList(s, caseSome, caseNone))))
+        sendCommand(cmd)
 
-
-    def findDependencies(t: TypeTree): Unit = t match {
-      case ct: ClassType =>
-        val (root, sub) = getHierarchy(ct)
-
-        if (!(datatypes contains root) && !(sorts containsA root)) {
-          val sym = freshSym(ct.id)
-
-          val conss = sub.map { case cct =>
-            Constructor(freshSym(cct.id), cct, cct.fields.map(vd => (freshSym(vd.id), vd.tpe)))
-          }
-
-          datatypes += root -> DataType(sym, conss)
-
-          // look for dependencies
-          for (ct <- root +: sub; f <- ct.fields) findDependencies(f.tpe)
-        }
-      case tt @ TupleType(bases) =>
-        if (!(datatypes contains t) && !(sorts containsA t)) {
-          val sym = freshSym("tuple"+bases.size)
-
-          val c = Constructor(freshSym(sym.name), tt, bases.zipWithIndex.map {
-            case (tpe, i) => (freshSym("_"+(i+1)), tpe)
-          })
-
-          datatypes += tt -> DataType(sym, Seq(c))
-
-          bases.foreach(findDependencies)
-        }
-
-      case UnitType =>
-        if (!(datatypes contains t) && !(sorts containsA t)) {
-
-          val sym = freshSym("Unit")
-
-          datatypes += t -> DataType(sym, Seq(Constructor(freshSym(sym.name), t, Nil)))
-        }
-
-      case at @ ArrayType(base) =>
-        if (!(datatypes contains t) && !(sorts containsA t)) {
-          val sym = freshSym("array")
-
-          val c = Constructor(freshSym(sym.name), at, List(
-            (freshSym("size"), Int32Type),
-            (freshSym("content"), RawArrayType(Int32Type, base))
-          ))
-
-          datatypes += at -> DataType(sym, Seq(c))
-
-          findDependencies(base)
-        }
-
+        optionSort = Some(s)
       case _ =>
     }
 
-    // Populates the dependencies of the structural type to define.
-    findDependencies(t)
+    Sort(SMTIdentifier(optionSort.get), Seq(declareSort(of)))
+  }
 
+  def declareMapSort(from: TypeTree, to: TypeTree): Sort = {
+    mapSort match {
+      case None =>
+        val m = SSymbol("Map")
+        val a = SSymbol("A")
+        val b = SSymbol("B")
+        mapSort = Some(m)
+
+        val optSort = declareOptionSort(to)
+
+        val arraySort = Sort(SMTIdentifier(SSymbol("Array")),
+                             Seq(Sort(SMTIdentifier(a)), optSort))
+
+        val cmd = DefineSort(m, Seq(a, b), arraySort)
+        sendCommand(cmd)
+      case _ =>
+    }
+
+    Sort(SMTIdentifier(mapSort.get), Seq(declareSort(from), declareSort(to)))
+  }
+
+
+
+  def freshSym(id: Identifier): SSymbol = freshSym(id.name)
+  def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
+
+  def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
+    case act: AbstractClassType =>
+      (act, act.knownCCDescendents)
+    case cct: CaseClassType =>
+      cct.parent match {
+        case Some(p) =>
+          getHierarchy(p)
+        case None =>
+          (cct, List(cct))
+      }
+  }
+
+
+  case class DataType(sym: SSymbol, cases: Seq[Constructor])
+  case class Constructor(sym: SSymbol, tpe: TypeTree, fields: Seq[(SSymbol, TypeTree)])
+
+  def findDependencies(t: TypeTree, dts: Map[TypeTree, DataType] = Map()): Map[TypeTree, DataType] = t match {
+    case ct: ClassType =>
+      val (root, sub) = getHierarchy(ct)
+
+      if (!(dts contains root) && !(sorts containsA root)) {
+        val sym = freshSym(ct.id)
+
+        val conss = sub.map { case cct =>
+          Constructor(freshSym(cct.id), cct, cct.fields.map(vd => (freshSym(vd.id), vd.tpe)))
+        }
+
+        var cdts = dts + (root -> DataType(sym, conss))
+
+        // look for dependencies
+        for (ct <- root +: sub; f <- ct.fields) {
+          cdts ++= findDependencies(f.tpe, cdts)
+        }
+
+        cdts
+      } else {
+        dts
+      }
+
+    case tt @ TupleType(bases) =>
+      if (!(dts contains t) && !(sorts containsA t)) {
+        val sym = freshSym("tuple"+bases.size)
+
+        val c = Constructor(freshSym(sym.name), tt, bases.zipWithIndex.map {
+          case (tpe, i) => (freshSym("_"+(i+1)), tpe)
+        })
+
+        var cdts = dts + (tt -> DataType(sym, Seq(c)))
+
+        for (b <- bases) {
+          cdts ++= findDependencies(b, cdts)
+        }
+        cdts
+      } else {
+        dts
+      }
+
+    case UnitType =>
+      if (!(dts contains t) && !(sorts containsA t)) {
+
+        val sym = freshSym("Unit")
+
+        dts + (t -> DataType(sym, Seq(Constructor(freshSym(sym.name), t, Nil))))
+      } else {
+        dts
+      }
+
+    case at @ ArrayType(base) =>
+      if (!(dts contains t) && !(sorts containsA t)) {
+        val sym = freshSym("array")
+
+        val c = Constructor(freshSym(sym.name), at, List(
+          (freshSym("size"), Int32Type),
+          (freshSym("content"), RawArrayType(Int32Type, base))
+        ))
+
+        var cdts = dts + (at -> DataType(sym, Seq(c)))
+
+        findDependencies(base, cdts)
+      } else {
+        dts
+      }
+
+    case _ =>
+      dts
+  }
+
+  def declareDatatypes(datatypes: Map[TypeTree, DataType]): Unit = {
     // We pre-declare ADTs
     for ((tpe, DataType(sym, _)) <- datatypes) {
       sorts += tpe -> Sort(SMTIdentifier(sym))
@@ -199,6 +277,13 @@ trait SMTLIBTarget {
 
     val cmd = DeclareDatatypes(adts)
     sendCommand(cmd)
+  }
+
+  def declareStructuralSort(t: TypeTree): Sort = {
+    // Populates the dependencies of the structural type to define.
+    val datatypes = findDependencies(t)
+
+    declareDatatypes(datatypes)
 
     sorts.toB(t)
   }
@@ -310,6 +395,33 @@ trait SMTLIBTarget {
         val constructor = constructors.toB(tpe)
         FunctionApplication(constructor, Seq(ssize, newcontent))
 
+      /**
+       * ===== Map operations =====
+       */
+      case m @ FiniteMap(elems) =>
+        val mt @ MapType(from, to) = m.getType
+        val ms = declareSort(mt)
+
+        val opt = declareOptionSort(to)
+
+        var res: Term = FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ms)), List(QualifiedIdentifier(SMTIdentifier(SSymbol("None")), Some(opt))))
+        for ((k, v) <- elems) {
+          res = ArraysEx.Store(res, toSMT(k), FunctionApplication(SSymbol("Some"), List(toSMT(v))))
+        }
+
+        res
+
+      case MapGet(m, k) =>
+        declareSort(m.getType)
+        FunctionApplication(SSymbol("Some_v"), List(ArraysEx.Select(toSMT(m), toSMT(k))))
+
+      case MapIsDefinedAt(m, k) =>
+        declareSort(m.getType)
+        FunctionApplication(SSymbol("is-Some"), List(ArraysEx.Select(toSMT(m), toSMT(k))))
+
+      /**
+       * ===== Everything else =====
+       */
 
       case e @ UnaryOperator(u, _) =>
         e match {

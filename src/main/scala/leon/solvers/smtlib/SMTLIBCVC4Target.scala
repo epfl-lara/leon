@@ -10,9 +10,11 @@ import Common._
 import Trees._
 import Extractors._
 import TypeTrees._
+import TreeOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands._
+import _root_.smtlib.theories._
 import _root_.smtlib.interpreters.CVC4Interpreter
 
 trait SMTLIBCVC4Target extends SMTLIBTarget {
@@ -31,8 +33,10 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           val cmd = DeclareSort(s, 0)
           sendCommand(cmd)
           Sort(SMTIdentifier(s))
+
         case SetType(base) =>
           Sort(SMTIdentifier(SSymbol("Set")), Seq(declareSort(base)))
+
         case _ =>
           super[SMTLIBTarget].declareSort(t)
       }
@@ -47,8 +51,21 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), SetType(base)) =>
       FiniteSet(Set()).setType(tpe)
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("setenum")), elems), SetType(base)) =>
+    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
+      RawArrayValue(k, Map(), fromSMT(elem, v))
+
+    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
+      val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
+
+      RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
+
+    case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       FiniteSet(elems.map(fromSMT(_, base)).toSet).setType(tpe)
+
+    case (FunctionApplication(SimpleSymbol(SSymbol("insert")), elems), SetType(base)) =>
+      val selems = elems.init.map(fromSMT(_, base))
+      val FiniteSet(se) = fromSMT(elems.last, tpe)
+      FiniteSet(se ++ selems).setType(tpe)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
       FiniteSet(elems.map(fromSMT(_, tpe) match {
@@ -57,6 +74,12 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
     case _ =>
       super[SMTLIBTarget].fromSMT(s, tpe)
+  }
+
+  def encodeMapType(tpe: TypeTree): TypeTree = tpe match {
+    case MapType(from, to) =>
+      TupleType(Seq(SetType(from), RawArrayType(from, to)))
+    case _ => sys.error("Woot")
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
@@ -79,14 +102,22 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       if (elems.isEmpty) {
         QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset")), Some(declareSort(fs.getType)))
       } else {
-        FunctionApplication(SSymbol("singleton"), elems.toSeq.map(toSMT))
+        val selems = elems.toSeq.map(toSMT)
+
+        val sgt = FunctionApplication(SSymbol("singleton"), Seq(selems.head));
+
+        if (selems.size > 1) {
+          FunctionApplication(SSymbol("insert"), selems.tail :+ sgt)
+        } else {
+          sgt
+        }
       }
 
     case SubsetOf(ss, s) =>
-      FunctionApplication(SSymbol("subseteq"), Seq(toSMT(ss), toSMT(s)))
+      FunctionApplication(SSymbol("subset"), Seq(toSMT(ss), toSMT(s)))
 
     case ElementOfSet(e, s) =>
-      FunctionApplication(SSymbol("in"), Seq(toSMT(e), toSMT(s)))
+      FunctionApplication(SSymbol("member"), Seq(toSMT(e), toSMT(s)))
 
     case SetDifference(a, b) =>
       FunctionApplication(SSymbol("setminus"), Seq(toSMT(a), toSMT(b)))

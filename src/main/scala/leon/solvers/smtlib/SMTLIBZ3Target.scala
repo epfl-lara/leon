@@ -29,15 +29,11 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   val extSym = SSymbol("_")
 
   var setSort: Option[SSymbol] = None
-  var mapSort: Option[SSymbol] = None
-  var optionSort: Option[SSymbol] = None
 
   override def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
       tpe match {
-        case MapType(from, to) =>
-          declareMapSort(from, to)
         case SetType(base) =>
           declareSetSort(base)
         case _ =>
@@ -62,49 +58,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     }
 
     Sort(SMTIdentifier(setSort.get), Seq(declareSort(of)))
-  }
-
-  def declareOptionSort(of: TypeTree): Sort = {
-    optionSort match {
-      case None =>
-        val t      = SSymbol("T")
-
-        val s      = SSymbol("Option")
-        val some   = SSymbol("Some")
-        val some_v = SSymbol("Some_v")
-        val none   = SSymbol("None")
-
-        val caseSome = SList(some, SList(some_v, t))
-        val caseNone = none
-
-        val cmd = NonStandardCommand(SList(SSymbol("declare-datatypes"), SList(t), SList(SList(s, caseSome, caseNone))))
-        sendCommand(cmd)
-
-        optionSort = Some(s)
-      case _ =>
-    }
-
-    Sort(SMTIdentifier(optionSort.get), Seq(declareSort(of)))
-  }
-
-  def declareMapSort(from: TypeTree, to: TypeTree): Sort = {
-    mapSort match {
-      case None =>
-        val m = SSymbol("Map")
-        val a = SSymbol("A")
-        val b = SSymbol("B")
-        mapSort = Some(m)
-        declareOptionSort(to)
-
-        val arraySort = Sort(SMTIdentifier(SSymbol("Array")),
-                             Seq(Sort(SMTIdentifier(a)), Sort(SMTIdentifier(optionSort.get), Seq(Sort(SMTIdentifier(b))))))
-
-        val cmd = DefineSort(m, Seq(a, b), arraySort)
-        sendCommand(cmd)
-      case _ =>
-    }
-
-    Sort(SMTIdentifier(mapSort.get), Seq(declareSort(from), declareSort(to)))
   }
 
   override def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
@@ -144,27 +97,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         }
 
         FunctionApplication(constructors.toB(tpe), List(toSMT(IntLiteral(elems.size)), ar))
-
-      /**
-       * ===== Map operations =====
-       */
-      case MapGet(m, k) =>
-        declareSort(m.getType)
-        FunctionApplication(SSymbol("Some_v"), List(ArraysEx.Select(toSMT(m), toSMT(k))))
-
-      case MapIsDefinedAt(m, k) =>
-        declareSort(m.getType)
-        FunctionApplication(SSymbol("is-Some"), List(ArraysEx.Select(toSMT(m), toSMT(k))))
-
-      case m @ FiniteMap(elems) =>
-        val ms = declareSort(m.getType)
-
-        var res: Term = FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ms)), List(SSymbol("None")))
-        for ((k, v) <- elems) {
-          res = ArraysEx.Store(res, toSMT(k), FunctionApplication(SSymbol("Some"), List(toSMT(v))))
-        }
-
-        res
 
       /**
        * ===== Set operations =====
@@ -228,19 +160,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
     case _ =>
       unsupported("Unable to extract "+s)
-  }
-
-  def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
-    case SetType(base) =>
-      assert(r.default == BooleanLiteral(false) && r.keyTpe == base)
-
-      FiniteSet(r.elems.keySet).setType(tpe)
-
-    case RawArrayType(from, to) =>
-      r
-
-    case _ =>
-      unsupported("Unable to extract from raw array for "+tpe)
   }
 
   // EK: We use get-model instead in order to extract models for arrays

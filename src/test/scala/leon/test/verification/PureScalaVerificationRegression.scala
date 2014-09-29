@@ -71,9 +71,9 @@ class PureScalaVerificationRegression extends LeonTestSuite {
     }
 
     val isCVC4Available = try {
-      //new CVC4Interpreter()
+      new CVC4Interpreter()
       // @EK: CVC4 works on most testcases already, but not all and thus cannot be used in regression.
-      false
+      true
     } catch {
       case e: java.io.IOException =>
         false
