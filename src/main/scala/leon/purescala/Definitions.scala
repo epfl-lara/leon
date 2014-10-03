@@ -351,6 +351,9 @@ object Definitions {
     val defType : DefType
   ) extends Definition {
     
+    // A copy of the original function before Xlang elimination
+    var orig : Option[FunDef] = None
+    
     private var fullBody_ : Expr = NoTree(returnType)
     def fullBody = fullBody_
     def fullBody_= (e : Expr) {
@@ -385,8 +388,7 @@ object Definitions {
     
     def copyContentFrom(from : FunDef) {
       this.fullBody  = from.fullBody 
-      //this.parent   = from.parent
-      //this.orig    = from.orig
+      this.orig    = from.orig
       this.origOwner = from.origOwner
       this.addAnnotation(from.annotations.toSeq : _*)
     }

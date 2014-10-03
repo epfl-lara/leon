@@ -21,8 +21,8 @@ object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     val (pgm3, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm2)
     val pgm4 = purescala.FunctionClosure.run(ctx)(pgm3)
 
-    def functionWasLoop(fd: FunDef): Boolean = fd.origOwner match {
-      case Some(nested : FunDef) => // was a nested function
+    def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
+      case Some(nested) => // could have been a LetDef originally
         wasLoop.contains(nested)
       case _ => false //meaning, this was a top level function
     }

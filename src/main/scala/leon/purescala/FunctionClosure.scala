@@ -64,7 +64,7 @@ object FunctionClosure extends TransformationPhase {
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
       newFunDef.setOwner(parent)
       fd       .setOwner(parent)
-      newFunDef.origOwner   = Some(fd)
+      newFunDef.orig = Some(fd)
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {
