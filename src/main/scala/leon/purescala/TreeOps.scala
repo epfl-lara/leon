@@ -1947,6 +1947,44 @@ object TreeOps {
   }
 
   /**
+   * Used to lift closures introduced by synthesis. Closures already define all
+   * the necessary information as arguments, no need to close them.
+   */
+  def liftClosures(e: Expr): (Set[FunDef], Expr) = {
+    var fds: Map[FunDef, FunDef] = Map()
+    val res1 = preMap({
+      case LetDef(fd, b) =>
+        val nfd = new FunDef(fd.id.freshen, fd.tparams, fd.returnType, fd.params, fd.defType)
+        nfd.copyContentFrom(fd)
+        nfd.copiedFrom(fd)
+
+        fds += fd -> nfd
+
+        Some(LetDef(nfd, b))
+
+      case fi @ FunctionInvocation(tfd, args) =>
+        if (fds contains tfd.fd) {
+          Some(FunctionInvocation(fds(tfd.fd).typed(tfd.tps), args))
+        } else {
+          None
+        }
+
+      case _ =>
+        None
+    })(e)
+
+    // we now remove LetDefs
+    val res2 = preMap({
+      case LetDef(fd, b) =>
+        Some(b)
+      case _ =>
+        None
+    }, applyRec = true)(res1)
+
+    (fds.values.toSet, res2)
+  }
+
+  /**
    * Deprecated API
    * ========
    */
