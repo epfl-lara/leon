@@ -200,6 +200,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
           (EvaluationResults.Successful(result), if (!pattern._2) Some(pattern._1) else None)
         } catch {
+          case e : StackOverflowError  =>
+            (EvaluationResults.RuntimeError(e.getMessage), None)
+
           case e : ClassCastException  =>
             (EvaluationResults.RuntimeError(e.getMessage), None)
 
