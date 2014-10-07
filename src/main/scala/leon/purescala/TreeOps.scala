@@ -3,6 +3,8 @@
 package leon
 package purescala
 
+import utils.Simplifiers
+
 import leon.solvers._
 
 import scala.collection.concurrent.TrieMap
@@ -1805,7 +1807,7 @@ object TreeOps {
    *   if (..) { foo(b, a) } else { .. }
    * }
    **/
-  def flattenFunctions(fdOuter: FunDef): FunDef = {
+  def flattenFunctions(fdOuter: FunDef, ctx: LeonContext, p: Program): FunDef = {
     fdOuter.body match {
       case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
         val argsDef  = fdOuter.params.map(_.id)
@@ -1851,9 +1853,11 @@ object TreeOps {
 
           val newFd = fdOuter.duplicate
 
+          val simp = Simplifiers.bestEffort(ctx, p) _
+
           newFd.body          = fdInner.body.map(b => simplePreTransform(pre)(b))
-          newFd.precondition  = mergePre(fdOuter.precondition, fdInner.precondition)
-          newFd.postcondition = mergePost(fdOuter.postcondition, fdInner.postcondition)
+          newFd.precondition  = mergePre(fdOuter.precondition, fdInner.precondition).map(simp)
+          newFd.postcondition = mergePost(fdOuter.postcondition, fdInner.postcondition).map{ case (id, ex) => id -> simp(ex) }
 
           newFd
         } else {
