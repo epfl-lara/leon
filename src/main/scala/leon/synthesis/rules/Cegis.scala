@@ -97,6 +97,10 @@ case object CEGIS extends Rule("CEGIS") {
               alts.toList
             }
 
+          case _: TypeParameter =>
+            { () =>
+              Nil
+            }
           case _ =>
             sctx.reporter.error("Can't construct generator. Unsupported type: "+t+"["+t.getClass+"]");
             { () => Nil }

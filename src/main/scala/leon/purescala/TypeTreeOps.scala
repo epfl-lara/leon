@@ -35,6 +35,15 @@ object TypeTreeOps {
       }
     } else {
       (tpe, stpe) match {
+        case (t, tp1: TypeParameter) =>
+          if (freeParams contains tp1) {
+            Some(Map(tp1 -> t))
+          } else if (tp1 == t) {
+            Some(Map())
+          } else {
+            None
+          }
+
         case (tp1: TypeParameter, t) =>
           if (freeParams contains tp1) {
             Some(Map(tp1 -> t))

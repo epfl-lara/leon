@@ -32,4 +32,10 @@ object Constructors {
       Tuple(Seq(ch))
     }
   }
+
+  def tupleWrap(es: Seq[Expr]): Expr = if (es.size > 1) {
+    Tuple(es)
+  } else {
+    es.head
+  }
 }

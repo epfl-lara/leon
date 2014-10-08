@@ -21,7 +21,8 @@ object Main {
       xlang.XlangAnalysisPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
-      verification.AnalysisPhase
+      verification.AnalysisPhase,
+      refactor.RefactorPhase
     )
   }
 
@@ -32,6 +33,7 @@ object Main {
 
   lazy val topLevelOptions : Set[LeonOptionDef] = Set(
       LeonFlagOptionDef ("termination", "--termination",        "Check program termination"),
+      LeonFlagOptionDef ("refactor",    "--refactor",           "Refactoring/Repair"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonValueOptionDef("solvers",     "--solvers=s1,s2",      "Use solvers s1 and s2 (fairz3,enum,smt)"),
@@ -140,6 +142,8 @@ object Main {
     for(opt <- leonOptions) opt match {
       case LeonFlagOption("termination", value) =>
         settings = settings.copy(termination = value)
+      case LeonFlagOption("refactor", value) =>
+        settings = settings.copy(refactor = value)
       case LeonFlagOption("synthesis", value) =>
         settings = settings.copy(synthesis = value)
       case LeonFlagOption("xlang", value) =>
@@ -205,6 +209,7 @@ object Main {
     import termination.TerminationPhase
     import xlang.XlangAnalysisPhase
     import verification.AnalysisPhase
+    import refactor.RefactorPhase
 
     val pipeBegin : Pipeline[List[String],Program] =
       ExtractionPhase andThen
@@ -213,6 +218,8 @@ object Main {
     val pipeProcess: Pipeline[Program, Any] = {
       if (settings.synthesis) {
         SynthesisPhase
+      } else if (settings.refactor) {
+        RefactorPhase
       } else if (settings.termination) {
         TerminationPhase
       } else if (settings.xlang) {

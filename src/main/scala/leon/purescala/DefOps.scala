@@ -78,6 +78,12 @@ object DefOps {
     }
   }
 
+  def funDefsFromMain(p: Program): Set[FunDef] = {
+    p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
+      u.definedFunctions
+    }
+  }
+
   def visibleFunDefsFromMain(p: Program): Set[FunDef] = {
     p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
       visibleFunDefsFrom(u) ++ u.definedFunctions
@@ -188,13 +194,6 @@ object DefOps {
       df <- descendDefs(startingPoint,path) 
     ) yield df ) orElse {
       
-      // Now starts the package nonsense
-      def isPrefixOf[A](pre : List[A],l : List[A]) : Boolean = (pre,l) match {
-        case (Nil, _) => true
-        case (hp :: tp, hl :: tl) if hp == hl => isPrefixOf(tp,tl)
-        case _ => false
-      }
-
       val program = inProgram(base)
       val currentPack = inPackage(base)
       val knownPacks = program.units map { _.pack }
@@ -209,11 +208,11 @@ object DefOps {
       import scala.util.Try
       val (packagePart, objectPart) = Try {
         // Find the longest match, then re-attach the current package.
-        val pack = subPacks filter { isPrefixOf(_,fullNameList) } maxBy(_.length)
+        val pack = subPacks filter { fullNameList.startsWith(_) } maxBy(_.length)
         ( currentPack ++ pack, fullNameList drop pack.length )
       } orElse { Try {
         // In this case, try to find a package that fits beginning from the root package
-        val pack = knownPacks filter { isPrefixOf(_,fullNameList) } maxBy(_.length)
+        val pack = knownPacks filter { fullNameList.startsWith(_) } maxBy(_.length)
         (pack, fullNameList drop pack.length)
       }} getOrElse {
         // No package matches

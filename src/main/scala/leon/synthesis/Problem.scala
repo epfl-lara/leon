@@ -12,7 +12,7 @@ import leon.purescala.Common._
 case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifier]) {
   override def toString = "⟦ "+as.mkString(";")+", "+(if (pc != BooleanLiteral(true)) pc+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
 
-  def getTests(sctx: SynthesisContext): Seq[InExample] = {
+  def getTests(sctx: SynthesisContext): Seq[Example] = {
     import purescala.Extractors._
     import evaluators._
 
@@ -20,7 +20,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
 
     val ev = new DefaultEvaluator(sctx.context, sctx.program)
 
-    def isValidExample(ex: InExample): Boolean = {
+    def isValidExample(ex: Example): Boolean = {
       val (mapping, cond) = ex match {
         case io: InOutExample =>
           (Map((as zip io.ins) ++ (xs zip io.outs): _*), And(pc, phi))
@@ -142,9 +142,9 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
     val examples = consolidated.toSeq.flatMap { t =>
       val ids = t.keySet
       if ((ids & allIds) == allIds) {
-        Some(new InOutExample(as.map(t), xs.map(t)))
+        Some(InOutExample(as.map(t), xs.map(t)))
       } else if ((ids & insIds) == insIds) {
-        Some(new InExample(as.map(t)))
+        Some(InExample(as.map(t)))
       } else {
         None
       }

@@ -5,5 +5,6 @@ package synthesis
 
 import purescala.Trees.Expr
 
-class InExample(val ins: Seq[Expr])
-class InOutExample(is: Seq[Expr], val outs: Seq[Expr]) extends InExample(is)
+class Example(val ins: Seq[Expr])
+case class InOutExample(is: Seq[Expr], val outs: Seq[Expr]) extends Example(is)
+case class InExample(is: Seq[Expr]) extends Example(is)

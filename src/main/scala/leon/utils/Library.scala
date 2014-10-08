@@ -17,6 +17,10 @@ case class Library(pgm: Program) {
     case fd: FunDef => fd
   }
 
+  lazy val passes = lookup("leon.lang.passes").collect {
+    case fd: FunDef => fd
+  }
+
   def lookup(name: String): Option[Definition] = {
     searchByFullName(name, pgm)
   }

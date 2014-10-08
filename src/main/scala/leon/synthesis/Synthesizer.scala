@@ -96,7 +96,7 @@ class Synthesizer(val context : LeonContext,
   }
 
   // Returns the new program and the new functions generated for this
-  def solutionToProgram(sol: Solution): (Program, Set[FunDef]) = {
+  def solutionToProgram(sol: Solution): (Program, List[FunDef]) = {
     import purescala.TypeTrees.TupleType
     import purescala.Definitions.ValDef
 
@@ -109,12 +109,12 @@ class Synthesizer(val context : LeonContext,
         Variable(id) -> TupleSelect(res, i+1)
       }.toMap
 
-    val fd = new FunDef(FreshIdentifier("finalTerm", true), Nil, ret, problem.as.map(id => ValDef(id, id.getType)), DefType.MethodDef)
+    val fd = new FunDef(FreshIdentifier(functionContext.id.name+"_final", true), Nil, ret, problem.as.map(id => ValDef(id, id.getType)), DefType.MethodDef)
     fd.precondition  = Some(And(problem.pc, sol.pre))
     fd.postcondition = Some((res.id, replace(mapPost, problem.phi)))
     fd.body          = Some(sol.term)
 
-    val newDefs = sol.defs + fd
+    val newDefs = fd +: sol.defs.toList
 
     val npr = program.copy(units = program.units map { u =>
       u.copy(modules = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq, false) +: u.modules )

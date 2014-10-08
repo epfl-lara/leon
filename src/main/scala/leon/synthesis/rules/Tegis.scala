@@ -12,6 +12,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.TypeTrees._
 import purescala.TreeOps._
+import purescala.DefOps._
 import purescala.TypeTreeOps._
 import purescala.Extractors._
 import purescala.ScalaPrinter
@@ -87,7 +88,7 @@ case object TEGIS extends Rule("TEGIS") {
           }
 
           def getFcallGenerators(t: TypeTree): Seq[Generator[TypeTree, Expr]] = {
-            def isCandidate(fd: FunDef): Option[TypedFunDef] = {
+            def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
               // Prevents recursive calls
 
               val cfd = sctx.functionContext
@@ -107,16 +108,50 @@ case object TEGIS extends Rule("TEGIS") {
                 val free = fd.tparams.map(_.tp)
                 canBeSubtypeOf(fd.returnType, free, t) match {
                   case Some(tpsMap) =>
-                    Some(fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp))))
+                    val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
+
+                    if (tpsMap.size < free.size) {
+                      /* Some type params remain free, we want to assign them:
+                       *
+                       * List[T] => Int, for instance, will be found when
+                       * requesting Int, but we need to assign T to viable
+                       * types. For that we use problem inputs as heuristic,
+                       * and look for instantiations of T such that input <?:
+                       * List[T].
+                       */
+                      p.as.map(_.getType).distinct.flatMap { (atpe: TypeTree) =>
+                        var finalFree = free.toSet -- tpsMap.keySet
+                        var finalMap = tpsMap
+
+                        for (ptpe <- tfd.params.map(_.tpe).distinct) {
+                          canBeSubtypeOf(atpe, finalFree.toSeq, ptpe) match {
+                            case Some(ntpsMap) =>
+                              finalFree --= ntpsMap.keySet
+                              finalMap  ++= ntpsMap
+                            case _ =>
+                          }
+                        }
+
+                        if (finalFree.isEmpty) {
+                          List(fd.typed(free.map(tp => finalMap.getOrElse(tp, tp))))
+                        } else {
+                          Nil
+                        }
+                      }
+                    } else {
+                      /* All type parameters that used to be free are assigned
+                       */
+                      List(tfd)
+                    }
                   case None =>
-                    None
+                    Nil
                 }
               } else {
-                None
+                Nil
               }
             }
 
-            val funcs = sctx.program.definedFunctions.flatMap(isCandidate)
+            val funcs = visibleFunDefsFromMain(sctx.program).toSeq.flatMap(getCandidates)
 
             funcs.map{ tfd =>
               Generator[TypeTree, Expr](tfd.params.map(_.tpe), { sub => FunctionInvocation(tfd, sub) })
@@ -124,7 +159,12 @@ case object TEGIS extends Rule("TEGIS") {
           }
 
           def getGenerators(t: TypeTree): Seq[Generator[TypeTree, Expr]] = {
-            getBaseGenerators(t) ++ getInputGenerators(t) ++ getFcallGenerators(t)
+            val res = getBaseGenerators(t) ++ getInputGenerators(t) ++ getFcallGenerators(t)
+            //for (g <- res) {
+            //  val inputs = g.subTrees.zipWithIndex.map{ case (t, i) => Variable(FreshIdentifier(t.toString).setType(t)) }
+            //  println(f"$t%20s  :=  ${g.builder(inputs)}")
+            //}
+            res
           }
 
           val enum = new MemoizedEnumerator[TypeTree, Expr](getGenerators)
