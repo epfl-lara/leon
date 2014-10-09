@@ -32,7 +32,7 @@ case object TEGIS extends Rule("TEGIS") {
     var tests = p.getTests(sctx).map(_.ins).distinct
     if (tests.nonEmpty) {
       List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-        def apply(sctx: SynthesisContext): RuleApplicationResult = {
+        def apply(sctx: SynthesisContext): RuleApplication = {
 
           val evalParams            = CodeGenParams(maxFunctionInvocations = 2000, checkContracts = true)
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
@@ -143,54 +143,61 @@ case object TEGIS extends Rule("TEGIS") {
 
           var candidate: Option[Expr] = None
           var enumLimit = 10000;
-
           var n = 1;
-          timers.generating.start()
-          allExprs.take(enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
-            val exprToTest = if (!isWrapped) {
-              Let(p.xs.head, e, p.phi)
-            } else {
-              letTuple(p.xs, e, p.phi)
-            }
 
-            sctx.reporter.debug("Got expression "+e)
-            timers.testing.start()
-            if (tests.forall{ case t =>
-                val ts = System.currentTimeMillis
-                val res = evaluator.eval(exprToTest, p.as.zip(t).toMap) match {
-                  case EvaluationResults.Successful(BooleanLiteral(true)) =>
-                    sctx.reporter.debug("Test "+t+" passed!")
-                    true
-                  case _ =>
-                    sctx.reporter.debug("Test "+t+" failed on "+e)
-                    failStat += t -> (failStat(t) + 1)
-                    false
-                }
-                res
-              }) {
-              if (isWrapped) {
-                candidate = Some(e)
+          def findNext(): Option[Expr] = {
+            candidate = None
+            timers.generating.start()
+            allExprs.take(enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
+              val exprToTest = if (!isWrapped) {
+                Let(p.xs.head, e, p.phi)
               } else {
-                candidate = Some(Tuple(Seq(e)))
+                letTuple(p.xs, e, p.phi)
               }
+
+              sctx.reporter.debug("Got expression "+e)
+              timers.testing.start()
+              if (tests.forall{ case t =>
+                  val ts = System.currentTimeMillis
+                  val res = evaluator.eval(exprToTest, p.as.zip(t).toMap) match {
+                    case EvaluationResults.Successful(BooleanLiteral(true)) =>
+                      sctx.reporter.debug("Test "+t+" passed!")
+                      true
+                    case _ =>
+                      sctx.reporter.debug("Test "+t+" failed on "+e)
+                      failStat += t -> (failStat(t) + 1)
+                      false
+                  }
+                  res
+                }) {
+                if (isWrapped) {
+                  candidate = Some(e)
+                } else {
+                  candidate = Some(Tuple(Seq(e)))
+                }
+              }
+              timers.testing.stop()
+
+              if (n % 50 == 0) {
+                tests = tests.sortBy(t => -failStat(t))
+              }
+              n += 1
             }
-            timers.testing.stop()
+            timers.generating.stop()
 
-            if (n % 50 == 0) {
-              tests = tests.sortBy(t => -failStat(t))
+            candidate
+          }
+
+          def toStream(): Stream[Solution] = {
+            findNext() match {
+              case Some(e) =>
+                Stream.cons(Solution(BooleanLiteral(true), Set(), e, isTrusted = false), toStream())
+              case None =>
+                Stream.empty
             }
-            n += 1
           }
-          timers.generating.stop()
 
-          //println("Found candidate "+n)
-          //println("Compiled: "+evaluator.unit.compiledN)
-
-          if (candidate.isDefined) {
-            RuleSuccess(Solution(BooleanLiteral(true), Set(), candidate.get), isTrusted = false)
-          } else {
-            RuleApplicationImpossible
-          }
+          RuleClosed(toStream())
         }
       })
     } else {

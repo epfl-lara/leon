@@ -6,46 +6,50 @@ package synthesis
 import purescala.Trees._
 import purescala.TreeOps._
 
-import synthesis.search.Cost
-
 abstract class CostModel(val name: String) {
+  type Cost = Int
+
   def solutionCost(s: Solution): Cost
   def problemCost(p: Problem): Cost
 
-  def ruleAppCost(app: RuleInstantiation): Cost = new Cost {
+  def ruleAppCost(app: RuleInstantiation): Cost = {
     val subSols = app.onSuccess.types.map {t => Solution.simplest(t) }.toList
     val simpleSol = app.onSuccess(subSols)
 
-    val value = simpleSol match {
+    simpleSol match {
       case Some(sol) =>
-        solutionCost(sol).value
+        solutionCost(sol)
       case None =>
-        problemCost(app.problem).value
+        problemCost(app.problem)
     }
   }
 }
 
+case class ScaledCostModel(cm: CostModel, scale: Int) extends CostModel(cm.name+"/"+scale) {
+  def solutionCost(s: Solution): Cost = Math.max(cm.solutionCost(s)/scale, 1)
+  def problemCost(p: Problem): Cost = Math.max(cm.problemCost(p)/scale, 1)
+  override def ruleAppCost(app: RuleInstantiation): Cost = Math.max(cm.ruleAppCost(app)/scale, 1)
+}
+
 object CostModel {
-  def default: CostModel = WeightedBranchesCostModel
+  def default: CostModel = ScaledCostModel(WeightedBranchesCostModel, 5)
 
   def all: Set[CostModel] = Set(
-    NaiveCostModel,
-    WeightedBranchesCostModel
+    ScaledCostModel(NaiveCostModel, 5),
+    ScaledCostModel(WeightedBranchesCostModel, 5)
   )
 }
 
 case object NaiveCostModel extends CostModel("Naive") {
-  def solutionCost(s: Solution): Cost = new Cost {
-    val value = {
-      val chooses = collectChooses(s.toExpr)
-      val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)).value)
+  def solutionCost(s: Solution): Cost = {
+    val chooses = collectChooses(s.toExpr)
+    val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)))
 
-      formulaSize(s.toExpr) + chooseCost
-    }
+    (formulaSize(s.toExpr) + chooseCost)/5+1
   }
 
-  def problemCost(p: Problem): Cost = new Cost {
-    val value = p.xs.size
+  def problemCost(p: Problem): Cost = {
+    1
   }
 
 }
@@ -87,19 +91,15 @@ case object WeightedBranchesCostModel extends CostModel("WeightedBranches") {
     bc.cost
   }
 
-  def solutionCost(s: Solution): Cost = new Cost {
-    val value = {
-      val chooses = collectChooses(s.toExpr)
-      val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)).value)
+  def solutionCost(s: Solution): Cost = {
+    val chooses = collectChooses(s.toExpr)
+    val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)))
 
-      formulaSize(s.toExpr) + branchesCost(s.toExpr) + chooseCost
-    }
+    formulaSize(s.toExpr) + branchesCost(s.toExpr) + chooseCost
   }
 
-  def problemCost(p: Problem): Cost = new Cost {
-    val value = {
-      p.xs.size
-    }
+  def problemCost(p: Problem): Cost = {
+    p.xs.size
   }
 
 }

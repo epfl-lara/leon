@@ -27,9 +27,9 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
           var i = 0;
           var maxTries = 3;
 
-          var result: Option[RuleApplicationResult] = None
-          var continue                              = true
-          var predicates: Seq[Expr]                 = Seq()
+          var result: Option[RuleApplication] = None
+          var continue                        = true
+          var predicates: Seq[Expr]           = Seq()
 
           while (result.isEmpty && i < maxTries && continue) {
             val phi = And(p.pc +: p.phi +: predicates)
@@ -47,7 +47,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
                   case (Some(false), _) =>
-                    result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
+                    result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))).setType(tpe))))
 
                   case _ =>
                     continue = false
@@ -56,7 +56,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
 
               case (Some(false), _) =>
                 if (predicates.isEmpty) {
-                  result = Some(RuleSuccess(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
+                  result = Some(RuleClosed(Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
                 } else {
                   continue = false
                   result = None
@@ -69,7 +69,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
             i += 1
           }
 
-          result.getOrElse(RuleApplicationImpossible)
+          result.getOrElse(RuleFailed())
         }
       }
       List(res)

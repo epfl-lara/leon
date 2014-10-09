@@ -9,6 +9,9 @@ import purescala.Trees._
 import purescala.Common._
 import purescala.ScalaPrinter
 import purescala.Definitions.{Program, FunDef}
+import leon.utils.ASCIIHelpers
+
+import graph._
 
 object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
@@ -116,6 +119,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     options
   }
 
+
   def run(ctx: LeonContext)(p: Program): Program = {
     val options = processOptions(ctx)
 
@@ -132,32 +136,27 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     var functions = Set[FunDef]()
 
-    val results = chooses.map { ci =>
-      val (sol, isComplete) = ci.synthesizer.synthesize()
+    chooses.foreach { ci =>
+      val (search, solutions) = ci.synthesizer.validate(ci.synthesizer.synthesize())
 
       val fd = ci.fd
 
+      if (ci.synthesizer.options.generateDerivationTrees) {
+        val dot = new DotGenerator(search.g)
+        dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+      }
+
+      val (sol, _) = solutions.head
+
       val expr = sol.toSimplifiedExpr(ctx, p)
       fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
-
       functions += fd
+    }
 
-      ci -> expr
-    }.toMap
-
-    if (options.inPlace) {
-      for (file <- ctx.files) {
-        new FileInterface(ctx.reporter).updateFile(file, results)
-      }
-    } else {
-      for (fd <- functions) {
-        val middle = " "+fd.id.name+" "
-        val remSize = (80-middle.length)
-        ctx.reporter.info("-"*math.floor(remSize/2).toInt+middle+"-"*math.ceil(remSize/2).toInt)
-
-        ctx.reporter.info(ScalaPrinter(fd))
-        ctx.reporter.info("")
-      }
+    for (fd <- functions) {
+      ctx.reporter.info(ASCIIHelpers.title(fd.id.name))
+      ctx.reporter.info(ScalaPrinter(fd))
+      ctx.reporter.info("")
     }
 
     p

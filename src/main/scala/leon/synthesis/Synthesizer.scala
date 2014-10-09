@@ -15,7 +15,7 @@ import solvers.z3._
 
 import java.io.File
 
-import synthesis.search._
+import synthesis.graph._
 
 class Synthesizer(val context : LeonContext,
                   val functionContext: FunDef,
@@ -25,45 +25,49 @@ class Synthesizer(val context : LeonContext,
 
   val reporter = context.reporter
 
-  def synthesize(): (Solution, Boolean) = {
+  def getSearch(): Search = {
+    if (options.manualSearch) {
+      new ManualSearch(context, problem, options.costModel)
+    } else if (options.searchWorkers > 1) {
+      ???
+      //new ParallelSearch(this, problem, options.searchWorkers)
+    } else {
+      new SimpleSearch(context, problem, options.costModel, options.searchBound)
+    }
+  }
 
-    val search = if (options.manualSearch) {
-        new ManualSearch(this, problem)
-      } else if (options.searchWorkers > 1) {
-        new ParallelSearch(this, problem, options.searchWorkers)
-      } else {
-        options.searchBound match {
-          case Some(b) =>
-            new BoundedSearch(this, problem, b)
-
-          case None =>
-            new SimpleSearch(this, problem)
-        }
-      }
+  def synthesize(): (Search, Stream[Solution]) = {
+    val s = getSearch();
 
     val t = context.timers.synthesis.search.start()
 
-    val res = search.search()
+    val sctx = SynthesisContext.fromSynthesizer(this)
+    val sols = s.search(sctx)
 
     val diff = t.stop()
     reporter.info("Finished in "+diff+"ms")
 
-    if (options.generateDerivationTrees) {
-      val converter = new AndOrGraphDotConverter(search.g, options.firstOnly)
-      converter.writeFile("derivation"+AndOrGraphDotConverterCounter.next()+".dot")
-    }
-
-    res match {
-      case Some((solution, true)) =>
-        (solution, true)
-      case Some((sol, false)) =>
-        validateSolution(search, sol, 5000L)
-      case None =>
-        (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem), true).getSolution, false)
-    }
+    (s, sols)
   }
 
-  def validateSolution(search: AndOrGraphSearch[TaskRunRule, TaskTryRules, Solution], sol: Solution, timeoutMs: Long): (Solution, Boolean) = {
+  def validate(results: (Search, Stream[Solution])): (Search, Stream[(Solution, Boolean)]) = {
+    val (s, sols) = results
+
+    val result = sols.map {
+      case sol if sol.isTrusted =>
+        (sol, true)
+      case sol =>
+        validateSolution(s, sol, 5000L)
+    }
+
+    (s, if (result.isEmpty) {
+      List((new PartialSolution(s.g, true).getSolution, false)).toStream
+    } else {
+      result
+    })
+  }
+
+  def validateSolution(search: Search, sol: Solution, timeoutMs: Long): (Solution, Boolean) = {
     import verification.AnalysisPhase._
     import verification.VerificationContext
 
@@ -87,7 +91,7 @@ class Synthesizer(val context : LeonContext,
       reporter.warning("Solution was invalid:")
       reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
       reporter.warning(vcreport.summaryString)
-      (new AndOrGraphPartialSolution(search.g, (task: TaskRunRule) => Solution.choose(task.problem), false).getSolution, false)
+      (new PartialSolution(search.g, false).getSolution, false)
     }
   }
 
@@ -119,3 +123,4 @@ class Synthesizer(val context : LeonContext,
     (npr, newDefs)
   }
 }
+

@@ -1,6 +1,6 @@
 package leon.utils
 
-object ASCIITables {
+object ASCIIHelpers {
   case class Table(title: String, rows: Seq[TableRow] = Nil) {
     def +(r: TableRow): Table = this ++ Seq(r)
     def ++(rs: Iterable[TableRow]): Table = copy(rows = rows ++ rs)
@@ -117,6 +117,20 @@ object ASCIITables {
 
   case class Cell(v: Any, spanning: Int = 1, align: Alignment = Left) {
     lazy val vString = v.toString
+  }
+
+  def title(str: String, width: Int = 80): String = {
+    line(str, "=", width)
+  }
+
+  def subTitle(str: String, width: Int = 80): String = {
+    line(str, "-", width)
+  }
+
+  def line(str: String, sep: String, width: Int = 80): String = {
+    val middle = " "+str+" "
+    val remSize = (width-middle.length)
+    sep*math.floor(remSize/2).toInt+middle+sep*math.ceil(remSize/2).toInt
   }
 
 }

@@ -451,8 +451,8 @@ case object CEGIS extends Rule("CEGIS") {
     }
 
     List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-      def apply(sctx: SynthesisContext): RuleApplicationResult = {
-        var result: Option[RuleApplicationResult]   = None
+      def apply(sctx: SynthesisContext): RuleApplication = {
+        var result: Option[RuleApplication]   = None
 
         var ass = p.as.toSet
         var xss = p.xs.toSet
@@ -487,11 +487,11 @@ case object CEGIS extends Rule("CEGIS") {
                 baseExampleInputs = p.as.map(a => model.getOrElse(a, simplestValue(a.getType))) +: baseExampleInputs
 
               case Some(false) =>
-                return RuleApplicationImpossible
+                return RuleFailed()
 
               case None =>
                 sctx.reporter.warning("Solver could not solve path-condition")
-                return RuleApplicationImpossible // This is not necessary though, but probably wanted
+                return RuleFailed() // This is not necessary though, but probably wanted
             }
           } finally {
             solver.free()
@@ -524,7 +524,7 @@ case object CEGIS extends Rule("CEGIS") {
 
         def allInputExamples() = baseExampleInputs.iterator ++ cachedInputIterator
 
-        def checkForPrograms(programs: Set[Set[Identifier]]): RuleApplicationResult = {
+        def checkForPrograms(programs: Set[Set[Identifier]]): RuleApplication = {
           for (prog <- programs) {
             val expr = ndProgram.determinize(prog)
             val res = Equals(Tuple(p.xs.map(Variable(_))), expr)
@@ -535,9 +535,9 @@ case object CEGIS extends Rule("CEGIS") {
             try {
               solver3.check match {
                 case Some(false) =>
-                  return RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = true)
+                  return RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = true))
                 case None =>
-                  return RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = false)
+                  return RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false))
                 case Some(true) =>
                   // invalid program, we skip
               }
@@ -546,7 +546,7 @@ case object CEGIS extends Rule("CEGIS") {
             }
           }
 
-          RuleApplicationImpossible
+          RuleFailed()
         }
 
         // Keep track of collected cores to filter programs to test
@@ -630,7 +630,7 @@ case object CEGIS extends Rule("CEGIS") {
             } else if (nPassing <= testUpTo) {
               // Immediate Test
               checkForPrograms(prunedPrograms) match {
-                case rs: RuleSuccess =>
+                case rs: RuleClosed =>
                   result = Some(rs)
                 case _ =>
               }
@@ -725,7 +725,7 @@ case object CEGIS extends Rule("CEGIS") {
                               bssAssumptions
 
                             case None =>
-                              return RuleApplicationImpossible
+                              return RuleFailed()
                           }
 
                           solver1.pop()
@@ -747,16 +747,16 @@ case object CEGIS extends Rule("CEGIS") {
 
                         val expr = ndProgram.determinize(satModel.filter(_._2 == BooleanLiteral(true)).keySet)
 
-                        result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr)))
+                        result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr)))
 
                       case _ =>
                         if (useOptTimeout) {
                           // Interpret timeout in CE search as "the candidate is valid"
                           sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
                           val expr = ndProgram.determinize(satModel.filter(_._2 == BooleanLiteral(true)).keySet)
-                          result = Some(RuleSuccess(Solution(BooleanLiteral(true), Set(), expr), isTrusted = false))
+                          result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), expr, isTrusted = false)))
                         } else {
-                          return RuleApplicationImpossible
+                          return RuleFailed()
                         }
                     }
                   }
@@ -767,7 +767,7 @@ case object CEGIS extends Rule("CEGIS") {
                     solver1.check match {
                       case Some(false) =>
                         // Unsat even without blockers (under which fcalls are then uninterpreted)
-                        return RuleApplicationImpossible
+                        return RuleFailed()
 
                       case _ =>
                     }
@@ -784,13 +784,13 @@ case object CEGIS extends Rule("CEGIS") {
             unrolings += 1
           } while(unrolings < maxUnrolings && result.isEmpty && !interruptManager.isInterrupted())
 
-          result.getOrElse(RuleApplicationImpossible)
+          result.getOrElse(RuleFailed())
 
         } catch {
           case e: Throwable =>
             sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
             e.printStackTrace
-            RuleApplicationImpossible
+            RuleFailed()
         } finally {
           solver1.free()
           solver2.free()

@@ -16,7 +16,7 @@ import leon.utils.Simplifiers
 
 // Defines a synthesis solution of the form:
 // ⟨ P | T ⟩
-class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
+class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrusted: Boolean = true) {
   override def toString = "⟨ "+pre+" | "+defs.mkString(" ")+" "+term+" ⟩" 
 
   def guardedTerm = {
@@ -60,8 +60,8 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr) {
 object Solution {
   def simplify(e: Expr) = simplifyLets(e)
 
-  def apply(pre: Expr, defs: Set[FunDef], term: Expr) = {
-    new Solution(simplify(pre), defs, simplify(term))
+  def apply(pre: Expr, defs: Set[FunDef], term: Expr, isTrusted: Boolean = true) = {
+    new Solution(simplify(pre), defs, simplify(term), isTrusted)
   }
 
   def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr)] = if (s eq null) None else Some((s.pre, s.defs, s.term))
@@ -77,5 +77,9 @@ object Solution {
 
   def simplest(t: TypeTree): Solution = {
     new Solution(BooleanLiteral(true), Set(), simplestValue(t))
+  }
+
+  def failed(p: Problem): Solution = {
+    new Solution(BooleanLiteral(true), Set(), Error("Failed").setType(TupleType(p.xs.map(_.getType))))
   }
 }

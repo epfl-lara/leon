@@ -37,4 +37,25 @@ object Simplifiers {
     // Clean up ids/names
     (new ScopeSimplifier).transform(s)
   }
+
+  def namePreservingBestEffort(ctx: LeonContext, p: Program)(e: Expr): Expr = {
+    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, p))
+
+    val simplifiers = List[Expr => Expr](
+      simplifyTautologies(uninterpretedZ3)(_),
+      decomposeIfs _,
+      rewriteTuples _,
+      evalGround(ctx, p),
+      normalizeExpression _
+    )
+
+    val simple = { expr: Expr =>
+      simplifiers.foldLeft(expr){ case (x, sim) => 
+        sim(x)
+      }
+    }
+
+    // Simplify first using stable simplifiers
+    fixpoint(simple, 5)(e)
+  }
 }

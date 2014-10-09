@@ -8,7 +8,7 @@ case object AsChoose extends Rule("As Choose") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
       Some(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
         def apply(sctx: SynthesisContext) = {
-          RuleSuccess(Solution.choose(p))
+          RuleClosed(Solution.choose(p))
         }
       })
   }

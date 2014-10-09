@@ -77,15 +77,22 @@ abstract class RuleInstantiation(
   val description: String,
   val priority: RulePriority) {
 
-  def apply(sctx: SynthesisContext): RuleApplicationResult
+  def apply(sctx: SynthesisContext): RuleApplication
 
   override def toString = description
 }
 
-sealed abstract class RuleApplicationResult
-case class RuleSuccess(solution: Solution, isTrusted: Boolean = true)  extends RuleApplicationResult
-case class RuleDecomposed(sub: List[Problem])                          extends RuleApplicationResult
-case object RuleApplicationImpossible                                  extends RuleApplicationResult
+sealed abstract class RuleApplication
+case class RuleClosed(solutions: Stream[Solution]) extends RuleApplication
+case class RuleExpanded(sub: List[Problem])        extends RuleApplication
+
+object RuleClosed {
+  def apply(s: Solution): RuleClosed = RuleClosed(Stream(s))
+}
+
+object RuleFailed {
+  def apply(): RuleClosed = RuleClosed(Stream.empty)
+}
 
 sealed abstract class RulePriority(val v: Int) extends Ordered[RulePriority] {
   def compare(that: RulePriority) = this.v - that.v
@@ -121,7 +128,7 @@ object RuleInstantiation {
     val subTypes = sub.map(p => TupleType(p.xs.map(_.getType)))
 
     new RuleInstantiation(problem, rule, new SolutionCombiner(sub.size, subTypes, onSuccess), description, priority) {
-      def apply(sctx: SynthesisContext) = RuleDecomposed(sub)
+      def apply(sctx: SynthesisContext) = RuleExpanded(sub)
     }
   }
 
@@ -137,7 +144,7 @@ object RuleInstantiation {
                        solution: Solution,
                        priority: RulePriority): RuleInstantiation = {
     new RuleInstantiation(problem, rule, new SolutionCombiner(0, Seq(), ls => Some(solution)), "Solve with "+solution, priority) {
-      def apply(sctx: SynthesisContext) = RuleSuccess(solution)
+      def apply(sctx: SynthesisContext) = RuleClosed(solution)
     }
   }
 }

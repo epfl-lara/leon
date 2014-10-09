@@ -90,7 +90,7 @@ class TimerStorage extends Dynamic {
   }
 
   def outputTable(printer: String => Unit) = {
-    import utils.ASCIITables._
+    import utils.ASCIIHelpers._
 
     var table = Table("Timers")
 
