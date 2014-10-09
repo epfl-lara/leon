@@ -287,6 +287,11 @@ sealed abstract class List[T] {
 
 }
 
+@ignore
+object List {
+  def apply[T](elems: T*): List[T] = ???
+}
+
 @library
 object ListOps {
   def flatten[T](ls: List[List[T]]): List[T] = ls match {

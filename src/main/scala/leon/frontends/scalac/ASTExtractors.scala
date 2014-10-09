@@ -164,6 +164,17 @@ trait ASTExtractors {
       }
     }
 
+    object ExListLiteral {
+      def unapply(tree: Apply): Option[(Type, List[Tree])] = tree  match {
+        case Apply(
+              TypeApply(ExSelected("leon", "collection", "List", "apply"), tpe :: Nil),
+              args) =>
+          Some((tpe.tpe, args))
+        case _ =>
+          None
+      }
+    }
+
     object ExAssertExpression {
       /** Extracts the 'assert' contract from an expression (only if it's the
        * first call in the block). */

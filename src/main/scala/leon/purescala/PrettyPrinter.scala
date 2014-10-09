@@ -13,7 +13,8 @@ import utils._
 
 import java.lang.StringBuffer
 import PrinterHelpers._
-import TreeOps.isStringLiteral
+import TreeOps.{isStringLiteral, isListLiteral}
+import TypeTreeOps.leastUpperBound
 
 case class PrinterContext(
   current: Tree,
@@ -230,17 +231,27 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"""|?($es)"""
         }
       case e @ CaseClass(cct, args) =>
-
-        isStringLiteral(e) match {
-          case Some(str) =>
-            val q = '"';
-            p"$q$str$q"
+        isListLiteral(e) match {
+          case Some((tpe, elems)) =>
+            val elemTps = leastUpperBound(elems.map(_.getType))
+            if (elemTps == Some(tpe)) {
+              p"List($elems)"  
+            } else {
+              p"List[$tpe]($elems)"  
+            }
 
           case None =>
-            if (cct.classDef.isCaseObject) {
-              p"$cct"
-            } else {
-              p"$cct($args)"
+            isStringLiteral(e) match {
+              case Some(str) =>
+                val q = '"';
+                p"$q$str$q"
+
+              case None =>
+                if (cct.classDef.isCaseObject) {
+                  p"$cct"
+                } else {
+                  p"$cct($args)"
+                }
             }
         }
 

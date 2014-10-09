@@ -1378,6 +1378,15 @@ trait CodeExtraction extends ASTExtractors {
 
           ArrayUpdated(rar, rk, rv)
 
+        case l @ ExListLiteral(tpe, elems) =>
+          val rtpe = extractType(l)
+          val cons = CaseClassType(libraryCaseClass(l.pos, "leon.collection.Cons"), Seq(rtpe));
+          val nil  = CaseClassType(libraryCaseClass(l.pos, "leon.collection.Nil"),  Seq(rtpe));
+
+          elems.foldRight(CaseClass(nil, Seq())) {
+            case (e, ls) => CaseClass(cons, Seq(extractTree(e), ls))
+          }
+
         case chr @ ExCharLiteral(c) =>
           CharLiteral(c)
 
