@@ -305,7 +305,7 @@ object Trees {
       if(or == null) None else Some(or.exprs)
   }
 
-  class Or(val exprs: Seq[Expr]) extends Expr with FixedType {
+  class Or private[Trees] (val exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
 
     assert(exprs.size >= 2)
@@ -332,7 +332,7 @@ object Trees {
     }
   }
 
-  class Iff(val left: Expr, val right: Expr) extends Expr with FixedType {
+  class Iff private[Trees] (val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
@@ -356,7 +356,7 @@ object Trees {
       if(imp == null) None else Some(imp.left, imp.right)
   }
 
-  class Implies(val left: Expr, val right: Expr) extends Expr with FixedType {
+  class Implies private[Trees] (val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
@@ -379,7 +379,7 @@ object Trees {
     }
   }
 
-  class Not private (val expr: Expr) extends Expr with FixedType {
+  class Not private[Trees] (val expr: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
 
     override def equals(that: Any) : Boolean = (that != null) && (that match {
@@ -414,7 +414,7 @@ object Trees {
     }
   }
 
-  class Equals(val left: Expr, val right: Expr) extends Expr with FixedType {
+  class Equals private[Trees] (val left: Expr, val right: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
