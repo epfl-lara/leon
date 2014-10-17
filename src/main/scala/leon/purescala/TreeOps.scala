@@ -466,16 +466,15 @@ object TreeOps {
     fixpoint(postMap(rec))(expr)
   }
 
+  def isGround(e: Expr): Boolean = {
+    variablesOf(e).isEmpty && !containsChoose(e)
+  }
 
   def evalGround(ctx: LeonContext, program: Program): Expr => Expr = {
     import evaluators._
 
     val eval = new DefaultEvaluator(ctx, program)
-
-    def isGround(e: Expr): Boolean = {
-      variablesOf(e).isEmpty && !containsChoose(e)
-    }
-
+    
     def rec(e: Expr): Option[Expr] = e match {
       case l: Terminal => None
       case e if isGround(e) => eval.eval(e) match {
