@@ -631,14 +631,6 @@ object Trees {
       setType(array.getType)
   }
 
-  /* List operations */
-  case class NilList(baseType: TypeTree) extends Expr with Terminal
-  case class Cons(head: Expr, tail: Expr) extends Expr 
-  case class Car(list: Expr) extends Expr 
-  case class Cdr(list: Expr) extends Expr 
-  case class Concat(list1: Expr, list2: Expr) extends Expr 
-  case class ListAt(list: Expr, index: Expr) extends Expr 
-
   /* Constraint programming */
   case class Distinct(exprs: Seq[Expr]) extends Expr with FixedType {
     val fixedType = BooleanType
