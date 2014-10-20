@@ -1,0 +1,20 @@
+#!/bin/bash
+
+echo "Running Z3:"
+T="$(date +%s)"
+for f in vcs/z3*; do
+    z3 -in -smt2 < $f > /dev/null
+done
+T="$(($(date +%s)-T))"
+echo "Time in seconds: ${T}"
+
+
+echo "Testing CVC4"
+T="$(date +%s)"
+for f in vcs/cvc4*; do
+    #cvc4-master -q --produce-models --no-incremental --tear-down-incremental --dt-rewrite-error-sel --print-success --lang smt < $f > /dev/null
+    #cvc4-master -q --dt-binary-split --produce-models --incremental --dt-rewrite-error-sel --print-success --lang smt < $f
+    cvc4-master -q --decision=internal --produce-models --incremental --dt-rewrite-error-sel --print-success --lang smt < $f
+done
+T="$(($(date +%s)-T))"
+echo "Time in seconds: ${T}"
