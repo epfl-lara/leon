@@ -403,6 +403,7 @@ object TreeOps {
       case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
       case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
       case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
+      case LiteralPattern(Some(bind), lit) => LiteralPattern(Some(sm(bind)), lit)
       case other => other
     }
 
@@ -694,6 +695,7 @@ object TreeOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(TupleSelect(in, i+1).setType(tpes(i)), p)}
           And(bind(ob, in) +: subTests)
         }
+        case LiteralPattern(ob,lit) => And(Equals(in,lit), bind(ob,in))
       }
     }
 
@@ -727,6 +729,8 @@ object TreeOps {
           case None => map
         }
       }
+      case LiteralPattern(None, lit) => Map()
+      case LiteralPattern(Some(id), lit) => Map(id -> in)
     }
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
@@ -1081,6 +1085,7 @@ object TreeOps {
               WildcardPattern(simplerBinder(ob))
             case TuplePattern(ob, patterns) =>
               TuplePattern(simplerBinder(ob), patterns map simplifyPattern)
+            case LiteralPattern(ob,lit) => LiteralPattern(simplerBinder(ob), lit)
             case _ =>
               p
           }
@@ -1119,6 +1124,14 @@ object TreeOps {
               } else {
                 TuplePattern(ob, subs)
               }
+            case LiteralPattern(ob, lit) => // TODO: is this correct?
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                LiteralPattern(ob,lit) 
+              }
+                
           }
 
           val newCases = resCases.flatMap { c => c match {

@@ -57,7 +57,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
           case CaseClassPattern(binder, sccd, sub) =>
             CaseClassPattern(binder, sccd, sub.map(unrollPattern(id, cct, withIds) _))
-
+            
           case _ => on
         }
 

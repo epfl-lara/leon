@@ -913,6 +913,11 @@ trait CodeExtraction extends ASTExtractors {
             outOfSubsetError(a, "Invalid type "+a.tpe+" for .isInstanceOf")
         }
 
+      case ExInt32Literal(i)   => (LiteralPattern(binder, IntLiteral(i)),     dctx)
+      case ExBooleanLiteral(b) => (LiteralPattern(binder, BooleanLiteral(b)), dctx)
+      case ExUnitLiteral()     => (LiteralPattern(binder, UnitLiteral()),     dctx)
+      case ExStringLiteral(s)  => (LiteralPattern(binder, StringLiteral(s)),  dctx)
+
       case _ =>
         outOfSubsetError(p, "Unsupported pattern: "+p.getClass)
     }

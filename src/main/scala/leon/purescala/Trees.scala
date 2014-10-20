@@ -169,8 +169,9 @@ object Trees {
           case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
           case _ => true
         }))
-        case t: TupleType => new MatchExpr(scrutinee, cases)
-        case _ => scala.sys.error("Constructing match expression on non-class type.")
+        case _: TupleType | Int32Type | BooleanType | UnitType => new MatchExpr(scrutinee, cases)
+        
+        case _ => scala.sys.error("Constructing match expression on non-supported type.")
       }
     }
 
@@ -228,6 +229,10 @@ object Trees {
   case class CaseClassPattern(binder: Option[Identifier], ct: CaseClassType, subPatterns: Seq[Pattern]) extends Pattern
 
   case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
+
+  case class LiteralPattern[T](binder: Option[Identifier], lit : Literal[T]) extends Pattern {
+    val subPatterns = Seq()    
+  }
 
 
   /* Propositional logic */

@@ -414,6 +414,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         ob.foreach { b => p"$b @ " }
         p"($subps)"
 
+      case LiteralPattern(ob, lit) =>
+        ob foreach { b => p"$b @ " }
+        p"$lit"
+
       // Types
       case Untyped               => p"<untyped>"
       case UnitType              => p"Unit"
