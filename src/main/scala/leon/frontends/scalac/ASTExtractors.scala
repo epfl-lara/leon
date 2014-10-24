@@ -154,9 +154,11 @@ trait ASTExtractors {
 
 
     object ExStringLiteral {
-      def unapply(tree: Apply): Option[String] = tree  match {
+      def unapply(tree: Tree): Option[String] = tree  match {
         case Apply(ExSelected("leon", "lang", "string", "package", "strToStr"), (str: Literal) :: Nil) =>
           Some(str.value.stringValue)
+        case Literal(c @ Constant(i)) if c.tpe == StringClass.tpe => 
+          Some(c.stringValue)
         case _ =>
           None
       }
