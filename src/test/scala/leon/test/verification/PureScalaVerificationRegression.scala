@@ -80,14 +80,14 @@ class PureScalaVerificationRegression extends LeonTestSuite {
     }
 
     for(f <- fs) {
-      mkTest(f, List("--feelinglucky", "--library=no"), forError)(block)
-      mkTest(f, List("--codegen", "--evalground", "--feelinglucky", "--library=no"), forError)(block)
-      mkTest(f, List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky", "--library=no"), forError)(block)
+      mkTest(f, List("--feelinglucky"), forError)(block)
+      mkTest(f, List("--codegen", "--evalground", "--feelinglucky"), forError)(block)
+      mkTest(f, List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky"), forError)(block)
       if (isZ3Available) {
-        mkTest(f, List("--solvers=smt-z3", "--feelinglucky", "--library=no"), forError)(block)
+        mkTest(f, List("--solvers=smt-z3", "--feelinglucky"), forError)(block)
       }
       if (isCVC4Available) {
-        mkTest(f, List("--solvers=smt-cvc4", "--feelinglucky", "--library=no"), forError)(block)
+        mkTest(f, List("--solvers=smt-cvc4", "--feelinglucky"), forError)(block)
       }
     }
   }

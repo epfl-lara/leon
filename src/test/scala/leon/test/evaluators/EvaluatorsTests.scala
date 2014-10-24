@@ -11,6 +11,7 @@ import leon.frontends.scalac.ExtractionPhase
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
+import leon.purescala.DefOps._
 import leon.purescala.TypeTrees._
 
 class EvaluatorsTests extends leon.test.LeonTestSuite {
@@ -37,16 +38,27 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   private def mkCall(name : String, args : Expr*)(implicit p : Program) = {
-    val fDef = p.definedFunctions.find(_.id.name == name) getOrElse {
-      throw new AssertionError("No function named '%s' defined in program.".format(name))
+    p.definedFunctions.foreach { fd =>
+      println(fullName(fd))
     }
 
-    FunctionInvocation(fDef.typed, args.toSeq)
+    val fn = s"<empty>.Program.$name"
+
+    searchByFullName(fn, p) match {
+      case Some(fd: FunDef) =>
+        FunctionInvocation(fd.typed, args.toSeq)
+      case _ =>
+        throw new AssertionError("No function named '%s' defined in program.".format(fn))
+    }
   }
 
   private def mkCaseClass(name : String, args : Expr*)(implicit p : Program) = {
-    val ccDef = p.caseClassDef(name)
-    CaseClass(CaseClassType(ccDef, Nil), args.toSeq)
+    searchByFullName("Program."+name, p) match {
+      case Some(ccd: CaseClassDef) =>
+        CaseClass(CaseClassType(ccd, Nil), args.toSeq)
+      case _ =>
+        throw new AssertionError("No case class named '%s' defined in program.".format(name))
+    }
   }
 
   private def checkCompSuccess(evaluator : Evaluator, in : Expr) : Expr = {

@@ -89,13 +89,10 @@ case object TEGIS extends Rule("TEGIS") {
           def getFcallGenerators(t: TypeTree): Seq[Generator[TypeTree, Expr]] = {
             def isCandidate(fd: FunDef): Option[TypedFunDef] = {
               // Prevents recursive calls
-              val isRecursiveCall = sctx.functionContext match {
-                case Some(cfd) =>
-                  (sctx.program.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
-                case None =>
-                  false
-              }
+              val cfd = sctx.functionContext
+
+              val isRecursiveCall = (sctx.program.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
               val isNotSynthesizable = fd.body match {
                 case Some(b) =>

@@ -13,8 +13,7 @@ import leon.test.LeonTestSuite
 private [purescala] object DefOpsHelper { 
   private def parseStrings(strs : List[String]) : Program = {
     val settings : Settings = Settings(
-      verify = false,
-      injectLibrary = false 
+      verify = false
     )
     val reporter = new DefaultReporter(settings)
     val context : LeonContext = LeonContext(

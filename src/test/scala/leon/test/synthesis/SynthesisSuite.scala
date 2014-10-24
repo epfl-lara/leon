@@ -41,7 +41,7 @@ class SynthesisSuite extends LeonTestSuite {
 
           val sctx = SynthesisContext(ctx,
                                       opts,
-                                      Some(f),
+                                      f,
                                       program,
                                       ctx.reporter)
 

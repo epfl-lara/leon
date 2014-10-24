@@ -18,7 +18,7 @@ class LibraryVerificationRegression extends LeonTestSuite {
                      PreprocessingPhase andThen
                      AnalysisPhase
 
-      val ctx = Main.processOptions(Seq("--library", "--functions=_")).copy(reporter = new TestSilentReporter())
+      val ctx = Main.processOptions(Seq("--functions=_")).copy(reporter = new TestSilentReporter())
 
       val report = pipeline.run(ctx)(Nil)
 

@@ -72,6 +72,12 @@ object DefOps {
     toRet.values.toSet
   }
 
+  def visibleFunDefsFrom(df: Definition): Set[FunDef] = {
+    visibleDefsFrom(df).collect {
+      case fd: FunDef => fd
+    }
+  }
+
   /** Returns true for strict superpackage */ 
   def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = 
     (p2.length > p1.length) && 

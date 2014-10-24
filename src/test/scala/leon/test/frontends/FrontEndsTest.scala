@@ -45,20 +45,19 @@ class FrontEndsTest extends leon.test.LeonTestSuite {
       // Compile original file
       val timeOut = 2
       val settings = testContext.settings.copy(   
-        debugSections = Set(), 
-        injectLibrary = false //true
+        debugSections = Set()
       )
       val ctx1 = testContext.copy(
         // We want a reporter that actually prints some output
         //reporter = new DefaultReporter(settings),
         settings = settings,
-        options =  testContext.options :+ LeonValueOption("o", outFileName1) //:+ LeonFlagOption("library", true)
+        options =  testContext.options :+ LeonValueOption("o", outFileName1)
       )
       
       val ctx2 = ctx1.copy(
         //reporter = new DefaultReporter(settings),
         settings = settings,
-        options = testContext.options :+ LeonValueOption("o", outFileName2 ) //:+ LeonFlagOption("library", true)
+        options = testContext.options :+ LeonValueOption("o", outFileName2 )
       )
       
       pipeline1.run(ctx1)(List(f.getAbsolutePath()))

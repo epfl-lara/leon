@@ -56,11 +56,9 @@ class CodeGenTests extends test.LeonTestSuite {
   
   private def testCodeGen(prog : TestCase, requireMonitor : Boolean, doInstrument : Boolean) { test(prog.name) {
     import prog._
-    val settings = testContext.settings.copy(injectLibrary = false)
     val ctx = testContext.copy(
       // We want a reporter that actually prints some output
-      reporter = new DefaultReporter(settings),
-      settings = settings
+      reporter = new DefaultReporter(testContext.settings)
     )
     
     val ast = pipeline.run(ctx)( (content, List()) )

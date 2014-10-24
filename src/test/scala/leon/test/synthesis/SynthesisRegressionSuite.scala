@@ -28,7 +28,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     var chooses = List[ChooseInfo]()
 
     test(cat+": "+f.getName()+" Compilation") {
-      val ctx = createLeonContext("--synthesis", "--library")
+      val ctx = createLeonContext("--synthesis")
 
       val opts = SynthesisOptions(searchBound = Some(bound), allSeeing = true)
 

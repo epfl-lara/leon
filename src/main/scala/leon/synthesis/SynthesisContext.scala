@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 case class SynthesisContext(
   context: LeonContext,
   options: SynthesisOptions,
-  functionContext: Option[FunDef],
+  functionContext: FunDef,
   program: Program,
   reporter: Reporter
 ) {

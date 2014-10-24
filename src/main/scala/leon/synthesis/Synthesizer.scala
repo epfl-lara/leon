@@ -18,7 +18,7 @@ import java.io.File
 import synthesis.search._
 
 class Synthesizer(val context : LeonContext,
-                  val functionContext: Option[FunDef],
+                  val functionContext: FunDef,
                   val program: Program,
                   val problem: Problem,
                   val options: SynthesisOptions) {
