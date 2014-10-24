@@ -327,7 +327,11 @@ trait CodeExtraction extends ASTExtractors {
     }
     
     private def extractPackageRef(refPath : RefTree) : PackageRef =       
-      getSelectChain(refPath.qualifier) :+ refPath.name.toString
+      (getSelectChain(refPath.qualifier) :+ refPath.name.toString) match {
+        // Make sure to drop "<empty>" package
+        case List("<empty>") => List()
+        case other => other
+      }
     
     private def extractImport(i : Import, current : UnitDef, units : List[UnitDef]) : Seq[ LeonImport ] = i match { case Import(expr, sels) => 
       import DefOps._

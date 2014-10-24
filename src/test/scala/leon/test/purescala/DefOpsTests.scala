@@ -72,7 +72,9 @@ private [purescala] object DefOpsHelper {
         
     """ |package foo.bar.baz.and.some.more
         |object InSubpackage {}
-        |""".stripMargin
+        |""".stripMargin,
+
+    """ object InEmpty { def arrayLookup(a : Array[Int], i : Int) = a(i) } """
   )
   val program = parseStrings(test1)
   val fooC = searchByFullName("foo.bar.baz.Foo.fooC",program)
@@ -91,6 +93,13 @@ class DefOpsTests extends LeonTestSuite {
       val fooClass = searchByFullName("foo.bar.baz.Foo.FooC",program)
       assert (fooClass.isDefined)
       assert(leastCommonAncestor(fooC.get, fooClass.get).id.name == "Foo")
+    } 
+
+    test("In empty package") { 
+      val name = "InEmpty.arrayLookup"
+      val df = searchByFullName(name,program)
+      assert(df.isDefined)
+      assert{fullName(df.get) == name } 
     }
     
     // Search by full name    
@@ -113,7 +122,8 @@ class DefOpsTests extends LeonTestSuite {
     
     mustFind("other.hello.world.Foo",     "Find a definition in another package")
     mustFind("and.some.more.InSubpackage","Find a definition in a subpackage")
-    
+    mustFind("InEmpty.arrayLookup",       "Find a definition in the empty package")
+
     mustFail("nonExistent",    "Don't find non-existent definition")
     mustFail("A",              "Don't find definition in another object")
     mustFail("InSubpackage",   "Don't find definition in another package")
