@@ -428,6 +428,10 @@ object Definitions {
       TypedFunDef(this, Nil)
     }
 
+    def typedWithDef = {
+      TypedFunDef(this, tparams.map(_.tp))
+    }
+
     setSubDefOwners()
     // Deprecated, old API
     @deprecated("Use .body instead", "2.3")

@@ -16,6 +16,7 @@ import purescala.DefOps._
 import purescala.TypeTreeOps._
 import purescala.Extractors._
 import purescala.ScalaPrinter
+import utils.Helpers._
 
 import scala.collection.mutable.{Map=>MutableMap}
 
@@ -145,7 +146,7 @@ case object CEGIS extends Rule("CEGIS") {
           case Some(alts) =>
             alts
           case None =>
-            val alts = visibleFunDefsFrom(sctx.functionContext).toSeq.flatMap(isCandidate)
+            val alts = functionsAvailable(sctx.program).toSeq.flatMap(isCandidate)
             funcCache += t -> alts
             alts
         }
@@ -157,6 +158,32 @@ case object CEGIS extends Rule("CEGIS") {
       } else {
         Nil
       }
+    }
+
+    var safeRecCache = Map[TypeTree, List[(Expr, Set[Identifier])]]()
+
+    def safeRecCalls(t: TypeTree): List[(Expr, Set[Identifier])] = {
+      val calls = safeRecCache.getOrElse(t, {
+        val r = terminatingCalls(sctx.program, t, p.pc)
+        safeRecCache += t -> r
+        for ((e, f) <- r) {
+          printGenerator(t, e, f);
+        }
+        r
+      })
+
+      calls.map {
+        case (e, free) =>
+          val fids = free.map { f => f -> f.freshen }.toMap
+          val m = fids.mapValues(_.toVariable)
+          (replaceFromIDs(m, e), fids.values.toSet)
+      }
+    }
+
+    def printGenerator(t: TypeTree, e: Expr, free: Set[Identifier]) {
+      val map = free.map { f => f -> FreshIdentifier(f.getType.toString).setType(f.getType).toVariable }.toMap
+      val gen = replaceFromIDs(map, e)
+      println(f"$t%30s ::= "+gen)
     }
 
     class NonDeterministicProgram(val p: Problem,
@@ -401,7 +428,10 @@ case object CEGIS extends Rule("CEGIS") {
 
           val gen  = getGenerator(recId.getType)
 
-          val alts = gen.altBuilder() ::: inputAlternatives(recId.getType) ::: funcAlternatives(recId.getType)
+          val alts = gen.altBuilder() :::
+                     inputAlternatives(recId.getType) :::
+                     funcAlternatives(recId.getType) :::
+                     safeRecCalls(recId.getType)
 
           val altsWithBranches = alts.map(alt => FreshIdentifier("B", true).setType(BooleanType) -> alt)
 

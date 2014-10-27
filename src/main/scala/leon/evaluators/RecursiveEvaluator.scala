@@ -49,6 +49,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   def initRC(mappings: Map[Identifier, Expr]): RC
   def initGC: GC
 
+  private[this] var clpCache = Map[(Choose, Seq[Expr]), Expr]()
+
   def eval(ex: Expr, mappings: Map[Identifier, Expr]) = {
     try {
       lastGC = Some(initGC)
@@ -397,45 +399,52 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       ctx.reporter.debug("Executing choose!")
 
-      val tStart = System.currentTimeMillis;
+      val ins = p.as.map(rctx.mappings(_))
 
-      val solver = SolverFactory.getFromSettings(ctx, program).getNewSolver
+      if (clpCache contains (choose, ins)) {
+        clpCache((choose, ins))
+      } else {
+        val tStart = System.currentTimeMillis;
 
-      val eqs = p.as.map {
-        case id =>
-          Equals(Variable(id), rctx.mappings(id))
-      }
+        val solver = SolverFactory.getFromSettings(ctx, program).getNewSolver
 
-      val cnstr = And(eqs ::: p.pc :: p.phi :: Nil)
-      solver.assertCnstr(cnstr)
-
-      try {
-        solver.check match {
-          case Some(true) =>
-            val model = solver.getModel;
-
-            val valModel = valuateWithModel(model) _
-
-            val res = p.xs.map(valModel)
-            val leonRes = if (res.size > 1) {
-              Tuple(res)
-            } else {
-              res(0)
-            }
-
-            val total = System.currentTimeMillis-tStart;
-
-            ctx.reporter.debug("Synthesis took "+total+"ms")
-            ctx.reporter.debug("Finished synthesis with "+leonRes.asString(ctx))
-
-            leonRes
-          case Some(false) =>
-            throw RuntimeError("Constraint is UNSAT")
-          case _ =>
-            throw RuntimeError("Timeout exceeded")
+        val eqs = p.as.map {
+          case id =>
+            Equals(Variable(id), rctx.mappings(id))
         }
-      } finally {
-        solver.free()
+
+        val cnstr = And(eqs ::: p.pc :: p.phi :: Nil)
+        solver.assertCnstr(cnstr)
+
+        try {
+          solver.check match {
+            case Some(true) =>
+              val model = solver.getModel;
+
+              val valModel = valuateWithModel(model) _
+
+              val res = p.xs.map(valModel)
+              val leonRes = if (res.size > 1) {
+                Tuple(res)
+              } else {
+                res(0)
+              }
+
+              val total = System.currentTimeMillis-tStart;
+
+              ctx.reporter.debug("Synthesis took "+total+"ms")
+              ctx.reporter.debug("Finished synthesis with "+leonRes.asString(ctx))
+
+              clpCache += (choose, ins) -> leonRes
+              leonRes
+            case Some(false) =>
+              throw RuntimeError("Constraint is UNSAT")
+            case _ =>
+              throw RuntimeError("Timeout exceeded")
+          }
+        } finally {
+          solver.free()
+        }
       }
 
     case MatchExpr(scrut, cases) =>
