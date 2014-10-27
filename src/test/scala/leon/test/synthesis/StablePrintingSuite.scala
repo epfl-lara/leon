@@ -91,8 +91,8 @@ class StablePrintingSuite extends LeonTestSuite {
 
             for (a <- apps) {
               a.apply(sctx) match {
-                case RuleSuccess(sol, isTrusted) =>
-                case RuleDecomposed(sub) =>
+                case RuleClosed(sols) =>
+                case RuleExpanded(sub) =>
                   a.onSuccess(sub.map(Solution.choose(_))) match {
                     case Some(sol) =>
                       val result = sol.toSimplifiedExpr(ctx, pgm)
@@ -106,8 +106,6 @@ class StablePrintingSuite extends LeonTestSuite {
                       workList push Job(newContent, (i to i+sub.size).toSet, a.toString :: j.rules)
                     case None =>
                   }
-
-                case RuleApplicationImpossible =>
               }
             }
           }

@@ -64,16 +64,14 @@ class SynthesisSuite extends LeonTestSuite {
     apps.filter(matchingDesc(_, ss)) match {
       case app :: Nil =>
         app.apply(sctx) match {
-          case RuleSuccess(sol, trusted) =>
+          case RuleClosed(sols) =>
+            assert(sols.nonEmpty)
             assert(ss.andThen.isEmpty)
-            sol
+            sols.head
 
-          case RuleDecomposed(sub) =>
+          case RuleExpanded(sub) =>
             val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(sctx, p, ss) }
             app.onSuccess(subSols).get
-
-          case _ =>
-            throw new AssertionError("Failed to apply "+app+" on "+p)
         }
 
       case Nil =>
@@ -108,8 +106,8 @@ class SynthesisSuite extends LeonTestSuite {
 
   def assertRuleSuccess(sctx: SynthesisContext, rr: RuleInstantiation): Option[Solution] = {
     rr.apply(sctx) match {
-      case RuleSuccess(sol, trusted) =>
-        Some(sol)
+      case RuleClosed(sols) if sols.nonEmpty =>
+        sols.headOption
       case _ =>
         assert(false, "Rule did not succeed")
         None
@@ -189,13 +187,13 @@ object Injection {
   ) {
     case (sctx, fd, p) =>
       rules.CEGIS.instantiateOn(sctx, p).head.apply(sctx) match {
-        case RuleSuccess(sol, trusted) =>
-          assert(false, "CEGIS should have failed, but found : %s".format(sol))
+        case RuleClosed(sols) if sols.nonEmpty =>
+          assert(false, "CEGIS should have failed, but found : %s".format(sols.head))
         case _ =>
       }
 
       rules.ADTSplit.instantiateOn(sctx, p).head.apply(sctx) match {
-        case RuleDecomposed(subs) =>
+        case RuleExpanded(subs) =>
           for (sub <- subs; alt <- rules.CEGIS.instantiateOn(sctx, sub)) {
             assertRuleSuccess(sctx, alt)
           }
