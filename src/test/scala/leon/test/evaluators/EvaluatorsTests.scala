@@ -38,11 +38,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   private def mkCall(name : String, args : Expr*)(implicit p : Program) = {
-    p.definedFunctions.foreach { fd =>
-      println(fullName(fd))
-    }
-
-    val fn = s"<empty>.Program.$name"
+    val fn = s"Program.$name"
 
     searchByFullName(fn, p) match {
       case Some(fd: FunDef) =>

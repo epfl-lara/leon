@@ -78,6 +78,12 @@ object DefOps {
     }
   }
 
+  def visibleFunDefsFromMain(p: Program): Set[FunDef] = {
+    p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
+      visibleFunDefsFrom(u) ++ u.definedFunctions
+    }
+  }
+
   /** Returns true for strict superpackage */ 
   def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = 
     (p2.length > p1.length) && 
