@@ -434,18 +434,16 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
       // Definitions
       case Program(id, units) =>
-        p"""${nary(units, "\n\n")}"""
+        p"""${nary(units filter {_.isMainUnit}, "\n\n")}"""
       
-      case UnitDef(id,modules,pack,imports,isBasic) =>
-        if (isBasic) {
-          if (!pack.isEmpty){
-            p"""|package ${pack mkString "."}
-                |"""
-          }
-          p"""|${nary(imports,"\n")}
-              |${nary(modules,"\n\n")}
+      case UnitDef(id,modules,pack,imports,_) =>
+        if (!pack.isEmpty){
+          p"""|package ${pack mkString "."}
               |"""
         }
+        p"""|${nary(imports,"\n")}
+            |${nary(modules,"\n\n")}
+            |"""
         
       case PackageImport(pack) => 
         import DefOps._
