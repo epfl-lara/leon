@@ -120,12 +120,16 @@ object RestoreMethods extends TransformationPhase {
       }
       m.copy(defs = m.definedClasses ++ newFuns).copiedFrom(m)    
     }
+
+    val modsToMods = ( for { u <- p.units; m <- u.modules } yield (m,refreshModule(m)) ).toMap
     
     p.copy(units = p.units map { u => u.copy(
-      modules = u.modules map refreshModule,
+      modules = u.modules map modsToMods,
       imports = u.imports flatMap {
         // Don't include imports for functions that became methods
-        case WildcardImport(fd : FunDef) if oldFuns contains fd => None
+        case SingleImport(fd : FunDef) if oldFuns contains fd => None
+        case SingleImport(m : ModuleDef) => Some(SingleImport(modsToMods(m)))
+        case WildcardImport(m : ModuleDef) => Some(WildcardImport(modsToMods(m)))
         case other => Some(other)
       }
     )})
