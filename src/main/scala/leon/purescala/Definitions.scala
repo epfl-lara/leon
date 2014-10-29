@@ -116,7 +116,7 @@ object Definitions {
   abstract class Import extends Definition {
     def subDefinitions = Nil
     
-    lazy val importedDefs = this match {
+    def importedDefs = this match {
       case PackageImport(pack) => {
         import DefOps._
         // Ignore standalone modules, assume there are extra imports for them

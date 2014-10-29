@@ -75,39 +75,48 @@ object MethodLifting extends TransformationPhase {
       }(e)
     }
 
-    val newUnits = program.units map { u => u.copy (
+    val modsToMods = ( for {
+      u <- program.units
+      m <- u.modules
+    } yield (m, {
+      // We remove methods from class definitions and add corresponding functions
+      val newDefs = m.defs.flatMap {
+        case acd: AbstractClassDef if acd.methods.nonEmpty =>
+          acd +: acd.methods.map(translateMethod(_))
+
+        case ccd: CaseClassDef if ccd.methods.nonEmpty =>
+          ccd +: ccd.methods.map(translateMethod(_))
+
+        case fd: FunDef =>
+          List(translateMethod(fd))
+
+        case d =>
+          List(d)
+      }
+
+      // finally, we clear methods from classes
+      m.defs.foreach {
+        case cd: ClassDef =>
+          cd.clearMethods()
+        case _ =>
+      }
+      ModuleDef(m.id, newDefs, m.isStandalone )
+    })).toMap
+
+    val newUnits = program.units map { u => u.copy(
+      
       imports = u.imports flatMap {
         case s@SingleImport(c : ClassDef) =>
           // If a class is imported, also add the "methods" of this class
-          s :: ( c.methods map { md => SingleImport(mdToFds(md))})    
+          s :: ( c.methods map { md => SingleImport(mdToFds(md))})
+        // If importing a ModuleDef, update to new ModuleDef
+        case SingleImport(m : ModuleDef) => List(SingleImport(modsToMods(m)))
+        case WildcardImport(m : ModuleDef) => List(WildcardImport(modsToMods(m)))
         case other => List(other)
       },
-        
-      modules = u.modules map { m =>
-        // We remove methods from class definitions and add corresponding functions
-        val newDefs = m.defs.flatMap {
-          case acd: AbstractClassDef if acd.methods.nonEmpty =>
-            acd +: acd.methods.map(translateMethod(_))
-  
-          case ccd: CaseClassDef if ccd.methods.nonEmpty =>
-            ccd +: ccd.methods.map(translateMethod(_))
-  
-          case fd: FunDef =>
-            List(translateMethod(fd))
-  
-          case d =>
-            List(d)
-        }
-  
-        // finally, we clear methods from classes
-        m.defs.foreach {
-          case cd: ClassDef =>
-            cd.clearMethods()
-          case _ =>
-        }
-  
-        ModuleDef(m.id, newDefs, m.isStandalone )
-      }
+
+      modules = u.modules map modsToMods
+
     )}
 
     Program(program.id, newUnits)
