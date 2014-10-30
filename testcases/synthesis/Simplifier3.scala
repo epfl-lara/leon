@@ -27,14 +27,14 @@ object Types {
 }
 
 object Environments {
-  val empty = Map.empty[Int,(Trees.Expr,Types.Type)]
+  val empty = Map.empty[Int,Trees.Expr]
 }
 
 object TypeChecker {
   import Trees._
   import Types._
 
-  def typeOf(e :Expr)(implicit env : Map[Int, (Expr,Type)]) : Option[Type] = e match {
+  def typeOf(e :Expr)(implicit env : Map[Int,Expr]) : Option[Type] = e match {
     case Plus(l,r) => (typeOf(l), typeOf(r)) match {
       case (Some(IntType), Some(IntType)) => Some(IntType)
       case _ => None()
@@ -75,9 +75,9 @@ object TypeChecker {
     case BoolLiteral(_) => Some(BoolType)
     case Let(i,e,body) => typeOf(e) match {
       case None() => None()
-      case Some(tp) => typeOf(body)(env updated (i, (e,tp)))     
+      case Some(tp) => typeOf(body)(env updated (i, e))     
     }
-    case Var(id) => if (env contains id) Some(env(id)._2) else None()
+    case Var(id) => if (env contains id) typeOf(env(id)) else None()
   }
 
   def typeChecks(e : Expr)= typeOf(e)(Environments.empty).isDefined
@@ -107,9 +107,42 @@ object Semantics {
   import Trees._
   import Types._
   import TypeChecker._
+   
+  def isGround(t : Expr): Boolean = t match {
+    case Plus(l,r)    => isGround(l) && isGround(r)
+    case Minus(l,r)   => isGround(l) && isGround(r)
+    case LessThan(l,r)=> isGround(l) && isGround(r)
+    case And(l,r)     => isGround(l) && isGround(r)
+    case Or(l,r)      => isGround(l) && isGround(r)
+    case Neg(ex) => isGround(ex)
+    case Ite(c, th, el) => isGround(c) && isGround(th) && isGround(el)
+    case IntLiteral(_)  => true
+    case BoolLiteral(_) => true
+    case _ => false
+  }
+
   
-  def semI(t : Expr)(implicit env : Map[Int,(Expr,Type)]) : Int = {
-    require( typeOf(t).isDefined && typeOf(t).get == IntType )
+
+  def subst(t : Expr)(implicit env : Map[Int, Expr]) : Expr = {
+    require(typeOf(t).isDefined)
+    t match {
+      case Plus(l,r) => Plus(subst(l), subst(r))
+      case Minus(l,r) => Minus(subst(l), subst(r)) 
+      case LessThan(l,r) => LessThan( subst(l), subst(r))
+      case And(l,r) => And(subst(l), subst(r)) 
+      case Or(l,r) => Or( subst(l), subst(r)) 
+      case Neg(ex) => Neg(subst(ex))
+      case Ite(c, th, el) => Ite(subst(c), subst(th), subst(el))
+      case Let(i,e,body) => subst(body)(env updated (i,subst(e)))
+      case Var(id_) => env(id_)
+      case other => other
+    }
+  } ensuring { res =>
+    typeOf(res) == typeOf(t) && isGround(res)
+  }
+ 
+  def semI(t : Expr) : Int = {
+    require( typeChecks(t) && typeOf(t)(Environments.empty).get == IntType && isGround(t))
     t match {
       case Plus(lhs , rhs) => semI(lhs) + semI(rhs)
       case Minus(lhs , rhs) => semI(lhs) - semI(rhs)
@@ -117,17 +150,11 @@ object Semantics {
       case Ite(cond, thn, els) => 
         if (semB(cond)) semI(thn) else semI(els)
       case IntLiteral(v)  => v
-      case Let(id, e, bd) => 
-        typeOf(e) match {
-          case Some(IntType)  => semI(bd)(env updated (id, (IntLiteral(semI(e)), IntType)))
-          case Some(BoolType) => semI(bd)(env updated (id, (BoolLiteral(semB(e)), BoolType)))
-        }
-      case Var(id) => semI(env(id)._1)
     }
   }
 
-  def semB(t : Expr)(implicit env :Map[Int,(Expr,Type)]) : Boolean = {
-    require( typeOf(t).isDefined && typeOf(t).get == BoolType )
+  def semB(t : Expr) : Boolean = {
+    require( typeChecks(t) && typeOf(t)(Environments.empty).get == BoolType && isGround(t))
     t match {
       case And(lhs, rhs ) => semB(lhs) && semB(rhs)
       case Or(lhs , rhs ) => semB(lhs) || semB(rhs)
@@ -135,12 +162,6 @@ object Semantics {
       case LessThan(lhs, rhs) => semI(lhs) < semI(rhs)
       case Ite(cond, thn, els) => 
         if (semB(cond)) semB(thn) else semB(els)
-      case Let(id, e, bd) => 
-        typeOf(e) match {
-          case Some(IntType)  => semB(bd)(env updated (id, (IntLiteral(semI(e)), IntType)))
-          case Some(BoolType) => semB(bd)(env updated (id, (BoolLiteral(semB(e)), BoolType)))
-        }
-      case Var(id) => semB(env(id)._1)
       //case Eq(lhs, rhs) => (typeOf(lhs), typeOf(rhs)) match {
       //  case ( Some(IntType),  Some(IntType)  ) => semI(lhs) == semI(rhs)
       //  case ( Some(BoolType), Some(BoolType) ) => semB(lhs) == semB(rhs)
@@ -149,14 +170,14 @@ object Semantics {
     }
   }
 }
-
+/*
 object Simplifier {
   import Types._
   import Trees._
   import TypeChecker._
   import Semantics._
 
-  def simplify(t : Expr)(implicit env : Map[Int,(Expr,Type)]) : Expr = { 
+  def simplify(t : Expr)(implicit env : Map[Int,Expr]) : Expr = { 
     require(typeChecks(t))
     t match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1+i2)
@@ -188,7 +209,7 @@ object Simplifier {
       case Ite(BoolLiteral(true), thenn, _ ) => thenn
       case Ite(BoolLiteral(false), _, elze ) => elze
   
-      case Var(id) => env(id)._1 // Think about this
+      //case Var(id) => env(id) // Think about this
 
       case other => other
     }
@@ -244,7 +265,7 @@ object Simplifier {
   }*/
 
 
-  def simplify2(t : Expr)(implicit env : Map[Int,(Expr,Type)]) : Expr = { 
+  def simplify2(t : Expr)(implicit env : Map[Int,Expr]) : Expr = { 
     require(typeChecks(t))
     t match {
       case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1+i2)
@@ -297,5 +318,5 @@ object Simplifier {
       case Some(IntType) => semI(t) == semI(res)
     })
   }
-
 } 
+*/
