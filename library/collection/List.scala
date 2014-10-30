@@ -285,6 +285,11 @@ sealed abstract class List[T] {
     }
   }
 
+  def isEmpty = this match { 
+    case Nil() => true
+    case _ => false 
+  }
+
 }
 
 @ignore

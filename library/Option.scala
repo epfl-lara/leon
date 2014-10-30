@@ -32,6 +32,7 @@ sealed abstract class Option[T] {
   def nonEmpty  = !isEmpty
 
   def isDefined = !isEmpty
+
 }
 
 case class Some[T](v: T) extends Option[T]
