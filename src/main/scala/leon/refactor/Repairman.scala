@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
+import purescala.DefOps._
 import purescala.Constructors._
 import purescala.ScalaPrinter
 import evaluators._
@@ -32,6 +33,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val args = fd.params.map(_.id)
     val argsWrapped = tupleWrap(args.map(_.toVariable))
 
+    // Compute tests
     val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", true).setType(fd.returnType))
 
     val tfd = program.library.passes.get.typed(Seq(argsWrapped.getType, out.getType))
@@ -45,10 +47,23 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
 
     val passes = FunctionInvocation(tfd, Seq(argsWrapped, out.toVariable, testsExpr))
 
-    val spec = And(fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)), passes)
+    // Compute guide implementation
+    val gexpr = fd.body.get
+    val gfd = program.library.guide.get.typed(Seq(gexpr.getType))
+    val guide = FunctionInvocation(gfd, Seq(gexpr))
+
+    val spec = And(
+      fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
+      passes
+    )
+
+    val pc = And(
+      pre,
+      guide
+    )
 
     // Synthesis from the ground up
-    val p = Problem(fd.params.map(_.id).toList, pre, spec, List(out))
+    val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
 
     val soptions = SynthesisPhase.processOptions(ctx);
 
@@ -64,40 +79,12 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
 
           if (!sol.isTrusted) {
 
-            val timeoutMs = 3000l
-            val solverf = SolverFactory(() => (new FairZ3Solver(ctx, npr) with TimeoutSolver).setTimeout(timeoutMs))
-            val vctx = VerificationContext(ctx, npr, solverf, reporter)
-            val nfd = fds.head
-            val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(nfd.id.name)))
-
-            AnalysisPhase.checkVerificationConditions(vctx, vcs)
-
-            var unknown = false;
-            var ces = List[Seq[Expr]]()
-
-            for (vc <- vcs.getOrElse(nfd, List())) {
-              if (vc.value == Some(false)) {
-                vc.counterExample match {
-                  case Some(m) =>
-                    ces = nfd.params.map(vd => m(vd.id)) :: ces;
-
-                  case _ =>
-                }
-              } else if (vc.value == None) {
-                unknown = true;
-              }
-            }
-
-
-            if (ces.isEmpty) {
-              if (!unknown) {
+            getVerificationCounterExamples(fds.head, npr) match {
+              case Some(ces) =>
+                testBank ++= ces
+                reporter.info("Failed :(, but I learned: "+ces.mkString("  |  "))
+              case None =>
                 reporter.info("ZZUCCESS!")
-              } else {
-                reporter.info("ZZUCCESS (maybe)!")
-              }
-            } else {
-              reporter.info("Failed :(, but I learned: "+ces.map(_.mkString(",")).mkString("  |  "))
-              testBank ++= ces.map(InExample(_))
             }
           } else {
             reporter.info("ZZUCCESS!")
@@ -134,6 +121,36 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
         reporter.error("I failed you :(")
     }
 
+  }
+
+  def getVerificationCounterExamples(fd: FunDef, prog: Program): Option[Seq[InExample]] = {
+    val timeoutMs = 3000l
+    val solverf = SolverFactory(() => (new FairZ3Solver(ctx, prog) with TimeoutSolver).setTimeout(timeoutMs))
+    val vctx = VerificationContext(ctx, prog, solverf, reporter)
+    val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
+
+    AnalysisPhase.checkVerificationConditions(vctx, vcs)
+
+    var invalid = false;
+    var ces = List[Seq[Expr]]()
+
+    for (vc <- vcs.getOrElse(fd, List())) {
+      if (vc.value == Some(false)) {
+        invalid = true;
+
+        vc.counterExample match {
+          case Some(m) =>
+            ces = fd.params.map(vd => m(vd.id)) :: ces;
+
+          case _ =>
+        }
+      }
+    }
+    if (invalid) {
+      Some(ces.map(InExample(_)))
+    } else {
+      None
+    }
   }
 
   def disambiguate(p: Problem, sol1: Solution, sol2: Solution): Option[(InOutExample, InOutExample)] = {
@@ -198,6 +215,13 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
         case _ =>
           new InExample(i)
       }
+    }
+
+    // Try to verify, if it fails, we have at least one CE
+    getVerificationCounterExamples(fd, program) match {
+      case Some(ces) =>
+        testBank ++= ces
+      case _ =>
     }
   }
 

@@ -35,6 +35,9 @@ package object synthesis {
   def withOracle[A, R](body: Oracle[A] => R): R = noImpl
 
   @library
-  def terminating[T](t: T) = true
+  def terminating[T](t: T): Boolean = true
+
+  @library
+  def guide[T](e: T): Boolean = true
 
 }

@@ -26,6 +26,8 @@ object Rules {
     InequalitySplit,
     CEGIS,
     TEGIS,
+    GuidedDecomp,
+    GuidedCloser,
     rules.Assert,
     DetupleOutput,
     DetupleInput,

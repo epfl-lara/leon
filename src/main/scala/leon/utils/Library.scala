@@ -21,6 +21,10 @@ case class Library(pgm: Program) {
     case fd: FunDef => fd
   }
 
+  lazy val guide = lookup("leon.lang.synthesis.guide") collect {
+    case (fd: FunDef) => fd
+  }
+
   def lookup(name: String): Option[Definition] = {
     searchByFullName(name, pgm)
   }
