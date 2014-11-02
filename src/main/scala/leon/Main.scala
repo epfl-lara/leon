@@ -218,7 +218,7 @@ object Main {
       } else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {
-        AnalysisPhase
+        purescala.FunctionClosure andThen AnalysisPhase
       } else {
         purescala.RestoreMethods andThen utils.FileOutputPhase
       }
