@@ -60,10 +60,10 @@ object HeapSort {
       case (Leaf(), _) => h2
       case (_, Leaf()) => h1
       case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
-        if(v1 >= v2)
-          makeN(v1, l1, merge(r1, h2))
-        else
+        if(v1 >= v2) // FIXME swapped the branches
           makeN(v2, l2, merge(h1, r2))
+        else
+          makeN(v1, l1, merge(r1, h2))
     }
   } ensuring { res => 
     hasLeftistProperty(res) && hasHeapProperty(res) &&
