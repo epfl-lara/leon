@@ -11,14 +11,24 @@ import Trees._
 import Extractors._
 
 object TypeTreeOps {
+  def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
+    case tp: TypeParameter => Set(tp)
+    case _ =>
+      val NAryType(subs, _) = t
+      subs.map(typeParamsOf).foldLeft(Set[TypeParameter]())(_ ++ _)
+  }
+
   def canBeSubtypeOf(tpe: TypeTree, freeParams: Seq[TypeParameter], stpe: TypeTree): Option[Map[TypeParameter, TypeTree]] = {
 
     def unify(res: Seq[Option[Map[TypeParameter, TypeTree]]]): Option[Map[TypeParameter, TypeTree]] = {
       if (res.forall(_.isDefined)) {
         var result = Map[TypeParameter, TypeTree]()
 
-        for (Some(m) <- res) {
-          result ++= m
+        for (Some(m) <- res; (f, t) <- m) {
+          result.get(f) match {
+            case Some(t2) if t != t2 => return None
+            case _ => result += (f -> t)
+          }
         }
 
         Some(result)
@@ -36,7 +46,7 @@ object TypeTreeOps {
     } else {
       (tpe, stpe) match {
         case (t, tp1: TypeParameter) =>
-          if (freeParams contains tp1) {
+          if ((freeParams contains tp1) && !(typeParamsOf(t) contains tp1)) {
             Some(Map(tp1 -> t))
           } else if (tp1 == t) {
             Some(Map())
@@ -45,7 +55,7 @@ object TypeTreeOps {
           }
 
         case (tp1: TypeParameter, t) =>
-          if (freeParams contains tp1) {
+          if ((freeParams contains tp1) && !(typeParamsOf(t) contains tp1)) {
             Some(Map(tp1 -> t))
           } else if (tp1 == t) {
             Some(Map())

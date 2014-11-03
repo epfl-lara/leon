@@ -24,6 +24,8 @@ import evaluators._
 import datagen._
 import codegen.CodeGenParams
 
+import utils.ExpressionGrammar
+
 
 case object CEGIS extends Rule("CEGIS") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -46,149 +48,7 @@ case object CEGIS extends Rule("CEGIS") {
 
     val interruptManager      = sctx.context.interruptManager
 
-    case class Generator(tpe: TypeTree, altBuilder: () => List[(Expr, Set[Identifier])]);
-
-    var generators = Map[TypeTree, Generator]()
-    def getGenerator(t: TypeTree): Generator = generators.get(t) match {
-      case Some(g) => g
-      case None =>
-        val alternatives: () => List[(Expr, Set[Identifier])] = t match {
-          case BooleanType =>
-            { () => List((BooleanLiteral(true), Set()), (BooleanLiteral(false), Set())) }
-
-          case Int32Type =>
-            { () =>
-              val ground = List((IntLiteral(0), Set[Identifier]()), (IntLiteral(1), Set[Identifier]()))
-              val ops    = List[Function2[Expr, Expr, Expr]](
-                (a,b) => Plus(a,b),
-                (a,b) => Minus(a,b),
-                (a,b) => Times(a,b)
-              )
-
-              ops.map{f =>
-                val ids = List(FreshIdentifier("a", true).setType(Int32Type), FreshIdentifier("b", true).setType(Int32Type))
-                (f(ids(0).toVariable, ids(1).toVariable), ids.toSet)
-              } ++ ground
-            }
-
-          case TupleType(tps) =>
-            { () =>
-              val ids = tps.map(t => FreshIdentifier("t", true).setType(t))
-              List((Tuple(ids.map(Variable(_))), ids.toSet))
-            }
-
-          case cct @ CaseClassType(cd, _) =>
-            { () =>
-              val ids = cct.fields.map { vd => FreshIdentifier("c", true).setType(vd.tpe) }
-              List((CaseClass(cct, ids.map(Variable(_))), ids.toSet))
-            }
-
-          case AbstractClassType(cd, tpes) =>
-            { () =>
-              val alts: Seq[(Expr, Set[Identifier])] = cd.knownDescendents.flatMap(i => i match {
-                  case acd: AbstractClassDef =>
-                    sctx.reporter.error(acd.getPos, "Unnexpected abstract class in descendants!")
-                    None
-                  case cd: CaseClassDef =>
-                    val cct = CaseClassType(cd, tpes)
-                    val ids = cct.fields.map{ vd => FreshIdentifier("c", true).setType(vd.tpe) }
-                    Some((CaseClass(cct, ids.map(Variable(_))), ids.toSet))
-              })
-              alts.toList
-            }
-
-          case _: TypeParameter =>
-            { () =>
-              Nil
-            }
-          case _ =>
-            sctx.reporter.error("Can't construct generator. Unsupported type: "+t+"["+t.getClass+"]");
-            { () => Nil }
-        }
-        val g = Generator(t, alternatives)
-        generators += t -> g
-        g
-    }
-
-    def inputAlternatives(t: TypeTree): List[(Expr, Set[Identifier])] = {
-      p.as.filter(a => isSubtypeOf(a.getType, t)).map(id => (Variable(id) : Expr, Set[Identifier]()))
-    }
-
-    val funcCache: MutableMap[TypeTree, Seq[TypedFunDef]] = MutableMap.empty
-
-    def funcAlternatives(t: TypeTree): List[(Expr, Set[Identifier])] = {
-      if (useFunGenerators) {
-        def isCandidate(fd: FunDef): Option[TypedFunDef] = {
-          // Prevents recursive calls
-
-          val cfd             = sctx.functionContext
-          val isRecursiveCall = (sctx.program.callGraph.transitiveCallers(cfd) + cfd) contains fd
-
-          val isNotSynthesizable = fd.body match {
-            case Some(b) =>
-              !containsChoose(b)
-
-            case None =>
-              false
-          }
-
-
-          if (!isRecursiveCall && isNotSynthesizable) {
-            val free = fd.tparams.map(_.tp)
-            canBeSubtypeOf(fd.returnType, free, t) match {
-              case Some(tpsMap) =>
-                Some(fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp))))
-              case None =>
-                None
-            }
-          } else {
-            None
-          }
-        }
-
-        val funcs = funcCache.get(t) match {
-          case Some(alts) =>
-            alts
-          case None =>
-            val alts = functionsAvailable(sctx.program).toSeq.flatMap(isCandidate)
-            funcCache += t -> alts
-            alts
-        }
-
-        funcs.map{ tfd =>
-            val ids = tfd.params.map(vd => FreshIdentifier("c", true).setType(vd.tpe))
-            (FunctionInvocation(tfd, ids.map(Variable(_))), ids.toSet)
-          }.toList
-      } else {
-        Nil
-      }
-    }
-
-    var safeRecCache = Map[TypeTree, List[(Expr, Set[Identifier])]]()
-
-    def safeRecCalls(t: TypeTree): List[(Expr, Set[Identifier])] = {
-      val calls = safeRecCache.getOrElse(t, {
-        val r = terminatingCalls(sctx.program, t, p.pc)
-        safeRecCache += t -> r
-        for ((e, f) <- r) {
-          printGenerator(t, e, f);
-        }
-        r
-      })
-
-      calls.map {
-        case (e, free) =>
-          val fids = free.map { f => f -> f.freshen }.toMap
-          val m = fids.mapValues(_.toVariable)
-          (replaceFromIDs(m, e), fids.values.toSet)
-      }
-    }
-
-    def printGenerator(t: TypeTree, e: Expr, free: Set[Identifier]) {
-      val map = free.map { f => f -> FreshIdentifier(f.getType.toString).setType(f.getType).toVariable }.toMap
-      val gen = replaceFromIDs(map, e)
-      println(f"$t%30s ::= "+gen)
-    }
+    val grammar = new ExpressionGrammar(sctx, p)
 
     class NonDeterministicProgram(val p: Problem,
                                   val initGuard: Identifier) {
@@ -430,12 +290,7 @@ case object CEGIS extends Rule("CEGIS") {
 
         for ((parentGuard, recIds) <- guardedTerms; recId <- recIds) {
 
-          val gen  = getGenerator(recId.getType)
-
-          val alts = gen.altBuilder() :::
-                     inputAlternatives(recId.getType) :::
-                     funcAlternatives(recId.getType) :::
-                     safeRecCalls(recId.getType)
+          val alts = grammar.getGenerators(recId.getType)
 
           val altsWithBranches = alts.map(alt => FreshIdentifier("B", true).setType(BooleanType) -> alt)
 
@@ -448,11 +303,14 @@ case object CEGIS extends Rule("CEGIS") {
               Or(Not(a) :: Not(b) :: Nil)
           }
 
-          val pre = And(Seq(Or(failedPath :: bvs), Implies(failedPath, And(bvs.map(Not(_))))) ++ distinct)
+          val pre = And(Seq(Or(failedPath +: bvs), Implies(failedPath, And(bvs.map(Not(_))))) ++ distinct)
 
-          val cases = for((bid, (ex, rec)) <- altsWithBranches.toList) yield { // b1 => E(gen1, gen2)     [b1 -> {gen1, gen2}]
+          val cases = for((bid, gen) <- altsWithBranches.toList) yield { // b1 => E(gen1, gen2)     [b1 -> {gen1, gen2}]
+            val rec = gen.subTrees.map(FreshIdentifier("c", true).setType(_))
+            val ex = gen.builder(rec.map(_.toVariable))
+
             if (!rec.isEmpty) {
-              newGuardedTerms += bid -> rec
+              newGuardedTerms += bid -> rec.toSet
               cChildren       += recId -> (cChildren(recId) ++ rec)
             }
 
