@@ -245,6 +245,10 @@ object TypeTreeOps {
 
                 (WildcardPattern(newOb), (ob zip newOb).toMap)
 
+              case (LiteralPattern(ob, lit), expType) => 
+                val newOb = ob.map(id => freshId(id, expType))
+                (LiteralPattern(newOb,lit), (ob zip newOb).toMap)
+
               case _ =>
                 sys.error("woot!?")
             }

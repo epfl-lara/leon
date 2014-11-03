@@ -477,6 +477,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         } else {
           None
         }
+      case (LiteralPattern(ob, l1) , l2 : Literal[_]) if l1 == l2 =>
+        Some(obind(ob,l1))
       case _ => None
     }
 

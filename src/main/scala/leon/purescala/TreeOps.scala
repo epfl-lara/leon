@@ -1646,6 +1646,10 @@ object TreeOps {
                 } else {
                   (false, Map())
                 }
+
+              case (LiteralPattern(ob1, lit1), LiteralPattern(ob2,lit2)) =>
+                (ob1.size == ob2.size && lit1 == lit2, (ob1 zip ob2).toMap)
+
               case _ =>
                 (false, Map())
             }
@@ -1788,6 +1792,27 @@ object TreeOps {
               areExaustive(tpes zip subs.transpose)
             }
           }
+
+        case BooleanType => 
+          // make sure ps contains either 
+          // - Wildcard or
+          // - both true and false 
+          (ps exists { _.isInstanceOf[WildcardPattern] }) || {
+            var found = Set[Boolean]()
+            ps foreach { 
+              case LiteralPattern(_, BooleanLiteral(b)) => found += b
+              case _ => ()
+            }
+            (found contains true) && (found contains false)
+          }
+
+        case UnitType => 
+          // Anything matches ()
+          !ps.isEmpty
+
+        case Int32Type => 
+          // Can't possibly pattern match against all Ints one by one
+          ps exists (_.isInstanceOf[WildcardPattern])
 
         case _ =>
           true
