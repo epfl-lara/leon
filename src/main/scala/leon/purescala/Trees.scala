@@ -230,7 +230,7 @@ object Trees {
 
   case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
 
-  case class LiteralPattern[T](binder: Option[Identifier], lit : Literal[T]) extends Pattern {
+  case class LiteralPattern[+T](binder: Option[Identifier], lit : Literal[T]) extends Pattern {
     val subPatterns = Seq()    
   }
 
@@ -431,7 +431,7 @@ object Trees {
   }
 
   /* Literals */
-  sealed abstract class Literal[T] extends Expr with Terminal {
+  sealed abstract class Literal[+T] extends Expr with Terminal {
     val value: T
   }
 
