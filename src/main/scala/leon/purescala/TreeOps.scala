@@ -2141,6 +2141,16 @@ object TreeOps {
       None
   }
 
+  // Remove terminating/guiding witnesses that bother solvers
+  def removeWitnesses(prog: Program)(e: Expr): Expr = {
+    val witnesses = Set() ++ prog.library.guide ++ prog.library.terminating
+
+    postMap {
+      case FunctionInvocation(TypedFunDef(fd, _), _) if witnesses contains fd => Some(BooleanLiteral(true))  
+      case _ => None
+    }(e)
+  }
+
   /**
    * Deprecated API
    * ========

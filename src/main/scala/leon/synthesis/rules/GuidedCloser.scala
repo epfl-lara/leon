@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import leon.utils.Simplifiers
 import purescala.Trees._
 import purescala.Definitions._
 import purescala.Common._
@@ -28,25 +29,34 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
       // Tentative solution using e
       val wrappedE = if (p.xs.size == 1) Tuple(Seq(e)) else e
 
-      val vc = And(p.pc, LetTuple(p.xs, wrappedE, Not(p.phi)))
+      val simp = Simplifiers.bestEffort(sctx.context, sctx.program) _
+
+      val vc = simp(And(p.pc, LetTuple(p.xs, wrappedE, Not(p.phi))))
+
+      println(vc)
 
       val solver = sctx.newSolver.setTimeout(1000L)
 
       solver.assertCnstr(vc)
       val osol = solver.check match {
         case Some(false) =>
+          println("==== UNSAT ===")
           Some(Solution(BooleanLiteral(true), Set(), wrappedE, true))
 
         case None =>
-          Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
+          None
+          //Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
 
         case _ =>
           None
       }
 
+      solver.free
+
       osol.map { s =>
         RuleInstantiation.immediateSuccess(p, this, s)
       }
+
     }
 
     alts

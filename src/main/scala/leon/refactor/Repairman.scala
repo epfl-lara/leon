@@ -52,15 +52,21 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val gfd = program.library.guide.get.typed(Seq(gexpr.getType))
     val guide = FunctionInvocation(gfd, Seq(gexpr))
 
-    val spec = And(
-      fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
-      passes
-    )
+    // Compute initial call
+    val termfd = program.library.terminating.get
+    val withinCall = FunctionInvocation(fd.typedWithDef, fd.params.map(_.id.toVariable))
+    val term = FunctionInvocation(termfd.typed(Seq(fd.returnType)), Seq(withinCall))
 
-    val pc = And(
+    val spec = And(Seq(
+      fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true))
+ //     passes
+    ))
+
+    val pc = And(Seq(
       pre,
-      guide
-    )
+      guide,
+      term
+    ))
 
     // Synthesis from the ground up
     val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))

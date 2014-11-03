@@ -494,6 +494,9 @@ trait AbstractZ3Solver
     }
 
     def rec(ex: Expr): Z3AST = ex match {
+      case me @ MatchExpr(s, cs) =>
+        rec(matchToIfThenElse(me))
+
       case tu @ Tuple(args) =>
         typeToSort(tu.getType) // Make sure we generate sort & meta info
         val meta = tupleMetaDecls(normalizeType(tu.getType))

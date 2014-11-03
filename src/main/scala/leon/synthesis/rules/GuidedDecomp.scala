@@ -38,6 +38,28 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Guided If-Split on '"+c+"'"))
 
+      case m @ MatchExpr(scrut, cs) =>
+        val subs = for (c <- cs) yield {
+          val binders = c.pattern.binders
+          val cond = And(conditionForPattern(scrut, c.pattern, includeBinders = true), c.theGuard.getOrElse(BooleanLiteral(true)))
+
+          p.copy(as = p.as ++ binders, pc = And(cond, replace(Map(m -> c.rhs), p.pc)))
+        }
+
+        val onSuccess: List[Solution] => Option[Solution] = { 
+          case subs =>
+            val cases = for ((c, s) <- cs zip subs) yield {
+              c match {
+                case SimpleCase(c, rhs) => SimpleCase(c, s.term)
+                case GuardedCase(c, g, rhs) => GuardedCase(c, g, s.term)
+              }
+            }
+
+            Some(Solution(Or(subs.map(_.pre)), subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _), MatchExpr(scrut, cases)))
+        }
+
+        Some(RuleInstantiation.immediateDecomp(p, this, subs.toList, onSuccess, "Guided Match-Split"))
+
       case e =>
        None
     }

@@ -14,6 +14,7 @@ object Simplifiers {
     val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, p))
 
     val simplifiers = List[Expr => Expr](
+      removeWitnesses(p)(_),
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _,
       decomposeIfs _,
