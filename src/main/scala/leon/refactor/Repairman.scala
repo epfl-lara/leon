@@ -23,6 +23,8 @@ import synthesis._
 class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
   val reporter = ctx.reporter
 
+  implicit val debugSection = DebugSectionRefactor
+
   var testBank = List[Example]()
 
   var solutions: List[(Solution, Expr, List[FunDef])] = Nil
@@ -45,7 +47,11 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
         tupleWrap(ins) -> tupleWrap(outs)
     }.toList).setType(MapType(argsWrapped.getType, out.getType))
 
-    val passes = FunctionInvocation(tfd, Seq(argsWrapped, out.toVariable, testsExpr))
+    val passes = if (testsExpr.singletons.nonEmpty) {
+      FunctionInvocation(tfd, Seq(argsWrapped, out.toVariable, testsExpr))
+    } else {
+      BooleanLiteral(true)
+    }
 
     // Compute guide implementation
     val gexpr = fd.body.get
@@ -58,8 +64,8 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val term = FunctionInvocation(termfd.typed(Seq(fd.returnType)), Seq(withinCall))
 
     val spec = And(Seq(
-      fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true))
- //     passes
+      fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
+      passes
     ))
 
     val pc = And(Seq(
@@ -211,6 +217,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val tests = new NaiveDataGen(ctx, program, evaluator)
 
     val pre = fd.precondition.getOrElse(BooleanLiteral(true))
+
     val inputs = tests.generateFor(fd.params.map(_.id), pre, 30, 10000).toList
 
     testBank ++= inputs.map { i =>
@@ -232,4 +239,5 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
   }
 
   discoverTests()
+
 }

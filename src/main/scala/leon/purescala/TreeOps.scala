@@ -689,8 +689,8 @@ object TreeOps {
       
       case TuplePattern(_, subps) =>
         val TupleType(subts) = in.getType
-        val subExprs = (subps zip subts) map {
-          case (p, t) => p.binder.getOrElse(FreshIdentifier("b", true).setType(t)).toVariable
+        val subExprs = (subps zip subts).zipWithIndex map {
+          case ((p, t), index) => p.binder.map(_.toVariable).getOrElse(TupleSelect(in, index+1))
         }
 
         // Special case to get rid of (a,b) match { case (c,d) => .. }
@@ -706,8 +706,8 @@ object TreeOps {
         })
 
       case CaseClassPattern(_, cct, subps) =>
-        val subExprs = (subps zip cct.fieldsTypes) map {
-          case (p, t) => p.binder.getOrElse(FreshIdentifier("b", true).setType(t)).toVariable
+        val subExprs = (subps zip cct.fields) map {
+          case (p, f) => p.binder.map(_.toVariable).getOrElse(CaseClassSelector(cct, in, f.id))
         }
         
         // Special case to get rid of Cons(a,b) match { case Cons(c,d) => .. }

@@ -8,6 +8,7 @@ import Trees._
 object Extractors {
   import Common._
   import TypeTrees._
+  import TypeTreeOps._
   import Definitions._
   import Extractors._
   import TreeOps._
@@ -108,7 +109,15 @@ object Extractors {
             case ((keys, values, isKey), rExpr) => if(isKey) (rExpr::keys, values, false) else (keys, rExpr::values, true)
           }
           assert(isKey)
-          FiniteMap(keys.zip(values))
+          val tpe = (keys, values) match {
+            case (Seq(), Seq()) => expr.getType
+            case _ =>
+              MapType(
+                leastUpperBound(keys.map(_.getType)).get,
+                leastUpperBound(values.map(_.getType)).get
+              )
+          }
+          FiniteMap(keys.zip(values)).setType(tpe)
         }
         Some((subArgs, builder))
       }

@@ -40,7 +40,6 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
       solver.assertCnstr(vc)
       val osol = solver.check match {
         case Some(false) =>
-          println("==== UNSAT ===")
           Some(Solution(BooleanLiteral(true), Set(), wrappedE, true))
 
         case None =>

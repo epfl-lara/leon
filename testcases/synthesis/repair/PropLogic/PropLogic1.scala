@@ -5,11 +5,11 @@ import leon.collection._
 object SemanticsPreservation { 
 
   sealed abstract class Formula
-  case class And(lhs : Formula, rhs : Formula) extends Formula
-  case class Or(lhs : Formula, rhs : Formula) extends Formula
-  case class Not(f: Formula) extends Formula
   case class Const(v: Boolean) extends Formula
   case class Literal(id: Int) extends Formula
+  case class Not(f: Formula) extends Formula
+  case class And(lhs : Formula, rhs : Formula) extends Formula
+  case class Or(lhs : Formula, rhs : Formula) extends Formula
 
   def size(f : Formula) : Int = { f match {
     case And(l,r) => 1 + size(l) + size(r)
@@ -33,7 +33,7 @@ object SemanticsPreservation {
     case Not(Not(e)) => e // FIXME: should be nnf(e)
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
     case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
-    case other => other 
+    case other => other
   }} ensuring { isNNF(_) }
 
   def isNNF(f : Formula) : Boolean = f match {

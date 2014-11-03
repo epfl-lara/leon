@@ -151,7 +151,7 @@ class ExpressionGrammar(ctx: LeonContext, prog: Program, inputs: Seq[Expr], curr
       }
     }
 
-    val funcs = visibleFunDefsFromMain(prog).toSeq.flatMap(getCandidates)
+    val funcs = functionsAvailable(prog).toSeq.flatMap(getCandidates)
 
     funcs.map{ tfd =>
       Generator[TypeTree, Expr](tfd.params.map(_.tpe), { sub => FunctionInvocation(tfd, sub) })
@@ -170,12 +170,12 @@ class ExpressionGrammar(ctx: LeonContext, prog: Program, inputs: Seq[Expr], curr
     }
   }
 
-  def printGrammar() {
+  def printGrammar(printer: String => Unit) {
     for ((t, gs) <- cache; g <- gs) {
       val subs = g.subTrees.map { tpe => FreshIdentifier(tpe.toString).setType(tpe).toVariable }
       val gen = g.builder(subs)
 
-      println(f"$t%30s ::= "+gen)
+      printer(f"$t%30s ::= "+gen)
     }
   }
 }

@@ -50,7 +50,7 @@ object HeapSort {
     hasLeftistProperty(res) && 
     heapSize(h1) + heapSize(h2) == heapSize(res)
   }
-/*
+
   private def makeN(value: Int, left: Heap, right: Heap) : Heap = {
     require(hasLeftistProperty(left) && hasLeftistProperty(right))
     if(left.rank >= right.rank)
@@ -58,7 +58,7 @@ object HeapSort {
     else
       Node(value, right, left)
   } ensuring { hasLeftistProperty(_) }
-*/
+
   def insert(element: Int, heap: Heap) : Heap = {
     require(hasLeftistProperty(heap))
 
