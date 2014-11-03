@@ -663,6 +663,87 @@ object TreeOps {
     }
   }
 
+  /**
+   * Generates substitutions necessary to transform scrutinee to equivalent
+   * specialized cases
+   *
+   *    e match {
+   *     case CaseClass((a, 42), c) => expr
+   *    }
+   *
+   *  will return, for the first pattern:
+   *
+   *    Seq(
+   *     e -> CaseClass(t, c),
+   *     t -> (a, b2),
+   *     b2 -> 42,
+   *    )
+   */
+  def patternSubstitutions(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] ={
+    def rec(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] = pattern match {
+      case InstanceOfPattern(ob, cct: CaseClassType) =>
+        val pt = CaseClassPattern(ob, cct, cct.fields.map { f =>
+          WildcardPattern(Some(FreshIdentifier(f.id.name).setType(f.getType)))
+        })
+        rec(in, pt)
+      
+      case TuplePattern(_, subps) =>
+        val TupleType(subts) = in.getType
+        val subExprs = (subps zip subts) map {
+          case (p, t) => p.binder.getOrElse(FreshIdentifier("b", true).setType(t)).toVariable
+        }
+
+        // Special case to get rid of (a,b) match { case (c,d) => .. }
+        val subst0 = in match {
+          case Tuple(ts) =>
+            ts zip subExprs
+          case _ =>
+            Seq(in -> Tuple(subExprs))    
+        }
+
+        subst0 ++ ((subExprs zip subps) flatMap {
+          case (e, p) => recBinder(e, p)
+        })
+
+      case CaseClassPattern(_, cct, subps) =>
+        val subExprs = (subps zip cct.fieldsTypes) map {
+          case (p, t) => p.binder.getOrElse(FreshIdentifier("b", true).setType(t)).toVariable
+        }
+        
+        // Special case to get rid of Cons(a,b) match { case Cons(c,d) => .. }
+        val subst0 = in match {
+          case CaseClass(`cct`, args) =>
+            args zip subExprs
+          case _ =>
+            Seq(in -> CaseClass(cct, subExprs))    
+        }
+
+        subst0 ++ ((subExprs zip subps) flatMap {
+          case (e, p) => recBinder(e, p)
+        })
+
+      case LiteralPattern(_, v) =>
+        Seq(in -> v)
+
+      case _ =>
+        Seq()
+    }
+
+    def recBinder(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] = {
+      (pattern, pattern.binder) match {
+        case (_: WildcardPattern, Some(b)) =>
+          Seq(in -> b.toVariable)
+        case (p, Some(b)) =>
+          val bv = b.toVariable
+          Seq(in -> bv) ++ rec(bv, pattern)
+        case _ =>
+          rec(in, pattern)
+      }
+    }
+
+    recBinder(in, pattern).filter{ case (a, b) => a != b }
+  }
+
   def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false) : Expr = {
     def bind(ob: Option[Identifier], to: Expr): Expr = {
       if (!includeBinders) {

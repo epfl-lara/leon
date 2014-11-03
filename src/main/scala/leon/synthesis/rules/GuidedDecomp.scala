@@ -24,6 +24,12 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
       case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
     }
 
+    def doSubstitute(substs: Seq[(Expr, Expr)], e: Expr): Expr = {
+      val m = substs.toMap
+
+      preMap({ case e => m.get(e) }, true)(e)
+    }
+
     val alts = guides.collect {
       case g @ IfExpr(c, thn, els) =>
         val sub1 = p.copy(pc = And(c, replace(Map(g -> thn), p.pc)))
@@ -40,10 +46,15 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
       case m @ MatchExpr(scrut, cs) =>
         val subs = for (c <- cs) yield {
-          val binders = c.pattern.binders
-          val cond = And(conditionForPattern(scrut, c.pattern, includeBinders = true), c.theGuard.getOrElse(BooleanLiteral(true)))
+          val substs = patternSubstitutions(scrut, c.pattern)
 
-          p.copy(as = p.as ++ binders, pc = And(cond, replace(Map(m -> c.rhs), p.pc)))
+          val g = c.theGuard.getOrElse(BooleanLiteral(true))
+          val pc  = doSubstitute(substs, And(g, replace(Map(m -> c.rhs), p.pc)))
+          val phi = doSubstitute(substs, p.phi)
+          val free = variablesOf(And(pc, phi)) -- p.xs
+
+          val asPrefix = p.as.filter(free)
+          Problem(asPrefix ++ (free -- asPrefix), pc, phi, p.xs)
         }
 
         val onSuccess: List[Solution] => Option[Solution] = { 
