@@ -110,6 +110,44 @@ object ExpressionGrammars {
     }
   }
 
+  case class SimilarTo(e: Expr) extends ExpressionGrammar {
+    lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
+
+    def computeProductions(t: TypeTree): Seq[Gen] = {
+      allSimilar.getOrElse(t, Nil)
+    }
+
+    def computeSimilar(e : Expr) : Seq[(TypeTree, Gen)] = {
+
+      def gen(tp : TypeTree, retType : TypeTree, f : Seq[Expr] => Expr) : (TypeTree, Gen) =
+        (retType, Generator[TypeTree, Expr](Seq(tp),f))
+
+      // A generator that always regenerates its input
+      def const(e: Expr) = ( e.getType, Generator[TypeTree, Expr](Seq(), _ => e) )
+
+      def rec(e : Expr) : Seq[(TypeTree, Gen)] = {
+        val tp = e.getType
+        const(e) +: (e match {
+          case t : Terminal =>
+            Seq()
+          case UnaryOperator(sub, builder) => Seq(
+            gen( sub.getType, tp, { case Seq(ex) => builder(ex) } )
+          )
+          case BinaryOperator(sub1, sub2, builder) => Seq(
+            gen( sub1.getType, tp, { case Seq(ex) => builder(ex, sub2) } ),
+            gen( sub2.getType, tp, { case Seq(ex) => builder(sub1, ex) } )
+          )
+          case NAryOperator(subs, builder) => 
+            for ((sub,index) <- subs.zipWithIndex) yield {
+              gen( sub.getType, tp, { case Seq(ex) => builder(subs updated (index, ex) )} )
+            }
+        })
+      }
+
+      collectPreorder(rec)(e).tail // Don't want the expression itself
+    }
+  }
+
   case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree]) extends ExpressionGrammar {
    def computeProductions(t: TypeTree): Seq[Gen] = {
 

@@ -318,6 +318,10 @@ object TreeOps {
   def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
     foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.foldLeft(Set[T]())(_ ++ _) } )(e)
   }
+  
+  def collectPreorder[T](matcher: Expr => Seq[T])(e: Expr): Seq[T] = {
+    foldRight[Seq[T]]({ (e, subs) => matcher(e) ++ subs.foldLeft(Set[T]())(_ ++ _) } )(e)
+  }
 
   def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
     collect[Expr] { e => if (matcher(e)) Set(e) else Set() }(e)
