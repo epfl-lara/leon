@@ -170,6 +170,99 @@ class ExpressionGrammar(ctx: LeonContext, prog: Program, inputs: Seq[Expr], curr
     }
   }
 
+  def computeSubexpressionGenerators(canPlacehold : Expr => Boolean)(e : Expr) : Seq[Gen] = {
+
+    /** A simple Generator API **/
+
+    def gen(tps : Seq[TypeTree], f : Seq[Expr] => Expr) : Gen = 
+      Generator[TypeTree, Expr](tps,f)
+
+    // A generator that accepts a single type, and always regenerates its input
+    // (simple placeholder of 1 position)
+    def wildcardGen(tp : TypeTree) = gen(Seq(tp), { case Seq(x) => x })
+
+    // A generator that always regenerates its input
+    def const(e: Expr) : Gen = gen(Seq(), _ => e)
+ 
+    // Creates a new generator by applying f on the result of g.builder
+    def map(f : Expr => Expr)(g : Gen) : Gen = {
+      gen(g.subTrees, es => f(g.builder(es)) )
+    }
+
+    // Concatenate a sequence of generators into a generator.
+    // The arity of the resulting generator is the total arity of the constituting generators.
+    // builder is the function combining the results of the partial generators
+    def concat(gens : Seq[Gen], builder : Seq[Expr] => Expr ) : Gen = {
+      val types = gens flatMap { _.subTrees }
+      gen(
+        types,
+        exprs => {
+          assert(exprs.length == types.length) // Total arity is arity of subgenerators
+          var remaining = exprs
+          val fromSubGens = for (gen <- gens) yield {
+            val (current, rem) = remaining splitAt gen.arity
+            remaining = rem
+            gen.builder(current)
+          }
+          builder(fromSubGens)
+        }
+      )
+          
+    }
+
+    
+    def rec(e : Expr) : Seq[Gen] = {
+      
+      // Add an additional wildcard generator, if current expression passes the filter
+      def optWild(gens : Seq[Gen]) : Seq[Gen] = 
+        if (canPlacehold(e)) {
+           wildcardGen(e.getType) +: gens
+        }
+        else gens
+
+
+      e match {
+
+        case t : Terminal => 
+          // In case of Terminal, we either return the terminal itself, or the input expression
+          optWild(Seq(const(t)))
+          
+        case UnaryOperator(sub, builder) =>
+          val fromSub = for (subGen <- rec(sub)) yield map(builder)(subGen) 
+          optWild(fromSub)
+
+        case BinaryOperator(e1,e2,builder) =>
+          val fromSub = for {
+            subGen1 <- rec(e1)
+            subGen2 <- rec(e2)
+          } yield concat(Seq(subGen1, subGen2), { case Seq(e1,e2) => builder(e1,e2) })
+
+          optWild(fromSub)
+
+        case NAryOperator(subExpressions, builder) =>
+
+          def combinations[A](seqs : Seq[Seq[A]]) : Seq[Seq[A]] = {
+            if (seqs.isEmpty) Seq(Seq())
+            else for {
+              hd <- seqs.head
+              tl <- combinations(seqs.tail)
+            } yield hd +: tl
+          }
+
+          val combos = combinations(subExpressions map rec) 
+          val fromSub = combos map { concat(_, builder) }
+     
+          optWild(fromSub)
+      }
+    }
+    
+    rec(e)
+
+  }
+
+  def computeCompleteSubexpressionGenerators = inputs flatMap computeSubexpressionGenerators{ _ => true}
+
+
   def printGrammar(printer: String => Unit) {
     for ((t, gs) <- cache; g <- gs) {
       val subs = g.subTrees.map { tpe => FreshIdentifier(tpe.toString).setType(tpe).toVariable }
