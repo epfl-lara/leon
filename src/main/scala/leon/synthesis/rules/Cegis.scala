@@ -415,6 +415,7 @@ case object CEGIS extends Rule("CEGIS") {
                 baseExampleInputs += p.as.map(a => model.getOrElse(a, simplestValue(a.getType)))
 
               case Some(false) =>
+                sctx.reporter.debug("Path-condition seems UNSAT")
                 return RuleFailed()
 
               case None =>
@@ -509,7 +510,7 @@ case object CEGIS extends Rule("CEGIS") {
 
         try {
           do {
-            var needMoreUnrolling = false
+            var skipCESearch = false
 
             var bssAssumptions = Set[Identifier]()
 
@@ -553,14 +554,12 @@ case object CEGIS extends Rule("CEGIS") {
                 val examples = allInputExamples()
                 while(valid && examples.hasNext) {
                   val e = examples.next()
-                  println("Running on "+e)
                   if (!ndProgram.testForProgram(p)(e)) {
                     failedTestsStats(e) += 1
                     wrongPrograms += p
                     prunedPrograms -= p
                     valid = false;
                   }
-                  println("Done")
                 }
 
                 if (wrongPrograms.size % 1000 == 0) {
@@ -573,11 +572,11 @@ case object CEGIS extends Rule("CEGIS") {
             sctx.reporter.debug("#Programs passing tests: "+nPassing)
 
             if (nPassing == 0) {
-              needMoreUnrolling = true;
+              skipCESearch = true;
             } else if (nPassing <= testUpTo) {
               // Immediate Test
               checkForPrograms(prunedPrograms) match {
-                case rs: RuleClosed =>
+                case rs: RuleClosed if rs.solutions.nonEmpty =>
                   result = Some(rs)
                 case _ =>
                   wrongPrograms.foreach { p =>
@@ -614,7 +613,7 @@ case object CEGIS extends Rule("CEGIS") {
 
             val bss = ndProgram.bss
 
-            while (result.isEmpty && !needMoreUnrolling && !interruptManager.isInterrupted()) {
+            while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted()) {
 
               solver1.checkAssumptions(bssAssumptions.map(id => Not(Variable(id)))) match {
                 case Some(true) =>
@@ -659,7 +658,7 @@ case object CEGIS extends Rule("CEGIS") {
                         // Retest whether the newly found C-E invalidates all programs
                         if (useCEPruning && ndProgram.canTest) {
                           if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(newCE))) {
-                            needMoreUnrolling = true
+                            skipCESearch = true
                           }
                         }
 
@@ -692,7 +691,7 @@ case object CEGIS extends Rule("CEGIS") {
                         }
 
                         if (unsatCore.isEmpty) {
-                          needMoreUnrolling = true
+                          skipCESearch = true
                         } else {
                           solver1.assertCnstr(Not(And(unsatCore.toSeq)))
                         }
@@ -727,11 +726,11 @@ case object CEGIS extends Rule("CEGIS") {
                     }
                   }
 
-                  needMoreUnrolling = true
+                  skipCESearch = true
 
                 case _ =>
                   // Last chance, we test first few programs
-                  return checkForPrograms(prunedPrograms.take(testUpTo))
+                  result = Some(checkForPrograms(prunedPrograms.take(testUpTo)))
               }
             }
 

@@ -77,7 +77,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     // Synthesis from the ground up
     val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
 
-    val soptions = SynthesisPhase.processOptions(ctx);
+    val soptions = SynthesisPhase.processOptions(ctx).copy(costModel = RepairCostModel(CostModel.default));
 
     val synthesizer = new Synthesizer(ctx, fd, program, p, soptions)
 

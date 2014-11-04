@@ -4,6 +4,8 @@ package leon
 package synthesis
 package rules
 
+import leon.utils.Simplifiers
+
 import purescala.Trees._
 import purescala.Definitions._
 import purescala.Common._
@@ -24,10 +26,16 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
       case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
     }
 
-    def doSubstitute(substs: Seq[(Expr, Expr)], e: Expr): Expr = {
-      val m = substs.toMap
+    def simplify(e: Expr): Expr = {
+      Simplifiers.forPathConditions(sctx.context, sctx.program)(e)
+    }
 
-      preMap({ case e => m.get(e) }, true)(e)
+    def doSubstitute(substs: Seq[(Expr, Expr)], e: Expr): Expr = {
+      var res = e
+      for (s <- substs) {
+        res = postMap(Map(s).lift)(res)
+      }
+      res
     }
 
     val alts = guides.collect {
@@ -45,13 +53,17 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Guided If-Split on '"+c+"'"))
 
       case m @ MatchExpr(scrut, cs) =>
+        var pcSoFar: Expr = BooleanLiteral(true)
         val subs = for (c <- cs) yield {
           val substs = patternSubstitutions(scrut, c.pattern)
+          val cond   = conditionForPattern(scrut, c.pattern)
 
           val g = c.theGuard.getOrElse(BooleanLiteral(true))
-          val pc  = doSubstitute(substs, And(g, replace(Map(m -> c.rhs), p.pc)))
+          val pc  = simplify(doSubstitute(substs, And(Seq(pcSoFar, g, replace(Map(m -> c.rhs), p.pc)))))
           val phi = doSubstitute(substs, p.phi)
           val free = variablesOf(And(pc, phi)) -- p.xs
+
+          pcSoFar = And(pcSoFar, Not(cond))
 
           val asPrefix = p.as.filter(free)
           Problem(asPrefix ++ (free -- asPrefix), pc, phi, p.xs)

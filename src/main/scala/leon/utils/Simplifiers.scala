@@ -14,7 +14,7 @@ object Simplifiers {
     val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, p))
 
     val simplifiers = List[Expr => Expr](
-      removeWitnesses(p)(_),
+      removeWitnesses(p) _,
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _,
       decomposeIfs _,
@@ -37,6 +37,31 @@ object Simplifiers {
 
     // Clean up ids/names
     (new ScopeSimplifier).transform(s)
+  }
+
+  // Besteffort, but keep witnesses
+  def forPathConditions(ctx: LeonContext, p: Program)(e: Expr): Expr = {
+    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(ctx, p))
+
+    val simplifiers = List[Expr => Expr](
+      simplifyTautologies(uninterpretedZ3)(_),
+      simplifyLets _,
+      decomposeIfs _,
+      matchToIfThenElse _,
+      simplifyPaths(uninterpretedZ3)(_),
+      patternMatchReconstruction _,
+      rewriteTuples _,
+      evalGround(ctx, p),
+      normalizeExpression _
+    )
+
+    val simple = { expr: Expr =>
+      simplifiers.foldLeft(expr){ case (x, sim) => 
+        sim(x)
+      }
+    }
+
+    fixpoint(simple, 5)(e)
   }
 
   def namePreservingBestEffort(ctx: LeonContext, p: Program)(e: Expr): Expr = {

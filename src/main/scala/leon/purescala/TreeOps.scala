@@ -673,7 +673,7 @@ object TreeOps {
    *
    *  will return, for the first pattern:
    *
-   *    Seq(
+   *    Map(
    *     e -> CaseClass(t, c),
    *     t -> (a, b2),
    *     b2 -> 42,
