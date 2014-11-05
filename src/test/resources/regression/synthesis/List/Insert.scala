@@ -9,9 +9,9 @@ object Insert {
   case class Cons(head: Int, tail: List) extends List
   case object Nil extends List
 
-  def size(l: List) : Int = (l match {
-      case Nil => 0
-      case Cons(_, t) => 1 + size(t)
+  def size(l: List) : BigInt = (l match {
+      case Nil => BigInt(0)
+      case Cons(_, t) => size(t) + 1
   }) ensuring(res => res >= 0)
 
   def content(l: List): Set[Int] = l match {

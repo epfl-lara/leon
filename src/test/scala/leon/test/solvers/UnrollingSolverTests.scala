@@ -12,14 +12,14 @@ import leon.solvers.combinators._
 
 class UnrollingSolverTests extends LeonTestSuite {
 
-  private val fx   : Identifier = FreshIdentifier("x").setType(Int32Type)
-  private val fres : Identifier = FreshIdentifier("res").setType(Int32Type)
-  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, Int32Type, ValDef(fx, Int32Type) :: Nil, DefType.MethodDef)
-  fDef.body = Some(IfExpr(GreaterThan(Variable(fx), IntLiteral(0)),
-    Plus(Variable(fx), FunctionInvocation(fDef.typed, Seq(Minus(Variable(fx), IntLiteral(1))))),
-    IntLiteral(1)
+  private val fx   : Identifier = FreshIdentifier("x").setType(IntegerType)
+  private val fres : Identifier = FreshIdentifier("res").setType(IntegerType)
+  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, IntegerType, ValDef(fx, IntegerType) :: Nil, DefType.MethodDef)
+  fDef.body = Some(IfExpr(GreaterThan(Variable(fx), InfiniteIntegerLiteral(0)),
+    Plus(Variable(fx), FunctionInvocation(fDef.typed, Seq(Minus(Variable(fx), InfiniteIntegerLiteral(1))))),
+    InfiniteIntegerLiteral(1)
   ))
-  fDef.postcondition = Some(fres -> GreaterThan(Variable(fres), IntLiteral(0)))
+  fDef.postcondition = Some(fres -> GreaterThan(Variable(fres), InfiniteIntegerLiteral(0)))
 
   private val program = Program(
     FreshIdentifier("Minimal"),
@@ -42,6 +42,6 @@ class UnrollingSolverTests extends LeonTestSuite {
   check(BooleanLiteral(true), Some(true), "'true' should always be valid")
   check(BooleanLiteral(false), Some(false), "'false' should never be valid")
 
-  check(Not(GreaterThan(FunctionInvocation(fDef.typed, Seq(Variable(FreshIdentifier("toto").setType(Int32Type)))), IntLiteral(0))),
+  check(Not(GreaterThan(FunctionInvocation(fDef.typed, Seq(Variable(FreshIdentifier("toto").setType(IntegerType)))), InfiniteIntegerLiteral(0))),
     Some(false), "unrolling should enable recursive definition verification")
 }

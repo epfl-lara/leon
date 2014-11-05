@@ -24,34 +24,34 @@ object TreeNormalizations {
     //assume the expr is a literal (mult of constants and variables) with degree one
     def extractCoef(e: Expr): (Expr, Identifier) = {
       var id: Option[Identifier] = None
-      var coef = 1
+      var coef: BigInt = 1
 
       def rec(e: Expr): Unit = e match {
-        case IntLiteral(i) => coef = coef*i
+        case InfiniteIntegerLiteral(i) => coef = coef*i
         case Variable(id2) => if(id.isEmpty) id = Some(id2) else throw NonLinearExpressionException("multiple variable")
         case Times(e1, e2) => rec(e1); rec(e2)
       }
 
       rec(e)
       assert(!id.isEmpty)
-      (IntLiteral(coef), id.get)
+      (InfiniteIntegerLiteral(coef), id.get)
     }
 
 
     def containsId(e: Expr, id: Identifier): Boolean = e match {
       case Times(e1, e2) => containsId(e1, id) || containsId(e2, id)
-      case IntLiteral(_) => false
+      case InfiniteIntegerLiteral(_) => false
       case Variable(id2) => id == id2
       case err => throw NonLinearExpressionException("unexpected in containsId: " + err)
     }
 
     def group(es: Seq[Expr], id: Identifier): Expr = {
-      val totalCoef = es.foldLeft(0)((acc, e) => {
-        val (IntLiteral(i), id2) = extractCoef(e)
+      val totalCoef = es.foldLeft(BigInt(0))((acc, e) => {
+        val (InfiniteIntegerLiteral(i), id2) = extractCoef(e)
         assert(id2 == id)
         acc + i
       })
-      Times(IntLiteral(totalCoef), Variable(id))
+      Times(InfiniteIntegerLiteral(totalCoef), Variable(id))
     }
 
     var exprs: Seq[Expr] = expandedForm(expr)
@@ -64,7 +64,7 @@ object TreeNormalizations {
       res(index+1) = coef
     }}
 
-    res(0) = simplifyArithmetic(exprs.foldLeft[Expr](IntLiteral(0))(Plus(_, _)))
+    res(0) = simplifyArithmetic(exprs.foldLeft[Expr](InfiniteIntegerLiteral(0))(Plus(_, _)))
     res
   }
 
@@ -78,11 +78,11 @@ object TreeNormalizations {
   //do not keep the evaluation order
   def expandedForm(expr: Expr): Seq[Expr] = expr match {
     case Plus(es1, es2) => expandedForm(es1) ++ expandedForm(es2)
-    case Minus(e1, e2) => expandedForm(e1) ++ expandedForm(e2).map(Times(IntLiteral(-1), _): Expr)
-    case UMinus(e) => expandedForm(e).map(Times(IntLiteral(-1), _): Expr)
+    case Minus(e1, e2) => expandedForm(e1) ++ expandedForm(e2).map(Times(InfiniteIntegerLiteral(-1), _): Expr)
+    case UMinus(e) => expandedForm(e).map(Times(InfiniteIntegerLiteral(-1), _): Expr)
     case Times(es1, es2) => multiply(expandedForm(es1), expandedForm(es2))
-    case v@Variable(_) if v.getType == Int32Type => Seq(v)
-    case n@IntLiteral(_) => Seq(n)
+    case v@Variable(_) if v.getType == IntegerType => Seq(v)
+    case n@InfiniteIntegerLiteral(_) => Seq(n)
     case err => throw NonLinearExpressionException("unexpected in expandedForm: " + err)
   }
 

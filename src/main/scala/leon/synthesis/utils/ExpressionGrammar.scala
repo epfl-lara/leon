@@ -81,18 +81,30 @@ object ExpressionGrammars {
           Generator(List(BooleanType), { case Seq(a) => Not(a) }),
           Generator(List(BooleanType, BooleanType), { case Seq(a, b) => And(a, b) }),
           Generator(List(BooleanType, BooleanType), { case Seq(a, b) => LeonOr(a, b) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a, b) => LessThan(a, b) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a, b) => LessEquals(a, b) }),
+          Generator(List(Int32Type, Int32Type),     { case Seq(a, b) => LessThan(a, b) }),
+          Generator(List(Int32Type, Int32Type),     { case Seq(a, b) => LessEquals(a, b) }),
           Generator(List(Int32Type,   Int32Type  ), { case Seq(a, b) => Equals(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a, b) => LessThan(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a, b) => LessEquals(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a, b) => Equals(a, b) }),
           Generator(List(BooleanType, BooleanType), { case Seq(a, b) => Equals(a, b) })
         )
       case Int32Type =>
         List(
           Generator(Nil, { _ => IntLiteral(0) }),
           Generator(Nil, { _ => IntLiteral(1) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => Plus(a, b) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => Minus(a, b) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => Times(a, b) })
+          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => BVPlus(a, b) }),
+          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => BVMinus(a, b) }),
+          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => BVTimes(a, b) })
+        )
+
+      case IntegerType =>
+        List(
+          Generator(Nil, { _ => InfiniteIntegerLiteral(0) }),
+          Generator(Nil, { _ => InfiniteIntegerLiteral(1) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => Plus(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => Minus(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => Times(a, b) })
         )
 
       case TupleType(stps) =>
@@ -136,6 +148,12 @@ object ExpressionGrammars {
           Generator(Nil, { _ => IntLiteral(0) }),
           Generator(Nil, { _ => IntLiteral(1) }),
           Generator(Nil, { _ => IntLiteral(-1) })
+        )
+      case IntegerType =>
+        List(
+          Generator(Nil, { _ => InfiniteIntegerLiteral(0) }),
+          Generator(Nil, { _ => InfiniteIntegerLiteral(1) }),
+          Generator(Nil, { _ => InfiniteIntegerLiteral(-1) })
         )
 
       case tp@TypeParameter(_) =>
@@ -263,8 +281,8 @@ object ExpressionGrammars {
 
         def intVariations(gl: L, e : Expr): Seq[(L, Gen)] = {
           Seq(
-            gl -> Generator(Nil, { _ => Minus(e, IntLiteral(1))} ),
-            gl -> Generator(Nil, { _ => Plus (e, IntLiteral(1))} )
+            gl -> Generator(Nil, { _ => BVMinus(e, IntLiteral(1))} ),
+            gl -> Generator(Nil, { _ => BVPlus (e, IntLiteral(1))} )
           )
         }
 

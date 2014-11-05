@@ -255,6 +255,9 @@ object Trees {
   case class IntLiteral(value: Int) extends Literal[Int] {
     val getType = Int32Type
   }
+  case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] {
+    val getType = IntegerType
+  }
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] {
     val getType = BooleanType
@@ -307,22 +310,28 @@ object Trees {
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = IntegerType
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr { 
-    val getType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = IntegerType
   }
   case class UMinus(expr: Expr) extends Expr { 
-    val getType = Int32Type
+    require(expr.getType == IntegerType)
+    val getType = IntegerType
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr { 
-    val getType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = IntegerType
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr { 
-    val getType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = IntegerType
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr { 
-    val getType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = IntegerType
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr { 
     val getType = BooleanType
@@ -335,6 +344,36 @@ object Trees {
   }
   case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
+  }
+
+  /* Bit-vector arithmetic */
+  case class BVPlus(lhs: Expr, rhs: Expr) extends Expr {
+    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+  case class BVUMinus(expr: Expr) extends Expr { 
+    require(expr.getType == Int32Type)
+    val getType = Int32Type
+  }
+  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+  case class BVModulo(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == Int32Type && rhs.getType == Int32Type)
+    val getType = Int32Type
+  }
+
+  case class IntToBigInt(expr: Expr) extends Expr {
+    val getType = Int32Type
   }
 
   /* Set expressions */
