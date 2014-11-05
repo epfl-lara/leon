@@ -16,10 +16,10 @@ abstract class TransformationPhase extends LeonPhase[Program, Program] {
   }
 }
 
-abstract class UnitPhase[Program] extends LeonPhase[Program, Program] {
-  def apply(ctx: LeonContext, p: Program): Unit
+abstract class UnitPhase[T] extends LeonPhase[T, T] {
+  def apply(ctx: LeonContext, p: T): Unit
 
-  override def run(ctx: LeonContext)(p: Program) = {
+  override def run(ctx: LeonContext)(p: T) = {
     apply(ctx, p)
     p
   }
