@@ -25,10 +25,18 @@ import evaluators._
 import datagen._
 import codegen.CodeGenParams
 
-import utils.ExpressionGrammar
+import utils._
+
+case object CEGIS extends CEGISLike("CEGIS") {
+  def getGrammar(sctx: SynthesisContext, p: Problem) = {
+    ExpressionGrammars.default(sctx, p)
+  }
+}
 
 
-case object CEGIS extends Rule("CEGIS") {
+abstract class CEGISLike(name: String) extends Rule(name) {
+  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar
+
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     // CEGIS Flags to actiave or de-activate features
@@ -51,7 +59,7 @@ case object CEGIS extends Rule("CEGIS") {
     class NonDeterministicProgram(val p: Problem,
                                   val initGuard: Identifier) {
 
-      val grammar = new ExpressionGrammar(sctx, p)
+      val grammar = getGrammar(sctx, p)
 
       // b -> (c, ex) means the clause b => c == ex
       var mappings: Map[Identifier, (Identifier, Expr)] = Map()
@@ -309,7 +317,7 @@ case object CEGIS extends Rule("CEGIS") {
 
         for ((parentGuard, recIds) <- guardedTerms; recId <- recIds) {
 
-          var alts = grammar.getGenerators(recId.getType)
+          var alts = grammar.getProductions(recId.getType)
           if (finalUnrolling) {
             alts = alts.filter(_.subTrees.isEmpty)
           }
@@ -356,7 +364,7 @@ case object CEGIS extends Rule("CEGIS") {
 
         sctx.reporter.ifDebug { printer =>
           printer("Grammar so far:");
-          grammar.printGrammar(printer)
+          grammar.printProductions(printer)
         }
 
         //program  = And(program :: newClauses)

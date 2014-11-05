@@ -24,7 +24,7 @@ import evaluators._
 import datagen._
 import codegen.CodeGenParams
 
-import utils.ExpressionGrammar
+import utils._
 
 import bonsai._
 import bonsai.enumerators._
@@ -32,7 +32,7 @@ import bonsai.enumerators._
 case object TEGIS extends Rule("TEGIS") {
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val grammar = new ExpressionGrammar(sctx, p)
+    val grammar = ExpressionGrammars.default(sctx, p)
 
     var tests = p.getTests(sctx).map(_.ins).distinct
     if (tests.nonEmpty) {
@@ -46,7 +46,7 @@ case object TEGIS extends Rule("TEGIS") {
 
           val interruptManager      = sctx.context.interruptManager
 
-          val enum = new MemoizedEnumerator[TypeTree, Expr](grammar.getGenerators)
+          val enum = new MemoizedEnumerator[TypeTree, Expr](grammar.getProductions _)
 
           val (targetType, isWrapped) = if (p.xs.size == 1) {
             (p.xs.head.getType, false)
