@@ -18,7 +18,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val solver = SimpleSolverAPI(hctx.sctx.fastSolverFactory)
 
-    val candidates = p.as.filter(_.getType == Int32Type).combinations(2).toList.filter {
+    val candidates = p.as.filter(_.getType == IntegerType).combinations(2).toList.filter {
       case List(a1, a2) =>
         val toValLT = implies(p.pc, LessThan(Variable(a1), Variable(a2)))
 

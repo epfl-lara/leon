@@ -19,6 +19,12 @@ object Algebra {
     ((a - r)/b, r)
   }
 
+  def remainder(x: BigInt, y: BigInt) = ((x % y) + y.abs) % y.abs
+  def divide(a: BigInt, b: BigInt): (BigInt, BigInt) = {
+    val r = remainder(a, b)
+    ((a - r)/b, r)
+  }
+
   def gcd(a: Int, b: Int): Int = {
     val (na, nb) = (a.abs, b.abs)
     def gcd0(a: Int, b: Int): Int = {
@@ -40,6 +46,41 @@ object Algebra {
   }
 
   def gcd(as: Seq[Int]): Int = {
+    require(as.length >= 1)
+    if(as.length == 1)
+      as(0).abs
+    else {
+      var tmp = gcd(as(0), as(1))
+      var i = 2
+      while(i < as.size) {
+        tmp = gcd(tmp, as(i))
+        i += 1
+      }
+      tmp
+    }
+  }
+
+  def gcd(a: BigInt, b: BigInt): BigInt = {
+    val (na, nb) = (a.abs, b.abs)
+    def gcd0(a: BigInt, b: BigInt): BigInt = {
+      require(a >= b)
+      if(b == 0) a else gcd0(b, a % b)
+    }
+    if(na > nb) gcd0(na, nb) else gcd0(nb, na)
+  }
+
+  def gcd(a1: BigInt, a2: BigInt, a3: BigInt, as: BigInt*): BigInt = {
+    var tmp = gcd(a1, a2)
+    tmp = gcd(tmp, a3)
+    var i = 0
+    while(i < as.size) {
+      tmp = gcd(tmp, as(i))
+      i += 1
+    }
+    tmp
+  }
+
+  def gcd(as: Seq[BigInt]): BigInt = {
     require(as.length >= 1)
     if(as.length == 1)
       as(0).abs
@@ -85,9 +126,55 @@ object Algebra {
     }
   }
 
+  def lcm(a: BigInt, b: BigInt): BigInt = {
+    val (na, nb) = (a.abs, b.abs)
+    na*nb/gcd(a, b)
+  }
+
+  def lcm(a1: BigInt, a2: BigInt, a3: BigInt, as: BigInt*): BigInt = {
+    var tmp = lcm(a1, a2)
+    tmp = lcm(tmp, a3)
+    var i = 0
+    while(i < as.size) {
+      tmp = lcm(tmp, as(i))
+      i += 1
+    }
+    tmp
+  }
+
+  def lcm(as: Seq[BigInt]): BigInt = {
+    require(as.length >= 1)
+    if(as.length == 1)
+      as(0).abs
+    else {
+      var tmp = lcm(as(0), as(1))
+      var i = 2
+      while(i < as.size) {
+        tmp = lcm(tmp, as(i))
+        i += 1
+      }
+      tmp
+    }
+  }
+
   //return (x, y) such that ax + by = gcd(a, b)
   def extendedEuclid(a: Int, b: Int): (Int, Int) = {
     def rec(a: Int, b: Int): (Int, Int) = {
+      require(a >= 0 && b >= 0)
+      if(b == 0) (1, 0) else {
+        val (q, r) = divide(a, b)
+        val (s, t) = extendedEuclid(b, r)
+        (t, s - q * t)
+      }
+    }
+    if(a >= 0 && b >= 0) rec(a, b)
+    else if(a < 0 && b >= 0) {val (x, y) = rec(-a, b); (-x, y)}
+    else if(a >= 0 && b < 0) {val (x, y) = rec(a, -b); (x, -y)}
+    else if(a < 0 && b < 0) {val (x, y) = rec(-a, -b); (-x, -y)}
+    else sys.error("shouldn't have forgot a case here")
+  }
+  def extendedEuclid(a: BigInt, b: BigInt): (BigInt, BigInt) = {
+    def rec(a: BigInt, b: BigInt): (BigInt, BigInt) = {
       require(a >= 0 && b >= 0)
       if(b == 0) (1, 0) else {
         val (q, r) = divide(a, b)

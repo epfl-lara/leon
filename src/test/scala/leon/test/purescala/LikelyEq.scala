@@ -50,7 +50,7 @@ trait WithLikelyEq {
 
         var cont = true
         while(i < counters.size && isEq) {
-          val m: Map[Expr, Expr] = vsOrder.zip(counters).map{case (v, c) => (Variable(v), IntLiteral(c))}.toMap
+          val m: Map[Expr, Expr] = vsOrder.zip(counters).map{case (v, c) => (Variable(v), InfiniteIntegerLiteral(c))}.toMap
           val ne1 = replace(m, e1)
           val ne2 = replace(m, e2)
           val npre = replace(m, pre)

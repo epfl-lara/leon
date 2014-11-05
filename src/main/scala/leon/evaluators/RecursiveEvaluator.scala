@@ -230,11 +230,23 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case Plus(l,r) =>
       (e(l), e(r)) match {
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 + i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+      }
+
+    case Minus(l,r) =>
+      (e(l), e(r)) match {
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 - i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+      }
+
+    case BVPlus(l,r) =>
+      (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
-    case Minus(l,r) =>
+    case BVMinus(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
@@ -242,50 +254,81 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case UMinus(ex) =>
       e(ex) match {
+        case InfiniteIntegerLiteral(i) => InfiniteIntegerLiteral(-i)
+        case re => throw EvalError(typeErrorMsg(re, IntegerType))
+      }
+
+    case BVUMinus(ex) =>
+      e(ex) match {
         case IntLiteral(i) => IntLiteral(-i)
         case re => throw EvalError(typeErrorMsg(re, Int32Type))
       }
 
     case Times(l,r) =>
       (e(l), e(r)) match {
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 * i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+      }
+
+    case Division(l,r) =>
+      (e(l), e(r)) match {
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
+          if(i2 != 0) InfiniteIntegerLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+        case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+      }
+
+    case Modulo(l,r) =>
+      (e(l), e(r)) match {
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => 
+          if(i2 != 0) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
+        case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+      }
+
+    case BVTimes(l,r) =>
+      (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
-    case Division(l,r) =>
+    case BVDivision(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) =>
           if(i2 != 0) IntLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
-    case Modulo(l,r) =>
+    case BVModulo(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => 
           if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
+
     case LessThan(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 < i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
     case GreaterThan(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 > i2)
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 > i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
     case LessEquals(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 <= i2)
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 <= i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
     case GreaterEquals(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 >= i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
@@ -332,6 +375,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case f @ FiniteSet(els) => FiniteSet(els.map(e(_))).setType(f.getType)
     case i @ IntLiteral(_) => i
+    case i @ InfiniteIntegerLiteral(_) => i
     case b @ BooleanLiteral(_) => b
     case u @ UnitLiteral() => u
     case l @ Lambda(_, _) => l

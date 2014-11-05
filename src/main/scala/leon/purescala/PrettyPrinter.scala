@@ -279,8 +279,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
       case UMinus(expr)         => p"-$expr"
+      case BVUMinus(expr)       => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
+      case InfiniteIntegerLiteral(v)        => p"BigInt($v)"
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case StringLiteral(s)     => p""""$s""""
@@ -351,6 +353,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case GreaterThan(l,r)          => optP { p"$l > $r" }
       case LessEquals(l,r)           => optP { p"$l <= $r" }
       case GreaterEquals(l,r)        => optP { p"$l >= $r" }
+      case BVPlus(l,r)               => optP { p"$l + $r" }
+      case BVMinus(l,r)              => optP { p"$l - $r" }
+      case BVTimes(l,r)              => optP { p"$l * $r" }
+      case BVDivision(l,r)           => optP { p"$l / $r" }
+      case BVModulo(l,r)             => optP { p"$l % $r" }
       case FiniteSet(rs)             => p"{${rs.toSeq}}"
       case FiniteMultiset(rs)        => p"{|$rs|)"
       case EmptyMultiset(_)          => p"\u2205"
@@ -389,7 +396,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         s match {
           case IntLiteral(length) => {
             if(es.size == length) {
-              val orderedElements = es.toSeq.sortWith((e1, e2) => e1._1 < e2._1)
+              val orderedElements = es.toSeq.sortWith((e1, e2) => e1._1 < e2._1).map(el => el._2)
               p"Array($orderedElements)"
             } else if(length < 10) {
               val elems = (0 until length).map(i => 
@@ -481,6 +488,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Untyped               => p"<untyped>"
       case UnitType              => p"Unit"
       case Int32Type             => p"Int"
+      case IntegerType           => p"BigInt"
       case CharType              => p"Char"
       case BooleanType           => p"Boolean"
       case ArrayType(bt)         => p"Array[$bt]"
@@ -691,8 +699,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: And | BinaryMethodCall(_, "&&", _)) => 3
     case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
     case (_: Equals | _: Not) => 5
-    case (_: Plus | _: Minus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
-    case (_: Times | _: Division | _: Modulo | BinaryMethodCall(_, "*" | "/", _)) => 7
+    case (_: Plus | _: BVPlus | _: Minus | _: BVMinus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
+    case (_: Times | _: BVTimes | _: Division | _: BVDivision | _: Modulo | _: BVModulo | BinaryMethodCall(_, "*" | "/", _)) => 7
     case _ => 7
   }
 

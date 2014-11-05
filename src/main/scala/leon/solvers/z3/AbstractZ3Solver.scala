@@ -376,14 +376,16 @@ trait AbstractZ3Solver
       )
     )
 
-    sorts += Int32Type -> z3.mkIntSort
+    //TODO: mkBitVectorType
+    sorts += Int32Type -> z3.mkBVSort(32)
+    sorts += IntegerType -> z3.mkIntSort
     sorts += BooleanType -> z3.mkBoolSort
     sorts += UnitType -> us
 
     unitValue = unitCons()
 
-    val intSetSort = typeToSort(SetType(Int32Type))
-    val intSort    = typeToSort(Int32Type)
+    val intSetSort = typeToSort(SetType(IntegerType))
+    val intSort    = typeToSort(IntegerType)
 
     intSetMinFun = z3.mkFreshFuncDecl("setMin", Seq(intSetSort), intSort)
     intSetMaxFun = z3.mkFreshFuncDecl("setMax", Seq(intSetSort), intSort)
@@ -403,7 +405,7 @@ trait AbstractZ3Solver
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | UnitType =>
+    case Int32Type | BooleanType | UnitType | IntegerType =>
       sorts.toZ3(oldtt)
 
     case act: AbstractClassType =>
@@ -559,6 +561,7 @@ trait AbstractZ3Solver
       case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
+      case InfiniteIntegerLiteral(v) => z3.mkNumeral(v.toString, typeToSort(IntegerType))
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case UnitLiteral() => unitValue
       case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
@@ -568,10 +571,29 @@ trait AbstractZ3Solver
       case Division(l, r) => z3.mkDiv(rec(l), rec(r))
       case Modulo(l, r) => z3.mkMod(rec(l), rec(r))
       case UMinus(e) => z3.mkUnaryMinus(rec(e))
-      case LessThan(l, r) => z3.mkLT(rec(l), rec(r))
-      case LessEquals(l, r) => z3.mkLE(rec(l), rec(r))
-      case GreaterThan(l, r) => z3.mkGT(rec(l), rec(r))
-      case GreaterEquals(l, r) => z3.mkGE(rec(l), rec(r))
+      case BVPlus(l, r) => z3.mkBVAdd(rec(l), rec(r))
+      case BVMinus(l, r) => z3.mkBVSub(rec(l), rec(r))
+      case BVTimes(l, r) => z3.mkBVMul(rec(l), rec(r))
+      case BVDivision(l, r) => z3.mkBVSdiv(rec(l), rec(r))
+      case BVModulo(l, r) => z3.mkBVSrem(rec(l), rec(r))
+      case BVUMinus(e) => z3.mkBVNeg(rec(e))
+      case LessThan(l, r) => l.getType match {
+        case IntegerType => z3.mkLT(rec(l), rec(r))
+        case Int32Type => z3.mkBVSlt(rec(l), rec(r))
+      }
+      case LessEquals(l, r) => l.getType match {
+        case IntegerType => z3.mkLE(rec(l), rec(r))
+        case Int32Type => z3.mkBVSle(rec(l), rec(r))
+      }
+      case GreaterThan(l, r) => l.getType match {
+        case IntegerType => z3.mkGT(rec(l), rec(r))
+        case Int32Type => z3.mkBVSgt(rec(l), rec(r))
+      }
+      case GreaterEquals(l, r) => l.getType match {
+        case IntegerType => z3.mkGE(rec(l), rec(r))
+        case Int32Type => z3.mkBVSge(rec(l), rec(r))
+      }
+
       case c @ CaseClass(ct, args) =>
         typeToSort(ct) // Making sure the sort is defined
         val constructor = adtConstructors(ct)
@@ -664,9 +686,10 @@ trait AbstractZ3Solver
 
         val default = oDefault.getOrElse(simplestValue(base))
 
-        val ar = z3.mkConstArray(typeToSort(base), rec(default))
-        val u = elems.foldLeft(ar)((array, el) => 
-          z3.mkStore(array, rec(IntLiteral(el._1)), rec(el._2)))
+        val ar = z3.mkConstArray(typeToSort(Int32Type), rec(default))
+        val u = elems.foldLeft(ar)((array, el) => {
+          z3.mkStore(array, rec(IntLiteral(el._1)), rec(el._2))
+        })
         meta.cons(u, rec(length))
 
       case gv @ GenericValue(tp, id) =>
@@ -692,7 +715,29 @@ trait AbstractZ3Solver
       val sort = z3.getSort(t)
 
       kind match {
-        case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+        case Z3NumeralIntAST(Some(v)) => {
+          val leading = t.toString.substring(0, 2 min t.toString.size)
+          if(leading == "#x") {
+            _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
+              case Some(hexa) => IntLiteral(hexa.toInt)
+              case None => {
+                println("Z3NumeralIntAST with None: " + t)
+                throw new CantTranslateException(t)
+              }
+            }
+          } else {
+            InfiniteIntegerLiteral(v)
+          }
+        }
+        case Z3NumeralIntAST(None) => {
+          _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
+            case Some(hexa) => IntLiteral(hexa.toInt)
+            case None => {
+              println("Z3NumeralIntAST with None: " + t)
+              throw new CantTranslateException(t)
+            }
+          }
+        }
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsZ3 t)) {
@@ -725,13 +770,21 @@ trait AbstractZ3Solver
 
               case LeonType(at @ ArrayType(dt)) =>
                 assert(args.size == 2)
-                val IntLiteral(length) = rec(args(1))
+                val length = rec(args(1)) match {
+                  case InfiniteIntegerLiteral(length) => length.toInt
+                  case IntLiteral(length) => length
+                  case _ => throw new CantTranslateException(t)
+                }
                 model.getArrayValue(args(0)) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
                     val elseValue = rec(elseZ3Value)
                     var valuesMap = map.map { case (k,v) =>
-                      val IntLiteral(index) = rec(k)
+                      val index = rec(k) match {
+                        case InfiniteIntegerLiteral(index) => index.toInt
+                        case IntLiteral(index) => index
+                        case _ => throw new CantTranslateException(t)
+                      }
                       (index -> rec(v))
                     }
 
@@ -846,7 +899,7 @@ trait AbstractZ3Solver
           }
         }
       }
-      case Z3NumeralIntAST(Some(v)) => IntLiteral(v)
+      case Z3NumeralIntAST(Some(v)) => InfiniteIntegerLiteral(v)
       case _ => throw e
     }
 

@@ -24,6 +24,7 @@ trait Z3ModelReconstruction {
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
         case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
+        case IntegerType => model.evalAs[Int](z3ID).map(InfiniteIntegerLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
           case Some(t) => softFromZ3Formula(model, t)

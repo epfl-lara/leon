@@ -1,7 +1,7 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 object Fibonacci {
-  def fib(x: Int) : Int = {
+  def fib(x: BigInt) : BigInt = {
     require(x >= 0)
     if(x < 2) {
       x
@@ -12,6 +12,6 @@ object Fibonacci {
 
   // requires that fib is universally quantified to work...
   def check() : Boolean = {
-    fib(5) == 5
+    fib(5) == BigInt(5)
   } ensuring(_ == true)
 }

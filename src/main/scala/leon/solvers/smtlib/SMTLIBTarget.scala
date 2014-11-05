@@ -94,7 +94,8 @@ trait SMTLIBTarget {
     sorts.cachedB(tpe) {
       tpe match {
         case BooleanType => Core.BoolSort()
-        case Int32Type => Ints.IntSort()
+        case IntegerType => Ints.IntSort()
+        case Int32Type => FixedSizeBitVectors.BitVectorSort(32)
         case CharType => FixedSizeBitVectors.BitVectorSort(32)
 
         case RawArrayType(from, to) =>
@@ -330,7 +331,8 @@ trait SMTLIBTarget {
 
         declareVariable(FreshIdentifier("Unit").setType(UnitType))
 
-      case IntLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case InfiniteIntegerLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case IntLiteral(i) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
       case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v) => Core.BoolConst(v)
       case StringLiteral(s) => SString(s)
@@ -451,10 +453,27 @@ trait SMTLIBTarget {
           case (_: Times) => Ints.Mul(toSMT(a), toSMT(b))
           case (_: Division) => Ints.Div(toSMT(a), toSMT(b))
           case (_: Modulo) => Ints.Mod(toSMT(a), toSMT(b))
-          case (_: LessThan) => Ints.LessThan(toSMT(a), toSMT(b))
-          case (_: LessEquals) => Ints.LessEquals(toSMT(a), toSMT(b))
-          case (_: GreaterThan) => Ints.GreaterThan(toSMT(a), toSMT(b))
-          case (_: GreaterEquals) => Ints.GreaterEquals(toSMT(a), toSMT(b))
+          case (_: LessThan) => a.getType match {
+            case Int32Type => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
+            case IntegerType => Ints.LessThan(toSMT(a), toSMT(b))
+          }
+          case (_: LessEquals) => a.getType match {
+            case Int32Type => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
+            case IntegerType => Ints.LessEquals(toSMT(a), toSMT(b))
+          }
+          case (_: GreaterThan) => a.getType match {
+            case Int32Type => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
+            case IntegerType => Ints.GreaterThan(toSMT(a), toSMT(b))
+          }
+          case (_: GreaterEquals) => a.getType match {
+            case Int32Type => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
+            case IntegerType => Ints.GreaterEquals(toSMT(a), toSMT(b))
+          }
+          case (_: BVPlus) => FixedSizeBitVectors.Add(toSMT(a), toSMT(b))
+          case (_: BVMinus) => FixedSizeBitVectors.Sub(toSMT(a), toSMT(b))
+          case (_: BVTimes) => FixedSizeBitVectors.Mul(toSMT(a), toSMT(b))
+          case (_: BVDivision) => FixedSizeBitVectors.SDiv(toSMT(a), toSMT(b))
+          case (_: BVModulo) => FixedSizeBitVectors.SRem(toSMT(a), toSMT(b))
           case _ => reporter.fatalError("Unhandled binary "+e)
         }
 
@@ -489,8 +508,8 @@ trait SMTLIBTarget {
     case (SHexadecimal(h), CharType) =>
       CharLiteral(h.toInt.toChar)
 
-    case (SNumeral(n), Int32Type) =>
-      IntLiteral(n.toInt)
+    case (SNumeral(n), IntegerType) =>
+      InfiniteIntegerLiteral(n)
 
     case (Core.True(), BooleanType)  => BooleanLiteral(true)
     case (Core.False(), BooleanType)  => BooleanLiteral(false)
@@ -555,8 +574,8 @@ trait SMTLIBTarget {
       app match {
         case "-" =>
           args match {
-            case List(a) => UMinus(fromSMT(a, Int32Type))
-            case List(a, b) => Minus(fromSMT(a, Int32Type), fromSMT(b, Int32Type))
+            case List(a) => UMinus(fromSMT(a, IntegerType))
+            case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
           }
 
         case _ =>
