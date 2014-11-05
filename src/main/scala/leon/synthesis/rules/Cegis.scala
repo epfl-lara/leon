@@ -33,9 +33,32 @@ case object CEGIS extends CEGISLike("CEGIS") {
   }
 }
 
+case object CEGLESS extends CEGISLike("CEGLESS") {
+  override val maxUnrolings = 2;
+
+  def getGrammar(sctx: SynthesisContext, p: Problem) = {
+    import ExpressionGrammars._
+
+    val TopLevelAnds(clauses) = p.pc
+
+    val guide = sctx.program.library.guide.get
+
+    val guides = clauses.collect {
+      case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
+    }
+
+    val guidedGrammar = guides.map(SimilarTo(_)).foldLeft[ExpressionGrammar](Empty)(_ || _)
+
+    guidedGrammar || OneOf(p.as.map(_.toVariable))
+  }
+}
+
 
 abstract class CEGISLike(name: String) extends Rule(name) {
+
   def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar
+
+  val maxUnrolings = 3
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
@@ -395,7 +418,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         val ndProgram = new NonDeterministicProgram(p, initGuard)
         var unrolings = 1
-        val maxUnrolings = 3
+        val maxUnrolings = CEGISLike.this.maxUnrolings
 
         val exSolverTo  = 2000L
         val cexSolverTo = 2000L

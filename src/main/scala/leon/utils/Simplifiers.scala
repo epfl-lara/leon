@@ -51,7 +51,6 @@ object Simplifiers {
       simplifyPaths(uninterpretedZ3)(_),
       patternMatchReconstruction _,
       rewriteTuples _,
-      evalGround(ctx, p),
       normalizeExpression _
     )
 

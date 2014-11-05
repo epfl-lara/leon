@@ -28,6 +28,7 @@ object Rules {
     TEGIS,
     GuidedDecomp,
     GuidedCloser,
+    CEGLESS,
     rules.Assert,
     DetupleOutput,
     DetupleInput,

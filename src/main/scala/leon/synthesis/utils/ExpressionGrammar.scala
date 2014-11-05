@@ -34,7 +34,7 @@ abstract class ExpressionGrammar {
   def computeProductions(t: TypeTree): Seq[Gen]
 
   final def ||(that: ExpressionGrammar): ExpressionGrammar = {
-    ExpressionGrammar.Or(Seq(this, that))
+    ExpressionGrammars.Or(Seq(this, that))
   }
 
   final def printProductions(printer: String => Unit) {
@@ -47,7 +47,8 @@ abstract class ExpressionGrammar {
   }
 }
 
-object ExpressionGrammar {
+object ExpressionGrammars {
+
   case class Or(gs: Seq[ExpressionGrammar]) extends ExpressionGrammar {
     val subGrammars: Seq[ExpressionGrammar] = gs.flatMap {
       case o: Or => o.subGrammars
@@ -57,9 +58,10 @@ object ExpressionGrammar {
     def computeProductions(t: TypeTree): Seq[Gen] =
       subGrammars.flatMap(_.getProductions(t))
   }
-}
 
-object ExpressionGrammars {
+  case object Empty extends ExpressionGrammar {
+    def computeProductions(t: TypeTree): Seq[Gen] = Nil
+  }
 
   case object BaseGrammar extends ExpressionGrammar {
     def computeProductions(t: TypeTree): Seq[Gen] = t match {
@@ -128,23 +130,23 @@ object ExpressionGrammars {
       def rec(e : Expr) : Seq[(TypeTree, Gen)] = {
         val tp = e.getType
         const(e) +: (e match {
-          case t : Terminal =>
+          case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
             Seq()
           case UnaryOperator(sub, builder) => Seq(
             gen( sub.getType, tp, { case Seq(ex) => builder(ex) } )
-          )
+          ) ++ rec(sub)
           case BinaryOperator(sub1, sub2, builder) => Seq(
             gen( sub1.getType, tp, { case Seq(ex) => builder(ex, sub2) } ),
             gen( sub2.getType, tp, { case Seq(ex) => builder(sub1, ex) } )
-          )
+          ) ++ rec(sub1) ++ rec(sub2)
           case NAryOperator(subs, builder) => 
-            for ((sub,index) <- subs.zipWithIndex) yield {
+            (for ((sub,index) <- subs.zipWithIndex) yield {
               gen( sub.getType, tp, { case Seq(ex) => builder(subs updated (index, ex) )} )
-            }
+            }) ++ subs.flatMap(rec)
         })
       }
 
-      collectPreorder(rec)(e).tail // Don't want the expression itself
+      rec(e).tail // Don't want the expression itself
     }
   }
 
