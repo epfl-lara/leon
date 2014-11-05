@@ -527,6 +527,14 @@ object Trees {
     val fixedType = BooleanType
   }
 
+  /* Bit-vector arithmetic */
+  case class BVPlus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
+  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+
   /* Set expressions */
   case class FiniteSet(elements: Set[Expr]) extends Expr {
     val tpe = if (elements.isEmpty) None else leastUpperBound(elements.toSeq.map(_.getType))

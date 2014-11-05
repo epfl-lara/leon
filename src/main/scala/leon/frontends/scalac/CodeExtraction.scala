@@ -1177,6 +1177,11 @@ trait CodeExtraction extends ASTExtractors {
           val newValueRec = extractTree(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec)
 
+        case ExBigIntLiteral(n) => {
+          println("Extracting BigInt: " + n)
+          IntLiteral(n)
+        }
+
         case ExInt32Literal(v) =>
           IntLiteral(v)
 
@@ -1591,6 +1596,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case tpe if tpe == NothingClass.tpe =>
         Untyped
+
+      case TypeRef(_, sym, _) if isBigIntSym(sym) =>
+        IntegerType
 
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) =>
         SetType(extractType(btt))

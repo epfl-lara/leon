@@ -53,9 +53,12 @@ object TypeTrees {
 
   case object Untyped extends TypeTree
   case object BooleanType extends TypeTree
-  case object Int32Type extends TypeTree
+  case object IntegerType extends TypeTree
   case object UnitType extends TypeTree
   case object CharType extends TypeTree
+
+  case class BitVectorType(size: Int) extends TypeTree
+  case object Int32Type extends TypeTree
 
   case class TypeParameter(id: Identifier) extends TypeTree
 
