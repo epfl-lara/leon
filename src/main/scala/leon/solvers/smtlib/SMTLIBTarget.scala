@@ -89,7 +89,8 @@ trait SMTLIBTarget {
     sorts.cachedB(tpe) {
       tpe match {
         case BooleanType => Core.BoolSort()
-        case Int32Type => Ints.IntSort()
+        case IntegerType => Ints.IntSort()
+        case Int32Type => FixedSizeBitVectors.BitVectorSort(32)
         case CharType => FixedSizeBitVectors.BitVectorSort(32)
 
         case RawArrayType(from, to) =>
@@ -322,7 +323,10 @@ trait SMTLIBTarget {
 
         declareVariable(FreshIdentifier("Unit").setType(UnitType))
 
-      case IntLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case InfiniteIntegerLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case IntLiteral(i) => 
+        if(i > 0) FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i).get)
+        else FixedSizeBitVectors.Neg(FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(-i).get))
       case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt).get)
       case BooleanLiteral(v) => Core.BoolConst(v)
       case StringLiteral(s) => SString(s)
@@ -446,6 +450,11 @@ trait SMTLIBTarget {
           case (_: LessEquals) => Ints.LessEquals(toSMT(a), toSMT(b))
           case (_: GreaterThan) => Ints.GreaterThan(toSMT(a), toSMT(b))
           case (_: GreaterEquals) => Ints.GreaterEquals(toSMT(a), toSMT(b))
+          case (_: BVPlus) => FixedSizeBitVectors.Add(toSMT(a), toSMT(b))
+          case (_: BVMinus) => FixedSizeBitVectors.Sub(toSMT(a), toSMT(b))
+          case (_: BVTimes) => FixedSizeBitVectors.Mul(toSMT(a), toSMT(b))
+          case (_: BVDivision) => FixedSizeBitVectors.UDiv(toSMT(a), toSMT(b))
+          case (_: BVModulo) => FixedSizeBitVectors.URem(toSMT(a), toSMT(b))
           case _ => reporter.fatalError("Unhandled binary "+e)
         }
 
@@ -478,8 +487,8 @@ trait SMTLIBTarget {
     case (SHexadecimal(h), CharType) =>
       CharLiteral(h.toInt.toChar)
 
-    case (SNumeral(n), Int32Type) =>
-      IntLiteral(n.toInt)
+    case (SNumeral(n), IntegerType) =>
+      InfiniteIntegerLiteral(n)
 
     case (Core.True(), BooleanType)  => BooleanLiteral(true)
     case (Core.False(), BooleanType)  => BooleanLiteral(false)

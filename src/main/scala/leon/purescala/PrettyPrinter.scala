@@ -266,6 +266,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case UMinus(expr)         => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
+      case InfiniteIntegerLiteral(v)        => p"$v"
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case StringLiteral(s)     => p""""$s""""
@@ -422,6 +423,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Untyped               => p"<untyped>"
       case UnitType              => p"Unit"
       case Int32Type             => p"Int"
+      case IntegerType           => p"BigInt"
       case CharType              => p"Char"
       case BooleanType           => p"Boolean"
       case ArrayType(bt)         => p"Array[$bt]"

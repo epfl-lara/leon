@@ -446,6 +446,9 @@ object Trees {
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
+  case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] with FixedType {
+    val fixedType = IntegerType
+  }
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
@@ -497,22 +500,22 @@ object Trees {
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+    val fixedType = IntegerType
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    val fixedType = IntegerType
   }
   case class UMinus(expr: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    val fixedType = IntegerType
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    val fixedType = IntegerType
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    val fixedType = IntegerType
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    val fixedType = IntegerType
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
@@ -533,6 +536,22 @@ object Trees {
   }
   case class BVMinus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = Int32Type
+  }
+  case class BVUMinus(expr: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVModulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+
+  case class IntToBigInt(expr: Expr) extends Expr with FixedType {
+    val fixedType = IntegerType
   }
 
   /* Set expressions */

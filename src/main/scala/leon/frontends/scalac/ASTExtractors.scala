@@ -39,7 +39,7 @@ trait ASTExtractors {
   def isTuple4(sym : Symbol) : Boolean = sym == tuple4Sym
   def isTuple5(sym : Symbol) : Boolean = sym == tuple5Sym
 
-  def isBigIntSym(sym : Symbol) : Boolean = sym == bigIntSym
+  def isBigIntSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == bigIntSym
 
   def isByNameSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == byNameSym
 
@@ -86,6 +86,8 @@ trait ASTExtractors {
    val tpe = t.tpe.widen
    tpe =:= IntClass.tpe
   }
+
+  def hasBigIntType(t : Tree) = isBigIntSym(t.tpe.typeSymbol)
     
   
   object ExtractorHelpers {
@@ -173,6 +175,14 @@ trait ASTExtractors {
           Some(n.value.intValue)
         case _ =>
           None
+      }
+    }
+
+
+    object ExIntToBigInt {
+      def unapply(tree: Tree): Option[Tree] = tree  match {
+        case Apply(ExSelected("math", "BigInt", "int2bigInt"), tree :: Nil) => Some(tree)
+        case _ => None
       }
     }
 
@@ -660,6 +670,13 @@ trait ASTExtractors {
     }
 
     object ExUMinus {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n == nme.UNARY_- && hasBigIntType(t)) => Some(t)
+        case _ => None
+      }
+    }
+
+    object ExBVUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n == nme.UNARY_- && hasIntType(t)) => Some(t)
         case _ => None
