@@ -450,7 +450,7 @@ object TreeOps {
       case TupleSelect(LetTuple(ids, v, b), ts) =>
         Some(LetTuple(ids, v, TupleSelect(b, ts)))
 
-      case IfExpr(c, thenn, elze) if (thenn == elze) && !containsChoose(e) =>
+      case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
         Some(thenn)
 
       case IfExpr(c, BooleanLiteral(true), BooleanLiteral(false)) =>
@@ -473,7 +473,7 @@ object TreeOps {
   }
 
   def isGround(e: Expr): Boolean = {
-    variablesOf(e).isEmpty && !containsChoose(e)
+    variablesOf(e).isEmpty && isDeterministic(e)
   }
 
   def evalGround(ctx: LeonContext, program: Program): Expr => Expr = {
@@ -503,10 +503,10 @@ object TreeOps {
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
-      case letExpr @ Let(i, t: Terminal, b) if !containsChoose(b) =>
+      case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
         Some(replace(Map((Variable(i) -> t)), b))
 
-      case letExpr @ Let(i,e,b) if !containsChoose(b) => {
+      case letExpr @ Let(i,e,b) if isDeterministic(b) => {
         val occurences = count{ (e: Expr) => e match {
           case Variable(x) if x == i => 1
           case _ => 0
@@ -521,7 +521,7 @@ object TreeOps {
         }
       }
 
-      case letTuple @ LetTuple(ids, Tuple(exprs), body) if !containsChoose(body) =>
+      case letTuple @ LetTuple(ids, Tuple(exprs), body) if isDeterministic(body) =>
         var newBody = body
 
         val (remIds, remExprs) = (ids zip exprs).filter { 
@@ -554,14 +554,14 @@ object TreeOps {
           Some(LetTuple(remIds, Tuple(remExprs), newBody))
         }
 
-      case l @ LetTuple(ids, tExpr: Terminal, body) if !containsChoose(body) =>
+      case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
         val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
           case (v,i) => (v -> TupleSelect(tExpr, i + 1).copiedFrom(v))
         }
 
         Some(replace(substMap, body))
 
-      case l @ LetTuple(ids, tExpr, body) if !containsChoose(body) =>
+      case l @ LetTuple(ids, tExpr, body) if isDeterministic(body) =>
         val arity = ids.size
         val zeroVec = Seq.fill(arity)(0)
         val idMap   = ids.zipWithIndex.toMap.mapValues(i => zeroVec.updated(i, 1))
@@ -1502,6 +1502,16 @@ object TreeOps {
       case _ =>
     }(e)
     false
+  }
+
+  def isDeterministic(e: Expr): Boolean = {
+    preTraversal{
+      case Choose(_, _) => return false
+      case Hole(_, _) => return false
+      case RepairHole(_, _) => return false
+      case _ =>
+    }(e)
+    true
   }
 
   /**

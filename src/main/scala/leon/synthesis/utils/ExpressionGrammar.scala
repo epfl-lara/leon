@@ -112,7 +112,7 @@ object ExpressionGrammars {
     }
   }
 
-  case class SimilarTo(e: Expr) extends ExpressionGrammar {
+  case class SimilarTo(e: Expr, exclude: Set[Expr] = Set()) extends ExpressionGrammar {
     lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
 
     def computeProductions(t: TypeTree): Seq[Gen] = {
@@ -121,29 +121,39 @@ object ExpressionGrammars {
 
     def computeSimilar(e : Expr) : Seq[(TypeTree, Gen)] = {
 
-      def gen(tp : TypeTree, retType : TypeTree, f : Seq[Expr] => Expr) : (TypeTree, Gen) =
-        (retType, Generator[TypeTree, Expr](Seq(tp),f))
+      var seenSoFar = exclude;
+
+      def gen(retType : TypeTree, tps : Seq[TypeTree], f : Seq[Expr] => Expr) : (TypeTree, Gen) =
+        (bestRealType(retType), Generator[TypeTree, Expr](tps.map(bestRealType), f))
 
       // A generator that always regenerates its input
-      def const(e: Expr) = ( e.getType, Generator[TypeTree, Expr](Seq(), _ => e) )
+      def const(e: Expr) = ( bestRealType(e.getType), Generator[TypeTree, Expr](Seq(), _ => e) )
 
       def rec(e : Expr) : Seq[(TypeTree, Gen)] = {
-        val tp = e.getType
-        const(e) +: (e match {
-          case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
-            Seq()
-          case UnaryOperator(sub, builder) => Seq(
-            gen( sub.getType, tp, { case Seq(ex) => builder(ex) } )
-          ) ++ rec(sub)
-          case BinaryOperator(sub1, sub2, builder) => Seq(
-            gen( sub1.getType, tp, { case Seq(ex) => builder(ex, sub2) } ),
-            gen( sub2.getType, tp, { case Seq(ex) => builder(sub1, ex) } )
-          ) ++ rec(sub1) ++ rec(sub2)
-          case NAryOperator(subs, builder) => 
-            (for ((sub,index) <- subs.zipWithIndex) yield {
-              gen( sub.getType, tp, { case Seq(ex) => builder(subs updated (index, ex) )} )
-            }) ++ subs.flatMap(rec)
-        })
+        if (seenSoFar contains e) {
+          Seq()
+        } else {
+          seenSoFar += e
+          val tp = e.getType
+          val self: Seq[(TypeTree, Gen)] = e match {
+            case RepairHole(_, _) => Seq()
+            case _                => Seq(const(e))
+          }
+          val subs: Seq[(TypeTree, Gen)] = e match {
+            case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
+              Seq()
+            case UnaryOperator(sub, builder) => Seq(
+              gen(tp, List(sub.getType), { case Seq(ex) => builder(ex) } )
+            ) ++ rec(sub)
+            case BinaryOperator(sub1, sub2, builder) => Seq(
+              gen(tp, List(sub1.getType, sub2.getType), { case Seq(e1, e2) => builder(e1, e2) } )
+            ) ++ rec(sub1) ++ rec(sub2)
+            case NAryOperator(subs, builder) => 
+              Seq(gen(tp, subs.map(_.getType), builder)) ++ subs.flatMap(rec)
+          }
+
+          self ++ subs
+        }
       }
 
       rec(e).tail // Don't want the expression itself
@@ -159,16 +169,9 @@ object ExpressionGrammars {
 
        val isRecursiveCall = (prog.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
-       val isNotSynthesizable = fd.body match {
-         case Some(b) =>
-           !containsChoose(b)
+       val isDet = fd.body.map(isDeterministic).getOrElse(false)
 
-         case None =>
-           false
-       }
-
-
-       if (!isRecursiveCall && isNotSynthesizable) {
+       if (!isRecursiveCall && isDet) {
          val free = fd.tparams.map(_.tp)
          canBeSubtypeOf(fd.returnType, free, t) match {
            case Some(tpsMap) =>

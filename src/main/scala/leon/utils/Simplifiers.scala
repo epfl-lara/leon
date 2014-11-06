@@ -50,8 +50,8 @@ object Simplifiers {
       matchToIfThenElse _,
       simplifyPaths(uninterpretedZ3)(_),
       patternMatchReconstruction _,
-      rewriteTuples _,
-      normalizeExpression _
+      rewriteTuples _//,
+      //normalizeExpression _
     )
 
     val simple = { expr: Expr =>

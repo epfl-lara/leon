@@ -31,6 +31,10 @@ package object synthesis {
   @ignore
   def ?[T](e1: T, es: T*): T = noImpl
 
+  // Repair with Holes
+  @ignore
+  def ?![T](es: Any*): T = noImpl
+
   @ignore
   def withOracle[A, R](body: Oracle[A] => R): R = noImpl
 

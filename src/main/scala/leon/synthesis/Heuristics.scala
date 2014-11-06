@@ -11,11 +11,11 @@ import heuristics._
 object Heuristics {
   def all = List[Rule](
     IntInduction,
-    InnerCaseSplit
+    InnerCaseSplit,
     //new OptimisticInjection(_),
     //new SelectiveInlining(_),
     //ADTLongInduction,
-    //ADTInduction
+    ADTInduction
   )
 }
 

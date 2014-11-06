@@ -41,8 +41,7 @@ object SortedList {
     case Nil() => l 
     case Cons(_, Nil()) => l
     case _ => 
-      val (l1, l2) = split(l)
-      merge(l1,l2) // FIXME: Forgot to mergeSort l1 and l2
+      merge(split(l)._1, split(l)._2) // FIXME: Forgot to mergeSort l1 and l2
   }} ensuring { res =>
     res.content == l.content &&
     isSorted(res)

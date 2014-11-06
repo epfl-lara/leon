@@ -40,18 +40,6 @@ object CostModel {
   )
 }
 
-case class RepairCostModel(cm: CostModel) extends CostModel(cm.name) {
-  override def ruleAppCost(app: RuleInstantiation): Cost = {
-    app.rule match {
-      case rules.GuidedDecomp => 0
-      case _ => cm.ruleAppCost(app)
-    }
-  }
-  def solutionCost(s: Solution) = cm.solutionCost(s)
-  def problemCost(p: Problem) = cm.problemCost(p)
-}
-
-
 case object NaiveCostModel extends CostModel("Naive") {
   def solutionCost(s: Solution): Cost = {
     val chooses = collectChooses(s.toExpr)

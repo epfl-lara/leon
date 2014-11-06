@@ -34,7 +34,7 @@ case object CEGIS extends CEGISLike("CEGIS") {
 }
 
 case object CEGLESS extends CEGISLike("CEGLESS") {
-  override val maxUnrolings = 2;
+  override val maxUnfoldings = 3;
 
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
     import ExpressionGrammars._
@@ -47,9 +47,11 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
       case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
     }
 
-    val guidedGrammar = guides.map(SimilarTo(_)).foldLeft[ExpressionGrammar](Empty)(_ || _)
+    val inputs = p.as.map(_.toVariable)
 
-    guidedGrammar || OneOf(p.as.map(_.toVariable))
+    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet)).foldLeft[ExpressionGrammar](Empty)(_ || _)
+
+    guidedGrammar || OneOf(inputs)
   }
 }
 
@@ -58,7 +60,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
   def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar
 
-  val maxUnrolings = 3
+  val maxUnfoldings = 3
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
@@ -185,7 +187,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         val cToExprs = mappings.groupBy(_._2._1).map {
           case (c, maps) =>
-            // We only keep cases within the current unrolling closedBs
+            // We only keep cases within the current unfoldings closedBs
             val cases = maps.flatMap{ case (b, (_, ex)) => if (isBClosed(b)) None else Some(b -> ex) }
 
             // We compute the IF expression corresponding to each c
@@ -306,11 +308,22 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         triedCompilation = false
         progEvaluator    = None
 
+
+        var cGroups = Map[Identifier, (Set[Identifier], Set[Identifier])]()
+
+        for ((parentGuard, cToBs) <- bTree; (c, bss) <- cToBs) {
+          val (ps, bs) = cGroups.getOrElse(c, (Set[Identifier](), Set[Identifier]()))
+
+          cGroups += c -> (ps + parentGuard, bs ++ bss)
+        }
+
         // We need to regenerate clauses for each b
-        val pathConstraints = for ((parentGuard, cToBs) <- bTree; (c, bs) <- cToBs) yield {
+        val pathConstraints = for ((_, (parentGuards, bs)) <- cGroups) yield {
           val bvs = bs.toList.map(Variable(_))
 
-          val failedPath = Not(Variable(parentGuard))
+          // Represents the case where all parents guards are false, indicating
+          // that this C should not be considered at all
+          val failedPath = And(parentGuards.toSeq.map(p => Not(p.toVariable)))
 
           val distinct = bvs.combinations(2).collect {
             case List(a, b) =>
@@ -325,23 +338,25 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           Implies(Variable(bid), Equals(Variable(recId), ex))
         }
 
-        //for (i <- impliess) {
-        //  println(": "+i)
-        //}
-
         (pathConstraints ++ impliess).toSeq
       }
 
-      def unroll(finalUnrolling: Boolean): (List[Expr], Set[Identifier]) = {
+      def unfold(finalUnfolding: Boolean): (List[Expr], Set[Identifier]) = {
         var newClauses      = List[Expr]()
         var newGuardedTerms = Map[Identifier, Set[Identifier]]()
         var newMappings     = Map[Identifier, (Identifier, Expr)]()
 
 
+        var cGroups = Map[Identifier, Set[Identifier]]()
+
         for ((parentGuard, recIds) <- guardedTerms; recId <- recIds) {
+          cGroups += recId -> (cGroups.getOrElse(recId, Set()) + parentGuard)
+        }
+
+        for ((recId, parentGuards) <- cGroups) {
 
           var alts = grammar.getProductions(recId.getType)
-          if (finalUnrolling) {
+          if (finalUnfolding) {
             alts = alts.filter(_.subTrees.isEmpty)
           }
 
@@ -349,7 +364,9 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
           val bvs  = altsWithBranches.map(alt => Variable(alt._1))
 
-          val failedPath = Not(Variable(parentGuard))
+          // Represents the case where all parents guards are false, indicating
+          // that this C should not be considered at all
+          val failedPath = And(parentGuards.toSeq.map(p => Not(p.toVariable)))
 
           val distinct = bvs.combinations(2).collect {
             case List(a, b) =>
@@ -380,7 +397,10 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           }
 
           val newBIds = altsWithBranches.map(_._1).toSet
-          bTree += parentGuard -> (bTree.getOrElse(parentGuard, Map()) + (recId -> newBIds))
+
+          for (parentGuard <- parentGuards) {
+            bTree += parentGuard -> (bTree.getOrElse(parentGuard, Map()) + (recId -> newBIds))
+          }
 
           newClauses = newClauses ::: pre :: cases
         }
@@ -417,8 +437,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         val initGuard = FreshIdentifier("START", true).setType(BooleanType)
 
         val ndProgram = new NonDeterministicProgram(p, initGuard)
-        var unrolings = 1
-        val maxUnrolings = CEGISLike.this.maxUnrolings
+        var unfolding = 1
+        val maxUnfoldings = CEGISLike.this.maxUnfoldings
 
         val exSolverTo  = 2000L
         val cexSolverTo = 2000L
@@ -546,12 +566,12 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             var bssAssumptions = Set[Identifier]()
 
             if (!didFilterAlready) {
-              val (clauses, closedBs) = ndProgram.unroll(unrolings == maxUnrolings)
+              val (clauses, closedBs) = ndProgram.unfold(unfolding == maxUnfoldings)
 
               bssAssumptions = closedBs
 
               sctx.reporter.ifDebug { debug =>
-                debug("UNROLLING: ")
+                debug("UNFOLDING: ")
                 for (c <- clauses) {
                   debug(" - " + c.asString(sctx.context))
                 }
@@ -618,8 +638,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               // We filter the Bss so that the formula we give to z3 is much smalled
               val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
 
-              // Cannot unroll normally after having filtered, so we need to
-              // repeat the filtering procedure at next unrolling.
+              // Cannot unfold normally after having filtered, so we need to
+              // repeat the filtering procedure at next unfolding.
               didFilterAlready = true
               
               // Freshening solvers
@@ -699,7 +719,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
                           val core = solver1.checkAssumptions(bssAssumptions) match {
                             case Some(false) =>
-                              // Core might be empty if unrolling level is
+                              // Core might be empty if unfolding level is
                               // insufficient, it becomes unsat no matter what
                               // the assumptions are.
                               solver1.getUnsatCore
@@ -765,8 +785,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               }
             }
 
-            unrolings += 1
-          } while(unrolings <= maxUnrolings && result.isEmpty && !interruptManager.isInterrupted())
+            unfolding += 1
+          } while(unfolding <= maxUnfoldings && result.isEmpty && !interruptManager.isInterrupted())
 
           result.getOrElse(RuleFailed())
 

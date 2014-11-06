@@ -32,12 +32,22 @@ import bonsai.enumerators._
 case object TEGIS extends Rule("TEGIS") {
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val grammar = ExpressionGrammars.default(sctx, p)
 
-    var tests = p.getTests(sctx).map(_.ins).distinct
-    if (tests.nonEmpty) {
-      List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-        def apply(sctx: SynthesisContext): RuleApplication = {
+    // check if the formula contains passes:
+    val passes = sctx.program.library.passes.get
+
+    val mayHaveTests = exists({
+        case FunctionInvocation(TypedFunDef(`passes`, _), _) => true
+        case _ => false
+    })(p.phi)
+
+    List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
+      def apply(sctx: SynthesisContext): RuleApplication = {
+
+        val grammar = ExpressionGrammars.default(sctx, p)
+
+        var tests = p.getTests(sctx).map(_.ins).distinct
+        if (tests.nonEmpty) {
 
           val evalParams            = CodeGenParams(maxFunctionInvocations = 2000, checkContracts = true)
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
@@ -117,10 +127,10 @@ case object TEGIS extends Rule("TEGIS") {
           }
 
           RuleClosed(toStream())
+        } else {
+          RuleFailed()
         }
-      })
-    } else {
-      Nil
-    }
+      }
+    })
   }
 }

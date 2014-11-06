@@ -26,9 +26,6 @@ object Rules {
     InequalitySplit,
     CEGIS,
     TEGIS,
-    GuidedDecomp,
-    GuidedCloser,
-    CEGLESS,
     rules.Assert,
     DetupleOutput,
     DetupleInput,
@@ -44,7 +41,13 @@ object Rules {
     val rulesPrio = sctx.rules.groupBy(_.priority).toSeq.sortBy(_._1)
 
     for ((_, rs) <- rulesPrio) {
-      val results = rs.flatMap(_.instantiateOn(sctx, problem)).toList
+      val results = rs.flatMap{ r =>
+        val ts = System.currentTimeMillis
+        val res = r.instantiateOn(sctx, problem)
+        println("Instantiating "+r+" ("+(System.currentTimeMillis-ts)+")")
+        res
+      }.toList
+
       if (results.nonEmpty) {
         return results;
       }

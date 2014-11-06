@@ -25,7 +25,7 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
       case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
     }
 
-    val alts = guides.flatMap { e =>
+    val alts = guides.filter(isDeterministic).flatMap { e =>
       // Tentative solution using e
       val wrappedE = if (p.xs.size == 1) Tuple(Seq(e)) else e
 
@@ -43,10 +43,18 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
           Some(Solution(BooleanLiteral(true), Set(), wrappedE, true))
 
         case None =>
+          sctx.reporter.ifDebug { printer =>
+            printer(vc)
+            printer("== Unknown ==")
+          }
           None
           //Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
 
         case _ =>
+          sctx.reporter.ifDebug { printer =>
+            printer(vc)
+            printer("== Invalid! ==")
+          }
           None
       }
 

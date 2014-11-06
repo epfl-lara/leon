@@ -71,6 +71,13 @@ object Trees {
     }
   }
 
+  case class RepairHole(fixedType: TypeTree, components: Seq[Expr]) extends Expr with FixedType with NAryExtractable {
+
+    def extract = {
+      Some((components, (es: Seq[Expr]) => RepairHole(fixedType, es).setPos(this)))
+    }
+  }
+
   /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr with FixedType {
     val fixedType = body.getType

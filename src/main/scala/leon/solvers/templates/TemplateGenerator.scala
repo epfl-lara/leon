@@ -261,6 +261,11 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           }
         }
 
+        case h @ RepairHole(_, _) =>
+          val hid = FreshIdentifier("hole", true).setType(h.getType)
+          exprVars += hid
+          Variable(hid)
+
         case c @ Choose(ids, cond) =>
           val cid = FreshIdentifier("choose", true).setType(c.getType)
           storeExpr(cid)

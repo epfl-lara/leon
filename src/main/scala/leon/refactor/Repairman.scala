@@ -19,6 +19,8 @@ import solvers.z3._
 import codegen._
 import verification._
 import synthesis._
+import synthesis.rules._
+import synthesis.heuristics._
 
 class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
   val reporter = ctx.reporter
@@ -61,7 +63,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     // Compute initial call
     val termfd = program.library.terminating.get
     val withinCall = FunctionInvocation(fd.typedWithDef, fd.params.map(_.id.toVariable))
-    val term = FunctionInvocation(termfd.typed(Seq(fd.returnType)), Seq(withinCall))
+    val terminating = FunctionInvocation(termfd.typed(Seq(fd.returnType)), Seq(withinCall))
 
     val spec = And(Seq(
       fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
@@ -71,13 +73,24 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val pc = And(Seq(
       pre,
       guide,
-      term
+      terminating
     ))
 
     // Synthesis from the ground up
     val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
+    val ch = Choose(List(out), spec)
+    //fd.body = Some(ch)
 
-    val soptions = SynthesisPhase.processOptions(ctx).copy(costModel = RepairCostModel(CostModel.default));
+    val soptions0 = SynthesisPhase.processOptions(ctx);
+
+    val soptions = soptions0.copy(
+      costModel = RepairCostModel(soptions0.costModel),
+      rules = (soptions0.rules ++ Seq(
+        GuidedDecomp,
+        GuidedCloser,
+        CEGLESS
+      )) diff Seq(ADTInduction)
+    );
 
     val synthesizer = new Synthesizer(ctx, fd, program, p, soptions)
 

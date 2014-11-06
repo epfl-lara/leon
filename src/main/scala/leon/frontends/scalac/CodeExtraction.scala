@@ -1206,6 +1206,11 @@ trait CodeExtraction extends ASTExtractors {
 
           Hole(extractType(tpt), exprs.map(extractTree))
 
+        case hole @ ExRepairHoleExpression(tpt, exprs) =>
+          val leonExprs = exprs.map(extractTree)
+
+          RepairHole(extractType(tpt), exprs.map(extractTree))
+
         case ops @ ExWithOracleExpression(oracles, body) =>
           val newOracles = oracles map { case (tpt, sym) =>
             val aTpe  = extractType(tpt)
