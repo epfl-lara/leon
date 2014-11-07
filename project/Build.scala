@@ -36,7 +36,7 @@ object Leon extends Build {
                       |
                       |SCALACLASSPATH="$paths"
                       |
-                      |java -Xmx2G -Xms512M -classpath $${SCALACLASSPATH} -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath $${SCALACLASSPATH} leon.Main $$@ 2>&1 | tee last.log
+                      |java -Xmx2G -Xms512M -classpath $${SCALACLASSPATH} -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath $${SCALACLASSPATH} leon.Main $$@ 2>&1 | tee -i last.log
                       |""".stripMargin)
 
       f.setExecutable(true)
