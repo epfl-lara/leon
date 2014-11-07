@@ -22,13 +22,13 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
     val p: Problem
 
     // costs
-    var costDist: Distribution
-    def onNewDist(desc: Node)
+    var histogram: Histogram
+    def updateHistogram(desc: Node)
 
     var isSolved: Boolean   = false
 
     def isClosed: Boolean = {
-      costDist.total == 0
+      histogram.maxInfo._1 == 0
     }
 
     def onSolved(desc: Node)
@@ -52,8 +52,8 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
 
   class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(parent) {
     val p = ri.problem
-    var selfCost = Distribution.point(maxCost, costModel.ruleAppCost(ri))
-    var costDist: Distribution = Distribution.uniformFrom(maxCost, costModel.ruleAppCost(ri), 0.5)
+    var selfHistogram = Histogram.point(maxCost, costModel.ruleAppCost(ri), 100)
+    var histogram     = Histogram.uniformFrom(maxCost, costModel.ruleAppCost(ri), 50)
 
     override def toString = "\u2227 "+ri;
 
@@ -72,8 +72,8 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
           solutions = Some(sols)
           selectedSolution = 0;
 
-          costDist = sols.foldLeft(Distribution.empty(maxCost)) {
-            (d, sol) => d or Distribution.point(maxCost, costModel.solutionCost(sol))
+          histogram = sols.foldLeft(Histogram.empty(maxCost)) {
+            (d, sol) => d or Histogram.point(maxCost, costModel.solutionCost(sol), 100)
           }
 
           isSolved = sols.nonEmpty
@@ -86,7 +86,7 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
           }
 
           parents.foreach{ p =>
-            p.onNewDist(this)
+            p.updateHistogram(this)
             if (isSolved) {
               p.onSolved(this)
             }
@@ -112,18 +112,18 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
       }
     }
 
-    def onNewDist(desc: Node) = {
+    def updateHistogram(desc: Node) = {
       recomputeCost()
     }
 
     private def recomputeCost() = {
-      val newCostDist = descendents.foldLeft(selfCost){
-        case (c, d)  => c and d.costDist
+      val newHistogram = descendents.foldLeft(selfHistogram){
+        case (c, d)  => c and d.histogram
       }
 
-      if (newCostDist != costDist) {
-        costDist = newCostDist
-        parents.foreach(_.onNewDist(this))
+      if (newHistogram != histogram) {
+        histogram = newHistogram
+        parents.foreach(_.updateHistogram(this))
       }
     }
 
@@ -143,7 +143,7 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
   }
 
   class OrNode(parent: Option[Node], val p: Problem) extends Node(parent) {
-    var costDist: Distribution = Distribution.uniformFrom(maxCost, costModel.problemCost(p), 0.5)
+    var histogram  = Histogram.uniformFrom(maxCost, costModel.problemCost(p), 50)
 
     override def toString = "\u2228 "+p;
 
@@ -171,18 +171,18 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
     }
 
     private def recomputeCost(): Unit = {
-      val newCostDist = descendents.foldLeft(Distribution.empty(maxCost)){
-        case (c, d)  => c or d.costDist
+      val newHistogram = descendents.foldLeft(Histogram.empty(maxCost)){
+        case (c, d)  => c or d.histogram
       }
 
-      if (costDist != newCostDist) {
-        costDist = newCostDist
-        parents.foreach(_.onNewDist(this))
+      if (histogram != newHistogram) {
+        histogram = newHistogram
+        parents.foreach(_.updateHistogram(this))
 
       }
     }
 
-    def onNewDist(desc: Node): Unit = {
+    def updateHistogram(desc: Node): Unit = {
       recomputeCost()
     }
   }

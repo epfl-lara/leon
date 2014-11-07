@@ -21,6 +21,7 @@ import verification._
 import synthesis._
 import synthesis.rules._
 import synthesis.heuristics._
+import graph.DotGenerator
 
 class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
   val reporter = ctx.reporter
@@ -79,7 +80,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     // Synthesis from the ground up
     val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
     val ch = Choose(List(out), spec)
-    //fd.body = Some(ch)
+    fd.body = Some(ch)
 
     val soptions0 = SynthesisPhase.processOptions(ctx);
 
@@ -100,28 +101,30 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
           val expr = sol.toSimplifiedExpr(ctx, program)
 
           val (npr, fds) = synthesizer.solutionToProgram(sol)
-          solutions ::= (sol, expr, fds)
 
           if (!sol.isTrusted) {
-
             getVerificationCounterExamples(fds.head, npr) match {
               case Some(ces) =>
                 testBank ++= ces
                 reporter.info("Failed :(, but I learned: "+ces.mkString("  |  "))
               case None =>
-                reporter.info("ZZUCCESS!")
+                solutions ::= (sol, expr, fds)
+                reporter.info(ASCIIHelpers.title("ZUCCESS!"))
             }
           } else {
-            reporter.info("ZZUCCESS!")
+            solutions ::= (sol, expr, fds)
+            reporter.info(ASCIIHelpers.title("ZUCCESS!"))
           }
         }
 
+        if (soptions.generateDerivationTrees) {
+          val dot = new DotGenerator(search.g)
+          dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+        }
 
         if (solutions.isEmpty) {
-            reporter.info("Trey aagggain")
-            repair()
+            reporter.info(ASCIIHelpers.title("FAILURZ!"))
         } else {
-
           reporter.info(ASCIIHelpers.title("Solutions"))
           for (((sol, expr, fds), i) <- solutions.zipWithIndex) {
             reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))

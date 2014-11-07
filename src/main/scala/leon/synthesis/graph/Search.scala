@@ -90,7 +90,7 @@ class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Op
 
         case on: g.OrNode =>
           if (on.descendents.nonEmpty) {
-            findIn(on.descendents.minBy(_.costDist))
+            findIn(on.descendents.minBy(_.histogram))
           }
       }
     }
@@ -157,17 +157,18 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
     def failed(str: String) = "\u001b[31m" + str + "\u001b[0m"
     def solved(str: String) = "\u001b[32m" + str + "\u001b[0m"
 
-    def displayDist(d: Distribution): String = {
-      f"${d.firstNonZero}%3d"
+    def displayHistogram(h: Histogram): String = {
+      val (max, maxarg) = h.maxInfo
+      f"$max%,2f@$maxarg%2d"
     }
 
     def displayNode(n: Node): String = n match {
       case an: AndNode =>
         val app = an.ri
-        s"(${displayDist(n.costDist)}) $app"
+        s"(${displayHistogram(n.histogram)}) $app"
       case on: OrNode =>
         val p = on.p
-        s"(${displayDist(n.costDist)}) $p"
+        s"(${displayHistogram(n.histogram)}) $p"
     }
 
     def traversePathFrom(n: Node, prefix: List[Int]) {

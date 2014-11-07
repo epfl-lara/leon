@@ -11,8 +11,9 @@ case class RepairCostModel(cm: CostModel) extends CostModel(cm.name) {
   override def ruleAppCost(app: RuleInstantiation): Cost = {
     app.rule match {
       case rules.GuidedDecomp => 0
+      case rules.GuidedCloser => 0
       case rules.CEGLESS => 0
-      case _ => cm.ruleAppCost(app)
+      case _ => 10+cm.ruleAppCost(app)
     }
   }
   def solutionCost(s: Solution) = cm.solutionCost(s)

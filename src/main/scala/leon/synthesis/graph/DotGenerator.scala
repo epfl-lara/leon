@@ -2,7 +2,7 @@ package leon.synthesis.graph
 
 import java.io.{File, FileWriter, BufferedWriter}
 
-import leon.synthesis.Distribution
+import leon.synthesis.Histogram
 
 class DotGenerator(g: Graph) {
   import g.{Node, AndNode, OrNode, RootNode}
@@ -68,11 +68,11 @@ class DotGenerator(g: Graph) {
     res.toString
   }
 
-  def distrib(d: Distribution): String = {
-    if (d.firstNonZero == g.maxCost) {
-      ">max"
+  def hist(h: Histogram): String = {
+    if (h.isImpossible) {
+      "-/-"
     } else {
-      d.firstNonZero.toString
+      h.maxInfo._1+"@"+h.maxInfo._2
     }
   }
 
@@ -110,9 +110,9 @@ class DotGenerator(g: Graph) {
     //cost
     n match {
       case an: AndNode =>
-        res append "<TR><TD BORDER=\"0\">"+escapeHTML(distrib(n.costDist)+" ("+distrib(an.selfCost))+")</TD></TR>"
+        res append "<TR><TD BORDER=\"0\">"+escapeHTML(hist(n.histogram)+" ("+hist(an.selfHistogram))+")</TD></TR>"
       case on: OrNode =>
-        res append "<TR><TD BORDER=\"0\">"+escapeHTML(distrib(n.costDist))+"</TD></TR>"
+        res append "<TR><TD BORDER=\"0\">"+escapeHTML(hist(n.histogram))+"</TD></TR>"
     }
 
     res append "<TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(limit(nodeDesc(n)))+"</TD></TR>";

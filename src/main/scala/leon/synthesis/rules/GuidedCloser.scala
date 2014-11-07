@@ -33,9 +33,7 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
 
       val vc = simp(And(p.pc, LetTuple(p.xs, wrappedE, Not(p.phi))))
 
-      //println(vc)
-
-      val solver = sctx.newSolver.setTimeout(1000L)
+      val solver = sctx.newSolver.setTimeout(2000L)
 
       solver.assertCnstr(vc)
       val osol = solver.check match {
@@ -47,8 +45,8 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
             printer(vc)
             printer("== Unknown ==")
           }
-          None
-          //Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
+          //None
+          Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
 
         case _ =>
           sctx.reporter.ifDebug { printer =>

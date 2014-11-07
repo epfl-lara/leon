@@ -20,12 +20,14 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
 
     val ev = new DefaultEvaluator(sctx.context, sctx.program)
 
+    val safePc = removeWitnesses(sctx.program)(pc)
+
     def isValidExample(ex: Example): Boolean = {
       val (mapping, cond) = ex match {
         case io: InOutExample =>
-          (Map((as zip io.ins) ++ (xs zip io.outs): _*), And(pc, phi))
+          (Map((as zip io.ins) ++ (xs zip io.outs): _*), And(safePc, phi))
         case i =>
-          ((as zip i.ins).toMap, pc)
+          ((as zip i.ins).toMap, safePc)
       }
 
       ev.eval(cond, mapping) match {
@@ -85,7 +87,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
       case FunctionInvocation(tfd, List(in, out, FiniteMap(inouts))) if tfd.id.name == "passes" =>
         val infos = extractIds(Tuple(Seq(in, out)))
         val exs   = inouts.map{ case (i, o) =>
-          val test = Tuple(Seq(i, o)) 
+          val test = Tuple(Seq(i, o))
           val ids = variablesOf(test)
           evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {
             case EvaluationResults.Successful(res) => res

@@ -37,7 +37,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean) {
           if (descs.isEmpty) {
             completeProblem(on.p)
           } else {
-            getSolutionFor(descs.minBy(_.costDist))
+            getSolutionFor(descs.minBy(_.histogram))
           }
         } else {
           completeProblem(on.p)

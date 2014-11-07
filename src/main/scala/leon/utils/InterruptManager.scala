@@ -57,7 +57,7 @@ class InterruptManager(reporter: Reporter) {
       def handle(sig: Signal) {
         Signal.handle(sigINT, oldHandler)
         println
-        reporter.info("Aborting Leon...")
+        reporter.warning("Aborting Leon...")
 
         interrupt()
 

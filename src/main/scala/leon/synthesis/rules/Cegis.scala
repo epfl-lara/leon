@@ -49,9 +49,9 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
 
     val inputs = p.as.map(_.toVariable)
 
-    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet)).foldLeft[ExpressionGrammar](Empty)(_ || _)
+    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, Set(sctx.functionContext))).foldLeft[ExpressionGrammar](Empty)(_ || _)
 
-    guidedGrammar || OneOf(inputs)
+    guidedGrammar || OneOf(inputs) || SafeRecCalls(sctx.program, p.pc)
   }
 }
 
@@ -170,12 +170,11 @@ abstract class CEGISLike(name: String) extends Rule(name) {
               res == BooleanLiteral(true)
 
             case EvaluationResults.RuntimeError(err) =>
-              //sctx.reporter.error("Error testing CE: "+err)
               false
 
             case EvaluationResults.EvaluatorError(err) =>
               sctx.reporter.error("Error testing CE: "+err)
-              true
+              false
           }
         } else {
           true
@@ -600,15 +599,16 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             // We further filter the set of working programs to remove those that fail on known examples
             if (useCEPruning && hasInputExamples() && ndProgram.canTest()) {
 
-              for (p <- prunedPrograms if !interruptManager.isInterrupted()) {
+              for (bs <- prunedPrograms if !interruptManager.isInterrupted()) {
                 var valid = true
                 val examples = allInputExamples()
                 while(valid && examples.hasNext) {
                   val e = examples.next()
-                  if (!ndProgram.testForProgram(p)(e)) {
+                  if (!ndProgram.testForProgram(bs)(e)) {
                     failedTestsStats(e) += 1
-                    wrongPrograms += p
-                    prunedPrograms -= p
+                    wrongPrograms += bs
+                    prunedPrograms -= bs
+
                     valid = false;
                   }
                 }
@@ -622,7 +622,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             val nPassing = prunedPrograms.size
             sctx.reporter.debug("#Programs passing tests: "+nPassing)
 
-            if (nPassing == 0) {
+            if (nPassing == 0 || interruptManager.isInterrupted()) {
               skipCESearch = true;
             } else if (nPassing <= testUpTo) {
               // Immediate Test

@@ -112,7 +112,7 @@ object ExpressionGrammars {
     }
   }
 
-  case class SimilarTo(e: Expr, exclude: Set[Expr] = Set()) extends ExpressionGrammar {
+  case class SimilarTo(e: Expr, excludeExpr: Set[Expr] = Set(), excludeFCalls: Set[FunDef] = Set()) extends ExpressionGrammar {
     lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
 
     def computeProductions(t: TypeTree): Seq[Gen] = {
@@ -121,7 +121,7 @@ object ExpressionGrammars {
 
     def computeSimilar(e : Expr) : Seq[(TypeTree, Gen)] = {
 
-      var seenSoFar = exclude;
+      var seenSoFar = excludeExpr;
 
       def gen(retType : TypeTree, tps : Seq[TypeTree], f : Seq[Expr] => Expr) : (TypeTree, Gen) =
         (bestRealType(retType), Generator[TypeTree, Expr](tps.map(bestRealType), f))
@@ -141,6 +141,8 @@ object ExpressionGrammars {
           }
           val subs: Seq[(TypeTree, Gen)] = e match {
             case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
+              Seq()
+            case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
               Seq()
             case UnaryOperator(sub, builder) => Seq(
               gen(tp, List(sub.getType), { case Seq(ex) => builder(ex) } )
