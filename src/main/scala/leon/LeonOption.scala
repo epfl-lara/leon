@@ -68,7 +68,8 @@ object OptionsHelpers {
     val regexPatterns = patterns map { s =>
       import java.util.regex.Pattern
 
-      val p = s.replaceAll("\\.", "\\\\.").replaceAll("_", ".+")
+      val p0 = scala.reflect.NameTransformer.encode(s)
+      val p = p0.replaceAll("\\$","\\\\\\$").replaceAll("\\.", "\\\\.").replaceAll("_", ".+") 
       Pattern.compile(p)
     }
 
