@@ -113,8 +113,8 @@ object Extractors {
             case (Seq(), Seq()) => expr.getType
             case _ =>
               MapType(
-                leastUpperBound(keys.map(_.getType)).get,
-                leastUpperBound(values.map(_.getType)).get
+                bestRealType(leastUpperBound(keys.map  (_.getType)).get),
+                bestRealType(leastUpperBound(values.map(_.getType)).get)
               )
           }
           FiniteMap(keys.zip(values)).setType(tpe)
