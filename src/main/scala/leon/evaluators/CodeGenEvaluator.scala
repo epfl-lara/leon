@@ -55,6 +55,10 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
           case e : LeonCodeGenEvaluationException =>
             EvaluationResults.EvaluatorError(e.getMessage)
+
+          case e : java.lang.ExceptionInInitializerError =>
+            EvaluationResults.RuntimeError(e.getException.getMessage) 
+
         }
       })
     } catch {
