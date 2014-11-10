@@ -1180,9 +1180,15 @@ trait CodeExtraction extends ASTExtractors {
         case ExBigIntLiteral(n) => {
           InfiniteIntegerLiteral(BigInt(n))
         }
+
         case ExIntToBigInt(tree) => {
           val rec = extractTree(tree)
-          IntToBigInt(rec)
+          rec match {
+            case IntLiteral(n) => 
+              InfiniteIntegerLiteral(BigInt(n))
+            case _ => 
+              IntToBigInt(rec)
+          }
         }
 
         case ExInt32Literal(v) =>
