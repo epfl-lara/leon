@@ -52,8 +52,8 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
 
   class AndNode(parent: Option[Node], val ri: RuleInstantiation) extends Node(parent) {
     val p = ri.problem
-    var selfHistogram = Histogram.point(maxCost, costModel.ruleAppCost(ri), 100)
-    var histogram     = Histogram.uniformFrom(maxCost, costModel.ruleAppCost(ri), 50)
+    var selfHistogram = Histogram.point(maxCost, costModel.ruleAppCost(ri), 1d)
+    var histogram     = Histogram.uniformFrom(maxCost, costModel.ruleAppCost(ri), 0.5d)
 
     override def toString = "\u2227 "+ri;
 
@@ -73,7 +73,7 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
           selectedSolution = 0;
 
           histogram = sols.foldLeft(Histogram.empty(maxCost)) {
-            (d, sol) => d or Histogram.point(maxCost, costModel.solutionCost(sol), 100)
+            (d, sol) => d or Histogram.point(maxCost, costModel.solutionCost(sol), 1d)
           }
 
           isSolved = sols.nonEmpty
@@ -143,7 +143,7 @@ sealed class Graph(problem: Problem, costModel: CostModel) {
   }
 
   class OrNode(parent: Option[Node], val p: Problem) extends Node(parent) {
-    var histogram  = Histogram.uniformFrom(maxCost, costModel.problemCost(p), 50)
+    var histogram  = Histogram.uniformFrom(maxCost, costModel.problemCost(p), 0.5d)
 
     override def toString = "\u2228 "+p;
 

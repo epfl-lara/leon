@@ -106,7 +106,7 @@ object Histogram {
     }
   }
 
-  def point(bound: Int, at: Int, v: Int) = {
+  def point(bound: Int, at: Int, v: Double) = {
     if (bound <= at) {
       empty(bound)
     } else {
