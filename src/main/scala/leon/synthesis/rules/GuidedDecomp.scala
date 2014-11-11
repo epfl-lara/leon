@@ -55,12 +55,19 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
       case m @ MatchExpr(scrut, cs) =>
         var pcSoFar: Expr = BooleanLiteral(true)
         val subs = for (c <- cs) yield {
-          val substs = patternSubstitutions(scrut, c.pattern)
+          val s = scrut match {
+            case Variable(_) => scrut
+            case _ => Variable(FreshIdentifier("scrut", true).setType(scrut.getType)) 
+          }
+          val sConstr = scrut match {
+            case Variable(_) => BooleanLiteral(true)
+            case _ => Equals(s,scrut)
+          }
+          val substs = patternSubstitutions(s, c.pattern)
           val cond   = conditionForPattern(scrut, c.pattern)
-
           val g = c.theGuard.getOrElse(BooleanLiteral(true))
-          val pc  = simplify(doSubstitute(substs, And(Seq(pcSoFar, g, replace(Map(m -> c.rhs), p.pc)))))
-          val phi = doSubstitute(substs, p.phi)
+          val pc  = simplify(doSubstitute(substs, And(Seq(pcSoFar, g, sConstr, replace(Map(m -> c.rhs), p.pc)))))
+          val phi = doSubstitute(substs, p.phi) 
           val free = variablesOf(And(pc, phi)) -- p.xs
 
           pcSoFar = And(pcSoFar, Not(cond))
