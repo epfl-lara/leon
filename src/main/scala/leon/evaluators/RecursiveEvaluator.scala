@@ -234,8 +234,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
-    //TODO: BVUMinus ???
     case UMinus(ex) =>
+      e(ex) match {
+        case InfiniteIntegerLiteral(i) => InfiniteIntegerLiteral(-i)
+        case re => throw EvalError(typeErrorMsg(re, IntegerType))
+      }
+
+    case BVUMinus(ex) =>
       e(ex) match {
         case IntLiteral(i) => IntLiteral(-i)
         case re => throw EvalError(typeErrorMsg(re, Int32Type))

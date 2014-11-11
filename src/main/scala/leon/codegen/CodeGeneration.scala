@@ -481,6 +481,9 @@ trait CodeGeneration {
         }
         
       // Arithmetic
+      /*
+       * TODO: Correct code generation for infinite precision operations
+       */
       case Plus(l, r) =>
         mkExpr(l, ch)
         mkExpr(r, ch)
@@ -509,6 +512,37 @@ trait CodeGeneration {
       case UMinus(e) =>
         mkExpr(e, ch)
         ch << INEG
+
+      //BV arithmetic
+      case BVPlus(l, r) =>
+        mkExpr(l, ch)
+        mkExpr(r, ch)
+        ch << IADD
+
+      case BVMinus(l, r) =>
+        mkExpr(l, ch)
+        mkExpr(r, ch)
+        ch << ISUB
+
+      case BVTimes(l, r) =>
+        mkExpr(l, ch)
+        mkExpr(r, ch)
+        ch << IMUL
+
+      case BVDivision(l, r) =>
+        mkExpr(l, ch)
+        mkExpr(r, ch)
+        ch << IDIV
+
+      case BVModulo(l, r) =>
+        mkExpr(l, ch)
+        mkExpr(r, ch)
+        ch << IREM
+
+      case BVUMinus(e) =>
+        mkExpr(e, ch)
+        ch << INEG
+
 
       case ArrayLength(a) =>
         mkExpr(a, ch)
