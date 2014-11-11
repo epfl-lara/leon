@@ -561,6 +561,12 @@ trait AbstractZ3Solver
       case LessEquals(l, r) => z3.mkLE(rec(l), rec(r))
       case GreaterThan(l, r) => z3.mkGT(rec(l), rec(r))
       case GreaterEquals(l, r) => z3.mkGE(rec(l), rec(r))
+      case BVPlus(l, r) => z3.mkAdd(rec(l), rec(r))
+      case BVMinus(l, r) => z3.mkSub(rec(l), rec(r))
+      case BVTimes(l, r) => z3.mkMul(rec(l), rec(r))
+      case BVDivision(l, r) => z3.mkDiv(rec(l), rec(r))
+      case BVModulo(l, r) => z3.mkMod(rec(l), rec(r))
+      case BVUMinus(e) => z3.mkUnaryMinus(rec(e))
       case c @ CaseClass(ct, args) =>
         typeToSort(ct) // Making sure the sort is defined
         val constructor = adtConstructors(ct)
