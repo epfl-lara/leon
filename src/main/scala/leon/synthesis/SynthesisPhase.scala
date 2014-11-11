@@ -54,7 +54,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
         options = options.copy(filterFuns = Some(fs.toSet))
 
       case LeonValueOption("costmodel", cm) =>
-        CostModel.all.find(_.name.toLowerCase == cm.toLowerCase) match {
+        CostModels.all.find(_.name.toLowerCase == cm.toLowerCase) match {
           case Some(model) =>
             options = options.copy(costModel = model)
           case None =>
@@ -62,8 +62,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
             var errorMsg = "Unknown cost model: " + cm + "\n" +
                            "Defined cost models: \n"
 
-            for (cm <- CostModel.all.toSeq.sortBy(_.name)) {
-              errorMsg += " - " + cm.name + (if(cm == CostModel.default) " (default)" else "") + "\n"
+            for (cm <- CostModels.all.toSeq.sortBy(_.name)) {
+              errorMsg += " - " + cm.name + (if(cm == CostModels.default) " (default)" else "") + "\n"
             }
 
             ctx.reporter.fatalError(errorMsg)

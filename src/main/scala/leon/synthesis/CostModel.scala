@@ -9,54 +9,86 @@ import purescala.Trees._
 import purescala.TreeOps._
 
 abstract class CostModel(val name: String) {
-  type Cost = Int
+  def solution(s: Solution): Cost
 
-  def solutionCost(s: Solution): Cost
-  def problemCost(p: Problem): Cost
+  def problem(p: Problem): Cost
 
-  def ruleAppCost(app: RuleInstantiation): Cost = {
-    val subSols = app.onSuccess.types.map {t => Solution.simplest(t) }.toList
-    val simpleSol = app.onSuccess(subSols)
+  def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost
 
-    simpleSol match {
-      case Some(sol) =>
-        solutionCost(sol)
-      case None =>
-        problemCost(app.problem)
+  def impossible: Cost
+}
+
+case class Cost(minSize: Int) extends Ordered[Cost] {
+  def isImpossible = minSize >= 100
+  
+  def compare(that: Cost): Int = {
+    this.minSize-that.minSize
+  }
+
+  def asString: String = {
+    if (isImpossible) {
+      "<!>"
+    } else {
+      f"$minSize%3d"
     }
   }
 }
 
-case class ScaledCostModel(cm: CostModel, scale: Int) extends CostModel(cm.name+"/"+scale) {
-  def solutionCost(s: Solution): Cost = Math.max(cm.solutionCost(s)/scale, 1)
-  def problemCost(p: Problem): Cost = Math.max(cm.problemCost(p)/scale, 1)
-  override def ruleAppCost(app: RuleInstantiation): Cost = Math.max(cm.ruleAppCost(app)/scale, 1)
-}
-
-object CostModel {
-  def default: CostModel = ScaledCostModel(WeightedBranchesCostModel, 5)
+object CostModels {
+  def default: CostModel = WeightedBranchesCostModel
 
   def all: Set[CostModel] = Set(
-    ScaledCostModel(NaiveCostModel, 5),
-    ScaledCostModel(WeightedBranchesCostModel, 5)
+    NaiveCostModel,
+    WeightedBranchesCostModel
   )
 }
 
-case object NaiveCostModel extends CostModel("Naive") {
-  def solutionCost(s: Solution): Cost = {
-    val chooses = collectChooses(s.toExpr)
-    val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)))
+class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
 
-    (formulaSize(s.toExpr) + chooseCost)/5+1
-  }
+  def solution(s: Solution): Cost = cm.solution(s)
 
-  def problemCost(p: Problem): Cost = {
-    1
-  }
+  def problem(p: Problem): Cost = cm.problem(p)
 
+  def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost = cm.andNode(an, subs)
+
+  def impossible = cm.impossible
 }
 
-case object WeightedBranchesCostModel extends CostModel("WeightedBranches") {
+class SizeBasedCostModel(name: String) extends CostModel(name) {
+  def solution(s: Solution) = {
+    Cost(formulaSize(s.toExpr)/10)
+  }
+
+  def problem(p: Problem) = {
+    Cost(1)
+  }
+
+  def andNode(an: AndNode, subs: Option[Seq[Cost]]) = {
+
+    subs match {
+      case Some(subs) if subs.isEmpty =>
+        impossible
+
+      case osubs =>
+        val app = an.ri
+
+        val subSols = app.onSuccess.types.map {t => Solution.simplest(t) }.toList
+        val selfCost = app.onSuccess(subSols) match {
+          case Some(sol) =>
+            solution(sol).minSize - subSols.size
+          case None =>
+            1
+        }
+        Cost(osubs.toList.flatten.foldLeft(selfCost)(_ + _.minSize))
+    }   
+  }
+
+  def impossible = Cost(100)
+}
+
+case object NaiveCostModel extends SizeBasedCostModel("Naive")
+
+case object WeightedBranchesCostModel extends SizeBasedCostModel("WeightedBranches") {
 
   def branchesCost(e: Expr): Int = {
     case class BC(cost: Int, nesting: Int)
@@ -93,15 +125,8 @@ case object WeightedBranchesCostModel extends CostModel("WeightedBranches") {
     bc.cost
   }
 
-  def solutionCost(s: Solution): Cost = {
-    val chooses = collectChooses(s.toExpr)
-    val chooseCost = chooses.foldLeft(0)((i, c) => i + problemCost(Problem.fromChoose(c)))
-
-    formulaSize(s.toExpr) + branchesCost(s.toExpr) + chooseCost
-  }
-
-  def problemCost(p: Problem): Cost = {
-    p.xs.size
+  override def solution(s: Solution) = {
+    Cost(formulaSize(s.toExpr) + branchesCost(s.toExpr))
   }
 
 }

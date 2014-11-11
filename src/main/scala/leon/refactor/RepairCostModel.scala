@@ -4,20 +4,33 @@ package leon
 package refactor
 import synthesis._
 
+import purescala.Definitions._
 import purescala.Trees._
+import purescala.DefOps._
 import purescala.TreeOps._
+import purescala.Extractors._
 
-case class RepairCostModel(cm: CostModel) extends CostModel(cm.name) {
-  override def ruleAppCost(app: RuleInstantiation): Cost = {
-    app.rule match {
-      case rules.GuidedDecomp => 0
-      case rules.GuidedCloser => 0
-      case rules.CEGLESS => 0
-      case _ => 10+cm.ruleAppCost(app)
-    }
+case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("+cm.name+")") {
+  import graph._
+
+  override def andNode(an: AndNode, subs: Option[Seq[Cost]]) = {
+    val h = cm.andNode(an, subs).minSize
+
+    Cost(an.ri.rule match {
+      case rules.GuidedDecomp => h/3
+      case rules.GuidedCloser => h/3
+      case rules.CEGLESS      => h/2
+      case _ => h
+    })
   }
-  def solutionCost(s: Solution) = cm.solutionCost(s)
-  def problemCost(p: Problem) = cm.problemCost(p)
+
+  def costOfGuide(p: Problem): Int = {
+    val TopLevelAnds(clauses) = p.pc
+
+    val guides = clauses.collect {
+      case FunctionInvocation(TypedFunDef(fd, _), Seq(expr)) if fullName(fd) == "leon.lang.synthesis.guide" => expr
+    }
+
+    guides.map(formulaSize(_)).sum
+  }
 }
-
-

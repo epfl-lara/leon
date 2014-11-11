@@ -5,7 +5,6 @@ import java.io.{File, FileWriter, BufferedWriter}
 import leon.synthesis.Histogram
 
 class DotGenerator(g: Graph) {
-  import g.{Node, AndNode, OrNode, RootNode}
 
   private[this] var _nextID = 0
   def freshName(prefix: String) = {
@@ -68,14 +67,6 @@ class DotGenerator(g: Graph) {
     res.toString
   }
 
-  def hist(h: Histogram): String = {
-    if (h.isImpossible) {
-      "-/-"
-    } else {
-      h.maxInfo._1+"@"+h.maxInfo._2
-    }
-  }
-
   def limit(o: Any, length: Int = 40): String = {
     val str = o.toString
     if (str.length > length) {
@@ -110,9 +101,9 @@ class DotGenerator(g: Graph) {
     //cost
     n match {
       case an: AndNode =>
-        res append "<TR><TD BORDER=\"0\">"+escapeHTML(hist(n.histogram)+" ("+hist(an.selfHistogram))+")</TD></TR>"
+        res append "<TR><TD BORDER=\"0\">"+escapeHTML(n.cost.asString)+" ("+escapeHTML(g.cm.andNode(an, None).asString)+")</TD></TR>"
       case on: OrNode =>
-        res append "<TR><TD BORDER=\"0\">"+escapeHTML(hist(n.histogram))+"</TD></TR>"
+        res append "<TR><TD BORDER=\"0\">"+escapeHTML(n.cost.asString)+"</TD></TR>"
     }
 
     res append "<TR><TD BORDER=\"1\" BGCOLOR=\""+color+"\">"+escapeHTML(limit(nodeDesc(n)))+"</TD></TR>";

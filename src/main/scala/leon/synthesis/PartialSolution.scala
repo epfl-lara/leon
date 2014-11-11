@@ -20,9 +20,9 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean) {
     getSolutionFor(g.root)
   }
 
-  def getSolutionFor(n: g.Node): Solution = {
+  def getSolutionFor(n: Node): Solution = {
     n match {
-      case on: g.OrNode =>
+      case on: OrNode =>
         if (on.isSolved) {
           val sols = on.generateSolutions()
           sols.find(includeSolution) match {
@@ -37,12 +37,12 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean) {
           if (descs.isEmpty) {
             completeProblem(on.p)
           } else {
-            getSolutionFor(descs.minBy(_.histogram))
+            getSolutionFor(descs.minBy(_.cost))
           }
         } else {
           completeProblem(on.p)
         }
-      case an: g.AndNode =>
+      case an: AndNode =>
         if (an.isSolved) {
           val sols = an.generateSolutions()
           sols.find(includeSolution) match {

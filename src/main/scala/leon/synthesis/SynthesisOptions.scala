@@ -3,6 +3,8 @@
 package leon
 package synthesis
 
+import scala.language.existentials
+
 case class SynthesisOptions(
   inPlace: Boolean                    = false,
   allSeeing: Boolean                  = false,
@@ -11,7 +13,7 @@ case class SynthesisOptions(
   searchWorkers: Int                  = 1,
   firstOnly: Boolean                  = false,
   timeoutMs: Option[Long]             = None,
-  costModel: CostModel                = CostModel.default,
+  costModel: CostModel                = CostModels.default,
   rules: Seq[Rule]                    = Rules.all ++ Heuristics.all,
   manualSearch: Boolean               = false,
   searchBound: Option[Int]            = None,

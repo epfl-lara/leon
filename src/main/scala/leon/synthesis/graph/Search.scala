@@ -11,9 +11,7 @@ import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extends Interruptible {
-  val g = new Graph(p, costModel);
-
-  import g.{Node, AndNode, OrNode, RootNode}
+  val g = new Graph(costModel, p);
 
   def findNodeToExpandFrom(n: Node): Option[Node]
 
@@ -76,8 +74,6 @@ abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extend
 }
 
 class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Option[Int]) extends Search(ctx, p, costModel) {
-  import g.{Node, AndNode, OrNode, RootNode}
-
   val expansionBuffer = ArrayBuffer[Node]()
 
   def findIn(n: Node) {
@@ -85,12 +81,12 @@ class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Op
       expansionBuffer += n
     } else if (!n.isClosed) {
       n match {
-        case an: g.AndNode =>
+        case an: AndNode =>
           an.descendents.foreach(findIn)
 
-        case on: g.OrNode =>
+        case on: OrNode =>
           if (on.descendents.nonEmpty) {
-            findIn(on.descendents.minBy(_.histogram))
+            findIn(on.descendents.minBy(_.cost))
           }
       }
     }
@@ -116,12 +112,61 @@ class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Op
 }
 
 class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) extends Search(ctx, problem, costModel) {
-  import g.{Node, AndNode, OrNode, RootNode}
-
   import ctx.reporter._
 
+  abstract class Command
+  case class Cd(path: List[Int]) extends Command
+  case object Parent extends Command
+  case object Quit extends Command
+  case object Noop extends Command
+
+  // Manual search state:
   var cd       = List[Int]()
-  var cmdQueue = List[String]()
+  var cmdQueue = List[Command]()
+
+  def getNextCommand(): Command = cmdQueue match {
+    case c :: cs =>
+      cmdQueue = cs
+      c
+
+    case Nil =>
+      print("Next action? (q to quit) "+cd.mkString(" ")+" $ ")
+      val line = scala.io.StdIn.readLine().trim
+      val parts = line.split("\\s+").toList
+
+      cmdQueue = parseCommands(parts)
+      getNextCommand()
+  }
+
+  def parseCommands(tokens: List[String]): List[Command] = tokens match {
+    case "cd" :: ".." :: ts =>
+      Parent :: parseCommands(ts)
+
+    case "cd" :: ts =>
+      val path = ts.takeWhile { t => t.forall(_.isDigit) }
+
+      if (path.isEmpty) {
+        parseCommands(ts)
+      } else {
+        Cd(path.map(_.toInt)) :: parseCommands(ts.drop(path.size))
+      }
+
+    case "q" :: ts =>
+      Quit :: Nil
+
+    case Nil =>
+      Nil
+
+    case ts =>
+      val path = ts.takeWhile { t => t.forall(_.isDigit) }
+
+      if (path.isEmpty) {
+        error("Unknown command "+ts.head)
+        parseCommands(ts.tail)
+      } else {
+        Cd(path.map(_.toInt)) :: parseCommands(ts.drop(path.size))
+      }
+  }
 
   override def doStep(n: Node, sctx: SynthesisContext) = {
     super.doStep(n, sctx);
@@ -143,61 +188,55 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
     }
   }
 
+
   def printGraph() {
-    def pathToString(path: List[Int]): String = {
-      val p = path.reverse.drop(cd.size)
-      if (p.isEmpty) {
-        ""
-      } else {
-        " "+p.mkString(" ")
-      }
-    }
-
-    def title(str: String)  = "\u001b[1m"  + str + "\u001b[0m"
-    def failed(str: String) = "\u001b[31m" + str + "\u001b[0m"
-    def solved(str: String) = "\u001b[32m" + str + "\u001b[0m"
-
-    def displayHistogram(h: Histogram): String = {
-      val (max, maxarg) = h.maxInfo
-      f"$max%,2f@$maxarg%2d"
-    }
+    def title(str: String)    = "\u001b[1m"  + str + "\u001b[0m"
+    def failed(str: String)   = "\u001b[31m" + str + "\u001b[0m"
+    def solved(str: String)   = "\u001b[32m" + str + "\u001b[0m"
+    def expanded(str: String) = "\u001b[33m" + str + "\u001b[0m"
 
     def displayNode(n: Node): String = n match {
       case an: AndNode =>
         val app = an.ri
-        s"(${displayHistogram(n.histogram)}) $app"
+        s"(${n.cost.asString}) ${indent(app)}"
       case on: OrNode =>
         val p = on.p
-        s"(${displayHistogram(n.histogram)}) $p"
+        s"(${n.cost.asString}) ${indent(p)}"
     }
 
-    def traversePathFrom(n: Node, prefix: List[Int]) {
-      val visible = (prefix endsWith cd.reverse)
+    def indent(a: Any): String = {
+      a.toString.replaceAll("\n", "\n"+(" "*12))
+    }
 
-      if (!n.isExpanded) {
-        if (visible) {
-          println(pathToString(prefix)+" \u2508 "+displayNode(n))
-        }
-      } else if (n.isSolved) {
-        println(solved(pathToString(prefix)+" \u2508 "+displayNode(n)))
-      } else if (n.isClosed) {
-        println(failed(pathToString(prefix)+" \u2508 "+displayNode(n)))
-      } else {
-        if (visible) {
-          println(title(pathToString(prefix)+" \u2510 "+displayNode(n)))
-        }
-      }
+    def pathToString(cd: List[Int]): String = {
+      cd.map(i => f"$i%2d").mkString(" ")
+    }
 
-      if (n.isExpanded && !n.isClosed && !n.isSolved) {
+    def displayPath(n: Node, cd: List[Int]) {
+      if (cd.isEmpty) {
+        println(title(pathToString(cd)+" \u2510 "+displayNode(n)))
+
         for ((sn, i) <- n.descendents.zipWithIndex) {
-          traversePathFrom(sn, i :: prefix)
+          val sp = cd ::: List(i)
+
+          if (sn.isSolved) {
+            println(solved(pathToString(sp)+" \u2508 "+displayNode(sn)))
+          } else if (sn.isClosed) {
+            println(failed(pathToString(sp)+" \u2508 "+displayNode(sn)))
+          } else if (sn.isExpanded) {
+            println(expanded(pathToString(sp)+" \u2508 "+displayNode(sn)))
+          } else {
+            println(pathToString(sp)+" \u2508 "+displayNode(sn))
+          }
         }
+      } else {
+        displayPath(n.descendents(cd.head), cd.tail)
       }
     }
 
-    println("-"*80)
-    traversePathFrom(g.root, List())
-    println("-"*80)
+    println("-"*120)
+    displayPath(g.root, cd)
+    println("-"*120)
   }
 
   var continue = true
@@ -206,56 +245,48 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
     if (!from.isExpanded) {
       Some(from)
     } else {
-      var res: Option[Node] = None
-      continue = true
+      var res: Option[Option[Node]] = None
 
-      while(continue) {
+      while(res.isEmpty) {
         printGraph()
 
         try {
-          print("Next action? (q to quit) "+cd.mkString(" ")+" $ ")
-          val line = if (cmdQueue.isEmpty) {
-            scala.io.StdIn.readLine()
-          } else {
-            val n = cmdQueue.head
-            println(n)
-            cmdQueue = cmdQueue.tail
-            n
-          }
-          if (line == "q") {
-            continue = false
-            res = None
-          } else if (line startsWith "cd") {
-            val parts = line.split("\\s+").toList
+          getNextCommand() match {
+            case Quit =>
+              continue = false
+              res = Some(None)
+            case Parent =>
+              if (cd.nonEmpty) {
+                cd = cd.dropRight(1)
+              } else {
+                error("Already at root node")
+              }
 
-            parts match {
-              case List("cd") =>
-                cd = List()
-              case List("cd", "..") =>
-                if (cd.size > 0) {
-                  cd = cd.dropRight(1)
+            case Cd(path) =>
+              var currentNode = from
+              var currentPath = cd ++ path
+              cd = Nil
+              while (currentPath.nonEmpty && currentNode.isExpanded && res.isEmpty) {
+                traversePathFrom(currentNode, List(currentPath.head)) match {
+                  case Some(n) =>
+                    cd = cd ::: List(currentPath.head)
+                    currentNode = n
+                    currentPath = currentPath.tail
+
+                  case None =>
+                    error("Unknown path: "+path)
+                    res = Some(None)
+                    return None
                 }
-              case "cd" :: parts =>
-                cd = cd ::: parts.map(_.toInt)
-              case _ =>
-            }
+              }
 
-          } else {
-            val parts = line.split("\\s+").toList
+              if (currentPath.nonEmpty) {
+                cmdQueue = Cd(currentPath) :: cmdQueue
+              }
 
-            val c = parts.head.toInt
-            cmdQueue = cmdQueue ::: parts.tail
-
-            traversePath(cd ::: c :: Nil) match {
-              case Some(l) if !l.isExpanded =>
-                res = Some(l)
-                cd = cd ::: c :: Nil
-                continue = false
-              case Some(n) =>
-                cd = cd ::: c :: Nil
-              case None =>
-                error("Invalid path")
-            }
+              if (!currentNode.isExpanded) {
+                res = Some(Some(currentNode))
+              }
           }
         } catch {
           case e: java.lang.NumberFormatException =>
@@ -268,7 +299,8 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
             e.printStackTrace()
         }
       }
-      res
+
+      res.get
     }
   }
 }
