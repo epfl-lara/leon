@@ -264,6 +264,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Iff(l,r)             => optP { p"$l <=> $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
       case UMinus(expr)         => p"-$expr"
+      case BVUMinus(expr)       => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v)        => p"$v"
