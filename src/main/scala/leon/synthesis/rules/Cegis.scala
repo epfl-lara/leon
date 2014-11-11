@@ -240,7 +240,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           val forArray = replace(substMap, simplerRes)
 
           // We trust arrays to be fast...
-          val eval = evaluator.compile(forArray, ba +: p.as)
+          val eval = evaluator.compile(matchToIfThenElse(forArray), ba +: p.as)
 
           eval.map{e => { case (bss, ins) => 
             e(FiniteArray(bss).setType(ArrayType(BooleanType)) +: ins)
@@ -248,7 +248,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
         }
 
         def compileWithArgs(): Option[(Seq[Expr], Seq[Expr]) => EvaluationResult] = {
-          val eval = evaluator.compile(simplerRes, bssOrdered ++ p.as)
+          val eval = evaluator.compile(matchToIfThenElse(simplerRes), bssOrdered ++ p.as)
 
           eval.map{e => { case (bss, ins) => 
             e(bss ++ ins)
