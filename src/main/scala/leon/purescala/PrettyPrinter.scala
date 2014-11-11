@@ -325,6 +325,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case GreaterThan(l,r)          => optP { p"$l > $r" }
       case LessEquals(l,r)           => optP { p"$l <= $r" }
       case GreaterEquals(l,r)        => optP { p"$l >= $r" }
+      case BVPlus(l,r)               => optP { p"$l + $r" }
+      case BVMinus(l,r)              => optP { p"$l - $r" }
+      case BVTimes(l,r)              => optP { p"$l * $r" }
+      case BVDivision(l,r)           => optP { p"$l / $r" }
+      case BVModulo(l,r)             => optP { p"$l % $r" }
       case FiniteSet(rs)             => p"{${rs.toSeq}}"
       case FiniteMultiset(rs)        => p"{|$rs|)"
       case EmptyMultiset(_)          => p"\u2205"
@@ -631,8 +636,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: And | BinaryMethodCall(_, "&&", _)) => 3
     case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
     case (_: Equals | _: Iff | _: Not) => 5
-    case (_: Plus | _: Minus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
-    case (_: Times | _: Division | _: Modulo | BinaryMethodCall(_, "*" | "/", _)) => 7
+    case (_: Plus | _: BVPlus |  _: Minus | _: BVMinus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
+    case (_: Times | _: BVTimes | _: Division | _: BVDivision | _: Modulo | _: BVModulo | BinaryMethodCall(_, "*" | "/", _)) => 7
     case _ => 7
   }
 
