@@ -279,12 +279,32 @@ object Trees {
     def expressions = List(guard, rhs)
   }
 
+
+  object Pattern {
+    def unapply(p : Pattern) : Option[(
+      Option[Identifier], 
+      Seq[Pattern], 
+      (Option[Identifier], Seq[Pattern]) => Pattern
+    )] = Some(p match {
+      case InstanceOfPattern(b, ct)       => (b, Seq(), (b,_) => InstanceOfPattern(b,ct))
+      case WildcardPattern(b)             => (b, Seq(), (b,_) => WildcardPattern(b)     )
+      case CaseClassPattern(b, ct, subs)  => (b, subs,  CaseClassPattern(_, ct, _)      )
+      case TuplePattern(b,subs)           => (b, subs,  TuplePattern                    )
+      case LiteralPattern(b, l)           => (b, Seq(), (b,_) => LiteralPattern(b, l)   )
+    })
+  }
+
   sealed abstract class Pattern extends Tree {
     val subPatterns: Seq[Pattern]
     val binder: Option[Identifier]
 
     private def subBinders = subPatterns.map(_.binders).foldLeft[Set[Identifier]](Set.empty)(_ ++ _)
-    def binders: Set[Identifier] = subBinders ++ (if(binder.isDefined) Set(binder.get) else Set.empty)
+    def binders: Set[Identifier] = subBinders ++ binder.toSet
+
+    def withBinder(b : Identifier) = { this match {
+      case Pattern(None, subs, builder) => builder(Some(b), subs)
+      case other => other
+    }}.copiedFrom(this)
   }
 
   case class InstanceOfPattern(binder: Option[Identifier], ct: ClassType) extends Pattern { // c: Class
