@@ -1,5 +1,4 @@
 import leon._
-import leon.lang.string._
 import leon.collection._
 
 object Parser {
