@@ -788,36 +788,37 @@ object TreeOps {
     rec(in, pattern)
   }
 
-  private def convertMatchToIfThenElse(expr: Expr) : Expr = {
-    def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
-      case WildcardPattern(None) => Map.empty
-      case WildcardPattern(Some(id)) => Map(id -> in)
-      case InstanceOfPattern(None, _) => Map.empty
-      case InstanceOfPattern(Some(id), _) => Map(id -> in)
-      case CaseClassPattern(b, ccd, subps) => {
-        assert(ccd.fields.size == subps.size)
-        val pairs = ccd.fields.map(_.id).toList zip subps.toList
-        val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
-        val together = subMaps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
-        b match {
-          case Some(id) => Map(id -> in) ++ together
-          case None => together
-        }
+  def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
+    case WildcardPattern(None) => Map.empty
+    case WildcardPattern(Some(id)) => Map(id -> in)
+    case InstanceOfPattern(None, _) => Map.empty
+    case InstanceOfPattern(Some(id), _) => Map(id -> in)
+    case CaseClassPattern(b, ccd, subps) => {
+      assert(ccd.fields.size == subps.size)
+      val pairs = ccd.fields.map(_.id).toList zip subps.toList
+      val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+      val together = subMaps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+      b match {
+        case Some(id) => Map(id -> in) ++ together
+        case None => together
       }
-      case TuplePattern(b, subps) => {
-        val TupleType(tpes) = in.getType
-        assert(tpes.size == subps.size)
-
-        val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
-        val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
-        b match {
-          case Some(id) => map + (id -> in)
-          case None => map
-        }
-      }
-      case LiteralPattern(None, lit) => Map()
-      case LiteralPattern(Some(id), lit) => Map(id -> in)
     }
+    case TuplePattern(b, subps) => {
+      val TupleType(tpes) = in.getType
+      assert(tpes.size == subps.size)
+
+      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+      val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+      b match {
+        case Some(id) => map + (id -> in)
+        case None => map
+      }
+    }
+    case LiteralPattern(None, lit) => Map()
+    case LiteralPattern(Some(id), lit) => Map(id -> in)
+  }
+  
+  private def convertMatchToIfThenElse(expr: Expr) : Expr = {
 
     def rewritePM(e: Expr) : Option[Expr] = e match {
       case m @ MatchExpr(scrut, cases) => {
