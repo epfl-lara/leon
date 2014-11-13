@@ -52,40 +52,69 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Guided If-Split on '"+c+"'"))
 
-      case m @ MatchExpr(scrut, cs) =>
-        var pcSoFar: Expr = BooleanLiteral(true)
+      case m @ MatchExpr(scrut0, cs) =>
+        
+        val scrut = scrut0 match {
+          case v : Variable => v
+          case _ => Variable(FreshIdentifier("scrut", true).setType(scrut0.getType))
+        }
+        var pcSoFar: Expr = if (scrut == scrut0) BooleanLiteral(true) else Equals(scrut0, scrut)
+
         val subs = for (c <- cs) yield {
-          val s = scrut match {
-            case Variable(_) => scrut
-            case _ => Variable(FreshIdentifier("scrut", true).setType(scrut.getType)) 
-          }
-          val sConstr = scrut match {
-            case Variable(_) => BooleanLiteral(true)
-            case _ => Equals(s,scrut)
-          }
-          val substs = patternSubstitutions(s, c.pattern)
-          val cond   = conditionForPattern(scrut, c.pattern)
+          
+          //println("="*40)
+
+          val localScrut = c.pattern.binder.map(Variable) getOrElse scrut
+          //println("PC so far:")
+          //println(replace(Map(scrut -> localScrut), pcSoFar))
+          val scrutConstraint = if (localScrut == scrut) BooleanLiteral(true) else Equals(localScrut, scrut)
+          val substs = patternSubstitutions(localScrut, c.pattern)
+          
+          //println("Pattern : " + c.pattern)
+          //println("SUBST")
+          //substs foreach println
+
+          val cond = conditionForPattern(localScrut, c.pattern)
+          //println("cond: " + cond)
           val g = c.theGuard.getOrElse(BooleanLiteral(true))
-          val pc  = simplify(doSubstitute(substs, And(Seq(pcSoFar, g, sConstr, replace(Map(m -> c.rhs), p.pc)))))
+          val pc  = simplify(doSubstitute(substs, 
+            And(Seq(
+              scrutConstraint,
+              replace(Map(scrut -> localScrut), pcSoFar),
+              cond, 
+              g, 
+              replace(Map(m -> c.rhs), p.pc)
+            ))
+          ))
+          //println("PC")
+          //println(pc)
+
           val phi = doSubstitute(substs, p.phi) 
           val free = variablesOf(And(pc, phi)) -- p.xs
-
-          pcSoFar = And(pcSoFar, Not(cond))
-
+          val guardSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
+          val condSafe = conditionForPattern(scrut, c.pattern)
+          //println("GUARD SAFE:")
+          //println(guardSafe)
+          //println("="*40)
+          pcSoFar = simplify(And(Not(And(condSafe, guardSafe)), pcSoFar))
           val asPrefix = p.as.filter(free)
+
           Problem(asPrefix ++ (free -- asPrefix), pc, phi, p.xs)
         }
 
-        val onSuccess: List[Solution] => Option[Solution] = { 
-          case subs =>
-            val cases = for ((c, s) <- cs zip subs) yield {
-              c match {
-                case SimpleCase(c, rhs) => SimpleCase(c, s.term)
-                case GuardedCase(c, g, rhs) => GuardedCase(c, g, s.term)
-              }
+        val onSuccess: List[Solution] => Option[Solution] = { subs =>
+          val cases = for ((c, s) <- cs zip subs) yield {
+            c match {
+              case SimpleCase(c, rhs) => SimpleCase(c, s.term)
+              case GuardedCase(c, g, rhs) => GuardedCase(c, g, s.term)
             }
+          }
 
-            Some(Solution(Or(subs.map(_.pre)), subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _), MatchExpr(scrut, cases)))
+          Some(Solution(
+            Or(subs.map(_.pre)), 
+            subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _), 
+            Let(scrut.id, scrut0, MatchExpr(scrut, cases))
+          ))
         }
 
         Some(RuleInstantiation.immediateDecomp(p, this, subs.toList, onSuccess, "Guided Match-Split"))
