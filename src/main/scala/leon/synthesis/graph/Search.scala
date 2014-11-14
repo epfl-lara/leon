@@ -274,9 +274,9 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
                     currentPath = currentPath.tail
 
                   case None =>
-                    error("Unknown path: "+path)
-                    res = Some(None)
-                    return None
+                    warning("Unknown path: "+ (path mkString "/"))
+                    //res = Some(None)
+                    return findNodeToExpandFrom(from) 
                 }
               }
 
