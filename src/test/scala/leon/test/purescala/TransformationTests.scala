@@ -40,11 +40,6 @@ class TransformationTests extends LeonTestSuite {
           "Simplifying paths",
           simpPaths
         )
-      case "Match.scala" =>
-        (
-          "Match reconstruction/flattening",
-          apply (matchToIfThenElse _, patternMatchReconstruction _)
-        )
       case n =>
         fail("Unknown name "+n)
     }

@@ -1037,247 +1037,6 @@ object TreeOps {
     genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(expr)._1
   }
 
-  /*
-   * Transforms complicated Ifs into multiple nested if blocks
-   * It will decompose every OR clauses, and it will group AND clauses checking
-   * isInstanceOf toghether.
-   *
-   *  if (a.isInstanceof[T1] && a.tail.isInstanceof[T2] && a.head == a2 || C) {
-   *     T
-   *  } else {
-   *     E
-   *  }
-   *
-   * Becomes:
-   *
-   *  if (a.isInstanceof[T1] && a.tail.isInstanceof[T2]) {
-   *    if (a.head == a2) {
-   *      T
-   *    } else {
-   *      if(C) {
-   *        T
-   *      } else {
-   *        E
-   *      }
-   *    }
-   *  } else {
-   *    if(C) {
-   *      T
-   *    } else {
-   *      E
-   *    }
-   *  }
-   * 
-   * This transformation runs immediately before patternMatchReconstruction.
-   *
-   * Notes: positions are lost.
-   */
-  def decomposeIfs(e: Expr): Expr = {
-    def pre(e: Expr): Expr = e match {
-      case IfExpr(cond, thenn, elze) =>
-        val TopLevelOrs(orcases) = cond
-
-        if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
-          if (!orcases.tail.isEmpty) {
-            pre(IfExpr(orcases.head, thenn, IfExpr(Or(orcases.tail), thenn, elze)))
-          } else {
-            val TopLevelAnds(andcases) = orcases.head
-
-            val (andis, andnotis) = andcases.partition(_.isInstanceOf[CaseClassInstanceOf])
-
-            if (andis.isEmpty || andnotis.isEmpty) {
-              e
-            } else {
-              IfExpr(And(andis), IfExpr(And(andnotis), thenn, elze), elze)
-            }
-          }
-        } else {
-          e
-        }
-      case _ =>
-        e
-    }
-
-    simplePreTransform(pre)(e)
-  }
-
-  /**
-   * Reconstructs match expressions from if-then-elses.
-   *
-   * Notes: positions are lost.
-   */
-  def patternMatchReconstruction(e: Expr): Expr = {
-    def post(e: Expr): Expr = e match {
-      case IfExpr(cond, thenn, elze) =>
-        val TopLevelAnds(cases) = cond
-
-        if (cases.forall(_.isInstanceOf[CaseClassInstanceOf])) {
-          // matchingOn might initially be: a : T1, a.tail : T2, b: T2
-          def selectorDepth(e: Expr): Int = e match {
-            case cd: CaseClassSelector =>
-              1+selectorDepth(cd.caseClass)
-            case _ =>
-              0
-          }
-
-          var scrutSet = Set[Expr]()
-          var conditions = Map[Expr, CaseClassType]()
-
-          var matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
-          for (CaseClassInstanceOf(cct, expr) <- matchingOn) {
-            conditions += expr -> cct
-
-            expr match {
-              case cd: CaseClassSelector =>
-                if (!scrutSet.contains(cd.caseClass)) {
-                  // we found a test looking like "a.foo.isInstanceof[..]"
-                  // without a check on "a".
-                  scrutSet += cd
-                }
-              case e =>
-                scrutSet += e
-            }
-          }
-
-          var substMap = Map[Expr, Expr]()
-
-          def computePatternFor(ct: CaseClassType, prefix: Expr): Pattern = {
-
-            val name = prefix match {
-              case CaseClassSelector(_, _, id) => id.name
-              case Variable(id) => id.name
-              case _ => "tmp"
-            }
-
-            val binder = FreshIdentifier(name, true).setType(prefix.getType) 
-
-            // prefix becomes binder
-            substMap += prefix -> Variable(binder)
-            substMap += CaseClassInstanceOf(ct, prefix) -> BooleanLiteral(true)
-
-            val subconds = for (f <- ct.fields) yield {
-              val fieldSel = CaseClassSelector(ct, prefix, f.id)
-              if (conditions contains fieldSel) {
-                computePatternFor(conditions(fieldSel), fieldSel)
-              } else {
-                val b = FreshIdentifier(f.id.name, true).setType(f.tpe)
-                substMap += fieldSel -> Variable(b)
-                WildcardPattern(Some(b))
-              }
-            }
-
-            CaseClassPattern(Some(binder), ct, subconds)
-          }
-
-          val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
-
-          val (scrutinee, pattern) = if (scrutinees.size > 1) {
-            (Tuple(scrutinees), TuplePattern(None, patterns))
-          } else {
-            (scrutinees.head, patterns.head)
-          }
-
-          // We use searchAndReplace to replace the biggest match first
-          // (topdown).
-          // So replaceing using Map(a => b, CC(a) => d) will replace
-          // "CC(a)" by "d" and not by "CC(b)"
-          val newThen = preMap(substMap.lift)(thenn)
-
-          // Remove unused binders
-          val vars = variablesOf(newThen)
-
-          def simplerBinder(oid: Option[Identifier]) = oid.filter(vars(_))
-
-          def simplifyPattern(p: Pattern): Pattern = p match {
-            case CaseClassPattern(ob, cd, subpatterns) =>
-              CaseClassPattern(simplerBinder(ob), cd, subpatterns map simplifyPattern)
-            case WildcardPattern(ob) =>
-              WildcardPattern(simplerBinder(ob))
-            case TuplePattern(ob, patterns) =>
-              TuplePattern(simplerBinder(ob), patterns map simplifyPattern)
-            case LiteralPattern(ob,lit) => LiteralPattern(simplerBinder(ob), lit)
-            case _ =>
-              p
-          }
-
-          val resCases = List(
-                           SimpleCase(simplifyPattern(pattern), newThen),
-                           SimpleCase(WildcardPattern(None), elze)
-                         )
-
-          def mergePattern(to: Pattern, anchor: Identifier, pat: Pattern): Pattern = to match {
-            case CaseClassPattern(ob, cd, subs) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                CaseClassPattern(ob, cd, subs.map(mergePattern(_, anchor, pat)))
-              }
-            case InstanceOfPattern(ob, cd) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                InstanceOfPattern(ob, cd)
-              }
-
-            case WildcardPattern(ob) =>
-              if (ob == Some(anchor)) {
-                pat
-              } else {
-                WildcardPattern(ob)
-              }
-            case TuplePattern(ob,subs) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                TuplePattern(ob, subs)
-              }
-            case LiteralPattern(ob, lit) => // TODO: is this correct?
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                LiteralPattern(ob,lit) 
-              }
-                
-          }
-
-          val newCases = resCases.flatMap { c => c match {
-            case SimpleCase(wp: WildcardPattern, m @ MatchExpr(ex, cases)) if ex == scrutinee  =>
-              cases
-
-            case SimpleCase(pattern, m @ MatchExpr(v @ Variable(id), cases)) =>
-              if (pattern.binders(id)) {
-                cases.map{ nc =>
-                  SimpleCase(mergePattern(pattern, id, nc.pattern), nc.rhs)
-                }
-              } else {
-                Seq(c)
-              }
-            case _ => 
-              Seq(c)
-          }}
-
-          var finalMatch = MatchExpr(scrutinee, List(newCases.head)).setType(e.getType)
-
-          for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
-            finalMatch = MatchExpr(scrutinee, finalMatch.cases :+ toAdd).setType(e.getType)
-          }
-
-          finalMatch
-
-        } else {
-          e
-        }
-      case _ =>
-        e
-    }
-
-    simplePostTransform(post)(e)
-  }
-
   /**
    * Simplify If expressions when the branch is predetermined by the path
    * condition
@@ -2283,5 +2042,249 @@ object TreeOps {
 
   @deprecated("Use exists instead", "Leon 0.2.1")
   def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
+ 
+  /*
+   * Transforms complicated Ifs into multiple nested if blocks
+   * It will decompose every OR clauses, and it will group AND clauses checking
+   * isInstanceOf toghether.
+   *
+   *  if (a.isInstanceof[T1] && a.tail.isInstanceof[T2] && a.head == a2 || C) {
+   *     T
+   *  } else {
+   *     E
+   *  }
+   *
+   * Becomes:
+   *
+   *  if (a.isInstanceof[T1] && a.tail.isInstanceof[T2]) {
+   *    if (a.head == a2) {
+   *      T
+   *    } else {
+   *      if(C) {
+   *        T
+   *      } else {
+   *        E
+   *      }
+   *    }
+   *  } else {
+   *    if(C) {
+   *      T
+   *    } else {
+   *      E
+   *    }
+   *  }
+   * 
+   * This transformation runs immediately before patternMatchReconstruction.
+   *
+   * Notes: positions are lost.
+   */
+  @deprecated("Mending an expression after matchToIfThenElse is unsafe", "Leon 0.2.4")
+  def decomposeIfs(e: Expr): Expr = {
+    def pre(e: Expr): Expr = e match {
+      case IfExpr(cond, thenn, elze) =>
+        val TopLevelOrs(orcases) = cond
+
+        if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
+          if (!orcases.tail.isEmpty) {
+            pre(IfExpr(orcases.head, thenn, IfExpr(Or(orcases.tail), thenn, elze)))
+          } else {
+            val TopLevelAnds(andcases) = orcases.head
+
+            val (andis, andnotis) = andcases.partition(_.isInstanceOf[CaseClassInstanceOf])
+
+            if (andis.isEmpty || andnotis.isEmpty) {
+              e
+            } else {
+              IfExpr(And(andis), IfExpr(And(andnotis), thenn, elze), elze)
+            }
+          }
+        } else {
+          e
+        }
+      case _ =>
+        e
+    }
+
+    simplePreTransform(pre)(e)
+  }
+
+  /**
+   * Reconstructs match expressions from if-then-elses.
+   *
+   * Notes: positions are lost.
+   */
+  @deprecated("Mending an expression after matchToIfThenElse is unsafe", "Leon 0.2.4")
+  def patternMatchReconstruction(e: Expr): Expr = {
+    def post(e: Expr): Expr = e match {
+      case IfExpr(cond, thenn, elze) =>
+        val TopLevelAnds(cases) = cond
+
+        if (cases.forall(_.isInstanceOf[CaseClassInstanceOf])) {
+          // matchingOn might initially be: a : T1, a.tail : T2, b: T2
+          def selectorDepth(e: Expr): Int = e match {
+            case cd: CaseClassSelector =>
+              1+selectorDepth(cd.caseClass)
+            case _ =>
+              0
+          }
+
+          var scrutSet = Set[Expr]()
+          var conditions = Map[Expr, CaseClassType]()
+
+          var matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
+          for (CaseClassInstanceOf(cct, expr) <- matchingOn) {
+            conditions += expr -> cct
+
+            expr match {
+              case cd: CaseClassSelector =>
+                if (!scrutSet.contains(cd.caseClass)) {
+                  // we found a test looking like "a.foo.isInstanceof[..]"
+                  // without a check on "a".
+                  scrutSet += cd
+                }
+              case e =>
+                scrutSet += e
+            }
+          }
+
+          var substMap = Map[Expr, Expr]()
+
+          def computePatternFor(ct: CaseClassType, prefix: Expr): Pattern = {
+
+            val name = prefix match {
+              case CaseClassSelector(_, _, id) => id.name
+              case Variable(id) => id.name
+              case _ => "tmp"
+            }
+
+            val binder = FreshIdentifier(name, true).setType(prefix.getType) 
+
+            // prefix becomes binder
+            substMap += prefix -> Variable(binder)
+            substMap += CaseClassInstanceOf(ct, prefix) -> BooleanLiteral(true)
+
+            val subconds = for (f <- ct.fields) yield {
+              val fieldSel = CaseClassSelector(ct, prefix, f.id)
+              if (conditions contains fieldSel) {
+                computePatternFor(conditions(fieldSel), fieldSel)
+              } else {
+                val b = FreshIdentifier(f.id.name, true).setType(f.tpe)
+                substMap += fieldSel -> Variable(b)
+                WildcardPattern(Some(b))
+              }
+            }
+
+            CaseClassPattern(Some(binder), ct, subconds)
+          }
+
+          val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
+
+          val (scrutinee, pattern) = if (scrutinees.size > 1) {
+            (Tuple(scrutinees), TuplePattern(None, patterns))
+          } else {
+            (scrutinees.head, patterns.head)
+          }
+
+          // We use searchAndReplace to replace the biggest match first
+          // (topdown).
+          // So replaceing using Map(a => b, CC(a) => d) will replace
+          // "CC(a)" by "d" and not by "CC(b)"
+          val newThen = preMap(substMap.lift)(thenn)
+
+          // Remove unused binders
+          val vars = variablesOf(newThen)
+
+          def simplerBinder(oid: Option[Identifier]) = oid.filter(vars(_))
+
+          def simplifyPattern(p: Pattern): Pattern = p match {
+            case CaseClassPattern(ob, cd, subpatterns) =>
+              CaseClassPattern(simplerBinder(ob), cd, subpatterns map simplifyPattern)
+            case WildcardPattern(ob) =>
+              WildcardPattern(simplerBinder(ob))
+            case TuplePattern(ob, patterns) =>
+              TuplePattern(simplerBinder(ob), patterns map simplifyPattern)
+            case LiteralPattern(ob,lit) => LiteralPattern(simplerBinder(ob), lit)
+            case _ =>
+              p
+          }
+
+          val resCases = List(
+                           SimpleCase(simplifyPattern(pattern), newThen),
+                           SimpleCase(WildcardPattern(None), elze)
+                         )
+
+          def mergePattern(to: Pattern, anchor: Identifier, pat: Pattern): Pattern = to match {
+            case CaseClassPattern(ob, cd, subs) =>
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                CaseClassPattern(ob, cd, subs.map(mergePattern(_, anchor, pat)))
+              }
+            case InstanceOfPattern(ob, cd) =>
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                InstanceOfPattern(ob, cd)
+              }
+
+            case WildcardPattern(ob) =>
+              if (ob == Some(anchor)) {
+                pat
+              } else {
+                WildcardPattern(ob)
+              }
+            case TuplePattern(ob,subs) =>
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                TuplePattern(ob, subs)
+              }
+            case LiteralPattern(ob, lit) => // TODO: is this correct?
+              if (ob == Some(anchor)) {
+                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
+                pat
+              } else {
+                LiteralPattern(ob,lit) 
+              }
+                
+          }
+
+          val newCases = resCases.flatMap { c => c match {
+            case SimpleCase(wp: WildcardPattern, m @ MatchExpr(ex, cases)) if ex == scrutinee  =>
+              cases
+
+            case SimpleCase(pattern, m @ MatchExpr(v @ Variable(id), cases)) =>
+              if (pattern.binders(id)) {
+                cases.map{ nc =>
+                  SimpleCase(mergePattern(pattern, id, nc.pattern), nc.rhs)
+                }
+              } else {
+                Seq(c)
+              }
+            case _ => 
+              Seq(c)
+          }}
+
+          var finalMatch = MatchExpr(scrutinee, List(newCases.head)).setType(e.getType)
+
+          for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
+            finalMatch = MatchExpr(scrutinee, finalMatch.cases :+ toAdd).setType(e.getType)
+          }
+
+          finalMatch
+
+        } else {
+          e
+        }
+      case _ =>
+        e
+    }
+
+    simplePostTransform(post)(e)
+  }
+
 
 }

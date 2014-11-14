@@ -17,10 +17,7 @@ object Simplifiers {
       removeWitnesses(p) _,
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _,
-      decomposeIfs _,
-      matchToIfThenElse _,
       simplifyPaths(uninterpretedZ3)(_),
-      patternMatchReconstruction _,
       rewriteTuples _,
       evalGround(ctx, p),
       normalizeExpression _
@@ -46,10 +43,7 @@ object Simplifiers {
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyLets _,
-      decomposeIfs _,
-      matchToIfThenElse _,
       simplifyPaths(uninterpretedZ3)(_),
-      patternMatchReconstruction _,
       rewriteTuples _//,
       //normalizeExpression _
     )
@@ -68,7 +62,6 @@ object Simplifiers {
 
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_),
-      decomposeIfs _,
       rewriteTuples _,
       evalGround(ctx, p),
       normalizeExpression _
