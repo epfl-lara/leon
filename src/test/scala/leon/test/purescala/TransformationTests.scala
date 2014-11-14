@@ -14,18 +14,31 @@ import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
 
+import leon.solvers.z3.UninterpretedZ3Solver
+import leon.solvers._
+
 class TransformationTests extends LeonTestSuite {
 
   val pipeline = ExtractionPhase andThen PreprocessingPhase
+ 
+  val simpPaths = (p: Program, e : Expr) => {
+    val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(testContext, p))
+    simplifyPaths(uninterpretedZ3)(e)
+  }
 
   filesInResourceDir("regression/transformations").foreach { file =>
     // Configure which file corresponds to which transformation:
 
-    val (title: String, transformer: (Expr => Expr)) = file.getName match {
+    val (title: String, transformer: ((Program,Expr) => Expr)) = file.getName match {
       case "SimplifyLets.scala" =>
         (
           "Simplifying Lets",
-          simplifyLets _
+          (_:Program, e : Expr) => simplifyLets(e)
+        )
+      case "SimplifyPaths.scala" =>
+        (
+          "Simplifying paths",
+          simpPaths
         )
       case "Match.scala" =>
         (
@@ -43,7 +56,6 @@ class TransformationTests extends LeonTestSuite {
 
       val prog = pipeline.run(ctx)(file.getPath :: Nil)
 
-
       // Proceed with the actual tests
       val inputs = prog.definedFunctions.collect{
         case fd if fd.id.name.startsWith("input") =>
@@ -60,7 +72,7 @@ class TransformationTests extends LeonTestSuite {
         val in = fdin.body.get
         outputs.get(n) match {
           case Some(fdexp) =>
-            val out = transformer(in)
+            val out = transformer(prog, in)
             val exp = fdexp.body.get
 
             val map = (fdin.params.map(_.id) zip fdexp.params.map(_.id)).toMap

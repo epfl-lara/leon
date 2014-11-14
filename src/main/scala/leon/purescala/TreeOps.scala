@@ -851,6 +851,25 @@ object TreeOps {
     postMap(rewritePM)(expr)
   }
 
+  def matchCasePathConditions(m : MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = m match {
+    case MatchExpr(scrut, cases) => 
+      var pcSoFar = pathCond
+      for (c <- cases) yield {
+
+        val g = c.theGuard getOrElse BooleanLiteral(true)
+        val cond = conditionForPattern(scrut, c.pattern, includeBinders = true)
+        val localCond = pcSoFar :+ cond :+ g
+        
+        // These contain no binders defined in this MatchCase
+        val condSafe = conditionForPattern(scrut, c.pattern)
+        val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
+        pcSoFar ::= Not(And(condSafe,gSafe))
+
+        localCond
+      }
+  }
+
+
   /**
    * Rewrites all map accesses with additional error conditions.
    */

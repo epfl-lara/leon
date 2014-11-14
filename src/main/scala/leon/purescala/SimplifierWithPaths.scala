@@ -36,6 +36,24 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
     case _ : Exception => false
   }
 
+  def valid(e : Expr) : Boolean = try {
+    solver.solveVALID(e) match {
+      case Some(true) => true
+      case _ => false 
+    }
+  } catch {
+    case _ : Exception => false
+  }
+
+  def sat(e : Expr) : Boolean = try {
+    solver.solveSAT(e) match {
+      case (Some(false),_) => false
+      case _ => true
+    }
+  } catch {
+    case _ : Exception => true
+  }
+
   protected override def rec(e: Expr, path: C) = e match {
     case IfExpr(cond, thenn, elze) =>
       super.rec(e, path) match {
@@ -60,39 +78,44 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
         BooleanLiteral(false).copiedFrom(e)
       }
 
-    case MatchExpr(scrut, cases) =>
+    case me@MatchExpr(scrut, cases) =>
       val rs = rec(scrut, path)
 
       var stillPossible = true
+      var pcSoFar = path
 
-      if (cases.exists(_.hasGuard)) {
-        // unsupported for now
-        e
-      } else {
-        val newCases = cases.flatMap { c =>
-          val patternExpr = conditionForPattern(rs, c.pattern, includeBinders = true)
+      val conds = matchCasePathConditions(me, path)
 
-          if (stillPossible && !contradictedBy(patternExpr, path)) {
+      val newCases = cases.zip(conds).flatMap { case (cs, cond) =>
+       if (stillPossible && sat(And(cond))) {
 
-            if (impliedBy(patternExpr, path)) {
-              stillPossible = false
-            }
-
-            c match {
-              case SimpleCase(p, rhs) =>
-                Some(SimpleCase(p, rec(rhs, patternExpr +: path)).copiedFrom(c))
-              case GuardedCase(_, _, _) =>
-                sys.error("woot.")
-            }
-          } else {
-            None
+          if (valid(And(cond))) {
+            stillPossible = false
           }
-        }
-        if (newCases.nonEmpty) {
-          MatchExpr(rs, newCases).copiedFrom(e)
+
+          Some((cs match {
+            case SimpleCase(p, rhs) =>
+              SimpleCase(p, rec(rhs, cond))
+            case GuardedCase(p, g, rhs) =>
+              // FIXME: This is quite a dirty hack. We just know matchCasePathConditions 
+              // returns the current guard as the last element.
+              // We don't include it in the path condition when we recurse into itself.
+              val condWithoutGuard = try { cond.init } catch { case _ : UnsupportedOperationException => List() }
+              val newGuard = rec(g, condWithoutGuard)
+              if (valid(newGuard))
+                SimpleCase(p, rec(rhs,cond))
+              else 
+                GuardedCase(p, newGuard, rec(rhs, cond))
+          }).copiedFrom(cs))
         } else {
-          Error("Unreachable code").copiedFrom(e)
+          None
         }
+      }
+      newCases match {
+        case List() => Error("Unreachable code").copiedFrom(e)
+        case List(theCase) => 
+          replaceFromIDs(mapForPattern(scrut, theCase.pattern), theCase.rhs)
+        case _ => MatchExpr(rs, newCases).copiedFrom(e)
       }
 
     case Or(es) =>
