@@ -2194,7 +2194,9 @@ object TreeOps {
 
   def isStringLiteral(e: Expr): Option[String] = e match {
     case CaseClass(cct, args) =>
-      val lib = inProgram(cct.classDef).library
+      val p = inProgram(cct.classDef)
+      require(p.isDefined)
+      val lib = p.get.library
 
       if (Some(cct.classDef) == lib.String) {
         isListLiteral(args(0)) match {
@@ -2222,7 +2224,9 @@ object TreeOps {
 
   def isListLiteral(e: Expr): Option[(TypeTree, List[Expr])] = e match {
     case CaseClass(cct, args) =>
-      val lib = inProgram(cct.classDef).library
+      val p = inProgram(cct.classDef)
+      require(p.isDefined)
+      val lib = p.get.library
 
       if (Some(cct.classDef) == lib.Nil) {
         Some((cct.tps.head, Nil))

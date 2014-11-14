@@ -9,7 +9,7 @@ object DefOps {
     df match {
       case _ : Program => List()
       case u : UnitDef => u.pack 
-      case _ => inPackage(df.owner.get)
+      case _ => df.owner map inPackage getOrElse List()
     }
   }
   
@@ -19,10 +19,10 @@ object DefOps {
     case other => other.owner flatMap inUnit
   }
   
-  def inProgram(df : Definition) : Program = {
+  def inProgram(df : Definition) : Option[Program] = {
     df match {
-      case p : Program => p
-      case other => inProgram(other.owner.get)
+      case p : Program => Some(p)
+      case other => other.owner flatMap inProgram
     }
   }
     
@@ -55,9 +55,13 @@ object DefOps {
   def visibleDefsFrom(df : Definition) : Set[Definition] = {
     var toRet = Map[String,Definition]()
     val asList = 
-      (pathFromRoot(df).reverse flatMap { _.subDefinitions })  ++
-      (unitsInPackage(inProgram(df), inPackage(df)) flatMap { _.subDefinitions } ) ++
-      Seq(inProgram(df)) ++
+      (pathFromRoot(df).reverse flatMap { _.subDefinitions }) ++ {
+        inProgram(df) match {
+          case None => List()
+          case Some(p) => unitsInPackage(p, inPackage(df)) flatMap { _.subDefinitions } 
+        }
+      } ++
+      inProgram(df).toList ++
       ( for ( u <- inUnit(df).toSeq;
               imp <- u.imports;
               impDf <- imp.importedDefs
@@ -125,17 +129,18 @@ object DefOps {
     (pack, finalPath)
   }
 
-  def fullName(df: Definition, fromProgram: Option[Program] = None): String = {
-    val p = fromProgram.getOrElse(inProgram(df))
+  def fullName(df: Definition, fromProgram: Option[Program] = None): String = 
+    fromProgram orElse inProgram(df) match {
+      case None => df.id.name
+      case Some(p) =>
+        val (pr, ds) = pathAsVisibleFrom(p, df)
 
-    val (pr, ds) = pathAsVisibleFrom(p, df)
-
-    (pr ::: ds.flatMap{
-      case _: UnitDef => None
-      case m: ModuleDef if m.isStandalone => None
-      case d => Some(d.id.name)
-    }).mkString(".")
-  }
+        (pr ::: ds.flatMap{
+          case _: UnitDef => None
+          case m: ModuleDef if m.isStandalone => None
+          case d => Some(d.id.name)
+        }).mkString(".")
+    }
 
   def searchByFullName (
     fullName : String,
@@ -152,6 +157,8 @@ object DefOps {
     exploreStandalones : Boolean = true  // Unset this if your path already includes standalone object names
   ) : Option[Definition] = {
   
+    require(inProgram(base).isDefined)
+
     val fullNameList = fullName.split("\\.").toList map scala.reflect.NameTransformer.encode
     require(!fullNameList.isEmpty)
     
@@ -193,8 +200,8 @@ object DefOps {
       path = fullNameList.tail;
       df <- descendDefs(startingPoint,path) 
     ) yield df ) orElse {
-      
-      val program = inProgram(base)
+
+      val program = inProgram(base).get
       val currentPack = inPackage(base)
       val knownPacks = program.units map { _.pack }
       // The correct package has the maximum identifiers

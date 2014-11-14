@@ -120,7 +120,7 @@ object Definitions {
       case PackageImport(pack) => {
         import DefOps._
         // Ignore standalone modules, assume there are extra imports for them
-        unitsInPackage(inProgram(this),pack) 
+        inProgram(this) map { unitsInPackage(_,pack) } getOrElse List()
       }
       case SingleImport(imported) => List(imported)
       case WildcardImport(imported) => imported.subDefinitions
