@@ -58,45 +58,21 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           case v : Variable => v
           case _ => Variable(FreshIdentifier("scrut", true).setType(scrut0.getType))
         }
-        var pcSoFar: Expr = if (scrut == scrut0) BooleanLiteral(true) else Equals(scrut0, scrut)
+        var scrutCond: Expr = if (scrut == scrut0) BooleanLiteral(true) else Equals(scrut0, scrut)
 
-        val subs = for (c <- cs) yield {
+        val subs = for ((c, cond) <- cs zip matchCasePathConditions(m, List(p.pc))) yield {
           
-          //println("="*40)
-
           val localScrut = c.pattern.binder.map(Variable) getOrElse scrut
-          //println("PC so far:")
-          //println(replace(Map(scrut -> localScrut), pcSoFar))
           val scrutConstraint = if (localScrut == scrut) BooleanLiteral(true) else Equals(localScrut, scrut)
           val substs = patternSubstitutions(localScrut, c.pattern)
           
-          //println("Pattern : " + c.pattern)
-          //println("SUBST")
-          //substs foreach println
-
-          val cond = conditionForPattern(localScrut, c.pattern)
-          //println("cond: " + cond)
-          val g = c.theGuard.getOrElse(BooleanLiteral(true))
-          val pc  = simplify(doSubstitute(substs, 
-            And(Seq(
-              scrutConstraint,
-              replace(Map(scrut -> localScrut), pcSoFar),
-              cond, 
-              g, 
-              replace(Map(m -> c.rhs), p.pc)
-            ))
-          ))
-          //println("PC")
-          //println(pc)
-
+          val pc  = simplify( And( Seq(
+            scrutCond,
+            replace(Map(scrut0 -> scrut),doSubstitute(substs,scrutConstraint)),
+            replace(Map(scrut0 -> scrut), replace(Map(m -> c.rhs), And(cond)))
+          )))
           val phi = doSubstitute(substs, p.phi) 
           val free = variablesOf(And(pc, phi)) -- p.xs
-          val guardSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
-          val condSafe = conditionForPattern(scrut, c.pattern)
-          //println("GUARD SAFE:")
-          //println(guardSafe)
-          //println("="*40)
-          pcSoFar = simplify(And(Not(And(condSafe, guardSafe)), pcSoFar))
           val asPrefix = p.as.filter(free)
 
           Problem(asPrefix ++ (free -- asPrefix), pc, phi, p.xs)
@@ -113,7 +89,8 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           Some(Solution(
             Or(subs.map(_.pre)), 
             subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _), 
-            Let(scrut.id, scrut0, MatchExpr(scrut, cases))
+            if (scrut0 != scrut) Let(scrut.id, scrut0, MatchExpr(scrut, cases))
+            else MatchExpr(scrut, cases)
           ))
         }
 
