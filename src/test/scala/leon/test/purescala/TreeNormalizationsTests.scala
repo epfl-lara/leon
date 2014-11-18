@@ -80,5 +80,8 @@ class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
     val e3 = Minus(Plus(x, i(3)), Plus(y, i(2)))
     checkSameExpr(coefToSum(linearArithmeticForm(e3, xsOrder), Array(x, y)), e3, xs)
 
+    val e4 = Plus(Plus(i(0), i(2)), Times(i(-1), i(3)))
+    assert(linearArithmeticForm(e4, Array()) === Array(i(-1)))
+
   }
 }
