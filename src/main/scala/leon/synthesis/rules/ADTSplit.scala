@@ -13,7 +13,7 @@ import purescala.Definitions._
 import solvers._
 
 case object ADTSplit extends Rule("ADT Split.") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation]= {
+  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 200L))
 
     val candidates = p.as.collect {

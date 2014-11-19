@@ -17,8 +17,18 @@ abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extend
 
   val interrupted = new AtomicBoolean(false);
 
-  def doStep(n: Node, sctx: SynthesisContext) = {
-    n.expand(sctx)
+  def doStep(n: Node, sctx: SynthesisContext): Unit = {
+    ctx.timers.synthesis.step.timed {
+      n match {
+        case an: AndNode =>
+          ctx.timers.synthesis.applications.get(an.ri.toString).timed {
+            an.expand(sctx)
+          }
+
+        case on: OrNode =>
+          on.expand(sctx)
+      }
+    }
   }
 
   @tailrec
@@ -95,18 +105,20 @@ class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Op
   var counter = 0;
   def findNodeToExpandFrom(from: Node): Option[Node] = {
     counter += 1
-    if (!bound.isDefined || counter <= bound.get) {
-      if (expansionBuffer.isEmpty) {
-        findIn(from)
-      }
+    ctx.timers.synthesis.search.find.timed {
+      if (!bound.isDefined || counter <= bound.get) {
+        if (expansionBuffer.isEmpty) {
+          findIn(from)
+        }
 
-      if (expansionBuffer.nonEmpty) {
-        Some(expansionBuffer.remove(0))
+        if (expansionBuffer.nonEmpty) {
+          Some(expansionBuffer.remove(0))
+        } else {
+          None
+        }
       } else {
         None
       }
-    } else {
-      None
     }
   }
 }

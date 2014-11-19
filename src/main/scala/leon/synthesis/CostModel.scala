@@ -19,7 +19,7 @@ abstract class CostModel(val name: String) {
 }
 
 case class Cost(minSize: Int) extends Ordered[Cost] {
-  def isImpossible = minSize >= 100
+  def isImpossible = minSize >= 200
   
   def compare(that: Cost): Int = {
     this.minSize-that.minSize
@@ -83,7 +83,7 @@ class SizeBasedCostModel(name: String) extends CostModel(name) {
     }   
   }
 
-  def impossible = Cost(100)
+  def impossible = Cost(200)
 }
 
 case object NaiveCostModel extends SizeBasedCostModel("Naive")

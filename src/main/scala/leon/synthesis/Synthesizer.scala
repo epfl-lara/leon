@@ -39,9 +39,10 @@ class Synthesizer(val context : LeonContext,
   def synthesize(): (Search, Stream[Solution]) = {
     val s = getSearch();
 
+    val sctx = SynthesisContext.fromSynthesizer(this)
+
     val t = context.timers.synthesis.search.start()
 
-    val sctx = SynthesisContext.fromSynthesizer(this)
     val sols = s.search(sctx)
 
     val diff = t.stop()

@@ -42,10 +42,9 @@ object Rules {
 
     for ((_, rs) <- rulesPrio) {
       val results = rs.flatMap{ r =>
-        val ts = System.currentTimeMillis
-        val res = r.instantiateOn(sctx, problem)
-        println("Instantiating "+r+" ("+(System.currentTimeMillis-ts)+")")
-        res
+        sctx.context.timers.synthesis.instantiations.get(r.toString).timed {
+          r.instantiateOn(sctx, problem)
+        }
       }.toList
 
       if (results.nonEmpty) {

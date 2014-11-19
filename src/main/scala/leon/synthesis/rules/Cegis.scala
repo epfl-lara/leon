@@ -77,7 +77,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
     val useBssFiltering       = sctx.options.cegisUseBssFiltering
     val filterThreshold       = 1.0/2
     val evalParams            = CodeGenParams(maxFunctionInvocations = 2000)
-    val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
+    lazy val evaluator        = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
 
     val interruptManager      = sctx.context.interruptManager
 
@@ -149,7 +149,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
       private var triedCompilation = false
       private var progEvaluator: Option[(Seq[Expr], Seq[Expr]) => EvaluationResult] = None
 
-      def canTest() = {
+      def canTest(): Boolean = {
         if (!triedCompilation) {
           progEvaluator = compile()
         }
