@@ -681,6 +681,13 @@ object TreeOps {
             case cct: CaseClassType =>
               And(CaseClassInstanceOf(cct, in), bind(ob, in))
           }
+
+        case CaseClassPattern(ob, cct, Seq()) =>
+          // Translate to equality if there are no subpatterns
+          assert(cct.fields.isEmpty)
+          val caseClass = CaseClass(cct, Seq())
+          And(bind(ob,caseClass), Equals(in,caseClass))
+
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.fields.size == subps.size)
           val pairs = cct.fields.map(_.id).toList zip subps.toList
@@ -694,7 +701,7 @@ object TreeOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(TupleSelect(in, i+1).setType(tpes(i)), p)}
           And(bind(ob, in) +: subTests)
         }
-        case LiteralPattern(ob,lit) => And(Equals(in,lit), bind(ob,in))
+        case LiteralPattern(ob,lit) => And(bind(ob,lit), Equals(in,lit))
       }
     }
 
