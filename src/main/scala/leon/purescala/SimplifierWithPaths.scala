@@ -113,7 +113,8 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
       }
       newCases match {
         case List() => Error("Unreachable code").copiedFrom(e)
-        case List(theCase) => 
+        case List(theCase) if !scrut.getType.isInstanceOf[AbstractClassType] => 
+          // Avoid AbstractClassType as it may lead to invalid field accesses
           replaceFromIDs(mapForPattern(scrut, theCase.pattern), theCase.rhs)
         case _ => MatchExpr(rs, newCases).copiedFrom(e)
       }

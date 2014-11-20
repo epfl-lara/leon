@@ -81,4 +81,13 @@ object Transform {
       a._1
     }
 
+    def input07(l : List[Int]) : Int = l match {
+      case Nil() if false => 42
+      case Cons(h,t) => h
+    }
+
+    def output07(l : List[Int]) : Int = l match {
+      case Cons(h,t) => h
+    }
+
 }
