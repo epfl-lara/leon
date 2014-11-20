@@ -10,37 +10,50 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 
 class LambdaManager[T](encoder: TemplateEncoder[T]) {
-  private var byID : Map[T, LambdaTemplate[T]] = Map.empty
-  private var byType : Map[TypeTree, Set[(T, LambdaTemplate[T])]] = Map.empty.withDefaultValue(Set.empty)
-  private var quantified : Map[TypeTree, Set[T]] = Map.empty.withDefaultValue(Set.empty)
-  private var applications : Map[TypeTree, Set[(T, App[T])]] = Map.empty.withDefaultValue(Set.empty)
-  private var blockedApplications : Map[(T, App[T]), Set[T]] = Map.empty.withDefaultValue(Set.empty)
-
-  private var globalBlocker : Option[T] = None
-  private var previousGlobals : Set[T] = Set.empty
-
-  def quantify(args: Seq[(TypeTree, T)]): Unit = {
-    args.foreach(p => quantified += p._1 -> (quantified(p._1) + p._2))
+  private type IdMap = Map[T, LambdaTemplate[T]]
+  private var byIDStack : List[IdMap] = List(Map.empty)
+  private def byID : IdMap = byIDStack.head
+  private def byID_=(map: IdMap) : Unit = {
+    byIDStack = map :: byIDStack.tail
   }
 
-  def instantiate(apps: Map[T, Set[App[T]]], lambdas: Map[T, LambdaTemplate[T]]) : (Seq[T], Map[T, Set[TemplateInfo[T]]]) = {
+  private type TypeMap = Map[TypeTree, Set[(T, LambdaTemplate[T])]]
+  private var byTypeStack : List[TypeMap] = List(Map.empty.withDefaultValue(Set.empty))
+  private def byType : TypeMap = byTypeStack.head
+  private def byType_=(map: TypeMap) : Unit = {
+    byTypeStack = map :: byTypeStack.tail
+  }
+
+  private type ApplicationMap = Map[TypeTree, Set[(T, App[T])]]
+  private var applicationsStack : List[ApplicationMap] = List(Map.empty.withDefaultValue(Set.empty))
+  private def applications : ApplicationMap = applicationsStack.head
+  private def applications_=(map: ApplicationMap) : Unit = {
+    applicationsStack = map :: applicationsStack.tail
+  }
+
+  def push(): Unit = {
+    byIDStack = byID :: byIDStack
+    byTypeStack = byType :: byTypeStack
+    applicationsStack = applications :: applicationsStack
+  }
+
+  def pop(lvl: Int): Unit = {
+    byIDStack = byIDStack.drop(lvl)
+    byTypeStack = byTypeStack.drop(lvl)
+    applicationsStack = applicationsStack.drop(lvl)
+  }
+
+  def instantiate(apps: Map[T, Set[App[T]]], lambdas: Map[T, LambdaTemplate[T]]) : (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
     var clauses : Seq[T] = Seq.empty
-    var blockers : Map[T, Set[TemplateInfo[T]]] = Map.empty.withDefaultValue(Set.empty)
+    var callBlockers : Map[T, Set[TemplateCallInfo[T]]] = Map.empty.withDefaultValue(Set.empty)
+    var appBlockers  : Map[(T, App[T]), Set[TemplateAppInfo[T]]] = Map.empty.withDefaultValue(Set.empty)
 
     def mkBlocker(blockedApp: (T, App[T]), lambda: (T, LambdaTemplate[T])) : Unit = {
       val (_, App(caller, tpe, args)) = blockedApp
       val (idT, template) = lambda
 
-      val unrollingBlocker = encoder.encodeId(FreshIdentifier("unrolled", true).setType(BooleanType))
-
-      val conj = encoder.mkAnd(encoder.mkEquals(idT, caller), template.start, unrollingBlocker)
-
-      val templateBlocker = encoder.encodeId(FreshIdentifier("b", true).setType(BooleanType))
-      val constraint = encoder.mkEquals(templateBlocker, conj)
-
-      clauses :+= constraint
-      blockedApplications += (blockedApp -> (blockedApplications(blockedApp) + templateBlocker))
-      blockers += (unrollingBlocker -> Set(TemplateAppInfo(template, templateBlocker, args)))
+      val equals = encoder.mkEquals(idT, caller)
+      appBlockers += (blockedApp -> (appBlockers(blockedApp) + TemplateAppInfo(template, equals, args)))
     }
 
     for (lambda @ (idT, template) <- lambdas) {
@@ -54,35 +67,28 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
 
     for ((b, fas) <- apps; app @ App(caller, tpe, args) <- fas) {
       if (byID contains caller) {
-        val (newClauses, newBlockers) = byID(caller).instantiate(b, args)
+        val (newClauses, newCalls, newApps) = byID(caller).instantiate(b, args)
+
         clauses ++= newClauses
-        newBlockers.foreach(p => blockers += p._1 -> (blockers(p._1) ++ p._2))
+        newCalls.foreach(p => callBlockers += p._1 -> (callBlockers(p._1) ++ p._2))
+        newApps.foreach(p => appBlockers += p._1 -> (appBlockers(p._1) ++ p._2))
       } else {
+        val key = b -> app
+
+        // make sure that even if byType(tpe) is empty, app is recorded in blockers
+        // so that UnrollingBank will generate the initial block!
+        if (!(appBlockers contains key)) appBlockers += key -> Set.empty
+
         for (lambda <- byType(tpe)) {
-          mkBlocker(b -> app, lambda)
+          mkBlocker(key, lambda)
         }
 
-        applications += tpe -> (applications(tpe) + (b -> app))
+        applications += tpe -> (applications(tpe) + key)
       }
     }
 
-    (clauses, blockers)
+    (clauses, callBlockers, appBlockers)
   }
 
-  def guards : Seq[T] = {
-    previousGlobals ++= globalBlocker
-    val globalGuard = encoder.encodeId(FreshIdentifier("lambda_phaser", true).setType(BooleanType))
-    globalBlocker = Some(globalGuard)
-
-    (for (((b, App(caller, tpe, _)), tbs) <- blockedApplications) yield {
-      val qbs = quantified(tpe).map(l => encoder.mkEquals(caller, l))
-      val or = encoder.mkOr((tbs ++ qbs).toSeq : _*)
-      // TODO: get global blocker
-      val guard = encoder.mkAnd(globalGuard, encoder.mkNot(or))
-      encoder.mkImplies(guard, encoder.mkNot(b))
-    }).toSeq ++ previousGlobals.map(encoder.mkNot(_))
-  }
-
-  def assumption : T = globalBlocker.get
 }
 
