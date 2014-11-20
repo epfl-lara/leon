@@ -18,7 +18,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
   private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
 
-  private[templates] val lambdaManager = new LambdaManager[T](encoder)
+  private val lambdaManager = new LambdaManager[T](encoder)
 
   def mkTemplate(body: Expr): FunctionTemplate[T] = {
     if (cacheExpr contains body) {

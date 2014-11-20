@@ -35,7 +35,7 @@ trait Template[T] { self =>
   private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
   private var lambdaCache : Map[(T, Map[T,T]), T] = Map.empty
 
-  def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateInfo[T]]]) = {
+  def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
 
     val baseSubstMap : Map[T,T] = substCache.get(args) match {
       case Some(subst) => subst
@@ -80,14 +80,14 @@ trait Template[T] { self =>
       substituter(idT) -> lambda.substitute(substMap)
     }
 
-    val (appClauses, appBlockers) = lambdaManager.instantiate(newApplications, newLambdas)
+    val (appClauses, appBlockers, appApps) = lambdaManager.instantiate(newApplications, newLambdas)
 
     val allClauses = newClauses ++ appClauses ++ lambdaClauses
     val allBlockers = (newBlockers.keys ++ appBlockers.keys).map { k =>
       k -> (newBlockers.getOrElse(k, Set.empty) ++ appBlockers.getOrElse(k, Set.empty))
     }.toMap
 
-    (allClauses, allBlockers)
+    (allClauses, allBlockers, appApps)
   }
 
   override def toString : String = "Instantiated template"
