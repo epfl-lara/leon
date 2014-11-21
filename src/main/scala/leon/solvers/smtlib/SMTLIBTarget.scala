@@ -460,10 +460,12 @@ trait SMTLIBTarget {
           case (_: Or) => Core.Or(sub.map(toSMT): _*)
           case (_: IfExpr) => Core.ITE(toSMT(sub(0)), toSMT(sub(1)), toSMT(sub(2))) 
           case (f: FunctionInvocation) => 
-            FunctionApplication(
-              declareFunction(f.tfd),
-              sub.map(toSMT)
-            )
+            if (sub.isEmpty) declareFunction(f.tfd) else {
+              FunctionApplication(
+                declareFunction(f.tfd),
+                sub.map(toSMT)
+              )
+            }
           case _ => reporter.fatalError("Unhandled nary "+e)
         }
 
