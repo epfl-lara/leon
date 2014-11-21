@@ -447,11 +447,6 @@ object TreeOps {
         val newID = FreshIdentifier(i.name, true).copiedFrom(i)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
 
-      case lt @ LetTuple(ids,e,b) =>
-        val newIDs = ids.map(_.freshen)
-        val substsMap: Map[Expr, Expr] = (ids zip newIDs).map { case (id, newId) => (id.toVariable -> newId.toVariable) }.toMap
-        Some(LetTuple(newIDs, e, replace(substsMap, b)))
-
       case _ => None
     })(expr)
   }
@@ -482,7 +477,7 @@ object TreeOps {
         Some(Let(id, v, tupleSelect(b, ts)))
 
       case TupleSelect(LetTuple(ids, v, b), ts) =>
-        Some(LetTuple(ids, v, tupleSelect(b, ts)))
+        Some(letTuple(ids, v, tupleSelect(b, ts)))
 
       case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
         Some(thenn)
@@ -578,15 +573,8 @@ object TreeOps {
               true
             }
         }.unzip
-
-
-        if (remIds.isEmpty) {
-          Some(newBody)
-        } else if (remIds.tail.isEmpty) {
-          Some(Let(remIds.head, remExprs.head, newBody))
-        } else {
-          Some(LetTuple(remIds, Tuple(remExprs), newBody))
-        }
+          
+        Some(Constructors.letTuple(remIds, tupleWrap(remExprs), newBody))
 
       case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
         val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
@@ -1659,14 +1647,6 @@ object TreeOps {
           isHomo(v1, v2) &&
           isHomo(e1, e2)(map + (id1 -> id2))
 
-        case (LetTuple(ids1, v1, e1), LetTuple(ids2, v2, e2)) =>
-          if (ids1.size == ids2.size) {
-            isHomo(v1, v2) &&
-            isHomo(e1, e2)(map ++ (ids1 zip ids2))
-          } else {
-            false
-          }
-
         case (LetDef(fd1, e1), LetDef(fd2, e2)) =>
           fdHomo(fd1, fd2) &&
           isHomo(e1, e2)(map + (fd1.id -> fd2.id))
@@ -2015,7 +1995,7 @@ object TreeOps {
         case Let(i, e, b) =>
           Let(i, e, apply(b, args))
         case LetTuple(is, es, b) =>
-          LetTuple(is, es, apply(b, args))
+          letTuple(is, es, apply(b, args))
         case Lambda(params, body) =>
           replaceFromIDs((params.map(_.id) zip args).toMap, body)
         case _ => Application(expr, args)
