@@ -157,6 +157,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
   private def extendAppBlock(app: (T, App[T]), infos: Set[TemplateAppInfo[T]]) : T = {
     assert(!appInfo.isDefinedAt(app), "appInfo -= app must have been called to ensure blocker freshness")
     assert(appBlockers.isDefinedAt(app), "freshAppBlocks must have been called on app before it can be unlocked")
+    assert(infos.nonEmpty, "No point in extending blockers if no templates have been unrolled!")
 
     val nextB = encoder.encodeId(FreshIdentifier("b_lambda", true).setType(BooleanType))
     val extension = encoder.mkOr((infos.map(_.equals).toSeq :+ nextB) : _*)
@@ -194,7 +195,14 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     }
 
     // ...so we must force it to true!
-    template.start +: (newClauses ++ blockClauses)
+    val clauses = template.start +: (newClauses ++ blockClauses)
+
+    reporter.debug("Generating clauses for: " + expr)
+    for (cls <- clauses) {
+      reporter.debug("  . " + cls)
+    }
+
+    clauses
   }
 
   def nextGeneration(gen: Int) = gen + 3
@@ -238,8 +246,10 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     blockerToApp = blockerToApp -- ids
     appInfo = appInfo -- apps
 
-    for ((app, (_, _, _, _, infos)) <- appInfos) {
-      newClauses :+= extendAppBlock(app, infos)
+    for ((app, (_, _, _, _, infos)) <- appInfos if infos.nonEmpty) {
+      val extension = extendAppBlock(app, infos)
+      reporter.debug(" -> extending lambda blocker: " + extension)
+      newClauses :+= extension
     }
 
     for ((id, (gen, _, _, infos)) <- callInfos; info @ TemplateCallInfo(tfd, args) <- infos) {
