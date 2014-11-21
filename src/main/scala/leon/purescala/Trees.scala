@@ -8,6 +8,7 @@ import utils._
 /** AST definitions for Pure Scala. */
 object Trees {
   import Common._
+  import TreeOps.variablesOf
   import TypeTrees._
   import TypeTreeOps._
   import Definitions._
@@ -55,14 +56,8 @@ object Trees {
     }
   }
 
+  /* Like vals */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
-    def getType = body.getType
-  }
-
-  case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
-    require(value.getType.isInstanceOf[TupleType],
-           "The definition value in LetTuple must be of some tuple type; yet we got [%s]. In expr: \n%s".format(value.getType, this))
-
     def getType = body.getType
   }
 

@@ -62,19 +62,7 @@ class ScopeSimplifier extends Transformer {
       }
 
       LetDef(newFd, rec(body, newScope))
-
-    case LetTuple(is, e, b) =>
-      var newScope = scope
-      val sis = for (i <- is) yield {
-        val si = genId(i, newScope)
-        newScope = newScope.register(i -> si)
-        si
-      }
-
-      val se = rec(e, scope)
-      val sb = rec(b, newScope)
-      LetTuple(sis, se, sb)
-
+   
     case MatchExpr(scrut, cases) =>
       val rs = rec(scrut, scope)
 

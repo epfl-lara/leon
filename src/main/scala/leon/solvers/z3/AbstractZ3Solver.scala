@@ -10,6 +10,7 @@ import solvers._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Constructors._
+import purescala.Extractors.LetTuple
 import purescala.Trees._
 import purescala.TypeTreeOps._
 import xlang.Trees._
@@ -495,6 +496,20 @@ trait AbstractZ3Solver
     }
 
     def rec(ex: Expr): Z3AST = ex match {
+      
+      // TODO: Leave that as a specialization?
+      case LetTuple(ids, e, b) => {
+        var ix = 1
+        z3Vars = z3Vars ++ ids.map((id) => {
+          val entry = (id -> rec(tupleSelect(e, ix)))
+          ix += 1
+          entry
+        })
+        val rb = rec(b)
+        z3Vars = z3Vars -- ids
+        rb
+      }
+      
       case p @ Passes(_, _, _) =>
         rec(p.asConstraint)
 
@@ -524,17 +539,6 @@ trait AbstractZ3Solver
         rb
       }
 
-      case LetTuple(ids, e, b) => {
-        var ix = 1
-        z3Vars = z3Vars ++ ids.map((id) => {
-          val entry = (id -> rec(tupleSelect(e, ix)))
-          ix += 1
-          entry
-        })
-        val rb = rec(b)
-        z3Vars = z3Vars -- ids
-        rb
-      }
       case Waypoint(_, e) => rec(e)
       case e @ Error(tpe, _) => {
         val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))

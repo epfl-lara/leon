@@ -279,10 +279,6 @@ object TypeTreeOps {
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
 
-          case l @ LetTuple(ids, value, body) =>
-            val newIds = ids.map(id => freshId(id, tpeSub(id.getType)))
-            LetTuple(newIds, srec(value), rec(idsMap ++ (ids zip newIds))(body)).copiedFrom(l)
-
           case c @ Choose(xs, pred, oimpl) =>
             val newXs = xs.map(id => freshId(id, tpeSub(id.getType)))
             Choose(newXs, rec(idsMap ++ (xs zip newXs))(pred), oimpl.map(srec)).copiedFrom(c)

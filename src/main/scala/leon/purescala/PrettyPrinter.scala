@@ -13,8 +13,9 @@ import utils._
 
 import java.lang.StringBuffer
 import PrinterHelpers._
-import TreeOps.{isStringLiteral, isListLiteral, simplestValue}
+import TreeOps.{isStringLiteral, isListLiteral, simplestValue, variablesOf}
 import TypeTreeOps.leastUpperBound
+import Extractors.LetPattern
 
 import synthesis.Witnesses._
 
@@ -174,20 +175,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Variable(id) =>
         p"$id"
 
-      case LetTuple(bs,d,e) =>
-        optB { e match {
-          case _:LetDef | _ : Let | _ : LetTuple =>
-            p"""|val ($bs) = {
-                |  $d
-                |}
-                |$e"""
-          case _ =>
-            p"""|val ($bs) = $d;
-                |$e"""
-        }}
       case Let(b,d,e) =>
         optB { e match {
-          case _:LetDef | _ : Let | _ : LetTuple =>
+          case _:LetDef | _ : Let | LetPattern(_,_,_) =>
             p"""|val $b = {
                 |  $d
                 |}
@@ -436,6 +426,22 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
               |}"""
         }
 
+      case LetPattern(p,s,rhs) => 
+        rhs match { 
+          case _:LetDef | _ : Let | LetPattern(_,_,_) =>
+            optP {
+              p"""|val $p = {
+                  |  $s
+                  |}
+                  |$rhs"""
+            }
+
+          case _ => 
+            optP {
+              p"""|val $p = $s
+                  |$rhs"""
+            }
+        }
 
       case MatchExpr(s, csc) =>
         optP {
@@ -680,7 +686,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: Require, _) => true
     case (_: Assert, Some(_: Definition)) => true
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef )) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef )) => false
     case (_, _) => true
   }
 
@@ -703,7 +709,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_, Some(_: Assert)) => false
     case (_, Some(_: Require)) => false
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr | _ : CaseClass)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false

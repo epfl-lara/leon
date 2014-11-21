@@ -282,7 +282,7 @@ object ExpressionGrammars {
 
         val subs: Seq[(L, Gen)] = (e match {
           
-          case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
+          case _: Terminal | _: Let | _: LetDef | _: MatchExpr =>
             gens(e, gl, Nil, { _ => e }) ++ cegis(gl)
 
           case cc @ CaseClass(cct, exprs) =>

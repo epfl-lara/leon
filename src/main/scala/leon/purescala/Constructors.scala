@@ -30,7 +30,12 @@ object Constructors {
         Let(x, tupleSelect(value, 1), body)
       }
     case xs =>
-      LetTuple(xs, value, body)
+      require(
+        value.getType.isInstanceOf[TupleType],
+        s"The definition value in LetTuple must be of some tuple type; yet we got [${value.getType}]. In expr: \n$this"
+      )
+
+      Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)
   }
 
   def tupleChoose(ch: Choose): Expr = {

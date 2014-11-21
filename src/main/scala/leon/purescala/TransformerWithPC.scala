@@ -42,11 +42,6 @@ abstract class TransformerWithPC extends Transformer {
 
       }).copiedFrom(e)
 
-    case LetTuple(is, e, b) =>
-      val se = rec(e, path)
-      val sb = rec(b, register(Equals(Tuple(is.map(Variable(_))), se), path))
-      LetTuple(is, se, sb).copiedFrom(e)
-
     case IfExpr(cond, thenn, elze) =>
       val rc = rec(cond, path)
 

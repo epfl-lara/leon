@@ -67,7 +67,6 @@ object Extractors {
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, b)))
-      case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, b)))
       case Require(pre, body) => Some((pre, body, Require))
       case Ensuring(body, id, post) => Some((body, post, (b: Expr, p: Expr) => Ensuring(b, id, p)))
       case Assert(const, oerr, body) => Some((const, body, (c: Expr, b: Expr) => Assert(c, oerr, b)))
@@ -304,4 +303,33 @@ object Extractors {
       case other => Seq(other)
     }
   }
+  
+  object LetPattern {
+    def apply(patt : Pattern, value: Expr, body: Expr) : Expr = {
+      patt match {
+        case WildcardPattern(Some(binder)) => Let(binder, value, body)
+        case _ => MatchExpr(value, List(SimpleCase(patt, body)))
+      }
+    }
+
+    def unapply(me : MatchExpr) : Option[(Pattern, Expr, Expr)] = {
+      if (me eq null) None else { me match {
+        case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, variablesOf(scrut)) =>
+          Some(( pattern, scrut, body ))
+        case _ => None
+      }}
+    }
+  }
+
+  object LetTuple {
+    def unapply(me : MatchExpr) : Option[(Seq[Identifier], Expr, Expr)] = {
+      if (me eq null) None else { me match {
+        case LetPattern(TuplePattern(None,subPatts), value, body) if
+            subPatts forall { case WildcardPattern(Some(_)) => true; case _ => false } => 
+          Some((subPatts map { _.binder.get }, value, body ))
+        case _ => None
+      }}
+    }
+  }   
+
 }
