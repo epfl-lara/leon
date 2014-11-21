@@ -78,6 +78,15 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         case FiniteSet(elems) => elems
       }).flatten.toSet).setType(tpe)
 
+    // FIXME (nicolas)
+    // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__
+    // one I've witnessed up to now. Don't know why this is happening...
+    case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), ft @ FunctionType(from, to)) =>
+      FiniteLambda(fromSMT(elem, to), Seq.empty, ft)
+
+    case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), RawArrayType(k, v)) =>
+      RawArrayValue(k, Map(), fromSMT(elem, v))
+
     case _ =>
       super[SMTLIBTarget].fromSMT(s, tpe)
   }
