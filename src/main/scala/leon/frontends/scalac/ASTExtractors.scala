@@ -157,6 +157,29 @@ trait ASTExtractors {
       }
     }
 
+    object ExPasses { 
+      def unapply(tree : Apply) : Option[(Tree, List[CaseDef])] = tree match {
+        case Apply(
+          TypeApply(
+            Select(
+              Apply(
+                TypeApply(
+                  ExSelected("leon", "lang", "package", "Passes"), 
+                  _ :: Nil
+                ), 
+                body :: Nil
+              ), 
+              ExNamed("passes")
+            ),
+            _ :: Nil
+          ),
+          (Function((_ @ ValDef(_, _, _, EmptyTree)) :: Nil, ExpressionExtractors.ExPatternMatching(_,tests))) :: Nil)
+          => Some((body, tests))
+        case _ => None
+      }
+    }
+
+
 
     object ExStringLiteral {
       def unapply(tree: Tree): Option[String] = tree  match {

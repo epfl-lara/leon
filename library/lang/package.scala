@@ -28,12 +28,9 @@ package object lang {
   @ignore
   def error[T](reason: java.lang.String): T = sys.error(reason)
 
-  @library
-  def passes[A, B](in: A, out: B)(tests: Map[A,B]): Boolean = {
-    if (tests contains in) {
-      tests(in) == out
-    } else {
-      true
-    }
+  @ignore
+  implicit class Passes[A](v : A) {
+    def passes[B](tests : A => B) : B = tests(v)
   }
+
 }

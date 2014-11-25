@@ -219,6 +219,14 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |  (${typed(id)}) => $post
             |}"""
 
+      case Passes(s, tests) => 
+        optP {
+          p"""|$s passes {
+              |  ${nary(tests, "\n")}
+              |}
+              |"""
+        }
+      
       case c @ WithOracle(vars, pred) =>
         p"""|withOracle { (${typed(vars)}) =>
             |  $pred
@@ -388,6 +396,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
               |  $e
               |}"""
         }
+
 
       case MatchExpr(s, csc) =>
         optP {

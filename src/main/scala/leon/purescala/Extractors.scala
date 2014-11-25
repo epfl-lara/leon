@@ -139,6 +139,19 @@ object Extractors {
 
            MatchExpr(es(0), newcases)
            }))
+      case Passes(scrut, tests) =>
+        Some((scrut +: tests.flatMap{ case SimpleCase(_, e) => Seq(e)
+                                      case GuardedCase(_, e1, e2) => Seq(e1, e2) }
+             , { es: Seq[Expr] =>
+            var i = 1;
+            val newtests = for (test <- tests) yield test match {
+              case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
+              case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
+            }
+
+           Passes(es(0), newtests)
+           }))
+
       case LetDef(fd, body) =>
         fd.body match {
           case Some(b) =>

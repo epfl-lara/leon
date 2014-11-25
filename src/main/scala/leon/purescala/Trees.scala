@@ -42,6 +42,12 @@ object Trees {
     val fixedType = body.getType
   }
 
+  case class Passes(scrut: Expr, tests : List[MatchCase]) extends Expr with FixedType {
+    val fixedType = leastUpperBound(tests.map(_.rhs.getType)).getOrElse{
+      Untyped
+    }
+  }
+
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
 
     assert(!vars.isEmpty)

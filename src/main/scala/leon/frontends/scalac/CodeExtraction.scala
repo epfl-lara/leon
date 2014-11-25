@@ -183,7 +183,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore") || (s.fullName.toString.endsWith(".main"))
+      (annotationsOf(s) contains "ignore") || (s.isImplicit) || (s.fullName.toString.endsWith(".main"))
     }
 
     def isExtern(s: Symbol) = {
@@ -1001,6 +1001,14 @@ trait CodeExtraction extends ASTExtractors {
           rest = None
 
           Require(pre, b)
+ 
+
+        case passes @ ExPasses(sel, cses) =>
+          val rs = extractTree(sel)
+          val rc = cses.map(extractMatchCase(_))
+          val rt: LeonType = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_).get)
+          Passes(rs, rc).setType(rt)
+
 
         case ExArrayLiteral(tpe, args) =>
           FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)(dctx, current.pos)))
