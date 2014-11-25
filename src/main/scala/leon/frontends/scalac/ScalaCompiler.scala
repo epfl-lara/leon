@@ -22,9 +22,17 @@ class ScalaCompiler(settings : NSCSettings, ctx: LeonContext) extends Global(set
     val ctx = ScalaCompiler.this.ctx
   } with SaveImports
   
+  object addTypeAnnotations extends {
+    val global: ScalaCompiler.this.type = ScalaCompiler.this
+    val runsAfter = List[String]()
+    val runsRightAfter = Some("parser")
+    val ctx = ScalaCompiler.this.ctx
+  } with AddTypeAnnotations
+
   override protected def computeInternalPhases() : Unit = {
     val phs = List(
       syntaxAnalyzer          -> "parse source into ASTs, perform simple desugaring",
+      addTypeAnnotations      -> "add type annotations useful for Leon",
       analyzer.namerFactory   -> "resolve names, attach symbols to named trees",
       analyzer.packageObjects -> "load package objects",
       analyzer.typerFactory   -> "the meat and potatoes: type the trees",
