@@ -20,8 +20,6 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
     val TopLevelAnds(exprs) = problem.phi
 
 
-
-
     //assume that we only have inequalities
     var lhsSides: List[Expr] = Nil
     var exprNotUsed: List[Expr] = Nil
@@ -73,25 +71,26 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
       val L = if(upperBounds.isEmpty && lowerBounds.isEmpty) -1 else lcm((upperBounds ::: lowerBounds).map(_._2))
 
       //optimization when coef = 1 and when ub - lb is a constant greater than LCM
-      upperBounds = upperBounds.filterNot{case (ub, uc) => if(uc == 1) {
-          exprNotUsed ++= lowerBounds.map{case (lb, lc) => LessEquals(lb, Times(IntLiteral(lc), ub))}
-          true
-        } else
-          false
-      }
-      lowerBounds = lowerBounds.filterNot{case (lb, lc) => if(lc == 1) {
-          exprNotUsed ++= upperBounds.map{case (ub, uc) => LessEquals(Times(IntLiteral(uc), lb), ub)}
-          true
-        } else 
-          false 
-      }
-      upperBounds = upperBounds.filterNot{case (ub, uc) => {
-        lowerBounds.forall{case (lb, lc) => {
-          expandAndSimplifyArithmetic(Minus(ub, lb)) match {
-          case IntLiteral(n) => L - 1 <= n
-          case _ => false
-        }}}
-      }}
+      //upperBounds = upperBounds.filterNot{case (ub, uc) => if(uc == 1) {
+      //    exprNotUsed ++= lowerBounds.map{case (lb, lc) => LessEquals(lb, Times(IntLiteral(lc), ub))}
+      //    true
+      //  } else
+      //    false
+      //}
+      //lowerBounds = lowerBounds.filterNot{case (lb, lc) => if(lc == 1) {
+      //    exprNotUsed ++= upperBounds.map{case (ub, uc) => LessEquals(Times(IntLiteral(uc), lb), ub)}
+      //    true
+      //  } else 
+      //    false 
+      //}
+      //upperBounds = upperBounds.filterNot{case (ub, uc) => {
+      //  lowerBounds.forall{case (lb, lc) => {
+      //    expandAndSimplifyArithmetic(Minus(ub, lb)) match {
+      //    case IntLiteral(n) => L - 1 <= n
+      //    case _ => false
+      //  }}}
+      //}}
+
 
       //define max function
       val maxValDefs: Seq[ValDef] = lowerBounds.map(_ => ValDef(FreshIdentifier("b"), Int32Type))
