@@ -6,6 +6,7 @@ import leon._
 import leon.codegen._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
+import leon.purescala.TypeTrees._
 import leon.evaluators.{CodeGenEvaluator,EvaluationResults}
 import EvaluationResults._
 
@@ -298,7 +299,7 @@ class CodeGenTests extends test.LeonTestSuite {
           case class Conc() extends Ab { }
           def test = Conc().x
         }""",
-        Error("Looping")
+        Error(Untyped, "Looping")
     ),
     
     TestCase("Lazier" , """

@@ -282,8 +282,8 @@ object TypeTreeOps {
 
             MatchExpr(srec(e), cases.map(trCase)).copiedFrom(m)
 
-          case Error(desc) =>
-            Error(desc).setType(tpeSub(e.getType)).copiedFrom(e)
+          case Error(tpe, desc) =>
+            Error(tpeSub(tpe), desc).copiedFrom(e)
 
           case s @ FiniteSet(elements) if elements.isEmpty =>
             FiniteSet(Set()).setType(tpeSub(s.getType)).copiedFrom(s)

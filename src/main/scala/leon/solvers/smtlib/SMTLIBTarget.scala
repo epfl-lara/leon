@@ -67,7 +67,9 @@ trait SMTLIBTarget {
 
   // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
   // Should NEVER escape past SMT-world
-  case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr
+  case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr {
+    def getType = RawArrayType(keyTpe, default.getType)
+  }
 
   def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
@@ -343,8 +345,8 @@ trait SMTLIBTarget {
           newBody
         )
 
-      case er @ Error(_) =>
-        val s = declareVariable(FreshIdentifier("error_value").setType(er.getType))
+      case er @ Error(tpe, _) =>
+        val s = declareVariable(FreshIdentifier("error_value").setType(tpe))
         s
 
       case s @ CaseClassSelector(cct, e, id) =>

@@ -45,19 +45,15 @@ object Definitions {
   }
 
   /** A ValDef declares a new identifier to be of a certain type. */
-  case class ValDef(id: Identifier, tpe: TypeTree) extends Definition with FixedType {
+  case class ValDef(id: Identifier, tpe: TypeTree) extends Definition with Typed {
     self: Serializable =>
 
-    val fixedType = tpe
+    val getType = tpe
 
     def subDefinitions = Seq()
-    override def hashCode : Int = id.hashCode
-    override def equals(that : Any) : Boolean = that match {
-      case t : ValDef => t.id == this.id
-      case _ => false
-    } 
 
     def toVariable : Variable = Variable(id).setType(tpe)
+
     setSubDefOwners()
   }
 

@@ -98,13 +98,13 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
     } catch {
       case ee @ EvalError(e) =>
         if (rctx.tracingFrames > 0) {
-          gctx.values ::= (expr -> Error(e))
+          gctx.values ::= (expr -> Error(expr.getType, e))
         }
         throw ee;
 
       case re @ RuntimeError(e) =>
         if (rctx.tracingFrames > 0) {
-          gctx.values ::= (expr -> Error(e))
+          gctx.values ::= (expr -> Error(expr.getType, e))
         }
         throw re;
     }

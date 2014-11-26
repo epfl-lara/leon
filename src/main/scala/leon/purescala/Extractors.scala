@@ -59,7 +59,6 @@ object Extractors {
       case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
       case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
       case Multiplicity(t1,t2) => Some((t1,t2,Multiplicity))
-      case SubmultisetOf(t1,t2) => Some((t1,t2,SubmultisetOf))
       case MultisetIntersection(t1,t2) => Some((t1,t2,MultisetIntersection))
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
@@ -123,7 +122,10 @@ object Extractors {
       }
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
-      case FiniteArray(args) => Some((args, FiniteArray))
+      case FiniteArray(args) => Some((args, { (as: Seq[Expr]) => 
+          val tpe = leastUpperBound(as.map(_.getType)).map(ArrayType(_)).getOrElse(expr.getType)
+          FiniteArray(as).setType(tpe)
+        }))
       case Distinct(args) => Some((args, Distinct))
       case Tuple(args) => Some((args, Tuple))
       case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))

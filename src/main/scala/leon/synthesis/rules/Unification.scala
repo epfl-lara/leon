@@ -54,7 +54,7 @@ object Unification {
       if (isImpossible) {
         val tpe = TupleType(p.xs.map(_.getType))
 
-        List(RuleInstantiation.immediateSuccess(p, this, Solution(BooleanLiteral(false), Set(), Error(p.phi+" is UNSAT!").setType(tpe))))
+        List(RuleInstantiation.immediateSuccess(p, this, Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))))
       } else {
         Nil
       }

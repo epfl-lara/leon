@@ -62,7 +62,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     case tt @ TupleType(parts) =>
       constructors.getOrElse(tt, {
-        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => Tuple(s).setType(tt), tt.toString))
+        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => Tuple(s), tt.toString))
         constructors += tt -> cs
         cs
       })

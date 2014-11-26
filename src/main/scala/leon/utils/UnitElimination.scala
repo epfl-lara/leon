@@ -71,7 +71,7 @@ object UnitElimination extends TransformationPhase {
       case t@Tuple(args) => {
         val TupleType(tpes) = t.getType
         val (newTpes, newArgs) = tpes.zip(args).filterNot{ case (UnitType, _) => true case _ => false }.unzip
-        Tuple(newArgs.map(removeUnit)).setType(TupleType(newTpes))
+        Tuple(newArgs.map(removeUnit))
       }
       case ts@TupleSelect(t, index) => {
         val TupleType(tpes) = t.getType
@@ -80,7 +80,7 @@ object UnitElimination extends TransformationPhase {
           case ((nbUnit, newIndex), (tpe, i)) =>
             if(i == index-1) (nbUnit, index - nbUnit) else (if(tpe == UnitType) nbUnit + 1 else nbUnit, newIndex)
         }
-        TupleSelect(removeUnit(t), newIndex).setType(selectionType)
+        TupleSelect(removeUnit(t), newIndex)
       }
       case Let(id, e, b) => {
         if(id.getType == UnitType)
@@ -126,16 +126,16 @@ object UnitElimination extends TransformationPhase {
       case ite@IfExpr(cond, tExpr, eExpr) => {
         val thenRec = removeUnit(tExpr)
         val elseRec = removeUnit(eExpr)
-        IfExpr(removeUnit(cond), thenRec, elseRec).setType(thenRec.getType)
+        IfExpr(removeUnit(cond), thenRec, elseRec)
       }
       case n @ NAryOperator(args, recons) => {
-        recons(args.map(removeUnit(_))).setType(n.getType)
+        recons(args.map(removeUnit(_)))
       }
       case b @ BinaryOperator(a1, a2, recons) => {
-        recons(removeUnit(a1), removeUnit(a2)).setType(b.getType)
+        recons(removeUnit(a1), removeUnit(a2))
       }
       case u @ UnaryOperator(a, recons) => {
-        recons(removeUnit(a)).setType(u.getType)
+        recons(removeUnit(a))
       }
       case v @ Variable(id) => if(id2FreshId.isDefinedAt(id)) Variable(id2FreshId(id)) else v
       case (t: Terminal) => t
@@ -146,7 +146,7 @@ object UnitElimination extends TransformationPhase {
           case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
         }
         val tpe = csesRec.head.rhs.getType
-        MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
+        MatchExpr(scrutRec, csesRec).setPos(m)
       }
       case _ => sys.error("not supported: " + expr)
     }

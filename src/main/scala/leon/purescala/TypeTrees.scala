@@ -3,13 +3,25 @@
 package leon
 package purescala
 
+import scala.language.implicitConversions
+
 object TypeTrees {
   import Common._
   import Trees._
   import Definitions._
   import TypeTreeOps._
 
-  trait Typed extends Serializable {
+  /**
+   * HasType indicates that structure is typed
+   *
+   * setType not necessarily defined though
+   */
+  trait Typed {
+    def getType: TypeTree
+    def isTyped : Boolean = (getType != Untyped)
+  }
+
+  trait MutableTyped extends Typed {
     self =>
 
     private var _type: Option[TypeTree] = None
@@ -24,8 +36,6 @@ object TypeTrees {
       case Some(o) if o != tt => scala.sys.error("Resetting type information! Type [" + o + "] is modified to [" + tt)
       case _ => this
     }
-
-    def isTyped : Boolean = (getType != Untyped)
   }
 
   class TypeErrorException(msg: String) extends Exception(msg)
@@ -40,16 +50,9 @@ object TypeTrees {
     }
   }
 
-  trait FixedType extends Typed {
-    self =>
-
-    val fixedType: TypeTree
-    override def getType: TypeTree = fixedType
-    override def setType(tt2: TypeTree) : self.type = this
+  abstract class TypeTree extends Tree with Typed {
+    def getType = this
   }
-    
-
-  abstract class TypeTree extends Tree
 
   case object Untyped extends TypeTree
   case object BooleanType extends TypeTree

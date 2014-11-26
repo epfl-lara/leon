@@ -285,7 +285,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"${t}._$i"
       case Choose(vars, pred)   => p"choose(($vars) => $pred)"
-      case e @ Error(err)       => p"""error[${e.getType}]("$err")"""
+      case e @ Error(tpe, err)       => p"""error[$tpe]("$err")"""
       case CaseClassInstanceOf(cct, e)         =>
         if (cct.classDef.isCaseObject) {
           p"($e == $cct)"

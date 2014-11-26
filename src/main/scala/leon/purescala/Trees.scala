@@ -21,96 +21,70 @@ object Trees {
     self: Expr =>
   }
 
-  case class NoTree(tpe: TypeTree) extends Expr with Terminal with FixedType {
-    val fixedType = tpe
+  case class NoTree(tpe: TypeTree) extends Expr with Terminal with Typed {
+    val getType = tpe
   }
 
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
    * the expected type. */
-  case class Error(description: String) extends Expr with Terminal
-
-  case class Require(pred: Expr, body: Expr) extends Expr with FixedType {
-    val fixedType = body.getType
+  case class Error(tpe: TypeTree, description: String) extends Expr with Terminal {
+    val getType = tpe
   }
 
-  case class Ensuring(body: Expr, id: Identifier, pred: Expr) extends Expr with FixedType {
-    val fixedType = body.getType
+  case class Require(pred: Expr, body: Expr) extends Expr with Typed {
+    def getType = body.getType
   }
 
-  case class Assert(pred: Expr, error: Option[String], body: Expr) extends Expr with FixedType {
-    val fixedType = body.getType
+  case class Ensuring(body: Expr, id: Identifier, pred: Expr) extends Expr {
+    def getType = body.getType
   }
 
-  case class Passes(scrut: Expr, tests : List[MatchCase]) extends Expr with FixedType {
-    val fixedType = leastUpperBound(tests.map(_.rhs.getType)).getOrElse{
-      Untyped
-    }
+  case class Assert(pred: Expr, error: Option[String], body: Expr) extends Expr {
+    def getType = body.getType
   }
 
-  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with FixedType with UnaryExtractable {
+  case class Passes(scrut: Expr, tests : List[MatchCase]) extends Expr {
+    def getType = leastUpperBound(tests.map(_.rhs.getType)).getOrElse(Untyped)
+  }
 
+  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with UnaryExtractable {
     assert(!vars.isEmpty)
 
-    val fixedType = if (vars.size > 1) TupleType(vars.map(_.getType)) else vars.head.getType
+    def getType = if (vars.size > 1) TupleType(vars.map(_.getType)) else vars.head.getType
 
     def extract = {
       Some((pred, (e: Expr) => Choose(vars, e).setPos(this)))
     }
   }
 
-  // Provide an oracle (synthesizable, all-seeing choose)
-  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with FixedType with UnaryExtractable {
-    assert(!oracles.isEmpty)
-
-    val fixedType = body.getType
-
-    def extract = {
-      Some((body, (e: Expr) => WithOracle(oracles, e).setPos(this)))
-    }
+  case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
+    def getType = body.getType
   }
 
-  case class Hole(fixedType: TypeTree, alts: Seq[Expr]) extends Expr with FixedType with NAryExtractable {
-
-    def extract = {
-      Some((alts, (es: Seq[Expr]) => Hole(fixedType, es).setPos(this)))
-    }
-  }
-
-  case class RepairHole(fixedType: TypeTree, components: Seq[Expr]) extends Expr with FixedType with NAryExtractable {
-
-    def extract = {
-      Some((components, (es: Seq[Expr]) => RepairHole(fixedType, es).setPos(this)))
-    }
-  }
-
-  /* Like vals */
-  case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr with FixedType {
-    val fixedType = body.getType
-  }
-
-  case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr with FixedType {
+  case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
     assert(value.getType.isInstanceOf[TupleType],
            "The definition value in LetTuple must be of some tuple type; yet we got [%s]. In expr: \n%s".format(value.getType, this))
 
-    val fixedType = body.getType
+    def getType = body.getType
   }
 
   case class LetDef(fd: FunDef, body: Expr) extends Expr {
-    val et = body.getType
-    if(et != Untyped)
-      setType(et)
-
+    def getType = body.getType
   }
 
-
-  /* Control flow */
-  case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = tfd.returnType
+  case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
+    def getType = tfd.returnType
   }
 
-  case class MethodInvocation(rec: Expr, cd: ClassDef, tfd: TypedFunDef, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = {
+  /**
+   * OO Trees
+   *
+   * Both MethodInvocation and This get removed by phase MethodLifting. Methods become functions,
+   * This becomes first argument, and MethodInvocation become FunctionInvocation.
+   */
+  case class MethodInvocation(rec: Expr, cd: ClassDef, tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
+    def getType = {
       // We need ot instanciate the type based on the type of the function as well as receiver
       val fdret = tfd.returnType
       val extraMap: Map[TypeParameterDef, TypeTree] = rec.getType match {
@@ -124,13 +98,13 @@ object Trees {
     }
   }
 
-  case class Application(caller: Expr, args: Seq[Expr]) extends Expr with FixedType {
+  case class Application(caller: Expr, args: Seq[Expr]) extends Expr {
     assert(caller.getType.isInstanceOf[FunctionType])
-    val fixedType = caller.getType.asInstanceOf[FunctionType].to
+    def getType = caller.getType.asInstanceOf[FunctionType].to
   }
 
-  case class Lambda(args: Seq[ValDef], body: Expr) extends Expr with FixedType {
-    val fixedType = FunctionType(args.map(_.tpe), body.getType)
+  case class Lambda(args: Seq[ValDef], body: Expr) extends Expr {
+    def getType = FunctionType(args.map(_.tpe), body.getType)
   }
 
   object FiniteLambda {
@@ -179,25 +153,24 @@ object Trees {
     }
   }
 
-  case class Forall(args: Seq[ValDef], body: Expr) extends Expr with FixedType {
+  case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
     assert(body.getType == BooleanType)
-    val fixedType = BooleanType
+    def getType = BooleanType
   }
 
-  case class This(ct: ClassType) extends Expr with FixedType with Terminal {
-    val fixedType = ct
+  case class This(ct: ClassType) extends Expr with Terminal {
+    def getType = ct
   }
 
-  case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr with FixedType {
-    val fixedType = leastUpperBound(thenn.getType, elze.getType).getOrElse{
-      Untyped
-    }
+  case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr {
+    def getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped)
   }
 
-  case class Tuple(exprs: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = TupleType(exprs.map(_.getType))
+  case class Tuple(exprs: Seq[Expr]) extends Expr {
+    def getType = TupleType(exprs.map(_.getType))
   }
 
+  // TODO: ship this simplification to constructors
   object TupleSelect {
     def apply(tuple: Expr, index: Int): Expr = {
       tuple match {
@@ -212,12 +185,12 @@ object Trees {
   }
 
   // This must be 1-indexed ! (So are methods of Scala Tuples)
-  class TupleSelect(val tuple: Expr, val index: Int) extends Expr with FixedType {
+  class TupleSelect(val tuple: Expr, val index: Int) extends Expr {
     assert(index >= 1)
 
     assert(tuple.getType.isInstanceOf[TupleType], "Applying TupleSelect on a non-tuple tree [%s] of type [%s].".format(tuple, tuple.getType))
 
-    val fixedType : TypeTree = tuple.getType match {
+    def getType = tuple.getType match {
       case TupleType(ts) =>
         assert(index <= ts.size)
         ts(index - 1)
@@ -244,19 +217,17 @@ object Trees {
         }))
         case _: TupleType | Int32Type | BooleanType | UnitType => new MatchExpr(scrutinee, cases)
         
-        case _ => scala.sys.error("Constructing match expression on non-supported type.")
+        case t => scala.sys.error("Constructing match expression on non-supported type: "+t)
       }
     }
 
     def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
   }
 
-  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr with FixedType {
+  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr {
     assert(cases.nonEmpty)
 
-    val fixedType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse{
-      Untyped
-    }
+    def getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped)
 
     def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
 
@@ -355,8 +326,8 @@ object Trees {
       if(and == null) None else Some(and.exprs)
   }
 
-  class And private (val exprs: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = BooleanType
+  class And private (val exprs: Seq[Expr]) extends Expr {
+    def getType = BooleanType
 
     assert(exprs.size >= 2)
 
@@ -398,8 +369,8 @@ object Trees {
       if(or == null) None else Some(or.exprs)
   }
 
-  class Or private[Trees] (val exprs: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = BooleanType
+  class Or private[Trees] (val exprs: Seq[Expr]) extends Expr {
+    def getType = BooleanType
 
     assert(exprs.size >= 2)
 
@@ -425,8 +396,8 @@ object Trees {
     }
   }
 
-  class Iff private[Trees] (val left: Expr, val right: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  class Iff private[Trees] (val left: Expr, val right: Expr) extends Expr {
+    def getType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: Iff => t.left == left && t.right == right
@@ -449,8 +420,8 @@ object Trees {
       if(imp == null) None else Some(imp.left, imp.right)
   }
 
-  class Implies private[Trees] (val left: Expr, val right: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  class Implies private[Trees] (val left: Expr, val right: Expr) extends Expr {
+    def getType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: Implies => t.left == left && t.right == right
@@ -472,8 +443,8 @@ object Trees {
     }
   }
 
-  class Not private[Trees] (val expr: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  class Not private[Trees] (val expr: Expr) extends Expr {
+    val getType = BooleanType
 
     override def equals(that: Any) : Boolean = (that != null) && (that match {
       case n : Not => n.expr == expr
@@ -507,8 +478,8 @@ object Trees {
     }
   }
 
-  class Equals private[Trees] (val left: Expr, val right: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  class Equals private[Trees] (val left: Expr, val right: Expr) extends Expr {
+    val getType = BooleanType
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: Equals => t.left == left && t.right == right
@@ -519,8 +490,14 @@ object Trees {
   }
   
   case class Variable(id: Identifier) extends Expr with Terminal {
-    override def getType = id.getType
-    override def setType(tt: TypeTree) = { id.setType(tt); this }
+    private var _tpe = id.getType
+
+    def setType(tpe: TypeTree): this.type = {
+      _tpe = tpe
+      this
+    }
+
+    def getType = _tpe
   }
 
   /* Literals */
@@ -528,34 +505,35 @@ object Trees {
     val value: T
   }
 
-  case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal with FixedType {
-    val fixedType = tp
+  case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
+    val getType = tp
   }
 
-  case class CharLiteral(value: Char) extends Literal[Char] with FixedType {
-    val fixedType = CharType
+  case class CharLiteral(value: Char) extends Literal[Char] {
+    val getType = CharType
   }
 
-  case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
-    val fixedType = Int32Type
+  case class IntLiteral(value: Int) extends Literal[Int] {
+    val getType = Int32Type
   }
 
-  case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
-    val fixedType = BooleanType
+  case class BooleanLiteral(value: Boolean) extends Literal[Boolean] {
+    val getType = BooleanType
   }
 
-  case class StringLiteral(value: String) extends Literal[String]
-  case class UnitLiteral() extends Literal[Unit] with FixedType {
-    val fixedType = UnitType
+  case class StringLiteral(value: String) extends Literal[String] with MutableTyped
+
+  case class UnitLiteral() extends Literal[Unit] {
+    val getType = UnitType
     val value = ()
   }
 
-  case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = ct
+  case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr {
+    val getType = ct
   }
 
-  case class CaseClassInstanceOf(classType: CaseClassType, expr: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  case class CaseClassInstanceOf(classType: CaseClassType, expr: Expr) extends Expr {
+    val getType = BooleanType
   }
 
   object CaseClassSelector {
@@ -576,9 +554,9 @@ object Trees {
     }
   }
 
-  class CaseClassSelector(val classType: CaseClassType, val caseClass: Expr, val selector: Identifier) extends Expr with FixedType {
+  class CaseClassSelector(val classType: CaseClassType, val caseClass: Expr, val selector: Identifier) extends Expr {
     val selectorIndex = classType.classDef.selectorID2Index(selector)
-    val fixedType = classType.fieldsTypes(selectorIndex)
+    def getType = classType.fieldsTypes(selectorIndex)
 
     override def equals(that: Any): Boolean = (that != null) && (that match {
       case t: CaseClassSelector => (t.classType, t.caseClass, t.selector) == (classType, caseClass, selector)
@@ -589,123 +567,144 @@ object Trees {
   }
 
   /* Arithmetic */
-  case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+  case class Plus(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
   }
-  case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+  case class Minus(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = Int32Type
   }
-  case class UMinus(expr: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+  case class UMinus(expr: Expr) extends Expr { 
+    val getType = Int32Type
   }
-  case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+  case class Times(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = Int32Type
   }
-  case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+  case class Division(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = Int32Type
   }
-  case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+  case class Modulo(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = Int32Type
   }
-  case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = BooleanType
+  case class LessThan(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = BooleanType
   }
-  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = BooleanType
+  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = BooleanType
   }
-  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = BooleanType
+  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr { 
+    val getType = BooleanType
   }
-  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = BooleanType
   }
 
   /* Set expressions */
-  case class FiniteSet(elements: Set[Expr]) extends Expr {
+  case class FiniteSet(elements: Set[Expr]) extends Expr with MutableTyped {
     val tpe = if (elements.isEmpty) None else leastUpperBound(elements.toSeq.map(_.getType))
-    tpe.foreach(t => setType(SetType(t)))
+    tpe.filter(_ != Untyped).foreach(t => setType(SetType(t)))
   }
-  // TODO : Figure out what evaluation order is, for this.
-  // Perhaps then rewrite as "contains".
-  case class ElementOfSet(element: Expr, set: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+
+  case class ElementOfSet(element: Expr, set: Expr) extends Expr {
+    val getType = BooleanType
   }
-  case class SetCardinality(set: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+  case class SetCardinality(set: Expr) extends Expr {
+    val getType = Int32Type
   }
-  case class SubsetOf(set1: Expr, set2: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
+    val getType  = BooleanType
   }
 
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
-    leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
+    def getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
   }
   case class SetUnion(set1: Expr, set2: Expr) extends Expr {
-    leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
+    def getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
   }
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
-    leastUpperBound(Seq(set1, set2).map(_.getType)).foreach(setType _)
-  }
-  case class SetMin(set: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
-  }
-  case class SetMax(set: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+    def getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
   }
 
-  /* Multiset expressions */
-  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal
-  case class FiniteMultiset(elements: Seq[Expr]) extends Expr 
-  case class Multiplicity(element: Expr, multiset: Expr) extends Expr 
-  case class MultisetCardinality(multiset: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+  @deprecated("SetMin is not supported by any solver", "2.3")
+  case class SetMin(set: Expr) extends Expr {
+    val getType = Int32Type
   }
-  case class SubmultisetOf(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr // disjoint union
-  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr 
-  case class MultisetToSet(multiset: Expr) extends Expr
+
+  @deprecated("SetMax is not supported by any solver", "2.3")
+  case class SetMax(set: Expr) extends Expr {
+    val getType = Int32Type
+  }
+
+  /* Multiset expressions  !!! UNSUPPORTED / DEPRECATED !!! */
+  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal {
+    val getType = MultisetType(baseType)
+  }
+  case class FiniteMultiset(elements: Seq[Expr]) extends Expr {
+    assert(elements.size > 0)
+    def getType = MultisetType(leastUpperBound(elements.map(_.getType)).getOrElse(Untyped))
+  }
+  case class Multiplicity(element: Expr, multiset: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class MultisetCardinality(multiset: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr {
+    def getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+  }
+  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr  {
+    def getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+  }
+  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union 
+    def getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+  }
+  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr  {
+    def getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+  }
+  case class MultisetToSet(multiset: Expr) extends Expr {
+    def getType = multiset.getType match {
+      case MultisetType(base) => SetType(base)
+      case _ => Untyped
+    }
+  }
 
   /* Map operations. */
-  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr 
-
-  case class MapGet(map: Expr, key: Expr) extends Expr
-  case class MapUnion(map1: Expr, map2: Expr) extends Expr 
-  case class MapDifference(map: Expr, keys: Expr) extends Expr 
-  case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr with FixedType {
-    val fixedType = BooleanType
+  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr with MutableTyped
+  case class MapGet(map: Expr, key: Expr) extends Expr {
+    def getType = map.getType match {
+      case MapType(from, to) => to
+      case _ => Untyped
+    }
+  }
+  case class MapUnion(map1: Expr, map2: Expr) extends Expr {
+    def getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped)
+  }
+  case class MapDifference(map: Expr, keys: Expr) extends Expr with MutableTyped
+  case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr {
+    val getType = BooleanType
   }
 
   /* Array operations */
   @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
-  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr with FixedType {
-    val fixedType = ArrayType(defaultValue.getType)
+  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr {
+    def getType = ArrayType(defaultValue.getType)
   }
 
   @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
-  case class ArrayMake(defaultValue: Expr) extends Expr with FixedType {
-    val fixedType = ArrayType(defaultValue.getType)
+  case class ArrayMake(defaultValue: Expr) extends Expr {
+    def getType = ArrayType(defaultValue.getType)
   }
 
-  case class ArraySelect(array: Expr, index: Expr) extends Expr with FixedType {
-    assert(array.getType.isInstanceOf[ArrayType],
-           "The array value in ArraySelect must of of array type; yet we got [%s]. In expr: \n%s".format(array.getType, array))
-
-    val fixedType = array.getType match {
+  case class ArraySelect(array: Expr, index: Expr) extends Expr {
+    def getType = array.getType match {
       case ArrayType(base) =>
         base
       case _ =>
         Untyped
     }
-
   }
 
-  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr with FixedType {
-    assert(array.getType.isInstanceOf[ArrayType],
-           "The array value in ArrayUpdated must of of array type; yet we got [%s]. In expr: \n%s".format(array.getType, array))
-
-    val fixedType = array.getType match {
+  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
+    def getType = array.getType match {
       case ArrayType(base) =>
         leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped)
       case _ =>
@@ -713,20 +712,50 @@ object Trees {
     }
   }
 
-  case class ArrayLength(array: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+  case class ArrayLength(array: Expr) extends Expr {
+    val getType = Int32Type
   }
-  case class FiniteArray(exprs: Seq[Expr]) extends Expr
+
+  case class FiniteArray(exprs: Seq[Expr]) extends Expr with MutableTyped
 
   @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
   case class ArrayClone(array: Expr) extends Expr {
-    if(array.getType != Untyped)
-      setType(array.getType)
+    def getType = array.getType
   }
 
-  /* Constraint programming */
-  case class Distinct(exprs: Seq[Expr]) extends Expr with FixedType {
-    val fixedType = BooleanType
+  case class Distinct(exprs: Seq[Expr]) extends Expr {
+    val getType = BooleanType
   }
+
+  /* Special trees */
+
+  // Provide an oracle (synthesizable, all-seeing choose)
+  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with UnaryExtractable {
+    assert(!oracles.isEmpty)
+
+    def getType = body.getType
+
+    def extract = {
+      Some((body, (e: Expr) => WithOracle(oracles, e).setPos(this)))
+    }
+  }
+
+  case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with NAryExtractable {
+    val getType = tpe
+
+    def extract = {
+      Some((alts, (es: Seq[Expr]) => Hole(tpe, es).setPos(this)))
+    }
+  }
+
+  case class RepairHole(tpe: TypeTree, components: Seq[Expr]) extends Expr with NAryExtractable {
+    val getType = tpe
+
+    def extract = {
+      Some((components, (es: Seq[Expr]) => RepairHole(tpe, es).setPos(this)))
+    }
+  }
+
+
 
 }

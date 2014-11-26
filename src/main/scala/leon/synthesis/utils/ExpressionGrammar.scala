@@ -18,12 +18,12 @@ import purescala.ScalaPrinter
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
-abstract class ExpressionGrammar {
-  type Gen = Generator[TypeTree, Expr]
+abstract class ExpressionGrammar[T <% Typed] {
+  type Gen = Generator[T, Expr]
 
-  private[this] val cache = new MutableMap[TypeTree, Seq[Gen]]()
+  private[this] val cache = new MutableMap[T, Seq[Gen]]()
 
-  def getProductions(t: TypeTree): Seq[Gen] = {
+  def getProductions(t: T): Seq[Gen] = {
     cache.getOrElse(t, {
       val res = computeProductions(t)
       cache += t -> res
@@ -31,15 +31,16 @@ abstract class ExpressionGrammar {
     })
   }
 
-  def computeProductions(t: TypeTree): Seq[Gen]
+  def computeProductions(t: T): Seq[Gen]
 
-  final def ||(that: ExpressionGrammar): ExpressionGrammar = {
+  final def ||(that: ExpressionGrammar[T]): ExpressionGrammar[T] = {
     ExpressionGrammars.Or(Seq(this, that))
   }
 
+
   final def printProductions(printer: String => Unit) {
     for ((t, gs) <- cache; g <- gs) {
-      val subs = g.subTrees.map { tpe => FreshIdentifier(tpe.toString).setType(tpe).toVariable }
+      val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
       val gen = g.builder(subs)
 
       printer(f"$t%30s ::= "+gen)
@@ -49,21 +50,21 @@ abstract class ExpressionGrammar {
 
 object ExpressionGrammars {
 
-  case class Or(gs: Seq[ExpressionGrammar]) extends ExpressionGrammar {
-    val subGrammars: Seq[ExpressionGrammar] = gs.flatMap {
-      case o: Or => o.subGrammars
+  case class Or[T <% Typed](gs: Seq[ExpressionGrammar[T]]) extends ExpressionGrammar[T] {
+    val subGrammars: Seq[ExpressionGrammar[T]] = gs.flatMap {
+      case o: Or[T] => o.subGrammars
       case g => Seq(g)
     }
 
-    def computeProductions(t: TypeTree): Seq[Gen] =
+    def computeProductions(t: T): Seq[Gen] =
       subGrammars.flatMap(_.getProductions(t))
   }
 
-  case object Empty extends ExpressionGrammar {
+  case object Empty extends ExpressionGrammar[TypeTree] {
     def computeProductions(t: TypeTree): Seq[Gen] = Nil
   }
 
-  case object BaseGrammar extends ExpressionGrammar {
+  case object BaseGrammar extends ExpressionGrammar[TypeTree] {
     def computeProductions(t: TypeTree): Seq[Gen] = t match {
       case BooleanType =>
         List(
@@ -104,7 +105,7 @@ object ExpressionGrammars {
     }
   }
 
-  case class OneOf(inputs: Seq[Expr]) extends ExpressionGrammar {
+  case class OneOf(inputs: Seq[Expr]) extends ExpressionGrammar[TypeTree] {
     def computeProductions(t: TypeTree): Seq[Gen] = {
       inputs.collect {
         case i if isSubtypeOf(i.getType, t) => Generator[TypeTree, Expr](Nil, { _ => i })
@@ -112,7 +113,7 @@ object ExpressionGrammars {
     }
   }
 
-  case class SimilarTo(e: Expr, excludeExpr: Set[Expr] = Set(), excludeFCalls: Set[FunDef] = Set()) extends ExpressionGrammar {
+  case class SimilarTo(e: Expr, excludeExpr: Set[Expr] = Set(), excludeFCalls: Set[FunDef] = Set()) extends ExpressionGrammar[TypeTree] {
     lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
 
     def computeProductions(t: TypeTree): Seq[Gen] = {
@@ -162,7 +163,7 @@ object ExpressionGrammars {
     }
   }
 
-  case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree]) extends ExpressionGrammar {
+  case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree]) extends ExpressionGrammar[TypeTree] {
    def computeProductions(t: TypeTree): Seq[Gen] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
@@ -228,7 +229,7 @@ object ExpressionGrammars {
    }
   }
 
-  case class SafeRecCalls(prog: Program, pc: Expr) extends ExpressionGrammar {
+  case class SafeRecCalls(prog: Program, pc: Expr) extends ExpressionGrammar[TypeTree] {
     def computeProductions(t: TypeTree): Seq[Gen] = {
       val calls = terminatingCalls(prog, t, pc)
 
@@ -242,14 +243,14 @@ object ExpressionGrammars {
     }
   }
 
-  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, pc: Expr): ExpressionGrammar = {
+  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, pc: Expr): ExpressionGrammar[TypeTree] = {
     BaseGrammar ||
     OneOf(inputs) ||
     FunctionCalls(prog, currentFunction, inputs.map(_.getType)) ||
     SafeRecCalls(prog, pc)
   }
 
-  def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar = {
+  def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar[TypeTree] = {
     default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, p.pc)
   }
 }

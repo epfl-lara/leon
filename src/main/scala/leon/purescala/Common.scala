@@ -8,14 +8,14 @@ import Definitions.Definition
 
 object Common {
   import Trees.Variable
-  import TypeTrees.Typed
+  import TypeTrees.{MutableTyped,Typed}
 
   abstract class Tree extends Positioned with Serializable {
     def copiedFrom(o: Tree): this.type = {
       setPos(o)
       (this, o) match {
         // do not force if already set
-        case (t1: Typed, t2: Typed)  if !t1.isTyped =>
+        case (t1: MutableTyped, t2: Typed)  if !t1.isTyped =>
           t1.setType(t2.getType)
         case _ =>
       }
@@ -30,7 +30,7 @@ object Common {
   }
 
   // the type is left blank (Untyped) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
+  class Identifier private[Common](val name: String, val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Tree with MutableTyped {
     self : Serializable =>
 
     override def equals(other: Any): Boolean = {

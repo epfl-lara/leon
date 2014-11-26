@@ -397,10 +397,10 @@ object TreeOps {
     case LessEquals(e1,e2) => GreaterThan(e1,e2)
     case GreaterThan(e1,e2) => LessEquals(e1,e2)
     case GreaterEquals(e1,e2) => LessThan(e1,e2)
-    case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2)).setType(i.getType)
+    case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2))
     case BooleanLiteral(b) => BooleanLiteral(!b)
     case _ => Not(expr)
-  }).setType(expr.getType).setPos(expr)
+  }).setPos(expr)
 
   // rewrites pattern-matching expressions to use fresh variables for the binders
   def freshenLocals(expr: Expr) : Expr = {
@@ -606,8 +606,8 @@ object TreeOps {
     def rec(ex: Expr, s: Map[Identifier,Expr]) : Expr = ex match {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
-      case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s)).setType(i.getType)
-      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setType(m.getType).setPos(m)
+      case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
+      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case n @ NAryOperator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
@@ -620,7 +620,7 @@ object TreeOps {
           }
         })
         if(change)
-          recons(rargs).setType(n.getType)
+          recons(rargs)
         else
           n
       }
@@ -628,14 +628,14 @@ object TreeOps {
         val r1 = rec(t1, s)
         val r2 = rec(t2, s)
         if(r1 != t1 || r2 != t2)
-          recons(r1,r2).setType(b.getType)
+          recons(r1,r2)
         else
           b
       }
       case u @ UnaryOperator(t,recons) => {
         val r = rec(t, s)
         if(r != t)
-          recons(r).setType(u.getType)
+          recons(r)
         else
           u
       }
@@ -778,7 +778,7 @@ object TreeOps {
         case TuplePattern(ob, subps) => {
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
-          val subTests = subps.zipWithIndex.map{case (p, i) => rec(TupleSelect(in, i+1).setType(tpes(i)), p)}
+          val subTests = subps.zipWithIndex.map{case (p, i) => rec(TupleSelect(in, i+1), p)}
           And(bind(ob, in) +: subTests)
         }
         case LiteralPattern(ob,lit) => And(Equals(in,lit), bind(ob,in))
@@ -807,7 +807,7 @@ object TreeOps {
       val TupleType(tpes) = in.getType
       assert(tpes.size == subps.size)
 
-      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1).setType(tpes(i)), p)}
+      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1), p)}
       val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
       b match {
         case Some(id) => map + (id -> in)
@@ -835,11 +835,11 @@ object TreeOps {
           (realCond, newRhs)
         }
 
-        val bigIte = condsAndRhs.foldRight[Expr](Error("Match is non-exhaustive").copiedFrom(m))((p1, ex) => {
+        val bigIte = condsAndRhs.foldRight[Expr](Error(m.getType, "Match is non-exhaustive").copiedFrom(m))((p1, ex) => {
           if(p1._1 == BooleanLiteral(true)) {
             p1._2
           } else {
-            IfExpr(p1._1, p1._2, ex).setType(m.getType)
+            IfExpr(p1._1, p1._2, ex)
           }
         })
 
@@ -884,7 +884,7 @@ object TreeOps {
         val r = postMap({
           case mg @ MapGet(m,k) =>
             val ida = MapIsDefinedAt(m, k)
-            Some(IfExpr(ida, mg, Error("key not found for map access").copiedFrom(mg)).copiedFrom(mg))
+            Some(IfExpr(ida, mg, Error(mg.getType, "Key not found for map access").copiedFrom(mg)).copiedFrom(mg))
 
           case _=>
             None
@@ -966,7 +966,7 @@ object TreeOps {
           Some(IfExpr(c,
             op(beforeIte ++ Seq(t) ++ afterIte).copiedFrom(nop),
             op(beforeIte ++ Seq(e) ++ afterIte).copiedFrom(nop)
-          ).setType(nop.getType))
+          ))
         }
       }
       case _ => None
@@ -1234,7 +1234,7 @@ object TreeOps {
       case Tuple(Seq()) => UnitLiteral()
       case Variable(id) if idMap contains id => Variable(idMap(id))
 
-      case Error(err) => Error(err).setType(mapType(e.getType).getOrElse(e.getType)).copiedFrom(e)
+      case Error(tpe, err) => Error(mapType(tpe).getOrElse(e.getType), err).copiedFrom(e)
       case Tuple(Seq(s)) => pre(s)
 
       case ts @ TupleSelect(t, 1) => t.getType match {
@@ -1916,9 +1916,9 @@ object TreeOps {
         case l @ Lambda(args, body) =>
           val newBody = rec(body, true)
           extract(Lambda(args, newBody), build)
-        case NAryOperator(es, recons) => recons(es.map(rec(_, build))).setType(expr.getType)
-        case BinaryOperator(e1, e2, recons) => recons(rec(e1, build), rec(e2, build)).setType(expr.getType)
-        case UnaryOperator(e, recons) => recons(rec(e, build)).setType(expr.getType)
+        case NAryOperator(es, recons) => recons(es.map(rec(_, build)))
+        case BinaryOperator(e1, e2, recons) => recons(rec(e1, build), rec(e2, build))
+        case UnaryOperator(e, recons) => recons(rec(e, build))
         case t: Terminal => t
       }
 
@@ -2268,10 +2268,10 @@ object TreeOps {
               Seq(c)
           }}
 
-          var finalMatch = MatchExpr(scrutinee, List(newCases.head)).setType(e.getType)
+          var finalMatch = MatchExpr(scrutinee, List(newCases.head))
 
           for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
-            finalMatch = MatchExpr(scrutinee, finalMatch.cases :+ toAdd).setType(e.getType)
+            finalMatch = MatchExpr(scrutinee, finalMatch.cases :+ toAdd)
           }
 
           finalMatch

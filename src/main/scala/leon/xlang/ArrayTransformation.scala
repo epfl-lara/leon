@@ -38,7 +38,7 @@ object ArrayTransformation extends TransformationPhase {
       val ri = transform(i)
       val rv = transform(v)
       val Variable(id) = ra
-      Assignment(id, ArrayUpdated(ra, ri, rv).setType(ra.getType).setPos(up))
+      Assignment(id, ArrayUpdated(ra, ri, rv).setPos(up))
     }
     case ArrayClone(a) => {
       val ra = transform(a)
@@ -75,7 +75,7 @@ object ArrayTransformation extends TransformationPhase {
       val rc = transform(c)
       val rt = transform(t)
       val re = transform(e)
-      IfExpr(rc, rt, re).setType(rt.getType)
+      IfExpr(rc, rt, re)
     }
 
     case m @ MatchExpr(scrut, cses) => {
@@ -85,7 +85,7 @@ object ArrayTransformation extends TransformationPhase {
         case GuardedCase(pat, guard, rhs) => GuardedCase(pat, transform(guard), transform(rhs))
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).setType(tpe).setPos(m)
+      MatchExpr(scrutRec, csesRec).setPos(m)
     }
     case LetDef(fd, b) => {
       fd.precondition = fd.precondition.map(transform)
@@ -94,9 +94,9 @@ object ArrayTransformation extends TransformationPhase {
       val rb = transform(b)
       LetDef(fd, rb)
     }
-    case n @ NAryOperator(args, recons) => recons(args.map(transform)).setType(n.getType)
-    case b @ BinaryOperator(a1, a2, recons) => recons(transform(a1), transform(a2)).setType(b.getType)
-    case u @ UnaryOperator(a, recons) => recons(transform(a)).setType(u.getType)
+    case n @ NAryOperator(args, recons) => recons(args.map(transform))
+    case b @ BinaryOperator(a1, a2, recons) => recons(transform(a1), transform(a2))
+    case u @ UnaryOperator(a, recons) => recons(transform(a))
 
     case (t: Terminal) => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in ArrayTransformation: " + unhandled)

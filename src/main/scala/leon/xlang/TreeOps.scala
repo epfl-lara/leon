@@ -46,7 +46,7 @@ object TreeOps {
         Some(nexprs match {
           case Seq() => UnitLiteral()
           case Seq(e) => e
-          case es => Block(es.init, es.last).setType(es.last.getType)
+          case es => Block(es.init, es.last)
         })
       case _ =>
         None

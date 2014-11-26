@@ -1006,8 +1006,7 @@ trait CodeExtraction extends ASTExtractors {
         case passes @ ExPasses(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase(_))
-          val rt: LeonType = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_).get)
-          Passes(rs, rc).setType(rt)
+          Passes(rs, rc)
 
 
         case ExArrayLiteral(tpe, args) =>
@@ -1027,7 +1026,7 @@ trait CodeExtraction extends ASTExtractors {
           Tuple(tupleExprs)
 
         case ExErrorExpression(str, tpt) =>
-          Error(str).setType(extractType(tpt))
+          Error(extractType(tpt), str)
 
         case ExTupleExtract(tuple, index) =>
           val tupleExpr = extractTree(tuple)
@@ -1324,8 +1323,7 @@ trait CodeExtraction extends ASTExtractors {
           FiniteSet(args.map(extractTree(_)).toSet).setType(SetType(underlying))
 
         case ExFiniteMultiset(tt, args) =>
-          val underlying = extractType(tt)
-          FiniteMultiset(args.map(extractTree(_))).setType(MultisetType(underlying))
+          FiniteMultiset(args.map(extractTree(_)))
 
         case ExEmptySet(tt) =>
           val underlying = extractType(tt)
@@ -1333,7 +1331,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExEmptyMultiset(tt) =>
           val underlying = extractType(tt)
-          EmptyMultiset(underlying).setType(MultisetType(underlying))
+          EmptyMultiset(underlying)
 
         case ExEmptyMap(ft, tt) =>
           val fromUnderlying = extractType(ft)
@@ -1362,7 +1360,7 @@ trait CodeExtraction extends ASTExtractors {
           val underlying = extractType(baseType)
           val lengthRec = extractTree(length)
           val defaultValueRec = extractTree(defaultValue)
-          ArrayFill(lengthRec, defaultValueRec).setType(ArrayType(underlying))
+          ArrayFill(lengthRec, defaultValueRec)
 
         case ExIfThenElse(t1,t2,t3) =>
           val r1 = extractTree(t1)
@@ -1374,7 +1372,7 @@ trait CodeExtraction extends ASTExtractors {
           val lub = leastUpperBound(r2.getType, r3.getType)
           lub match {
             case Some(lub) =>
-              IfExpr(r1, r2, r3).setType(lub)
+              IfExpr(r1, r2, r3)
 
             case None =>
               outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
@@ -1409,8 +1407,7 @@ trait CodeExtraction extends ASTExtractors {
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase(_))
-          val rt: LeonType = rc.map(_.rhs.getType).reduceLeft(leastUpperBound(_,_).get)
-          MatchExpr(rs, rc).setType(rt)
+          MatchExpr(rs, rc)
 
         case t: This =>
           extractType(t) match {
@@ -1471,7 +1468,7 @@ trait CodeExtraction extends ASTExtractors {
 
               val newTps = tps.map(t => extractType(t))
 
-              FunctionInvocation(fd.typed(newTps), args).setType(fd.returnType)
+              FunctionInvocation(fd.typed(newTps), args)
 
             case (IsTyped(rec, ct: ClassType), _, args) if isMethod(sym) =>
               val fd = getFunDef(sym, c.pos)
@@ -1533,22 +1530,22 @@ trait CodeExtraction extends ASTExtractors {
 
             // Set methods
             case (IsTyped(a1, SetType(b1)), "min", Nil) =>
-              SetMin(a1).setType(b1)
+              SetMin(a1)
 
             case (IsTyped(a1, SetType(b1)), "max", Nil) =>
-              SetMax(a1).setType(b1)
+              SetMax(a1)
 
             case (IsTyped(a1, SetType(b1)), "++", List(IsTyped(a2, SetType(b2))))  if b1 == b2 =>
-              SetUnion(a1, a2).setType(SetType(b1))
+              SetUnion(a1, a2)
 
             case (IsTyped(a1, SetType(b1)), "&", List(IsTyped(a2, SetType(b2)))) if b1 == b2 =>
-              SetIntersection(a1, a2).setType(SetType(b1))
+              SetIntersection(a1, a2)
 
             case (IsTyped(a1, SetType(b1)), "subsetOf", List(IsTyped(a2, SetType(b2)))) if b1 == b2 =>
               SubsetOf(a1, a2)
 
             case (IsTyped(a1, SetType(b1)), "--", List(IsTyped(a2, SetType(b2)))) if b1 == b2 =>
-              SetDifference(a1, a2).setType(SetType(b1))
+              SetDifference(a1, a2)
 
             case (IsTyped(a1, SetType(b1)), "contains", List(a2)) =>
               ElementOfSet(a2, a1)
@@ -1556,37 +1553,37 @@ trait CodeExtraction extends ASTExtractors {
 
             // Multiset methods
             case (IsTyped(a1, MultisetType(b1)), "++", List(IsTyped(a2, MultisetType(b2))))  if b1 == b2 =>
-              MultisetUnion(a1, a2).setType(MultisetType(b1))
+              MultisetUnion(a1, a2)
 
             case (IsTyped(a1, MultisetType(b1)), "&", List(IsTyped(a2, MultisetType(b2)))) if b1 == b2 =>
-              MultisetIntersection(a1, a2).setType(MultisetType(b1))
+              MultisetIntersection(a1, a2)
 
             case (IsTyped(a1, MultisetType(b1)), "--", List(IsTyped(a2, MultisetType(b2)))) if b1 == b2 =>
-              MultisetDifference(a1, a2).setType(MultisetType(b1))
+              MultisetDifference(a1, a2)
 
             case (IsTyped(a1, MultisetType(b1)), "+++", List(IsTyped(a2, MultisetType(b2)))) if b1 == b2 =>
-              MultisetPlus(a1, a2).setType(MultisetType(b1))
+              MultisetPlus(a1, a2)
 
             case (IsTyped(_, MultisetType(b1)), "toSet", Nil) =>
-              MultisetToSet(rrec).setType(b1)
+              MultisetToSet(rrec)
 
             // Array methods
             case (IsTyped(a1, ArrayType(vt)), "apply", List(a2)) =>
-              ArraySelect(a1, a2).setType(vt)
+              ArraySelect(a1, a2)
 
             case (IsTyped(a1, at: ArrayType), "length", Nil) =>
               ArrayLength(a1)
 
             case (IsTyped(a1, at: ArrayType), "clone", Nil) =>
-              ArrayClone(a1).setType(at)
+              ArrayClone(a1)
 
             case (IsTyped(a1, at: ArrayType), "updated", List(k, v)) =>
-              ArrayUpdated(a1, k, v).setType(at)
+              ArrayUpdated(a1, k, v)
 
 
             // Map methods
             case (IsTyped(a1, MapType(_, vt)), "apply", List(a2)) =>
-              MapGet(a1, a2).setType(vt)
+              MapGet(a1, a2)
 
             case (IsTyped(a1, mt: MapType), "isDefinedAt", List(a2)) =>
               MapIsDefinedAt(a1, a2)
@@ -1595,10 +1592,10 @@ trait CodeExtraction extends ASTExtractors {
               MapIsDefinedAt(a1, a2)
 
             case (IsTyped(a1, mt: MapType), "updated", List(k, v)) =>
-              MapUnion(a1, FiniteMap(Seq((k, v))).setType(mt)).setType(mt)
+              MapUnion(a1, FiniteMap(Seq((k, v))).setType(mt))
 
             case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>
-              MapUnion(a1, a2).setType(mt1)
+              MapUnion(a1, a2)
               
             case (_, name, _) =>
               outOfSubsetError(tr, "Unknown call to "+name)

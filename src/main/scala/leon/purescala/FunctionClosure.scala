@@ -162,7 +162,7 @@ object FunctionClosure extends TransformationPhase {
         }
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).copiedFrom(m).setType(tpe)
+      MatchExpr(scrutRec, csesRec).copiedFrom(m)
     }
     case v @ Variable(id) => id2freshId.get(id) match {
       case None => v

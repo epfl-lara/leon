@@ -27,13 +27,15 @@ import codegen.CodeGenParams
 
 import utils._
 
-case object CEGIS extends CEGISLike("CEGIS") {
+case object CEGIS extends CEGISLike[TypeTree]("CEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
     ExpressionGrammars.default(sctx, p)
   }
+
+  def getGrammarLabel(id: Identifier): TypeTree = id.getType
 }
 
-case object CEGLESS extends CEGISLike("CEGLESS") {
+case object CEGLESS extends CEGISLike[TypeTree]("CEGLESS") {
   override val maxUnfoldings = 3;
 
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
@@ -49,16 +51,20 @@ case object CEGLESS extends CEGISLike("CEGLESS") {
 
     val inputs = p.as.map(_.toVariable)
 
-    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, Set(sctx.functionContext))).foldLeft[ExpressionGrammar](Empty)(_ || _)
+    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, Set(sctx.functionContext))).foldLeft[ExpressionGrammar[TypeTree]](Empty)(_ || _)
 
     guidedGrammar || OneOf(inputs) || SafeRecCalls(sctx.program, p.pc)
   }
+
+  def getGrammarLabel(id: Identifier): TypeTree = id.getType
 }
 
 
-abstract class CEGISLike(name: String) extends Rule(name) {
+abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
-  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar
+  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
+
+  def getGrammarLabel(id: Identifier): T
 
   val maxUnfoldings = 3
 
@@ -91,6 +97,8 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
       // b -> Set(c1, c2) means c1 and c2 are uninterpreted behind b, requires b to be closed
       private var guardedTerms: Map[Identifier, Set[Identifier]] = Map(initGuard -> p.xs.toSet)
+
+      private var labels: Map[Identifier, T] = Map() ++ p.xs.map(x => x -> getGrammarLabel(x))
 
       def isBClosed(b: Identifier) = guardedTerms.contains(b)
 
@@ -192,7 +200,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             // We compute the IF expression corresponding to each c
             val ifExpr = if (cases.isEmpty) {
               // This can happen with ADTs with only cases with arguments
-              Error("No valid clause available").setType(c.getType)
+              Error(c.getType, "No valid clause available")
             } else {
               cases.tail.foldLeft(cases.head._2) {
                 case (elze, (b, thenn)) => IfExpr(Variable(b), thenn, elze)
@@ -216,7 +224,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
             case Some(value) =>
               res = Let(c, cToExprs(c), res)
             case None =>
-              res = Let(c, Error("No value available").setType(c.getType), res)
+              res = Let(c, Error(c.getType, "No value available"), res)
           }
 
           for (dep <- cChildren(c) if !unreachableCs(dep)) {
@@ -235,7 +243,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           val ba = FreshIdentifier("bssArray").setType(ArrayType(BooleanType))
           val bav = Variable(ba)
           val substMap : Map[Expr,Expr] = (bssOrdered.zipWithIndex.map {
-            case (b,i) => Variable(b) -> ArraySelect(bav, IntLiteral(i)).setType(BooleanType)
+            case (b,i) => Variable(b) -> ArraySelect(bav, IntLiteral(i))
           }).toMap
           val forArray = replace(substMap, simplerRes)
 
@@ -277,7 +285,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           substAll(map.toMap, cClauses(c))
         }
 
-        Tuple(p.xs.map(c => getCValue(c))).setType(TupleType(p.xs.map(_.getType)))
+        Tuple(p.xs.map(c => getCValue(c)))
 
       }
 
@@ -354,7 +362,7 @@ abstract class CEGISLike(name: String) extends Rule(name) {
 
         for ((recId, parentGuards) <- cGroups) {
 
-          var alts = grammar.getProductions(recId.getType)
+          var alts = grammar.getProductions(labels(recId))
           if (finalUnfolding) {
             alts = alts.filter(_.subTrees.isEmpty)
           }
@@ -382,7 +390,10 @@ abstract class CEGISLike(name: String) extends Rule(name) {
           })(index)
 
           val cases = for((bid, gen) <- altsWithBranches.toList) yield { // b1 => E(gen1, gen2)     [b1 -> {gen1, gen2}]
-            val rec = for ((t, i) <- gen.subTrees.zipWithIndex) yield { getC(t, i) }
+            val newLabels = for ((t, i) <- gen.subTrees.zipWithIndex) yield { getC(t.getType, i) -> t }
+            labels ++= newLabels
+
+            val rec = newLabels.map(_._1)
             val ex = gen.builder(rec.map(_.toVariable))
 
             if (!rec.isEmpty) {

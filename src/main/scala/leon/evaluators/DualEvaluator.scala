@@ -6,6 +6,7 @@ package evaluators
 import purescala.Common._
 import purescala.Trees._
 import purescala.Definitions._
+import purescala.TypeTrees.MutableTyped
 
 import codegen._
 
@@ -27,7 +28,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
     def withVars(news: Map[Identifier, Expr]) = copy(news)
   }
 
-  case class RawObject(o: AnyRef) extends Expr
+  case class RawObject(o: AnyRef) extends Expr with MutableTyped
 
   def call(tfd: TypedFunDef, args: Seq[AnyRef]): Expr = {
 

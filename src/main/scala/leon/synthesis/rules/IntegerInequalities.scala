@@ -196,7 +196,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
               val funDef = new FunDef(FreshIdentifier("rec", true), Nil, returnType, Seq(ValDef(loopCounter.id, Int32Type)),DefType.MethodDef)
               val funBody = expandAndSimplifyArithmetic(IfExpr(
                 LessThan(loopCounter, IntLiteral(0)),
-                Error("No solution exists"),
+                Error(returnType, "No solution exists"),
                 IfExpr(
                   concretePre,
                   LetTuple(subProblemxs, concreteTerm,

@@ -34,6 +34,10 @@ case object TEGIS extends Rule("TEGIS") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     // check if the formula contains passes:
+    if (!sctx.program.library.passes.isDefined) {
+      return Nil;
+    }
+
     val passes = sctx.program.library.passes.get
 
     val mayHaveTests = exists({
