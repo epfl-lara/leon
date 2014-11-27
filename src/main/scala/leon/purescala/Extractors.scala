@@ -126,31 +126,21 @@ object Extractors {
         }))
       case Tuple(args) => Some((args, Tuple))
       case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
-      case MatchExpr(scrut, cases) =>
-        Some((scrut +: cases.flatMap{ case SimpleCase(_, e) => Seq(e)
-                                     case GuardedCase(_, e1, e2) => Seq(e1, e2) }
-             , { es: Seq[Expr] =>
-            var i = 1;
-            val newcases = for (caze <- cases) yield caze match {
-              case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
-              case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
-            }
+      case MatchLike(scrut, cases, builder) => Some((
+        scrut +: cases.flatMap { 
+          case SimpleCase(_, e) => Seq(e)
+          case GuardedCase(_, e1, e2) => Seq(e1, e2) 
+        }, 
+        (es: Seq[Expr]) => {
+          var i = 1
+          val newcases = for (caze <- cases) yield caze match {
+            case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
+            case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
+          }
 
-           matchExpr(es(0), newcases)
-           }))
-      case Passes(scrut, tests) =>
-        Some((scrut +: tests.flatMap{ case SimpleCase(_, e) => Seq(e)
-                                      case GuardedCase(_, e1, e2) => Seq(e1, e2) }
-             , { es: Seq[Expr] =>
-            var i = 1;
-            val newtests = for (test <- tests) yield test match {
-              case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
-              case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
-            }
-
-           Passes(es(0), newtests)
-           }))
-
+          builder(es(0), newcases)
+        }
+      ))
       case LetDef(fd, body) =>
         fd.body match {
           case Some(b) =>
@@ -235,18 +225,29 @@ object Extractors {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
   }
 
+  object MatchLike {
+    def unapply(m : MatchLike) : Option[(Expr, Seq[MatchCase], (Expr, Seq[MatchCase]) => MatchLike)] = {
+      Option(m) map { m => 
+        (m.scrutinee, m.cases, m match {
+          case _ : MatchExpr  => matchExpr
+          case _ : Gives      => gives
+        })
+      }
+    }
+  }
+
   object Pattern {
     def unapply(p : Pattern) : Option[(
       Option[Identifier], 
       Seq[Pattern], 
       (Option[Identifier], Seq[Pattern]) => Pattern
-    )] = Some(p match {
+    )] = Option(p) map {
       case InstanceOfPattern(b, ct)       => (b, Seq(), (b, _)  => InstanceOfPattern(b,ct))
       case WildcardPattern(b)             => (b, Seq(), (b, _)  => WildcardPattern(b))
       case CaseClassPattern(b, ct, subs)  => (b, subs,  (b, sp) => CaseClassPattern(b, ct, sp))
       case TuplePattern(b,subs)           => (b, subs,  (b, sp) => TuplePattern(b, sp))
       case LiteralPattern(b, l)           => (b, Seq(), (b, _)  => LiteralPattern(b, l))
-    })
+    }
   }
 
 }

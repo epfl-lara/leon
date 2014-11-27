@@ -219,9 +219,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |  (${typed(id)}) => $post
             |}"""
 
-      case Passes(s, tests) => 
+      case Gives(s, tests) => 
         optP {
-          p"""|$s passes {
+          p"""|$s gives {
               |  ${nary(tests, "\n")}
               |}
               |"""

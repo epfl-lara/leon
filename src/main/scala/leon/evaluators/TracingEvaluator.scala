@@ -5,6 +5,7 @@ package evaluators
 
 import purescala.Common._
 import purescala.Trees._
+import purescala.Extractors._
 import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.TypeTrees._
@@ -32,7 +33,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           val res = e(b)(rctx.withNewVar(i, first), gctx)
           (res, first)
 
-        case MatchExpr(scrut, cases) =>
+        case MatchLike(scrut, cases, _) =>
           val rscrut = e(scrut)
 
           val r = cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {

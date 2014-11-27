@@ -157,19 +157,19 @@ trait ASTExtractors {
       }
     }
 
-    object ExPasses { 
+    object ExGives { 
       def unapply(tree : Apply) : Option[(Tree, List[CaseDef])] = tree match {
         case Apply(
           TypeApply(
             Select(
               Apply(
                 TypeApply(
-                  ExSelected("leon", "lang", "package", "Passes"), 
+                  ExSelected("leon", "lang", "package", "Gives"),
                   _ :: Nil
                 ), 
                 body :: Nil
               ), 
-              ExNamed("passes")
+              ExNamed("gives")
             ),
             _ :: Nil
           ),

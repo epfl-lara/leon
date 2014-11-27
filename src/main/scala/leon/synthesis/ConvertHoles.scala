@@ -36,15 +36,35 @@ object ConvertHoles extends LeonPhase[Program, Program] {
    * }
    *
    */
-  def run(ctx: LeonContext)(pgm: Program): Program = {
 
-    pgm.definedFunctions.foreach(fd => {
-      if (fd.hasBody) {
+  def convertHoles(e : Expr, ctx : LeonContext, treatGives : Boolean = false) : Expr = { 
+    val (pre, body, post) = breakDownSpecs(e)
 
+    // Ensure that holes are not found in pre and/or post conditions
+    pre.foreach {
+      preTraversal{
+        case h : Hole =>
+          ctx.reporter.error("Holes are not supported in preconditions. @"+ h.getPos)
+        case _ =>
+      }
+    }
+
+    post.foreach { case (id, post) =>
+      preTraversal{
+        case h : Hole =>
+          ctx.reporter.error("Holes are not supported in postconditions. @"+ h.getPos)
+        case _ =>
+      }(post)
+    }
+
+    body match {
+      case Some(body) =>
         var holes  = List[Identifier]()
 
-        val newBody = preMap {
-          case h @ Hole(tpe, es) =>
+        val withoutHoles = preMap {
+          case p : Gives if treatGives =>
+            Some(p.asIncompleteMatch)
+          case h : Hole =>
             val (expr, ids) = toExpr(h)
 
             holes ++= ids
@@ -52,43 +72,33 @@ object ConvertHoles extends LeonPhase[Program, Program] {
             Some(expr)
           case _ =>
             None
-        }(fd.body.get)
+        }(body)
 
-        if (holes.nonEmpty) {
+        val asChoose = if (holes.nonEmpty) {
           val cids = holes.map(_.freshen)
-          val pred = fd.postcondition match {
+          val pred = post match {
             case Some((id, post)) =>
-              replaceFromIDs((holes zip cids.map(_.toVariable)).toMap, Let(id, newBody, post))
+              replaceFromIDs((holes zip cids.map(_.toVariable)).toMap, Let(id, withoutHoles, post))
             case None =>
               BooleanLiteral(true)
           }
 
-          val withChoose = letTuple(holes, tupleChoose(Choose(cids, pred)), newBody)
+          letTuple(holes, tupleChoose(Choose(cids, pred)), withoutHoles)
 
-          fd.body = Some(withChoose)
         }
+        else withoutHoles
 
-      }
+        withPostcondition(withPrecondition(asChoose, pre), post)
+      
+      case None => e
+    }
 
-      // Ensure that holes are not found in pre and/or post conditions
-      fd.precondition.foreach {
-        preTraversal{
-          case _: Hole =>
-            ctx.reporter.error("Holes are not supported in preconditions. (function "+fd.id.asString(ctx)+")")
-          case _ =>
-        }
-      }
 
-      fd.postcondition.foreach { case (id, post) =>
-        preTraversal{
-          case _: Hole =>
-            ctx.reporter.error("Holes are not supported in postconditions. (function "+fd.id.asString(ctx)+")")
-          case _ =>
-        }(post)
-      }
+  }
 
-    })
-
+   
+  def run(ctx: LeonContext)(pgm: Program): Program = {
+    pgm.definedFunctions.foreach(fd => fd.fullBody = convertHoles(fd.fullBody,ctx) )
     pgm
   }
 

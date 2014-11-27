@@ -354,7 +354,7 @@ object TreeOps {
           case LetDef(fd,_) => subvs -- fd.params.map(_.id) -- fd.postcondition.map(_._1)
           case Let(i,_,_) => subvs - i
           case Choose(is,_) => subvs -- is
-          case MatchExpr(_, cses) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
+          case MatchLike(_, cses, _) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case Lambda(args, body) => subvs -- args.map(_.id)
           case Forall(args, body) => subvs -- args.map(_.id)
           case _ => subvs
@@ -427,8 +427,8 @@ object TreeOps {
 
 
     postMap({
-      case m @ MatchExpr(s, cses) =>
-        Some(matchExpr(s, cses.map(freshenCase(_))).copiedFrom(m))
+      case m @ MatchLike(s, cses, builder) =>
+        Some(builder(s, cses.map(freshenCase(_))).copiedFrom(m))
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, true).copiedFrom(i)
@@ -608,7 +608,7 @@ object TreeOps {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
-      case m @ MatchExpr(scrut,cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
+      case m @ MatchLike(scrut,cses,builder) => builder(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case n @ NAryOperator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
@@ -852,8 +852,8 @@ object TreeOps {
     postMap(rewritePM)(expr)
   }
 
-  def matchCasePathConditions(m : MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = m match {
-    case MatchExpr(scrut, cases) =>
+  def matchCasePathConditions(m : MatchLike, pathCond: List[Expr]) : Seq[List[Expr]] = m match {
+    case MatchLike(scrut, cases, _) => 
       var pcSoFar = pathCond
       for (c <- cases) yield {
 
@@ -1288,6 +1288,7 @@ object TreeOps {
       case Choose(_, _) => return false
       case Hole(_, _) => return false
       case RepairHole(_, _) => return false
+      case Gives(_,_) => return false
       case _ =>
     }(e)
     true
@@ -1471,6 +1472,61 @@ object TreeOps {
     }
 
     def isHomo(t1: Expr, t2: Expr)(implicit map: Map[Identifier,Identifier]): Boolean = {
+
+      def casesMatch(cs1 : Seq[MatchCase], cs2 : Seq[MatchCase]) : Boolean = {
+        def patternHomo(p1: Pattern, p2: Pattern): (Boolean, Map[Identifier, Identifier]) = (p1, p2) match {
+          case (InstanceOfPattern(ob1, cd1), InstanceOfPattern(ob2, cd2)) =>
+            (ob1.size == ob2.size && cd1 == cd2, Map((ob1 zip ob2).toSeq : _*))
+
+          case (WildcardPattern(ob1), WildcardPattern(ob2)) =>
+            (ob1.size == ob2.size, Map((ob1 zip ob2).toSeq : _*))
+
+          case (CaseClassPattern(ob1, ccd1, subs1), CaseClassPattern(ob2, ccd2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && ccd1 == ccd2 && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (TuplePattern(ob1, subs1), TuplePattern(ob2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (LiteralPattern(ob1, lit1), LiteralPattern(ob2,lit2)) =>
+            (ob1.size == ob2.size && lit1 == lit2, (ob1 zip ob2).toMap)
+
+          case _ =>
+            (false, Map())
+        }
+
+        (cs1 zip cs2).forall {
+          case (SimpleCase(p1, e1), SimpleCase(p2, e2)) =>
+            val (h, nm) = patternHomo(p1, p2)
+
+              h && isHomo(e1, e2)(map ++ nm)
+
+            case (GuardedCase(p1, g1, e1), GuardedCase(p2, g2, e2)) =>
+              val (h, nm) = patternHomo(p1, p2)
+
+              h && isHomo(g1, g2)(map ++ nm) && isHomo(e1, e2)(map ++ nm)
+
+            case _ =>
+              false
+        }
+        
+      }
+
       val res = (t1, t2) match {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
@@ -1496,60 +1552,14 @@ object TreeOps {
 
         case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
           if (cs1.size == cs2.size) {
-            val scrutMatch = isHomo(s1, s2)
-
-            def patternHomo(p1: Pattern, p2: Pattern): (Boolean, Map[Identifier, Identifier]) = (p1, p2) match {
-              case (InstanceOfPattern(ob1, cd1), InstanceOfPattern(ob2, cd2)) =>
-                (ob1.size == ob2.size && cd1 == cd2, Map((ob1 zip ob2).toSeq : _*))
-
-              case (WildcardPattern(ob1), WildcardPattern(ob2)) =>
-                (ob1.size == ob2.size, Map((ob1 zip ob2).toSeq : _*))
-
-              case (CaseClassPattern(ob1, ccd1, subs1), CaseClassPattern(ob2, ccd2, subs2)) =>
-                val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
-
-                if (ob1.size == ob2.size && ccd1 == ccd2 && subs1.size == subs2.size) {
-                  (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
-                    case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
-                  }
-                } else {
-                  (false, Map())
-                }
-
-              case (TuplePattern(ob1, subs1), TuplePattern(ob2, subs2)) =>
-                val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
-
-                if (ob1.size == ob2.size && subs1.size == subs2.size) {
-                  (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
-                    case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
-                  }
-                } else {
-                  (false, Map())
-                }
-
-              case (LiteralPattern(ob1, lit1), LiteralPattern(ob2,lit2)) =>
-                (ob1.size == ob2.size && lit1 == lit2, (ob1 zip ob2).toMap)
-
-              case _ =>
-                (false, Map())
-            }
-
-            val casesMatch = (cs1 zip cs2).forall {
-              case (SimpleCase(p1, e1), SimpleCase(p2, e2)) =>
-                val (h, nm) = patternHomo(p1, p2)
-
-                h && isHomo(e1, e2)(map ++ nm)
-
-              case (GuardedCase(p1, g1, e1), GuardedCase(p2, g2, e2)) =>
-                val (h, nm) = patternHomo(p1, p2)
-
-                h && isHomo(g1, g2)(map ++ nm) && isHomo(e1, e2)(map ++ nm)
-
-              case _ =>
-                false
-            }
-
-            scrutMatch && casesMatch
+            isHomo(s1, s2) && casesMatch(cs1,cs2)
+          } else {
+            false
+          }
+        
+        case (Gives(s1, cs1), Gives(s2, cs2)) =>
+          if (cs1.size == cs2.size) {
+            isHomo(s1, s2) && casesMatch(cs1,cs2)
           } else {
             false
           }
@@ -1849,6 +1859,8 @@ object TreeOps {
     case _                                  => None
   }
 
+  def breakDownSpecs(e : Expr) = (preconditionOf(e), withoutSpec(e), postconditionOf(e))
+    
   def preTraversalWithParent(f: (Expr, Option[Tree]) => Unit, initParent: Option[Tree] = None)(e: Expr): Unit = {
     val rec = preTraversalWithParent(f, Some(e)) _
 

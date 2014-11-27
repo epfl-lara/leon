@@ -14,6 +14,7 @@ import solvers.TimeoutSolver
 
 import xlang.Trees._
 import solvers.SolverFactory
+import synthesis.ConvertHoles.convertHoles
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int) extends Evaluator(ctx, prog) {
   val name = "evaluator"
@@ -107,8 +108,15 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case Assert(cond, oerr, body) =>
       e(IfExpr(Not(cond), Error(expr.getType, oerr.getOrElse("Assertion failed @"+expr.getPos)), body))
 
-    case Ensuring(body, id, post) =>
-      e(Let(id, body, Assert(post, Some("Ensuring failed"), Variable(id))))
+    case en@Ensuring(body, id, post) =>
+      if ( exists{
+        case Hole(_,_) => true
+        case Gives(_,_) => true
+        case _ => false
+      }(en)) 
+        e(convertHoles(en, ctx, true))
+      else 
+        e(Let(id, body, Assert(post, Some("Ensuring failed"), Variable(id))))
 
     case Error(tpe, desc) =>
       throw RuntimeError("Error reached in evaluation: " + desc)
@@ -386,6 +394,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case rh: RepairHole =>
       simplestValue(rh.getType) // It will be wrong, we don't care
+
+    case g : Gives =>
+      e(convertHoles(g, ctx, true)) 
 
     case choose: Choose =>
       import purescala.TreeOps.simplestValue

@@ -45,10 +45,6 @@ object Trees {
     def getType = body.getType
   }
 
-  case class Passes(scrut: Expr, tests : List[MatchCase]) extends Expr {
-    def getType = leastUpperBound(tests.map(_.rhs.getType)).getOrElse(Untyped)
-  }
-
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with UnaryExtractable {
     assert(!vars.isEmpty)
 
@@ -185,10 +181,22 @@ object Trees {
     }
   }
 
-  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
-    assert(cases.nonEmpty)
-
+  abstract sealed class MatchLike extends Expr {
+    val scrutinee : Expr
+    val cases : Seq[MatchCase]  
     def getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped)
+  }
+
+  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends MatchLike {
+    assert(cases.nonEmpty)
+  }
+  
+  case class Gives(scrutinee: Expr, cases : Seq[MatchCase]) extends MatchLike {
+    assert(cases.nonEmpty)
+    def asIncompleteMatch = {
+      val theHole = SimpleCase(WildcardPattern(None), Hole(this.getType, Seq()))
+      MatchExpr(scrutinee, cases :+ theHole)
+    }
   }
 
   sealed abstract class MatchCase extends Tree {

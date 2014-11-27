@@ -498,7 +498,7 @@ trait AbstractZ3Solver
       case me @ MatchExpr(s, cs) =>
         rec(matchToIfThenElse(me))
       
-      case Passes(scrut, tests) =>
+      case Gives(scrut, tests) =>
         rec(matchToIfThenElse(matchExpr(scrut, tests)))
 
       case tu @ Tuple(args) =>

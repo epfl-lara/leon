@@ -40,23 +40,27 @@ object Constructors {
     es.head
   }
 
-  def matchExpr(scrutinee: Expr, cases: Seq[MatchCase]): MatchExpr = {
+  private def filterCases(scrutinee: Expr, cases: Seq[MatchCase]): Seq[MatchCase] = {
     scrutinee.getType match {
       case c: CaseClassType =>
-        new MatchExpr(scrutinee,
-          cases.filter(_.pattern match {
-            case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
-            case _ => true
-          })
-        )
+        cases.filter(_.pattern match {
+          case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
+          case _ => true
+        })
 
       case _: TupleType | Int32Type | BooleanType | UnitType | _: AbstractClassType =>
-        new MatchExpr(scrutinee, cases)
+        cases
 
       case t =>
         scala.sys.error("Constructing match expression on non-supported type: "+t)
     }
   }
+
+  def gives(scrutinee : Expr, cases : Seq[MatchCase]) : Gives =
+    Gives(scrutinee, filterCases(scrutinee, cases))
+  
+  def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : MatchExpr = 
+    MatchExpr(scrutinee, filterCases(scrutinee, cases))
 
   def and(exprs: Expr*): Expr = {
     val flat = exprs.flatMap(_ match {

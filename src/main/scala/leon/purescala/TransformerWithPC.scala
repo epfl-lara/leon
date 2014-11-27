@@ -21,12 +21,12 @@ abstract class TransformerWithPC extends Transformer {
       val sb = rec(b, register(Equals(Variable(i), se), path))
       Let(i, se, sb).copiedFrom(e)
 
-    case MatchExpr(scrut, cases) =>
+    case MatchLike(scrut, cases, builder) =>
       val rs = rec(scrut, path)
 
       var soFar = path
 
-      matchExpr(rs, cases.map { c =>
+      builder(rs, cases.map { c =>
         val patternExprPos = conditionForPattern(rs, c.pattern, includeBinders = true)
         val patternExprNeg = conditionForPattern(rs, c.pattern, includeBinders = false)
 
