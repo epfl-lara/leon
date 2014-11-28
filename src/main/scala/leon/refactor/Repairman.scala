@@ -41,17 +41,15 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     // Compute tests
     val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", true).setType(fd.returnType))
 
-    val tfd = program.library.passes.get.typed(Seq(argsWrapped.getType, out.getType))
-
     val inouts = testBank;
 
-    val testsExpr = FiniteMap(inouts.collect {
+    val testsCases = inouts.collect {
       case InOutExample(ins, outs) =>
-        tupleWrap(ins) -> tupleWrap(outs)
-    }.toList).setType(MapType(argsWrapped.getType, out.getType))
+        GuardedCase(WildcardPattern(None), Equals(argsWrapped, tupleWrap(ins)), tupleWrap(outs))
+    }.toList
 
-    val passes = if (testsExpr.singletons.nonEmpty) {
-      FunctionInvocation(tfd, Seq(argsWrapped, out.toVariable, testsExpr))
+    val passes = if (testsCases.nonEmpty) {
+      Passes(argsWrapped, out.toVariable, testsCases)
     } else {
       BooleanLiteral(true)
     }

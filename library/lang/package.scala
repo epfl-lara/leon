@@ -32,5 +32,12 @@ package object lang {
   implicit class Gives[A](v : A) {
     def gives[B](tests : A => B) : B = tests(v)
   }
+ 
+  @ignore
+  implicit class Passes[A,B](io : (A,B)) {
+    val (in, out) = io
+    def passes(tests : A => B ) : Boolean = 
+      try { tests(in) == out } catch { case _ : MatchError => true }
+  }
 
 }

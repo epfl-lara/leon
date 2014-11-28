@@ -34,14 +34,14 @@ object Constructors {
     }
   }
 
-  def tupleWrap(es: Seq[Expr]): Expr = if (es.size > 1) {
-    Tuple(es)
-  } else {
-    es.head
+  def tupleWrap(es: Seq[Expr]): Expr = es match {
+    case Seq() => UnitLiteral()
+    case Seq(elem) => elem 
+    case more => Tuple(more)
   }
 
-  private def filterCases(scrutinee: Expr, cases: Seq[MatchCase]): Seq[MatchCase] = {
-    scrutinee.getType match {
+  private def filterCases(scrutType : TypeTree, cases: Seq[MatchCase]): Seq[MatchCase] = {
+    scrutType match {
       case c: CaseClassType =>
         cases.filter(_.pattern match {
           case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
@@ -57,10 +57,14 @@ object Constructors {
   }
 
   def gives(scrutinee : Expr, cases : Seq[MatchCase]) : Gives =
-    Gives(scrutinee, filterCases(scrutinee, cases))
+    Gives(scrutinee, filterCases(scrutinee.getType, cases))
   
+  def passes(in : Expr, out : Expr, cases : Seq[MatchCase]) : Passes = {
+    Passes(in, out, filterCases(in.getType, cases))
+  }
+
   def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : MatchExpr = 
-    MatchExpr(scrutinee, filterCases(scrutinee, cases))
+    MatchExpr(scrutinee, filterCases(scrutinee.getType, cases))
 
   def and(exprs: Expr*): Expr = {
     val flat = exprs.flatMap(_ match {

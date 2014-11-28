@@ -20,7 +20,7 @@ import purescala.Definitions.{
 import purescala.Trees.{Expr => LeonExpr, This => LeonThis, _}
 import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
-import purescala.Extractors.IsTyped
+import purescala.Extractors.{IsTyped,UnwrapTuple}
 import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTreeOps._
@@ -1002,7 +1002,19 @@ trait CodeExtraction extends ASTExtractors {
           rest = None
 
           Require(pre, b)
- 
+
+        case ExPasses(in, out, cases) =>
+          val ine = extractTree(in)
+          val oute = extractTree(out)
+          val rc = cases.map(extractMatchCase(_))
+
+          val UnwrapTuple(ines) = ine
+          (oute +: ines) foreach {
+            case Variable(_) => { }
+            case other => ctx.reporter.fatalError(other.getPos, "Only i/o variables are allowed in i/o examples")
+          }
+          passes(ine, oute, rc)
+
         case ExGives(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase(_))

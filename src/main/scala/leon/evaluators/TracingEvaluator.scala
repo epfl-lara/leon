@@ -33,7 +33,11 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           val res = e(b)(rctx.withNewVar(i, first), gctx)
           (res, first)
 
-        case MatchLike(scrut, cases, _) =>
+        case p: Passes =>
+           val r = e(p.asConstraint)
+           (r, r)
+
+        case MatchExpr(scrut, cases) =>
           val rscrut = e(scrut)
 
           val r = cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {

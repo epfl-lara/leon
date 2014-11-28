@@ -223,10 +223,16 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         optP {
           p"""|$s gives {
               |  ${nary(tests, "\n")}
-              |}
-              |"""
+              |}"""
         }
       
+      case p@Passes(in, out, tests) =>
+        optP {
+          p"""|${p.scrutinee} passes {
+              |  ${nary(tests, "\n")}
+              |}"""
+        }
+
       case c @ WithOracle(vars, pred) =>
         p"""|withOracle { (${typed(vars)}) =>
             |  $pred
@@ -641,7 +647,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: Require, _) => true
     case (_: Assert, Some(_: Definition)) => true
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef )) => false
     case (_, _) => true
   }
 
@@ -669,7 +675,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false
     case (ie: IfExpr, _) => true
-    case (me: MatchExpr, _ ) => true
+    case (me: MatchLike, _ ) => true
     case (e1: Expr, Some(e2: Expr)) if precedence(e1) > precedence(e2) => false
     case (_, _) => true
   }

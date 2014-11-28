@@ -397,6 +397,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case g : Gives =>
       e(convertHoles(g, ctx, true)) 
+  
+    case p : Passes => 
+      e(p.asConstraint)
 
     case choose: Choose =>
       import purescala.TreeOps.simplestValue

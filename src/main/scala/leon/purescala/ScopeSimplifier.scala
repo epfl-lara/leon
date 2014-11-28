@@ -75,7 +75,7 @@ class ScopeSimplifier extends Transformer {
       val sb = rec(b, newScope)
       LetTuple(sis, se, sb)
 
-    case MatchLike(scrut, cases, builder) =>
+    case MatchExpr(scrut, cases) =>
       val rs = rec(scrut, scope)
 
       def trPattern(p: Pattern, scope: Scope): (Pattern, Scope) = {
@@ -112,7 +112,7 @@ class ScopeSimplifier extends Transformer {
         (newPattern, curScope)
       }
 
-      builder(rs, cases.map { c =>
+      MatchExpr(rs, cases.map { c =>
         val (newP, newScope) = trPattern(c.pattern, scope)
 
         c match {

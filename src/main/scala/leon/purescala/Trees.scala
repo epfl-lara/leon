@@ -46,7 +46,7 @@ object Trees {
   }
 
   case class Choose(vars: List[Identifier], pred: Expr) extends Expr with UnaryExtractable {
-    assert(!vars.isEmpty)
+    require(!vars.isEmpty)
 
     def getType = if (vars.size > 1) TupleType(vars.map(_.getType)) else vars.head.getType
 
@@ -60,7 +60,7 @@ object Trees {
   }
 
   case class LetTuple(binders: Seq[Identifier], value: Expr, body: Expr) extends Expr {
-    assert(value.getType.isInstanceOf[TupleType],
+    require(value.getType.isInstanceOf[TupleType],
            "The definition value in LetTuple must be of some tuple type; yet we got [%s]. In expr: \n%s".format(value.getType, this))
 
     def getType = body.getType
@@ -169,11 +169,11 @@ object Trees {
 
   // Index is 1-based, first element of tuple is 1.
   case class TupleSelect(tuple: Expr, index: Int) extends Expr {
-    assert(index >= 1)
+    require(index >= 1)
 
     def getType = tuple.getType match {
       case TupleType(ts) =>
-        assert(index <= ts.size)
+        require(index <= ts.size)
         ts(index - 1)
 
       case _ =>
@@ -188,16 +188,29 @@ object Trees {
   }
 
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends MatchLike {
-    assert(cases.nonEmpty)
+    require(cases.nonEmpty)
   }
   
   case class Gives(scrutinee: Expr, cases : Seq[MatchCase]) extends MatchLike {
-    assert(cases.nonEmpty)
+    require(cases.nonEmpty)
     def asIncompleteMatch = {
       val theHole = SimpleCase(WildcardPattern(None), Hole(this.getType, Seq()))
       MatchExpr(scrutinee, cases :+ theHole)
     }
+  } 
+  
+  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends MatchLike {
+    require(cases.nonEmpty)
+
+    override def getType = BooleanType
+    val scrutinee = Tuple(Seq(in, out))
+    
+    def asConstraint = {
+      val defaultCase = SimpleCase(WildcardPattern(None), out)
+      Equals(out, MatchExpr(in, cases :+ defaultCase))
+    }
   }
+
 
   sealed abstract class MatchCase extends Tree {
     val pattern: Pattern
@@ -246,7 +259,7 @@ object Trees {
   case class And(exprs: Seq[Expr]) extends Expr {
     def getType = BooleanType
 
-    assert(exprs.size >= 2)
+    require(exprs.size >= 2)
   }
 
   object And {
@@ -256,7 +269,7 @@ object Trees {
   case class Or(exprs: Seq[Expr]) extends Expr {
     def getType = BooleanType
 
-    assert(exprs.size >= 2)
+    require(exprs.size >= 2)
   }
 
   object Or {
@@ -456,7 +469,7 @@ object Trees {
 
   // Provide an oracle (synthesizable, all-seeing choose)
   case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with UnaryExtractable {
-    assert(!oracles.isEmpty)
+    require(!oracles.isEmpty)
 
     def getType = body.getType
 
@@ -501,7 +514,7 @@ object Trees {
     val getType = MultisetType(baseType)
   }
   case class FiniteMultiset(elements: Seq[Expr]) extends Expr {
-    assert(elements.size > 0)
+    require(elements.nonEmpty)
     def getType = MultisetType(leastUpperBound(elements.map(_.getType)).getOrElse(Untyped))
   }
   case class Multiplicity(element: Expr, multiset: Expr) extends Expr {
