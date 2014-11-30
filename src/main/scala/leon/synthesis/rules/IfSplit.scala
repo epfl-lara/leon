@@ -7,6 +7,7 @@ package rules
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object IfSplit extends Rule("If-Split") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -29,15 +30,15 @@ case object IfSplit extends Rule("If-Split") {
 
   def split(i: IfExpr, p: Problem, description: String): RuleInstantiation = {
     val subs = List(
-      Problem(p.as, And(p.pc, i.cond), replace(Map(i -> i.thenn), p.phi), p.xs),
-      Problem(p.as, And(p.pc, Not(i.cond)), replace(Map(i -> i.elze), p.phi), p.xs)
+      Problem(p.as, and(p.pc, i.cond), replace(Map(i -> i.thenn), p.phi), p.xs),
+      Problem(p.as, and(p.pc, not(i.cond)), replace(Map(i -> i.elze), p.phi), p.xs)
     )
 
     val onSuccess: List[Solution] => Option[Solution] = {
       case sols if sols.size == 2 =>
         val List(ts, es) = sols
 
-        val pre = Or(And(i.cond, ts.pre), And(Not(i.cond), es.pre))
+        val pre = or(and(i.cond, ts.pre), and(not(i.cond), es.pre))
         val defs = ts.defs ++ es.defs
         val term = IfExpr(i.cond, ts.term, es.term)
 

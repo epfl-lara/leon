@@ -9,6 +9,7 @@ import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.Extractors._
+import leon.purescala.Constructors._
 import leon.purescala.TypeTrees._
 import leon.purescala.TreeOps._
 import leon.purescala.TypeTreeOps._
@@ -121,7 +122,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val newRhs = csesVals.zip(csesScope).map{
           case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal))
         }
-        val matchExpr = MatchExpr(scrutRes, cses.zip(newRhs).map{
+        val matchE = matchExpr(scrutRes, cses.zip(newRhs).map{
           case (sc @ SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs).setPos(sc)
           case (gc @ GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs).setPos(gc)
         }).setPos(m)
@@ -129,7 +130,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val scope = ((body: Expr) => {
           val tupleId = FreshIdentifier("t").setType(matchType)
           scrutScope(
-            Let(tupleId, matchExpr, 
+            Let(tupleId, matchE, 
               if(freshIds.isEmpty)
                 Let(resId, tupleId.toVariable, body)
               else
@@ -189,7 +190,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val invariantPostcondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2ResultVars, expr))
           whileFunDef.precondition = invariantPrecondition
           whileFunDef.postcondition = trivialPostcondition.map(expr => 
-              (resVar.id, And(expr, invariantPostcondition match { 
+              (resVar.id, and(expr, invariantPostcondition match { 
                 case Some(e) => e
                 case None => BooleanLiteral(true)
               })))

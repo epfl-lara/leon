@@ -7,6 +7,7 @@ package heuristics
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
@@ -29,8 +30,8 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
         val postCondLT = substAll(postXsMap + (origId -> Plus(Variable(inductOn), IntLiteral(1))), p.phi)
 
         val subBase = Problem(List(), subst(origId -> IntLiteral(0), p.pc), subst(origId -> IntLiteral(0), p.phi), p.xs)
-        val subGT   = Problem(inductOn :: postXs, And(Seq(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, newPc)), newPhi, p.xs)
-        val subLT   = Problem(inductOn :: postXs, And(Seq(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, newPc)), newPhi, p.xs)
+        val subGT   = Problem(inductOn :: postXs, and(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, newPc), newPhi, p.xs)
+        val subLT   = Problem(inductOn :: postXs, and(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, newPc), newPhi, p.xs)
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case List(base, gt, lt) =>
@@ -39,9 +40,9 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
               // allow invalid programs.
               None
             } else {
-              val preIn = Or(Seq(And(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
-                                 And(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
-                                 And(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre)))
+              val preIn = or(and(Equals(Variable(inductOn), IntLiteral(0)),      base.pre),
+                             and(GreaterThan(Variable(inductOn), IntLiteral(0)), gt.pre),
+                             and(LessThan(Variable(inductOn), IntLiteral(0)),    lt.pre))
               val preOut = subst(inductOn -> Variable(origId), preIn)
 
               val newFun = new FunDef(FreshIdentifier("rec", true), Nil, tpe, Seq(ValDef(inductOn, inductOn.getType)),DefType.MethodDef)

@@ -5,6 +5,7 @@ package synthesis
 
 import purescala.Common._
 import purescala.Definitions._
+import purescala.Constructors._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.DefOps._
@@ -29,12 +30,12 @@ object ChooseInfo {
 
     // Look for choose()
     for (f <- prog.definedFunctions if f.body.isDefined) {
-      val actualBody = And(f.precondition.getOrElse(BooleanLiteral(true)), f.body.get)
+      val actualBody = and(f.precondition.getOrElse(BooleanLiteral(true)), f.body.get)
       val withinCall = FunctionInvocation(f.typedWithDef, f.params.map(_.id.toVariable))
       val term = FunctionInvocation(fterm.typed(Seq(f.returnType)), Seq(withinCall))
 
       for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) {
-        results = ChooseInfo(ctx, prog, f, And(path, term), ch, ch, options) :: results
+        results = ChooseInfo(ctx, prog, f, and(path, term), ch, ch, options) :: results
       }
     }
 

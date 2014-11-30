@@ -7,6 +7,7 @@ package rules
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TreeNormalizations._
 import purescala.TypeTrees._
@@ -37,7 +38,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
       eqxs = problem.xs.toSet.intersect(vars).toList
 
       try {
-        optionNormalizedEq = Some(linearArithmeticForm(Minus(eq.left, eq.right), eqxs.toArray).toList)
+        optionNormalizedEq = Some(linearArithmeticForm(Minus(eq.lhs, eq.rhs), eqxs.toArray).toList)
       } catch {
         case NonLinearExpressionException(_) =>
           allOthers = allOthers :+ eq
@@ -56,11 +57,11 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
         if(normalizedEq.size == 1) {
           val eqPre = Equals(normalizedEq.head, IntLiteral(0))
-          val newProblem = Problem(problem.as, And(eqPre, problem.pc), And(allOthers), problem.xs)
+          val newProblem = Problem(problem.as, and(eqPre, problem.pc), andJoin(allOthers), problem.xs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case List(Solution(pre, defs, term)) =>
-              Some(Solution(And(eqPre, pre), defs, term))
+              Some(Solution(and(eqPre, pre), defs, term))
             case _ =>
               None
           }
@@ -75,7 +76,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           }
 
           val eqSubstMap: Map[Expr, Expr] = neqxs.zip(eqWitness).map{case (id, e) => (Variable(id), simplifyArithmetic(e))}.toMap
-          val freshFormula0 = simplifyArithmetic(replace(eqSubstMap, And(allOthers)))
+          val freshFormula0 = simplifyArithmetic(replace(eqSubstMap, andJoin(allOthers)))
 
           var freshInputVariables: List[Identifier] = Nil
           var equivalenceConstraints: Map[Expr, Expr] = Map()
@@ -93,7 +94,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
           val subproblemxs: List[Identifier] = freshxs ++ ys
 
-          val newProblem = Problem(problem.as ++ freshInputVariables, And(eqPre, problem.pc), freshFormula, subproblemxs)
+          val newProblem = Problem(problem.as ++ freshInputVariables, and(eqPre, problem.pc), freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case List(Solution(pre, defs, term)) => {
@@ -103,7 +104,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Some(Solution(And(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_)))))))))
+              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_)))))))))
             }
 
             case _ =>
@@ -113,7 +114,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
           if (subproblemxs.isEmpty) {
             // we directly solve
-            List(RuleInstantiation.immediateSuccess(problem, this, onSuccess(List(Solution(And(eqPre, problem.pc), Set(), Tuple(Seq())))).get))
+            List(RuleInstantiation.immediateSuccess(problem, this, onSuccess(List(Solution(and(eqPre, problem.pc), Set(), Tuple(Seq())))).get))
           } else {
             List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
           }

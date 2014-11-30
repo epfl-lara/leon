@@ -8,6 +8,7 @@ import purescala.TreeOps.preTraversal
 import purescala.TypeTrees._
 import purescala.Trees._
 import purescala.Definitions._
+import purescala.Constructors._
 
 object TypingPhase extends LeonPhase[Program, Program] {
 
@@ -39,8 +40,8 @@ object TypingPhase extends LeonPhase[Program, Program] {
         argTypesPreconditions match {
           case Nil => fd.precondition
           case xs => fd.precondition match {
-            case Some(p) => Some(And(p +: xs))
-            case None => Some(And(xs))
+            case Some(p) => Some(andJoin(p +: xs))
+            case None => Some(andJoin(xs))
           }
         }
       }
@@ -50,7 +51,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
 
           fd.postcondition match {
             case Some((id, p)) =>
-              Some((id, And(CaseClassInstanceOf(cct, Variable(id)).setPos(p), p).setPos(p)))
+              Some((id, and(CaseClassInstanceOf(cct, Variable(id)).setPos(p), p).setPos(p)))
 
             case None =>
               val resId = FreshIdentifier("res").setType(cct)

@@ -446,7 +446,6 @@ trait SMTLIBTarget {
         e match {
           case (_: Equals) => Core.Equals(toSMT(a), toSMT(b))
           case (_: Implies) => Core.Implies(toSMT(a), toSMT(b))
-          case (_: Iff) => Core.Equals(toSMT(a), toSMT(b))
           case (_: Plus) => Ints.Add(toSMT(a), toSMT(b))
           case (_: Minus) => Ints.Sub(toSMT(a), toSMT(b))
           case (_: Times) => Ints.Mul(toSMT(a), toSMT(b))

@@ -21,6 +21,7 @@ import purescala.Trees.{Expr => LeonExpr, This => LeonThis, _}
 import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.Extractors.IsTyped
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTreeOps._
 import purescala.DefOps.{inPackage, inUnit}
@@ -1033,7 +1034,7 @@ trait CodeExtraction extends ASTExtractors {
 
           tupleExpr.getType match {
             case TupleType(tpes) if tpes.size >= index =>
-              TupleSelect(tupleExpr, index)
+              tupleSelect(tupleExpr, index)
 
             case _ =>
               outOfSubsetError(current, "Invalid tupple access")
@@ -1305,12 +1306,6 @@ trait CodeExtraction extends ASTExtractors {
           val rr = extractTree(r)
 
           (rl.getType, rr.getType) match {
-            case (SetType(_), SetType(_)) =>
-              SetEquals(rl, rr)
-
-            case (BooleanType, BooleanType) =>
-              Iff(rl, rr)
-
             case (rt, lt) if isSubtypeOf(rt, lt) || isSubtypeOf(lt, rt) =>
               Equals(rl, rr)
 
@@ -1407,7 +1402,7 @@ trait CodeExtraction extends ASTExtractors {
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)
           val rc = cses.map(extractMatchCase(_))
-          MatchExpr(rs, rc)
+          matchExpr(rs, rc)
 
         case t: This =>
           extractType(t) match {
@@ -1523,10 +1518,10 @@ trait CodeExtraction extends ASTExtractors {
 
             // Boolean methods
             case (IsTyped(a1, BooleanType), "&&", List(IsTyped(a2, BooleanType))) =>
-              And(a1, a2)
+              and(a1, a2)
 
             case (IsTyped(a1, BooleanType), "||", List(IsTyped(a2, BooleanType))) =>
-              Or(a1, a2)
+              or(a1, a2)
 
             // Set methods
             case (IsTyped(a1, SetType(b1)), "min", Nil) =>

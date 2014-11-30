@@ -8,6 +8,7 @@ import solvers._
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
@@ -82,7 +83,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
                 val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(cct, subIds.map(Variable(_)))), v))
 
-                InductCase(newIds, newCalls, newPattern, And(pc, CaseClassInstanceOf(cct, Variable(id))), newMap)
+                InductCase(newIds, newCalls, newPattern, and(pc, CaseClassInstanceOf(cct, Variable(id))), newMap)
               }
             }).flatten
           } else {
@@ -117,7 +118,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
             recCalls += postXs -> (Variable(cid) +: residualArgs.map(id => Variable(id)))
           }
 
-          val subProblem = Problem(c.ids ::: postXss, And(subPC :: postFs), subPhi, p.xs)
+          val subProblem = Problem(c.ids ::: postXss, andJoin(subPC :: postFs), subPhi, p.xs)
           //println(subProblem)
           //println(recCalls)
           (subProblem, pat, recCalls, pc)
@@ -130,7 +131,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
             val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs, DefType.MethodDef)
 
             val cases = for ((sol, (problem, pat, calls, pc)) <- (sols zip subProblemsInfo)) yield {
-              globalPre ::= And(pc, sol.pre)
+              globalPre ::= and(pc, sol.pre)
 
               SimpleCase(pat, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => LetTuple(binders, FunctionInvocation(newFun.typed, callargs), t) })
             }
@@ -142,17 +143,17 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
               // might only have to enforce it on solutions of base cases.
               None
             } else {
-              val funPre = substAll(substMap, And(p.pc, Or(globalPre)))
+              val funPre = substAll(substMap, and(p.pc, orJoin(globalPre)))
               val funPost = substAll(substMap, p.phi)
               val idPost = FreshIdentifier("res").setType(resType)
-              val outerPre = Or(globalPre)
+              val outerPre = orJoin(globalPre)
 
               newFun.precondition = Some(funPre)
               newFun.postcondition = Some((idPost, LetTuple(p.xs.toSeq, Variable(idPost), funPost)))
 
-              newFun.body = Some(MatchExpr(Variable(inductOn), cases))
+              newFun.body = Some(matchExpr(Variable(inductOn), cases))
 
-              Some(Solution(Or(globalPre), 
+              Some(Solution(orJoin(globalPre),
                             sols.flatMap(_.defs).toSet+newFun,
                             FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable(_)))
                           ))

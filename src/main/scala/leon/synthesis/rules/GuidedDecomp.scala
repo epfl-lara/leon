@@ -40,12 +40,12 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
     val alts = guides.collect {
       case g @ IfExpr(c, thn, els) =>
-        val sub1 = p.copy(pc = And(c, replace(Map(g -> thn), p.pc)))
-        val sub2 = p.copy(pc = And(Not(c), replace(Map(g -> els), p.pc)))
+        val sub1 = p.copy(pc = and(c, replace(Map(g -> thn), p.pc)))
+        val sub2 = p.copy(pc = and(Not(c), replace(Map(g -> els), p.pc)))
 
         val onSuccess: List[Solution] => Option[Solution] = { 
           case List(s1, s2) =>
-            Some(Solution(Or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(c, s1.term, s2.term)))
+            Some(Solution(or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(c, s1.term, s2.term)))
           case _ =>
             None
         }
@@ -66,13 +66,13 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           val scrutConstraint = if (localScrut == scrut) BooleanLiteral(true) else Equals(localScrut, scrut)
           val substs = patternSubstitutions(localScrut, c.pattern)
           
-          val pc  = simplify( And( Seq(
+          val pc  = simplify(and(
             scrutCond,
             replace(Map(scrut0 -> scrut),doSubstitute(substs,scrutConstraint)),
-            replace(Map(scrut0 -> scrut), replace(Map(m -> c.rhs), And(cond)))
-          )))
+            replace(Map(scrut0 -> scrut), replace(Map(m -> c.rhs), andJoin(cond)))
+          ))
           val phi = doSubstitute(substs, p.phi) 
-          val free = variablesOf(And(pc, phi)) -- p.xs
+          val free = variablesOf(and(pc, phi)) -- p.xs
           val asPrefix = p.as.filter(free)
 
           Problem(asPrefix ++ (free -- asPrefix), pc, phi, p.xs)
@@ -87,10 +87,10 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           }
 
           Some(Solution(
-            Or(subs.map(_.pre)), 
-            subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _), 
-            if (scrut0 != scrut) Let(scrut.id, scrut0, MatchExpr(scrut, cases))
-            else MatchExpr(scrut, cases)
+            orJoin(subs.map(_.pre)),
+            subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _),
+            if (scrut0 != scrut) Let(scrut.id, scrut0, matchExpr(scrut, cases))
+            else matchExpr(scrut, cases)
           ))
         }
 

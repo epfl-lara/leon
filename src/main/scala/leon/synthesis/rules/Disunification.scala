@@ -8,6 +8,7 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 object Disunification {
   case object Decomp extends Rule("Disunif. Decomp.") {
@@ -19,14 +20,14 @@ object Disunification {
           if (cc1 == cc2) {
             (neq, List(BooleanLiteral(false)))
           } else if (cd1 == cd2) {
-            (neq, (args1 zip args2).map(p => Not(Equals(p._1, p._2))))
+            (neq, (args1 zip args2).map(p => not(Equals(p._1, p._2))))
           } else {
             (neq, List(BooleanLiteral(true)))
           }
       }.unzip
 
       if (!toRemove.isEmpty) {
-        val sub = p.copy(phi = Or((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
+        val sub = p.copy(phi = orJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
         List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
       } else {

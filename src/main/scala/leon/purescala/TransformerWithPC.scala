@@ -6,6 +6,7 @@ package purescala
 import Trees._
 import TreeOps._
 import Extractors._
+import Constructors._
 
 abstract class TransformerWithPC extends Transformer {
   type C
@@ -25,7 +26,7 @@ abstract class TransformerWithPC extends Transformer {
 
       var soFar = path
 
-      MatchExpr(rs, cases.map { c =>
+      matchExpr(rs, cases.map { c =>
         val patternExprPos = conditionForPattern(rs, c.pattern, includeBinders = true)
         val patternExprNeg = conditionForPattern(rs, c.pattern, includeBinders = false)
 
@@ -52,7 +53,7 @@ abstract class TransformerWithPC extends Transformer {
 
     case And(es) =>
       var soFar = path
-      And(for(e <- es) yield {
+      andJoin(for(e <- es) yield {
         val se = rec(e, soFar)
         soFar = register(se, soFar)
         se
@@ -60,7 +61,7 @@ abstract class TransformerWithPC extends Transformer {
 
     case Or(es) =>
       var soFar = path
-      Or(for(e <- es) yield {
+      orJoin(for(e <- es) yield {
         val se = rec(e, soFar)
         soFar = register(Not(se), soFar)
         se

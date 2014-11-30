@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.Trees._
 import xlang.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TypeTrees._
 
 object UnitElimination extends TransformationPhase {
@@ -80,7 +81,7 @@ object UnitElimination extends TransformationPhase {
           case ((nbUnit, newIndex), (tpe, i)) =>
             if(i == index-1) (nbUnit, index - nbUnit) else (if(tpe == UnitType) nbUnit + 1 else nbUnit, newIndex)
         }
-        TupleSelect(removeUnit(t), newIndex)
+        tupleSelect(removeUnit(t), newIndex)
       }
       case Let(id, e, b) => {
         if(id.getType == UnitType)
@@ -146,7 +147,7 @@ object UnitElimination extends TransformationPhase {
           case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
         }
         val tpe = csesRec.head.rhs.getType
-        MatchExpr(scrutRec, csesRec).setPos(m)
+        matchExpr(scrutRec, csesRec).setPos(m)
       }
       case _ => sys.error("not supported: " + expr)
     }

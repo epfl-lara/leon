@@ -8,6 +8,7 @@ import solvers._
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
@@ -68,7 +69,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
 
           val subPre = CaseClassInstanceOf(cct, Variable(origId))
 
-          val subProblem = Problem(inputs ::: residualArgs, And(subPC :: postFs), subPhi, p.xs)
+          val subProblem = Problem(inputs ::: residualArgs, andJoin(subPC :: postFs), subPhi, p.xs)
 
           (subProblem, subPre, cct, newIds, recCalls)
         }
@@ -80,7 +81,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs, DefType.MethodDef)
 
             val cases = for ((sol, (problem, pre, cct, ids, calls)) <- (sols zip subProblemsInfo)) yield {
-              globalPre ::= And(pre, sol.pre)
+              globalPre ::= and(pre, sol.pre)
 
               val caze = CaseClassPattern(None, cct, ids.map(id => WildcardPattern(Some(id))))
               SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => LetTuple(binders, FunctionInvocation(newFun.typed, callargs), t) })
@@ -93,17 +94,17 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
               // might only have to enforce it on solutions of base cases.
               None
             } else {
-              val funPre = substAll(substMap, And(p.pc, Or(globalPre)))
+              val funPre = substAll(substMap, and(p.pc, orJoin(globalPre)))
               val funPost = substAll(substMap, p.phi)
               val idPost = FreshIdentifier("res").setType(resType)
-              val outerPre = Or(globalPre)
+              val outerPre = orJoin(globalPre)
 
               newFun.precondition = Some(funPre)
               newFun.postcondition = Some((idPost, LetTuple(p.xs.toSeq, Variable(idPost), funPost)))
 
-              newFun.body = Some(MatchExpr(Variable(inductOn), cases))
+              newFun.body = Some(matchExpr(Variable(inductOn), cases))
 
-              Some(Solution(Or(globalPre), 
+              Some(Solution(orJoin(globalPre),
                             sols.flatMap(_.defs).toSet+newFun,
                             FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable(_)))
                           ))

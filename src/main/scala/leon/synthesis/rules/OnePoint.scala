@@ -31,7 +31,7 @@ case object OnePoint extends NormalizingRule("One-point") {
       val others = exprs.filter(_ != eq)
       val oxs    = p.xs.filter(_ != x)
 
-      val newProblem = Problem(p.as, p.pc, subst(x -> e, And(others)), oxs)
+      val newProblem = Problem(p.as, p.pc, subst(x -> e, andJoin(others)), oxs)
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(Solution(pre, defs, term)) =>

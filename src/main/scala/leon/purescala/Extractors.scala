@@ -11,6 +11,7 @@ object Extractors {
   import TypeTreeOps._
   import Definitions._
   import Extractors._
+  import Constructors._
   import TreeOps._
 
   object UnaryOperator {
@@ -24,7 +25,7 @@ object Extractors {
       case SetMax(s) => Some((s,SetMax))
       case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
-      case TupleSelect(t, i) => Some((t, TupleSelect(_, i)))
+      case TupleSelect(t, i) => Some((t, tupleSelect(_, i)))
       case ArrayLength(a) => Some((a, ArrayLength))
       case ArrayClone(a) => Some((a, ArrayClone))
       case ArrayMake(t) => Some((t, ArrayMake))
@@ -42,8 +43,7 @@ object Extractors {
   object BinaryOperator {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
       case Equals(t1,t2) => Some((t1,t2,Equals.apply))
-      case Iff(t1,t2) => Some((t1,t2,Iff(_,_)))
-      case Implies(t1,t2) => Some((t1,t2,Implies.apply))
+      case Implies(t1,t2) => Some((t1,t2, implies))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
       case Times(t1,t2) => Some((t1,t2,Times))
@@ -89,8 +89,8 @@ object Extractors {
       case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, (as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi))))
       case fa @ Application(caller, args) => Some((caller +: args), (as => Application(as.head, as.tail).setPos(fa)))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
-      case And(args) => Some((args, And.apply))
-      case Or(args) => Some((args, Or.apply))
+      case And(args) => Some((args, and))
+      case Or(args) => Some((args, or))
       case FiniteSet(args) =>
         Some((args.toSeq,
               { newargs =>
@@ -139,7 +139,7 @@ object Extractors {
               case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
             }
 
-           MatchExpr(es(0), newcases)
+           matchExpr(es(0), newcases)
            }))
       case Passes(scrut, tests) =>
         Some((scrut +: tests.flatMap{ case SimpleCase(_, e) => Seq(e)
@@ -236,6 +236,20 @@ object Extractors {
 
   object IsTyped {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
+  }
+
+  object Pattern {
+    def unapply(p : Pattern) : Option[(
+      Option[Identifier], 
+      Seq[Pattern], 
+      (Option[Identifier], Seq[Pattern]) => Pattern
+    )] = Some(p match {
+      case InstanceOfPattern(b, ct)       => (b, Seq(), (b, _)  => InstanceOfPattern(b,ct))
+      case WildcardPattern(b)             => (b, Seq(), (b, _)  => WildcardPattern(b))
+      case CaseClassPattern(b, ct, subs)  => (b, subs,  (b, sp) => CaseClassPattern(b, ct, sp))
+      case TuplePattern(b,subs)           => (b, subs,  (b, sp) => TuplePattern(b, sp))
+      case LiteralPattern(b, l)           => (b, Seq(), (b, _)  => LiteralPattern(b, l))
+    })
   }
 
 }

@@ -7,6 +7,7 @@ package heuristics
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -18,10 +19,10 @@ case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
         var phi = p.phi
         phi match {
           case Not(And(es)) =>
-            phi = Or(es.map(Not(_)))
+            phi = orJoin(es.map(not(_)))
             
           case Not(Or(es)) =>
-            phi = And(es.map(Not(_)))
+            phi = andJoin(es.map(not(_)))
 
           case _ =>
         }
@@ -34,7 +35,7 @@ case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
             val optapp = for ((a, i) <- as.zipWithIndex) yield {
               a match {
                 case Or(os) =>
-                  Some(rules.CaseSplit.split(os.map(o => And(as.updated(i, o))), p, "Inner case-split"))
+                  Some(rules.CaseSplit.split(os.map(o => andJoin(as.updated(i, o))), p, "Inner case-split"))
 
                 case _ =>
                   None

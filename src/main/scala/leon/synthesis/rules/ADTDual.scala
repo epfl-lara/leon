@@ -7,6 +7,7 @@ package rules
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object ADTDual extends NormalizingRule("ADTDual") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -25,7 +26,7 @@ case object ADTDual extends NormalizingRule("ADTDual") {
     }.unzip
 
     if (!toRemove.isEmpty) {
-      val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
+      val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
       List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, "ADTDual"))
     } else {

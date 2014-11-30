@@ -8,6 +8,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
@@ -18,7 +19,7 @@ trait NaiveAssumptionSolver extends AssumptionSolver {
   def checkAssumptions(bs: Set[Expr]): Option[Boolean] = {
     push()
     lastBs = bs;
-    assertCnstr(And(bs.toSeq))
+    assertCnstr(andJoin(bs.toSeq))
     val res = check
     pop()
 

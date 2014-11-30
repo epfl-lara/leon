@@ -9,6 +9,7 @@ import Definitions._
 import Common._
 import Trees._
 import Extractors._
+import Constructors._
 
 object TypeTreeOps {
   def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
@@ -280,7 +281,7 @@ object TypeTreeOps {
                 sys.error("woot!?")
             }
 
-            MatchExpr(srec(e), cases.map(trCase)).copiedFrom(m)
+            matchExpr(srec(e), cases.map(trCase)).copiedFrom(m)
 
           case Error(tpe, desc) =>
             Error(tpeSub(tpe), desc).copiedFrom(e)

@@ -12,6 +12,7 @@ object Trees {
   import TypeTreeOps._
   import Definitions._
   import Extractors._
+  import Constructors._
 
 
   /* EXPRESSIONS */
@@ -170,25 +171,9 @@ object Trees {
     def getType = TupleType(exprs.map(_.getType))
   }
 
-  // TODO: ship this simplification to constructors
-  object TupleSelect {
-    def apply(tuple: Expr, index: Int): Expr = {
-      tuple match {
-        case Tuple(exprs) => exprs(index-1) // indexes as 1-based
-        case _ => new TupleSelect(tuple, index)
-      }
-    }
-
-    def unapply(e: TupleSelect): Option[(Expr, Int)] = {
-      if (e eq null) None else Some((e.tuple, e.index))
-    }
-  }
-
-  // This must be 1-indexed ! (So are methods of Scala Tuples)
-  class TupleSelect(val tuple: Expr, val index: Int) extends Expr {
+  // Index is 1-based, first element of tuple is 1.
+  case class TupleSelect(tuple: Expr, index: Int) extends Expr {
     assert(index >= 1)
-
-    assert(tuple.getType.isInstanceOf[TupleType], "Applying TupleSelect on a non-tuple tree [%s] of type [%s].".format(tuple, tuple.getType))
 
     def getType = tuple.getType match {
       case TupleType(ts) =>
@@ -198,77 +183,27 @@ object Trees {
       case _ =>
         Untyped
     }
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: TupleSelect => t.tuple == tuple && t.index == index
-      case _ => false
-    })
-
-    override def hashCode: Int = tuple.hashCode + index.hashCode + 1
   }
 
-  object MatchExpr {
-    def apply(scrutinee: Expr, cases: Seq[MatchCase]) : MatchExpr = {
-      scrutinee.getType match {
-        case a: AbstractClassType => new MatchExpr(scrutinee, cases)
-        case c: CaseClassType => new MatchExpr(scrutinee, cases.filter(_.pattern match {
-          case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
-          case _ => true
-        }))
-        case _: TupleType | Int32Type | BooleanType | UnitType => new MatchExpr(scrutinee, cases)
-        
-        case t => scala.sys.error("Constructing match expression on non-supported type: "+t)
-      }
-    }
-
-    def unapply(me: MatchExpr) : Option[(Expr,Seq[MatchCase])] = if (me == null) None else Some((me.scrutinee, me.cases))
-  }
-
-  class MatchExpr(val scrutinee: Expr, val cases: Seq[MatchCase]) extends Expr {
+  case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
     assert(cases.nonEmpty)
 
     def getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped)
-
-    def scrutineeClassType: ClassType = scrutinee.getType.asInstanceOf[ClassType]
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: MatchExpr => t.scrutinee == scrutinee && t.cases == cases
-      case _ => false
-    })
-
-    override def hashCode: Int = scrutinee.hashCode + cases.hashCode + 2
   }
 
   sealed abstract class MatchCase extends Tree {
     val pattern: Pattern
     val rhs: Expr
-    val theGuard: Option[Expr]
-    def hasGuard = theGuard.isDefined
-    def expressions: Seq[Expr]
+    val optGuard: Option[Expr]
+    def expressions: Seq[Expr] = List(rhs) ++ optGuard
   }
 
   case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
-    val theGuard = None
-    def expressions = List(rhs)
+    val optGuard = None
   }
+
   case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
-    val theGuard = Some(guard)
-    def expressions = List(guard, rhs)
-  }
-
-
-  object Pattern {
-    def unapply(p : Pattern) : Option[(
-      Option[Identifier], 
-      Seq[Pattern], 
-      (Option[Identifier], Seq[Pattern]) => Pattern
-    )] = Some(p match {
-      case InstanceOfPattern(b, ct)       => (b, Seq(), (b,_) => InstanceOfPattern(b,ct))
-      case WildcardPattern(b)             => (b, Seq(), (b,_) => WildcardPattern(b)     )
-      case CaseClassPattern(b, ct, subs)  => (b, subs,  CaseClassPattern(_, ct, _)      )
-      case TuplePattern(b,subs)           => (b, subs,  TuplePattern                    )
-      case LiteralPattern(b, l)           => (b, Seq(), (b,_) => LiteralPattern(b, l)   )
-    })
+    val optGuard = Some(guard)
   }
 
   sealed abstract class Pattern extends Tree {
@@ -285,10 +220,10 @@ object Trees {
   }
 
   case class InstanceOfPattern(binder: Option[Identifier], ct: ClassType) extends Pattern { // c: Class
-    val subPatterns = Seq.empty
+    val subPatterns = Seq()
   }
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
-    val subPatterns = Seq.empty
+    val subPatterns = Seq()
   } 
   case class CaseClassPattern(binder: Option[Identifier], ct: CaseClassType, subPatterns: Seq[Pattern]) extends Pattern
 
@@ -300,195 +235,38 @@ object Trees {
 
 
   /* Propositional logic */
-  object And {
-    def apply(l: Expr, r: Expr) : Expr = And(Seq(l, r))
-
-    def apply(exprs: Seq[Expr]) : Expr = {
-      val flat = exprs.flatMap(_ match {
-        case And(es) => es
-        case o => Seq(o)
-      })
-
-      var stop = false
-      val simpler = for(e <- flat if !stop && e != BooleanLiteral(true)) yield {
-        if(e == BooleanLiteral(false)) stop = true
-        e
-      }
-
-      simpler match {
-        case Seq() => BooleanLiteral(true)
-        case Seq(x) => x
-        case _ => new And(simpler)
-      }
-    }
-
-    def unapply(and: And) : Option[Seq[Expr]] = 
-      if(and == null) None else Some(and.exprs)
-  }
-
-  class And private (val exprs: Seq[Expr]) extends Expr {
+  case class And(exprs: Seq[Expr]) extends Expr {
     def getType = BooleanType
 
     assert(exprs.size >= 2)
+  }
 
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: And => t.exprs == exprs
-      case _ => false
-    })
+  object And {
+    def apply(a: Expr, b: Expr): Expr = And(Seq(a, b))
+  }
 
-    override def hashCode: Int = exprs.hashCode + 3
+  case class Or(exprs: Seq[Expr]) extends Expr {
+    def getType = BooleanType
+
+    assert(exprs.size >= 2)
   }
 
   object Or {
-    def apply(l: Expr, r: Expr) : Expr = (l,r) match {
-      case (BooleanLiteral(true),_)  => BooleanLiteral(true)
-      case (BooleanLiteral(false),_) => r
-      case (_,BooleanLiteral(false)) => l
-      case _ => new Or(Seq(l,r))
-    }
-    def apply(exprs: Seq[Expr]) : Expr = {
-      val flat = exprs.flatMap(_ match {
-        case Or(es) => es
-        case o => Seq(o)
-      })
-
-      var stop = false
-      val simpler = for(e <- flat if !stop && e != BooleanLiteral(false)) yield {
-        if(e == BooleanLiteral(true)) stop = true
-        e
-      }
-
-      simpler match {
-        case Seq() => BooleanLiteral(false)
-        case Seq(x) => x
-        case _ => new Or(simpler)
-      }
-    }
-
-    def unapply(or: Or) : Option[Seq[Expr]] = 
-      if(or == null) None else Some(or.exprs)
+    def apply(a: Expr, b: Expr): Expr = Or(Seq(a, b))
   }
 
-  class Or private[Trees] (val exprs: Seq[Expr]) extends Expr {
+  case class Implies(lhs: Expr, rhs: Expr) extends Expr {
     def getType = BooleanType
-
-    assert(exprs.size >= 2)
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Or => t.exprs == exprs
-      case _ => false
-    })
-
-    override def hashCode: Int = exprs.hashCode + 4
   }
 
-  object Iff {
-    def apply(left: Expr, right: Expr) : Expr = (left, right) match {
-      case (BooleanLiteral(true), r) => r
-      case (l, BooleanLiteral(true)) => l
-      case (BooleanLiteral(false), r) => Not(r)
-      case (l, BooleanLiteral(false)) => Not(l)
-      case (l,r) => new Iff(l, r)  
-    }
-
-    def unapply(iff: Iff) : Option[(Expr,Expr)] = {
-      if(iff != null) Some((iff.left, iff.right)) else None
-    }
-  }
-
-  class Iff private[Trees] (val left: Expr, val right: Expr) extends Expr {
-    def getType = BooleanType
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Iff => t.left == left && t.right == right
-      case _ => false
-    })
-
-    override def hashCode: Int = left.hashCode + right.hashCode + 5
-  }
-
-  object Implies {
-    def apply(left: Expr, right: Expr) : Expr = (left,right) match {
-      case (BooleanLiteral(false), _) => BooleanLiteral(true)
-      case (_, BooleanLiteral(true)) => BooleanLiteral(true)
-      case (BooleanLiteral(true), r) => r
-      case (l, BooleanLiteral(false)) => Not(l)
-      case (l1, Implies(l2, r2)) => Implies(And(l1, l2), r2)
-      case _ => new Implies(left, right)
-    }
-    def unapply(imp: Implies) : Option[(Expr,Expr)] =
-      if(imp == null) None else Some(imp.left, imp.right)
-  }
-
-  class Implies private[Trees] (val left: Expr, val right: Expr) extends Expr {
-    def getType = BooleanType
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Implies => t.left == left && t.right == right
-      case _ => false
-    })
-
-    override def hashCode: Int = left.hashCode + right.hashCode + 6
-  }
-
-  object Not {
-    def apply(expr : Expr) : Expr = expr match {
-      case Not(e) => e
-      case BooleanLiteral(v) => BooleanLiteral(!v)
-      case _ => new Not(expr)
-    }
-
-    def unapply(not : Not) : Option[Expr] = {
-      if(not != null) Some(not.expr) else None
-    }
-  }
-
-  class Not private[Trees] (val expr: Expr) extends Expr {
+  case class Not(expr: Expr) extends Expr {
     val getType = BooleanType
-
-    override def equals(that: Any) : Boolean = (that != null) && (that match {
-      case n : Not => n.expr == expr
-      case _ => false
-    })
-
-    override def hashCode : Int = expr.hashCode + 7
   }
 
-  object Equals {
-    def apply(l : Expr, r : Expr) : Expr = (l.getType, r.getType) match {
-      case (BooleanType, BooleanType) => Iff(l, r)
-      case _ => new Equals(l, r)
-    }
-    def unapply(e : Equals) : Option[(Expr,Expr)] = if (e == null) None else Some((e.left, e.right))
-  }
-
-  object SetEquals {
-    def apply(l : Expr, r : Expr) : Equals = new Equals(l,r)
-    def unapply(e : Equals) : Option[(Expr,Expr)] = if(e == null) None else (e.left.getType, e.right.getType) match {
-      case (SetType(_), SetType(_)) => Some((e.left, e.right))
-      case _ => None
-    }
-  }
-
-  object MultisetEquals {
-    def apply(l : Expr, r : Expr) : Equals = new Equals(l,r)
-    def unapply(e : Equals) : Option[(Expr,Expr)] = if(e == null) None else (e.left.getType, e.right.getType) match {
-      case (MultisetType(_), MultisetType(_)) => Some((e.left, e.right))
-      case _ => None
-    }
-  }
-
-  class Equals private[Trees] (val left: Expr, val right: Expr) extends Expr {
+  case class Equals(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: Equals => t.left == left && t.right == right
-      case _ => false
-    })
-
-    override def hashCode: Int = left.hashCode + right.hashCode + 8
   }
-  
+
   case class Variable(id: Identifier) extends Expr with Terminal {
     private var _tpe = id.getType
 

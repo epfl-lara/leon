@@ -10,6 +10,7 @@ import purescala.Common._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 import solvers._
 
@@ -19,25 +20,25 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
     val candidates = p.as.filter(_.getType == Int32Type).combinations(2).toList.filter {
       case List(a1, a2) =>
-        val toValLT = Implies(p.pc, LessThan(Variable(a1), Variable(a2)))
+        val toValLT = implies(p.pc, LessThan(Variable(a1), Variable(a2)))
 
-        val impliesLT = solver.solveSAT(Not(toValLT)) match {
+        val impliesLT = solver.solveSAT(not(toValLT)) match {
           case (Some(false), _) => true
           case _ => false
         }
 
         if (!impliesLT) {
-          val toValGT = Implies(p.pc, GreaterThan(Variable(a1), Variable(a2)))
+          val toValGT = implies(p.pc, GreaterThan(Variable(a1), Variable(a2)))
 
-          val impliesGT = solver.solveSAT(Not(toValGT)) match {
+          val impliesGT = solver.solveSAT(not(toValGT)) match {
             case (Some(false), _) => true
             case _ => false
           }
 
           if (!impliesGT) {
-            val toValEQ = Implies(p.pc, Equals(Variable(a1), Variable(a2)))
+            val toValEQ = implies(p.pc, Equals(Variable(a1), Variable(a2)))
 
-            val impliesEQ = solver.solveSAT(Not(toValEQ)) match {
+            val impliesEQ = solver.solveSAT(not(toValEQ)) match {
               case (Some(false), _) => true
               case _ => false
             }
@@ -56,13 +57,13 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
     candidates.flatMap(_ match {
       case List(a1, a2) =>
 
-        val subLT = p.copy(pc = And(LessThan(Variable(a1), Variable(a2)), p.pc))
-        val subEQ = p.copy(pc = And(Equals(Variable(a1), Variable(a2)), p.pc))
-        val subGT = p.copy(pc = And(GreaterThan(Variable(a1), Variable(a2)), p.pc))
+        val subLT = p.copy(pc = and(LessThan(Variable(a1), Variable(a2)), p.pc))
+        val subEQ = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc))
+        val subGT = p.copy(pc = and(GreaterThan(Variable(a1), Variable(a2)), p.pc))
 
         val onSuccess: List[Solution] => Option[Solution] = { 
           case sols @ List(sLT, sEQ, sGT) =>
-            val pre  = Or(sols.map(_.pre))
+            val pre  = orJoin(sols.map(_.pre))
             val defs = sLT.defs ++ sEQ.defs ++ sGT.defs
 
             val term = IfExpr(LessThan(Variable(a1), Variable(a2)),

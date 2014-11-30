@@ -9,6 +9,7 @@ import z3.scala._
 import solvers._
 import purescala.Common._
 import purescala.Definitions._
+import purescala.Constructors._
 import purescala.Trees._
 import purescala.TypeTreeOps._
 import xlang.Trees._
@@ -498,7 +499,7 @@ trait AbstractZ3Solver
         rec(matchToIfThenElse(me))
       
       case Passes(scrut, tests) =>
-        rec(matchToIfThenElse(MatchExpr(scrut, tests)))
+        rec(matchToIfThenElse(matchExpr(scrut, tests)))
 
       case tu @ Tuple(args) =>
         typeToSort(tu.getType) // Make sure we generate sort & meta info
@@ -523,7 +524,7 @@ trait AbstractZ3Solver
       case LetTuple(ids, e, b) => {
         var ix = 1
         z3Vars = z3Vars ++ ids.map((id) => {
-          val entry = (id -> rec(TupleSelect(e,ix)))
+          val entry = (id -> rec(tupleSelect(e, ix)))
           ix += 1
           entry
         })
@@ -552,12 +553,6 @@ trait AbstractZ3Solver
       case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
       case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
       case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
-      case Iff(l, r) =>
-        val rl = rec(l)
-        val rr = rec(r)
-        z3.mkIff(rl, rr)
-
-      case Not(Iff(l, r)) => z3.mkXor(rec(l), rec(r))
       case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
@@ -595,7 +590,6 @@ trait AbstractZ3Solver
       case fa @ Application(caller, args) =>
         z3.mkSelect(rec(caller), rec(Tuple(args)))
 
-      case SetEquals(s1, s2) => z3.mkEq(rec(s1), rec(s2))
       case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
       case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
       case SetIntersection(s1, s2) => z3.mkSetIntersect(rec(s1), rec(s2))
@@ -793,12 +787,12 @@ trait AbstractZ3Solver
                   case OpFalse =>   BooleanLiteral(false)
                   case OpEq =>      Equals(rargs(0), rargs(1))
                   case OpITE =>     IfExpr(rargs(0), rargs(1), rargs(2))
-                  case OpAnd =>     And(rargs)
-                  case OpOr =>      Or(rargs)
-                  case OpIff =>     Iff(rargs(0), rargs(1))
-                  case OpXor =>     Not(Iff(rargs(0), rargs(1)))
-                  case OpNot =>     Not(rargs(0))
-                  case OpImplies => Implies(rargs(0), rargs(1))
+                  case OpAnd =>     andJoin(rargs)
+                  case OpOr =>      orJoin(rargs)
+                  case OpIff =>     Equals(rargs(0), rargs(1))
+                  case OpXor =>     not(Equals(rargs(0), rargs(1)))
+                  case OpNot =>     not(rargs(0))
+                  case OpImplies => implies(rargs(0), rargs(1))
                   case OpLE =>      LessEquals(rargs(0), rargs(1))
                   case OpGE =>      GreaterEquals(rargs(0), rargs(1))
                   case OpLT =>      LessThan(rargs(0), rargs(1))

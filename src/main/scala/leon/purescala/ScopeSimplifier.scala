@@ -9,6 +9,7 @@ import Trees._
 import TypeTrees._
 import TreeOps._
 import Extractors._
+import Constructors._
 
 class ScopeSimplifier extends Transformer {
   case class Scope(inScope: Set[Identifier] = Set(), oldToNew: Map[Identifier, Identifier] = Map(), funDefs: Map[FunDef, FunDef] = Map()) {
@@ -111,7 +112,7 @@ class ScopeSimplifier extends Transformer {
         (newPattern, curScope)
       }
 
-      MatchExpr(rs, cases.map { c =>
+      matchExpr(rs, cases.map { c =>
         val (newP, newScope) = trPattern(c.pattern, scope)
 
         c match {

@@ -9,6 +9,7 @@ import purescala.Common._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 import solvers._
 
@@ -18,7 +19,7 @@ case object EqualitySplit extends Rule("Eq. Split") {
 
     val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
-        val toValEQ = Implies(p.pc, Equals(Variable(a1), Variable(a2)))
+        val toValEQ = implies(p.pc, Equals(Variable(a1), Variable(a2)))
 
         val impliesEQ = solver.solveSAT(Not(toValEQ)) match {
           case (Some(false), _) => true
@@ -26,7 +27,7 @@ case object EqualitySplit extends Rule("Eq. Split") {
         }
 
         if (!impliesEQ) {
-          val toValNE = Implies(p.pc, Not(Equals(Variable(a1), Variable(a2))))
+          val toValNE = implies(p.pc, not(Equals(Variable(a1), Variable(a2))))
 
           val impliesNE = solver.solveSAT(Not(toValNE)) match {
             case (Some(false), _) => true
@@ -43,12 +44,12 @@ case object EqualitySplit extends Rule("Eq. Split") {
     candidates.flatMap(_ match {
       case List(a1, a2) =>
 
-        val sub1 = p.copy(pc = And(Equals(Variable(a1), Variable(a2)), p.pc))
-        val sub2 = p.copy(pc = And(Not(Equals(Variable(a1), Variable(a2))), p.pc))
+        val sub1 = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc))
+        val sub2 = p.copy(pc = and(not(Equals(Variable(a1), Variable(a2))), p.pc))
 
         val onSuccess: List[Solution] => Option[Solution] = { 
           case List(s1, s2) =>
-            Some(Solution(Or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term)))
+            Some(Solution(or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term)))
           case _ =>
             None
         }

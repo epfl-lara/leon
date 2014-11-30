@@ -272,7 +272,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" }
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
-      case Iff(l,r)             => optP { p"$l <=> $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
       case UMinus(expr)         => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
@@ -655,7 +654,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: Or | BinaryMethodCall(_, "||", _)) => 1
     case (_: And | BinaryMethodCall(_, "&&", _)) => 3
     case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
-    case (_: Equals | _: Iff | _: Not) => 5
+    case (_: Equals | _: Not) => 5
     case (_: Plus | _: Minus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
     case (_: Times | _: Division | _: Modulo | BinaryMethodCall(_, "*" | "/", _)) => 7
     case _ => 7

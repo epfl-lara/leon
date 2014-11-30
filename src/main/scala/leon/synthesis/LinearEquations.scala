@@ -86,8 +86,8 @@ object LinearEquations {
   //as are the parameters while xs are the variable for which we want to find one satisfiable assignment
   //return (pre, sol) with pre a precondition under which sol is a solution mapping to the xs
   def particularSolution(as: Set[Identifier], xs: Set[Identifier], equation: Equals): (Expr, Map[Identifier, Expr]) = {
-    val lhs = equation.left
-    val rhs = equation.right
+    val lhs = equation.lhs
+    val rhs = equation.rhs
     val orderedXs = xs.toArray
     val normalized: Array[Expr] = linearArithmeticForm(Minus(lhs, rhs), orderedXs)
     val (pre, sols) = particularSolution(as, normalized.toList)

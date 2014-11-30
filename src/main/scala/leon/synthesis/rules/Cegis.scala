@@ -16,6 +16,7 @@ import purescala.TreeOps._
 import purescala.DefOps._
 import purescala.TypeTreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.ScalaPrinter
 import utils.Helpers._
 
@@ -330,19 +331,19 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           // Represents the case where all parents guards are false, indicating
           // that this C should not be considered at all
-          val failedPath = And(parentGuards.toSeq.map(p => Not(p.toVariable)))
+          val failedPath = andJoin(parentGuards.toSeq.map(p => Not(p.toVariable)))
 
           val distinct = bvs.combinations(2).collect {
             case List(a, b) =>
-              Or(Not(a) :: Not(b) :: Nil)
+              or(not(a), not(b))
           }
 
-          And(Seq(Or(failedPath :: bvs), Implies(failedPath, And(bvs.map(Not(_))))) ++ distinct)
+          andJoin(Seq(orJoin(failedPath :: bvs), implies(failedPath, andJoin(bvs.map(Not(_))))) ++ distinct)
         }
 
         // Generate all the b => c = ...
         val impliess = mappings.map { case (bid, (recId, ex)) =>
-          Implies(Variable(bid), Equals(Variable(recId), ex))
+          implies(Variable(bid), Equals(Variable(recId), ex))
         }
 
         (pathConstraints ++ impliess).toSeq
@@ -373,14 +374,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           // Represents the case where all parents guards are false, indicating
           // that this C should not be considered at all
-          val failedPath = And(parentGuards.toSeq.map(p => Not(p.toVariable)))
+          val failedPath = andJoin(parentGuards.toSeq.map(p => not(p.toVariable)))
 
           val distinct = bvs.combinations(2).collect {
             case List(a, b) =>
-              Or(Not(a) :: Not(b) :: Nil)
+              or(not(a), not(b))
           }
 
-          val pre = And(Seq(Or(failedPath +: bvs), Implies(failedPath, And(bvs.map(Not(_))))) ++ distinct)
+          val pre = andJoin(Seq(orJoin(failedPath +: bvs), implies(failedPath, andJoin(bvs.map(Not(_))))) ++ distinct)
 
           var cBankCache = Map[TypeTree, Stream[Identifier]]()
           def freshC(t: TypeTree): Stream[Identifier] = Stream.cons(FreshIdentifier("c", true).setType(t), freshC(t))
@@ -403,7 +404,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
             newMappings  += bid -> (recId -> ex)
 
-            Implies(Variable(bid), Equals(Variable(recId), ex))
+            implies(Variable(bid), Equals(Variable(recId), ex))
           }
 
           val newBIds = altsWithBranches.map(_._1).toSet
@@ -532,7 +533,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             val res = Equals(Tuple(p.xs.map(Variable(_))), expr)
 
             val solver3 = sctx.newSolver.setTimeout(cexSolverTo)
-            solver3.assertCnstr(And(safePc :: res :: Not(p.phi) :: Nil))
+            solver3.assertCnstr(and(safePc, res, not(p.phi)))
 
             try {
               solver3.check match {
@@ -554,8 +555,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         // Keep track of collected cores to filter programs to test
         var collectedCores = Set[Set[Identifier]]()
 
-        val initExClause = And(safePc :: p.phi :: Variable(initGuard) :: Nil)
-        val initCExClause = And(safePc :: Not(p.phi) :: Variable(initGuard) :: Nil)
+        val initExClause  = and(safePc, p.phi,      Variable(initGuard))
+        val initCExClause = and(safePc, not(p.phi), Variable(initGuard))
 
         // solver1 is used for the initial SAT queries
         var solver1 = sctx.newSolver.setTimeout(exSolverTo)
@@ -588,7 +589,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 debug("CLOSED Bs "+closedBs)
               }
 
-              val clause = And(clauses)
+              val clause = andJoin(clauses)
 
               solver1.assertCnstr(clause)
               solver2.assertCnstr(clause)
@@ -642,7 +643,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   result = Some(rs)
                 case _ =>
                   wrongPrograms.foreach { p =>
-                    solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
+                    solver1.assertCnstr(Not(andJoin(p.map(Variable(_)).toSeq)))
                   }
               }
             } else if (((nPassing < allPrograms*filterThreshold) || didFilterAlready) && useBssFiltering) {
@@ -663,13 +664,13 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               solver2.assertCnstr(initCExClause)
 
               val clauses = ndProgram.filterFor(bssToKeep)
-              val clause = And(clauses)
+              val clause  = andJoin(clauses)
 
               solver1.assertCnstr(clause)
               solver2.assertCnstr(clause)
             } else {
               wrongPrograms.foreach { p =>
-                solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
+                solver1.assertCnstr(not(andJoin(p.map(_.toVariable).toSeq)))
               }
             }
 
@@ -696,7 +697,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                       true
                     } else {
                       // One valid input failed with this candidate, we can skip
-                      solver1.assertCnstr(Not(And(p.map(Variable(_)).toSeq)))
+                      solver1.assertCnstr(not(andJoin(p.map(_.toVariable).toSeq)))
                       false
                     }
                   } else {
@@ -709,7 +710,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                       case Some(true) =>
                         val invalidModel = solver2.getModel
 
-                        val fixedAss = And(ass.collect {
+                        val fixedAss = andJoin(ass.collect {
                           case a if invalidModel contains a => Equals(Variable(a), invalidModel(a))
                         }.toSeq)
 
@@ -755,7 +756,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                         if (unsatCore.isEmpty) {
                           skipCESearch = true
                         } else {
-                          solver1.assertCnstr(Not(And(unsatCore.toSeq)))
+                          solver1.assertCnstr(not(andJoin(unsatCore.toSeq)))
                         }
 
                       case Some(false) =>

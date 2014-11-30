@@ -12,6 +12,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 
@@ -80,7 +81,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           if(!tfd.hasImplementation) {
             val (cses, default) = p._2 
             val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
-                            And(
+                            andJoin(
                               q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
                             ),
                             fromZ3Formula(model, q._2),
@@ -225,7 +226,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   def fairCheck(assumptions: Set[Expr]): Option[Boolean] = {
     foundDefinitiveAnswer = false
 
-    def entireFormula  = And(assumptions.toSeq ++ frameExpressions.flatten)
+    def entireFormula  = andJoin(assumptions.toSeq ++ frameExpressions.flatten)
 
     def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty, core: Set[Expr] = Set.empty) : Unit = {
       foundDefinitiveAnswer = true

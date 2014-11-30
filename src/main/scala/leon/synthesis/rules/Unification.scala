@@ -8,6 +8,7 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 object Unification {
   case object DecompTrivialClash extends NormalizingRule("Unif Dec./Clash/Triv.") {
@@ -26,7 +27,7 @@ object Unification {
       }.unzip
 
       if (!toRemove.isEmpty) {
-        val sub = p.copy(phi = And((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
+        val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
 
         List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))

@@ -31,7 +31,7 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
 
       val simp = Simplifiers.bestEffort(sctx.context, sctx.program) _
 
-      val vc = simp(And(p.pc, LetTuple(p.xs, wrappedE, Not(p.phi))))
+      val vc = simp(and(p.pc, letTuple(p.xs, wrappedE, not(p.phi))))
 
       val solver = sctx.newSolver.setTimeout(2000L)
 

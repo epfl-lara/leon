@@ -8,6 +8,7 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 import solvers._
 
@@ -32,7 +33,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
           var predicates: Seq[Expr]           = Seq()
 
           while (result.isEmpty && i < maxTries && continue) {
-            val phi = And(p.pc +: p.phi +: predicates)
+            val phi = andJoin(p.pc +: p.phi +: predicates)
             //println("SOLVING " + phi + " ...")
             solver.solveSAT(phi) match {
               case (Some(true), satModel) =>

@@ -9,6 +9,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.xlang.Trees._
 import leon.purescala.Extractors._
+import leon.purescala.Constructors._
 import leon.purescala.TypeTrees._
 
 object ArrayTransformation extends TransformationPhase {
@@ -85,7 +86,7 @@ object ArrayTransformation extends TransformationPhase {
         case GuardedCase(pat, guard, rhs) => GuardedCase(pat, transform(guard), transform(rhs))
       }
       val tpe = csesRec.head.rhs.getType
-      MatchExpr(scrutRec, csesRec).setPos(m)
+      matchExpr(scrutRec, csesRec).setPos(m)
     }
     case LetDef(fd, b) => {
       fd.precondition = fd.precondition.map(transform)

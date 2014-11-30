@@ -8,7 +8,6 @@ import utils.Simplifiers
 import leon.solvers._
 
 import scala.collection.concurrent.TrieMap
-import DefOps._
 
 object TreeOps {
   import Common._
@@ -17,6 +16,8 @@ object TreeOps {
   import Trees._
   import TypeTreeOps._
   import Extractors._
+  import Constructors._
+  import DefOps._
 
   /**
    * Core API
@@ -389,10 +390,10 @@ object TreeOps {
   def negate(expr: Expr) : Expr = (expr match {
     case Let(i,b,e) => Let(i,b,negate(e))
     case Not(e) => e
-    case Iff(e1,e2) => Iff(negate(e1),e2)
-    case Implies(e1,e2) => And(e1, negate(e2))
-    case Or(exs) => And(exs map negate)
-    case And(exs) => Or(exs map negate)
+    case Equals(e1,e2) => Equals(negate(e1),e2)
+    case Implies(e1,e2) => and(e1, negate(e2))
+    case Or(exs) => and(exs map negate: _*)
+    case And(exs) => or(exs map negate: _*)
     case LessThan(e1,e2) => GreaterEquals(e1,e2)
     case LessEquals(e1,e2) => GreaterThan(e1,e2)
     case GreaterThan(e1,e2) => LessEquals(e1,e2)
@@ -427,7 +428,7 @@ object TreeOps {
 
     postMap({
       case m @ MatchExpr(s, cses) =>
-        Some(MatchExpr(s, cses.map(freshenCase(_))).copiedFrom(m))
+        Some(matchExpr(s, cses.map(freshenCase(_))).copiedFrom(m))
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, true).copiedFrom(i)
@@ -445,10 +446,10 @@ object TreeOps {
   def normalizeExpression(expr: Expr) : Expr = {
     def rec(e: Expr): Option[Expr] = e match {
       case TupleSelect(Let(id, v, b), ts) =>
-        Some(Let(id, v, TupleSelect(b, ts)))
+        Some(Let(id, v, tupleSelect(b, ts)))
 
       case TupleSelect(LetTuple(ids, v, b), ts) =>
-        Some(LetTuple(ids, v, TupleSelect(b, ts)))
+        Some(LetTuple(ids, v, tupleSelect(b, ts)))
 
       case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
         Some(thenn)
@@ -556,7 +557,7 @@ object TreeOps {
 
       case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
         val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-          case (v,i) => (v -> TupleSelect(tExpr, i + 1).copiedFrom(v))
+          case (v,i) => (v -> tupleSelect(tExpr, i + 1).copiedFrom(v))
         }
 
         Some(replace(substMap, body))
@@ -587,7 +588,7 @@ object TreeOps {
           Some(body)
         } else if(total == 1) {
           val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-            case (v,i) => (v -> TupleSelect(tExpr, i + 1).copiedFrom(v))
+            case (v,i) => (v -> tupleSelect(tExpr, i + 1).copiedFrom(v))
           }
 
           Some(replace(substMap, body))
@@ -607,7 +608,7 @@ object TreeOps {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
-      case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
+      case m @ MatchExpr(scrut,cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case n @ NAryOperator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
@@ -694,7 +695,7 @@ object TreeOps {
       case TuplePattern(_, subps) =>
         val TupleType(subts) = in.getType
         val subExprs = (subps zip subts).zipWithIndex map {
-          case ((p, t), index) => p.binder.map(_.toVariable).getOrElse(TupleSelect(in, index+1))
+          case ((p, t), index) => p.binder.map(_.toVariable).getOrElse(tupleSelect(in, index+1))
         }
 
         // Special case to get rid of (a,b) match { case (c,d) => .. }
@@ -766,22 +767,22 @@ object TreeOps {
               bind(ob, in)
 
             case cct: CaseClassType =>
-              And(CaseClassInstanceOf(cct, in), bind(ob, in))
+              and(CaseClassInstanceOf(cct, in), bind(ob, in))
           }
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.fields.size == subps.size)
           val pairs = cct.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(CaseClassSelector(cct, in, p._1), p._2))
-          val together = And(bind(ob, in) +: subTests)
-          And(CaseClassInstanceOf(cct, in), together)
+          val together = and(bind(ob, in) +: subTests :_*)
+          and(CaseClassInstanceOf(cct, in), together)
 
         case TuplePattern(ob, subps) => {
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
-          val subTests = subps.zipWithIndex.map{case (p, i) => rec(TupleSelect(in, i+1), p)}
-          And(bind(ob, in) +: subTests)
+          val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1), p)}
+          and(bind(ob, in) +: subTests: _*)
         }
-        case LiteralPattern(ob,lit) => And(Equals(in,lit), bind(ob,in))
+        case LiteralPattern(ob,lit) => and(Equals(in,lit), bind(ob,in))
       }
     }
 
@@ -807,7 +808,7 @@ object TreeOps {
       val TupleType(tpes) = in.getType
       assert(tpes.size == subps.size)
 
-      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(TupleSelect(in, i+1), p)}
+      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(tupleSelect(in, i+1), p)}
       val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
       b match {
         case Some(id) => map + (id -> in)
@@ -827,8 +828,8 @@ object TreeOps {
         val condsAndRhs = for(cse <- cases) yield {
           val map = mapForPattern(scrut, cse.pattern)
           val patCond = conditionForPattern(scrut, cse.pattern, includeBinders = false)
-          val realCond = cse.theGuard match {
-            case Some(g) => And(patCond, replaceFromIDs(map, g))
+          val realCond = cse.optGuard match {
+            case Some(g) => and(patCond, replaceFromIDs(map, g))
             case None => patCond
           }
           val newRhs = replaceFromIDs(map, cse.rhs)
@@ -852,18 +853,18 @@ object TreeOps {
   }
 
   def matchCasePathConditions(m : MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = m match {
-    case MatchExpr(scrut, cases) => 
+    case MatchExpr(scrut, cases) =>
       var pcSoFar = pathCond
       for (c <- cases) yield {
 
-        val g = c.theGuard getOrElse BooleanLiteral(true)
+        val g = c.optGuard getOrElse BooleanLiteral(true)
         val cond = conditionForPattern(scrut, c.pattern, includeBinders = true)
         val localCond = pcSoFar :+ cond :+ g
         
         // These contain no binders defined in this MatchCase
         val condSafe = conditionForPattern(scrut, c.pattern)
         val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
-        pcSoFar ::= Not(And(condSafe,gSafe))
+        pcSoFar ::= not(and(condSafe, gSafe))
 
         localCond
       }
@@ -1095,7 +1096,7 @@ object TreeOps {
   object CollectorWithPaths {
     def apply[T](p: PartialFunction[Expr,T]): CollectorWithPaths[(T, Expr)] = new CollectorWithPaths[(T, Expr)] {
       def collect(e: Expr, path: Seq[Expr]): Option[(T, Expr)] = if (!p.isDefinedAt(e)) None else {
-        Some(p(e) -> And(path))
+        Some(p(e) -> and(path: _*))
       }
     }
   }
@@ -1150,7 +1151,7 @@ object TreeOps {
 
   class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
     val matcher = ChooseMatch.lift
-    def collect(e: Expr, path: Seq[Expr]) = matcher(e).map(_ -> And(path))
+    def collect(e: Expr, path: Seq[Expr]) = matcher(e).map(_ -> and(path: _*))
   }
 
   /**
@@ -1399,7 +1400,7 @@ object TreeOps {
             val v = Variable(on)
 
             recSelectors.map{ s =>
-              And(And(isType, expr), Not(replace(Map(v -> CaseClassSelector(cct, v, s)), expr)))
+              and(isType, expr, not(replace(Map(v -> CaseClassSelector(cct, v, s)), expr)))
             }
           }
       }.flatten
@@ -1756,7 +1757,7 @@ object TreeOps {
             case (None, None) =>
               None
             case (Some(oe), Some(ie)) =>
-              Some(And(oe, simplePreTransform(pre)(ie)))
+              Some(and(oe, simplePreTransform(pre)(ie)))
           }
 
           def mergePost(outer: Option[(Identifier, Expr)], inner: Option[(Identifier, Expr)]): Option[(Identifier, Expr)] = (outer, inner) match {
@@ -1767,7 +1768,7 @@ object TreeOps {
             case (None, None) =>
               None
             case (Some((oid, oe)), Some((iid, ie))) =>
-              Some((oid, And(oe, replaceFromIDs(Map(iid -> Variable(oid)), simplePreTransform(pre)(ie)))))
+              Some((oid, and(oe, replaceFromIDs(Map(iid -> Variable(oid)), simplePreTransform(pre)(ie)))))
           }
 
           val newFd = fdOuter.duplicate
@@ -2086,7 +2087,7 @@ object TreeOps {
 
         if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
           if (!orcases.tail.isEmpty) {
-            pre(IfExpr(orcases.head, thenn, IfExpr(Or(orcases.tail), thenn, elze)))
+            pre(IfExpr(orcases.head, thenn, IfExpr(orJoin(orcases.tail), thenn, elze)))
           } else {
             val TopLevelAnds(andcases) = orcases.head
 
@@ -2095,7 +2096,7 @@ object TreeOps {
             if (andis.isEmpty || andnotis.isEmpty) {
               e
             } else {
-              IfExpr(And(andis), IfExpr(And(andnotis), thenn, elze), elze)
+              IfExpr(and(andis: _*), IfExpr(and(andnotis: _*), thenn, elze), elze)
             }
           }
         } else {
@@ -2268,10 +2269,10 @@ object TreeOps {
               Seq(c)
           }}
 
-          var finalMatch = MatchExpr(scrutinee, List(newCases.head))
+          var finalMatch = matchExpr(scrutinee, List(newCases.head))
 
           for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
-            finalMatch = MatchExpr(scrutinee, finalMatch.cases :+ toAdd)
+            finalMatch = matchExpr(scrutinee, finalMatch.cases :+ toAdd)
           }
 
           finalMatch

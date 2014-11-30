@@ -7,6 +7,7 @@ import Common._
 import Trees._
 import TypeTrees._
 import Definitions._
+import Constructors._
 
 import PrinterHelpers._
 
@@ -23,8 +24,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
    
     tree match {
       case Not(Equals(l, r))    => p"$l != $r"
-      case Iff(l,r)             => p"$l == $r"
-      case Implies(l,r)         => pp(Or(Not(l), r))
+      case Implies(l,r)         => pp(or(not(l), r))
       case Choose(vars, pred)   => p"choose((${typed(vars)}) => $pred)"
       case s @ FiniteSet(rss)    => {
         val rs = rss.toSeq

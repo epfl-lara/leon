@@ -7,6 +7,7 @@ package heuristics
 import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
@@ -36,7 +37,7 @@ case object SelectiveInlining extends Rule("Sel. Inlining") with Heuristic {
         newExprs = newExprs.filterNot(toRemove)
       }
 
-      val sub = p.copy(phi = And(newExprs))
+      val sub = p.copy(phi = andJoin(newExprs))
 
       Some(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
     } else {

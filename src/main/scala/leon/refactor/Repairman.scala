@@ -66,16 +66,16 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val withinCall = FunctionInvocation(fd.typedWithDef, fd.params.map(_.id.toVariable))
     val terminating = FunctionInvocation(termfd.typed(Seq(fd.returnType)), Seq(withinCall))
 
-    val spec = And(Seq(
+    val spec = and(
       fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
       passes
-    ))
+    )
 
-    val pc = And(Seq(
+    val pc = and(
       pre,
       guide,
       terminating
-    ))
+    )
 
     // Synthesis from the ground up
     val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
@@ -197,7 +197,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     if (s1 == s2) {
       None
     } else {
-      val diff = And(p.pc, Not(Equals(s1, s2)))
+      val diff = and(p.pc, not(Equals(s1, s2)))
       val solver = (new FairZ3Solver(ctx, program) with TimeoutSolver).setTimeout(1000)
 
       solver.assertCnstr(diff)

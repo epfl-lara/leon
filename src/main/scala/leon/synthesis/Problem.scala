@@ -6,6 +6,7 @@ package synthesis
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
 import leon.purescala.Common._
+import leon.purescala.Constructors._
 
 // Defines a synthesis triple of the form:
 // ⟦ as ⟨ C | phi ⟩ xs ⟧
@@ -16,7 +17,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
     import purescala.Extractors._
     import evaluators._
 
-    val predicates = And(pc, phi)
+    val predicates = and(pc, phi)
 
     val ev = new DefaultEvaluator(sctx.context, sctx.program)
 

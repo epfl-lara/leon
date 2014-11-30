@@ -6,6 +6,7 @@ package combinators
 
 import purescala.Common._
 import purescala.Definitions._
+import purescala.Constructors._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
@@ -65,11 +66,11 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
       (e: Expr) => replace(substMap, e)
     }
 
-    def mkNot(e: Expr) = Not(e)
-    def mkOr(es: Expr*) = Or(es)
-    def mkAnd(es: Expr*) = And(es)
+    def mkNot(e: Expr) = not(e)
+    def mkOr(es: Expr*) = orJoin(es)
+    def mkAnd(es: Expr*) = andJoin(es)
     def mkEquals(l: Expr, r: Expr) = Equals(l, r)
-    def mkImplies(l: Expr, r: Expr) = Implies(l, r)
+    def mkImplies(l: Expr, r: Expr) = implies(l, r)
   })
 
   val unrollingBank = new UnrollingBank(reporter, templateGenerator)
@@ -120,7 +121,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   def isValidModel(model: Map[Identifier, Expr], silenceErrors: Boolean = false): Boolean = {
     import EvaluationResults._
 
-    val expr = And(frameExpressions.flatten)
+    val expr = andJoin(frameExpressions.flatten)
     val allVars = varsInVC.flatten.toSet
 
     val fullModel = allVars.map(v => v -> model.getOrElse(v, simplestValue(v.getType))).toMap
@@ -159,7 +160,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
       reporter.debug(" - Running search...")
 
       solver.push()
-      solver.assertCnstr(And((assumptions ++ unrollingBank.currentBlockers).toSeq))
+      solver.assertCnstr(andJoin((assumptions ++ unrollingBank.currentBlockers).toSeq))
       val res = solver.check
 
       reporter.debug(" - Finished search with blocked literals")
@@ -195,7 +196,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
             }
 
             solver.push()
-            solver.assertCnstr(And(assumptions.toSeq))
+            solver.assertCnstr(andJoin(assumptions.toSeq))
             val res2 = solver.check
 
             res2 match {

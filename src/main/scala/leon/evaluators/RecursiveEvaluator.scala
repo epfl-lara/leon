@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
 import purescala.TypeTrees._
+import purescala.Constructors._
 
 import solvers.TimeoutSolver
 
@@ -166,7 +167,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case And(args) =>
       e(args.head) match {
         case BooleanLiteral(false) => BooleanLiteral(false)
-        case BooleanLiteral(true) => e(And(args.tail))
+        case BooleanLiteral(true) => e(andJoin(args.tail))
         case other => throw EvalError(typeErrorMsg(other, BooleanType))
       }
 
@@ -174,7 +175,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case Or(args) =>
       e(args.head) match {
         case BooleanLiteral(true) => BooleanLiteral(true)
-        case BooleanLiteral(false) => e(Or(args.tail))
+        case BooleanLiteral(false) => e(orJoin(args.tail))
         case other => throw EvalError(typeErrorMsg(other, BooleanType))
       }
 
@@ -190,11 +191,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (le, re) => throw EvalError(typeErrorMsg(le, BooleanType))
       }
 
-    case Iff(le,re) =>
-      (e(le), e(re)) match {
-        case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
-        case _ => throw EvalError(typeErrorMsg(le, BooleanType))
-      }
     case Equals(le,re) =>
       val lv = e(le)
       val rv = e(re)
@@ -202,6 +198,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (lv,rv) match {
         case (FiniteSet(el1),FiniteSet(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
         case (FiniteMap(el1),FiniteMap(el2)) => BooleanLiteral(el1.toSet == el2.toSet)
+        case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
         case _ => BooleanLiteral(lv == rv)
       }
 
@@ -416,7 +413,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
             Equals(Variable(id), rctx.mappings(id))
         }
 
-        val cnstr = And(eqs ::: p.pc :: p.phi :: Nil)
+        val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
         solver.assertCnstr(cnstr)
 
         try {

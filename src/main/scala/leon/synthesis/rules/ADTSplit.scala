@@ -9,6 +9,7 @@ import purescala.Common._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.Definitions._
 import solvers._
 
@@ -22,7 +23,7 @@ case object ADTSplit extends Rule("ADT Split.") {
         val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
             val cct = CaseClassType(ccd, tpes)
-            val toSat = And(removeWitnesses(sctx.program)(p.pc), CaseClassInstanceOf(cct, Variable(id)))
+            val toSat = and(removeWitnesses(sctx.program)(p.pc), CaseClassInstanceOf(cct, Variable(id)))
 
             val isImplied = solver.solveSAT(toSat) match {
               case (Some(false), _) => true
@@ -70,12 +71,12 @@ case object ADTSplit extends Rule("ADT Split.") {
             var globalPre = List[Expr]()
 
             val cases = for ((sol, (cct, problem, pattern)) <- (sols zip subInfo)) yield {
-              globalPre ::= And(CaseClassInstanceOf(cct, Variable(id)), sol.pre)
+              globalPre ::= and(CaseClassInstanceOf(cct, Variable(id)), sol.pre)
 
               SimpleCase(pattern, sol.term)
             }
 
-            Some(Solution(Or(globalPre), sols.flatMap(_.defs).toSet, MatchExpr(Variable(id), cases)))
+            Some(Solution(orJoin(globalPre), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases)))
         }
 
         Some(RuleInstantiation.immediateDecomp(p, this, subInfo.map(_._2).toList, onSuccess, "ADT Split on '"+id+"'"))

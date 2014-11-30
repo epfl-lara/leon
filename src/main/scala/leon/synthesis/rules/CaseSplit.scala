@@ -7,6 +7,7 @@ package rules
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object CaseSplit extends Rule("Case-Split") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -23,7 +24,7 @@ case object CaseSplit extends Rule("Case-Split") {
 
     val onSuccess: List[Solution] => Option[Solution] = {
       case sols if sols.size == subs.size =>
-        val pre = Or(sols.map(_.pre))
+        val pre = orJoin(sols.map(_.pre))
         val defs = sols.map(_.defs).reduceLeft(_ ++ _)
 
         val (prefix, last) = (sols.dropRight(1), sols.last)

@@ -6,6 +6,7 @@ package solvers
 import utils._
 import purescala.Common._
 import purescala.Definitions._
+import purescala.Constructors._
 import purescala.Trees._
 import purescala.Extractors._
 import purescala.TreeOps._
@@ -57,7 +58,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
         val allFreeVars = freeVars.reverse.flatten
         val allConstraints = constraints.reverse.flatten
 
-        val it = datagen.get.generateFor(allFreeVars, And(allConstraints), 1, maxTried)
+        val it = datagen.get.generateFor(allFreeVars, andJoin(allConstraints), 1, maxTried)
 
         if (it.hasNext) {
           val model = it.next

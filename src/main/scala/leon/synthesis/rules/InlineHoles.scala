@@ -16,6 +16,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object InlineHoles extends Rule("Inline-Holes") {
   override val priority = RulePriorityHoles
@@ -103,7 +104,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
       }).traverse(p.phi).map(_._2)
 
       val pc = if (pathsToCalls.nonEmpty) {
-        Not(Or(pathsToCalls))
+        not(orJoin(pathsToCalls))
       } else {
         BooleanLiteral(false)
       }
@@ -113,10 +114,10 @@ case object InlineHoles extends Rule("Inline-Holes") {
       val sfact  = new TimeoutSolverFactory(sctx.solverFactory, 500L)
       val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 2000L))
 
-      val(holesAvoidable, _) = solver.solveSAT(And(p.pc, pc))
+      val(holesAvoidable, _) = solver.solveSAT(and(p.pc, pc))
 
       val avoid = if (holesAvoidable != Some(false)) {
-        val newPhi = simplifyPaths(sfact)(And(pc, p.phi))
+        val newPhi = simplifyPaths(sfact)(and(pc, p.phi))
         val newProblem1 = p.copy(phi = newPhi)
 
         Some(RuleInstantiation.immediateDecomp(p, this, List(newProblem1), {

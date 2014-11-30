@@ -241,10 +241,10 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       checkComp(e, mkCall("safe", IL(0)), F)
 
       // We use mkTrue/mkFalse to avoid automatic simplifications.
-      checkComp(e, Iff(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
-      checkComp(e, Iff(mkCall("mkTrue"),  mkCall("mkFalse")), F)
-      checkComp(e, Iff(mkCall("mkFalse"), mkCall("mkTrue")),  F)
-      checkComp(e, Iff(mkCall("mkFalse"), mkCall("mkFalse")), T)
+      checkComp(e, Equals(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
+      checkComp(e, Equals(mkCall("mkTrue"),  mkCall("mkFalse")), F)
+      checkComp(e, Equals(mkCall("mkFalse"), mkCall("mkTrue")),  F)
+      checkComp(e, Equals(mkCall("mkFalse"), mkCall("mkFalse")), T)
 
       checkComp(e, Implies(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
       checkComp(e, Implies(mkCall("mkTrue"),  mkCall("mkFalse")), F)
