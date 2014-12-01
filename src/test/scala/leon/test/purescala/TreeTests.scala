@@ -7,6 +7,7 @@ import leon.test._
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
+import leon.purescala.Constructors._
 import leon.purescala.Trees._
 import leon.purescala.TypeTrees._
 
@@ -17,8 +18,8 @@ class TreeTests extends LeonTestSuite {
     val t = BooleanLiteral(true)
     val f = BooleanLiteral(false)
 
-    def and(es : Expr*) : Expr = And(Seq(es : _*))
-    def or(es : Expr*) : Expr = Or(Seq(es : _*))
+    def and(es : Expr*) : Expr = andJoin(es)
+    def or(es : Expr*) : Expr = orJoin(es)
 
     assert(and(x, and(x, x), x) === and(x, x, x, x))
     assert(and(x, t, x, t) === and(x, x))
