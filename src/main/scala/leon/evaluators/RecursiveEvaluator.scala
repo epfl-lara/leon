@@ -380,9 +380,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       case (FiniteMap(ss), e) => BooleanLiteral(ss.exists(_._1 == e))
       case (l, r) => throw EvalError(typeErrorMsg(l, m.getType))
     }
-    case Distinct(args) =>
-      val newArgs = args.map(e(_))
-      BooleanLiteral(newArgs.distinct.size == newArgs.size)
 
     case gv: GenericValue =>
       gv

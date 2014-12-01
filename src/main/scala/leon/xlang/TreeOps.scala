@@ -23,8 +23,6 @@ object TreeOps {
       case LetVar(_, _, _) => true
       case LetDef(_, _) => true
       case ArrayUpdate(_, _, _) => true
-      case ArrayMake(_) => true
-      case ArrayClone(_) => true
       case Epsilon(_) => true
       case _ => false
     }}(expr)

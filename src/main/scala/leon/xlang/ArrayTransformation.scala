@@ -41,10 +41,6 @@ object ArrayTransformation extends TransformationPhase {
       val Variable(id) = ra
       Assignment(id, ArrayUpdated(ra, ri, rv).setPos(up))
     }
-    case ArrayClone(a) => {
-      val ra = transform(a)
-      ra
-    }
     case Let(i, v, b) => {
       v.getType match {
         case ArrayType(_) => {

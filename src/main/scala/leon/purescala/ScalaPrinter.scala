@@ -50,7 +50,6 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case SetIntersection(l,r) => p"$l & $r"
       case SetCardinality(s)    => p"$s.size"
       case FiniteArray(exprs)   => p"Array($exprs)"
-      case Distinct(exprs)      => p"distinct($exprs)"
       case Not(expr)            => p"!$expr"
       case _ =>
         super.pp(tree)

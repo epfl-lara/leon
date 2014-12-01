@@ -76,7 +76,6 @@ object TypeTrees {
     }
   }
 
-  case class ListType(base: TypeTree) extends TypeTree
   case class SetType(base: TypeTree) extends TypeTree
   case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
@@ -143,7 +142,6 @@ object TypeTrees {
       case CaseClassType(ccd, ts) => Some((ts, ts => CaseClassType(ccd, ts)))
       case AbstractClassType(acd, ts) => Some((ts, ts => AbstractClassType(acd, ts)))
       case TupleType(ts) => Some((ts, TupleType(_)))
-      case ListType(t) => Some((Seq(t), ts => ListType(ts.head)))
       case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
       case MultisetType(t) => Some((Seq(t), ts => MultisetType(ts.head)))

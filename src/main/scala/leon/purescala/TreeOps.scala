@@ -1173,7 +1173,6 @@ object TreeOps {
             None
           }
       }
-      case ListType(t)           => mapType(t).map(ListType(_))
       case SetType(t)            => mapType(t).map(SetType(_))
       case MultisetType(t)       => mapType(t).map(MultisetType(_))
       case ArrayType(t)          => mapType(t).map(ArrayType(_))

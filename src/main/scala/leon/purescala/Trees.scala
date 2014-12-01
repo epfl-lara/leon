@@ -402,17 +402,93 @@ object Trees {
     def getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
   }
 
-  @deprecated("SetMin is not supported by any solver", "2.3")
+  /* Map operations. */
+  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr with MutableTyped
+  case class MapGet(map: Expr, key: Expr) extends Expr {
+    def getType = map.getType match {
+      case MapType(from, to) => to
+      case _ => Untyped
+    }
+  }
+  case class MapUnion(map1: Expr, map2: Expr) extends Expr {
+    def getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped)
+  }
+  case class MapDifference(map: Expr, keys: Expr) extends Expr with MutableTyped
+  case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr {
+    val getType = BooleanType
+  }
+
+  /* Array operations */
+
+  case class ArraySelect(array: Expr, index: Expr) extends Expr {
+    def getType = array.getType match {
+      case ArrayType(base) =>
+        base
+      case _ =>
+        Untyped
+    }
+  }
+
+  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
+    def getType = array.getType match {
+      case ArrayType(base) =>
+        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped)
+      case _ =>
+        Untyped
+    }
+  }
+
+  case class ArrayLength(array: Expr) extends Expr {
+    val getType = Int32Type
+  }
+
+  case class FiniteArray(exprs: Seq[Expr]) extends Expr with MutableTyped
+
+  /* Special trees */
+
+  // Provide an oracle (synthesizable, all-seeing choose)
+  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with UnaryExtractable {
+    assert(!oracles.isEmpty)
+
+    def getType = body.getType
+
+    def extract = {
+      Some((body, (e: Expr) => WithOracle(oracles, e).setPos(this)))
+    }
+  }
+
+  case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with NAryExtractable {
+    val getType = tpe
+
+    def extract = {
+      Some((alts, (es: Seq[Expr]) => Hole(tpe, es).setPos(this)))
+    }
+  }
+
+  case class RepairHole(tpe: TypeTree, components: Seq[Expr]) extends Expr with NAryExtractable {
+    val getType = tpe
+
+    def extract = {
+      Some((components, (es: Seq[Expr]) => RepairHole(tpe, es).setPos(this)))
+    }
+  }
+
+  /**
+   * DEPRECATED TREES
+   * These trees are not guaranteed to be supported by Leon.
+   **/
+  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr {
+    def getType = ArrayType(defaultValue.getType)
+  }
+
   case class SetMin(set: Expr) extends Expr {
     val getType = Int32Type
   }
 
-  @deprecated("SetMax is not supported by any solver", "2.3")
   case class SetMax(set: Expr) extends Expr {
     val getType = Int32Type
   }
 
-  /* Multiset expressions  !!! UNSUPPORTED / DEPRECATED !!! */
   case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal {
     val getType = MultisetType(baseType)
   }
@@ -444,96 +520,6 @@ object Trees {
       case _ => Untyped
     }
   }
-
-  /* Map operations. */
-  case class FiniteMap(singletons: Seq[(Expr, Expr)]) extends Expr with MutableTyped
-  case class MapGet(map: Expr, key: Expr) extends Expr {
-    def getType = map.getType match {
-      case MapType(from, to) => to
-      case _ => Untyped
-    }
-  }
-  case class MapUnion(map1: Expr, map2: Expr) extends Expr {
-    def getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped)
-  }
-  case class MapDifference(map: Expr, keys: Expr) extends Expr with MutableTyped
-  case class MapIsDefinedAt(map: Expr, key: Expr) extends Expr {
-    val getType = BooleanType
-  }
-
-  /* Array operations */
-  @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
-  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr {
-    def getType = ArrayType(defaultValue.getType)
-  }
-
-  @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
-  case class ArrayMake(defaultValue: Expr) extends Expr {
-    def getType = ArrayType(defaultValue.getType)
-  }
-
-  case class ArraySelect(array: Expr, index: Expr) extends Expr {
-    def getType = array.getType match {
-      case ArrayType(base) =>
-        base
-      case _ =>
-        Untyped
-    }
-  }
-
-  case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
-    def getType = array.getType match {
-      case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped)
-      case _ =>
-        Untyped
-    }
-  }
-
-  case class ArrayLength(array: Expr) extends Expr {
-    val getType = Int32Type
-  }
-
-  case class FiniteArray(exprs: Seq[Expr]) extends Expr with MutableTyped
-
-  @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
-  case class ArrayClone(array: Expr) extends Expr {
-    def getType = array.getType
-  }
-
-  case class Distinct(exprs: Seq[Expr]) extends Expr {
-    val getType = BooleanType
-  }
-
-  /* Special trees */
-
-  // Provide an oracle (synthesizable, all-seeing choose)
-  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with UnaryExtractable {
-    assert(!oracles.isEmpty)
-
-    def getType = body.getType
-
-    def extract = {
-      Some((body, (e: Expr) => WithOracle(oracles, e).setPos(this)))
-    }
-  }
-
-  case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with NAryExtractable {
-    val getType = tpe
-
-    def extract = {
-      Some((alts, (es: Seq[Expr]) => Hole(tpe, es).setPos(this)))
-    }
-  }
-
-  case class RepairHole(tpe: TypeTree, components: Seq[Expr]) extends Expr with NAryExtractable {
-    val getType = tpe
-
-    def extract = {
-      Some((components, (es: Seq[Expr]) => RepairHole(tpe, es).setPos(this)))
-    }
-  }
-
 
 
 }

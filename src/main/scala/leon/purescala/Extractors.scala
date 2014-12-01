@@ -27,8 +27,6 @@ object Extractors {
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
       case TupleSelect(t, i) => Some((t, tupleSelect(_, i)))
       case ArrayLength(a) => Some((a, ArrayLength))
-      case ArrayClone(a) => Some((a, ArrayClone))
-      case ArrayMake(t) => Some((t, ArrayMake))
       case Lambda(args, body) => Some((body, Lambda(args, _)))
       case Forall(args, body) => Some((body, Forall(args, _)))
       case (ue: UnaryExtractable) => ue.extract
@@ -126,7 +124,6 @@ object Extractors {
           val tpe = leastUpperBound(as.map(_.getType)).map(ArrayType(_)).getOrElse(expr.getType)
           FiniteArray(as).setType(tpe)
         }))
-      case Distinct(args) => Some((args, Distinct))
       case Tuple(args) => Some((args, Tuple))
       case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
       case MatchExpr(scrut, cases) =>

@@ -669,7 +669,6 @@ trait AbstractZ3Solver
         val u = exprs.zipWithIndex.foldLeft(a)((array, expI) => ArrayUpdated(array, IntLiteral(expI._2), expI._1))
         rec(u)
       }
-      case Distinct(exs) => z3.mkDistinct(exs.map(rec(_)): _*)
 
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))
