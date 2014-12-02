@@ -87,10 +87,11 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
 
     def toIOExamples(in: Expr, out : Expr, cs : MatchCase) : Seq[(Expr,Expr)] = {
       import utils.ExpressionGrammars
+      import leon.utils.StreamUtils.cartesianProduct
       import bonsai._
       import bonsai.enumerators._
 
-      val examplesPerVariable = 5
+      val examplesPerCase = 5
      
       def doSubstitute(subs : Seq[(Identifier, Expr)], e : Expr) = 
         subs.foldLeft(e) { 
@@ -104,35 +105,25 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
         // The pattern as expression (input expression)(may contain free variables)
         val (pattExpr, ieMap) = patternToExpression(cs.pattern, in.getType)
         val freeVars = variablesOf(pattExpr).toSeq
-
         if (freeVars.isEmpty) {
           // The input contains no free vars. Trivially return input-output pair
           Seq((pattExpr, doSubstitute(ieMap,cs.rhs)))
         } else {
           // If the input contains free variables, it does not provide concrete examples. 
           // We will instantiate them according to a simple grammar to get them.
-          val grammar = ExpressionGrammars.BaseGrammar
+          val grammar = ExpressionGrammars.ValueGrammar
           val enum = new MemoizedEnumerator[TypeTree, Expr](grammar.getProductions _)
           val types = freeVars.map{ _.getType }
-          val typesWithValues = types.map { tp => (tp, enum.iterator(tp).take(examplesPerVariable).toSeq) }.toMap
+          val typesWithValues = types.map { tp => (tp, enum.iterator(tp).toStream) }.toMap
           val values = freeVars map { v => typesWithValues(v.getType) }
-          // Make all combinations of all possible instantiations
-          def combinations[A](s : Seq[Seq[A]]) : Seq[Seq[A]] = {
-            if (s.isEmpty) Seq(Seq())
-            else for {
-              h <- s.head
-              t <- combinations(s.tail)
-            } yield (h +: t)
-          }
-          val instantiations = combinations(values) map { freeVars.zip(_).toMap }
-          instantiations map { inst =>
+          val instantiations = cartesianProduct(values) map { freeVars.zip(_).toMap }
+          instantiations.map { inst =>
             (replaceFromIDs(inst, pattExpr), replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs)))  
-          }
+          }.take(examplesPerCase)
         }
         
       }
     }
-
 
     val evaluator = new DefaultEvaluator(sctx.context, sctx.program)
 

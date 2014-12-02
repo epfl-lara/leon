@@ -79,6 +79,11 @@ object ExpressionGrammars {
           Generator(List(Int32Type, Int32Type), { case Seq(a,b) => Minus(a, b) }),
           Generator(List(Int32Type, Int32Type), { case Seq(a,b) => Times(a, b) })
         )
+
+      case tp@TypeParameter(_) =>
+        for (ind <- (1 to 3).toList) yield
+          Generator[TypeTree, Expr](Nil, { _ => GenericValue(tp, ind) } )
+
       case TupleType(stps) =>
         List(Generator(stps, { sub => Tuple(sub) }))
 
@@ -98,6 +103,48 @@ object ExpressionGrammars {
           Generator(List(st, st), { case Seq(a, b) => SetUnion(a, b) }),
           Generator(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
           Generator(List(st, st), { case Seq(a, b) => SetDifference(a, b) })
+        )
+
+      case _ =>
+        Nil
+    }
+  }
+
+  case object ValueGrammar extends ExpressionGrammar[TypeTree] {
+    def computeProductions(t: TypeTree): Seq[Gen] = t match {
+      case BooleanType =>
+        List(
+          Generator(Nil, { _ => BooleanLiteral(true) }),
+          Generator(Nil, { _ => BooleanLiteral(false) })
+        )
+      case Int32Type =>
+        List(
+          Generator(Nil, { _ => IntLiteral(0) }),
+          Generator(Nil, { _ => IntLiteral(1) }),
+          Generator(Nil, { _ => IntLiteral(-1) })
+        )
+
+      case tp@TypeParameter(_) =>
+        for (ind <- (1 to 3).toList) yield
+          Generator[TypeTree, Expr](Nil, { _ => GenericValue(tp, ind) } )
+
+      case TupleType(stps) =>
+        List(Generator(stps, { sub => Tuple(sub) }))
+
+      case cct: CaseClassType =>
+        List(
+          Generator(cct.fields.map(_.getType), { case rs => CaseClass(cct, rs)} )
+        )
+
+      case act: AbstractClassType =>
+        act.knownCCDescendents.map { cct =>
+          Generator[TypeTree, Expr](cct.fields.map(_.getType), { case rs => CaseClass(cct, rs)} )
+        }
+
+      case st @ SetType(base) =>
+        List(
+          Generator(List(base),       { case elems => FiniteSet(elems.toSet).setType(st) }),
+          Generator(List(base, base), { case elems => FiniteSet(elems.toSet).setType(st) })
         )
 
       case _ =>
