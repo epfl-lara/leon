@@ -870,6 +870,70 @@ object TreeOps {
     }
   }
 
+ 
+  /*
+   * Returns a pattern and a guard, if needed
+   */
+  def expressionToPattern(e : Expr) : (Pattern, Expr) = {
+    var guard : Expr = BooleanLiteral(true)
+    def rec(e : Expr) : Pattern = e match {
+      case CaseClass(cct, fields) => CaseClassPattern(None, cct, fields map rec)
+      case Tuple(subs) => TuplePattern(None, subs map rec)
+      case l : Literal[_] => LiteralPattern(None, l)
+      case Variable(i) => WildcardPattern(Some(i))
+      case other => 
+        val id = FreshIdentifier("other", true).setType(other.getType)
+        guard = and(guard, Equals(Variable(id), other))
+        WildcardPattern(Some(id))
+    }
+    (rec(e), guard)
+  }
+
+
+  /** 
+    * Takes a pattern and returns an expression that corresponds to it.
+    * Also returns a sequence of (Identifier -> Expr) pairs which 
+    * represent the bindings for intermediate binders (from outermost to innermost)
+    */
+  def patternToExpression(p : Pattern, expectedType : TypeTree) : (Expr, Seq[(Identifier, Expr)]) = {
+    def fresh(tp : TypeTree) = FreshIdentifier("binder", true).setType(tp)
+    var ieMap = Seq[(Identifier, Expr)]()
+    def addBinding(b : Option[Identifier], e : Expr) = b foreach { ieMap +:= (_, e) }
+    def rec(p : Pattern, expectedType : TypeTree) : Expr = p match {
+      case WildcardPattern(b) => Variable(b getOrElse fresh(expectedType))
+      case LiteralPattern(b, lit) =>
+        addBinding(b,lit)
+        lit
+      case InstanceOfPattern(b, ct) => ct match {
+        case act : AbstractClassType => 
+          val e = Variable(fresh(act))
+          addBinding(b, e)
+          e
+
+        case cct : CaseClassType =>
+          val fields = cct.fields map { f => Variable(fresh(f.getType)) }
+          val e = CaseClass(cct, fields)
+          addBinding(b, e)
+          e
+      }
+      case TuplePattern(b, subs) =>
+        val TupleType(subTypes) = expectedType
+        val e = Tuple(subs zip subTypes map { 
+          case (sub, subType) => rec(sub, subType)
+        })
+        addBinding(b, e)
+        e
+      case CaseClassPattern(b, cct, subs) => 
+        val subTypes = cct.fields map { _.getType }
+        val e = CaseClass(cct, subs zip subTypes map { case (sub,tp) => rec(sub,tp) })
+        addBinding(b, e)
+        e
+    }
+
+    (rec(p, expectedType), ieMap)
+
+  }
+
 
   /**
    * Rewrites all map accesses with additional error conditions.
