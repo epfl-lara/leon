@@ -86,7 +86,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
   
 
     def toIOExamples(in: Expr, out : Expr, cs : MatchCase) : Seq[(Expr,Expr)] = {
-      import utils.ExpressionGrammars
+      import utils.ExpressionGrammars.ValueGrammar
       import leon.utils.StreamUtils.cartesianProduct
       import bonsai._
       import bonsai.enumerators._
@@ -98,10 +98,13 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
           case (from, (id, to)) => replaceFromIDs(Map(id -> to), from)
         }
 
-      // The trivial example
-      if (cs.rhs == out)
+      if (cs.optGuard.isDefined) {
+        sctx.reporter.error("Cannot handle guards in example extraction. @" + cs.optGuard.get.getPos)
         Seq()
-      else {
+      } else if (cs.rhs == out) {
+        // The trivial example
+        Seq()
+      } else {
         // The pattern as expression (input expression)(may contain free variables)
         val (pattExpr, ieMap) = patternToExpression(cs.pattern, in.getType)
         val freeVars = variablesOf(pattExpr).toSeq
@@ -111,8 +114,7 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
         } else {
           // If the input contains free variables, it does not provide concrete examples. 
           // We will instantiate them according to a simple grammar to get them.
-          val grammar = ExpressionGrammars.ValueGrammar
-          val enum = new MemoizedEnumerator[TypeTree, Expr](grammar.getProductions _)
+          val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
           val types = freeVars.map{ _.getType }
           val typesWithValues = types.map { tp => (tp, enum.iterator(tp).toStream) }.toMap
           val values = freeVars map { v => typesWithValues(v.getType) }
