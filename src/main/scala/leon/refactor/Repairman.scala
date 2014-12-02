@@ -32,7 +32,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
 
   var solutions: List[(Solution, Expr, List[FunDef])] = Nil
 
-  def repair(): Unit = {
+  def getChooseInfo(): ChooseInfo = {
     // Gather in/out tests
     val pre = fd.precondition.getOrElse(BooleanLiteral(true))
     val args = fd.params.map(_.id)
@@ -78,6 +78,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     // Synthesis from the ground up
     val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
     val ch = Choose(List(out), spec)
+    // do we really want to do that?
     fd.body = Some(ch)
 
     val soptions0 = SynthesisPhase.processOptions(ctx);
@@ -91,7 +92,14 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
       )) diff Seq(ADTInduction)
     );
 
-    val synthesizer = new Synthesizer(ctx, fd, program, p, soptions)
+    ChooseInfo(ctx, program, fd, pc, gexpr, ch, soptions)
+  }
+
+  def repair(): Unit = {
+    val ci = getChooseInfo()
+    val p  = ci.problem
+
+    val synthesizer = ci.synthesizer
 
     synthesizer.synthesize() match {
       case (search, sols) =>
@@ -115,7 +123,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
           }
         }
 
-        if (soptions.generateDerivationTrees) {
+        if (ci.options.generateDerivationTrees) {
           val dot = new DotGenerator(search.g)
           dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
         }

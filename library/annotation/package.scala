@@ -9,6 +9,8 @@ package object annotation {
   class library    extends StaticAnnotation
   @ignore
   class verified   extends StaticAnnotation
+  @ignore
+  class repair     extends StaticAnnotation
 
   @ignore
   class induct     extends StaticAnnotation

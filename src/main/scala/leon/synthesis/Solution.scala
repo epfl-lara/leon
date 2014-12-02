@@ -9,6 +9,7 @@ import purescala.TypeTrees.{TypeTree,TupleType}
 import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.ScopeSimplifier
+import purescala.Constructors._
 import solvers.z3._
 import solvers._
 
@@ -68,6 +69,10 @@ object Solution {
 
   def choose(p: Problem): Solution = {
     new Solution(BooleanLiteral(true), Set(), Choose(p.xs, p.phi))
+  }
+
+  def chooseComplete(p: Problem): Solution = {
+    new Solution(BooleanLiteral(true), Set(), Choose(p.xs, and(p.pc, p.phi)))
   }
 
   // Generate the simplest, wrongest solution, used for complexity lowerbound
