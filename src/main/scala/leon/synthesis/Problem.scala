@@ -5,13 +5,15 @@ package synthesis
 
 import leon.purescala.Trees._
 import leon.purescala.TreeOps._
+import leon.purescala.TypeTrees.TypeTree
 import leon.purescala.Common._
 import leon.purescala.Constructors._
 
 // Defines a synthesis triple of the form:
 // ⟦ as ⟨ C | phi ⟩ xs ⟧
 case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifier]) {
-  override def toString = "⟦ "+as.mkString(";")+", "+(if (pc != BooleanLiteral(true)) pc+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
+  override def toString = 
+    "⟦ "+as.mkString(";")+", " + (if (pc != BooleanLiteral(true)) pc+" ≺ " else "") + " ⟨ "+phi+" ⟩ " + xs.mkString(";") + " ⟧ "
 
   def getTests(sctx: SynthesisContext): Seq[Example] = {
     import purescala.Extractors._
@@ -81,13 +83,67 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
       case Tuple(is) => is.collect { case Variable(i) => i }.toList
       case _ => Nil
     }
+  
+
+    def toIOExamples(in: Expr, out : Expr, cs : MatchCase) : Seq[(Expr,Expr)] = {
+      import utils.ExpressionGrammars
+      import bonsai._
+      import bonsai.enumerators._
+
+      val examplesPerVariable = 5
+     
+      def doSubstitute(subs : Seq[(Identifier, Expr)], e : Expr) = 
+        subs.foldLeft(e) { 
+          case (from, (id, to)) => replaceFromIDs(Map(id -> to), from)
+        }
+
+      // The trivial example
+      if (cs.rhs == out)
+        Seq()
+      else {
+        // The pattern as expression (input expression)(may contain free variables)
+        val (pattExpr, ieMap) = patternToExpression(cs.pattern, in.getType)
+        val freeVars = variablesOf(pattExpr).toSeq
+
+        if (freeVars.isEmpty) {
+          // The input contains no free vars. Trivially return input-output pair
+          Seq((pattExpr, doSubstitute(ieMap,cs.rhs)))
+        } else {
+          // If the input contains free variables, it does not provide concrete examples. 
+          // We will instantiate them according to a simple grammar to get them.
+          val grammar = ExpressionGrammars.BaseGrammar
+          val enum = new MemoizedEnumerator[TypeTree, Expr](grammar.getProductions _)
+          val types = freeVars.map{ _.getType }
+          val typesWithValues = types.map { tp => (tp, enum.iterator(tp).take(examplesPerVariable).toSeq) }.toMap
+          val values = freeVars map { v => typesWithValues(v.getType) }
+          // Make all combinations of all possible instantiations
+          def combinations[A](s : Seq[Seq[A]]) : Seq[Seq[A]] = {
+            if (s.isEmpty) Seq(Seq())
+            else for {
+              h <- s.head
+              t <- combinations(s.tail)
+            } yield (h +: t)
+          }
+          val instantiations = combinations(values) map { freeVars.zip(_).toMap }
+          instantiations map { inst =>
+            (replaceFromIDs(inst, pattExpr), replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs)))  
+          }
+        }
+        
+      }
+    }
+
 
     val evaluator = new DefaultEvaluator(sctx.context, sctx.program)
 
     val testClusters = collect[Map[Identifier, Expr]] {
-      case FunctionInvocation(tfd, List(in, out, FiniteMap(inouts))) if tfd.id.name == "passes" =>
-        val infos = extractIds(Tuple(Seq(in, out)))
-        val exs   = inouts.map{ case (i, o) =>
+
+      //case FunctionInvocation(tfd, List(in, out, FiniteMap(inouts))) if tfd.id.name == "passes" =>
+      case p@Passes(ins, out, cases) =>
+        
+        val ioPairs = cases flatMap { toIOExamples(ins,out,_) }
+        val infos = extractIds(p.scrutinee)
+        val exs   = ioPairs.map{ case (i, o) =>
           val test = Tuple(Seq(i, o))
           val ids = variablesOf(test)
           evaluator.eval(test, ids.map { (i: Identifier) => i -> i.toVariable }.toMap) match {

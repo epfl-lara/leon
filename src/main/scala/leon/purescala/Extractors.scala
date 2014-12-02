@@ -262,4 +262,10 @@ object Extractors {
     }
   }
 
+  object UnwrapTuplePattern {
+    def unapply(p : Pattern) : Option[Seq[Pattern]] = Option(p) map {
+      case TuplePattern(_,subs) => subs
+      case other => Seq(other)
+    }
+  }
 }

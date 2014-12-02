@@ -321,7 +321,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"($args)"
         }
 
-
       case FunctionInvocation(tfd, args) =>
         p"${tfd.id}"
 
