@@ -173,7 +173,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"$id"
 
       case LetTuple(bs,d,e) =>
-        e match {
+        optB { e match {
           case _:LetDef | _ : Let | _ : LetTuple =>
             p"""|val ($bs) = {
                 |  $d
@@ -182,9 +182,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           case _ =>
             p"""|val ($bs) = $d;
                 |$e"""
-        }
+        }}
       case Let(b,d,e) =>
-        e match {
+        optB { e match {
           case _:LetDef | _ : Let | _ : LetTuple =>
             p"""|val $b = {
                 |  $d
@@ -193,7 +193,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           case _ =>
             p"""|val $b = $d;
                 |$e"""
-        }
+        }}
       case LetDef(fd,body) =>
         optB {
           p"""|$fd
@@ -614,7 +614,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case FcallMethodInvocation(rec, _, name, Nil, List(a)) =>
 
         if (makeBinary contains name) {
-          Some((rec, name, a))
+          if(name == "::")
+            Some((a, name, rec))
+          else
+            Some((rec, name, a))
         } else {
           None
         }
@@ -653,7 +656,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_, Some(_: Assert)) => false
     case (_, Some(_: Require)) => false
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetTuple | _: LetDef | _: IfExpr | _ : CaseClass)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false
