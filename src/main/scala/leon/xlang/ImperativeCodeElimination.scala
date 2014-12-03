@@ -123,8 +123,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           case (cVal, cScope) => replaceNames(scrutFun, cScope(cVal))
         }
         val matchE = matchExpr(scrutRes, cses.zip(newRhs).map{
-          case (sc @ SimpleCase(pat, _), newRhs) => SimpleCase(pat, newRhs).setPos(sc)
-          case (gc @ GuardedCase(pat, guard, _), newRhs) => GuardedCase(pat, replaceNames(scrutFun, guard), newRhs).setPos(gc)
+          case (mc @ MatchCase(pat, guard, _), newRhs) => MatchCase(pat, guard map { replaceNames(scrutFun, _)}, newRhs).setPos(mc)
         }).setPos(m)
 
         val scope = ((body: Expr) => {

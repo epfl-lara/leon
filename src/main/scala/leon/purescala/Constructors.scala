@@ -122,4 +122,5 @@ object Constructors {
     case (l1, Implies(l2, r2))      => implies(and(l1, l2), r2)
     case _                          => Implies(lhs, rhs)
   }
+  
 }

@@ -114,13 +114,7 @@ class ScopeSimplifier extends Transformer {
 
       MatchExpr(rs, cases.map { c =>
         val (newP, newScope) = trPattern(c.pattern, scope)
-
-        c match {
-          case SimpleCase(p, rhs) =>
-            SimpleCase(newP, rec(rhs, newScope))
-          case GuardedCase(p, g, rhs) =>
-            GuardedCase(newP, rec(g, newScope), rec(rhs, newScope))
-        }
+        MatchCase(newP, c.optGuard map {rec(_, newScope)}, rec(c.rhs, newScope))
       })
 
     case Variable(id) =>

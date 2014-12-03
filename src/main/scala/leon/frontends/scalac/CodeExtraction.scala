@@ -20,7 +20,7 @@ import purescala.Definitions.{
 import purescala.Trees.{Expr => LeonExpr, This => LeonThis, _}
 import purescala.TypeTrees.{TypeTree => LeonType, _}
 import purescala.Common._
-import purescala.Extractors.{IsTyped,UnwrapTuple}
+import purescala.Extractors._
 import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTreeOps._

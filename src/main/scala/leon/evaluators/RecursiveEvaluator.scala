@@ -9,6 +9,7 @@ import purescala.TreeOps._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Constructors._
+import purescala.Extractors._
 
 import solvers.TimeoutSolver
 
@@ -522,7 +523,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         matchesPattern(p, scrut).map( r =>
           (caze, r)
         )
-
 
       case GuardedCase(p, g, rhs) =>
         matchesPattern(p, scrut).flatMap( r =>

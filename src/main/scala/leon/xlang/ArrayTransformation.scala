@@ -77,10 +77,7 @@ object ArrayTransformation extends TransformationPhase {
 
     case m @ MatchExpr(scrut, cses) => {
       val scrutRec = transform(scrut)
-      val csesRec = cses.map{
-        case SimpleCase(pat, rhs) => SimpleCase(pat, transform(rhs))
-        case GuardedCase(pat, guard, rhs) => GuardedCase(pat, transform(guard), transform(rhs))
-      }
+      val csesRec = cses.map{ cse => MatchCase(cse.pattern, cse.optGuard map transform, transform(cse.rhs)) }
       val tpe = csesRec.head.rhs.getType
       matchExpr(scrutRec, csesRec).setPos(m)
     }

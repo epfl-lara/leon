@@ -212,19 +212,8 @@ object Trees {
   }
 
 
-  sealed abstract class MatchCase extends Tree {
-    val pattern: Pattern
-    val rhs: Expr
-    val optGuard: Option[Expr]
+  case class MatchCase(pattern : Pattern, optGuard : Option[Expr], rhs: Expr) extends Tree {
     def expressions: Seq[Expr] = List(rhs) ++ optGuard
-  }
-
-  case class SimpleCase(pattern: Pattern, rhs: Expr) extends MatchCase {
-    val optGuard = None
-  }
-
-  case class GuardedCase(pattern: Pattern, guard: Expr, rhs: Expr) extends MatchCase {
-    val optGuard = Some(guard)
   }
 
   sealed abstract class Pattern extends Tree {

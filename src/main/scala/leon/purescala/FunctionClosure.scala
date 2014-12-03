@@ -143,24 +143,15 @@ object FunctionClosure extends TransformationPhase {
     }
     case m @ MatchExpr(scrut,cses) => {
       val scrutRec = functionClosure(scrut, bindedVars, id2freshId, fd2FreshFd)
-      val csesRec = cses.map{
-        case SimpleCase(pat, rhs) => {
-          val binders = pat.binders
-          val cond = conditionForPattern(scrut, pat)
-          pathConstraints ::= cond
-          val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
-          pathConstraints = pathConstraints.tail
-          SimpleCase(pat, rRhs)
-        }
-        case GuardedCase(pat, guard, rhs) => {
-          val binders = pat.binders
-          val cond = conditionForPattern(scrut, pat)
-          pathConstraints ::= cond
-          val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
-          val rGuard = functionClosure(guard, bindedVars ++ binders, id2freshId, fd2FreshFd)
-          pathConstraints = pathConstraints.tail
-          GuardedCase(pat, rGuard, rRhs)
-        }
+      val csesRec = cses.map{ cse =>
+        import cse._
+        val binders = pattern.binders
+        val cond = conditionForPattern(scrut, pattern)
+        pathConstraints ::= cond
+        val rRhs = functionClosure(rhs, bindedVars ++ binders, id2freshId, fd2FreshFd)
+        val rGuard = optGuard map { functionClosure(_, bindedVars ++ binders, id2freshId, fd2FreshFd) }
+        pathConstraints = pathConstraints.tail
+        MatchCase(pattern, rGuard, rRhs)
       }
       val tpe = csesRec.head.rhs.getType
       matchExpr(scrutRec, csesRec).copiedFrom(m)

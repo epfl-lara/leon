@@ -407,13 +407,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
       // Cases
-      case SimpleCase(pat, rhs) =>
-        p"""|case $pat =>
-            |  $rhs"""
-
-      case GuardedCase(pat, guard, rhs) =>
-        p"""|case $pat if $guard =>
-            |  $rhs"""
+      case MatchCase(pat, optG, rhs) =>
+        p"|case $pat "; optG foreach { g => p"if $g "}; p"""=>
+          |  $rhs"""
 
       // Patterns
       case WildcardPattern(None)     => p"_"

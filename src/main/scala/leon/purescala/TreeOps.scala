@@ -418,11 +418,12 @@ object TreeOps {
       val allBinders: Set[Identifier] = cse.pattern.binders
       val subMap: Map[Identifier,Identifier] = Map(allBinders.map(i => (i, FreshIdentifier(i.name, true).setType(i.getType))).toSeq : _*)
       val subVarMap: Map[Expr,Expr] = subMap.map(kv => (Variable(kv._1) -> Variable(kv._2)))
-
-      cse match {
-        case SimpleCase(pattern, rhs) => SimpleCase(rewritePattern(pattern, subMap), replace(subVarMap, rhs))
-        case GuardedCase(pattern, guard, rhs) => GuardedCase(rewritePattern(pattern, subMap), replace(subVarMap, guard), replace(subVarMap, rhs))
-      }
+      
+      MatchCase(
+        rewritePattern(cse.pattern, subMap),
+        cse.optGuard map { replace(subVarMap, _)}, 
+        replace(subVarMap,cse.rhs)
+      )
     }
 
 
@@ -644,9 +645,9 @@ object TreeOps {
       case unhandled => scala.sys.error("Unhandled case in expandLets: " + unhandled)
     }
 
-    def inCase(cse: MatchCase, s: Map[Identifier,Expr]) : MatchCase = cse match {
-      case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs, s))
-      case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard, s), rec(rhs, s))
+    def inCase(cse: MatchCase, s: Map[Identifier,Expr]) : MatchCase = {
+      import cse._
+      MatchCase(pattern, optGuard map { rec(_, s) }, rec(rhs,s))
     }
 
     rec(expr, Map.empty)
@@ -1575,18 +1576,16 @@ object TreeOps {
         }
 
         (cs1 zip cs2).forall {
-          case (SimpleCase(p1, e1), SimpleCase(p2, e2)) =>
+          case (MatchCase(p1, g1, e1), MatchCase(p2, g2, e2)) =>
             val (h, nm) = patternHomo(p1, p2)
+            val g = (g1, g2) match {
+              case (Some(g1), Some(g2)) => isHomo(g1,g2)(map ++ nm)
+              case (None, None) => true
+              case _ => false
+            }
+            val e = isHomo(e1, e2)(map ++ nm)
 
-              h && isHomo(e1, e2)(map ++ nm)
-
-            case (GuardedCase(p1, g1, e1), GuardedCase(p2, g2, e2)) =>
-              val (h, nm) = patternHomo(p1, p2)
-
-              h && isHomo(g1, g2)(map ++ nm) && isHomo(e1, e2)(map ++ nm)
-
-            case _ =>
-              false
+            g && e && h
         }
         
       }

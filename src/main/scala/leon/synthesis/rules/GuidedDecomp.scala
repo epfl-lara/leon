@@ -80,10 +80,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
         val onSuccess: List[Solution] => Option[Solution] = { subs =>
           val cases = for ((c, s) <- cs zip subs) yield {
-            c match {
-              case SimpleCase(c, rhs) => SimpleCase(c, s.term)
-              case GuardedCase(c, g, rhs) => GuardedCase(c, g, s.term)
-            }
+            c.copy(rhs = s.term)
           }
 
           Some(Solution(

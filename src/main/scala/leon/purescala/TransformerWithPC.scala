@@ -35,13 +35,9 @@ abstract class TransformerWithPC extends Transformer {
 
         val subPath = register(patternExprPos, soFar)
         soFar = register(Not(patternExprNeg), soFar)
+        
+        MatchCase(c.pattern, c.optGuard, rec(c.rhs,subPath)).copiedFrom(c)
 
-        c match {
-          case SimpleCase(p, rhs) =>
-            SimpleCase(p, rec(rhs, subPath)).copiedFrom(c)
-          case GuardedCase(p, g, rhs) =>
-            GuardedCase(p, g, rec(rhs, subPath)).copiedFrom(c)
-        }
       }).copiedFrom(e)
 
     case LetTuple(is, e, b) =>

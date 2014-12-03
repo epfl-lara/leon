@@ -46,10 +46,10 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     val testsCases = inouts.collect {
       case InOutExample(ins, outs) =>
         val (patt, optGuard) = expressionToPattern(tupleWrap(ins))
-        optGuard match {
-          case BooleanLiteral(true) => SimpleCase(patt, tupleWrap(outs))
-          case guard => GuardedCase(WildcardPattern(None), guard, tupleWrap(outs))
-        }
+        MatchCase(patt, optGuard match {
+          case BooleanLiteral(true) => None
+          case guard => Some(guard)
+        }, tupleWrap(outs))
     }.toList
 
     val passes = if (testsCases.nonEmpty) {

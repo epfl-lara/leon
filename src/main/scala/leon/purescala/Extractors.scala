@@ -241,6 +241,22 @@ object Extractors {
     }
   }
 
+  object SimpleCase {
+    def apply(p : Pattern, rhs : Expr) = MatchCase(p, None, rhs)
+    def unapply(c : MatchCase) = c match {
+      case MatchCase(p, None, rhs) => Some((p, rhs))
+      case _ => None
+    }
+  }
+  
+  object GuardedCase {
+    def apply(p : Pattern, g: Expr, rhs : Expr) = MatchCase(p, Some(g), rhs)
+    def unapply(c : MatchCase) = c match {
+      case MatchCase(p, Some(g), rhs) => Some((p, g, rhs))
+      case _ => None
+    }
+  }
+  
   object Pattern {
     def unapply(p : Pattern) : Option[(
       Option[Identifier], 

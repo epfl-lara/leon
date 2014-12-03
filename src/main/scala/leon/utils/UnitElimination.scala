@@ -142,9 +142,8 @@ object UnitElimination extends TransformationPhase {
       case (t: Terminal) => t
       case m @ MatchExpr(scrut, cses) => {
         val scrutRec = removeUnit(scrut)
-        val csesRec = cses.map{
-          case SimpleCase(pat, rhs) => SimpleCase(pat, removeUnit(rhs))
-          case GuardedCase(pat, guard, rhs) => GuardedCase(pat, removeUnit(guard), removeUnit(rhs))
+        val csesRec = cses.map{ cse =>
+          MatchCase(cse.pattern, cse.optGuard map removeUnit, removeUnit(cse.rhs))
         }
         val tpe = csesRec.head.rhs.getType
         matchExpr(scrutRec, csesRec).setPos(m)
