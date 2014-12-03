@@ -17,10 +17,6 @@ case class Library(pgm: Program) {
     case fd: FunDef => fd
   }
 
-  lazy val passes = lookup("leon.lang.passes").collect {
-    case fd: FunDef => fd
-  }
-
   lazy val guide = lookup("leon.lang.synthesis.guide") collect {
     case (fd: FunDef) => fd
   }
