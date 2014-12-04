@@ -192,7 +192,6 @@ object Trees {
   }
   
   case class Gives(scrutinee: Expr, cases : Seq[MatchCase]) extends MatchLike {
-    require(cases.nonEmpty)
     def asIncompleteMatch = {
       val theHole = SimpleCase(WildcardPattern(None), Hole(this.getType, Seq()))
       MatchExpr(scrutinee, cases :+ theHole)

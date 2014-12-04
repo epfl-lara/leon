@@ -2332,10 +2332,10 @@ object TreeOps {
               Seq(c)
           }}
 
-          var finalMatch = matchExpr(scrutinee, List(newCases.head))
+          var finalMatch = matchExpr(scrutinee, List(newCases.head)).asInstanceOf[MatchExpr]
 
           for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
-            finalMatch = matchExpr(scrutinee, finalMatch.cases :+ toAdd)
+            finalMatch = matchExpr(scrutinee, finalMatch.cases :+ toAdd).asInstanceOf[MatchExpr]
           }
 
           finalMatch

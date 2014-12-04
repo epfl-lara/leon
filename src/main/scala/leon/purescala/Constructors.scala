@@ -59,12 +59,30 @@ object Constructors {
   def gives(scrutinee : Expr, cases : Seq[MatchCase]) : Gives =
     Gives(scrutinee, filterCases(scrutinee.getType, cases))
   
-  def passes(in : Expr, out : Expr, cases : Seq[MatchCase]) : Passes = {
-    Passes(in, out, filterCases(in.getType, cases))
+  def passes(in : Expr, out : Expr, cases : Seq[MatchCase]): Expr = {
+    val resultingCases = filterCases(in.getType, cases)
+    if (resultingCases.nonEmpty) {
+      Passes(in, out, resultingCases)
+    } else {
+      BooleanLiteral(true)
+    }
   }
 
-  def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : MatchExpr = 
-    MatchExpr(scrutinee, filterCases(scrutinee.getType, cases))
+  def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : Expr ={
+    val filtered = filterCases(scrutinee.getType, cases)
+    if (filtered.nonEmpty)
+      MatchExpr(scrutinee, filtered)
+    else 
+      Error(
+        cases match {
+          case Seq(hd, _*) => hd.rhs.getType
+          case Seq() => Untyped
+        },
+        "No case matches the scrutinee"
+      )
+  } 
+    
+   
 
   def and(exprs: Expr*): Expr = {
     val flat = exprs.flatMap(_ match {
