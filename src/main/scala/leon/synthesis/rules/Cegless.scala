@@ -13,7 +13,7 @@ import utils._
 import utils.ExpressionGrammars._
 
 case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
-  override val maxUnfoldings = 3;
+  override val maxUnfoldings = 1000;
 
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
 

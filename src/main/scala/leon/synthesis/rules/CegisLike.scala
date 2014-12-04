@@ -561,6 +561,10 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
               solver1.assertCnstr(clause)
               solver2.assertCnstr(clause)
+
+              if (clauses.isEmpty) {
+                unfolding = maxUnfoldings
+              }
             }
 
             // Compute all programs that have not been excluded yet
