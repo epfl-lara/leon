@@ -34,7 +34,12 @@ object SemanticsPreservation {
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
     case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
     case other => other
-  }} ensuring { isNNF(_) }
+  }} ensuring { res => 
+    isNNF(res) && ((formula, res) passes {
+      case Not(Not(Not( Const(a) ))) => Const(!a)
+    })
+  }
+
 
   def isNNF(f : Formula) : Boolean = f match {
     case Not(Literal(_)) => true
@@ -44,23 +49,5 @@ object SemanticsPreservation {
     case _ => true
   }
 
-  def partEval(formula : Formula) : Formula = { formula match {
-    case And(Const(false), _ ) => Const(false)
-    case And(_, Const(false)) => Const(false)
-    case And(Const(true), e) => partEval(e)
-    case And(e, Const(true)) => partEval(e)
-    case Or(Const(true), _ ) => Const(true)
-    case Or(_, Const(true)) => Const(true)
-    case Or(Const(false), e) => partEval(e)
-    case Or(e, Const(false)) => partEval(e)
-    case Not(Const(c)) => Const(!c)
-    case other => other
-  }} ensuring { size(_) <= size(formula) }
-
-  
-  @induct
-  def partEvalSound (f : Formula, env : Set[Int]) = {
-    eval(partEval(f))(env) == eval(f)(env)
-  }.holds
-  
+    
 }

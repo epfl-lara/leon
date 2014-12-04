@@ -34,7 +34,12 @@ object SemanticsPreservation {
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
     case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
     case other => other 
-  }} ensuring { isNNF(_) }
+  }} ensuring { res => 
+    isNNF(res) && ((formula, res) passes {
+      case Not(And(Const(a), Const(b))) => Or(Const(!a), Const(!b))
+      case x@And(Literal(_), Literal(_)) => x
+    })
+  }
 
   def isNNF(f : Formula) : Boolean = f match {
     case Not(Literal(_)) => true
