@@ -57,7 +57,10 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         // generating lists.
         val ccChildren = act.knownCCDescendents
 
-        val (leafs,conss) = ccChildren.partition(_.fields.size == 0)
+        val (leafs,conss) = ccChildren.partition(_.fields.isEmpty)
+        
+        // FIXME: Will not work for mutually recursive types
+        val sortedConss = conss sortBy { _.fields.count{ _.getType.isInstanceOf[ClassType]}}
 
         // The stream for leafs...
         val leafsStream = leafs.toStream.flatMap { cct =>
@@ -65,7 +68,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         }
 
         // ...to which we append the streams for constructors.
-        leafsStream.append(interleave(conss.map { cct =>
+        leafsStream.append(interleave(sortedConss.map { cct =>
           generate(cct)
         }))
 
