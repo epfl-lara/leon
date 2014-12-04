@@ -17,5 +17,5 @@ case object CEGIS extends CEGISLike[TypeTree]("CEGIS") {
     ExpressionGrammars.default(sctx, p)
   }
 
-  def getGrammarLabel(id: Identifier): TypeTree = id.getType
+  def getRootLabel(tpe: TypeTree): TypeTree = tpe
 }

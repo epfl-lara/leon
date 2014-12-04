@@ -32,7 +32,7 @@ case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
     guidedGrammar
   }
 
-  def getGrammarLabel(id: Identifier): Label[String] = Label(id.getType, "G0")
+  def getRootLabel(tpe: TypeTree): Label[String] = Label(tpe, "G0")
 }
 
 

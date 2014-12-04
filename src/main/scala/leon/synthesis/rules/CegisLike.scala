@@ -33,7 +33,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
   def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
 
-  def getGrammarLabel(id: Identifier): T
+  def getRootLabel(tpe: TypeTree): T
 
   val maxUnfoldings = 3
 
@@ -67,7 +67,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       // b -> Set(c1, c2) means c1 and c2 are uninterpreted behind b, requires b to be closed
       private var guardedTerms: Map[Identifier, Set[Identifier]] = Map(initGuard -> p.xs.toSet)
 
-      private var labels: Map[Identifier, T] = Map() ++ p.xs.map(x => x -> getGrammarLabel(x))
+      private var labels: Map[Identifier, T] = Map() ++ p.xs.map(x => x -> getRootLabel(x.getType))
 
       def isBClosed(b: Identifier) = guardedTerms.contains(b)
 
