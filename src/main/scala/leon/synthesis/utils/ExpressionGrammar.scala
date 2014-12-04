@@ -15,6 +15,7 @@ import purescala.DefOps._
 import purescala.TypeTreeOps._
 import purescala.Extractors._
 import purescala.ScalaPrinter
+import scala.language.implicitConversions
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
@@ -60,8 +61,8 @@ object ExpressionGrammars {
       subGrammars.flatMap(_.getProductions(t))
   }
 
-  case object Empty extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree): Seq[Gen] = Nil
+  case class Empty[T <% Typed]() extends ExpressionGrammar[T] {
+    def computeProductions(t: T): Seq[Gen] = Nil
   }
 
   case object BaseGrammar extends ExpressionGrammar[TypeTree] {
@@ -160,53 +161,109 @@ object ExpressionGrammars {
     }
   }
 
-  case class SimilarTo(e: Expr, excludeExpr: Set[Expr] = Set(), excludeFCalls: Set[FunDef] = Set()) extends ExpressionGrammar[TypeTree] {
+  case class Label[T](t: TypeTree, l: T) extends Typed {
+    def getType = t
+
+    override def toString = t.toString+"@"+l
+  }
+
+  case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), excludeFCalls: Set[FunDef] = Set()) extends ExpressionGrammar[Label[String]] {
+
+    type L = Label[String]
+
+    private var counter = -1;
+    def getNext(): Int = {
+      counter += 1;
+      counter
+    }
+
     lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
 
-    def computeProductions(t: TypeTree): Seq[Gen] = {
+    def computeProductions(t: L): Seq[Gen] = {
       allSimilar.getOrElse(t, Nil)
     }
 
-    def computeSimilar(e : Expr) : Seq[(TypeTree, Gen)] = {
+    def computeSimilar(e : Expr) : Seq[(L, Gen)] = {
 
-      var seenSoFar = excludeExpr;
-
-      def gen(retType : TypeTree, tps : Seq[TypeTree], f : Seq[Expr] => Expr) : (TypeTree, Gen) =
-        (bestRealType(retType), Generator[TypeTree, Expr](tps.map(bestRealType), f))
-
-      // A generator that always regenerates its input
-      def const(e: Expr) = ( bestRealType(e.getType), Generator[TypeTree, Expr](Seq(), _ => e) )
-
-      def rec(e : Expr) : Seq[(TypeTree, Gen)] = {
-        if (seenSoFar contains e) {
-          Seq()
-        } else {
-          seenSoFar += e
-          val tp = e.getType
-          val self: Seq[(TypeTree, Gen)] = e match {
-            case RepairHole(_, _) => Seq()
-            case _                => Seq(const(e))
-          }
-          val subs: Seq[(TypeTree, Gen)] = e match {
-            case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
-              Seq()
-            case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
-              Seq()
-            case UnaryOperator(sub, builder) => Seq(
-              gen(tp, List(sub.getType), { case Seq(ex) => builder(ex) } )
-            ) ++ rec(sub)
-            case BinaryOperator(sub1, sub2, builder) => Seq(
-              gen(tp, List(sub1.getType, sub2.getType), { case Seq(e1, e2) => builder(e1, e2) } )
-            ) ++ rec(sub1) ++ rec(sub2)
-            case NAryOperator(subs, builder) => 
-              Seq(gen(tp, subs.map(_.getType), builder)) ++ subs.flatMap(rec)
-          }
-
-          self ++ subs
-        }
+      def getLabelPair(t: TypeTree) = {
+        val c = getNext
+        (Label(t, "E"+c), Label(t, "G"+c))
       }
 
-      rec(e).tail // Don't want the expression itself
+      def isCommutative(e: Expr) = e match {
+        case _: Plus | _: Times => true
+        case _ => false
+      }
+
+      def rec(e: Expr, el: L, gl: L): Seq[(L, Gen)] = {
+
+        def gens(e: Expr, el: L, gl: L, subs: Seq[Expr], builder: (Seq[Expr] => Expr)): Seq[(L, Gen)] = {
+          val subLabels = subs.map { s => getLabelPair(s.getType) }
+          val (subEls, subGls) = subLabels.unzip
+
+          // All the subproductions for sub el/gl
+          val allSubs = (subs zip subLabels).flatMap { case (e, (el, gl)) => rec(e, el, gl) }
+
+          // Exact Production for el
+          val exact = Seq(el -> Generator(subEls, builder))
+
+          // Inject fix at one place
+          val injectG = for ((sgl, i) <- subGls.zipWithIndex) yield {
+            gl -> Generator(subEls.updated(i, sgl), builder)
+          }
+
+          val swaps = if (subs.size > 1 || isCommutative(e)) {
+            (for (i <- 0 until subs.size;
+                 j <- i+1 until subs.size) yield {
+
+              if (subEls(i).getType == subEls(j).getType) {
+                val swapSubs = subEls.updated(i, subEls(j)).updated(j, subEls(i))
+                Some(gl -> Generator(swapSubs, builder))
+              } else {
+                None
+              }
+            }).flatten
+          } else {
+            Nil
+          }
+
+          allSubs ++ exact ++ injectG ++ swaps
+        }
+
+        val subs: Seq[(L, Gen)] = e match {
+          case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
+            gens(e, el, gl, Nil, { _ => e })
+
+          case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
+            Seq()
+
+          case UnaryOperator(sub, builder) =>
+            gens(e, el, gl, List(sub), { case Seq(s) => builder(s) })
+          case BinaryOperator(sub1, sub2, builder) =>
+            gens(e, el, gl, List(sub1, sub2), { case Seq(s1, s2) => builder(s1, s2) })
+          case NAryOperator(subs, builder) =>
+            gens(e, el, gl, subs, { case ss => builder(ss) })
+        }
+
+        val terminalsMatching = terminals.collect {
+          case IsTyped(term, tpe) if tpe == gl.getType && term != e =>
+            gl -> Generator[L, Expr](Nil, { _ => term })
+        }
+
+        subs ++ terminalsMatching
+      }
+
+      val (el, gl) = getLabelPair(e.getType)
+
+      val res = rec(e, el, gl)
+
+      //for ((t, g) <- res) {
+      //  val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
+      //  val gen = g.builder(subs)
+
+      //  println(f"$t%30s ::= "+gen)
+      //}
+      res
     }
   }
 
