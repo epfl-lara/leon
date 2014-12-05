@@ -30,8 +30,8 @@ case object IfSplit extends Rule("If-Split") {
 
   def split(i: IfExpr, p: Problem, description: String): RuleInstantiation = {
     val subs = List(
-      Problem(p.as, and(p.pc, i.cond), replace(Map(i -> i.thenn), p.phi), p.xs),
-      Problem(p.as, and(p.pc, not(i.cond)), replace(Map(i -> i.elze), p.phi), p.xs)
+      Problem(p.as, p.ws, and(p.pc, i.cond), replace(Map(i -> i.thenn), p.phi), p.xs),
+      Problem(p.as, p.ws, and(p.pc, not(i.cond)), replace(Map(i -> i.elze), p.phi), p.xs)
     )
 
     val onSuccess: List[Solution] => Option[Solution] = {

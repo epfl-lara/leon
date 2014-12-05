@@ -73,14 +73,13 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
       passes
     )
 
-    val pc = and(
-      pre,
+    val ws = and(
       guide,
       terminating
     )
 
     // Synthesis from the ground up
-    val p = Problem(fd.params.map(_.id).toList, pc, spec, List(out))
+    val p = Problem(fd.params.map(_.id).toList, ws, pre, spec, List(out))
     val ch = Choose(List(out), spec)
     // do we really want to do that?
     fd.body = Some(ch)
@@ -96,7 +95,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
       )) diff Seq(ADTInduction)
     );
 
-    ChooseInfo(ctx, program, fd, pc, gexpr, ch, soptions)
+    ChooseInfo(ctx, program, fd, pre, gexpr, ch, soptions)
   }
 
   def repair(): Unit = {

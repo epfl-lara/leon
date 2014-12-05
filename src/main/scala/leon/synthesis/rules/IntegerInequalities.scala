@@ -174,7 +174,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
                                 newLowerBounds.map(lbound => LessEquals(Variable(k), Minus(b, lbound)))
           } ++ exprNotUsed))
         val subProblemxs: List[Identifier] = quotientIds ++ otherVars
-        val subProblem = Problem(problem.as ++ remainderIds, problem.pc, subProblemFormula, subProblemxs)
+        val subProblem = Problem(problem.as ++ remainderIds, problem.ws, problem.pc, subProblemFormula, subProblemxs)
 
 
         def onSuccess(sols: List[Solution]): Option[Solution] = sols match {

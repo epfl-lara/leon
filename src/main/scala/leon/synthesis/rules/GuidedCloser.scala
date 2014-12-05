@@ -17,7 +17,7 @@ import solvers._
 
 case object GuidedCloser extends NormalizingRule("Guided Closer") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val TopLevelAnds(clauses) = p.pc
+    val TopLevelAnds(clauses) = p.ws
 
     val guide = sctx.program.library.guide.get
 

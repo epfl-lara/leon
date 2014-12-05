@@ -34,10 +34,11 @@ object Helpers {
     }
   }
 
-  def terminatingCalls(prog: Program, tpe: TypeTree, e: Expr): List[(Expr, Set[Identifier])] = {
+  def terminatingCalls(prog: Program, tpe: TypeTree, ws: Expr, pc: Expr): List[(Expr, Set[Identifier])] = {
+    // TODO: Also allow calls to f(y) when: terminating(f(x)) && y == x.f 
     val terminating = prog.library.terminating.get
 
-    val TopLevelAnds(clauses) = e
+    val TopLevelAnds(clauses) = ws
 
     val gs: List[FunctionInvocation] = clauses.toList.collect {
       case FunctionInvocation(TypedFunDef(`terminating`, _), Seq(fi: FunctionInvocation)) => fi

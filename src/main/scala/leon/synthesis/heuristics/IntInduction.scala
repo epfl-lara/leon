@@ -26,12 +26,13 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
 
         val newPhi     = subst(origId -> Variable(inductOn), p.phi)
         val newPc      = subst(origId -> Variable(inductOn), p.pc)
+        val newWs      = subst(origId -> Variable(inductOn), p.ws)
         val postCondGT = substAll(postXsMap + (origId -> Minus(Variable(inductOn), IntLiteral(1))), p.phi)
         val postCondLT = substAll(postXsMap + (origId -> Plus(Variable(inductOn), IntLiteral(1))), p.phi)
 
-        val subBase = Problem(List(), subst(origId -> IntLiteral(0), p.pc), subst(origId -> IntLiteral(0), p.phi), p.xs)
-        val subGT   = Problem(inductOn :: postXs, and(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, newPc), newPhi, p.xs)
-        val subLT   = Problem(inductOn :: postXs, and(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, newPc), newPhi, p.xs)
+        val subBase = Problem(List(), subst(origId -> IntLiteral(0), p.ws), subst(origId -> IntLiteral(0), p.pc), subst(origId -> IntLiteral(0), p.phi), p.xs)
+        val subGT   = Problem(inductOn :: postXs, newWs, and(GreaterThan(Variable(inductOn), IntLiteral(0)), postCondGT, newPc), newPhi, p.xs)
+        val subLT   = Problem(inductOn :: postXs, newWs, and(LessThan(Variable(inductOn), IntLiteral(0)), postCondLT, newPc), newPhi, p.xs)
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case List(base, gt, lt) =>

@@ -10,10 +10,9 @@ import leon.purescala.Common._
 import leon.purescala.Constructors._
 
 // Defines a synthesis triple of the form:
-// ⟦ as ⟨ C | phi ⟩ xs ⟧
-case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifier]) {
-  override def toString = 
-    "⟦ "+as.mkString(";")+", " + (if (pc != BooleanLiteral(true)) pc+" ≺ " else "") + " ⟨ "+phi+" ⟩ " + xs.mkString(";") + " ⟧ "
+// ⟦ as ⟨ ws && pc | phi ⟩ xs ⟧
+case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier]) {
+  override def toString = "⟦ "+as.mkString(";")+", "+(if (ws != BooleanLiteral(true)) ws+" - " else "")+(if (pc != BooleanLiteral(true)) pc+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
 
   def getTests(sctx: SynthesisContext): Seq[Example] = {
     import purescala.Extractors._
@@ -23,14 +22,12 @@ case class Problem(as: List[Identifier], pc: Expr, phi: Expr, xs: List[Identifie
 
     val ev = new DefaultEvaluator(sctx.context, sctx.program)
 
-    val safePc = removeWitnesses(sctx.program)(pc)
-
     def isValidExample(ex: Example): Boolean = {
       val (mapping, cond) = ex match {
         case io: InOutExample =>
-          (Map((as zip io.ins) ++ (xs zip io.outs): _*), And(safePc, phi))
+          (Map((as zip io.ins) ++ (xs zip io.outs): _*), And(pc, phi))
         case i =>
-          ((as zip i.ins).toMap, safePc)
+          ((as zip i.ins).toMap, pc)
       }
 
       ev.eval(cond, mapping) match {
@@ -212,6 +209,6 @@ object Problem {
     val phi = simplifyLets(ch.pred)
     val as = (variablesOf(And(pc, phi))--xs).toList
 
-    Problem(as, pc, phi, xs)
+    Problem(as, BooleanLiteral(true), pc, phi, xs)
   }
 }

@@ -41,7 +41,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
       val newOuts = subOuts.flatten
 
-      val sub = Problem(p.as, p.pc, subProblem, newOuts)
+      val sub = Problem(p.as, p.ws, p.pc, subProblem, newOuts)
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(sol) =>

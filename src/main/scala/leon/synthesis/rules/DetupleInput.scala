@@ -41,6 +41,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
     if (p.as.exists(isDecomposable)) {
       var subProblem = p.phi
       var subPc      = p.pc
+      var subWs      = p.ws
 
       var reverseMap = Map[Identifier, Expr]()
 
@@ -50,6 +51,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
           subProblem = subst(a -> expr, subProblem)
           subPc      = subst(a -> expr, subPc)
+          subWs      = subst(a -> expr, subWs)
 
           reverseMap ++= map
 
@@ -62,7 +64,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       val newAs = subAs.flatten
       //sctx.reporter.warning("newOuts: " + newOuts.toString)
 
-      val sub = Problem(newAs, subPc, subProblem, p.xs)
+      val sub = Problem(newAs, subWs, subPc, subProblem, p.xs)
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(sol) =>

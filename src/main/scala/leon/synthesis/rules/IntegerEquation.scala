@@ -57,7 +57,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
         if(normalizedEq.size == 1) {
           val eqPre = Equals(normalizedEq.head, IntLiteral(0))
-          val newProblem = Problem(problem.as, and(eqPre, problem.pc), andJoin(allOthers), problem.xs)
+          val newProblem = Problem(problem.as, problem.ws, and(eqPre, problem.pc), andJoin(allOthers), problem.xs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case List(Solution(pre, defs, term)) =>
@@ -94,7 +94,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val ys: List[Identifier] = problem.xs.filterNot(neqxs.contains(_))
           val subproblemxs: List[Identifier] = freshxs ++ ys
 
-          val newProblem = Problem(problem.as ++ freshInputVariables, and(eqPre, problem.pc), freshFormula, subproblemxs)
+          val newProblem = Problem(problem.as ++ freshInputVariables, problem.ws, and(eqPre, problem.pc), freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
             case List(Solution(pre, defs, term)) => {

@@ -333,9 +333,9 @@ object ExpressionGrammars {
    }
   }
 
-  case class SafeRecCalls(prog: Program, pc: Expr) extends ExpressionGrammar[TypeTree] {
+  case class SafeRecCalls(prog: Program, ws: Expr, pc: Expr) extends ExpressionGrammar[TypeTree] {
     def computeProductions(t: TypeTree): Seq[Gen] = {
-      val calls = terminatingCalls(prog, t, pc)
+      val calls = terminatingCalls(prog, t, ws, pc)
 
       calls.map {
         case (e, free) =>
@@ -347,14 +347,14 @@ object ExpressionGrammars {
     }
   }
 
-  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, pc: Expr): ExpressionGrammar[TypeTree] = {
+  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, ws: Expr, pc: Expr): ExpressionGrammar[TypeTree] = {
     BaseGrammar ||
     OneOf(inputs) ||
     FunctionCalls(prog, currentFunction, inputs.map(_.getType)) ||
-    SafeRecCalls(prog, pc)
+    SafeRecCalls(prog, ws, pc)
   }
 
   def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar[TypeTree] = {
-    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, p.pc)
+    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, p.ws, p.pc)
   }
 }

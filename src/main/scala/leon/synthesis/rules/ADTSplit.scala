@@ -23,7 +23,7 @@ case object ADTSplit extends Rule("ADT Split.") {
         val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
             val cct = CaseClassType(ccd, tpes)
-            val toSat = and(removeWitnesses(sctx.program)(p.pc), CaseClassInstanceOf(cct, Variable(id)))
+            val toSat = and(p.pc, CaseClassInstanceOf(cct, Variable(id)))
 
             val isImplied = solver.solveSAT(toSat) match {
               case (Some(false), _) => true
@@ -59,7 +59,8 @@ case object ADTSplit extends Rule("ADT Split.") {
 
            val subPhi = subst(id -> CaseClass(cct, args.map(Variable(_))), p.phi)
            val subPC  = subst(id -> CaseClass(cct, args.map(Variable(_))), p.pc)
-           val subProblem = Problem(args ::: oas, subPC, subPhi, p.xs)
+           val subWS  = subst(id -> CaseClass(cct, args.map(Variable(_))), p.ws)
+           val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs)
            val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
 
            (cct, subProblem, subPattern)

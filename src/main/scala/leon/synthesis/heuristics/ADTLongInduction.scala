@@ -95,6 +95,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
         val innerPhi = substAll(substMap, p.phi)
         val innerPC  = substAll(substMap, p.pc)
+        val innerWS  = substAll(substMap, p.ws)
 
         val subProblemsInfo = for (c <- cases) yield {
           val InductCase(ids, calls, pat, pc, trMap) = c
@@ -104,6 +105,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
           var recCalls = Map[List[Identifier], List[Expr]]()
 
           val subPC = substAll(trMap, innerPC)
+          val subWS = substAll(trMap, innerWS)
           val subPhi = substAll(trMap, innerPhi)
 
           var postXss = List[Identifier]()
@@ -118,7 +120,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
             recCalls += postXs -> (Variable(cid) +: residualArgs.map(id => Variable(id)))
           }
 
-          val subProblem = Problem(c.ids ::: postXss, andJoin(subPC :: postFs), subPhi, p.xs)
+          val subProblem = Problem(c.ids ::: postXss, subWS, andJoin(subPC :: postFs), subPhi, p.xs)
           //println(subProblem)
           //println(recCalls)
           (subProblem, pat, recCalls, pc)

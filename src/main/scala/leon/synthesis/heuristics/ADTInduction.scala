@@ -43,6 +43,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
 
         val innerPhi = substAll(substMap, p.phi)
         val innerPC  = substAll(substMap, p.pc)
+        val innerWS  = substAll(substMap, p.ws)
 
         val subProblemsInfo = for (cct <- ct.knownCCDescendents) yield {
           var recCalls = Map[List[Identifier], List[Expr]]()
@@ -66,10 +67,11 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
 
           val subPhi = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerPhi)
           val subPC  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerPC)
+          val subWS  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerWS)
 
           val subPre = CaseClassInstanceOf(cct, Variable(origId))
 
-          val subProblem = Problem(inputs ::: residualArgs, andJoin(subPC :: postFs), subPhi, p.xs)
+          val subProblem = Problem(inputs ::: residualArgs, subWS, andJoin(subPC :: postFs), subPhi, p.xs)
 
           (subProblem, subPre, cct, newIds, recCalls)
         }

@@ -20,7 +20,7 @@ case object CaseSplit extends Rule("Case-Split") {
   }
 
   def split(alts: Seq[Expr], p: Problem, description: String): RuleInstantiation = {
-    val subs = alts.map(a => Problem(p.as, p.pc, a, p.xs)).toList
+    val subs = alts.map(a => Problem(p.as, p.ws, p.pc, a, p.xs)).toList
 
     val onSuccess: List[Solution] => Option[Solution] = {
       case sols if sols.size == subs.size =>

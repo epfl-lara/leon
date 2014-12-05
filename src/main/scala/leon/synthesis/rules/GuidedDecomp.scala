@@ -18,7 +18,7 @@ import solvers._
 
 case object GuidedDecomp extends Rule("Guided Decomp") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val TopLevelAnds(clauses) = p.pc
+    val TopLevelAnds(clauses) = p.ws
 
     val guide = sctx.program.library.guide.get
 
@@ -26,9 +26,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
       case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
     }
 
-    def simplify(e: Expr): Expr = {
-      Simplifiers.forPathConditions(sctx.context, sctx.program)(e)
-    }
+    val simplify = Simplifiers.bestEffort(sctx.context, sctx.program)_
 
     def doSubstitute(substs: Seq[(Expr, Expr)], e: Expr): Expr = {
       var res = e
@@ -40,8 +38,8 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
     val alts = guides.collect {
       case g @ IfExpr(c, thn, els) =>
-        val sub1 = p.copy(pc = and(c, replace(Map(g -> thn), p.pc)))
-        val sub2 = p.copy(pc = and(Not(c), replace(Map(g -> els), p.pc)))
+        val sub1 = p.copy(ws = replace(Map(g -> thn), p.ws), pc = and(c, replace(Map(g -> thn), p.pc)))
+        val sub2 = p.copy(ws = replace(Map(g -> els), p.ws), pc = and(Not(c), replace(Map(g -> els), p.pc)))
 
         val onSuccess: List[Solution] => Option[Solution] = { 
           case List(s1, s2) =>
@@ -53,7 +51,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Guided If-Split on '"+c+"'"))
 
       case m @ MatchExpr(scrut0, cs) =>
-        
+
         val scrut = scrut0 match {
           case v : Variable => v
           case _ => Variable(FreshIdentifier("scrut", true).setType(scrut0.getType))
@@ -68,14 +66,15 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           
           val pc  = simplify(and(
             scrutCond,
-            replace(Map(scrut0 -> scrut),doSubstitute(substs,scrutConstraint)),
+            replace(Map(scrut0 -> scrut), doSubstitute(substs,scrutConstraint)),
             replace(Map(scrut0 -> scrut), replace(Map(m -> c.rhs), andJoin(cond)))
           ))
-          val phi = doSubstitute(substs, p.phi) 
+          val ws = replace(Map(m -> c.rhs), p.ws)
+          val phi = doSubstitute(substs, p.phi)
           val free = variablesOf(and(pc, phi)) -- p.xs
           val asPrefix = p.as.filter(free)
 
-          Problem(asPrefix ++ (free -- asPrefix), pc, phi, p.xs)
+          Problem(asPrefix ++ (free -- asPrefix), ws, pc, phi, p.xs)
         }
 
         val onSuccess: List[Solution] => Option[Solution] = { subs =>
