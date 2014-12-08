@@ -31,11 +31,13 @@ import utils._
 
 abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
-  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
+  case class CegisParams(
+    grammar: ExpressionGrammar[T],
+    rootLabel: TypeTree => T,
+    maxUnfoldings: Int = 3
+  );
 
-  def getRootLabel(tpe: TypeTree): T
-
-  val maxUnfoldings = 3
+  def getParams(sctx: SynthesisContext, p: Problem): CegisParams
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
@@ -56,10 +58,16 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     val interruptManager      = sctx.context.interruptManager
 
+    val params = getParams(sctx, p)
+
+    if (params.maxUnfoldings == 0) {
+      return Nil
+    }
+
     class NonDeterministicProgram(val p: Problem,
                                   val initGuard: Identifier) {
 
-      val grammar = getGrammar(sctx, p)
+      val grammar = params.grammar
 
       // b -> (c, ex) means the clause b => c == ex
       var mappings: Map[Identifier, (Identifier, Expr)] = Map()
@@ -67,7 +75,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       // b -> Set(c1, c2) means c1 and c2 are uninterpreted behind b, requires b to be closed
       private var guardedTerms: Map[Identifier, Set[Identifier]] = Map(initGuard -> p.xs.toSet)
 
-      private var labels: Map[Identifier, T] = Map() ++ p.xs.map(x => x -> getRootLabel(x.getType))
+      private var labels: Map[Identifier, T] = Map() ++ p.xs.map(x => x -> params.rootLabel(x.getType))
 
       def isBClosed(b: Identifier) = guardedTerms.contains(b)
 
@@ -417,7 +425,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         val ndProgram = new NonDeterministicProgram(p, initGuard)
         var unfolding = 1
-        val maxUnfoldings = CEGISLike.this.maxUnfoldings
+        val maxUnfoldings = params.maxUnfoldings
+
+        sctx.reporter.debug(s"maxUnfoldings=$maxUnfoldings")
 
         val exSolverTo  = 2000L
         val cexSolverTo = 2000L

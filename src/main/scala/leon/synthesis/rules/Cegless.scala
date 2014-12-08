@@ -5,6 +5,7 @@ package synthesis
 package rules
 
 import purescala.Trees._
+import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Common._
 import purescala.Definitions._
@@ -13,11 +14,9 @@ import utils._
 import utils.ExpressionGrammars._
 
 case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
-  override val maxUnfoldings = 1000;
+  def getParams(sctx: SynthesisContext, p: Problem) = {
 
-  def getGrammar(sctx: SynthesisContext, p: Problem) = {
-
-    val TopLevelAnds(clauses) = p.pc
+    val TopLevelAnds(clauses) = p.ws
 
     val guide = sctx.program.library.guide.get
 
@@ -29,10 +28,12 @@ case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
 
     val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, Set(sctx.functionContext))).foldLeft[ExpressionGrammar[Label[String]]](Empty())(_ || _)
 
-    guidedGrammar
+    CegisParams(
+      grammar = guidedGrammar,
+      rootLabel = { (tpe: TypeTree) => Label(tpe, "G0") },
+      maxUnfoldings = (0 +: guides.map(depth(_) + 1)).max
+    )
   }
-
-  def getRootLabel(tpe: TypeTree): Label[String] = Label(tpe, "G0")
 }
 
 

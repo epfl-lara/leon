@@ -444,6 +444,10 @@ object TreeOps {
     })(expr)
   }
 
+  def depth(e: Expr): Int = {
+    foldRight[Int]({ (e, sub) => 1 + (0 +: sub).max })(e)
+  }
+
   def normalizeExpression(expr: Expr) : Expr = {
     def rec(e: Expr): Option[Expr] = e match {
       case TupleSelect(Let(id, v, b), ts) =>

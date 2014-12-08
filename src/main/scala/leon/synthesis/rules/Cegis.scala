@@ -13,9 +13,10 @@ import utils.Helpers._
 import utils._
 
 case object CEGIS extends CEGISLike[TypeTree]("CEGIS") {
-  def getGrammar(sctx: SynthesisContext, p: Problem) = {
-    ExpressionGrammars.default(sctx, p)
+  def getParams(sctx: SynthesisContext, p: Problem) = {
+    CegisParams(
+      grammar = ExpressionGrammars.default(sctx, p),
+      rootLabel = {(tpe: TypeTree) => tpe }
+    )
   }
-
-  def getRootLabel(tpe: TypeTree): TypeTree = tpe
 }
