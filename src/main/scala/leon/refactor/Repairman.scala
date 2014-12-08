@@ -32,7 +32,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
 
   var solutions: List[(Solution, Expr, List[FunDef])] = Nil
 
-  def getChooseInfo(): ChooseInfo = {
+  def getSynthesizer(): Synthesizer = {
     // Gather in/out tests
     val pre = fd.precondition.getOrElse(BooleanLiteral(true))
     val args = fd.params.map(_.id)
@@ -95,21 +95,20 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
       )) diff Seq(ADTInduction)
     );
 
-    ChooseInfo(ctx, program, fd, pre, gexpr, ch, soptions)
+    new Synthesizer(ctx, fd, program, p, soptions)
   }
 
   def repair(): Unit = {
-    val ci = getChooseInfo()
-    val p  = ci.problem
+    val synth = getSynthesizer()
+    val p     = synth.problem
 
-    val synthesizer = ci.synthesizer
 
-    synthesizer.synthesize() match {
+    synth.synthesize() match {
       case (search, sols) =>
         for (sol <- sols) {
           val expr = sol.toSimplifiedExpr(ctx, program)
 
-          val (npr, fds) = synthesizer.solutionToProgram(sol)
+          val (npr, fds) = synth.solutionToProgram(sol)
 
           if (!sol.isTrusted) {
             getVerificationCounterExamples(fds.head, npr) match {
@@ -126,7 +125,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
           }
         }
 
-        if (ci.options.generateDerivationTrees) {
+        if (synth.options.generateDerivationTrees) {
           val dot = new DotGenerator(search.g)
           dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
         }

@@ -12,7 +12,11 @@ import leon.purescala.Constructors._
 // Defines a synthesis triple of the form:
 // ⟦ as ⟨ ws && pc | phi ⟩ xs ⟧
 case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier]) {
-  override def toString = "⟦ "+as.mkString(";")+", "+(if (ws != BooleanLiteral(true)) ws+" - " else "")+(if (pc != BooleanLiteral(true)) pc+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
+
+  override def toString = {
+    val pcws = and(ws, pc)
+    "⟦ "+as.mkString(";")+", "+(if (pcws != BooleanLiteral(true)) pcws+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "
+  }
 
   def getTests(sctx: SynthesisContext): Seq[Example] = {
     import purescala.Extractors._
