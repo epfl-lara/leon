@@ -35,14 +35,25 @@ object Helpers {
   }
 
   def terminatingCalls(prog: Program, tpe: TypeTree, ws: Expr, pc: Expr): List[(Expr, Set[Identifier])] = {
-    // TODO: Also allow calls to f(y) when: terminating(f(x)) && y == x.f 
     val terminating = prog.library.terminating.get
 
-    val TopLevelAnds(clauses) = ws
+    val TopLevelAnds(wss) = ws
+    val TopLevelAnds(clauses) = pc
 
-    val gs: List[FunctionInvocation] = clauses.toList.collect {
+    val gs: List[FunctionInvocation] = wss.toList.collect {
       case FunctionInvocation(TypedFunDef(`terminating`, _), Seq(fi: FunctionInvocation)) => fi
     }
+
+    def subExprsOf(expr: Expr, v: Variable): Option[(Variable, Expr)] = expr match {
+      case CaseClassSelector(cct, r, _) => subExprsOf(r, v)
+      case (r: Variable) if leastUpperBound(r.getType, v.getType).isDefined => Some(r -> v)
+      case _ => None
+    }
+    
+    val knownSmallers = (clauses.collect {
+      case Equals(v: Variable, s @ CaseClassSelector(cct, r, _)) => subExprsOf(s, v)
+      case Equals(s @ CaseClassSelector(cct, r, _), v: Variable) => subExprsOf(s, v)
+    }).flatten.groupBy(_._1).mapValues(v => v.map(_._2))
 
     def argsSmaller(e: Expr, tpe: TypeTree): Seq[Expr] = e match {
       case CaseClass(cct, args) =>
@@ -50,10 +61,13 @@ object Helpers {
           case (t, e) if isSubtypeOf(t, tpe) =>
             List(e) ++ argsSmaller(e, tpe) 
         }.flatten
+      case v: Variable =>
+        knownSmallers.getOrElse(v, Seq())
+
       case _ => Nil
     }
 
-    gs.flatMap {
+    val res = gs.flatMap {
       case FunctionInvocation(tfd, args) if isSubtypeOf(tfd.returnType, tpe) =>
         val ids = tfd.params.map(vd => FreshIdentifier("<hole>", true).setType(vd.tpe)).toList
 
@@ -65,6 +79,8 @@ object Helpers {
       case _ =>
         Nil
     }
+
+    res
   }
 
 
