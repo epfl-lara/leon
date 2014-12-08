@@ -7,6 +7,9 @@ package leon.codegen.runtime;
  *  distinguished from `LeonCodeGenRuntimeException`s, which are thrown when
  *  the evaluator runs into a runtime error (.get on an undefined map, etc.). */
 public class LeonCodeGenEvaluationException extends Exception {
+  
+    private static final long serialVersionUID = -1824885944356173916L;
+
     public LeonCodeGenEvaluationException(String msg) {
         super(msg);
     }
