@@ -141,6 +141,18 @@ object Extractors {
           builder(es(0), newcases)
         }
       ))
+      case Passes(in, out, cases) => Some((
+        in +: out +: cases.flatMap { _.expressions },
+        { case Seq(in, out, es@_*) => {
+          var i = 0
+          val newcases = for (caze <- cases) yield caze match {
+            case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
+            case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-1), es(i-2)) 
+          }
+
+          Passes(in, out, newcases)
+        }}
+      ))
       case LetDef(fd, body) =>
         fd.body match {
           case Some(b) =>
@@ -231,11 +243,6 @@ object Extractors {
         (m.scrutinee, m.cases, m match {
           case _ : MatchExpr  => matchExpr
           case _ : Gives      => gives
-          case _ : Passes     => 
-            (s, cases) => {
-              val Tuple(Seq(in, out)) = s
-              passes(in, out, cases)
-            }
         })
       }
     }

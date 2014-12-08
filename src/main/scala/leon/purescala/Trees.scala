@@ -198,11 +198,10 @@ object Trees {
     }
   } 
   
-  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends MatchLike {
+  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
 
-    override def getType = BooleanType
-    val scrutinee = Tuple(Seq(in, out))
+    val getType = BooleanType
     
     def asConstraint = {
       val defaultCase = SimpleCase(WildcardPattern(None), out)

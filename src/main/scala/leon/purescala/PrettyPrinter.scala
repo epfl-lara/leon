@@ -228,7 +228,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       
       case p@Passes(in, out, tests) =>
         optP {
-          p"""|${p.scrutinee} passes {
+          p"""|($in, $out) passes {
               |  ${nary(tests, "\n")}
               |}"""
         }

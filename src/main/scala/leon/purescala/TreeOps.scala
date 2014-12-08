@@ -355,6 +355,7 @@ object TreeOps {
           case Let(i,_,_) => subvs - i
           case Choose(is,_) => subvs -- is
           case MatchLike(_, cses, _) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
+          case Passes(_, _ , cses)   => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case Lambda(args, body) => subvs -- args.map(_.id)
           case Forall(args, body) => subvs -- args.map(_.id)
           case _ => subvs
@@ -430,6 +431,9 @@ object TreeOps {
     postMap({
       case m @ MatchLike(s, cses, builder) =>
         Some(builder(s, cses.map(freshenCase(_))).copiedFrom(m))
+
+      case p @ Passes(in, out, cses) =>
+        Some(Passes(in, out, cses.map(freshenCase(_))).copiedFrom(p))
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, true).copiedFrom(i)
@@ -614,6 +618,7 @@ object TreeOps {
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
       case m @ MatchLike(scrut,cses,builder) => builder(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
+      case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
       case n @ NAryOperator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
@@ -1619,6 +1624,9 @@ object TreeOps {
 
         case Same(MatchLike(s1, cs1, _), MatchLike(s2, cs2, _)) =>
           cs1.size == cs2.size && isHomo(s1, s2) && casesMatch(cs1,cs2)
+          
+        case (Passes(in1, out1, cs1), Passes(in2, out2, cs2)) =>
+          cs1.size == cs2.size && isHomo(in1,in2) && isHomo(out1,out2) && casesMatch(cs1,cs2)
 
         case (FunctionInvocation(tfd1, args1), FunctionInvocation(tfd2, args2)) =>
           // TODO: Check type params
