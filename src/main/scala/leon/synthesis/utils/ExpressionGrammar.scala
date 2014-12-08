@@ -196,7 +196,9 @@ object ExpressionGrammars {
       }
 
       val normalGrammar = EmbededGrammar(
-        ExpressionGrammars.default(sctx, p),
+          BaseGrammar ||
+          FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType)) ||
+          SafeRecCalls(sctx.program, p.ws, p.pc),
         { (t: TypeTree)      => Label(t, "B")},
         { (l: Label[String]) => l.getType }
       )
