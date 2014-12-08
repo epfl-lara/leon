@@ -167,7 +167,7 @@ object ExpressionGrammars {
     override def toString = t.toString+"@"+l
   }
 
-  case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), excludeFCalls: Set[FunDef] = Set()) extends ExpressionGrammar[Label[String]] {
+  case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
 
     type L = Label[String]
 
@@ -194,6 +194,14 @@ object ExpressionGrammars {
         case _: Plus | _: Times => true
         case _ => false
       }
+
+      val normalGrammar = EmbededGrammar(
+        ExpressionGrammars.default(sctx, p),
+        { (t: TypeTree)      => Label(t, "B")},
+        { (l: Label[String]) => l.getType }
+      )
+
+      val excludeFCalls = Set(sctx.functionContext)
 
       def rec(e: Expr, el: L, gl: L): Seq[(L, Gen)] = {
 
@@ -227,7 +235,14 @@ object ExpressionGrammars {
             Nil
           }
 
-          allSubs ++ exact ++ injectG ++ swaps
+          // if e is a terminal, we also rely on standard CEGIS
+          val fallback = if (subs.size == 0) {
+            normalGrammar.getProductions(gl).map(gl -> _)
+          } else {
+            Nil
+          }
+
+          allSubs ++ exact ++ injectG ++ swaps ++ fallback
         }
 
         val subs: Seq[(L, Gen)] = e match {
@@ -331,6 +346,14 @@ object ExpressionGrammars {
        Generator[TypeTree, Expr](tfd.params.map(_.tpe), { sub => FunctionInvocation(tfd, sub) })
      }
    }
+  }
+
+  case class EmbededGrammar[Ti <% Typed, To <% Typed](g: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
+    
+    def computeProductions(t: To): Seq[Gen] = g.computeProductions(oToi(t)).map {
+      case g : Generator[Ti, Expr] =>
+        Generator(g.subTrees.map(iToo), g.builder)
+    }
   }
 
   case class SafeRecCalls(prog: Program, ws: Expr, pc: Expr) extends ExpressionGrammar[TypeTree] {
