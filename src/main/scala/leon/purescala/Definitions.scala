@@ -10,6 +10,7 @@ object Definitions {
   import Common._
   import Trees._
   import TreeOps._
+  import DefOps._
   import Extractors._
   import TypeTrees._
   import TypeTreeOps._
@@ -78,6 +79,26 @@ object Definitions {
 
     def duplicate = {
       copy(units = units.map{_.duplicate})
+    }
+
+    // Use only to add functions around functions
+    def addDefinition(d: Definition, around: Definition): Program = {
+      val Some(m) = inModule(around)
+      val nm      = m.copy(defs = d +: m.defs)
+
+      m.owner match {
+        case Some(u: UnitDef) =>
+          val nu = u.copy(modules = u.modules.filterNot(_ == m) :+ nm)
+
+          u.owner match {
+            case Some(p: Program) =>
+              p.copy(units = p.units.filterNot(_ == u) :+ nu)
+            case _ =>
+              this
+          }
+        case _ =>
+          this
+      }
     }
 
     lazy val library = Library(this)

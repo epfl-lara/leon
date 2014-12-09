@@ -23,8 +23,10 @@ import synthesis.rules._
 import synthesis.heuristics._
 import graph.DotGenerator
 
-class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeout: Option[Long]) {
+class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout: Option[Long]) {
   val reporter = ctx.reporter
+
+  var program = initProgram
 
   implicit val debugSection = DebugSectionRepair
 
@@ -68,6 +70,8 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef, verifTimeout: Op
       nfd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
       passes
     )
+
+    program = program.addDefinition(nfd, fd)
 
     val p = focusRepair(tests, nfd, spec, out)
 

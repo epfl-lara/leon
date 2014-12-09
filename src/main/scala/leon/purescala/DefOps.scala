@@ -18,6 +18,12 @@ object DefOps {
     case u : UnitDef => Some(u)
     case other => other.owner flatMap inUnit
   }
+
+  def inModule(df : Definition) : Option[ModuleDef] = df match {
+    case p : Program => None
+    case m : ModuleDef => Some(m)
+    case other => other.owner flatMap inModule
+  }
   
   def inProgram(df : Definition) : Option[Program] = {
     df match {
