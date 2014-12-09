@@ -1,7 +1,7 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
-package refactor
+package repair
 import synthesis._
 
 import purescala.Definitions._

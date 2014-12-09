@@ -8,7 +8,7 @@ case class Settings(
   val strictCompilation: Boolean       = true, // Terminates Leon in case an error occured during extraction
   val debugSections: Set[DebugSection] = Set(), // Enables debug message for the following sections
   val termination: Boolean             = false,
-  val refactor: Boolean                = false,
+  val repair: Boolean                  = false,
   val synthesis: Boolean               = false,
   val xlang: Boolean                   = false,
   val verify: Boolean                  = true,

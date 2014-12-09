@@ -30,6 +30,14 @@ case class LeonValueOption(name: String, value: String) extends LeonOption {
       None
   }
 
+  def asLong(ctx : LeonContext) : Option[Long] = try {
+    Some(value.toLong)
+  } catch {
+    case _ : Throwable =>
+      ctx.reporter.error("Option --%s takes a long as value.".format(name))
+      None
+  }
+
   override def toString() : String = "--%s=%s".format(name, value)
 }
 
