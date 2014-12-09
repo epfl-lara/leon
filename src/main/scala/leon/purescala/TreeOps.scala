@@ -880,7 +880,10 @@ object TreeOps {
     }
   }
 
- 
+  def passesPathConditions(p : Passes, pathCond: List[Expr]) : Seq[List[Expr]] = {
+    matchCasePathConditions(MatchExpr(p.in, p.cases), pathCond)
+  }
+  
   /*
    * Returns a pattern and a guard, if needed
    */
