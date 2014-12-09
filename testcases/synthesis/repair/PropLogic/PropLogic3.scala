@@ -29,16 +29,16 @@ object SemanticsPreservation {
   def nnf(formula : Formula) : Formula = { formula match {
     case Not(And(lhs,rhs)) => Or(nnf(Not(lhs)), nnf(Not(rhs)))
     case Not(Or(lhs,rhs)) => And(nnf(Not(lhs)), nnf(Not(rhs)))
-    case Not(Const(v)) => Const(!v)
+    case Not(Const(v)) => Const(v) // FIXME should be !v.
+    case Not(Not(e)) => nnf(e)
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
     case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
-    // FIXME: forgot to handle the Not(Not(_)) case 
     case other => other 
-  }} ensuring { res => 
-     isNNF(res) && ((formula, res) passes {
-       case Not(And(Const(a), Const(b))) => Or(Const(!a), Const(!b))
-       case x@And(Literal(_), Literal(_)) => x
-     })
+  }} ensuring { res =>
+    isNNF(res) && ((formula, res) passes {
+      case Not(Const(true)) => Const(false)
+      case Not(Const(false)) => Const(true)
+    })
   }
 
   def isNNF(f : Formula) : Boolean = f match {
@@ -49,23 +49,4 @@ object SemanticsPreservation {
     case _ => true
   }
 
-  def partEval(formula : Formula) : Formula = { formula match {
-    case And(Const(false), _ ) => Const(false)
-    case And(_, Const(false)) => Const(false)
-    case And(Const(true), e) => partEval(e)
-    case And(e, Const(true)) => partEval(e)
-    case Or(Const(true), _ ) => Const(true)
-    case Or(_, Const(true)) => Const(true)
-    case Or(Const(false), e) => partEval(e)
-    case Or(e, Const(false)) => partEval(e)
-    case Not(Const(c)) => Const(!c)
-    case other => other
-  }} ensuring { size(_) <= size(formula) }
-
-  
-  @induct
-  def partEvalSound (f : Formula, env : Set[Int]) = {
-    eval(partEval(f))(env) == eval(f)(env)
-  }.holds
-  
 }

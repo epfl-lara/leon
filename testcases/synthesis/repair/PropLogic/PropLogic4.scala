@@ -1,3 +1,4 @@
+// Fails
 import leon.lang._
 import leon.annotation._
 import leon.collection._
@@ -32,13 +33,12 @@ object SemanticsPreservation {
     case Not(Const(v)) => Const(!v)
     case Not(Not(e)) => nnf(e)
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
-    case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
+    case Or(lhs, rhs)  => And(nnf(lhs), nnf(rhs)) // FIXME should be Or
     case other => other 
   }} ensuring { res => 
-      isNNF(res) && ((formula, res) passes {
-        case Not(And(Const(a), Const(b))) => Or(Const(!a), Const(!b))
-        case x@And(Literal(_), Literal(_)) => x
-      })
+    isNNF(res) && ((formula, res) passes {
+      case Or(Not(Const(c)), Not(Literal(l))) => Or(Const(c), Not(Literal(l)))
+    })
   }
 
   def isNNF(f : Formula) : Boolean = f match {
@@ -49,24 +49,4 @@ object SemanticsPreservation {
     case _ => true
   }
 
-  def partEval(formula : Formula) : Formula = { formula match {
-    case And(Const(false), _ ) => Const(false)
-    case And(_, Const(false)) => Const(false)
-    case And(Const(true), e) => partEval(e)
-    case And(e, Const(true)) => partEval(e)
-    // FIXME (hard!) : treats Or as And
-    case Or(Const(false), _ ) => Const(false)
-    case Or(_, Const(false)) => Const(false)
-    case Or(Const(true), e) => partEval(e)
-    case Or(e, Const(true)) => partEval(e)
-    case Not(Const(c)) => Const(!c)
-    case other => other
-  }} ensuring { size(_) <= size(formula) }
-
-  
-  @induct
-  def partEvalSound (f : Formula, env : Set[Int]) = {
-    eval(partEval(f))(env) == eval(f)(env)
-  }.holds
-  
 }
