@@ -237,22 +237,30 @@ object ExpressionGrammars {
             Nil
           }
 
-          // if e is a terminal, we also rely on standard CEGIS
-          val fallback = if (subs.size == 0) {
-            normalGrammar.getProductions(gl).map(gl -> _)
-          } else {
-            Nil
-          }
+          allSubs ++ exact ++ injectG ++ swaps
+        }
 
-          allSubs ++ exact ++ injectG ++ swaps ++ fallback
+        def cegis(gl: L): Seq[(L, Gen)] = {
+          normalGrammar.getProductions(gl).map(gl -> _)
+        }
+
+        def intVariations(gl: L, v: Int): Seq[(L, Gen)] = {
+          Seq(
+            gl -> Generator(Nil, { _ => IntLiteral(v-1)} ),
+            gl -> Generator(Nil, { _ => IntLiteral(v+1)} )
+          )
         }
 
         val subs: Seq[(L, Gen)] = e match {
+          case IntLiteral(v) =>
+            gens(e, el, gl, Nil, { _ => e }) ++ cegis(gl) ++ intVariations(gl, v)
+
           case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
-            gens(e, el, gl, Nil, { _ => e })
+            gens(e, el, gl, Nil, { _ => e }) ++ cegis(gl)
 
           case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
-            Seq()
+            // We allow only exact call, and/or cegis extensions
+            Seq(el -> Generator[L, Expr](Nil, { _ => e })) ++ cegis(gl)
 
           case UnaryOperator(sub, builder) =>
             gens(e, el, gl, List(sub), { case Seq(s) => builder(s) })
