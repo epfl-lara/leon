@@ -99,10 +99,7 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
           case (from, (id, to)) => replaceFromIDs(Map(id -> to), from)
         }
 
-      if (cs.optGuard.isDefined) {
-        sctx.reporter.error("Cannot handle guards in example extraction. @" + cs.optGuard.get.getPos)
-        Seq()
-      } else if (cs.rhs == out) {
+      if (cs.rhs == out) {
         // The trivial example
         Seq()
       } else {
@@ -120,9 +117,16 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
           val typesWithValues = types.map { tp => (tp, enum.iterator(tp).toStream) }.toMap
           val values = freeVars map { v => typesWithValues(v.getType) }
           val instantiations = cartesianProduct(values) map { freeVars.zip(_).toMap }
-          instantiations.map { inst =>
-            (replaceFromIDs(inst, pattExpr), replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs)))  
-          }.take(examplesPerCase)
+          if (false && cs.optGuard.isDefined){
+            // TODO: Filter examples by guard
+            Seq()
+          } else {
+            instantiations.map { inst =>
+              (replaceFromIDs(inst, pattExpr), replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs)))  
+            }.take(examplesPerCase)
+          }
+          
+          
         }
         
       }
@@ -136,7 +140,7 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
       case p@Passes(ins, out, cases) =>
         
         val ioPairs = cases flatMap { toIOExamples(ins,out,_) }
-        val infos = extractIds(p.scrutinee)
+        val infos = extractIds(Tuple(Seq(ins,out)))
         val exs   = ioPairs.map{ case (i, o) =>
           val test = Tuple(Seq(i, o))
           val ids = variablesOf(test)
