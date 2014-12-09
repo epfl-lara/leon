@@ -111,7 +111,7 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
           val (npr, fds) = synth.solutionToProgram(sol)
 
           if (!sol.isTrusted) {
-            getVerificationCounterExamples(fds.head, npr) match {
+            getVerificationCounterExamples(fds.head, npr, synth.options.timeoutMs) match {
               case Some(ces) =>
                 testBank ++= ces
                 reporter.info("Failed :(, but I learned: "+ces.mkString("  |  "))
@@ -159,8 +159,8 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
 
   }
 
-  def getVerificationCounterExamples(fd: FunDef, prog: Program): Option[Seq[InExample]] = {
-    val timeoutMs = 3000l
+  def getVerificationCounterExamples(fd: FunDef, prog: Program, optTimeout: Option[Long]): Option[Seq[InExample]] = {
+    val timeoutMs = optTimeout getOrElse 3000l
     val solverf = SolverFactory(() => (new FairZ3Solver(ctx, prog) with TimeoutSolver).setTimeout(timeoutMs))
     val vctx = VerificationContext(ctx, prog, solverf, reporter)
     val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
@@ -255,7 +255,12 @@ class Repairman(ctx: LeonContext, program: Program, fd: FunDef) {
     }
 
     // Try to verify, if it fails, we have at least one CE
-    getVerificationCounterExamples(fd, program) match {
+    val timeout = ctx.options.flatMap { //FIXME ugly-
+      case LeonValueOption("timeout", l) => 
+        try {Some(l.toLong * 1000L)} catch { case _: NumberFormatException => None }
+      case _ => None
+    }.headOption
+    getVerificationCounterExamples(fd, program, timeout) match {
       case Some(ces) =>
         testBank ++= ces
       case _ =>
