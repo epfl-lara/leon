@@ -108,15 +108,9 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", true).setType(fd.returnType))
 
-    val passes = if (testsCases.nonEmpty) {
-      Passes(argsWrapped, out.toVariable, testsCases)
-    } else {
-      BooleanLiteral(true)
-    }
-
     val spec = and(
       fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
-      passes
+      passes(argsWrapped, out.toVariable, testsCases)
     )
 
     val body = fd.body.get
