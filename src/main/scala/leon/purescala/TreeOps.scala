@@ -336,6 +336,14 @@ object TreeOps {
     postMap(substs.lift)(expr)
   }
 
+  def replaceSeq(substs: Seq[(Expr, Expr)], expr: Expr): Expr = {
+    var res = expr
+    for (s <- substs) {
+      res = replace(Map(s), res)
+    }
+    res
+  }
+
 
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap( {

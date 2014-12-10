@@ -28,14 +28,6 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
     val simplify = Simplifiers.bestEffort(sctx.context, sctx.program)_
 
-    def doSubstitute(substs: Seq[(Expr, Expr)], e: Expr): Expr = {
-      var res = e
-      for (s <- substs) {
-        res = postMap(Map(s).lift)(res)
-      }
-      res
-    }
-
     val alts = guides.collect {
       case g @ IfExpr(c, thn, els) =>
         val sub1 = p.copy(ws = replace(Map(g -> thn), p.ws), pc = and(c, replace(Map(g -> thn), p.pc)))
@@ -66,11 +58,11 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           
           val pc  = simplify(and(
             scrutCond,
-            replace(Map(scrut0 -> scrut), doSubstitute(substs,scrutConstraint)),
+            replace(Map(scrut0 -> scrut), replaceSeq(substs,scrutConstraint)),
             replace(Map(scrut0 -> scrut), replace(Map(m -> c.rhs), andJoin(cond)))
           ))
           val ws = replace(Map(m -> c.rhs), p.ws)
-          val phi = doSubstitute(substs, p.phi)
+          val phi = replaceSeq(substs, p.phi)
           val free = variablesOf(and(pc, phi)) -- p.xs
           val asPrefix = p.as.filter(free)
 

@@ -58,9 +58,10 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val soptions = soptions0.copy(
       costModel = RepairCostModel(soptions0.costModel),
       rules = (soptions0.rules ++ Seq(
-        GuidedDecomp,
-        GuidedCloser,
-        CEGLESS
+        //GuidedDecomp,
+        //GuidedCloser,
+        CEGLESS,
+        TEGLESS
       )) diff Seq(ADTInduction)
     );
 
@@ -149,23 +150,15 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         var res: Option[(Expr, Expr)] = None
 
         // in case scrut is an non-variable expr, we simplify to a variable + inject in env
-        val (sid, nenv) = scrut match {
-          case Variable(id) =>
-            (id, env)
-          case expr =>
-            val id = FreshIdentifier("scrut", true).copiedFrom(scrut)
-            (id, env + (id -> scrut))
-        }
-
         for (c <- cases if res.isEmpty) {
-          val cond = and(conditionForPattern(sid.toVariable, c.pattern, includeBinders = false),
+          val cond = and(conditionForPattern(scrut, c.pattern, includeBinders = false),
                          c.optGuard.getOrElse(BooleanLiteral(true)))
-          val map  = mapForPattern(sid.toVariable, c.pattern)
+          val map  = mapForPattern(scrut, c.pattern)
 
 
-          forAllTests(cond, nenv ++ map) match {
+          forAllTests(cond, env ++ map) match {
             case Some(true) =>
-              val (b, r) = focus(c.rhs, nenv ++ map)
+              val (b, r) = focus(c.rhs, env ++ map)
               res = Some((MatchExpr(scrut, cases.map { c2 =>
                 if (c2 eq c) {
                   c2.copy(rhs = b)

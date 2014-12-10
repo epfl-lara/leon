@@ -600,6 +600,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   val e = examples.next()
                   if (!ndProgram.testForProgram(bs)(e)) {
                     failedTestsStats(e) += 1
+                    //sctx.reporter.debug(" Program: "+ndProgram.determinize(bs)+" failed on "+e)
                     wrongPrograms += bs
                     prunedPrograms -= bs
 

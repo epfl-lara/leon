@@ -222,7 +222,7 @@ object ExpressionGrammars {
             gl -> Generator(subEls.updated(i, sgl), builder)
           }
 
-          val swaps = if (subs.size > 1 || isCommutative(e)) {
+          val swaps = if (subs.size > 1 && !isCommutative(e)) {
             (for (i <- 0 until subs.size;
                  j <- i+1 until subs.size) yield {
 

@@ -13,7 +13,7 @@ import purescala.Extractors._
 import utils._
 import utils.ExpressionGrammars._
 
-case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
+case object TEGLESS extends TEGISLike[Label[String]]("TEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
 
     val TopLevelAnds(clauses) = p.ws
@@ -35,10 +35,9 @@ case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
 
     val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, sctx, p)).foldLeft[ExpressionGrammar[Label[String]]](Empty())(_ || _)
 
-    CegisParams(
+    TegisParams(
       grammar = guidedGrammar,
-      rootLabel = { (tpe: TypeTree) => Label(tpe, "G0") },
-      maxUnfoldings = (0 +: guides.map(depth(_) + 1)).max
+      rootLabel = { (tpe: TypeTree) => Label(tpe, "G0") }
     )
   }
 }

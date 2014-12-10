@@ -21,19 +21,22 @@ import bonsai._
 import bonsai.enumerators._
 
 abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
-  def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
+  case class TegisParams(
+    grammar: ExpressionGrammar[T],
+    rootLabel: TypeTree => T,
+    enumLimit: Int = 10000,
+    reorderInterval: Int = 50
+  );
 
-  def getRootLabel(tpe: TypeTree): T
-
-  val enumLimit = 10000;
-  val testsReorderInterval = 50; // Every X test filterings, we reorder tests with most filtering first.
+  def getParams(sctx: SynthesisContext, p: Problem): TegisParams
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
       def apply(sctx: SynthesisContext): RuleApplication = {
 
-        val grammar = getGrammar(sctx, p)
+        val params = getParams(sctx, p)
+        val grammar = params.grammar
 
         var tests = p.getTests(sctx).map(_.ins).distinct
         if (tests.nonEmpty) {
@@ -53,7 +56,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           val timers = sctx.context.timers.synthesis.rules.tegis;
 
-          val allExprs = enum.iterator(getRootLabel(targetType))
+          val allExprs = enum.iterator(params.rootLabel(targetType))
 
           var failStat = Map[Seq[Expr], Int]().withDefaultValue(0)
 
@@ -63,7 +66,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
           def findNext(): Option[Expr] = {
             candidate = None
             timers.generating.start()
-            allExprs.take(enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
+            allExprs.take(params.enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
               val exprToTest = if (!isWrapped) {
                 Let(p.xs.head, e, p.phi)
               } else {
@@ -93,7 +96,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
               }
               timers.testing.stop()
 
-              if (n % testsReorderInterval == 0) {
+              if (n % params.reorderInterval == 0) {
                 tests = tests.sortBy(t => -failStat(t))
               }
               n += 1
@@ -114,6 +117,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           RuleClosed(toStream())
         } else {
+          sctx.reporter.debug("No test available")
           RuleFailed()
         }
       }

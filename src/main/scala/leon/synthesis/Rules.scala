@@ -20,6 +20,7 @@ object Rules {
     CaseSplit,
     IfSplit,
     UnusedInput,
+    EquivalentInputs,
     UnconstrainedOutput,
     OptimisticGround,
     EqualitySplit,
