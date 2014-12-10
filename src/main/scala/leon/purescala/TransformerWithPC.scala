@@ -21,8 +21,8 @@ abstract class TransformerWithPC extends Transformer {
       val sb = rec(b, register(Equals(Variable(i), se), path))
       Let(i, se, sb).copiedFrom(e)
 
-    case p: Passes =>
-      rec(p.asConstraint, path)
+    case p:Passes =>
+      applyAsMatches(p,rec(_,path))
 
     case MatchExpr(scrut, cases) =>
       val rs = rec(scrut, path)

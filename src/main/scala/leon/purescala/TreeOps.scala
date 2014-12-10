@@ -459,6 +459,22 @@ object TreeOps {
   def depth(e: Expr): Int = {
     foldRight[Int]({ (e, sub) => 1 + (0 +: sub).max })(e)
   }
+  
+  def applyAsMatches(p : Passes, f : Expr => Expr) = {
+    import p._
+    
+    f(p.asConstraint) match {
+      case Equals(newOut, MatchExpr(newIn, newCases)) => {
+        val filtered = newCases flatMap {
+          case MatchCase(p,g,`newOut`) => None
+          case other => Some(other)
+        }
+        Passes(newIn, newOut, filtered)
+      }
+      case other => other
+    }
+    
+  }
 
   def normalizeExpression(expr: Expr) : Expr = {
     def rec(e: Expr): Option[Expr] = e match {
