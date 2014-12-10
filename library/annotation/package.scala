@@ -11,6 +11,8 @@ package object annotation {
   class verified   extends StaticAnnotation
   @ignore
   class repair     extends StaticAnnotation
+  @ignore
+  class witness    extends StaticAnnotation
 
   @ignore
   class induct     extends StaticAnnotation

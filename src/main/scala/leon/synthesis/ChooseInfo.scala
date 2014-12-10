@@ -24,21 +24,25 @@ case class ChooseInfo(ctx: LeonContext,
 
 object ChooseInfo {
   def extractFromProgram(ctx: LeonContext, prog: Program, options: SynthesisOptions): List[ChooseInfo] = {
-    val fterm = prog.library.terminating.getOrElse(ctx.reporter.fatalError("No library ?!?"))
-
-    var results = List[ChooseInfo]()
 
     // Look for choose()
-    for (f <- prog.definedFunctions if f.body.isDefined) {
-      val actualBody = and(f.precondition.getOrElse(BooleanLiteral(true)), f.body.get)
-      val withinCall = FunctionInvocation(f.typedWithDef, f.params.map(_.id.toVariable))
-      val term = FunctionInvocation(fterm.typed(Seq(f.returnType)), Seq(withinCall))
-
-      for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) {
-        results = ChooseInfo(ctx, prog, f, and(path, term), ch, ch, options) :: results
-      }
+    val results = for (f <- prog.definedFunctions if f.body.isDefined;
+                       ci <- extractFromFunction(ctx, prog, f, options)) yield {
+      ci
     }
 
     results.sortBy(_.source.getPos)
+  }
+
+  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef, options: SynthesisOptions): Seq[ChooseInfo] = {
+    val fterm = prog.library.terminating.getOrElse(ctx.reporter.fatalError("No library ?!?"))
+
+    val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
+    val withinCall = FunctionInvocation(fd.typedWithDef, fd.params.map(_.id.toVariable))
+    val term = FunctionInvocation(fterm.typed(Seq(fd.returnType)), Seq(withinCall))
+
+    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
+      ChooseInfo(ctx, prog, fd, and(path, term), ch, ch, options)
+    }
   }
 }

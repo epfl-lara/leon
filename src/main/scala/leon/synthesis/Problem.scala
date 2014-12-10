@@ -4,10 +4,12 @@ package leon
 package synthesis
 
 import leon.purescala.Trees._
+import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees.TypeTree
 import leon.purescala.Common._
 import leon.purescala.Constructors._
+import leon.purescala.Extractors._
 
 // Defines a synthesis triple of the form:
 // ⟦ as ⟨ ws && pc | phi ⟩ xs ⟧
@@ -217,6 +219,13 @@ object Problem {
     val phi = simplifyLets(ch.pred)
     val as = (variablesOf(And(pc, phi))--xs).toList
 
-    Problem(as, BooleanLiteral(true), pc, phi, xs)
+    val TopLevelAnds(clauses) = pc
+
+    val (pcs, wss) = clauses.partition {
+      case FunctionInvocation(TypedFunDef(fd, _), _) if fd.annotations("witness") => false
+      case _ => true
+    }
+
+    Problem(as, andJoin(wss), andJoin(pcs), phi, xs)
   }
 }
