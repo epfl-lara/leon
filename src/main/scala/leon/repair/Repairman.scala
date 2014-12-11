@@ -225,16 +225,57 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
 
   def discoverTests: List[Example] = {
+    
+    import bonsai._
+    import bonsai.enumerators._
+    import utils.ExpressionGrammars.ValueGrammar
+    import purescala.Extractors.UnwrapTuple
+    
+    val maxExamples = 1000
+    // A heuristic on how many valid examples we may wish to generate,
+    // according to ValueGrammar
+    def typeComplexity(tp : TypeTree)(implicit seen : Set[ClassType]) : Int = tp match {    
+      case TypeParameter(_) => 3
+      case Int32Type => 3
+      case UnitType => 1
+      case BooleanType => 2 
+      case ab : AbstractClassType => 
+        if (seen contains ab) 
+          ab.knownCCDescendents.size
+        else 
+          ab.knownCCDescendents.map(typeComplexity(_)(seen + ab)).sum
+      case cc : CaseClassType => 
+        if (seen contains cc) 
+          cc.fields.size
+        else
+          cc.fields.map{f => typeComplexity(f.getType)(seen + cc)}.product
+      case SetType(base) => 
+        val forBase = typeComplexity(base)
+        forBase + forBase * forBase
+      case Untyped => 0
+      case _ => 1
+    }
+    val maxValid = scala.math.min(100, fd.params.map { p => typeComplexity(p.getType)(Set()) }.product)
+    
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams(checkContracts = true))
-    val generator= new NaiveDataGen(ctx, program, evaluator)
 
-    val pre = fd.precondition.getOrElse(BooleanLiteral(true))
+    val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
+    val inputs = enum.iterator(tupleTypeWrap(fd.params map { _.getType})).take(maxExamples)
+    
+    val filtering : Seq[Expr] => Boolean = fd.precondition match {
+      case None => 
+        _ => true 
+      case Some(pre) => 
+        evaluator.compile(pre, fd.params map { _.id }) match {
+          case Some(evalFun) =>
+            val sat = EvaluationResults.Successful(BooleanLiteral(true))
+            e : Seq[Expr] => evalFun(e) == sat
+          case None =>
+            _ => false
+        }
+    }
 
-    val inputs = generator.generateFor(fd.params.map(_.id), pre, 30, 10000).toList
-
-    var tests = List[Example]()
-
-    tests ++= inputs.map { i =>
+    val tests = inputs.map{case UnwrapTuple(is) => is}.filter(filtering).map { i =>
       evaluator.eval(FunctionInvocation(fd.typed(fd.tparams.map(_.tp)), i)) match {
         case EvaluationResults.Successful(res) =>
           new InOutExample(i, List(res))
@@ -242,16 +283,12 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         case _ =>
           new InExample(i)
       }
-    }
-
+    }.take(maxValid).toList
+  
     // Try to verify, if it fails, we have at least one CE
-    getVerificationCounterExamples(fd, program) match {
-      case Some(ces) =>
-        tests ++= ces
-      case _ =>
-    }
+    val ces = getVerificationCounterExamples(fd, program) getOrElse Nil 
 
-    tests
+    tests ++ ces
   }
 
   def repair() = {
