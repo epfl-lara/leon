@@ -39,6 +39,18 @@ object Constructors {
     case Seq(elem) => elem 
     case more => Tuple(more)
   }
+  
+  def tuplePatternWrap(ps: Seq[Pattern]) = ps match {
+    case Seq() => LiteralPattern(None, UnitLiteral())
+    case Seq(elem) => elem
+    case more => TuplePattern(None, more)
+  }
+  
+  def tupleTypeWrap(tps : Seq[TypeTree]) = tps match {
+    case Seq() => UnitType
+    case Seq(elem) => elem
+    case more => TupleType(more)
+  }
 
   private def filterCases(scrutType : TypeTree, cases: Seq[MatchCase]): Seq[MatchCase] = {
     scrutType match {
