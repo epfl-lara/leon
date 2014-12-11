@@ -23,13 +23,13 @@ object RepairPhase extends LeonPhase[Program, Program] {
 
   def run(ctx: LeonContext)(program: Program): Program = {
     var repairFuns: Option[Seq[String]] = None
-    var verifTimeout: Option[Long] = None
+    var verifTimeoutMs: Option[Long] = None
 
     val reporter = ctx.reporter
 
     for(opt <- ctx.options) opt match {
       case v @ LeonValueOption("timeout", _) =>
-        verifTimeout = v.asLong(ctx)
+        verifTimeoutMs = v.asLong(ctx) map { _ * 1000L }
       case LeonValueOption("functions", ListValue(fs)) =>
         repairFuns = Some(fs)
       case _ =>
@@ -42,10 +42,10 @@ object RepairPhase extends LeonPhase[Program, Program] {
       filterInclusive(repairFuns.map(fdMatcher), None)
     }
 
-    val toRepair = funDefsFromMain(program).toList.sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).filter(fdFilter)
+    val toRepair = funDefsFromMain(program).toList.sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).filter(fdFilter).filter{ _.hasPostcondition }
 
     for (fd <- toRepair) {
-      new Repairman(ctx, program, fd, verifTimeout).repair()
+      new Repairman(ctx, program, fd, verifTimeoutMs).repair()
     }
 
     program

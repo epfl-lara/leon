@@ -23,7 +23,7 @@ import synthesis.rules._
 import synthesis.heuristics._
 import graph.DotGenerator
 
-class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout: Option[Long]) {
+class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long]) {
   val reporter = ctx.reporter
 
   var program = initProgram
@@ -194,7 +194,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   }
 
   def getVerificationCounterExamples(fd: FunDef, prog: Program): Option[Seq[InExample]] = {
-    val timeoutMs = verifTimeout.getOrElse(3000L)
+    val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solverf = SolverFactory(() => (new FairZ3Solver(ctx, prog) with TimeoutSolver).setTimeout(timeoutMs))
     val vctx = VerificationContext(ctx, prog, solverf, reporter)
     val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
