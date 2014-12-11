@@ -119,14 +119,23 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
           val typesWithValues = types.map { tp => (tp, enum.iterator(tp).toStream) }.toMap
           val values = freeVars map { v => typesWithValues(v.getType) }
           val instantiations = cartesianProduct(values) map { freeVars.zip(_).toMap }
-          if (false && cs.optGuard.isDefined){
-            // TODO: Filter examples by guard
-            Seq()
-          } else {
-            instantiations.map { inst =>
-              (replaceFromIDs(inst, pattExpr), replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs)))  
-            }.take(examplesPerCase)
+          
+          def filterG(e : Expr, mapping: Map[Identifier, Expr]) : Boolean = cs.optGuard match {
+            // in -> e should be enough. We shouldn't find any subexpressions of in.
+            case Some(guard) => ev.eval(replace(Map(in -> e), guard), mapping) match {
+              case EvaluationResults.Successful(BooleanLiteral(true)) => true
+              case _ => false
+            }
+            case None => true
           }
+
+          (for {
+            inst <- instantiations
+            inR = replaceFromIDs(inst, pattExpr)
+            outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
+            if filterG(inR, inst)
+          } yield (inR,outR) ).take(examplesPerCase)
+          
           
           
         }
@@ -138,8 +147,7 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
 
     val testClusters = collect[Map[Identifier, Expr]] {
 
-      //case FunctionInvocation(tfd, List(in, out, FiniteMap(inouts))) if tfd.id.name == "passes" =>
-      case p@Passes(ins, out, cases) =>
+      case Passes(ins, out, cases) =>
         
         val ioPairs = cases flatMap { toIOExamples(ins,out,_) }
         val infos = extractIds(Tuple(Seq(ins,out)))
