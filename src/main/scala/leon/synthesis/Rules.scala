@@ -173,12 +173,7 @@ trait RuleHelpers {
   def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replaceFromIDs(Map(what), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replaceFromIDs(what, in)
 
-  val forward: List[Solution] => Option[Solution] = {
-    case List(s) =>
-      Some(Solution(s.pre, s.defs, s.term))
-    case _ =>
-      None
-  }
+  val forward: List[Solution] => Option[Solution] = { ss => ss.headOption }
 
   def project(firstN: Int): List[Solution] => Option[Solution] = {
     project(0 until firstN)
