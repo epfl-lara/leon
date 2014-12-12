@@ -169,6 +169,16 @@ object ExpressionGrammars {
 
   case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
 
+    val excludeFCalls = sctx.options.functionsToIgnore
+    
+    val normalGrammar = EmbededGrammar(
+        BaseGrammar ||
+        FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
+        SafeRecCalls(sctx.program, p.ws, p.pc),
+      { (t: TypeTree)      => Label(t, "B")},
+      { (l: Label[String]) => l.getType }
+    )     
+    
     type L = Label[String]
 
     private var counter = -1;
@@ -180,7 +190,10 @@ object ExpressionGrammars {
     lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
 
     def computeProductions(t: L): Seq[Gen] = {
-      allSimilar.getOrElse(t, Nil)
+      t match {
+        case Label(_, "B") => normalGrammar.computeProductions(t)
+        case _ => allSimilar.getOrElse(t, Nil)
+      }
     }
 
     def computeSimilar(e : Expr) : Seq[(L, Gen)] = {
@@ -195,18 +208,6 @@ object ExpressionGrammars {
         case _: Plus | _: Times => true
         case _ => false
       }
-
-      val excludeFCalls = sctx.options.functionsToIgnore
-      
-      val normalGrammar = EmbededGrammar(
-          BaseGrammar ||
-          FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
-          SafeRecCalls(sctx.program, p.ws, p.pc),
-        { (t: TypeTree)      => Label(t, "B")},
-        { (l: Label[String]) => l.getType }
-      )
-
-      
 
       def rec(e: Expr, el: L, gl: L): Seq[(L, Gen)] = {
 
