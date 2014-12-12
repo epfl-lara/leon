@@ -7,6 +7,7 @@ import utils._
 
 object Constructors {
   import Trees._
+  import TypeTreeOps._
   import Common._
   import TypeTrees._
 
@@ -52,8 +53,8 @@ object Constructors {
     case more => TupleType(more)
   }
 
-  private def filterCases(scrutType : TypeTree, cases: Seq[MatchCase]): Seq[MatchCase] = {
-    scrutType match {
+  private def filterCases(scrutType : TypeTree, resType: Option[TypeTree], cases: Seq[MatchCase]): Seq[MatchCase] = {
+    val casesFiltered = scrutType match {
       case c: CaseClassType =>
         cases.filter(_.pattern match {
           case CaseClassPattern(_, cct, _) if cct.classDef != c.classDef => false
@@ -66,13 +67,20 @@ object Constructors {
       case t =>
         scala.sys.error("Constructing match expression on non-supported type: "+t)
     }
+
+    resType match {
+      case Some(tpe) =>
+        casesFiltered.filter(c => isSubtypeOf(c.rhs.getType, tpe) || isSubtypeOf(tpe, c.rhs.getType))
+      case None =>
+        casesFiltered
+    }
   }
 
   def gives(scrutinee : Expr, cases : Seq[MatchCase]) : Gives =
-    Gives(scrutinee, filterCases(scrutinee.getType, cases))
+    Gives(scrutinee, filterCases(scrutinee.getType, None, cases))
   
   def passes(in : Expr, out : Expr, cases : Seq[MatchCase]): Expr = {
-    val resultingCases = filterCases(in.getType, cases)
+    val resultingCases = filterCases(in.getType, Some(out.getType), cases)
     if (resultingCases.nonEmpty) {
       Passes(in, out, resultingCases)
     } else {
@@ -81,7 +89,7 @@ object Constructors {
   }
 
   def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : Expr ={
-    val filtered = filterCases(scrutinee.getType, cases)
+    val filtered = filterCases(scrutinee.getType, None, cases)
     if (filtered.nonEmpty)
       MatchExpr(scrutinee, filtered)
     else 

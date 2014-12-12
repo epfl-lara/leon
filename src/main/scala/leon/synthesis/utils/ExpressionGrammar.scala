@@ -186,8 +186,9 @@ object ExpressionGrammars {
     def computeSimilar(e : Expr) : Seq[(L, Gen)] = {
 
       def getLabelPair(t: TypeTree) = {
+        val tpe = bestRealType(t)
         val c = getNext
-        (Label(t, "E"+c), Label(t, "G"+c))
+        (Label(tpe, "E"+c), Label(tpe, "G"+c))
       }
 
       def isCommutative(e: Expr) = e match {
@@ -282,12 +283,12 @@ object ExpressionGrammars {
 
       val res = rec(e, el, gl)
 
-      //for ((t, g) <- res) {
-      //  val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
-      //  val gen = g.builder(subs)
+      for ((t, g) <- res) {
+        val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
+        val gen = g.builder(subs)
 
-      //  println(f"$t%30s ::= "+gen)
-      //}
+        println(f"$t%30s ::= "+gen)
+      }
       res
     }
   }

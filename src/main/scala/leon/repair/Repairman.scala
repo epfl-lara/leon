@@ -30,6 +30,64 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
   implicit val debugSection = DebugSectionRepair
 
+  def repair() = {
+    reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
+    val (tests, isVerified) = discoverTests
+
+    if (isVerified) {
+      reporter.info("Program verifies!")
+    }
+
+    reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
+    val synth = getSynthesizer(tests)
+    val p     = synth.problem
+
+    var solutions = List[Solution]()
+
+    reporter.info(ASCIIHelpers.title("3. Synthesizing"))
+    reporter.info(p)
+
+    synth.synthesize() match {
+      case (search, sols) =>
+        for (sol <- sols) {
+
+          // Validate solution if not trusted
+          if (!sol.isTrusted) {
+            reporter.info("Found untrusted solution! Verifying...")
+            val (npr, fds) = synth.solutionToProgram(sol)
+
+            getVerificationCounterExamples(fds.head, npr) match {
+              case Some(ces) =>
+                reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
+
+              case None =>
+                solutions ::= sol
+                reporter.info("Solution was not trusted but verification passed!")
+            }
+          } else {
+            reporter.info("Found trusted solution!")
+            solutions ::= sol
+          }
+        }
+
+        if (synth.options.generateDerivationTrees) {
+          val dot = new DotGenerator(search.g)
+          dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+        }
+
+        if (solutions.isEmpty) {
+          reporter.error(ASCIIHelpers.title("Failed to repair!"))
+        } else {
+          reporter.info(ASCIIHelpers.title("Repair successful:"))
+          for ((sol, i) <- solutions.zipWithIndex) {
+            reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+            val expr = sol.toSimplifiedExpr(ctx, program)
+            reporter.info(ScalaPrinter(expr));
+          }
+        }
+      }
+  }
+
   def getSynthesizer(tests: List[Example]): Synthesizer = {
     // Create a fresh function
     val nid = FreshIdentifier(fd.id.name+"_repair").copiedFrom(fd.id)
@@ -224,7 +282,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   }
 
 
-  def discoverTests: List[Example] = {
+  def discoverTests: (List[Example], Boolean) = {
     
     import bonsai._
     import bonsai.enumerators._
@@ -288,62 +346,9 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     // Try to verify, if it fails, we have at least one CE
     val ces = getVerificationCounterExamples(fd, program) getOrElse Nil 
 
-    tests ++ ces
+    (tests ++ ces, ces.isEmpty)
   }
 
-  def repair() = {
-    reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
-    val tests = discoverTests
-
-    reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
-    val synth = getSynthesizer(tests)
-    val p     = synth.problem
-
-    var solutions = List[Solution]()
-
-    reporter.info(ASCIIHelpers.title("3. Synthesizing"))
-    reporter.info(p)
-
-    synth.synthesize() match {
-      case (search, sols) =>
-        for (sol <- sols) {
-
-          // Validate solution if not trusted
-          if (!sol.isTrusted) {
-            reporter.info("Found untrusted solution! Verifying...")
-            val (npr, fds) = synth.solutionToProgram(sol)
-
-            getVerificationCounterExamples(fds.head, npr) match {
-              case Some(ces) =>
-                reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
-
-              case None =>
-                solutions ::= sol
-                reporter.info("Solution was not trusted but verification passed!")
-            }
-          } else {
-            reporter.info("Found trusted solution!")
-            solutions ::= sol
-          }
-        }
-
-        if (synth.options.generateDerivationTrees) {
-          val dot = new DotGenerator(search.g)
-          dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
-        }
-
-        if (solutions.isEmpty) {
-          reporter.error(ASCIIHelpers.title("Failed to repair!"))
-        } else {
-          reporter.info(ASCIIHelpers.title("Repair successful:"))
-          for ((sol, i) <- solutions.zipWithIndex) {
-            reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-            val expr = sol.toSimplifiedExpr(ctx, program)
-            reporter.info(ScalaPrinter(expr));
-          }
-        }
-      }
-  }
 
   // ununsed for now, but implementation could be useful later
   private def disambiguate(p: Problem, sol1: Solution, sol2: Solution): Option[(InOutExample, InOutExample)] = {

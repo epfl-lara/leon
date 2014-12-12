@@ -8,6 +8,7 @@ import leon.utils._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -51,11 +52,18 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
     val substs = discoverEquivalences(clauses)
 
+    val postsToInject = substs.collect {
+      case (FunctionInvocation(tfd, args), e) if tfd.hasPostcondition =>
+        val Some((id, post)) = tfd.postcondition
+
+        replaceFromIDs((tfd.params.map(_.id) zip args).toMap + (id -> e), post)
+    }
+
     if (substs.nonEmpty) {
       val simplifier = Simplifiers.bestEffort(sctx.context, sctx.program) _
 
       val sub = p.copy(ws = replaceSeq(substs, p.ws), 
-                       pc = simplifier(replaceSeq(substs, p.pc)),
+                       pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),
                        phi = simplifier(replaceSeq(substs, p.phi)))
 
       List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
