@@ -242,8 +242,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
   def getVerificationCounterExamples(fd: FunDef, prog: Program): Option[Seq[InExample]] = {
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
-    val solverf = SolverFactory(() => (new FairZ3Solver(ctx, prog) with TimeoutSolver).setTimeout(timeoutMs))
-    val vctx = VerificationContext(ctx, prog, solverf, reporter)
+    val solver = new TimeoutSolverFactory(SolverFactory.getFromSettings(ctx, prog), timeoutMs)
+    val vctx = VerificationContext(ctx, prog, solver, reporter)
     val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
 
     AnalysisPhase.checkVerificationConditions(vctx, vcs)
