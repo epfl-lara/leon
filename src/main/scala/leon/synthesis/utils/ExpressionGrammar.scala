@@ -161,23 +161,23 @@ object ExpressionGrammars {
     }
   }
 
-  case class Label[T](t: TypeTree, l: T) extends Typed {
+  case class Label[T](t: TypeTree, l: T, depth: Option[Int] = None) extends Typed {
     def getType = t
 
-    override def toString = t.toString+"@"+l
+    override def toString = t.toString+"#"+l+depth.map(d => "@"+d).getOrElse("")
   }
 
   case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
 
     val excludeFCalls = sctx.settings.functionsToIgnore
     
-    val normalGrammar = EmbeddedGrammar(
+    val normalGrammar = BoundedGrammar(EmbeddedGrammar(
         BaseGrammar ||
         FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
         SafeRecCalls(sctx.program, p.ws, p.pc),
-      { (t: TypeTree)      => Label(t, "B")},
+      { (t: TypeTree)      => Label(t, "B", None)},
       { (l: Label[String]) => l.getType }
-    )     
+    ), 1)
     
     type L = Label[String]
 
@@ -191,8 +191,8 @@ object ExpressionGrammars {
 
     def computeProductions(t: L): Seq[Gen] = {
       t match {
-        case Label(_, "B") => normalGrammar.computeProductions(t)
-        case _ => allSimilar.getOrElse(t, Nil)
+        case Label(_, "B", _) => normalGrammar.computeProductions(t)
+        case _                => allSimilar.getOrElse(t, Nil)
       }
     }
 
@@ -286,12 +286,12 @@ object ExpressionGrammars {
 
       val res = rec(e, el, gl)
 
-      for ((t, g) <- res) {
-        val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
-        val gen = g.builder(subs)
+      //for ((t, g) <- res) {
+      //  val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
+      //  val gen = g.builder(subs)
 
-        println(f"$t%30s ::= "+gen)
-      }
+      //  println(f"$t%30s ::= "+gen)
+      //}
       res
     }
   }
@@ -362,8 +362,21 @@ object ExpressionGrammars {
    }
   }
 
+  case class BoundedGrammar[T](g: ExpressionGrammar[Label[T]], bound: Int) extends ExpressionGrammar[Label[T]] {
+    def computeProductions(l: Label[T]): Seq[Gen] = g.computeProductions(l).flatMap {
+      case g: Generator[Label[T], Expr] =>
+        if (l.depth == Some(bound) && g.subTrees.nonEmpty) {
+          None  
+        } else if (l.depth.map(_ > bound).getOrElse(false)) {
+          None
+        } else {
+          Some(Generator(g.subTrees.map(sl => sl.copy(depth = l.depth.map(_+1).orElse(Some(1)))), g.builder))
+        }
+    }
+
+  }
+
   case class EmbeddedGrammar[Ti <% Typed, To <% Typed](g: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
-    
     def computeProductions(t: To): Seq[Gen] = g.computeProductions(oToi(t)).map {
       case g : Generator[Ti, Expr] =>
         Generator(g.subTrees.map(iToo), g.builder)
