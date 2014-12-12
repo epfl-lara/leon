@@ -171,7 +171,7 @@ object ExpressionGrammars {
 
     val excludeFCalls = sctx.options.functionsToIgnore
     
-    val normalGrammar = EmbededGrammar(
+    val normalGrammar = EmbeddedGrammar(
         BaseGrammar ||
         FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
         SafeRecCalls(sctx.program, p.ws, p.pc),
@@ -362,7 +362,7 @@ object ExpressionGrammars {
    }
   }
 
-  case class EmbededGrammar[Ti <% Typed, To <% Typed](g: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
+  case class EmbeddedGrammar[Ti <% Typed, To <% Typed](g: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
     
     def computeProductions(t: To): Seq[Gen] = g.computeProductions(oToi(t)).map {
       case g : Generator[Ti, Expr] =>
