@@ -157,7 +157,10 @@ object Desugar {
     case Trees.IntLiteral(v)  => Literal(v)
     case Trees.BoolLiteral(b) => Literal(b2i(b))
   }} ensuring { res => 
-    sem(res) == Semantics.semUntyped(e)
+    sem(res) == Semantics.semUntyped(e) && ((e,res) passes {
+      case Trees.Minus(Trees.IntLiteral(42), Trees.IntLiteral(i)) => 
+        Plus(Literal(42), Neg(Literal(i)))
+    })
   }
 
   def sem(e : SimpleE) : Int = e match {
