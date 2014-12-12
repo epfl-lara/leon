@@ -196,15 +196,17 @@ object ExpressionGrammars {
         case _ => false
       }
 
+      val excludeFCalls = sctx.options.functionsToIgnore
+      
       val normalGrammar = EmbededGrammar(
           BaseGrammar ||
-          FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType)) ||
+          FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
           SafeRecCalls(sctx.program, p.ws, p.pc),
         { (t: TypeTree)      => Label(t, "B")},
         { (l: Label[String]) => l.getType }
       )
 
-      val excludeFCalls = Set(sctx.functionContext)
+      
 
       def rec(e: Expr, el: L, gl: L): Seq[(L, Gen)] = {
 
@@ -293,7 +295,7 @@ object ExpressionGrammars {
     }
   }
 
-  case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree]) extends ExpressionGrammar[TypeTree] {
+  case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends ExpressionGrammar[TypeTree] {
    def computeProductions(t: TypeTree): Seq[Gen] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
@@ -351,7 +353,7 @@ object ExpressionGrammars {
        }
      }
 
-     val funcs = functionsAvailable(prog).toSeq.flatMap(getCandidates)
+     val funcs = functionsAvailable(prog).toSeq.flatMap(getCandidates).filterNot( tfd => exclude contains tfd.fd)
 
      funcs.map{ tfd =>
        Generator[TypeTree, Expr](tfd.params.map(_.tpe), { sub => FunctionInvocation(tfd, sub) })
@@ -381,14 +383,14 @@ object ExpressionGrammars {
     }
   }
 
-  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, ws: Expr, pc: Expr): ExpressionGrammar[TypeTree] = {
+  def default(prog: Program, inputs: Seq[Expr], currentFunction: FunDef, exclude: Set[FunDef], ws: Expr, pc: Expr): ExpressionGrammar[TypeTree] = {
     BaseGrammar ||
     OneOf(inputs) ||
-    FunctionCalls(prog, currentFunction, inputs.map(_.getType)) ||
+    FunctionCalls(prog, currentFunction, inputs.map(_.getType), exclude) ||
     SafeRecCalls(prog, ws, pc)
   }
 
   def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar[TypeTree] = {
-    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, p.ws, p.pc)
+    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, sctx.options.functionsToIgnore,  p.ws, p.pc)
   }
 }

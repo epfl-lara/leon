@@ -114,6 +114,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val soptions0 = SynthesisPhase.processOptions(ctx);
 
     val soptions = soptions0.copy(
+      functionsToIgnore = soptions0.functionsToIgnore + fd + nfd,
       costModel = RepairCostModel(soptions0.costModel),
       rules = (soptions0.rules ++ Seq(
         //GuidedDecomp,

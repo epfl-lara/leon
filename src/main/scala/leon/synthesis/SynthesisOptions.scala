@@ -4,6 +4,7 @@ package leon
 package synthesis
 
 import scala.language.existentials
+import leon.purescala.Definitions.FunDef
 
 case class SynthesisOptions(
   inPlace: Boolean                    = false,
@@ -18,7 +19,8 @@ case class SynthesisOptions(
   manualSearch: Boolean               = false,
   searchBound: Option[Int]            = None,
   selectedSolvers: Set[String]        = Set("fairz3"),
-
+  functionsToIgnore: Set[FunDef]      = Set(),
+  
   // Cegis related options
   cegisUseUninterpretedProbe: Boolean = false,
   cegisUseUnsatCores: Boolean         = true,
