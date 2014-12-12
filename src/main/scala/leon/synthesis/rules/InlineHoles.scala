@@ -23,7 +23,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     // When true: withOracle gets converted into a big choose() on result.
-    val discreteHoles = sctx.options.distreteHoles
+    val discreteHoles = sctx.settings.distreteHoles
 
     if (!discreteHoles) {
       return Nil;

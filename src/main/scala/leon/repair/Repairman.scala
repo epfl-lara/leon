@@ -70,7 +70,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           }
         }
 
-        if (synth.options.generateDerivationTrees) {
+        if (synth.settings.generateDerivationTrees) {
           val dot = new DotGenerator(search.g)
           dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
         }

@@ -169,7 +169,7 @@ object ExpressionGrammars {
 
   case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
 
-    val excludeFCalls = sctx.options.functionsToIgnore
+    val excludeFCalls = sctx.settings.functionsToIgnore
     
     val normalGrammar = EmbeddedGrammar(
         BaseGrammar ||
@@ -392,6 +392,6 @@ object ExpressionGrammars {
   }
 
   def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar[TypeTree] = {
-    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, sctx.options.functionsToIgnore,  p.ws, p.pc)
+    default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, sctx.settings.functionsToIgnore,  p.ws, p.pc)
   }
 }

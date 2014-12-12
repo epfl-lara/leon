@@ -6,7 +6,7 @@ package synthesis
 import scala.language.existentials
 import leon.purescala.Definitions.FunDef
 
-case class SynthesisOptions(
+case class SynthesisSettings(
   inPlace: Boolean                    = false,
   allSeeing: Boolean                  = false,
   generateDerivationTrees: Boolean    = false,

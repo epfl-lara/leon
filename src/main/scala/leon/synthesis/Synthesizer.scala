@@ -22,18 +22,18 @@ class Synthesizer(val context : LeonContext,
                   val functionContext: FunDef,
                   val program: Program,
                   val problem: Problem,
-                  val options: SynthesisOptions) {
+                  val settings: SynthesisSettings) {
 
   val reporter = context.reporter
 
   def getSearch(): Search = {
-    if (options.manualSearch) {
-      new ManualSearch(context, problem, options.costModel)
-    } else if (options.searchWorkers > 1) {
+    if (settings.manualSearch) {
+      new ManualSearch(context, problem, settings.costModel)
+    } else if (settings.searchWorkers > 1) {
       ???
       //new ParallelSearch(this, problem, options.searchWorkers)
     } else {
-      new SimpleSearch(context, problem, options.costModel, options.searchBound)
+      new SimpleSearch(context, problem, settings.costModel, settings.searchBound)
     }
   }
 

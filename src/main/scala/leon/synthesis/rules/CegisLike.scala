@@ -42,16 +42,16 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
 
     // CEGIS Flags to actiave or de-activate features
-    val useUninterpretedProbe = sctx.options.cegisUseUninterpretedProbe
-    val useUnsatCores         = sctx.options.cegisUseUnsatCores
-    val useOptTimeout         = sctx.options.cegisUseOptTimeout
-    val useVanuatoo           = sctx.options.cegisUseVanuatoo
-    val useCETests            = sctx.options.cegisUseCETests
-    val useCEPruning          = sctx.options.cegisUseCEPruning
+    val useUninterpretedProbe = sctx.settings.cegisUseUninterpretedProbe
+    val useUnsatCores         = sctx.settings.cegisUseUnsatCores
+    val useOptTimeout         = sctx.settings.cegisUseOptTimeout
+    val useVanuatoo           = sctx.settings.cegisUseVanuatoo
+    val useCETests            = sctx.settings.cegisUseCETests
+    val useCEPruning          = sctx.settings.cegisUseCEPruning
 
     // Limits the number of programs CEGIS will specifically test for instead of reasonning symbolically
     val testUpTo              = 5
-    val useBssFiltering       = sctx.options.cegisUseBssFiltering
+    val useBssFiltering       = sctx.settings.cegisUseBssFiltering
     val filterThreshold       = 1.0/2
     val evalParams            = CodeGenParams(maxFunctionInvocations = 2000)
     lazy val evaluator        = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)

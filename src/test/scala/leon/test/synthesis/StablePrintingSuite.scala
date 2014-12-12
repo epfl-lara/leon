@@ -35,7 +35,7 @@ class StablePrintingSuite extends LeonTestSuite {
   private def testIterativeSynthesis(cat: String, f: File, depth: Int) {
 
     def getChooses(ctx: LeonContext, content: String): (Program, Seq[ChooseInfo]) = {
-      val opts = SynthesisOptions()
+      val opts = SynthesisSettings()
       val pipeline = leon.utils.TemporaryInputPhase andThen 
                      frontends.scalac.ExtractionPhase andThen
                      leon.utils.PreprocessingPhase andThen

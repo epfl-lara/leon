@@ -23,7 +23,7 @@ class SynthesisSuite extends LeonTestSuite {
     counter
   }
 
-  def forProgram(title: String, opts: SynthesisOptions = SynthesisOptions())(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
+  def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
 
       test("Synthesizing %3d: [%s]".format(nextInt(), title)) {
         val ctx = testContext.copy(settings = Settings(
@@ -114,7 +114,7 @@ class SynthesisSuite extends LeonTestSuite {
     }
   }
 
-  forProgram("Ground Enum", SynthesisOptions(selectedSolvers = Set("enum")))(
+  forProgram("Ground Enum", SynthesisSettings(selectedSolvers = Set("enum")))(
     """
 import leon.annotation._
 import leon.lang._

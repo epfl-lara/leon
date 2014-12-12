@@ -37,8 +37,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonFlagOptionDef( "holes:discrete",   "--holes:discrete",      "Oracles get split", false)
   )
 
-  def processOptions(ctx: LeonContext): SynthesisOptions = {
-    var options = SynthesisOptions()
+  def processOptions(ctx: LeonContext): SynthesisSettings = {
+    var options = SynthesisSettings()
 
     for(opt <- ctx.options) opt match {
       case LeonFlagOption("manual", v) =>
@@ -141,7 +141,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
       val fd = ci.fd
 
-      if (ci.synthesizer.options.generateDerivationTrees) {
+      if (ci.synthesizer.settings.generateDerivationTrees) {
         val dot = new DotGenerator(search.g)
         dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
       }

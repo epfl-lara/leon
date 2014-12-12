@@ -15,20 +15,20 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 case class SynthesisContext(
   context: LeonContext,
-  options: SynthesisOptions,
+  settings: SynthesisSettings,
   functionContext: FunDef,
   program: Program,
   reporter: Reporter
 ) {
 
-  val rules = options.rules
+  val rules = settings.rules
 
   val allSolvers: Map[String, SolverFactory[SynthesisContext.SynthesisSolver]] = Map(
     "fairz3" -> SolverFactory(() => new FairZ3Solver(context, program) with TimeoutAssumptionSolver),
     "enum"   -> SolverFactory(() => new EnumerationSolver(context, program) with TimeoutAssumptionSolver)
   )
 
-  val solversToUse = allSolvers.filterKeys(options.selectedSolvers)
+  val solversToUse = allSolvers.filterKeys(settings.selectedSolvers)
 
   val solverFactory: SolverFactory[SynthesisContext.SynthesisSolver] = if (solversToUse.isEmpty) {
     reporter.fatalError("No solver selected. Aborting")
@@ -56,7 +56,7 @@ object SynthesisContext {
   def fromSynthesizer(synth: Synthesizer) = {
     SynthesisContext(
       synth.context,
-      synth.options,
+      synth.settings,
       synth.functionContext,
       synth.program,
       synth.reporter)

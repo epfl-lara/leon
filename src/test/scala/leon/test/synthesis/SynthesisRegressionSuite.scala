@@ -30,7 +30,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     test(cat+": "+f.getName()+" Compilation") {
       val ctx = createLeonContext("--synthesis")
 
-      val opts = SynthesisOptions(searchBound = Some(bound), allSeeing = true)
+      val opts = SynthesisSettings(searchBound = Some(bound), allSeeing = true)
 
       val pipeline = leon.frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
 
