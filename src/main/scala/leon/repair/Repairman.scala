@@ -12,7 +12,6 @@ import purescala.DefOps._
 import purescala.Constructors._
 import purescala.ScalaPrinter
 import evaluators._
-import datagen._
 import solvers._
 import utils._
 import solvers.z3._
@@ -152,14 +151,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       }
     }
 
-    val testsCases = tests.collect {
-      case InOutExample(ins, outs) =>
-        val (patt, optGuard) = expressionToPattern(tupleWrap(ins))
-        MatchCase(patt, optGuard match {
-          case BooleanLiteral(true) => None
-          case guard => Some(guard)
-        }, tupleWrap(outs))
-    }.toList
 
     val pre = fd.precondition.getOrElse(BooleanLiteral(true))
     val args = fd.params.map(_.id)
@@ -167,10 +158,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", true).setType(fd.returnType))
 
-    val spec = and(
-      fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true)),
-      passes(argsWrapped, out.toVariable, testsCases)
-    )
+    val spec = fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true))
 
     val body = fd.body.get
 
