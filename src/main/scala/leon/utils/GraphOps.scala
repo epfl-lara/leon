@@ -22,7 +22,8 @@ object GraphOps {
     }
     tSort(toPreds, Seq())
   }
-  
+
+
   def transitiveClosure[A](graph: Map[A,Set[A]]) : Map[A,Set[A]] = {
     def step(graph : Map[A, Set[A]]) : Map[A,Set[A]] = graph map {
       case (k, vs) => (k, vs ++ (vs flatMap { v =>
@@ -39,7 +40,6 @@ object GraphOps {
   
   def sinks[A](graph : Map[A,Set[A]]) = 
     graph.collect{ case (v, out) if out.isEmpty => v }.toSet
-    
   /**
    * Returns the set of reachable nodes from a given node, 
    * not including the node itself (unless it is member of a cycle)
