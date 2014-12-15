@@ -37,7 +37,7 @@ object SemanticsPreservation {
     case other => other 
   }} ensuring { res => 
     isNNF(res) && ((formula, res) passes {
-      case Or(Not(Const(c)), Not(Literal(l))) => Or(Const(c), Not(Literal(l)))
+      case Or(Not(Const(c)), Not(Literal(l))) => Or(Const(!c), Not(Literal(l)))
     })
   }
 

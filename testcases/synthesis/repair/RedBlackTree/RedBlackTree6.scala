@@ -77,17 +77,15 @@ object RedBlackTree {
     }
   } ensuring(res => redNodesHaveBlackChildren(res) && blackBalanced(res) )
 
+  //def add(x: Int, t: Tree): Tree = {
+  //  require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
+  //  makeBlack(ins(x, t))
+  //} ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res) )
+ 
   def add(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
-    makeBlack(ins(x, t))
+    ins(x, t) // FIX: makeBlack(ins(x, t))
   } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res) )
- 
-  // FIXME: uncommented this
-  def buggyAdd(x: Int, t: Tree): Tree = {
-    require(redNodesHaveBlackChildren(t))
-    // makeBlack(ins(x, t))
-    ins(x, t)
-  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
   
   def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
     // require(

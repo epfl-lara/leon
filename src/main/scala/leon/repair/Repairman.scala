@@ -32,17 +32,23 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
   def repair() = {
     reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
+    val t1 = new Timer().start
     val (passingTests, failingTests) = discoverTests
 
     reporter.info(f" - Passing: ${passingTests.size}%3d")
     reporter.info(f" - Failing: ${failingTests.size}%3d")
 
+    reporter.info("Finished in "+t1.stop+"ms")
+
+
     reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
+    val t2 = new Timer().start
     val synth = getSynthesizer(passingTests, failingTests)
     val p     = synth.problem
 
     var solutions = List[Solution]()
 
+    reporter.info("Finished in "+t2.stop+"ms")
     reporter.info(ASCIIHelpers.title("3. Synthesizing"))
     reporter.info(p)
 

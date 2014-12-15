@@ -116,9 +116,9 @@ object RedBlackTree {
     // )
     Node(c,a,x,b) match {
       case Node(Black,Node(Red,Node(Red,a,xV,b),yV,c),zV,d) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Red,c,zV,d)) // FIXME: Last Red should be Black
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
       case Node(Black,Node(Red,a,xV,Node(Red,b,yV,c)),zV,d) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Red,c,zV,d)) // FIXME: as above
+        Node(Red,Node(Black,a,xV,b),yV,Node(Red,c,zV,d))  // FIXME: Last Red should be Black
       case Node(Black,a,xV,Node(Red,Node(Red,b,yV,c),zV,d)) => 
         Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
       case Node(Black,a,xV,Node(Red,b,yV,Node(Red,c,zV,d))) => 

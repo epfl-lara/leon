@@ -59,7 +59,7 @@ object RedBlackTree {
       case Node(c,a,y,b) =>
         if      (x < y)  Node(c, ins(x, a), y, b) // FIXME : forgot to balance
         else if (x == y) Node(c,a,y,b)
-        else             Node(c,a,y,ins(x, b)) // FIXME : as above
+        else             balance(c,a,y,ins(x, b))
     }
   } ensuring (res => 
     content(res) == content(t) ++ Set(x) && 
