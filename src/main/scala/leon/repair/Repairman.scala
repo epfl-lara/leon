@@ -21,6 +21,7 @@ import synthesis._
 import synthesis.rules._
 import synthesis.heuristics._
 import graph.DotGenerator
+import leon.utils.ASCIIHelpers.title
 
 class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long]) {
   val reporter = ctx.reporter
@@ -138,13 +139,20 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   }
 
   private def focusRepair(program: Program, fd: FunDef, passingTests: List[Example], failingTests: List[Example]): (Expr, Expr) = {
+
     reporter.ifDebug { printer =>
-      printer("Tests failing are: ")
+      printer(title("Tests failing are: "))
       failingTests.foreach { ex =>
         printer(ex.ins.mkString(", "))
       }
     }
-
+    reporter.ifDebug { printer =>
+      printer(title("Tests passing are: "))
+      passingTests.foreach { ex =>
+        printer(ex.ins.mkString(", "))
+      }
+    }
+  
 
     val pre = fd.precondition.getOrElse(BooleanLiteral(true))
     val args = fd.params.map(_.id)
@@ -160,19 +168,71 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     val evaluator = new DefaultEvaluator(ctx, program)
 
+    val minimalFailingTests = {
+      // We don't want tests whose invocation will call other failing tests.
+      // This is because they will appear erroneous, 
+      // even though the error comes from the called test
+      val testEval : CollectingEvaluator = new CollectingEvaluator(ctx, program){
+        def collecting(e : Expr) : Option[Seq[Expr]] = e match {
+          case fi@FunctionInvocation(TypedFunDef(`fd`, _), args) => 
+            Some(args)
+          case _ => None
+        }
+      }
+      
+      val passingTs = for (test <- passingTests) yield InExample(test.ins)
+      val failingTs = for (test <- failingTests) yield InExample(test.ins)
+      
+      val test2Tests : Map[InExample, Set[InExample]] = (failingTs ++ passingTs).map{ ts => 
+        testEval.eval(body, args.zip(ts.ins).toMap)
+        (ts, testEval.collected map (InExample(_)))
+      }.toMap
+      
+      val recursiveTests : Set[InExample] = test2Tests.values.toSet.flatten -- (failingTs ++ passingTs)
+      
+      val testsTransitive : Map[InExample,Set[InExample]] = 
+        leon.utils.GraphOps.transitiveClosure[InExample](
+          test2Tests ++ recursiveTests.map ((_,Set[InExample]()))
+        )
+          
+      val knownWithResults : Map[InExample, Boolean] = (failingTs.map((_, false)).toMap) ++ (passingTs.map((_,true)))
+      
+      val recWithResults : Map[InExample, Boolean] = recursiveTests.map { ex =>
+        (ex, evaluator.eval(spec, (args zip ex.ins).toMap + (out -> body)) match {
+          case EvaluationResults.Successful(BooleanLiteral(true))  => true
+          case _ => false
+        })
+      }.toMap
+
+      val allWithResults = knownWithResults ++ recWithResults
+      
+      
+      testsTransitive.collect { 
+        case (rest, called) if !allWithResults(rest) && (called forall allWithResults) => 
+          rest
+      }.toSet
+    }
+    
+    reporter.ifDebug { printer =>
+      printer(title("MinimalTests are: "))
+      minimalFailingTests.foreach { ex =>
+        printer(ex.ins.mkString(", "))
+      }
+    }
+
     // Check how an expression behaves on tests
     //  - returns Some(true) if for all tests e evaluates to true
     //  - returns Some(false) if for all tests e evaluates to false
     //  - returns None otherwise
     def forAllTests(e: Expr, env: Map[Identifier, Expr]): Option[Boolean] = {
-      val results = failingTests.map { ex =>
+      val results = minimalFailingTests.map { ex =>
         val ins = ex.ins
         evaluator.eval(e, env ++ (args zip ins)) match {
           case EvaluationResults.Successful(BooleanLiteral(true))  => Some(true)
           case EvaluationResults.Successful(BooleanLiteral(false)) => Some(false)
           case _ => None
         }
-      }.distinct
+      }
 
       if (results.size == 1) {
         results.head
@@ -183,35 +243,43 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     def focus(expr: Expr, env: Map[Identifier, Expr]): (Expr, Expr) = expr match {
       case me @ MatchExpr(scrut, cases) =>
-        var res: Option[(Expr, Expr)] = None
-
+        
         // in case scrut is an non-variable expr, we simplify to a variable + inject in env
-        for (c <- cases if res.isEmpty) {
+        val perCase = for (c <- cases) yield {
           val cond = and(conditionForPattern(scrut, c.pattern, includeBinders = false),
                          c.optGuard.getOrElse(BooleanLiteral(true)))
           val map  = mapForPattern(scrut, c.pattern)
 
 
           forAllTests(cond, env ++ map) match {
-            case Some(true) =>
-              val (b, r) = focus(c.rhs, env ++ map)
-              res = Some((MatchExpr(scrut, cases.map { c2 =>
-                if (c2 eq c) {
-                  c2.copy(rhs = b)
-                } else {
-                  c2
-                }
-              }), r))
-
             case Some(false) =>
-              // continue until next case
-            case None =>
-              res = Some((choose, expr))
+              // We know this case is correct
+              None
+              
+            case Some(true) | None =>
+              // Either incorrect case or unknown, treat it as incorrect
+              val (b, r) = focus(c.rhs, env ++ map)
+              Some((c.copy(rhs = b), r))           
           }
         }
-
-        res.getOrElse((choose, expr))
-
+        
+        perCase count { _.isDefined } match {
+          // No wrong cases
+          case 0 => ctx.reporter.internalError("No erroneous case found!")
+          // 1 wrong case 
+          case 1 => 
+            val e = perCase.collect{ case Some((b,r)) => r }.head
+            val newCases = cases zip perCase map {
+              case (cs, None) => 
+                cs
+              case (_ , Some((b,r))) => 
+                b
+            }
+            (MatchExpr(scrut, newCases), e)
+          // More wrong cases, return a choose on the top-level
+          case _ => (choose, me)
+        }
+        
       case Let(id, value, body) =>
         val (b, r) = focus(body, env + (id -> value))
         (Let(id, value, b), r)

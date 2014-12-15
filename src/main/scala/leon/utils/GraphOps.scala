@@ -22,6 +22,23 @@ object GraphOps {
     }
     tSort(toPreds, Seq())
   }
+  
+  def transitiveClosure[A](graph: Map[A,Set[A]]) : Map[A,Set[A]] = {
+    def step(graph : Map[A, Set[A]]) : Map[A,Set[A]] = graph map {
+      case (k, vs) => (k, vs ++ (vs flatMap { v =>
+        graph.get(v).getOrElse(Set())
+      }))
+    }
+    leon.purescala.TreeOps.fixpoint(step, -1)(graph)
+  }
+  
+  def sources[A](graph : Map[A,Set[A]]) = {
+    val notSources = graph.values.toSet.flatten
+    graph.keySet -- notSources
+  }
+  
+  def sinks[A](graph : Map[A,Set[A]]) = 
+    graph.collect{ case (v, out) if out.isEmpty => v }.toSet
     
   /**
    * Returns the set of reachable nodes from a given node, 

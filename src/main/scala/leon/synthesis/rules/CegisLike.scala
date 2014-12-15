@@ -49,7 +49,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val useCETests            = sctx.settings.cegisUseCETests
     val useCEPruning          = sctx.settings.cegisUseCEPruning
 
-    // Limits the number of programs CEGIS will specifically test for instead of reasonning symbolically
+    // Limits the number of programs CEGIS will specifically test for instead of reasoning symbolically
     val testUpTo              = 5
     val useBssFiltering       = sctx.settings.cegisUseBssFiltering
     val filterThreshold       = 1.0/2
