@@ -58,9 +58,9 @@ object HeapSort {
     )
     (h1,h2) match {
       case (Leaf(), _) => h2
-      case (_, Leaf()) => h1
+      case (_, Leaf()) => h2 // FIXME h2 instead of h1
       case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
-        if(v1 < v2) // FIXME : condition should be >=
+        if(v1 >= v2)
           makeN(v1, l1, merge(r1, h2))
         else
           makeN(v2, l2, merge(h1, r2))

@@ -63,7 +63,7 @@ object HeapSort {
         if(v1 >= v2)
           Node(v1, l1, merge(r1, h2)) // FIXME forgot to use makeN
         else
-          Node(v2, l2, merge(h1, r2)) // The same
+          makeN(v2, l2, merge(h1, r2)) // The same
     }
   } ensuring { res => 
     hasLeftistProperty(res) && hasHeapProperty(res) &&
