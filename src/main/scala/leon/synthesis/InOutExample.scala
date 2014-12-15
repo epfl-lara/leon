@@ -3,8 +3,9 @@
 package leon
 package synthesis
 
-import purescala.Trees.Expr
+import purescala.Trees._
 
 class Example(val ins: Seq[Expr])
 case class InOutExample(is: Seq[Expr], val outs: Seq[Expr]) extends Example(is)
 case class InExample(is: Seq[Expr]) extends Example(is)
+

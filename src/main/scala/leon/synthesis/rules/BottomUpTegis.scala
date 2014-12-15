@@ -42,7 +42,9 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
   def getRootLabel(tpe: TypeTree): T
 
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    var tests = p.getTests(sctx).collect {
+    val ef = new ExamplesFinder(sctx.context, sctx.program)
+
+    var tests = ef.extractTests(p).collect {
       case io: InOutExample => (io.ins, io.outs)
     }
 

@@ -437,7 +437,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         // We populate the list of examples with a predefined one
         sctx.reporter.debug("Acquiring list of examples")
 
-        baseExampleInputs ++= p.getTests(sctx).map(_.ins).toSet
+        val ef = new ExamplesFinder(sctx.context, sctx.program)
+        baseExampleInputs ++= ef.extractTests(p).map(_.ins).toSet
 
         val pc = p.pc
 

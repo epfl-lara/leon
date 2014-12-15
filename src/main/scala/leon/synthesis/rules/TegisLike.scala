@@ -38,7 +38,8 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
         val params = getParams(sctx, p)
         val grammar = params.grammar
 
-        var tests = p.getTests(sctx).map(_.ins).distinct
+        val ef = new ExamplesFinder(sctx.context, sctx.program)
+        var tests = ef.extractTests(p).map(_.ins).distinct
         if (tests.nonEmpty) {
 
           val evalParams            = CodeGenParams(maxFunctionInvocations = 2000, checkContracts = true)
