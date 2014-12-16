@@ -6,7 +6,7 @@ import bonsai._
 
 import Helpers._
 
-import purescala.Trees._
+import purescala.Trees.{Or => LeonOr, _}
 import purescala.Common._
 import purescala.Definitions._
 import purescala.TypeTrees._
@@ -70,7 +70,10 @@ object ExpressionGrammars {
       case BooleanType =>
         List(
           Generator(Nil, { _ => BooleanLiteral(true) }),
-          Generator(Nil, { _ => BooleanLiteral(false) })
+          Generator(Nil, { _ => BooleanLiteral(false) }),
+          Generator(List(BooleanType), { case Seq(a) => Not(a) }),
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => And(a, b) }),
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => LeonOr(a, b) })
         )
       case Int32Type =>
         List(
