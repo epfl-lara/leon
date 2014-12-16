@@ -296,7 +296,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val vctx = VerificationContext(ctx, prog, solver, reporter)
     val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
 
-    AnalysisPhase.checkVerificationConditions(vctx, vcs)
+    AnalysisPhase.checkVerificationConditions(vctx, vcs, checkInParallel = true)
 
     var invalid = false;
     var ces = List[Seq[Expr]]()

@@ -62,12 +62,12 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   protected[z3] def getTerminator : TerminationChecker = terminator
 
-  // This is fixed.
-  protected[leon] val z3cfg = new Z3Config(
+  // FIXME: Dirty hack to bypass z3lib bug. Assumes context is the same over all instances of FairZ3Solver
+  protected[leon] val z3cfg = context.synchronized { new Z3Config(
     "MODEL" -> true,
     "TYPE_CHECK" -> true,
     "WELL_SORTED_CHECK" -> true
-  )
+  )}
   toggleWarningMessages(true)
 
 
