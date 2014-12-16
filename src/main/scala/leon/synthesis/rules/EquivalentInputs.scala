@@ -50,8 +50,15 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
     }
 
 
-    val substs = discoverEquivalences(clauses)
+    // We could discover one equivalence, which could allow us to discover
+    // other equivalences: We do a fixpoint with limit 5.
+    val substs = fixpoint({ (substs: Set[(Expr, Expr)]) =>
+      val newClauses = substs.map{ case(e,v) => Equals(v, e) } // clauses are directed: foo = obj.f
+      substs ++ discoverEquivalences(clauses ++ newClauses)
+    }, 5)(Set()).toSeq
 
+
+    // We are replacing foo(a) with b. We inject postcondition(foo)(a, b).
     val postsToInject = substs.collect {
       case (FunctionInvocation(tfd, args), e) if tfd.hasPostcondition =>
         val Some((id, post)) = tfd.postcondition

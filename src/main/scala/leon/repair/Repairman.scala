@@ -95,7 +95,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
   def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
     // Create a fresh function
-    val nid = FreshIdentifier(fd.id.name+"_repair").copiedFrom(fd.id)
+    val nid = FreshIdentifier(fd.id.name+"'").copiedFrom(fd.id)
     val nfd = new FunDef(nid, fd.tparams, fd.returnType, fd.params, fd.defType)
     nfd.copyContentFrom(fd)
     nfd.copiedFrom(fd)
