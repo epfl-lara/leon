@@ -258,12 +258,27 @@ object ExpressionGrammars {
           )
         }
 
+        // Find neighbor case classes that are compatible with the arguments:
+        // Turns And(e1, e2) into Or(e1, e2)...
+        def ccVariations(gl: L, cc: CaseClass): Seq[(L, Gen)] = {
+          val CaseClass(cct, args) = cc
+
+          val neighbors = cct.parent.map(_.knownCCDescendents).getOrElse(Seq()).filter(_ != cct)
+
+          for (scct <- neighbors if scct.fieldsTypes == cct.fieldsTypes) yield {
+            gl -> Generator[L, Expr](Nil, { _ => CaseClass(scct, args) })
+          }
+        }
+
         val subs: Seq[(L, Gen)] = e match {
           case IntLiteral(v) =>
             gens(e, el, gl, Nil, { _ => e }) ++ cegis(gl) ++ intVariations(gl, v)
 
           case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
             gens(e, el, gl, Nil, { _ => e }) ++ cegis(gl)
+
+          case cc @ CaseClass(cct, exprs) =>
+            gens(e, el, gl, exprs, { case ss => CaseClass(cct, ss) }) ++ ccVariations(gl, cc)
 
           case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
             // We allow only exact call, and/or cegis extensions
@@ -273,6 +288,7 @@ object ExpressionGrammars {
             gens(e, el, gl, List(sub), { case Seq(s) => builder(s) })
           case BinaryOperator(sub1, sub2, builder) =>
             gens(e, el, gl, List(sub1, sub2), { case Seq(s1, s2) => builder(s1, s2) })
+
           case NAryOperator(subs, builder) =>
             gens(e, el, gl, subs, { case ss => builder(ss) })
         }
