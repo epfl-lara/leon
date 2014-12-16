@@ -82,62 +82,20 @@ object RedBlackTree {
     makeBlack(ins(x, t))
   } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res) )
   
-//  def buggyAdd(x: Int, t: Tree): Tree = {
-//    require(redNodesHaveBlackChildren(t))
-//    // makeBlack(ins(x, t))
-//    ins(x, t)
-//  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
   
   def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
-    // require(
-    //   Node(c,a,x,b) match {
-    //     case Node(Black,Node(Red,Node(Red,a,_,b),_,c),_,d) =>
-    //       redNodesHaveBlackChildren(a) &&
-    //       redNodesHaveBlackChildren(b) &&
-    //       redNodesHaveBlackChildren(c) &&
-    //       redNodesHaveBlackChildren(d)
-    //     case Node(Black,Node(Red,a,_,Node(Red,b,_,c)),_,d) =>
-    //       redNodesHaveBlackChildren(a) &&
-    //       redNodesHaveBlackChildren(b) &&
-    //       redNodesHaveBlackChildren(c) &&
-    //       redNodesHaveBlackChildren(d)
-    //     case Node(Black,a,_,Node(Red,Node(Red,b,_,c),_,d)) => 
-    //       redNodesHaveBlackChildren(a) &&
-    //       redNodesHaveBlackChildren(b) &&
-    //       redNodesHaveBlackChildren(c) &&
-    //       redNodesHaveBlackChildren(d)
-    //     case Node(Black,a,_,Node(Red,b,_,Node(Red,c,_,d))) => 
-    //       redNodesHaveBlackChildren(a) &&
-    //       redNodesHaveBlackChildren(b) &&
-    //       redNodesHaveBlackChildren(c) &&
-    //       redNodesHaveBlackChildren(d)
-    //     case t => redDescHaveBlackChildren(t)
-    //   }
-    // )
-    Node(c,a,x,b) match {
-      case Node(Black,Node(Red,Node(Red,a,xV,b),yV,c),zV,d) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-      case Node(Black,Node(Red,a,xV,Node(Red,b,yV,c)),zV,d) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-      case Node(Black,a,xV,Node(Red,Node(Red,b,yV,c),zV,d)) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-      case Node(Black,a,xV,Node(Red,b,yV,Node(Red,c,zV,d))) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-      case Node(c,a,xV,b) => Node(c,a,xV,b)
-    }
-  } ensuring (res => content(res) == content(Node(c,a,x,b)) )// && redDescHaveBlackChildren(res))
 
-  // def buggyBalance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
-  //   Node(c,a,x,b) match {
-  //     case Node(Black,Node(Red,Node(Red,a,xV,b),yV,c),zV,d) => 
-  //       Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-  //     case Node(Black,Node(Red,a,xV,Node(Red,b,yV,c)),zV,d) => 
-  //       Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-  //     case Node(Black,a,xV,Node(Red,Node(Red,b,yV,c),zV,d)) => 
-  //       Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-  //     case Node(Black,a,xV,Node(Red,b,yV,Node(Red,c,zV,d))) => 
-  //       Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
-  //   }
-  // } ensuring (res => content(res) == content(Node(c,a,x,b)) ) // && redDescHaveBlackChildren(res))
+    (c,a,x,b) match {
+      case (Black,Node(Red,Node(Red,a,xV,b),yV,c),zV,d) => 
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
+      case (Black,Node(Red,a,xV,Node(Red,b,yV,c)),zV,d) => 
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
+      case (Black,a,xV,Node(Red,Node(Red,b,yV,c),zV,d)) => 
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
+      case (Black,a,xV,Node(Red,b,yV,Node(Red,c,zV,d))) => 
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
+      case (c,a,xV,b) => Node(c,a,xV,b)
+    }
+  } ensuring (res => content(res) == content(Node(c,a,x,b)))// && redDescHaveBlackChildren(res))
 
 }

@@ -145,7 +145,7 @@ object Desugar {
 
   @induct
   def desugar(e : Trees.Expr) : SimpleE = { e match {
-    case Trees.Plus (lhs, rhs) => Neg(desugar(lhs)) // FIXME: Complete nonsense. Leon can't disprove it so it's happy...
+    case Trees.Plus (lhs, rhs) => Neg(desugar(lhs)) // FIXME: Complete nonsense. Leon can't disprove it, uses example...
     case Trees.Minus(lhs, rhs) => Plus(desugar(lhs), Neg(desugar(rhs)))
     case Trees.LessThan(lhs, rhs) => LessThan(desugar(lhs), desugar(rhs))
     case Trees.And  (lhs, rhs) => Ite(desugar(lhs), desugar(rhs), Literal(0)) 
@@ -157,7 +157,6 @@ object Desugar {
     case Trees.IntLiteral(v)  => Literal(v)
     case Trees.BoolLiteral(b) => Literal(b2i(b))
   }} ensuring { res =>
-    // TODO: Z3 fails to disprove this!
     ((e, res) passes {
       case Trees.Plus(Trees.IntLiteral(i), Trees.Minus(Trees.IntLiteral(j), Trees.IntLiteral(42))) =>
         Plus(Literal(i), Plus(Literal(j), Neg(Literal(42))))
