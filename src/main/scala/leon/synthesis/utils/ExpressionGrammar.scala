@@ -41,10 +41,10 @@ abstract class ExpressionGrammar[T <% Typed] {
 
   final def printProductions(printer: String => Unit) {
     for ((t, gs) <- cache; g <- gs) {
-      val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
+      val subs = g.subTrees.map { t => FreshIdentifier(Console.BOLD+t.toString+Console.RESET).setType(t.getType).toVariable}
       val gen = g.builder(subs)
 
-      printer(f"$t%30s ::= "+gen)
+      printer(f"${Console.BOLD}$t%30s${Console.RESET} ::= $gen")
     }
   }
 }
@@ -201,10 +201,10 @@ object ExpressionGrammars {
 
     def computeSimilar(e : Expr) : Seq[(L, Gen)] = {
 
-      def getLabelPair(t: TypeTree) = {
+      def getLabel(t: TypeTree) = {
         val tpe = bestRealType(t)
         val c = getNext
-        (Label(tpe, "E"+c), Label(tpe, "G"+c))
+        Label(tpe, "G"+c)
       }
 
       def isCommutative(e: Expr) = e match {
@@ -212,30 +212,26 @@ object ExpressionGrammars {
         case _ => false
       }
 
-      def rec(e: Expr, el: L, gl: L): Seq[(L, Gen)] = {
+      def rec(e: Expr, gl: L): Seq[(L, Gen)] = {
 
-        def gens(e: Expr, el: L, gl: L, subs: Seq[Expr], builder: (Seq[Expr] => Expr)): Seq[(L, Gen)] = {
-          val subLabels = subs.map { s => getLabelPair(s.getType) }
-          val (subEls, subGls) = subLabels.unzip
+        def gens(e: Expr, gl: L, subs: Seq[Expr], builder: (Seq[Expr] => Expr)): Seq[(L, Gen)] = {
+          val subGls = subs.map { s => getLabel(s.getType) }
 
-          // All the subproductions for sub el/gl
-          val allSubs = (subs zip subLabels).flatMap { case (e, (el, gl)) => rec(e, el, gl) }
-
-          // Exact Production for el
-          val exact = Seq(el -> Generator(subEls, builder))
+          // All the subproductions for sub gl
+          val allSubs = (subs zip subGls).flatMap { case (e, gl) => rec(e, gl) }
 
           // Inject fix at one place
           val injectG = for ((sgl, i) <- subGls.zipWithIndex) yield {
-            gl -> Generator(subEls.updated(i, sgl), builder)
+            gl -> Generator[L, Expr](Seq(sgl), { case Seq(ge) => builder(subs.updated(i, ge)) } )
           }
 
           val swaps = if (subs.size > 1 && !isCommutative(e)) {
             (for (i <- 0 until subs.size;
                  j <- i+1 until subs.size) yield {
 
-              if (subEls(i).getType == subEls(j).getType) {
-                val swapSubs = subEls.updated(i, subEls(j)).updated(j, subEls(i))
-                Some(gl -> Generator(swapSubs, builder))
+              if (subs(i).getType == subs(j).getType) {
+                val swapSubs = subs.updated(i, subs(j)).updated(j, subs(i))
+                Some(gl -> Generator[L, Expr](Seq(), { _ => builder(swapSubs) }))
               } else {
                 None
               }
@@ -244,7 +240,7 @@ object ExpressionGrammars {
             Nil
           }
 
-          allSubs ++ exact ++ injectG ++ swaps
+          allSubs ++ injectG ++ swaps
         }
 
         def cegis(gl: L): Seq[(L, Gen)] = {
@@ -272,25 +268,25 @@ object ExpressionGrammars {
 
         val subs: Seq[(L, Gen)] = e match {
           case IntLiteral(v) =>
-            gens(e, el, gl, Nil, { _ => e }) ++ cegis(gl) ++ intVariations(gl, v)
+            gens(e, gl, Nil, { _ => e }) ++ cegis(gl) ++ intVariations(gl, v)
 
           case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
-            gens(e, el, gl, Nil, { _ => e }) ++ cegis(gl)
+            gens(e, gl, Nil, { _ => e }) ++ cegis(gl)
 
           case cc @ CaseClass(cct, exprs) =>
-            gens(e, el, gl, exprs, { case ss => CaseClass(cct, ss) }) ++ ccVariations(gl, cc)
+            gens(e, gl, exprs, { case ss => CaseClass(cct, ss) }) ++ ccVariations(gl, cc)
 
           case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
             // We allow only exact call, and/or cegis extensions
-            Seq(el -> Generator[L, Expr](Nil, { _ => e })) ++ cegis(gl)
+            /*Seq(el -> Generator[L, Expr](Nil, { _ => e })) ++*/ cegis(gl)
 
           case UnaryOperator(sub, builder) =>
-            gens(e, el, gl, List(sub), { case Seq(s) => builder(s) })
+            gens(e, gl, List(sub), { case Seq(s) => builder(s) })
           case BinaryOperator(sub1, sub2, builder) =>
-            gens(e, el, gl, List(sub1, sub2), { case Seq(s1, s2) => builder(s1, s2) })
+            gens(e, gl, List(sub1, sub2), { case Seq(s1, s2) => builder(s1, s2) })
 
           case NAryOperator(subs, builder) =>
-            gens(e, el, gl, subs, { case ss => builder(ss) })
+            gens(e, gl, subs, { case ss => builder(ss) })
         }
 
         val terminalsMatching = terminals.collect {
@@ -301,9 +297,9 @@ object ExpressionGrammars {
         subs ++ terminalsMatching
       }
 
-      val (el, gl) = getLabelPair(e.getType)
+      val gl = getLabel(e.getType)
 
-      val res = rec(e, el, gl)
+      val res = rec(e, gl)
 
       //for ((t, g) <- res) {
       //  val subs = g.subTrees.map { t => FreshIdentifier(t.toString).setType(t.getType).toVariable}
