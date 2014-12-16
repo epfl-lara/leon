@@ -65,7 +65,7 @@ object ASCIIHelpers {
     def render: String = {
       val colSizes = computeColumnSizes
 
-      val fullWidth = colSizes.sum + colSizes.size*2
+      val fullWidth = Math.max(colSizes.sum + colSizes.size*2, title.size + 7)
 
       val sb = new StringBuffer
 
