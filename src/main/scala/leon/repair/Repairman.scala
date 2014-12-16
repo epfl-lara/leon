@@ -296,7 +296,12 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val vctx = VerificationContext(ctx, prog, solver, reporter)
     val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
 
-    AnalysisPhase.checkVerificationConditions(vctx, vcs, checkInParallel = true)
+    AnalysisPhase.checkVerificationConditions(
+      vctx, 
+      vcs, 
+      checkInParallel = true,
+      interruptOn = _.counterExample.isDefined 
+    )
 
     var invalid = false;
     var ces = List[Seq[Expr]]()
@@ -357,7 +362,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           new InExample(ins)
       }
     }
-
+    
     val generatedTests = inputs
       .take(maxEnumerated)
       .filter(filtering)
@@ -370,14 +375,17 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       case _               => false
     }
 
-    // Try to verify, if it fails, we have at least one CE
-    val ces = getVerificationCounterExamples(fd, program) getOrElse Nil 
-
     // Extract passing/failing from the passes in POST
     val ef = new ExamplesFinder(ctx, program)
-    val (userPassing, userFailing) = ef.extractTests(fd)
+    val (userPassing, userFailing) = ef.extractTests(fd)   
+    
+    // If we have no ce yet, try to verify, if it fails, we have at least one CE
+    val ces = (generatedFailing ++ userFailing) match {
+      case Seq() => getVerificationCounterExamples(fd, program) getOrElse Nil
+      case nonEmpty => nonEmpty
+    }
 
-    (generatedPassing ++ userPassing, generatedFailing ++ ces ++ userFailing)
+    (generatedPassing ++ userPassing, ces.toList )
   }
 
 
