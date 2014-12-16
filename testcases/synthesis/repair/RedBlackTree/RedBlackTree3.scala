@@ -88,7 +88,7 @@ object RedBlackTree {
 //    ins(x, t)
 //  } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res))
   
-  def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
+  /*def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
     // require(
     //   Node(c,a,x,b) match {
     //     case Node(Black,Node(Red,Node(Red,a,_,b),_,c),_,d) =>
@@ -126,6 +126,7 @@ object RedBlackTree {
       case Node(c,a,xV,b) => Node(c,a,xV,b)
     }
   } ensuring (res => content(res) == content(Node(c,a,x,b)) )// && redDescHaveBlackChildren(res))
+  */
 
   // FIXME : says buggy, so I uncommented it!
   def buggyBalance(c: Color, a: Tree, x: Int, b: Tree): Tree = {

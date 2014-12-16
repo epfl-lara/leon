@@ -75,7 +75,7 @@ object RedBlackTree {
       case Node(Red,l,v,r) => Node(Black,l,v,r) 
       case Node(Black,l,v,r) => Node(Red,l,v,r) // FIXME : Red instead of Black
     }
-  } ensuring(res => redNodesHaveBlackChildren(res) && blackBalanced(res) )
+  } ensuring(res => redNodesHaveBlackChildren(res) && blackBalanced(res) && content(res) == content(n) )
 
   def add(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
