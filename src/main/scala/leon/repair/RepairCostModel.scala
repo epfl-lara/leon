@@ -17,10 +17,11 @@ case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("
     val h = cm.andNode(an, subs).minSize
 
     Cost(an.ri.rule match {
-      case rules.GuidedDecomp => h/3
-      case rules.GuidedCloser => h/3
-      case rules.CEGLESS      => h/2
-      case _ => h
+      case rules.GuidedDecomp => h/2
+      case rules.GuidedCloser => 0
+      case rules.CEGLESS      => 0
+      case rules.TEGLESS      => 1
+      case _ => h+1
     })
   }
 

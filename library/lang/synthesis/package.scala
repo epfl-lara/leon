@@ -45,5 +45,4 @@ package object synthesis {
   @library
   @witness
   def guide[T](e: T): Boolean = true
-
 }

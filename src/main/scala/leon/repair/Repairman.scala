@@ -109,8 +109,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       functionsToIgnore = soptions0.functionsToIgnore + fd,
       costModel = RepairCostModel(soptions0.costModel),
       rules = (soptions0.rules ++ Seq(
-        //GuidedDecomp,
-        //GuidedCloser,
+        GuidedDecomp,
+        GuidedCloser,
         CEGLESS,
         TEGLESS
       )) diff Seq(ADTInduction)
