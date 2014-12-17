@@ -55,21 +55,52 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
         throw new RuntimeError(e.getCause.getMessage)
 
       case t: Throwable =>
+        t.printStackTrace()
         throw new EvalError(t.getMessage)
     }
   }
 
+  def retrieveField(fd : FunDef): Expr = {
+
+    val (className, fieldName, _) = unit.leonFunDefToJVMInfo(fd).get
+
+    ctx.reporter.debug(s"Retrieving ${className}.${fieldName}")
+
+    try {
+      val cl = unit.loader.loadClass(className)
+
+      val field = cl.getFields().find(_.getName() == fieldName).get
+
+      val res = field.get(null)
+
+      RawObject(res).setType(fd.returnType)
+    } catch {
+      case e: java.lang.reflect.InvocationTargetException =>
+        throw new RuntimeError(e.getCause.getMessage)
+
+      case t: Throwable =>
+        t.printStackTrace()
+        throw new EvalError(t.getMessage)
+    }
+  }
+  
+  
+  
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case FunctionInvocation(tfd, args) =>
       if (isCompiled(tfd.fd)) {
-        val rargs = args.map(
-          e(_)(rctx.copy(needJVMRef = true), gctx) match {
-            case RawObject(obj) => obj
-            case _ => throw new EvalError("Failed to get JVM ref when requested")
-          }
-        )
-
-        jvmBarrier(call(tfd, rargs), rctx.needJVMRef)
+        if (!tfd.fd.canBeStrictField) {
+          val rargs = args.map(
+            e(_)(rctx.copy(needJVMRef = true), gctx) match {
+              case RawObject(obj) => obj
+              case _ => throw new EvalError("Failed to get JVM ref when requested")
+            }
+          )
+  
+          jvmBarrier(call(tfd, rargs), rctx.needJVMRef)
+        } else {
+          jvmBarrier(retrieveField(tfd.fd), rctx.needJVMRef)
+        }
       } else {
         jvmBarrier(super.e(expr)(rctx.copy(needJVMRef = false), gctx), rctx.needJVMRef)
       }
