@@ -164,14 +164,34 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
 }
 
-class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(cm, parent) {
+class OrNode(cm: CostModel, val parent: Option[Node], val p: Problem) extends Node(cm, parent) {
 
   override def toString = "\u2228 "+p;
+
+  def getInstantiations(sctx: SynthesisContext): List[RuleInstantiation] = {
+
+    val rules = cm.rulesFor(sctx, this)
+
+    val rulesPrio = rules.groupBy(_.priority).toSeq.sortBy(_._1)
+
+    for ((_, rs) <- rulesPrio) {
+      val results = rs.flatMap{ r =>
+        sctx.context.timers.synthesis.instantiations.get(r.toString).timed {
+          r.instantiateOn(sctx, p)
+        }
+      }.toList
+
+      if (results.nonEmpty) {
+        return results;
+      }
+    }
+    Nil
+  }
 
   def expand(sctx: SynthesisContext): Unit = {
     require(!isExpanded)
 
-    val ris = Rules.getInstantiations(sctx, p)
+    val ris = getInstantiations(sctx)
 
     descendents = ris.map(ri => new AndNode(cm, Some(this), ri))
     selected = List()

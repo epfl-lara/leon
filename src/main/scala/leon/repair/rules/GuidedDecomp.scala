@@ -1,8 +1,10 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
-package synthesis
+package repair
 package rules
+
+import synthesis._
 
 import leon.utils.Simplifiers
 
@@ -42,7 +44,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
         Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Guided If-Split on '"+c+"'"))
 
-      case m @ MatchExpr(scrut0, cs) =>
+      case m @ MatchExpr(scrut0, _) =>
 
         val scrut = scrut0 match {
           case v : Variable => v
@@ -50,7 +52,15 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
         }
         var scrutCond: Expr = if (scrut == scrut0) BooleanLiteral(true) else Equals(scrut0, scrut)
 
-        val subs = for ((c, cond) <- cs zip matchCasePathConditions(m, List(p.pc))) yield {
+        val fullMatch = if (isMatchExhaustive(m)) {
+          m
+        } else {
+          m.copy(cases = m.cases :+ MatchCase(WildcardPattern(None), None, Error(m.getType, "unreachable in original program")))
+        }
+
+        val cs = fullMatch.cases
+
+        val subs = for ((c, cond) <- cs zip matchCasePathConditions(fullMatch, List(p.pc))) yield {
           
           val localScrut = c.pattern.binder.map(Variable) getOrElse scrut
           val scrutConstraint = if (localScrut == scrut) BooleanLiteral(true) else Equals(localScrut, scrut)

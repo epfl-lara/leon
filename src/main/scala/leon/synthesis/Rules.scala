@@ -38,23 +38,6 @@ object Rules {
     //AngelicHoles // @EK: Disabled now as it is explicit with withOracle { .. }
   )
 
-  def getInstantiations(sctx: SynthesisContext, problem: Problem): List[RuleInstantiation] = {
-
-    val rulesPrio = sctx.rules.groupBy(_.priority).toSeq.sortBy(_._1)
-
-    for ((_, rs) <- rulesPrio) {
-      val results = rs.flatMap{ r =>
-        sctx.context.timers.synthesis.instantiations.get(r.toString).timed {
-          r.instantiateOn(sctx, problem)
-        }
-      }.toList
-
-      if (results.nonEmpty) {
-        return results;
-      }
-    }
-    Nil
-  }
 }
 
 abstract class SolutionBuilder(val arity: Int, val types: Seq[TypeTree]) {

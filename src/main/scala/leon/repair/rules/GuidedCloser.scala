@@ -1,8 +1,10 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
 package leon
-package synthesis
+package repair
 package rules
+
+import synthesis._
 
 import leon.utils.Simplifiers
 import purescala.Trees._
@@ -46,7 +48,8 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
             printer("== Unknown ==")
           }
           //None
-          Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
+          //Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
+          None
 
         case _ =>
           sctx.reporter.ifDebug { printer =>

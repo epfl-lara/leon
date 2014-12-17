@@ -109,11 +109,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       functionsToIgnore = soptions0.functionsToIgnore + fd,
       costModel = RepairCostModel(soptions0.costModel),
       rules = (soptions0.rules ++ Seq(
-        GuidedDecomp,
-        GuidedCloser,
-        CEGLESS,
-        TEGLESS
-      )) diff Seq(ADTInduction)
+        //GuidedDecomp,
+        //GuidedCloser,
+        CEGLESS
+        //TEGLESS
+      )) diff Seq(ADTInduction, TEGIS)
     );
 
     // extract chooses from nfd

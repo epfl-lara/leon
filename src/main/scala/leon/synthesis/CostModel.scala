@@ -16,6 +16,10 @@ abstract class CostModel(val name: String) {
   def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost
 
   def impossible: Cost
+
+  def rulesFor(sctx: SynthesisContext, on: OrNode): Seq[Rule] = {
+    sctx.rules
+  }
 }
 
 case class Cost(minSize: Int) extends Ordered[Cost] {
@@ -52,6 +56,8 @@ class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
   def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost = cm.andNode(an, subs)
 
   def impossible = cm.impossible
+
+  override def rulesFor(sctx: SynthesisContext, on: OrNode) = cm.rulesFor(sctx, on)
 }
 
 class SizeBasedCostModel(name: String) extends CostModel(name) {

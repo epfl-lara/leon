@@ -4,6 +4,9 @@ package leon
 package repair
 import synthesis._
 
+import synthesis.rules._
+import repair.rules._
+
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.DefOps._
@@ -17,21 +20,24 @@ case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("
     val h = cm.andNode(an, subs).minSize
 
     Cost(an.ri.rule match {
-      case rules.GuidedDecomp => h/2
-      case rules.GuidedCloser => 0
-      case rules.CEGLESS      => 0
-      case rules.TEGLESS      => 1
+      case GuidedDecomp => 1
+      case GuidedCloser => 0
+      case CEGLESS      => 0
+      case TEGLESS      => 1
       case _ => h+1
     })
   }
 
-  def costOfGuide(p: Problem): Int = {
-    val TopLevelAnds(clauses) = p.pc
+  override def rulesFor(sctx: SynthesisContext, on: OrNode) = {
+    val rs = cm.rulesFor(sctx, on)
 
-    val guides = clauses.collect {
-      case FunctionInvocation(TypedFunDef(fd, _), Seq(expr)) if fullName(fd) == "leon.lang.synthesis.guide" => expr
+    on.parent match {
+      case None =>
+        GuidedDecomp +: rs
+      case Some(an: AndNode) if an.ri.rule == GuidedDecomp =>
+        GuidedCloser +: rs
+      case _ =>
+        rs
     }
-
-    guides.map(formulaSize(_)).sum
   }
 }
