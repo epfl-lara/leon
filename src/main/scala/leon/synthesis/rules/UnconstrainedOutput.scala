@@ -20,7 +20,7 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
         case List(s) =>
           val term = letTuple(sub.xs, s.term, Tuple(p.xs.map(id => if (unconstr(id)) simplestValue(id.getType) else Variable(id))))
 
-          Some(Solution(s.pre, s.defs, term))
+          Some(Solution(s.pre, s.defs, term, s.isTrusted))
         case _ =>
           None
       }

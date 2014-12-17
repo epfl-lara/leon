@@ -42,7 +42,7 @@ case object IfSplit extends Rule("If-Split") {
         val defs = ts.defs ++ es.defs
         val term = IfExpr(i.cond, ts.term, es.term)
 
-        Some(Solution(pre, defs, term))
+        Some(Solution(pre, defs, term, sols.forall(_.isTrusted)))
 
       case _ =>
         None

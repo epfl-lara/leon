@@ -72,7 +72,7 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
                                      sEQ.term,
                                      sGT.term))
 
-            Some(Solution(pre, defs, term))
+            Some(Solution(pre, defs, term, sols.forall(_.isTrusted)))
           case _ =>
             None
         }

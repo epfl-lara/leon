@@ -88,7 +88,8 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
             orJoin(subs.map(_.pre)),
             subs.map(_.defs).foldLeft(Set[FunDef]())(_ ++ _),
             if (scrut0 != scrut) Let(scrut.id, scrut0, matchExpr(scrut, cases))
-            else matchExpr(scrut, cases)
+            else matchExpr(scrut, cases),
+            subs.forall(_.isTrusted)
           ))
         }
 

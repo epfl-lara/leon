@@ -70,7 +70,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         case List(sol) =>
           val newPre = substAll(reverseMap, sol.pre)
           val newTerm = substAll(reverseMap, sol.term)
-          Some(Solution(newPre, sol.defs, newTerm))
+          Some(Solution(newPre, sol.defs, newTerm, sol.isTrusted))
         case _ =>
           None
       }

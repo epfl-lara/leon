@@ -24,7 +24,7 @@ case object Assert extends NormalizingRule("Assert") {
             val sub = p.copy(pc = andJoin(p.pc +: exprsA), phi = andJoin(others))
 
             List(RuleInstantiation.immediateDecomp(p, this, List(sub), {
-              case Solution(pre, defs, term) :: Nil => Some(Solution(andJoin(exprsA :+ pre), defs, term))
+              case (s @ Solution(pre, defs, term)) :: Nil => Some(Solution(andJoin(exprsA :+ pre), defs, term, s.isTrusted))
               case _ => None
             }, "Assert "+andJoin(exprsA)))
           }

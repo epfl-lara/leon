@@ -60,8 +60,8 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val newProblem = Problem(problem.as, problem.ws, and(eqPre, problem.pc), andJoin(allOthers), problem.xs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
-            case List(Solution(pre, defs, term)) =>
-              Some(Solution(and(eqPre, pre), defs, term))
+            case List(s @ Solution(pre, defs, term)) =>
+              Some(Solution(and(eqPre, pre), defs, term, s.isTrusted))
             case _ =>
               None
           }
@@ -97,14 +97,14 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val newProblem = Problem(problem.as ++ freshInputVariables, problem.ws, and(eqPre, problem.pc), freshFormula, subproblemxs)
 
           val onSuccess: List[Solution] => Option[Solution] = { 
-            case List(Solution(pre, defs, term)) => {
+            case List(s @ Solution(pre, defs, term)) => {
               val freshPre = replace(equivalenceConstraints, pre)
               val freshTerm = replace(equivalenceConstraints, term)
               val freshsubxs = subproblemxs.map(id => FreshIdentifier(id.name).setType(id.getType))
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_)))))))))
+              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_))))))), s.isTrusted))
             }
 
             case _ =>

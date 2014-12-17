@@ -178,12 +178,12 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
 
         def onSuccess(sols: List[Solution]): Option[Solution] = sols match {
-          case List(Solution(pre, defs, term)) => {
+          case List(s @ Solution(pre, defs, term)) => {
             if(remainderIds.isEmpty) {
               Some(Solution(And(newPre, pre), defs,
                 LetTuple(subProblemxs, term,
                   Let(processedVar, witness,
-                    Tuple(problem.xs.map(Variable(_)))))))
+                    Tuple(problem.xs.map(Variable(_))))), isTrusted=s.isTrusted))
             } else if(remainderIds.size > 1) {
               sys.error("TODO")
             } else {

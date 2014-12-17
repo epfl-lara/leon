@@ -31,7 +31,7 @@ case object CaseSplit extends Rule("Case-Split") {
 
         val term = prefix.foldRight(last.term) { (s, t) => IfExpr(s.pre, s.term, t) }
 
-        Some(Solution(pre, defs, term))
+        Some(Solution(pre, defs, term, sols.forall(_.isTrusted)))
 
       case _ =>
         None

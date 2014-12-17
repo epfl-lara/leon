@@ -49,7 +49,7 @@ case object EqualitySplit extends Rule("Eq. Split") {
 
         val onSuccess: List[Solution] => Option[Solution] = { 
           case List(s1, s2) =>
-            Some(Solution(or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term)))
+            Some(Solution(or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(Equals(Variable(a1), Variable(a2)), s1.term, s2.term), s1.isTrusted && s2.isTrusted))
           case _ =>
             None
         }

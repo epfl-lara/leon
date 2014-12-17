@@ -61,7 +61,8 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
               )
 
 
-              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun.typed, Seq(Variable(origId)))))
+              Some(Solution(preOut, base.defs++gt.defs++lt.defs+newFun, FunctionInvocation(newFun.typed, Seq(Variable(origId))),
+                Seq(base, gt, lt).forall(_.isTrusted)))
             }
           case _ =>
             None

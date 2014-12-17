@@ -45,7 +45,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(sol) =>
-          Some(Solution(sol.pre, sol.defs, letTuple(newOuts, sol.term, Tuple(outerOuts))))
+          Some(Solution(sol.pre, sol.defs, letTuple(newOuts, sol.term, Tuple(outerOuts)), sol.isTrusted))
         case _ =>
           None
       }

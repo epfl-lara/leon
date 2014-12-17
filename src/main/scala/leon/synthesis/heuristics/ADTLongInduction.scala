@@ -157,7 +157,8 @@ case object ADTLongInduction extends Rule("ADT Long Induction") with Heuristic {
 
               Some(Solution(orJoin(globalPre),
                             sols.flatMap(_.defs).toSet+newFun,
-                            FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable(_)))
+                            FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable(_))),
+                            sols.forall(_.isTrusted)
                           ))
             }
         }
