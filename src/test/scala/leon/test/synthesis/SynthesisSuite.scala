@@ -53,7 +53,7 @@ class SynthesisSuite extends LeonTestSuite {
   case class Apply(desc: String, andThen: List[Apply] = Nil)
 
   def synthesizeWith(sctx: SynthesisContext, p: Problem, ss: Apply): Solution = {
-    val apps = Rules.getInstantiations(sctx, p)
+    val apps = sctx.rules flatMap { _.instantiateOn(sctx, p)}
 
     def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
       import java.util.regex.Pattern;

@@ -87,7 +87,7 @@ class StablePrintingSuite extends LeonTestSuite {
             val sctx = SynthesisContext.fromSynthesizer(ci.synthesizer)
             val problem = ci.problem
             info(j.info("synthesis "+problem))
-            val apps = Rules.getInstantiations(sctx, problem)
+            val apps = sctx.rules flatMap { _.instantiateOn(sctx, problem)}
 
             for (a <- apps) {
               a.apply(sctx) match {
