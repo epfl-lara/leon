@@ -247,10 +247,10 @@ object ExpressionGrammars {
           normalGrammar.getProductions(gl).map(gl -> _)
         }
 
-        def intVariations(gl: L, v: Int): Seq[(L, Gen)] = {
+        def intVariations(gl: L, e : Expr): Seq[(L, Gen)] = {
           Seq(
-            gl -> Generator(Nil, { _ => IntLiteral(v-1)} ),
-            gl -> Generator(Nil, { _ => IntLiteral(v+1)} )
+            gl -> Generator(Nil, { _ => Minus(e, IntLiteral(1))} ),
+            gl -> Generator(Nil, { _ => Plus (e, IntLiteral(1))} )
           )
         }
 
@@ -266,10 +266,8 @@ object ExpressionGrammars {
           }
         }
 
-        val subs: Seq[(L, Gen)] = e match {
-          case IntLiteral(v) =>
-            gens(e, gl, Nil, { _ => e }) ++ cegis(gl) ++ intVariations(gl, v)
-
+        val subs: Seq[(L, Gen)] = (e match {
+          
           case _: Terminal | _: Let | _: LetTuple | _: LetDef | _: MatchExpr =>
             gens(e, gl, Nil, { _ => e }) ++ cegis(gl)
 
@@ -287,7 +285,7 @@ object ExpressionGrammars {
 
           case NAryOperator(subs, builder) =>
             gens(e, gl, subs, { case ss => builder(ss) })
-        }
+        }) ++ (if (e.getType == Int32Type ) intVariations(gl, e) else Nil)
 
         val terminalsMatching = terminals.collect {
           case IsTyped(term, tpe) if tpe == gl.getType && term != e =>
