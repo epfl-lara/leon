@@ -94,24 +94,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   }
 
   def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
-    // Create a fresh function
-    val nid = FreshIdentifier(fd.id.name+"'").copiedFrom(fd.id)
-    val nfd = new FunDef(nid, fd.tparams, fd.returnType, fd.params, fd.defType)
-    nfd.copyContentFrom(fd)
-    nfd.copiedFrom(fd)
+       
+    val body = fd.body.get;
 
-    nfd.body = nfd.body.map { b => preMap({
-      case fi @ FunctionInvocation(TypedFunDef(`fd`, tps), args) =>
-        Some(FunctionInvocation(TypedFunDef(nfd, tps), args).copiedFrom(fi))
-      case _ => None
-    })(b)}
-
-    program = program.addDefinition(nfd, fd)
-
-    val body = nfd.body.get;
-
-    val (newBody, replacedExpr) = focusRepair(program, nfd, passingTests, failingTests)
-    nfd.body = Some(newBody)
+    val (newBody, replacedExpr) = focusRepair(program, fd, passingTests, failingTests)
+    fd.body = Some(newBody)
 
     val guide = guideOf(replacedExpr)
 
@@ -119,7 +106,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val soptions0 = SynthesisPhase.processOptions(ctx);
 
     val soptions = soptions0.copy(
-      functionsToIgnore = soptions0.functionsToIgnore + fd + nfd,
+      functionsToIgnore = soptions0.functionsToIgnore + fd,
       costModel = RepairCostModel(soptions0.costModel),
       rules = (soptions0.rules ++ Seq(
         //GuidedDecomp,
@@ -130,13 +117,13 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     );
 
     // extract chooses from nfd
-    val Seq(ci) = ChooseInfo.extractFromFunction(ctx, program, nfd, soptions)
+    val Seq(ci) = ChooseInfo.extractFromFunction(ctx, program, fd, soptions)
 
     val nci = ci.copy(pc = and(ci.pc, guideOf(replacedExpr)))
 
     val p = nci.problem
 
-    new Synthesizer(ctx, nfd, program, p, soptions)
+    new Synthesizer(ctx, fd, program, p, soptions)
   }
 
   private def guideOf(expr: Expr): Expr = {
