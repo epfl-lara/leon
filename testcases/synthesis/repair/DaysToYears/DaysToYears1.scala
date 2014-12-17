@@ -24,7 +24,7 @@ object DaysToYears {
     (((year,days), res) passes { 
       case (1999, 14 )  => (1999, 14)
       case (1980, 366)  => (1980, 366)
-      case (1981, 634)  => (1982, 269)
+      case (1981, 366)  => (1982, 1)
     })
   } 
 

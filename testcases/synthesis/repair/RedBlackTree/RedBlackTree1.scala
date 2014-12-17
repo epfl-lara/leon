@@ -118,14 +118,14 @@ object RedBlackTree {
       case Node(Black,Node(Red,Node(Red,a,xV,b),yV,c),zV,d) => 
         Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
       case Node(Black,Node(Red,a,xV,Node(Red,b,yV,c)),zV,d) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Red,c,zV,d))  // FIXME: Last Red should be Black
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,xV,d))  // FIXME: xV instead of zV in right node
       case Node(Black,a,xV,Node(Red,Node(Red,b,yV,c),zV,d)) => 
-        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
+        Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,xV,d))  // FIXME: xV instead of zV in right node
       case Node(Black,a,xV,Node(Red,b,yV,Node(Red,c,zV,d))) => 
         Node(Red,Node(Black,a,xV,b),yV,Node(Black,c,zV,d))
       case Node(c,a,xV,b) => Node(c,a,xV,b)
     }
-  } ensuring (res => content(res) == content(Node(c,a,x,b)) )// && redDescHaveBlackChildren(res))
+  } ensuring (res => content(res) == content(Node(c,a,x,b))) //&& redDescHaveBlackChildren(res))
 
   // def buggyBalance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
   //   Node(c,a,x,b) match {

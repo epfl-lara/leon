@@ -84,7 +84,7 @@ object RedBlackTree {
  
   def add(x: Int, t: Tree): Tree = {
     require(redNodesHaveBlackChildren(t) && blackBalanced(t) )
-    ins(x, t) // FIX: makeBlack(ins(x, t))
+    ins(x, t) // FIXME: makeBlack(ins(x, t))
   } ensuring (res => content(res) == content(t) ++ Set(x) && redNodesHaveBlackChildren(res) && blackBalanced(res) )
   
   def balance(c: Color, a: Tree, x: Int, b: Tree): Tree = {
