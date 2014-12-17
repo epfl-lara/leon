@@ -1331,6 +1331,8 @@ object TreeOps {
         newFD
     }
 
+    import synthesis.Witnesses.Terminating
+    
     def pre(e : Expr) : Expr = e match {
       case Tuple(Seq()) => UnitLiteral()
       case Variable(id) if idMap contains id => Variable(idMap(id))
@@ -1351,6 +1353,9 @@ object TreeOps {
 
       case FunctionInvocation(tfd, args) =>
         FunctionInvocation(fd2fd(tfd.fd).typed(tfd.tps), args)
+      
+      case Terminating(tfd, args) =>
+        Terminating(fd2fd(tfd.fd).typed(tfd.tps), args)
 
       case _ => e
     }
@@ -1626,6 +1631,8 @@ object TreeOps {
         
       }
 
+      import synthesis.Witnesses.Terminating
+      
       val res = (t1, t2) match {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
@@ -1659,7 +1666,12 @@ object TreeOps {
           // TODO: Check type params
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
-
+          
+        case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
+          // TODO: Check type params
+          fdHomo(tfd1.fd, tfd2.fd) &&
+          (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
+        
         case Same(UnaryOperator(e1, _), UnaryOperator(e2, _)) =>
           isHomo(e1, e2)
 
@@ -2041,6 +2053,8 @@ object TreeOps {
    */
   def liftClosures(e: Expr): (Set[FunDef], Expr) = {
     var fds: Map[FunDef, FunDef] = Map()
+    
+    import synthesis.Witnesses.Terminating
     val res1 = preMap({
       case LetDef(fd, b) =>
         val nfd = new FunDef(fd.id.freshen, fd.tparams, fd.returnType, fd.params, fd.defType)
@@ -2051,9 +2065,16 @@ object TreeOps {
 
         Some(LetDef(nfd, b))
 
-      case fi @ FunctionInvocation(tfd, args) =>
+      case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {
           Some(FunctionInvocation(fds(tfd.fd).typed(tfd.tps), args))
+        } else {
+          None
+        }
+        
+      case Terminating(tfd, args) =>
+        if (fds contains tfd.fd) {
+          Some(Terminating(fds(tfd.fd).typed(tfd.tps), args))
         } else {
           None
         }

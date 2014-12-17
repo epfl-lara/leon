@@ -9,6 +9,7 @@ import purescala.Constructors._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.DefOps._
+import Witnesses._
 
 case class ChooseInfo(ctx: LeonContext,
                       prog: Program,
@@ -35,11 +36,9 @@ object ChooseInfo {
   }
 
   def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef, options: SynthesisSettings): Seq[ChooseInfo] = {
-    val fterm = prog.library.terminating.getOrElse(ctx.reporter.fatalError("No library ?!?"))
 
     val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
-    val withinCall = FunctionInvocation(fd.typedWithDef, fd.params.map(_.id.toVariable))
-    val term = FunctionInvocation(fterm.typed(Seq(fd.returnType)), Seq(withinCall))
+    val term = Terminating(fd.typedWithDef, fd.params.map(_.id.toVariable))
 
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
       ChooseInfo(ctx, prog, fd, and(path, term), ch, ch, options)

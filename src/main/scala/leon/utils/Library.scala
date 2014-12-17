@@ -13,14 +13,6 @@ case class Library(pgm: Program) {
 
   lazy val String = lookup("leon.lang.string.String")
 
-  lazy val terminating: Option[FunDef] = lookup("leon.lang.synthesis.terminating").collect {
-    case fd: FunDef => fd
-  }
-
-  lazy val guide = lookup("leon.lang.synthesis.guide") collect {
-    case (fd: FunDef) => fd
-  }
-
   def lookup(name: String): Option[Definition] = {
     searchByFullName(name, pgm)
   }

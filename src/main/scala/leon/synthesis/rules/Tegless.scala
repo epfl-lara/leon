@@ -12,16 +12,15 @@ import purescala.Definitions._
 import purescala.Extractors._
 import utils._
 import utils.ExpressionGrammars._
+import Witnesses._
 
 case object TEGLESS extends TEGISLike[Label[String]]("TEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
 
     val TopLevelAnds(clauses) = p.ws
 
-    val guide = sctx.program.library.guide.get
-
     val guides = clauses.collect {
-      case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
+      case Guide(expr) => expr
     }
 
     val inputs = p.as.map(_.toVariable)

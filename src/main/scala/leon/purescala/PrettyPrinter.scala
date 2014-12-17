@@ -16,6 +16,8 @@ import PrinterHelpers._
 import TreeOps.{isStringLiteral, isListLiteral}
 import TypeTreeOps.leastUpperBound
 
+import synthesis.Witnesses._
+
 case class PrinterContext(
   current: Tree,
   parent: Option[Tree],
@@ -388,6 +390,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
               |  $t
               |} else $ie"""
         }
+
+      case Terminating(tfd, args) =>
+        p"↓ ${tfd.id}($args)"
+
+      case Guide(e) =>
+        p"⊙ {$e}"
 
       case IfExpr(c, t, e) =>
         optP {

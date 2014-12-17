@@ -12,6 +12,7 @@ import purescala.Trees._
 import purescala.TreeOps._
 import purescala.DefOps._
 import purescala.Common._
+import Witnesses._
 
 object Helpers {
   /**
@@ -35,13 +36,12 @@ object Helpers {
   }
 
   def terminatingCalls(prog: Program, tpe: TypeTree, ws: Expr, pc: Expr): List[(Expr, Set[Identifier])] = {
-    val terminating = prog.library.terminating.get
 
     val TopLevelAnds(wss) = ws
     val TopLevelAnds(clauses) = pc
 
-    val gs: List[FunctionInvocation] = wss.toList.collect {
-      case FunctionInvocation(TypedFunDef(`terminating`, _), Seq(fi: FunctionInvocation)) => fi
+    val gs: List[Terminating] = wss.toList.collect {
+      case t : Terminating => t
     }
 
     def subExprsOf(expr: Expr, v: Variable): Option[(Variable, Expr)] = expr match {
@@ -68,7 +68,7 @@ object Helpers {
     }
 
     val res = gs.flatMap {
-      case FunctionInvocation(tfd, args) if isSubtypeOf(tfd.returnType, tpe) =>
+      case Terminating(tfd, args) if isSubtypeOf(tfd.returnType, tpe) =>
         val ids = tfd.params.map(vd => FreshIdentifier("<hole>", true).setType(vd.tpe)).toList
 
         for (((a, i), tpe) <- args.zipWithIndex zip tfd.params.map(_.tpe);

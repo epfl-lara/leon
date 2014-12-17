@@ -15,16 +15,16 @@ import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Constructors._
 
+import Witnesses._
+
 import solvers._
 
 case object GuidedCloser extends NormalizingRule("Guided Closer") {
   def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(clauses) = p.ws
 
-    val guide = sctx.program.library.guide.get
-
     val guides = clauses.collect {
-      case FunctionInvocation(TypedFunDef(`guide`, _), Seq(expr)) => expr
+      case Guide(expr) => expr
     }
 
     val alts = guides.filter(isDeterministic).flatMap { e =>

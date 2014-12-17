@@ -20,6 +20,7 @@ import verification._
 import synthesis._
 import synthesis.rules._
 import synthesis.heuristics._
+import synthesis.Witnesses._
 import graph.DotGenerator
 import leon.utils.ASCIIHelpers.title
 
@@ -100,7 +101,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val (newBody, replacedExpr) = focusRepair(program, fd, passingTests, failingTests)
     fd.body = Some(newBody)
 
-    val guide = guideOf(replacedExpr)
+    val guide = Guide(replacedExpr)
 
     // Return synthesizer for this choose
     val soptions0 = SynthesisPhase.processOptions(ctx);
@@ -119,16 +120,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     // extract chooses from nfd
     val Seq(ci) = ChooseInfo.extractFromFunction(ctx, program, fd, soptions)
 
-    val nci = ci.copy(pc = and(ci.pc, guideOf(replacedExpr)))
+    val nci = ci.copy(pc = and(ci.pc, guide))
 
     val p = nci.problem
 
     new Synthesizer(ctx, fd, program, p, soptions)
-  }
-
-  private def guideOf(expr: Expr): Expr = {
-    val gfd = program.library.guide.get.typed(Seq(expr.getType))
-    FunctionInvocation(gfd, Seq(expr))
   }
 
   private def focusRepair(program: Program, fd: FunDef, passingTests: List[Example], failingTests: List[Example]): (Expr, Expr) = {
