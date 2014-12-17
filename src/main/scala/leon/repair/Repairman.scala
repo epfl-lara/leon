@@ -84,7 +84,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           reporter.error(ASCIIHelpers.title("Failed to repair!"))
         } else {
           reporter.info(ASCIIHelpers.title("Repair successful:"))
-          for ((sol, i) <- solutions.zipWithIndex) {
+          for ((sol, i) <- solutions.reverse.zipWithIndex) {
             reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
             val expr = sol.toSimplifiedExpr(ctx, program)
             reporter.info(ScalaPrinter(expr));
