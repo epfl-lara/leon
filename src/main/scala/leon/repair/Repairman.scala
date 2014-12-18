@@ -114,7 +114,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         //GuidedCloser,
         CEGLESS
         //TEGLESS
-      )) diff Seq(ADTInduction, TEGIS)
+      )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)
     );
 
     // extract chooses from nfd
