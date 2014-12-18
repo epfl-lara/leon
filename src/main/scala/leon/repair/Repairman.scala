@@ -150,52 +150,43 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     // We exclude redundant failing tests, and only select the minimal tests
     val minimalFailingTests = {
+            
+      type FI = (FunDef, Seq[Expr])
+      
       // We don't want tests whose invocation will call other failing tests.
       // This is because they will appear erroneous, 
       // even though the error comes from the called test
-      val testEval : CollectingEvaluator = new CollectingEvaluator(ctx, program){
-        def collecting(e : Expr) : Option[Seq[Expr]] = e match {
-          case fi@FunctionInvocation(TypedFunDef(`fd`, _), args) => 
-            Some(args)
-          case _ => None
-        }
+      val testEval : RepairTrackingEvaluator = new RepairTrackingEvaluator(ctx, program) {
+        def withFilter(fi : FI) = fi._1 == fd
       }
 
       val passingTs = for (test <- passingTests) yield InExample(test.ins)
       val failingTs = for (test <- failingTests) yield InExample(test.ins)
 
-      val test2Tests : Map[InExample, Set[InExample]] = (failingTs ++ passingTs).map{ ts => 
-        testEval.eval(body, args.zip(ts.ins).toMap)
-        (ts, testEval.collected map (InExample(_)))
-      }.toMap
+      (failingTs ++ passingTs) foreach { ts => 
+        testEval.eval(functionInvocation(fd, ts.ins))
+      }
+      
+      val test2Tests : Map[FI, Set[FI]] = testEval.fullCallGraph
+      
+      println("CALL GRAPH")
+      for {
+        ((fi, args), tos) <- test2Tests
+        (tofi, toArgs) <- tos
+      }{
+        println(s"${fi.id}(${args mkString ", "}) ----> ${tofi.id}(${toArgs mkString ", "})")
+      }
 
-      val recursiveTests : Set[InExample] = test2Tests.values.toSet.flatten -- (failingTs ++ passingTs)
+      def isFailing(fi : FI) = !testEval.fiStatus(fi) && (fi._1 == fd)
+      val failing = test2Tests filter { case (from, to) => 
+         isFailing(from) && (to forall (!isFailing(_)) )
+      }
 
-      val testsTransitive : Map[InExample,Set[InExample]] = 
-        leon.utils.GraphOps.transitiveClosure[InExample](
-          test2Tests ++ recursiveTests.map ((_,Set[InExample]()))
-        )
-
-      val knownWithResults : Map[InExample, Boolean] = (failingTs.map((_, false)).toMap) ++ (passingTs.map((_,true)))
-
-      val recWithResults : Map[InExample, Boolean] = recursiveTests.map { ex =>
-        (ex, evaluator.eval(spec, (args zip ex.ins).toMap + (out -> body)) match {
-          case EvaluationResults.Successful(BooleanLiteral(true))  => true
-          case _ => false
-        })
-      }.toMap
-
-      val allWithResults = knownWithResults ++ recWithResults
-
-
-      testsTransitive.collect {
-        case (rest, called) if !allWithResults(rest) && (called forall allWithResults) => 
-          rest
-      }.toSeq
+      failing.keySet map { case (_, args) => InExample(args) }
     }
 
     reporter.ifDebug { printer =>
-      printer(new ExamplesTable("Minimal failing:", minimalFailingTests).toString)
+      printer(new ExamplesTable("Minimal failing:", minimalFailingTests.toSeq).toString)
     }
 
     // Check how an expression behaves on tests
@@ -210,7 +201,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           case EvaluationResults.Successful(BooleanLiteral(false)) => Some(false)
           case e => None
         }
-      }.distinct
+      }
 
       if (results.size == 1) {
         results.head
