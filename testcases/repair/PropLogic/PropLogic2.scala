@@ -47,24 +47,5 @@ object SemanticsPreservation {
     case Or(lhs, rhs) => isNNF(lhs) && isNNF(rhs)
     case _ => true
   }
-
-  def partEval(formula : Formula) : Formula = { formula match {
-    case And(Const(false), _ ) => Const(false)
-    case And(_, Const(false)) => Const(false)
-    case And(Const(true), e) => partEval(e)
-    case And(e, Const(true)) => partEval(e)
-    case Or(Const(true), _ ) => Const(true)
-    case Or(_, Const(true)) => Const(true)
-    case Or(Const(false), e) => partEval(e)
-    case Or(e, Const(false)) => partEval(e)
-    case Not(Const(c)) => Const(!c)
-    case other => other
-  }} ensuring { size(_) <= size(formula) }
-
-  
-  @induct
-  def partEvalSound (f : Formula, env : Set[Int]) = {
-    eval(partEval(f))(env) == eval(f)(env)
-  }.holds
   
 }

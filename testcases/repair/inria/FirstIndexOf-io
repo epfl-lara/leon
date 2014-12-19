@@ -1,0 +1,87 @@
+INPUT:
+
+def firstIndexOf(l: List[Int], v: Int): Int = {
+  l match {
+    case Cons(h, t) if v == h => 0
+    case Cons(h, t) =>
+      if (firstIndexOf(t, v) >= 0) {
+        firstIndexOf(t, v) // Should be +1 (Solves with CEGIS)
+      } else {
+        -1
+      }
+    case Nil() =>
+      -1
+  }
+} ensuring {
+  (res: Int) => (if (l.content contains v) {
+    l.size > res && l.apply(res) == v
+  } else {
+    res == -1
+  }) && (((l,v), res) passes {
+    case (Cons(0, Cons(1, Cons(2, Cons(3, Nil())))), 3) => 3
+    case (Cons(0, Cons(2, Cons(3, Cons(1, Nil())))), 1) => 3
+    case (Cons(0, Cons(1, Cons(3, Cons(1, Nil())))), 1) => 1
+    case (Cons(0, Cons(1, Cons(3, Cons(1, Nil())))), 2) => -1
+  })
+}
+
+
+COMMAND:
+leon FirstIndexOf1.scala --repair --solvers=fairz3:enum --timeout=5
+
+OUTPUT:
+(Focused problem:)
+
+[  Info  ] ⟦ v;l;t;h, ↓ firstIndexOf(l, v) && ⊙ {firstIndexOf(t, v)} && ¬(l.isInstanceOf[Cons[Int]] && v == l.h) && l.isInstanceOf[Cons[Int]] && h == l.h && t == l.t && firstIndexOf(t, v) >= 0 ≺  ⟨ (if (v ∈ l.content()) {
+             l.size() > res && l.apply(res) == v
+           } else {
+             res == -1
+           }) && ((l, v), res) passes {
+             case (Cons(0, Cons(1, Cons(2, Cons(3, Nil())))), 3) =>
+               3
+             case (Cons(0, Cons(2, Cons(3, Cons(1, Nil())))), 1) =>
+               3
+             case (Cons(0, Cons(1, Cons(3, Cons(1, Nil())))), 1) =>
+               1
+             case (Cons(0, Cons(1, Cons(3, Cons(1, Nil())))), 2) =>
+               -1
+           } ⟩ res ⟧
+
+
+(Solution)
+[  Info  ] Found trusted solution!
+[  Info  ] ============================== Repair successful: ==============================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] firstIndexOf(t, v) + 1
+[  Info  ] ================================= In context: =================================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] def firstIndexOf(l : List[Int], v : Int): Int = {
+             l match {
+               case Cons(h, t) if v == h =>
+                 0
+               case Cons(h, t) =>
+                 if (firstIndexOf(t, v) >= 0) {
+                   firstIndexOf(t, v) + 1
+                 } else {
+                   -1
+                 }
+               case Nil() =>
+                 -1
+             }
+           } ensuring {
+             (res : Int) => (if (l.content().contains(e)) {
+               l.size() > res && l.apply(res) == v
+             } else {
+               res == -1
+             }) && ((l, v), res) passes {
+               case (Cons(0, Cons(1, Cons(2, Cons(3, Nil())))), 3) =>
+                 3
+               case (Cons(0, Cons(2, Cons(3, Cons(1, Nil())))), 1) =>
+                 3
+               case (Cons(0, Cons(1, Cons(3, Cons(1, Nil())))), 1) =>
+                 1
+               case (Cons(0, Cons(1, Cons(3, Cons(1, Nil())))), 2) =>
+                 -1
+             }
+           }
+

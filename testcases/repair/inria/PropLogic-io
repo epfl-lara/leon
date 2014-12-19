@@ -1,0 +1,84 @@
+INPUT:
+
+def nnf(formula : Formula) : Formula = { formula match {
+  case Not(And(lhs,rhs)) => Or(nnf(Not(lhs)), nnf(Not(rhs)))
+  case Not(Or(lhs,rhs)) => And(nnf(Not(lhs)), nnf(Not(rhs)))
+  case Not(Const(v)) => Const(!v)
+  case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
+  case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
+  // FIXME: forgot to handle the Not(Not(_)) case 
+  case other => other 
+}} ensuring { res => 
+   isNNF(res) && ((formula, res) passes {
+     case Not(Not(Not(Const(a)))) => Const(!a)
+   })
+}
+
+COMMAND:
+leon PropLogic2.scala --repair --functions=nnf --solvers=fairz3:enum
+
+
+OUTPUT:
+(Focused Problem:)
+(Comment: 
+    There is something here that is not legal Scala, namely formula.f
+    The path condition makes sure formula is indeed a Not so it has the f field, but Scala would require a typecast here.
+)
+[  Info  ] ⟦ formula;other, ↓ nnf(formula) && ⊙ {other} && ¬(formula.isInstanceOf[Not] && formula.f.isInstanceOf[And]) && ¬(formula.isInstanceOf[Not] && formula.f.isInstanceOf[Or]) && ¬(formula.isInstanceOf[Not] && formula.f.isInstanceOf[Const]) && ¬formula.isInstanceOf[And] && ¬formula.isInstanceOf[Or] && other == formula ≺  ⟨ isNNF(res) && (formula, res) passes {
+             case Not(Not(Not(Const(a)))) =>
+               Const(¬a)
+           } ⟩ res ⟧ 
+
+(Solution:)
+[  Info  ] Found trusted solution!
+[  Info  ] ============================== Repair successful: ==============================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] formula match {
+             case Const(v) =>
+               other
+             case Literal(id) =>
+               other
+             case Not(f) =>
+               f match {
+                 case Literal(id) =>
+                   nnf(Literal(id))
+                 case Not(f1) =>
+                   nnf(f1)
+               }
+           }
+[  Info  ] ================================= In context: =================================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] def nnf(formula : Formula): Formula = {
+             formula match {
+               case Not(And(lhs, rhs)) =>
+                 Or(nnf(Not(lhs)), nnf(Not(rhs)))
+               case Not(Or(lhs, rhs)) =>
+                 And(nnf(Not(lhs)), nnf(Not(rhs)))
+               case Not(Const(v)) =>
+                 Const(!v)
+               case And(lhs, rhs) =>
+                 And(nnf(lhs), nnf(rhs))
+               case Or(lhs, rhs) =>
+                 Or(nnf(lhs), nnf(rhs))
+               case other =>
+                 formula match {
+                   case Const(v) =>
+                     other
+                   case Literal(id) =>
+                     other
+                   case Not(f) =>
+                     f match {
+                       case Literal(id) =>
+                         nnf(Literal(id))
+                       case Not(f1) =>
+                         nnf(f1)
+                     }
+                 }
+             }
+           } ensuring {
+             (res : Formula) => isNNF(res) && (formula, res) passes {
+               case Not(Not(Not(Const(a)))) =>
+                 Const(!a)
+             }
+           }
+

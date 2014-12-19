@@ -1,0 +1,61 @@
+INPUT:
+
+private def merge(h1: Heap, h2: Heap) : Heap = {
+  require(
+    hasLeftistProperty(h1) && hasLeftistProperty(h2) && 
+    hasHeapProperty(h1) && hasHeapProperty(h2)
+  )
+  (h1,h2) match {
+    case (Leaf(), _) => h2
+    case (_, Leaf()) => h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if(v1 + v2 > 0) // FIXME: Nonsense, should be v1 >= v2
+        makeN(v1, l1, merge(r1, h2))
+      else
+        makeN(v2, l2, merge(h1, r2))
+  }
+} ensuring { res => 
+  hasLeftistProperty(res) && hasHeapProperty(res) &&
+  heapSize(h1) + heapSize(h2) == heapSize(res) &&
+  h1.content ++ h2.content == res.content 
+}
+
+
+COMMAND:
+leon HeapSort7.scala --repair --functions=merge
+
+OUTPUT:
+
+(focused problem/ condition fails)
+[  Info  ] ⟦ l1;r2;v1;l2;h1;v2;h2;r1, ↓ merge(h1, h2) && ⊙ {(v1 + v2 > 0)} && hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2) && ¬h1.isInstanceOf[Leaf] && ¬h2.isInstanceOf[Leaf] && h1.isInstanceOf[Node] && v1 == h1.value && l1 == h1.left && r1 == h1.right && h2.isInstanceOf[Node] && v2 == h2.value && l2 == h2.left && r2 == h2.right ≺  ⟨ val res = if (cond) {
+             makeN(v1, l1, merge(r1, h2))
+           } else {
+             makeN(v2, l2, merge(h1, r2))
+           };
+           hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ∪ h2.content() == res.content() ⟩ cond ⟧ 
+
+(solution)
+[  Info  ] Found trusted solution!
+[  Info  ] ============================== Repair successful: ==============================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] v2 <= v1
+[  Info  ] ================================= In context: =================================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] def merge(h1 : Heap, h2 : Heap): Heap = {
+             require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+             (h1, h2) match {
+               case (Leaf(), _) =>
+                 h2
+               case (_, Leaf()) =>
+                 h1
+               case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+                 if (v2 <= v1) {
+                   makeN(v1, l1, merge(r1, h2))
+                 } else {
+                   makeN(v2, l2, merge(h1, r2))
+                 }
+             }
+           } ensuring {
+             (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+           }
+

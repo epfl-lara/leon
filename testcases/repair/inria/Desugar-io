@@ -1,0 +1,69 @@
+INPUT:
+def desugar(e : Trees.Expr) : SimpleE = { e match {
+  case Trees.Plus (lhs, rhs) => Plus(desugar(lhs), desugar(rhs))
+  case Trees.Minus(lhs, rhs) => Plus(desugar(lhs), desugar(rhs)) // FIXME forgot Neg
+  case Trees.LessThan(lhs, rhs) => LessThan(desugar(lhs), desugar(rhs))
+  case Trees.And  (lhs, rhs) => Ite(desugar(lhs), desugar(rhs), Literal(0)) 
+  case Trees.Or   (lhs, rhs) => Ite(desugar(lhs), Literal(1), desugar(rhs))
+  case Trees.Not(e) => Ite(desugar(e), Literal(0), Literal(1))
+  case Trees.Eq(lhs, rhs) =>
+    Eq(desugar(lhs), desugar(rhs))
+  case Trees.Ite(cond, thn, els) => Ite(desugar(cond), desugar(thn), desugar(els))
+  case Trees.IntLiteral(v)  => Literal(v)
+  case Trees.BoolLiteral(b) => Literal(b2i(b))
+}} ensuring { res => 
+  sem(res) == Semantics.semUntyped(e) && ((e,res) passes {
+    case Trees.Minus(Trees.IntLiteral(42), Trees.IntLiteral(i)) => 
+      Plus(Literal(42), Neg(Literal(i)))
+  })
+}
+
+
+COMMAND: 
+leon Desugar2.scala --repair --functions=desugar --solvers=fairz3:enum --timeout=5
+
+
+OUTPUT:
+(Focused Problem:)
+[  Info  ] ⟦ e;lhs;rhs, ↓ desugar(e) && ⊙ {Plus(desugar(lhs), desugar(rhs))} && ¬e.isInstanceOf[Plus] && e.isInstanceOf[Minus] && lhs == e.lhs && rhs == e.rhs ≺  ⟨ sem(res) == semUntyped(e) && (e, res) passes {
+             case Minus(IntLiteral(42), IntLiteral(i)) =>
+               Plus(Literal(42), Neg(Literal(i)))
+           } ⟩ res ⟧ 
+...
+(Solution:)
+[  Info  ] Found trusted solution!
+[  Info  ] ============================== Repair successful: ==============================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] Plus(desugar(lhs), Neg(desugar(rhs)))
+[  Info  ] ================================= In context: =================================
+[  Info  ] --------------------------------- Solution 1: ---------------------------------
+[  Info  ] @induct
+           def desugar(e : Trees.Expr): SimpleE = {
+             e match {
+               case Trees.Plus(lhs, rhs) =>
+                 Plus(desugar(lhs), desugar(rhs))
+               case Trees.Minus(lhs, rhs) =>
+                 Plus(desugar(lhs), Neg(desugar(rhs)))
+               case Trees.LessThan(lhs, rhs) =>
+                 LessThan(desugar(lhs), desugar(rhs))
+               case Trees.And(lhs, rhs) =>
+                 Ite(desugar(lhs), desugar(rhs), Literal(0))
+               case Trees.Or(lhs, rhs) =>
+                 Ite(desugar(lhs), Literal(1), desugar(rhs))
+               case Trees.Not(e) =>
+                 Ite(desugar(e), Literal(0), Literal(1))
+               case Trees.Eq(lhs, rhs) =>
+                 Eq(desugar(lhs), desugar(rhs))
+               case Trees.Ite(cond, thn, els) =>
+                 Ite(desugar(cond), desugar(thn), desugar(els))
+               case Trees.IntLiteral(v) =>
+                 Literal(v)
+               case Trees.BoolLiteral(b) =>
+                 Literal(b2i(b))
+             }
+           } ensuring {
+             (res : SimpleE) => sem(res) == semUntyped(e) && (e, res) passes {
+               case Trees.Minus(Trees.IntLiteral(42), Trees.IntLiteral(i)) =>
+                 Plus(Literal(42), Neg(Literal(i)))
+             }
+           }
