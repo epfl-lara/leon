@@ -43,15 +43,16 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
 
     reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
-    val t2 = new Timer().start
-    val synth = getSynthesizer(passingTests, failingTests)
-    val p     = synth.problem
+    val t2          = new Timer().start
+    val (synth, ci) = getSynthesizer(passingTests, failingTests)
+    val p           = synth.problem
 
     var solutions = List[Solution]()
 
     reporter.info("Finished in "+t2.stop+"ms")
     reporter.info(ASCIIHelpers.title("3. Synthesizing"))
     reporter.info(p)
+
 
     synth.synthesize() match {
       case (search, sols) =>
@@ -90,11 +91,26 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
             val expr = sol.toSimplifiedExpr(ctx, program)
             reporter.info(ScalaPrinter(expr));
           }
+          reporter.info(ASCIIHelpers.title("In context:"))
+
+
+          for ((sol, i) <- solutions.reverse.zipWithIndex) {
+            reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+            val expr = sol.toSimplifiedExpr(ctx, program)
+            val nfd = fd.duplicate;
+
+            nfd.body = fd.body.map { b =>
+              replace(Map(ci.source -> expr), b)
+            }
+
+            reporter.info(ScalaPrinter(nfd));
+          }
+
         }
       }
   }
 
-  def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
+  def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): (Synthesizer , ChooseInfo)= {
        
     val body = fd.body.get;
 
@@ -121,10 +137,9 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val Seq(ci) = ChooseInfo.extractFromFunction(ctx, program, fd, soptions)
 
     val nci = ci.copy(pc = and(ci.pc, guide))
+    val p   = nci.problem
 
-    val p = nci.problem
-
-    new Synthesizer(ctx, fd, program, p, soptions)
+    (new Synthesizer(ctx, fd, program, p, soptions), nci)
   }
 
   private def focusRepair(program: Program, fd: FunDef, passingTests: List[Example], failingTests: List[Example]): (Expr, Expr) = {
