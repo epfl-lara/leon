@@ -114,8 +114,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
        
     val body = fd.body.get;
 
+
     val (newBody, replacedExpr) = focusRepair(program, fd, passingTests, failingTests)
     fd.body = Some(newBody)
+    reporter.info("Original body size: "+formulaSize(body))
+    reporter.info("Focused expr size : "+formulaSize(replacedExpr))
 
     val guide = Guide(replacedExpr)
 
@@ -184,13 +187,13 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       
       val test2Tests : Map[FI, Set[FI]] = testEval.fullCallGraph
       
-      println("CALL GRAPH")
-      for {
-        ((fi, args), tos) <- test2Tests
-        (tofi, toArgs) <- tos
-      }{
-        println(s"${fi.id}(${args mkString ", "}) ----> ${tofi.id}(${toArgs mkString ", "})")
-      }
+      //println("CALL GRAPH")
+      //for {
+      //  ((fi, args), tos) <- test2Tests
+      //  (tofi, toArgs) <- tos
+      //}{
+      //  println(s"${fi.id}(${args mkString ", "}) ----> ${tofi.id}(${toArgs mkString ", "})")
+      //}
 
       def isFailing(fi : FI) = !testEval.fiStatus(fi) && (fi._1 == fd)
       val failing = test2Tests filter { case (from, to) => 
