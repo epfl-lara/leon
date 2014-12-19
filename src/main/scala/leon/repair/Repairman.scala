@@ -174,32 +174,19 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       // We don't want tests whose invocation will call other failing tests.
       // This is because they will appear erroneous, 
       // even though the error comes from the called test
-      val testEval : RepairTrackingEvaluator = new RepairTrackingEvaluator(ctx, program) {
-        def withFilter(fi : FI) = fi._1 == fd
-      }
-
-      val passingTs = for (test <- passingTests) yield InExample(test.ins)
-      val failingTs = for (test <- failingTests) yield InExample(test.ins)
-
-      (failingTs ++ passingTs) foreach { ts => 
+      val testEval = new RepairTrackingEvaluator(ctx, program)
+      
+      failingTests foreach { ts => 
         testEval.eval(functionInvocation(fd, ts.ins))
       }
       
       val test2Tests : Map[FI, Set[FI]] = testEval.fullCallGraph
-      
-      //println("CALL GRAPH")
-      //for {
-      //  ((fi, args), tos) <- test2Tests
-      //  (tofi, toArgs) <- tos
-      //}{
-      //  println(s"${fi.id}(${args mkString ", "}) ----> ${tofi.id}(${toArgs mkString ", "})")
-      //}
 
       def isFailing(fi : FI) = !testEval.fiStatus(fi) && (fi._1 == fd)
       val failing = test2Tests filter { case (from, to) => 
-         isFailing(from) && (to forall (!isFailing(_)) )
+        isFailing(from) && (to forall (!isFailing(_)) )
       }
-
+      
       failing.keySet map { case (_, args) => InExample(args) }
     }
 

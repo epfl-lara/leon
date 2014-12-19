@@ -9,7 +9,7 @@ import leon.purescala.Definitions._
 import leon.LeonContext
 import leon.evaluators.RecursiveEvaluator
 
-abstract class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {
+class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {
   type RC = CollectingRecContext
   type GC = GlobalContext
   
