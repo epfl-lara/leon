@@ -136,7 +136,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)
     );
 
-    // extract chooses from nfd
+    // extract chooses from fd
     val Seq(ci) = ChooseInfo.extractFromFunction(ctx, program, fd, soptions)
 
     val nci = ci.copy(pc = and(ci.pc, guide))
@@ -181,6 +181,15 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       }
       
       val test2Tests : Map[FI, Set[FI]] = testEval.fullCallGraph
+      
+      /*println("About to print")
+      for{ 
+        (test, tests) <-test2Tests
+        if (test._1 == fd)
+      } {
+        println(test._2 mkString ", ")
+        println(new ExamplesTable("", tests.toSeq.filter{_._1 == fd}.map{ x => InExample(x._2)}).toString)
+      }*/
 
       def isFailing(fi : FI) = !testEval.fiStatus(fi) && (fi._1 == fd)
       val failing = test2Tests filter { case (from, to) => 
@@ -198,75 +207,102 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     //  - returns Some(true) if for all tests e evaluates to true
     //  - returns Some(false) if for all tests e evaluates to false
     //  - returns None otherwise
-    def forAllTests(e: Expr, env: Map[Identifier, Expr]): Option[Boolean] = {
-      val results = minimalFailingTests.map { ex =>
+    def forAllTests(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
+      var soFar : Option[Boolean] = None
+      minimalFailingTests.foreach { ex =>
         val ins = ex.ins
         evaluator.eval(e, env ++ (args zip ins)) match {
-          case EvaluationResults.Successful(BooleanLiteral(true))  => Some(true)
-          case EvaluationResults.Successful(BooleanLiteral(false)) => Some(false)
-          case e => None
+          case EvaluationResults.Successful(BooleanLiteral(b)) => 
+            soFar match {
+              case None => 
+                soFar = Some(b)
+              case Some(`b`) =>
+              case _ => 
+                return None
+            }
+          case e =>
+            return None
         }
       }
 
-      if (results.size == 1) {
-        results.head
-      } else {
-        None
-      }
+      soFar
     }
 
-    def focus(expr: Expr, env: Map[Identifier, Expr]): (Expr, Expr) = expr match {
-      case me @ MatchExpr(scrut, cases) =>
-        var res: Option[(Expr, Expr)] = None
-
-        // in case scrut is an non-variable expr, we simplify to a variable + inject in env
-        for (c <- cases if res.isEmpty) {
-          val cond = and(conditionForPattern(scrut, c.pattern, includeBinders = false),
-                         c.optGuard.getOrElse(BooleanLiteral(true)))
-          val map  = mapForPattern(scrut, c.pattern)
-
-
-          forAllTests(cond, env ++ map) match {
-            case Some(true) =>
-              val (b, r) = focus(c.rhs, env ++ map)
-              res = Some((MatchExpr(scrut, cases.map { c2 =>
-                if (c2 eq c) {
-                  c2.copy(rhs = b)
-                } else {
-                  c2
-                }
-              }), r))
-
-            case Some(false) =>
-              // continue until next case
-            case None =>
-              res = Some((choose, expr))
+    def focus(expr: Expr, env: Map[Identifier, Expr])(implicit spec: Expr, out: Identifier): (Expr, Expr) = {
+      val choose = Choose(List(out), spec)
+      expr match {
+        case me @ MatchExpr(scrut, cases) =>
+          var res: Option[(Expr, Expr)] = None
+  
+          // in case scrut is an non-variable expr, we simplify to a variable + inject in env
+          for (c <- cases if res.isEmpty) {
+            val cond = and(conditionForPattern(scrut, c.pattern, includeBinders = false),
+                           c.optGuard.getOrElse(BooleanLiteral(true)))
+            val map  = mapForPattern(scrut, c.pattern)
+  
+  
+            forAllTests(cond, env ++ map, evaluator) match {
+              case Some(true) =>
+                val (b, r) = focus(c.rhs, env ++ map)
+                res = Some((MatchExpr(scrut, cases.map { c2 =>
+                  if (c2 eq c) {
+                    c2.copy(rhs = b)
+                  } else {
+                    c2
+                  }
+                }), r))
+  
+              case Some(false) =>
+                // continue until next case
+              case None =>
+                res = Some((choose, expr))
+            }
           }
-        }
+  
+          res.getOrElse((choose, expr))
+          
+        case Let(id, value, body) =>
+          val (b, r) = focus(body, env + (id -> value))
+          (Let(id, value, b), r)
+  
+        case ite @ IfExpr(c, thn, els) =>
+          forAllTests(
+            spec,
+            env + (out -> IfExpr(not(c), thn, els)),
+            new RepairNDEvaluator(ctx,program,fd,c)
+          ) match {
+            case Some(true) =>
+              // If all failing tests succeed with the condition reversed,
+              // we focus on the condition
+              val newOut = FreshIdentifier("cond", true).setType(BooleanType)
+              val newSpec = Let(
+                out,
+                IfExpr(Variable(newOut), thn, els), 
+                spec
+              )
+              val (b, r) = focus(c, env)(newSpec, newOut)
+              (IfExpr(b, thn, els), r)
+            case _ =>
+              // Try to focus on branches
+              forAllTests(c, env, evaluator) match {
+                case Some(true) =>
+                  val (b, r) = focus(thn, env)
+                  (IfExpr(c, b, els), r)
+                case Some(false) =>
+                  val (b, r) = focus(els, env)
+                  (IfExpr(c, thn, b), r)
+                case None =>
+                  // We cannot focus any further
+                  (choose, expr)  
+              }
+          }
 
-        res.getOrElse((choose, expr))
-        
-      case Let(id, value, body) =>
-        val (b, r) = focus(body, env + (id -> value))
-        (Let(id, value, b), r)
-
-      case IfExpr(c, thn, els) =>
-        forAllTests(c, env) match {
-          case Some(true) =>
-            val (b, r) = focus(thn, env)
-            (IfExpr(c, b, els), r)
-          case Some(false) =>
-            val (b, r) = focus(els, env)
-            (IfExpr(c, thn, b), r)
-          case None =>
-            (choose, expr)
-        }
-
-      case _ =>
-        (choose, expr)
+        case _ =>
+          (choose, expr)
+      }
     }
-
-    focus(body, Map())
+    
+    focus(body, Map())(spec, out)
   }
 
   def getVerificationCounterExamples(fd: FunDef, prog: Program): Option[Seq[InExample]] = {
