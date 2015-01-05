@@ -13,17 +13,17 @@ import purescala.Constructors._
 import solvers._
 
 case object OptimisticGround extends Rule("Optimistic Ground") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     if (!p.as.isEmpty && !p.xs.isEmpty) {
-      val res = new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-        def apply(sctx: SynthesisContext) = {
+      val res = new RuleInstantiation(this.name) {
+        def apply(hctx: SearchContext) = {
 
-          val solver = SimpleSolverAPI(sctx.fastSolverFactory) // Optimistic ground is given a simple solver (uninterpreted)
+          val solver = SimpleSolverAPI(hctx.sctx.fastSolverFactory) // Optimistic ground is given a simple solver (uninterpreted)
 
           val xss = p.xs.toSet
           val ass = p.as.toSet
 
-          val tpe = TupleType(p.xs.map(_.getType))
+          val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
           var i = 0;
           var maxTries = 3;
@@ -48,7 +48,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
                   case (Some(false), _) =>
-                    result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(satModel))))))
+                    result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), tupleWrap(p.xs.map(valuateWithModel(satModel))))))
 
                   case _ =>
                     continue = false
@@ -57,7 +57,7 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
 
               case (Some(false), _) =>
                 if (predicates.isEmpty) {
-                  result = Some(RuleClosed(Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))))
+                  result = Some(RuleClosed(Solution.UNSAT(p)))
                 } else {
                   continue = false
                   result = None

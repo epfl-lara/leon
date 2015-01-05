@@ -9,7 +9,7 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
 
   // Returns closed/total
   def getStats(from: Node = root): (Int, Int) = {
-    val isClosed = from.isClosed || from.isSolved
+    val isClosed = from.isDeadEnd || from.isSolved
     val self = (if (isClosed) 1 else 0, 1)
 
     if (!from.isExpanded) {
@@ -24,19 +24,17 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
   }
 }
 
-sealed abstract class Node(cm: CostModel, parent: Option[Node]) {
-  var parents: List[Node] = parent.toList
+sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
+  var parents: List[Node]     = parent.toList
   var descendents: List[Node] = Nil
 
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
-  def expand(sctx: SynthesisContext)
+  def expand(hctx: SearchContext)
 
   val p: Problem
 
   var isSolved: Boolean   = false
-
-
   def onSolved(desc: Node)
 
   // Solutions this terminal generates (!= None for terminals)
@@ -46,8 +44,8 @@ sealed abstract class Node(cm: CostModel, parent: Option[Node]) {
   // Costs
   var cost: Cost = computeCost()
 
-  def isClosed: Boolean = {
-    cost.isImpossible
+  def isDeadEnd: Boolean = {
+    cm.isImpossible(cost)
   }
 
   // For non-terminals, selected childs for solution
@@ -67,7 +65,11 @@ sealed abstract class Node(cm: CostModel, parent: Option[Node]) {
       cm.impossible
 
     case Some(sols) =>
-      sols.map { sol => cm.solution(sol) } .min
+      if (sols.hasDefiniteSize) {
+        sols.map { sol => cm.solution(sol) } .min
+      } else {
+        cm.solution(sols.head)
+      }
 
     case None =>
       val costs = if (isExpanded) {
@@ -96,17 +98,17 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
   override def toString = "\u2227 "+ri;
 
-  def expand(sctx: SynthesisContext): Unit = {
+  def expand(hctx: SearchContext): Unit = {
     require(!isExpanded)
     isExpanded = true
 
-    import sctx.reporter.info
+    import hctx.sctx.reporter.info
 
     val prefix = "[%-20s] ".format(Option(ri.rule).getOrElse("?"))
 
     info(prefix+ri.problem)
 
-    ri.apply(sctx) match {
+    ri.apply(hctx) match {
       case RuleClosed(sols) =>
         solutions = Some(sols)
         selectedSolution = 0;
@@ -164,20 +166,19 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
 }
 
-class OrNode(cm: CostModel, val parent: Option[Node], val p: Problem) extends Node(cm, parent) {
+class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(cm, parent) {
 
   override def toString = "\u2228 "+p;
 
-  def getInstantiations(sctx: SynthesisContext): List[RuleInstantiation] = {
-
-    val rules = cm.rulesFor(sctx, this)
+  def getInstantiations(hctx: SearchContext): List[RuleInstantiation] = {
+    val rules = hctx.sctx.rules
 
     val rulesPrio = rules.groupBy(_.priority).toSeq.sortBy(_._1)
 
     for ((_, rs) <- rulesPrio) {
       val results = rs.flatMap{ r =>
-        sctx.context.timers.synthesis.instantiations.get(r.toString).timed {
-          r.instantiateOn(sctx, p)
+        hctx.context.timers.synthesis.instantiations.get(r.toString).timed {
+          r.instantiateOn(hctx, p)
         }
       }.toList
 
@@ -188,10 +189,10 @@ class OrNode(cm: CostModel, val parent: Option[Node], val p: Problem) extends No
     Nil
   }
 
-  def expand(sctx: SynthesisContext): Unit = {
+  def expand(hctx: SearchContext): Unit = {
     require(!isExpanded)
 
-    val ris = getInstantiations(sctx)
+    val ris = getInstantiations(hctx)
 
     descendents = ris.map(ri => new AndNode(cm, Some(this), ri))
     selected = List()

@@ -87,7 +87,7 @@ class DotGenerator(g: Graph) {
 
     val color = if (n.isSolved) {
         "palegreen" 
-      } else if (n.isClosed) {
+      } else if (n.isDeadEnd) {
         "firebrick"
       } else if(n.isExpanded) {
         "grey80"

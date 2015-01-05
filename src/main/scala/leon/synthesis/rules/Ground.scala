@@ -9,23 +9,23 @@ import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object Ground extends Rule("Ground") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.isEmpty) {
-      List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-        def apply(sctx: SynthesisContext): RuleApplication = {
-          val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 10000L))
+      List(new RuleInstantiation(this.name) {
+        def apply(hctx: SearchContext): RuleApplication = {
+          val solver = SimpleSolverAPI(new TimeoutSolverFactory(hctx.sctx.solverFactory, 10000L))
 
-          val tpe = TupleType(p.xs.map(_.getType))
+          val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
           val result = solver.solveSAT(p.phi) match {
             case (Some(true), model) =>
-              val sol = Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(valuateWithModel(model))))
+              val sol = Solution(BooleanLiteral(true), Set(), tupleWrap(p.xs.map(valuateWithModel(model))))
               RuleClosed(sol)
             case (Some(false), model) =>
-              val sol = Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))
-              RuleClosed(sol)
+              RuleClosed(Solution.UNSAT(p))
             case _ =>
               RuleFailed()
           }

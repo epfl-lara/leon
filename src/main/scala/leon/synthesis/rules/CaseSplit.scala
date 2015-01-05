@@ -10,16 +10,16 @@ import purescala.Extractors._
 import purescala.Constructors._
 
 case object CaseSplit extends Rule("Case-Split") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case Or(os) =>
-        List(split(os, p, "Split top-level Or"))
+        List(split(os, "Split top-level Or"))
       case _ =>
         Nil
     }
   }
 
-  def split(alts: Seq[Expr], p: Problem, description: String): RuleInstantiation = {
+  def split(alts: Seq[Expr], description: String)(implicit p: Problem): RuleInstantiation = {
     val subs = alts.map(a => Problem(p.as, p.ws, p.pc, a, p.xs)).toList
 
     val onSuccess: List[Solution] => Option[Solution] = {
@@ -37,7 +37,7 @@ case object CaseSplit extends Rule("Case-Split") {
         None
     }
 
-    RuleInstantiation.immediateDecomp(p, this, subs, onSuccess, description)
+    decomp(subs, onSuccess, description)
   }
 }
 

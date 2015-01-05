@@ -16,7 +16,7 @@ import LinearEquations.elimVariable
 import evaluators._
 
 case object IntegerEquation extends Rule("Integer Equation") {
-  def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = if(!problem.xs.exists(_.getType == Int32Type)) Nil else {
+  def instantiateOn(implicit hctx: SearchContext, problem: Problem): Traversable[RuleInstantiation] = if(!problem.xs.exists(_.getType == Int32Type)) Nil else {
 
     val TopLevelAnds(exprs) = problem.phi
 
@@ -24,7 +24,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
     var candidates: Seq[Expr] = eqs
     var allOthers: Seq[Expr] = others
 
-    val evaluator = new DefaultEvaluator(sctx.context, sctx.program)
+    val evaluator = new DefaultEvaluator(hctx.context, hctx.program)
 
     var vars: Set[Identifier] = Set()
     var eqxs: List[Identifier] = List()
@@ -66,7 +66,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               None
           }
 
-          List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
+          List(decomp(List(newProblem), onSuccess, this.name))
 
         } else {
           val (eqPre0, eqWitness, freshxs) = elimVariable(evaluator, eqas, normalizedEq)
@@ -104,7 +104,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(LetTuple(subproblemxs, freshTerm, replace(id2res, Tuple(problem.xs.map(Variable(_))))))), s.isTrusted))
+              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(letTuple(subproblemxs, freshTerm, replace(id2res, tupleWrap(problem.xs.map(Variable(_))))))), s.isTrusted))
             }
 
             case _ =>
@@ -114,9 +114,9 @@ case object IntegerEquation extends Rule("Integer Equation") {
 
           if (subproblemxs.isEmpty) {
             // we directly solve
-            List(RuleInstantiation.immediateSuccess(problem, this, onSuccess(List(Solution(and(eqPre, problem.pc), Set(), Tuple(Seq())))).get))
+            List(solve(onSuccess(List(Solution(and(eqPre, problem.pc), Set(), UnitLiteral()))).get))
           } else {
-            List(RuleInstantiation.immediateDecomp(problem, this, List(newProblem), onSuccess, this.name))
+            List(decomp(List(newProblem), onSuccess, this.name))
           }
         }
       }

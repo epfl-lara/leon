@@ -10,7 +10,7 @@ import purescala.Extractors._
 import purescala.Constructors._
 
 case object Assert extends NormalizingRule("Assert") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case TopLevelAnds(exprs) =>
         val xsSet = p.xs.toSet
@@ -19,20 +19,20 @@ case object Assert extends NormalizingRule("Assert") {
 
         if (!exprsA.isEmpty) {
           if (others.isEmpty) {
-            List(RuleInstantiation.immediateSuccess(p, this, Solution(andJoin(exprsA), Set(), Tuple(p.xs.map(id => simplestValue(id.getType))))))
+            Some(solve(Solution(andJoin(exprsA), Set(), tupleWrap(p.xs.map(id => simplestValue(id.getType))))))
           } else {
             val sub = p.copy(pc = andJoin(p.pc +: exprsA), phi = andJoin(others))
 
-            List(RuleInstantiation.immediateDecomp(p, this, List(sub), {
+            Some(decomp(List(sub), {
               case (s @ Solution(pre, defs, term)) :: Nil => Some(Solution(andJoin(exprsA :+ pre), defs, term, s.isTrusted))
               case _ => None
             }, "Assert "+andJoin(exprsA)))
           }
         } else {
-          Nil
+          None
         }
       case _ =>
-        Nil
+        None
     }
   }
 }

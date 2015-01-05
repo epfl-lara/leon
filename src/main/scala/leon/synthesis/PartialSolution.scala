@@ -33,7 +33,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean) {
         }
 
         if (n.isExpanded) {
-          val descs = on.descendents.filter(_.isClosed)
+          val descs = on.descendents.filterNot(_.isDeadEnd)
           if (descs.isEmpty) {
             completeProblem(on.p)
           } else {

@@ -18,9 +18,17 @@ import purescala.Constructors._
 import Witnesses._
 
 import solvers._
+import graph._
 
 case object GuidedCloser extends NormalizingRule("Guided Closer") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    hctx.parentNode match {
+      case Some(an: AndNode) if an.ri.rule == GuidedDecomp =>
+        // We proceed as usual
+      case _ =>
+        return Nil
+    }
+
     val TopLevelAnds(clauses) = p.ws
 
     val guides = clauses.collect {
@@ -31,11 +39,11 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
       // Tentative solution using e
       val wrappedE = if (p.xs.size == 1) Tuple(Seq(e)) else e
 
-      val simp = Simplifiers.bestEffort(sctx.context, sctx.program) _
+      val simp = Simplifiers.bestEffort(hctx.context, hctx.program) _
 
       val vc = simp(and(p.pc, letTuple(p.xs, wrappedE, not(p.phi))))
 
-      val solver = sctx.newSolver.setTimeout(2000L)
+      val solver = hctx.sctx.newSolver.setTimeout(2000L)
 
       solver.assertCnstr(vc)
       val osol = solver.check match {
@@ -43,7 +51,7 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
           Some(Solution(BooleanLiteral(true), Set(), wrappedE, true))
 
         case None =>
-          sctx.reporter.ifDebug { printer =>
+          hctx.reporter.ifDebug { printer =>
             printer(vc)
             printer("== Unknown ==")
           }
@@ -52,7 +60,7 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
           None
 
         case _ =>
-          sctx.reporter.ifDebug { printer =>
+          hctx.reporter.ifDebug { printer =>
             printer(vc)
             printer("== Invalid! ==")
           }
@@ -61,9 +69,7 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
 
       solver.free
 
-      osol.map { s =>
-        RuleInstantiation.immediateSuccess(p, this, s)
-      }
+      osol.map { solve }
 
     }
 

@@ -14,7 +14,7 @@ import purescala.Constructors._
 
 case object DetupleOutput extends Rule("Detuple Out") {
 
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     def isDecomposable(id: Identifier) = id.getType match {
       case CaseClassType(t, _) if !t.isAbstract => true
       case _ => false
@@ -45,15 +45,14 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(sol) =>
-          Some(Solution(sol.pre, sol.defs, letTuple(newOuts, sol.term, Tuple(outerOuts)), sol.isTrusted))
+          Some(Solution(sol.pre, sol.defs, letTuple(newOuts, sol.term, tupleWrap(outerOuts)), sol.isTrusted))
         case _ =>
           None
       }
 
-
-      Some(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess, this.name))
+      Some(decomp(List(sub), onSuccess, s"Detuple out ${p.xs.filter(isDecomposable).mkString(", ")}"))
     } else {
-      Nil
+      None
     }
   }
 }

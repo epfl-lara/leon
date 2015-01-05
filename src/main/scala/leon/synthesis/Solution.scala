@@ -44,7 +44,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
     term.getType match {
       case TupleType(ts) =>
         val t = FreshIdentifier("t", true).setType(term.getType)
-        val newTerm = Let(t, term, Tuple(indices.map(i => TupleSelect(t.toVariable, i+1))))
+        val newTerm = Let(t, term, tupleWrap(indices.map(i => TupleSelect(t.toVariable, i+1))))
 
         Solution(pre, defs, newTerm)
       case _ =>
@@ -77,14 +77,15 @@ object Solution {
 
   // Generate the simplest, wrongest solution, used for complexity lowerbound
   def basic(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Tuple(p.xs.map(id => simplestValue(id.getType))))
+    simplest(p.outType)
   }
 
   def simplest(t: TypeTree): Solution = {
     new Solution(BooleanLiteral(true), Set(), simplestValue(t))
   }
 
-  def failed(p: Problem): Solution = {
-    new Solution(BooleanLiteral(true), Set(), Error(TupleType(p.xs.map(_.getType)), "Failed"))
+  def UNSAT(implicit p: Problem): Solution = {
+    val tpe = tupleTypeWrap(p.xs.map(_.getType))
+    Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))
   }
 }

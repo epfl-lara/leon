@@ -14,8 +14,8 @@ import purescala.Constructors._
 import solvers._
 
 case object EqualitySplit extends Rule("Eq. Split") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(sctx.fastSolverFactory)
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    val solver = SimpleSolverAPI(hctx.sctx.fastSolverFactory)
 
     val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
@@ -54,7 +54,7 @@ case object EqualitySplit extends Rule("Eq. Split") {
             None
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Eq. Split on '"+a1+"' and '"+a2+"'"))
+        Some(decomp(List(sub1, sub2), onSuccess, s"Eq. Split on '$a1' and '$a2'"))
       case _ =>
         None
     })

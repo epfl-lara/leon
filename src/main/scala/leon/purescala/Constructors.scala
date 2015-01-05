@@ -23,7 +23,12 @@ object Constructors {
     case Nil =>
       body
     case x :: Nil =>
-      Let(x, tupleSelect(value, 1), body)
+      if (value.getType == x.getType) {
+        // This is for cases where we build it like: letTuple(List(x), tupleWrap(List(z)))
+        Let(x, value, body)
+      } else {
+        Let(x, tupleSelect(value, 1), body)
+      }
     case xs =>
       LetTuple(xs, value, body)
   }
@@ -79,8 +84,6 @@ object Constructors {
         unify(from1, from2) ++ unify(to1,to2)
       case (FunctionType(from1, to1), FunctionType(from2, to2)) => 
         unifyMany(to1 :: from1, to2 :: from2)
-      case (TupleType(bases1), TupleType(bases2)) => 
-        unifyMany(bases1, bases2)
       case (c1 : ClassType, c2 : ClassType) if isSubtypeOf(c1, c2) || isSubtypeOf(c2,c1) =>
         unifyMany(c1.tps, c2.tps)
       case _ => throw new java.lang.IllegalArgumentException()

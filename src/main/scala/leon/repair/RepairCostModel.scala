@@ -28,17 +28,4 @@ case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("
       case _ => h+1
     })
   }
-
-  override def rulesFor(sctx: SynthesisContext, on: OrNode) = {
-    val rs = cm.rulesFor(sctx, on)
-
-    on.parent match {
-      case None =>
-        GuidedDecomp +: rs
-      case Some(an: AndNode) if an.ri.rule == GuidedDecomp =>
-        GuidedCloser +: rs
-      case _ =>
-        rs
-    }
-  }
 }

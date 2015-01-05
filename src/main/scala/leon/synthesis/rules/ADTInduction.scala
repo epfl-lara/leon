@@ -2,7 +2,7 @@
 
 package leon
 package synthesis
-package heuristics
+package rules
 
 import solvers._
 import purescala.Common._
@@ -13,17 +13,17 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-case object ADTInduction extends Rule("ADT Induction") with Heuristic {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+case object ADTInduction extends Rule("ADT Induction") {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val candidates = p.as.collect {
-        case IsTyped(origId, act: AbstractClassType) if isInductiveOn(sctx.solverFactory)(p.pc, origId) => (origId, act)
+        case IsTyped(origId, act: AbstractClassType) if isInductiveOn(hctx.sctx.solverFactory)(p.pc, origId) => (origId, act)
     }
 
     val instances = for (candidate <- candidates) yield {
       val (origId, ct) = candidate
       val oas = p.as.filterNot(_ == origId)
 
-      val resType = TupleType(p.xs.map(_.getType))
+      val resType = tupleTypeWrap(p.xs.map(_.getType))
 
       val inductOn     = FreshIdentifier(origId.name, true).setType(origId.getType)
       val residualArgs = oas.map(id => FreshIdentifier(id.name, true).setType(id.getType))
@@ -86,7 +86,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
               globalPre ::= and(pre, sol.pre)
 
               val caze = CaseClassPattern(None, cct, ids.map(id => WildcardPattern(Some(id))))
-              SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => LetTuple(binders, FunctionInvocation(newFun.typed, callargs), t) })
+              SimpleCase(caze, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => letTuple(binders, FunctionInvocation(newFun.typed, callargs), t) })
             }
 
             // Might be overly picky with obviously true pre (a.is[Cons] OR a.is[Nil])
@@ -102,7 +102,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
               val outerPre = orJoin(globalPre)
 
               newFun.precondition = Some(funPre)
-              newFun.postcondition = Some((idPost, LetTuple(p.xs.toSeq, Variable(idPost), funPost)))
+              newFun.postcondition = Some((idPost, letTuple(p.xs.toSeq, Variable(idPost), funPost)))
 
               newFun.body = Some(matchExpr(Variable(inductOn), cases))
 
@@ -114,7 +114,7 @@ case object ADTInduction extends Rule("ADT Induction") with Heuristic {
             }
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, subProblemsInfo.map(_._1).toList, onSuccess, "ADT Induction on '"+origId+"'"))
+        Some(decomp(subProblemsInfo.map(_._1).toList, onSuccess, s"ADT Induction on '$origId'"))
       } else {
         None
       }

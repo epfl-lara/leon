@@ -19,7 +19,7 @@ import codegen._
 import verification._
 import synthesis._
 import synthesis.rules._
-import synthesis.heuristics._
+import rules._
 import synthesis.Witnesses._
 import graph.DotGenerator
 import leon.utils.ASCIIHelpers.title
@@ -129,8 +129,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       functionsToIgnore = soptions0.functionsToIgnore + fd,
       costModel = RepairCostModel(soptions0.costModel),
       rules = (soptions0.rules ++ Seq(
-        //GuidedDecomp,
-        //GuidedCloser,
+        GuidedDecomp,
+        GuidedCloser,
         CEGLESS
         //TEGLESS
       )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)

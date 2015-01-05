@@ -39,7 +39,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
 
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+
+    val sctx = hctx.sctx
 
     // CEGIS Flags to actiave or de-activate features
     val useUninterpretedProbe = sctx.settings.cegisUseUninterpretedProbe
@@ -262,7 +264,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           substAll(map.toMap, cClauses(c))
         }
 
-        Tuple(p.xs.map(c => getCValue(c)))
+        tupleWrap(p.xs.map(c => getCValue(c)))
 
       }
 
@@ -414,9 +416,10 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       def css : Set[Identifier] = mappings.values.map(_._1).toSet ++ guardedTerms.flatMap(_._2)
     }
 
-    List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-      def apply(sctx: SynthesisContext): RuleApplication = {
+    List(new RuleInstantiation(this.name) {
+      def apply(hctx: SearchContext): RuleApplication = {
         var result: Option[RuleApplication]   = None
+        val sctx = hctx.sctx
 
         var ass = p.as.toSet
         var xss = p.xs.toSet
@@ -509,7 +512,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         def checkForPrograms(programs: Set[Set[Identifier]]): RuleApplication = {
           for (prog <- programs) {
             val expr = ndProgram.determinize(prog)
-            val res = Equals(Tuple(p.xs.map(Variable(_))), expr)
+            val res = Equals(tupleWrap(p.xs.map(Variable(_))), expr)
 
             val solver3 = sctx.newSolver.setTimeout(cexSolverTo)
             solver3.assertCnstr(and(pc, res, not(p.phi)))
@@ -547,7 +550,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         var didFilterAlready = false
 
-        val tpe = TupleType(p.xs.map(_.getType))
+        val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
         try {
           do {

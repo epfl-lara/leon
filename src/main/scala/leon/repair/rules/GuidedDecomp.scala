@@ -21,14 +21,18 @@ import Witnesses._
 import solvers._
 
 case object GuidedDecomp extends Rule("Guided Decomp") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    if (hctx.searchDepth > 0) {
+      return Nil; 
+    }
+
     val TopLevelAnds(clauses) = p.ws
 
     val guides = clauses.collect {
       case Guide(expr) => expr
     }
 
-    val simplify = Simplifiers.bestEffort(sctx.context, sctx.program)_
+    val simplify = Simplifiers.bestEffort(hctx.context, hctx.program)_
 
     val alts = guides.collect {
       case g @ IfExpr(c, thn, els) =>
@@ -42,7 +46,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
             None
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, List(sub1, sub2), onSuccess, "Guided If-Split on '"+c+"'"))
+        Some(decomp(List(sub1, sub2), onSuccess, s"Guided If-Split on '$c'"))
 
       case m @ MatchExpr(scrut0, _) =>
 
@@ -93,7 +97,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
           ))
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, subs.toList, onSuccess, "Guided Match-Split"))
+        Some(decomp(subs.toList, onSuccess, s"Guided Match-Split on '$scrut0'"))
 
       case e =>
        None

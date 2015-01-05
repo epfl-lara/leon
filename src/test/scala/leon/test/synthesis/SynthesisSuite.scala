@@ -9,6 +9,7 @@ import leon.purescala.TreeOps._
 import leon.solvers.z3._
 import leon.solvers.Solver
 import leon.synthesis._
+import leon.synthesis.graph._
 import leon.synthesis.utils._
 import leon.utils.PreprocessingPhase
 
@@ -23,7 +24,7 @@ class SynthesisSuite extends LeonTestSuite {
     counter
   }
 
-  def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(block: (SynthesisContext, FunDef, Problem) => Unit) {
+  def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(block: (SearchContext, FunDef, Problem) => Unit) {
 
       test("Synthesizing %3d: [%s]".format(nextInt(), title)) {
         val ctx = testContext.copy(settings = Settings(
@@ -45,15 +46,18 @@ class SynthesisSuite extends LeonTestSuite {
                                       program,
                                       ctx.reporter)
 
-          block(sctx, f, p)
+          val search = new SimpleSearch(ctx, p, opts.costModel, None)
+          val hctx = SearchContext(sctx, search.g.root, search)
+
+          block(hctx, f, p)
         }
       }
   }
 
   case class Apply(desc: String, andThen: List[Apply] = Nil)
 
-  def synthesizeWith(sctx: SynthesisContext, p: Problem, ss: Apply): Solution = {
-    val apps = sctx.rules flatMap { _.instantiateOn(sctx, p)}
+  def synthesizeWith(hctx: SearchContext, p: Problem, ss: Apply): Solution = {
+    val apps = hctx.sctx.rules flatMap { _.instantiateOn(hctx, p)}
 
     def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
       import java.util.regex.Pattern;
@@ -63,14 +67,14 @@ class SynthesisSuite extends LeonTestSuite {
 
     apps.filter(matchingDesc(_, ss)) match {
       case app :: Nil =>
-        app.apply(sctx) match {
+        app.apply(hctx) match {
           case RuleClosed(sols) =>
             assert(sols.nonEmpty)
             assert(ss.andThen.isEmpty)
             sols.head
 
           case RuleExpanded(sub) =>
-            val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(sctx, p, ss) }
+            val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(hctx, p, ss) }
             app.onSuccess(subSols).get
         }
 
@@ -84,10 +88,10 @@ class SynthesisSuite extends LeonTestSuite {
 
   def synthesize(title: String)(program: String)(strategies: PartialFunction[String, Apply]) {
     forProgram(title)(program) {
-      case (sctx, fd, p) =>
+      case (hctx, fd, p) =>
         strategies.lift.apply(fd.id.toString) match {
           case Some(ss) =>
-            synthesizeWith(sctx, p, ss)
+            synthesizeWith(hctx, p, ss)
 
           case None =>
             assert(false, "Function "+fd.id.toString+" not found")
@@ -96,16 +100,16 @@ class SynthesisSuite extends LeonTestSuite {
   }
 
 
-  def assertAllAlternativesSucceed(sctx: SynthesisContext, rr: Traversable[RuleInstantiation]) {
+  def assertAllAlternativesSucceed(hctx: SearchContext, rr: Traversable[RuleInstantiation]) {
     assert(!rr.isEmpty)
 
     for (r <- rr) {
-      assertRuleSuccess(sctx, r)
+      assertRuleSuccess(hctx, r)
     }
   }
 
-  def assertRuleSuccess(sctx: SynthesisContext, rr: RuleInstantiation): Option[Solution] = {
-    rr.apply(sctx) match {
+  def assertRuleSuccess(hctx: SearchContext, rr: RuleInstantiation): Option[Solution] = {
+    rr.apply(hctx) match {
       case RuleClosed(sols) if sols.nonEmpty =>
         sols.headOption
       case _ =>
@@ -135,8 +139,8 @@ object Injection {
 }
     """
   ) {
-    case (sctx, fd, p) =>
-      assertAllAlternativesSucceed(sctx, rules.Ground.instantiateOn(sctx, p))
+    case (hctx, fd, p) =>
+      assertAllAlternativesSucceed(hctx, rules.Ground.instantiateOn(hctx, p))
   }
 
   forProgram("Cegis 1")(
@@ -160,8 +164,8 @@ object Injection {
 }
     """
   ) {
-    case (sctx, fd, p) =>
-      assertAllAlternativesSucceed(sctx, rules.CEGIS.instantiateOn(sctx, p))
+    case (hctx, fd, p) =>
+      assertAllAlternativesSucceed(hctx, rules.CEGIS.instantiateOn(hctx, p))
   }
 
   forProgram("Cegis 2")(
@@ -185,17 +189,17 @@ object Injection {
 }
     """
   ) {
-    case (sctx, fd, p) =>
-      rules.CEGIS.instantiateOn(sctx, p).head.apply(sctx) match {
+    case (hctx, fd, p) =>
+      rules.CEGIS.instantiateOn(hctx, p).head.apply(hctx) match {
         case RuleClosed(sols) if sols.nonEmpty =>
           assert(false, "CEGIS should have failed, but found : %s".format(sols.head))
         case _ =>
       }
 
-      rules.ADTSplit.instantiateOn(sctx, p).head.apply(sctx) match {
+      rules.ADTSplit.instantiateOn(hctx, p).head.apply(hctx) match {
         case RuleExpanded(subs) =>
-          for (sub <- subs; alt <- rules.CEGIS.instantiateOn(sctx, sub)) {
-            assertRuleSuccess(sctx, alt)
+          for (sub <- subs; alt <- rules.CEGIS.instantiateOn(hctx, sub)) {
+            assertRuleSuccess(hctx, alt)
           }
         case _ =>
           assert(false, "Woot?")

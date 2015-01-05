@@ -14,8 +14,8 @@ import purescala.Definitions._
 import solvers._
 
 case object ADTSplit extends Rule("ADT Split.") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 200L))
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    val solver = SimpleSolverAPI(new TimeoutSolverFactory(hctx.sctx.solverFactory, 200L))
 
     val candidates = p.as.collect {
       case IsTyped(id, act @ AbstractClassType(cd, tpes)) =>
@@ -80,7 +80,7 @@ case object ADTSplit extends Rule("ADT Split.") {
             Some(Solution(orJoin(globalPre), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases), sols.forall(_.isTrusted)))
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, subInfo.map(_._2).toList, onSuccess, "ADT Split on '"+id+"'"))
+        Some(decomp(subInfo.map(_._2).toList, onSuccess, s"ADT Split on '$id'"))
       case _ =>
         None
     }}.flatten

@@ -2,7 +2,7 @@
 
 package leon
 package synthesis
-package heuristics
+package rules
 
 import purescala.Common._
 import purescala.Trees._
@@ -12,8 +12,8 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-case object OptimisticInjection extends Rule("Opt. Injection") with Heuristic {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+case object OptimisticInjection extends Rule("Opt. Injection") {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 
     val eqfuncalls = exprs.collect{
@@ -39,7 +39,7 @@ case object OptimisticInjection extends Rule("Opt. Injection") with Heuristic {
 
       val sub = p.copy(phi = andJoin(newExprs))
 
-      Some(RuleInstantiation.immediateDecomp(p, this, List(sub), forward))
+      Some(decomp(List(sub), forward, s"Injection ${candidates.keySet.map(_._1.id).mkString(", ")}"))
     } else {
       None
     }

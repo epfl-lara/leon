@@ -12,7 +12,7 @@ import purescala.Constructors._
 
 object Unification {
   case object DecompTrivialClash extends NormalizingRule("Unif Dec./Clash/Triv.") {
-    def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+    def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
       val (toRemove, toAdd) = exprs.collect {
@@ -29,8 +29,7 @@ object Unification {
       if (!toRemove.isEmpty) {
         val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-
-        List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
+        List(decomp(List(sub), forward, this.name))
       } else {
         Nil
       }
@@ -40,7 +39,7 @@ object Unification {
   // This rule is probably useless; it never happens except in crafted
   // examples, and will be found by OptimisticGround anyway.
   case object OccursCheck extends NormalizingRule("Unif OccursCheck") {
-    def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+    def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
       val TopLevelAnds(exprs) = p.phi
 
       val isImpossible = exprs.exists {
@@ -53,9 +52,7 @@ object Unification {
       }
 
       if (isImpossible) {
-        val tpe = TupleType(p.xs.map(_.getType))
-
-        List(RuleInstantiation.immediateSuccess(p, this, Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))))
+        List(solve(Solution.UNSAT))
       } else {
         Nil
       }

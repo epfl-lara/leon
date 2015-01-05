@@ -2,15 +2,15 @@
 
 package leon
 package synthesis
-package heuristics
+package rules
 
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Extractors._
 import purescala.Constructors._
 
-case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+case object InnerCaseSplit extends Rule("Inner-Case-Split"){
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     p.phi match {
       case Or(_) =>
         // Inapplicable in this case, normal case-split has precedence here.
@@ -29,13 +29,13 @@ case object InnerCaseSplit extends Rule("Inner-Case-Split") with Heuristic {
 
         phi match {
           case Or(os) =>
-            List(rules.CaseSplit.split(os, p, "Inner case-split"))
+            List(rules.CaseSplit.split(os, "Inner case-split"))
 
           case And(as) =>
             val optapp = for ((a, i) <- as.zipWithIndex) yield {
               a match {
                 case Or(os) =>
-                  Some(rules.CaseSplit.split(os.map(o => andJoin(as.updated(i, o))), p, "Inner case-split"))
+                  Some(rules.CaseSplit.split(os.map(o => andJoin(as.updated(i, o))), "Inner case-split"))
 
                 case _ =>
                   None

@@ -30,10 +30,11 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
 
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
-    List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-      def apply(sctx: SynthesisContext): RuleApplication = {
+    List(new RuleInstantiation(this.name) {
+      def apply(hctx: SearchContext): RuleApplication = {
+        val sctx = hctx.sctx
 
         val params = getParams(sctx, p)
         val grammar = params.grammar
@@ -49,11 +50,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           val enum = new MemoizedEnumerator[T, Expr](grammar.getProductions _)
 
-          val (targetType, isWrapped) = if (p.xs.size == 1) {
-            (p.xs.head.getType, false)
-          } else {
-            (TupleType(p.xs.map(_.getType)), true)
-          }
+          val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
           val timers = sctx.context.timers.synthesis.rules.tegis;
 
@@ -68,11 +65,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
             candidate = None
             timers.generating.start()
             allExprs.take(params.enumLimit).takeWhile(e => candidate.isEmpty).foreach { e =>
-              val exprToTest = if (!isWrapped) {
-                Let(p.xs.head, e, p.phi)
-              } else {
-                letTuple(p.xs, e, p.phi)
-              }
+              val exprToTest = letTuple(p.xs, e, p.phi)
 
               sctx.reporter.debug("Got expression "+e)
               timers.testing.start()
@@ -89,11 +82,8 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
                   }
                   res
                 }) {
-                if (isWrapped) {
-                  candidate = Some(e)
-                } else {
-                  candidate = Some(Tuple(Seq(e)))
-                }
+
+                candidate = Some(tupleWrap(Seq(e)))
               }
               timers.testing.stop()
 

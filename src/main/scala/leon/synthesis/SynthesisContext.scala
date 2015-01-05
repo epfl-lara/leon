@@ -13,6 +13,9 @@ import purescala.Common.Identifier
 
 import java.util.concurrent.atomic.AtomicBoolean
 
+/**
+ * This is global information per entire search, contains necessary information
+ */
 case class SynthesisContext(
   context: LeonContext,
   settings: SynthesisSettings,

@@ -10,31 +10,23 @@ import purescala.TreeOps._
 
 abstract class CostModel(val name: String) {
   def solution(s: Solution): Cost
-
   def problem(p: Problem): Cost
-
   def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost
 
   def impossible: Cost
 
-  def rulesFor(sctx: SynthesisContext, on: OrNode): Seq[Rule] = {
-    sctx.rules
+  def isImpossible(c: Cost): Boolean = {
+    c >= impossible
   }
 }
 
-case class Cost(minSize: Int) extends Ordered[Cost] {
-  def isImpossible = minSize >= 200
-  
+case class Cost(val minSize: Int) extends AnyVal with Ordered[Cost] {
   def compare(that: Cost): Int = {
     this.minSize-that.minSize
   }
 
   def asString: String = {
-    if (isImpossible) {
-      "<!>"
-    } else {
-      f"$minSize%3d"
-    }
+    f"$minSize%3d"
   }
 }
 
@@ -56,8 +48,6 @@ class WrappedCostModel(cm: CostModel, name: String) extends CostModel(name) {
   def andNode(an: AndNode, subs: Option[Seq[Cost]]): Cost = cm.andNode(an, subs)
 
   def impossible = cm.impossible
-
-  override def rulesFor(sctx: SynthesisContext, on: OrNode) = cm.rulesFor(sctx, on)
 }
 
 class SizeBasedCostModel(name: String) extends CostModel(name) {

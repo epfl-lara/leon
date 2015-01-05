@@ -10,10 +10,11 @@ import purescala.Common._
 import purescala.TypeTrees._
 import purescala.TreeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 
 case object DetupleInput extends NormalizingRule("Detuple In") {
 
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     def isDecomposable(id: Identifier) = id.getType match {
       case CaseClassType(t, _) if !t.isAbstract => true
       case TupleType(ts) => true
@@ -33,7 +34,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
         val map = (newIds.zipWithIndex).map{ case (nid, i) => nid -> TupleSelect(Variable(id), i+1) }.toMap
 
-        (newIds.toList, Tuple(newIds.map(Variable(_))), map)
+        (newIds.toList, tupleWrap(newIds.map(Variable(_))), map)
 
       case _ => sys.error("woot")
     }
@@ -45,7 +46,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
       var reverseMap = Map[Identifier, Expr]()
 
-      val (subAs, outerAs) = p.as.map { a =>
+      val subAs = p.as.map { a =>
         if (isDecomposable(a)) {
           val (newIds, expr, map) = decompose(a)
 
@@ -55,11 +56,11 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
           reverseMap ++= map
 
-          (newIds, expr)
+          newIds
         } else {
-          (List(a), Variable(a))
+          List(a)
         }
-      }.unzip
+      }
 
       val newAs = subAs.flatten
       //sctx.reporter.warning("newOuts: " + newOuts.toString)
@@ -76,9 +77,9 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       }
 
 
-      Some(RuleInstantiation.immediateDecomp(p, this, List(sub), onSuccess, this.name))
+      Some(decomp(List(sub), onSuccess, s"Detuple ${reverseMap.keySet.mkString(", ")}"))
     } else {
-      Nil
+      None
     }
   }
 }

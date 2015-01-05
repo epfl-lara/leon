@@ -16,6 +16,9 @@ import Witnesses._
 // ⟦ as ⟨ ws && pc | phi ⟩ xs ⟧
 case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier]) {
 
+  def inType  = tupleTypeWrap(as.map(_.getType))
+  def outType = tupleTypeWrap(xs.map(_.getType))
+
   override def toString = {
     val pcws = and(ws, pc)
     "⟦ "+as.mkString(";")+", "+(if (pcws != BooleanLiteral(true)) pcws+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧ "

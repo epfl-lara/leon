@@ -21,8 +21,9 @@ import purescala.Constructors._
 case object InlineHoles extends Rule("Inline-Holes") {
   override val priority = RulePriorityHoles
 
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     // When true: withOracle gets converted into a big choose() on result.
+    val sctx = hctx.sctx
     val discreteHoles = sctx.settings.distreteHoles
 
     if (!discreteHoles) {
@@ -120,7 +121,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
         val newPhi = simplifyPaths(sfact)(and(pc, p.phi))
         val newProblem1 = p.copy(phi = newPhi)
 
-        Some(RuleInstantiation.immediateDecomp(p, this, List(newProblem1), {
+        Some(decomp(List(newProblem1), {
           case List(s) if (s.pre != BooleanLiteral(false)) => Some(s)
           case _ => None
         }, "Avoid Holes"))
@@ -133,11 +134,22 @@ case object InlineHoles extends Rule("Inline-Holes") {
       val (newXs, newPhiInlined) = inlineHoles(newPhi)
 
       val newProblem2 = p.copy(phi = newPhiInlined, xs = p.xs ::: newXs)
-      val rec = Some(RuleInstantiation.immediateDecomp(p, this, List(newProblem2), project(p.xs.size), "Inline Holes"))
+      val rec = Some(decomp(List(newProblem2), project(p.xs.size), "Inline Holes"))
 
       List(rec, avoid).flatten
     } else {
       Nil
     }
+  }
+
+  def project(firstN: Int): List[Solution] => Option[Solution] = {
+    project(0 until firstN)
+  }
+
+  def project(ids: Seq[Int]): List[Solution] => Option[Solution] = {
+    case List(s) =>
+      Some(s.project(ids))
+    case _ =>
+      None
   }
 }

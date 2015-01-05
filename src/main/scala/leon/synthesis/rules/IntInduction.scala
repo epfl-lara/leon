@@ -2,7 +2,7 @@
 
 package leon
 package synthesis
-package heuristics
+package rules
 
 import purescala.Common._
 import purescala.Trees._
@@ -12,11 +12,11 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 
-case object IntInduction extends Rule("Int Induction") with Heuristic {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+case object IntInduction extends Rule("Int Induction") {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     p.as match {
       case List(IsTyped(origId, Int32Type)) =>
-        val tpe = TupleType(p.xs.map(_.getType))
+        val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
         val inductOn = FreshIdentifier(origId.name, true).setType(origId.getType)
 
@@ -50,14 +50,14 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
               val idPost = FreshIdentifier("res").setType(tpe)
 
               newFun.precondition = Some(preIn)
-              newFun.postcondition = Some((idPost, LetTuple(p.xs.toSeq, Variable(idPost), p.phi)))
+              newFun.postcondition = Some((idPost, letTuple(p.xs.toSeq, Variable(idPost), p.phi)))
 
               newFun.body = Some(
                 IfExpr(Equals(Variable(inductOn), IntLiteral(0)),
                   base.toExpr,
                 IfExpr(GreaterThan(Variable(inductOn), IntLiteral(0)),
-                  LetTuple(postXs, FunctionInvocation(newFun.typed, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
-                , LetTuple(postXs, FunctionInvocation(newFun.typed, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
+                  letTuple(postXs, FunctionInvocation(newFun.typed, Seq(Minus(Variable(inductOn), IntLiteral(1)))), gt.toExpr)
+                , letTuple(postXs, FunctionInvocation(newFun.typed, Seq(Plus(Variable(inductOn), IntLiteral(1)))), lt.toExpr)))
               )
 
 
@@ -68,7 +68,7 @@ case object IntInduction extends Rule("Int Induction") with Heuristic {
             None
         }
 
-        Some(RuleInstantiation.immediateDecomp(p, this, List(subBase, subGT, subLT), onSuccess, "Int Induction on '"+origId+"'"))
+        Some(decomp(List(subBase, subGT, subLT), onSuccess, s"Int Induction on '$origId'"))
       case _ =>
         None
     }

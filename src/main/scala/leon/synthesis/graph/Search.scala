@@ -22,11 +22,11 @@ abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extend
       n match {
         case an: AndNode =>
           ctx.timers.synthesis.applications.get(an.ri.toString).timed {
-            an.expand(sctx)
+            an.expand(SearchContext(sctx, an, this))
           }
 
         case on: OrNode =>
-          on.expand(sctx)
+          on.expand(SearchContext(sctx, on, this))
       }
     }
   }
@@ -89,7 +89,7 @@ class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Op
   def findIn(n: Node) {
     if (!n.isExpanded) {
       expansionBuffer += n
-    } else if (!n.isClosed) {
+    } else if (!n.isDeadEnd) {
       n match {
         case an: AndNode =>
           an.descendents.foreach(findIn)
@@ -184,14 +184,14 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
     super.doStep(n, sctx);
 
     // Backtrack view to a point where node is neither closed nor solved
-    if (n.isClosed || n.isSolved) {
+    if (n.isDeadEnd || n.isSolved) {
       var from: Node = g.root
       var newCd = List[Int]()
 
-      while (!from.isSolved && !from.isClosed && newCd.size < cd.size) {
+      while (!from.isSolved && !from.isDeadEnd && newCd.size < cd.size) {
         val cdElem = cd(newCd.size)
         from = traversePathFrom(from, List(cdElem)).get
-        if (!from.isSolved && !from.isClosed) {
+        if (!from.isSolved && !from.isDeadEnd) {
           newCd = cdElem :: newCd
         }
       }
@@ -233,7 +233,7 @@ class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) ext
 
           if (sn.isSolved) {
             println(solved(pathToString(sp)+" \u2508 "+displayNode(sn)))
-          } else if (sn.isClosed) {
+          } else if (sn.isDeadEnd) {
             println(failed(pathToString(sp)+" \u2508 "+displayNode(sn)))
           } else if (sn.isExpanded) {
             println(expanded(pathToString(sp)+" \u2508 "+displayNode(sn)))

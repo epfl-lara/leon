@@ -9,13 +9,13 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 case object UnusedInput extends NormalizingRule("UnusedInput") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val unused = p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.pc)
 
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
+      List(decomp(List(sub), forward, s"Unused inputs ${p.as.filter(unused).mkString(", ")}"))
     } else {
       Nil
     }

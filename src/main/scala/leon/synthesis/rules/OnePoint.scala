@@ -11,7 +11,7 @@ import purescala.Extractors._
 import purescala.Constructors._
 
 case object OnePoint extends NormalizingRule("One-point") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi
 
     def validOnePoint(x: Identifier, e: Expr) = {
@@ -35,12 +35,12 @@ case object OnePoint extends NormalizingRule("One-point") {
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(s @ Solution(pre, defs, term)) =>
-          Some(Solution(pre, defs, letTuple(oxs, term, subst(x -> e, Tuple(p.xs.map(Variable(_))))), s.isTrusted))
+          Some(Solution(pre, defs, letTuple(oxs, term, subst(x -> e, tupleWrap(p.xs.map(Variable(_))))), s.isTrusted))
         case _ =>
           None
       }
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(newProblem), onSuccess, this.name))
+      List(decomp(List(newProblem), onSuccess, s"One-point on $x = $e"))
     } else {
       Nil
     }

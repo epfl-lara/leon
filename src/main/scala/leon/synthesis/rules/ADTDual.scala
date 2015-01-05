@@ -10,7 +10,7 @@ import purescala.Extractors._
 import purescala.Constructors._
 
 case object ADTDual extends NormalizingRule("ADTDual") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val xs = p.xs.toSet
     val as = p.as.toSet
 
@@ -28,9 +28,9 @@ case object ADTDual extends NormalizingRule("ADTDual") {
     if (!toRemove.isEmpty) {
       val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, "ADTDual"))
+      Some(decomp(List(sub), forward, "ADTDual"))
     } else {
-      Nil
+      None
     }
   }
 }

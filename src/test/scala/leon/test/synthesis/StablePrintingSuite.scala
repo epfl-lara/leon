@@ -85,12 +85,14 @@ class StablePrintingSuite extends LeonTestSuite {
         if (j.rules.size < depth) {
           for ((ci, i) <- chooses.zipWithIndex if j.choosesToProcess(i) || j.choosesToProcess.isEmpty) {
             val sctx = SynthesisContext.fromSynthesizer(ci.synthesizer)
+            val search = ci.synthesizer.getSearch()
+            val hctx = SearchContext(sctx, search.g.root, search)
             val problem = ci.problem
             info(j.info("synthesis "+problem))
-            val apps = sctx.rules flatMap { _.instantiateOn(sctx, problem)}
+            val apps = sctx.rules flatMap { _.instantiateOn(hctx, problem)}
 
             for (a <- apps) {
-              a.apply(sctx) match {
+              a.apply(hctx) match {
                 case RuleClosed(sols) =>
                 case RuleExpanded(sub) =>
                   a.onSuccess(sub.map(Solution.choose(_))) match {

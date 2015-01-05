@@ -11,12 +11,13 @@ import purescala.TreeOps._
 import purescala.TreeNormalizations.linearArithmeticForm
 import purescala.TreeNormalizations.NonLinearExpressionException
 import purescala.TypeTrees._
+import purescala.Constructors._
 import purescala.Definitions._
 import LinearEquations.elimVariable
 import leon.synthesis.Algebra.lcm
 
 case object IntegerInequalities extends Rule("Integer Inequalities") {
-  def instantiateOn(sctx: SynthesisContext, problem: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, problem: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = problem.phi
 
 
@@ -145,7 +146,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         val constraints: List[Expr] = for((ub, uc) <- upperBounds; (lb, lc) <- lowerBounds) 
                                         yield LessEquals(ceilingDiv(lb, IntLiteral(lc)), floorDiv(ub, IntLiteral(uc)))
         val pre = And(exprNotUsed ++ constraints)
-        List(RuleInstantiation.immediateSuccess(problem, this, Solution(pre, Set(), Tuple(Seq(witness)))))
+        List(solve(Solution(pre, Set(), tupleWrap(Seq(witness)))))
       } else {
 
         val involvedVariables = (upperBounds++lowerBounds).foldLeft(Set[Identifier]())((acc, t) => {
@@ -181,9 +182,9 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
           case List(s @ Solution(pre, defs, term)) => {
             if(remainderIds.isEmpty) {
               Some(Solution(And(newPre, pre), defs,
-                LetTuple(subProblemxs, term,
+                letTuple(subProblemxs, term,
                   Let(processedVar, witness,
-                    Tuple(problem.xs.map(Variable(_))))), isTrusted=s.isTrusted))
+                    tupleWrap(problem.xs.map(Variable(_))))), isTrusted=s.isTrusted))
             } else if(remainderIds.size > 1) {
               sys.error("TODO")
             } else {
@@ -192,16 +193,16 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
               val loopCounter = Variable(FreshIdentifier("i", true).setType(Int32Type))
               val concretePre = replace(Map(Variable(k) -> loopCounter), pre)
               val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
-              val returnType = TupleType(problem.xs.map(_.getType))
+              val returnType = tupleTypeWrap(problem.xs.map(_.getType))
               val funDef = new FunDef(FreshIdentifier("rec", true), Nil, returnType, Seq(ValDef(loopCounter.id, Int32Type)),DefType.MethodDef)
               val funBody = expandAndSimplifyArithmetic(IfExpr(
                 LessThan(loopCounter, IntLiteral(0)),
                 Error(returnType, "No solution exists"),
                 IfExpr(
                   concretePre,
-                  LetTuple(subProblemxs, concreteTerm,
+                  letTuple(subProblemxs, concreteTerm,
                     Let(processedVar, witness,
-                      Tuple(problem.xs.map(Variable(_))))
+                      tupleWrap(problem.xs.map(Variable(_))))
                   ),
                   FunctionInvocation(funDef.typed, Seq(Minus(loopCounter, IntLiteral(1))))
                 )
@@ -215,7 +216,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
             None
         }
 
-        List(RuleInstantiation.immediateDecomp(problem, this, List(subProblem), onSuccess, this.name))
+        List(decomp(List(subProblem), onSuccess, this.name))
       }
     }
   }

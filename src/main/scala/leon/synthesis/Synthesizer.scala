@@ -4,12 +4,12 @@ package leon
 package synthesis
 
 import purescala.Common._
-import purescala.Definitions.{Program, FunDef, ModuleDef, DefType}
+import purescala.Definitions.{Program, FunDef, ModuleDef, DefType, ValDef}
 import purescala.TreeOps._
 import purescala.Trees._
 import purescala.Constructors._
 import purescala.ScalaPrinter
-
+import purescala.TypeTrees._
 import solvers._
 import solvers.combinators._
 import solvers.z3._
@@ -99,17 +99,21 @@ class Synthesizer(val context : LeonContext,
 
   // Returns the new program and the new functions generated for this
   def solutionToProgram(sol: Solution): (Program, List[FunDef]) = {
-    import purescala.TypeTrees.TupleType
-    import purescala.Definitions.ValDef
 
     // Create new fundef for the body
-    val ret = TupleType(problem.xs.map(_.getType))
+    val ret = tupleTypeWrap(problem.xs.map(_.getType))
     val res = Variable(FreshIdentifier("res").setType(ret))
 
     val mapPost: Map[Expr, Expr] =
-      problem.xs.zipWithIndex.map{ case (id, i)  =>
-        Variable(id) -> TupleSelect(res, i+1)
-      }.toMap
+      if (problem.xs.size > 1) {
+        problem.xs.zipWithIndex.map{ case (id, i)  =>
+          Variable(id) -> tupleSelect(res, i+1)
+        }.toMap
+      } else {
+        problem.xs.map{ case id  =>
+          Variable(id) -> res
+        }.toMap
+      }
 
     val fd = new FunDef(FreshIdentifier(functionContext.id.name+"_final", true), Nil, ret, problem.as.map(id => ValDef(id, id.getType)), DefType.MethodDef)
     fd.precondition  = Some(and(problem.pc, sol.pre))

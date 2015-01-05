@@ -41,16 +41,17 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
 
   def getRootLabel(tpe: TypeTree): T
 
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
-    val ef = new ExamplesFinder(sctx.context, sctx.program)
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    val ef = new ExamplesFinder(hctx.context, hctx.program)
 
     var tests = ef.extractTests(p).collect {
       case io: InOutExample => (io.ins, io.outs)
     }
 
     if (tests.nonEmpty) {
-      List(new RuleInstantiation(p, this, SolutionBuilder.none, this.name, this.priority) {
-        def apply(sctx: SynthesisContext): RuleApplication = {
+      List(new RuleInstantiation(this.name) {
+        def apply(hctx: SearchContext): RuleApplication = {
+          val sctx = hctx.sctx
 
           val evalParams            = CodeGenParams(maxFunctionInvocations = 2000, checkContracts = true)
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
@@ -117,11 +118,8 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
             })
           }
 
-          val (targetType, isWrapped, wrappedTests) = if (p.xs.size == 1) {
-            (p.xs.head.getType, false, tests.map{ case (i, o) => (i, o.head) })
-          } else {
-            (TupleType(p.xs.map(_.getType)), true, tests.map{ case (i, o) => (i, Tuple(o)) })
-          }
+          val targetType   = tupleTypeWrap(p.xs.map(_.getType))
+          val wrappedTests = tests.map { case (is, os) => (is, tupleWrap(os))}
 
           val enum = new BottomUpEnumerator[T, Expr, Expr](
             grammar.getProductions,

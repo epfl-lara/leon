@@ -11,7 +11,7 @@ import purescala.Extractors._
 import purescala.Constructors._
 
 case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
-  def instantiateOn(sctx: SynthesisContext, p: Problem): Traversable[RuleInstantiation] = {
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(clauses) = p.pc
 
     def discoverEquivalences(allClauses: Seq[Expr]): Seq[(Expr, Expr)] = {
@@ -67,13 +67,13 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
     }
 
     if (substs.nonEmpty) {
-      val simplifier = Simplifiers.bestEffort(sctx.context, sctx.program) _
+      val simplifier = Simplifiers.bestEffort(hctx.context, hctx.program) _
 
       val sub = p.copy(ws = replaceSeq(substs, p.ws), 
                        pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),
                        phi = simplifier(replaceSeq(substs, p.phi)))
 
-      List(RuleInstantiation.immediateDecomp(p, this, List(sub), forward, this.name))
+      List(decomp(List(sub), forward, "Equivalent Inputs"))
     } else {
       Nil
     }
