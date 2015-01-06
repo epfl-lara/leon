@@ -73,7 +73,11 @@ object ExpressionGrammars {
           Generator(Nil, { _ => BooleanLiteral(false) }),
           Generator(List(BooleanType), { case Seq(a) => Not(a) }),
           Generator(List(BooleanType, BooleanType), { case Seq(a, b) => And(a, b) }),
-          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => LeonOr(a, b) })
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => LeonOr(a, b) }),
+          Generator(List(Int32Type, Int32Type), { case Seq(a, b) => LessThan(a, b) }),
+          Generator(List(Int32Type, Int32Type), { case Seq(a, b) => LessEquals(a, b) }),
+          Generator(List(Int32Type,   Int32Type  ), { case Seq(a, b) => Equals(a, b) }),
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => Equals(a, b) })
         )
       case Int32Type =>
         List(
@@ -108,6 +112,9 @@ object ExpressionGrammars {
           Generator(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
           Generator(List(st, st), { case Seq(a, b) => SetDifference(a, b) })
         )
+
+      case UnitType =>
+        List( Generator(Nil, { case _ => UnitLiteral() }) )
 
       case _ =>
         Nil
@@ -150,6 +157,9 @@ object ExpressionGrammars {
           Generator(List(base),       { case elems => FiniteSet(elems.toSet).setType(st) }),
           Generator(List(base, base), { case elems => FiniteSet(elems.toSet).setType(st) })
         )
+      
+      case UnitType =>
+        List( Generator(Nil, { case _ => UnitLiteral() }) )
 
       case _ =>
         Nil
