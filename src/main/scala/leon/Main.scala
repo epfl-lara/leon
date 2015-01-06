@@ -179,7 +179,7 @@ object Main {
     }
 
     // Create a new reporter taking settings into account
-    val reporter = new PlainTextReporter(settings)
+    val reporter = new DefaultReporter(settings)
 
     reporter.whenDebug(DebugSectionOptions) { debug =>
 

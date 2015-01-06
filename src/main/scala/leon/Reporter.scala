@@ -106,12 +106,12 @@ abstract class Reporter(settings: Settings) {
 
 class DefaultReporter(settings: Settings) extends Reporter(settings) {
   protected def severityToPrefix(sev: Severity): String = sev match {
-    case ERROR    => "["+Console.RED              +" Error "+Console.RESET+"]"
-    case WARNING  => "["+Console.YELLOW           +"Warning"+Console.RESET+"]"
-    case INFO     => "["+Console.BLUE             +" Info  "+Console.RESET+"]"
-    case FATAL    => "["+Console.RED+Console.BOLD +" Fatal "+Console.RESET+"]"
+    case ERROR    => "["+Console.RED              +" Error  "+Console.RESET+"]"
+    case WARNING  => "["+Console.YELLOW           +"Warning "+Console.RESET+"]"
+    case INFO     => "["+Console.BLUE             +"  Info  "+Console.RESET+"]"
+    case FATAL    => "["+Console.RED+Console.BOLD +" Fatal  "+Console.RESET+"]"
     case INTERNAL => "["+            Console.BOLD +"Internal"+Console.RESET+"]"
-    case DEBUG(_) => "["+Console.MAGENTA          +" Debug "+Console.RESET+"]"
+    case DEBUG(_) => "["+Console.MAGENTA          +" Debug  "+Console.RESET+"]"
   }
 
   def emit(msg: Message) = {
@@ -145,7 +145,7 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
     }
   }
 
-  val prefixSize = 10
+  val prefixSize = 11
 
   val blankPrefix = " " * prefixSize
 
@@ -183,10 +183,11 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
 
 class PlainTextReporter(settings: Settings) extends DefaultReporter(settings) {
   override protected def severityToPrefix(sev: Severity): String = sev match {
-    case ERROR    => "[ Error ]"
-    case WARNING  => "[Warning]"
-    case INFO     => "[ Info  ]"
-    case FATAL    => "[ Fatal ]"
-    case DEBUG(_) => "[ Debug ]"
+    case ERROR    => "[ Error  ]"
+    case WARNING  => "[Warning ]"
+    case INFO     => "[  Info  ]"
+    case FATAL    => "[ Fatal  ]"
+    case INTERNAL => "[Internal]"
+    case DEBUG(_) => "[ Debug  ]"
   }
 }
