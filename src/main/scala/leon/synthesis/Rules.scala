@@ -143,6 +143,12 @@ trait RuleDSL {
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replaceFromIDs(what, in)
 
   val forward: List[Solution] => Option[Solution] = { ss => ss.headOption }
+  
+  def forwardMap(f : Expr => Expr) : List[Solution] => Option[Solution] = { 
+    _.headOption map { s =>
+      Solution(f(s.pre), s.defs, f(s.term))
+    }
+  }
 
   def decomp(sub: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String)
             (implicit problem: Problem): RuleInstantiation = {

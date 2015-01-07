@@ -19,7 +19,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         case ccio @ CaseClassInstanceOf(cct, s) => ccio
       }
 
-      var clauses = allClauses.filterNot(instanceOfs.toSet)
+      val clauses = allClauses.filterNot(instanceOfs.toSet)
 
       val ccSubsts = for (CaseClassInstanceOf(cct, s) <- instanceOfs) yield {
 
@@ -73,7 +73,12 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
                        pc = simplifier(andJoin(replaceSeq(substs, p.pc) +: postsToInject)),
                        phi = simplifier(replaceSeq(substs, p.phi)))
 
-      List(decomp(List(sub), forward, "Equivalent Inputs"))
+      val subst = replace(
+        substs.map{_.swap}.filter{ case (x,y) => formulaSize(x) > formulaSize(y) }.toMap, 
+        _:Expr
+      )
+      
+      List(decomp(List(sub), forwardMap(subst), "Equivalent Inputs"))
     } else {
       Nil
     }
