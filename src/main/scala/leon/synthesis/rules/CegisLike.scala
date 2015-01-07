@@ -93,6 +93,15 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       private var bTree = Map[Identifier, Map[Identifier, Set[Identifier]]]( initGuard -> p.xs.map(_ -> Set[Identifier]()).toMap)
 
       /**
+       * Stores which c's are guarded by which b's
+       *
+       * c1 -> Set(b2, b3)
+       *
+       * means c1 is protected by b2 and b3
+       */
+      private var revBTree : Map[Identifier, Set[Identifier]] = Map()
+      
+      /**
        * Computes dependencies of c's
        *
        * Assuming encoding:
@@ -201,7 +210,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         def composeWith(c: Identifier) {
           cToExprs.get(c) match {
             case Some(value) =>
-              res = Let(c, cToExprs(c), res)
+              val guards = (revBTree.getOrElse(c,Set()) - initGuard ).toSeq map { _.toVariable }
+              res = Let(c, if(guards.isEmpty) cToExprs(c) else IfExpr(orJoin(guards), cToExprs(c), NoTree(c.getType)), res)
             case None =>
               res = Let(c, Error(c.getType, "No value available"), res)
           }
@@ -332,7 +342,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         var newGuardedTerms = Map[Identifier, Set[Identifier]]()
         var newMappings     = Map[Identifier, (Identifier, Expr)]()
 
-
         var cGroups = Map[Identifier, Set[Identifier]]()
 
         for ((parentGuard, recIds) <- guardedTerms; recId <- recIds) {
@@ -409,6 +418,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         triedCompilation = false
         progEvaluator    = None
 
+        revBTree ++= cGroups
+        
         (newClauses, newGuardedTerms.keySet)
       }
 
