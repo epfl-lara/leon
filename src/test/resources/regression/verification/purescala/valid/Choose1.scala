@@ -9,8 +9,8 @@ object Choose1 {
     case class Cons(head: Int, tail: List) extends List
     case class Nil() extends List
 
-    def size(l: List) : Int = (l match {
-        case Nil() => 0
+    def size(l: List) : BigInt = (l match {
+        case Nil() => BigInt(0)
         case Cons(_, t) => 1 + size(t)
     }) ensuring(res => res >= 0)
 

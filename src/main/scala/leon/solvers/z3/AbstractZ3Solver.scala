@@ -707,6 +707,15 @@ trait AbstractZ3Solver
 
       kind match {
         case Z3NumeralIntAST(Some(v)) => InfiniteIntegerLiteral(v)
+        case Z3NumeralIntAST(None) => {
+          _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
+            case Some(hexa) => IntLiteral(hexa.toInt)
+            case None => {
+              println("Z3NumeralIntAST with None: " + t)
+              throw new CantTranslateException(t)
+            }
+          }
+        }
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsZ3 t)) {
