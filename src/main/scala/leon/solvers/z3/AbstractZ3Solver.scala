@@ -376,7 +376,7 @@ trait AbstractZ3Solver
     )
 
     //TODO: mkBitVectorType
-    sorts += Int32Type -> z3.mkIntSort
+    sorts += Int32Type -> z3.mkBVSort(32)
     sorts += IntegerType -> z3.mkIntSort
     sorts += BooleanType -> z3.mkBoolSort
     sorts += UnitType -> us
@@ -560,16 +560,29 @@ trait AbstractZ3Solver
       case Division(l, r) => z3.mkDiv(rec(l), rec(r))
       case Modulo(l, r) => z3.mkMod(rec(l), rec(r))
       case UMinus(e) => z3.mkUnaryMinus(rec(e))
-      case LessThan(l, r) => z3.mkLT(rec(l), rec(r))
-      case LessEquals(l, r) => z3.mkLE(rec(l), rec(r))
-      case GreaterThan(l, r) => z3.mkGT(rec(l), rec(r))
-      case GreaterEquals(l, r) => z3.mkGE(rec(l), rec(r))
       case BVPlus(l, r) => z3.mkBVAdd(rec(l), rec(r))
       case BVMinus(l, r) => z3.mkBVSub(rec(l), rec(r))
       case BVTimes(l, r) => z3.mkBVMul(rec(l), rec(r))
       case BVDivision(l, r) => z3.mkBVUdiv(rec(l), rec(r))
       case BVModulo(l, r) => z3.mkBVUrem(rec(l), rec(r))
       case BVUMinus(e) => z3.mkBVNeg(rec(e))
+      case LessThan(l, r) => l.getType match {
+        case IntegerType => z3.mkLT(rec(l), rec(r))
+        case Int32Type => z3.mkBVSlt(rec(l), rec(r))
+      }
+      case LessEquals(l, r) => l.getType match {
+        case IntegerType => z3.mkLE(rec(l), rec(r))
+        case Int32Type => z3.mkBVSle(rec(l), rec(r))
+      }
+      case GreaterThan(l, r) => l.getType match {
+        case IntegerType => z3.mkGT(rec(l), rec(r))
+        case Int32Type => z3.mkBVSgt(rec(l), rec(r))
+      }
+      case GreaterEquals(l, r) => l.getType match {
+        case IntegerType => z3.mkGE(rec(l), rec(r))
+        case Int32Type => z3.mkBVSge(rec(l), rec(r))
+      }
+
       case c @ CaseClass(ct, args) =>
         typeToSort(ct) // Making sure the sort is defined
         val constructor = adtConstructors(ct)
