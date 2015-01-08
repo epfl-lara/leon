@@ -146,7 +146,7 @@ trait RuleDSL {
   
   def forwardMap(f : Expr => Expr) : List[Solution] => Option[Solution] = { 
     _.headOption map { s =>
-      Solution(f(s.pre), s.defs, f(s.term))
+      Solution(f(s.pre), s.defs, f(s.term), s.isTrusted)
     }
   }
 
