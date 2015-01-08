@@ -43,7 +43,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     val sctx = hctx.sctx
 
-    // CEGIS Flags to actiave or de-activate features
+    // CEGIS Flags to activate or deactivate features
     val useUninterpretedProbe = sctx.settings.cegisUseUninterpretedProbe
     val useUnsatCores         = sctx.settings.cegisUseUnsatCores
     val useOptTimeout         = sctx.settings.cegisUseOptTimeout
