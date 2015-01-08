@@ -1912,8 +1912,8 @@ object TreeOps {
     val expr0 = try {
       val freeVars: Array[Identifier] = variablesOf(expr).toArray
       val coefs: Array[Expr] = TreeNormalizations.linearArithmeticForm(expr, freeVars)
-      coefs.toList.zip(IntLiteral(1) :: freeVars.toList.map(Variable(_))).foldLeft[Expr](IntLiteral(0))((acc, t) => {
-        if(t._1 == IntLiteral(0)) acc else Plus(acc, Times(t._1, t._2))
+      coefs.toList.zip(InfiniteIntegerLiteral(1) :: freeVars.toList.map(Variable(_))).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, t) => {
+        if(t._1 == InfiniteIntegerLiteral(0)) acc else Plus(acc, Times(t._1, t._2))
       })
     } catch {
       case _: Throwable =>
