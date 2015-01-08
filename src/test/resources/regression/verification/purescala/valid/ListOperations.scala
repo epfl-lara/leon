@@ -1,5 +1,3 @@
-/* Copyright 2009-2014 EPFL, Lausanne */
-
 import scala.collection.immutable.Set
 import leon.annotation._
 import leon.lang._
@@ -15,14 +13,14 @@ object ListOperations {
 
     sealed abstract class IntPair
     case class IP(fst: Int, snd: Int) extends IntPair
-
-    def size(l: List) : Int = (l match {
-        case Nil() => 0
+    
+    def size(l: List) : BigInt = (l match {
+        case Nil() => BigInt(0)
         case Cons(_, t) => 1 + size(t)
     }) ensuring(res => res >= 0)
 
-    def iplSize(l: IntPairList) : Int = (l match {
-      case IPNil() => 0
+    def iplSize(l: IntPairList) : BigInt = (l match {
+      case IPNil() => BigInt(0)
       case IPCons(_, xs) => 1 + iplSize(xs)
     }) ensuring(_ >= 0)
 
@@ -39,8 +37,8 @@ object ListOperations {
       }
     } ensuring(iplSize(_) == size(l1))
 
-    def sizeTailRec(l: List) : Int = sizeTailRecAcc(l, 0)
-    def sizeTailRecAcc(l: List, acc: Int) : Int = {
+    def sizeTailRec(l: List) : BigInt = sizeTailRecAcc(l, 0)
+    def sizeTailRecAcc(l: List, acc: BigInt) : BigInt = {
      require(acc >= 0)
      l match {
        case Nil() => acc
@@ -50,7 +48,14 @@ object ListOperations {
 
     def sizesAreEquiv(l: List) : Boolean = {
       size(l) == sizeTailRec(l)
-    }.holds
+    } holds
+
+    /* This should detect an overflow with bit vectors */
+    //Leon times out though
+    //def sizeOverflow(l: List) : Int = (l match {
+    //    case Nil() => 0
+    //    case Cons(_, t) => 1 + size(t)
+    //}) ensuring(res => res >= 0)
 
     def content(l: List) : Set[Int] = l match {
       case Nil() => Set.empty[Int]
@@ -58,8 +63,8 @@ object ListOperations {
     }
 
     def sizeAndContent(l: List) : Boolean = {
-      size(l) == 0 || content(l) != Set.empty[Int]
-    }.holds
+      size(l) == BigInt(0) || content(l) != Set.empty[Int]
+    } holds
     
     def drunk(l : List) : List = (l match {
       case Nil() => Nil()
@@ -78,15 +83,19 @@ object ListOperations {
     }) ensuring(content(_) == content(l1) ++ content(l2))
 
     @induct
-    def nilAppend(l : List) : Boolean = (append(l, Nil()) == l).holds
+    def nilAppend(l : List) : Boolean = (append(l, Nil()) == l) holds
 
     @induct
     def appendAssoc(xs : List, ys : List, zs : List) : Boolean =
-      (append(append(xs, ys), zs) == append(xs, append(ys, zs))).holds
+      (append(append(xs, ys), zs) == append(xs, append(ys, zs))) holds
+
+    def revAuxBroken(l1 : List, e : Int, l2 : List) : Boolean = {
+      (append(reverse(l1), Cons(e,l2)) == reverse0(l1, l2))
+    } holds
 
     @induct
     def sizeAppend(l1 : List, l2 : List) : Boolean =
-      (size(append(l1, l2)) == size(l1) + size(l2)).holds
+      (size(append(l1, l2)) == size(l1) + size(l2)) holds
 
     @induct
     def concat(l1: List, l2: List) : List = 

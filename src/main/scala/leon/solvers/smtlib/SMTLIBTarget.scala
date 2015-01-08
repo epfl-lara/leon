@@ -557,8 +557,8 @@ trait SMTLIBTarget {
       app match {
         case "-" =>
           args match {
-            case List(a) => UMinus(fromSMT(a, Int32Type))
-            case List(a, b) => Minus(fromSMT(a, Int32Type), fromSMT(b, Int32Type))
+            case List(a) => UMinus(fromSMT(a, IntegerType))
+            case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
           }
 
         case _ =>
