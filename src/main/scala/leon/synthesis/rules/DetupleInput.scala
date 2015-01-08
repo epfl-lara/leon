@@ -65,19 +65,39 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       val newAs = subAs.flatten
       //sctx.reporter.warning("newOuts: " + newOuts.toString)
 
+      // Recompose CaseClasses and Tuples.
+      // E.g. Cons(l.head, l.tail) ~~> l
+      // (t._1, t._2, t._3) ~~> t
+      def recompose(e : Expr) : Expr = e match {
+        case CaseClass(ct, args) =>
+          val (cts, es) = args.zip(ct.fields).map { 
+            case (CaseClassSelector(ct, e, id), field) if field.id == id => (ct, e)
+            case _ => return e
+          }.unzip
+          
+          if (cts.distinct.size == 1 && es.distinct.size == 1) {
+            es.head
+          } else {
+            e
+          }
+        case Tuple(args) =>
+          val es = args.zipWithIndex.map {
+            case (TupleSelect(e, i), index) if i == index + 1 => e
+            case _ => return e
+          }
+          if (es.distinct.size == 1) {
+            es.head
+          } else {
+            e
+          }
+        case other => other
+      }
+      
       val sub = Problem(newAs, subWs, subPc, subProblem, p.xs)
 
-      val onSuccess: List[Solution] => Option[Solution] = {
-        case List(sol) =>
-          val newPre = substAll(reverseMap, sol.pre)
-          val newTerm = substAll(reverseMap, sol.term)
-          Some(Solution(newPre, sol.defs, newTerm, sol.isTrusted))
-        case _ =>
-          None
-      }
-
-
-      Some(decomp(List(sub), onSuccess, s"Detuple ${reverseMap.keySet.mkString(", ")}"))
+      val s = {substAll(reverseMap, _:Expr)} andThen { simplePostTransform(recompose) }
+     
+      Some(decomp(List(sub), forwardMap(s), s"Detuple ${reverseMap.keySet.mkString(", ")}"))
     } else {
       None
     }
