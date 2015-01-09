@@ -38,6 +38,7 @@ class PureScalaVerificationRegression extends LeonTestSuite {
     }
 
     test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
+      println("Testing benchmark" + displayName)
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 

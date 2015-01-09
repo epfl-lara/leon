@@ -40,7 +40,7 @@ object MergeSort {
     case LCons(x, xs) => isSorted(x) && lIsSorted(xs)
   }
 
-  def abs(i : Int) : Int = {
+  def abs(i : BigInt) : BigInt = {
     if(i < 0) -i else i
   } ensuring(_ >= 0)
 
