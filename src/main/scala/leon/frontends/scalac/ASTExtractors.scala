@@ -165,11 +165,11 @@ trait ASTExtractors {
     }
 
     object ExListLiteral {
-      def unapply(tree: Apply): Option[(Type, List[Tree])] = tree  match {
+      def unapply(tree: Apply): Option[(Tree, List[Tree])] = tree  match {
         case Apply(
               TypeApply(ExSelected("leon", "collection", "List", "apply"), tpe :: Nil),
               args) =>
-          Some((tpe.tpe, args))
+          Some((tpe, args))
         case _ =>
           None
       }
