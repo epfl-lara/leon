@@ -638,7 +638,7 @@ trait AbstractZ3Solver
         typeToSort(at)
         val meta = arrayMetaDecls(normalizeType(at))
 
-        val ar = z3.mkConstArray(typeToSort(base), rec(default))
+        val ar = z3.mkConstArray(typeToSort(Int32Type), rec(default))
         val res = meta.cons(ar, rec(length))
         res
 

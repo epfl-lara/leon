@@ -11,37 +11,33 @@ import purescala.TreeOps._
 import purescala.DefOps._
 import Witnesses._
 
-case class ChooseInfo(ctx: LeonContext,
-                      prog: Program,
-                      fd: FunDef,
+case class ChooseInfo(fd: FunDef,
                       pc: Expr,
                       source: Expr,
-                      ch: Choose,
-                      settings: SynthesisSettings) {
+                      ch: Choose) {
 
-  val problem     = Problem.fromChoose(ch, pc)
-  val synthesizer = new Synthesizer(ctx, fd, prog, problem, settings)
+  val problem = Problem.fromChoose(ch, pc)
 }
 
 object ChooseInfo {
-  def extractFromProgram(ctx: LeonContext, prog: Program, options: SynthesisSettings): List[ChooseInfo] = {
+  def extractFromProgram(prog: Program): List[ChooseInfo] = {
 
     // Look for choose()
     val results = for (f <- prog.definedFunctions if f.body.isDefined;
-                       ci <- extractFromFunction(ctx, prog, f, options)) yield {
+                       ci <- extractFromFunction(prog, f)) yield {
       ci
     }
 
     results.sortBy(_.source.getPos)
   }
 
-  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef, options: SynthesisSettings): Seq[ChooseInfo] = {
+  def extractFromFunction(prog: Program, fd: FunDef): Seq[ChooseInfo] = {
 
     val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
     val term = Terminating(fd.typedWithDef, fd.params.map(_.id.toVariable))
 
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
-      ChooseInfo(ctx, prog, fd, and(path, term), ch, ch, options)
+      ChooseInfo(fd, and(path, term), ch, ch)
     }
   }
 }

@@ -34,7 +34,7 @@ class StablePrintingSuite extends LeonTestSuite {
 
   private def testIterativeSynthesis(cat: String, f: File, depth: Int) {
 
-    def getChooses(ctx: LeonContext, content: String): (Program, Seq[ChooseInfo]) = {
+    def getChooses(ctx: LeonContext, content: String): (Program, SynthesisSettings, Seq[ChooseInfo]) = {
       val opts = SynthesisSettings()
       val pipeline = leon.utils.TemporaryInputPhase andThen 
                      frontends.scalac.ExtractionPhase andThen
@@ -43,7 +43,7 @@ class StablePrintingSuite extends LeonTestSuite {
 
       val program = pipeline.run(ctx)((content, Nil))
 
-      (program, ChooseInfo.extractFromProgram(ctx, program, opts))
+      (program, opts, ChooseInfo.extractFromProgram(program))
     }
 
     case class Job(content: String, choosesToProcess: Set[Int], rules: List[String]) {
@@ -69,7 +69,7 @@ class StablePrintingSuite extends LeonTestSuite {
 
         info(j.info("compilation"))
 
-        val (pgm, chooses) = try {
+        val (pgm, opts, chooses) = try {
           getChooses(ctx, j.content)
         } catch {
           case e: Throwable =>
@@ -84,9 +84,10 @@ class StablePrintingSuite extends LeonTestSuite {
 
         if (j.rules.size < depth) {
           for ((ci, i) <- chooses.zipWithIndex if j.choosesToProcess(i) || j.choosesToProcess.isEmpty) {
-            val sctx = SynthesisContext.fromSynthesizer(ci.synthesizer)
-            val search = ci.synthesizer.getSearch()
-            val hctx = SearchContext(sctx, search.g.root, search)
+            val synthesizer = new Synthesizer(ctx, pgm, ci, opts)
+            val sctx = SynthesisContext.fromSynthesizer(synthesizer)
+            val search = synthesizer.getSearch()
+            val hctx = SearchContext(sctx, ci, search.g.root, search)
             val problem = ci.problem
             info(j.info("synthesis "+problem))
             val apps = sctx.rules flatMap { _.instantiateOn(hctx, problem)}

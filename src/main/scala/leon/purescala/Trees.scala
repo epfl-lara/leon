@@ -45,13 +45,13 @@ object Trees {
     def getType = body.getType
   }
 
-  case class Choose(vars: List[Identifier], pred: Expr) extends Expr with UnaryExtractable {
+  case class Choose(vars: List[Identifier], pred: Expr, var impl: Option[Expr] = None) extends Expr with NAryExtractable {
     require(!vars.isEmpty)
 
     def getType = if (vars.size > 1) TupleType(vars.map(_.getType)) else vars.head.getType
 
     def extract = {
-      Some((pred, (e: Expr) => Choose(vars, e).setPos(this)))
+      Some((Seq(pred)++impl, (es: Seq[Expr]) =>  Choose(vars, es.head, es.tail.headOption).setPos(this)))
     }
   }
 

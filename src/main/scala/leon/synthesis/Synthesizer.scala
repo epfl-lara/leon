@@ -19,21 +19,22 @@ import java.io.File
 import synthesis.graph._
 
 class Synthesizer(val context : LeonContext,
-                  val functionContext: FunDef,
                   val program: Program,
-                  val problem: Problem,
+                  val ci: ChooseInfo,
                   val settings: SynthesisSettings) {
+
+  val problem = ci.problem
 
   val reporter = context.reporter
 
   def getSearch(): Search = {
     if (settings.manualSearch) {
-      new ManualSearch(context, problem, settings.costModel)
+      new ManualSearch(context, ci, problem, settings.costModel)
     } else if (settings.searchWorkers > 1) {
       ???
       //new ParallelSearch(this, problem, options.searchWorkers)
     } else {
-      new SimpleSearch(context, problem, settings.costModel, settings.searchBound)
+      new SimpleSearch(context, ci, problem, settings.costModel, settings.searchBound)
     }
   }
 
@@ -115,7 +116,7 @@ class Synthesizer(val context : LeonContext,
         }.toMap
       }
 
-    val fd = new FunDef(FreshIdentifier(functionContext.id.name+"_final", true), Nil, ret, problem.as.map(id => ValDef(id, id.getType)), DefType.MethodDef)
+    val fd = new FunDef(FreshIdentifier(ci.fd.id.name+"_final", true), Nil, ret, problem.as.map(id => ValDef(id, id.getType)), DefType.MethodDef)
     fd.precondition  = Some(and(problem.pc, sol.pre))
     fd.postcondition = Some((res.id, replace(mapPost, problem.phi)))
     fd.body          = Some(sol.term)

@@ -81,26 +81,6 @@ object Definitions {
       copy(units = units.map{_.duplicate})
     }
 
-    // Use only to add functions around functions
-    def addDefinition(d: Definition, around: Definition): Program = {
-      val Some(m) = inModule(around)
-      val nm      = m.copy(defs = d +: m.defs)
-
-      m.owner match {
-        case Some(u: UnitDef) =>
-          val nu = u.copy(modules = u.modules.filterNot(_ == m) :+ nm)
-
-          u.owner match {
-            case Some(p: Program) =>
-              p.copy(units = p.units.filterNot(_ == u) :+ nu)
-            case _ =>
-              this
-          }
-        case _ =>
-          this
-      }
-    }
-
     lazy val library = Library(this)
     
     def writeScalaFile(filename: String) {
@@ -137,7 +117,7 @@ object Definitions {
       case PackageImport(pack) => {
         import DefOps._
         // Ignore standalone modules, assume there are extra imports for them
-        inProgram(this) map { unitsInPackage(_,pack) } getOrElse List()
+        programOf(this) map { unitsInPackage(_,pack) } getOrElse List()
       }
       case SingleImport(imported) => List(imported)
       case WildcardImport(imported) => imported.subDefinitions
@@ -401,7 +381,7 @@ object Definitions {
     def subDefinitions = params ++ tparams ++ nestedFuns.toList
 
     def duplicate: FunDef = {
-      val fd = new FunDef(id, tparams, returnType, params, defType)
+      val fd = new FunDef(id.freshen, tparams, returnType, params, defType)
       fd.copyContentFrom(this)
       fd.copiedFrom(this)
     }

@@ -22,7 +22,6 @@ case class SynthesisSettings(
   functionsToIgnore: Set[FunDef]      = Set(),
   
   // Cegis related options
-  cegisUseUninterpretedProbe: Boolean = false,
   cegisUseUnsatCores: Boolean         = true,
   cegisUseOptTimeout: Boolean         = true,
   cegisUseBssFiltering: Boolean       = true,

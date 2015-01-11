@@ -43,9 +43,10 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
 
     reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
-    val t2          = new Timer().start
-    val (synth, ci) = getSynthesizer(passingTests, failingTests)
-    val p           = synth.problem
+    val t2    = new Timer().start
+    val synth = getSynthesizer(passingTests, failingTests)
+    val ci    = synth.ci
+    val p     = synth.problem
 
     var solutions = List[Solution]()
 
@@ -110,7 +111,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       }
   }
 
-  def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): (Synthesizer , ChooseInfo)= {
+  def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
        
     val body = fd.body.get;
 
@@ -137,12 +138,12 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     );
 
     // extract chooses from fd
-    val Seq(ci) = ChooseInfo.extractFromFunction(ctx, program, fd, soptions)
+    val Seq(ci) = ChooseInfo.extractFromFunction(program, fd)
 
     val nci = ci.copy(pc = and(ci.pc, guide))
     val p   = nci.problem
 
-    (new Synthesizer(ctx, fd, program, p, soptions), nci)
+    new Synthesizer(ctx, program, nci, soptions)
   }
 
   private def focusRepair(program: Program, fd: FunDef, passingTests: List[Example], failingTests: List[Example]): (Expr, Expr) = {

@@ -60,7 +60,7 @@ object SynthesisContext {
     SynthesisContext(
       synth.context,
       synth.settings,
-      synth.functionContext,
+      synth.ci.fd,
       synth.program,
       synth.reporter)
   }

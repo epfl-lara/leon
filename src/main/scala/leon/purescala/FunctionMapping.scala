@@ -49,6 +49,8 @@ abstract class FunctionMapping extends TransformationPhase {
                   //  c.registerMethod(functionToFunction.get(m).map{_.to}.getOrElse(m))
                   // }
                   c
+                case d =>
+                  d
               }
             })
           },

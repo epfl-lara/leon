@@ -340,7 +340,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val rDefault = e(default)
       val rLength = e(length)
       val IntLiteral(iLength) = rLength
-      FiniteArray((1 to iLength).map(_ => rDefault).toSeq)
+      FiniteArray((1 to iLength).map(_ => rDefault).toSeq).setType(ArrayType(rDefault.getType))
 
     case ArrayLength(a) =>
       var ra = e(a)
@@ -355,7 +355,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       val IntLiteral(index) = ri
       val FiniteArray(exprs) = ra
-      FiniteArray(exprs.updated(index, rv))
+      FiniteArray(exprs.updated(index, rv)).setType(ra.getType)
 
     case ArraySelect(a, i) =>
       val IntLiteral(index) = e(i)
@@ -367,7 +367,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       }
 
     case FiniteArray(exprs) =>
-      FiniteArray(exprs.map(ex => e(ex)))
+      FiniteArray(exprs.map(ex => e(ex))).setType(expr.getType)
 
     case f @ FiniteMap(ss) => FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct).setType(f.getType)
     case g @ MapGet(m,k) => (e(m), e(k)) match {
@@ -402,7 +402,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case p : Passes => 
       e(p.asConstraint)
 
-    case choose: Choose =>
+    case choose @ Choose(_, _, Some(impl)) =>
+      e(impl)
+
+    case choose @ Choose(_, _, None) =>
       import purescala.TreeOps.simplestValue
 
       implicit val debugSection = utils.DebugSectionSynthesis

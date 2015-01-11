@@ -26,22 +26,26 @@ class SynthesisRegressionSuite extends LeonTestSuite {
   private def testSynthesis(cat: String, f: File, bound: Int) {
 
     var chooses = List[ChooseInfo]()
+    var program: Program = null 
+    var ctx: LeonContext = null 
+    var opts: SynthesisSettings = null
 
     test(cat+": "+f.getName()+" Compilation") {
-      val ctx = createLeonContext("--synthesis")
+      ctx = createLeonContext("--synthesis")
 
-      val opts = SynthesisSettings(searchBound = Some(bound), allSeeing = true)
+      opts = SynthesisSettings(searchBound = Some(bound), allSeeing = true)
 
       val pipeline = leon.frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
 
-      val program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
+      program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 
-      chooses = ChooseInfo.extractFromProgram(ctx, program, opts)
+      chooses = ChooseInfo.extractFromProgram(program)
     }
 
     for (ci <- chooses) {
       test(cat+": "+f.getName()+" - "+ci.fd.id.name) {
-        val (search, sols) = ci.synthesizer.synthesize()
+        val synthesizer = new Synthesizer(ctx, program, ci, opts)
+        val (search, sols) = synthesizer.synthesize()
         if (sols.isEmpty) {
           fail("Solution was not found. (Search bound: "+bound+")")
         }

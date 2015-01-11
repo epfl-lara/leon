@@ -37,17 +37,18 @@ class SynthesisSuite extends LeonTestSuite {
 
         val (program, results) = pipeline.run(ctx)((content, Nil))
 
-        for ((f, ps) <- results; p <- ps) {
-          info("%-20s".format(f.id.toString))
+        for ((f,cis) <- results; ci <- cis) {
+          info("%-20s".format(ci.fd.id.toString))
 
           val sctx = SynthesisContext(ctx,
                                       opts,
-                                      f,
+                                      ci.fd,
                                       program,
                                       ctx.reporter)
 
-          val search = new SimpleSearch(ctx, p, opts.costModel, None)
-          val hctx = SearchContext(sctx, search.g.root, search)
+          val p      = ci.problem
+          val search = new SimpleSearch(ctx, ci, p, opts.costModel, None)
+          val hctx   = SearchContext(sctx, ci, search.g.root, search)
 
           block(hctx, f, p)
         }

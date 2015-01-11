@@ -23,7 +23,7 @@ object Constructors {
     case Nil =>
       body
     case x :: Nil =>
-      if (value.getType == x.getType) {
+      if (value.getType == x.getType || !value.getType.isInstanceOf[TupleType]) {
         // This is for cases where we build it like: letTuple(List(x), tupleWrap(List(z)))
         Let(x, value, body)
       } else {

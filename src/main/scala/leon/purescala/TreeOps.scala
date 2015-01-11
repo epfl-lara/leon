@@ -361,7 +361,7 @@ object TreeOps {
           case Variable(i) => subvs + i
           case LetDef(fd,_) => subvs -- fd.params.map(_.id) -- fd.postcondition.map(_._1)
           case Let(i,_,_) => subvs - i
-          case Choose(is,_) => subvs -- is
+          case Choose(is,_,_) => subvs -- is
           case MatchLike(_, cses, _) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case Passes(_, _ , cses)   => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case Lambda(args, body) => subvs -- args.map(_.id)
@@ -1383,7 +1383,7 @@ object TreeOps {
 
   def containsChoose(e: Expr): Boolean = {
     preTraversal{
-      case Choose(_, _) => return true
+      case Choose(_, _, None) => return true
       case _ =>
     }(e)
     false
@@ -1391,7 +1391,7 @@ object TreeOps {
 
   def isDeterministic(e: Expr): Boolean = {
     preTraversal{
-      case Choose(_, _) => return false
+      case Choose(_, _, None) => return false
       case Hole(_, _) => return false
       case RepairHole(_, _) => return false
       case Gives(_,_) => return false
@@ -1637,7 +1637,7 @@ object TreeOps {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
 
-        case (Choose(ids1, e1), Choose(ids2, e2)) =>
+        case (Choose(ids1, e1, _), Choose(ids2, e2, _)) =>
           isHomo(e1, e2)(map ++ (ids1 zip ids2))
 
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
@@ -2096,7 +2096,7 @@ object TreeOps {
 
   def isStringLiteral(e: Expr): Option[String] = e match {
     case CaseClass(cct, args) =>
-      val p = inProgram(cct.classDef)
+      val p = programOf(cct.classDef)
       require(p.isDefined)
       val lib = p.get.library
 
@@ -2126,7 +2126,7 @@ object TreeOps {
 
   def isListLiteral(e: Expr): Option[(TypeTree, List[Expr])] = e match {
     case CaseClass(cct, args) =>
-      val p = inProgram(cct.classDef)
+      val p = programOf(cct.classDef)
       require(p.isDefined)
       val lib = p.get.library
 

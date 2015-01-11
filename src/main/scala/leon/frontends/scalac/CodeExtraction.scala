@@ -24,7 +24,7 @@ import purescala.Extractors._
 import purescala.Constructors._
 import purescala.TreeOps._
 import purescala.TypeTreeOps._
-import purescala.DefOps.{inPackage, inUnit}
+import purescala.DefOps.packageOf
 import xlang.Trees.{Block => LeonBlock, _}
 import xlang.TreeOps._
 
@@ -292,7 +292,7 @@ trait CodeExtraction extends ASTExtractors {
         val _ = Program(FreshIdentifier("__program"), withoutImports map { _._1 })
 
         // With the aid of formed units, we extract the correct imports
-        val objPerPack = objects2Objects map { _._2 } groupBy { inPackage(_)}
+        val objPerPack = objects2Objects map { _._2 } groupBy { packageOf(_)}
         withoutImports map { case (u, imps) =>
           u.copy(imports = {
             // Extract imports from source

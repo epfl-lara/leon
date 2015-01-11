@@ -3,6 +3,7 @@
 package leon
 package synthesis
 
+import purescala.Trees.Choose
 import graph._
 
 /**
@@ -11,13 +12,13 @@ import graph._
  */
 case class SearchContext (
   sctx: SynthesisContext,
+  ci: ChooseInfo,
   currentNode: Node,
   search: Search
 ) {
   val context  = sctx.context
   val reporter = sctx.reporter
   val program  = sctx.program
-
 
   def searchDepth = {
     def depthOf(n: Node): Int = n.parent match {

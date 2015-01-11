@@ -250,7 +250,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
       }
-      case c @ Choose(ids, b) => {
+      case c @ Choose(ids, b, _) => {
         //Recall that Choose cannot mutate variables from the scope
         (c, (b2: Expr) => b2, Map())
       }

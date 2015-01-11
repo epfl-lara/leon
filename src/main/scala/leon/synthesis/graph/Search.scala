@@ -4,13 +4,14 @@ package graph
 
 import scala.annotation.tailrec
 
+import purescala.Trees.Choose
 import leon.utils.StreamUtils.cartesianProduct
 
 import scala.collection.mutable.ArrayBuffer
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
-abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extends Interruptible {
+abstract class Search(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: CostModel) extends Interruptible {
   val g = new Graph(costModel, p);
 
   def findNodeToExpandFrom(n: Node): Option[Node]
@@ -22,11 +23,11 @@ abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extend
       n match {
         case an: AndNode =>
           ctx.timers.synthesis.applications.get(an.ri.toString).timed {
-            an.expand(SearchContext(sctx, an, this))
+            an.expand(SearchContext(sctx, ci, an, this))
           }
 
         case on: OrNode =>
-          on.expand(SearchContext(sctx, on, this))
+          on.expand(SearchContext(sctx, ci, on, this))
       }
     }
   }
@@ -83,7 +84,7 @@ abstract class Search(ctx: LeonContext, p: Problem, costModel: CostModel) extend
   ctx.interruptManager.registerForInterrupts(this)
 }
 
-class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Option[Int]) extends Search(ctx, p, costModel) {
+class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: CostModel, bound: Option[Int]) extends Search(ctx, ci, p, costModel) {
   val expansionBuffer = ArrayBuffer[Node]()
 
   def findIn(n: Node) {
@@ -123,7 +124,7 @@ class SimpleSearch(ctx: LeonContext, p: Problem, costModel: CostModel, bound: Op
   }
 }
 
-class ManualSearch(ctx: LeonContext, problem: Problem, costModel: CostModel) extends Search(ctx, problem, costModel) {
+class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel: CostModel) extends Search(ctx, ci, problem, costModel) {
   import ctx.reporter._
 
   abstract class Command

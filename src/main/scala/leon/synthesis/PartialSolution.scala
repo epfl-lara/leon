@@ -54,10 +54,13 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
       case s @ Solution(pre, defs, term) =>
         (e: Expr) =>
           Solution(replaceFromIDs(Map(anchor -> e), pre),
-                   defs.map(preMapOnFunDef({
+                   defs.map { d => 
+                     d.fullBody = preMap({
                        case Variable(`anchor`) => Some(e)
                        case _                  => None
-                   })),
+                     })(d.fullBody)
+                     d
+                   },
                    replaceFromIDs(Map(anchor -> e), term),
                    s.isTrusted)
     }

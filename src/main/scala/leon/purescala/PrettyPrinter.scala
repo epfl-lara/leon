@@ -291,7 +291,14 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"${t}._$i"
-      case Choose(vars, pred)   => p"choose(($vars) => $pred)"
+      case NoTree(tpe)          => p"???($tpe)"
+      case Choose(vars, pred, oimpl) => 
+        oimpl match {
+          case Some(e) =>
+            p"$e /* choose: $vars => $pred */"
+          case None =>
+            p"choose(($vars) => $pred)"
+        }
       case e @ Error(tpe, err)       => p"""error[$tpe]("$err")"""
       case CaseClassInstanceOf(cct, e)         =>
         if (cct.classDef.isCaseObject) {
@@ -482,7 +489,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         import DefOps._
         val newPack = ( for (
           scope <- ctx.scope;
-          unit <- inUnit(scope);
+          unit <- unitOf(scope);
           currentPack = unit.pack
         ) yield {  
           if (isSuperPackageOf(currentPack,pack)) 

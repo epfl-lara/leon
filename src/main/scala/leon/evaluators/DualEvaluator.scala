@@ -22,6 +22,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
   var monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
 
   val unit = new CompilationUnit(ctx, prog, params)
+
   val isCompiled = prog.definedFunctions.toSet
 
   case class DefaultRecContext(mappings: Map[Identifier, Expr], needJVMRef: Boolean = false) extends RecContext {

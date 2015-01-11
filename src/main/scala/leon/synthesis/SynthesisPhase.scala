@@ -85,9 +85,6 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case LeonFlagOption("derivtrees", v) =>
         options = options.copy(generateDerivationTrees = v)
 
-      case LeonFlagOption("cegis:unintprobe", v) =>
-        options = options.copy(cegisUseUninterpretedProbe = v)
-
       case LeonFlagOption("cegis:unsatcores", v) =>
         options = options.copy(cegisUseUnsatCores = v)
 
@@ -132,16 +129,17 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       filterInclusive(options.filterFuns.map(fdMatcher), Some(excludeByDefault _)) compose ciTofd
     }
 
-    var chooses = ChooseInfo.extractFromProgram(ctx, p, options).filter(fdFilter)
+    var chooses = ChooseInfo.extractFromProgram(p).filter(fdFilter)
 
     var functions = Set[FunDef]()
 
     chooses.foreach { ci =>
-      val (search, solutions) = ci.synthesizer.validate(ci.synthesizer.synthesize())
+      val synthesizer = new Synthesizer(ctx, p, ci, options)
+      val (search, solutions) = synthesizer.validate(synthesizer.synthesize())
 
       val fd = ci.fd
 
-      if (ci.synthesizer.settings.generateDerivationTrees) {
+      if (options.generateDerivationTrees) {
         val dot = new DotGenerator(search.g)
         dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
       }
