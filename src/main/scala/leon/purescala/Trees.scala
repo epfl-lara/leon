@@ -500,21 +500,27 @@ object Trees {
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val fixedType = IntegerType
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val fixedType = IntegerType
   }
   case class UMinus(expr: Expr) extends Expr with FixedType { 
+    require(expr.getType == IntegerType)
     val fixedType = IntegerType
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val fixedType = IntegerType
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val fixedType = IntegerType
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val fixedType = IntegerType
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 

@@ -8,8 +8,8 @@ import leon.annotation._
 
 @library
 sealed abstract class List[T] {
-  def size: Int = (this match {
-    case Nil() => 0
+  def size: BigInt = (this match {
+    case Nil() => BigInt(0)
     case Cons(h, t) => 1 + t.size
   }) ensuring (_ >= 0)
 
@@ -43,9 +43,9 @@ sealed abstract class List[T] {
     }
   }
 
-  def apply(index: Int): T = {
+  def apply(index: BigInt): T = {
     require(0 <= index && index < size)
-    if (index == 0) {
+    if (index == BigInt(0)) {
       head
     } else {
        tail(index-1)
@@ -68,27 +68,27 @@ sealed abstract class List[T] {
     }
   } ensuring (res => (res.size == size) && (res.content == content))
 
-  def take(i: Int): List[T] = (this, i) match {
+  def take(i: BigInt): List[T] = (this, i) match {
     case (Nil(), _) => Nil()
     case (Cons(h, t), i) =>
-      if (i == 0) {
+      if (i == BigInt(0)) {
         Nil()
       } else {
         Cons(h, t.take(i-1))
       }
   }
 
-  def drop(i: Int): List[T] = (this, i) match {
+  def drop(i: BigInt): List[T] = (this, i) match {
     case (Nil(), _) => Nil()
     case (Cons(h, t), i) =>
-      if (i == 0) {
+      if (i == BigInt(0)) {
         Cons(h, t)
       } else {
         t.drop(i-1)
       }
   }
 
-  def slice(from: Int, to: Int): List[T] = {
+  def slice(from: BigInt, to: BigInt): List[T] = {
     require(from < to && to < size && from >= 0)
     drop(from).take(to-from)
   }
@@ -104,7 +104,7 @@ sealed abstract class List[T] {
       }
   }
 
-  private def chunk0(s: Int, l: List[T], acc: List[T], res: List[List[T]], s0: Int): List[List[T]] = l match {
+  private def chunk0(s: BigInt, l: List[T], acc: List[T], res: List[List[T]], s0: BigInt): List[List[T]] = l match {
     case Nil() =>
       if (acc.size > 0) {
         res :+ acc
@@ -112,14 +112,14 @@ sealed abstract class List[T] {
         res
       }
     case Cons(h, t) =>
-      if (s0 == 0) {
+      if (s0 == BigInt(0)) {
         chunk0(s, l, Nil(), res :+ acc, s)
       } else {
         chunk0(s, t, acc :+ h, res, s0-1)
       }
   }
 
-  def chunks(s: Int): List[List[T]] = {
+  def chunks(s: BigInt): List[List[T]] = {
     require(s > 0)
 
     chunk0(s, this, Nil(), Nil(), s)
@@ -165,7 +165,7 @@ sealed abstract class List[T] {
       Nil()
   }
 
-  def pad(s: Int, e: T): List[T] = (this, s) match {
+  def pad(s: BigInt, e: T): List[T] = (this, s) match {
     case (_, s) if s <= 0 =>
       this
     case (Nil(), s) =>
@@ -174,7 +174,7 @@ sealed abstract class List[T] {
       Cons(h, t.pad(s-1, e))
   }
 
-  def find(e: T): Option[Int] = this match {
+  def find(e: T): Option[BigInt] = this match {
     case Nil() => None()
     case Cons(h, t) =>
       if (h == e) {
@@ -194,7 +194,7 @@ sealed abstract class List[T] {
       Cons[T](h, t.init)
     case Nil() =>
       Nil[T]()
-  }) ensuring ( (r: List[T]) => ((r.size < this.size) || (this.size == 0)) )
+  }) ensuring ( (r: List[T]) => ((r.size < this.size) || (this.size == BigInt(0))) )
 
   def lastOption: Option[T] = this match {
     case Cons(h, t) =>
@@ -230,7 +230,7 @@ sealed abstract class List[T] {
       Cons(Nil(), Nil())
   }
 
-  def count(e: T): Int = this match {
+  def count(e: T): BigInt = this match {
     case Cons(h, t) =>
       if (h == e) {
         1 + t.count(e)
@@ -238,7 +238,7 @@ sealed abstract class List[T] {
         t.count(e)
       }
     case Nil() =>
-      0
+      BigInt(0)
   }
 
   def evenSplit: (List[T], List[T]) = {
@@ -246,10 +246,10 @@ sealed abstract class List[T] {
     (take(c), drop(c))
   }
 
-  def insertAt(pos: Int, l: List[T]): List[T] = {
+  def insertAt(pos: BigInt, l: List[T]): List[T] = {
     if(pos < 0) {
       insertAt(size + pos, l)
-    } else if(pos == 0) {
+    } else if(pos == BigInt(0)) {
       l ++ this
     } else {
       this match {
@@ -261,10 +261,10 @@ sealed abstract class List[T] {
     }
   }
 
-  def replaceAt(pos: Int, l: List[T]): List[T] = {
+  def replaceAt(pos: BigInt, l: List[T]): List[T] = {
     if(pos < 0) {
       replaceAt(size + pos, l)
-    } else if(pos == 0) {
+    } else if(pos == BigInt(0)) {
       l ++ this.drop(l.size)
     } else {
       this match {
@@ -276,7 +276,7 @@ sealed abstract class List[T] {
     }
   }
 
-  def rotate(s: Int): List[T] = {
+  def rotate(s: BigInt): List[T] = {
     if (s < 0) {
       rotate(size+s)
     } else {
@@ -304,19 +304,19 @@ object ListOps {
     case Nil() => Nil()
   }
 
-  def isSorted(ls: List[Int]): Boolean = ls match {
+  def isSorted(ls: List[BigInt]): Boolean = ls match {
     case Nil() => true
     case Cons(_, Nil()) => true
     case Cons(h1, Cons(h2, _)) if(h1 > h2) => false
     case Cons(_, t) => isSorted(t)
   }
 
-  def sorted(ls: List[Int]): List[Int] = ls match {
+  def sorted(ls: List[BigInt]): List[BigInt] = ls match {
     case Cons(h, t) => insSort(sorted(t), h)
     case Nil() => Nil()
   }
 
-  def insSort(ls: List[Int], v: Int): List[Int] = ls match {
+  def insSort(ls: List[BigInt], v: BigInt): List[BigInt] = ls match {
     case Nil() => Cons(v, Nil())
     case Cons(h, t) =>
       if (v <= h) {
@@ -333,7 +333,7 @@ case class Nil[T]() extends List[T]
 
 @library
 object ListSpecs {
-  def snocIndex[T](l : List[T], t : T, i : Int) : Boolean = {
+  def snocIndex[T](l : List[T], t : T, i : BigInt) : Boolean = {
     require(0 <= i && i < l.size + 1)
     // proof:
     (l match {
@@ -344,7 +344,7 @@ object ListSpecs {
     ((l :+ t).apply(i) == (if (i < l.size) l(i) else t))
   }.holds
 
-  def reverseIndex[T](l : List[T], i : Int) : Boolean = {
+  def reverseIndex[T](l : List[T], i : BigInt) : Boolean = {
     require(0 <= i && i < l.size)
     (l match {
       case Nil() => true
@@ -353,11 +353,11 @@ object ListSpecs {
     (l.reverse.apply(i) == l.apply(l.size - 1 - i))
   }.holds
 
-  def appendIndex[T](l1 : List[T], l2 : List[T], i : Int) : Boolean = {
+  def appendIndex[T](l1 : List[T], l2 : List[T], i : BigInt) : Boolean = {
     require(0 <= i && i < l1.size + l2.size)
     (l1 match {
       case Nil() => true
-      case Cons(x,xs) => if (i==0) true else appendIndex[T](xs,l2,i-1)
+      case Cons(x,xs) => if (i==BigInt(0)) true else appendIndex[T](xs,l2,i-1)
     }) &&
     ((l1 ++ l2).apply(i) == (if (i < l1.size) l1(i) else l2(i - l1.size)))
   }.holds
