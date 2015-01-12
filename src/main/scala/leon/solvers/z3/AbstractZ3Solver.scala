@@ -748,17 +748,25 @@ trait AbstractZ3Solver
 
               case LeonType(at @ ArrayType(dt)) =>
                 assert(args.size == 2)
-                val IntLiteral(length) = rec(args(1))
+                val length = rec(args(1)) match {
+                  case InfiniteIntegerLiteral(length) => length.toInt
+                  case IntLiteral(length) => length
+                  case _ => throw new CantTranslateException(t)
+                }
                 model.getArrayValue(args(0)) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
                     val elseValue = rec(elseZ3Value)
                     var valuesMap = map.map { case (k,v) =>
-                      val IntLiteral(index) = rec(k)
+                      val index = rec(k) match {
+                        case InfiniteIntegerLiteral(index) => index.toInt
+                        case IntLiteral(index) => index
+                        case _ => throw new CantTranslateException(t)
+                      }
                       (index -> rec(v))
                     }
 
-                    FiniteArray(for (i <- 1 to length) yield {
+                    FiniteArray(for (i <- 1 to length.toInt) yield {
                       valuesMap.getOrElse(i, elseValue)
                     }).setType(at)
                 }

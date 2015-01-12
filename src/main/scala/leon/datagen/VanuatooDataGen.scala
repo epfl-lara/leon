@@ -23,6 +23,10 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     i -> Constructor[Expr, TypeTree](List(), Int32Type, s => IntLiteral(i), ""+i)
   }).toMap
 
+  val bigInts = (for (i <- Set(0, 1, 2, 3)) yield {
+    i -> Constructor[Expr, TypeTree](List(), IntegerType, s => InfiniteIntegerLiteral(i), ""+i)
+  }).toMap
+
   val booleans = (for (b <- Set(true, false)) yield {
     b -> Constructor[Expr, TypeTree](List(), BooleanType, s => BooleanLiteral(b), ""+b)
   }).toMap
@@ -113,6 +117,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
   // Returns the pattern and whether it is fully precise
   private def valueToPattern(v: AnyRef, expType: TypeTree): (VPattern[Expr, TypeTree], Boolean) = (v, expType) match {
     case (i: Integer, Int32Type) =>
+      (cPattern(intConstructor(i), List()), true)
+
+    case (i: Integer, IntegerType) =>
       (cPattern(intConstructor(i), List()), true)
 
     case (b: java.lang.Boolean, BooleanType) =>
@@ -238,7 +245,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     }).flatten
 
 
-    val gen = new StubGenerator[Expr, TypeTree]((ints.values ++ booleans.values).toSeq,
+    val gen = new StubGenerator[Expr, TypeTree]((ints.values ++ bigInts.values ++ booleans.values).toSeq,
                                                 Some(getConstructors _),
                                                 treatEmptyStubsAsChildless = true)
 
@@ -256,7 +263,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     return new Iterator[Seq[Expr]] {
       var total = 0
-      var found = 0;
+      var found = 0
 
       var theNext: Option[Seq[Expr]] = None
 
@@ -276,6 +283,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
 
       def computeNext(): Option[Seq[Expr]] = {
+        //return None
         while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
           val model = it.next.asInstanceOf[Tuple]
 

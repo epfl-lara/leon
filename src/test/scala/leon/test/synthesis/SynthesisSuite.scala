@@ -126,12 +126,12 @@ object Injection {
   case class Nil() extends List
 
   // proved with unrolling=0
-  def size(l: List) : Int = (l match {
-      case Nil() => 0
+  def size(l: List) : BigInt = (l match {
+      case Nil() => BigInt(0)
       case Cons(t) => 1 + size(t)
   }) ensuring(res => res >= 0)
 
-  def simple() = choose{out: List => size(out) == 2 }
+  def simple() = choose{out: List => size(out) == BigInt(2) }
 }
     """
   ) {
@@ -209,16 +209,16 @@ import leon.lang.synthesis._
 
 object SortedList {
   sealed abstract class List
-  case class Cons(head: Int, tail: List) extends List
+  case class Cons(head: BigInt, tail: List) extends List
   case class Nil() extends List
 
-  def size(l: List) : Int = (l match {
-      case Nil() => 0
+  def size(l: List) : BigInt = (l match {
+      case Nil() => BigInt(0)
       case Cons(_, t) => 1 + size(t)
   }) ensuring(res => res >= 0)
 
-  def content(l: List): Set[Int] = l match {
-    case Nil() => Set.empty[Int]
+  def content(l: List): Set[BigInt] = l match {
+    case Nil() => Set.empty[BigInt]
     case Cons(i, t) => Set(i) ++ content(t)
   }
 
@@ -233,12 +233,12 @@ object SortedList {
       content(out) == content(in1) ++ content(in2)
   }
 
-  def insert(in1: List, v: Int) = choose {
+  def insert(in1: List, v: BigInt) = choose {
     (out : List) =>
       content(out) == content(in1) ++ Set(v)
   }
 
-  def insertSorted(in1: List, v: Int) = choose {
+  def insertSorted(in1: List, v: BigInt) = choose {
     (out : List) =>
       isSorted(in1) && content(out) == content(in1) ++ Set(v) && isSorted(out)
   }
