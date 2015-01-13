@@ -6,16 +6,17 @@ import leon._
 import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Trees._
+import leon.purescala.TypeTrees._
 
 
 class LikelyEqSuite extends LeonTestSuite with WithLikelyEq {
   def i(x: Int) = InfiniteIntegerLiteral(x)
 
-  val xId = FreshIdentifier("x")
+  val xId = FreshIdentifier("x").setType(IntegerType)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y")
+  val yId = FreshIdentifier("y").setType(IntegerType)
   val y = Variable(yId)
-  val zId = FreshIdentifier("z")
+  val zId = FreshIdentifier("z").setType(IntegerType)
   val z = Variable(zId)
 
   test("apply") {

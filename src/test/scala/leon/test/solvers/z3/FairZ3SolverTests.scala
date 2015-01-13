@@ -38,9 +38,9 @@ class FairZ3SolverTests extends LeonTestSuite {
   )
 
   // def f(fx : Int) : Int = fx + 1
-  private val fx   : Identifier = FreshIdentifier("x").setType(Int32Type)
-  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, Int32Type, ValDef(fx, Int32Type) :: Nil, DefType.MethodDef)
-  fDef.body = Some(Plus(Variable(fx), IntLiteral(1)))
+  private val fx   : Identifier = FreshIdentifier("x").setType(IntegerType)
+  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, IntegerType, ValDef(fx, IntegerType) :: Nil, DefType.MethodDef)
+  fDef.body = Some(Plus(Variable(fx), InfiniteIntegerLiteral(1)))
 
   private val minimalProgram = Program(
     FreshIdentifier("Minimal"), 
@@ -50,8 +50,8 @@ class FairZ3SolverTests extends LeonTestSuite {
     )))
   )
 
-  private val x : Expr = Variable(FreshIdentifier("x").setType(Int32Type))
-  private val y : Expr = Variable(FreshIdentifier("y").setType(Int32Type))
+  private val x : Expr = Variable(FreshIdentifier("x").setType(IntegerType))
+  private val y : Expr = Variable(FreshIdentifier("y").setType(IntegerType))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef.typed, e :: Nil)
 
   private val solver = SimpleSolverAPI(SolverFactory(() => new FairZ3Solver(testContext, minimalProgram)))
@@ -59,7 +59,7 @@ class FairZ3SolverTests extends LeonTestSuite {
   private val tautology1 : Expr = BooleanLiteral(true)
   assertValid(solver, tautology1)
 
-  private val tautology2 : Expr = Equals(Plus(x, x), Times(IntLiteral(2), x))
+  private val tautology2 : Expr = Equals(Plus(x, x), Times(InfiniteIntegerLiteral(2), x))
   assertValid(solver, tautology2)
 
   // This one contains a function invocation but is valid regardless of its
@@ -73,11 +73,11 @@ class FairZ3SolverTests extends LeonTestSuite {
   private val wrong1 : Expr = BooleanLiteral(false)
   assertInvalid(solver, wrong1)
 
-  private val wrong2 : Expr = Equals(Plus(x, x), Times(IntLiteral(3), x))
+  private val wrong2 : Expr = Equals(Plus(x, x), Times(InfiniteIntegerLiteral(3), x))
   assertInvalid(solver, wrong2)
 
   // This is true, and FairZ3Solver should know it (by inlining).
-  private val unknown1 : Expr = Equals(f(x), Plus(x, IntLiteral(1)))
+  private val unknown1 : Expr = Equals(f(x), Plus(x, InfiniteIntegerLiteral(1)))
   assertValid(solver, unknown1)
 
   test("Check assumptions") {

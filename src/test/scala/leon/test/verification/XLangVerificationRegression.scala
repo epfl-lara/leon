@@ -36,7 +36,6 @@ class XLangVerificationRegression extends LeonTestSuite {
     }
 
     test("%3d: %s".format(nextInt(), displayName)) {
-      println("Testing benchmark" + displayName)
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
