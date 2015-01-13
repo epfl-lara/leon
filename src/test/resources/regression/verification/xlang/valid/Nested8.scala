@@ -4,12 +4,12 @@ import leon.lang._
 
 object Nested8 {
 
-  def foo(a: Int): Int = {
+  def foo(a: BigInt): BigInt = {
     require(a > 0)
 
-    def bar(b: Int): Int = {
+    def bar(b: BigInt): BigInt = {
       if(a < b) {
-        def rec(c: Int): Int = {
+        def rec(c: BigInt): BigInt = {
           require(c > 0)
           c + b
         } ensuring(_ > 0)
