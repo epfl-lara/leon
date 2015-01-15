@@ -124,7 +124,7 @@ class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: Cost
   }
 }
 
-class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel: CostModel) extends Search(ctx, ci, problem, costModel) {
+class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel: CostModel, initCmd: Option[String]) extends Search(ctx, ci, problem, costModel) {
   import ctx.reporter._
 
   abstract class Command
@@ -135,7 +135,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
 
   // Manual search state:
   var cd       = List[Int]()
-  var cmdQueue = List[Command]()
+  var cmdQueue = initCmd.map( str => parseCommands(parseString(str))).getOrElse(Nil)
 
   def getNextCommand(): Command = cmdQueue match {
     case c :: cs =>
@@ -144,11 +144,15 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
 
     case Nil =>
       print("Next action? (q to quit) "+cd.mkString(" ")+" $ ")
-      val line = scala.io.StdIn.readLine().trim
-      val parts = line.split("\\s+").toList
+      val line = scala.io.StdIn.readLine()
+      val parts = parseString(line)
 
       cmdQueue = parseCommands(parts)
       getNextCommand()
+  }
+
+  def parseString(s: String): List[String] = {
+    s.trim.split("\\s+|,").toList
   }
 
   def parseCommands(tokens: List[String]): List[Command] = tokens match {
@@ -167,7 +171,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
     case "q" :: ts =>
       Quit :: Nil
 
-    case Nil =>
+    case Nil  | "" :: Nil =>
       Nil
 
     case ts =>

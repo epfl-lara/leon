@@ -16,7 +16,7 @@ case class SynthesisSettings(
   timeoutMs: Option[Long]             = None,
   costModel: CostModel                = CostModels.default,
   rules: Seq[Rule]                    = Rules.all,
-  manualSearch: Boolean               = false,
+  manualSearch: Option[String]        = None,
   searchBound: Option[Int]            = None,
   selectedSolvers: Set[String]        = Set("fairz3"),
   functionsToIgnore: Set[FunDef]      = Set(),

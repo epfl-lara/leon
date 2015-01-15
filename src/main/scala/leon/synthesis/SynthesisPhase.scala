@@ -21,7 +21,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonFlagOptionDef( "inplace",         "--inplace",         "Debug level"),
     LeonFlagOptionDef( "allseeing",       "--allseeing",       "Also synthesize functions using holes"),
     LeonValueOptionDef("parallel",        "--parallel[=N]",    "Parallel synthesis search using N workers", Some("5")),
-    LeonFlagOptionDef( "manual",          "--manual",          "Manual search"),
+    LeonValueOptionDef( "manual",         "--manual[=cmd]",    "Manual search", Some("")),
     LeonFlagOptionDef( "derivtrees",      "--derivtrees",      "Generate derivation trees"),
     LeonFlagOptionDef( "firstonly",       "--firstonly",       "Stop as soon as one synthesis solution is found", true),
     LeonValueOptionDef("timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
@@ -41,8 +41,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     var options = SynthesisSettings()
 
     for(opt <- ctx.options) opt match {
-      case LeonFlagOption("manual", v) =>
-        options = options.copy(manualSearch = v)
+      case LeonValueOption("manual", cmd) =>
+        options = options.copy(manualSearch = Some(cmd))
 
       case LeonFlagOption("allseeing", v) =>
         options = options.copy(allSeeing = v)
@@ -106,7 +106,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case _ =>
     }
 
-    if (options.manualSearch) {
+    if (options.manualSearch.isDefined) {
       options = options.copy(
         rules = rules.AsChoose +:
                 options.rules

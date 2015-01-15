@@ -28,8 +28,8 @@ class Synthesizer(val context : LeonContext,
   val reporter = context.reporter
 
   def getSearch(): Search = {
-    if (settings.manualSearch) {
-      new ManualSearch(context, ci, problem, settings.costModel)
+    if (settings.manualSearch.isDefined) {
+      new ManualSearch(context, ci, problem, settings.costModel, settings.manualSearch)
     } else if (settings.searchWorkers > 1) {
       ???
       //new ParallelSearch(this, problem, options.searchWorkers)
