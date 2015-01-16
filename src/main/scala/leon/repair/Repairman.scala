@@ -2,7 +2,7 @@
 
 package leon
 package repair
-
+  
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
@@ -31,84 +31,95 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
   implicit val debugSection = DebugSectionRepair
 
+  private object VRes {
+    trait VerificationResult
+    case object Valid extends VerificationResult
+    case class NotValid(passing : List[Example], failing : List[Example]) extends VerificationResult
+  }
+
+  import VRes._
+  
   def repair() = {
     reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
     val t1 = new Timer().start
-    val (passingTests, failingTests) = discoverTests
-
-    reporter.info(f" - Passing: ${passingTests.size}%3d")
-    reporter.info(f" - Failing: ${failingTests.size}%3d")
-
-    reporter.info("Finished in "+t1.stop+"ms")
-
-
-    reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
-    val t2    = new Timer().start
-    val synth = getSynthesizer(passingTests, failingTests)
-    val ci    = synth.ci
-    val p     = synth.problem
-
-    var solutions = List[Solution]()
-
-    reporter.info("Finished in "+t2.stop+"ms")
-    reporter.info(ASCIIHelpers.title("3. Synthesizing"))
-    reporter.info(p)
-
-
-    synth.synthesize() match {
-      case (search, sols) =>
-        for (sol <- sols) {
-
-          // Validate solution if not trusted
-          if (!sol.isTrusted) {
-            reporter.info("Found untrusted solution! Verifying...")
-            val (npr, fds) = synth.solutionToProgram(sol)
-
-            getVerificationCounterExamples(fds.head, npr) match {
-              case Some(ces) =>
-                reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
-
-              case None =>
+    discoverTests match {
+      case Valid => 
+        reporter.info(s"Function ${fd.id} is found valid, no repair needed!")
+      case NotValid(passingTests, failingTests) =>
+        reporter.info(f" - Passing: ${passingTests.size}%3d")
+        reporter.info(f" - Failing: ${failingTests.size}%3d")
+    
+        reporter.info("Finished in "+t1.stop+"ms")
+    
+    
+        reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
+        val t2    = new Timer().start
+        val synth = getSynthesizer(passingTests, failingTests)
+        val ci    = synth.ci
+        val p     = synth.problem
+    
+        var solutions = List[Solution]()
+    
+        reporter.info("Finished in "+t2.stop+"ms")
+        reporter.info(ASCIIHelpers.title("3. Synthesizing"))
+        reporter.info(p)
+    
+    
+        synth.synthesize() match {
+          case (search, sols) =>
+            for (sol <- sols) {
+    
+              // Validate solution if not trusted
+              if (!sol.isTrusted) {
+                reporter.info("Found untrusted solution! Verifying...")
+                val (npr, fds) = synth.solutionToProgram(sol)
+    
+                getVerificationCounterExamples(fds.head, npr) match {
+                  case NotValid(_, ces) if !ces.isEmpty =>
+                    reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
+    
+                  case _ =>
+                    solutions ::= sol
+                    reporter.info("Solution was not trusted but verification passed!")
+                }
+              } else {
+                reporter.info("Found trusted solution!")
                 solutions ::= sol
-                reporter.info("Solution was not trusted but verification passed!")
+              }
             }
-          } else {
-            reporter.info("Found trusted solution!")
-            solutions ::= sol
-          }
-        }
-
-        if (synth.settings.generateDerivationTrees) {
-          val dot = new DotGenerator(search.g)
-          dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
-        }
-
-        if (solutions.isEmpty) {
-          reporter.error(ASCIIHelpers.title("Failed to repair!"))
-        } else {
-          reporter.info(ASCIIHelpers.title("Repair successful:"))
-          for ((sol, i) <- solutions.reverse.zipWithIndex) {
-            reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-            val expr = sol.toSimplifiedExpr(ctx, program)
-            reporter.info(ScalaPrinter(expr));
-          }
-          reporter.info(ASCIIHelpers.title("In context:"))
-
-
-          for ((sol, i) <- solutions.reverse.zipWithIndex) {
-            reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-            val expr = sol.toSimplifiedExpr(ctx, program)
-            val nfd = fd.duplicate;
-
-            nfd.body = fd.body.map { b =>
-              replace(Map(ci.source -> expr), b)
+    
+            if (synth.settings.generateDerivationTrees) {
+              val dot = new DotGenerator(search.g)
+              dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
             }
-
-            reporter.info(ScalaPrinter(nfd));
+    
+            if (solutions.isEmpty) {
+              reporter.error(ASCIIHelpers.title("Failed to repair!"))
+            } else {
+              reporter.info(ASCIIHelpers.title("Repair successful:"))
+              for ((sol, i) <- solutions.reverse.zipWithIndex) {
+                reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+                val expr = sol.toSimplifiedExpr(ctx, program)
+                reporter.info(ScalaPrinter(expr));
+              }
+              reporter.info(ASCIIHelpers.title("In context:"))
+    
+    
+              for ((sol, i) <- solutions.reverse.zipWithIndex) {
+                reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+                val expr = sol.toSimplifiedExpr(ctx, program)
+                val nfd = fd.duplicate;
+    
+                nfd.body = fd.body.map { b =>
+                  replace(Map(ci.source -> expr), b)
+                }
+    
+                reporter.info(ScalaPrinter(nfd));
+              }
+    
+            }
           }
-
-        }
-      }
+    }
   }
 
   def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
@@ -306,7 +317,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     focus(body, Map())(spec, out)
   }
 
-  def getVerificationCounterExamples(fd: FunDef, prog: Program): Option[Seq[InExample]] = {
+  private def getVerificationCounterExamples(fd: FunDef, prog: Program): VerificationResult = {
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solver = new TimeoutSolverFactory(SolverFactory.getFromSettings(ctx, prog), timeoutMs)
     val vctx = VerificationContext(ctx, prog, solver, reporter)
@@ -319,30 +330,20 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       interruptOn = _.counterExample.isDefined 
     )
 
-    var invalid = false;
-    var ces = List[Seq[Expr]]()
-
-    for (vc <- vcs.getOrElse(fd, List())) {
-      if (vc.value == Some(false)) {
-        invalid = true;
-
-        vc.counterExample match {
-          case Some(m) =>
-            ces = fd.params.map(vd => m(vd.id)) :: ces;
-
-          case _ =>
+    val theVCs = vcs.getOrElse(fd, Nil)
+    
+    if(theVCs.forall{ _.value == Some(true) } ) {
+      Valid
+    } else { 
+      NotValid(Nil, 
+        theVCs.flatMap { _.counterExample map { 
+          m => InExample(fd.params.map{vd => m(vd.id)})
         }
-      }
-    }
-    if (invalid) {
-      Some(ces.map(InExample(_)))
-    } else {
-      None
+      })
     }
   }
-
-
-  def discoverTests: (List[Example], List[Example]) = {
+  
+  private def discoverTests: VerificationResult = {
 
     import bonsai._
     import bonsai.enumerators._
@@ -393,17 +394,19 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     // Extract passing/failing from the passes in POST
     val ef = new ExamplesFinder(ctx, program)
-    val (userPassing, userFailing) = ef.extractTests(fd)   
+    val (userPassing, userFailing) = ef.extractTests(fd)
+    val passing = generatedPassing ++ userPassing
     
     // If we have no ce yet, try to verify, if it fails, we have at least one CE
-    val ces = (generatedFailing ++ userFailing) match {
-      case Seq() => getVerificationCounterExamples(fd, program) getOrElse Nil
-      case nonEmpty => nonEmpty
+    (generatedFailing ++ userFailing) match {
+      case Seq() => getVerificationCounterExamples(fd, program) match {
+        case Valid => Valid
+        case NotValid(_, ces) => NotValid(passing, ces)
+      }
+      case nonEmpty => NotValid(passing, nonEmpty)
     }
 
-    (generatedPassing ++ userPassing, ces.toList )
   }
-
 
   // ununsed for now, but implementation could be useful later
   private def disambiguate(p: Problem, sol1: Solution, sol2: Solution): Option[(InOutExample, InOutExample)] = {
