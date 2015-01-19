@@ -1009,8 +1009,13 @@ trait CodeExtraction extends ASTExtractors {
           val rc = cases.map(extractMatchCase(_))
 
           val UnwrapTuple(ines) = ine
-          (oute +: ines) foreach {
-            case Variable(_) => { }
+          ines foreach {
+            case v : Variable if currentFunDef.params.map{ _.toVariable } contains v =>
+            case LeonThis(_) =>
+            case other => ctx.reporter.fatalError(other.getPos, "Only i/o variables are allowed in i/o examples")
+          }
+          oute match {
+            case Variable(_) => // FIXME: this is not strict enough, we need the bound variable of enclosing Ensuring
             case other => ctx.reporter.fatalError(other.getPos, "Only i/o variables are allowed in i/o examples")
           }
           passes(ine, oute, rc)
