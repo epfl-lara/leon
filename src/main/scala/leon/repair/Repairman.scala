@@ -78,9 +78,13 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                   case NotValid(_, ces) if !ces.isEmpty =>
                     reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
     
-                  case _ =>
+                  case NotValid(_, _) =>
                     solutions ::= sol
-                    reporter.info("Solution was not trusted but verification passed!")
+                    reporter.warning("Solution is not trusted!")
+
+                  case Valid =>
+                    solutions ::= sol
+                    reporter.info("Solution was not trusted but post-validation passed!")
                 }
               } else {
                 reporter.info("Found trusted solution!")

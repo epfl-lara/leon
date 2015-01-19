@@ -403,7 +403,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   return Left(Stream(Solution(BooleanLiteral(true), Set(), sol, true)))
 
                 case None =>
-                  None
+                  if (useOptTimeout) {
+                    // Interpret timeout in CE search as "the candidate is valid"
+                    sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
+                    // Optimistic valid solution
+                    return Left(Stream(Solution(BooleanLiteral(true), Set(), sol, false)))
+                  } else {
+                    None
+                  }
               }
             } finally {
               solver.free
