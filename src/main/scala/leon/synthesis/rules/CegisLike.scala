@@ -132,14 +132,20 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         def allProgramsFor(cs: Set[Identifier]): Stream[Set[Identifier]] = {
           val streams = for (c <- cs.toSeq) yield {
-            val subs = for ((b, _, subcs) <- cTree(c) if isBActive(b);
-                            p <- allProgramsFor(subcs)) yield {
+            val subs = for ((b, _, subcs) <- cTree(c) if isBActive(b)) yield {
 
-              p + b
+              if (subcs.isEmpty) {
+                Seq(Set(b))
+              } else {
+                for (p <- allProgramsFor(subcs)) yield {
+                  p + b
+                }
+              }
             }
 
-            subs.toStream
+            subs.flatten.toStream
           }
+
           StreamUtils.cartesianProduct(streams).map { ls =>
             ls.foldLeft(Set[Identifier]())(_ ++ _)
           }
@@ -601,6 +607,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         bs           = bs ++ newBs
         bsOrdered    = bs.toSeq.sortBy(_.id)
 
+        //debugCExpr(cTree)
         updateCTree()
 
         unfoldedSomething
@@ -819,10 +826,13 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             val nInitial = prunedPrograms.size
             sctx.reporter.debug("#Programs: "+nInitial)
             //sctx.reporter.ifDebug{ printer =>
-            //  for (p <- prunedPrograms.take(10)) {
-            //    printer(" - "+ndProgram.getExpr(p))
+            //  val limit = 100
+
+            //  for (p <- prunedPrograms.take(limit)) {
+            //    val ps = p.toSeq.sortBy(_.id).mkString(", ")
+            //    printer(f" - $ps%-40s - "+ndProgram.getExpr(p))
             //  }
-            //  if(nPassing > 10) {
+            //  if(nInitial > limit) {
             //    printer(" - ...")
             //  }
             //}

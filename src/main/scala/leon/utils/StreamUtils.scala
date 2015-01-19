@@ -26,15 +26,16 @@ object StreamUtils {
     if(streams.exists(_.isEmpty))
       return Stream.empty
 
-    val indices = if(streams.forall(_.hasDefiniteSize)) {
-      val max = streams.map(_.size).max
-      diagCount(dimensions).take(max)
-    } else {
-      diagCount(dimensions)
-    }
+    val indices = diagCount(dimensions)
 
     var allReached : Boolean = false
-    val bounds : Array[Int] = Array.fill(dimensions)(Int.MaxValue)
+    val bounds : Array[Option[Int]] = for (s <- streams.toArray) yield {
+      if (s.hasDefiniteSize) {
+        Some(s.size)
+      } else {
+        None
+      }
+    }
 
     indices.takeWhile(_ => !allReached).flatMap { indexList =>
       var d = 0
@@ -42,7 +43,10 @@ object StreamUtils {
       var is = indexList
       var ss = vectorizedStreams.toList
 
-      if(indexList.sum >= bounds.max) {
+      if ((indexList zip bounds).forall {
+          case (i, Some(b)) => i >= b
+          case _ => false
+        }) {
         allReached = true
       }
 
@@ -50,7 +54,7 @@ object StreamUtils {
 
       while(continue && d < dimensions) {
         var i = is.head
-        if(i > bounds(d)) {
+        if(bounds(d).map(i > _).getOrElse(false)) {
           continue = false
         } else try {
           // TODO can we speed up by caching the random access into
@@ -62,7 +66,7 @@ object StreamUtils {
           d += 1
         } catch {
           case e : IndexOutOfBoundsException =>
-            bounds(d) = i - 1
+            bounds(d) = Some(i - 1)
             continue = false
         }
       }
