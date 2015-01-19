@@ -202,13 +202,15 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
 
-
       /**
        * Information about the final Program representing CEGIS solutions at
        * the current unfolding level
        */
-      private val outerSolution = new PartialSolution(hctx.search.g).solutionAround(hctx.currentNode).getOrElse {
-        sctx.reporter.fatalError("Unable to create outer solution")
+      private val outerSolution = {
+        val part = new PartialSolution(hctx.search.g)
+        e : Expr => part.solutionAround(hctx.currentNode)(e).getOrElse {
+          sctx.reporter.fatalError("Unable to create outer solution")
+        }
       }
 
       private val bArrayId = FreshIdentifier("bArray", true).setType(ArrayType(BooleanType))

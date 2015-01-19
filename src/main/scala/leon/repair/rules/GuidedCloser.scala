@@ -37,18 +37,17 @@ case object GuidedCloser extends NormalizingRule("Guided Closer") {
 
     val alts = guides.filter(isDeterministic).flatMap { e =>
       // Tentative solution using e
-      val wrappedE = if (p.xs.size == 1) Tuple(Seq(e)) else e
 
       val simp = Simplifiers.bestEffort(hctx.context, hctx.program) _
 
-      val vc = simp(and(p.pc, letTuple(p.xs, wrappedE, not(p.phi))))
+      val vc = simp(and(p.pc, letTuple(p.xs, e, not(p.phi))))
 
       val solver = hctx.sctx.newSolver.setTimeout(2000L)
 
       solver.assertCnstr(vc)
       val osol = solver.check match {
         case Some(false) =>
-          Some(Solution(BooleanLiteral(true), Set(), wrappedE, true))
+          Some(Solution(BooleanLiteral(true), Set(), e, true))
 
         case None =>
           hctx.reporter.ifDebug { printer =>

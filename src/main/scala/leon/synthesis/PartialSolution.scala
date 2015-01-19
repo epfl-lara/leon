@@ -20,7 +20,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
     Solution.choose(p)
   }
 
-  def solutionAround(n: Node): Option[Expr => Solution] = {
+  def solutionAround(n: Node): Expr => Option[Solution] = {
     def solveWith(optn: Option[Node], sol: Solution): Option[Solution] = optn match {
       case None =>
         Some(sol)
@@ -47,23 +47,8 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
       }
     }
 
-    val anchor = FreshIdentifier("anchor").setType(n.p.outType)
-    val s      = Solution(BooleanLiteral(true), Set(), anchor.toVariable)
+    e : Expr => solveWith(Some(n), Solution(BooleanLiteral(true), Set(), e))
 
-    solveWith(Some(n), s) map {
-      case s @ Solution(pre, defs, term) =>
-        (e: Expr) =>
-          Solution(replaceFromIDs(Map(anchor -> e), pre),
-                   defs.map { d => 
-                     d.fullBody = preMap({
-                       case Variable(`anchor`) => Some(e)
-                       case _                  => None
-                     })(d.fullBody)
-                     d
-                   },
-                   replaceFromIDs(Map(anchor -> e), term),
-                   s.isTrusted)
-    }
   }
 
 
