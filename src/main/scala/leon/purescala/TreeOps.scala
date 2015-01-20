@@ -2096,29 +2096,29 @@ object TreeOps {
 
   def isStringLiteral(e: Expr): Option[String] = e match {
     case CaseClass(cct, args) =>
-      val p = programOf(cct.classDef)
-      require(p.isDefined)
-      val lib = p.get.library
-
-      if (Some(cct.classDef) == lib.String) {
-        isListLiteral(args(0)) match {
-          case Some((_, chars)) =>
-            val str = chars.map {
-              case CharLiteral(c) => Some(c)
-              case _              => None
-            }
-
-            if (str.forall(_.isDefined)) {
-              Some(str.flatten.mkString)
-            } else {
+      programOf(cct.classDef) flatMap { p => 
+        val lib = p.library
+  
+        if (Some(cct.classDef) == lib.String) {
+          isListLiteral(args(0)) match {
+            case Some((_, chars)) =>
+              val str = chars.map {
+                case CharLiteral(c) => Some(c)
+                case _              => None
+              }
+  
+              if (str.forall(_.isDefined)) {
+                Some(str.flatten.mkString)
+              } else {
+                None
+              }
+            case _ =>
               None
-            }
-          case _ =>
-            None
-
+  
+          }
+        } else {
+          None
         }
-      } else {
-        None
       }
     case _ =>
       None
@@ -2126,21 +2126,17 @@ object TreeOps {
 
   def isListLiteral(e: Expr): Option[(TypeTree, List[Expr])] = e match {
     case CaseClass(cct, args) =>
-      val p = programOf(cct.classDef)
-      require(p.isDefined)
-      val lib = p.get.library
-
-      if (Some(cct.classDef) == lib.Nil) {
-        Some((cct.tps.head, Nil))
-      } else if (Some(cct.classDef) == lib.Cons) {
-        isListLiteral(args(1)).map { case (_, t) =>
-          (cct.tps.head, args(0) :: t)
-        }
-      } else {
-        None
-      }
-    case _ =>
-      None
+      programOf(cct.classDef) flatMap { p => 
+        val lib = p.library 
+        if (Some(cct.classDef) == lib.Nil) {
+          Some((cct.tps.head, Nil))
+        } else if (Some(cct.classDef) == lib.Cons) {
+          isListLiteral(args(1)).map { case (_, t) =>
+            (cct.tps.head, args(0) :: t)
+          } 
+        } else None
+      } 
+    case _ => None
   }
 
   /**
