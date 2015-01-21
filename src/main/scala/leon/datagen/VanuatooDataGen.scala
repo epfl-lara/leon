@@ -32,6 +32,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
   }).toMap
 
   def intConstructor(i: Int) = ints(i)
+  
+  def bigIntConstructor(i: Int) = bigInts(i)
 
   def boolConstructor(b: Boolean) = booleans(b)
 
@@ -120,7 +122,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       (cPattern(intConstructor(i), List()), true)
 
     case (i: Integer, IntegerType) =>
-      (cPattern(intConstructor(i), List()), true)
+      (cPattern(bigIntConstructor(i), List()), true)
 
     case (b: java.lang.Boolean, BooleanType) =>
       (cPattern(boolConstructor(b), List()), true)
