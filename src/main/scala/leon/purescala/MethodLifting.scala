@@ -9,6 +9,7 @@ import Trees._
 import Extractors._
 import TreeOps._
 import TypeTrees._
+import TypeTreeOps.instantiateType
 
 object MethodLifting extends TransformationPhase {
 
@@ -21,22 +22,29 @@ object MethodLifting extends TransformationPhase {
 
     program.classHierarchyRoots.filter(_.methods.nonEmpty) flatMap { cd =>
       cd.methods.map { fd =>
-        // We import class type params
-        val ctParams = cd.tparams
+        // We import class type params and freshen them
+        val ctParams = cd.tparams map { _.freshen }
+        val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
 
         val id = FreshIdentifier(cd.id.name+"$"+fd.id.name).setPos(fd.id)
         val recType = classDefToClassType(cd, ctParams.map(_.tp))
+        val retType = instantiateType(fd.returnType, tparamsMap)
+        val fdParams = fd.params map { vd =>
+          val newId = FreshIdentifier(vd.id.name).setType(instantiateType(vd.id.getType, tparamsMap))
+          ValDef(newId, newId.getType)
+        }
+        val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
 
         val receiver = FreshIdentifier("$this").setType(recType).setPos(cd.id)
 
-        val nfd = new FunDef(id, ctParams ++ fd.tparams, fd.returnType, ValDef(receiver, recType) +: fd.params, fd.defType)
+        val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver, recType) +: fdParams, fd.defType)
         nfd.copyContentFrom(fd)
         nfd.setPos(fd)
+        nfd.fullBody = instantiateType(nfd.fullBody, tparamsMap, paramsMap)
 
         mdToFds += fd -> nfd
       }
     }
-
 
     def translateMethod(fd: FunDef) = {
       val (nfd, rec) = mdToFds.get(fd) match {
