@@ -332,7 +332,7 @@ object ExpressionGrammars {
 
        if (!isRecursiveCall && isDet) {
          val free = fd.tparams.map(_.tp)
-         canBeSubtypeOf(fd.returnType, free, t) match {
+         canBeSubtypeOf(fd.returnType, free, t, rhsFixed = true) match {
            case Some(tpsMap) =>
              val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
 
