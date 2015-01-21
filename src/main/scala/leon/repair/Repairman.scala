@@ -376,7 +376,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     }
 
     val inputsToExample: Seq[Expr] => Example = { ins =>
-      evaluator.eval(FunctionInvocation(fd.typed(fd.tparams.map(_.tp)), ins)) match {
+      evaluator.eval(functionInvocation(fd, ins)) match {
         case EvaluationResults.Successful(res) =>
           new InOutExample(ins, List(res))
         case _ =>
