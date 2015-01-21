@@ -58,6 +58,9 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
           case e : java.lang.ExceptionInInitializerError =>
             EvaluationResults.RuntimeError(e.getException.getMessage) 
+          
+          case so : java.lang.StackOverflowError =>
+            EvaluationResults.RuntimeError("Stack overflow")
 
         }
       })
