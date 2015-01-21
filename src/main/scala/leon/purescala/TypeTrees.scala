@@ -60,7 +60,9 @@ object TypeTrees {
   case object UnitType extends TypeTree
   case object CharType extends TypeTree
 
-  case class TypeParameter(id: Identifier) extends TypeTree
+  case class TypeParameter(id: Identifier) extends TypeTree {
+    def freshen = TypeParameter(id.freshen)
+  }
 
   case class TupleType(val bases: Seq[TypeTree]) extends TypeTree {
     lazy val dimension: Int = bases.length

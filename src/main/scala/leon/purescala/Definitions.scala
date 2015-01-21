@@ -45,7 +45,10 @@ object Definitions {
      
   }
 
-  /** A ValDef declares a new identifier to be of a certain type. */
+  /** 
+   *  A ValDef declares a new identifier to be of a certain type.
+   *  When creating a new FunDef, its parameters should obey (id.getType == tp)
+   */
   case class ValDef(id: Identifier, tpe: TypeTree) extends Definition with Typed {
     self: Serializable =>
 
@@ -103,6 +106,7 @@ object Definitions {
 
   case class TypeParameterDef(tp: TypeParameter) extends Definition {
     def subDefinitions = Seq()
+    def freshen = TypeParameterDef(tp.freshen)
     val id = tp.id
     setSubDefOwners()
   }
@@ -460,6 +464,10 @@ object Definitions {
 
     def translated(e: Expr): Expr = instantiateType(e, typesMap, paramsMap)
 
+    /** 
+     *  Params will return ValDefs instantiated with the correct types
+     *  For such a ValDef(id,tp) it may hold that (id.getType != tp)  
+     */
     lazy val (params: Seq[ValDef], paramsMap: Map[Identifier, Identifier]) = {
       if (typesMap.isEmpty) {
         (fd.params, Map())
