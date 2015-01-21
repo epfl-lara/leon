@@ -10,7 +10,7 @@ import purescala.Extractors._
 
 case object UnusedInput extends NormalizingRule("UnusedInput") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val unused = p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.pc)
+    val unused = p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.pc) -- variablesOf(p.ws)
 
     if (!unused.isEmpty) {
       val sub = p.copy(as = p.as.filterNot(unused))
