@@ -4,7 +4,7 @@ package leon
 package synthesis
 package rules
 
-import leon.utils.StreamUtils
+import leon.utils.SeqUtils
 import solvers._
 import solvers.z3._
 
@@ -47,6 +47,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     val exSolverTo  = 2000L
     val cexSolverTo = 2000L
+
+    // Track non-deterministic programs up to 50'000 programs, or give up
+    val nProgramsLimit = 100000;
 
     val sctx = hctx.sctx
     val ctx  = sctx.context
@@ -124,29 +127,58 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        */
       def isBActive(b: Identifier) = !closedBs.contains(b)
 
+
+      def allProgramsCount(): Int = {
+        var nAltsCache = Map[Identifier, Int]()
+
+        def nAltsFor(c: Identifier): Int = {
+          if (!(nAltsCache contains c)) {
+            val subs = for ((b, _, subcs) <- cTree(c) if isBActive(b)) yield {
+              if (subcs.isEmpty) {
+                1
+              } else {
+                subcs.toSeq.map(nAltsFor).product
+              }
+            }
+
+            nAltsCache += c -> subs.sum
+          }
+          nAltsCache(c)
+        }
+
+        p.xs.map(nAltsFor).product
+      }
+
       /**
        * Returns all possible assignments to Bs in order to enumerate all possible programs
        */
       def allPrograms(): Traversable[Set[Identifier]] = {
-        import StreamUtils._
+        import SeqUtils._
 
-        def allProgramsFor(cs: Set[Identifier]): Stream[Set[Identifier]] = {
-          val streams = for (c <- cs.toSeq) yield {
-            val subs = for ((b, _, subcs) <- cTree(c) if isBActive(b)) yield {
+        if (allProgramsCount() > nProgramsLimit) {
+           return Seq()
+        }
 
-              if (subcs.isEmpty) {
-                Seq(Set(b))
-              } else {
-                for (p <- allProgramsFor(subcs)) yield {
-                  p + b
+        var cache = Map[Identifier, Seq[Set[Identifier]]]()
+
+        def allProgramsFor(cs: Set[Identifier]): Seq[Set[Identifier]] = {
+          val seqs = for (c <- cs.toSeq) yield {
+            if (!(cache contains c)) {
+              val subs = for ((b, _, subcs) <- cTree(c) if isBActive(b)) yield {
+                if (subcs.isEmpty) {
+                  Seq(Set(b))
+                } else {
+                  for (p <- allProgramsFor(subcs)) yield {
+                    p + b
+                  }
                 }
               }
+              cache += c -> subs.flatten
             }
-
-            subs.flatten.toStream
+            cache(c)
           }
 
-          StreamUtils.cartesianProduct(streams).map { ls =>
+          SeqUtils.cartesianProduct(seqs).map { ls =>
             ls.foldLeft(Set[Identifier]())(_ ++ _)
           }
         }

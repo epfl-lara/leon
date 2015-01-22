@@ -12,6 +12,10 @@ import Extractors._
 import Constructors._
 
 object TypeTreeOps {
+  def typeDepth(t: TypeTree): Int = t match {
+    case NAryType(tps, builder) => 1+tps.foldLeft(0) { case (d, t) => d max typeDepth(t) }
+  }
+
   def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
     case tp: TypeParameter => Set(tp)
     case _ =>

@@ -34,6 +34,13 @@ abstract class ExpressionGrammar[T <% Typed] {
 
   def computeProductions(t: T): Seq[Gen]
 
+  def filter(f: Gen => Boolean) = {
+    val that = this;
+    new ExpressionGrammar[T] {
+      def computeProductions(t: T) = that.computeProductions(t).filter(f)
+    }
+  }
+
   final def ||(that: ExpressionGrammar[T]): ExpressionGrammar[T] = {
     ExpressionGrammars.Or(Seq(this, that))
   }
@@ -186,6 +193,7 @@ object ExpressionGrammars {
     
     val normalGrammar = BoundedGrammar(EmbeddedGrammar(
         BaseGrammar ||
+        OneOf(terminals.toSeq) ||
         FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
         SafeRecCalls(sctx.program, p.ws, p.pc),
       { (t: TypeTree)      => Label(t, "B", None)},
@@ -429,5 +437,9 @@ object ExpressionGrammars {
 
   def default(sctx: SynthesisContext, p: Problem): ExpressionGrammar[TypeTree] = {
     default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, sctx.settings.functionsToIgnore,  p.ws, p.pc)
+  }
+
+  def depthBound[T <% Typed](g: ExpressionGrammar[T], b: Int) = {
+    g.filter(g => g.subTrees.forall(t => typeDepth(t.getType) <= b))
   }
 }
