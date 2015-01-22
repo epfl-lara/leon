@@ -302,6 +302,14 @@ object TypeTreeOps {
           case Error(tpe, desc) =>
             Error(tpeSub(tpe), desc).copiedFrom(e)
           
+          case g @ GenericValue(tpar, id) =>
+            tpeSub(tpar) match {
+              case newTpar : TypeParameter => 
+                GenericValue(newTpar, id).copiedFrom(g)
+              case other => // FIXME any better ideas?
+                sys.error(s"Tried to substitute $tpar with $other within GenericValue $g")
+            }
+          
           case ens @ Ensuring(body, id, pred) =>
             val newId = freshId(id, tpeSub(id.getType))
             Ensuring(srec(body), newId, rec(idsMap + (id -> newId))(pred)).copiedFrom(ens)
