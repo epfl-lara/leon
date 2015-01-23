@@ -46,7 +46,12 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         }
       }
 
-      ccSubsts.flatten
+      // Direct equivalences:
+      val directEqs = allClauses.collect {
+        case Equals(v1 @ Variable(a1), v2 @ Variable(a2)) if a1 != a2 => (v2, v1)
+      }
+
+      ccSubsts.flatten ++ directEqs
     }
 
 
@@ -78,7 +83,9 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         _:Expr
       )
       
-      List(decomp(List(sub), forwardMap(subst), "Equivalent Inputs"))
+      val substString = substs.map { case (f, t) => f+" -> "+t }
+
+      List(decomp(List(sub), forwardMap(subst), "Equivalent Inputs ("+substString.mkString(", ")+")"))
     } else {
       Nil
     }
