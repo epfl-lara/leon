@@ -501,8 +501,8 @@ trait AbstractZ3Solver
       case me @ MatchExpr(s, cs) =>
         rec(matchToIfThenElse(me))
       
-      case Gives(scrut, tests) =>
-        rec(matchToIfThenElse(matchExpr(scrut, tests)))
+      case g @ Gives(scrut, tests) =>
+        rec(g.asMatch)
 
       case tu @ Tuple(args) =>
         typeToSort(tu.getType) // Make sure we generate sort & meta info

@@ -853,10 +853,10 @@ object TreeOps {
     case LiteralPattern(Some(id), lit) => Map(id -> in)
   }
   
-  private def convertMatchToIfThenElse(expr: Expr) : Expr = {
+  private def convertMatchToIfThenElse(expr: Expr): Expr = {
 
-    def rewritePM(e: Expr) : Option[Expr] = e match {
-      case m @ MatchExpr(scrut, cases) => {
+    def rewritePM(e: Expr): Option[Expr] = e match {
+      case m @ MatchExpr(scrut, cases) =>
         // println("Rewriting the following PM: " + e)
 
         val condsAndRhs = for(cse <- cases) yield {
@@ -879,11 +879,19 @@ object TreeOps {
         })
 
         Some(bigIte)
-      }
+
+      case p: Passes =>
+        // This introduces a MatchExpr
+        Some(p.asConstraint)
+
+      case g: Gives =>
+        // This introduces a MatchExpr
+        Some(g.asMatch)
+
       case _ => None
     }
 
-    postMap(rewritePM)(expr)
+    preMap(rewritePM)(expr)
   }
 
   def matchCasePathConditions(m: MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = {
@@ -1379,14 +1387,6 @@ object TreeOps {
 
   def collectChooses(e: Expr): List[Choose] = {
     new ChooseCollectorWithPaths().traverse(e).map(_._1).toList
-  }
-
-  def containsChoose(e: Expr): Boolean = {
-    preTraversal{
-      case Choose(_, _, None) => return true
-      case _ =>
-    }(e)
-    false
   }
 
   def isDeterministic(e: Expr): Boolean = {

@@ -42,9 +42,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-
-    def debugPrinter(t: Tree) = ScalaPrinter(t, PrinterOptions(printUniqueIds = true))
-
     val exSolverTo  = 2000L
     val cexSolverTo = 2000L
 
@@ -59,7 +56,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val useOptTimeout         = sctx.settings.cegisUseOptTimeout
     val useVanuatoo           = sctx.settings.cegisUseVanuatoo
     val useCETests            = sctx.settings.cegisUseCETests
-    val useCEPruning          = sctx.settings.cegisUseCEPruning
 
     // Limits the number of programs CEGIS will specifically validate individually
     val validateUpTo          = 5
@@ -279,12 +275,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         val affected = prog0.callGraph.transitiveCallers(chFd).toSet ++ Set(chFd, cTreeFd, phiFd) ++ fullSol.defs
 
-        //println("Affected:")
-        //for (fd <- affected) {
-        //  println(" - "+debugPrinter(fd.id))
-        //}
-
-
         cTreeFd.body = None
         phiFd.body   = Some(
           letTuple(p.xs,
@@ -319,13 +309,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           case _ =>
             None
         })
-        //println("FunDef Map:")
-        //for ((f, t) <- fdMap2) {
-        //  println("- "+debugPrinter(f.id)+" -> "+debugPrinter(t.id))
-        //}
-
-        //println("Program:")
-        //println(debugPrinter(prog2))
 
         programCTree = prog2
         cTreeFd      = fdMap2(cTreeFd)
@@ -415,9 +398,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
             hctx.ci.ch.impl = Some(fullSol.guardedTerm)
 
-            //println("Validating Solution "+sol)
-            //println(debugPrinter(prog))
-
             val cnstr = and(p.pc, letTuple(p.xs, sol, Not(p.phi)))
             //println("Solving for: "+cnstr)
 
@@ -428,6 +408,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 case Some(true) =>
                   excludeProgram(bs)
                   val model = solver.getModel
+                  //println("Found counter example: ")
+                  //for ((s, v) <- model) {
+                  //  println(" "+s.asString+" -> "+v.asString)
+                  //}
+
+                  //val evaluator  = new DefaultEvaluator(ctx, prog)
+                  //println(evaluator.eval(cnstr, model))
+
                   Some(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
 
                 case Some(false) =>
@@ -830,20 +818,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           baseExampleInputs.iterator ++ cachedInputIterator
         }
 
-        // Keep track of collected cores to filter programs to test
-        var collectedCores = Set[Set[Identifier]]()
-
-        //val initExClause  = and(pc, p.phi,      Variable(initGuard))
-        //val initCExClause = and(pc, not(p.phi), Variable(initGuard))
-
-        //// solver1 is used for the initial SAT queries
-        //var solver1 = sctx.newSolver.setTimeout(exSolverTo)
-        //solver1.assertCnstr(initExClause)
-
-        //// solver2 is used for validating a candidate program, or finding new inputs
-        //var solver2 = sctx.newSolver.setTimeout(cexSolverTo)
-        //solver2.assertCnstr(initCExClause)
-
         val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
         try {
@@ -858,11 +832,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             }
 
             // Compute all programs that have not been excluded yet
-            var prunedPrograms: Set[Set[Identifier]] = if (useCEPruning) {
-                ndProgram.allPrograms.filterNot(p => collectedCores.exists(c => c.subsetOf(p))).toSet
-              } else {
-                Set()
-              }
+            var prunedPrograms: Set[Set[Identifier]] = ndProgram.allPrograms.toSet
 
             val nInitial = prunedPrograms.size
             sctx.reporter.debug("#Programs: "+nInitial)
@@ -881,7 +851,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             var wrongPrograms = Set[Set[Identifier]]();
 
             // We further filter the set of working programs to remove those that fail on known examples
-            if (useCEPruning && hasInputExamples()) {
+            if (hasInputExamples()) {
               for (bs <- prunedPrograms if !interruptManager.isInterrupted()) {
                 var valid = true
                 val examples = allInputExamples()
@@ -967,10 +937,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                         baseExampleInputs += inputsCE
 
                         // Retest whether the newly found C-E invalidates all programs
-                        if (useCEPruning) {
-                          if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(inputsCE))) {
-                            skipCESearch = true
-                          }
+                        if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(inputsCE))) {
+                          skipCESearch = true
                         }
 
                       case Some(None) =>

@@ -63,7 +63,7 @@ object ConvertHoles extends LeonPhase[Program, Program] {
 
         val withoutHoles = preMap {
           case p : Gives if treatGives =>
-            Some(p.asIncompleteMatch)
+            Some(p.asMatchWithHole)
           case h : Hole =>
             val (expr, ids) = toExpr(h)
 

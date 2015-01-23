@@ -223,7 +223,9 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           val rb = rec(pathVar, replace(mapping.toMap, b))
           rb
 
-        case m : MatchExpr => sys.error("MatchExpr's should have been eliminated.")
+        case m : MatchExpr => sys.error("'MatchExpr's should have been eliminated before generating templates.")
+        case p : Passes    => sys.error("'Passes's should have been eliminated before generating templates.")
+        case g : Gives     => sys.error("'Gives' should have been eliminated before generating templates.")
 
         case i @ Implies(lhs, rhs) =>
           implies(rec(pathVar, lhs), rec(pathVar, rhs))
