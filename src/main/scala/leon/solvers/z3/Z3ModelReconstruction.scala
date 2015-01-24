@@ -37,7 +37,7 @@ trait Z3ModelReconstruction {
 
     def completeID(id : Identifier) : Unit = {
       asMap = asMap + ((id -> simplestValue(id.getType)))
-      reporter.info("Completing variable '" + id + "' to simplest value")
+      reporter.debug("Completing variable '" + id + "' to simplest value")
     }
 
     for(id <- ids) {
