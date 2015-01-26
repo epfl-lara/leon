@@ -1247,7 +1247,7 @@ object TreeOps {
 
     def walk(e: Expr, path: Seq[Expr]): Option[Expr] = None
 
-    override final def rec(e: Expr, path: Seq[Expr]) = {
+    override def rec(e: Expr, path: Seq[Expr]) = {
       collect(e, path).foreach { results :+= _ }
       walk(e, path) match {
         case Some(r) => r
