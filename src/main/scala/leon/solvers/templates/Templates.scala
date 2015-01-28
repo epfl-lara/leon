@@ -229,6 +229,11 @@ class FunctionTemplate[T] private(
 
   private lazy val str : String = stringRepr()
   override def toString : String = str
+
+  override def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
+    if (!isRealFunDef) lambdaManager.registerFree(tfd.params.map(_.tpe) zip args)
+    super.instantiate(aVar, args)
+  }
 }
 
 object LambdaTemplate {

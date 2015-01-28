@@ -31,16 +31,29 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     applicationsStack = map :: applicationsStack.tail
   }
 
+  private type FreeMap = Map[TypeTree, Set[T]]
+  private var freeLambdasStack : List[FreeMap] = List(Map.empty.withDefaultValue(Set.empty))
+  private def freeLambdas : FreeMap = freeLambdasStack.head
+  private def freeLambdas_=(map: FreeMap) : Unit = {
+    freeLambdasStack = map :: freeLambdasStack.tail
+  }
+
   def push(): Unit = {
     byIDStack = byID :: byIDStack
     byTypeStack = byType :: byTypeStack
     applicationsStack = applications :: applicationsStack
+    freeLambdasStack = freeLambdas :: freeLambdasStack
   }
 
   def pop(lvl: Int): Unit = {
     byIDStack = byIDStack.drop(lvl)
     byTypeStack = byTypeStack.drop(lvl)
     applicationsStack = applicationsStack.drop(lvl)
+    freeLambdasStack = freeLambdasStack.drop(lvl)
+  }
+
+  def registerFree(lambdas: Seq[(TypeTree, T)]): Unit = {
+    lambdas.foreach(p => freeLambdas += p._1 -> (freeLambdas(p._1) + p._2))
   }
 
   def instantiate(apps: Map[T, Set[App[T]]], lambdas: Map[T, LambdaTemplate[T]]) : (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
@@ -57,6 +70,9 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     }
 
     for (lambda @ (idT, template) <- lambdas) {
+      // make sure concrete lambdas can't be equal to free lambdas
+      clauses ++= freeLambdas(template.tpe).map(pIdT => encoder.mkNot(encoder.mkEquals(pIdT, idT)))
+
       byID += idT -> template
       byType += template.tpe -> (byType(template.tpe) + (idT -> template))
 
