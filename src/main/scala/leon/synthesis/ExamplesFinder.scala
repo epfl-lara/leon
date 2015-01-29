@@ -247,7 +247,7 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
       }
 
     case _ =>
-      reporter.warning("Unnexpected pattern in test-ids extraction: "+e)
+      reporter.warning("Unexpected pattern in test-ids extraction: "+e)
       Nil
   }
 

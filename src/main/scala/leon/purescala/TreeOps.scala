@@ -1774,7 +1774,7 @@ object TreeOps {
               }
 
             case _ =>
-              sys.error("Unnexpected case: "+p)
+              sys.error("Unexpected case: "+p)
           }
 
           subChecks.forall { case (ccd, subs) =>
