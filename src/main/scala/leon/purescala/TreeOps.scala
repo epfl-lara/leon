@@ -1012,6 +1012,7 @@ object TreeOps {
     case Int32Type                  => IntLiteral(0)
     case CharType                   => CharLiteral('a')
     case BooleanType                => BooleanLiteral(false)
+    case UnitType                   => UnitLiteral()
     case SetType(baseType)          => FiniteSet(Set()).setType(tpe)
     case MapType(fromType, toType)  => FiniteMap(Seq()).setType(tpe)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
