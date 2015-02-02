@@ -37,9 +37,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     case class NotValid(passing : List[Example], failing : List[Example]) extends VerificationResult
   }
 
+  var result = RepairResult(ctx.files.head, 0);
+
   import VRes._
   
-  def repair() = {
+  def repair(): RepairResult = {
     reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
     val t1 = new Timer().start
     discoverTests match {
@@ -49,7 +51,9 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         reporter.info(f" - Passing: ${passingTests.size}%3d")
         reporter.info(f" - Failing: ${failingTests.size}%3d")
     
-        reporter.info("Finished in "+t1.stop+"ms")
+        val initTime = t1.stop
+        result = result.copy(initTime = Some(initTime))
+        reporter.info("Finished in "+initTime+"ms")
     
     
         reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
@@ -59,12 +63,15 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         val p     = synth.problem
     
         var solutions = List[Solution]()
+        val focusTime = t2.stop
+        result = result.copy(focusTime = Some(focusTime))
     
-        reporter.info("Finished in "+t2.stop+"ms")
+        reporter.info("Finished in "+focusTime+"ms")
         reporter.info(ASCIIHelpers.title("3. Synthesizing"))
         reporter.info(p)
     
     
+        val t3    = new Timer().start
         synth.synthesize() match {
           case (search, sols) =>
             for (sol <- sols) {
@@ -81,14 +88,17 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                   case NotValid(_, _) =>
                     solutions ::= sol
                     reporter.warning("Solution is not trusted!")
+                    result = result.copy(repairTrusted = Some(false))
 
                   case Valid =>
                     solutions ::= sol
                     reporter.info("Solution was not trusted but post-validation passed!")
+                    result = result.copy(repairTrusted = Some(true))
                 }
               } else {
                 reporter.info("Found trusted solution!")
                 solutions ::= sol
+                result = result.copy(repairTrusted = Some(true))
               }
             }
     
@@ -100,6 +110,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
             if (solutions.isEmpty) {
               reporter.error(ASCIIHelpers.title("Failed to repair!"))
             } else {
+              result = result.copy(repairTime = Some(t3.stop))
+
               reporter.info(ASCIIHelpers.title("Repair successful:"))
               for ((sol, i) <- solutions.reverse.zipWithIndex) {
                 reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
@@ -124,6 +136,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
             }
           }
     }
+
+    result
   }
 
   def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
@@ -133,8 +147,14 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     val (newBody, replacedExpr) = focusRepair(program, fd, passingTests, failingTests)
     fd.body = Some(newBody)
-    reporter.info("Original body size: "+formulaSize(body))
-    reporter.info("Focused expr size : "+formulaSize(replacedExpr))
+
+    val size      = formulaSize(body)
+    val focusSize = formulaSize(replacedExpr)
+
+    reporter.info("Original body size: "+size)
+    reporter.info("Focused expr size : "+focusSize)
+
+    result = result.copy(name = fd.id.name, size = size, focusSize = Some(focusSize))
 
     val guide = Guide(replacedExpr)
 

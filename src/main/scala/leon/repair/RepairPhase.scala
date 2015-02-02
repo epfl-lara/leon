@@ -11,6 +11,8 @@ import purescala.TypeTrees._
 import purescala.Constructors._
 import purescala.DefOps._
 
+import java.io.FileWriter
+
 object RepairPhase extends LeonPhase[Program, Program] {
   val name = "Repair"
   val description = "Repairing"
@@ -47,7 +49,13 @@ object RepairPhase extends LeonPhase[Program, Program] {
     if (toRepair.isEmpty) reporter.warning("No functions found with the given names")
     
     for (fd <- toRepair) {
-      new Repairman(ctx, program, fd, verifTimeoutMs).repair()
+      val res = new Repairman(ctx, program, fd, verifTimeoutMs).repair()
+      val fw = new FileWriter("repairs.last", true)
+      try { 
+        fw.write(res.toLine)
+      } finally {
+        fw.close
+      }
     }
 
     program
