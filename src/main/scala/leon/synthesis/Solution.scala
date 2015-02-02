@@ -84,6 +84,11 @@ object Solution {
     new Solution(BooleanLiteral(true), Set(), simplestValue(t))
   }
 
+  def failed(implicit p: Problem): Solution = {
+    val tpe = tupleTypeWrap(p.xs.map(_.getType))
+    Solution(BooleanLiteral(false), Set(), Error(tpe, "Rule failed!"))
+  }
+
   def UNSAT(implicit p: Problem): Solution = {
     val tpe = tupleTypeWrap(p.xs.map(_.getType))
     Solution(BooleanLiteral(false), Set(), Error(tpe, p.phi+" is UNSAT!"))
