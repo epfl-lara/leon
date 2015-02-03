@@ -13,7 +13,7 @@ import Definitions._
 import utils.Bijection
 
 import _root_.smtlib.common._
-import _root_.smtlib.printer.{PrettyPrinter => SMTPrinter}
+import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
 import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, _}
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
@@ -465,8 +465,8 @@ trait SMTLIBTarget {
           case (_: BVPlus) => FixedSizeBitVectors.Add(toSMT(a), toSMT(b))
           case (_: BVMinus) => FixedSizeBitVectors.Sub(toSMT(a), toSMT(b))
           case (_: BVTimes) => FixedSizeBitVectors.Mul(toSMT(a), toSMT(b))
-          case (_: BVDivision) => FixedSizeBitVectors.UDiv(toSMT(a), toSMT(b))
-          case (_: BVModulo) => FixedSizeBitVectors.URem(toSMT(a), toSMT(b))
+          case (_: BVDivision) => FixedSizeBitVectors.SDiv(toSMT(a), toSMT(b))
+          case (_: BVModulo) => FixedSizeBitVectors.SRem(toSMT(a), toSMT(b))
           case _ => reporter.fatalError("Unhandled binary "+e)
         }
 

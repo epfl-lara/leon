@@ -80,6 +80,6 @@ object Leon extends Build {
     def project(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
     lazy val bonsai      = project("git://github.com/colder/bonsai.git",     "8f485605785bda98ac61885b0c8036133783290a")
-    lazy val scalaSmtLib = project("git://github.com/regb/scala-smtlib.git", "1b85768a2a5384170a6d90f4aea56ca7330939fd")
+    lazy val scalaSmtLib = project("git://github.com/regb/scala-smtlib.git", "c45cb5e93843dc0f0adeaba840668c906b18a86f")
   }
 }
