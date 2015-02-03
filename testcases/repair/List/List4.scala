@@ -82,9 +82,9 @@ sealed abstract class List0[T] {
     case (Cons0(h, t), i) =>
       t.drop(i-1) //FIXME missing if-split
   }} ensuring { res => ((this, i), res) passes { 
-    case (l@Cons0(_, Nil0()), 42) => l
-    case (Cons0(a, t), 0) => t
-    case (Cons0(a, Cons0(b, Nil0())), 1) => Cons0(a, Nil0())
+    case (Cons0(_, Nil0()), 42) => Nil0()
+    case (l@Cons0(_, _), 0) => l
+    case (Cons0(a, Cons0(b, Nil0())), 1) => Cons0(b, Nil0())
   }}
 
   def slice(from: Int, to: Int): List0[T] = {
