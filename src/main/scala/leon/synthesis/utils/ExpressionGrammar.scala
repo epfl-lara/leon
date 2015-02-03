@@ -95,10 +95,6 @@ object ExpressionGrammars {
           Generator(List(Int32Type, Int32Type), { case Seq(a,b) => Times(a, b) })
         )
 
-      case tp@TypeParameter(_) =>
-        for (ind <- (1 to 3).toList) yield
-          Generator[TypeTree, Expr](Nil, { _ => GenericValue(tp, ind) } )
-
       case TupleType(stps) =>
         List(Generator(stps, { sub => Tuple(sub) }))
 
