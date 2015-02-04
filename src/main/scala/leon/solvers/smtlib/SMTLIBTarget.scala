@@ -13,7 +13,7 @@ import Definitions._
 import utils.Bijection
 
 import _root_.smtlib.common._
-import _root_.smtlib.printer.{PrettyPrinter => SMTPrinter}
+import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
 import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, _}
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
@@ -323,7 +323,7 @@ trait SMTLIBTarget {
         declareVariable(FreshIdentifier("Unit").setType(UnitType))
 
       case IntLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
-      case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt).get)
+      case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v) => Core.BoolConst(v)
       case StringLiteral(s) => SString(s)
       case Let(b,d,e) =>
@@ -558,7 +558,7 @@ trait SMTLIBTarget {
     }
 
     interpreter.eval(cmd) match {
-      case ErrorResponse(msg) =>
+      case err@ErrorResponse(msg) if !interrupted =>
         reporter.fatalError("Unnexpected error from smt-"+targetName+" solver: "+msg)
       case res => res
     }

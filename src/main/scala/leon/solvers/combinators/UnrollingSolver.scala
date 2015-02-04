@@ -14,7 +14,7 @@ import solvers.templates._
 import utils.Interruptible
 import evaluators._
 
-class UnrollingSolver(val context: LeonContext, program: Program, underlying: IncrementalSolver) extends Solver with Interruptible {
+class UnrollingSolver(val context: LeonContext, program: Program, underlying: IncrementalSolver with Interruptible) extends Solver with Interruptible {
 
   val (feelingLucky, useCodeGen) = locally {
     var lucky            = false
@@ -255,9 +255,11 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
 
   override def interrupt(): Unit = {
     interrupted = true
+    solver.interrupt()
   }
 
   override def recoverInterrupt(): Unit = {
+    solver.recoverInterrupt()
     interrupted = false
   }
 }
