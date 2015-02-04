@@ -85,14 +85,15 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
-      case a @ FiniteArray(elems) =>
+      case a @ FiniteArray(elems, oDef, size) =>
         val tpe @ ArrayType(base) = normalizeType(a.getType)
         declareSort(tpe)
 
+        val default: Expr = oDef.getOrElse(simplestValue(base))
         
-        var ar: Term = ArrayConst(declareSort(RawArrayType(Int32Type, base)), toSMT(simplestValue(base)))
+        var ar: Term = ArrayConst(declareSort(RawArrayType(Int32Type, base)), toSMT(default))
 
-        for ((e, i) <- elems.zipWithIndex) {
+        for ((i, e) <- elems) {
           ar = ArraysEx.Store(ar, toSMT(IntLiteral(i)), toSMT(e))
         }
 

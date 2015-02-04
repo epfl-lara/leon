@@ -430,8 +430,8 @@ object Trees {
     val getType = BooleanType
   }
 
-  /* Array operations */
 
+  /* Array operations */
   case class ArraySelect(array: Expr, index: Expr) extends Expr {
     def getType = array.getType match {
       case ArrayType(base) =>
@@ -454,7 +454,15 @@ object Trees {
     val getType = Int32Type
   }
 
-  case class FiniteArray(exprs: Seq[Expr]) extends Expr with MutableTyped
+  case class FiniteArray(elems: Map[Int, Expr], default: Option[Expr], length: Expr) extends Expr with MutableTyped
+
+  object FiniteArray {
+    def apply(elems: Seq[Expr]): FiniteArray = {
+      val res = FiniteArray(elems.zipWithIndex.map(_.swap).toMap, None, IntLiteral(elems.size))
+      elems.headOption.foreach(e => res.setType(ArrayType(e.getType)))
+      res
+    }
+  }
 
   /* Special trees */
 

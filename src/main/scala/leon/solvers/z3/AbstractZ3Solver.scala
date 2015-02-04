@@ -633,14 +633,6 @@ trait AbstractZ3Solver
         case MapType(ft, tt) => z3.mkDistinct(z3.mkSelect(rec(m), rec(k)), mapRangeNoneConstructors(tt)())
         case errorType => scala.sys.error("Unexpected type for map: " + (ex, errorType))
       }
-      case fill @ ArrayFill(length, default) =>
-        val at @ ArrayType(base) = fill.getType
-        typeToSort(at)
-        val meta = arrayMetaDecls(normalizeType(at))
-
-        val ar = z3.mkConstArray(typeToSort(Int32Type), rec(default))
-        val res = meta.cons(ar, rec(length))
-        res
 
       case ArraySelect(a, index) =>
         typeToSort(a.getType)
@@ -665,13 +657,17 @@ trait AbstractZ3Solver
         val res = meta.length(ar)
         res
 
-      case arr @ FiniteArray(exprs) => {
-        val ArrayType(innerType) = arr.getType
-        val arrayType = arr.getType
-        val a: Expr = ArrayFill(IntLiteral(exprs.length), simplestValue(innerType))
-        val u = exprs.zipWithIndex.foldLeft(a)((array, expI) => ArrayUpdated(array, IntLiteral(expI._2), expI._1))
-        rec(u)
-      }
+      case arr @ FiniteArray(elems, oDefault, length) =>
+        val at @ ArrayType(base) = arr.getType
+        typeToSort(at)
+        val meta = arrayMetaDecls(normalizeType(at))
+
+        val default = oDefault.getOrElse(simplestValue(base))
+
+        val ar = z3.mkConstArray(typeToSort(base), rec(default))
+        val u = elems.foldLeft(ar)((array, el) => 
+          z3.mkStore(array, rec(IntLiteral(el._1)), rec(el._2)))
+        meta.cons(u, rec(length))
 
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))
@@ -739,9 +735,7 @@ trait AbstractZ3Solver
                       (index -> rec(v))
                     }
 
-                    FiniteArray(for (i <- 1 to length) yield {
-                      valuesMap.getOrElse(i, elseValue)
-                    }).setType(at)
+                    FiniteArray(valuesMap, Some(elseValue), IntLiteral(length)).setType(at)
                 }
 
               case LeonType(tpe @ MapType(kt, vt)) =>

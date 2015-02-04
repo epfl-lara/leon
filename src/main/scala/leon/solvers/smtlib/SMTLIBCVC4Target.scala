@@ -98,13 +98,13 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
-    case a @ FiniteArray(elems) =>
+    case a @ FiniteArray(elems, default, size) =>
       val tpe @ ArrayType(base) = normalizeType(a.getType)
       declareSort(tpe)
 
       var ar: Term = declareVariable(FreshIdentifier("arrayconst").setType(RawArrayType(Int32Type, base)))
 
-      for ((e, i) <- elems.zipWithIndex) {
+      for ((i, e) <- elems) {
         ar = FunctionApplication(SSymbol("store"), Seq(ar, toSMT(IntLiteral(i)), toSMT(e)))
       }
 

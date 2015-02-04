@@ -65,7 +65,6 @@ object Extractors {
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
-      case ArrayFill(t1, t2) => Some((t1, t2, ArrayFill))
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, b)))
       case LetTuple(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => LetTuple(binders, e, b)))
@@ -120,10 +119,24 @@ object Extractors {
       }
       case FiniteMultiset(args) => Some((args, FiniteMultiset))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
-      case FiniteArray(args) => Some((args, { (as: Seq[Expr]) => 
-          val tpe = leastUpperBound(as.map(_.getType)).map(ArrayType(_)).getOrElse(expr.getType)
-          FiniteArray(as).setType(tpe)
+      case FiniteArray(elems, default, length) => {
+        val fixedElems: Seq[(Int, Expr)] = elems.toSeq
+        val all: Seq[Expr] = fixedElems.map(_._2) ++ default ++ Seq(length)
+        Some((all, (as: Seq[Expr]) => {
+          val tpe = leastUpperBound(as.map(_.getType))
+                                  .map(ArrayType(_))
+                                  .getOrElse(expr.getType)
+          val (newElems, newDefault, newSize) = default match {
+            case None => (as.init, None, as.last)
+            case Some(_) => (as.init.init, Some(as.init.last), as.last)
+          }
+          FiniteArray(
+            fixedElems.zip(newElems).map(p => (p._1._1, p._2)).toMap,
+            newDefault,
+            newSize).setType(tpe)
         }))
+      }
+
       case Tuple(args) => Some((args, Tuple))
       case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
       case MatchLike(scrut, cases, builder) => Some((

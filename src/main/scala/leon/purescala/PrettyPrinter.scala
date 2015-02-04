@@ -13,7 +13,7 @@ import utils._
 
 import java.lang.StringBuffer
 import PrinterHelpers._
-import TreeOps.{isStringLiteral, isListLiteral}
+import TreeOps.{isStringLiteral, isListLiteral, simplestValue}
 import TypeTreeOps.leastUpperBound
 
 import synthesis.Witnesses._
@@ -374,10 +374,36 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case MapGet(m,k)               => p"$m($k)"
       case MapIsDefinedAt(m,k)       => p"$m.isDefinedAt($k)"
       case ArrayLength(a)            => p"$a.length"
-      case ArrayFill(size, v)        => p"Array.fill($size)($v)"
       case ArraySelect(a, i)         => p"$a($i)"
       case ArrayUpdated(a, i, v)     => p"$a.updated($i, $v)"
-      case FiniteArray(exprs)        => p"Array($exprs)"
+      case a@FiniteArray(es, d, s)   => {
+        val ArrayType(underlying) = a.getType
+        val default = d.getOrElse(simplestValue(underlying))
+        def ppBigArray(): Unit = {
+          if(es.isEmpty) {
+            p"Array($default, $default, $default, ..., $default) (of size $s)"
+          } else {
+            p"Array(_) (of size $s)"
+          }
+        }
+        s match {
+          case IntLiteral(length) => {
+            if(es.size == length) {
+              val orderedElements = es.toSeq.sortWith((e1, e2) => e1._1 < e2._1)
+              p"Array($orderedElements)"
+            } else if(length < 10) {
+              val elems = (0 until length).map(i => 
+                es.find(el => el._1 == i).map(el => el._2).getOrElse(d.get)
+              )
+              p"Array($elems)"
+            } else {
+              ppBigArray()
+            }
+          }
+          case _ => ppBigArray()
+        }
+      }
+
       case Not(expr)                 => p"\u00AC$expr"
       case ValDef(id, tpe)           => p"${typed(id)}"
       case This(_)                   => p"this"

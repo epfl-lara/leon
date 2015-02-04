@@ -49,7 +49,33 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case SetDifference(l,r)   => p"$l -- $r"
       case SetIntersection(l,r) => p"$l & $r"
       case SetCardinality(s)    => p"$s.size"
-      case FiniteArray(exprs)   => p"Array($exprs)"
+
+      case a@FiniteArray(elems, oDef, size) => {
+        import TreeOps._
+        val ArrayType(underlying) = a.getType
+        val default = oDef.getOrElse(simplestValue(underlying))
+        size match {
+          case IntLiteral(s) => {
+            val explicitArray = Array.fill(s)(default)
+            for((id, el) <- elems)
+              explicitArray(id) = el
+            val lit = explicitArray.toList
+            p"Array($lit)"
+          }
+          case size => {
+            p"""|{
+                |  val tmp = Array.fill($size)($default)
+                |"""
+            for((id, el) <- elems)
+              p""""|  tmp($id) = $el
+                   |"""
+            p"""|  tmp
+                |}"""
+
+          }
+        }
+      }
+
       case Not(expr)            => p"!$expr"
       case _ =>
         super.pp(tree)

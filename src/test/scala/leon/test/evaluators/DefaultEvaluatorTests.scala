@@ -103,4 +103,47 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
       defaultEvaluator.eval(Let(id, IntLiteral(42), Variable(id))),
       IntLiteral(42))
   }
+
+
+  test("eval literal array ops") {
+    expectSuccessful(
+      defaultEvaluator.eval(FiniteArray(Map(), Some(IntLiteral(12)), IntLiteral(7)).setType(ArrayType(Int32Type))),
+      FiniteArray(Map(), Some(IntLiteral(12)), IntLiteral(7)))
+    expectSuccessful(
+      defaultEvaluator.eval(
+        ArrayLength(FiniteArray(Map(), Some(IntLiteral(12)), IntLiteral(7)).setType(ArrayType(Int32Type)))),
+      IntLiteral(7))
+    expectSuccessful(
+      defaultEvaluator.eval(ArraySelect(
+        FiniteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))),
+        IntLiteral(1))),
+      IntLiteral(4))
+    expectSuccessful(
+      defaultEvaluator.eval(
+        ArrayUpdated(
+          FiniteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))),
+          IntLiteral(1),
+          IntLiteral(42))),
+      FiniteArray(Seq(IntLiteral(2), IntLiteral(42), IntLiteral(7))))
+  }
+
+  test("eval variable length of array") {
+    val id = FreshIdentifier("id").setType(Int32Type)
+    expectSuccessful(
+      defaultEvaluator.eval(
+        ArrayLength(
+          FiniteArray(Map(), Some(IntLiteral(12)), Variable(id))
+          .setType(ArrayType(Int32Type))),
+        Map(id -> IntLiteral(27))),
+      IntLiteral(27))
+  }
+
+  test("eval variable default value of array") {
+    val id = FreshIdentifier("id").setType(Int32Type)
+    expectSuccessful(
+      defaultEvaluator.eval(
+        FiniteArray(Map(), Some(Variable(id)), IntLiteral(7)).setType(ArrayType(Int32Type)),
+        Map(id -> IntLiteral(27))),
+      FiniteArray(Map(), Some(IntLiteral(27)), IntLiteral(7)))
+  }
 }

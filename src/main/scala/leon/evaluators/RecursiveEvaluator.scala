@@ -336,17 +336,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case u @ UnitLiteral() => u
     case l @ Lambda(_, _) => l
 
-    case f @ ArrayFill(length, default) =>
-      val rDefault = e(default)
-      val rLength = e(length)
-      val IntLiteral(iLength) = rLength
-      FiniteArray((1 to iLength).map(_ => rDefault).toSeq).setType(ArrayType(rDefault.getType))
-
     case ArrayLength(a) =>
-      var ra = e(a)
-      while(!ra.isInstanceOf[FiniteArray])
-        ra = ra.asInstanceOf[ArrayUpdated].array
-      IntLiteral(ra.asInstanceOf[FiniteArray].exprs.size)
+      var FiniteArray(elems, default, IntLiteral(length)) = e(a)
+      IntLiteral(length)
 
     case ArrayUpdated(a, i, v) =>
       val ra = e(a)
@@ -354,20 +346,24 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val rv = e(v)
 
       val IntLiteral(index) = ri
-      val FiniteArray(exprs) = ra
-      FiniteArray(exprs.updated(index, rv)).setType(ra.getType)
+      val FiniteArray(elems, default, length) = ra
+      FiniteArray(elems.updated(index, rv), default, length).setType(ra.getType)
 
     case ArraySelect(a, i) =>
       val IntLiteral(index) = e(i)
-      val FiniteArray(exprs) = e(a)
+      val FiniteArray(elems, default, length) = e(a)
       try {
-        exprs(index)
+        elems.get(index).orElse(default).get
       } catch {
         case e : IndexOutOfBoundsException => throw RuntimeError(e.getMessage)
       }
 
-    case FiniteArray(exprs) =>
-      FiniteArray(exprs.map(ex => e(ex))).setType(expr.getType)
+    case FiniteArray(elems, default, length) =>
+      FiniteArray(
+        elems.map(el => (el._1, e(el._2))), 
+        default.map(e), 
+        e(length)
+      ).setType(expr.getType)
 
     case f @ FiniteMap(ss) => FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct).setType(f.getType)
     case g @ MapGet(m,k) => (e(m), e(k)) match {

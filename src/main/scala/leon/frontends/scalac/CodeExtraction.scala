@@ -1365,7 +1365,7 @@ trait CodeExtraction extends ASTExtractors {
           val underlying = extractType(baseType)
           val lengthRec = extractTree(length)
           val defaultValueRec = extractTree(defaultValue)
-          ArrayFill(lengthRec, defaultValueRec)
+          FiniteArray(Map(), Some(defaultValueRec), lengthRec).setType(ArrayType(underlying))
 
         case ExIfThenElse(t1,t2,t3) =>
           val r1 = extractTree(t1)

@@ -1016,7 +1016,7 @@ object TreeOps {
     case SetType(baseType)          => FiniteSet(Set()).setType(tpe)
     case MapType(fromType, toType)  => FiniteMap(Seq()).setType(tpe)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
-    case ArrayType(tpe)             => ArrayFill(IntLiteral(0), simplestValue(tpe))
+    case ArrayType(tpe)             => FiniteArray(Map(), Some(simplestValue(tpe)), IntLiteral(0)).setType(ArrayType(tpe))
 
     case act @ AbstractClassType(acd, tpe) =>
       val children = acd.knownChildren
