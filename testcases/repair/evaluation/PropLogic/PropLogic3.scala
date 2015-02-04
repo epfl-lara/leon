@@ -1,0 +1,1 @@
+../../PropLogic/PropLogic3.scala
