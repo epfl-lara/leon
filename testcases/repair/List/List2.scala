@@ -28,10 +28,10 @@ sealed abstract class List0[T] {
     case Cons0(x, xs) => xs ++ that // FIXME did not Cons 
   }) ensuring { res =>
     res.content == this.content ++ that.content && 
-    res.size == this.size + that.size &&
+    res.size == this.size + that.size/* &&
     (((this, that), res) passes {
       case ( x@Cons0(x1, Cons0(x2, Nil0())), y) => x
-    })
+    })*/
   }
 
   def head: T = {
