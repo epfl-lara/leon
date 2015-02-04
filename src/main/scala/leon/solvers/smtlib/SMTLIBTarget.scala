@@ -579,7 +579,7 @@ trait SMTLIBTarget {
     }
 
     interpreter.eval(cmd) match {
-      case ErrorResponse(msg) =>
+      case err@ErrorResponse(msg) if !interrupted =>
         reporter.fatalError("Unnexpected error from smt-"+targetName+" solver: "+msg)
       case res => res
     }
