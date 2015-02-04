@@ -2,10 +2,10 @@
 
 object Nested2 {
 
-  def foo(a: Int): Int = {
+  def foo(a: BigInt): BigInt = {
     require(a >= 0)
     val b = a + 2
-    def rec1(c: Int): Int = {
+    def rec1(c: BigInt): BigInt = {
       require(c >= 0)
       b + c
     }

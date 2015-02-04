@@ -107,7 +107,20 @@ class CodeGenTests extends test.LeonTestSuite {
         }
       }""",
       IntLiteral(1)
-    ),  
+    ),
+    
+    TestCase("simpleBigInt", """
+      object simple {
+        abstract class Abs
+        case class Conc(x : BigInt) extends Abs
+        def test = { 
+          val c = Conc(1)
+          c.x
+          
+        }
+      }""",
+      InfiniteIntegerLiteral(1)
+    ),
       
     TestCase("eager", """
       object eager {
@@ -159,6 +172,19 @@ class CodeGenTests extends test.LeonTestSuite {
         def test = Con().f2(5)
       }""",
       IntLiteral(10)
+    ),
+    
+    TestCase("methSimpleBignt", """
+      object methSimple {
+        
+        sealed abstract class Ab { 
+          def f2(x : BigInt): BigInt = x + 5
+        }
+        case class Con() extends Ab { }
+        
+        def test = Con().f2(5)
+      }""",
+      InfiniteIntegerLiteral(10)
     ),
     
     TestCase("methods", """

@@ -5,17 +5,17 @@ import leon.lang._
 object Arithmetic {
 
   /* VSTTE 2008 - Dafny paper */
-  def mult(x : Int, y : Int): Int = ({
-    var r = 0
+  def mult(x : BigInt, y : BigInt): BigInt = ({
+    var r: BigInt = 0
     if(y < 0) {
       var n = y
-      (while(n != 0) {
+      (while(n != BigInt(0)) {
         r = r - x
         n = n + 1
       }) invariant(r == x * (y - n) && 0 <= -n)
     } else {
       var n = y
-      (while(n != 0) {
+      (while(n != BigInt(0)) {
         r = r + x
         n = n - 1
       }) invariant(r == x * (y - n) && 0 <= n)
@@ -24,17 +24,17 @@ object Arithmetic {
   }) ensuring(_ == x*y)
 
   /* VSTTE 2008 - Dafny paper */
-  def add(x : Int, y : Int): Int = ({
+  def add(x : BigInt, y : BigInt): BigInt = ({
     var r = x
     if(y < 0) {
       var n = y
-      (while(n != 0) {
+      (while(n != BigInt(0)) {
         r = r - 1
         n = n + 1
       }) invariant(r == x + y - n && 0 <= -n)
     } else {
       var n = y
-      (while(n != 0) {
+      (while(n != BigInt(0)) {
         r = r + 1
         n = n - 1
       }) invariant(r == x + y - n && 0 <= n)
@@ -43,10 +43,10 @@ object Arithmetic {
   }) ensuring(_ == x+y)
 
 
-  def sum(n: Int): Int = {
+  def sum(n: BigInt): BigInt = {
     require(n >= 0)
-    var r = 0
-    var i = 0
+    var r = BigInt(0)
+    var i = BigInt(0)
     (while(i < n) {
       i = i + 1
       r = r + i
@@ -54,10 +54,10 @@ object Arithmetic {
     r
   } ensuring(_ >= n)
 
-  def divide(x: Int, y: Int): (Int, Int) = {
+  def divide(x: BigInt, y: BigInt): (BigInt, BigInt) = {
     require(x >= 0 && y > 0)
     var r = x
-    var q = 0
+    var q = BigInt(0)
     (while(r >= y) {
       r = r - y
       q = q + 1

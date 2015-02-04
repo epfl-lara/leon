@@ -1177,6 +1177,20 @@ trait CodeExtraction extends ASTExtractors {
           val newValueRec = extractTree(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec)
 
+        case ExBigIntLiteral(n) => {
+          InfiniteIntegerLiteral(BigInt(n))
+        }
+
+        case ExIntToBigInt(tree) => {
+          val rec = extractTree(tree)
+          rec match {
+            case IntLiteral(n) =>
+              InfiniteIntegerLiteral(BigInt(n))
+            case _ => 
+              IntToBigInt(rec)
+          }
+        }
+
         case ExInt32Literal(v) =>
           IntLiteral(v)
 
@@ -1255,6 +1269,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExNot(e)              => Not(extractTree(e))
         case ExUMinus(e)           => UMinus(extractTree(e))
+        case ExBVUMinus(e)         => BVUMinus(extractTree(e))
 
         case ExEquals(l, r) =>
           val rl = extractTree(l)
@@ -1407,6 +1422,8 @@ trait CodeExtraction extends ASTExtractors {
 
           CaseClass(CaseClassType(libraryCaseClass(str.pos, "leon.lang.string.String"), Seq()), Seq(charList))
 
+
+
         case c @ ExCall(rec, sym, tps, args) =>
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) =>
@@ -1446,21 +1463,43 @@ trait CodeExtraction extends ASTExtractors {
             case (a1, "!=", List(a2)) =>
               Not(Equals(a1, a2))
 
+            //BigInt methods
+            case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>
+              Plus(a1, a2)
+            case (IsTyped(a1, IntegerType), "-", List(IsTyped(a2, IntegerType))) =>
+              Minus(a1, a2)
+            case (IsTyped(a1, IntegerType), "*", List(IsTyped(a2, IntegerType))) =>
+              Times(a1, a2)
+            case (IsTyped(a1, IntegerType), "%", List(IsTyped(a2, IntegerType))) =>
+              Modulo(a1, a2)
+            case (IsTyped(a1, IntegerType), "/", List(IsTyped(a2, IntegerType))) =>
+              Division(a1, a2)
+            case (IsTyped(a1, IntegerType), ">", List(IsTyped(a2, IntegerType))) =>
+              GreaterThan(a1, a2)
+            case (IsTyped(a1, IntegerType), ">=", List(IsTyped(a2, IntegerType))) =>
+              GreaterEquals(a1, a2)
+            case (IsTyped(a1, IntegerType), "<", List(IsTyped(a2, IntegerType))) =>
+              LessThan(a1, a2)
+            case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
+              LessEquals(a1, a2)
+            case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
+              LessEquals(a1, a2)
+
             // Int methods
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
-              Plus(a1, a2)
+              BVPlus(a1, a2)
 
             case (IsTyped(a1, Int32Type), "-", List(IsTyped(a2, Int32Type))) =>
-              Minus(a1, a2)
+              BVMinus(a1, a2)
 
             case (IsTyped(a1, Int32Type), "*", List(IsTyped(a2, Int32Type))) =>
-              Times(a1, a2)
+              BVTimes(a1, a2)
 
             case (IsTyped(a1, Int32Type), "%", List(IsTyped(a2, Int32Type))) =>
-              Modulo(a1, a2)
+              BVModulo(a1, a2)
 
             case (IsTyped(a1, Int32Type), "/", List(IsTyped(a2, Int32Type))) =>
-              Division(a1, a2)
+              BVDivision(a1, a2)
 
             case (IsTyped(a1, Int32Type), ">", List(IsTyped(a2, Int32Type))) =>
               GreaterThan(a1, a2)
@@ -1591,6 +1630,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case tpe if tpe == NothingClass.tpe =>
         Untyped
+
+      case TypeRef(_, sym, _) if isBigIntSym(sym) =>
+        IntegerType
 
       case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) =>
         SetType(extractType(btt))

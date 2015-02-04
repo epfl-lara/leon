@@ -30,9 +30,9 @@ object Rules {
     DetupleOutput,
     DetupleInput,
     ADTSplit,
-    InlineHoles,
-    IntegerEquation,
-    IntegerInequalities
+    InlineHoles
+    //IntegerEquation,
+    //IntegerInequalities
     //AngelicHoles // @EK: Disabled now as it is explicit with withOracle { .. }
   )
 

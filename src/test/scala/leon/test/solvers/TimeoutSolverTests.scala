@@ -56,14 +56,14 @@ class TimeoutSolverTests extends LeonTestSuite {
     assert(check(sf, BooleanLiteral(true)) === None)
     assert(check(sf, BooleanLiteral(false)) === None)
 
-    val x = Variable(FreshIdentifier("x").setType(Int32Type))
+    val x = Variable(FreshIdentifier("x").setType(IntegerType))
     assert(check(sf, Equals(x, x)) === None)
   }
 
   test("TimeoutSolver 2") {
     val sf = getTOSolver
-    val x = Variable(FreshIdentifier("x").setType(Int32Type))
-    val o = IntLiteral(1)
+    val x = Variable(FreshIdentifier("x").setType(IntegerType))
+    val o = InfiniteIntegerLiteral(1)
     assert(check(sf, Equals(Plus(x, o), Plus(o, x))) === None)
     assert(check(sf, Equals(Plus(x, o), x)) === None)
   }

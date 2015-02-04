@@ -59,13 +59,27 @@ case object CEGIS extends Rule("CEGIS") {
             { () =>
               val ground = List((IntLiteral(0), Set[Identifier]()), (IntLiteral(1), Set[Identifier]()))
               val ops    = List[Function2[Expr, Expr, Expr]](
+                (a,b) => BVPlus(a,b),
+                (a,b) => BVMinus(a,b),
+                (a,b) => BVTimes(a,b)
+              )
+
+              ops.map{f =>
+                val ids = List(FreshIdentifier("a", true).setType(Int32Type), FreshIdentifier("b", true).setType(Int32Type))
+                (f(ids(0).toVariable, ids(1).toVariable), ids.toSet)
+              } ++ ground
+            }
+          case IntegerType =>
+            { () =>
+              val ground = List((InfiniteIntegerLiteral(0), Set[Identifier]()), (InfiniteIntegerLiteral(1), Set[Identifier]()))
+              val ops    = List[Function2[Expr, Expr, Expr]](
                 (a,b) => Plus(a,b),
                 (a,b) => Minus(a,b),
                 (a,b) => Times(a,b)
               )
 
               ops.map{f =>
-                val ids = List(FreshIdentifier("a", true).setType(Int32Type), FreshIdentifier("b", true).setType(Int32Type))
+                val ids = List(FreshIdentifier("a", true).setType(IntegerType), FreshIdentifier("b", true).setType(IntegerType))
                 (f(ids(0).toVariable, ids(1).toVariable), ids.toSet)
               } ++ ground
             }

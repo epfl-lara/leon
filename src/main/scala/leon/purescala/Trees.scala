@@ -446,6 +446,9 @@ object Trees {
   case class IntLiteral(value: Int) extends Literal[Int] with FixedType {
     val fixedType = Int32Type
   }
+  case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] with FixedType {
+    val fixedType = IntegerType
+  }
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] with FixedType {
     val fixedType = BooleanType
@@ -497,22 +500,28 @@ object Trees {
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
-    val fixedType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val fixedType = IntegerType
   }
   case class Minus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val fixedType = IntegerType
   }
   case class UMinus(expr: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    require(expr.getType == IntegerType)
+    val fixedType = IntegerType
   }
   case class Times(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val fixedType = IntegerType
   }
   case class Division(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val fixedType = IntegerType
   }
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
-    val fixedType = Int32Type
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val fixedType = IntegerType
   }
   case class LessThan(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
     val fixedType = BooleanType
@@ -525,6 +534,30 @@ object Trees {
   }
   case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr with FixedType {
     val fixedType = BooleanType
+  }
+
+  /* Bit-vector arithmetic */
+  case class BVPlus(lhs: Expr, rhs: Expr) extends Expr with FixedType {
+    val fixedType = Int32Type
+  }
+  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVUMinus(expr: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+  case class BVModulo(lhs: Expr, rhs: Expr) extends Expr with FixedType { 
+    val fixedType = Int32Type
+  }
+
+  case class IntToBigInt(expr: Expr) extends Expr with FixedType {
+    val fixedType = IntegerType
   }
 
   /* Set expressions */
@@ -624,6 +657,11 @@ object Trees {
     val fixedType = Int32Type
   }
   case class FiniteArray(exprs: Seq[Expr]) extends Expr
+
+  /*
+   * Represent potentially huge array in a concise way. Can be equal to finite array.
+   */
+  case class ImplicitArray(elems: Seq[(Int, Expr)], default: Expr, size: Int) extends Expr
 
   @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
   case class ArrayClone(array: Expr) extends Expr {

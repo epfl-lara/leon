@@ -32,11 +32,14 @@ trait ASTExtractors {
   protected lazy val someClassSym       = classFromName("scala.Some")
   protected lazy val function1TraitSym  = classFromName("scala.Function1")
   protected lazy val byNameSym          = classFromName("scala.<byname>")
+  protected lazy val bigIntSym          = classFromName("scala.math.BigInt")
 
   def isTuple2(sym : Symbol) : Boolean = sym == tuple2Sym
   def isTuple3(sym : Symbol) : Boolean = sym == tuple3Sym
   def isTuple4(sym : Symbol) : Boolean = sym == tuple4Sym
   def isTuple5(sym : Symbol) : Boolean = sym == tuple5Sym
+
+  def isBigIntSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == bigIntSym
 
   def isByNameSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == byNameSym
 
@@ -83,6 +86,8 @@ trait ASTExtractors {
    val tpe = t.tpe.widen
    tpe =:= IntClass.tpe
   }
+
+  def hasBigIntType(t : Tree) = isBigIntSym(t.tpe.typeSymbol)
     
   
   object ExtractorHelpers {
@@ -163,6 +168,24 @@ trait ASTExtractors {
           None
       }
     }
+
+    object ExBigIntLiteral {
+      def unapply(tree: Tree): Option[Int] = tree  match {
+        case Apply(ExSelected("scala", "package", "BigInt", "apply"), (n: Literal) :: Nil) =>
+          Some(n.value.intValue)
+        case _ =>
+          None
+      }
+    }
+
+
+    object ExIntToBigInt {
+      def unapply(tree: Tree): Option[Tree] = tree  match {
+        case Apply(ExSelected("math", "BigInt", "int2bigInt"), tree :: Nil) => Some(tree)
+        case _ => None
+      }
+    }
+
 
     object ExListLiteral {
       def unapply(tree: Apply): Option[(Type, List[Tree])] = tree  match {
@@ -647,6 +670,13 @@ trait ASTExtractors {
     }
 
     object ExUMinus {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n == nme.UNARY_- && hasBigIntType(t)) => Some(t)
+        case _ => None
+      }
+    }
+
+    object ExBVUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n == nme.UNARY_- && hasIntType(t)) => Some(t)
         case _ => None
