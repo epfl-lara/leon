@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import sun.misc.{Signal, SignalHandler}
 import java.util.WeakHashMap
 
-class InterruptManager(reporter: Reporter) {
+class InterruptManager(reporter: Reporter) extends Interruptible {
   private[this] val interruptibles = new WeakHashMap[Interruptible, Boolean]()
   private[this] val sigINT = new Signal("INT")
   private[this] var oldHandler: SignalHandler = null

@@ -24,7 +24,7 @@ import synthesis.Witnesses._
 import graph.DotGenerator
 import leon.utils.ASCIIHelpers.title
 
-class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long]) {
+class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   val reporter = ctx.reporter
 
   var program = initProgram
@@ -37,104 +37,110 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     case class NotValid(passing : List[Example], failing : List[Example]) extends VerificationResult
   }
 
-  var result = RepairResult(ctx.files.head, 0);
+  var result = RepairResult(ctx.files.head, visibleFunDefsFromMain(initProgram).foldLeft(0) {
+    case (s, f) => formulaSize(f.fullBody) + s
+  });
 
   import VRes._
   
   def repair(): RepairResult = {
-    reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
-    val t1 = new Timer().start
-    discoverTests match {
-      case Valid => 
-        reporter.info(s"Function ${fd.id} is found valid, no repair needed!")
-      case NotValid(passingTests, failingTests) =>
-        reporter.info(f" - Passing: ${passingTests.size}%3d")
-        reporter.info(f" - Failing: ${failingTests.size}%3d")
-    
-        val initTime = t1.stop
-        result = result.copy(initTime = Some(initTime))
-        reporter.info("Finished in "+initTime+"ms")
-    
-    
-        reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
-        val t2    = new Timer().start
-        val synth = getSynthesizer(passingTests, failingTests)
-        val ci    = synth.ci
-        val p     = synth.problem
-    
-        var solutions = List[Solution]()
-        val focusTime = t2.stop
-        result = result.copy(focusTime = Some(focusTime))
-    
-        reporter.info("Finished in "+focusTime+"ms")
-        reporter.info(ASCIIHelpers.title("3. Synthesizing"))
-        reporter.info(p)
-    
-    
-        val t3    = new Timer().start
-        synth.synthesize() match {
-          case (search, sols) =>
-            for (sol <- sols) {
-    
-              // Validate solution if not trusted
-              if (!sol.isTrusted) {
-                reporter.info("Found untrusted solution! Verifying...")
-                val (npr, fds) = synth.solutionToProgram(sol)
-    
-                getVerificationCounterExamples(fds.head, npr) match {
-                  case NotValid(_, ces) if !ces.isEmpty =>
-                    reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
-    
-                  case NotValid(_, _) =>
-                    solutions ::= sol
-                    reporter.warning("Solution is not trusted!")
-                    result = result.copy(repairTrusted = Some(false))
+    val to = new TimeoutFor(ctx.interruptManager)
 
-                  case Valid =>
-                    solutions ::= sol
-                    reporter.info("Solution was not trusted but post-validation passed!")
-                    result = result.copy(repairTrusted = Some(true))
+    to.interruptAfter(repairTimeoutMs) {
+      reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
+      val t1 = new Timer().start
+      discoverTests match {
+        case Valid => 
+          reporter.info(s"Function ${fd.id} is found valid, no repair needed!")
+        case NotValid(passingTests, failingTests) =>
+          reporter.info(f" - Passing: ${passingTests.size}%3d")
+          reporter.info(f" - Failing: ${failingTests.size}%3d")
+      
+          val initTime = t1.stop
+          result = result.copy(initTime = Some(initTime))
+          reporter.info("Finished in "+initTime+"ms")
+      
+      
+          reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
+          val t2    = new Timer().start
+          val synth = getSynthesizer(passingTests, failingTests)
+          val ci    = synth.ci
+          val p     = synth.problem
+      
+          var solutions = List[Solution]()
+          val focusTime = t2.stop
+          result = result.copy(focusTime = Some(focusTime))
+      
+          reporter.info("Finished in "+focusTime+"ms")
+          reporter.info(ASCIIHelpers.title("3. Synthesizing"))
+          reporter.info(p)
+      
+      
+          val t3    = new Timer().start
+          synth.synthesize() match {
+            case (search, sols) =>
+              for (sol <- sols) {
+      
+                // Validate solution if not trusted
+                if (!sol.isTrusted) {
+                  reporter.info("Found untrusted solution! Verifying...")
+                  val (npr, fds) = synth.solutionToProgram(sol)
+      
+                  getVerificationCounterExamples(fds.head, npr) match {
+                    case NotValid(_, ces) if !ces.isEmpty =>
+                      reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
+      
+                    case NotValid(_, _) =>
+                      solutions ::= sol
+                      reporter.warning("Solution is not trusted!")
+                      result = result.copy(repairTrusted = Some(false))
+
+                    case Valid =>
+                      solutions ::= sol
+                      reporter.info("Solution was not trusted but post-validation passed!")
+                      result = result.copy(repairTrusted = Some(true))
+                  }
+                } else {
+                  reporter.info("Found trusted solution!")
+                  solutions ::= sol
+                  result = result.copy(repairTrusted = Some(true))
                 }
+              }
+      
+              if (synth.settings.generateDerivationTrees) {
+                val dot = new DotGenerator(search.g)
+                dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+              }
+      
+              if (solutions.isEmpty) {
+                reporter.error(ASCIIHelpers.title("Failed to repair!"))
               } else {
-                reporter.info("Found trusted solution!")
-                solutions ::= sol
-                result = result.copy(repairTrusted = Some(true))
-              }
-            }
-    
-            if (synth.settings.generateDerivationTrees) {
-              val dot = new DotGenerator(search.g)
-              dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
-            }
-    
-            if (solutions.isEmpty) {
-              reporter.error(ASCIIHelpers.title("Failed to repair!"))
-            } else {
-              result = result.copy(repairTime = Some(t3.stop))
+                result = result.copy(repairTime = Some(t3.stop))
 
-              reporter.info(ASCIIHelpers.title("Repair successful:"))
-              for ((sol, i) <- solutions.reverse.zipWithIndex) {
-                reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-                val expr = sol.toSimplifiedExpr(ctx, program)
-                reporter.info(ScalaPrinter(expr));
-              }
-              reporter.info(ASCIIHelpers.title("In context:"))
-    
-    
-              for ((sol, i) <- solutions.reverse.zipWithIndex) {
-                reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-                val expr = sol.toSimplifiedExpr(ctx, program)
-                val nfd = fd.duplicate;
-    
-                nfd.body = fd.body.map { b =>
-                  replace(Map(ci.source -> expr), b)
+                reporter.info(ASCIIHelpers.title("Repair successful:"))
+                for ((sol, i) <- solutions.reverse.zipWithIndex) {
+                  reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+                  val expr = sol.toSimplifiedExpr(ctx, program)
+                  reporter.info(ScalaPrinter(expr));
                 }
-    
-                reporter.info(ScalaPrinter(nfd));
+                reporter.info(ASCIIHelpers.title("In context:"))
+      
+      
+                for ((sol, i) <- solutions.reverse.zipWithIndex) {
+                  reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+                  val expr = sol.toSimplifiedExpr(ctx, program)
+                  val nfd = fd.duplicate;
+      
+                  nfd.body = fd.body.map { b =>
+                    replace(Map(ci.source -> expr), b)
+                  }
+      
+                  reporter.info(ScalaPrinter(nfd));
+                }
+      
               }
-    
             }
-          }
+      }
     }
 
     result
@@ -154,7 +160,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     reporter.info("Original body size: "+size)
     reporter.info("Focused expr size : "+focusSize)
 
-    result = result.copy(name = fd.id.name, size = size, focusSize = Some(focusSize))
+    result = result.copy(name = fd.id.name, fsize = size, focusSize = Some(focusSize))
 
     val guide = Guide(replacedExpr)
 

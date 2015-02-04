@@ -189,7 +189,7 @@ object ExpressionGrammars {
     
     val normalGrammar = BoundedGrammar(EmbeddedGrammar(
         BaseGrammar ||
-        OneOf(terminals.toSeq) ||
+        OneOf(terminals.toSeq :+ e) ||
         FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
         SafeRecCalls(sctx.program, p.ws, p.pc),
       { (t: TypeTree)      => Label(t, "B", None)},

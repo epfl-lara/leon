@@ -49,9 +49,9 @@ object RepairPhase extends LeonPhase[Program, Program] {
     if (toRepair.isEmpty) reporter.warning("No functions found with the given names")
     
     for (fd <- toRepair) {
-      val res = new Repairman(ctx, program, fd, verifTimeoutMs).repair()
+      val res = new Repairman(ctx, program, fd, verifTimeoutMs, verifTimeoutMs).repair()
       val fw = new FileWriter("repairs.last", true)
-      try { 
+      try {
         fw.write(res.toLine)
       } finally {
         fw.close

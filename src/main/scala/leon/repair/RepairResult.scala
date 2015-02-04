@@ -4,7 +4,8 @@ package repair
 import java.io.File
 
 case class RepairResult(f: File,
-                        size: Int = -1,
+                        psize: Int,
+                        fsize: Int = -1,
                         name: String = "?",
                         initTime: Option[Long] = None,
                         focusTime: Option[Long] = None,
@@ -17,7 +18,7 @@ case class RepairResult(f: File,
     val benchName = f.getName()
     val benchFun  = name
 
-    f"$benchCat%20s, $benchName%20s, $benchFun%20s, $size%3s, ${focusSize.getOrElse("")}%3s, ${initTime.getOrElse("")}%5s, ${focusTime.getOrElse("")}%5s, ${repairTime.getOrElse("")}%5s, ${repairTrusted.getOrElse("")}%5s\n"
+    f"$benchCat%20s, $benchName%20s, $benchFun%20s, $psize%3s, $fsize%3s, ${focusSize.getOrElse("")}%3s, ${initTime.getOrElse("")}%5s, ${focusTime.getOrElse("")}%5s, ${repairTime.getOrElse("")}%5s, ${repairTrusted.getOrElse("")}%5s\n"
   }
 
 }
