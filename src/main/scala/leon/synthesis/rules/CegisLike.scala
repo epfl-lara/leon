@@ -859,7 +859,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   val e = examples.next()
                   if (!ndProgram.testForProgram(bs)(e)) {
                     failedTestsStats(e) += 1
-                    //sctx.reporter.debug(" Program: "+ndProgram.getExpr(bs)+" failed on "+e)
+                    sctx.reporter.debug(" Program: "+ndProgram.getExpr(bs)+" failed on "+e.mkString(" ; "))
                     wrongPrograms += bs
                     prunedPrograms -= bs
 

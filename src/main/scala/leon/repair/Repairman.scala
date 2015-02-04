@@ -79,6 +79,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           val t3    = new Timer().start
           synth.synthesize() match {
             case (search, sols) =>
+              result = result.copy(repairTime = Some(t3.stop))
               for (sol <- sols) {
       
                 // Validate solution if not trusted
@@ -115,7 +116,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
               if (solutions.isEmpty) {
                 reporter.error(ASCIIHelpers.title("Failed to repair!"))
               } else {
-                result = result.copy(repairTime = Some(t3.stop))
 
                 reporter.info(ASCIIHelpers.title("Repair successful:"))
                 for ((sol, i) <- solutions.reverse.zipWithIndex) {
@@ -157,10 +157,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val size      = formulaSize(body)
     val focusSize = formulaSize(replacedExpr)
 
+    result = result.copy(name = fd.id.name, fsize = size, focusSize = Some(focusSize))
+
+    reporter.info("Program size      : "+result.psize)
     reporter.info("Original body size: "+size)
     reporter.info("Focused expr size : "+focusSize)
-
-    result = result.copy(name = fd.id.name, fsize = size, focusSize = Some(focusSize))
 
     val guide = Guide(replacedExpr)
 

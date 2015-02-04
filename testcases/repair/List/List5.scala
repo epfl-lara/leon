@@ -96,10 +96,11 @@ sealed abstract class List0[T] {
     case Nil0() => Nil0()
     case Cons0(h, t) =>
       val r = t.replace(from, to)
-      Cons0(to, r) // FIXME
+      Cons0(h, r) // FIXME
   }} ensuring { res => 
-    (if(this.contains(from)) res.contains(to) else true) && 
-    !res.contains(from) && res.size == this.size 
+    (((this.content -- Set(from)) ++ 
+     (if (this.content contains from) Set(to) else Set[T]())) == res.content) &&
+    res.size == this.size 
   }
 
   private def chunk0(s: Int, l: List0[T], acc: List0[T], res: List0[List0[T]], s0: Int): List0[List0[T]] = l match {
