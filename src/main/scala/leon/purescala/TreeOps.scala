@@ -1372,9 +1372,24 @@ object TreeOps {
     simplePreTransform(pre)(expr)
   }
 
+  def patternSize(p: Pattern): Int = p match {
+    case wp: WildcardPattern =>
+      1
+    case _ =>
+      p.subPatterns.foldLeft(1 + (if(p.binder.isDefined) 1 else 0)) {
+        case (s, p) => s + patternSize(p)
+      }
+  }
+
   def formulaSize(e: Expr): Int = e match {
     case t: Terminal =>
       1
+
+    case ml: MatchLike =>
+      ml.cases.foldLeft(formulaSize(ml.scrutinee)) {
+        case (s, MatchCase(p, og, rhs)) =>
+          s + formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
+      }
 
     case UnaryOperator(e, builder) =>
       formulaSize(e)+1

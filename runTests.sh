@@ -36,7 +36,7 @@ echo "#           Category,                 File,             function, p.S, fuS
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=_pad     testcases/repair/List/List1.scala           | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=_++      testcases/repair/List/List2.scala           | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=_ap      testcases/repair/List/List3.scala           | tee -a $fullLog
-./leon --repair --timeout=30                       --functions=_drop    testcases/repair/List/List4.scala           | tee -a $fullLog
+#./leon --repair --timeout=30                       --functions=_drop    testcases/repair/List/List4.scala           | tee -a $fullLog
 ./leon --repair --timeout=30                       --functions=_replace testcases/repair/List/List5.scala           | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=_count   testcases/repair/List/List6.scala           | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=_find    testcases/repair/List/List7.scala           | tee -a $fullLog
