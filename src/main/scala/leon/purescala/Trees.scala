@@ -658,6 +658,11 @@ object Trees {
   }
   case class FiniteArray(exprs: Seq[Expr]) extends Expr
 
+  /*
+   * Represent potentially huge array in a concise way. Can be equal to finite array.
+   */
+  case class ImplicitArray(elems: Seq[(Int, Expr)], default: Expr, size: Int) extends Expr
+
   @deprecated("Unsupported Array operation with most solvers", "Leon 2.3")
   case class ArrayClone(array: Expr) extends Expr {
     if(array.getType != Untyped)

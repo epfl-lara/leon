@@ -536,9 +536,17 @@ trait SMTLIBTarget {
           val IntLiteral(size)                 = fromSMT(args(0), Int32Type)
           val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, at.base))
 
-          val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
+          if(size > 10) {
+            val definedElements = elems.collect{
+              case (IntLiteral(i), value) => (i, value)
+            }.toSeq
+            ImplicitArray(definedElements, default, size)
 
-          FiniteArray(entries).setType(at)
+          } else {
+            val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
+
+            FiniteArray(entries).setType(at)
+          }
 
         case t =>
           unsupported("Woot? structural type that is non-structural: "+t)

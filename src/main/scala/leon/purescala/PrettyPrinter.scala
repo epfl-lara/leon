@@ -360,6 +360,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case ArraySelect(a, i)         => p"$a($i)"
       case ArrayUpdated(a, i, v)     => p"$a.updated($i, $v)"
       case FiniteArray(exprs)        => p"Array($exprs)"
+      case ImplicitArray(es, d, s)   =>
+        if(es.isEmpty)
+          p"Array($d, $d, $d, ..., $d) (of size $s)"
+        else
+          p"Array(_) (of size $s)"
+
       case Distinct(exprs)           => p"distinct($exprs)"
       case Not(expr)                 => p"\u00AC$expr"
       case ValDef(id, tpe)           => p"${typed(id)}"
