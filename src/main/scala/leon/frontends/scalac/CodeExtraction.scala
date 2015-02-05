@@ -1329,6 +1329,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExNot(e)              => Not(extractTree(e))
         case ExUMinus(e)           => UMinus(extractTree(e))
         case ExBVUMinus(e)         => BVUMinus(extractTree(e))
+        case ExBVNot(e)            => BVNot(extractTree(e))
 
         case ExEquals(l, r) =>
           val rl = extractTree(l)
@@ -1535,37 +1536,38 @@ trait CodeExtraction extends ASTExtractors {
               LessThan(a1, a2)
             case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
               LessEquals(a1, a2)
-            case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
-              LessEquals(a1, a2)
 
             // Int methods
             case (IsTyped(a1, Int32Type), "+", List(IsTyped(a2, Int32Type))) =>
               BVPlus(a1, a2)
-
             case (IsTyped(a1, Int32Type), "-", List(IsTyped(a2, Int32Type))) =>
               BVMinus(a1, a2)
-
             case (IsTyped(a1, Int32Type), "*", List(IsTyped(a2, Int32Type))) =>
               BVTimes(a1, a2)
-
             case (IsTyped(a1, Int32Type), "%", List(IsTyped(a2, Int32Type))) =>
               BVModulo(a1, a2)
-
             case (IsTyped(a1, Int32Type), "/", List(IsTyped(a2, Int32Type))) =>
               BVDivision(a1, a2)
 
+            case (IsTyped(a1, Int32Type), "|", List(IsTyped(a2, Int32Type))) =>
+              BVOr(a1, a2)
+            case (IsTyped(a1, Int32Type), "&", List(IsTyped(a2, Int32Type))) =>
+              BVAnd(a1, a2)
+            case (IsTyped(a1, Int32Type), "^", List(IsTyped(a2, Int32Type))) =>
+              BVXOr(a1, a2)
+            case (IsTyped(a1, Int32Type), "<<", List(IsTyped(a2, Int32Type))) =>
+              BVShiftLeft(a1, a2)
+            case (IsTyped(a1, Int32Type), ">>", List(IsTyped(a2, Int32Type))) =>
+              BVAShiftRight(a1, a2)
+            case (IsTyped(a1, Int32Type), ">>>", List(IsTyped(a2, Int32Type))) =>
+              BVLShiftRight(a1, a2)
+
             case (IsTyped(a1, Int32Type), ">", List(IsTyped(a2, Int32Type))) =>
               GreaterThan(a1, a2)
-
             case (IsTyped(a1, Int32Type), ">=", List(IsTyped(a2, Int32Type))) =>
               GreaterEquals(a1, a2)
-
             case (IsTyped(a1, Int32Type), "<", List(IsTyped(a2, Int32Type))) =>
               LessThan(a1, a2)
-
-            case (IsTyped(a1, Int32Type), "<=", List(IsTyped(a2, Int32Type))) =>
-              LessEquals(a1, a2)
-
             case (IsTyped(a1, Int32Type), "<=", List(IsTyped(a2, Int32Type))) =>
               LessEquals(a1, a2)
 

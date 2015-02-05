@@ -44,6 +44,31 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
     expectSuccessful(defaultEvaluator.eval(BVTimes(IntLiteral(3), IntLiteral(3))), IntLiteral(9))
   }
 
+  test("eval bitwise operations") {
+    expectSuccessful(defaultEvaluator.eval(BVAnd(IntLiteral(3), IntLiteral(1))), IntLiteral(1))
+    expectSuccessful(defaultEvaluator.eval(BVAnd(IntLiteral(3), IntLiteral(3))), IntLiteral(3))
+    expectSuccessful(defaultEvaluator.eval(BVAnd(IntLiteral(5), IntLiteral(3))), IntLiteral(1))
+    expectSuccessful(defaultEvaluator.eval(BVAnd(IntLiteral(5), IntLiteral(4))), IntLiteral(4))
+    expectSuccessful(defaultEvaluator.eval(BVAnd(IntLiteral(5), IntLiteral(2))), IntLiteral(0))
+
+    expectSuccessful(defaultEvaluator.eval(BVOr(IntLiteral(3), IntLiteral(1))), IntLiteral(3))
+    expectSuccessful(defaultEvaluator.eval(BVOr(IntLiteral(3), IntLiteral(3))), IntLiteral(3))
+    expectSuccessful(defaultEvaluator.eval(BVOr(IntLiteral(5), IntLiteral(3))), IntLiteral(7))
+    expectSuccessful(defaultEvaluator.eval(BVOr(IntLiteral(5), IntLiteral(4))), IntLiteral(5))
+    expectSuccessful(defaultEvaluator.eval(BVOr(IntLiteral(5), IntLiteral(2))), IntLiteral(7))
+
+    expectSuccessful(defaultEvaluator.eval(BVXOr(IntLiteral(3), IntLiteral(1))), IntLiteral(2))
+    expectSuccessful(defaultEvaluator.eval(BVXOr(IntLiteral(3), IntLiteral(3))), IntLiteral(0))
+
+    expectSuccessful(defaultEvaluator.eval(BVNot(IntLiteral(1))), IntLiteral(-2))
+
+    expectSuccessful(defaultEvaluator.eval(BVShiftLeft(IntLiteral(3), IntLiteral(1))), IntLiteral(6))
+    expectSuccessful(defaultEvaluator.eval(BVShiftLeft(IntLiteral(4), IntLiteral(2))), IntLiteral(16))
+
+    expectSuccessful(defaultEvaluator.eval(BVLShiftRight(IntLiteral(8), IntLiteral(1))), IntLiteral(4))
+    expectSuccessful(defaultEvaluator.eval(BVAShiftRight(IntLiteral(8), IntLiteral(1))), IntLiteral(4))
+  }
+
   test("eval of simple arithmetic expressions") {
     expectSuccessful(
       defaultEvaluator.eval(Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(5))), 

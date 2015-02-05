@@ -750,6 +750,13 @@ trait ASTExtractors {
       }
     }
 
+    object ExBVNot {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if (n == nme.UNARY_~ && hasIntType(t)) => Some(t)
+        case _ => None
+      }
+    }
+
     object ExPatternMatching {
       def unapply(tree: Match): Option[(Tree,List[CaseDef])] =
         if(tree != null) Some((tree.selector, tree.cases)) else None

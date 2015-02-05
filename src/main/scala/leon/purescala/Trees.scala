@@ -372,6 +372,28 @@ object Trees {
     val getType = Int32Type
   }
 
+  case class BVNot(expr: Expr) extends Expr { 
+    val getType = Int32Type
+  }
+  case class BVAnd(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class BVOr(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class BVXOr(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class BVShiftLeft(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class BVAShiftRight(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
+  }
+  case class BVLShiftRight(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = Int32Type
+  }
+
   case class IntToBigInt(expr: Expr) extends Expr {
     val getType = Int32Type
   }

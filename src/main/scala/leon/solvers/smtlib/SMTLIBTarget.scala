@@ -442,6 +442,8 @@ trait SMTLIBTarget {
         e match {
           case (_: Not) => Core.Not(toSMT(u))
           case (_: UMinus) => Ints.Neg(toSMT(u))
+          case (_: BVUMinus) => FixedSizeBitVectors.Neg(toSMT(u))
+          case (_: BVNot) => FixedSizeBitVectors.Not(toSMT(u))
           case _ => reporter.fatalError("Unhandled unary "+e)
         }
 
@@ -475,6 +477,12 @@ trait SMTLIBTarget {
           case (_: BVTimes) => FixedSizeBitVectors.Mul(toSMT(a), toSMT(b))
           case (_: BVDivision) => FixedSizeBitVectors.SDiv(toSMT(a), toSMT(b))
           case (_: BVModulo) => FixedSizeBitVectors.SRem(toSMT(a), toSMT(b))
+          case (_: BVAnd) => FixedSizeBitVectors.And(toSMT(a), toSMT(b))
+          case (_: BVOr) => FixedSizeBitVectors.Or(toSMT(a), toSMT(b))
+          case (_: BVXOr) => FixedSizeBitVectors.XOr(toSMT(a), toSMT(b))
+          case (_: BVShiftLeft) => FixedSizeBitVectors.ShiftLeft(toSMT(a), toSMT(b))
+          case (_: BVAShiftRight) => FixedSizeBitVectors.AShiftRight(toSMT(a), toSMT(b))
+          case (_: BVLShiftRight) => FixedSizeBitVectors.LShiftRight(toSMT(a), toSMT(b))
           case _ => reporter.fatalError("Unhandled binary "+e)
         }
 

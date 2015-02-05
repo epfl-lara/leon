@@ -582,6 +582,13 @@ trait AbstractZ3Solver
       case BVDivision(l, r) => z3.mkBVSdiv(rec(l), rec(r))
       case BVModulo(l, r) => z3.mkBVSrem(rec(l), rec(r))
       case BVUMinus(e) => z3.mkBVNeg(rec(e))
+      case BVNot(e) => z3.mkBVNot(rec(e))
+      case BVAnd(l, r) => z3.mkBVAnd(rec(l), rec(r))
+      case BVOr(l, r) => z3.mkBVOr(rec(l), rec(r))
+      case BVXOr(l, r) => z3.mkBVXor(rec(l), rec(r))
+      case BVShiftLeft(l, r) => z3.mkBVShl(rec(l), rec(r))
+      case BVAShiftRight(l, r) => z3.mkBVAshr(rec(l), rec(r))
+      case BVLShiftRight(l, r) => z3.mkBVLshr(rec(l), rec(r))
       case LessThan(l, r) => l.getType match {
         case IntegerType => z3.mkLT(rec(l), rec(r))
         case Int32Type => z3.mkBVSlt(rec(l), rec(r))

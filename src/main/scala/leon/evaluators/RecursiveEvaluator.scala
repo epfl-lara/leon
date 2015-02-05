@@ -264,6 +264,12 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case re => throw EvalError(typeErrorMsg(re, Int32Type))
       }
 
+    case BVNot(ex) =>
+      e(ex) match {
+        case IntLiteral(i) => IntLiteral(~i)
+        case re => throw EvalError(typeErrorMsg(re, Int32Type))
+      }
+
     case Times(l,r) =>
       (e(l), e(r)) match {
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 * i2)
@@ -301,6 +307,42 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => 
           if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
+        case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+      }
+
+    case BVAnd(l,r) =>
+      (e(l), e(r)) match {
+        case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 & i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+      }
+
+    case BVOr(l,r) =>
+      (e(l), e(r)) match {
+        case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 | i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+      }
+
+    case BVXOr(l,r) =>
+      (e(l), e(r)) match {
+        case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 ^ i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+      }
+
+    case BVShiftLeft(l,r) =>
+      (e(l), e(r)) match {
+        case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 << i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+      }
+
+    case BVAShiftRight(l,r) =>
+      (e(l), e(r)) match {
+        case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 >> i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
+      }
+
+    case BVLShiftRight(l,r) =>
+      (e(l), e(r)) match {
+        case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 >>> i2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
