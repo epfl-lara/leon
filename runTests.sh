@@ -4,6 +4,7 @@ summaryLog=repairs.log
 fullLog=fullLog.log
 
 echo -n "" > $log;
+echo -n "" > "repairs.table";
 
 
 echo "################################" >> $summaryLog

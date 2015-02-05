@@ -37,9 +37,14 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     case class NotValid(passing : List[Example], failing : List[Example]) extends VerificationResult
   }
 
-  var result = RepairResult(ctx.files.head, visibleFunDefsFromMain(initProgram).foldLeft(0) {
-    case (s, f) => formulaSize(f.fullBody) + s
-  });
+  def programSize(pgm: Program): Int = {
+    visibleFunDefsFromMain(pgm).foldLeft(0) {
+      case (s, f) => 
+        1 + f.params.size + formulaSize(f.fullBody) + s
+    }
+  }
+
+  var result = RepairResult(ctx.files.head, programSize(initProgram));
 
   import VRes._
   
@@ -121,6 +126,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                 for ((sol, i) <- solutions.reverse.zipWithIndex) {
                   reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
                   val expr = sol.toSimplifiedExpr(ctx, program)
+                  result = result.copy(repairSize = Some(formulaSize(expr)))
                   reporter.info(ScalaPrinter(expr));
                 }
                 reporter.info(ASCIIHelpers.title("In context:"))

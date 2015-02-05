@@ -56,6 +56,12 @@ object RepairPhase extends LeonPhase[Program, Program] {
       } finally {
         fw.close
       }
+      val fw2 = new FileWriter("repairs.table", true)
+      try {
+        fw2.write(res.toTableLine)
+      } finally {
+        fw2.close
+      }
     }
 
     program
