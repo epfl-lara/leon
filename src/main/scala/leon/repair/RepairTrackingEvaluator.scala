@@ -8,6 +8,7 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Definitions._
 import leon.LeonContext
 import leon.evaluators.RecursiveEvaluator
+import leon.synthesis._
 
 class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {
   type RC = CollectingRecContext
@@ -21,13 +22,25 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   // This is a call graph to track dependencies of function invocations.
   // If fi1 calls fi2 but fails fi2's precondition, we consider it 
   // fi1's fault and we don't register the dependency.
-  private val callGraph : MMap[FI, Set[FI]] = MMap().withDefaultValue(Set())
+  private val callGraph : MMap[FI, Set[FI]] = MMap()//.withDefaultValue(Set())
+  private def registerNode(fi : FI) = if (!callGraph.contains(fi)) callGraph update (fi, Set())
   private def registerCall(fi : FI, lastFI : Option[FI]) = {
     lastFI foreach { lfi => 
       callGraph update (lfi, callGraph(lfi) + fi) 
     }
   }
-  def fullCallGraph = leon.utils.GraphOps.transitiveClosure(callGraph.toMap)
+  def fullCallGraph = {
+    /*println("About to print")
+      for{ 
+        (test, tests) <-callGraph
+        
+      } {
+        println(test._2 mkString ", ")
+        println(new ExamplesTable("", tests.toSeq.map{ x => InExample(x._2)}).toString)
+      }*/
+
+    leon.utils.GraphOps.transitiveClosure(callGraph.toMap)
+  }
   
   // Tracks if every function invocation succeeded or failed
   private val fiStatus_ : MMap[FI, Boolean] = MMap().withDefaultValue(false)
@@ -48,9 +61,6 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
       gctx.stepsLeft -= 1
       
       val evArgs = args.map(a => e(a))
-
-      // We consider this function invocation successful, unless the opposite is proven.
-      registerSuccessful(tfd.fd, evArgs)
       
       // build a mapping for the function...
       val frameBlamingCaller = rctx.withVars((tfd.params.map(_.id) zip evArgs).toMap)
@@ -58,8 +68,11 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frameBlamingCaller, gctx) match {
           case BooleanLiteral(true) => 
+            // We consider this function invocation successful, unless the opposite is proven.
+            registerSuccessful(tfd.fd, evArgs)
             // Only register a call dependency if the call we depend on does not fail precondition
             registerCall((tfd.fd, evArgs), rctx.lastFI)
+            registerNode((tfd.fd, evArgs))
           case BooleanLiteral(false) =>
             // Caller's fault!
             rctx.lastFI foreach registerFailed
@@ -70,6 +83,8 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
             throw RuntimeError(typeErrorMsg(other, BooleanType))
         }
       } else {
+        registerSuccessful(tfd.fd, evArgs)
+        registerNode((tfd.fd, evArgs))
         registerCall((tfd.fd, evArgs), rctx.lastFI)
       }
 
