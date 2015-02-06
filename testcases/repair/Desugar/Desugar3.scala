@@ -153,8 +153,9 @@ object Desugar {
     case Trees.Not(e) => Ite(desugar(e), Literal(0), Literal(1))
     case Trees.Eq(lhs, rhs) =>
       Eq(desugar(lhs), desugar(rhs))
-    // FIXME switched the branches
-    case Trees.Ite(cond, thn, els) => Ite(desugar(cond), desugar(els), desugar(thn)) 
+    case Trees.Ite(cond, thn, els) => 
+      // FIXME switched the branches
+      Ite(desugar(cond), desugar(els), desugar(thn))
     case Trees.IntLiteral(v)  => Literal(v)
     case Trees.BoolLiteral(b) => Literal(b2i(b))
   }} ensuring { res => 

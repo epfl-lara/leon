@@ -145,7 +145,7 @@ object Desugar {
 
   @induct
   def desugar(e : Trees.Expr) : SimpleE = { e match {
-    case Trees.Plus (lhs, rhs) => Neg(desugar(lhs)) // FIXME: Complete nonsense. Leon can't disprove it, uses example...
+    case Trees.Plus (lhs, rhs) => Neg(desugar(lhs)) // FIXME: Complete nonsense
     case Trees.Minus(lhs, rhs) => Plus(desugar(lhs), Neg(desugar(rhs)))
     case Trees.LessThan(lhs, rhs) => LessThan(desugar(lhs), desugar(rhs))
     case Trees.And  (lhs, rhs) => Ite(desugar(lhs), desugar(rhs), Literal(0)) 
