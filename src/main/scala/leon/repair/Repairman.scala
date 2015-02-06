@@ -58,17 +58,53 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         case Valid => 
           reporter.info(s"Function ${fd.id} is found valid, no repair needed!")
         case NotValid(passingTests, failingTests) =>
+          
           reporter.info(f" - Passing: ${passingTests.size}%3d")
           reporter.info(f" - Failing: ${failingTests.size}%3d")
-      
+          reporter.ifDebug { printer =>
+            printer(new ExamplesTable("Tests failing:", failingTests).toString)
+            printer(new ExamplesTable("Tests passing:", passingTests).toString)
+          }
+          
+          // We exclude redundant failing tests, and only select the minimal tests
+          val minimalFailingTests = {
+            type FI = (FunDef, Seq[Expr])
+            // We don't want tests whose invocation will call other failing tests.
+            // This is because they will appear erroneous, 
+            // even though the error comes from the called test
+            val testEval = new RepairTrackingEvaluator(ctx, program)
+            failingTests foreach { ts => 
+              testEval.eval(functionInvocation(fd, ts.ins))
+            }
+            val test2Tests : Map[FI, Set[FI]] = testEval.fullCallGraph
+            /*println("About to print")
+            for{ 
+              (test, tests) <-test2Tests
+              if (test._1 == fd)
+            } {
+              println(test._2 mkString ", ")
+              println(new ExamplesTable("", tests.toSeq.filter{_._1 == fd}.map{ x => InExample(x._2)}).toString)
+            }*/
+            def isFailing(fi : FI) = !testEval.fiStatus(fi) && (fi._1 == fd)
+            val failing = test2Tests filter { case (from, to) => 
+              isFailing(from) && (to forall (!isFailing(_)) )
+            }
+            failing.keySet map { case (_, args) => InExample(args) }
+          }
+          
+          reporter.info(f" - Minimal Failing Set Size: ${minimalFailingTests.size}%3d")
+          
           val initTime = t1.stop
           result = result.copy(initTime = Some(initTime))
           reporter.info("Finished in "+initTime+"ms")
       
+          reporter.ifDebug { printer =>
+            printer(new ExamplesTable("Minimal failing:", minimalFailingTests.toSeq).toString)
+          }
       
           reporter.info(ASCIIHelpers.title("2. Locating/Focusing synthesis problem"))
           val t2    = new Timer().start
-          val synth = getSynthesizer(passingTests, failingTests)
+          val synth = getSynthesizer(minimalFailingTests.toList)
           val ci    = synth.ci
           val p     = synth.problem
       
@@ -152,12 +188,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     result
   }
 
-  def getSynthesizer(passingTests: List[Example], failingTests: List[Example]): Synthesizer = {
+  def getSynthesizer(failingTests: List[Example]): Synthesizer = {
        
-    val body = fd.body.get;
+    val body = fd.body.get
 
-
-    val (newBody, replacedExpr) = focusRepair(program, fd, passingTests, failingTests)
+    val (newBody, replacedExpr) = focusRepair(program, fd, failingTests)
     fd.body = Some(newBody)
 
     val size      = formulaSize(body)
@@ -194,12 +229,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     new Synthesizer(ctx, program, nci, soptions)
   }
 
-  private def focusRepair(program: Program, fd: FunDef, passingTests: List[Example], failingTests: List[Example]): (Expr, Expr) = {
-
-    reporter.ifDebug { printer =>
-      printer(new ExamplesTable("Tests failing:", failingTests).toString)
-      printer(new ExamplesTable("Tests passing:", passingTests).toString)
-    }
+  private def focusRepair(program: Program, fd: FunDef, failingTests: List[Example]): (Expr, Expr) = {
 
     val pre = fd.precondition.getOrElse(BooleanLiteral(true))
     val args = fd.params.map(_.id)
@@ -215,50 +245,13 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     val evaluator = new DefaultEvaluator(ctx, program)
 
-    // We exclude redundant failing tests, and only select the minimal tests
-    val minimalFailingTests = {
-            
-      type FI = (FunDef, Seq[Expr])
-      
-      // We don't want tests whose invocation will call other failing tests.
-      // This is because they will appear erroneous, 
-      // even though the error comes from the called test
-      val testEval = new RepairTrackingEvaluator(ctx, program)
-      
-      failingTests foreach { ts => 
-        testEval.eval(functionInvocation(fd, ts.ins))
-      }
-      
-      val test2Tests : Map[FI, Set[FI]] = testEval.fullCallGraph
-      
-      /*println("About to print")
-      for{ 
-        (test, tests) <-test2Tests
-        if (test._1 == fd)
-      } {
-        println(test._2 mkString ", ")
-        println(new ExamplesTable("", tests.toSeq.filter{_._1 == fd}.map{ x => InExample(x._2)}).toString)
-      }*/
-
-      def isFailing(fi : FI) = !testEval.fiStatus(fi) && (fi._1 == fd)
-      val failing = test2Tests filter { case (from, to) => 
-        isFailing(from) && (to forall (!isFailing(_)) )
-      }
-      
-      failing.keySet map { case (_, args) => InExample(args) }
-    }
-
-    reporter.ifDebug { printer =>
-      printer(new ExamplesTable("Minimal failing:", minimalFailingTests.toSeq).toString)
-    }
-
     // Check how an expression behaves on tests
     //  - returns Some(true) if for all tests e evaluates to true
     //  - returns Some(false) if for all tests e evaluates to false
     //  - returns None otherwise
     def forAllTests(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
       var soFar : Option[Boolean] = None
-      minimalFailingTests.foreach { ex =>
+      failingTests.foreach { ex =>
         val ins = ex.ins
         evaluator.eval(e, env ++ (args zip ins)) match {
           case EvaluationResults.Successful(BooleanLiteral(b)) => 
