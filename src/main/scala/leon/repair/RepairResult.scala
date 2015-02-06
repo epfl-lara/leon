@@ -23,7 +23,7 @@ case class RepairResult(f: File,
   }
 
   def toTableLine = {
-    val benchCat  = f.getParentFile().getName()
+    val benchCat  = f.getAbsoluteFile().getParentFile().getName()
     val benchName = f.getName()
     val benchFun  = name
 

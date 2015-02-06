@@ -1,1 +1,0 @@
-../../PropLogic/PropLogic2.scala

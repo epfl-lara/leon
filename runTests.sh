@@ -15,10 +15,12 @@ echo "################################" >> $summaryLog
 echo "#           Category,                 File,             function, p.S, fuS, foS,   Tms,   Fms,   Rms, verif?" >> $summaryLog
 
 #All benchmarks:
-./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Desugar/Desugar1.scala     | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Desugar/Desugar2.scala     | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Desugar/Desugar3.scala     | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Desugar/Desugar4.scala     | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Compiler/Compiler1.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Compiler/Compiler2.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Compiler/Compiler3.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3:enum --functions=desugar  testcases/repair/Compiler/Compiler4.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3:enum --functions=simplify testcases/repair/Compiler/Compiler5.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3:enum --functions=simplify testcases/repair/Compiler/Compiler6.scala   | tee -a $fullLog
 
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=merge    testcases/repair/HeapSort/HeapSort3.scala   | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3:enum --functions=merge    testcases/repair/HeapSort/HeapSort4.scala   | tee -a $fullLog
