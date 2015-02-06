@@ -39,7 +39,12 @@ case class RepairResult(f: File,
 
     val verified = repairTrusted.map(if (_) "\\chmark" else "").getOrElse("")
 
-    f"$benchCat%20s &  $benchName%20s & $benchFun%20s & $psize%4s & $fsize%3s & ${focusSize.getOrElse("")}%3s & ${repairSize.getOrElse("")}%3s & ${ts(initTime)} & ${ts(focusTime)} & ${ts(repairTime)} & $verified%7s \\\\ \n"
+    val repairTime2 = (focusTime, repairTime) match {
+      case (Some(t), Some(t2)) => Some(t + t2)
+      case _ => None
+    }
+
+    f"$benchCat%20s &  $benchName%20s & $benchFun%20s & $psize%4s & $fsize%3s & ${focusSize.getOrElse("")}%3s & ${repairSize.getOrElse("")}%3s & ${ts(initTime)} & ${ts(repairTime2)} & $verified%7s \\\\ \n"
   }
 }
 

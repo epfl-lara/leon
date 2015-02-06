@@ -201,14 +201,12 @@ object Simplifier {
   def simplify(e: Expr): Expr = {
     e match {
       case And(BoolLiteral(false), _)           => BoolLiteral(false)
-      case Or(BoolLiteral(true), _)             => BoolLiteral(false)
-      case Plus(IntLiteral(a), IntLiteral(b))   => IntLiteral(a+b)
+      case Or(BoolLiteral(true), _)             => BoolLiteral(true)
+      case Plus(IntLiteral(a), IntLiteral(b))   => IntLiteral(a-b)
       case Not(Not(Not(a)))                     => Not(a)
       case e => e
     }
   } ensuring {
-    res => eval(res) == eval(e) && ((e, res) passes {
-      case Or(BoolLiteral(true), e) => BoolLiteral(true)
-    })
+    res => eval(res) == eval(e)
   }
 }

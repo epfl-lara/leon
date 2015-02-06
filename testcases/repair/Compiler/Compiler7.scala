@@ -150,10 +150,10 @@ object Desugar {
     case Trees.LessThan(lhs, rhs) => LessThan(desugar(lhs), desugar(rhs))
     case Trees.And  (lhs, rhs) => Ite(desugar(lhs), desugar(rhs), Literal(0)) 
     case Trees.Or   (lhs, rhs) => Ite(desugar(lhs), Literal(1), desugar(rhs))
-    case Trees.Not(e) => Ite(desugar(e), Literal(1), Literal(1)) //FIXME
+    case Trees.Not(e) => Ite(desugar(e), Literal(0), Literal(1))
     case Trees.Eq(lhs, rhs) =>
       Eq(desugar(lhs), desugar(rhs))
-    case Trees.Ite(cond, thn, els) => Ite(desugar(cond), desugar(els), desugar(thn))//FIXME
+    case Trees.Ite(cond, thn, els) => Ite(desugar(cond), desugar(thn), desugar(els))
     case Trees.IntLiteral(v)  => Literal(v)
     case Trees.BoolLiteral(b) => Literal(b2i(b))
   }} ensuring { res => 
@@ -201,12 +201,14 @@ object Simplifier {
   def simplify(e: Expr): Expr = {
     e match {
       case And(BoolLiteral(false), _)           => BoolLiteral(false)
-      case Or(BoolLiteral(true), _)             => BoolLiteral(true)
+      case Or(BoolLiteral(true), _)             => BoolLiteral(false)
       case Plus(IntLiteral(a), IntLiteral(b))   => IntLiteral(a+b)
       case Not(Not(Not(a)))                     => Not(a)
       case e => e
     }
   } ensuring {
-    res => eval(res) == eval(e)
+    res => eval(res) == eval(e) && ((e, res) passes {
+      case Or(BoolLiteral(true), e) => BoolLiteral(true)
+    })
   }
 }
