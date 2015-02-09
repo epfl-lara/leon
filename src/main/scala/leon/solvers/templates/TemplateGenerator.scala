@@ -258,7 +258,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           val (lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates) = mkClauses(pathVar, clause, clauseSubst)
 
           val ids: (Identifier, T) = lid -> encoder.encodeId(lid)
-          val dependencies: Set[T] = variablesOf(l).map(localSubst)
+          val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
           val template = LambdaTemplate(ids, encoder, lambdaManager, pathVar -> encodedCond(pathVar), idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, localSubst, dependencies, l)
           storeLambda(ids._2, template)
 
