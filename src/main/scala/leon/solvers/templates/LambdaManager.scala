@@ -38,11 +38,19 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     freeLambdasStack = map :: freeLambdasStack.tail
   }
 
+  private type StructuralMap = Map[Lambda, List[(T, LambdaTemplate[T])]]
+  private var structuralLambdasStack : List[StructuralMap] = List(Map.empty.withDefaultValue(List.empty))
+  private def structuralLambdas : StructuralMap = structuralLambdasStack.head
+  private def structuralLambdas_=(map: StructuralMap) : Unit = {
+    structuralLambdasStack = map :: structuralLambdasStack.tail
+  }
+
   def push(): Unit = {
     byIDStack = byID :: byIDStack
     byTypeStack = byType :: byTypeStack
     applicationsStack = applications :: applicationsStack
     freeLambdasStack = freeLambdas :: freeLambdasStack
+    structuralLambdasStack = structuralLambdas :: structuralLambdasStack
   }
 
   def pop(lvl: Int): Unit = {
@@ -50,6 +58,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     byTypeStack = byTypeStack.drop(lvl)
     applicationsStack = applicationsStack.drop(lvl)
     freeLambdasStack = freeLambdasStack.drop(lvl)
+    structuralLambdasStack = structuralLambdasStack.drop(lvl)
   }
 
   def registerFree(lambdas: Seq[(TypeTree, T)]): Unit = {
@@ -70,8 +79,10 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     }
 
     for (lambda @ (idT, template) <- lambdas) {
-      // make sure concrete lambdas can't be equal to free lambdas
-      clauses ++= freeLambdas(template.tpe).map(pIdT => encoder.mkNot(encoder.mkEquals(pIdT, idT)))
+      // get all lambda references...
+      val lambdaRefs = freeLambdas(template.tpe) ++ byType(template.tpe).map(_._1)
+      // ... and make sure the new lambda isn't equal to one of them!
+      clauses ++= lambdaRefs.map(pIdT => encoder.mkNot(encoder.mkEquals(pIdT, idT)))
 
       byID += idT -> template
       byType += template.tpe -> (byType(template.tpe) + (idT -> template))
@@ -104,6 +115,24 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     }
 
     (clauses, callBlockers, appBlockers)
+  }
+
+  def equalityClauses(template: LambdaTemplate[T], idT: T, substMap: Map[T,T]): Seq[T] = {
+    val key : Lambda = template.key
+    val t : LambdaTemplate[T] = template.substitute(substMap)
+
+    val newClauses = structuralLambdas(key).map { case (thatIdT, that) =>
+      val equals = encoder.mkEquals(idT, thatIdT)
+      if (t.dependencies.isEmpty) {
+        equals
+      } else {
+        encoder.mkImplies(t.contextEquality(that), equals)
+      }
+    }
+
+    structuralLambdas += key -> (structuralLambdas(key) :+ (idT -> t))
+
+    newClauses
   }
 
 }

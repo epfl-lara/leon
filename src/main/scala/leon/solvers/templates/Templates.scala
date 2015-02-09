@@ -33,7 +33,6 @@ trait Template[T] { self =>
   val lambdas : Map[T, LambdaTemplate[T]]
 
   private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
-  private var lambdaCache : Map[(T, Map[T,T]), T] = Map.empty
 
   def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
 
@@ -48,20 +47,10 @@ trait Template[T] { self =>
 
     val (lambdaSubstMap, lambdaClauses) = lambdas.foldLeft((Map.empty[T,T], Seq.empty[T])) {
       case ((subst, clauses), (idT, lambda)) =>
-        val closureMap = lambda.dependencies.map(idT => idT -> baseSubstMap(idT)).toMap
-        val key : (T, Map[T,T]) = idT -> closureMap
-
         val newIdT = encoder.encodeId(lambda.id)
-        val prevIdT = lambdaCache.get(key) match {
-          case Some(id) =>
-            Some(id)
-          case None =>
-            lambdaCache += key -> newIdT
-            None
-        }
+        val eqClauses = lambdaManager.equalityClauses(lambda, newIdT, baseSubstMap)
 
-        val newClause = prevIdT.map(id => encoder.mkEquals(newIdT, id))
-        (subst + (idT -> newIdT), clauses ++ newClause)
+        (subst + (idT -> newIdT), clauses ++ eqClauses)
     }
 
     val substMap : Map[T,T] = baseSubstMap ++ lambdaSubstMap + (start -> aVar)
@@ -238,6 +227,41 @@ class FunctionTemplate[T] private(
 
 object LambdaTemplate {
 
+  private var typedIds : Map[TypeTree, List[Identifier]] = Map.empty.withDefaultValue(List.empty)
+
+  private def templateKey[T](lambda: LambdaTemplate[T]): Lambda = {
+
+    def closureIds(expr: Expr): Seq[Identifier] = {
+      val vars = variablesOf(expr)
+      val allVars : Seq[Identifier] = foldRight[Seq[Identifier]] {
+        (expr, idSeqs) => idSeqs.foldLeft(expr match {
+          case Variable(id) => Seq(id)
+          case _ => Seq.empty[Identifier]
+        })((acc, seq) => acc ++ seq)
+      } (expr)
+
+      allVars.filter(vars(_)).distinct
+    }
+
+    val grouped : Map[TypeTree, Seq[Identifier]] = closureIds(lambda.lambda).groupBy(_.getType)
+    val subst : Map[Identifier, Identifier] = grouped.foldLeft(Map.empty[Identifier,Identifier]) { case (subst, (tpe, ids)) =>
+      val currentVars = typedIds(tpe)
+
+      val freshCount = ids.size - currentVars.size
+      val typedVars = if (freshCount > 0) {
+        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", true).setType(tpe))
+        typedIds += tpe -> allIds
+        allIds
+      } else {
+        currentVars
+      }
+
+      subst ++ (ids zip typedVars)
+    }
+
+    replaceFromIDs(subst.mapValues(_.toVariable), lambda.lambda).asInstanceOf[Lambda]
+  }
+
   def apply[T](
     ids: (Identifier, T),
     encoder: TemplateEncoder[T],
@@ -249,7 +273,7 @@ object LambdaTemplate {
     guardedExprs: Map[Identifier, Seq[Expr]],
     lambdas: Map[T, LambdaTemplate[T]],
     baseSubstMap: Map[Identifier, T],
-    dependencies: Set[T],
+    dependencies: Map[Identifier, T],
     lambda: Lambda
   ) : LambdaTemplate[T] = {
 
@@ -294,8 +318,8 @@ class LambdaTemplate[T] private (
   val blockers: Map[T, Set[TemplateCallInfo[T]]],
   val applications: Map[T, Set[App[T]]],
   val lambdas: Map[T, LambdaTemplate[T]],
-  val dependencies: Set[T],
-  val lambda: Lambda,
+  private[templates] val dependencies: Map[Identifier, T],
+  private val lambda: Lambda,
   stringRepr: () => String) extends Template[T] {
 
   val tpe = id.getType
@@ -317,7 +341,7 @@ class LambdaTemplate[T] private (
 
     val newLambdas = lambdas.map { case (idT, template) => idT -> template.substitute(substMap) }
 
-    val newDependencies = dependencies.map(substituter)
+    val newDependencies = dependencies.map(p => p._1 -> substituter(p._2))
 
     new LambdaTemplate[T](
       id,
@@ -339,4 +363,33 @@ class LambdaTemplate[T] private (
 
   private lazy val str : String = stringRepr()
   override def toString : String = str
+
+  def contextEquality(that: LambdaTemplate[T]) : T = {
+    assert(key == that.key, "Can't generate equality clause for lambdas that don't share structure")
+    assert(dependencies.nonEmpty, "No closures implies obvious equality")
+
+    def rec(e1: Expr, e2: Expr): Seq[T] = (e1,e2) match {
+      case (Variable(id1), Variable(id2)) =>
+        if (dependencies.isDefinedAt(id1)) {
+          Seq(encoder.mkEquals(dependencies(id1), that.dependencies(id2)))
+        } else {
+          Seq.empty
+        }
+
+      case (NAryOperator(es1, _), NAryOperator(es2, _)) =>
+        (es1 zip es2).flatMap(p => rec(p._1, p._2))
+
+      case (BinaryOperator(e11, e12, _), BinaryOperator(e21, e22, _)) =>
+        rec(e11, e21) ++ rec(e12, e22)
+
+      case (UnaryOperator(ue1, _), UnaryOperator(ue2, _)) =>
+        rec(ue1, ue2)
+
+      case _ => Seq.empty
+    }
+
+    encoder.mkAnd(rec(lambda, that.lambda) : _*)
+  }
+
+  def key : Lambda = LambdaTemplate.templateKey(this)
 }
