@@ -45,13 +45,7 @@ trait Template[T] { self =>
         subst
     }
 
-    val (lambdaSubstMap, lambdaClauses) = lambdas.foldLeft((Map.empty[T,T], Seq.empty[T])) {
-      case ((subst, clauses), (idT, lambda)) =>
-        val newIdT = encoder.encodeId(lambda.id)
-        val eqClauses = lambdaManager.equalityClauses(lambda, newIdT, baseSubstMap)
-
-        (subst + (idT -> newIdT), clauses ++ eqClauses)
-    }
+    val lambdaSubstMap = lambdas.map { case (idT, lambda) => idT -> encoder.encodeId(lambda.id) }
 
     val substMap : Map[T,T] = baseSubstMap ++ lambdaSubstMap + (start -> aVar)
     val substituter : T => T = encoder.substitute(substMap)
@@ -65,8 +59,12 @@ trait Template[T] { self =>
       substituter(b) -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
     }
 
-    val newLambdas = lambdas.map { case (idT, lambda) =>
-      substituter(idT) -> lambda.substitute(substMap)
+    val (newLambdas, lambdaClauses) = lambdas.foldLeft((Map.empty[T,LambdaTemplate[T]], Seq.empty[T])) {
+      case ((newLambdas, clauses), (idT, lambda)) =>
+        val newIdT = substituter(idT)
+        val newTemplate = lambda.substitute(substMap)
+        val eqClauses = lambdaManager.equalityClauses(newIdT, newTemplate)
+        (newLambdas + (newIdT -> newTemplate), clauses ++ eqClauses)
     }
 
     val (appClauses, appBlockers, appApps) = lambdaManager.instantiate(newApplications, newLambdas)
@@ -229,7 +227,7 @@ object LambdaTemplate {
 
   private var typedIds : Map[TypeTree, List[Identifier]] = Map.empty.withDefaultValue(List.empty)
 
-  private def templateKey[T](lambda: LambdaTemplate[T]): Lambda = {
+  private def structuralKey[T](lambda: Lambda, dependencies: Map[Identifier, T]): (Lambda, Map[Identifier,T]) = {
 
     def closureIds(expr: Expr): Seq[Identifier] = {
       val vars = variablesOf(expr)
@@ -243,7 +241,7 @@ object LambdaTemplate {
       allVars.filter(vars(_)).distinct
     }
 
-    val grouped : Map[TypeTree, Seq[Identifier]] = closureIds(lambda.lambda).groupBy(_.getType)
+    val grouped : Map[TypeTree, Seq[Identifier]] = closureIds(lambda).groupBy(_.getType)
     val subst : Map[Identifier, Identifier] = grouped.foldLeft(Map.empty[Identifier,Identifier]) { case (subst, (tpe, ids)) =>
       val currentVars = typedIds(tpe)
 
@@ -259,7 +257,10 @@ object LambdaTemplate {
       subst ++ (ids zip typedVars)
     }
 
-    replaceFromIDs(subst.mapValues(_.toVariable), lambda.lambda).asInstanceOf[Lambda]
+    val structuralLambda = replaceFromIDs(subst.mapValues(_.toVariable), lambda).asInstanceOf[Lambda]
+    val newDeps = dependencies.map { case (id, idT) => subst(id) -> idT }
+
+    structuralLambda -> newDeps
   }
 
   def apply[T](
@@ -287,6 +288,8 @@ object LambdaTemplate {
       "Template for lambda " + ids._1 + ": " + lambda + " is :\n" + templateString()
     }
 
+    val (key, keyDeps) = structuralKey(lambda, dependencies)
+
     new LambdaTemplate[T](
       ids._1,
       encoder,
@@ -299,8 +302,8 @@ object LambdaTemplate {
       blockers,
       applications,
       lambdas,
-      dependencies,
-      lambda,
+      keyDeps,
+      key,
       lambdaString
     )
   }
@@ -319,7 +322,7 @@ class LambdaTemplate[T] private (
   val applications: Map[T, Set[App[T]]],
   val lambdas: Map[T, LambdaTemplate[T]],
   private[templates] val dependencies: Map[Identifier, T],
-  private val lambda: Lambda,
+  private val structuralKey: Lambda,
   stringRepr: () => String) extends Template[T] {
 
   val tpe = id.getType
@@ -356,7 +359,7 @@ class LambdaTemplate[T] private (
       newApplications,
       newLambdas,
       newDependencies,
-      lambda,
+      structuralKey,
       stringRepr
     )
   }
@@ -364,32 +367,33 @@ class LambdaTemplate[T] private (
   private lazy val str : String = stringRepr()
   override def toString : String = str
 
-  def contextEquality(that: LambdaTemplate[T]) : T = {
-    assert(key == that.key, "Can't generate equality clause for lambdas that don't share structure")
-    assert(dependencies.nonEmpty, "No closures implies obvious equality")
+  def contextEquality(that: LambdaTemplate[T]) : Option[Seq[T]] = {
+    if (structuralKey != that.structuralKey) {
+      None // can't be equal
+    } else if (dependencies.isEmpty) {
+      Some(Seq.empty) // must be equal
+    } else {
+      def rec(e1: Expr, e2: Expr): Seq[T] = (e1,e2) match {
+        case (Variable(id1), Variable(id2)) =>
+          if (dependencies.isDefinedAt(id1)) {
+            Seq(encoder.mkEquals(dependencies(id1), that.dependencies(id2)))
+          } else {
+            Seq.empty
+          }
 
-    def rec(e1: Expr, e2: Expr): Seq[T] = (e1,e2) match {
-      case (Variable(id1), Variable(id2)) =>
-        if (dependencies.isDefinedAt(id1)) {
-          Seq(encoder.mkEquals(dependencies(id1), that.dependencies(id2)))
-        } else {
-          Seq.empty
-        }
+        case (NAryOperator(es1, _), NAryOperator(es2, _)) =>
+          (es1 zip es2).flatMap(p => rec(p._1, p._2))
 
-      case (NAryOperator(es1, _), NAryOperator(es2, _)) =>
-        (es1 zip es2).flatMap(p => rec(p._1, p._2))
+        case (BinaryOperator(e11, e12, _), BinaryOperator(e21, e22, _)) =>
+          rec(e11, e21) ++ rec(e12, e22)
 
-      case (BinaryOperator(e11, e12, _), BinaryOperator(e21, e22, _)) =>
-        rec(e11, e21) ++ rec(e12, e22)
+        case (UnaryOperator(ue1, _), UnaryOperator(ue2, _)) =>
+          rec(ue1, ue2)
 
-      case (UnaryOperator(ue1, _), UnaryOperator(ue2, _)) =>
-        rec(ue1, ue2)
+        case _ => Seq.empty
+      }
 
-      case _ => Seq.empty
+      Some(rec(structuralKey, that.structuralKey))
     }
-
-    encoder.mkAnd(rec(lambda, that.lambda) : _*)
   }
-
-  def key : Lambda = LambdaTemplate.templateKey(this)
 }
