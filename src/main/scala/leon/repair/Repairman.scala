@@ -260,6 +260,24 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     def focus(expr: Expr, env: Map[Identifier, Expr])(implicit spec: Expr, out: Identifier): (Expr, Expr) = {
       val choose = Choose(List(out), spec)
+      
+      def testCondition(cond: Expr, inExpr: Expr => Expr) = forAllTests(
+        spec,
+        env + (out -> inExpr(not(cond))),
+        new RepairNDEvaluator(ctx,program,fd,cond)
+      )
+      
+      def condAsSpec(cond: Expr, inExpr: Expr => Expr) = {
+        val newOut = FreshIdentifier("cond", true).setType(BooleanType)
+        val newSpec = Let(
+          out,
+          inExpr(Variable(newOut)),
+          spec
+        )
+        val (b, r) = focus(cond, env)(newSpec, newOut)
+        (inExpr(b), r)
+      }
+      
       expr match {
         case me @ MatchExpr(scrut, cases) =>
           var res: Option[(Expr, Expr)] = None
@@ -296,22 +314,9 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           (Let(id, value, b), r)
   
         case ite @ IfExpr(c, thn, els) =>
-          forAllTests(
-            spec,
-            env + (out -> IfExpr(not(c), thn, els)),
-            new RepairNDEvaluator(ctx,program,fd,c)
-          ) match {
+          testCondition(c, IfExpr(_, thn, els)) match {
             case Some(true) =>
-              // If all failing tests succeed with the condition reversed,
-              // we focus on the condition
-              val newOut = FreshIdentifier("cond", true).setType(BooleanType)
-              val newSpec = Let(
-                out,
-                IfExpr(Variable(newOut), thn, els), 
-                spec
-              )
-              val (b, r) = focus(c, env)(newSpec, newOut)
-              (IfExpr(b, thn, els), r)
+              condAsSpec(c, IfExpr(_, thn, els))
             case _ =>
               // Try to focus on branches
               forAllTests(c, env, evaluator) match {
@@ -326,7 +331,46 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                   (choose, expr)  
               }
           }
+        
+        case a@And(Seq(ex, exs@_*)) =>
+          testCondition(ex, e => andJoin(e +: exs)) match {
+            case Some(true) =>
+              // The first is wrong
+              condAsSpec(ex, e => andJoin(e +: exs))
+            case _ => 
+              forAllTests(ex, env, evaluator) match {
+                case Some(true) =>
+                  // First is always true, focus on rest
+                  focus(andJoin(exs), env)
+                case Some(false) =>
+                  // FIXME: Seems all test break when we evaluate to false, try true???
+                  (choose, BooleanLiteral(true))
+                case None =>
+                  // We cannot focus any further
+                  (choose, expr)  
+              }
+          }
 
+          case o@Or(Seq(ex, exs@_*)) =>
+            testCondition(ex, e => orJoin(e +: exs)) match {
+              case Some(true) => 
+                condAsSpec(ex, e => orJoin(e +: exs))
+              case _ => 
+                forAllTests(ex, env, evaluator) match {
+                  case Some(false) =>
+                    // First is always false, focus on rest
+                    focus(orJoin(exs), env)
+                  case Some(true) =>
+                    // FIXME: Seems all test break when we evaluate to true, try false???
+                    (choose, BooleanLiteral(false))
+                  case None =>
+                    // We cannot focus any further
+                    (choose, expr)  
+                }
+          }
+          
+        // Let, LetTuple, Methods, tuples?
+       
         case _ =>
           (choose, expr)
       }
