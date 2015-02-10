@@ -10,6 +10,11 @@ import leon.LeonContext
 import leon.evaluators.RecursiveEvaluator
 import leon.synthesis._
 
+/** 
+ *  This evaluator tracks all dependencies between function calls (.fullCallGraph)
+  * as well as if each invocation was successful or erroneous (led to an error)
+  * (.fiStatus) 
+  */
 class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {
   type RC = CollectingRecContext
   type GC = GlobalContext
@@ -22,25 +27,16 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   // This is a call graph to track dependencies of function invocations.
   // If fi1 calls fi2 but fails fi2's precondition, we consider it 
   // fi1's fault and we don't register the dependency.
-  private val callGraph : MMap[FI, Set[FI]] = MMap()//.withDefaultValue(Set())
+  private val callGraph : MMap[FI, Set[FI]] = MMap()
+  // Register a call without any edges towards other calls
   private def registerNode(fi : FI) = if (!callGraph.contains(fi)) callGraph update (fi, Set())
+  // Register an edge - also registers start and end nodes
   private def registerCall(fi : FI, lastFI : Option[FI]) = {
     lastFI foreach { lfi => 
       callGraph update (lfi, callGraph(lfi) + fi) 
     }
   }
-  def fullCallGraph = {
-    /*println("About to print")
-      for{ 
-        (test, tests) <-callGraph
-        
-      } {
-        println(test._2 mkString ", ")
-        println(new ExamplesTable("", tests.toSeq.map{ x => InExample(x._2)}).toString)
-      }*/
-
-    leon.utils.GraphOps.transitiveClosure(callGraph.toMap)
-  }
+  def fullCallGraph = leon.utils.GraphOps.transitiveClosure(callGraph.toMap)
   
   // Tracks if every function invocation succeeded or failed
   private val fiStatus_ : MMap[FI, Boolean] = MMap().withDefaultValue(false)
