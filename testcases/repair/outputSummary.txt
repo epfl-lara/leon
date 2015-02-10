@@ -1,0 +1,1149 @@
+%%% Compiler1.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Plus(desugar(lhs), desugar(rhs))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def desugar(e : Trees.Expr): SimpleE = {
+  e match {
+    case Trees.Plus(lhs, rhs) =>
+      Plus(desugar(lhs), desugar(rhs))
+    case Trees.Minus(lhs, rhs) =>
+      Plus(desugar(lhs), Neg(desugar(rhs)))
+    case Trees.LessThan(lhs, rhs) =>
+      LessThan(desugar(lhs), desugar(rhs))
+    case Trees.And(lhs, rhs) =>
+      Ite(desugar(lhs), desugar(rhs), Literal(0))
+    case Trees.Or(lhs, rhs) =>
+      Ite(desugar(lhs), Literal(1), desugar(rhs))
+    case Trees.Not(e) =>
+      Ite(desugar(e), Literal(0), Literal(1))
+    case Trees.Eq(lhs, rhs) =>
+      Eq(desugar(lhs), desugar(rhs))
+    case Trees.Ite(cond, thn, els) =>
+      Ite(desugar(cond), desugar(thn), desugar(els))
+    case Trees.IntLiteral(v) =>
+      Literal(v)
+    case Trees.BoolLiteral(b) =>
+      Literal(b2i(b))
+  }
+} ensuring {
+  (res : SimpleE) => (e, res) passes {
+    case Trees.Plus(Trees.IntLiteral(i), Trees.Minus(Trees.IntLiteral(j), Trees.IntLiteral(42))) =>
+      Plus(Literal(i), Plus(Literal(j), Neg(Literal(42))))
+  } && sem(res) == semUntyped(e)
+}
+
+%%% Compiler2.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Plus(None[SimpleE]().getOrElse(desugar(lhs)), Neg(desugar(rhs)))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def desugar(e : Trees.Expr): SimpleE = {
+  e match {
+    case Trees.Plus(lhs, rhs) =>
+      Plus(desugar(lhs), desugar(rhs))
+    case Trees.Minus(lhs, rhs) =>
+      Plus(None[SimpleE]().getOrElse(desugar(lhs)), Neg(desugar(rhs)))
+    case Trees.LessThan(lhs, rhs) =>
+      LessThan(desugar(lhs), desugar(rhs))
+    case Trees.And(lhs, rhs) =>
+      Ite(desugar(lhs), desugar(rhs), Literal(0))
+    case Trees.Or(lhs, rhs) =>
+      Ite(desugar(lhs), Literal(1), desugar(rhs))
+    case Trees.Not(e) =>
+      Ite(desugar(e), Literal(0), Literal(1))
+    case Trees.Eq(lhs, rhs) =>
+      Eq(desugar(lhs), desugar(rhs))
+    case Trees.Ite(cond, thn, els) =>
+      Ite(desugar(cond), desugar(thn), desugar(els))
+    case Trees.IntLiteral(v) =>
+      Literal(v)
+    case Trees.BoolLiteral(b) =>
+      Literal(b2i(b))
+  }
+} ensuring {
+  (res : SimpleE) => sem(res) == semUntyped(e) && (e, res) passes {
+    case Trees.Minus(Trees.IntLiteral(42), Trees.IntLiteral(i)) =>
+      Plus(Literal(42), Neg(Literal(i)))
+  }
+}
+
+%%% Compiler3.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Ite(desugar(cond), desugar(thn), desugar(els))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def desugar(e : Trees.Expr): SimpleE = {
+  e match {
+    case Trees.Plus(lhs, rhs) =>
+      Plus(desugar(lhs), desugar(rhs))
+    case Trees.Minus(lhs, rhs) =>
+      Plus(desugar(lhs), Neg(desugar(rhs)))
+    case Trees.LessThan(lhs, rhs) =>
+      LessThan(desugar(lhs), desugar(rhs))
+    case Trees.And(lhs, rhs) =>
+      Ite(desugar(lhs), desugar(rhs), Literal(0))
+    case Trees.Or(lhs, rhs) =>
+      Ite(desugar(lhs), Literal(1), desugar(rhs))
+    case Trees.Not(e) =>
+      Ite(desugar(e), Literal(0), Literal(1))
+    case Trees.Eq(lhs, rhs) =>
+      Eq(desugar(lhs), desugar(rhs))
+    case Trees.Ite(cond, thn, els) =>
+      Ite(desugar(cond), desugar(thn), desugar(els))
+    case Trees.IntLiteral(v) =>
+      Literal(v)
+    case Trees.BoolLiteral(b) =>
+      Literal(b2i(b))
+  }
+} ensuring {
+  (res : SimpleE) => sem(res) == semUntyped(e)
+}
+
+%%% Compiler4.scala
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Ite(desugar(e), Literal(0), Literal(1))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def desugar(e : Trees.Expr): SimpleE = {
+  e match {
+    case Trees.Plus(lhs, rhs) =>
+      Plus(desugar(lhs), desugar(rhs))
+    case Trees.Minus(lhs, rhs) =>
+      Plus(desugar(lhs), Neg(desugar(rhs)))
+    case Trees.LessThan(lhs, rhs) =>
+      LessThan(desugar(lhs), desugar(rhs))
+    case Trees.And(lhs, rhs) =>
+      Ite(desugar(lhs), desugar(rhs), Literal(0))
+    case Trees.Or(lhs, rhs) =>
+      Ite(desugar(lhs), Literal(1), desugar(rhs))
+    case Trees.Not(e) =>
+      Ite(desugar(e), Literal(0), Literal(1))
+    case Trees.Eq(lhs, rhs) =>
+      Eq(desugar(lhs), desugar(rhs))
+    case Trees.Ite(cond, thn, els) =>
+      Ite(desugar(cond), desugar(thn), desugar(els))
+    case Trees.IntLiteral(v) =>
+      Literal(v)
+    case Trees.BoolLiteral(b) =>
+      Literal(b2i(b))
+  }
+} ensuring {
+  (res : SimpleE) => sem(res) == semUntyped(e)
+}
+
+%%% Compiler5.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+e match {
+  case Plus(lhs, rhs) =>
+    Plus(desugar(lhs), desugar(rhs))
+  case Minus(lhs, rhs) =>
+    Plus(desugar(lhs), Neg(desugar(rhs)))
+  case LessThan(lhs, rhs) =>
+    LessThan(desugar(lhs), desugar(rhs))
+  case And(lhs, rhs) =>
+    Ite(desugar(lhs), desugar(rhs), Literal(0))
+  case Or(lhs, rhs) =>
+    Ite(desugar(lhs), Literal(1), desugar(rhs))
+  case Not(e) =>
+    Ite(desugar(e), Literal(0), Literal(1))
+  case Eq(lhs, rhs) =>
+    Eq(desugar(lhs), desugar(rhs))
+  case Ite(cond, thn, els) =>
+    Ite(desugar(cond), desugar(thn), desugar(els))
+  case IntLiteral(v) =>
+    Literal(v)
+  case BoolLiteral(b) =>
+    Literal(b2i(b))
+}
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def desugar(e : Trees.Expr): SimpleE = {
+  e match {
+    case Trees.Plus(lhs, rhs) =>
+      Plus(desugar(lhs), desugar(rhs))
+    case Trees.Minus(lhs, rhs) =>
+      Plus(desugar(lhs), Neg(desugar(rhs)))
+    case Trees.LessThan(lhs, rhs) =>
+      LessThan(desugar(lhs), desugar(rhs))
+    case Trees.And(lhs, rhs) =>
+      Ite(desugar(lhs), desugar(rhs), Literal(0))
+    case Trees.Or(lhs, rhs) =>
+      Ite(desugar(lhs), Literal(1), desugar(rhs))
+    case Trees.Not(e) =>
+      Ite(desugar(e), Literal(0), Literal(1))
+    case Trees.Eq(lhs, rhs) =>
+      Eq(desugar(lhs), desugar(rhs))
+    case Trees.Ite(cond, thn, els) =>
+      Ite(desugar(cond), desugar(thn), desugar(els))
+    case Trees.IntLiteral(v) =>
+      Literal(v)
+    case Trees.BoolLiteral(b) =>
+      Literal(b2i(b))
+  }
+} ensuring {
+  (res : SimpleE) => sem(res) == semUntyped(e)
+}
+
+%%% Compiler6.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+IntLiteral(a + b)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def simplify(e : Trees.Expr): Trees.Expr = {
+  e match {
+    case Trees.And(Trees.BoolLiteral(false), _) =>
+      Trees.BoolLiteral(false)
+    case Trees.Or(Trees.BoolLiteral(true), _) =>
+      Trees.BoolLiteral(true)
+    case Trees.Plus(Trees.IntLiteral(a), Trees.IntLiteral(b)) =>
+      Trees.IntLiteral(a + b)
+    case Trees.Not(Trees.Not(Trees.Not(a))) =>
+      Trees.Not(a)
+    case e =>
+      e
+  }
+} ensuring {
+  (res : Trees.Expr) => eval(res) == eval(e)
+}
+
+%%% Compiler7.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+BoolLiteral(true)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+@induct
+def simplify(e : Trees.Expr): Trees.Expr = {
+  e match {
+    case Trees.And(Trees.BoolLiteral(false), _) =>
+      Trees.BoolLiteral(false)
+    case Trees.Or(Trees.BoolLiteral(true), _) =>
+      Trees.BoolLiteral(true)
+    case Trees.Plus(Trees.IntLiteral(a), Trees.IntLiteral(b)) =>
+      Trees.IntLiteral(a + b)
+    case Trees.Not(Trees.Not(Trees.Not(a))) =>
+      Trees.Not(a)
+    case e =>
+      e
+  }
+} ensuring {
+  (res : Trees.Expr) => eval(res) == eval(e) && (e, res) passes {
+    case Trees.Or(Trees.BoolLiteral(true), e) =>
+      Trees.BoolLiteral(true)
+  }
+}
+
+%%% Heap3.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+v2 >= v1
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(h1 : Heap, h2 : Heap): Heap = {
+  require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+  (h1, h2) match {
+    case (Leaf(), _) =>
+      h2
+    case (_, Leaf()) =>
+      h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if (v2 >= v1) {
+        makeN(v2, l2, merge(h1, r2))
+      } else {
+        makeN(v1, l1, merge(r1, h2))
+      }
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+}
+
+%%% Heap4.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+h1
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(h1 : Heap, h2 : Heap): Heap = {
+  require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+  (h1, h2) match {
+    case (Leaf(), _) =>
+      h2
+    case (_, Leaf()) =>
+      h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if (v1 >= v2) {
+        makeN(v1, l1, merge(r1, h2))
+      } else {
+        makeN(v2, l2, merge(h1, r2))
+      }
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+}
+
+%%% Heap5.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+v2 <= v1
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(h1 : Heap, h2 : Heap): Heap = {
+  require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+  (h1, h2) match {
+    case (Leaf(), _) =>
+      h2
+    case (_, Leaf()) =>
+      h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if (v2 <= v1) {
+        makeN(v1, l1, merge(r1, h2))
+      } else {
+        makeN(v2, l2, merge(h1, r2))
+      }
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+}
+
+%%% Heap6.scala %%% 
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+makeN(v2, l2, merge(h1, r2))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(h1 : Heap, h2 : Heap): Heap = {
+  require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+  (h1, h2) match {
+    case (Leaf(), _) =>
+      h2
+    case (_, Leaf()) =>
+      h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if (v1 >= v2) {
+        makeN(v1, l1, merge(r1, h2))
+      } else {
+        makeN(v2, l2, merge(h1, r2))
+      }
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+}
+
+%%% Heap7.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+v1 + v2 > v2 + v2
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(h1 : Heap, h2 : Heap): Heap = {
+  require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+  (h1, h2) match {
+    case (Leaf(), _) =>
+      h2
+    case (_, Leaf()) =>
+      h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if (v1 + v2 > v2 + v2) {
+        makeN(v1, l1, merge(r1, h2))
+      } else {
+        makeN(v2, l2, merge(h1, r2))
+      }
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+}
+
+%%% Heap8.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+merge(Node(element, Leaf(), Leaf()), heap)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def insert(element : Int, heap : Heap): Heap = {
+  require(hasLeftistProperty(heap) && hasHeapProperty(heap))
+  merge(Node(element, Leaf(), Leaf()), heap)
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(res) == heapSize(heap) + 1 && res.content() == heap.content() ++ Set[Int](element)
+}
+
+%%% Heap9.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+left.rank() >= right.rank()
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def makeN(value : Int, left : Heap, right : Heap): Heap = {
+  require(hasLeftistProperty(left) && hasLeftistProperty(right))
+  if (left.rank() >= right.rank()) {
+    Node(value, left, right)
+  } else {
+    Node(value, right, left)
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res)
+}
+
+%%% Heap10.scala %%%
+Solution is not trusted!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+(h1, h2) match {
+  case (Leaf(), _) =>
+    h2
+  case (_, Leaf()) =>
+    h1
+  case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+    if (v1 >= v2) {
+      makeN(v1, l1, merge(r1, h2))
+    } else {
+      makeN(v2, merge(h1, r2), l2)
+    }
+}
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(h1 : Heap, h2 : Heap): Heap = {
+  require(hasLeftistProperty(h1) && hasLeftistProperty(h2) && hasHeapProperty(h1) && hasHeapProperty(h2))
+  (h1, h2) match {
+    case (Leaf(), _) =>
+      h2
+    case (_, Leaf()) =>
+      h1
+    case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
+      if (v1 >= v2) {
+        makeN(v1, l1, merge(r1, h2))
+      } else {
+        makeN(v2, merge(h1, r2), l2)
+      }
+  }
+} ensuring {
+  (res : Heap) => hasLeftistProperty(res) && hasHeapProperty(res) && heapSize(h1) + heapSize(h2) == heapSize(res) && h1.content() ++ h2.content() == res.content()
+}
+
+%%% PropLogic1.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+nnf(Not(e))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def nnf(formula : Formula): Formula = {
+  formula match {
+    case Not(And(lhs, rhs)) =>
+      Or(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Or(lhs, rhs)) =>
+      And(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Const(v)) =>
+      Const(!v)
+    case Not(Not(e)) =>
+      nnf(Not(e))
+    case And(lhs, rhs) =>
+      And(nnf(lhs), nnf(rhs))
+    case Or(lhs, rhs) =>
+      Or(nnf(lhs), nnf(rhs))
+    case other =>
+      other
+  }
+} ensuring {
+  (res : Formula) => isNNF(res) && (formula, res) passes {
+    case Not(Not(Not(Const(a)))) =>
+      Const(!a)
+  }
+}
+
+%%% PropLogic2.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+other match {
+  case Const(v) =>
+    Literal(1)
+  case Literal(id) =>
+    Const(false)
+  case Not(f) =>
+    nnf(f)
+}
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def nnf(formula : Formula): Formula = {
+  formula match {
+    case Not(And(lhs, rhs)) =>
+      Or(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Or(lhs, rhs)) =>
+      And(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Const(v)) =>
+      Const(!v)
+    case And(lhs, rhs) =>
+      And(nnf(lhs), nnf(rhs))
+    case Or(lhs, rhs) =>
+      Or(nnf(lhs), nnf(rhs))
+    case other =>
+      other match {
+        case Const(v) =>
+          Literal(1)
+        case Literal(id) =>
+          Const(false)
+        case Not(f) =>
+          nnf(f)
+      }
+  }
+} ensuring {
+  (res : Formula) => isNNF(res) && (formula, res) passes {
+    case Not(Not(Not(Const(a)))) =>
+      Const(!a)
+  }
+}
+
+%%% PropLogic3.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Const(false == v)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def nnf(formula : Formula): Formula = {
+  formula match {
+    case Not(And(lhs, rhs)) =>
+      Or(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Or(lhs, rhs)) =>
+      And(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Const(v)) =>
+      Const(false == v)
+    case Not(Not(e)) =>
+      nnf(e)
+    case And(lhs, rhs) =>
+      And(nnf(lhs), nnf(rhs))
+    case Or(lhs, rhs) =>
+      Or(nnf(lhs), nnf(rhs))
+    case other =>
+      other
+  }
+} ensuring {
+  (res : Formula) => isNNF(res) && (formula, res) passes {
+    case Not(Const(true)) =>
+      Const(false)
+    case Not(Const(false)) =>
+      Const(true)
+  }
+}
+
+%%% PropLogic4.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Or(nnf(lhs), nnf(rhs))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def nnf(formula : Formula): Formula = {
+  formula match {
+    case Not(And(lhs, rhs)) =>
+      Or(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Or(lhs, rhs)) =>
+      And(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Const(v)) =>
+      Const(!v)
+    case Not(Not(e)) =>
+      nnf(e)
+    case And(lhs, rhs) =>
+      And(nnf(lhs), nnf(rhs))
+    case Or(lhs, rhs) =>
+      Or(nnf(lhs), nnf(rhs))
+    case other =>
+      other
+  }
+} ensuring {
+  (res : Formula) => isNNF(res) && (formula, res) passes {
+    case Or(Not(Const(c)), Not(Literal(l))) =>
+      Or(Const(!c), Not(Literal(l)))
+  }
+}
+
+%%% PropLogic5.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Or(nnf(lhs), nnf(rhs))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def nnf(formula : Formula): Formula = {
+  formula match {
+    case Not(And(lhs, rhs)) =>
+      Or(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Or(lhs, rhs)) =>
+      And(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Const(v)) =>
+      Const(!v)
+    case Not(Not(e)) =>
+      nnf(e)
+    case And(lhs, rhs) =>
+      And(nnf(lhs), nnf(rhs))
+    case Or(lhs, rhs) =>
+      Or(nnf(lhs), nnf(rhs))
+    case other =>
+      other
+  }
+} ensuring {
+  (res : Formula) => isNNF(res) && (formula, res) passes {
+    case Or(Not(Const(c)), Not(Literal(l))) =>
+      Or(Const(!c), Not(Literal(l)))
+  }
+}
+
+%%% List1.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Cons0[T](h, t.pad(s, e))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$pad[T]($this : List0[T], s : Int, e : T): List0[T] = {
+  ($this, s) match {
+    case (_, s) if s <= 0 =>
+      $this
+    case (Nil0(), s) =>
+      Cons0[T](e, Nil0[T]().pad(s - 1, e))
+    case (Cons0(h, t), s) =>
+      Cons0[T](h, t.pad(s, e))
+  }
+} ensuring {
+  (res : List0[T]) => (($this, s, e), res) passes {
+    case (Cons0(a, Nil0()), 2, x) =>
+      Cons0[T](a, Cons0[T](x, Cons0[T](x, Nil0[T]())))
+  }
+}
+
+%%% List2.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Cons0[T](x, xs ++ that)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$$plus$plus[T]($this : List0[T], that : List0[T]): List0[T] = {
+  $this match {
+    case Nil0() =>
+      that
+    case Cons0(x, xs) =>
+      Cons0[T](x, xs ++ that)
+  }
+} ensuring {
+  (res : List0[T]) => res.content() == $this.content() ++ that.content() && res.size() == $this.size() + that.size()
+}
+
+%%% List3.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Cons0[T](t, Nil0[T]())
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$ap[T]($this : List0[T], t : T): List0[T] = {
+  $this match {
+    case Nil0() =>
+      Cons0[T](t, Nil0[T]())
+    case Cons0(x, xs) =>
+      Cons0[T](x, xs.ap(t))
+  }
+} ensuring {
+  (res : List0[T]) => res.size() == $this.size() + 1 && res.content() == $this.content() ++ Set[T](t)
+}
+
+%%% List5.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+if (h == from) {
+  Cons0[T](to, t.replace(h, to))
+} else {
+  Cons0[T](h, r)
+}
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$replace[T]($this : List0[T], from : T, to : T): List0[T] = {
+  $this match {
+    case Nil0() =>
+      Nil0[T]()
+    case Cons0(h, t) =>
+      val r = t.replace(from, to);
+      if (h == from) {
+        Cons0[T](to, t.replace(h, to))
+      } else {
+        Cons0[T](h, r)
+      }
+  }
+} ensuring {
+  (res : List0[T]) => $this.content() -- Set[T](from) ++ (if ($this.content().contains(e)) {
+    Set[T](to)
+  } else {
+    Set[T]()
+  }) == res.content() && res.size() == $this.size()
+}
+
+%%% List6.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+t.count(h) + 1
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$count[T]($this : List0[T], e : T): Int = {
+  $this match {
+    case Cons0(h, t) =>
+      if (h == e) {
+        t.count(h) + 1
+      } else {
+        t.count(e)
+      }
+    case Nil0() =>
+      0
+  }
+} ensuring {
+  (x$2 : Int) => (($this, e), x$2) passes {
+    case (Cons0(a, Cons0(b, Cons0(a1, Cons0(b2, Nil0())))), a2) if a == a1 && a == a2 && b != a2 && b2 != a2 =>
+      2
+    case (Cons0(a, Cons0(b, Nil0())), c) if a != c && b != c =>
+      0
+  }
+}
+
+%%% List7.scala %%%
+Solution is not trusted!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Some[Int](i + 1)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$find[T]($this : List0[T], e : T): Option[Int] = {
+  $this match {
+    case Nil0() =>
+      None[Int]()
+    case Cons0(h, t) =>
+      if (h == e) {
+        Some[Int](0)
+      } else {
+        t.find(e) match {
+          case None() =>
+            None[Int]()
+          case Some(i) =>
+            Some[Int](i + 1)
+        }
+      }
+  }
+} ensuring {
+  (res : Option[Int]) => if ($this.content().contains(e)) {
+    res.isDefined() && $this.size() > res.get() && $this.apply(res.get()) == e
+  } else {
+    res.isEmpty()
+  }
+}
+
+%%% List8.scala %%%
+Solution is not trusted!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Some[Int]((i + 2) - 1)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$find[T]($this : List0[T], e : T): Option[Int] = {
+  $this match {
+    case Nil0() =>
+      None[Int]()
+    case Cons0(h, t) =>
+      if (h == e) {
+        Some[Int](0)
+      } else {
+        t.find(e) match {
+          case None() =>
+            None[Int]()
+          case Some(i) =>
+            Some[Int]((i + 2) - 1)
+        }
+      }
+  }
+} ensuring {
+  (res : Option[Int]) => if ($this.content().contains(e)) {
+    res.isDefined() && $this.size() > res.get() && $this.apply(res.get()) == e
+  } else {
+    res.isEmpty()
+  }
+}
+
+%%% List9.scala %%%
+Solution is not trusted!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+if (e == h) {
+  Some[Int](0)
+} else {
+  t.find(e) match {
+    case None() =>
+      None[Int]()
+    case Some(i) =>
+      Some[Int](i + 1)
+  }
+}
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$find[T]($this : List0[T], e : T): Option[Int] = {
+  $this match {
+    case Nil0() =>
+      None[Int]()
+    case Cons0(h, t) =>
+      if (e == h) {
+        Some[Int](0)
+      } else {
+        t.find(e) match {
+          case None() =>
+            None[Int]()
+          case Some(i) =>
+            Some[Int](i + 1)
+        }
+      }
+  }
+} ensuring {
+  (res : Option[Int]) => if ($this.content().contains(e)) {
+    res.isDefined() && $this.size() > res.get() && $this.apply(res.get()) == e
+  } else {
+    res.isEmpty()
+  }
+}
+
+%%% List10.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+1 + t.size()
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$size[T]($this : List0[T]): Int = {
+  $this match {
+    case Nil0() =>
+      0
+    case Cons0(h, t) =>
+      1 + t.size()
+  }
+} ensuring {
+  (x$1 : Int) => ($this, x$1) passes {
+    case Cons0(_, Nil0()) =>
+      1
+    case Nil0() =>
+      0
+  }
+}
+
+%%% List11.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+h + sum(t)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def sum(l : List0[Int]): Int = {
+  l match {
+    case Nil0() =>
+      0
+    case Cons0(h, t) =>
+      h + sum(t)
+  }
+} ensuring {
+  (x$2 : Int) => (l, x$2) passes {
+    case Cons0(a, Nil0()) =>
+      a
+    case Cons0(a, Cons0(b, Nil0())) =>
+      a + b
+  }
+}
+
+%%% List12.scala %%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+t - e
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$$minus[T]($this : List0[T], e : T): List0[T] = {
+  $this match {
+    case Cons0(h, t) =>
+      if (e == h) {
+        t - e
+      } else {
+        Cons0[T](h, t - e)
+      }
+    case Nil0() =>
+      Nil0[T]()
+  }
+} ensuring {
+  (res : List0[T]) => res.content() == $this.content() -- Set[T](e)
+}
+
+%%% List13.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+val scrut = ($this, i);
+  scrut match {
+    case (Nil0(), _) =>
+      Nil0[T]()
+    case (Cons0(h, t), 0) =>
+      scrut._1
+    case (Cons0(_, t), i) =>
+      t.drop(2)
+  }
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def List0$drop[T]($this : List0[T], i : Int): List0[T] = {
+  val scrut = ($this, i);
+  scrut match {
+    case (Nil0(), _) =>
+      Nil0[T]()
+    case (Cons0(h, t), 0) =>
+      scrut._1
+    case (Cons0(_, t), i) =>
+      t.drop(2)
+  }
+} ensuring {
+  (res : List0[T]) => (($this, i), res) passes {
+    case (Cons0(_, Nil0()), 42) =>
+      Nil0[T]()
+    case (l @ Cons0(_, _), 0) =>
+      l
+    case (Cons0(a, Cons0(b, Nil0())), 1) =>
+      Cons0[T](b, Nil0[T]())
+    case (Cons0(a, Cons0(b, Cons0(c, Nil0()))), 2) =>
+      Cons0[T](c, Nil0[T]())
+  }
+}
+
+%%% Numerical1.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+power(base, p - 1) * base
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def power(base : Int, p : Int): Int = {
+  require(p >= 0)
+  if (p == 0) {
+    1
+  } else {
+    if (p % 2 == 0) {
+      power(base * base, p / 2)
+    } else {
+      power(base, p - 1) * base
+    }
+  }
+} ensuring {
+  (res : Int) => ((base, p), res) passes {
+    case (_, 0) =>
+      1
+    case (b, 1) =>
+      b
+    case (2, 7) =>
+      128
+    case (2, 10) =>
+      1024
+  }
+}
+
+%%% Numerical3.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+(a, 0)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def moddiv(a : Int, b : Int): (Int, Int) = {
+  require(a >= 0 && b > 0)
+  if (b > a) {
+    (a, 0)
+  } else {
+    {val x$1 = {
+      moddiv(a - b, b) match {
+        case (r1, r2) =>
+          (r1, r2)
+      }
+    }
+    val r1 = {
+      x$1._1
+    }
+    val r2 = x$1._2;
+    (r1, (r2 + 1))}
+  }
+} ensuring {
+  (res : (Int, Int)) => b * res._2 + res._1 == a
+}
+
+%%% MergeSort1.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+(Cons(b, rec1), Cons(a, rec2))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def split(l : List): (List, List) = {
+  l match {
+    case Cons(a, Cons(b, t)) =>
+      val x$1 = {
+        split(t) match {
+          case (rec1, rec2) =>
+            (rec1, rec2)
+        }
+      }
+      val rec1 = {
+        x$1._1
+      }
+      val rec2 = x$1._2;
+      (Cons(b, rec1), Cons(a, rec2))
+    case other =>
+      (other, Nil())
+  }
+} ensuring {
+  (res : (List, List)) => val x$2 = {
+    res match {
+      case (l1, l2) =>
+        (l1, l2)
+    }
+  }
+  val l1 = {
+    x$2._1
+  }
+  val l2 = x$2._2;
+  l1.size() >= l2.size() && l1.size() <= l2.size() + 1 && l1.size() + l2.size() == l.size() && l1.content() ++ l2.content() == l.content()
+}
+
+%%% MergeSort2.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+Cons[Int](h2, merge(l1, t2))
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(l1 : List[Int], l2 : List[Int]): List[Int] = {
+  require(isSorted(l1) && isSorted(l2))
+  (l1, l2) match {
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      if (h1 <= h2) {
+        Cons[Int](h1, merge(t1, l2))
+      } else {
+        Cons[Int](h2, merge(l1, t2))
+      }
+    case (Nil(), _) =>
+      l2
+    case (_, Nil()) =>
+      l1
+  }
+} ensuring {
+  (res : List[Int]) => isSorted(res) && res.size() == l1.size() + l2.size() && res.content() == l1.content() ++ l2.content()
+}
+
+%%% MergeSort3.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+h2 >= h1
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(l1 : List[Int], l2 : List[Int]): List[Int] = {
+  require(isSorted(l1) && isSorted(l2))
+  (l1, l2) match {
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      if (h2 >= h1) {
+        Cons[Int](h1, merge(t1, l2))
+      } else {
+        Cons[Int](h2, merge(l1, t2))
+      }
+    case (Nil(), _) =>
+      l2
+    case (_, Nil()) =>
+      l1
+  }
+} ensuring {
+  (res : List[Int]) => isSorted(res) && res.size() == l1.size() + l2.size() && res.content() == l1.content() ++ l2.content()
+}
+
+%%% MergeSort4.scala %%%
+Found trusted solution!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+h2 :: merge(l1, t2)
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(l1 : List[Int], l2 : List[Int]): List[Int] = {
+  require(isSorted(l1) && isSorted(l2))
+  (l1, l2) match {
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      if (h1 <= h2) {
+        Cons[Int](h1, merge(t1, l2))
+      } else {
+        h2 :: merge(l1, t2)
+      }
+    case (Nil(), _) =>
+      l2
+    case (_, Nil()) =>
+      l1
+  }
+} ensuring {
+  (res : List[Int]) => isSorted(res) && res.size() == l1.size() + l2.size() && res.content() == l1.content() ++ l2.content()
+}
+
+%%% MergeSort5.scala %%%
+Solution is not trusted!
+============================== Repair successful: ==============================
+--------------------------------- Solution 1: ---------------------------------
+(l1, l2) match {
+  case (Nil(), _) =>
+    l2
+  case (_, Nil()) =>
+    l1
+  case (Cons(h1, t1), Cons(h2, t2)) =>
+    if (h1 <= h2) {
+      Cons[Int](h1, merge(t1, l2))
+    } else {
+      Cons[Int](h2, merge(l1, t2))
+    }
+}
+================================= In context: =================================
+--------------------------------- Solution 1: ---------------------------------
+def merge(l1 : List[Int], l2 : List[Int]): List[Int] = {
+  require(isSorted(l1) && isSorted(l2))
+  (l1, l2) match {
+    case (Nil(), _) =>
+      l2
+    case (_, Nil()) =>
+      l1
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      if (h1 <= h2) {
+        Cons[Int](h1, merge(t1, l2))
+      } else {
+        Cons[Int](h2, merge(l1, t2))
+      }
+  }
+} ensuring {
+  (res : List[Int]) => isSorted(res) && res.size() == l1.size() + l2.size() && res.content() == l1.content() ++ l2.content()
+}
