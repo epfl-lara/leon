@@ -188,9 +188,12 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     for (me <- smodel) me match {
       case DefineFun(s, args, kind, e) =>
         if(args.isEmpty) {
-          val id = variables.toA(s)
-          // EK: this is a little hack, we pass models for array functions as let-defs
-          model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+          variables.getA(s) match {
+            case Some(id) =>
+              // EK: this is a little hack, we pass models for array functions as let-defs
+              model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+            case _ => // function, should be handled elsewhere
+          }
         }
       case _ =>
     }

@@ -230,7 +230,6 @@ object LambdaTemplate {
   private def structuralKey[T](lambda: Lambda, dependencies: Map[Identifier, T]): (Lambda, Map[Identifier,T]) = {
 
     def closureIds(expr: Expr): Seq[Identifier] = {
-      val vars = variablesOf(expr)
       val allVars : Seq[Identifier] = foldRight[Seq[Identifier]] {
         (expr, idSeqs) => idSeqs.foldLeft(expr match {
           case Variable(id) => Seq(id)
@@ -238,10 +237,11 @@ object LambdaTemplate {
         })((acc, seq) => acc ++ seq)
       } (expr)
 
+      val vars = variablesOf(expr)
       allVars.filter(vars(_)).distinct
     }
 
-    val grouped : Map[TypeTree, Seq[Identifier]] = closureIds(lambda).groupBy(_.getType)
+    val grouped : Map[TypeTree, Seq[Identifier]] = (lambda.args.map(_.id) ++ closureIds(lambda)).groupBy(_.getType)
     val subst : Map[Identifier, Identifier] = grouped.foldLeft(Map.empty[Identifier,Identifier]) { case (subst, (tpe, ids)) =>
       val currentVars = typedIds(tpe)
 
@@ -257,7 +257,10 @@ object LambdaTemplate {
       subst ++ (ids zip typedVars)
     }
 
-    val structuralLambda = replaceFromIDs(subst.mapValues(_.toVariable), lambda).asInstanceOf[Lambda]
+    val newArgs = lambda.args.map(vd => ValDef(subst(vd.id), vd.tpe))
+    val newBody = replaceFromIDs(subst.mapValues(_.toVariable), lambda.body)
+    val structuralLambda = Lambda(newArgs, newBody)
+
     val newDeps = dependencies.map { case (id, idT) => subst(id) -> idT }
 
     structuralLambda -> newDeps

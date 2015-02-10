@@ -78,6 +78,9 @@ trait SMTLIBTarget {
     case RawArrayType(from, to) =>
       r
 
+    case ft @ FunctionType(from, to) =>
+      FiniteLambda(r.default, r.elems.toSeq, ft)
+
     case _ =>
       unsupported("Unable to extract from raw array for "+tpe)
   }
