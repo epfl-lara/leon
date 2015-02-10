@@ -321,7 +321,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     import purescala.Extractors.UnwrapTuple
 
     val maxEnumerated = 1000
-    val maxValid      = 100
+    val maxValid      = 400
 
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams(checkContracts = true))
     val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
