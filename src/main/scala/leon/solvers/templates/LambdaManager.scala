@@ -112,7 +112,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
       template.contextEquality(that) match {
         case None => encoder.mkNot(equals)
         case Some(Seq()) => equals
-        case Some(seq) => encoder.mkImplies(encoder.mkAnd(seq : _*), equals)
+        case Some(seq) => encoder.mkEquals(encoder.mkAnd(seq : _*), equals)
       }
     }.toSeq
   }
