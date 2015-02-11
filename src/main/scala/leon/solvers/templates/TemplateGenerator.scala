@@ -47,12 +47,13 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
     val prec : Option[Expr] = tfd.precondition.map(p => matchToIfThenElse(p))
 
     val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
+    val lambdaBody : Option[Expr] = newBody.map(b => simplifyHOFunctions(b))
 
     val invocation : Expr = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
 
-    val invocationEqualsBody : Option[Expr] = newBody match {
+    val invocationEqualsBody : Option[Expr] = lambdaBody match {
       case Some(body) if isRealFunDef =>
-        val b : Expr = Equals(invocation, body)
+        val b : Expr = appliedEquals(invocation, body)
 
         Some(if(prec.isDefined) {
           Implies(prec.get, b)
@@ -66,7 +67,11 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
     val start : Identifier = FreshIdentifier("start", true).setType(BooleanType)
     val pathVar : (Identifier, T) = start -> encoder.encodeId(start)
-    val arguments : Seq[(Identifier, T)] = tfd.params.map(vd => vd.id -> encoder.encodeId(vd.id))
+
+    val funDefArgs : Seq[Identifier] = tfd.params.map(_.id)
+    val allArguments = funDefArgs ++ lambdaBody.map(lambdaArgs).toSeq.flatten
+    val arguments : Seq[(Identifier, T)] = allArguments.map(id => id -> encoder.encodeId(id))
+
     val substMap : Map[Identifier, T] = arguments.toMap + pathVar
 
     val (bodyConds, bodyExprs, bodyGuarded, bodyLambdas) = if (isRealFunDef) {
@@ -74,7 +79,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
         (Map[Identifier,T](), Map[Identifier,T](), Map[Identifier,Seq[Expr]](), Map[T,LambdaTemplate[T]]())
       }
     } else {
-      mkClauses(start, newBody.get, substMap)
+      mkClauses(start, lambdaBody.get, substMap)
     }
 
     // Now the postcondition.
@@ -106,6 +111,17 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
     template
   }
 
+  private def lambdaArgs(expr: Expr): Seq[Identifier] = expr match {
+    case Lambda(args, body) => args.map(_.id) ++ lambdaArgs(body)
+    case _ => Seq.empty
+  }
+
+  private def appliedEquals(invocation: Expr, body: Expr): Expr = body match {
+    case Lambda(args, lambdaBody) =>
+      appliedEquals(Application(invocation, args.map(_.toVariable)), lambdaBody)
+    case _ => Equals(invocation, body)
+  }
+
   def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]):
                (Map[Identifier,T], Map[Identifier,T], Map[Identifier, Seq[Expr]], Map[T, LambdaTemplate[T]]) = {
 
@@ -127,8 +143,15 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
       guardedExprs += guardVar -> (expr +: prev)
     }
 
+    var lambdaVars = Map[Identifier, T]()
+    @inline def storeLambda(id: Identifier) : T = {
+      val idT = encoder.encodeId(id)
+      lambdaVars += id -> idT
+      idT
+    }
+
     var lambdas = Map[T, LambdaTemplate[T]]()
-    @inline def storeLambda(idT: T, lambda: LambdaTemplate[T]) : Unit = lambdas += idT -> lambda
+    @inline def registerLambda(idT: T, lambda: LambdaTemplate[T]) : Unit = lambdas += idT -> lambda
 
     // Group elements that satisfy p toghether
     // List(a, a, a, b, c, a, a), with p = _ == a will produce:
@@ -168,6 +191,11 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         case e @ Ensuring(body, id, post) =>
           rec(pathVar, Let(id, body, Assert(post, None, Variable(id))))
+
+        case l @ Let(i, e : Lambda, b) =>
+          val re = rec(pathVar, e) // guaranteed variable!
+          val rb = rec(pathVar, replace(Map(Variable(i) -> re), b))
+          rb
 
         case l @ Let(i, e, b) =>
           val newExpr : Identifier = FreshIdentifier("lt", true).setType(i.getType)
@@ -247,20 +275,20 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           Variable(cid)
 
         case l @ Lambda(args, body) =>
-          val idArgs : Seq[Identifier] = args.map(_.id)
+          val idArgs : Seq[Identifier] = lambdaArgs(l)
           val trArgs : Seq[T] = idArgs.map(encoder.encodeId(_))
 
           val lid = FreshIdentifier("lambda", true).setType(l.getType)
-          val clause = Equals(Application(Variable(lid), idArgs.map(Variable(_))), body)
+          val clause = appliedEquals(Variable(lid), l)
 
-          val localSubst : Map[Identifier, T] = substMap ++ condVars ++ exprVars
+          val localSubst : Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
           val clauseSubst : Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
           val (lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates) = mkClauses(pathVar, clause, clauseSubst)
 
-          val ids: (Identifier, T) = lid -> encoder.encodeId(lid)
+          val ids: (Identifier, T) = lid -> storeLambda(lid)
           val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
           val template = LambdaTemplate(ids, encoder, lambdaManager, pathVar -> encodedCond(pathVar), idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, localSubst, dependencies, l)
-          storeLambda(ids._2, template)
+          registerLambda(ids._2, template)
 
           Variable(lid)
 

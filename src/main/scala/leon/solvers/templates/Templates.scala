@@ -82,6 +82,48 @@ trait Template[T] { self =>
 
 object Template {
 
+  private def functionCallInfos[T](encodeExpr: Expr => T)(expr: Expr): (Set[TemplateCallInfo[T]], Set[App[T]]) = {
+    def invocationCaller(expr: Expr): Boolean = expr match {
+      case fi: FunctionInvocation => true
+      case Application(caller, _) => invocationCaller(caller)
+      case _ => false
+    }
+
+    val calls = collect[Expr] {
+      case IsTyped(f: FunctionInvocation, ft: FunctionType) => Set.empty
+      case IsTyped(f: Application, ft: FunctionType) => Set.empty
+      case f: FunctionInvocation => Set(f)
+      case f: Application => Set(f)
+      case _ => Set.empty
+    }(expr)
+
+    val (functionCalls, appCalls) = calls partition invocationCaller
+
+    def functionTemplate(expr: Expr): TemplateCallInfo[T] = expr match {
+      case FunctionInvocation(tfd, args) =>
+        TemplateCallInfo(tfd, args.map(encodeExpr))
+      case Application(caller, args) =>
+        val TemplateCallInfo(tfd, prevArgs) = functionTemplate(caller)
+        TemplateCallInfo(tfd, prevArgs ++ args.map(encodeExpr))
+      case _ => scala.sys.error("Should never happen!")
+    }
+
+    val templates : Set[TemplateCallInfo[T]] = functionCalls map functionTemplate
+
+    def applicationTemplate(expr: Expr): App[T] = expr match {
+      case Application(caller : Application, args) =>
+        val App(c, tpe, prevArgs) = applicationTemplate(caller)
+        App(c, tpe, prevArgs ++ args.map(encodeExpr))
+      case Application(c, args) =>
+        App(encodeExpr(c), c.getType, args.map(encodeExpr))
+      case _ => scala.sys.error("Should never happen!")
+    }
+
+    val apps : Set[App[T]] = appCalls map applicationTemplate
+
+    (templates, apps)
+  }
+
   def encode[T](
     encoder: TemplateEncoder[T],
     pathVar: (Identifier, T),
@@ -106,32 +148,35 @@ object Template {
       encodeExpr(Implies(Variable(b), e))
     }).toSeq
 
-    val blockers : Map[Identifier, Set[TemplateCallInfo[T]]] = {
-      val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
+    val extractInfos : Expr => (Set[TemplateCallInfo[T]], Set[App[T]]) = functionCallInfos(encodeExpr) _
+    val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
+    val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
 
-      Map((for ((b,es) <- guardedExprs) yield {
-        val calls = es.flatMap(e => functionCallsOf(e).map { fi =>
-          TemplateCallInfo[T](fi.tfd, fi.args.map(encodeExpr))
-        }).toSet -- optIdCall
+    val (blockers, applications) : (Map[Identifier, Set[TemplateCallInfo[T]]], Map[Identifier, Set[App[T]]]) = {
+      var blockers : Map[Identifier, Set[TemplateCallInfo[T]]] = Map.empty
+      var applications : Map[Identifier, Set[App[T]]] = Map.empty
 
-        if (calls.isEmpty) None else Some(b -> calls)
-      }).flatten.toSeq : _*)
+      for ((b,es) <- guardedExprs) {
+        var funInfos : Set[TemplateCallInfo[T]] = Set.empty
+        var appInfos : Set[App[T]] = Set.empty
+
+        for (e <- es) {
+          val (newFunInfos, newAppInfos) = extractInfos(e)
+          funInfos ++= newFunInfos
+          appInfos ++= newAppInfos
+        }
+
+        val calls = funInfos -- optIdCall
+        if (calls.nonEmpty) blockers += b -> calls
+
+        val apps = appInfos -- optIdApp
+        if (apps.nonEmpty) applications += b -> apps
+      }
+
+      (blockers, applications)
     }
 
     val encodedBlockers : Map[T, Set[TemplateCallInfo[T]]] = blockers.map(p => idToTrId(p._1) -> p._2)
-
-    val applications : Map[Identifier, Set[App[T]]] = {
-      val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
-
-      Map((for ((b,es) <- guardedExprs) yield {
-        val apps = es.flatMap(e => functionAppsOf(e).map { fa =>
-          App[T](encodeExpr(fa.caller), fa.caller.getType, fa.args.map(encodeExpr))
-        }).toSet -- optIdApp
-
-        if (apps.isEmpty) None else Some(b -> apps)
-      }).flatten.toSeq : _*)
-    }
-
     val encodedApps : Map[T, Set[App[T]]] = applications.map(p => idToTrId(p._1) -> p._2)
 
     val stringRepr : () => String = () => {

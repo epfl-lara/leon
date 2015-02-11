@@ -126,7 +126,7 @@ object Trees {
       lazy val argsTuple = if (lambda.args.size > 1) Tuple(args) else args.head
 
       def rec(body: Expr): Option[(Expr, Seq[(Expr, Expr)])] = body match {
-        case _ : IntLiteral | _ : BooleanLiteral | _ : GenericValue | _ : Tuple |
+        case _ : IntLiteral | _ : UMinus | _ : BooleanLiteral | _ : GenericValue | _ : Tuple |
              _ : CaseClass | _ : FiniteArray | _ : FiniteSet | _ : FiniteMap | _ : Lambda =>
           Some(body -> Seq.empty)
         case IfExpr(Equals(tpArgs, key), expr, elze) if tpArgs == argsTuple =>

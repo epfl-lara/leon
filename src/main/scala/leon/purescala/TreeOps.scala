@@ -2002,118 +2002,34 @@ object TreeOps {
     }(expr)
   }
 
-  private val lambdaArgumentsCache = new TrieMap[TypeTree,Seq[Identifier]]
-  def lambdaArguments(tpe: TypeTree): Seq[Identifier] = lambdaArgumentsCache.get(tpe) match {
-    case Some(ids) => ids
-    case None =>
-      val seq = tpe match {
-        case FunctionType(argTypes, returnType) =>
-          argTypes.map(FreshIdentifier("x", true).setType(_)) ++ lambdaArguments(returnType)
-        case _ => Seq()
-      }
-      lambdaArgumentsCache(tpe) = seq
-      seq
-  }
+  def simplifyHOFunctions(expr: Expr) : Expr = {
 
-  def functionApplication(expr: Expr, args: Seq[Expr]): Expr = expr.getType match {
-    case FunctionType(argTypes, returnType) =>
-      val (currentArgs, nextArgs) = args.splitAt(argTypes.size)
-      val application = Application(expr, currentArgs)
-      functionApplication(application, nextArgs)
-    case tpe =>
-      assert(args.isEmpty && !tpe.isInstanceOf[FunctionType])
-      expr
-  }
-
-  def createLambda(expr: Expr, args: Seq[Identifier]): Expr = expr.getType match {
-    case FunctionType(argTypes, returnType) =>
-      val (currentArgs, nextArgs) = args.splitAt(argTypes.size)
-      val application = Application(expr, currentArgs.map(_.toVariable))
-      Lambda(currentArgs.map(id => ValDef(id, id.getType)), createLambda(application, nextArgs))
-    case tpe =>
-      assert(args.isEmpty && !tpe.isInstanceOf[FunctionType])
-      expr
-  }
-
-  def lambdaTransform(expr: Expr) : Expr = {
-
-    def hoistHOIte(expr: Expr) = {
-      def transform(expr: Expr): Option[Expr] = expr match {
-        case uop @ UnaryOperator(ife @ IfExpr(c, t, e), op) if ife.getType.isInstanceOf[FunctionType] =>
-          Some(IfExpr(c, op(t).setType(uop.getType), op(e).setType(uop.getType)).setType(uop.getType))
-        case bop @ BinaryOperator(ife @ IfExpr(c, t, e), t2, op) if ife.getType.isInstanceOf[FunctionType] =>
-          Some(IfExpr(c, op(t, t2).setType(bop.getType), op(e, t2).setType(bop.getType)).setType(bop.getType))
-        case bop @ BinaryOperator(t1, ife @ IfExpr(c, t, e), op) if ife.getType.isInstanceOf[FunctionType] =>
-          Some(IfExpr(c, op(t1, t).setType(bop.getType), op(t1, e).setType(bop.getType)).setType(bop.getType))
-        case nop @ NAryOperator(ts, op) => {
-          val iteIndex = ts.indexWhere {
-            case ife @ IfExpr(_, _, _) if ife.getType.isInstanceOf[FunctionType] => true
-            case _ => false
-          }
-          if(iteIndex == -1) None else {
-            val (beforeIte, startIte) = ts.splitAt(iteIndex)
-            val afterIte = startIte.tail
-            val IfExpr(c, t, e) = startIte.head
-            Some(IfExpr(c,
-              op(beforeIte ++ Seq(t) ++ afterIte).setType(nop.getType),
-              op(beforeIte ++ Seq(e) ++ afterIte).setType(nop.getType)
-            ).setType(nop.getType))
-          }
-        }
-        case _ => None
+    def liftToLambdas(expr: Expr) = {
+      def apply(expr: Expr, args: Seq[Expr]): Expr = expr match {
+        case IfExpr(cond, thenn, elze) =>
+          IfExpr(cond, apply(thenn, args), apply(elze, args))
+        case Let(i, e, b) =>
+          Let(i, e, apply(b, args))
+        case LetTuple(is, es, b) =>
+          LetTuple(is, es, apply(b, args))
+        case Lambda(params, body) =>
+          replaceFromIDs((params.map(_.id) zip args).toMap, body)
+        case _ => Application(expr, args)
       }
 
-      fixpoint(postMap(transform))(expr)
-    }
-
-    def expandHOLets(expr: Expr) : Expr = {
-      def rec(ex: Expr, s: Map[Identifier,Expr]) : Expr = ex match {
-        case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
-        case l @ Let(i,e,b) =>
-          if (i.getType.isInstanceOf[FunctionType]) rec(b, s + (i -> rec(e, s)))
-          else Let(i, rec(e,s), rec(b,s))
-        case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1,s), rec(t2,s), rec(t3,s)).setType(i.getType)
-        case m @ MatchExpr(scrut,cses) => MatchExpr(rec(scrut,s), cses.map(inCase(_, s))).setType(m.getType).setPos(m)
-        case n @ NAryOperator(args, recons) => {
-          var change = false
-          val rargs = args.map(a => {
-            val ra = rec(a, s)
-            if (ra != a) {
-              change = true
-              ra
-            } else {
-              a
-            }
-          })
-          if (change) recons(rargs).setType(n.getType)
-          else n
+      def lift(expr: Expr): Expr = expr.getType match {
+        case FunctionType(from, to) => expr match {
+          case _ : Lambda => expr
+          case _ : Variable => expr
+          case e =>
+            val args = from.map(tpe => ValDef(FreshIdentifier("x", true).setType(tpe), tpe))
+            val application = apply(expr, args.map(_.toVariable))
+            Lambda(args, lift(application))
         }
-        case b @ BinaryOperator(t1,t2,recons) => {
-          val r1 = rec(t1, s)
-          val r2 = rec(t2, s)
-          if (r1 != t1 || r2 != t2) recons(r1, r2).setType(b.getType)
-          else b
-        }
-        case u @ UnaryOperator(t,recons) => {
-          val r = rec(t, s)
-          if (r != t) recons(r).setType(u.getType)
-          else u
-        }
-        case t: Terminal => t
-        case unhandled => scala.sys.error("Unhandled case in expandHOLets: " + unhandled)
+        case _ => expr
       }
 
-      def inCase(cse: MatchCase, s: Map[Identifier,Expr]) : MatchCase = cse match {
-        case SimpleCase(pat, rhs) => SimpleCase(pat, rec(rhs, s))
-        case GuardedCase(pat, guard, rhs) => GuardedCase(pat, rec(guard, s), rec(rhs, s))
-      }
-
-      rec(expr, Map.empty)
-    }
-
-    def extractToLambda(expr: Expr) = {
-      def extract(expr: Expr, build: Boolean) =
-        if (build) createLambda(expr, lambdaArguments(expr.getType)) else expr
+      def extract(expr: Expr, build: Boolean) = if (build) lift(expr) else expr
 
       def rec(expr: Expr, build: Boolean): Expr = expr match {
         case Application(caller, args) =>
@@ -2123,25 +2039,21 @@ object TreeOps {
         case FunctionInvocation(fd, args) =>
           val newArgs = args.map(rec(_, true))
           extract(FunctionInvocation(fd, newArgs), build)
-        case l @ Lambda(args, body) => l
-        case NAryOperator(es, recons) => recons(es.map(rec(_, build)))
-        case BinaryOperator(e1, e2, recons) => recons(rec(e1, build), rec(e2, build))
-        case UnaryOperator(e, recons) => recons(rec(e, build))
+        case l @ Lambda(args, body) =>
+          val newBody = rec(body, true)
+          extract(Lambda(args, newBody), build)
+        case NAryOperator(es, recons) => recons(es.map(rec(_, build))).setType(expr.getType)
+        case BinaryOperator(e1, e2, recons) => recons(rec(e1, build), rec(e2, build)).setType(expr.getType)
+        case UnaryOperator(e, recons) => recons(rec(e, build)).setType(expr.getType)
         case t: Terminal => t
       }
 
-      rec(expr, true)
+      rec(lift(expr), true)
     }
 
-    extractToLambda(
-      hoistHOIte(
-        expandHOLets(
-          simplifyLets(
-            matchToIfThenElse(
-              expr
-            )
-          )
-        )
+    liftToLambdas(
+      matchToIfThenElse(
+        expr
       )
     )
   }
