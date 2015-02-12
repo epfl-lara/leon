@@ -323,7 +323,7 @@ object SortedList {
           Decomp("Ineq. Split on 'head*' and 'v*'", List(
             Close("CEGIS"),
             Decomp("Equivalent Inputs *", List(
-              Decomp("Unused Inputs *", List(
+              Decomp("Unused *", List(
                 Close("CEGIS")
               ))
             )),

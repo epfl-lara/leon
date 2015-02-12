@@ -59,6 +59,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     // Limits the number of programs CEGIS will specifically validate individually
     val validateUpTo          = 5
+
     val useBssFiltering       = sctx.settings.cegisUseBssFiltering
     val filterThreshold       = 1.0/2
 
@@ -887,23 +888,35 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             if (nPassing == 0 || interruptManager.isInterrupted()) {
               // No test passed, we can skip solver and unfold again, if possible
               skipCESearch = true;
-            } else if (nPassing <= validateUpTo) {
-              // Small enough number of programs to try them individually
-              ndProgram.validatePrograms(prunedPrograms) match {
-                case Left(sols) if sols.nonEmpty =>
-                  result = Some(RuleClosed(sols))
-                case Right(cexs) =>
-                  // All programs failed verification, we filter everything out and unfold
-                  //ndProgram.shrinkTo(Set(), unfolding == maxUnfoldings)
-                  skipCESearch = true;
-              }
-            } else if (((nPassing < nInitial*filterThreshold)) && useBssFiltering) {
-              // We shrink the program to only use the bs mentionned
-              val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
-              ndProgram.shrinkTo(bssToKeep, unfolding == maxUnfoldings)
             } else {
-              wrongPrograms.foreach {
-                ndProgram.excludeProgram(_)
+              var doFilter = true;
+
+              if (validateUpTo > 0) {
+                // Validate the first N programs individualy
+                ndProgram.validatePrograms(prunedPrograms.take(validateUpTo)) match {
+                  case Left(sols) if sols.nonEmpty =>
+                    doFilter = false
+                    result = Some(RuleClosed(sols))
+                  case Right(cexs) =>
+                    if (nPassing <= validateUpTo) {
+                      // All programs failed verification, we filter everything out and unfold
+                      //ndProgram.shrinkTo(Set(), unfolding == maxUnfoldings)
+                      doFilter     = false
+                      skipCESearch = true;
+                    }
+                }
+              }
+
+              if (doFilter) {
+                if (((nPassing < nInitial*filterThreshold)) && useBssFiltering) {
+                  // We shrink the program to only use the bs mentionned
+                  val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
+                  ndProgram.shrinkTo(bssToKeep, unfolding == maxUnfoldings)
+                } else {
+                  wrongPrograms.foreach {
+                    ndProgram.excludeProgram(_)
+                  }
+                }
               }
             }
 
