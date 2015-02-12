@@ -27,11 +27,7 @@ class CodeGenTests extends test.LeonTestSuite {
   val pipeline = 
     utils.TemporaryInputPhase andThen
     frontends.scalac.ExtractionPhase andThen
-    utils.ScopingPhase andThen
-    purescala.MethodLifting andThen
-    utils.TypingPhase andThen
-    purescala.CompleteAbstractDefinitions andThen
-    purescala.RestoreMethods
+    utils.PreprocessingPhase
 
   def compileTestFun(p : Program, toTest : String, ctx : LeonContext, requireMonitor : Boolean, doInstrument : Boolean) : ( Seq[Expr] => EvaluationResults.Result) = {
     // We want to produce code that checks contracts
