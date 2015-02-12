@@ -24,8 +24,71 @@ class SynthesisSuite extends LeonTestSuite {
     counter
   }
 
-  def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(block: (SearchContext, FunDef, Problem) => Unit) {
+  abstract class SynStrat(val ruleName: String);
+  case class Decomp(n: String, sub: Seq[SynStrat]) extends SynStrat(n);
+  case class Close(n: String) extends SynStrat(n);
 
+
+  class TestSearch(ctx: LeonContext,
+                   ci: ChooseInfo,
+                   p: Problem,
+                   strat: SynStrat) extends SimpleSearch(ctx, ci, p, CostModels.default, None) {
+
+    def synthesizeFrom(sctx: SynthesisContext, from: Node, strat: SynStrat): Boolean = {
+      from match {
+        case an: AndNode =>
+          an.expand(SearchContext(sctx, ci, an, this))
+
+          if (an.isSolved) {
+            true
+          } else if (an.isDeadEnd) {
+            false
+          } else {
+            strat match {
+              case Decomp(_, sub) =>
+                (an.descendents zip sub).forall {
+                  case (n, strat) => synthesizeFrom(sctx, n, strat)
+                }
+              case _ =>
+                fail("Got non-conclusive reply without Decomp strat")
+                false
+            }
+          }
+
+        case on: OrNode =>
+          on.expand(SearchContext(sctx, ci, on, this))
+          val ns = on.descendents.filter {
+            case an: AndNode => matchingDesc(an.ri, strat.ruleName)
+            case _ => false
+          }
+
+          if (ns.isEmpty) {
+            fail("Failed to find rule name: "+strat.ruleName)
+          } else if (ns.size > 1) {
+            fail("Ambiguous rule name: "+strat.ruleName)
+          } else {
+            synthesizeFrom(sctx, ns.head, strat)
+          }
+      }
+    }
+
+    override def search(sctx: SynthesisContext): Stream[Solution] = {
+      if (synthesizeFrom(sctx, g.root, strat)) {
+        g.root.generateSolutions()
+      } else {
+        Stream.empty
+      }
+    }
+
+    def matchingDesc(app: RuleInstantiation, n: String): Boolean = {
+      import java.util.regex.Pattern;
+      val pattern = Pattern.quote(n).replace("*", "\\E.*\\Q")
+      app.toString.matches(pattern)
+    }
+
+  }
+
+  def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(strats: PartialFunction[String, SynStrat]) {
       test("Synthesizing %3d: [%s]".format(nextInt(), title)) {
         val ctx = testContext.copy(settings = Settings(
             synthesis = true,
@@ -40,6 +103,7 @@ class SynthesisSuite extends LeonTestSuite {
         for ((f,cis) <- results; ci <- cis) {
           info("%-20s".format(ci.fd.id.toString))
 
+
           val sctx = SynthesisContext(ctx,
                                       opts,
                                       ci.fd,
@@ -47,77 +111,81 @@ class SynthesisSuite extends LeonTestSuite {
                                       ctx.reporter)
 
           val p      = ci.problem
-          val search = new SimpleSearch(ctx, ci, p, opts.costModel, None)
-          val hctx   = SearchContext(sctx, ci, search.g.root, search)
 
-          block(hctx, f, p)
+          if (strats.isDefinedAt(f.id.name)) {
+            val search = new TestSearch(ctx, ci, p, strats(f.id.name))
+
+            val sols = search.search(sctx)
+
+            if(sols.isEmpty) {
+              fail("No solution")
+            }
+          }
         }
       }
   }
 
-  case class Apply(desc: String, andThen: List[Apply] = Nil)
-
-  def synthesizeWith(hctx: SearchContext, p: Problem, ss: Apply): Solution = {
-    val apps = hctx.sctx.rules flatMap { _.instantiateOn(hctx, p)}
-
-    def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
-      import java.util.regex.Pattern;
-      val pattern = Pattern.quote(ss.desc).replace("*", "\\E.*\\Q")
-      app.toString.matches(pattern)
-    }
-
-    apps.filter(matchingDesc(_, ss)) match {
-      case app :: Nil =>
-        app.apply(hctx) match {
-          case RuleClosed(sols) =>
-            assert(sols.nonEmpty)
-            assert(ss.andThen.isEmpty)
-            sols.head
-
-          case RuleExpanded(sub) =>
-            val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(hctx, p, ss) }
-            app.onSuccess(subSols).get
-        }
-
-      case Nil =>
-        throw new AssertionError("Failed to find "+ss.desc+". Available: "+apps.mkString(", "))
-
-      case xs =>
-        throw new AssertionError("Ambiguous "+ss.desc+". Found: "+xs.mkString(", "))
-    }
-  }
-
-  def synthesize(title: String)(program: String)(strategies: PartialFunction[String, Apply]) {
-    forProgram(title)(program) {
-      case (hctx, fd, p) =>
-        strategies.lift.apply(fd.id.toString) match {
-          case Some(ss) =>
-            synthesizeWith(hctx, p, ss)
-
-          case None =>
-            assert(false, "Function "+fd.id.toString+" not found")
-        }
-    }
-  }
-
-
-  def assertAllAlternativesSucceed(hctx: SearchContext, rr: Traversable[RuleInstantiation]) {
-    assert(!rr.isEmpty)
-
-    for (r <- rr) {
-      assertRuleSuccess(hctx, r)
-    }
-  }
-
-  def assertRuleSuccess(hctx: SearchContext, rr: RuleInstantiation): Option[Solution] = {
-    rr.apply(hctx) match {
-      case RuleClosed(sols) if sols.nonEmpty =>
-        sols.headOption
-      case _ =>
-        assert(false, "Rule did not succeed")
-        None
-    }
-  }
+//  def synthesizeWith(search: SearchContext, p: Problem, ss: Apply): Solution = {
+//    val apps = hctx.sctx.rules flatMap { _.instantiateOn(hctx, p)}
+//
+//    def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
+//      import java.util.regex.Pattern;
+//      val pattern = Pattern.quote(ss.desc).replace("*", "\\E.*\\Q")
+//      app.toString.matches(pattern)
+//    }
+//
+//    apps.filter(matchingDesc(_, ss)) match {
+//      case app :: Nil =>
+//        app.apply(hctx) match {
+//          case RuleClosed(sols) =>
+//            assert(sols.nonEmpty)
+//            assert(ss.andThen.isEmpty)
+//            sols.head
+//
+//          case RuleExpanded(sub) =>
+//            val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(hctx, p, ss) }
+//            app.onSuccess(subSols).get
+//        }
+//
+//      case Nil =>
+//        throw new AssertionError("Failed to find "+ss.desc+". Available: "+apps.mkString(", "))
+//
+//      case xs =>
+//        throw new AssertionError("Ambiguous "+ss.desc+". Found: "+xs.mkString(", "))
+//    }
+//  }
+//
+//  def synthesize(title: String)(program: String)(strategies: PartialFunction[String, Apply]) {
+//    forProgram(title)(program) {
+//      case (hctx, fd, p) =>
+//        strategies.lift.apply(fd.id.toString) match {
+//          case Some(ss) =>
+//            synthesizeWith(hctx, p, ss)
+//
+//          case None =>
+//            assert(false, "Function "+fd.id.toString+" not found")
+//        }
+//    }
+//  }
+//
+//
+//  def assertAllAlternativesSucceed(hctx: SearchContext, rr: Traversable[RuleInstantiation]) {
+//    assert(!rr.isEmpty)
+//
+//    for (r <- rr) {
+//      assertRuleSuccess(hctx, r)
+//    }
+//  }
+//
+//  def assertRuleSuccess(hctx: SearchContext, rr: RuleInstantiation): Option[Solution] = {
+//    rr.apply(hctx) match {
+//      case RuleClosed(sols) if sols.nonEmpty =>
+//        sols.headOption
+//      case _ =>
+//        assert(false, "Rule did not succeed")
+//        None
+//    }
+//  }
 
   forProgram("Ground Enum", SynthesisSettings(selectedSolvers = Set("enum")))(
     """
@@ -140,8 +208,7 @@ object Injection {
 }
     """
   ) {
-    case (hctx, fd, p) =>
-      assertAllAlternativesSucceed(hctx, rules.Ground.instantiateOn(hctx, p))
+    case "simple" => Close("Ground")
   }
 
   forProgram("Cegis 1")(
@@ -165,8 +232,7 @@ object Injection {
 }
     """
   ) {
-    case (hctx, fd, p) =>
-      assertAllAlternativesSucceed(hctx, rules.CEGIS.instantiateOn(hctx, p))
+    case "simple" => Close("CEGIS")
   }
 
   forProgram("Cegis 2")(
@@ -190,25 +256,15 @@ object Injection {
 }
     """
   ) {
-    case (hctx, fd, p) =>
-      rules.CEGIS.instantiateOn(hctx, p).head.apply(hctx) match {
-        case RuleClosed(sols) if sols.nonEmpty =>
-          assert(false, "CEGIS should have failed, but found : %s".format(sols.head))
-        case _ =>
-      }
-
-      rules.ADTSplit.instantiateOn(hctx, p).head.apply(hctx) match {
-        case RuleExpanded(subs) =>
-          for (sub <- subs; alt <- rules.CEGIS.instantiateOn(hctx, sub)) {
-            assertRuleSuccess(hctx, alt)
-          }
-        case _ =>
-          assert(false, "Woot?")
-      }
+    case "tail" =>
+      Decomp("ADT Split on 'in*'", Seq(
+        Close("CEGIS"),
+        Close("CEGIS")
+      ))
   }
 
 
-  synthesize("Lists")("""
+  forProgram("Lists")("""
 import leon.lang._
 import leon.lang.synthesis._
 
@@ -250,31 +306,35 @@ object SortedList {
 }
     """) {
     case "concat" =>
-      Apply("ADT Induction on 'in1'", List(
-        Apply("CEGIS"),
-        Apply("CEGIS")
+      Decomp("ADT Induction on 'in1'", List(
+        Close("CEGIS"),
+        Close("CEGIS")
       ))
 
     case "insert" =>
-      Apply("ADT Induction on 'in1'", List(
-        Apply("CEGIS"),
-        Apply("CEGIS")
+      Decomp("ADT Induction on 'in1'", List(
+        Close("CEGIS"),
+        Close("CEGIS")
       ))
 
     case "insertSorted" =>
-      Apply("Assert isSorted(in1)", List(
-        Apply("ADT Induction on 'in1'", List(
-          Apply("Ineq. Split on 'head*' and 'v*'", List(
-            Apply("CEGIS"),
-            Apply("CEGIS"),
-            Apply("CEGIS")
+      Decomp("Assert isSorted(in1)", List(
+        Decomp("ADT Induction on 'in1'", List(
+          Decomp("Ineq. Split on 'head*' and 'v*'", List(
+            Close("CEGIS"),
+            Decomp("Equivalent Inputs *", List(
+              Decomp("Unused Inputs *", List(
+                Close("CEGIS")
+              ))
+            )),
+            Close("CEGIS")
           )),
-          Apply("CEGIS")
+          Close("CEGIS")
         ))
       ))
   }
 
-  synthesize("Church")("""
+  forProgram("Church")("""
 import leon.lang._
 import leon.lang.synthesis._
 
@@ -303,13 +363,13 @@ object ChurchNumerals {
 }
     """) {
     case "add" =>
-      Apply("ADT Induction on 'y'", List(
-        Apply("CEGIS"),
-        Apply("CEGIS")
+      Decomp("ADT Induction on 'y'", List(
+        Close("CEGIS"),
+        Close("CEGIS")
       ))
   }
 
-  synthesize("Church")("""
+  forProgram("Church")("""
 import leon.lang._
 import leon.lang.synthesis._
 
@@ -351,6 +411,6 @@ object ChurchNumerals {
 }
     """) {
     case "distinct" =>
-      Apply("CEGIS")
+      Close("CEGIS")
   }
 }

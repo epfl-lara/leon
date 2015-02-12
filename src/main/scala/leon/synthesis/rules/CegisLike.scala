@@ -327,12 +327,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         val evalParams = CodeGenParams(maxFunctionInvocations = -1, doInstrument = false)
 
+        //println("-- "*30)
+        //println(programCTree)
+        //println(".. "*30)
 
         val evaluator  = new DualEvaluator(sctx.context, programCTree, evalParams)
 
-        //println("-- "*30)
-        //println(debugPrinter(programCTree))
-        //println(".. "*30)
 
         tester =
           { (ins: Seq[Expr], bValues: Set[Identifier]) =>
