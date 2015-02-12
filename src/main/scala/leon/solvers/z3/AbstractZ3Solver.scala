@@ -676,11 +676,6 @@ trait AbstractZ3Solver
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))
 
-      case h @ RepairHole(_, _) =>
-        val newAST = z3.mkFreshConst("hole", typeToSort(h.getType))
-        variables += (h -> newAST)
-        newAST
-
       case _ => {
         reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex)
         throw new CantTranslateException

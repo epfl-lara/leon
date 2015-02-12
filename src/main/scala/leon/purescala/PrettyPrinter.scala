@@ -240,9 +240,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |  $pred
             |}"""
 
-      case h @ RepairHole(tpe, es) =>
-        p"""|?![$tpe]($es)"""
-
       case h @ Hole(tpe, es) =>
         if (es.isEmpty) {
           p"""|???[$tpe]"""

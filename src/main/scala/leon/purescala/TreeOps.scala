@@ -1409,7 +1409,6 @@ object TreeOps {
     preTraversal{
       case Choose(_, _, None) => return false
       case Hole(_, _) => return false
-      case RepairHole(_, _) => return false
       case Gives(_,_) => return false
       case _ =>
     }(e)

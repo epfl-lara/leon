@@ -477,14 +477,6 @@ object Trees {
     }
   }
 
-  case class RepairHole(tpe: TypeTree, components: Seq[Expr]) extends Expr with NAryExtractable {
-    val getType = tpe
-
-    def extract = {
-      Some((components, (es: Seq[Expr]) => RepairHole(tpe, es).setPos(this)))
-    }
-  }
-
   /**
    * DEPRECATED TREES
    * These trees are not guaranteed to be supported by Leon.

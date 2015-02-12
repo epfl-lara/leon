@@ -393,9 +393,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case gv: GenericValue =>
       gv
 
-    case rh: RepairHole =>
-      simplestValue(rh.getType) // It will be wrong, we don't care
-
     case g : Gives =>
       e(convertHoles(g, ctx, true)) 
   
