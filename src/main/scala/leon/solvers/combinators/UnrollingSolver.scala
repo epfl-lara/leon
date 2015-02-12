@@ -6,7 +6,7 @@ package combinators
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Constructors._
+import purescala.Constructors.{implies => impliesConstr, _}
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.TypeTrees._
