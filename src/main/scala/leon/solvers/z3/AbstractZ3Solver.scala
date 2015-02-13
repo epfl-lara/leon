@@ -10,7 +10,7 @@ import solvers._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Constructors._
-import purescala.Extractors.LetTuple
+import purescala.Extractors._
 import purescala.Trees._
 import purescala.TypeTreeOps._
 import xlang.Trees._
