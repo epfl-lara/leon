@@ -236,6 +236,51 @@ object Extractors {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
   }
 
+  object FiniteLambda {
+    def unapply(lambda: Lambda): Option[(Expr, Seq[(Expr, Expr)])] = {
+      val args = lambda.args.map(_.toVariable)
+      lazy val argsTuple = if (lambda.args.size > 1) Tuple(args) else args.head
+
+      def rec(body: Expr): Option[(Expr, Seq[(Expr, Expr)])] = body match {
+        case _ : IntLiteral | _ : UMinus | _ : BooleanLiteral | _ : GenericValue | _ : Tuple |
+             _ : CaseClass | _ : FiniteArray | _ : FiniteSet | _ : FiniteMap | _ : Lambda =>
+          Some(body -> Seq.empty)
+        case IfExpr(Equals(tpArgs, key), expr, elze) if tpArgs == argsTuple =>
+          rec(elze).map { case (dflt, mapping) => dflt -> ((key -> expr) +: mapping) }
+        case _ => None
+      }
+
+      rec(lambda.body)
+    }
+
+    def apply(dflt: Expr, els: Seq[(Expr, Expr)], tpe: FunctionType): Lambda = {
+      val args = tpe.from.zipWithIndex.map { case (tpe, idx) =>
+        ValDef(FreshIdentifier(s"x${idx + 1}").setType(tpe), tpe)
+      }
+
+      assume(els.isEmpty || !tpe.from.isEmpty, "Can't provide finite mapping for lambda without parameters")
+
+      lazy val (tupleArgs, tupleKey) = if (tpe.from.size > 1) {
+        val tpArgs = Tuple(args.map(_.toVariable))
+        val key = (x: Expr) => x
+        (tpArgs, key)
+      } else { // note that value is lazy, so if tpe.from.size == 0, foldRight will never access (tupleArgs, tupleKey)
+        val tpArgs = args.head.toVariable
+        val key = (x: Expr) => {
+          if (isSubtypeOf(x.getType, tpe.from.head)) x
+          else if (isSubtypeOf(x.getType, TupleType(tpe.from))) x.asInstanceOf[Tuple].exprs.head
+          else throw new RuntimeException("Can't determine key tuple state : " + x + " of " + tpe)
+        }
+        (tpArgs, key)
+      }
+
+      val body = els.toSeq.foldRight(dflt) { case ((k, v), elze) =>
+        IfExpr(Equals(tupleArgs, tupleKey(k)), v, elze)
+      }
+
+      Lambda(args, body)
+    }
+  }
   object MatchLike {
     def unapply(m : MatchLike) : Option[(Expr, Seq[MatchCase], (Expr, Seq[MatchCase]) => Expr)] = {
       Option(m) map { m => 
