@@ -34,19 +34,32 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
     expectSuccessful(defaultEvaluator.eval(IntLiteral(0)), IntLiteral(0))
     expectSuccessful(defaultEvaluator.eval(IntLiteral(42)), IntLiteral(42))
     expectSuccessful(defaultEvaluator.eval(UnitLiteral()), UnitLiteral())
+    expectSuccessful(defaultEvaluator.eval(InfiniteIntegerLiteral(0)), InfiniteIntegerLiteral(0))
+    expectSuccessful(defaultEvaluator.eval(InfiniteIntegerLiteral(42)), InfiniteIntegerLiteral(42))
+  }
+
+  test("eval of simple bit vector arithmetic expressions") {
+    expectSuccessful(defaultEvaluator.eval(BVPlus(IntLiteral(3), IntLiteral(5))), IntLiteral(8))
+    expectSuccessful(defaultEvaluator.eval(BVPlus(IntLiteral(0), IntLiteral(5))), IntLiteral(5))
+    expectSuccessful(defaultEvaluator.eval(BVTimes(IntLiteral(3), IntLiteral(3))), IntLiteral(9))
   }
 
   test("eval of simple arithmetic expressions") {
     expectSuccessful(
-      defaultEvaluator.eval(Plus(IntLiteral(3), IntLiteral(5))), IntLiteral(8))
+      defaultEvaluator.eval(Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(5))), 
+      InfiniteIntegerLiteral(8))
     expectSuccessful(
-      defaultEvaluator.eval(Minus(IntLiteral(7), IntLiteral(2))), IntLiteral(5))
+      defaultEvaluator.eval(Minus(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(2))), 
+      InfiniteIntegerLiteral(5))
     expectSuccessful(
-      defaultEvaluator.eval(UMinus(IntLiteral(7))), IntLiteral(-7))
+      defaultEvaluator.eval(UMinus(InfiniteIntegerLiteral(7))),
+      InfiniteIntegerLiteral(-7))
     expectSuccessful(
-      defaultEvaluator.eval(Times(IntLiteral(2), IntLiteral(3))), IntLiteral(6)) 
+      defaultEvaluator.eval(Times(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(6))
     expectSuccessful(
-      defaultEvaluator.eval(Modulo(IntLiteral(10), IntLiteral(3))), IntLiteral(1))
+      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(1))
   }
 
   test("Eval of simple boolean operations") {
@@ -146,4 +159,5 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
         Map(id -> IntLiteral(27))),
       FiniteArray(Map(), Some(IntLiteral(27)), IntLiteral(7)))
   }
+
 }

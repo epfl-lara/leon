@@ -41,17 +41,17 @@ class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
   }
 
 
-  def i(x: Int) = IntLiteral(x)
+  def i(x: Int) = InfiniteIntegerLiteral(x)
 
-  val xId = FreshIdentifier("x").setType(Int32Type)
+  val xId = FreshIdentifier("x").setType(IntegerType)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y").setType(Int32Type)
+  val yId = FreshIdentifier("y").setType(IntegerType)
   val y = Variable(yId)
   val xs = Set(xId, yId)
 
-  val aId = FreshIdentifier("a").setType(Int32Type)
+  val aId = FreshIdentifier("a").setType(IntegerType)
   val a = Variable(aId)
-  val bId = FreshIdentifier("b").setType(Int32Type)
+  val bId = FreshIdentifier("b").setType(IntegerType)
   val b = Variable(bId)
   val as = Set(aId, bId)
 
@@ -62,36 +62,36 @@ class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
   }
 
   test("simplifyArithmetic") {
-    val e1 = Plus(IntLiteral(3), IntLiteral(2))
+    val e1 = Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
     checkSameExpr(e1, simplifyArithmetic(e1), Set())
-    val e2 = Plus(x, Plus(IntLiteral(3), IntLiteral(2)))
+    val e2 = Plus(x, Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
     checkSameExpr(e2, simplifyArithmetic(e2), Set(xId))
 
-    val e3 = Minus(IntLiteral(3), IntLiteral(2))
+    val e3 = Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
     checkSameExpr(e3, simplifyArithmetic(e3), Set())
-    val e4 = Plus(x, Minus(IntLiteral(3), IntLiteral(2)))
+    val e4 = Plus(x, Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
     checkSameExpr(e4, simplifyArithmetic(e4), Set(xId))
-    val e5 = Plus(x, Minus(x, IntLiteral(2)))
+    val e5 = Plus(x, Minus(x, InfiniteIntegerLiteral(2)))
     checkSameExpr(e5, simplifyArithmetic(e5), Set(xId))
 
-    val e6 = Times(IntLiteral(9), Plus(Division(x, IntLiteral(3)), Division(x, IntLiteral(6))))
+    val e6 = Times(InfiniteIntegerLiteral(9), Plus(Division(x, InfiniteIntegerLiteral(3)), Division(x, InfiniteIntegerLiteral(6))))
     checkSameExpr(e6, simplifyArithmetic(e6), Set(xId))
   }
 
   test("expandAndSimplifyArithmetic") {
-    val e1 = Plus(IntLiteral(3), IntLiteral(2))
+    val e1 = Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
     checkSameExpr(e1, expandAndSimplifyArithmetic(e1), Set())
-    val e2 = Plus(x, Plus(IntLiteral(3), IntLiteral(2)))
+    val e2 = Plus(x, Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
     checkSameExpr(e2, expandAndSimplifyArithmetic(e2), Set(xId))
 
-    val e3 = Minus(IntLiteral(3), IntLiteral(2))
+    val e3 = Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
     checkSameExpr(e3, expandAndSimplifyArithmetic(e3), Set())
-    val e4 = Plus(x, Minus(IntLiteral(3), IntLiteral(2)))
+    val e4 = Plus(x, Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
     checkSameExpr(e4, expandAndSimplifyArithmetic(e4), Set(xId))
-    val e5 = Plus(x, Minus(x, IntLiteral(2)))
+    val e5 = Plus(x, Minus(x, InfiniteIntegerLiteral(2)))
     checkSameExpr(e5, expandAndSimplifyArithmetic(e5), Set(xId))
 
-    val e6 = Times(IntLiteral(9), Plus(Division(x, IntLiteral(3)), Division(x, IntLiteral(6))))
+    val e6 = Times(InfiniteIntegerLiteral(9), Plus(Division(x, InfiniteIntegerLiteral(3)), Division(x, InfiniteIntegerLiteral(6))))
     checkSameExpr(e6, expandAndSimplifyArithmetic(e6), Set(xId))
   }
 
@@ -124,10 +124,10 @@ class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
   }
 
   test("pre and post traversal") {
-    val expr = Plus(IntLiteral(1), Minus(IntLiteral(2), IntLiteral(3)))
+    val expr = Plus(InfiniteIntegerLiteral(1), Minus(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3)))
     var res = ""
     def f(e: Expr): Unit = e match {
-      case IntLiteral(i) => res += i
+      case InfiniteIntegerLiteral(i) => res += i
       case _ : Plus      => res += "P"
       case _ : Minus     => res += "M"
     }
@@ -141,18 +141,18 @@ class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
   }
 
   test("pre- and postMap") {
-    val expr = Plus(IntLiteral(1), Minus(IntLiteral(2), IntLiteral(3)))
+    val expr = Plus(InfiniteIntegerLiteral(1), Minus(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3)))
     def op(e : Expr ) = e match {
-      case Minus(IntLiteral(2), e2) => Some(IntLiteral(2))
-      case IntLiteral(1) => Some(IntLiteral(2))
-      case IntLiteral(2) => Some(IntLiteral(42))
+      case Minus(InfiniteIntegerLiteral(two), e2) if two == BigInt(2) => Some(InfiniteIntegerLiteral(2))
+      case InfiniteIntegerLiteral(one) if one == BigInt(1) => Some(InfiniteIntegerLiteral(2))
+      case InfiniteIntegerLiteral(two) if two == BigInt(2) => Some(InfiniteIntegerLiteral(42))
       case _ => None
     }
     
-    assert( preMap(op, false)(expr) == Plus(IntLiteral(2),  IntLiteral(2))  )
-    assert( preMap(op, true )(expr) == Plus(IntLiteral(42), IntLiteral(42)) )
-    assert( postMap(op, false)(expr) == Plus(IntLiteral(2),  Minus(IntLiteral(42), IntLiteral(3))) )
-    assert( postMap(op, true)(expr)  == Plus(IntLiteral(42), Minus(IntLiteral(42), IntLiteral(3))) )
+    assert( preMap(op, false)(expr) == Plus(InfiniteIntegerLiteral(2),  InfiniteIntegerLiteral(2))  )
+    assert( preMap(op, true )(expr) == Plus(InfiniteIntegerLiteral(42), InfiniteIntegerLiteral(42)) )
+    assert( postMap(op, false)(expr) == Plus(InfiniteIntegerLiteral(2),  Minus(InfiniteIntegerLiteral(42), InfiniteIntegerLiteral(3))) )
+    assert( postMap(op, true)(expr)  == Plus(InfiniteIntegerLiteral(42), Minus(InfiniteIntegerLiteral(42), InfiniteIntegerLiteral(3))) )
     
   }
   

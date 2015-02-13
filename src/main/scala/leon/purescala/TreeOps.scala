@@ -1010,6 +1010,7 @@ object TreeOps {
    */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type                  => IntLiteral(0)
+    case IntegerType                => InfiniteIntegerLiteral(0)
     case CharType                   => CharLiteral('a')
     case BooleanType                => BooleanLiteral(false)
     case UnitType                   => UnitLiteral()
@@ -1307,7 +1308,7 @@ object TreeOps {
         } else {
           None
         }
-      case Untyped | BooleanType | Int32Type | UnitType | TypeParameter(_) => None  
+      case Untyped | BooleanType | Int32Type | IntegerType | UnitType | TypeParameter(_) => None  
     }
 
     var idMap     = Map[Identifier, Identifier]()
@@ -1442,45 +1443,45 @@ object TreeOps {
    */
   def simplifyArithmetic(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = (expr match {
-      case Plus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
-      case Plus(IntLiteral(0), e) => e
-      case Plus(e, IntLiteral(0)) => e
+      case Plus(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 + i2)
+      case Plus(InfiniteIntegerLiteral(zero), e) if zero == BigInt(0) => e
+      case Plus(e, InfiniteIntegerLiteral(zero)) if zero == BigInt(0) => e
       case Plus(e1, UMinus(e2)) => Minus(e1, e2)
-      case Plus(Plus(e, IntLiteral(i1)), IntLiteral(i2)) => Plus(e, IntLiteral(i1+i2))
-      case Plus(Plus(IntLiteral(i1), e), IntLiteral(i2)) => Plus(IntLiteral(i1+i2), e)
+      case Plus(Plus(e, InfiniteIntegerLiteral(i1)), InfiniteIntegerLiteral(i2)) => Plus(e, InfiniteIntegerLiteral(i1+i2))
+      case Plus(Plus(InfiniteIntegerLiteral(i1), e), InfiniteIntegerLiteral(i2)) => Plus(InfiniteIntegerLiteral(i1+i2), e)
 
-      case Minus(e, IntLiteral(0)) => e
-      case Minus(IntLiteral(0), e) => UMinus(e)
-      case Minus(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 - i2)
+      case Minus(e, InfiniteIntegerLiteral(zero)) if zero == BigInt(0) => e
+      case Minus(InfiniteIntegerLiteral(zero), e) if zero == BigInt(0) => UMinus(e)
+      case Minus(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 - i2)
       case Minus(e1, UMinus(e2)) => Plus(e1, e2)
       case Minus(e1, Minus(UMinus(e2), e3)) => Plus(e1, Plus(e2, e3))
 
-      case UMinus(IntLiteral(x)) => IntLiteral(-x)
+      case UMinus(InfiniteIntegerLiteral(x)) => InfiniteIntegerLiteral(-x)
       case UMinus(UMinus(x)) => x
       case UMinus(Plus(UMinus(e1), e2)) => Plus(e1, UMinus(e2))
       case UMinus(Minus(e1, e2)) => Minus(e2, e1)
 
-      case Times(IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 * i2)
-      case Times(IntLiteral(1), e) => e
-      case Times(IntLiteral(-1), e) => UMinus(e)
-      case Times(e, IntLiteral(1)) => e
-      case Times(IntLiteral(0), _) => IntLiteral(0)
-      case Times(_, IntLiteral(0)) => IntLiteral(0)
-      case Times(IntLiteral(i1), Times(IntLiteral(i2), t)) => Times(IntLiteral(i1*i2), t)
-      case Times(IntLiteral(i1), Times(t, IntLiteral(i2))) => Times(IntLiteral(i1*i2), t)
-      case Times(IntLiteral(i), UMinus(e)) => Times(IntLiteral(-i), e)
-      case Times(UMinus(e), IntLiteral(i)) => Times(e, IntLiteral(-i))
-      case Times(IntLiteral(i1), Division(e, IntLiteral(i2))) if i2 != 0 && i1 % i2 == 0 => Times(IntLiteral(i1/i2), e)
+      case Times(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 * i2)
+      case Times(InfiniteIntegerLiteral(one), e) if one == BigInt(1) => e
+      case Times(InfiniteIntegerLiteral(mone), e) if mone == BigInt(-1) => UMinus(e)
+      case Times(e, InfiniteIntegerLiteral(one)) if one == BigInt(1) => e
+      case Times(InfiniteIntegerLiteral(zero), _) if zero == BigInt(0) => InfiniteIntegerLiteral(0)
+      case Times(_, InfiniteIntegerLiteral(zero)) if zero == BigInt(0) => InfiniteIntegerLiteral(0)
+      case Times(InfiniteIntegerLiteral(i1), Times(InfiniteIntegerLiteral(i2), t)) => Times(InfiniteIntegerLiteral(i1*i2), t)
+      case Times(InfiniteIntegerLiteral(i1), Times(t, InfiniteIntegerLiteral(i2))) => Times(InfiniteIntegerLiteral(i1*i2), t)
+      case Times(InfiniteIntegerLiteral(i), UMinus(e)) => Times(InfiniteIntegerLiteral(-i), e)
+      case Times(UMinus(e), InfiniteIntegerLiteral(i)) => Times(e, InfiniteIntegerLiteral(-i))
+      case Times(InfiniteIntegerLiteral(i1), Division(e, InfiniteIntegerLiteral(i2))) if i2 != BigInt(0) && i1 % i2 == BigInt(0) => Times(InfiniteIntegerLiteral(i1/i2), e)
 
-      case Division(IntLiteral(i1), IntLiteral(i2)) if i2 != 0 => IntLiteral(i1 / i2)
-      case Division(e, IntLiteral(1)) => e
+      case Division(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) if i2 != BigInt(0) => InfiniteIntegerLiteral(i1 / i2)
+      case Division(e, InfiniteIntegerLiteral(one)) if one == BigInt(1) => e
 
       //here we put more expensive rules
       //btw, I know those are not the most general rules, but they lead to good optimizations :)
       case Plus(UMinus(Plus(e1, e2)), e3) if e1 == e3 => UMinus(e2)
       case Plus(UMinus(Plus(e1, e2)), e3) if e2 == e3 => UMinus(e1)
-      case Minus(e1, e2) if e1 == e2 => IntLiteral(0) 
-      case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => IntLiteral(0)
+      case Minus(e1, e2) if e1 == e2 => InfiniteIntegerLiteral(0) 
+      case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => InfiniteIntegerLiteral(0)
       case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
 
       //default
@@ -1919,8 +1920,8 @@ object TreeOps {
     val expr0 = try {
       val freeVars: Array[Identifier] = variablesOf(expr).toArray
       val coefs: Array[Expr] = TreeNormalizations.linearArithmeticForm(expr, freeVars)
-      coefs.toList.zip(IntLiteral(1) :: freeVars.toList.map(Variable(_))).foldLeft[Expr](IntLiteral(0))((acc, t) => {
-        if(t._1 == IntLiteral(0)) acc else Plus(acc, Times(t._1, t._2))
+      coefs.toList.zip(InfiniteIntegerLiteral(1) :: freeVars.toList.map(Variable(_))).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, t) => {
+        if(t._1 == InfiniteIntegerLiteral(0)) acc else Plus(acc, Times(t._1, t._2))
       })
     } catch {
       case _: Throwable =>

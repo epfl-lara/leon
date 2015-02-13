@@ -13,17 +13,17 @@ import leon.purescala.TreeOps._
 import leon.purescala.TreeNormalizations._
 
 class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
-  def i(x: Int) = IntLiteral(x)
+  def i(x: Int) = InfiniteIntegerLiteral(x)
 
-  val xId = FreshIdentifier("x").setType(Int32Type)
+  val xId = FreshIdentifier("x").setType(IntegerType)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y").setType(Int32Type)
+  val yId = FreshIdentifier("y").setType(IntegerType)
   val y = Variable(yId)
   val xs = Set(xId, yId)
 
-  val aId = FreshIdentifier("a").setType(Int32Type)
+  val aId = FreshIdentifier("a").setType(IntegerType)
   val a = Variable(aId)
-  val bId = FreshIdentifier("b").setType(Int32Type)
+  val bId = FreshIdentifier("b").setType(IntegerType)
   val b = Variable(bId)
   val as = Set(aId, bId)
   
@@ -35,7 +35,7 @@ class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
   }
 
   def toSum(es: Seq[Expr]) = es.reduceLeft(Plus(_, _))
-  def coefToSum(es: Array[Expr], vs: Array[Expr]) = (es.zip(Array[Expr](IntLiteral(1)) ++ vs)).foldLeft[Expr](IntLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
+  def coefToSum(es: Array[Expr], vs: Array[Expr]) = (es.zip(Array[Expr](InfiniteIntegerLiteral(1)) ++ vs)).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
   
   test("checkSameExpr") {
     checkSameExpr(Plus(x, y), Plus(y, x), xs)
@@ -79,6 +79,9 @@ class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
 
     val e3 = Minus(Plus(x, i(3)), Plus(y, i(2)))
     checkSameExpr(coefToSum(linearArithmeticForm(e3, xsOrder), Array(x, y)), e3, xs)
+
+    val e4 = Plus(Plus(i(0), i(2)), Times(i(-1), i(3)))
+    assert(linearArithmeticForm(e4, Array()) === Array(i(-1)))
 
   }
 }
