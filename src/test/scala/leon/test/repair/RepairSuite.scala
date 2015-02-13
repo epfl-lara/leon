@@ -12,7 +12,7 @@ class RepairSuite extends LeonTestSuite {
     RepairPhase
     
   val settings = Settings(verify = false, repair = true)
-  val reporter = new DefaultReporter(settings)
+  val reporter = new TestSilentReporter
   val ctx0 = LeonContext(
     reporter,
     new InterruptManager(reporter)
