@@ -760,7 +760,7 @@ trait AbstractZ3Solver
                   case Some((map, elseZ3Value)) =>
                     val leonElseValue = rec(elseZ3Value)
                     val leonMap = map.toSeq.map(p => rec(p._1) -> rec(p._2))
-                    FiniteLambda(leonElseValue, leonMap, tpe)
+                    finiteLambda(leonElseValue, leonMap, tpe)
                 }
 
               case LeonType(tpe @ SetType(dt)) =>

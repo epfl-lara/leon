@@ -9,6 +9,7 @@ import Trees.{Assert => _, _}
 import Extractors._
 import TreeOps._
 import TypeTrees._
+import Constructors._
 import Definitions._
 import utils.IncrementalBijection
 
@@ -81,7 +82,7 @@ trait SMTLIBTarget {
       r
 
     case ft @ FunctionType(from, to) =>
-      FiniteLambda(r.default, r.elems.toSeq, ft)
+      finiteLambda(r.default, r.elems.toSeq, ft)
 
     case _ =>
       unsupported("Unable to extract from raw array for "+tpe)

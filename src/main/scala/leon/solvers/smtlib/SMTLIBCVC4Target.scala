@@ -9,6 +9,7 @@ import purescala._
 import Common._
 import Trees._
 import Extractors._
+import Constructors._
 import TypeTrees._
 import TreeOps.simplestValue
 
@@ -55,7 +56,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       RawArrayValue(k, Map(), fromSMT(elem, v))
 
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), ft @ FunctionType(from,to)) =>
-      FiniteLambda(fromSMT(elem, to), Seq.empty, ft)
+      finiteLambda(fromSMT(elem, to), Seq.empty, ft)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
       val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
@@ -63,7 +64,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
       val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
-      FiniteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), ft)
+      finiteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), ft)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       FiniteSet(elems.map(fromSMT(_, base)).toSet).setType(tpe)
@@ -82,7 +83,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__
     // one I've witnessed up to now. Don't know why this is happening...
     case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), ft @ FunctionType(from, to)) =>
-      FiniteLambda(fromSMT(elem, to), Seq.empty, ft)
+      finiteLambda(fromSMT(elem, to), Seq.empty, ft)
 
     case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), RawArrayType(k, v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))

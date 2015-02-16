@@ -7,10 +7,10 @@ import utils._
 
 object Constructors {
   import Trees._
+  import Definitions._
   import TypeTreeOps._
   import Common._
   import TypeTrees._
-  import Definitions.FunDef
 
   def tupleSelect(t: Expr, index: Int) = t match {
     case Tuple(es) =>
@@ -187,6 +187,34 @@ object Constructors {
     case (l, BooleanLiteral(false)) => Not(l)
     case (l1, Implies(l2, r2))      => implies(and(l1, l2), r2)
     case _                          => Implies(lhs, rhs)
+  }
+
+  def finiteLambda(dflt: Expr, els: Seq[(Expr, Expr)], tpe: FunctionType): Lambda = {
+    val args = tpe.from.zipWithIndex.map { case (tpe, idx) =>
+      ValDef(FreshIdentifier(s"x${idx + 1}").setType(tpe), tpe)
+    }
+
+    assume(els.isEmpty || !tpe.from.isEmpty, "Can't provide finite mapping for lambda without parameters")
+
+    lazy val (tupleArgs, tupleKey) = if (tpe.from.size > 1) {
+      val tpArgs = Tuple(args.map(_.toVariable))
+      val key = (x: Expr) => x
+      (tpArgs, key)
+    } else { // note that value is lazy, so if tpe.from.size == 0, foldRight will never access (tupleArgs, tupleKey)
+      val tpArgs = args.head.toVariable
+      val key = (x: Expr) => {
+        if (isSubtypeOf(x.getType, tpe.from.head)) x
+        else if (isSubtypeOf(x.getType, TupleType(tpe.from))) x.asInstanceOf[Tuple].exprs.head
+        else throw new RuntimeException("Can't determine key tuple state : " + x + " of " + tpe)
+      }
+      (tpArgs, key)
+    }
+
+    val body = els.toSeq.foldRight(dflt) { case ((k, v), elze) =>
+      IfExpr(Equals(tupleArgs, tupleKey(k)), v, elze)
+    }
+
+    Lambda(args, body)
   }
   
 }
