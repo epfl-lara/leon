@@ -1,5 +1,4 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
-
 package leon.collection
 
 import leon._
@@ -8,6 +7,7 @@ import leon.annotation._
 
 @library
 sealed abstract class List[T] {
+
   def size: Int = (this match {
     case Nil() => 0
     case Cons(h, t) => 1 + t.size
@@ -27,20 +27,21 @@ sealed abstract class List[T] {
   def ++(that: List[T]): List[T] = (this match {
     case Nil() => that
     case Cons(x, xs) => Cons(x, xs ++ that)
-  }) ensuring { res => (res.content == this.content ++ that.content) && (res.size == this.size + that.size)}
+  }) ensuring { res => 
+    (res.content == this.content ++ that.content) && 
+    (res.size == this.size + that.size)
+  }
 
   def head: T = {
     require(this != Nil[T]())
-    this match {
-      case Cons(h, t) => h
-    }
+    val Cons(h, _) = this
+    h
   }
 
   def tail: List[T] = {
     require(this != Nil[T]())
-    this match {
-      case Cons(h, t) => t
-    }
+    val Cons(_, t) = this
+    t
   }
 
   def apply(index: Int): T = {
@@ -68,32 +69,41 @@ sealed abstract class List[T] {
     }
   } ensuring (res => (res.size == size) && (res.content == content))
 
-  def take(i: Int): List[T] = (this, i) match {
+  def take(i: Int): List[T] = { 
+    (this, i) match {
     case (Nil(), _) => Nil()
     case (Cons(h, t), i) =>
-      if (i == 0) {
+      if (i <= 0) {
         Nil()
       } else {
         Cons(h, t.take(i-1))
       }
-  }
+  }} ensuring { _.size == (
+    if      (i <= 0)         0 
+    else if (i >= this.size) this.size 
+    else                     i
+  )}
 
-  def drop(i: Int): List[T] = (this, i) match {
+  def drop(i: Int): List[T] = {(this, i) match {
     case (Nil(), _) => Nil()
     case (Cons(h, t), i) =>
-      if (i == 0) {
+      if (i <= 0) {
         Cons(h, t)
       } else {
         t.drop(i-1)
       }
-  }
+  }} ensuring { _.size == (
+    if      (i <= 0)         this.size
+    else if (i >= this.size) 0
+    else                     this.size - i
+  )}
 
   def slice(from: Int, to: Int): List[T] = {
     require(from < to && to < size && from >= 0)
     drop(from).take(to-from)
   }
 
-  def replace(from: T, to: T): List[T] = this match {
+  def replace(from: T, to: T): List[T] = { this match {
     case Nil() => Nil()
     case Cons(h, t) =>
       val r = t.replace(from, to)
@@ -102,6 +112,12 @@ sealed abstract class List[T] {
       } else {
         Cons(h, r)
       }
+  }} ensuring { res =>
+    res.size == this.size && 
+    res.content == (
+      (this.content -- Set(from)) ++
+      (if (this.content contains from) Set(to) else Set[T]())
+    )
   }
 
   private def chunk0(s: Int, l: List[T], acc: List[T], res: List[List[T]], s0: Int): List[List[T]] = l match {
@@ -125,14 +141,16 @@ sealed abstract class List[T] {
     chunk0(s, this, Nil(), Nil(), s)
   }
 
-  def zip[B](that: List[B]): List[(T, B)] = (this, that) match {
+  def zip[B](that: List[B]): List[(T, B)] = { (this, that) match {
     case (Cons(h1, t1), Cons(h2, t2)) =>
       Cons((h1, h2), t1.zip(t2))
     case (_) =>
       Nil()
-  }
+  }} ensuring { _.size == (
+    if (this.size <= that.size) this.size else that.size
+  )}
 
-  def -(e: T): List[T] = this match {
+  def -(e: T): List[T] = { this match {
     case Cons(h, t) =>
       if (e == h) {
         t - e
@@ -141,9 +159,9 @@ sealed abstract class List[T] {
       }
     case Nil() =>
       Nil()
-  }
+  }} ensuring { _.content == this.content -- Set(e) }
 
-  def --(that: List[T]): List[T] = this match {
+  def --(that: List[T]): List[T] = { this match {
     case Cons(h, t) =>
       if (that.contains(h)) {
         t -- that
@@ -152,9 +170,9 @@ sealed abstract class List[T] {
       }
     case Nil() =>
       Nil()
-  }
+  }} ensuring { _.content == this.content -- that.content }
 
-  def &(that: List[T]): List[T] = this match {
+  def &(that: List[T]): List[T] = { this match {
     case Cons(h, t) =>
       if (that.contains(h)) {
         Cons(h, t & that)
@@ -163,7 +181,7 @@ sealed abstract class List[T] {
       }
     case Nil() =>
       Nil()
-  }
+  }} ensuring { _.content == (this.content & that.content) }
 
   def pad(s: Int, e: T): List[T] = (this, s) match {
     case (_, s) if s <= 0 =>
@@ -174,7 +192,7 @@ sealed abstract class List[T] {
       Cons(h, t.pad(s-1, e))
   }
 
-  def find(e: T): Option[Int] = this match {
+  def find(e: T): Option[Int] = { this match {
     case Nil() => None()
     case Cons(h, t) =>
       if (h == e) {
@@ -185,7 +203,7 @@ sealed abstract class List[T] {
           case Some(i) => Some(i+1)
         }
       }
-  }
+  }} ensuring { _.isDefined == this.contains(e) }
 
   def init: List[T] = (this match {
     case Cons(h, Nil()) =>
@@ -195,6 +213,14 @@ sealed abstract class List[T] {
     case Nil() =>
       Nil[T]()
   }) ensuring ( (r: List[T]) => ((r.size < this.size) || (this.size == 0)) )
+
+  def last: T = {
+    require(!isEmpty)
+    this match {
+      case Cons(h, Nil()) => h
+      case Cons(_, t) => t.last
+    }
+  }
 
   def lastOption: Option[T] = this match {
     case Cons(h, t) =>
@@ -290,6 +316,61 @@ sealed abstract class List[T] {
     case _ => false 
   }
 
+  // Higher-order API
+  def map[R](f: T => R): List[R] = { this match {
+    case Nil() => Nil()
+    case Cons(h, t) => f(h) :: t.map(f)
+  }} ensuring { _.size == this.size}
+
+  def foldLeft[R](z: R)(f: (R,T) => R): R = this match {
+    case Nil() => z
+    case Cons(h,t) => t.foldLeft(f(z,h))(f)
+  }
+
+  def foldRight[R](f: (T,R) => R)(z: R): R = this match {
+    case Nil() => z
+    case Cons(h, t) => f(h, t.foldRight(f)(z))
+  }
+
+  def flatMap[R](f: T => List[R]): List[R] = 
+    ListOps.flatten(this map f)
+
+  def filter(p: T => Boolean): List[T] = { this match {
+    case Nil() => Nil()
+    case Cons(h, t) if p(h) => Cons(h, t.filter(p))
+    case Cons(_, t) => t.filter(p)
+  }} ensuring { res => res.size <= this.size && res.forall(p) }
+
+  // In case we implement for-comprehensions
+  def withFilter(p: T => Boolean) = filter(p)
+
+  def forall(p: T => Boolean): Boolean = this match {
+    case Nil() => true
+    case Cons(h, t) => p(h) && t.forall(p)
+  }
+
+  def exists(p: T => Boolean) = !forall(!p(_))
+
+  def find(p: T => Boolean): Option[T] = { this match {
+    case Nil() => None()
+    case Cons(h, t) if p(h) => Some(h)
+    case Cons(_, t) => t.find(p)
+  }} ensuring { _.isDefined == exists(p) }
+
+  // FIXME: I keep getting these weird type errors
+  //def groupBy[R](f: T => R): Map[R, List[T]] = this match {
+  //  case Nil() => Map.empty[R, List[T]]
+  //  case Cons(h, t) =>
+  //    val key: R = f(h)
+  //    val rest: Map[R, List[T]] = t.groupBy(f)
+  //    val prev: List[T] = if (rest isDefinedAt key) rest(key) else Nil[T]()
+  //    (rest ++ Map((key, h :: prev))) : Map[R, List[T]]
+  //}
+
+  def takeWhile(p: T => Boolean): List[T] = { this match {
+    case Cons(h,t) if p(h) => Cons(h, t.takeWhile(p))
+    case _ => Nil[T]()
+  }} ensuring { _ forall p }
 }
 
 @ignore
@@ -326,7 +407,6 @@ object ListOps {
       }
   }
 }
-
 
 case class Cons[T](h: T, t: List[T]) extends List[T]
 case class Nil[T]() extends List[T]
@@ -413,5 +493,14 @@ object ListSpecs {
   //    }
   //  }) &&
   //  ((l1 ++ l2).reverse == (l2.reverse ++ l1.reverse))
+  //}.holds
+  
+  //@induct
+  //def folds[T,R](l : List[T], z : R, f : (R,T) => R) = {
+  //  { l match {
+  //    case Nil() => true
+  //    case Cons(h,t) => snocReverse[T](t, h)
+  //  }} &&
+  //  l.foldLeft(z)(f) == l.reverse.foldRight((x:T,y:R) => f(y,x))(z)
   //}.holds
 }
