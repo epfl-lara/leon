@@ -33,6 +33,32 @@ sealed abstract class Option[T] {
 
   def isDefined = !isEmpty
 
+
+  // Higher-order API
+  def map[R](f: T => R) = { this match {
+    case None() => None[R]()
+    case Some(x) => Some(f(x))
+  }} ensuring { _.isDefined == this.isDefined }
+
+  def flatMap[R](f: T => Option[R]) = this match {
+    case None() => None[R]()
+    case Some(x) => f(x)
+  }
+
+  def filter(p: T => Boolean) = this match {
+    case Some(x) if p(x) => Some(x)
+    case _ => None[T]()
+  }
+
+  def withFilter(p: T => Boolean) = filter(p)
+
+  def forall(p: T => Boolean) = this match {
+    case Some(x) if !p(x) => false 
+    case _ => true
+  }
+
+  def exists(p: T => Boolean) = !forall(!p(_))
+
 }
 
 case class Some[T](v: T) extends Option[T]
