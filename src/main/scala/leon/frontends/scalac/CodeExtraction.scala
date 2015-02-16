@@ -236,6 +236,10 @@ trait CodeExtraction extends ASTExtractors {
               case d @ ExCaseClassSyntheticJunk() =>
                 None
 
+              case cd: ClassDef =>
+                outOfSubsetError(cd, "Found class that is not an abstract class nor a case class")
+                None
+
               case other =>
                 outOfSubsetError(other, "Expected: top-level object/class.")
                 None

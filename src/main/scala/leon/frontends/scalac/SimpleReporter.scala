@@ -7,6 +7,7 @@ import scala.tools.nsc.Settings
 import scala.tools.nsc.reporters.AbstractReporter
 
 import scala.reflect.internal.util.{Position, NoPosition, FakePos, StringOps}
+import utils.{Position => LeonPosition, NoPosition => LeonNoPosition, OffsetPosition => LeonOffsetPosition}
 
 /** This implements a reporter that calls the callback with every line that a
 regular ConsoleReporter would display. */
@@ -28,14 +29,14 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
     StringOps.countElementsAsString((severity).count, label(severity))
 
   /** Prints the message. */
-  def printMessage(msg: String, severity: Severity) {
+  def printMessage(msg: String, pos: LeonPosition, severity: Severity) {
     severity match {
       case ERROR =>
-        reporter.error(msg)
+        reporter.error(pos, msg)
       case WARNING =>
-        reporter.warning(msg)
+        reporter.warning(pos, msg)
       case INFO =>
-        reporter.info(msg)
+        reporter.info(pos, msg)
     }
   }
 
@@ -46,13 +47,13 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
               else posIn
     pos match {
       case FakePos(fmsg) =>
-        printMessage(fmsg+" "+msg, severity)
+        printMessage(fmsg+" "+msg, LeonNoPosition, severity)
       case NoPosition =>
-        printMessage(msg, severity)
+        printMessage(msg, LeonNoPosition, severity)
       case _ =>
         val buf = new StringBuilder(msg)
-        val file = pos.source.file
-        printMessage(pos.line + ": " + msg+"\n"+getSourceLine(pos), severity)
+        val lpos = LeonOffsetPosition(pos.line, pos.column, pos.point, pos.source.file.file)
+        printMessage(msg+"\n"+getSourceLine(pos), lpos, severity)
     }
   }
   def print(pos: Position, msg: String, severity: Severity) {
@@ -70,8 +71,8 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
     }
   
   def printSummary() {
-    if (WARNING.count > 0) printMessage(getCountString(WARNING) + " found", INFO)
-    if (  ERROR.count > 0) printMessage(getCountString(ERROR  ) + " found", INFO)
+    if (WARNING.count > 0) printMessage(getCountString(WARNING) + " found", LeonNoPosition, INFO)
+    if (  ERROR.count > 0) printMessage(getCountString(ERROR  ) + " found", LeonNoPosition, INFO)
   }
 
   def display(pos: Position, msg: String, severity: Severity) {
