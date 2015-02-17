@@ -121,9 +121,10 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                 // Validate solution if not trusted
                 if (!sol.isTrusted) {
                   reporter.info("Found untrusted solution! Verifying...")
-                  val (npr, fds) = synth.solutionToProgram(sol)
+                  val expr = sol.toSimplifiedExpr(ctx, program)
+                  ci.ch.impl = Some(expr)
       
-                  getVerificationCounterExamples(fds.head, npr) match {
+                  getVerificationCounterExamples(ci.fd, program) match {
                     case NotValid(_, ces) if !ces.isEmpty =>
                       reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
       
