@@ -562,7 +562,6 @@ trait SMTLIBTarget {
             FiniteArray(definedElements, Some(default), IntLiteral(size)).setType(at)
 
           } else {
-            println("size is: " + size)
             val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
 
             FiniteArray(entries).setType(at)
