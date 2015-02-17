@@ -515,6 +515,7 @@ trait SMTLIBTarget {
     case (Core.True(), BooleanType)  => BooleanLiteral(true)
     case (Core.False(), BooleanType)  => BooleanLiteral(false)
 
+    case (FixedSizeBitVectors.BitVectorConstant(n, 32), Int32Type) => IntLiteral(n.toInt)
     case (SHexadecimal(hexa), Int32Type) => IntLiteral(hexa.toInt)
 
     case (SimpleSymbol(s), _: ClassType) if constructors.containsB(s) =>
@@ -553,6 +554,7 @@ trait SMTLIBTarget {
             FiniteArray(definedElements, Some(default), IntLiteral(size)).setType(at)
 
           } else {
+            println("size is: " + size)
             val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
 
             FiniteArray(entries).setType(at)
