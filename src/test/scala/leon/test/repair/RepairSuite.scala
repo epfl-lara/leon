@@ -11,13 +11,6 @@ class RepairSuite extends LeonTestSuite {
     PreprocessingPhase andThen
     RepairPhase
     
-  val settings = Settings(verify = false, repair = true)
-  val reporter = new TestSilentReporter
-  val ctx0 = LeonContext(
-    reporter,
-    new InterruptManager(reporter)
-  )
-  
   val fileToFun = Map(
     "Compiler1.scala"   -> "desugar",
     "Heap4.scala"       -> "merge",
@@ -29,12 +22,20 @@ class RepairSuite extends LeonTestSuite {
   for (file <- filesInResourceDir("regression/repair/")) {
     val path = file.getAbsoluteFile().toString
     val name = file.getName()
-    val option = LeonValueOption("functions", fileToFun(name))
-    val ctx = ctx0.copy(options = option +: ctx0.options)
+
+    val reporter = new TestSilentReporter
+
+    val ctx = LeonContext(
+      reporter = reporter,
+      interruptManager = new InterruptManager(reporter),
+      options = Seq(LeonValueOption("functions", fileToFun(name)))
+    )
+
     test(name) {
       pipeline.run(ctx)(List(path))
+      if(reporter.errorCount > 0) {
+        fail("Errors during repair!")
+      }
     }
   }
-    
-  
 }
