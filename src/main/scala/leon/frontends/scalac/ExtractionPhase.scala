@@ -9,6 +9,7 @@ import purescala.Common.FreshIdentifier
 import utils._
 
 import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
+import java.io.File
 
 object ExtractionPhase extends LeonPhase[List[String], Program] {
 
@@ -22,15 +23,19 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    val neededClasses = List[Class[_]](
-      scala.Predef.getClass
-    )
-
-    val urls = neededClasses.map{ _.getProtectionDomain().getCodeSource().getLocation() }
-
-    val classpath = urls.map(_.getPath).mkString(":")
-
-    settings.classpath.value = classpath
+    val scalaLib = Option(
+      scala.Predef.getClass.getProtectionDomain.getCodeSource()
+    ) map { _.getLocation.getPath } getOrElse {
+      // We are in Eclipse. Look in Eclipse plugins to find scala lib
+      val eclipsePlugins = System.getenv("ECLIPSE_HOME") + "/plugins"
+      new File(eclipsePlugins).listFiles().map{ _.getAbsolutePath }.find{ _ contains "scala-library"}.
+        getOrElse(ctx.reporter.fatalError("No Scala library found. " +
+          "If you are working in Eclipse, make sure to set the ECLIPSE_HOME environment variable."
+        )
+      )
+    }
+    
+    settings.classpath.value = scalaLib
     settings.usejavacp.value = false
     settings.Yrangepos.value = true
     settings.skip.value      = List("patmat")
