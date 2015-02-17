@@ -1,4 +1,4 @@
-Leon 2.4 [![Build Status](https://travis-ci.org/epfl-lara/leon.png?branch=master)](https://travis-ci.org/epfl-lara/leon)
+Leon 3.0 [![Build Status](https://travis-ci.org/epfl-lara/leon.png?branch=master)](https://travis-ci.org/epfl-lara/leon)
 ==========
 
 Getting Started
@@ -157,6 +157,13 @@ but instead
 
 Changelog
 ---------
+
+#### v3.0
+*Released 17.02.2015*
+
+* Int is now treated as BitVector(32)
+* Introduce BigInt for natural numbers
+
 
 #### v2.4
 *Released 10.02.2015*

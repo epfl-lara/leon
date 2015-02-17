@@ -379,6 +379,7 @@ trait AbstractZ3Solver
 
     //TODO: mkBitVectorType
     sorts += Int32Type -> z3.mkBVSort(32)
+    sorts += CharType -> z3.mkBVSort(32)
     sorts += IntegerType -> z3.mkIntSort
     sorts += BooleanType -> z3.mkBoolSort
     sorts += UnitType -> us
@@ -406,7 +407,7 @@ trait AbstractZ3Solver
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | UnitType | IntegerType =>
+    case Int32Type | BooleanType | UnitType | IntegerType | CharType =>
       sorts.toZ3(oldtt)
 
     case act: AbstractClassType =>
