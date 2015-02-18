@@ -1335,11 +1335,17 @@ trait CodeExtraction extends ASTExtractors {
           val rl = extractTree(l)
           val rr = extractTree(r)
 
-          (rl.getType, rr.getType) match {
-            case (rt, lt) if isSubtypeOf(rt, lt) || isSubtypeOf(lt, rt) =>
+          (rl, rr) match {
+            case (IsTyped(_, rt), IsTyped(_, lt)) if isSubtypeOf(rt, lt) || isSubtypeOf(lt, rt) =>
               Equals(rl, rr)
 
-            case (rt, lt) =>
+            case (IntLiteral(v), IsTyped(_, IntegerType)) =>
+              Equals(InfiniteIntegerLiteral(v), rr)
+
+            case (IsTyped(_, IntegerType), IntLiteral(v)) =>
+              Equals(rl, InfiniteIntegerLiteral(v))
+
+            case (IsTyped(_, rt), IsTyped(_, lt)) =>
               outOfSubsetError(tr, "Invalid comparison: (_: "+rt+") == (_: "+lt+")")
           }
 
