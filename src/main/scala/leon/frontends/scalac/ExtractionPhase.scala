@@ -23,17 +23,18 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    val scalaLib = Option(
-      scala.Predef.getClass.getProtectionDomain.getCodeSource()
-    ) map { _.getLocation.getPath } getOrElse {
+    val scalaLib = Option(scala.Predef.getClass.getProtectionDomain.getCodeSource()).map{
+      _.getLocation.getPath
+    }.orElse( for {
       // We are in Eclipse. Look in Eclipse plugins to find scala lib
-      val eclipsePlugins = System.getenv("ECLIPSE_HOME") + "/plugins"
-      new File(eclipsePlugins).listFiles().map{ _.getAbsolutePath }.find{ _ contains "scala-library"}.
-        getOrElse(ctx.reporter.fatalError("No Scala library found. " +
-          "If you are working in Eclipse, make sure to set the ECLIPSE_HOME environment variable."
-        )
-      )
-    }
+      eclipseHome <- Option(System.getenv("ECLIPSE_HOME")) 
+      pluginsHome = eclipseHome + "/plugins"
+      plugins <- scala.util.Try(new File(pluginsHome).listFiles().map{ _.getAbsolutePath }).toOption
+      path <- plugins.find{ _ contains "scala-library"}
+    } yield path).getOrElse( ctx.reporter.fatalError(
+      "No Scala library found. If you are working in Eclipse, " +
+      "make sure to set the ECLIPSE_HOME environment variable to your Eclipse installation home directory"
+    ))
     
     settings.classpath.value = scalaLib
     settings.usejavacp.value = false
