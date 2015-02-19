@@ -82,12 +82,12 @@ object Graphs {
  case class DirectedGraphImp[Vertex <: VertexAbs, Edge <: EdgeAbs[Vertex]](
     vertices: Set[Vertex],
     edges: Set[Edge],
-    ins: Map[Vertex, Set[Edge]],
-    outs: Map[Vertex, Set[Edge]]
+    ins: Map[VertexAbs, Set[Edge]],
+    outs: Map[VertexAbs, Set[Edge]]
   ) extends DirectedGraph[Vertex, Edge, DirectedGraphImp[Vertex, Edge]] {
 
-    override def equals(o: Any): Boolean = (o: @unchecked) match {
-      case other: DirectedGraphImp[Vertex, Edge] =>
+    override def equals(o: Any): Boolean = o match {
+      case other: DirectedGraphImp[_, _] =>
         this.vertices == other.vertices &&
         this.edges    == other.edges &&
         (this.ins.keySet ++ other.ins.keySet).forall  (k   => this.ins(k)  == other.ins(k)) &&
@@ -99,8 +99,8 @@ object Graphs {
     def this (vertices: Set[Vertex], edges: Set[Edge]) =
       this(vertices,
            edges,
-           edges.groupBy(_.v2).toMap.withDefaultValue(Set()),
-           edges.groupBy(_.v1).toMap.withDefaultValue(Set()))
+           edges.groupBy(_.v2 : VertexAbs).toMap.withDefaultValue(Set()),
+           edges.groupBy(_.v1 : VertexAbs).toMap.withDefaultValue(Set()))
 
     def this() = this(Set(), Set())
 
