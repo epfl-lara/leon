@@ -1607,7 +1607,6 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, SetType(b1)), "contains", List(a2)) =>
               ElementOfSet(a2, a1)
 
-
             // Multiset methods
             case (IsTyped(a1, MultisetType(b1)), "++", List(IsTyped(a2, MultisetType(b2))))  if b1 == b2 =>
               MultisetUnion(a1, a2)

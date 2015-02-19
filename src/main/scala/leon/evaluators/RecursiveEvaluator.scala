@@ -130,6 +130,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }
 
+    case FunctionInvocation(TypedFunDef(fd, Seq(tp)), Seq(set)) if fd == program.library.setToList.get =>
+      val els = e(set) match {
+        case FiniteSet(els) => els
+        case _ => throw EvalError(typeErrorMsg(set, SetType(tp)))
+      }
+      val cons = program.library.Cons.get
+      val nil = CaseClass(CaseClassType(program.library.Nil.get, Seq(tp)), Seq())
+      def mkCons(h: Expr, t: Expr) = CaseClass(CaseClassType(cons, Seq(tp)), Seq(h,t))
+      els.foldRight(nil)(mkCons)
+      
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
         throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")

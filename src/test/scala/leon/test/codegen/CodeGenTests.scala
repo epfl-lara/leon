@@ -420,7 +420,20 @@ class CodeGenTests extends test.LeonTestSuite {
         def test =  sum(l)
       }""",
       IntLiteral(1 + 2 + 3)
+    ),
+    
+    TestCase("SetToList", """
+      import leon.collection._
+      object SetToList {
+        def test = {
+          val s = Set(1, 2, 3, 4, 5)
+          val s2 = setToList(s).content
+          s == s2
+        }
+      }""",
+      BooleanLiteral(true)
     )
+    
   )
   
   

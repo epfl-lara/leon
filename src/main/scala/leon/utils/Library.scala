@@ -12,6 +12,8 @@ case class Library(pgm: Program) {
   lazy val Nil  = lookup("leon.collection.Nil") collect { case ccd : CaseClassDef => ccd }
 
   lazy val String = lookup("leon.lang.string.String") collect { case ccd : CaseClassDef => ccd }
+
+  lazy val setToList = lookup("leon.collection.setToList") collect { case fd : FunDef => fd }
   
   def lookup(name: String): Option[Definition] = {
     searchByFullName(name, pgm)
