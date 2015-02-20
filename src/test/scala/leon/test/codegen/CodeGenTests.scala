@@ -170,8 +170,19 @@ class CodeGenTests extends test.LeonTestSuite {
       }""",
       IntLiteral(10)
     ),
+
+    TestCase("methMakeBigInt", """
+      object methSimple {
+        
+        val x: BigInt = 42
+
+        def test = x
+
+      }""",
+      InfiniteIntegerLiteral(42)
+    ),
     
-    TestCase("methSimpleBignt", """
+    TestCase("methSimpleBigInt", """
       object methSimple {
         
         sealed abstract class Ab { 
@@ -182,6 +193,69 @@ class CodeGenTests extends test.LeonTestSuite {
         def test = Con().f2(5)
       }""",
       InfiniteIntegerLiteral(10)
+    ),
+
+    TestCase("BigIntNoOverflow", """
+      object methSimple {
+        
+        sealed abstract class Ab { 
+          def f2(x : BigInt): BigInt = x + BigInt(2000000000)
+        }
+        case class Con() extends Ab { }
+        
+        def test = Con().f2(2000000000)
+      }""",
+      InfiniteIntegerLiteral(BigInt("4000000000"))
+    ),
+    
+
+    TestCase("BigIntOps", """
+      object methSimple {
+        
+        def f(x: BigInt): BigInt = ((x * 2) - 10)/2
+        
+        def test = f(12)
+      }""",
+      InfiniteIntegerLiteral(BigInt(7))
+    ),
+
+
+    TestCase("BigIntComp0", """
+      object methSimple {
+        
+        def f(x: BigInt): Boolean = x == BigInt(17)
+        
+        def test = f(17)
+      }""",
+      BooleanLiteral(true)
+    ),
+
+    TestCase("BigIntComp1", """
+      object methSimple {
+        
+        def f(x: BigInt): BigInt = if(x <= 0) -x else x
+        
+        def test = f(-17)
+      }""",
+      InfiniteIntegerLiteral(BigInt(17))
+    ),
+    TestCase("BigIntComp2", """
+      object methSimple {
+        
+        def f(x: BigInt): BigInt = if(x < 0) -x else x
+        
+        def test = f(-12)
+      }""",
+      InfiniteIntegerLiteral(BigInt(12))
+    ),
+    TestCase("BigIntComp3", """
+      object methSimple {
+        
+        def f(x: BigInt): BigInt = if(x >= 0) -x else x
+        
+        def test = f(-7)
+      }""",
+      InfiniteIntegerLiteral(BigInt(-7))
     ),
     
     TestCase("methods", """
