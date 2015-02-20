@@ -394,10 +394,6 @@ object Trees {
     val getType = Int32Type
   }
 
-  case class IntToBigInt(expr: Expr) extends Expr {
-    val getType = Int32Type
-  }
-
   /* Set expressions */
   case class FiniteSet(elements: Set[Expr]) extends Expr with MutableTyped {
     val tpe = if (elements.isEmpty) None else leastUpperBound(elements.toSeq.map(_.getType))

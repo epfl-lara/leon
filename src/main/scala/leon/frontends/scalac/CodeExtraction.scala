@@ -1204,9 +1204,10 @@ trait CodeExtraction extends ASTExtractors {
           val newValueRec = extractTree(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec)
 
-        case ExBigIntLiteral(n) => {
-          InfiniteIntegerLiteral(BigInt(n))
+        case ExBigIntLiteral(n: Literal) => {
+          InfiniteIntegerLiteral(BigInt(n.value.stringValue))
         }
+        case ExBigIntLiteral(n) => outOfSubsetError(tr, "Non-literal BigInt constructor")
 
         case ExIntToBigInt(tree) => {
           val rec = extractTree(tree)
@@ -1214,7 +1215,7 @@ trait CodeExtraction extends ASTExtractors {
             case IntLiteral(n) =>
               InfiniteIntegerLiteral(BigInt(n))
             case _ => 
-              IntToBigInt(rec)
+              outOfSubsetError(tr, "Conversion from Int to BigInt")
           }
         }
 

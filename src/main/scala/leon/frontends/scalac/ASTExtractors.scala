@@ -220,9 +220,9 @@ trait ASTExtractors {
     }
 
     object ExBigIntLiteral {
-      def unapply(tree: Tree): Option[Int] = tree  match {
-        case Apply(ExSelected("scala", "package", "BigInt", "apply"), (n: Literal) :: Nil) =>
-          Some(n.value.intValue)
+      def unapply(tree: Tree): Option[Tree] = tree  match {
+        case Apply(ExSelected("scala", "package", "BigInt", "apply"), n :: Nil) =>
+          Some(n)
         case _ =>
           None
       }
