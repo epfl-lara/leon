@@ -129,16 +129,19 @@ Use ```sbt test``` to run all the tests.
 Using Leon in Eclipse
 ---------------------
 
-Type: ```sbt eclipse```
+You first need to tell sbt to globally include the Eclipse plugin in its known plugins.
+To do so type 
+
+    $ echo "addSbtPlugin(\"com.typesafe.sbteclipse\" % \"sbteclipse-plugin\" % \"2.4.0\")" >> ~/.sbt/0.13/plugins/plugins.sbt
+
+In your Leon home folder, type: ```sbt clean compile eclipse```
 
 This should create all the necessary metadata to load Leon as a project in Eclipse.
 
 You should now be able to [import the project](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
 
-Unfortunately, the Scala Library dependency of Leon is not loaded correctly by Eclipse. To fix that, you have to change the classpath of each run configuration you create as follows:
-* Delete the Scala Compiler and Scala Library from the Bootstrap Entries.
-* Click on User Entries, then from the menu on the right choose Advanced -> Add Library -> Scala Library.
-* Then click on Add External Jars and add the Scala Compiler jar. You should find it in the plugins folder in your Eclipse directory.
+For each run configuration in Eclipse, you have to set the ECLIPSE_HOME environment variable to point to the home directory of your Eclipse installation. 
+To do so, go to Run -> Run Configuration and then, after picking the configuration you want to run, set the variable in the Environment tab.
 
 If you want to use ScalaTest from within Eclipse, download the ScalaTest plugin. For instructions, see [here](http://www.scalatest.org/user_guide/using_scalatest_with_eclipse). 
 Do NOT declare your test packages as nested packages in separate lines, because ScalaTest will not see them for some reason. E.g. don't write 
