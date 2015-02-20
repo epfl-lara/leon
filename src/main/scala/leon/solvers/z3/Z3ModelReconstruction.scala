@@ -23,7 +23,10 @@ trait Z3ModelReconstruction {
     variables.getZ3(id.toVariable).flatMap { z3ID =>
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
-        case Int32Type => model.evalAs[Int](z3ID).map(IntLiteral(_))
+        case Int32Type =>
+          model.evalAs[Int](z3ID).map(IntLiteral(_)).orElse{
+            model.eval(z3ID).flatMap(t => softFromZ3Formula(model, t))
+          }
         case IntegerType => model.evalAs[Int](z3ID).map(InfiniteIntegerLiteral(_))
         case other => model.eval(z3ID) match {
           case None => None
