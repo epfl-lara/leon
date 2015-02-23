@@ -330,6 +330,18 @@ sealed abstract class List[T] {
     case Nil() => z
     case Cons(h, t) => f(h, t.foldRight(f)(z))
   }
+ 
+  def scanLeft[R](z: R)(f: (R,T) => R): List[R] = this match {
+    case Nil() => z :: Nil()
+    case Cons(h,t) => z :: t.scanLeft(f(z,h))(f)
+  }
+
+  def scanRight[R](f: (T,R) => R)(z: R): List[R] = { this match {
+    case Nil() => z :: Nil()
+    case Cons(h, t) => 
+      val rest@Cons(h1,_) = t.scanRight(f)(z)
+      f(h, h1) :: rest
+  }} ensuring { !_.isEmpty }
 
   def flatMap[R](f: T => List[R]): List[R] = 
     ListOps.flatten(this map f)
@@ -502,4 +514,17 @@ object ListSpecs {
   //  }} &&
   //  l.foldLeft(z)(f) == l.reverse.foldRight((x:T,y:R) => f(y,x))(z)
   //}.holds
+  //
+
+  //Can't prove this
+  //@induct
+  //def scanVsFoldLeft[A,B](l : List[A], z: B, f: (B,A) => B): Boolean = {
+  //  l.scanLeft(z)(f).last == l.foldLeft(z)(f)
+  //}.holds
+  
+  @induct
+  def scanVsFoldRight[A,B](l: List[A], z: B, f: (A,B) => B): Boolean = {
+    l.scanRight(f)(z).head == l.foldRight(f)(z)
+  }.holds
+
 }
