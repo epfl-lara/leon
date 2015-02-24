@@ -45,7 +45,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
   private def toFunction(expr: Expr): (Expr, Expr => Expr, Map[Identifier, Identifier]) = {
     val res = expr match {
       case LetVar(id, e, b) => {
-        val newId = FreshIdentifier(id.name).copiedFrom(id)
+        val newId = id.freshen
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
         varInScope += id
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
@@ -55,7 +55,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
       }
       case Assignment(id, e) => {
         assert(varInScope.contains(id))
-        val newId = FreshIdentifier(id.name).copiedFrom(id)
+        val newId = id.freshen
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
         val scope = (body: Expr) => rhsScope(Let(newId, rhsVal, body).copiedFrom(expr))
         (UnitLiteral(), scope, rhsFun + (id -> newId))
@@ -69,8 +69,8 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val iteRType = leastUpperBound(tRes.getType, eRes.getType).get
 
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
-        val resId = FreshIdentifier("res").setType(iteRType)
-        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+        val resId = FreshIdentifier("res", iteRType)
+        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
         val iteType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
 
         val thenVal = if(modifiedVars.isEmpty) tRes else Tuple(tRes +: modifiedVars.map(vId => tFun.get(vId) match {
@@ -86,7 +86,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val iteExpr = IfExpr(cRes, replaceNames(cFun, tScope(thenVal)), replaceNames(cFun, eScope(elseVal))).copiedFrom(ite)
 
         val scope = ((body: Expr) => {
-          val tupleId = FreshIdentifier("t").setType(iteType)
+          val tupleId = FreshIdentifier("t", iteType)
           cScope(
             Let(tupleId, iteExpr, 
               if(freshIds.isEmpty)
@@ -108,8 +108,8 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val (scrutRes, scrutScope, scrutFun) = toFunction(scrut)
 
         val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).intersect(varInScope).toSeq
-        val resId = FreshIdentifier("res").setType(m.getType)
-        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+        val resId = FreshIdentifier("res", m.getType)
+        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
         val matchType = if(modifiedVars.isEmpty) resId.getType else TupleType(resId.getType +: freshIds.map(_.getType))
 
         val csesVals = csesRes.zip(csesFun).map{ 
@@ -127,7 +127,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         }).setPos(m)
 
         val scope = ((body: Expr) => {
-          val tupleId = FreshIdentifier("t").setType(matchType)
+          val tupleId = FreshIdentifier("t", matchType)
           scrutScope(
             Let(tupleId, matchE, 
               if(freshIds.isEmpty)
@@ -152,7 +152,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         if(modifiedVars.isEmpty)
           (UnitLiteral(), (b: Expr) => b, Map())
         else {
-          val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+          val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
           val whileFunValDefs = whileFunVars.map(id => ValDef(id, id.getType))
           val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else TupleType(whileFunVars.map(_.getType))
@@ -172,7 +172,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
             condScope(IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase)))
           whileFunDef.body = Some(whileFunBody)
 
-          val resVar = Variable(FreshIdentifier("res").setType(whileFunReturnType))
+          val resVar = Variable(FreshIdentifier("res", whileFunReturnType))
           val whileFunVars2ResultVars: Map[Expr, Expr] = 
             if(whileFunVars.size == 1) 
               Map(whileFunVars.head.toVariable -> resVar)
@@ -194,9 +194,9 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
                 case None => BooleanLiteral(true)
               })))
 
-          val finalVars = modifiedVars.map(id => FreshIdentifier(id.name).setType(id.getType))
+          val finalVars = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
           val finalScope = ((body: Expr) => {
-            val tupleId = FreshIdentifier("t").setType(whileFunReturnType)
+            val tupleId = FreshIdentifier("t", whileFunReturnType)
             LetDef(
               whileFunDef,
               Let(tupleId, 

@@ -292,7 +292,7 @@ object LambdaTemplate {
 
       val freshCount = ids.size - currentVars.size
       val typedVars = if (freshCount > 0) {
-        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", true).setType(tpe))
+        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", tpe, true))
         typedIds += tpe -> allIds
         allIds
       } else {

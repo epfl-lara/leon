@@ -50,12 +50,12 @@ object FunctionClosure extends TransformationPhase {
       val capturedVars: Set[Identifier] = bindedVars.diff(enclosingLets.map(_._1).toSet)
       val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
-      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, FreshIdentifier(id.name).copiedFrom(id))).toMap
+      val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, id.freshen)).toMap
       val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
       
       val extraValDefOldIds: Seq[Identifier] = capturedVars.toSeq
       val extraValDefFreshIds: Seq[Identifier] = extraValDefOldIds.map(freshIds(_))
-      val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map(id =>  ValDef(id, id.getType))
+      val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map{id => ValDef(id, id.getType)}
       val newValDefs: Seq[ValDef] = fd.params ++ extraValDefs
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.params.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
@@ -69,7 +69,7 @@ object FunctionClosure extends TransformationPhase {
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {
-          val newId = FreshIdentifier(p._1.name).copiedFrom(p._1)
+          val newId = p._1.freshen
           val newMap = acc._2 + (p._1 -> newId)
           val newBody = functionClosure(acc._1, newBindedVars, freshIds ++ newMap, fd2FreshFd)
           (Let(newId, p._2, newBody), newMap)

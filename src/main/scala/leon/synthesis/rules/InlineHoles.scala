@@ -89,7 +89,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
 
       val res = preMap {
         case h @ FunctionInvocation(TypedFunDef(`oracleHead`, Seq(tpe)), Seq(o)) =>
-          val x = FreshIdentifier("h", true).setType(tpe)
+          val x = FreshIdentifier("h", tpe, true)
           newXs ::= x
 
           Some(x.toVariable)

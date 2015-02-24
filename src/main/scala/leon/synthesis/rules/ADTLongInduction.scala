@@ -26,8 +26,8 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
 
       val resType = tupleTypeWrap(p.xs.map(_.getType))
 
-      val inductOn     = FreshIdentifier(origId.name, true).setType(origId.getType)
-      val residualArgs = oas.map(id => FreshIdentifier(id.name, true).setType(id.getType))
+      val inductOn     = FreshIdentifier(origId.name, origId.getType, true)
+      val residualArgs = oas.map(id => FreshIdentifier(id.name, id.getType, true))
       val residualMap  = (oas zip residualArgs).map{ case (id, id2) => id -> Variable(id2) }.toMap
       val residualArgDefs = residualArgs.map(a => ValDef(a, a.getType))
 
@@ -68,7 +68,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
 
             (for (id <- ids if isRec(id)) yield {
               for (cct <- ct.knownCCDescendents) yield {
-                val subIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, true).setType(vd.tpe)).toList
+                val subIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, vd.tpe, true)).toList
 
                 val newIds = ids.filterNot(_ == id) ++ subIds
                 val newCalls = if (!subIds.isEmpty) {
@@ -112,7 +112,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
           var postFs = List[Expr]()
 
           for (cid <- calls) {
-            val postXs  = p.xs map (id => FreshIdentifier("r", true).setType(id.getType))
+            val postXs  = p.xs map (id => FreshIdentifier("r", id.getType, true))
             postXss = postXss ::: postXs
             val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
             postFs = substAll(postXsMap + (inductOn -> Variable(cid)), innerPhi) :: postFs
@@ -130,7 +130,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
           case sols =>
             var globalPre = List[Expr]()
 
-            val newFun = new FunDef(FreshIdentifier("rec", true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs, DefType.MethodDef)
+            val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs, DefType.MethodDef)
 
             val cases = for ((sol, (problem, pat, calls, pc)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= and(pc, sol.pre)
@@ -147,7 +147,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
             } else {
               val funPre = substAll(substMap, and(p.pc, orJoin(globalPre)))
               val funPost = substAll(substMap, p.phi)
-              val idPost = FreshIdentifier("res").setType(resType)
+              val idPost = FreshIdentifier("res", resType)
               val outerPre = orJoin(globalPre)
 
               newFun.precondition = Some(funPre)

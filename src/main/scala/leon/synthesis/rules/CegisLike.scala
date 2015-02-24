@@ -242,16 +242,16 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         }
       }
 
-      private val bArrayId = FreshIdentifier("bArray", true).setType(ArrayType(BooleanType))
+      private val bArrayId = FreshIdentifier("bArray", ArrayType(BooleanType), true)
 
-      private var cTreeFd = new FunDef(FreshIdentifier("cTree", true),
+      private var cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true),
                                Seq(),
                                p.outType,
                                p.as.map(id => ValDef(id, id.getType)),
                                DefType.MethodDef
                              )
 
-      private var phiFd   = new FunDef(FreshIdentifier("phiFd", true),
+      private var phiFd   = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true),
                                Seq(),
                                BooleanType,
                                p.as.map(id => ValDef(id, id.getType)),
@@ -544,7 +544,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         private var slots = Map[T, Int]().withDefaultValue(0)
 
         private def streamOf(t: T): Stream[Identifier] = {
-          FreshIdentifier("c", true).setType(t.getType) #:: streamOf(t)
+          FreshIdentifier("c", t.getType, true) #:: streamOf(t)
         }
 
         def reset(): Unit = {
@@ -568,7 +568,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         var unfoldedSomething = false;
 
         def freshB() = {
-          val id = FreshIdentifier("B", true).setType(BooleanType)
+          val id = FreshIdentifier("B", BooleanType, true)
           newBs += id
           id
         }

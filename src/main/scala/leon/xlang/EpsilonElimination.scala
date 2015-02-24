@@ -23,9 +23,9 @@ object EpsilonElimination extends TransformationPhase {
       val newBody = postMap{
         case eps@Epsilon(pred, tpe) =>
           val freshName = FreshIdentifier("epsilon")
-          val newFunDef = new FunDef(freshName, Nil, eps.getType, Seq(), DefType.MethodDef)
+          val newFunDef = new FunDef(freshName, Nil, tpe, Seq(), DefType.MethodDef)
           val epsilonVar = EpsilonVariable(eps.getPos, tpe)
-          val resId     = FreshIdentifier("res").setType(eps.getType)
+          val resId     = FreshIdentifier("res", tpe)
           val postcondition = replace(Map(epsilonVar -> Variable(resId)), pred)
           newFunDef.postcondition = Some((resId, postcondition))
           Some(LetDef(newFunDef, FunctionInvocation(newFunDef.typed, Seq())))

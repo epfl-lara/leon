@@ -20,15 +20,15 @@ import org.scalatest.FunSuite
 
 class Streams extends LeonTestSuite {
   test("Cartesian Product 1") {
-    val s1 = FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #:: Stream.empty;
+    val s1 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
 
-    val s2 = FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #:: Stream.empty;
+    val s2 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
 
     val ss = cartesianProduct(List(s1, s2))
 
@@ -38,15 +38,15 @@ class Streams extends LeonTestSuite {
   }
 
   test("Cartesian Product 2") {
-    val s1 = FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #:: Stream.empty;
+    val s1 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
 
-    val s2 = FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #::
-             FreshIdentifier("B", true) #:: Stream.empty;
+    val s2 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #::
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
 
     val tmp1 = s1.mkString
     val tmp2 = s2.mkString

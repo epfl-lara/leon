@@ -220,7 +220,7 @@ object Constructors {
   
   def finiteLambda(dflt: Expr, els: Seq[(Expr, Expr)], tpe: FunctionType): Lambda = {
     val args = tpe.from.zipWithIndex.map { case (tpe, idx) =>
-      ValDef(FreshIdentifier(s"x${idx + 1}").setType(tpe), tpe)
+      ValDef(FreshIdentifier(s"x${idx + 1}", tpe), tpe)
     }
 
     assume(els.isEmpty || !tpe.from.isEmpty, "Can't provide finite mapping for lambda without parameters")

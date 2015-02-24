@@ -94,11 +94,11 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
 
       //define max function
-      val maxValDefs: Seq[ValDef] = lowerBounds.map(_ => ValDef(FreshIdentifier("b"), Int32Type))
+      val maxValDefs: Seq[ValDef] = lowerBounds.map(_ => ValDef(FreshIdentifier("b", Int32Type), Int32Type))
       val maxFun = new FunDef(FreshIdentifier("max"), Nil, Int32Type, maxValDefs, DefType.MethodDef)
       def maxRec(bounds: List[Expr]): Expr = bounds match {
         case (x1 :: x2 :: xs) => {
-          val v = FreshIdentifier("m").setType(Int32Type)
+          val v = FreshIdentifier("m", Int32Type)
           Let(v, IfExpr(LessThan(x1, x2), x2, x1), maxRec(Variable(v) :: xs))
         }
         case (x :: Nil) => x
@@ -112,7 +112,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
       val minFun = new FunDef(FreshIdentifier("min"), Nil, Int32Type, minValDefs,DefType.MethodDef)
       def minRec(bounds: List[Expr]): Expr = bounds match {
         case (x1 :: x2 :: xs) => {
-          val v = FreshIdentifier("m").setType(Int32Type)
+          val v = FreshIdentifier("m", Int32Type)
           Let(v, IfExpr(LessThan(x1, x2), x1, x2), minRec(Variable(v) :: xs))
         }
         case (x :: Nil) => x
@@ -162,8 +162,8 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
           upperBounds = Nil
         }
 
-        val remainderIds: List[Identifier] = upperBounds.map(_ => FreshIdentifier("k", true).setType(Int32Type))
-        val quotientIds: List[Identifier] = lowerBounds.map(_ => FreshIdentifier("l", true).setType(Int32Type))
+        val remainderIds: List[Identifier] = upperBounds.map(_ => FreshIdentifier("k", Int32Type, true))
+        val quotientIds: List[Identifier] = lowerBounds.map(_ => FreshIdentifier("l", Int32Type, true))
 
         val newUpperBounds: List[Expr] = upperBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
         val newLowerBounds: List[Expr] = lowerBounds.map{case (bound, coef) => Times(IntLiteral(L/coef), bound)}
@@ -190,11 +190,11 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
             } else {
               val k = remainderIds.head
               
-              val loopCounter = Variable(FreshIdentifier("i", true).setType(Int32Type))
+              val loopCounter = Variable(FreshIdentifier("i", Int32Type, true))
               val concretePre = replace(Map(Variable(k) -> loopCounter), pre)
               val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
               val returnType = tupleTypeWrap(problem.xs.map(_.getType))
-              val funDef = new FunDef(FreshIdentifier("rec", true), Nil, returnType, Seq(ValDef(loopCounter.id, Int32Type)),DefType.MethodDef)
+              val funDef = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, returnType, Seq(ValDef(loopCounter.id, Int32Type)),DefType.MethodDef)
               val funBody = expandAndSimplifyArithmetic(IfExpr(
                 LessThan(loopCounter, IntLiteral(0)),
                 Error(returnType, "No solution exists"),

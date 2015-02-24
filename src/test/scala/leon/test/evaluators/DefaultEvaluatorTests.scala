@@ -122,15 +122,15 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
 
 
   test("eval simple variable") {
-    val id = FreshIdentifier("id").setType(Int32Type)
+    val id = FreshIdentifier("id", Int32Type)
     expectSuccessful(
       defaultEvaluator.eval(Variable(id), Map(id -> IntLiteral(23))),
       IntLiteral(23))
   }
 
   test("eval with unbound variable should return EvaluatorError") {
-    val id = FreshIdentifier("id").setType(Int32Type)
-    val foo = FreshIdentifier("foo").setType(Int32Type)
+    val id = FreshIdentifier("id", Int32Type)
+    val foo = FreshIdentifier("foo", Int32Type)
     val res = defaultEvaluator.eval(Variable(id), Map(foo -> IntLiteral(23)))
     assert(res.isInstanceOf[EvaluationResults.EvaluatorError])
   }
@@ -166,7 +166,7 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
   }
 
   test("eval variable length of array") {
-    val id = FreshIdentifier("id").setType(Int32Type)
+    val id = FreshIdentifier("id", Int32Type)
     expectSuccessful(
       defaultEvaluator.eval(
         ArrayLength(
@@ -176,7 +176,7 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
   }
 
   test("eval variable default value of array") {
-    val id = FreshIdentifier("id").setType(Int32Type)
+    val id = FreshIdentifier("id", Int32Type)
     expectSuccessful(
       defaultEvaluator.eval(
         finiteArray(Map[Int, Expr](), Some(Variable(id), IntLiteral(7)), Int32Type),

@@ -55,7 +55,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
               Some((id, and(CaseClassInstanceOf(cct, Variable(id)).setPos(p), p).setPos(p)))
 
             case None =>
-              val resId = FreshIdentifier("res").setType(cct)
+              val resId = FreshIdentifier("res", cct)
 
               Some((resId, CaseClassInstanceOf(cct, Variable(resId))))
           }

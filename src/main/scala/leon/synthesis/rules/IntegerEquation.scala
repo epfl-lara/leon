@@ -83,7 +83,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
           val freshFormula = simplePreTransform({
             case d@Division(_, _) => {
               assert(variablesOf(d).intersect(problem.xs.toSet).isEmpty)
-              val newVar = FreshIdentifier("d", true).setType(Int32Type) 
+              val newVar = FreshIdentifier("d", Int32Type, true) 
               freshInputVariables ::= newVar
               equivalenceConstraints += (Variable(newVar) -> d)
               Variable(newVar)
@@ -100,7 +100,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
             case List(s @ Solution(pre, defs, term)) => {
               val freshPre = replace(equivalenceConstraints, pre)
               val freshTerm = replace(equivalenceConstraints, term)
-              val freshsubxs = subproblemxs.map(id => FreshIdentifier(id.name).setType(id.getType))
+              val freshsubxs = subproblemxs.map(id => FreshIdentifier(id.name, id.getType))
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap

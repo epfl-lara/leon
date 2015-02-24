@@ -35,7 +35,7 @@ object LinearEquations {
     } else {
       val basis: Array[Array[BigInt]]  = linearSet(evaluator, as, normalizedEquation.tail.map{case InfiniteIntegerLiteral(i) => i}.toArray)
       val (pre, sol) = particularSolution(as, normalizedEquation)
-      val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", true).setType(IntegerType))
+      val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", IntegerType, true))
 
       val tbasis = basis.transpose
       assert(freshVars.size == tbasis.size)

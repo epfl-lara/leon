@@ -46,7 +46,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   )
 
   // def f(fx : Int) : Int = fx + 1
-  private val fx   : Identifier = FreshIdentifier("x").setType(IntegerType)
+  private val fx   : Identifier = FreshIdentifier("x", IntegerType)
   private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, IntegerType, ValDef(fx, IntegerType) :: Nil, DefType.MethodDef)
   fDef.body = Some(Plus(Variable(fx), InfiniteIntegerLiteral(1)))
 
@@ -58,8 +58,8 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     )))
   )
 
-  private val x : Expr = Variable(FreshIdentifier("x").setType(IntegerType))
-  private val y : Expr = Variable(FreshIdentifier("y").setType(IntegerType))
+  private val x : Expr = Variable(FreshIdentifier("x", IntegerType))
+  private val y : Expr = Variable(FreshIdentifier("y", IntegerType))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef.typed, e :: Nil)
 
   private val solver = SolverFactory(() => new FairZ3Solver(testContext, minimalProgram))
@@ -89,8 +89,8 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   assertValid(solver, unknown1)
 
   test("Check assumptions") {
-    val b1 = Variable(FreshIdentifier("b").setType(BooleanType))
-    val b2 = Variable(FreshIdentifier("b").setType(BooleanType))
+    val b1 = Variable(FreshIdentifier("b", BooleanType))
+    val b2 = Variable(FreshIdentifier("b", BooleanType))
 
     val f = And(b1, Not(b2))
 

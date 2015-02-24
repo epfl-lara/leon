@@ -196,7 +196,7 @@ object TypeTreeOps {
       def rec(idsMap: Map[Identifier, Identifier])(e: Expr): Expr = {
         def freshId(id: Identifier, newTpe: TypeTree) = {
           if (id.getType != newTpe) {
-            FreshIdentifier(id.name).setType(newTpe).copiedFrom(id)
+            FreshIdentifier(id.name, newTpe).copiedFrom(id)
           } else {
             id
           }

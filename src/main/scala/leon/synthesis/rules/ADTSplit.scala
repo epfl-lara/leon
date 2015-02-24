@@ -55,7 +55,7 @@ case object ADTSplit extends Rule("ADT Split.") {
         val subInfo = for(ccd <- cases) yield {
            val cct    = CaseClassType(ccd, act.tps)
 
-           val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, true).setType(vd.tpe) }.toList
+           val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.tpe, true) }.toList
 
            val subPhi = subst(id -> CaseClass(cct, args.map(Variable(_))), p.phi)
            val subPC  = subst(id -> CaseClass(cct, args.map(Variable(_))), p.pc)

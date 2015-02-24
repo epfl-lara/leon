@@ -83,10 +83,10 @@ class DataGen extends LeonTestSuite {
 
     val evaluator = new CodeGenEvaluator(testContext, prog)
 
-    val a = Variable(FreshIdentifier("a").setType(Int32Type))
-    val b = Variable(FreshIdentifier("b").setType(Int32Type))
-    val x = Variable(FreshIdentifier("x").setType(listType))
-    val y = Variable(FreshIdentifier("y").setType(listType))
+    val a = Variable(FreshIdentifier("a", Int32Type))
+    val b = Variable(FreshIdentifier("b", Int32Type))
+    val x = Variable(FreshIdentifier("x", listType))
+    val y = Variable(FreshIdentifier("y", listType))
 
     val sizeX    = FunctionInvocation(sizeDef.typed, Seq(x))
     val contentX = FunctionInvocation(contentDef.typed, Seq(x))

@@ -8,7 +8,7 @@ import Definitions.Definition
 
 object Common {
   import Trees.Variable
-  import TypeTrees.{MutableTyped,Typed}
+  import TypeTrees._
 
   abstract class Tree extends Positioned with Serializable {
     def copiedFrom(o: Tree): this.type = {
@@ -30,8 +30,10 @@ object Common {
   }
 
   // the type is left blank (Untyped) for Identifiers that are not variables
-  class Identifier private[Common](val name: String, val globalId: Int, val id: Int, alwaysShowUniqueID: Boolean = false) extends Tree with MutableTyped {
+  class Identifier private[Common](val name: String, val globalId: Int, val id: Int, val tpe: TypeTree, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
     self : Serializable =>
+
+    val getType = tpe
 
     override def equals(other: Any): Boolean = {
       if(other == null || !other.isInstanceOf[Identifier])
@@ -54,7 +56,7 @@ object Common {
 
     def toVariable : Variable = Variable(this)
 
-    def freshen: Identifier = FreshIdentifier(name, alwaysShowUniqueID).copiedFrom(this)
+    def freshen: Identifier = FreshIdentifier(name, tpe, alwaysShowUniqueID).copiedFrom(this)
     
     var owner : Option[Definition] = None
     
@@ -85,9 +87,11 @@ object Common {
   }
 
   object FreshIdentifier {
-    def apply(name: String, alwaysShowUniqueID: Boolean = false) : Identifier = new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), alwaysShowUniqueID)
+    def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = 
+      new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe: TypeTree, alwaysShowUniqueID)
 
-    def apply(name: String, forceId: Int): Identifier = new Identifier(name, UniqueCounter.nextGlobal, forceId, true)
+    def apply(name: String, forceId: Int, tpe: TypeTree): Identifier = 
+      new Identifier(name, UniqueCounter.nextGlobal, forceId, tpe, true)
 
   }
 

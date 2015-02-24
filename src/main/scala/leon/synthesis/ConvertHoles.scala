@@ -105,18 +105,18 @@ object ConvertHoles extends LeonPhase[Program, Program] {
   def toExpr(h: Hole): (Expr, List[Identifier]) = {
     h.alts match {
       case Seq() =>
-        val h1 = FreshIdentifier("hole", true).setType(h.getType)
+        val h1 = FreshIdentifier("hole", h.getType, true)
         (h1.toVariable, List(h1))
 
       case Seq(v) =>
-        val h1 = FreshIdentifier("hole", true).setType(BooleanType)
-        val h2 = FreshIdentifier("hole", true).setType(h.getType)
+        val h1 = FreshIdentifier("hole", BooleanType, true)
+        val h2 = FreshIdentifier("hole", h.getType, true)
         (IfExpr(h1.toVariable, h2.toVariable, v), List(h1, h2))
 
       case exs =>
         var ids: List[Identifier] = Nil
         val ex = exs.init.foldRight(exs.last)({ (e: Expr, r: Expr) =>
-          val h = FreshIdentifier("hole", true).setType(BooleanType)
+          val h = FreshIdentifier("hole", BooleanType, true)
           ids ::= h
           IfExpr(h.toVariable, e, r)
         })

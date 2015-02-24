@@ -30,14 +30,14 @@ class EnumerationSolverTests extends LeonTestSuite {
 
   test("EnumerationSolver 2 (x == 1)") {
     val sf = getSolver
-    val x = Variable(FreshIdentifier("x").setType(Int32Type))
+    val x = Variable(FreshIdentifier("x", Int32Type))
     val o = IntLiteral(1)
     assert(check(sf, Equals(x, o)) === Some(true))
   }
 
   test("EnumerationSolver 3 (Limited range for ints)") {
     val sf = getSolver
-    val x = Variable(FreshIdentifier("x").setType(Int32Type))
+    val x = Variable(FreshIdentifier("x", Int32Type))
     val o = IntLiteral(42)
     assert(check(sf, Equals(x, o)) === None)
   }

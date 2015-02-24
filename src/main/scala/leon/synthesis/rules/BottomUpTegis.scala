@@ -90,7 +90,7 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
                   }
                 }
               } else {
-                val args = gen.subTrees.map(t => FreshIdentifier("arg", true).setType(t.getType))
+                val args = gen.subTrees.map(t => FreshIdentifier("arg", t.getType, true))
                 val argsV = args.map(_.toVariable)
                 val expr = gen.builder(argsV)
                 val ev = evaluator.compile(expr, args).get

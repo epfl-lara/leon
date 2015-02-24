@@ -23,14 +23,14 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
     def decompose(id: Identifier): (List[Identifier], Expr, Map[Identifier, Expr]) = id.getType match {
       case cct @ CaseClassType(ccd, _) if !ccd.isAbstract =>
-        val newIds = cct.fields.map{ vd => FreshIdentifier(vd.id.name, true).setType(vd.tpe) }
+        val newIds = cct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.tpe, true) }
 
         val map = (ccd.fields zip newIds).map{ case (vd, nid) => nid -> CaseClassSelector(cct, Variable(id), vd.id) }.toMap
 
         (newIds.toList, CaseClass(cct, newIds.map(Variable(_))), map)
 
       case TupleType(ts) =>
-        val newIds = ts.zipWithIndex.map{ case (t, i) => FreshIdentifier(id.name+"_"+(i+1), true).setType(t) }
+        val newIds = ts.zipWithIndex.map{ case (t, i) => FreshIdentifier(id.name+"_"+(i+1), t, true) }
 
         val map = (newIds.zipWithIndex).map{ case (nid, i) => nid -> TupleSelect(Variable(id), i+1) }.toMap
 

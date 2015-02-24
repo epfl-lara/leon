@@ -44,16 +44,16 @@ object ArrayTransformation extends TransformationPhase {
     case Let(i, v, b) => {
       v.getType match {
         case ArrayType(_) => {
-          val freshIdentifier = FreshIdentifier("t").setType(i.getType)
+          val freshIdentifier = FreshIdentifier("t", i.getType)
           id2FreshId += (i -> freshIdentifier)
           LetVar(freshIdentifier, transform(v), transform(b))
         }
         case _ => Let(i, transform(v), transform(b))
       }
     }
-    case Variable(i) => {
+    case v@Variable(i) => {
       val freshId = id2FreshId.get(i).getOrElse(i)
-      Variable(freshId)
+      Variable(freshId, Some(v.getType))
     }
 
     case LetVar(id, e, b) => {

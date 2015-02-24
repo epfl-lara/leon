@@ -26,7 +26,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
       return cacheExpr(body);
     }
 
-    val fakeFunDef = new FunDef(FreshIdentifier("fake", true),
+    val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true),
                                 Nil,
                                 body.getType,
                                 variablesOf(body).toSeq.map(id => ValDef(id, id.getType)),
@@ -66,7 +66,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
         None
     }
 
-    val start : Identifier = FreshIdentifier("start", true).setType(BooleanType)
+    val start : Identifier = FreshIdentifier("start", BooleanType, true)
     val pathVar : (Identifier, T) = start -> encoder.encodeId(start)
 
     val funDefArgs : Seq[Identifier] = tfd.params.map(_.id)
@@ -199,7 +199,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           rb
 
         case l @ Let(i, e, b) =>
-          val newExpr : Identifier = FreshIdentifier("lt", true).setType(i.getType)
+          val newExpr : Identifier = FreshIdentifier("lt", i.getType, true)
           storeExpr(newExpr)
           val re = rec(pathVar, e)
           storeGuarded(pathVar, Equals(Variable(newExpr), re))
@@ -208,13 +208,13 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         /* TODO: maybe we want this specialization?
         case l @ LetTuple(is, e, b) =>
-          val tuple : Identifier = FreshIdentifier("t", true).setType(TupleType(is.map(_.getType)))
+          val tuple : Identifier = FreshIdentifier("t", TupleType(is.map(_.getType)), true)
           storeExpr(tuple)
           val re = rec(pathVar, e)
           storeGuarded(pathVar, Equals(Variable(tuple), re))
 
           val mapping = for ((id, i) <- is.zipWithIndex) yield {
-            val newId = FreshIdentifier("ti", true).setType(id.getType)
+            val newId = FreshIdentifier("ti", id.getType, true)
             storeExpr(newId)
             storeGuarded(pathVar, Equals(Variable(newId), TupleSelect(Variable(tuple), i+1)))
 
@@ -241,9 +241,9 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           if(!requireDecomposition(i)) {
             i
           } else {
-            val newBool1 : Identifier = FreshIdentifier("b", true).setType(BooleanType)
-            val newBool2 : Identifier = FreshIdentifier("b", true).setType(BooleanType)
-            val newExpr : Identifier = FreshIdentifier("e", true).setType(i.getType)
+            val newBool1 : Identifier = FreshIdentifier("b", BooleanType, true)
+            val newBool2 : Identifier = FreshIdentifier("b", BooleanType, true)
+            val newExpr : Identifier = FreshIdentifier("e", i.getType, true)
 
             storeCond(newBool1)
             storeCond(newBool2)
@@ -269,7 +269,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           rec(pathVar, impl)
 
         case c @ Choose(ids, cond, None) =>
-          val cid = FreshIdentifier("choose", true).setType(c.getType)
+          val cid = FreshIdentifier("choose", c.getType, true)
           storeExpr(cid)
 
           val m: Map[Expr, Expr] = if (ids.size == 1) {
@@ -285,7 +285,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           val idArgs : Seq[Identifier] = lambdaArgs(l)
           val trArgs : Seq[T] = idArgs.map(encoder.encodeId(_))
 
-          val lid = FreshIdentifier("lambda", true).setType(l.getType)
+          val lid = FreshIdentifier("lambda", l.getType, true)
           val clause = appliedEquals(Variable(lid), l)
 
           val localSubst : Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars

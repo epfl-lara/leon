@@ -90,7 +90,7 @@ object UnitElimination extends TransformationPhase {
           id.getType match {
             case TupleType(tpes) if tpes.exists(_ == UnitType) => {
               val newTupleType = TupleType(tpes.filterNot(_ == UnitType))
-              val freshId = FreshIdentifier(id.name).setType(newTupleType)
+              val freshId = FreshIdentifier(id.name, newTupleType)
               id2FreshId += (id -> freshId)
               val newBody = removeUnit(b)
               id2FreshId -= id

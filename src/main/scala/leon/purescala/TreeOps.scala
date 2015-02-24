@@ -413,6 +413,7 @@ object TreeOps {
   }).setPos(expr)
 
   // rewrites pattern-matching expressions to use fresh variables for the binders
+  // TODO: Unused, and untested
   def freshenLocals(expr: Expr) : Expr = {
     def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
       case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
@@ -425,7 +426,8 @@ object TreeOps {
 
     def freshenCase(cse: MatchCase) : MatchCase = {
       val allBinders: Set[Identifier] = cse.pattern.binders
-      val subMap: Map[Identifier,Identifier] = Map(allBinders.map(i => (i, FreshIdentifier(i.name, true).setType(i.getType))).toSeq : _*)
+      val subMap: Map[Identifier,Identifier] = 
+        Map(allBinders.map(i => (i, FreshIdentifier(i.name, i.getType, true))).toSeq : _*)
       val subVarMap: Map[Expr,Expr] = subMap.map(kv => (Variable(kv._1) -> Variable(kv._2)))
       
       MatchCase(
@@ -444,7 +446,7 @@ object TreeOps {
         Some(Passes(in, out, cses.map(freshenCase(_))).copiedFrom(p))
 
       case l @ Let(i,e,b) =>
-        val newID = FreshIdentifier(i.name, true).copiedFrom(i)
+        val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
 
       case _ => None
@@ -710,7 +712,7 @@ object TreeOps {
     def rec(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] = pattern match {
       case InstanceOfPattern(ob, cct: CaseClassType) =>
         val pt = CaseClassPattern(ob, cct, cct.fields.map { f =>
-          WildcardPattern(Some(FreshIdentifier(f.id.name).setType(f.getType)))
+          WildcardPattern(Some(FreshIdentifier(f.id.name, f.getType)))
         })
         rec(in, pt)
       
@@ -915,7 +917,7 @@ object TreeOps {
       case l : Literal[_] => LiteralPattern(None, l)
       case Variable(i) => WildcardPattern(Some(i))
       case other => 
-        val id = FreshIdentifier("other", true).setType(other.getType)
+        val id = FreshIdentifier("other", other.getType, true)
         guard = and(guard, Equals(Variable(id), other))
         WildcardPattern(Some(id))
     }
@@ -929,7 +931,7 @@ object TreeOps {
     * represent the bindings for intermediate binders (from outermost to innermost)
     */
   def patternToExpression(p : Pattern, expectedType : TypeTree) : (Expr, Seq[(Identifier, Expr)]) = {
-    def fresh(tp : TypeTree) = FreshIdentifier("binder", true).setType(tp)
+    def fresh(tp : TypeTree) = FreshIdentifier("binder", tp, true)
     var ieMap = Seq[(Identifier, Expr)]()
     def addBinding(b : Option[Identifier], e : Expr) = b foreach { ieMap +:= (_, e) }
     def rec(p : Pattern, expectedType : TypeTree) : Expr = p match {
@@ -1031,7 +1033,7 @@ object TreeOps {
       GenericValue(tp, 0)
 
     case FunctionType(from, to) =>
-      val args = from.map(tpe => ValDef(FreshIdentifier("x", true).setType(tpe), tpe))
+      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true), tpe))
       Lambda(args, simplestValue(to))
 
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
@@ -1311,13 +1313,13 @@ object TreeOps {
         val newFD = mapType(funDef.returnType) match {
           case None => funDef
           case Some(rt) =>
-            val fd = new FunDef(FreshIdentifier(funDef.id.name, true), funDef.tparams, rt, funDef.params, funDef.defType)
+            val fd = new FunDef(FreshIdentifier(funDef.id.name, alwaysShowUniqueID = true), funDef.tparams, rt, funDef.params, funDef.defType)
             // These will be taken care of in the recursive traversal.
             fd.body = funDef.body
             fd.precondition = funDef.precondition
             funDef.postcondition match {
               case Some((id, post)) =>
-                val freshId = FreshIdentifier(id.name, true).setType(rt)
+                val freshId = FreshIdentifier(id.name, rt, true)
                 idMap += id -> freshId
                 fd.postcondition = Some((freshId, post))
               case None =>
@@ -2007,7 +2009,7 @@ object TreeOps {
           case _ : Lambda => expr
           case _ : Variable => expr
           case e =>
-            val args = from.map(tpe => ValDef(FreshIdentifier("x", true).setType(tpe), tpe))
+            val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true), tpe))
             val application = apply(expr, args.map(_.toVariable))
             Lambda(args, lift(application))
         }
@@ -2233,7 +2235,7 @@ object TreeOps {
               case _ => "tmp"
             }
 
-            val binder = FreshIdentifier(name, true).setType(prefix.getType) 
+            val binder = FreshIdentifier(name, prefix.getType, true) 
 
             // prefix becomes binder
             substMap += prefix -> Variable(binder)
@@ -2244,7 +2246,7 @@ object TreeOps {
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
-                val b = FreshIdentifier(f.id.name, true).setType(f.tpe)
+                val b = FreshIdentifier(f.id.name, f.tpe, true)
                 substMap += fieldSel -> Variable(b)
                 WildcardPattern(Some(b))
               }

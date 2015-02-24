@@ -133,7 +133,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
       case None =>
         val b = appBlockers.get(app) match {
           case Some(b) => b
-          case None => encoder.encodeId(FreshIdentifier("b_lambda", true).setType(BooleanType))
+          case None => encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
         }
 
         val notB = encoder.mkNot(b)
@@ -145,7 +145,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
   private def freshAppBlocks(apps: Traversable[(T, App[T])]) : Seq[T] = {
     apps.filter(!appBlockers.isDefinedAt(_)).toSeq.map { case app @ (blocker, App(caller, tpe, _)) =>
 
-      val firstB = encoder.encodeId(FreshIdentifier("b_lambda", true).setType(BooleanType))
+      val firstB = encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
       val freeEq = functionVars(tpe).toSeq.map(t => encoder.mkEquals(t, caller))
       val clause = encoder.mkImplies(encoder.mkNot(encoder.mkOr((freeEq :+ firstB) : _*)), encoder.mkNot(blocker))
 
@@ -159,7 +159,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     assert(appBlockers.isDefinedAt(app), "freshAppBlocks must have been called on app before it can be unlocked")
     assert(infos.nonEmpty, "No point in extending blockers if no templates have been unrolled!")
 
-    val nextB = encoder.encodeId(FreshIdentifier("b_lambda", true).setType(BooleanType))
+    val nextB = encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
     val extension = encoder.mkOr((infos.map(_.equals).toSeq :+ nextB) : _*)
     val clause = encoder.mkEquals(appBlockers(app), extension)
 
@@ -262,7 +262,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
 
         case None =>
           // we need to define this defBlocker and link it to definition
-          val defBlocker = encoder.encodeId(FreshIdentifier("d").setType(BooleanType))
+          val defBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
           defBlockers += info -> defBlocker
 
           val template = templateGenerator.mkTemplate(tfd)
@@ -300,7 +300,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     for ((app @ (b, _), (gen, _, _, _, infos)) <- appInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
       var newCls = Seq.empty[T]
 
-      val nb = encoder.encodeId(FreshIdentifier("b", true).setType(BooleanType))
+      val nb = encoder.encodeId(FreshIdentifier("b", BooleanType, true))
       newCls :+= encoder.mkEquals(nb, encoder.mkAnd(equals, b))
 
       val (newExprs, callBlocks, appBlocks) = template.instantiate(nb, args)

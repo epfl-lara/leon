@@ -21,8 +21,7 @@ object Trees {
 
   case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
-      val Block(args, rest) = this
-      Some((args :+ rest, exprs => Block(exprs.init, exprs.last)))
+      Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))
     }
 
     def printWith(implicit pctx: PrinterContext) {

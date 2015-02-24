@@ -18,9 +18,9 @@ case object IntInduction extends Rule("Int Induction") {
       case List(IsTyped(origId, IntegerType)) =>
         val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
-        val inductOn = FreshIdentifier(origId.name, true).setType(origId.getType)
+        val inductOn = FreshIdentifier(origId.name, origId.getType, true)
 
-        val postXs  = p.xs map (id => FreshIdentifier("r", true).setType(id.getType))
+        val postXs  = p.xs map (id => FreshIdentifier("r", id.getType, true))
 
         val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
 
@@ -46,8 +46,8 @@ case object IntInduction extends Rule("Int Induction") {
                              and(LessThan(Variable(inductOn), InfiniteIntegerLiteral(0)),    lt.pre))
               val preOut = subst(inductOn -> Variable(origId), preIn)
 
-              val newFun = new FunDef(FreshIdentifier("rec", true), Nil, tpe, Seq(ValDef(inductOn, inductOn.getType)),DefType.MethodDef)
-              val idPost = FreshIdentifier("res").setType(tpe)
+              val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, tpe, Seq(ValDef(inductOn, inductOn.getType)),DefType.MethodDef)
+              val idPost = FreshIdentifier("res", tpe)
 
               newFun.precondition = Some(preIn)
               newFun.postcondition = Some((idPost, letTuple(p.xs.toSeq, Variable(idPost), p.phi)))

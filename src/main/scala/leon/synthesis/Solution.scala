@@ -43,7 +43,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   def project(indices: Seq[Int]): Solution = {
     term.getType match {
       case TupleType(ts) =>
-        val t = FreshIdentifier("t", true).setType(term.getType)
+        val t = FreshIdentifier("t", term.getType, true)
         val newTerm = Let(t, term, tupleWrap(indices.map(i => TupleSelect(t.toVariable, i+1))))
 
         Solution(pre, defs, newTerm)

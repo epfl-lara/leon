@@ -52,7 +52,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
         val scrut = scrut0 match {
           case v : Variable => v
-          case _ => Variable(FreshIdentifier("scrut", true).setType(scrut0.getType))
+          case _ => Variable(FreshIdentifier("scrut", scrut0.getType, true))
         }
         var scrutCond: Expr = if (scrut == scrut0) BooleanLiteral(true) else Equals(scrut0, scrut)
 

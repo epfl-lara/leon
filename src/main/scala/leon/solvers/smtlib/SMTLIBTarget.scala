@@ -330,7 +330,7 @@ trait SMTLIBTarget {
       case UnitLiteral() =>
         declareSort(UnitType)
 
-        declareVariable(FreshIdentifier("Unit").setType(UnitType))
+        declareVariable(FreshIdentifier("Unit", UnitType))
 
       case InfiniteIntegerLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
       case IntLiteral(i) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
@@ -349,7 +349,7 @@ trait SMTLIBTarget {
         )
 
       case er @ Error(tpe, _) =>
-        val s = declareVariable(FreshIdentifier("error_value").setType(tpe))
+        val s = declareVariable(FreshIdentifier("error_value", tpe))
         s
 
       case s @ CaseClassSelector(cct, e, id) =>

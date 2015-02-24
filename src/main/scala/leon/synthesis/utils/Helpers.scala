@@ -69,7 +69,7 @@ object Helpers {
 
     val res = gs.flatMap {
       case Terminating(tfd, args) if isSubtypeOf(tfd.returnType, tpe) =>
-        val ids = tfd.params.map(vd => FreshIdentifier("<hole>", true).setType(vd.tpe)).toList
+        val ids = tfd.params.map(vd => FreshIdentifier("<hole>", vd.tpe, true)).toList
 
         for (((a, i), tpe) <- args.zipWithIndex zip tfd.params.map(_.tpe);
               smaller <- argsSmaller(a, tpe)) yield {

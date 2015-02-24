@@ -234,11 +234,16 @@ object Trees {
   // tpe overrides the type of the identifier.
   // This is useful for variables that represent class fields with instantiated types.
   // E.g. list.head when list: List[Int]
-  // @mk: I know this breaks symmetry with the rest of the trees, but it does seem 
-  //      like a natural way to implement this. Feel free to rename the underlying class
-  //      and define constructor/extractor
+  // @mk: TODO: This breaks symmetry with the rest of the trees and is ugly-ish.
+  //      Feel free to rename the underlying class and define constructor/extractor,
+  //      or do it some other way
   class Variable(val id: Identifier, val tpe: Option[TypeTree]) extends Expr with Terminal {
     val getType = tpe getOrElse id.getType
+    override def equals(that: Any) = that match {
+      case Variable(id2) => id == id2
+      case _ => false
+    }
+    override def hashCode: Int = id.hashCode
   }
 
   object Variable {

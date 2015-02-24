@@ -475,7 +475,7 @@ object Definitions {
         val newParams = fd.params.map {
           case vd @ ValDef(id, tpe) =>
             val newTpe = translated(tpe)
-            val newId = FreshIdentifier(id.name, true).setType(newTpe).copiedFrom(id)
+            val newId = FreshIdentifier(id.name, newTpe, true).copiedFrom(id)
 
             ValDef(newId, newTpe).setPos(vd)
         }
@@ -512,7 +512,7 @@ object Definitions {
     def postcondition = fd.postcondition.map {
       case (id, post) if typesMap.nonEmpty =>
         postCache.getOrElse((id, post), {
-          val nId = FreshIdentifier(id.name).setType(translated(id.getType)).copiedFrom(id)
+          val nId = FreshIdentifier(id.name, translated(id.getType)).copiedFrom(id)
           val res = nId -> instantiateType(post, typesMap, paramsMap + (id -> nId))
           postCache += ((id,post) -> res)
           res

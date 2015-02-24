@@ -18,16 +18,16 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
 
   def i(x: Int) = InfiniteIntegerLiteral(x)
 
-  val xId = FreshIdentifier("x").setType(IntegerType)
+  val xId = FreshIdentifier("x", IntegerType)
   val x = Variable(xId)
-  val yId = FreshIdentifier("y").setType(IntegerType)
+  val yId = FreshIdentifier("y", IntegerType)
   val y = Variable(yId)
-  val zId = FreshIdentifier("z").setType(IntegerType)
+  val zId = FreshIdentifier("z", IntegerType)
   val z = Variable(zId)
 
-  val aId = FreshIdentifier("a").setType(IntegerType)
+  val aId = FreshIdentifier("a", IntegerType)
   val a = Variable(aId)
-  val bId = FreshIdentifier("b").setType(IntegerType)
+  val bId = FreshIdentifier("b", IntegerType)
   val b = Variable(bId)
 
   def toSum(es: Seq[Expr]) = es.reduceLeft(Plus(_, _))

@@ -224,7 +224,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val args = fd.params.map(_.id)
     val argsWrapped = tupleWrap(args.map(_.toVariable))
 
-    val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", true).setType(fd.returnType))
+    val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", fd.returnType, true))
 
     val spec = fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true))
 
@@ -269,7 +269,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       )
       
       def condAsSpec(cond: Expr, inExpr: Expr => Expr) = {
-        val newOut = FreshIdentifier("cond", true).setType(BooleanType)
+        val newOut = FreshIdentifier("cond", BooleanType, true)
         val newSpec = Let(
           out,
           inExpr(Variable(newOut)),

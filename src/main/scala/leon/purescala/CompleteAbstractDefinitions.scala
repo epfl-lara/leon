@@ -23,7 +23,7 @@ object CompleteAbstractDefinitions extends TransformationPhase {
       // We remove methods from class definitions and add corresponding functions
       m.defs.foreach {
         case fd: FunDef if fd.body.isEmpty =>
-          val id = FreshIdentifier("res").setType(fd.returnType)
+          val id = FreshIdentifier("res", fd.returnType)
 
           if (fd.hasPostcondition) {
             val (pid, post) = fd.postcondition.get

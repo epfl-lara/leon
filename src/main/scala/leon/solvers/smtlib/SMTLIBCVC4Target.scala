@@ -103,7 +103,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       val tpe @ ArrayType(base) = normalizeType(a.getType)
       declareSort(tpe)
 
-      var ar: Term = declareVariable(FreshIdentifier("arrayconst").setType(RawArrayType(Int32Type, base)))
+      var ar: Term = declareVariable(FreshIdentifier("arrayconst", RawArrayType(Int32Type, base)))
 
       for ((i, e) <- elems) {
         ar = FunctionApplication(SSymbol("store"), Seq(ar, toSMT(IntLiteral(i)), toSMT(e)))
