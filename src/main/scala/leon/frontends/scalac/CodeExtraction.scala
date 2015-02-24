@@ -1332,6 +1332,25 @@ trait CodeExtraction extends ASTExtractors {
         case ExBVUMinus(e)         => BVUMinus(extractTree(e))
         case ExBVNot(e)            => BVNot(extractTree(e))
 
+        case ExNotEquals(l, r) => {
+          val rl = extractTree(l)
+          val rr = extractTree(r)
+
+          (rl, rr) match {
+            case (IsTyped(_, rt), IsTyped(_, lt)) if isSubtypeOf(rt, lt) || isSubtypeOf(lt, rt) =>
+              Not(Equals(rl, rr))
+
+            case (IntLiteral(v), IsTyped(_, IntegerType)) =>
+              Not(Equals(InfiniteIntegerLiteral(v), rr))
+
+            case (IsTyped(_, IntegerType), IntLiteral(v)) =>
+              Not(Equals(rl, InfiniteIntegerLiteral(v)))
+
+            case (IsTyped(_, rt), IsTyped(_, lt)) =>
+              outOfSubsetError(tr, "Invalid comparison: (_: "+rt+") != (_: "+lt+")")
+          }
+        }
+
         case ExEquals(l, r) =>
           val rl = extractTree(l)
           val rr = extractTree(r)
@@ -1520,9 +1539,6 @@ trait CodeExtraction extends ASTExtractors {
               val fieldID = cct.fields.find(_.id.name == name).get.id
 
               CaseClassSelector(cct, rec, fieldID)
-
-            case (a1, "!=", List(a2)) =>
-              Not(Equals(a1, a2))
 
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>

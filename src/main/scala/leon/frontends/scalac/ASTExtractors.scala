@@ -736,6 +736,13 @@ trait ASTExtractors {
       }
     }
 
+    object ExNotEquals {
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(lhs, n), List(rhs)) if (n == nme.NE) => Some((lhs,rhs))
+        case _ => None
+      }
+    }
+
     object ExUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if (n == nme.UNARY_- && hasBigIntType(t)) => Some(t)
