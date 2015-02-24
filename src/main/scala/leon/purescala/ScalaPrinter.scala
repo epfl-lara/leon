@@ -8,6 +8,7 @@ import Trees._
 import TypeTrees._
 import Definitions._
 import Constructors._
+import Extractors._
 
 import PrinterHelpers._
 

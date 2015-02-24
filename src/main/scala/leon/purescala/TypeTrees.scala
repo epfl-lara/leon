@@ -26,10 +26,7 @@ object TypeTrees {
 
     private var _type: Option[TypeTree] = None
 
-    def getType: TypeTree = _type match {
-      case None => Untyped
-      case Some(t) => t
-    }
+    def getType: TypeTree = _type getOrElse Untyped
 
     def setType(tt: TypeTree): self.type = _type match {
       case None => _type = Some(tt); this
@@ -51,7 +48,12 @@ object TypeTrees {
   }
 
   abstract class TypeTree extends Tree with Typed {
-    def getType = this
+    val getType = this
+    def unveilUntyped: TypeTree = this match {
+      case NAryType(tps, builder) => 
+        val subs = tps map { _.unveilUntyped }
+        if (subs contains Untyped) Untyped else builder(subs)
+    }
   }
 
   case object Untyped extends TypeTree
@@ -155,4 +157,7 @@ object TypeTrees {
       case t => Some(Nil, fake => t)
     }
   }
+  
+  implicit def optTypeToType(tp: Option[TypeTree]) = tp getOrElse Untyped
+
 }

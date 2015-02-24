@@ -66,7 +66,7 @@ case object GuidedDecomp extends Rule("Guided Decomp") {
 
         val subs = for ((c, cond) <- cs zip matchCasePathConditions(fullMatch, List(p.pc))) yield {
           
-          val localScrut = c.pattern.binder.map(Variable) getOrElse scrut
+          val localScrut = c.pattern.binder.map( Variable(_) ) getOrElse scrut
           val scrutConstraint = if (localScrut == scrut) BooleanLiteral(true) else Equals(localScrut, scrut)
           val substs = patternSubstitutions(localScrut, c.pattern)
           

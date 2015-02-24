@@ -495,7 +495,7 @@ trait AbstractZ3Solver
     } else {
       // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
       // variable has to remain in a map etc.
-      variables.leonToZ3.filter(p => p._1.isInstanceOf[Variable]).map(p => (p._1.asInstanceOf[Variable].id -> p._2))
+      variables.leonToZ3.collect{ case (Variable(id), p2) => id -> p2 }
     }
 
     def rec(ex: Expr): Z3AST = ex match {
@@ -542,7 +542,7 @@ trait AbstractZ3Solver
         rb
       }
 
-      case Waypoint(_, e) => rec(e)
+      case Waypoint(_, e, _) => rec(e)
       case e @ Error(tpe, _) => {
         val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
         // Might introduce dupplicates (e), but no worries here
@@ -800,7 +800,7 @@ trait AbstractZ3Solver
                       (index -> rec(v))
                     }
 
-                    FiniteArray(valuesMap, Some(elseValue), IntLiteral(length)).setType(at)
+                    finiteArray(valuesMap, Some(elseValue, IntLiteral(length)), dt)
                 }
 
               case LeonType(tpe @ MapType(kt, vt)) =>
@@ -812,7 +812,7 @@ trait AbstractZ3Solver
                         (rec(k), rec(arg))
                     }
 
-                    FiniteMap(values).setType(tpe)
+                    finiteMap(values, kt, vt)
                 }
 
               case LeonType(tpe @ FunctionType(fts, tt)) =>
@@ -829,7 +829,7 @@ trait AbstractZ3Solver
                   case None => throw new CantTranslateException(t)
                   case Some(set) =>
                     val elems = set.map(e => rec(e))
-                    FiniteSet(elems).setType(tpe)
+                    finiteSet(elems, dt)
                 }
 
               case LeonType(UnitType) =>

@@ -69,14 +69,14 @@ trait SMTLIBTarget {
   // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
   // Should NEVER escape past SMT-world
   case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr {
-    def getType = RawArrayType(keyTpe, default.getType)
+    val getType = RawArrayType(keyTpe, default.getType)
   }
 
   def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
       assert(r.default == BooleanLiteral(false) && r.keyTpe == base)
 
-      FiniteSet(r.elems.keySet).setType(tpe)
+      finiteSet(r.elems.keySet, base)
 
     case RawArrayType(from, to) =>
       r
@@ -551,20 +551,20 @@ trait SMTLIBTarget {
           val rargs = args.zip(tt.bases).map(fromSMT)
           Tuple(rargs)
 
-        case at: ArrayType =>
+        case ArrayType(baseType) =>
           val IntLiteral(size)                 = fromSMT(args(0), Int32Type)
-          val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, at.base))
+          val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
 
           if(size > 10) {
             val definedElements = elems.collect{
               case (IntLiteral(i), value) => (i, value)
             }.toMap
-            FiniteArray(definedElements, Some(default), IntLiteral(size)).setType(at)
+            finiteArray(definedElements, Some(default, IntLiteral(size)), baseType)
 
           } else {
             val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
 
-            FiniteArray(entries).setType(at)
+            finiteArray(entries, None, baseType)
           }
 
         case t =>

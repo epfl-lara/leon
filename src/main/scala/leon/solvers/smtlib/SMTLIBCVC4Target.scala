@@ -50,7 +50,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       GenericValue(tp, n.toInt)
 
     case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), SetType(base)) =>
-      FiniteSet(Set()).setType(tpe)
+      EmptySet(base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))
@@ -67,17 +67,17 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       finiteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), ft)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
-      FiniteSet(elems.map(fromSMT(_, base)).toSet).setType(tpe)
+      finiteSet(elems.map(fromSMT(_, base)).toSet, base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("insert")), elems), SetType(base)) =>
       val selems = elems.init.map(fromSMT(_, base))
       val FiniteSet(se) = fromSMT(elems.last, tpe)
-      FiniteSet(se ++ selems).setType(tpe)
+      finiteSet(se ++ selems, base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
-      FiniteSet(elems.map(fromSMT(_, tpe) match {
+      finiteSet(elems.map(fromSMT(_, tpe) match {
         case FiniteSet(elems) => elems
-      }).flatten.toSet).setType(tpe)
+      }).flatten.toSet, base)
 
     // FIXME (nicolas)
     // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__

@@ -189,6 +189,35 @@ object Constructors {
     case _                          => Implies(lhs, rhs)
   }
 
+  def finiteSet(els: Set[Expr], tpe: TypeTree) = {
+    if (els.isEmpty) EmptySet(tpe)
+    else NonemptySet(els)
+  }
+
+  def finiteMultiset(els: Seq[Expr], tpe: TypeTree) = {
+    if (els.isEmpty) EmptyMultiset(tpe)
+    else NonemptyMultiset(els)
+  }
+
+  def finiteMap(els: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) = {
+    if (els.isEmpty) EmptyMap(keyType, valueType)
+    else NonemptyMap(els.distinct)
+  }
+
+  def finiteArray(els: Seq[Expr]): Expr = {
+    require(!els.isEmpty)
+    finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway 
+  }
+
+  def finiteArray(els: Seq[Expr], defaultLength: Option[(Expr, Expr)], tpe: TypeTree): Expr = {
+    finiteArray(els.zipWithIndex.map{ _.swap }.toMap, defaultLength, tpe)
+  }
+
+  def finiteArray(els: Map[Int, Expr], defaultLength: Option[(Expr, Expr)], tpe: TypeTree): Expr = {
+    if (els.isEmpty && defaultLength.isEmpty) EmptyArray(tpe)
+    else NonemptyArray(els, defaultLength)
+  }
+  
   def finiteLambda(dflt: Expr, els: Seq[(Expr, Expr)], tpe: FunctionType): Lambda = {
     val args = tpe.from.zipWithIndex.map { case (tpe, idx) =>
       ValDef(FreshIdentifier(s"x${idx + 1}").setType(tpe), tpe)

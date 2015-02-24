@@ -386,7 +386,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case SetUnion(s1,s2) =>
       (e(s1), e(s2)) match {
-        case (f@FiniteSet(els1),FiniteSet(els2)) => FiniteSet(els1 ++ els2).setType(f.getType)
+        case (f@FiniteSet(els1),FiniteSet(els2)) => 
+          val SetType(tpe) = f.getType
+          finiteSet(els1 ++ els2, tpe)
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
 
@@ -394,8 +396,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(s1), e(s2)) match {
         case (f @ FiniteSet(els1), FiniteSet(els2)) => {
           val newElems = (els1 intersect els2)
-          val baseType = f.getType.asInstanceOf[SetType].base
-          FiniteSet(newElems).setType(f.getType)
+          val SetType(tpe) = f.getType
+          finiteSet(newElems, tpe)
         }
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
@@ -403,9 +405,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case SetDifference(s1,s2) =>
       (e(s1), e(s2)) match {
         case (f @ FiniteSet(els1),FiniteSet(els2)) => {
+          val SetType(tpe) = f.getType
           val newElems = els1 -- els2
-          val baseType = f.getType.asInstanceOf[SetType].base
-          FiniteSet(newElems).setType(f.getType)
+          finiteSet(newElems, tpe)
         }
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
@@ -425,7 +427,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case _ => throw EvalError(typeErrorMsg(sr, SetType(Untyped)))
       }
 
-    case f @ FiniteSet(els) => FiniteSet(els.map(e(_))).setType(f.getType)
+    case f @ FiniteSet(els) => 
+      val SetType(tp) = f.getType
+      finiteSet(els.map(e(_)), tp)
     case i @ IntLiteral(_) => i
     case i @ InfiniteIntegerLiteral(_) => i
     case b @ BooleanLiteral(_) => b
@@ -443,7 +447,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       val IntLiteral(index) = ri
       val FiniteArray(elems, default, length) = ra
-      FiniteArray(elems.updated(index, rv), default, length).setType(ra.getType)
+      val ArrayType(tp) = ra.getType
+      finiteArray(elems.updated(index, rv), default map { (_, length) }, tp)
 
     case ArraySelect(a, i) =>
       val IntLiteral(index) = e(i)
@@ -454,14 +459,17 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case e : IndexOutOfBoundsException => throw RuntimeError(e.getMessage)
       }
 
-    case FiniteArray(elems, default, length) =>
-      FiniteArray(
+    case f @ FiniteArray(elems, default, length) =>
+      val ArrayType(tp) = f.getType
+      finiteArray(
         elems.map(el => (el._1, e(el._2))), 
-        default.map(e), 
-        e(length)
-      ).setType(expr.getType)
+        default.map{ d => (e(d), e(length)) },
+        tp
+      )
 
-    case f @ FiniteMap(ss) => FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct).setType(f.getType)
+    case f @ FiniteMap(ss) => 
+      val MapType(kT, vT) = f.getType
+      finiteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct, kT, vT)
     case g @ MapGet(m,k) => (e(m), e(k)) match {
       case (FiniteMap(ss), e) => ss.find(_._1 == e) match {
         case Some((_, v0)) => v0
@@ -473,7 +481,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       case (f1@FiniteMap(ss1), FiniteMap(ss2)) => {
         val filtered1 = ss1.filterNot(s1 => ss2.exists(s2 => s2._1 == s1._1))
         val newSs = filtered1 ++ ss2
-        FiniteMap(newSs).setType(f1.getType)
+        val MapType(kT, vT) = u.getType
+        finiteMap(newSs, kT, vT)
       }
       case (l, r) => throw EvalError(typeErrorMsg(l, m1.getType))
     }

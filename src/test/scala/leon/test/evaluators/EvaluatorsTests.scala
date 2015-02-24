@@ -13,6 +13,8 @@ import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.DefOps._
 import leon.purescala.TypeTrees._
+import leon.purescala.Extractors._
+import leon.purescala.Constructors._
 
 class EvaluatorsTests extends leon.test.LeonTestSuite {
   private implicit lazy val leonContext = testContext
@@ -322,9 +324,9 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val nil = mkCaseClass("Nil")
     val cons12 = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
 
-    val semp = FiniteSet(Set()).setType(SetType(Int32Type))
-    val s123 = FiniteSet(Set(IL(1), IL(2), IL(3))).setType(SetType(Int32Type))
-    val s246 = FiniteSet(Set(IL(2), IL(4), IL(6))).setType(SetType(Int32Type))
+    val semp = EmptySet(Int32Type)
+    val s123 = NonemptySet(Set(IL(1), IL(2), IL(3)))
+    val s246 = NonemptySet(Set(IL(2), IL(4), IL(6)))
 
     for(e <- evaluators) {
       checkSetComp(e, mkCall("finite"), Set(1, 2, 3))
@@ -355,7 +357,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
                |  case PCons(f,s,xs) => toMap(xs).updated(f, s)
                |}
                |
-               |def finite0() : Map[Int,Int] = Map()
+               |def finite0() : Map[Int,Int] = Map[Int, Int]()
                |def finite1() : Map[Int,Int] = Map(1 -> 2)
                |def finite2() : Map[Int,Int] = Map(2 -> 3, 1 -> 2)
                |def finite3() : Map[Int,Int] = finite1().updated(2, 3)
@@ -394,8 +396,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     implicit val progs = parseString(p)
     val evaluators = prepareEvaluators
     
-    val ba = FiniteArray(Seq(T, F)).setType(ArrayType(BooleanType))
-    val ia = FiniteArray(Seq(IL(41), IL(42), IL(43))).setType(ArrayType(Int32Type))
+    val ba = finiteArray(Seq(T, F))
+    val ia = finiteArray(Seq(IL(41), IL(42), IL(43)))
 
     for(e <- evaluators) {
       checkComp(e, mkCall("boolArrayRead", ba, IL(0)), T)

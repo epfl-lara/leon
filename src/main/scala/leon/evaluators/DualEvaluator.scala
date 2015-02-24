@@ -6,7 +6,7 @@ package evaluators
 import purescala.Common._
 import purescala.Trees._
 import purescala.Definitions._
-import purescala.TypeTrees.MutableTyped
+import purescala.TypeTrees._
 
 import codegen._
 
@@ -29,7 +29,9 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
     def withVars(news: Map[Identifier, Expr]) = copy(news)
   }
 
-  case class RawObject(o: AnyRef) extends Expr with MutableTyped
+  case class RawObject(o: AnyRef, tpe: TypeTree) extends Expr {
+    val getType = tpe
+  }
 
   def call(tfd: TypedFunDef, args: Seq[AnyRef]): Expr = {
 
@@ -50,7 +52,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
         meth.invoke(null, allArgs : _*)
       }
 
-      RawObject(res).setType(tfd.returnType)
+      RawObject(res, tfd.returnType)
     } catch {
       case e: java.lang.reflect.InvocationTargetException =>
         throw new RuntimeError(e.getCause.getMessage)
@@ -74,7 +76,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
 
       val res = field.get(null)
 
-      RawObject(res).setType(fd.returnType)
+      RawObject(res, fd.returnType)
     } catch {
       case e: java.lang.reflect.InvocationTargetException =>
         throw new RuntimeError(e.getCause.getMessage)
@@ -93,7 +95,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
         if (!tfd.fd.canBeStrictField) {
           val rargs = args.map(
             e(_)(rctx.copy(needJVMRef = true), gctx) match {
-              case RawObject(obj) => obj
+              case RawObject(obj, _) => obj
               case _ => throw new EvalError("Failed to get JVM ref when requested")
             }
           )
@@ -111,12 +113,12 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
 
   def jvmBarrier(e: Expr, returnJVMRef: Boolean): Expr = {
     e match {
-      case RawObject(obj) if returnJVMRef =>
+      case RawObject(obj, _) if returnJVMRef =>
         e
-      case RawObject(obj) if !returnJVMRef =>
+      case RawObject(obj, _) if !returnJVMRef =>
         unit.jvmToExpr(obj, e.getType)
       case e              if returnJVMRef =>
-        RawObject(unit.exprToJVM(e)(monitor)).setType(e.getType)
+        RawObject(unit.exprToJVM(e)(monitor), e.getType)
       case e              if !returnJVMRef =>
         e
     }

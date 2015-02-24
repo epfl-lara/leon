@@ -13,7 +13,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Trees._
 import leon.purescala.DefOps._
 import leon.purescala.TypeTrees._
-
+import leon.purescala.Constructors._
 
 class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
   private implicit lazy val leonContext: LeonContext = createLeonContext()
@@ -145,24 +145,24 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
 
   test("eval literal array ops") {
     expectSuccessful(
-      defaultEvaluator.eval(FiniteArray(Map(), Some(IntLiteral(12)), IntLiteral(7)).setType(ArrayType(Int32Type))),
-      FiniteArray(Map(), Some(IntLiteral(12)), IntLiteral(7)))
+      defaultEvaluator.eval(finiteArray(Map[Int,Expr](), Some(IntLiteral(12), IntLiteral(7)), Int32Type)),
+      finiteArray(Map[Int,Expr](), Some(IntLiteral(12), IntLiteral(7)), Int32Type))
     expectSuccessful(
       defaultEvaluator.eval(
-        ArrayLength(FiniteArray(Map(), Some(IntLiteral(12)), IntLiteral(7)).setType(ArrayType(Int32Type)))),
+        ArrayLength(finiteArray(Map[Int,Expr](), Some(IntLiteral(12), IntLiteral(7)), Int32Type))),
       IntLiteral(7))
     expectSuccessful(
       defaultEvaluator.eval(ArraySelect(
-        FiniteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))),
+        finiteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))),
         IntLiteral(1))),
       IntLiteral(4))
     expectSuccessful(
       defaultEvaluator.eval(
         ArrayUpdated(
-          FiniteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))),
+          finiteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))),
           IntLiteral(1),
           IntLiteral(42))),
-      FiniteArray(Seq(IntLiteral(2), IntLiteral(42), IntLiteral(7))))
+      finiteArray(Seq(IntLiteral(2), IntLiteral(42), IntLiteral(7))))
   }
 
   test("eval variable length of array") {
@@ -170,8 +170,7 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
     expectSuccessful(
       defaultEvaluator.eval(
         ArrayLength(
-          FiniteArray(Map(), Some(IntLiteral(12)), Variable(id))
-          .setType(ArrayType(Int32Type))),
+          finiteArray(Map[Int, Expr](), Some(IntLiteral(12), Variable(id)), Int32Type)),
         Map(id -> IntLiteral(27))),
       IntLiteral(27))
   }
@@ -180,9 +179,9 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
     val id = FreshIdentifier("id").setType(Int32Type)
     expectSuccessful(
       defaultEvaluator.eval(
-        FiniteArray(Map(), Some(Variable(id)), IntLiteral(7)).setType(ArrayType(Int32Type)),
+        finiteArray(Map[Int, Expr](), Some(Variable(id), IntLiteral(7)), Int32Type),
         Map(id -> IntLiteral(27))),
-      FiniteArray(Map(), Some(IntLiteral(27)), IntLiteral(7)))
+      finiteArray(Map[Int, Expr](), Some(IntLiteral(27), IntLiteral(7)), Int32Type))
   }
 
 }

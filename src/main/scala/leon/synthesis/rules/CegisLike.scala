@@ -337,7 +337,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         tester =
           { (ins: Seq[Expr], bValues: Set[Identifier]) =>
-            val bsValue = FiniteArray(bsOrdered.map(b => BooleanLiteral(bValues(b)))).setType(ArrayType(BooleanType))
+            val bsValue = finiteArray(bsOrdered.map(b => BooleanLiteral(bValues(b))), None, BooleanType)
             val args = ins :+ bsValue
 
             val fi = FunctionInvocation(phiFd.typed, args)
@@ -647,7 +647,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val solver = (new FairZ3Solver(ctx, programCTree) with TimeoutSolver).setTimeout(exSolverTo)
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
-        val fixedBs = FiniteArray(bsOrdered.map(_.toVariable)).setType(ArrayType(BooleanType))
+        val fixedBs = finiteArray(bsOrdered.map(_.toVariable), None, BooleanType)
         val cnstrFixed = replaceFromIDs(Map(bArrayId -> fixedBs), cnstr)
 
         val toFind = and(p.pc, cnstrFixed)
@@ -699,7 +699,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val solver = (new FairZ3Solver(ctx, programCTree) with TimeoutSolver).setTimeout(cexSolverTo)
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
-        val fixedBs = FiniteArray(bsOrdered.map(b => BooleanLiteral(bs(b)))).setType(ArrayType(BooleanType))
+        val fixedBs = finiteArray(bsOrdered.map(b => BooleanLiteral(bs(b))), None, BooleanType)
         val cnstrFixed = replaceFromIDs(Map(bArrayId -> fixedBs), cnstr)
 
         solver.assertCnstr(p.pc)

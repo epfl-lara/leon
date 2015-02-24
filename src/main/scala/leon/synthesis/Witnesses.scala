@@ -10,7 +10,7 @@ import Trees.Expr
 object Witnesses {
   
   class Witness extends Expr {
-    def getType = BooleanType
+    val getType = BooleanType
   }
   
   case class Guide(e : Expr) extends Witness with UnaryExtractable {

@@ -31,7 +31,7 @@ object Trees {
           |}"""
     }
 
-    def getType = last.getType
+    val getType = last.getType
   }
 
   case class Assignment(varId: Identifier, expr: Expr) extends Expr with UnaryExtractable with PrettyPrintable {
@@ -72,26 +72,30 @@ object Trees {
     }
   }
 
-  case class Epsilon(pred: Expr) extends Expr with UnaryExtractable with PrettyPrintable with MutableTyped {
+  case class Epsilon(pred: Expr, tpe: TypeTree) extends Expr with UnaryExtractable with PrettyPrintable {
     def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((pred, (expr: Expr) => Epsilon(expr).setType(this.getType).setPos(this)))
+      Some((pred, (expr: Expr) => Epsilon(expr, this.getType).setPos(this)))
     }
 
     def printWith(implicit pctx: PrinterContext) {
       p"epsilon(x${getPos.line}_${getPos.col}. $pred)"
     }
+
+    val getType = tpe
   }
 
-  case class EpsilonVariable(pos: Position) extends Expr with Terminal with PrettyPrintable with MutableTyped {
+  case class EpsilonVariable(pos: Position, tpe: TypeTree) extends Expr with Terminal with PrettyPrintable {
 
     def printWith(implicit pctx: PrinterContext) {
       p"x${pos.line}_${pos.col}"
     }
+
+    val getType = tpe
   }
 
   //same as let, buf for mutable variable declaration
   case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr with BinaryExtractable with PrettyPrintable {
-    def getType = body.getType
+    val getType = body.getType
 
     def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
       val LetVar(binders, expr, body) = this
@@ -106,14 +110,16 @@ object Trees {
     }
   }
 
-  case class Waypoint(i: Int, expr: Expr) extends Expr with UnaryExtractable with PrettyPrintable with MutableTyped {
+  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends Expr with UnaryExtractable with PrettyPrintable{
     def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((expr, (e: Expr) => Waypoint(i, e)))
+      Some((expr, (e: Expr) => Waypoint(i, e, tpe)))
     }
 
     def printWith(implicit pctx: PrinterContext) {
       p"waypoint_$i($expr)"
     }
+
+    val getType = tpe
   }
 
   case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with NAryExtractable with PrettyPrintable {

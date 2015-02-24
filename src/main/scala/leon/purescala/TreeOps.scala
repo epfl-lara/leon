@@ -1002,10 +1002,10 @@ object TreeOps {
     case CharType                   => CharLiteral('a')
     case BooleanType                => BooleanLiteral(false)
     case UnitType                   => UnitLiteral()
-    case SetType(baseType)          => FiniteSet(Set()).setType(tpe)
-    case MapType(fromType, toType)  => FiniteMap(Seq()).setType(tpe)
+    case SetType(baseType)          => EmptySet(tpe)
+    case MapType(fromType, toType)  => EmptyMap(fromType, toType)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
-    case ArrayType(tpe)             => FiniteArray(Map(), Some(simplestValue(tpe)), IntLiteral(0)).setType(ArrayType(tpe))
+    case ArrayType(tpe)             => EmptyArray(tpe)
 
     case act @ AbstractClassType(acd, tpe) =>
       val children = acd.knownChildren
@@ -2088,36 +2088,6 @@ object TreeOps {
     }, applyRec = true)(res1)
 
     (fds.values.toSet, res2)
-  }
-
-  def isStringLiteral(e: Expr): Option[String] = e match {
-    case CaseClass(cct, args) =>
-      programOf(cct.classDef) flatMap { p => 
-        val lib = p.library
-  
-        if (Some(cct.classDef) == lib.String) {
-          isListLiteral(args(0)) match {
-            case Some((_, chars)) =>
-              val str = chars.map {
-                case CharLiteral(c) => Some(c)
-                case _              => None
-              }
-  
-              if (str.forall(_.isDefined)) {
-                Some(str.flatten.mkString)
-              } else {
-                None
-              }
-            case _ =>
-              None
-  
-          }
-        } else {
-          None
-        }
-      }
-    case _ =>
-      None
   }
 
   def isListLiteral(e: Expr): Option[(TypeTree, List[Expr])] = e match {

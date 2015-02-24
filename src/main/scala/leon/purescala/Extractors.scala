@@ -101,51 +101,41 @@ object Extractors {
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
       case FiniteSet(args) =>
-        Some((args.toSeq,
-              { newargs =>
-                if (newargs.isEmpty) {
-                  FiniteSet(Set()).setType(expr.getType)
-                } else {
-                  FiniteSet(newargs.toSet)
-                }
-              }
-            ))
+        val SetType(tpe) = expr.getType
+        Some((args.toSeq, els => finiteSet(els.toSet, tpe)))
       case FiniteMap(args) => {
         val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
         val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {
-          val (keys, values, isKey) = as.foldLeft[(List[Expr], List[Expr], Boolean)]((Nil, Nil, true)){
-            case ((keys, values, isKey), rExpr) => if(isKey) (rExpr::keys, values, false) else (keys, rExpr::values, true)
+          def rec(kvs: Seq[Expr]) : Seq[(Expr, Expr)] = kvs match {
+            case Seq(k, v, t@_*) =>
+              (k,v) +: rec(t)
+            case Seq() => Seq()
+            case _ => sys.error("odd number of key/value expressions")
           }
-          assert(isKey)
-          val tpe = (keys, values) match {
-            case (Seq(), Seq()) => expr.getType
-            case _ =>
-              MapType(
-                bestRealType(leastUpperBound(keys.map  (_.getType)).get),
-                bestRealType(leastUpperBound(values.map(_.getType)).get)
-              )
-          }
-          FiniteMap(keys.zip(values)).setType(tpe)
+          val MapType(keyType, valueType) = expr.getType
+          finiteMap(rec(as), keyType, valueType)
         }
         Some((subArgs, builder))
       }
-      case FiniteMultiset(args) => Some((args, FiniteMultiset))
-      case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))))
+      case FiniteMultiset(args) => 
+        val MultisetType(tpe) = expr.getType
+        Some((args, finiteMultiset(_, tpe)))
+      case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => 
+        ArrayUpdated(as(0), as(1), as(2))))
       case FiniteArray(elems, default, length) => {
         val fixedElems: Seq[(Int, Expr)] = elems.toSeq
         val all: Seq[Expr] = fixedElems.map(_._2) ++ default ++ Seq(length)
         Some((all, (as: Seq[Expr]) => {
-          val tpe = leastUpperBound(as.map(_.getType))
-                                  .map(ArrayType(_))
-                                  .getOrElse(expr.getType)
+          val ArrayType(tpe) = expr.getType
           val (newElems, newDefault, newSize) = default match {
             case None => (as.init, None, as.last)
             case Some(_) => (as.init.init, Some(as.init.last), as.last)
           }
-          FiniteArray(
+          finiteArray(
             fixedElems.zip(newElems).map(p => (p._1._1, p._2)).toMap,
-            newDefault,
-            newSize).setType(tpe)
+            newDefault map ((_, newSize)),
+            tpe
+          )
         }))
       }
 
@@ -241,6 +231,39 @@ object Extractors {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)];
   }
 
+  object StringLiteral {
+    def unapply(e: Expr): Option[String] = e match {
+      case CaseClass(cct, args) =>
+        DefOps.programOf(cct.classDef) flatMap { p => 
+          val lib = p.library
+    
+          if (Some(cct.classDef) == lib.String) {
+            isListLiteral(args(0)) match {
+              case Some((_, chars)) =>
+                val str = chars.map {
+                  case CharLiteral(c) => Some(c)
+                  case _              => None
+                }
+    
+                if (str.forall(_.isDefined)) {
+                  Some(str.flatten.mkString)
+                } else {
+                  None
+                }
+              case _ =>
+                None
+    
+            }
+          } else {
+            None
+          }
+        }
+      case _ =>
+        None
+    }
+  }
+
+  
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Or(exprs) =>
@@ -269,7 +292,7 @@ object Extractors {
 
       def rec(body: Expr): Option[(Expr, Seq[(Expr, Expr)])] = body match {
         case _ : IntLiteral | _ : UMinus | _ : BooleanLiteral | _ : GenericValue | _ : Tuple |
-             _ : CaseClass | _ : FiniteArray | _ : FiniteSet | _ : FiniteMap | _ : Lambda =>
+             _ : CaseClass | FiniteArray(_, _, _) | FiniteSet(_) | FiniteMap(_) | _ : Lambda =>
           Some(body -> Seq.empty)
         case IfExpr(Equals(tpArgs, key), expr, elze) if tpArgs == argsTuple =>
           rec(elze).map { case (dflt, mapping) => dflt -> ((key -> expr) +: mapping) }
@@ -280,6 +303,43 @@ object Extractors {
     }
   }
 
+  object FiniteSet {
+    def unapply(e: Expr): Option[Set[Expr]] = e match {
+      case EmptySet(_) => Some(Set())
+      case NonemptySet(els) => Some(els)
+      case _ => None
+    }
+  }
+  
+  object FiniteMultiset {
+    def unapply(e: Expr): Option[Seq[Expr]] = e match {
+      case EmptyMultiset(_) => Some(Seq())
+      case NonemptyMultiset(els) => Some(els)
+      case _ => None
+    }
+  }
+  
+  object FiniteMap {
+    def unapply(e: Expr): Option[Seq[(Expr, Expr)]] = e match {
+      case EmptyMap(_, _) => Some(Seq())
+      case NonemptyMap(pairs) => Some(pairs)
+      case _ => None
+    }
+  }
+  
+  object FiniteArray {
+    def unapply(e: Expr): Option[(Map[Int, Expr], Option[Expr], Expr)] = e match {
+      case EmptyArray(_) => 
+        Some((Map(), None, IntLiteral(0)))
+      case NonemptyArray(els, Some((default, length))) =>
+        Some((els, Some(default), length))
+      case NonemptyArray(els, None) =>
+        Some((els, None, IntLiteral(els.size)))
+      case _ => 
+        None
+    }
+  }
+  
   object MatchLike {
     def unapply(m : MatchLike) : Option[(Expr, Seq[MatchCase], (Expr, Seq[MatchCase]) => Expr)] = {
       Option(m) map { m => 
@@ -361,6 +421,6 @@ object Extractors {
         case _ => None
       }}
     }
-  }   
+  }
 
 }

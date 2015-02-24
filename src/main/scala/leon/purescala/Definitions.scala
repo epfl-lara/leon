@@ -56,7 +56,7 @@ object Definitions {
 
     def subDefinitions = Seq()
 
-    def toVariable : Variable = Variable(id).setType(tpe)
+    def toVariable : Variable = Variable(id, Some(tpe))
 
     setSubDefOwners()
   }

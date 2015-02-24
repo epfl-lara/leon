@@ -8,7 +8,8 @@ import purescala.Definitions._
 import purescala.TreeOps._
 import purescala.Trees._
 import purescala.TypeTrees._
-import purescala.Extractors.TopLevelAnds
+import purescala.Extractors._
+import purescala.Constructors._
 
 import codegen.CompilationUnit
 import codegen.runtime.LeonCodeGenRuntimeMonitor
@@ -60,7 +61,12 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case at @ ArrayType(sub) =>
       constructors.getOrElse(at, {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
-          Constructor[Expr, TypeTree]((1 to size).map(i => sub).toList, at, s => FiniteArray(s).setType(at), at.toString+"@"+size)
+          Constructor[Expr, TypeTree](
+            (1 to size).map(i => sub).toList,
+            at,
+            s => finiteArray(s, None, sub),
+            at.toString+"@"+size
+          )
         }
         constructors += at -> cs
         cs
@@ -69,7 +75,12 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case st @ SetType(sub) =>
       constructors.getOrElse(st, {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
-          Constructor[Expr, TypeTree]((1 to size).map(i => sub).toList, st, s => FiniteSet(s.toSet).setType(st), st.toString+"@"+size)
+          Constructor[Expr, TypeTree](
+            (1 to size).map(i => sub).toList,
+            st,
+            s => finiteSet(s.toSet, sub),
+            st.toString+"@"+size
+          )
         }
         constructors += st -> cs
         cs
@@ -87,7 +98,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
           val subs   = (1 to size).flatMap(i => List(from, to)).toList
 
-          Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toSeq).setType(mt), mt.toString+"@"+size)
+          Constructor[Expr, TypeTree](subs, mt, s => finiteMap(s.grouped(2).map(t => (t(0), t(1))).toSeq, from, to), mt.toString+"@"+size)
         }
         constructors += mt -> cs
         cs

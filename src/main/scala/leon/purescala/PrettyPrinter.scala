@@ -13,9 +13,9 @@ import utils._
 
 import java.lang.StringBuffer
 import PrinterHelpers._
-import TreeOps.{isStringLiteral, isListLiteral, simplestValue, variablesOf}
+import TreeOps.{isListLiteral, simplestValue, variablesOf}
 import TypeTreeOps.leastUpperBound
-import Extractors.LetPattern
+import Extractors._
 
 import synthesis.Witnesses._
 
@@ -239,6 +239,14 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case e @ CaseClass(cct, args) =>
         isListLiteral(e) match {
           case Some((tpe, elems)) =>
+            val chars = elems.collect{case CharLiteral(ch) => ch}
+            if (chars.length == elems.length) {
+              // String literal
+              val str = chars mkString ""
+              val q = '"';
+              p"$q$str$q"
+            }
+            
             val elemTps = leastUpperBound(elems.map(_.getType))
             if (elemTps == Some(tpe)) {
               p"List($elems)"  
@@ -246,19 +254,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
               p"List[$tpe]($elems)"  
             }
 
-          case None =>
-            isStringLiteral(e) match {
-              case Some(str) =>
-                val q = '"';
-                p"$q$str$q"
-
-              case None =>
-                if (cct.classDef.isCaseObject) {
-                  p"$cct"
-                } else {
-                  p"$cct($args)"
-                }
-            }
+            case None =>
+              if (cct.classDef.isCaseObject) {
+                p"$cct"
+              } else {
+                p"$cct($args)"
+              }
         }
 
 
@@ -275,7 +276,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case InfiniteIntegerLiteral(v)        => p"BigInt($v)"
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
-      case StringLiteral(s)     => p""""$s""""
       case UnitLiteral()        => p"()"
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
@@ -473,6 +473,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case WildcardPattern(Some(id)) => p"$id"
 
       case CaseClassPattern(ob, cct, subps) =>
+        // TODO specialize for strings
         ob.foreach { b => p"$b @ " }
         // Print only the classDef because we don't want type parameters in patterns
         printWithPath(cct.classDef)

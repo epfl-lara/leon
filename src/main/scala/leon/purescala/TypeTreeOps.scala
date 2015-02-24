@@ -315,7 +315,8 @@ object TypeTreeOps {
             Ensuring(srec(body), newId, rec(idsMap + (id -> newId))(pred)).copiedFrom(ens)
 
           case s @ FiniteSet(elements) if elements.isEmpty =>
-            FiniteSet(Set()).setType(tpeSub(s.getType)).copiedFrom(s)
+            val SetType(tp) = s.getType
+            EmptySet(tpeSub(tp)).copiedFrom(s)
 
           case v @ Variable(id) if idsMap contains id =>
             Variable(idsMap(id)).copiedFrom(v)

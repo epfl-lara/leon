@@ -921,7 +921,15 @@ trait CodeExtraction extends ASTExtractors {
       case ExInt32Literal(i)   => (LiteralPattern(binder, IntLiteral(i)),     dctx)
       case ExBooleanLiteral(b) => (LiteralPattern(binder, BooleanLiteral(b)), dctx)
       case ExUnitLiteral()     => (LiteralPattern(binder, UnitLiteral()),     dctx)
-      case ExStringLiteral(s)  => (LiteralPattern(binder, StringLiteral(s)),  dctx)
+      case sLit@ExStringLiteral(s)  =>
+        val consClass = libraryCaseClass(sLit.pos, "leon.collection.Cons")
+        val nilClass = libraryCaseClass(sLit.pos, "leon.collection.Nil")
+        val nil = CaseClassPattern(None, CaseClassType(nilClass, Seq(CharType)), Seq())
+        val consType = CaseClassType(consClass, Seq(CharType))
+        def mkCons(hd: Pattern, tl: Pattern) = CaseClassPattern(None, consType, Seq(hd,tl))
+        val chars = s.toCharArray()//.asInstanceOf[Seq[Char]]
+        def charPat(ch : Char) = LiteralPattern(None, CharLiteral(ch))
+        (chars.foldRight(nil)( (ch: Char, p : Pattern) => mkCons( charPat(ch), p)), dctx)
 
       case _ =>
         outOfSubsetError(p, "Unsupported pattern: "+p.getClass)
@@ -1014,7 +1022,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val UnwrapTuple(ines) = ine
           ines foreach {
-            case v : Variable if currentFunDef.params.map{ _.toVariable } contains v =>
+            case v @ Variable(_) if currentFunDef.params.map{ _.toVariable } contains v =>
             case LeonThis(_) =>
             case other => ctx.reporter.fatalError(other.getPos, "Only i/o variables are allowed in i/o examples")
           }
@@ -1030,7 +1038,7 @@ trait CodeExtraction extends ASTExtractors {
           gives(rs, rc)
 
         case ExArrayLiteral(tpe, args) =>
-          FiniteArray(args.map(extractTree)).setType(ArrayType(extractType(tpe)(dctx, current.pos)))
+          finiteArray(args.map(extractTree), None, extractType(tpe)(dctx, current.pos))
 
         case ExCaseObject(sym) =>
           getClassDef(sym, current.pos) match {
@@ -1168,17 +1176,17 @@ trait CodeExtraction extends ASTExtractors {
 
         case epsi @ ExEpsilonExpression(tpt, varSym, predBody) =>
           val pstpe = extractType(tpt)
-          val nctx = dctx.withNewVar(varSym -> (() => EpsilonVariable(epsi.pos).setType(pstpe)))
+          val nctx = dctx.withNewVar(varSym -> (() => EpsilonVariable(epsi.pos, pstpe)))
           val c1 = extractTree(predBody)(nctx)
           if(containsEpsilon(c1)) {
             outOfSubsetError(epsi, "Usage of nested epsilon is not allowed")
           }
-          Epsilon(c1).setType(pstpe)
+          Epsilon(c1, pstpe)
 
         case ExWaypointExpression(tpt, i, tree) =>
           val pstpe = extractType(tpt)
           val IntLiteral(ri) = extractTree(i)
-          Waypoint(ri, extractTree(tree)).setType(pstpe)
+          Waypoint(ri, extractTree(tree), pstpe)
 
         case update @ ExUpdate(lhs, index, newValue) =>
           val lhsRec = extractTree(lhs)
@@ -1371,14 +1379,14 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExFiniteSet(tt, args)  =>
           val underlying = extractType(tt)
-          FiniteSet(args.map(extractTree(_)).toSet).setType(SetType(underlying))
-
-        case ExFiniteMultiset(tt, args) =>
-          FiniteMultiset(args.map(extractTree(_)))
-
+          finiteSet(args.map(extractTree(_)).toSet, underlying)
         case ExEmptySet(tt) =>
           val underlying = extractType(tt)
-          FiniteSet(Set()).setType(SetType(underlying))
+          EmptySet(underlying)
+
+        case ExFiniteMultiset(tt, args) =>
+          val underlying = extractType(tt)
+          finiteMultiset(args.map(extractTree(_)),underlying)
 
         case ExEmptyMultiset(tt) =>
           val underlying = extractType(tt)
@@ -1387,14 +1395,11 @@ trait CodeExtraction extends ASTExtractors {
         case ExEmptyMap(ft, tt) =>
           val fromUnderlying = extractType(ft)
           val toUnderlying   = extractType(tt)
-          val tpe = MapType(fromUnderlying, toUnderlying)
-
-          FiniteMap(Seq()).setType(tpe)
+          EmptyMap(fromUnderlying, toUnderlying)
 
         case ExLiteralMap(ft, tt, elems) =>
           val fromUnderlying = extractType(ft)
           val toUnderlying   = extractType(tt)
-          val tpe = MapType(fromUnderlying, toUnderlying)
 
           val singletons: Seq[(LeonExpr, LeonExpr)] = elems.collect {
             case ExTuple(tpes, trees) if (trees.size == 2) =>
@@ -1405,13 +1410,12 @@ trait CodeExtraction extends ASTExtractors {
             outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
           }
 
-          FiniteMap(singletons).setType(tpe)
+          finiteMap(singletons, fromUnderlying, toUnderlying)
 
         case ExArrayFill(baseType, length, defaultValue) =>
-          val underlying = extractType(baseType)
           val lengthRec = extractTree(length)
           val defaultValueRec = extractTree(defaultValue)
-          FiniteArray(Map(), Some(defaultValueRec), lengthRec).setType(ArrayType(underlying))
+          NonemptyArray(Map(), Some(defaultValueRec, lengthRec))
 
         case ExIfThenElse(t1,t2,t3) =>
           val r1 = extractTree(t1)
@@ -1661,7 +1665,7 @@ trait CodeExtraction extends ASTExtractors {
               MapIsDefinedAt(a1, a2)
 
             case (IsTyped(a1, mt: MapType), "updated", List(k, v)) =>
-              MapUnion(a1, FiniteMap(Seq((k, v))).setType(mt))
+              MapUnion(a1, NonemptyMap(Seq((k, v))))
 
             case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>
               MapUnion(a1, a2)
