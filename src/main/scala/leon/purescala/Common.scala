@@ -13,12 +13,6 @@ object Common {
   abstract class Tree extends Positioned with Serializable {
     def copiedFrom(o: Tree): this.type = {
       setPos(o)
-      (this, o) match {
-        // do not force if already set
-        case (t1: MutableTyped, t2: Typed)  if !t1.isTyped =>
-          t1.setType(t2.getType)
-        case _ =>
-      }
       this
     }
 

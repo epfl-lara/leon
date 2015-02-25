@@ -11,28 +11,9 @@ object TypeTrees {
   import Definitions._
   import TypeTreeOps._
 
-  /**
-   * HasType indicates that structure is typed
-   *
-   * setType not necessarily defined though
-   */
   trait Typed {
     def getType: TypeTree
     def isTyped : Boolean = (getType != Untyped)
-  }
-
-  trait MutableTyped extends Typed {
-    self =>
-
-    private var _type: Option[TypeTree] = None
-
-    def getType: TypeTree = _type getOrElse Untyped
-
-    def setType(tt: TypeTree): self.type = _type match {
-      case None => _type = Some(tt); this
-      case Some(o) if o != tt => scala.sys.error("Resetting type information! Type [" + o + "] is modified to [" + tt)
-      case _ => this
-    }
   }
 
   class TypeErrorException(msg: String) extends Exception(msg)
