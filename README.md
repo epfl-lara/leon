@@ -29,31 +29,38 @@ To build, type this:
 
 Then you can try e.g.
 
-    $ ./leon ./testcases/sas2011-testcases/RedBlackTree.scala
+    $ ./leon ./testcases/verification/sas2011-testcases/RedBlackTree.scala
 
 and get something like this:
 
 <pre>
-    ┌─────────┐
-  ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
-  ║ └─────────┘                                                                       ║
-  ║ add                       postcond.           valid               Z3-f+t    0.314 ║
-  ║ add                       precond.    (82,14) valid               Z3-f+t    0.020 ║
-  ║ add                       precond.    (82,18) valid               Z3-f+t    0.005 ║
-  ║ balance                   postcond.           valid               Z3-f+t    0.409 ║
-  ║ balance                   match.      (91,19) valid               Z3-f+t    0.034 ║
-  ║ blackHeight               match.      (51,39) valid               Z3-f+t    0.004 ║
-  ║ buggyAdd                  postcond.           invalid             Z3-f+t    4.084 ║
-  ║ buggyAdd                  precond.     (87,8) invalid             Z3-f+t    0.111 ║
-  ║ buggyBalance              postcond.           invalid             Z3-f+t    0.055 ║
-  ║ buggyBalance              match.     (105,19) invalid             Z3-f+t    0.007 ║
-  ║ ins                       postcond.           valid               Z3-f+t    6.577 ║
-  ║ ins                       precond.    (63,40) valid               Z3-f+t    0.021 ║
-  ║ ins                       precond.    (65,43) valid               Z3-f+t    0.005 ║
-  ║ makeBlack                 postcond.           valid               Z3-f+t    0.007 ║
-  ║ redNodesHaveBlackChildren match.      (35,56) valid               Z3-f+t    0.003 ║
-  ║ size                      postcond.           valid               Z3-f+t    0.012 ║
-  ╚═══════════════════════════════════════════════════════════════════════════════════╝
+    ┌──────────────────────┐
+  ╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════╗
+  ║ └──────────────────────┘                                                                     ║
+  ║ add                            postcondition            83:22    valid        Z3-f     0.057 ║
+  ║ add                            precondition             82:5     valid        Z3-f     0.017 ║
+  ║ add                            precondition             82:15    valid        Z3-f     0.003 ║
+  ║ balance                        match exhaustiveness     91:5     valid        Z3-f     0.005 ║
+  ║ balance                        postcondition            102:22   valid        Z3-f     0.055 ║
+  ║ blackBalanced                  match exhaustiveness     46:43    valid        Z3-f     0.003 ║
+  ║ blackHeight                    match exhaustiveness     51:40    valid        Z3-f     0.004 ║
+  ║ buggyAdd                       postcondition            88:22    invalid      Z3-f     1.162 ║
+  ║ buggyAdd                       precondition             87:5     invalid      Z3-f     0.027 ║
+  ║ buggyBalance                   match exhaustiveness     105:5    invalid      Z3-f     0.007 ║
+  ║ buggyBalance                   postcondition            116:22   invalid      Z3-f     0.017 ║
+  ║ content                        match exhaustiveness     18:37    valid        Z3-f     0.034 ║
+  ║ ins                            match exhaustiveness     60:5     valid        Z3-f     0.003 ║
+  ║ ins                            postcondition            67:22    valid        Z3-f     1.753 ║
+  ║ ins                            precondition             63:37    valid        Z3-f     0.011 ║
+  ║ ins                            precondition             65:40    valid        Z3-f     0.012 ║
+  ║ makeBlack                      postcondition            78:21    valid        Z3-f     0.012 ║
+  ║ redDescHaveBlackChildren       match exhaustiveness     41:53    valid        Z3-f     0.003 ║
+  ║ redNodesHaveBlackChildren      match exhaustiveness     35:54    valid        Z3-f     0.004 ║
+  ║ size                           match exhaustiveness     23:33    valid        Z3-f     0.004 ║
+  ║ size                           postcondition            26:15    valid        Z3-f     0.043 ║
+  ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+  ║ total: 21     valid: 17     invalid: 4      unknown 0                                  3.236 ║
+  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 </pre>
 
 Building Leon
