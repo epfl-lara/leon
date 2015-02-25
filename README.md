@@ -29,31 +29,34 @@ To build, type this:
 
 Then you can try e.g.
 
-    $ ./leon ./testcases/sas2011-testcases/RedBlackTree.scala
+    $ ./leon src/test/resources/regression/verification/purescala/invalid/RedBlackTree.scala
 
 and get something like this:
 
 <pre>
-    ┌─────────┐
-  ╔═╡ Summary ╞═══════════════════════════════════════════════════════════════════════╗
-  ║ └─────────┘                                                                       ║
-  ║ add                       postcond.           valid               Z3-f+t    0.314 ║
-  ║ add                       precond.    (82,14) valid               Z3-f+t    0.020 ║
-  ║ add                       precond.    (82,18) valid               Z3-f+t    0.005 ║
-  ║ balance                   postcond.           valid               Z3-f+t    0.409 ║
-  ║ balance                   match.      (91,19) valid               Z3-f+t    0.034 ║
-  ║ blackHeight               match.      (51,39) valid               Z3-f+t    0.004 ║
-  ║ buggyAdd                  postcond.           invalid             Z3-f+t    4.084 ║
-  ║ buggyAdd                  precond.     (87,8) invalid             Z3-f+t    0.111 ║
-  ║ buggyBalance              postcond.           invalid             Z3-f+t    0.055 ║
-  ║ buggyBalance              match.     (105,19) invalid             Z3-f+t    0.007 ║
-  ║ ins                       postcond.           valid               Z3-f+t    6.577 ║
-  ║ ins                       precond.    (63,40) valid               Z3-f+t    0.021 ║
-  ║ ins                       precond.    (65,43) valid               Z3-f+t    0.005 ║
-  ║ makeBlack                 postcond.           valid               Z3-f+t    0.007 ║
-  ║ redNodesHaveBlackChildren match.      (35,56) valid               Z3-f+t    0.003 ║
-  ║ size                      postcond.           valid               Z3-f+t    0.012 ║
-  ╚═══════════════════════════════════════════════════════════════════════════════════╝
+    ┌──────────────────────┐
+  ╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════╗
+  ║ └──────────────────────┘                                                                     ║
+  ║ balance                        match exhaustiveness     73:5     valid        Z3-f     0.004 ║
+  ║ balance                        postcondition            84:22    valid        Z3-f     0.095 ║
+  ║ blackBalanced                  match exhaustiveness     47:43    valid        Z3-f     0.004 ║
+  ║ blackHeight                    match exhaustiveness     52:37    valid        Z3-f     0.006 ║
+  ║ buggyAdd                       postcondition            89:22    invalid      Z3-f     1.531 ║
+  ║ buggyAdd                       precondition             88:5     invalid      Z3-f     0.031 ║
+  ║ buggyBalance                   match exhaustiveness     92:5     invalid      Z3-f     0.004 ║
+  ║ buggyBalance                   postcondition            103:22   invalid      Z3-f     0.016 ║
+  ║ content                        match exhaustiveness     20:37    valid        Z3-f     0.037 ║
+  ║ ins                            match exhaustiveness     60:5     valid        Z3-f     0.003 ║
+  ║ ins                            postcondition            67:22    valid        Z3-f     6.509 ║
+  ║ ins                            precondition             63:37    valid        Z3-f     0.011 ║
+  ║ ins                            precondition             65:40    valid        Z3-f     0.013 ║
+  ║ redDescHaveBlackChildren       match exhaustiveness     42:53    valid        Z3-f     0.004 ║
+  ║ redNodesHaveBlackChildren      match exhaustiveness     36:54    valid        Z3-f     0.008 ║
+  ║ size                           match exhaustiveness     25:33    valid        Z3-f     0.006 ║
+  ║ size                           postcondition            28:15    valid        Z3-f     0.039 ║
+  ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+  ║ total: 17     valid: 13     invalid: 4      unknown 0                                  8.321 ║
+  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 </pre>
 
 Building Leon
