@@ -1,5 +1,5 @@
 object Fibonacci {
-  def fib(x: Int) : Int = {
+  def fib(x: BigInt) : BigInt = {
     require(x >= 0)
     if(x < 2) {
       x

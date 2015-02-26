@@ -6,13 +6,13 @@ object TwoSizeFunctions {
   case class Cons(head: Int, tail: List) extends List
   case class Nil() extends List
 
-  def size1(l: List) : Int = (l match {
+  def size1(l: List) : BigInt = (l match {
     case Cons(_, xs) => size1(xs) + 1
     case Nil() => 0
   }) ensuring(_ >= 0)
 
-  def size2(l: List) : Int = size2acc(l, 0)
-  def size2acc(l: List, acc: Int) : Int = {
+  def size2(l: List) : BigInt = size2acc(l, 0)
+  def size2acc(l: List, acc: BigInt) : BigInt = {
     require(acc >= 0)
     l match {
       case Nil() => acc
