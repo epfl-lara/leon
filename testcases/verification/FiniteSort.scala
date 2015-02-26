@@ -3,13 +3,13 @@ import leon.lang._
 object FiniteSorting {
 
   // These finite sorting functions essentially implement insertion sort.
-  def sort2(x : Int, y : Int) : (Int,Int) = {
+  def sort2(x : BigInt, y : BigInt) : (BigInt,BigInt) = {
     if(x < y) (x, y) else (y, x)
   } ensuring (_ match {
     case (a, b) => a <= b && Set(a,b) == Set(x,y)
   })
 
-  def sort3(x1 : Int, x2 : Int, x3 : Int) : (Int, Int, Int) = {
+  def sort3(x1 : BigInt, x2 : BigInt, x3 : BigInt) : (BigInt, BigInt, BigInt) = {
     val (x1s, x2s) = sort2(x1, x2)
 
     if(x2s <= x3) {
@@ -23,7 +23,7 @@ object FiniteSorting {
     case (a, b, c) => a <= b && b <= c && Set(a,b,c) == Set(x1,x2,x3)
   })
 
-  def sort4(x1 : Int, x2 : Int, x3 : Int, x4 : Int) : (Int, Int, Int, Int) = {
+  def sort4(x1 : BigInt, x2 : BigInt, x3 : BigInt, x4 : BigInt) : (BigInt, BigInt, BigInt, BigInt) = {
     val (x1s, x2s, x3s) = sort3(x1, x2, x3)
 
     if(x3s <= x4) {
@@ -40,7 +40,7 @@ object FiniteSorting {
     case (a, b, c, d) => a <= b && b <= c && c <= d && Set(a,b,c,d) == Set(x1,x2,x3,x4)
   })
 
-  def sort5(x1 : Int, x2 : Int, x3 : Int, x4 : Int, x5 : Int) : (Int, Int, Int, Int, Int) = {
+  def sort5(x1 : BigInt, x2 : BigInt, x3 : BigInt, x4 : BigInt, x5 : BigInt) : (BigInt, BigInt, BigInt, BigInt, BigInt) = {
     val (x1s, x2s, x3s, x4s) = sort4(x1, x2, x3, x4)
 
     if(x4s <= x5) {
@@ -56,10 +56,10 @@ object FiniteSorting {
     }
 
   } ensuring (_ match {
-    case (a, b, c, d, e) => a <= b && b <= c && c <= d && d <= e && Set(a,b,c,d,e) == Set(x1,x2,x3,x4,x4)
+    case (a, b, c, d, e) => a <= b && b <= c && c <= d && d <= e && Set(a,b,c,d,e) == Set(x1,x2,x3,x4,x5)
   })
 
-  def sort5WrongSpec(x1 : Int, x2 : Int, x3 : Int, x4 : Int, x5 : Int) : (Int, Int, Int, Int, Int) = {
+  def sort5WrongSpec(x1 : BigInt, x2 : BigInt, x3 : BigInt, x4 : BigInt, x5 : BigInt) : (BigInt, BigInt, BigInt, BigInt, BigInt) = {
     val (x1s, x2s, x3s, x4s) = sort4(x1, x2, x3, x4)
 
     if(x4s <= x5) {
