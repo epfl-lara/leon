@@ -37,7 +37,7 @@ logBuffered in Test := false
 
 testOptions in Test += Tests.Argument("-oDF")
 
-javaOptions in (Test,run) ++= Seq("-Xss32M", "-Xmx3G")
+javaOptions in (Test,run) ++= Seq("-Xss32M", "-Xmx3G", "-XX:MaxPermSize=1024M")
 
 parallelExecution in test := false
 
