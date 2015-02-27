@@ -9,7 +9,7 @@ Welcome to Leon's documentation!
 Contents:
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
    intro
    purescala
