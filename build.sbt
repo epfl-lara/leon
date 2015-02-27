@@ -14,6 +14,7 @@ scalacOptions ++= Seq(
 
 javacOptions += "-Xlint:unchecked"
 
+
 if(System.getProperty("sun.arch.data.model") == "64") {
   unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "64" }
 } else {
@@ -36,7 +37,7 @@ logBuffered in Test := false
 
 testOptions in Test += Tests.Argument("-oDF")
 
-javaOptions in (Test,run) += "-Xss32M"
+javaOptions in (Test,run) ++= Seq("-Xss32M", "-Xmx3G")
 
 parallelExecution in test := false
 
