@@ -1,8 +1,5 @@
 language: scala
 
-before_script:
-    - sbt script
-
 scala:
     - 2.11.2
 jdk:
@@ -16,4 +13,12 @@ notifications:
     email:
         - ekneuss@gmail.com
         - philippe.suter@gmail.com
+        - regwblanc@gmail.com
     irc: "chat.freenode.net#epfl-lara"
+
+before_script: 
+    - sbt compile
+    - sbt script
+
+script:
+    - sbt -jvm-opts travis/jvmopts test
