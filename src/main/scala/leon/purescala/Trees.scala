@@ -52,7 +52,7 @@ object Trees {
   case class Choose(vars: List[Identifier], pred: Expr, var impl: Option[Expr] = None) extends Expr with NAryExtractable {
     require(!vars.isEmpty)
 
-    val getType = if (vars.size > 1) TupleType(vars.map(_.getType)) else vars.head.getType
+    val getType = tupleTypeWrap(vars.map(_.getType))
 
     def extract = {
       Some((Seq(pred)++impl, (es: Seq[Expr]) =>  Choose(vars, es.head, es.tail.headOption).setPos(this)))
@@ -115,11 +115,21 @@ object Trees {
     val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped)
   }
 
-  case class Tuple(exprs: Seq[Expr]) extends Expr {
+
+  /*
+   * If you are not sure about the requirement you should use 
+   * the tupleWrap in purescala.Constructors
+   */
+  case class Tuple (exprs: Seq[Expr]) extends Expr {
+    require(exprs.size >= 2)
     val getType = TupleType(exprs.map(_.getType))
   }
 
-  // Index is 1-based, first element of tuple is 1.
+  /*
+   * Index is 1-based, first element of tuple is 1.
+   * If you are not sure that tuple has a TupleType,
+   * you should use tupleSelect in pureScala.Constructors
+   */
   case class TupleSelect(tuple: Expr, index: Int) extends Expr {
     require(index >= 1)
 

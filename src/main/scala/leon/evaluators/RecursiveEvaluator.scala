@@ -537,12 +537,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
               val valModel = valuateWithModel(model) _
 
               val res = p.xs.map(valModel)
-              val leonRes = if (res.size > 1) {
-                Tuple(res)
-              } else {
-                res(0)
-              }
-
+              val leonRes = tupleWrap(res)
               val total = System.currentTimeMillis-tStart;
 
               ctx.reporter.debug("Synthesis took "+total+"ms")

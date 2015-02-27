@@ -139,7 +139,7 @@ case object RulePriorityDefault     extends RulePriority(2)
 trait RuleDSL {
   this: Rule =>
 
-  def subst(what: Tuple2[Identifier, Expr], in: Expr): Expr = replaceFromIDs(Map(what), in)
+  def subst(what: (Identifier, Expr), in: Expr): Expr = replaceFromIDs(Map(what), in)
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replaceFromIDs(what, in)
 
   val forward: List[Solution] => Option[Solution] = { ss => ss.headOption }

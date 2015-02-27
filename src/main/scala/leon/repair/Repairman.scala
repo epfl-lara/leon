@@ -10,6 +10,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.DefOps._
 import purescala.Constructors._
+import purescala.Extractors.UnwrapTuple
 import purescala.ScalaPrinter
 import evaluators._
 import solvers._
@@ -478,13 +479,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     val e = new DefaultEvaluator(ctx, program)
 
-    def unwrap(e: Expr) = if (p.xs.size > 1) {
-      val Tuple(es) = e
-      es
-    } else {
-      Seq(e)
-    }
-
     if (s1 == s2) {
       None
     } else {
@@ -499,8 +493,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           val inputsMap = (p.as zip inputs).toMap
 
           (e.eval(s1, inputsMap), e.eval(s2, inputsMap)) match {
-            case (EvaluationResults.Successful(r1), EvaluationResults.Successful(r2)) =>
-              Some((InOutExample(inputs, unwrap(r1)), InOutExample(inputs, unwrap(r2))))
+            case (EvaluationResults.Successful(UnwrapTuple(r1)), EvaluationResults.Successful(UnwrapTuple(r2))) =>
+              Some((InOutExample(inputs, r1), InOutExample(inputs, r2)))
             case _ =>
               None
           }

@@ -88,7 +88,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     
     case tt @ TupleType(parts) =>
       constructors.getOrElse(tt, {
-        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => Tuple(s), tt.toString))
+        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => tupleWrap(s), tt.toString))
         constructors += tt -> cs
         cs
       })
@@ -110,10 +110,10 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           val subs = (1 to size).flatMap(_ => from :+ to).toList
           Constructor[Expr, TypeTree](subs, ft, { s =>
             val args = from.map(tpe => FreshIdentifier("x", tpe, true))
-            val argsTuple = Tuple(args.map(_.toVariable))
+            val argsTuple = tupleWrap(args.map(_.toVariable))
             val grouped = s.grouped(from.size + 1).toSeq
             val body = grouped.init.foldRight(grouped.last.last) { case (t, elze) =>
-              IfExpr(Equals(argsTuple, Tuple(t.init)), t.last, elze)
+              IfExpr(Equals(argsTuple, tupleWrap(t.init)), t.last, elze)
             }
             Lambda(args.map(id => ValDef(id, id.getType)), body)
           }, ft.toString + "@" + size)
@@ -196,7 +196,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           (AnyPattern[Expr, TypeTree](), false)
       }
 
-    case (t: codegen.runtime.Tuple, tt @ TupleType(parts)) =>
+    case (t: codegen.runtime.Tuple, tt@UnwrapTupleType(parts)) =>
       val r = t.__getRead()
 
       val c = getConstructors(tt)(0)
@@ -221,21 +221,21 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
   type InstrumentedResult = (EvaluationResults.Result, Option[vanuatoo.Pattern[Expr, TypeTree]])
 
-  def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Tuple=>InstrumentedResult] = {
+  def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Expr=>InstrumentedResult] = {
     import leon.codegen.runtime.LeonCodeGenRuntimeException
     import leon.codegen.runtime.LeonCodeGenEvaluationException
 
     try {
-      val ttype = TupleType(argorder.map(_.getType))
+      val ttype = tupleTypeWrap(argorder.map(_.getType))
       val tid = FreshIdentifier("tup", ttype)
 
-      val map = argorder.zipWithIndex.map{ case (id, i) => (id -> TupleSelect(Variable(tid), i+1)) }.toMap
+      val map = argorder.zipWithIndex.map{ case (id, i) => (id -> tupleSelect(Variable(tid), i+1)) }.toMap
 
       val newExpr = replaceFromIDs(map, expression)
 
       val ce = unit.compileExpression(newExpr, Seq(tid))
 
-      Some((args : Tuple) => {
+      Some((args : Expr) => {
         try {
           val monitor = new LeonCodeGenRuntimeMonitor(unit.params.maxFunctionInvocations)
           val jvmArgs = ce.argsToJVM(Seq(args), monitor )
@@ -268,7 +268,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       })
     } catch {
       case t: Throwable =>
-        ctx.reporter.warning("Error while compiling expression: "+t.getMessage)
+        ctx.reporter.warning("Error while compiling expression: "+t.getMessage); t.printStackTrace
         None
     }
   }
@@ -299,7 +299,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     val maxIsomorphicModels = maxValid+1;
 
-    val it  = gen.enumerate(TupleType(ins.map(_.getType)))
+    val it  = gen.enumerate(tupleTypeWrap(ins.map(_.getType)))
 
     return new Iterator[Seq[Expr]] {
       var total = 0
@@ -325,7 +325,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       def computeNext(): Option[Seq[Expr]] = {
         //return None
         while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
-          val model = it.next.asInstanceOf[Tuple]
+          val model = it.next//.asInstanceOf[Tuple]
 
           if (model eq null) {
             total = maxEnumerated
@@ -357,7 +357,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
                 it.skipIsomorphic()
               }
 
-              return Some(model.exprs);
+              val UnwrapTuple(exprs) = model
+              return Some(exprs);
             }
 
             //if (total % 1000 == 0) {

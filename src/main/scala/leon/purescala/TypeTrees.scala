@@ -50,18 +50,13 @@ object TypeTrees {
     def freshen = TypeParameter(id.freshen)
   }
 
-  case class TupleType(val bases: Seq[TypeTree]) extends TypeTree {
+  /* 
+   * If you are not sure about the requirement, 
+   * you should use tupleTypeWrap in purescala.Constructors
+   */
+  case class TupleType (val bases: Seq[TypeTree]) extends TypeTree {
     lazy val dimension: Int = bases.length
-  }
-
-  object TupleOneType {
-    def unapply(tt : TupleType) : Option[TypeTree] = if(tt == null) None else {
-      if(tt.bases.size == 1) {
-        Some(tt.bases.head)
-      } else {
-        None
-      }
-    }
+    require(dimension >= 2)
   }
 
   case class SetType(base: TypeTree) extends TypeTree
@@ -129,7 +124,7 @@ object TypeTrees {
     def unapply(t: TypeTree): Option[(Seq[TypeTree], Seq[TypeTree] => TypeTree)] = t match {
       case CaseClassType(ccd, ts) => Some((ts, ts => CaseClassType(ccd, ts)))
       case AbstractClassType(acd, ts) => Some((ts, ts => AbstractClassType(acd, ts)))
-      case TupleType(ts) => Some((ts, TupleType(_)))
+      case TupleType(ts) => Some((ts, Constructors.tupleTypeWrap(_)))
       case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
       case MultisetType(t) => Some((Seq(t), ts => MultisetType(ts.head)))

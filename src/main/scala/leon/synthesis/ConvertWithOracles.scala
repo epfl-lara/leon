@@ -54,7 +54,7 @@ object ConvertWithOracle extends LeonPhase[Program, Program] {
                     BooleanLiteral(true)
                 }
 
-                Some(letTuple(os, tupleChoose(Choose(chooseOs, pred)), b))
+                Some(letTuple(os, Choose(chooseOs, pred), b))
               case None =>
                 None
             }

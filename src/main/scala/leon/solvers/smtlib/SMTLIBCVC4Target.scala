@@ -56,7 +56,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       RawArrayValue(k, Map(), fromSMT(elem, v))
 
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), ft @ FunctionType(from,to)) =>
-      finiteLambda(fromSMT(elem, to), Seq.empty, ft)
+      finiteLambda(fromSMT(elem, to), Seq.empty, from)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
       val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
@@ -64,7 +64,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
       val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
-      finiteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), ft)
+      finiteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), from)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       finiteSet(elems.map(fromSMT(_, base)).toSet, base)
@@ -83,7 +83,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__
     // one I've witnessed up to now. Don't know why this is happening...
     case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), ft @ FunctionType(from, to)) =>
-      finiteLambda(fromSMT(elem, to), Seq.empty, ft)
+      finiteLambda(fromSMT(elem, to), Seq.empty, from)
 
     case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), RawArrayType(k, v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))

@@ -18,7 +18,6 @@ object Simplifiers {
       simplifyLets _,
       simplifyPaths(uninterpretedZ3)(_),
       simplifyArithmetic _,
-      rewriteTuples _,
       evalGround(ctx, p),
       normalizeExpression _
     )
@@ -42,7 +41,6 @@ object Simplifiers {
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_),
       simplifyArithmetic _,
-      rewriteTuples _,
       evalGround(ctx, p),
       normalizeExpression _
     )

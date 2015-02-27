@@ -11,12 +11,16 @@ object Constructors {
   import TypeTreeOps._
   import Common._
   import TypeTrees._
+  import purescala.Extractors.UnwrapTupleType
 
   def tupleSelect(t: Expr, index: Int) = t match {
     case Tuple(es) =>
       es(index-1)
-    case _ =>
+    case _ if t.getType.isInstanceOf[TupleType] =>
       TupleSelect(t, index)
+    case _ =>
+      if (index == 1) t 
+      else sys.error(s"Trying to construct TupleSelect with non-tuple $t and index $index!=1")
   }
 
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
@@ -36,14 +40,6 @@ object Constructors {
       )
 
       Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)
-  }
-
-  def tupleChoose(ch: Choose): Expr = {
-    if (ch.vars.size > 1) {
-      ch
-    } else {
-      Tuple(Seq(ch))
-    }
   }
 
   def tupleWrap(es: Seq[Expr]): Expr = es match {
@@ -218,32 +214,21 @@ object Constructors {
     else NonemptyArray(els, defaultLength)
   }
   
-  def finiteLambda(dflt: Expr, els: Seq[(Expr, Expr)], tpe: FunctionType): Lambda = {
-    val args = tpe.from.zipWithIndex.map { case (tpe, idx) =>
-      ValDef(FreshIdentifier(s"x${idx + 1}", tpe), tpe)
+  def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
+    val UnwrapTupleType(argTypes) = els.headOption.map{_._1.getType}.getOrElse(tupleTypeWrap(inputTypes))
+    val args = argTypes map { argType => ValDef(FreshIdentifier("x", argType, true), argType) }
+    if (els.isEmpty) {
+      Lambda(args, default)
+    } else {
+      val theMap = NonemptyMap(els)
+      val theMapVar = FreshIdentifier("pairs", theMap.getType, true)
+      val argsAsExpr = tupleWrap(args map { _.toVariable })
+      val body = Let(theMapVar, theMap,  IfExpr(
+        MapIsDefinedAt(Variable(theMapVar), argsAsExpr), 
+        MapGet(Variable(theMapVar), argsAsExpr), 
+        default
+      ))
+      Lambda(args, body)
     }
-
-    assume(els.isEmpty || !tpe.from.isEmpty, "Can't provide finite mapping for lambda without parameters")
-
-    lazy val (tupleArgs, tupleKey) = if (tpe.from.size > 1) {
-      val tpArgs = Tuple(args.map(_.toVariable))
-      val key = (x: Expr) => x
-      (tpArgs, key)
-    } else { // note that value is lazy, so if tpe.from.size == 0, foldRight will never access (tupleArgs, tupleKey)
-      val tpArgs = args.head.toVariable
-      val key = (x: Expr) => {
-        if (isSubtypeOf(x.getType, tpe.from.head)) x
-        else if (isSubtypeOf(x.getType, TupleType(tpe.from))) x.asInstanceOf[Tuple].exprs.head
-        else throw new RuntimeException("Can't determine key tuple state : " + x + " of " + tpe)
-      }
-      (tpArgs, key)
-    }
-
-    val body = els.toSeq.foldRight(dflt) { case ((k, v), elze) =>
-      IfExpr(Equals(tupleArgs, tupleKey(k)), v, elze)
-    }
-
-    Lambda(args, body)
   }
-  
 }

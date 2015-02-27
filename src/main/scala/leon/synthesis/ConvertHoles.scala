@@ -83,7 +83,7 @@ object ConvertHoles extends LeonPhase[Program, Program] {
               BooleanLiteral(true)
           }
 
-          letTuple(holes, tupleChoose(Choose(cids, pred)), withoutHoles)
+          letTuple(holes, Choose(cids, pred), withoutHoles)
 
         }
         else withoutHoles

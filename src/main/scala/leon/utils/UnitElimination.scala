@@ -53,11 +53,7 @@ object UnitElimination extends TransformationPhase {
   }
 
   private def simplifyType(tpe: TypeTree): TypeTree = tpe match {
-    case TupleType(tpes) => tpes.map(simplifyType).filterNot{ case UnitType => true case _ => false } match {
-      case Seq() => UnitType
-      case Seq(tpe) => tpe
-      case tpes => TupleType(tpes)
-    }
+    case TupleType(tpes) => tupleTypeWrap(tpes.map(simplifyType).filterNot{ case UnitType => true case _ => false })
     case t => t
   }
 
@@ -72,7 +68,7 @@ object UnitElimination extends TransformationPhase {
       case t@Tuple(args) => {
         val TupleType(tpes) = t.getType
         val (newTpes, newArgs) = tpes.zip(args).filterNot{ case (UnitType, _) => true case _ => false }.unzip
-        Tuple(newArgs.map(removeUnit))
+        tupleWrap(newArgs.map(removeUnit)) // @mk: FIXME this may actually return a Unit, is that cool?
       }
       case ts@TupleSelect(t, index) => {
         val TupleType(tpes) = t.getType
@@ -89,7 +85,7 @@ object UnitElimination extends TransformationPhase {
         else {
           id.getType match {
             case TupleType(tpes) if tpes.exists(_ == UnitType) => {
-              val newTupleType = TupleType(tpes.filterNot(_ == UnitType))
+              val newTupleType = tupleTypeWrap(tpes.filterNot(_ == UnitType))
               val freshId = FreshIdentifier(id.name, newTupleType)
               id2FreshId += (id -> freshId)
               val newBody = removeUnit(b)

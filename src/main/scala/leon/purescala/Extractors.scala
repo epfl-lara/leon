@@ -287,19 +287,17 @@ object Extractors {
 
   object FiniteLambda {
     def unapply(lambda: Lambda): Option[(Expr, Seq[(Expr, Expr)])] = {
-      val args = lambda.args.map(_.toVariable)
-      lazy val argsTuple = if (lambda.args.size > 1) Tuple(args) else args.head
-
-      def rec(body: Expr): Option[(Expr, Seq[(Expr, Expr)])] = body match {
-        case _ : IntLiteral | _ : UMinus | _ : BooleanLiteral | _ : GenericValue | _ : Tuple |
-             _ : CaseClass | FiniteArray(_, _, _) | FiniteSet(_) | FiniteMap(_) | _ : Lambda =>
-          Some(body -> Seq.empty)
-        case IfExpr(Equals(tpArgs, key), expr, elze) if tpArgs == argsTuple =>
-          rec(elze).map { case (dflt, mapping) => dflt -> ((key -> expr) +: mapping) }
+      lambda match {
+        case Lambda(args, Let(theMapVar, FiniteMap(pairs), IfExpr(
+          MapIsDefinedAt(Variable(theMapVar1), UnwrapTuple(args2)), 
+          MapGet(Variable(theMapVar2), UnwrapTuple(args3)), 
+          default
+        ))) if (args map { x: ValDef => x.toVariable }) == args2 && args2 == args3 && theMapVar == theMapVar1 && theMapVar == theMapVar2 =>
+          Some(default, pairs)
+        case Lambda(args, default) if (variablesOf(default) & args.toSet.map{x: ValDef => x.id}).isEmpty =>
+          Some(default, Seq())
         case _ => None
       }
-
-      rec(lambda.body)
     }
   }
 
@@ -382,14 +380,21 @@ object Extractors {
   }
 
   object UnwrapTuple {
-    def unapply(e : Expr) : Option[Seq[Expr]] = Option(e) map {
+    def unapply(e: Expr): Option[Seq[Expr]] = Option(e) map {
       case Tuple(subs) => subs
       case other => Seq(other)
     }
   }
 
+  object UnwrapTupleType {
+    def unapply(tp: TypeTree) = Option(tp) map {
+      case TupleType(subs) => subs
+      case other => Seq(other)
+    }
+  }
+
   object UnwrapTuplePattern {
-    def unapply(p : Pattern) : Option[Seq[Pattern]] = Option(p) map {
+    def unapply(p: Pattern): Option[Seq[Pattern]] = Option(p) map {
       case TuplePattern(_,subs) => subs
       case other => Seq(other)
     }

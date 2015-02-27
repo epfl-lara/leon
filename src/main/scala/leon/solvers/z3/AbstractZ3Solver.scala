@@ -470,7 +470,7 @@ trait AbstractZ3Solver
 
     case ft @ FunctionType(from, to) =>
       sorts.toZ3OrCompute(ft) {
-        val fromSort = typeToSort(TupleType(from))
+        val fromSort = typeToSort(tupleTypeWrap(from))
         val toSort = typeToSort(to)
 
         z3.mkArraySort(fromSort, toSort)
@@ -625,7 +625,7 @@ trait AbstractZ3Solver
         z3.mkApp(functionDefToDecl(tfd), args.map(rec(_)): _*)
 
       case fa @ Application(caller, args) =>
-        z3.mkSelect(rec(caller), rec(Tuple(args)))
+        z3.mkSelect(rec(caller), rec(tupleWrap(args)))
 
       case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
       case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
@@ -778,7 +778,7 @@ trait AbstractZ3Solver
 
               case LeonType(tp: TupleType) =>
                 val rargs = args.map(rec)
-                Tuple(rargs)
+                tupleWrap(rargs)
 
               case LeonType(at @ ArrayType(dt)) =>
                 assert(args.size == 2)
@@ -815,13 +815,13 @@ trait AbstractZ3Solver
                     finiteMap(values, kt, vt)
                 }
 
-              case LeonType(tpe @ FunctionType(fts, tt)) =>
+              case LeonType(FunctionType(fts, tt)) =>
                 model.getArrayValue(t) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
                     val leonElseValue = rec(elseZ3Value)
                     val leonMap = map.toSeq.map(p => rec(p._1) -> rec(p._2))
-                    finiteLambda(leonElseValue, leonMap, tpe)
+                    finiteLambda(leonElseValue, leonMap, fts)
                 }
 
               case LeonType(tpe @ SetType(dt)) =>
@@ -899,7 +899,7 @@ trait AbstractZ3Solver
         } else {
           z3.getSort(t) match {
             case LeonType(t : TupleType) =>
-              Tuple(args.map(rec))
+              tupleWrap(args.map(rec))
 
             case _ =>
               import Z3DeclKind._

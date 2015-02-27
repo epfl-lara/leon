@@ -82,7 +82,7 @@ trait SMTLIBTarget {
       r
 
     case ft @ FunctionType(from, to) =>
-      finiteLambda(r.default, r.elems.toSeq, ft)
+      finiteLambda(r.default, r.elems.toSeq, from)
 
     case _ =>
       unsupported("Unable to extract from raw array for "+tpe)
@@ -549,7 +549,7 @@ trait SMTLIBTarget {
           CaseClass(cct, rargs)
         case tt: TupleType =>
           val rargs = args.zip(tt.bases).map(fromSMT)
-          Tuple(rargs)
+          tupleWrap(rargs)
 
         case ArrayType(baseType) =>
           val IntLiteral(size)                 = fromSMT(args(0), Int32Type)

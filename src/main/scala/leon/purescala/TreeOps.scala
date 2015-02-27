@@ -727,7 +727,7 @@ object TreeOps {
           case Tuple(ts) =>
             ts zip subExprs
           case _ =>
-            Seq(in -> Tuple(subExprs))    
+            Seq(in -> tupleWrap(subExprs))    
         }
 
         subst0 ++ ((subExprs zip subps) flatMap {
@@ -1253,114 +1253,6 @@ object TreeOps {
   class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
     val matcher = ChooseMatch.lift
     def collect(e: Expr, path: Seq[Expr]) = matcher(e).map(_ -> and(path: _*))
-  }
-
-  /**
-   * Eliminates tuples of arity 0 and 1.
-   * Used to simplify synthesis solutions
-   *
-   * Only rewrites local fundefs.
-   */
-  def rewriteTuples(expr: Expr) : Expr = {
-    def mapType(tt : TypeTree) : Option[TypeTree] = tt match {
-      case TupleType(ts) => ts.size match {
-        case 0 => Some(UnitType)
-        case 1 => Some(ts(0))
-        case _ =>
-          val tss = ts.map(mapType)
-          if(tss.exists(_.isDefined)) {
-            Some(TupleType((tss zip ts).map(p => p._1.getOrElse(p._2))))
-          } else {
-            None
-          }
-      }
-      case SetType(t)            => mapType(t).map(SetType(_))
-      case MultisetType(t)       => mapType(t).map(MultisetType(_))
-      case ArrayType(t)          => mapType(t).map(ArrayType(_))
-      case MapType(f,t)          => 
-        val (f2,t2) = (mapType(f),mapType(t))
-        if(f2.isDefined || t2.isDefined) {
-          Some(MapType(f2.getOrElse(f), t2.getOrElse(t)))
-        } else {
-          None
-        }
-      case ft : FunctionType => None // FIXME
-
-      case a : AbstractClassType => None
-      case cct : CaseClassType     =>
-        // This is really just one big assertion. We don't rewrite class defs.
-        val fieldTypes = cct.fields.map(_.tpe)
-        if(fieldTypes.exists(t => t match {
-          case TupleType(ts) if ts.size <= 1 => true
-          case _ => false
-        })) {
-          scala.sys.error("Cannot rewrite case class def that contains degenerate tuple types.")
-        } else {
-          None
-        }
-      case Untyped | BooleanType | Int32Type | IntegerType | UnitType | TypeParameter(_) => None  
-    }
-
-    var idMap     = Map[Identifier, Identifier]()
-    var funDefMap = Map.empty[FunDef,FunDef]
-
-    def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
-      case Some(fd) => fd
-      case None =>
-        if(funDef.params.map(vd => mapType(vd.tpe)).exists(_.isDefined)) {
-          scala.sys.error("Cannot rewrite function def that takes degenerate tuple arguments,")
-        }
-        val newFD = mapType(funDef.returnType) match {
-          case None => funDef
-          case Some(rt) =>
-            val fd = new FunDef(FreshIdentifier(funDef.id.name, alwaysShowUniqueID = true), funDef.tparams, rt, funDef.params, funDef.defType)
-            // These will be taken care of in the recursive traversal.
-            fd.body = funDef.body
-            fd.precondition = funDef.precondition
-            funDef.postcondition match {
-              case Some((id, post)) =>
-                val freshId = FreshIdentifier(id.name, rt, true)
-                idMap += id -> freshId
-                fd.postcondition = Some((freshId, post))
-              case None =>
-                fd.postcondition = None
-            }
-            fd
-        }
-        funDefMap = funDefMap.updated(funDef, newFD)
-        newFD
-    }
-
-    import synthesis.Witnesses.Terminating
-    
-    def pre(e : Expr) : Expr = e match {
-      case Tuple(Seq()) => UnitLiteral()
-      case Variable(id) if idMap contains id => Variable(idMap(id))
-
-      case Error(tpe, err) => Error(mapType(tpe).getOrElse(e.getType), err).copiedFrom(e)
-      case Tuple(Seq(s)) => pre(s)
-
-      case ts @ TupleSelect(t, 1) => t.getType match {
-        case TupleOneType(_) => pre(t)
-        case _ => ts
-      }
-
-      case LetTuple(bs, v, bdy) if bs.size == 1 =>
-        Let(bs(0), v, bdy)
-
-      case l @ LetDef(fd, bdy) =>
-        LetDef(fd2fd(fd), bdy)
-
-      case FunctionInvocation(tfd, args) =>
-        FunctionInvocation(fd2fd(tfd.fd).typed(tfd.tps), args)
-      
-      case Terminating(tfd, args) =>
-        Terminating(fd2fd(tfd.fd).typed(tfd.tps), args)
-
-      case _ => e
-    }
-
-    simplePreTransform(pre)(expr)
   }
 
   def patternSize(p: Pattern): Int = p match {
@@ -2120,7 +2012,114 @@ object TreeOps {
 
   @deprecated("Use exists instead", "Leon 0.2.1")
   def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
- 
+  
+  /**
+   * Eliminates tuples of arity 0 and 1.
+   * Used to simplify synthesis solutions
+   *
+   * Only rewrites local fundefs.
+   */
+  @deprecated("Use purescala.Constructors.tuple* and purescala.Extractors.Unwrap* " +
+    "to avoid creation of tuples of size 0 and 1", "Leon 3.0.0"
+  )
+  def rewriteTuples(expr: Expr) : Expr = {
+    def mapType(tt : TypeTree) : Option[TypeTree] = tt match {
+      case TupleType(ts) => ts.size match {
+        case 0 => Some(UnitType)
+        case 1 => Some(ts(0))
+        case _ =>
+          val tss = ts.map(mapType)
+          if(tss.exists(_.isDefined)) {
+            Some(TupleType((tss zip ts).map(p => p._1.getOrElse(p._2))))
+          } else {
+            None
+          }
+      }
+      case SetType(t)            => mapType(t).map(SetType(_))
+      case MultisetType(t)       => mapType(t).map(MultisetType(_))
+      case ArrayType(t)          => mapType(t).map(ArrayType(_))
+      case MapType(f,t)          => 
+        val (f2,t2) = (mapType(f),mapType(t))
+        if(f2.isDefined || t2.isDefined) {
+          Some(MapType(f2.getOrElse(f), t2.getOrElse(t)))
+        } else {
+          None
+        }
+      case ft : FunctionType => None // FIXME
+
+      case a : AbstractClassType => None
+      case cct : CaseClassType     =>
+        // This is really just one big assertion. We don't rewrite class defs.
+        val fieldTypes = cct.fields.map(_.tpe)
+        if(fieldTypes.exists(t => t match {
+          case TupleType(ts) if ts.size <= 1 => true
+          case _ => false
+        })) {
+          scala.sys.error("Cannot rewrite case class def that contains degenerate tuple types.")
+        } else {
+          None
+        }
+      case Untyped | BooleanType | Int32Type | IntegerType | UnitType | TypeParameter(_) => None  
+    }
+
+    var idMap     = Map[Identifier, Identifier]()
+    var funDefMap = Map.empty[FunDef,FunDef]
+
+    def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
+      case Some(fd) => fd
+      case None =>
+        if(funDef.params.map(vd => mapType(vd.tpe)).exists(_.isDefined)) {
+          scala.sys.error("Cannot rewrite function def that takes degenerate tuple arguments,")
+        }
+        val newFD = mapType(funDef.returnType) match {
+          case None => funDef
+          case Some(rt) =>
+            val fd = new FunDef(FreshIdentifier(funDef.id.name, alwaysShowUniqueID = true), funDef.tparams, rt, funDef.params, funDef.defType)
+            // These will be taken care of in the recursive traversal.
+            fd.body = funDef.body
+            fd.precondition = funDef.precondition
+            funDef.postcondition match {
+              case Some((id, post)) =>
+                val freshId = FreshIdentifier(id.name, rt, true)
+                idMap += id -> freshId
+                fd.postcondition = Some((freshId, post))
+              case None =>
+                fd.postcondition = None
+            }
+            fd
+        }
+        funDefMap = funDefMap.updated(funDef, newFD)
+        newFD
+    }
+
+    import synthesis.Witnesses.Terminating
+    
+    def pre(e : Expr) : Expr = e match {
+      case Tuple(Seq()) => println("Tuple0!"); UnitLiteral()
+      case Variable(id) if idMap contains id => Variable(idMap(id))
+
+      case Error(tpe, err) => Error(mapType(tpe).getOrElse(e.getType), err).copiedFrom(e)
+      case Tuple(Seq(s)) => println("Tuple1!"); pre(s)
+
+      case LetTuple(bs, v, bdy) if bs.size == 1 =>
+        Let(bs(0), v, bdy)
+
+      case l @ LetDef(fd, bdy) =>
+        LetDef(fd2fd(fd), bdy)
+
+      case FunctionInvocation(tfd, args) =>
+        FunctionInvocation(fd2fd(tfd.fd).typed(tfd.tps), args)
+      
+      case Terminating(tfd, args) =>
+        Terminating(fd2fd(tfd.fd).typed(tfd.tps), args)
+
+      case _ => e
+    }
+
+    simplePreTransform(pre)(expr)
+  }
+
+
   /*
    * Transforms complicated Ifs into multiple nested if blocks
    * It will decompose every OR clauses, and it will group AND clauses checking
@@ -2257,11 +2256,8 @@ object TreeOps {
 
           val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
 
-          val (scrutinee, pattern) = if (scrutinees.size > 1) {
-            (Tuple(scrutinees), TuplePattern(None, patterns))
-          } else {
-            (scrutinees.head, patterns.head)
-          }
+          val scrutinee = tupleWrap(scrutinees)
+          val pattern   = tuplePatternWrap(patterns) 
 
           // We use searchAndReplace to replace the biggest match first
           // (topdown).
