@@ -6,14 +6,3 @@ The Leon system is an automated system for verifying, repairing, and synthesizin
 Leon supports programs written in :ref:`purescala`, a purely functional subset of Scala.
 
 
-Verification
-------------
-
-Repair
-------------
-
-Synthesis
-------------
-
-Termination
-------------

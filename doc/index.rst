@@ -12,7 +12,12 @@ Contents:
    :maxdepth: 2
 
    intro
+   installation
+   gettingstarted
    purescala
+   verification
+   synthesis
+   repair
    references
 
 
