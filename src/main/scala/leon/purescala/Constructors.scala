@@ -15,12 +15,15 @@ object Constructors {
 
   def tupleSelect(t: Expr, index: Int) = t match {
     case Tuple(es) =>
+      // @mk FIXME: Notice tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x. This seems wrong.
       es(index-1)
     case _ if t.getType.isInstanceOf[TupleType] =>
       TupleSelect(t, index)
+    case _ if (index == 1) =>
+      // For cases like tupleSelect(tupleWrap(Seq(x)), 1) -> x
+      t
     case _ =>
-      if (index == 1) t 
-      else sys.error(s"Trying to construct TupleSelect with non-tuple $t and index $index!=1")
+      sys.error(s"Trying to construct TupleSelect with non-tuple $t and index $index!=1")
   }
 
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
