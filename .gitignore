@@ -1,6 +1,13 @@
 # Vim
 *.swp
 
+# emacs
+*~
+
+# ensime
+.ensime
+.ensime_cache
+
 # sbt
 target
 /project/build
