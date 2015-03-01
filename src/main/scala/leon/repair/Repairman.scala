@@ -14,14 +14,14 @@ import purescala.Extractors.unwrapTuple
 import purescala.ScalaPrinter
 import evaluators._
 import solvers._
-import utils._
 import solvers.z3._
+import utils._
 import codegen._
 import verification._
 import synthesis._
 import synthesis.rules._
-import rules._
 import synthesis.Witnesses._
+import rules._
 import graph.DotGenerator
 import leon.utils.ASCIIHelpers.title
 
@@ -225,13 +225,11 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val args = fd.params.map(_.id)
     val argsWrapped = tupleWrap(args.map(_.toVariable))
 
-    val out = fd.postcondition.map(_._1).getOrElse(FreshIdentifier("res", fd.returnType, true))
-
-    val spec = fd.postcondition.map(_._2).getOrElse(BooleanLiteral(true))
+    val spec = fd.postcondition.getOrElse(Lambda(Seq(ValDef(FreshIdentifier("res", fd.returnType, true))), BooleanLiteral(true)))
 
     val body = fd.body.get
 
-    val choose = Choose(List(out), spec)
+    val choose = Choose(spec)
 
     val evaluator = new DefaultEvaluator(ctx, program)
 
@@ -260,23 +258,19 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       soFar
     }
 
-    def focus(expr: Expr, env: Map[Identifier, Expr])(implicit spec: Expr, out: Identifier): (Expr, Expr) = {
-      val choose = Choose(List(out), spec)
+    def focus(expr: Expr, env: Map[Identifier, Expr])(implicit spec: Expr): (Expr, Expr) = {
+      val choose = Choose(spec)
       
       def testCondition(cond: Expr, inExpr: Expr => Expr) = forAllTests(
-        spec,
-        env + (out -> inExpr(not(cond))),
+        application(spec, Seq(inExpr(not(cond)))),
+        env,
         new RepairNDEvaluator(ctx,program,fd,cond)
       )
       
       def condAsSpec(cond: Expr, inExpr: Expr => Expr) = {
         val newOut = FreshIdentifier("cond", BooleanType, true)
-        val newSpec = Let(
-          out,
-          inExpr(Variable(newOut)),
-          spec
-        )
-        val (b, r) = focus(cond, env)(newSpec, newOut)
+        val newSpec = Lambda(Seq(ValDef(newOut)), application(spec, Seq(inExpr(Variable(newOut)))))
+        val (b, r) = focus(cond, env)(newSpec)
         (inExpr(b), r)
       }
       
@@ -378,7 +372,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       }
     }
     
-    focus(body, Map())(spec, out)
+    focus(body, Map())(spec)
   }
 
   private def getVerificationCounterExamples(fd: FunDef, prog: Program): VerificationResult = {

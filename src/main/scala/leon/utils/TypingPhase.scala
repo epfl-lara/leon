@@ -49,15 +49,16 @@ object TypingPhase extends LeonPhase[Program, Program] {
 
       fd.postcondition = fd.returnType match {
         case cct : CaseClassType if cct.parent.isDefined => {
-
+          val resId = FreshIdentifier("res", cct)
           fd.postcondition match {
-            case Some((id, p)) =>
-              Some((id, and(CaseClassInstanceOf(cct, Variable(id)).setPos(p), p).setPos(p)))
+            case Some(p) =>
+              Some(Lambda(Seq(ValDef(resId)), and(
+                application(p, Seq(Variable(resId))),
+                CaseClassInstanceOf(cct, Variable(resId))
+              ).setPos(p)).setPos(p))
 
             case None =>
-              val resId = FreshIdentifier("res", cct)
-
-              Some((resId, CaseClassInstanceOf(cct, Variable(resId))))
+              Some(Lambda(Seq(ValDef(resId)), CaseClassInstanceOf(cct, Variable(resId))))
           }
         }
         case _ => fd.postcondition

@@ -7,6 +7,7 @@ import utils._
 
 object Constructors {
   import Trees._
+  import TreeOps._
   import Definitions._
   import TypeTreeOps._
   import Common._
@@ -25,6 +26,12 @@ object Constructors {
   }
 
   def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
+
+  def let(id: Identifier, e: Expr, bd: Expr) = {
+    if (variablesOf(bd) contains id)
+      Let(id, e, bd)
+    else bd
+  }
 
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
     case Nil =>
@@ -232,4 +239,19 @@ object Constructors {
       Lambda(args, body)
     }
   }
+
+  def application(fn: Expr, realArgs: Seq[Expr]) = fn match {
+    case Lambda(formalArgs, body) =>
+      val (inline, notInline) = formalArgs.map{_.id}.zip(realArgs).partition {
+        case (form, _) => count{
+          case Variable(`form`) => 1
+          case _ => 0
+        }(body) <= 1
+      }
+      val newBody = replaceFromIDs(inline.toMap, body)
+      val (ids, es) = notInline.unzip
+      letTuple(ids, tupleWrap(es), newBody)
+    case _ => Application(fn, realArgs)
+  }
+
 }

@@ -23,13 +23,10 @@ object UnitElimination extends TransformationPhase {
     val newUnits = pgm.units map { u => u.copy(modules = u.modules.map { m =>
       fun2FreshFun = Map()
       val allFuns = m.definedFunctions
-
       //first introduce new signatures without Unit parameters
       allFuns.foreach(fd => {
         if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
           val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
-          freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
-          freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
           freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
           fun2FreshFun += (fd -> freshFunDef)
         } else {
@@ -38,12 +35,11 @@ object UnitElimination extends TransformationPhase {
       })
 
       //then apply recursively to the bodies
-      val newFuns = allFuns.flatMap(fd => if(fd.returnType == UnitType) Seq() else {
-        val newBody = fd.body.map(body => removeUnit(body))
+      val newFuns = allFuns.collect{ case fd if fd.returnType != UnitType =>
         val newFd = fun2FreshFun(fd)
-        newFd.body = newBody
-        Seq(newFd)
-      })
+        newFd.fullBody = removeUnit(fd.fullBody)
+        newFd
+      }
 
       ModuleDef(m.id, m.definedClasses ++ newFuns, m.isStandalone )
     })}

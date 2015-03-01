@@ -51,15 +51,7 @@ class ScopeSimplifier extends Transformer {
 
       newScope = newScope.registerFunDef(fd -> newFd)
 
-      newFd.body          = fd.body.map(b => rec(b, newScope))
-      newFd.precondition  = fd.precondition.map(pre => rec(pre, newScope))
-
-      newFd.postcondition = fd.postcondition.map {
-        case (id, post) =>
-          val nid = genId(id, newScope)
-          val postScope = newScope.register(id -> nid)
-          (nid, rec(post, postScope))
-      }
+      newFd.fullBody = rec(fd.fullBody, newScope)
 
       LetDef(newFd, rec(body, newScope))
    

@@ -359,9 +359,8 @@ object TreeOps {
 
         e match {
           case Variable(i) => subvs + i
-          case LetDef(fd,_) => subvs -- fd.params.map(_.id) -- fd.postcondition.map(_._1)
+          case LetDef(fd,_) => subvs -- fd.params.map(_.id)
           case Let(i,_,_) => subvs - i
-          case Choose(is,_,_) => subvs -- is
           case MatchLike(_, cses, _) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case Passes(_, _ , cses)   => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
           case Lambda(args, body) => subvs -- args.map(_.id)
@@ -1222,10 +1221,11 @@ object TreeOps {
     }
 
     def traverse(funDef: FunDef): Seq[T] = {
+      // @mk FIXME: This seems overly compicated
       val precondition = funDef.precondition.map(e => matchToIfThenElse(e)).toSeq
       val precTs = funDef.precondition.map(e => traverse(e)).toSeq.flatten
       val bodyTs = funDef.body.map(e => traverse(e, precondition)).toSeq.flatten
-      val postTs = funDef.postcondition.map(p => traverse(p._2)).toSeq.flatten
+      val postTs = funDef.postcondition.map(p => traverse(p)).toSeq.flatten
       precTs ++ bodyTs ++ postTs
     }
 
@@ -1290,7 +1290,7 @@ object TreeOps {
 
   def isDeterministic(e: Expr): Boolean = {
     preTraversal{
-      case Choose(_, _, None) => return false
+      case Choose(_, None) => return false
       case Hole(_, _) => return false
       case Gives(_,_) => return false
       case _ =>
@@ -1447,31 +1447,11 @@ object TreeOps {
     }
 
     def fdHomo(fd1: FunDef, fd2: FunDef)(implicit map: Map[Identifier, Identifier]) = {
-      if (fd1.params.size == fd2.params.size &&
-          fd1.precondition.size == fd2.precondition.size &&
-          fd1.body.size == fd2.body.size &&
-          fd1.postcondition.size == fd2.postcondition.size) {
-
-        val newMap = map +
-                     (fd1.id -> fd2.id) ++
-                     (fd1.params zip fd2.params).map{ case (vd1, vd2) => (vd1.id, vd2.id) }
-
-        val preMatch = (fd1.precondition zip fd2.precondition).forall {
-          case (e1, e2) => isHomo(e1, e2)(newMap)
-        }
-
-        val postMatch = (fd1.postcondition zip fd2.postcondition).forall {
-          case ((id1, e1), (id2, e2)) => isHomo(e1, e2)(newMap + (id1 -> id2))
-        }
-
-        val bodyMatch = (fd1.body zip fd2.body).forall {
-          case (e1, e2) => isHomo(e1, e2)(newMap)
-        }
-
-        preMatch && postMatch && bodyMatch
-      } else {
-        false
-
+      (fd1.params.size == fd2.params.size) && {
+         val newMap = map +
+           (fd1.id -> fd2.id) ++
+           (fd1.params zip fd2.params).map{ case (vd1, vd2) => (vd1.id, vd2.id) }
+         isHomo(fd1.fullBody, fd2.fullBody)(newMap)
       }
     }
 
@@ -1535,8 +1515,8 @@ object TreeOps {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
 
-        case (Choose(ids1, e1, _), Choose(ids2, e2, _)) =>
-          isHomo(e1, e2)(map ++ (ids1 zip ids2))
+        case (Choose(e1, _), Choose(e2, _)) =>
+          isHomo(e1, e2)
 
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
           isHomo(v1, v2) &&
@@ -1762,15 +1742,19 @@ object TreeOps {
               Some(and(oe, simplePreTransform(pre)(ie)))
           }
 
-          def mergePost(outer: Option[(Identifier, Expr)], inner: Option[(Identifier, Expr)]): Option[(Identifier, Expr)] = (outer, inner) match {
-            case (None, Some((iid, ie))) =>
-              Some((iid, simplePreTransform(pre)(ie)))
+          def mergePost(outer: Option[Expr], inner: Option[Expr]): Option[Expr] = (outer, inner) match {
+            case (None, Some(ie)) =>
+              Some(simplePreTransform(pre)(ie))
             case (Some(oe), None) =>
               Some(oe)
             case (None, None) =>
               None
-            case (Some((oid, oe)), Some((iid, ie))) =>
-              Some((oid, and(oe, replaceFromIDs(Map(iid -> Variable(oid)), simplePreTransform(pre)(ie)))))
+            case (Some(oe), Some(ie)) =>
+              val res = FreshIdentifier("res", fdOuter.returnType, true)
+              Some(Lambda(Seq(ValDef(res)), and(
+                application(oe, Seq(Variable(res))), 
+                application(simplePreTransform(pre)(ie), Seq(Variable(res)))
+              )))
           }
 
           val newFd = fdOuter.duplicate
@@ -1779,7 +1763,7 @@ object TreeOps {
 
           newFd.body          = fdInner.body.map(b => simplePreTransform(pre)(b))
           newFd.precondition  = mergePre(fdOuter.precondition, fdInner.precondition).map(simp)
-          newFd.postcondition = mergePost(fdOuter.postcondition, fdInner.postcondition).map{ case (id, ex) => id -> simp(ex) }
+          newFd.postcondition = mergePost(fdOuter.postcondition, fdInner.postcondition).map(simp)
 
           newFd
         } else {
@@ -1810,46 +1794,45 @@ object TreeOps {
    */
   
   def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
-    case (Some(newPre), Require(pre, b))                 => Require(newPre, b)
-    case (Some(newPre), Ensuring(Require(pre, b), i, p)) => Ensuring(Require(newPre, b), i, p)
-    case (Some(newPre), Ensuring(b, i, p))               => Ensuring(Require(newPre, b), i, p)
-    case (Some(newPre), b)                               => Require(newPre, b)
-    case (None, Require(pre, b))                         => b
-    case (None, Ensuring(Require(pre, b), i, p))         => Ensuring(b, i, p)
-    case (None, Ensuring(b, i, p))                       => Ensuring(b, i, p)
-    case (None, b)                                       => b
+    case (Some(newPre), Require(pre, b))              => Require(newPre, b)
+    case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(Require(newPre, b), p)
+    case (Some(newPre), Ensuring(b, p))               => Ensuring(Require(newPre, b), p)
+    case (Some(newPre), b)                            => Require(newPre, b)
+    case (None, Require(pre, b))                      => b
+    case (None, Ensuring(Require(pre, b), p))         => Ensuring(b, p)
+    case (None, b)                                    => b
   }
 
-  def withPostcondition(expr: Expr, oie: Option[(Identifier, Expr)]) = (oie, expr) match {
-    case (Some((nid, npost)), Ensuring(b, id, post))     => Ensuring(b, nid, npost)
-    case (Some((nid, npost)), b)                         => Ensuring(b, nid, npost)
-    case (None, Ensuring(b, i, p))                       => b
-    case (None, b)                                       => b
+  def withPostcondition(expr: Expr, oie: Option[Expr]) = (oie, expr) match {
+    case (Some(npost), Ensuring(b, post)) => Ensuring(b, npost)
+    case (Some(npost), b)                 => Ensuring(b, npost)
+    case (None, Ensuring(b, p))           => b
+    case (None, b)                        => b
   }
 
   def withBody(expr: Expr, body: Option[Expr]) = expr match {
-    case Require(pre, _)                    => Require(pre, body.getOrElse(NoTree(expr.getType)))
-    case Ensuring(Require(pre, _), i, post) => Ensuring(Require(pre, body.getOrElse(NoTree(expr.getType))), i, post)
-    case Ensuring(_, i, post)               => Ensuring(body.getOrElse(NoTree(expr.getType)), i, post)
-    case _                                  => body.getOrElse(NoTree(expr.getType))
+    case Require(pre, _)                 => Require(pre, body.getOrElse(NoTree(expr.getType)))
+    case Ensuring(Require(pre, _), post) => Ensuring(Require(pre, body.getOrElse(NoTree(expr.getType))), post)
+    case Ensuring(_, post)               => Ensuring(body.getOrElse(NoTree(expr.getType)), post)
+    case _                               => body.getOrElse(NoTree(expr.getType))
   }
 
   def withoutSpec(expr: Expr) = expr match {
-    case Require(pre, b)                    => Option(b).filterNot(_.isInstanceOf[NoTree])
-    case Ensuring(Require(pre, b), i, post) => Option(b).filterNot(_.isInstanceOf[NoTree])
-    case Ensuring(b, i, post)               => Option(b).filterNot(_.isInstanceOf[NoTree])
-    case b                                  => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case Require(pre, b)                 => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case Ensuring(Require(pre, b), post) => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case Ensuring(b, post)               => Option(b).filterNot(_.isInstanceOf[NoTree])
+    case b                               => Option(b).filterNot(_.isInstanceOf[NoTree])
   }
 
   def preconditionOf(expr: Expr) = expr match {
-    case Require(pre, _)                    => Some(pre)
-    case Ensuring(Require(pre, _), _, _)    => Some(pre)
-    case b                                  => None
+    case Require(pre, _)              => Some(pre)
+    case Ensuring(Require(pre, _), _) => Some(pre)
+    case b                            => None
   }
 
   def postconditionOf(expr: Expr) = expr match {
-    case Ensuring(_, i, post)               => Some((i, post))
-    case _                                  => None
+    case Ensuring(_, post) => Some(post)
+    case _                 => None
   }
 
   def breakDownSpecs(e : Expr) = (preconditionOf(e), withoutSpec(e), postconditionOf(e))
@@ -1914,7 +1897,7 @@ object TreeOps {
         case Application(caller, args) =>
           val newArgs = args.map(rec(_, true))
           val newCaller = rec(caller, false)
-          extract(Application(newCaller, newArgs), build)
+          extract(application(newCaller, newArgs), build)
         case FunctionInvocation(fd, args) =>
           val newArgs = args.map(rec(_, true))
           extract(FunctionInvocation(fd, newArgs), build)
@@ -2013,113 +1996,6 @@ object TreeOps {
   @deprecated("Use exists instead", "Leon 0.2.1")
   def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
   
-  /**
-   * Eliminates tuples of arity 0 and 1.
-   * Used to simplify synthesis solutions
-   *
-   * Only rewrites local fundefs.
-   */
-  @deprecated("Use purescala.Constructors.tuple* and purescala.Extractors.Unwrap* " +
-    "to avoid creation of tuples of size 0 and 1", "Leon 3.0.0"
-  )
-  def rewriteTuples(expr: Expr) : Expr = {
-    def mapType(tt : TypeTree) : Option[TypeTree] = tt match {
-      case TupleType(ts) => ts.size match {
-        case 0 => Some(UnitType)
-        case 1 => Some(ts(0))
-        case _ =>
-          val tss = ts.map(mapType)
-          if(tss.exists(_.isDefined)) {
-            Some(TupleType((tss zip ts).map(p => p._1.getOrElse(p._2))))
-          } else {
-            None
-          }
-      }
-      case SetType(t)            => mapType(t).map(SetType(_))
-      case MultisetType(t)       => mapType(t).map(MultisetType(_))
-      case ArrayType(t)          => mapType(t).map(ArrayType(_))
-      case MapType(f,t)          => 
-        val (f2,t2) = (mapType(f),mapType(t))
-        if(f2.isDefined || t2.isDefined) {
-          Some(MapType(f2.getOrElse(f), t2.getOrElse(t)))
-        } else {
-          None
-        }
-      case ft : FunctionType => None // FIXME
-
-      case a : AbstractClassType => None
-      case cct : CaseClassType     =>
-        // This is really just one big assertion. We don't rewrite class defs.
-        val fieldTypes = cct.fields.map(_.getType)
-        if(fieldTypes.exists(t => t match {
-          case TupleType(ts) if ts.size <= 1 => true
-          case _ => false
-        })) {
-          scala.sys.error("Cannot rewrite case class def that contains degenerate tuple types.")
-        } else {
-          None
-        }
-      case Untyped | BooleanType | Int32Type | IntegerType | UnitType | TypeParameter(_) => None  
-    }
-
-    var idMap     = Map[Identifier, Identifier]()
-    var funDefMap = Map.empty[FunDef,FunDef]
-
-    def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
-      case Some(fd) => fd
-      case None =>
-        if(funDef.params.map(vd => mapType(vd.getType)).exists(_.isDefined)) {
-          scala.sys.error("Cannot rewrite function def that takes degenerate tuple arguments,")
-        }
-        val newFD = mapType(funDef.returnType) match {
-          case None => funDef
-          case Some(rt) =>
-            val fd = new FunDef(FreshIdentifier(funDef.id.name, alwaysShowUniqueID = true), funDef.tparams, rt, funDef.params, funDef.defType)
-            // These will be taken care of in the recursive traversal.
-            fd.body = funDef.body
-            fd.precondition = funDef.precondition
-            funDef.postcondition match {
-              case Some((id, post)) =>
-                val freshId = FreshIdentifier(id.name, rt, true)
-                idMap += id -> freshId
-                fd.postcondition = Some((freshId, post))
-              case None =>
-                fd.postcondition = None
-            }
-            fd
-        }
-        funDefMap = funDefMap.updated(funDef, newFD)
-        newFD
-    }
-
-    import synthesis.Witnesses.Terminating
-    
-    def pre(e : Expr) : Expr = e match {
-      case Tuple(Seq()) => println("Tuple0!"); UnitLiteral()
-      case Variable(id) if idMap contains id => Variable(idMap(id))
-
-      case Error(tpe, err) => Error(mapType(tpe).getOrElse(e.getType), err).copiedFrom(e)
-      case Tuple(Seq(s)) => println("Tuple1!"); pre(s)
-
-      case LetTuple(bs, v, bdy) if bs.size == 1 =>
-        Let(bs(0), v, bdy)
-
-      case l @ LetDef(fd, bdy) =>
-        LetDef(fd2fd(fd), bdy)
-
-      case FunctionInvocation(tfd, args) =>
-        FunctionInvocation(fd2fd(tfd.fd).typed(tfd.tps), args)
-      
-      case Terminating(tfd, args) =>
-        Terminating(fd2fd(tfd.fd).typed(tfd.tps), args)
-
-      case _ => e
-    }
-
-    simplePreTransform(pre)(expr)
-  }
-
-
   /*
    * Transforms complicated Ifs into multiple nested if blocks
    * It will decompose every OR clauses, and it will group AND clauses checking

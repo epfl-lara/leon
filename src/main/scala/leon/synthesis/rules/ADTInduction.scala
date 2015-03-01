@@ -102,7 +102,7 @@ case object ADTInduction extends Rule("ADT Induction") {
               val outerPre = orJoin(globalPre)
 
               newFun.precondition = Some(funPre)
-              newFun.postcondition = Some((idPost, letTuple(p.xs.toSeq, Variable(idPost), funPost)))
+              newFun.postcondition = Some(Lambda(Seq(ValDef(idPost)), letTuple(p.xs.toSeq, Variable(idPost), funPost)))
 
               newFun.body = Some(matchExpr(Variable(inductOn), cases))
 

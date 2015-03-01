@@ -855,7 +855,7 @@ trait CodeExtraction extends ASTExtractors {
         }
       }
 
-      funDef.postcondition.foreach { case (id, e) =>
+      funDef.postcondition.foreach { e =>
         if(containsLetDef(e)) {
           reporter.warning(e.getPos, "Function postcondition should not contain nested function definition, ignoring.")
           funDef.postcondition = None
@@ -967,9 +967,8 @@ trait CodeExtraction extends ASTExtractors {
       var rest = tmpRest
 
       val res = current match {
-        case ExEnsuredExpression(body, resVd, contract) =>
-          val resId = FreshIdentifier(resVd.symbol.name.toString, extractType(current)).setPos(resVd.pos).setOwner(currentFunDef)
-          val post = extractTree(contract)(dctx.withNewVar(resVd.symbol -> (() => Variable(resId))))
+        case ExEnsuredExpression(body, contract) =>
+          val post = extractTree(contract)
 
           val b = try {
             extractTree(body)
@@ -978,11 +977,11 @@ trait CodeExtraction extends ASTExtractors {
               NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
           }
 
-          Ensuring(b, resId, post)
+          Ensuring(b, post)
 
         case t @ ExHoldsExpression(body) =>
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos).setOwner(currentFunDef)
-          val post = Variable(resId).setPos(current.pos)
+          val post = Lambda(Seq(LeonValDef(resId)), Variable(resId).setPos(current.pos))
 
           val b = try {
             extractTree(body)
@@ -991,7 +990,7 @@ trait CodeExtraction extends ASTExtractors {
               NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
           }
 
-          Ensuring(b, resId, post)
+          Ensuring(b, post)
 
         case ExAssertExpression(contract, oerr) =>
           val const = extractTree(contract)
@@ -1276,22 +1275,9 @@ trait CodeExtraction extends ASTExtractors {
           WithOracle(newOracles, cBody)
 
 
-        case chs @ ExChooseExpression(args, body) =>
-          val vars = args map { case (tpt, sym) =>
-            val aTpe  = extractType(tpt)
-            val newID = FreshIdentifier(sym.name.toString, aTpe).setOwner(currentFunDef)
-            owners += (newID -> None)
-            newID
-          }
-
-          val newVars = (args zip vars).map {
-            case ((_, sym), id) =>
-              sym -> (() => Variable(id))
-          }
-
-          val cBody = extractTree(body)(dctx.withNewVars(newVars))
-
-          Choose(vars, cBody)
+        case chs @ ExChooseExpression(body) =>
+          val cBody = extractTree(body)
+          Choose(cBody)
 
         case l @ ExLambdaExpression(args, body) =>
           val vds = args map { vd =>
@@ -1537,7 +1523,7 @@ trait CodeExtraction extends ASTExtractors {
               MethodInvocation(rec, cd, fd.typed(newTps), args)
 
             case (IsTyped(rec, ft: FunctionType), _, args) =>
-              Application(rec, args)
+              application(rec, args)
 
             case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.fields.exists(_.id.name == name) =>
 

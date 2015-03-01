@@ -14,7 +14,6 @@ case object Assert extends NormalizingRule("Assert") {
     p.phi match {
       case TopLevelAnds(exprs) =>
         val xsSet = p.xs.toSet
-
         val (exprsA, others) = exprs.partition(e => (variablesOf(e) & xsSet).isEmpty)
 
         if (!exprsA.isEmpty) {

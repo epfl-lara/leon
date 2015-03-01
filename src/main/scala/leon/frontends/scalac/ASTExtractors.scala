@@ -136,10 +136,9 @@ trait ASTExtractors {
 
     object ExEnsuredExpression {
       /** Extracts the 'ensuring' contract from an expression. */
-      def unapply(tree: Apply): Option[(Tree,ValDef,Tree)] = tree match {
-        case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")),
-          (Function((vd @ ValDef(_, _, _, EmptyTree)) :: Nil, contractBody)) :: Nil)
-          => Some((body, vd, contractBody))
+      def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
+        case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")), contract :: Nil)
+          => Some((body, contract))
         case _ => None
       }
     }
@@ -455,11 +454,11 @@ trait ASTExtractors {
     }
 
     object ExChooseExpression {
-      def unapply(tree: Apply) : Option[(List[(Tree, Symbol)], Tree)] = tree match {
+      def unapply(tree: Apply) : Option[Tree] = tree match {
         case a @ Apply(
               TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "choose"), types),
-              Function(vds, predicateBody) :: Nil) =>
-            Some(((types zip vds.map(_.symbol)).toList, predicateBody))
+              predicate :: Nil) =>
+            Some(predicate)
         case _ => None
       }
     }

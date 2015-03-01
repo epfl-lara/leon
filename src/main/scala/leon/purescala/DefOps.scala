@@ -273,9 +273,7 @@ object DefOps {
    */
   def applyOnFunDef(operation : Expr => Expr)(funDef : FunDef): FunDef = {
     val newFunDef = funDef.duplicate 
-    newFunDef.body          = funDef.body           map operation
-    newFunDef.precondition  = funDef.precondition   map operation
-    newFunDef.postcondition = funDef.postcondition  map { case (id, ex) => (id, operation(ex))}
+    newFunDef.fullBody = operation(funDef.fullBody)
     newFunDef
   }
     

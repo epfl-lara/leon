@@ -41,22 +41,40 @@ object Trees {
     val getType = body.getType
   }
 
-  case class Ensuring(body: Expr, id: Identifier, pred: Expr) extends Expr {
-    val getType = body.getType
+  case class Ensuring(body: Expr, pred: Expr) extends Expr {
+    val getType = pred.getType match {
+      case FunctionType(Seq(bodyType), BooleanType) if bodyType == body.getType => bodyType
+      case _ => Untyped
+    }
+    def toAssert: Expr = {
+      val res = FreshIdentifier("res", getType, true)
+      Let(res, body, Assert(application(pred, Seq(Variable(res))), Some("Postcondition failed @" + this.getPos), Variable(res)))
+    }
   }
 
   case class Assert(pred: Expr, error: Option[String], body: Expr) extends Expr {
     val getType = body.getType
   }
 
-  case class Choose(vars: List[Identifier], pred: Expr, var impl: Option[Expr] = None) extends Expr with NAryExtractable {
-    require(!vars.isEmpty)
-
-    val getType = tupleTypeWrap(vars.map(_.getType))
-
-    def extract = {
-      Some((Seq(pred)++impl, (es: Seq[Expr]) =>  Choose(vars, es.head, es.tail.headOption).setPos(this)))
+  case class Choose(pred: Expr, private var impl_ : Option[Expr] = None) extends Expr {
+    val getType = pred.getType match {
+      case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty? 
+        tupleTypeWrap(from)
+      case _ =>
+        Untyped
     }
+
+    require(impl_ forall { imp => isSubtypeOf(imp.getType, this.getType)})
+
+    def impl_= (newImpl: Option[Expr]) = { 
+      require(
+        newImpl forall {imp => isSubtypeOf(imp.getType,this.getType)}, 
+        newImpl.get +":" + newImpl.get.getType + " vs " + this + ":" + this.getType
+      )
+      impl_ = newImpl
+    }
+
+    def impl = impl_
   }
 
   /* Like vals */

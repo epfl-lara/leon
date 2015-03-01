@@ -94,20 +94,20 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
       
       val callResult = e(body)(frameBlamingCallee, gctx)
 
-      if(tfd.hasPostcondition) {
-        val (id, post) = tfd.postcondition.get
-
-        e(post)(frameBlamingCallee.withNewVar(id, callResult), gctx) match {
-          case BooleanLiteral(true) =>
-          case BooleanLiteral(false) =>
-            // Callee's fault
-            registerFailed(tfd.fd, evArgs)
-            throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
-          case other =>
-            // Callee's fault
-            registerFailed(tfd.fd, evArgs)
-            throw EvalError(typeErrorMsg(other, BooleanType))
-        }
+      tfd.postcondition match {
+        case Some(post) => 
+          e(Application(post, Seq(callResult)))(frameBlamingCallee, gctx) match {
+            case BooleanLiteral(true) =>
+            case BooleanLiteral(false) =>
+              // Callee's fault
+              registerFailed(tfd.fd, evArgs)
+              throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
+            case other =>
+              // Callee's fault
+              registerFailed(tfd.fd, evArgs)
+              throw EvalError(typeErrorMsg(other, BooleanType))
+          }
+        case None => 
       }
 
       callResult

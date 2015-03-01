@@ -42,6 +42,12 @@ object Extractors {
 
   object BinaryOperator {
     def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
+      case LetDef(fd, body) => Some((fd.fullBody, body, 
+        (fdBd, body) => {
+          fd.fullBody = fdBd
+          LetDef(fd, body) 
+        }
+      ))
       case Equals(t1,t2) => Some((t1,t2,Equals.apply))
       case Implies(t1,t2) => Some((t1,t2, implies))
       case Plus(t1,t2) => Some((t1,t2,Plus))
@@ -81,7 +87,7 @@ object Extractors {
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
       case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, b)))
       case Require(pre, body) => Some((pre, body, Require))
-      case Ensuring(body, id, post) => Some((body, post, (b: Expr, p: Expr) => Ensuring(b, id, p)))
+      case Ensuring(body, post) => Some((body, post, (b: Expr, p: Expr) => Ensuring(b, p)))
       case Assert(const, oerr, body) => Some((const, body, (c: Expr, b: Expr) => Assert(c, oerr, b)))
       case (ex: BinaryExtractable) => ex.extract
       case _ => None
@@ -94,6 +100,10 @@ object Extractors {
 
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
+      case Choose(pred, impl) => Some((Seq(pred) ++ impl.toSeq, {
+        case Seq(pred) => Choose(pred, None)
+        case Seq(pred, impl) => Choose(pred, Some(impl))
+      }))
       case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
       case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, (as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi))))
       case fa @ Application(caller, args) => Some((caller +: args), (as => Application(as.head, as.tail).setPos(fa)))
@@ -161,60 +171,6 @@ object Extractors {
           Passes(in, out, newcases)
         }}
       ))
-      case LetDef(fd, body) =>
-        fd.body match {
-          case Some(b) =>
-            (fd.precondition, fd.postcondition) match {
-              case (None, None) =>
-                  Some((Seq(b, body), (as: Seq[Expr]) => {
-                    fd.body = Some(as(0))
-                    LetDef(fd, as(1))
-                  }))
-              case (Some(pre), None) =>
-                  Some((Seq(b, body, pre), (as: Seq[Expr]) => {
-                    fd.body = Some(as(0))
-                    fd.precondition = Some(as(2))
-                    LetDef(fd, as(1))
-                  }))
-              case (None, Some((pid, post))) =>
-                  Some((Seq(b, body, post), (as: Seq[Expr]) => {
-                    fd.body = Some(as(0))
-                    fd.postcondition = Some((pid, as(2)))
-                    LetDef(fd, as(1))
-                  }))
-              case (Some(pre), Some((pid, post))) =>
-                  Some((Seq(b, body, pre, post), (as: Seq[Expr]) => {
-                    fd.body = Some(as(0))
-                    fd.precondition = Some(as(2))
-                    fd.postcondition = Some((pid, as(3)))
-                    LetDef(fd, as(1))
-                  }))
-            }
-
-          case None => //case no body, we still need to handle remaining cases
-            (fd.precondition, fd.postcondition) match {
-              case (None, None) =>
-                  Some((Seq(body), (as: Seq[Expr]) => {
-                    LetDef(fd, as(0))
-                  }))
-              case (Some(pre), None) =>
-                  Some((Seq(body, pre), (as: Seq[Expr]) => {
-                    fd.precondition = Some(as(1))
-                    LetDef(fd, as(0))
-                  }))
-              case (None, Some((pid, post))) =>
-                  Some((Seq(body, post), (as: Seq[Expr]) => {
-                    fd.postcondition = Some((pid, as(1)))
-                    LetDef(fd, as(0))
-                  }))
-              case (Some(pre), Some((pid, post))) =>
-                  Some((Seq(body, pre, post), (as: Seq[Expr]) => {
-                    fd.precondition = Some(as(1))
-                    fd.postcondition = Some((pid, as(2)))
-                    LetDef(fd, as(0))
-                  }))
-            }
-        }
       case (ex: NAryExtractable) => ex.extract
       case _ => None
     }
@@ -259,6 +215,7 @@ object Extractors {
   
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
+      case Let(i, e, TopLevelOrs(bs)) => Some(bs map (let(i,e,_)))
       case Or(exprs) =>
         Some(exprs.flatMap(unapply(_)).flatten)
       case e =>
@@ -267,6 +224,7 @@ object Extractors {
   }
   object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
+      case Let(i, e, TopLevelAnds(bs)) => Some(bs map (let(i,e,_)))
       case And(exprs) =>
         Some(exprs.flatMap(unapply(_)).flatten)
       case e =>

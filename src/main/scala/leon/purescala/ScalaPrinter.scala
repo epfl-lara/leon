@@ -26,7 +26,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
     tree match {
       case Not(Equals(l, r))    => p"$l != $r"
       case Implies(l,r)         => pp(or(not(l), r))
-      case Choose(vars, pred, None) => p"choose((${typed(vars)}) => $pred)"
+      case Choose(pred, None) => p"choose($pred)"
       case s @ FiniteSet(rss)    => {
         val rs = rss.toSeq
         s.getType match {

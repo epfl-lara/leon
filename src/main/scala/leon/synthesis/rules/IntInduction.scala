@@ -50,7 +50,7 @@ case object IntInduction extends Rule("Int Induction") {
               val idPost = FreshIdentifier("res", tpe)
 
               newFun.precondition = Some(preIn)
-              newFun.postcondition = Some((idPost, letTuple(p.xs.toSeq, Variable(idPost), p.phi)))
+              newFun.postcondition = Some(Lambda(Seq(ValDef(idPost)), letTuple(p.xs.toSeq, Variable(idPost), p.phi)))
 
               newFun.body = Some(
                 IfExpr(Equals(Variable(inductOn), InfiniteIntegerLiteral(0)),

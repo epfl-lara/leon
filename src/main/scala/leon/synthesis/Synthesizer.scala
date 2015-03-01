@@ -111,7 +111,7 @@ class Synthesizer(val context : LeonContext,
 
     val fd = new FunDef(FreshIdentifier(ci.fd.id.name+"_final", alwaysShowUniqueID = true), Nil, ret, problem.as.map(ValDef(_)), DefType.MethodDef)
     fd.precondition  = Some(and(problem.pc, sol.pre))
-    fd.postcondition = Some((res.id, replace(mapPost, problem.phi)))
+    fd.postcondition = Some(Lambda(Seq(ValDef(res.id)), replace(mapPost, problem.phi)))
     fd.body          = Some(sol.term)
 
     val newDefs = fd +: sol.defs.toList

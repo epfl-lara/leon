@@ -54,12 +54,7 @@ object MethodLifting extends TransformationPhase {
           (fd, None)
       }
 
-      nfd.precondition  = nfd.precondition.map(removeMethodCalls(rec))
-      nfd.body          = nfd.body.map(removeMethodCalls(rec))
-      nfd.postcondition = nfd.postcondition.map {
-        case (id, post) => (id, removeMethodCalls(rec)(post))
-      }
-
+      nfd.fullBody = removeMethodCalls(rec)(nfd.fullBody)
       nfd
     }
 

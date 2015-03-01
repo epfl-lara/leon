@@ -23,7 +23,8 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
   val reporter = ctx.reporter
 
   def extractTests(fd: FunDef): (Seq[Example], Seq[Example]) = fd.postcondition match {
-    case Some((id, post)) =>
+    case Some(Lambda(Seq(ValDef(id, _)), post)) =>
+      // @mk FIXME: make this more general
       val tests = extractTestsOf(post)
 
       val insIds  = fd.params.map(_.id).toSet

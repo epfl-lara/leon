@@ -44,17 +44,17 @@ object ConvertWithOracle extends LeonPhase[Program, Program] {
         val body = preMap {
           case wo @ WithOracle(os, b) =>
             withoutSpec(b) match {
-              case Some(body) =>
+              case Some(pred) =>
                 val chooseOs = os.map(_.freshen)
 
                 val pred = postconditionOf(b) match {
-                  case Some((id, post)) =>
-                    replaceFromIDs((os zip chooseOs.map(_.toVariable)).toMap, Let(id, body, post))
+                  case Some(post) =>
+                    post // FIXME we need to freshen variables
                   case None =>
-                    BooleanLiteral(true)
+                    Lambda(chooseOs.map(ValDef(_)), BooleanLiteral(true))
                 }
 
-                Some(letTuple(os, Choose(chooseOs, pred), b))
+                Some(letTuple(os, Choose(pred), b))
               case None =>
                 None
             }
@@ -73,12 +73,12 @@ object ConvertWithOracle extends LeonPhase[Program, Program] {
         }
       }
 
-      fd.postcondition.foreach { case (id, post) =>
+      fd.postcondition.foreach {
         preTraversal{
           case _: WithOracle =>
             ctx.reporter.error("WithOracle expressions are not supported in postconditions. (function "+fd.id.asString(ctx)+")")
           case _ =>
-        }(post)
+        }
       }
 
     })

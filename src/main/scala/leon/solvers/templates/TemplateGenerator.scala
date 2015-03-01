@@ -85,8 +85,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
     // Now the postcondition.
     val (condVars, exprVars, guardedExprs, lambdas) = tfd.postcondition match {
-      case Some((id, post)) =>
-        val newPost : Expr = replace(Map(Variable(id) -> invocation), matchToIfThenElse(post))
+      case Some(post) =>
+        val newPost : Expr = application(matchToIfThenElse(post), Seq(invocation))
 
         val postHolds : Expr =
           if(tfd.hasPrecondition) {
@@ -119,7 +119,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
   private def appliedEquals(invocation: Expr, body: Expr): Expr = body match {
     case Lambda(args, lambdaBody) =>
-      appliedEquals(Application(invocation, args.map(_.toVariable)), lambdaBody)
+      appliedEquals(application(invocation, args.map(_.toVariable)), lambdaBody)
     case _ => Equals(invocation, body)
   }
 
@@ -190,8 +190,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           storeGuarded(pathVar, rec(pathVar, cond))
           rec(pathVar, body)
 
-        case e @ Ensuring(body, id, post) =>
-          rec(pathVar, Let(id, body, Assert(post, None, Variable(id))))
+        case e @ Ensuring(_, _) =>
+          rec(pathVar, e.toAssert) 
 
         case l @ Let(i, e : Lambda, b) =>
           val re = rec(pathVar, e) // guaranteed variable!
@@ -265,20 +265,13 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           }
         }
 
-        case c @ Choose(ids, cond, Some(impl)) =>
+        case c @ Choose(cond, Some(impl)) =>
           rec(pathVar, impl)
 
-        case c @ Choose(ids, cond, None) =>
+        case c @ Choose(cond, None) =>
           val cid = FreshIdentifier("choose", c.getType, true)
           storeExpr(cid)
-
-          val m: Map[Expr, Expr] = if (ids.size == 1) {
-            Map(Variable(ids.head) -> Variable(cid))
-          } else {
-            ids.zipWithIndex.map{ case (id, i) => Variable(id) -> tupleSelect(Variable(cid), i+1, ids.size) }.toMap
-          }
-
-          storeGuarded(pathVar, replace(m, cond))
+          storeGuarded(pathVar, application(cond, Seq(Variable(cid))))
           Variable(cid)
 
         case l @ Lambda(args, body) =>

@@ -22,12 +22,12 @@ object EpsilonElimination extends TransformationPhase {
     allFuns.foreach(fd => fd.body.map(body => {
       val newBody = postMap{
         case eps@Epsilon(pred, tpe) =>
-          val freshName = FreshIdentifier("epsilon")
-          val newFunDef = new FunDef(freshName, Nil, tpe, Seq(), DefType.MethodDef)
-          val epsilonVar = EpsilonVariable(eps.getPos, tpe)
-          val resId     = FreshIdentifier("res", tpe)
+          val freshName   = FreshIdentifier("epsilon")
+          val newFunDef   = new FunDef(freshName, Nil, tpe, Seq(), DefType.MethodDef)
+          val epsilonVar  = EpsilonVariable(eps.getPos, tpe)
+          val resId       = FreshIdentifier("res", tpe)
           val postcondition = replace(Map(epsilonVar -> Variable(resId)), pred)
-          newFunDef.postcondition = Some((resId, postcondition))
+          newFunDef.postcondition = Some(Lambda(Seq(ValDef(resId)), postcondition))
           Some(LetDef(newFunDef, FunctionInvocation(newFunDef.typed, Seq())))
 
         case _ =>

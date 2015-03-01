@@ -41,20 +41,12 @@ object ConvertHoles extends LeonPhase[Program, Program] {
     val (pre, body, post) = breakDownSpecs(e)
 
     // Ensure that holes are not found in pre and/or post conditions
-    pre.foreach {
+    (pre ++ post).foreach {
       preTraversal{
         case h : Hole =>
           ctx.reporter.error("Holes are not supported in preconditions. @"+ h.getPos)
         case _ =>
       }
-    }
-
-    post.foreach { case (id, post) =>
-      preTraversal{
-        case h : Hole =>
-          ctx.reporter.error("Holes are not supported in postconditions. @"+ h.getPos)
-        case _ =>
-      }(post)
     }
 
     body match {
@@ -75,15 +67,15 @@ object ConvertHoles extends LeonPhase[Program, Program] {
         }(body)
 
         val asChoose = if (holes.nonEmpty) {
-          val cids = holes.map(_.freshen)
+          val cids: List[Identifier] = holes.map(_.freshen)
           val pred = post match {
-            case Some((id, post)) =>
-              replaceFromIDs((holes zip cids.map(_.toVariable)).toMap, Let(id, withoutHoles, post))
+            case Some(post) =>
+              replaceFromIDs((holes zip cids.map(_.toVariable)).toMap, post)
             case None =>
-              BooleanLiteral(true)
+              Lambda(cids.map(ValDef(_)), BooleanLiteral(true))
           }
 
-          letTuple(holes, Choose(cids, pred), withoutHoles)
+          letTuple(holes, Choose(pred), withoutHoles)
 
         }
         else withoutHoles

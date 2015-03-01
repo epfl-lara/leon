@@ -204,11 +204,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"""|assert($const)
             |$body"""
 
-      case Ensuring(body, id, post) =>
+      case Ensuring(body, post) =>
         p"""|{
             |  $body
             |} ensuring {
-            |  (${typed(id)}) => $post
+            |  $post
             |}"""
 
       case Gives(s, tests) => 
@@ -281,12 +281,12 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"${t}._$i"
       case NoTree(tpe)          => p"???($tpe)"
-      case Choose(vars, pred, oimpl) => 
+      case Choose(pred, oimpl) => 
         oimpl match {
           case Some(e) =>
-            p"$e /* choose: $vars => $pred */"
+            p"$e /* choose: $pred */"
           case None =>
-            p"choose(($vars) => $pred)"
+            p"choose($pred)"
         }
       case e @ Error(tpe, err)       => p"""error[$tpe]("$err")"""
       case CaseClassInstanceOf(cct, e)         =>
@@ -635,9 +635,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"""|
             |}"""
 
-        fd.postcondition.foreach { case (id, post) =>
+        fd.postcondition.foreach { post =>
           p"""| ensuring {
-              |  (${typed(id)}) => $post
+              |  $post
               |}"""
         }
 

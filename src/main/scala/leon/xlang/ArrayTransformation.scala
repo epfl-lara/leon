@@ -17,23 +17,14 @@ object ArrayTransformation extends TransformationPhase {
   val name = "Array Transformation"
   val description = "Add bound checking for array access and remove array update with side effect"
 
-  private var id2FreshId = Map[Identifier, Identifier]()
-
   def apply(ctx: LeonContext, pgm: Program): Program = {
-
-    id2FreshId = Map()
-    val allFuns = pgm.definedFunctions
-    allFuns.foreach(fd => {
-      id2FreshId = Map()
-      fd.precondition = fd.precondition.map(transform)
-      fd.body = fd.body.map(transform)
-      fd.postcondition = fd.postcondition.map { case (id, post) => (id, transform(post)) }
+    pgm.definedFunctions.foreach(fd => {
+      fd.fullBody = transform(fd.fullBody)(Map())
     })
     pgm
   }
 
-
-  def transform(expr: Expr): Expr = (expr match {
+  def transform(expr: Expr)(implicit env: Map[Identifier, Identifier]): Expr = (expr match {
     case up@ArrayUpdate(a, i, v) => {
       val ra = transform(a)
       val ri = transform(i)
@@ -45,15 +36,14 @@ object ArrayTransformation extends TransformationPhase {
       v.getType match {
         case ArrayType(_) => {
           val freshIdentifier = FreshIdentifier("t", i.getType)
-          id2FreshId += (i -> freshIdentifier)
-          LetVar(freshIdentifier, transform(v), transform(b))
+          val newEnv = env + (i -> freshIdentifier)
+          LetVar(freshIdentifier, transform(v)(newEnv), transform(b)(newEnv))
         }
         case _ => Let(i, transform(v), transform(b))
       }
     }
     case v@Variable(i) => {
-      val freshId = id2FreshId.get(i).getOrElse(i)
-      Variable(freshId)
+      Variable(env.getOrElse(i, i))
     }
 
     case LetVar(id, e, b) => {
@@ -82,9 +72,7 @@ object ArrayTransformation extends TransformationPhase {
       matchExpr(scrutRec, csesRec).setPos(m)
     }
     case LetDef(fd, b) => {
-      fd.precondition = fd.precondition.map(transform)
-      fd.body = fd.body.map(transform)
-      fd.postcondition = fd.postcondition.map { case (id, post) => (id, transform(post)) }
+      fd.fullBody = transform(fd.fullBody)
       val rb = transform(b)
       LetDef(fd, rb)
     }

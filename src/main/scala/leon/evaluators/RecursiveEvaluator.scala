@@ -109,16 +109,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case Assert(cond, oerr, body) =>
       e(IfExpr(Not(cond), Error(expr.getType, oerr.getOrElse("Assertion failed @"+expr.getPos)), body))
 
-    case en@Ensuring(body, id, post) =>
+    case en@Ensuring(body, post) =>
       if ( exists{
         case Hole(_,_) => true
         case Gives(_,_) => true
         case _ => false
       }(en)) 
         e(convertHoles(en, ctx, true))
-      else 
-        e(Let(id, body, Assert(post, Some("Ensuring failed"), Variable(id))))
-
+      else
+        e(en.toAssert)
+    
     case Error(tpe, desc) =>
       throw RuntimeError("Error reached in evaluation: " + desc)
 
@@ -168,14 +168,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
       val callResult = e(body)(frame, gctx)
 
-      if(tfd.hasPostcondition) {
-        val (id, post) = tfd.postcondition.get
-
-        e(post)(frame.withNewVar(id, callResult), gctx) match {
-          case BooleanLiteral(true) =>
-          case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
-          case other => throw EvalError(typeErrorMsg(other, BooleanType))
-        }
+      tfd.postcondition match  {
+        case Some(post) => 
+          e(application(post, Seq(callResult)))(frame, gctx) match {
+            case BooleanLiteral(true) =>
+            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
+            case other => throw EvalError(typeErrorMsg(other, BooleanType))
+          }
+        case None =>
       }
 
       callResult
@@ -500,10 +500,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case p : Passes => 
       e(p.asConstraint)
 
-    case choose @ Choose(_, _, Some(impl)) =>
+    case choose @ Choose(_, Some(impl)) =>
       e(impl)
 
-    case choose @ Choose(_, _, None) =>
+    case choose @ Choose(_, None) =>
       import purescala.TreeOps.simplestValue
 
       implicit val debugSection = utils.DebugSectionSynthesis

@@ -66,9 +66,9 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
     // We are replacing foo(a) with b. We inject postcondition(foo)(a, b).
     val postsToInject = substs.collect {
       case (FunctionInvocation(tfd, args), e) if tfd.hasPostcondition =>
-        val Some((id, post)) = tfd.postcondition
+        val Some(post) = tfd.postcondition
 
-        replaceFromIDs((tfd.params.map(_.id) zip args).toMap + (id -> e), post)
+        application(replaceFromIDs((tfd.params.map(_.id) zip args).toMap, post), Seq(e))
     }
 
     if (substs.nonEmpty) {

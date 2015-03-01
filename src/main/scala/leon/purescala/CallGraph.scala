@@ -60,10 +60,7 @@ class CallGraph(p: Program) {
   }
 
   private def scanForCalls(fd: FunDef) {
-    val allExprs: Iterable[Expr] = 
-      fd.precondition ++ fd.body ++ fd.postcondition.map(_._2)
-
-    for (e <- allExprs; (from, to) <- collect(collectCalls(fd)(_))(e)) {
+    for( (from, to) <- collect(collectCalls(fd)(_))(fd.fullBody) ) {
       _calls   += (from -> to)
       _callees += (from -> (_callees.getOrElse(from, Set()) + to))
       _callers += (to   -> (_callers.getOrElse(to, Set()) + from))

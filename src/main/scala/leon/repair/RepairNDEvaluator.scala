@@ -47,14 +47,14 @@ class RepairNDEvaluator(ctx: LeonContext, prog: Program, fd : FunDef, cond: Expr
       def treat(subst : Expr => Expr) = {
         val callResult = e(subst(body))(frame, gctx)
   
-        if(tfd.hasPostcondition) {
-          val (id, post) = tfd.postcondition.get
-  
-          e(subst(post))(frame.withNewVar(id, callResult), gctx) match {
-            case BooleanLiteral(true) =>
-            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
-            case other => throw EvalError(typeErrorMsg(other, BooleanType))
-          }
+        tfd.postcondition match {
+          case Some(post) =>
+            e(subst(Application(post, Seq(callResult))))(frame, gctx) match {
+              case BooleanLiteral(true) =>
+              case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
+              case other => throw EvalError(typeErrorMsg(other, BooleanType))
+            }
+          case None =>
         }
   
         callResult

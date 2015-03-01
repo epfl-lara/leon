@@ -6,7 +6,7 @@ package synthesis
 import leon.purescala.Trees._
 import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
-import leon.purescala.TypeTrees.TypeTree
+import leon.purescala.TypeTrees._
 import leon.purescala.Common._
 import leon.purescala.Constructors._
 import leon.purescala.Extractors._
@@ -28,13 +28,18 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
 
 object Problem {
   def fromChoose(ch: Choose, pc: Expr = BooleanLiteral(true)): Problem = {
-    val xs = ch.vars
-    val phi = simplifyLets(ch.pred)
-    val as = (variablesOf(And(pc, phi))--xs).toList
+    val xs = {
+      val tps = ch.pred.getType.asInstanceOf[FunctionType].from
+      tps map (FreshIdentifier("x", _, true))
+    }.toList
+
+    val phi = application(simplifyLets(ch.pred), xs map { _.toVariable})
+    val as = (variablesOf(And(pc, phi)) -- xs).toList
 
     // FIXME do we need this at all?
     val TopLevelAnds(clauses) = pc
 
+    // @mk FIXME: Is this needed?
     val (pcs, wss) = clauses.partition {
       case w : Witness => false
       case _ => true

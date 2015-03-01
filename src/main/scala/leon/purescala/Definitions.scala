@@ -379,7 +379,7 @@ object Definitions {
     }
 
     def postcondition = postconditionOf(fullBody)
-    def postcondition_=(op: Option[(Identifier, Expr)]) = {
+    def postcondition_=(op: Option[Expr]) = {
       fullBody = withPostcondition(fullBody, op) 
     }
 
@@ -493,9 +493,9 @@ object Definitions {
     lazy val returnType: TypeTree = translated(fd.returnType)
 
     private var trCache = Map[Expr, Expr]()
-    private var postCache = Map[(Identifier, Expr), (Identifier, Expr)]()
+    private var postCache = Map[Expr, Expr]()
 
-    def body          = fd.body.map { b =>
+    def body = fd.body.map { b =>
       trCache.getOrElse(b, {
         val res = translated(b)
         trCache += b -> res
@@ -503,7 +503,7 @@ object Definitions {
       })
     }
 
-    def precondition  = fd.precondition.map { pre =>
+    def precondition = fd.precondition.map { pre =>
       trCache.getOrElse(pre, {
         val res = translated(pre)
         trCache += pre -> res
@@ -512,11 +512,11 @@ object Definitions {
     }
 
     def postcondition = fd.postcondition.map {
-      case (id, post) if typesMap.nonEmpty =>
-        postCache.getOrElse((id, post), {
+      case post if typesMap.nonEmpty =>
+        postCache.getOrElse(post, {
           val nId = FreshIdentifier(id.name, translated(id.getType)).copiedFrom(id)
-          val res = nId -> instantiateType(post, typesMap, paramsMap + (id -> nId))
-          postCache += ((id,post) -> res)
+          val res = instantiateType(post, typesMap, paramsMap)
+          postCache += (post -> res)
           res
         })
 

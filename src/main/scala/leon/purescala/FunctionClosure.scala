@@ -77,21 +77,17 @@ object FunctionClosure extends TransformationPhase {
         functionClosure(newExpr, newBindedVars, freshIds, fd2FreshFd)
       }
 
-
       val newPrecondition = simplifyLets(introduceLets(and((capturedConstraints ++ fd.precondition).toSeq :_*), fd2FreshFd))
       newFunDef.precondition = if(newPrecondition == BooleanLiteral(true)) None else Some(newPrecondition)
 
-      val freshPostcondition = fd.postcondition.map{ case (id, post) => (id, introduceLets(post, fd2FreshFd)) }
+      val freshPostcondition = fd.postcondition.map{ post => introduceLets(post, fd2FreshFd) }
       newFunDef.postcondition = freshPostcondition
       
       pathConstraints = fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints
-      //val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraValDefFreshIds.map(_.toVariable))))))
       val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraValDefOldIds.map(_.toVariable))))))
       newFunDef.body = freshBody
       pathConstraints = pathConstraints.tail
 
-      //val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> 
-      //                  ((newFunDef, extraValDefOldIds.map(id => id2freshId.get(id).getOrElse(id).toVariable)))))
       val freshRest = functionClosure(rest, bindedVars, id2freshId, fd2FreshFd + (fd -> ((newFunDef, extraValDefOldIds.map(_.toVariable)))))
       freshRest.copiedFrom(l)
     }

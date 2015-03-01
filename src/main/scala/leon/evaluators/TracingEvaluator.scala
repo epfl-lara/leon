@@ -78,16 +78,15 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
           val callResult = e(body)(frame, gctx)
 
-          if(tfd.hasPostcondition) {
-            val (id, post) = tfd.postcondition.get
+          tfd.postcondition match {
+            case Some(post) =>
 
-            gctx.values ::= id.toVariable.setPos(id) -> callResult
-
-            e(post)(frame.withNewVar(id, callResult), gctx) match {
-              case BooleanLiteral(true) =>
-              case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
-              case other => throw EvalError(typeErrorMsg(other, BooleanType))
-            }
+              e(Application(post, Seq(callResult)))(frame, gctx) match {
+                case BooleanLiteral(true) =>
+                case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
+                case other => throw EvalError(typeErrorMsg(other, BooleanType))
+              }
+            case None =>
           }
 
           (callResult, callResult)

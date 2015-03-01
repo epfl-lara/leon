@@ -180,7 +180,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val invariantPostcondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2ResultVars, expr))
           whileFunDef.precondition = invariantPrecondition
           whileFunDef.postcondition = trivialPostcondition.map(expr => 
-              (resVar.id, and(expr, invariantPostcondition match { 
+              Lambda(Seq(ValDef(resVar.id)), and(expr, invariantPostcondition match { 
                 case Some(e) => e
                 case None => BooleanLiteral(true)
               })))
@@ -237,7 +237,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
       }
-      case c @ Choose(ids, b, _) => {
+      case c @ Choose(b, _) => {
         //Recall that Choose cannot mutate variables from the scope
         (c, (b2: Expr) => b2, Map())
       }
