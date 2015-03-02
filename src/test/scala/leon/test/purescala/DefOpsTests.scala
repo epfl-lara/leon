@@ -10,19 +10,16 @@ import frontends.scalac._
 import utils._
 import leon.test.LeonTestSuite
 
-private [purescala] object DefOpsHelper { 
+private [purescala] object DefOpsHelper extends LeonTestSuite { 
   private def parseStrings(strs : List[String]) : Program = {
     val settings : Settings = Settings(
       verify = false
     )
-    val reporter = new DefaultReporter(settings)
-    val context : LeonContext = LeonContext(
-      reporter,
-      new InterruptManager(reporter),
-      settings,
-      Seq()
+    val c = createLeonContext()
+    val context : LeonContext = c.copy(settings = 
+      c.settings.copy(verify = false)
     )
-    
+      
     val pipeline = 
       ExtractionPhase andThen 
       PreprocessingPhase 
