@@ -57,7 +57,9 @@ object Definitions {
 
     def subDefinitions = Seq()
 
-    def toVariable : Variable = Variable(id, tpe)
+    // Warning: the variable will not have the same type as the ValDef, but 
+    // the Identifier type is enough for all use cases in Leon
+    def toVariable : Variable = Variable(id)
 
     setSubDefOwners()
   }

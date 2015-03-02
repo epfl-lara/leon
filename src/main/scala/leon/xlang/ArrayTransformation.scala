@@ -53,7 +53,7 @@ object ArrayTransformation extends TransformationPhase {
     }
     case v@Variable(i) => {
       val freshId = id2FreshId.get(i).getOrElse(i)
-      Variable(freshId, Some(v.getType))
+      Variable(freshId)
     }
 
     case LetVar(id, e, b) => {
