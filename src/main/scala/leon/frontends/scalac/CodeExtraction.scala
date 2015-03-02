@@ -1020,7 +1020,8 @@ trait CodeExtraction extends ASTExtractors {
           val oute = extractTree(out)
           val rc = cases.map(extractMatchCase(_))
 
-          val UnwrapTuple(ines) = ine
+          // @mk: FIXME: this whole sanity checking is very dodgy at best.
+          val ines = unwrapTuple(ine, ine.isInstanceOf[Tuple]) // @mk We untuple all tuples
           ines foreach {
             case v @ Variable(_) if currentFunDef.params.map{ _.toVariable } contains v =>
             case LeonThis(_) =>
@@ -1061,10 +1062,10 @@ trait CodeExtraction extends ASTExtractors {
 
           tupleExpr.getType match {
             case TupleType(tpes) if tpes.size >= index =>
-              tupleSelect(tupleExpr, index)
+              tupleSelect(tupleExpr, index, true)
 
             case _ =>
-              outOfSubsetError(current, "Invalid tupple access")
+              outOfSubsetError(current, "Invalid tuple access")
           }
 
         case ExValDef(vs, tpt, bdy) =>

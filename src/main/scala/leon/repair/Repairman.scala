@@ -10,7 +10,7 @@ import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.DefOps._
 import purescala.Constructors._
-import purescala.Extractors.UnwrapTuple
+import purescala.Extractors.unwrapTuple
 import purescala.ScalaPrinter
 import evaluators._
 import solvers._
@@ -412,7 +412,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     import bonsai._
     import bonsai.enumerators._
     import utils.ExpressionGrammars.ValueGrammar
-    import purescala.Extractors.UnwrapTuple
 
     val maxEnumerated = 1000
     val maxValid      = 400
@@ -420,7 +419,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams(checkContracts = true))
     val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
 
-    val inputs = enum.iterator(tupleTypeWrap(fd.params map { _.getType})).map{ case UnwrapTuple(is) => is }
+    val inputs = enum.iterator(tupleTypeWrap(fd.params map { _.getType})).map(unwrapTuple(_, fd.params.size))
 
     val filtering: Seq[Expr] => Boolean = fd.precondition match {
       case None =>
@@ -493,7 +492,9 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           val inputsMap = (p.as zip inputs).toMap
 
           (e.eval(s1, inputsMap), e.eval(s2, inputsMap)) match {
-            case (EvaluationResults.Successful(UnwrapTuple(r1)), EvaluationResults.Successful(UnwrapTuple(r2))) =>
+            case (EvaluationResults.Successful(tr1), EvaluationResults.Successful(tr2)) =>
+              val r1 = unwrapTuple(tr1, p.xs.size)
+              val r2 = unwrapTuple(tr2, p.xs.size)
               Some((InOutExample(inputs, r1), InOutExample(inputs, r2)))
             case _ =>
               None

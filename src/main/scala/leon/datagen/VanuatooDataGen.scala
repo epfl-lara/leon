@@ -196,10 +196,12 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           (AnyPattern[Expr, TypeTree](), false)
       }
 
-    case (t: codegen.runtime.Tuple, tt@UnwrapTupleType(parts)) =>
+    case (t: codegen.runtime.Tuple, tpe) =>
       val r = t.__getRead()
 
-      val c = getConstructors(tt)(0)
+      val parts = unwrapTupleType(tpe, t.getArity())
+
+      val c = getConstructors(tpe)(0)
 
       val elems = for (i <- 0 until t.getArity) yield {
         if (((r >> i) & 1) == 1) {
@@ -229,7 +231,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       val ttype = tupleTypeWrap(argorder.map(_.getType))
       val tid = FreshIdentifier("tup", ttype)
 
-      val map = argorder.zipWithIndex.map{ case (id, i) => (id -> tupleSelect(Variable(tid), i+1)) }.toMap
+      val map = argorder.zipWithIndex.map{ case (id, i) => (id -> tupleSelect(Variable(tid), i+1, argorder.size)) }.toMap
 
       val newExpr = replaceFromIDs(map, expression)
 
@@ -325,7 +327,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       def computeNext(): Option[Seq[Expr]] = {
         //return None
         while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
-          val model = it.next//.asInstanceOf[Tuple]
+          val model = it.next
 
           if (model eq null) {
             total = maxEnumerated
@@ -357,8 +359,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
                 it.skipIsomorphic()
               }
 
-              val UnwrapTuple(exprs) = model
-              return Some(exprs);
+              return Some(unwrapTuple(model, ins.size));
             }
 
             //if (total % 1000 == 0) {

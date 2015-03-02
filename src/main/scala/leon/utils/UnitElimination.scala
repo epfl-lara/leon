@@ -53,7 +53,7 @@ object UnitElimination extends TransformationPhase {
   }
 
   private def simplifyType(tpe: TypeTree): TypeTree = tpe match {
-    case TupleType(tpes) => tupleTypeWrap(tpes.map(simplifyType).filterNot{ case UnitType => true case _ => false })
+    case TupleType(tpes) => tupleTypeWrap(tpes.map(simplifyType).filterNot{ _ == UnitType })
     case t => t
   }
 
@@ -72,12 +72,10 @@ object UnitElimination extends TransformationPhase {
       }
       case ts@TupleSelect(t, index) => {
         val TupleType(tpes) = t.getType
-        val selectionType = tpes(index-1)
-        val (_, newIndex) = tpes.zipWithIndex.foldLeft((0,-1)){
-          case ((nbUnit, newIndex), (tpe, i)) =>
-            if(i == index-1) (nbUnit, index - nbUnit) else (if(tpe == UnitType) nbUnit + 1 else nbUnit, newIndex)
-        }
-        tupleSelect(removeUnit(t), newIndex)
+        val simpleTypes = tpes map simplifyType
+        val newArity = tpes.count(_ != UnitType)
+        val newIndex = simpleTypes.take(index).filter(_ != UnitType).size
+        tupleSelect(removeUnit(t), newIndex, newArity)
       }
       case Let(id, e, b) => {
         if(id.getType == UnitType)

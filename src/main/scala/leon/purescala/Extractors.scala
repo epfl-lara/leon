@@ -27,7 +27,7 @@ object Extractors {
       case SetMax(s) => Some((s,SetMax))
       case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
       case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
-      case TupleSelect(t, i) => Some((t, tupleSelect(_, i)))
+      case TupleSelect(t, i) => Some((t, tupleSelect(_, i, t.getType.asInstanceOf[TupleType].dimension)))
       case ArrayLength(a) => Some((a, ArrayLength))
       case Lambda(args, body) => Some((body, Lambda(args, _)))
       case Forall(args, body) => Some((body, Forall(args, _)))
@@ -287,12 +287,19 @@ object Extractors {
 
   object FiniteLambda {
     def unapply(lambda: Lambda): Option[(Expr, Seq[(Expr, Expr)])] = {
+      val inSize = lambda.getType.asInstanceOf[FunctionType].from.size
       lambda match {
         case Lambda(args, Let(theMapVar, FiniteMap(pairs), IfExpr(
-          MapIsDefinedAt(Variable(theMapVar1), UnwrapTuple(args2)), 
-          MapGet(Variable(theMapVar2), UnwrapTuple(args3)), 
+          MapIsDefinedAt(Variable(theMapVar1), targs2), 
+          MapGet(Variable(theMapVar2), targs3), 
           default
-        ))) if (args map { x: ValDef => x.toVariable }) == args2 && args2 == args3 && theMapVar == theMapVar1 && theMapVar == theMapVar2 =>
+        ))) if {
+          val args2 = unwrapTuple(targs2, inSize)
+          val args3 = unwrapTuple(targs3, inSize)
+          (args map { x: ValDef => x.toVariable }) == args2 && 
+          args2 == args3 && theMapVar == theMapVar1 && 
+          theMapVar == theMapVar2
+        } =>
           Some(default, pairs)
         case Lambda(args, default) if (variablesOf(default) & args.toSet.map{x: ValDef => x.id}).isEmpty =>
           Some(default, Seq())
@@ -379,26 +386,29 @@ object Extractors {
     }
   }
 
-  object UnwrapTuple {
-    def unapply(e: Expr): Option[Seq[Expr]] = Option(e) map {
-      case Tuple(subs) => subs
-      case other => Seq(other)
-    }
+  def unwrapTuple(e: Expr, isTuple: Boolean): Seq[Expr] = e.getType match {
+    case TupleType(subs) if isTuple => 
+      for (ind <- 1 to subs.size) yield { tupleSelect(e, ind, isTuple) }      
+    case _ if !isTuple => Seq(e)
+    case tp => sys.error(s"Calling unwrapTuple on non-tuple $e of type $tp")
   }
+  def unwrapTuple(e: Expr, expectedSize: Int): Seq[Expr] = unwrapTuple(e, expectedSize > 1)
 
-  object UnwrapTupleType {
-    def unapply(tp: TypeTree) = Option(tp) map {
-      case TupleType(subs) => subs
-      case other => Seq(other)
-    }
+  def unwrapTupleType(tp: TypeTree, isTuple: Boolean): Seq[TypeTree] = tp match {
+    case TupleType(subs) if isTuple => subs
+    case tp if !isTuple => Seq(tp)
+    case tp => sys.error(s"Calling unwrapTupleType on $tp")
   }
+  def unwrapTupleType(tp: TypeTree, expectedSize: Int): Seq[TypeTree] =
+    unwrapTupleType(tp, expectedSize > 1)
 
-  object UnwrapTuplePattern {
-    def unapply(p: Pattern): Option[Seq[Pattern]] = Option(p) map {
-      case TuplePattern(_,subs) => subs
-      case other => Seq(other)
-    }
+  def unwrapTuplePattern(p: Pattern, isTuple: Boolean): Seq[Pattern] = p match {
+    case TuplePattern(_, subs) if isTuple => subs
+    case tp if !isTuple => Seq(tp)
+    case tp => sys.error(s"Calling unwrapTuplePattern on $p")
   }
+  def unwrapTuplePattern(p: Pattern, expectedSize: Int): Seq[Pattern] =
+    unwrapTuplePattern(p, expectedSize > 1)
   
   object LetPattern {
     def apply(patt : Pattern, value: Expr, body: Expr) : Expr = {

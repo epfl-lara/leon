@@ -275,7 +275,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
           val m: Map[Expr, Expr] = if (ids.size == 1) {
             Map(Variable(ids.head) -> Variable(cid))
           } else {
-            ids.zipWithIndex.map{ case (id, i) => Variable(id) -> tupleSelect(Variable(cid), i+1) }.toMap
+            ids.zipWithIndex.map{ case (id, i) => Variable(id) -> tupleSelect(Variable(cid), i+1, ids.size) }.toMap
           }
 
           storeGuarded(pathVar, replace(m, cond))

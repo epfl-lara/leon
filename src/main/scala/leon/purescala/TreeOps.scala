@@ -476,10 +476,10 @@ object TreeOps {
   def normalizeExpression(expr: Expr) : Expr = {
     def rec(e: Expr): Option[Expr] = e match {
       case TupleSelect(Let(id, v, b), ts) =>
-        Some(Let(id, v, tupleSelect(b, ts)))
+        Some(Let(id, v, tupleSelect(b, ts, true)))
 
       case TupleSelect(LetTuple(ids, v, b), ts) =>
-        Some(letTuple(ids, v, tupleSelect(b, ts)))
+        Some(letTuple(ids, v, tupleSelect(b, ts, true)))
 
       case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
         Some(thenn)
@@ -580,7 +580,7 @@ object TreeOps {
 
       case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
         val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-          case (v,i) => (v -> tupleSelect(tExpr, i + 1).copiedFrom(v))
+          case (v,i) => (v -> tupleSelect(tExpr, i + 1, true).copiedFrom(v))
         }
 
         Some(replace(substMap, body))
@@ -611,7 +611,7 @@ object TreeOps {
           Some(body)
         } else if(total == 1) {
           val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-            case (v,i) => (v -> tupleSelect(tExpr, i + 1).copiedFrom(v))
+            case (v,i) => (v -> tupleSelect(tExpr, i + 1, ids.size).copiedFrom(v))
           }
 
           Some(replace(substMap, body))
@@ -719,7 +719,7 @@ object TreeOps {
       case TuplePattern(_, subps) =>
         val TupleType(subts) = in.getType
         val subExprs = (subps zip subts).zipWithIndex map {
-          case ((p, t), index) => p.binder.map(_.toVariable).getOrElse(tupleSelect(in, index+1))
+          case ((p, t), index) => p.binder.map(_.toVariable).getOrElse(tupleSelect(in, index+1, subps.size))
         }
 
         // Special case to get rid of (a,b) match { case (c,d) => .. }
@@ -803,7 +803,7 @@ object TreeOps {
         case TuplePattern(ob, subps) => {
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
-          val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1), p)}
+          val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
         }
         case LiteralPattern(ob,lit) => and(Equals(in,lit), bind(ob,in))
@@ -832,7 +832,7 @@ object TreeOps {
       val TupleType(tpes) = in.getType
       assert(tpes.size == subps.size)
 
-      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(tupleSelect(in, i+1), p)}
+      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(tupleSelect(in, i+1, subps.size), p)}
       val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
       b match {
         case Some(id) => map + (id -> in)

@@ -44,7 +44,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
     term.getType match {
       case TupleType(ts) =>
         val t = FreshIdentifier("t", term.getType, true)
-        val newTerm = Let(t, term, tupleWrap(indices.map(i => tupleSelect(t.toVariable, i+1))))
+        val newTerm = Let(t, term, tupleWrap(indices.map(i => tupleSelect(t.toVariable, i+1, indices.size))))
 
         Solution(pre, defs, newTerm)
       case _ =>

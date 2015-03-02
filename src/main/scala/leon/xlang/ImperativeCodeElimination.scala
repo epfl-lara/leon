@@ -70,15 +70,15 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
 
         val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
         val resId = FreshIdentifier("res", iteRType)
-        val freshIds = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
-        val iteType = if(modifiedVars.isEmpty) resId.getType else tupleTypeWrap(resId.getType +: freshIds.map(_.getType))
+        val freshIds = modifiedVars.map( { _.freshen })
+        val iteType = tupleTypeWrap(resId.getType +: freshIds.map(_.getType))
 
-        val thenVal = if(modifiedVars.isEmpty) tRes else tupleWrap(tRes +: modifiedVars.map(vId => tFun.get(vId) match {
+        val thenVal = tupleWrap(tRes +: modifiedVars.map(vId => tFun.get(vId) match {
           case Some(newId) => newId.toVariable
           case None => vId.toVariable
         }))
 
-        val elseVal = if(modifiedVars.isEmpty) eRes else tupleWrap(eRes +: modifiedVars.map(vId => eFun.get(vId) match {
+        val elseVal = tupleWrap(eRes +: modifiedVars.map(vId => eFun.get(vId) match {
           case Some(newId) => newId.toVariable
           case None => vId.toVariable
         }))
@@ -87,16 +87,13 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
 
         val scope = ((body: Expr) => {
           val tupleId = FreshIdentifier("t", iteType)
-          cScope(
-            Let(tupleId, iteExpr, 
-              if(freshIds.isEmpty)
-                Let(resId, tupleId.toVariable, body)
-              else
-                Let(resId, tupleSelect(tupleId.toVariable, 1),
-                  freshIds.zipWithIndex.foldLeft(body)((b, id) => 
-                    Let(id._1, 
-                      tupleSelect(tupleId.toVariable, id._2 + 2), 
-                      b)))).copiedFrom(expr))
+          cScope( Let(tupleId, iteExpr, Let(
+            resId, 
+            tupleSelect(tupleId.toVariable, 1, modifiedVars.nonEmpty),
+            freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+              Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 2, true), b)
+            ))
+          ).copiedFrom(expr))
         })
 
         (resId.toVariable, scope, cFun ++ modifiedVars.zip(freshIds).toMap)
@@ -110,10 +107,10 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).intersect(varInScope).toSeq
         val resId = FreshIdentifier("res", m.getType)
         val freshIds = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
-        val matchType = if(modifiedVars.isEmpty) resId.getType else tupleTypeWrap(resId.getType +: freshIds.map(_.getType))
+        val matchType = tupleTypeWrap(resId.getType +: freshIds.map(_.getType))
 
         val csesVals = csesRes.zip(csesFun).map{ 
-          case (cRes, cFun) => if(modifiedVars.isEmpty) cRes else tupleWrap(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
+          case (cRes, cFun) => tupleWrap(cRes +: modifiedVars.map(vId => cFun.get(vId) match {
             case Some(newId) => newId.toVariable
             case None => vId.toVariable
           }))
@@ -130,14 +127,13 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val tupleId = FreshIdentifier("t", matchType)
           scrutScope(
             Let(tupleId, matchE, 
-              if(freshIds.isEmpty)
-                Let(resId, tupleId.toVariable, body)
-              else
-                Let(resId, tupleSelect(tupleId.toVariable, 1),
-                  freshIds.zipWithIndex.foldLeft(body)((b, id) => 
-                    Let(id._1, 
-                      tupleSelect(tupleId.toVariable, id._2 + 2), 
-                      b)))))
+              Let(resId, tupleSelect(tupleId.toVariable, 1, freshIds.nonEmpty),
+                freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+                  Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 2, true), b)
+                )
+              )
+            )
+          )
         })
 
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
@@ -155,7 +151,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
           val whileFunValDefs = whileFunVars.map(ValDef(_))
-          val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else tupleTypeWrap(whileFunVars.map(_.getType))
+          val whileFunReturnType = tupleTypeWrap(whileFunVars.map(_.getType))
           val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), Nil, whileFunReturnType, whileFunValDefs,DefType.MethodDef).setPos(wh)
           wasLoop += whileFunDef
           
@@ -170,10 +166,9 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
 
           val resVar = Variable(FreshIdentifier("res", whileFunReturnType))
           val whileFunVars2ResultVars: Map[Expr, Expr] = 
-            if(whileFunVars.size == 1) 
-              Map(whileFunVars.head.toVariable -> resVar)
-            else
-              whileFunVars.zipWithIndex.map{ case (v, i) => (v.toVariable, tupleSelect(resVar, i+1)) }.toMap
+            whileFunVars.zipWithIndex.map{ case (v, i) => 
+              (v.toVariable, tupleSelect(resVar, i+1, whileFunVars.size))
+            }.toMap
           val modifiedVars2ResultVars: Map[Expr, Expr]  = modifiedVars.map(id => 
             (id.toVariable, whileFunVars2ResultVars(modifiedVars2WhileFunVars(id).toVariable))).toMap
 
@@ -190,20 +185,16 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
                 case None => BooleanLiteral(true)
               })))
 
-          val finalVars = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
+          val finalVars = modifiedVars.map(_.freshen)
           val finalScope = ((body: Expr) => {
             val tupleId = FreshIdentifier("t", whileFunReturnType)
-            LetDef(
-              whileFunDef,
-              Let(tupleId, 
-                  FunctionInvocation(whileFunDef.typed, modifiedVars.map(_.toVariable)).setPos(wh), 
-                  if(finalVars.size == 1)
-                    Let(finalVars.head, tupleId.toVariable, body)
-                  else
-                    finalVars.zipWithIndex.foldLeft(body)((b, id) => 
-                      Let(id._1, 
-                        tupleSelect(tupleId.toVariable, id._2 + 1), 
-                        b))))
+            LetDef( whileFunDef, Let(
+              tupleId, 
+              FunctionInvocation(whileFunDef.typed, modifiedVars.map(_.toVariable)).setPos(wh), 
+              finalVars.zipWithIndex.foldLeft(body){(b, id) => 
+                Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 1, finalVars.size), b)
+              }
+            ))
           })
 
           (UnitLiteral(), finalScope, modifiedVars.zip(finalVars).toMap)

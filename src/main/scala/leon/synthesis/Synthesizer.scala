@@ -105,16 +105,9 @@ class Synthesizer(val context : LeonContext,
     val ret = tupleTypeWrap(problem.xs.map(_.getType))
     val res = Variable(FreshIdentifier("res", ret))
 
-    val mapPost: Map[Expr, Expr] =
-      if (problem.xs.size > 1) {
-        problem.xs.zipWithIndex.map{ case (id, i)  =>
-          Variable(id) -> tupleSelect(res, i+1)
-        }.toMap
-      } else {
-        problem.xs.map{ case id  =>
-          Variable(id) -> res
-        }.toMap
-      }
+    val mapPost: Map[Expr, Expr] = problem.xs.zipWithIndex.map{ case (id, i)  =>
+      Variable(id) -> tupleSelect(res, i+1, problem.xs.size)
+    }.toMap
 
     val fd = new FunDef(FreshIdentifier(ci.fd.id.name+"_final", alwaysShowUniqueID = true), Nil, ret, problem.as.map(ValDef(_)), DefType.MethodDef)
     fd.precondition  = Some(and(problem.pc, sol.pre))

@@ -151,9 +151,8 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
         // We will instantiate them according to a simple grammar to get them.
         val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
         val values = enum.iterator(tupleTypeWrap(freeVars.map{ _.getType }))
-        val instantiations = values map {
-          case UnwrapTuple(ins) =>
-            (freeVars zip ins).toMap
+        val instantiations = values.map {
+          v => freeVars.zip(unwrapTuple(v, freeVars.size)).toMap
         }
         
         def filterGuard(e: Expr, mapping: Map[Identifier, Expr]): Boolean = cs.optGuard match {

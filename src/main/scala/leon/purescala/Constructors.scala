@@ -11,31 +11,26 @@ object Constructors {
   import TypeTreeOps._
   import Common._
   import TypeTrees._
-  import purescala.Extractors.UnwrapTupleType
 
-  def tupleSelect(t: Expr, index: Int) = t match {
-    case Tuple(es) =>
-      // @mk FIXME: Notice tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x. This seems wrong.
-      es(index-1)
-    case _ if t.getType.isInstanceOf[TupleType] =>
+  // If isTuple, the whole expression is returned. This is to avoid a situation
+  // like tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x, which is not expected.
+  // Instead, tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> Tuple(x,y).
+  def tupleSelect(t: Expr, index: Int, isTuple: Boolean): Expr = t match {
+    case Tuple(es) if isTuple => es(index-1)
+    case _ if t.getType.isInstanceOf[TupleType] && isTuple =>
       TupleSelect(t, index)
-    case _ if (index == 1) =>
-      // For cases like tupleSelect(tupleWrap(Seq(x)), 1) -> x
-      t
+    case other if !isTuple => other
     case _ =>
-      sys.error(s"Trying to construct TupleSelect with non-tuple $t and index $index!=1")
+      sys.error(s"Calling tupleSelect on non-tuple $t")
   }
+
+  def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
 
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
     case Nil =>
       body
     case x :: Nil =>
-      if (isSubtypeOf(value.getType, x.getType) || !value.getType.isInstanceOf[TupleType]) {
-        // This is for cases where we build it like: letTuple(List(x), tupleWrap(List(z)))
-        Let(x, value, body)
-      } else {
-        Let(x, tupleSelect(value, 1), body)
-      }
+      Let(x, value, body)
     case xs =>
       require(
         value.getType.isInstanceOf[TupleType],
@@ -218,8 +213,7 @@ object Constructors {
   }
   
   def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
-    val UnwrapTupleType(argTypes) = els.headOption.map{_._1.getType}.getOrElse(tupleTypeWrap(inputTypes))
-    val args = argTypes map { argType => ValDef(FreshIdentifier("x", argType, true)) }
+    val args = inputTypes map { tpe => ValDef(FreshIdentifier("x", tpe, true)) }
     if (els.isEmpty) {
       Lambda(args, default)
     } else {
