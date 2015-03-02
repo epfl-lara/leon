@@ -15,6 +15,6 @@ class DefaultEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
   def initGC = new GlobalContext()
 
   case class DefaultRecContext(mappings: Map[Identifier, Expr]) extends RecContext {
-    def withVars(news: Map[Identifier, Expr]) = copy(news)
+    def newVars(news: Map[Identifier, Expr]) = copy(news)
   }
 }

@@ -21,7 +21,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
   class TracingGlobalContext(var values: List[(Tree, Expr)]) extends GlobalContext
 
   case class TracingRecContext(mappings: Map[Identifier, Expr], tracingFrames: Int) extends RecContext {
-    def withVars(news: Map[Identifier, Expr]) = copy(mappings = news)
+    def newVars(news: Map[Identifier, Expr]) = copy(mappings = news)
   }
 
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = {

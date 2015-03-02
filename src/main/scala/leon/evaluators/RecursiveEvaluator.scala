@@ -32,14 +32,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   trait RecContext {
     def mappings: Map[Identifier, Expr]
 
-    def withVars(news: Map[Identifier, Expr]): RC;
+    def newVars(news: Map[Identifier, Expr]): RC;
 
     def withNewVar(id: Identifier, v: Expr): RC = {
-      withVars(mappings + (id -> v))
+      newVars(mappings + (id -> v))
     }
 
     def withNewVars(news: Map[Identifier, Expr]): RC = {
-      withVars(mappings ++ news)
+      newVars(mappings ++ news)
     }
   }
 
@@ -89,7 +89,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Lambda(params, body) =>
           val newArgs = args.map(e)
           val mapping = (params.map(_.id) zip newArgs).toMap
-          e(body)(rctx.withVars(mapping), gctx)
+          e(body)(rctx.withNewVars(mapping), gctx)
         case f =>
           throw EvalError("Cannot apply non-lambda function " + f)
       }
@@ -149,7 +149,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val evArgs = args.map(a => e(a))
 
       // build a mapping for the function...
-      val frame = rctx.withVars((tfd.params.map(_.id) zip evArgs).toMap)
+      val frame = rctx.newVars((tfd.params.map(_.id) zip evArgs).toMap)
       
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frame, gctx) match {

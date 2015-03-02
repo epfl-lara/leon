@@ -45,7 +45,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   def fiStatus = fiStatus_.toMap.withDefaultValue(false)
   
   case class CollectingRecContext(mappings: Map[Identifier, Expr], lastFI : Option[FI]) extends RecContext {
-    def withVars(news: Map[Identifier, Expr]) = copy(news, lastFI)
+    def newVars(news: Map[Identifier, Expr]) = copy(news, lastFI)
     def withLastFI(fi : FI) = copy(lastFI = Some(fi))
   }
   
@@ -59,7 +59,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
       val evArgs = args.map(a => e(a))
       
       // build a mapping for the function...
-      val frameBlamingCaller = rctx.withVars((tfd.params.map(_.id) zip evArgs).toMap)
+      val frameBlamingCaller = rctx.newVars((tfd.params.map(_.id) zip evArgs).toMap)
       
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frameBlamingCaller, gctx) match {

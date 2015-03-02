@@ -26,7 +26,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
   val isCompiled = prog.definedFunctions.toSet
 
   case class DefaultRecContext(mappings: Map[Identifier, Expr], needJVMRef: Boolean = false) extends RecContext {
-    def withVars(news: Map[Identifier, Expr]) = copy(news)
+    def newVars(news: Map[Identifier, Expr]) = copy(news)
   }
 
   case class RawObject(o: AnyRef, tpe: TypeTree) extends Expr {
