@@ -30,10 +30,14 @@ object TypeTrees {
 
   abstract class TypeTree extends Tree with Typed {
     val getType = this
+
+    // Checks wether the subtypes of this type contain Untyped,
+    // and if so sets this to Untyped.
+    // Assumes the subtypes are correctly formed, so it does not descend 
+    // deep into the TypeTree.
     def unveilUntyped: TypeTree = this match {
-      case NAryType(tps, builder) => 
-        val subs = tps map { _.unveilUntyped }
-        if (subs contains Untyped) Untyped else builder(subs)
+      case NAryType(tps, _) => 
+        if (tps contains Untyped) Untyped else this
     }
   }
 
@@ -134,6 +138,6 @@ object TypeTrees {
     }
   }
   
-  implicit def optTypeToType(tp: Option[TypeTree]) = tp getOrElse Untyped
+  def optionToType(tp: Option[TypeTree]) = tp getOrElse Untyped
 
 }

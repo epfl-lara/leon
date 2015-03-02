@@ -99,7 +99,7 @@ object Trees {
   }
 
   case class Lambda(args: Seq[ValDef], body: Expr) extends Expr {
-    val getType = FunctionType(args.map(_.tpe), body.getType)
+    val getType = FunctionType(args.map(_.tpe), body.getType).unveilUntyped
   }
 
   case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
@@ -112,7 +112,7 @@ object Trees {
   }
 
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr {
-    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped)
+    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped).unveilUntyped
   }
 
 
@@ -122,7 +122,7 @@ object Trees {
    */
   case class Tuple (exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
-    val getType = TupleType(exprs.map(_.getType))
+    val getType = TupleType(exprs.map(_.getType)).unveilUntyped
   }
 
   /*
@@ -146,7 +146,7 @@ object Trees {
   abstract sealed class MatchLike extends Expr {
     val scrutinee : Expr
     val cases : Seq[MatchCase]  
-    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
   }
 
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends MatchLike {
@@ -417,11 +417,11 @@ object Trees {
   /* Set expressions */
   case class NonemptySet(elements: Set[Expr]) extends Expr {
     require(elements.nonEmpty)
-    val getType = SetType(leastUpperBound(elements.toSeq.map(_.getType))).unveilUntyped
+    val getType = SetType(optionToType(leastUpperBound(elements.toSeq.map(_.getType)))).unveilUntyped
   }
   
   case class EmptySet(tpe: TypeTree) extends Expr {
-    val getType = SetType(tpe)
+    val getType = SetType(tpe).unveilUntyped
   }
   
   case class ElementOfSet(element: Expr, set: Expr) extends Expr {
@@ -435,13 +435,13 @@ object Trees {
   }
 
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   case class SetUnion(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
 
   /* Map operations. */
@@ -450,8 +450,8 @@ object Trees {
     val getType = {
       val (keys, values) = singletons.unzip
       MapType(
-        leastUpperBound(keys.map(_.getType)),
-        leastUpperBound(values.map(_.getType))
+        optionToType(leastUpperBound(keys.map(_.getType))),
+        optionToType(leastUpperBound(values.map(_.getType)))
       ).unveilUntyped
     }
   }
@@ -467,7 +467,7 @@ object Trees {
     }
   }
   case class MapUnion(map1: Expr, map2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   case class MapDifference(map: Expr, keys: Expr) extends Expr {
     val getType = map.getType
@@ -490,7 +490,7 @@ object Trees {
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
     val getType = array.getType match {
       case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped)
+        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped).unveilUntyped
       case _ =>
         Untyped
     }
@@ -502,7 +502,7 @@ object Trees {
 
   case class NonemptyArray(elems: Map[Int, Expr], defaultLength: Option[(Expr, Expr)]) extends Expr {
     private val elements = elems.values.toList ++ defaultLength.map{_._1}
-    val getType = ArrayType(leastUpperBound(elements map { _.getType})).unveilUntyped
+    val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType}))).unveilUntyped
   }
 
   case class EmptyArray(tpe: TypeTree) extends Expr {
@@ -536,7 +536,7 @@ object Trees {
    **/
   @deprecated("3.0", "Use NonemptyArray with default value")
   case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr {
-    val getType = ArrayType(defaultValue.getType)
+    val getType = ArrayType(defaultValue.getType).unveilUntyped
   }
 
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
@@ -555,7 +555,7 @@ object Trees {
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class NonemptyMultiset(elements: Seq[Expr]) extends Expr {
-    val getType = MultisetType(leastUpperBound(elements.toSeq.map(_.getType))).unveilUntyped
+    val getType = MultisetType(optionToType(leastUpperBound(elements.toSeq.map(_.getType)))).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class Multiplicity(element: Expr, multiset: Expr) extends Expr {
@@ -567,24 +567,24 @@ object Trees {
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr  {
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union 
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr  {
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped)
+    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
   case class MultisetToSet(multiset: Expr) extends Expr {
     val getType = multiset.getType match {
-      case MultisetType(base) => SetType(base)
+      case MultisetType(base) => SetType(base).unveilUntyped
       case _ => Untyped
     }
   }
