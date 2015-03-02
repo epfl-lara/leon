@@ -115,7 +115,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
             val body = grouped.init.foldRight(grouped.last.last) { case (t, elze) =>
               IfExpr(Equals(argsTuple, tupleWrap(t.init)), t.last, elze)
             }
-            Lambda(args.map(id => ValDef(id, id.getType)), body)
+            Lambda(args.map(id => ValDef(id)), body)
           }, ft.toString + "@" + size)
         }
         constructors += ft -> cs

@@ -154,7 +154,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         else {
           val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
-          val whileFunValDefs = whileFunVars.map(id => ValDef(id, id.getType))
+          val whileFunValDefs = whileFunVars.map(ValDef(_))
           val whileFunReturnType = if(whileFunVars.size == 1) whileFunVars.head.getType else tupleTypeWrap(whileFunVars.map(_.getType))
           val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), Nil, whileFunReturnType, whileFunValDefs,DefType.MethodDef).setPos(wh)
           wasLoop += whileFunDef

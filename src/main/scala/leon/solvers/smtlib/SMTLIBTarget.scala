@@ -199,14 +199,14 @@ trait SMTLIBTarget {
         val sym = freshSym(ct.id)
 
         val conss = sub.map { case cct =>
-          Constructor(freshSym(cct.id), cct, cct.fields.map(vd => (freshSym(vd.id), vd.tpe)))
+          Constructor(freshSym(cct.id), cct, cct.fields.map(vd => (freshSym(vd.id), vd.getType)))
         }
 
         var cdts = dts + (root -> DataType(sym, conss))
 
         // look for dependencies
         for (ct <- root +: sub; f <- ct.fields) {
-          cdts ++= findDependencies(f.tpe, cdts)
+          cdts ++= findDependencies(f.getType, cdts)
         }
 
         cdts
@@ -316,7 +316,7 @@ trait SMTLIBTarget {
         FreshIdentifier(tfd.id.name)
       }
       val s = id2sym(id)
-      sendCommand(DeclareFun(s, tfd.params.map(p => declareSort(p.tpe)), declareSort(tfd.returnType)))
+      sendCommand(DeclareFun(s, tfd.params.map(p => declareSort(p.getType)), declareSort(tfd.returnType)))
       s
     }
   }
@@ -545,7 +545,7 @@ trait SMTLIBTarget {
     case (FunctionApplication(SimpleSymbol(s), args), tpe) if constructors.containsB(s) =>
       constructors.toA(s) match {
         case cct: CaseClassType =>
-          val rargs = args.zip(cct.fields.map(_.tpe)).map(fromSMT)
+          val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
           CaseClass(cct, rargs)
         case tt: TupleType =>
           val rargs = args.zip(tt.bases).map(fromSMT)

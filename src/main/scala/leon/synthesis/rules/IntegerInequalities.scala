@@ -94,7 +94,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
 
       //define max function
-      val maxValDefs: Seq[ValDef] = lowerBounds.map(_ => ValDef(FreshIdentifier("b", Int32Type), Int32Type))
+      val maxValDefs: Seq[ValDef] = lowerBounds.map(_ => ValDef(FreshIdentifier("b", Int32Type)))
       val maxFun = new FunDef(FreshIdentifier("max"), Nil, Int32Type, maxValDefs, DefType.MethodDef)
       def maxRec(bounds: List[Expr]): Expr = bounds match {
         case (x1 :: x2 :: xs) => {
@@ -108,7 +108,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         maxFun.body = Some(maxRec(maxValDefs.map(vd => Variable(vd.id)).toList))
       def max(xs: Seq[Expr]): Expr = FunctionInvocation(maxFun.typed, xs)
       //define min function
-      val minValDefs: Seq[ValDef] = upperBounds.map(_ => ValDef(FreshIdentifier("b"), Int32Type))
+      val minValDefs: Seq[ValDef] = upperBounds.map(_ => ValDef(FreshIdentifier("b", Int32Type)))
       val minFun = new FunDef(FreshIdentifier("min"), Nil, Int32Type, minValDefs,DefType.MethodDef)
       def minRec(bounds: List[Expr]): Expr = bounds match {
         case (x1 :: x2 :: xs) => {
@@ -122,12 +122,12 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         minFun.body = Some(minRec(minValDefs.map(vd => Variable(vd.id)).toList))
       def min(xs: Seq[Expr]): Expr = FunctionInvocation(minFun.typed, xs)
       val floorFun = new FunDef(FreshIdentifier("floorDiv"), Nil, Int32Type, Seq(
-                                  ValDef(FreshIdentifier("x"), Int32Type),
-                                  ValDef(FreshIdentifier("x"), Int32Type)),
+                                  ValDef(FreshIdentifier("x", Int32Type)),
+                                  ValDef(FreshIdentifier("x", Int32Type))),
                                   DefType.MethodDef)
       val ceilingFun = new FunDef(FreshIdentifier("ceilingDiv"), Nil, Int32Type, Seq(
-                                  ValDef(FreshIdentifier("x"), Int32Type),
-                                  ValDef(FreshIdentifier("x"), Int32Type)),
+                                  ValDef(FreshIdentifier("x", Int32Type)),
+                                  ValDef(FreshIdentifier("x", Int32Type))),
                                   DefType.MethodDef)
       ceilingFun.body = Some(IntLiteral(0))
       def floorDiv(x: Expr, y: Expr): Expr = FunctionInvocation(floorFun.typed, Seq(x, y))
@@ -194,7 +194,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
               val concretePre = replace(Map(Variable(k) -> loopCounter), pre)
               val concreteTerm = replace(Map(Variable(k) -> loopCounter), term)
               val returnType = tupleTypeWrap(problem.xs.map(_.getType))
-              val funDef = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, returnType, Seq(ValDef(loopCounter.id, Int32Type)),DefType.MethodDef)
+              val funDef = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, returnType, Seq(ValDef(loopCounter.id)),DefType.MethodDef)
               val funBody = expandAndSimplifyArithmetic(IfExpr(
                 LessThan(loopCounter, IntLiteral(0)),
                 Error(returnType, "No solution exists"),

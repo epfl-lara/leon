@@ -47,16 +47,17 @@ object Definitions {
 
   /** 
    *  A ValDef declares a new identifier to be of a certain type.
-   *  When creating a new FunDef, its parameters should obey (id.getType == tp)
+   *  The optional tpe, if present, overrides the type of the underlying Identifier id
+   *  This is useful to instantiate argument types of polymorphic functions
    */
-  case class ValDef(id: Identifier, tpe: TypeTree) extends Definition with Typed {
+  case class ValDef(id: Identifier, tpe: Option[TypeTree] = None) extends Definition with Typed {
     self: Serializable =>
 
-    val getType = tpe
+    val getType = tpe getOrElse id.getType
 
     def subDefinitions = Seq()
 
-    def toVariable : Variable = Variable(id, Some(tpe))
+    def toVariable : Variable = Variable(id, tpe)
 
     setSubDefOwners()
   }
@@ -473,11 +474,10 @@ object Definitions {
         (fd.params, Map())
       } else {
         val newParams = fd.params.map {
-          case vd @ ValDef(id, tpe) =>
-            val newTpe = translated(tpe)
+          case vd @ ValDef(id, _) =>
+            val newTpe = translated(vd.getType)
             val newId = FreshIdentifier(id.name, newTpe, true).copiedFrom(id)
-
-            ValDef(newId, newTpe).setPos(vd)
+            ValDef(newId).setPos(vd)
         }
 
         val paramsMap: Map[Identifier, Identifier] = (fd.params zip newParams).map { case (vd1, vd2) => vd1.id -> vd2.id }.toMap
@@ -486,7 +486,7 @@ object Definitions {
       }
     }
 
-    lazy val functionType = FunctionType(params.map(_.tpe).toList, returnType)
+    lazy val functionType = FunctionType(params.map(_.getType).toList, returnType)
 
     lazy val returnType: TypeTree = translated(fd.returnType)
 

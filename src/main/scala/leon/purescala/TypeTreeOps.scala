@@ -285,8 +285,8 @@ object TypeTreeOps {
 
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>
-              val tpe = tpeSub(arg.tpe)
-              ValDef(freshId(arg.id, tpe), tpe)
+              val tpe = tpeSub(arg.getType)
+              ValDef(freshId(arg.id, tpe))
             }
             val mapping = args.map(_.id) zip newArgs.map(_.id)
             Lambda(newArgs, rec(idsMap ++ mapping)(body)).copiedFrom(l)

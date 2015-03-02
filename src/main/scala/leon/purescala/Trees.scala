@@ -99,7 +99,7 @@ object Trees {
   }
 
   case class Lambda(args: Seq[ValDef], body: Expr) extends Expr {
-    val getType = FunctionType(args.map(_.tpe), body.getType).unveilUntyped
+    val getType = FunctionType(args.map(_.getType), body.getType).unveilUntyped
   }
 
   case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
@@ -241,7 +241,7 @@ object Trees {
     val getType = BooleanType
   }
 
-  // tpe overrides the type of the identifier.
+  // tpe, if present, overrides the type of the underlying Identifier id.
   // This is useful for variables that represent class fields with instantiated types.
   // E.g. list.head when list: List[Int]
   // @mk: TODO: This breaks symmetry with the rest of the trees and is ugly-ish.

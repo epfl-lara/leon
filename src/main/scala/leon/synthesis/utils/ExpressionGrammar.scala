@@ -373,7 +373,7 @@ object ExpressionGrammars {
                  var finalFree = free.toSet -- tpsMap.keySet
                  var finalMap = tpsMap
 
-                 for (ptpe <- tfd.params.map(_.tpe).distinct) {
+                 for (ptpe <- tfd.params.map(_.getType).distinct) {
                    canBeSubtypeOf(atpe, finalFree.toSeq, ptpe) match {
                      case Some(ntpsMap) =>
                        finalFree --= ntpsMap.keySet
@@ -404,7 +404,7 @@ object ExpressionGrammars {
      val funcs = functionsAvailable(prog).toSeq.flatMap(getCandidates).filterNot( tfd => exclude contains tfd.fd)
 
      funcs.map{ tfd =>
-       Generator[TypeTree, Expr](tfd.params.map(_.tpe), { sub => FunctionInvocation(tfd, sub) })
+       Generator[TypeTree, Expr](tfd.params.map(_.getType), { sub => FunctionInvocation(tfd, sub) })
      }
    }
   }

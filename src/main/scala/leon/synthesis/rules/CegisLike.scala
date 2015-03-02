@@ -247,14 +247,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       private var cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true),
                                Seq(),
                                p.outType,
-                               p.as.map(id => ValDef(id, id.getType)),
+                               p.as.map(id => ValDef(id)),
                                DefType.MethodDef
                              )
 
       private var phiFd   = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true),
                                Seq(),
                                BooleanType,
-                               p.as.map(id => ValDef(id, id.getType)),
+                               p.as.map(id => ValDef(id)),
                                DefType.MethodDef
                              )
 
@@ -291,7 +291,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             val nfd = new FunDef(fd.id.freshen,
                                  fd.tparams,
                                  fd.returnType,
-                                 fd.params :+ ValDef(bArrayId, bArrayId.getType),
+                                 fd.params :+ ValDef(bArrayId),
                                  fd.defType)
             nfd.copyContentFrom(fd)
             nfd.copiedFrom(fd)

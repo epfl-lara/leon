@@ -408,7 +408,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       }
 
       case Not(expr)                 => p"\u00AC$expr"
-      case ValDef(id, tpe)           => p"${typed(id)}"
+      case vd@ValDef(id, _)          => p"$id : ${vd.getType}"
       case This(_)                   => p"this"
       case (tfd: TypedFunDef)        => p"typed def ${tfd.id}[${tfd.tps}]"
       case TypeParameterDef(tp)      => p"$tp"

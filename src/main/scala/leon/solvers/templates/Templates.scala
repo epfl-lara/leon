@@ -221,7 +221,7 @@ object FunctionTemplate {
 
     val funString : () => String = () => {
       "Template for def " + tfd.signature +
-      "(" + tfd.params.map(a => a.id + " : " + a.tpe).mkString(", ") + ") : " +
+      "(" + tfd.params.map(a => a.id + " : " + a.getType).mkString(", ") + ") : " +
       tfd.returnType + " is :\n" + templateString()
     }
 
@@ -263,7 +263,7 @@ class FunctionTemplate[T] private(
   override def toString : String = str
 
   override def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
-    if (!isRealFunDef) lambdaManager.registerFree(tfd.params.map(_.tpe) zip args)
+    if (!isRealFunDef) lambdaManager.registerFree(tfd.params.map(_.getType) zip args)
     super.instantiate(aVar, args)
   }
 }

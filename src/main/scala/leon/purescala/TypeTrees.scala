@@ -91,7 +91,8 @@ object TypeTrees {
         // !! WARNING !!
         // vd.id.getType will NOT match vd.tpe, but we kind of need this for selectorID2Index...
         // See with Etienne about changing this!
-        classDef.fields.map(vd => ValDef(vd.id, instantiateType(vd.tpe, tmap)))
+        // @mk Fixed this
+        classDef.fields.map(vd => ValDef(vd.id, Some(instantiateType(vd.getType, tmap))))
       }
     }
 
@@ -99,7 +100,7 @@ object TypeTrees {
 
     def knownCCDescendents = classDef.knownCCDescendents.map(CaseClassType(_, tps))
 
-    lazy val fieldsTypes = fields.map(_.tpe)
+    lazy val fieldsTypes = fields.map(_.getType)
 
     lazy val root = parent.getOrElse(this)
 

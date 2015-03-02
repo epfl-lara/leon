@@ -33,7 +33,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
 
       // Part (1)
       fd.precondition = {
-        val argTypesPreconditions = fd.params.flatMap(arg => arg.tpe match {
+        val argTypesPreconditions = fd.params.flatMap(arg => arg.getType match {
           case cct : CaseClassType if cct.parent.isDefined => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
           case (at : ArrayType) => Seq(GreaterEquals(ArrayLength(arg.id.toVariable), IntLiteral(0)))
           case _ => Seq()

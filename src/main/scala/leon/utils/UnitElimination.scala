@@ -26,8 +26,8 @@ object UnitElimination extends TransformationPhase {
 
       //first introduce new signatures without Unit parameters
       allFuns.foreach(fd => {
-        if(fd.returnType != UnitType && fd.params.exists(vd => vd.tpe == UnitType)) {
-          val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.tpe == UnitType), fd.defType).setPos(fd)
+        if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
+          val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
           freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
           freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
           freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
@@ -100,8 +100,8 @@ object UnitElimination extends TransformationPhase {
         if(fd.returnType == UnitType) 
           removeUnit(b)
         else {
-          val (newFd, rest) = if(fd.params.exists(vd => vd.tpe == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.tpe == UnitType), fd.defType).setPos(fd)
+          val (newFd, rest) = if(fd.params.exists(vd => vd.getType == UnitType)) {
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
             freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
             freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..

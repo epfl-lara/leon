@@ -175,8 +175,8 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
 
     val trArgs = template.tfd.params.map(vd => bindings(Variable(vd.id)))
 
-    for (vd <- template.tfd.params if vd.tpe.isInstanceOf[FunctionType]) {
-      functionVars += vd.tpe -> (functionVars(vd.tpe) + bindings(vd.toVariable))
+    for (vd <- template.tfd.params if vd.getType.isInstanceOf[FunctionType]) {
+      functionVars += vd.getType -> (functionVars(vd.getType) + bindings(vd.toVariable))
     }
 
     // ...now this template defines clauses that are all guarded

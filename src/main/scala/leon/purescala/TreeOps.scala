@@ -1033,7 +1033,7 @@ object TreeOps {
       GenericValue(tp, 0)
 
     case FunctionType(from, to) =>
-      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true), tpe))
+      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true)))
       Lambda(args, simplestValue(to))
 
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
@@ -1395,7 +1395,7 @@ object TreeOps {
           val isType = CaseClassInstanceOf(cct, Variable(on))
 
           val recSelectors = cct.fields.collect { 
-            case vd if vd.tpe == on.getType => vd.id
+            case vd if vd.getType == on.getType => vd.id
           }
 
           if (recSelectors.isEmpty) {
@@ -1667,7 +1667,7 @@ object TreeOps {
           }
 
           subChecks.forall { case (ccd, subs) =>
-            val tpes = ccd.fields.map(_.tpe)
+            val tpes = ccd.fields.map(_.getType)
 
             if (subs.isEmpty) {
               false
@@ -1901,7 +1901,7 @@ object TreeOps {
           case _ : Lambda => expr
           case _ : Variable => expr
           case e =>
-            val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true), tpe))
+            val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true)))
             val application = apply(expr, args.map(_.toVariable))
             Lambda(args, lift(application))
         }
@@ -2050,7 +2050,7 @@ object TreeOps {
       case a : AbstractClassType => None
       case cct : CaseClassType     =>
         // This is really just one big assertion. We don't rewrite class defs.
-        val fieldTypes = cct.fields.map(_.tpe)
+        val fieldTypes = cct.fields.map(_.getType)
         if(fieldTypes.exists(t => t match {
           case TupleType(ts) if ts.size <= 1 => true
           case _ => false
@@ -2068,7 +2068,7 @@ object TreeOps {
     def fd2fd(funDef : FunDef) : FunDef = funDefMap.get(funDef) match {
       case Some(fd) => fd
       case None =>
-        if(funDef.params.map(vd => mapType(vd.tpe)).exists(_.isDefined)) {
+        if(funDef.params.map(vd => mapType(vd.getType)).exists(_.isDefined)) {
           scala.sys.error("Cannot rewrite function def that takes degenerate tuple arguments,")
         }
         val newFD = mapType(funDef.returnType) match {
@@ -2245,7 +2245,7 @@ object TreeOps {
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
-                val b = FreshIdentifier(f.id.name, f.tpe, true)
+                val b = FreshIdentifier(f.id.name, f.getType, true)
                 substMap += fieldSel -> Variable(b)
                 WildcardPattern(Some(b))
               }

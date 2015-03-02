@@ -74,7 +74,7 @@ trait AbstractZ3Solver
 
   def functionDefToDecl(tfd: TypedFunDef): Z3FuncDecl = {
     functions.toZ3OrCompute(tfd) {
-      val sortSeq    = tfd.params.map(vd => typeToSort(vd.tpe))
+      val sortSeq    = tfd.params.map(vd => typeToSort(vd.getType))
       val returnSort = typeToSort(tfd.returnType)
 
       z3.mkFreshFuncDecl(tfd.id.uniqueName, sortSeq, returnSort)
@@ -282,7 +282,7 @@ trait AbstractZ3Solver
           newHierarchiesMap += root -> sub
 
           // look for dependencies
-          for (ct <- root +: sub; f <- ct.fields) f.tpe match {
+          for (ct <- root +: sub; f <- ct.fields) f.getType match {
             case fct: ClassType =>
               findDependencies(fct)
             case _ =>
@@ -319,7 +319,7 @@ trait AbstractZ3Solver
         (
          root.toString,
          childrenList.map(ccd => ccd.id.uniqueName),
-         childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.tpe))))
+         childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.getType))))
         )
       }
       (defs, newHierarchies)

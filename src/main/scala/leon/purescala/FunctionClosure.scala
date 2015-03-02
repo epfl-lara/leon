@@ -55,7 +55,7 @@ object FunctionClosure extends TransformationPhase {
       
       val extraValDefOldIds: Seq[Identifier] = capturedVars.toSeq
       val extraValDefFreshIds: Seq[Identifier] = extraValDefOldIds.map(freshIds(_))
-      val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map{id => ValDef(id, id.getType)}
+      val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map(ValDef(_))
       val newValDefs: Seq[ValDef] = fd.params ++ extraValDefs
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.params.map(_.id)
       val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name

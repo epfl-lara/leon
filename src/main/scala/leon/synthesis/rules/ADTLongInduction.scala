@@ -29,10 +29,10 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
       val inductOn     = FreshIdentifier(origId.name, origId.getType, true)
       val residualArgs = oas.map(id => FreshIdentifier(id.name, id.getType, true))
       val residualMap  = (oas zip residualArgs).map{ case (id, id2) => id -> Variable(id2) }.toMap
-      val residualArgDefs = residualArgs.map(a => ValDef(a, a.getType))
+      val residualArgDefs = residualArgs.map(ValDef(_))
 
       def isAlternativeRecursive(ct: CaseClassType): Boolean = {
-        ct.fields.exists(_.tpe == origId.getType)
+        ct.fields.exists(_.getType == origId.getType)
       }
 
       val isRecursive = ct.knownCCDescendents.exists(isAlternativeRecursive)
@@ -68,7 +68,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
 
             (for (id <- ids if isRec(id)) yield {
               for (cct <- ct.knownCCDescendents) yield {
-                val subIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, vd.tpe, true)).toList
+                val subIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, vd.getType, true)).toList
 
                 val newIds = ids.filterNot(_ == id) ++ subIds
                 val newCalls = if (!subIds.isEmpty) {
@@ -130,7 +130,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
           case sols =>
             var globalPre = List[Expr]()
 
-            val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn, inductOn.getType) +: residualArgDefs, DefType.MethodDef)
+            val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn) +: residualArgDefs, DefType.MethodDef)
 
             val cases = for ((sol, (problem, pat, calls, pc)) <- (sols zip subProblemsInfo)) yield {
               globalPre ::= and(pc, sol.pre)

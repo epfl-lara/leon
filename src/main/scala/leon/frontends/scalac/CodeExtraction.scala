@@ -496,7 +496,7 @@ trait CodeExtraction extends ASTExtractors {
         val fields = args.map { case (symbol, t) =>
           val tpt = t.tpt
           val tpe = toPureScalaType(tpt.tpe)(defCtx, sym.pos)
-          LeonValDef(FreshIdentifier(symbol.name.toString, tpe).setPos(t.pos), tpe).setPos(t.pos)
+          LeonValDef(FreshIdentifier(symbol.name.toString, tpe).setPos(t.pos)).setPos(t.pos)
         }
 
         ccd.setFields(fields)
@@ -587,7 +587,7 @@ trait CodeExtraction extends ASTExtractors {
         val ptpe = toPureScalaType(sym.tpe)(nctx, sym.pos)
         val newID = FreshIdentifier(sym.name.toString, ptpe).setPos(sym.pos)
         owners += (newID -> None)
-        LeonValDef(newID, ptpe).setPos(sym.pos)
+        LeonValDef(newID).setPos(sym.pos)
       }
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
@@ -1297,7 +1297,7 @@ trait CodeExtraction extends ASTExtractors {
             val aTpe = extractType(vd.tpt)
             val newID = FreshIdentifier(vd.symbol.name.toString, aTpe)
             owners += (newID -> None)
-            LeonValDef(newID, aTpe)
+            LeonValDef(newID)
           }
 
           val newVars = (args zip vds).map { case (vd, lvd) =>
@@ -1313,7 +1313,7 @@ trait CodeExtraction extends ASTExtractors {
             val aTpe = extractType(tpt)
             val newID = FreshIdentifier(sym.name.toString, aTpe)
             owners += (newID -> None)
-            LeonValDef(newID, aTpe)
+            LeonValDef(newID)
           }
 
           val newVars = (args zip vds) map { case ((_, sym), vd) =>

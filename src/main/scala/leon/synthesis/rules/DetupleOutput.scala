@@ -27,7 +27,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
         if (isDecomposable(x)) {
           val ct @ CaseClassType(ccd @ CaseClassDef(name, _, _, _), tpes) = x.getType
 
-          val newIds = ct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.tpe, true) }
+          val newIds = ct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.getType, true) }
 
           val newCC = CaseClass(ct, newIds.map(Variable(_)))
 

@@ -219,7 +219,7 @@ object Constructors {
   
   def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
     val UnwrapTupleType(argTypes) = els.headOption.map{_._1.getType}.getOrElse(tupleTypeWrap(inputTypes))
-    val args = argTypes map { argType => ValDef(FreshIdentifier("x", argType, true), argType) }
+    val args = argTypes map { argType => ValDef(FreshIdentifier("x", argType, true)) }
     if (els.isEmpty) {
       Lambda(args, default)
     } else {
