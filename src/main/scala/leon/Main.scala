@@ -211,9 +211,16 @@ object Main {
     import verification.AnalysisPhase
     import repair.RepairPhase
 
+    val pipeSanityCheck : Pipeline[Program, Program] = 
+      if(!settings.xlang)
+        xlang.NoXlangFeaturesChecking
+      else
+        NoopPhase()
+
     val pipeBegin : Pipeline[List[String],Program] =
       ExtractionPhase andThen
-      PreprocessingPhase
+      PreprocessingPhase andThen
+      pipeSanityCheck
 
     val pipeProcess: Pipeline[Program, Any] = {
       if (settings.synthesis) {
