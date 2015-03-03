@@ -12,26 +12,21 @@ import purescala.TreeOps._
 import purescala.Extractors._
 
 object TreeOps {
+  
+  def isXLang(expr: Expr): Boolean = exists {
+    case Block(_, _) | Assignment(_, _) |
+         While(_, _) | Epsilon(_, _) |
+         EpsilonVariable(_, _) |
+         LetVar(_, _, _) | Waypoint(_, _, _) |
+         ArrayUpdate(_, _, _) 
+       => true
+    case _ => false
+  }(expr)
 
-  //checking whether the expr is not pure, that is it contains any non-pure construct: 
-  // assign, while, blocks, array, ...
-  def isXLang(expr: Expr): Boolean = {
-    exists { _ match {
-      case Block(_, _) => true
-      case Assignment(_, _) => true
-      case While(_, _) => true
-      case LetVar(_, _, _) => true
-      case LetDef(_, _) => true
-      case ArrayUpdate(_, _, _) => true
-      case Epsilon(_, _) => true
-      case _ => false
-    }}(expr)
-  }
-
-  def containsEpsilon(e: Expr) = exists{ _ match {
-      case (l: Epsilon) => true
-      case _ => false
-  }}(e)
+  def containsEpsilon(e: Expr) = exists{
+    case (l: Epsilon) => true
+    case _ => false
+  }(e)
 
   def flattenBlocks(expr: Expr): Expr = {
     postMap({
@@ -51,3 +46,4 @@ object TreeOps {
     })(expr)
   }
 }
+

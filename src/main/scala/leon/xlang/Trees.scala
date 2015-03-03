@@ -45,7 +45,7 @@ object Trees {
     }
   }
 
-  case class While(cond: Expr, body: Expr) extends Expr with BinaryExtractable with PrettyPrintable {
+  case class While(cond: Expr, body: Expr) extends Expr with NAryExtractable with PrettyPrintable {
     val getType = UnitType
     var invariant: Option[Expr] = None
 
@@ -53,8 +53,11 @@ object Trees {
     def setInvariant(inv: Expr) = { invariant = Some(inv); this }
     def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
 
-    def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
-      Some((cond, body, (t1, t2) => While(t1, t2).setInvariant(this.invariant).setPos(this)))
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some((Seq(cond, body) ++ invariant, {
+        case Seq(e1, e2) => While(e1, e2).setPos(this)
+        case Seq(e1, e2, e3) => While(e1, e2).setInvariant(e3).setPos(this)
+      }))
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -97,8 +100,7 @@ object Trees {
     val getType = body.getType
 
     def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
-      val LetVar(binders, expr, body) = this
-      Some((expr, body, (e: Expr, b: Expr) => LetVar(binders, e, b)))
+      Some((value, body, (e: Expr, b: Expr) => LetVar(binder, e, b)))
     }
 
     def printWith(implicit pctx: PrinterContext) {

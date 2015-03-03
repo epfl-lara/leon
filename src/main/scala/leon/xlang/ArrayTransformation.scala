@@ -46,36 +46,6 @@ object ArrayTransformation extends TransformationPhase {
       Variable(env.getOrElse(i, i))
     }
 
-    case LetVar(id, e, b) => {
-      val er = transform(e)
-      val br = transform(b)
-      LetVar(id, er, br)
-    }
-    case wh@While(c, e) => {
-      val newWh = While(transform(c), transform(e))
-      newWh.invariant = wh.invariant.map(i => transform(i))
-      newWh.setPos(wh)
-      newWh
-    }
-
-    case ite@IfExpr(c, t, e) => {
-      val rc = transform(c)
-      val rt = transform(t)
-      val re = transform(e)
-      IfExpr(rc, rt, re)
-    }
-
-    case m @ MatchExpr(scrut, cses) => {
-      val scrutRec = transform(scrut)
-      val csesRec = cses.map{ cse => MatchCase(cse.pattern, cse.optGuard map transform, transform(cse.rhs)) }
-      val tpe = csesRec.head.rhs.getType
-      matchExpr(scrutRec, csesRec).setPos(m)
-    }
-    case LetDef(fd, b) => {
-      fd.fullBody = transform(fd.fullBody)
-      val rb = transform(b)
-      LetDef(fd, rb)
-    }
     case n @ NAryOperator(args, recons) => recons(args.map(transform))
     case b @ BinaryOperator(a1, a2, recons) => recons(transform(a1), transform(a2))
     case u @ UnaryOperator(a, recons) => recons(transform(a))
