@@ -6,7 +6,7 @@ import leon._
 import leon.test._
 
 import leon.verification.VerificationReport
-import leon.xlang.XlangAnalysisPhase
+import leon.xlang.XLangAnalysisPhase
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
 
@@ -23,7 +23,7 @@ class XLangVerificationRegression extends LeonTestSuite {
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
     ExtractionPhase     andThen
     PreprocessingPhase  andThen
-    XlangAnalysisPhase
+    XLangAnalysisPhase
 
   private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
     val fullName = file.getPath()

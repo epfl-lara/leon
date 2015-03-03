@@ -12,7 +12,7 @@ import purescala.Constructors._
 import purescala.TreeOps.exists
 import xlang.Trees._
 
-object NoXlangFeaturesChecking extends UnitPhase[Program] {
+object NoXLangFeaturesChecking extends UnitPhase[Program] {
 
   val name = "no-xlang"
   val description = "Ensure and enforce that no xlang features are used"

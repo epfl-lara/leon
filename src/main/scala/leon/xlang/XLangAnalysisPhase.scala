@@ -6,7 +6,7 @@ package xlang
 import leon.purescala.Definitions._
 import leon.verification._
 
-object XlangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
+object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
 
   val name = "xlang analysis"
   val description = "apply analysis on xlang"

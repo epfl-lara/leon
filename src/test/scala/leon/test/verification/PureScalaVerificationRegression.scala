@@ -25,7 +25,7 @@ class PureScalaVerificationRegression extends LeonTestSuite {
   private def mkPipeline : Pipeline[List[String], VerificationReport] =
     ExtractionPhase                andThen
     PreprocessingPhase             andThen
-    xlang.NoXlangFeaturesChecking  andThen
+    xlang.NoXLangFeaturesChecking  andThen
     AnalysisPhase
 
   private def mkTest(file : File, leonOptions : Seq[String], forError: Boolean)(block: Output=>Unit) = {

@@ -254,6 +254,17 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         //Recall that Choose cannot mutate variables from the scope
         (c, (b2: Expr) => b2, Map())
       }
+
+      case i @ FunctionInvocation(fd, args) =>
+        //function invocation can have side effects so we should keep them as local
+        //val names.
+        val scope = (body: Expr) => {
+          Let(FreshIdentifier("tmp", fd.returnType),
+              i,
+              body)
+        }
+        (i, scope, Map())
+
       case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
       case n @ NAryOperator(args, recons) => {
         val (recArgs, scope, fun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
@@ -278,6 +289,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         val (argVal, argScope, argFun) = toFunction(a)
         (recons(argVal).copiedFrom(u), argScope, argFun)
       }
+
       case (t: Terminal) => (t, (body: Expr) => body, Map())
 
 

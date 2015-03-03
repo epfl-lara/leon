@@ -18,7 +18,7 @@ object Main {
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
       purescala.FunctionClosure,
-      xlang.XlangAnalysisPhase,
+      xlang.XLangAnalysisPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase,
@@ -207,13 +207,13 @@ object Main {
     import frontends.scalac.ExtractionPhase
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
-    import xlang.XlangAnalysisPhase
+    import xlang.XLangAnalysisPhase
     import verification.AnalysisPhase
     import repair.RepairPhase
 
     val pipeSanityCheck : Pipeline[Program, Program] = 
       if(!settings.xlang)
-        xlang.NoXlangFeaturesChecking
+        xlang.NoXLangFeaturesChecking
       else
         NoopPhase()
 
@@ -230,7 +230,7 @@ object Main {
       } else if (settings.termination) {
         TerminationPhase
       } else if (settings.xlang) {
-        XlangAnalysisPhase
+        XLangAnalysisPhase
       } else if (settings.verify) {
         purescala.FunctionClosure andThen AnalysisPhase
       } else {
