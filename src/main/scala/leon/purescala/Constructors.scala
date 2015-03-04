@@ -211,7 +211,11 @@ object Constructors {
     if (els.isEmpty && defaultLength.isEmpty) EmptyArray(tpe)
     else NonemptyArray(els, defaultLength)
   }
-  
+
+  def nonemptyArray(els: Seq[Expr], defaultLength: Option[(Expr, Expr)]): Expr = {
+    NonemptyArray(els.zipWithIndex.map{ _.swap }.toMap, defaultLength)
+  }
+
   def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
     val args = inputTypes map { tpe => ValDef(FreshIdentifier("x", tpe, true)) }
     if (els.isEmpty) {

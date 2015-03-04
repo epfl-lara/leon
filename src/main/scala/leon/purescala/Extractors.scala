@@ -100,47 +100,40 @@ object Extractors {
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
-      case FiniteSet(args) =>
-        val SetType(tpe) = expr.getType
-        Some((args.toSeq, els => finiteSet(els.toSet, tpe)))
-      case FiniteMap(args) => {
+      case NonemptySet(els) =>
+        Some(( els.toSeq, els => NonemptySet(els.toSet) ))
+      case NonemptyMap(args) => {
         val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
-        val builder: (Seq[Expr]) => Expr = (as: Seq[Expr]) => {
+        val builder = (as: Seq[Expr]) => {
           def rec(kvs: Seq[Expr]) : Seq[(Expr, Expr)] = kvs match {
             case Seq(k, v, t@_*) =>
               (k,v) +: rec(t)
             case Seq() => Seq()
             case _ => sys.error("odd number of key/value expressions")
           }
-          val MapType(keyType, valueType) = expr.getType
-          finiteMap(rec(as), keyType, valueType)
+          NonemptyMap(rec(as))
         }
         Some((subArgs, builder))
       }
-      case FiniteMultiset(args) => 
-        val MultisetType(tpe) = expr.getType
-        Some((args, finiteMultiset(_, tpe)))
+      case NonemptyMultiset(args) => 
+        Some((args, NonemptyMultiset))
       case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => 
         ArrayUpdated(as(0), as(1), as(2))))
-      case FiniteArray(elems, default, length) => {
-        val fixedElems: Seq[(Int, Expr)] = elems.toSeq
-        val all: Seq[Expr] = fixedElems.map(_._2) ++ default ++ Seq(length)
-        Some((all, (as: Seq[Expr]) => {
-          val ArrayType(tpe) = expr.getType
-          val (newElems, newDefault, newSize) = default match {
-            case None => (as.init, None, as.last)
-            case Some(_) => (as.init.init, Some(as.init.last), as.last)
-          }
-          finiteArray(
-            fixedElems.zip(newElems).map(p => (p._1._1, p._2)).toMap,
-            newDefault map ((_, newSize)),
-            tpe
-          )
+      case NonemptyArray(elems, Some((default, length))) => {
+        val all = elems.map(_._2).toSeq :+ default :+ length
+        Some(( all, as => {
+          val l = as.length
+          nonemptyArray(as.take(l-2), Some( (as(l-2), as(l-1)) ) )
         }))
       }
-
+      case NonemptyArray(elems, None) =>
+        val all = elems.map(_._2).toSeq
+        Some(( all, finiteArray _ ))
       case Tuple(args) => Some((args, Tuple))
-      case IfExpr(cond, thenn, elze) => Some((Seq(cond, thenn, elze), (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))))
+      case IfExpr(cond, thenn, elze) => Some((
+        Seq(cond, thenn, elze), 
+        (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))
+      ))
       case MatchLike(scrut, cases, builder) => Some((
         scrut +: cases.flatMap { 
           case SimpleCase(_, e) => Seq(e)

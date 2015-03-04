@@ -404,7 +404,7 @@ object Trees {
     val getType = SetType(optionToType(leastUpperBound(elements.toSeq.map(_.getType)))).unveilUntyped
   }
   
-  case class EmptySet(tpe: TypeTree) extends Expr {
+  case class EmptySet(tpe: TypeTree) extends Expr with Terminal {
     val getType = SetType(tpe).unveilUntyped
   }
   
@@ -440,7 +440,7 @@ object Trees {
     }
   }
   
-  case class EmptyMap(keyType: TypeTree, valueType: TypeTree) extends Expr {
+  case class EmptyMap(keyType: TypeTree, valueType: TypeTree) extends Expr with Terminal {
     val getType = MapType(keyType, valueType).unveilUntyped
   }
   
@@ -489,7 +489,7 @@ object Trees {
     val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType}))).unveilUntyped
   }
 
-  case class EmptyArray(tpe: TypeTree) extends Expr {
+  case class EmptyArray(tpe: TypeTree) extends Expr with Terminal {
     val getType = ArrayType(tpe).unveilUntyped
   }
 
