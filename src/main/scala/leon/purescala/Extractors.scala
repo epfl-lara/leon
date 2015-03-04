@@ -106,7 +106,7 @@ object Extractors {
       }))
       case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
       case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, (as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi))))
-      case fa @ Application(caller, args) => Some((caller +: args), (as => Application(as.head, as.tail).setPos(fa)))
+      case fa @ Application(caller, args) => Some((caller +: args), (as => application(as.head, as.tail).setPos(fa)))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
