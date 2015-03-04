@@ -64,17 +64,17 @@ trait SMTLIBTarget {
 
   // Corresponds to a smt map, not a leon/scala array
   // Should NEVER escape past SMT-world
-  case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree
+  private[smtlib] case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree
 
   // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
   // Should NEVER escape past SMT-world
-  case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr {
+  private[smtlib] case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr {
     val getType = RawArrayType(keyTpe, default.getType)
   }
 
   def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
-      assert(r.default == BooleanLiteral(false) && r.keyTpe == base)
+      require(r.default == BooleanLiteral(false) && r.keyTpe == base)
 
       finiteSet(r.elems.keySet, base)
 
