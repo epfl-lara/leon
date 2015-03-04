@@ -97,7 +97,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
           ar = ArraysEx.Store(ar, toSMT(IntLiteral(i)), toSMT(e))
         }
 
-        FunctionApplication(constructors.toB(tpe), List(toSMT(IntLiteral(elems.size)), ar))
+        FunctionApplication(constructors.toB(tpe), List(toSMT(size), ar))
 
       /**
        * ===== Set operations =====

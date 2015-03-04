@@ -10,6 +10,8 @@ import leon.xlang.XLangAnalysisPhase
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
 
+import _root_.smtlib.interpreters._
+
 import java.io.File
 
 class XLangVerificationRegression extends LeonTestSuite {
@@ -25,7 +27,7 @@ class XLangVerificationRegression extends LeonTestSuite {
     PreprocessingPhase  andThen
     XLangAnalysisPhase
 
-  private def mkTest(file : File, forError: Boolean = false)(block: Output=>Unit) = {
+  private def mkTest(file : File, leonOptions : Seq[String], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath()
     val start = fullName.indexOf("regression")
 
@@ -35,13 +37,11 @@ class XLangVerificationRegression extends LeonTestSuite {
       fullName
     }
 
-    test("%3d: %s".format(nextInt(), displayName)) {
+    test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
       assert(file.exists && file.isFile && file.canRead,
              "Benchmark %s is not a readable file".format(displayName))
 
-      // println("testing " + displayName)
-
-      val ctx = testContext.copy(files = List(file))
+      val ctx = createLeonContext((file.getPath +: leonOptions) :_*)
 
       val pipeline = mkPipeline
 
@@ -50,22 +50,43 @@ class XLangVerificationRegression extends LeonTestSuite {
           pipeline.run(ctx)(file.getPath :: Nil)
         }
       } else {
-
         val report = pipeline.run(ctx)(file.getPath :: Nil)
 
         block(Output(report, ctx.reporter))
       }
-
     }
   }
+
 
   private def forEachFileIn(cat : String, forError: Boolean = false)(block : Output=>Unit) {
     val fs = filesInResourceDir(
       "regression/verification/xlang/" + cat,
       _.endsWith(".scala"))
 
+    val isZ3Available = try {
+      new Z3Interpreter()
+      true
+    } catch {
+      case e: java.io.IOException =>
+        false
+    }
+
+    val isCVC4Available = try {
+      new CVC4Interpreter()
+      // @EK: CVC4 works on most testcases already, but not all and thus cannot be used in regression.
+      true
+    } catch {
+      case e: java.io.IOException =>
+        false
+    }
+
+
     for(f <- fs) {
-      mkTest(f, forError)(block)
+      mkTest(f, List(), forError)(block)
+      mkTest(f, List("--feelinglucky"), forError)(block)
+      if (isZ3Available) {
+        mkTest(f, List("--solvers=smt-z3", "--feelinglucky"), forError)(block)
+      }
     }
   }
   

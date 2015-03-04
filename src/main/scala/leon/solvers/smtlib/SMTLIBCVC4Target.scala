@@ -109,7 +109,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
         ar = FunctionApplication(SSymbol("store"), Seq(ar, toSMT(IntLiteral(i)), toSMT(e)))
       }
 
-      FunctionApplication(constructors.toB(tpe), Seq(toSMT(IntLiteral(elems.size)), ar))
+      FunctionApplication(constructors.toB(tpe), Seq(toSMT(size), ar))
 
     /**
      * ===== Set operations =====
