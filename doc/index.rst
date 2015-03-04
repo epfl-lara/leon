@@ -15,6 +15,7 @@ Contents:
    installation
    gettingstarted
    purescala
+   xlang
    verification
    synthesis
    repair
@@ -27,4 +28,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
