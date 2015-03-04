@@ -6,6 +6,7 @@ import utils.DebugSection
 
 case class Settings(
   val strictCompilation: Boolean       = true, // Terminates Leon in case an error occured during extraction
+  val terminateAfterEachPhase: Boolean = true, // Terminates Leon after each phase if an error occured
   val debugSections: Set[DebugSection] = Set(), // Enables debug message for the following sections
   val termination: Boolean             = false,
   val repair: Boolean                  = false,
