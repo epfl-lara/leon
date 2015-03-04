@@ -145,7 +145,7 @@ In your Leon home folder, type: ```sbt clean compile eclipse```
 
 This should create all the necessary metadata to load Leon as a project in Eclipse.
 
-You should now be able to [import the project](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace.
+You should now be able to [import the project](http://help.eclipse.org/juno/index.jsp?topic=%2Forg.eclipse.platform.doc.user%2Ftasks%2Ftasks-importproject.htm) into your Eclipse workspace. Don't forget to also import dependencies (the bonsai and scalaSmtlib projects, found somewhere in your ~/.sbt directory).
 
 For each run configuration in Eclipse, you have to set the ECLIPSE_HOME environment variable to point to the home directory of your Eclipse installation. 
 To do so, go to Run -> Run Configuration and then, after picking the configuration you want to run, set the variable in the Environment tab.
