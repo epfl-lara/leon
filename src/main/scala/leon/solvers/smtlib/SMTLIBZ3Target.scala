@@ -13,9 +13,9 @@ import TypeTrees._
 import TreeOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
-import _root_.smtlib.parser.Commands.{DefineSort, GetValue, NonStandardCommand, GetModel, DefineFun}
+import _root_.smtlib.parser.Commands.{DefineSort, GetModel, DefineFun}
 import _root_.smtlib.interpreters.Z3Interpreter
-import _root_.smtlib.parser.CommandsResponses.{SExprResponse, GetModelResponse}
+import _root_.smtlib.parser.CommandsResponses.GetModelResponse
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
 
