@@ -619,9 +619,9 @@ trait SMTLIBTarget {
   }
 
   override def check: Option[Boolean] = sendCommand(CheckSat()) match {
-    case CheckSatResponse(SatStatus)     => Some(true)
-    case CheckSatResponse(UnsatStatus)   => Some(false)
-    case CheckSatResponse(UnknownStatus) => None
+    case CheckSatStatus(SatStatus)     => Some(true)
+    case CheckSatStatus(UnsatStatus)   => Some(false)
+    case CheckSatStatus(UnknownStatus) => None
     case _                               => None
   }
 
@@ -633,7 +633,7 @@ trait SMTLIBTarget {
               )
 
 
-    val GetValueResponse(valuationPairs) = sendCommand(cmd)
+    val GetValueResponseSuccess(valuationPairs) = sendCommand(cmd)
 
     valuationPairs.collect {
       case (SimpleSymbol(sym), value) if variables.containsB(sym) =>

@@ -15,7 +15,7 @@ import TreeOps.simplestValue
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{DefineSort, GetModel, DefineFun}
 import _root_.smtlib.interpreters.Z3Interpreter
-import _root_.smtlib.parser.CommandsResponses.GetModelResponse
+import _root_.smtlib.parser.CommandsResponses.GetModelResponseSuccess
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
 
@@ -171,7 +171,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     val res = sendCommand(cmd)
 
     val smodel: Seq[SExpr] = res match {
-      case GetModelResponse(model) => model
+      case GetModelResponseSuccess(model) => model
       case _ => Nil
     }
 
