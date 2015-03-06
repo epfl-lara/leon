@@ -1,6 +1,6 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-object IfExpr1 {
+object IfExpr3 {
 
   def foo(a: Int): Int = {
 

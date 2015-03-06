@@ -1,6 +1,6 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-object While1 {
+object While2 {
 
   def foo(): Int = {
     var a = 0

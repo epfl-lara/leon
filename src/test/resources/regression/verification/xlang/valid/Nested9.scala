@@ -1,6 +1,6 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-object Nested4 {
+object Nested9 {
 
   def foo(a: BigInt, a2: BigInt): BigInt = {
     require(a >= 0 && a <= 50)
