@@ -3,7 +3,7 @@
 import leon.lang._
 import leon.lang.synthesis._
 
-object Test {
+object Choose1 {
 
   def test(x: Int): Int = {
 

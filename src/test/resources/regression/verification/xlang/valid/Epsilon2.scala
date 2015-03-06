@@ -3,7 +3,7 @@
 import leon.lang._
 import leon.lang.xlang._
 
-object Epsilon1 {
+object Epsilon2 {
 
   def rand(): Int = epsilon((x: Int) => true)
 
