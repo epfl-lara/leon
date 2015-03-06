@@ -34,7 +34,7 @@ class FrontEndsTest extends leon.test.LeonTestSuite {
     purescala.RestoreMethods andThen
     utils.FileOutputPhase
     
-  forEachFileIn("frontends" ) { f => 
+  forEachFileIn("regression/frontends" ) { f => 
       testExtr(f)
   }
    
