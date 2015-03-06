@@ -21,4 +21,4 @@ before_script:
     - sbt script
 
 script:
-    - sbt -jvm-opts travis/jvmopts test
+    - sbt "test-only *PureScala*"
