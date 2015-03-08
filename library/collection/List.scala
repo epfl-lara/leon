@@ -98,7 +98,7 @@ sealed abstract class List[T] {
   )}
 
   def slice(from: BigInt, to: BigInt): List[T] = {
-    require(from < to && to < size && from >= 0)
+    require(0 <= from && from <= to && to <= size)
     drop(from).take(to-from)
   }
 
