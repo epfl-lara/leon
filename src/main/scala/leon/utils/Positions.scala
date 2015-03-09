@@ -34,6 +34,33 @@ abstract class Position extends Ordered[Position] {
   def isDefined: Boolean
 }
 
+object Position {
+  def between(a: Position, b: Position): Position = {
+    if (a.file == b.file) {
+      if (a.line == b.line && a.col == b.col) {
+        a
+      } else {
+        val (from, to) = if (a < b) (a, b) else (b, a)
+
+        (from, to) match {
+          case (p1: OffsetPosition, p2: OffsetPosition) =>
+            RangePosition(p1.line, p1.col, p1.point, p2.line, p2.col, p2.point, p1.file)
+          case (p1: RangePosition, p2: RangePosition) =>
+            RangePosition(p1.lineFrom, p1.colFrom, p1.pointFrom, p2.lineTo, p2.colTo, p2.pointTo, p1.file)
+          case (p1: OffsetPosition, p2: RangePosition) =>
+            RangePosition(p1.line, p1.col, p1.point, p2.lineTo, p2.colTo, p2.pointTo, p1.file)
+          case (p1: RangePosition, p2: OffsetPosition) =>
+            RangePosition(p1.lineFrom, p1.colFrom, p1.pointFrom, p2.line, p2.col, p2.point, p1.file)
+          case (a,b) =>
+            a
+        }
+      }
+    } else {
+      a
+    }
+  }
+}
+
 abstract class DefinedPosition extends Position {
   override def toString = line+":"+col
   override def fullString = file.getPath+":"+line+":"+col

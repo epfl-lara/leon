@@ -24,6 +24,10 @@ object Trees {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))
     }
 
+    override def getPos = {
+      Position.between(exprs.head.getPos, last.getPos)
+    }
+
     def printWith(implicit pctx: PrinterContext) {
       p"""|{
           |  ${nary(exprs :+ last, "\n")}
