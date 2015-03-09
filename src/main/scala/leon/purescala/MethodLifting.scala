@@ -31,7 +31,7 @@ object MethodLifting extends TransformationPhase {
         val retType = instantiateType(fd.returnType, tparamsMap)
         val fdParams = fd.params map { vd =>
           val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
-          ValDef(newId)
+          ValDef(newId).setPos(vd.getPos)
         }
         val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
 
