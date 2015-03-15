@@ -434,7 +434,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case i @ InfiniteIntegerLiteral(_) => i
     case b @ BooleanLiteral(_) => b
     case u @ UnitLiteral() => u
-    case l @ Lambda(_, _) => l
+    case l @ Lambda(_, _) =>
+      val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
+      replaceFromIDs(mapping, l)
 
     case ArrayLength(a) =>
       var FiniteArray(elems, default, IntLiteral(length)) = e(a)
