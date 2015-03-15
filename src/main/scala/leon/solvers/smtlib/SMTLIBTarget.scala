@@ -58,7 +58,7 @@ trait SMTLIBTarget {
 
   def normalizeType(t: TypeTree): TypeTree = t match {
     case ct: ClassType if ct.parent.isDefined => ct.parent.get
-    case tt: TupleType => TupleType(tt.bases.map(normalizeType))
+    case tt: TupleType => tupleTypeWrap(tt.bases.map(normalizeType))
     case _ =>   t
   }
 
@@ -106,7 +106,7 @@ trait SMTLIBTarget {
           declareMapSort(from, to)
 
         case FunctionType(from, to) =>
-          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(TupleType(from)), declareSort(to)))
+          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(tupleTypeWrap(from)), declareSort(to)))
 
         case TypeParameter(id) =>
           val s = id2sym(id)
@@ -436,7 +436,7 @@ trait SMTLIBTarget {
        * ===== Everything else =====
        */
       case ap @ Application(caller, args) =>
-        ArraysEx.Select(toSMT(caller), toSMT(Tuple(args)))
+        ArraysEx.Select(toSMT(caller), toSMT(tupleWrap(args)))
 
       case e @ UnaryOperator(u, _) =>
         e match {

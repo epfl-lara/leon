@@ -64,7 +64,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
       val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
-      finiteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), from)
+      finiteLambda(dflt, mapping :+ (fromSMT(key, tupleTypeWrap(from)) -> fromSMT(elem, to)), from)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       finiteSet(elems.map(fromSMT(_, base)).toSet, base)
@@ -94,7 +94,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
   def encodeMapType(tpe: TypeTree): TypeTree = tpe match {
     case MapType(from, to) =>
-      TupleType(Seq(SetType(from), RawArrayType(from, to)))
+      tupleTypeWrap(Seq(SetType(from), RawArrayType(from, to)))
     case _ => sys.error("Woot")
   }
 
