@@ -64,7 +64,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
       val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
-      finiteLambda(dflt, mapping :+ (fromSMT(key, TupleType(from)) -> fromSMT(elem, to)), from)
+      finiteLambda(dflt, mapping :+ (fromSMT(key, tupleTypeWrap(from)) -> fromSMT(elem, to)), from)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       finiteSet(elems.map(fromSMT(_, base)).toSet, base)
