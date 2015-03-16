@@ -300,6 +300,7 @@ object ExpressionGrammars {
           }
         }
 
+        val funFilter = (fd: FunDef) => fd.isSynthetic || (excludeFCalls contains fd)
         val subs: Seq[(L, Gen)] = (e match {
           
           case _: Terminal | _: Let | _: LetDef | _: MatchExpr =>
@@ -308,7 +309,7 @@ object ExpressionGrammars {
           case cc @ CaseClass(cct, exprs) =>
             gens(e, gl, exprs, { case ss => CaseClass(cct, ss) }) ++ ccVariations(gl, cc)
 
-          case FunctionInvocation(TypedFunDef(fd, _), _) if excludeFCalls contains fd =>
+          case FunctionInvocation(TypedFunDef(fd, _), _) if funFilter(fd) =>
             // We allow only exact call, and/or cegis extensions
             /*Seq(el -> Generator[L, Expr](Nil, { _ => e })) ++*/ cegis(gl)
 
@@ -401,7 +402,8 @@ object ExpressionGrammars {
        }
      }
 
-     val funcs = functionsAvailable(prog).toSeq.flatMap(getCandidates).filterNot( tfd => exclude contains tfd.fd)
+     val filter = (tfd:TypedFunDef) => tfd.fd.isSynthetic || (exclude contains tfd.fd)
+     val funcs = functionsAvailable(prog).toSeq.flatMap(getCandidates).filterNot(filter)
 
      funcs.map{ tfd =>
        Generator[TypeTree, Expr](tfd.params.map(_.getType), { sub => FunctionInvocation(tfd, sub) })
