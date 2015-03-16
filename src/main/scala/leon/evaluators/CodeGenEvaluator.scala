@@ -5,9 +5,7 @@ package evaluators
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.TreeOps._
 import purescala.Trees._
-import purescala.TypeTrees._
 
 import codegen.CompilationUnit
 import codegen.CodeGenParams

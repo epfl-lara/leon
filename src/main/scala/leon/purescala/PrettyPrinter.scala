@@ -3,21 +3,16 @@
 package leon
 package purescala
 
-import Common._
-import Trees._
-import TypeTrees._
-import Definitions._
-import DefOps._
-
-import utils._
-
-import java.lang.StringBuffer
-import PrinterHelpers._
-import TreeOps.{isListLiteral, simplestValue, variablesOf}
-import TypeTreeOps.leastUpperBound
-import Extractors._
-
-import synthesis.Witnesses._
+import leon.purescala.Common._
+import leon.purescala.DefOps._
+import leon.purescala.Definitions._
+import leon.purescala.Extractors._
+import leon.purescala.PrinterHelpers._
+import leon.purescala.TreeOps.{isListLiteral, simplestValue}
+import leon.purescala.Trees._
+import leon.purescala.TypeTreeOps.leastUpperBound
+import leon.purescala.TypeTrees._
+import leon.synthesis.Witnesses._
 
 case class PrinterContext(
   current: Tree,
@@ -556,7 +551,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |"""
         
       case PackageImport(pack) => 
-        import DefOps._
+        import leon.purescala.DefOps._
         val newPack = ( for (
           scope <- ctx.scope;
           unit <- unitOf(scope);

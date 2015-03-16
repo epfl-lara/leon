@@ -2,7 +2,6 @@ package leon
 package solvers
 package smtlib
 
-import utils.Interruptible
 import purescala._
 import Common._
 import Trees.{Assert => _, _}

@@ -6,16 +6,12 @@ package rules
 
 import scala.annotation.tailrec
 
-import leon.utils._
-
 import solvers._
 
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Trees._
 import purescala.TreeOps._
-import purescala.TypeTrees._
-import purescala.Extractors._
 import purescala.Constructors._
 
 case object InlineHoles extends Rule("Inline-Holes") {

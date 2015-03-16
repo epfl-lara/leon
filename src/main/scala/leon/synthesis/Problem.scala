@@ -4,7 +4,6 @@ package leon
 package synthesis
 
 import leon.purescala.Trees._
-import leon.purescala.Definitions._
 import leon.purescala.TreeOps._
 import leon.purescala.TypeTrees._
 import leon.purescala.Common._

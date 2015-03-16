@@ -4,11 +4,9 @@ package leon
 package frontends.scalac
 
 import scala.tools.nsc._
-import scala.tools.nsc.plugins._
 
 trait AddTypeAnnotations extends SubComponent with ASTExtractors {
   import global._
-  import global.definitions._
   import ExtractorHelpers._
 
   val phaseName = "addtypeannotations"

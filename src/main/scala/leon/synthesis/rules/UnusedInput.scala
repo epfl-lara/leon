@@ -4,9 +4,7 @@ package leon
 package synthesis
 package rules
 
-import purescala.Trees._
 import purescala.TreeOps._
-import purescala.Extractors._
 
 case object UnusedInput extends NormalizingRule("UnusedInput") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

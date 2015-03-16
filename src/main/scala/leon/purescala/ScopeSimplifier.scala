@@ -6,10 +6,7 @@ package purescala
 import Common._
 import Definitions._
 import Trees._
-import TypeTrees._
-import TreeOps._
 import Extractors._
-import Constructors._
 
 class ScopeSimplifier extends Transformer {
   case class Scope(inScope: Set[Identifier] = Set(), oldToNew: Map[Identifier, Identifier] = Map(), funDefs: Map[FunDef, FunDef] = Map()) {

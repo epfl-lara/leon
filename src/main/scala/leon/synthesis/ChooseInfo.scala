@@ -3,12 +3,10 @@
 package leon
 package synthesis
 
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Trees._
 import purescala.TreeOps._
-import purescala.DefOps._
 import Witnesses._
 
 case class ChooseInfo(fd: FunDef,

@@ -4,23 +4,11 @@ package leon
 package synthesis
 package rules
 
-import solvers._
-import solvers.z3._
-
 import purescala.Trees._
 import purescala.Common._
-import purescala.Definitions._
 import purescala.TypeTrees._
-import purescala.TreeOps._
-import purescala.TypeTreeOps._
-import purescala.Extractors._
-import purescala.ScalaPrinter
 import purescala.Constructors._
-
-import scala.collection.mutable.{Map=>MutableMap, ArrayBuffer}
-
 import evaluators._
-import datagen._
 import codegen.CodeGenParams
 
 import utils._

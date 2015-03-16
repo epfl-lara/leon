@@ -3,16 +3,9 @@
 package leon
 package repair
 import synthesis._
-import Witnesses._
 
 import synthesis.rules._
 import repair.rules._
-
-import purescala.Definitions._
-import purescala.Trees._
-import purescala.DefOps._
-import purescala.TreeOps._
-import purescala.Extractors._
 
 case class RepairCostModel(cm: CostModel) extends WrappedCostModel(cm, "Repair("+cm.name+")") {
   import graph._

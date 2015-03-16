@@ -3,15 +3,8 @@
 package leon
 package repair
 
-import purescala.Common._
 import purescala.Definitions._
-import purescala.Trees._
-import purescala.TreeOps._
-import purescala.TypeTrees._
-import purescala.Constructors._
 import purescala.DefOps._
-
-import java.io.FileWriter
 
 object RepairPhase extends LeonPhase[Program, Program] {
   val name = "Repair"

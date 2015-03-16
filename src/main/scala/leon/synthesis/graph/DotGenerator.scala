@@ -2,8 +2,6 @@ package leon.synthesis.graph
 
 import java.io.{File, FileWriter, BufferedWriter}
 
-import leon.synthesis.Histogram
-
 class DotGenerator(g: Graph) {
 
   private[this] var _nextID = 0

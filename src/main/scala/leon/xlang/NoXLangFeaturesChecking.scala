@@ -3,12 +3,8 @@
 package leon
 package xlang
 
-import purescala.Common._
-import purescala.TypeTrees._
-import purescala.Trees._
 import purescala.TreeOps.collect
 import purescala.Definitions._
-import purescala.Constructors._
 
 import utils.Position
 

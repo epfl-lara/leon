@@ -4,11 +4,7 @@ package leon
 package synthesis
 package utils
 
-import purescala.Trees._
-import purescala.TreeOps._
 import purescala.Definitions._
-import solvers.z3._
-import solvers.Solver
 
 object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Program, Map[FunDef, Seq[ChooseInfo]])] {
   val name        = "Synthesis Problem Extraction"

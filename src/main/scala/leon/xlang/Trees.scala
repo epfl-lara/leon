@@ -6,9 +6,8 @@ package xlang
 import purescala.Common._
 import purescala.TypeTrees._
 import purescala.Trees._
-import purescala.Definitions._
 import purescala.Extractors._
-import purescala.{PrettyPrinter, PrettyPrintable, ScalaPrinter, PrinterContext}
+import purescala.{PrettyPrintable, PrinterContext}
 import utils._
 
 object Trees {

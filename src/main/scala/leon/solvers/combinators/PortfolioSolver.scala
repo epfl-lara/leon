@@ -5,16 +5,11 @@ package solvers
 package combinators
 
 import purescala.Common._
-import purescala.Definitions._
 import purescala.Trees._
-import purescala.TreeOps._
-import purescala.TypeTrees._
 
 import utils.Interruptible
 import scala.concurrent._
 import scala.concurrent.duration._
-
-import scala.collection.mutable.{Map=>MutableMap}
 
 import ExecutionContext.Implicits.global
 

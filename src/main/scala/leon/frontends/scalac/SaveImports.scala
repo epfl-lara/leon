@@ -12,7 +12,6 @@ import utils.{Position => LeonPosition, RangePosition => LeonRangePosition, Offs
 
 trait SaveImports extends SubComponent {
   import global._
-  import global.definitions._
 
   val phaseName = "imports"
 

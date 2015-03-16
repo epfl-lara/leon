@@ -5,9 +5,7 @@ package synthesis
 package rules
 
 import purescala.Trees._
-import purescala.TypeTrees._
 import purescala.TreeOps._
-import purescala.Extractors._
 import purescala.Constructors._
 
 import solvers._

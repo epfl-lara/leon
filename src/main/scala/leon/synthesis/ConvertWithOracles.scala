@@ -3,7 +3,6 @@
 package leon
 package synthesis
 
-import purescala.Common._
 import purescala.Trees._
 import purescala.TreeOps._
 import purescala.Definitions._

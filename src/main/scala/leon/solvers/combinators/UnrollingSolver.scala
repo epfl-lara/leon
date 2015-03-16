@@ -9,7 +9,6 @@ import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Trees._
 import purescala.TreeOps._
-import purescala.TypeTrees._
 
 import solvers.templates._
 import utils.Interruptible

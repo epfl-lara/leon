@@ -3,10 +3,8 @@
 package leon
 package purescala
 
-import Common._
 import Definitions._
 import Trees._
-import Extractors._
 import TreeOps._
 import TypeTrees._
 

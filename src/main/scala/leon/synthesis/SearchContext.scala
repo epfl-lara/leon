@@ -3,7 +3,6 @@
 package leon
 package synthesis
 
-import purescala.Trees.Choose
 import graph._
 
 /**
