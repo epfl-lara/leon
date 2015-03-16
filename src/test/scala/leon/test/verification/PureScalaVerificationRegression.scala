@@ -67,6 +67,5 @@ class PureScalaVerificationRegression extends VerificationRegression {
     assert(reporter.errorCount >= report.totalInvalid)
     assert(reporter.warningCount === 0)
   }
-  forEachFileIn("error", true) { output => () }
 
 }

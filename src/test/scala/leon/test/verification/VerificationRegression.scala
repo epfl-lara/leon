@@ -31,27 +31,21 @@ trait VerificationRegression extends LeonTestSuite {
   val pipeFront: Pipeline[Program, Program]
   val pipeBack : Pipeline[Program, VerificationReport]
 
-  private def mkTest(files: List[String], leonOptions : Seq[String], forError: Boolean)(block: Output=>Unit) = {
+  private def mkTest(files: List[String], leonOptions : Seq[String])(block: Output=>Unit) = {
     val extraction = 
       ExtractionPhase andThen
       PreprocessingPhase andThen
       pipeFront
 
-    if(forError) {
-      intercept[LeonFatalError]{
-        extraction.run(createLeonContext((files ++ leonOptions):_*))(files)
-      }
-    } else {
-      val ctx = createLeonContext(leonOptions:_*)
-      val ast = extraction.run(createLeonContext((files ++ leonOptions):_*))(files)
-      val programs = {
-        val (user, lib) = ast.units partition { _.isMainUnit }
-        user map { u => Program(u.id.freshen, u :: lib) }
-      }
-      for (p <- programs; displayName = p.id.name) test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
-        val report = pipeBack.run(ctx)(p)
-        block(Output(report, ctx.reporter))
-      }
+    val ctx = createLeonContext(leonOptions:_*)
+    val ast = extraction.run(createLeonContext((files ++ leonOptions):_*))(files)
+    val programs = {
+      val (user, lib) = ast.units partition { _.isMainUnit }
+      user map { u => Program(u.id.freshen, u :: lib) }
+    }
+    for (p <- programs; displayName = p.id.name) test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
+      val report = pipeBack.run(ctx)(p)
+      block(Output(report, ctx.reporter))
     }
   }
 
@@ -65,11 +59,8 @@ trait VerificationRegression extends LeonTestSuite {
 
     val files = fs map { _.getPath }
 
-    // If error, try to verify each file separately (and fail for each one)
-    val groupedFiles = if (forError) files map (List(_)) else List(files)
-
-    for (files <- groupedFiles; options <- optionVariants) {
-      mkTest(files, options, forError)(block)
+    for (options <- optionVariants) { 
+      mkTest(files, options)(block)
     }
   }
   
