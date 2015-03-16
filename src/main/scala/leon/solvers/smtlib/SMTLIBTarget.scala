@@ -106,7 +106,7 @@ trait SMTLIBTarget {
           declareMapSort(from, to)
 
         case FunctionType(from, to) =>
-          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(TupleType(from)), declareSort(to)))
+          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(tupleTypeWrap(from)), declareSort(to)))
 
         case TypeParameter(id) =>
           val s = id2sym(id)
