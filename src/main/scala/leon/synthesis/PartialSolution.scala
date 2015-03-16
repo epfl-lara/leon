@@ -4,9 +4,6 @@ package leon
 package synthesis
 
 import purescala.Trees._
-import purescala.TreeOps._
-import purescala.DefOps._
-import purescala.Common._
 
 import graph._
 

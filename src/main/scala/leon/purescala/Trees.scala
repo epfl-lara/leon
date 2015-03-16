@@ -8,7 +8,6 @@ import utils._
 /** AST definitions for Pure Scala. */
 object Trees {
   import Common._
-  import TreeOps.variablesOf
   import TypeTrees._
   import TypeTreeOps._
   import Definitions._

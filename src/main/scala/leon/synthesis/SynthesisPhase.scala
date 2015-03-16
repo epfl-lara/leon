@@ -3,10 +3,7 @@ package leon
 package synthesis
 
 import purescala.TreeOps._
-import solvers.z3._
 
-import purescala.Trees._
-import purescala.Common._
 import purescala.ScalaPrinter
 import purescala.Definitions.{Program, FunDef}
 import leon.utils.ASCIIHelpers

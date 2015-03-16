@@ -4,11 +4,6 @@ package leon
 
 import utils._
 
-import purescala.Definitions.Definition
-import purescala.Trees.Expr
-import purescala.PrettyPrinter
-import scala.annotation.implicitNotFound
-
 abstract class Reporter(settings: Settings) {
 
   abstract class Severity

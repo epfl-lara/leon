@@ -4,7 +4,6 @@ package leon
 
 import leon.utils._
 
-import purescala.Definitions.Program
 import java.io.File
 
 /** Everything that is part of a compilation unit, except the actual program tree.

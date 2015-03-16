@@ -5,8 +5,6 @@ package synthesis
 package rules
 
 import purescala.Trees._
-import purescala.TreeOps._
-import purescala.Extractors._
 import purescala.Constructors._
 
 case object CaseSplit extends Rule("Case-Split") {

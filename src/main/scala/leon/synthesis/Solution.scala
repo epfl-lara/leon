@@ -8,10 +8,7 @@ import purescala.Trees._
 import purescala.TypeTrees.{TypeTree,TupleType}
 import purescala.Definitions._
 import purescala.TreeOps._
-import purescala.ScopeSimplifier
 import purescala.Constructors._
-import solvers.z3._
-import solvers._
 
 import leon.utils.Simplifiers
 

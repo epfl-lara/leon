@@ -9,7 +9,6 @@ import purescala.TypeTrees._
 import purescala.Extractors._
 import purescala.TypeTreeOps._
 import purescala.Trees._
-import purescala.TreeOps._
 import purescala.DefOps._
 import purescala.Common._
 import Witnesses._

@@ -5,7 +5,6 @@ package datagen
 
 import purescala.Common._
 import purescala.Trees._
-import purescala.TreeOps._
 import purescala.TypeTrees._
 import purescala.Definitions._
 import utils.StreamUtils._

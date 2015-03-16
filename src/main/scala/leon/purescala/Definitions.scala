@@ -10,8 +10,6 @@ object Definitions {
   import Common._
   import Trees._
   import TreeOps._
-  import DefOps._
-  import Extractors._
   import TypeTrees._
   import TypeTreeOps._
 

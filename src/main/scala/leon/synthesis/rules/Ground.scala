@@ -6,9 +6,7 @@ package rules
 
 import solvers._
 import purescala.Trees._
-import purescala.TypeTrees._
 import purescala.TreeOps._
-import purescala.Extractors._
 import purescala.Constructors._
 
 case object Ground extends Rule("Ground") {

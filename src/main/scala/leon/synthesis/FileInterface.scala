@@ -5,7 +5,7 @@ package synthesis
 
 import purescala.Trees._
 import purescala.Common.Tree
-import purescala.Definitions.{Definition,FunDef}
+import purescala.Definitions.Definition
 import purescala.ScalaPrinter
 import purescala.PrinterOptions
 import purescala.PrinterContext

@@ -4,13 +4,9 @@ package leon
 package synthesis
 package rules
 
-import purescala.Common._
 import purescala.Trees._
 import purescala.Extractors._
 import purescala.Constructors._
-import purescala.TreeOps._
-import purescala.TypeTrees._
-import purescala.Definitions._
 
 case object OptimisticInjection extends Rule("Opt. Injection") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

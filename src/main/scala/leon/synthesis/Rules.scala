@@ -7,7 +7,6 @@ import purescala.Common._
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.TreeOps._
-import purescala.Constructors._
 import rules._
 
 abstract class Rule(val name: String) extends RuleDSL {

@@ -8,7 +8,6 @@ import leon.purescala.TypeTrees._
 import leon.purescala.Definitions._
 import leon.LeonContext
 import leon.evaluators.RecursiveEvaluator
-import leon.synthesis._
 
 /** 
  *  This evaluator tracks all dependencies between function calls (.fullCallGraph)

@@ -4,9 +4,6 @@ package graph
 
 import scala.annotation.tailrec
 
-import purescala.Trees.Choose
-import leon.utils.StreamUtils.cartesianProduct
-
 import scala.collection.mutable.ArrayBuffer
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean

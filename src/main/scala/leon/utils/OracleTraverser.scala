@@ -6,7 +6,6 @@ package utils
 import purescala.Trees._
 import purescala.TypeTrees._
 import purescala.Definitions._
-import utils._
 
 case class OracleTraverser(oracle: Expr, tpe: TypeTree, program: Program) {
   private def call(name: String) = {

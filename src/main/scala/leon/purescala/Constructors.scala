@@ -3,8 +3,6 @@
 package leon
 package purescala
 
-import utils._
-
 object Constructors {
   import Trees._
   import TreeOps._

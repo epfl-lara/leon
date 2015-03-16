@@ -5,19 +5,14 @@ package synthesis
 package rules
 
 import purescala.Trees._
-import purescala.Common._
-import purescala.Definitions._
 import purescala.TypeTrees._
-import purescala.Extractors._
 import purescala.Constructors._
 
 import evaluators._
-import datagen._
 import codegen.CodeGenParams
 
 import utils._
 
-import bonsai._
 import bonsai.enumerators._
 
 abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
