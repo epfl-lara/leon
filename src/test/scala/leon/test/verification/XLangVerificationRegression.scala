@@ -106,6 +106,4 @@ class XLangVerificationRegression extends LeonTestSuite {
     assert(reporter.errorCount >= report.totalInvalid)
   }
 
-  forEachFileIn("error", true) { output => () }
-
 }
