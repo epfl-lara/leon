@@ -21,7 +21,7 @@ class TerminationRegression extends LeonTestSuite {
     leon.frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase andThen leon.termination.TerminationPhase
 
   private def mkTest(file : File, leonOptions: Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
-    val fullName = file.getPath()
+    val fullName = file.getPath
     val start = fullName.indexOf("regression")
 
     val displayName = if(start != -1) {

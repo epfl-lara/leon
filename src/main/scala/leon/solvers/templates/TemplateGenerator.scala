@@ -157,7 +157,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
     // Group elements that satisfy p toghether
     // List(a, a, a, b, c, a, a), with p = _ == a will produce:
     // List(List(a,a,a), List(b), List(c), List(a, a))
-    def groupWhile[T](p: T => Boolean, l: Seq[T]): Seq[Seq[T]] = {
+    def groupWhile(p: T => Boolean, l: Seq[T]): Seq[Seq[T]] = {
       var res: Seq[Seq[T]] = Nil
 
       var c = l
