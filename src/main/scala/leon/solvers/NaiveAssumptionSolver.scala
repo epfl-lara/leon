@@ -18,7 +18,7 @@ trait NaiveAssumptionSolver extends AssumptionSolver {
   var lastBs = Set[Expr]()
   def checkAssumptions(bs: Set[Expr]): Option[Boolean] = {
     push()
-    lastBs = bs;
+    lastBs = bs
     assertCnstr(andJoin(bs.toSeq))
     val res = check
     pop()
@@ -26,7 +26,7 @@ trait NaiveAssumptionSolver extends AssumptionSolver {
     res
   }
 
-  def getUnsatCore(): Set[Expr] = {
+  def getUnsatCore: Set[Expr] = {
     lastBs
   }
 }

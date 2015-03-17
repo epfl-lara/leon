@@ -180,7 +180,7 @@ object FunctionClosure extends TransformationPhase {
       constraints = pathConstraints.filterNot(filteredConstraints.contains(_))
       constraints.foreach(expr => {
         val vs = variablesOf(expr)
-        if(!vs.intersect(allVars).isEmpty) {
+        if(vs.intersect(allVars).nonEmpty) {
           filteredConstraints ::= expr
           newVars ++= vs.diff(allVars)
         }

@@ -126,7 +126,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                   ci.ch.impl = Some(expr)
       
                   getVerificationCounterExamples(ci.fd, program) match {
-                    case NotValid(_, ces) if !ces.isEmpty =>
+                    case NotValid(_, ces) if ces.nonEmpty =>
                       reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
       
                     case NotValid(_, _) =>
@@ -156,7 +156,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                 for ((sol, i) <- solutions.reverse.zipWithIndex) {
                   reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
                   val expr = sol.toSimplifiedExpr(ctx, program)
-                  reporter.info(ScalaPrinter(expr));
+                  reporter.info(ScalaPrinter(expr))
                 }
                 reporter.info(ASCIIHelpers.title("In context:"))
       
@@ -164,13 +164,13 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                 for ((sol, i) <- solutions.reverse.zipWithIndex) {
                   reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
                   val expr = sol.toSimplifiedExpr(ctx, program)
-                  val nfd = fd.duplicate;
-      
+                  val nfd = fd.duplicate
+
                   nfd.body = fd.body.map { b =>
                     replace(Map(ci.source -> expr), b)
                   }
       
-                  reporter.info(ScalaPrinter(nfd));
+                  reporter.info(ScalaPrinter(nfd))
                 }
       
               }
@@ -197,7 +197,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val guide = Guide(replacedExpr)
 
     // Return synthesizer for this choose
-    val soptions0 = SynthesisPhase.processOptions(ctx);
+    val soptions0 = SynthesisPhase.processOptions(ctx)
 
     val soptions = soptions0.copy(
       functionsToIgnore = soptions0.functionsToIgnore + fd,
@@ -208,7 +208,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
         CEGLESS
         //TEGLESS
       )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)
-    );
+    )
 
     // extract chooses from fd
     val Seq(ci) = ChooseInfo.extractFromFunction(program, fd)
@@ -411,7 +411,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val maxValid      = 400
 
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams(checkContracts = true))
-    val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
+    val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
 
     val inputs = enum.iterator(tupleTypeWrap(fd.params map { _.getType})).map(unwrapTuple(_, fd.params.size))
 

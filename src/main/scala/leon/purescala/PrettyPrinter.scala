@@ -36,8 +36,8 @@ object PrinterHelpers {
       var strings     = sc.parts.iterator
       var expressions = args.iterator
 
-      var extraInd = 0;
-      var firstElem = true;
+      var extraInd = 0
+      var firstElem = true
 
       while(strings.hasNext) {
         val s = strings.next.stripMargin
@@ -45,7 +45,7 @@ object PrinterHelpers {
         // Compute indentation
         var start = s.lastIndexOf('\n')
         if(start >= 0 || firstElem) {
-          var i = start+1;
+          var i = start+1
           while(i < s.length && s(i) == ' ') {
             i += 1
           }
@@ -160,7 +160,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         val alphaNumDollar = "[\\w\\$]"
         // FIXME this does not account for class names with operator symbols
         def isLegalScalaId(id : String) = id.matches(
-          s"${alphaNumDollar}+|[${alphaNumDollar}+_]?[!@#%^&*+-\\|~/?><:]+"
+          s"$alphaNumDollar+|[$alphaNumDollar+_]?[!@#%^&*+-\\|~/?><:]+"
         )
         // Replace $opname with operator symbols
         val candidate = scala.reflect.NameTransformer.decode(name)
@@ -238,7 +238,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             if (chars.length == elems.length) {
               // String literal
               val str = chars mkString ""
-              val q = '"';
+              val q = '"'
               p"$q$str$q"
             }
             
@@ -274,7 +274,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case UnitLiteral()        => p"()"
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
-      case TupleSelect(t, i)    => p"${t}._$i"
+      case TupleSelect(t, i)    => p"$t._$i"
       case NoTree(tpe)          => p"???($tpe)"
       case Choose(pred, oimpl) => 
         oimpl match {
@@ -310,11 +310,11 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
       case BinaryMethodCall(a, op, b) =>
-        optP { p"${a} $op ${b}" }
+        optP { p"$a $op $b" }
 
       case FcallMethodInvocation(rec, fd, id, tps, args) =>
 
-        p"${rec}.${id}"
+        p"$rec.$id"
         if (tps.nonEmpty) {
           p"[$tps]"
         }
@@ -542,7 +542,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"""${nary(units filter {_.isMainUnit}, "\n\n")}"""
       
       case UnitDef(id,modules,pack,imports,_) =>
-        if (!pack.isEmpty){
+        if (pack.nonEmpty){
           p"""|package ${pack mkString "."}
               |"""
         }
@@ -631,7 +631,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         if (fd.canBeField) {
           p"""|${fd.defType} ${fd.id} : ${fd.returnType} = {
               |"""
-        } else if (!fd.tparams.isEmpty) {
+        } else if (fd.tparams.nonEmpty) {
           p"""|def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): ${fd.returnType} = {
               |"""
         } else {
@@ -697,7 +697,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
   }
 
   object BinaryMethodCall {
-    val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/");
+    val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/")
 
     def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
       case FcallMethodInvocation(rec, _, name, Nil, List(a)) =>

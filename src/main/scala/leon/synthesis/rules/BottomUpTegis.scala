@@ -119,12 +119,12 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
           )
 
 
-          val timers = sctx.context.timers.synthesis.rules.tegis;
+          val timers = sctx.context.timers.synthesis.rules.tegis
 
           val matches = enum.iterator(getRootLabel(targetType))
 
           if (matches.hasNext) {
-            RuleClosed(Solution(BooleanLiteral(true), Set(), matches.next, isTrusted = false))
+            RuleClosed(Solution(BooleanLiteral(true), Set(), matches.next(), isTrusted = false))
           } else {
             RuleFailed()
           }

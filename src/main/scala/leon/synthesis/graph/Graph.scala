@@ -96,7 +96,7 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
 class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) extends Node(cm, parent) {
   val p = ri.problem
 
-  override def toString = "\u2227 "+ri;
+  override def toString = "\u2227 "+ri
 
   def expand(hctx: SearchContext): Unit = {
     require(!isExpanded)
@@ -111,7 +111,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
     ri.apply(hctx) match {
       case RuleClosed(sols) =>
         solutions = Some(sols)
-        selectedSolution = 0;
+        selectedSolution = 0
 
         updateCost()
 
@@ -159,7 +159,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
     // Everything is solved correctly
     if (solveds.size == descendents.size) {
-      isSolved = true;
+      isSolved = true
       parents.foreach(_.onSolved(this))
     }
   }
@@ -168,7 +168,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
 class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(cm, parent) {
 
-  override def toString = "\u2228 "+p;
+  override def toString = "\u2228 "+p
 
   def getInstantiations(hctx: SearchContext): List[RuleInstantiation] = {
     val rules = hctx.sctx.rules
@@ -183,7 +183,7 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
       }.toList
 
       if (results.nonEmpty) {
-        return results;
+        return results
       }
     }
     Nil

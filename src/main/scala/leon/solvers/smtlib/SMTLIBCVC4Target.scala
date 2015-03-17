@@ -120,7 +120,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       } else {
         val selems = elems.toSeq.map(toSMT)
 
-        val sgt = FunctionApplication(SSymbol("singleton"), Seq(selems.head));
+        val sgt = FunctionApplication(SSymbol("singleton"), Seq(selems.head))
 
         if (selems.size > 1) {
           FunctionApplication(SSymbol("insert"), selems.tail :+ sgt)

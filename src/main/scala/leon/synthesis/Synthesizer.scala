@@ -29,7 +29,7 @@ class Synthesizer(val context : LeonContext,
 
   lazy val sctx = SynthesisContext.fromSynthesizer(this)
 
-  def getSearch(): Search = {
+  def getSearch: Search = {
     if (settings.manualSearch.isDefined) {
       new ManualSearch(context, ci, problem, settings.costModel, settings.manualSearch)
     } else if (settings.searchWorkers > 1) {
@@ -41,7 +41,7 @@ class Synthesizer(val context : LeonContext,
   }
 
   def synthesize(): (Search, Stream[Solution]) = {
-    val s = getSearch();
+    val s = getSearch
 
     val t = context.timers.synthesis.search.start()
 

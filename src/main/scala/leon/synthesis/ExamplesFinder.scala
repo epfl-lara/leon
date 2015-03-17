@@ -150,7 +150,7 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
       } else {
         // If the input contains free variables, it does not provide concrete examples. 
         // We will instantiate them according to a simple grammar to get them.
-        val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions _)
+        val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
         val values = enum.iterator(tupleTypeWrap(freeVars.map{ _.getType }))
         val instantiations = values.map {
           v => freeVars.zip(unwrapTuple(v, freeVars.size)).toMap

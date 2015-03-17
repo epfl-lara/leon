@@ -329,7 +329,7 @@ object TreeOps {
   }
 
   def count(matcher: Expr => Int)(e: Expr): Int = {
-    foldRight[Int]({ (e, subs) =>  matcher(e) + subs.foldLeft(0)(_ + _) } )(e)
+    foldRight[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
   }
 
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
@@ -439,10 +439,10 @@ object TreeOps {
 
     postMap({
       case m @ MatchLike(s, cses, builder) =>
-        Some(builder(s, cses.map(freshenCase(_))).copiedFrom(m))
+        Some(builder(s, cses.map(freshenCase)).copiedFrom(m))
 
       case p @ Passes(in, out, cses) =>
-        Some(Passes(in, out, cses.map(freshenCase(_))).copiedFrom(p))
+        Some(Passes(in, out, cses.map(freshenCase)).copiedFrom(p))
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
@@ -560,10 +560,10 @@ object TreeOps {
             //we replace, so we drop old
             false
           case (id, value) =>
-            val occurences = count{ (e: Expr) => e match {
+            val occurences = count {
               case Variable(x) if x == id => 1
               case _ => 0
-            }}(body)
+            }(body)
 
             if(occurences == 0) {
               false
@@ -1186,7 +1186,7 @@ object TreeOps {
   }
 
   def simplifyPaths(sf: SolverFactory[Solver]): Expr => Expr = {
-    new SimplifierWithPaths(sf).transform _
+    new SimplifierWithPaths(sf).transform
   }
 
   trait Traverser[T] {
@@ -1281,7 +1281,7 @@ object TreeOps {
       formulaSize(e1)+formulaSize(e2)+1
 
     case NAryOperator(es, _) =>
-      es.map(formulaSize).foldRight(0)(_ + _)+1
+      es.map(formulaSize).sum+1
   }
 
   def collectChooses(e: Expr): List[Choose] = {
@@ -1443,7 +1443,7 @@ object TreeOps {
     }
 
     def idHomo(i1: Identifier, i2: Identifier)(implicit map: Map[Identifier, Identifier]) = {
-      i1 == i2 || map.get(i1).map(_ == i2).getOrElse(false)
+      i1 == i2 || map.get(i1).exists(_ == i2)
     }
 
     def fdHomo(fd1: FunDef, fd2: FunDef)(implicit map: Map[Identifier, Identifier]) = {
@@ -1671,7 +1671,7 @@ object TreeOps {
 
         case UnitType => 
           // Anything matches ()
-          !ps.isEmpty
+          ps.nonEmpty
 
         case Int32Type => 
           // Can't possibly pattern match against all Ints one by one
@@ -1778,7 +1778,7 @@ object TreeOps {
     val expr0 = try {
       val freeVars: Array[Identifier] = variablesOf(expr).toArray
       val coefs: Array[Expr] = TreeNormalizations.linearArithmeticForm(expr, freeVars)
-      coefs.toList.zip(InfiniteIntegerLiteral(1) :: freeVars.toList.map(Variable(_))).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, t) => {
+      coefs.toList.zip(InfiniteIntegerLiteral(1) :: freeVars.toList.map(Variable)).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, t) => {
         if(t._1 == InfiniteIntegerLiteral(0)) acc else Plus(acc, Times(t._1, t._2))
       })
     } catch {
@@ -2038,7 +2038,7 @@ object TreeOps {
         val TopLevelOrs(orcases) = cond
 
         if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
-          if (!orcases.tail.isEmpty) {
+          if (orcases.tail.nonEmpty) {
             pre(IfExpr(orcases.head, thenn, IfExpr(orJoin(orcases.tail), thenn, elze)))
           } else {
             val TopLevelAnds(andcases) = orcases.head

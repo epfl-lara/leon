@@ -30,7 +30,7 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
   val bId = FreshIdentifier("b", IntegerType)
   val b = Variable(bId)
 
-  def toSum(es: Seq[Expr]) = es.reduceLeft(Plus(_, _))
+  def toSum(es: Seq[Expr]) = es.reduceLeft(Plus)
   
   def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier], prec: Expr, defaultMap: Map[Identifier, Expr] = Map()) {
     assert( //this outer assert should not be needed because of the nested one
@@ -226,7 +226,7 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
 
     def check(t: Expr, c: List[Expr], prec: Expr, witnesses: List[Expr], freshVars: List[Identifier]) {
       enumerate(freshVars.size, (vals: Array[Int]) => {
-        val mapping: Map[Expr, Expr] = (freshVars.zip(vals.toList).map(t => (Variable(t._1), i(t._2))).toMap)
+        val mapping: Map[Expr, Expr] = freshVars.zip(vals.toList).map(t => (Variable(t._1), i(t._2))).toMap
         val cWithVars: Expr = c.zip(witnesses).foldLeft[Expr](i(0)){ case (acc, (coef, wit)) => Plus(acc, Times(coef, replace(mapping, wit))) }
         checkSameExpr(Plus(t, cWithVars), i(0), as, prec)
       })

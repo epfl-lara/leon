@@ -86,7 +86,7 @@ class TimerStorage extends Dynamic {
   }
 
   def timed[T](b: => T): T = {
-    start
+    start()
     val res = b
     stop
     res

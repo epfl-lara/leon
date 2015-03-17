@@ -19,18 +19,18 @@ class FileInterface(reporter: Reporter) {
     import java.io.{File, BufferedWriter, FileWriter}
     val FileExt = """^(.+)\.([^.]+)$""".r
 
-    origFile.getAbsolutePath() match {
+    origFile.getAbsolutePath match {
       case FileExt(path, "scala") =>
         var i = 0
         def savePath = path+".scala."+i
 
-        while (new File(savePath).isFile()) {
+        while (new File(savePath).isFile) {
           i += 1
         }
 
         val origCode = readFile(origFile)
         val backup   = new File(savePath)
-        val newFile  = new File(origFile.getAbsolutePath())
+        val newFile  = new File(origFile.getAbsolutePath)
         origFile.renameTo(backup)
 
         var newCode = origCode
@@ -40,7 +40,7 @@ class FileInterface(reporter: Reporter) {
 
         val out = new BufferedWriter(new FileWriter(newFile))
         out.write(newCode)
-        out.close
+        out.close()
       case _ =>
 
     }

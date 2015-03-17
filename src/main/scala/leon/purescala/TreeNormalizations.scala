@@ -31,7 +31,7 @@ object TreeNormalizations {
       }
 
       rec(e)
-      assert(!id.isEmpty)
+      assert(id.isDefined)
       (InfiniteIntegerLiteral(coef), id.get)
     }
 
@@ -62,7 +62,7 @@ object TreeNormalizations {
       res(index+1) = coef
     }}
 
-    res(0) = simplifyArithmetic(exprs.foldLeft[Expr](InfiniteIntegerLiteral(0))(Plus(_, _)))
+    res(0) = simplifyArithmetic(exprs.foldLeft[Expr](InfiniteIntegerLiteral(0))(Plus))
     res
   }
 

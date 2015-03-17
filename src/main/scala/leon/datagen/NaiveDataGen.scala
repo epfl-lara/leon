@@ -48,7 +48,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         tpStream(tp)
 
       case TupleType(bses) =>
-        cartesianProduct(bses.map(generate(_))).map(Tuple)
+        cartesianProduct(bses.map(generate)).map(Tuple)
 
       case act : AbstractClassType =>
         // We prioritize base cases among the children.
@@ -76,7 +76,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
           Stream.cons(CaseClass(cct, Nil), Stream.empty)
         } else {
           val fieldTypes = cct.fieldsTypes
-          cartesianProduct(fieldTypes.map(generate(_))).map(CaseClass(cct, _))
+          cartesianProduct(fieldTypes.map(generate)).map(CaseClass(cct, _))
         }
 
       case _ => Stream.empty

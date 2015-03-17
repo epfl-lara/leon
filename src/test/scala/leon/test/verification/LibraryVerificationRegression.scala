@@ -22,6 +22,6 @@ class LibraryVerificationRegression extends LeonTestSuite {
 
       val report = pipeline.run(ctx)(Nil)
 
-      assert(report.totalConditions === report.totalValid, "Only "+report.totalValid+" valid out of "+report.totalConditions);
+      assert(report.totalConditions === report.totalValid, "Only "+report.totalValid+" valid out of "+report.totalConditions)
   }
 }

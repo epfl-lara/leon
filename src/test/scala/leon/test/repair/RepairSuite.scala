@@ -20,8 +20,8 @@ class RepairSuite extends LeonTestSuite {
   )
   
   for (file <- filesInResourceDir("regression/repair/")) {
-    val path = file.getAbsoluteFile().toString
-    val name = file.getName()
+    val path = file.getAbsoluteFile.toString
+    val name = file.getName
 
     val reporter = new TestSilentReporter
 

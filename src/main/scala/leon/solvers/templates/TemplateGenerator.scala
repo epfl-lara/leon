@@ -23,7 +23,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
   def mkTemplate(body: Expr): FunctionTemplate[T] = {
     if (cacheExpr contains body) {
-      return cacheExpr(body);
+      return cacheExpr(body)
     }
 
     val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true),
@@ -162,7 +162,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
       var c = l
 
-      while(!c.isEmpty) {
+      while(c.nonEmpty) {
         val (span, rest) = c.span(p)
 
         if (span.isEmpty) {
@@ -276,7 +276,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         case l @ Lambda(args, body) =>
           val idArgs : Seq[Identifier] = lambdaArgs(l)
-          val trArgs : Seq[T] = idArgs.map(encoder.encodeId(_))
+          val trArgs : Seq[T] = idArgs.map(encoder.encodeId)
 
           val lid = FreshIdentifier("lambda", l.getType, true)
           val clause = appliedEquals(Variable(lid), l)

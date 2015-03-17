@@ -26,7 +26,7 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
   }
 
   private def getCountString(severity: Severity): String =
-    StringOps.countElementsAsString((severity).count, label(severity))
+    StringOps.countElementsAsString(severity.count, label(severity))
 
   /** Prints the message. */
   def printMessage(msg: String, pos: LeonPosition, severity: Severity) {
@@ -81,5 +81,5 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
       print(pos, msg, severity)
   }
 
-  def displayPrompt: Unit = {}
+  def displayPrompt(): Unit = {}
 }

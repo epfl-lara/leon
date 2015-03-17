@@ -96,7 +96,7 @@ object Common {
   def aliased(ids1 : Set[Identifier], ids2 : Set[Identifier]) = {
     val s1 = ids1.groupBy{ _.toString }.keySet
     val s2 = ids2.groupBy{ _.toString }.keySet
-    !(s1 & s2).isEmpty
+    (s1 & s2).nonEmpty
   }
 
 }

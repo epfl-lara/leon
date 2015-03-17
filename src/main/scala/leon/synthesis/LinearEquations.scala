@@ -17,7 +17,7 @@ object LinearEquations {
   //return a mapping for each of the n variables in (pre, map, freshVars)
   def elimVariable(evaluator: Evaluator, as: Set[Identifier], normalizedEquation: List[Expr]): (Expr, List[Expr], List[Identifier]) = {
     require(normalizedEquation.size > 1)
-    require(normalizedEquation.tail.forall{case InfiniteIntegerLiteral(i) if i != 0 => true case _ => false})
+    require(normalizedEquation.tail.forall{case InfiniteIntegerLiteral(i) if i != BigInt(0) => true case _ => false})
     val t: Expr = normalizedEquation.head
     val coefsVars: List[BigInt] = normalizedEquation.tail.map{case InfiniteIntegerLiteral(i) => i}
     val orderedParams: Array[Identifier] = as.toArray
@@ -30,7 +30,7 @@ object LinearEquations {
       (Equals(Modulo(t, InfiniteIntegerLiteral(coef)), InfiniteIntegerLiteral(0)), List(UMinus(Division(t, InfiniteIntegerLiteral(coef)))), List())
     } else if(d > 1) {
       val newCoefsParams: List[Expr] = coefsParams.map(i => InfiniteIntegerLiteral(i/d) : Expr)
-      val newT = newCoefsParams.zip(InfiniteIntegerLiteral(1)::orderedParams.map(Variable(_)).toList).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
+      val newT = newCoefsParams.zip(InfiniteIntegerLiteral(1)::orderedParams.map(Variable).toList).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
       elimVariable(evaluator, as, newT :: normalizedEquation.tail.map{case InfiniteIntegerLiteral(i) => InfiniteIntegerLiteral(i/d) : Expr})
     } else {
       val basis: Array[Array[BigInt]]  = linearSet(evaluator, as, normalizedEquation.tail.map{case InfiniteIntegerLiteral(i) => i}.toArray)
@@ -71,7 +71,7 @@ object LinearEquations {
       }
     }
     for(j <- 0 until K.size - 1) {
-      val (_, sols) = particularSolution(as, InfiniteIntegerLiteral(coef(j)*K(j)(j)) :: coef.drop(j+1).map(InfiniteIntegerLiteral(_)).toList)
+      val (_, sols) = particularSolution(as, InfiniteIntegerLiteral(coef(j)*K(j)(j)) :: coef.drop(j+1).map(InfiniteIntegerLiteral).toList)
       var i = 0
       while(i < sols.size) {
         // seriously ??? 

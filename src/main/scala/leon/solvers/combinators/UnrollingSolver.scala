@@ -48,8 +48,8 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
 
   def name = "U:"+underlying.name
 
-  def free {
-    underlying.free
+  def free() {
+    underlying.free()
   }
 
   val templateGenerator = new TemplateGenerator(new TemplateEncoder[Expr] {

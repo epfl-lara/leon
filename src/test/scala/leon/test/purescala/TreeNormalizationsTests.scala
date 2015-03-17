@@ -34,8 +34,8 @@ class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
     )
   }
 
-  def toSum(es: Seq[Expr]) = es.reduceLeft(Plus(_, _))
-  def coefToSum(es: Array[Expr], vs: Array[Expr]) = (es.zip(Array[Expr](InfiniteIntegerLiteral(1)) ++ vs)).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
+  def toSum(es: Seq[Expr]) = es.reduceLeft(Plus)
+  def coefToSum(es: Array[Expr], vs: Array[Expr]) = es.zip(Array[Expr](InfiniteIntegerLiteral(1)) ++ vs).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
   
   test("checkSameExpr") {
     checkSameExpr(Plus(x, y), Plus(y, x), xs)

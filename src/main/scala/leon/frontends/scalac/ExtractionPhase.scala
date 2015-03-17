@@ -23,7 +23,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
     val settings = new NSCSettings
 
-    val scalaLib = Option(scala.Predef.getClass.getProtectionDomain.getCodeSource()).map{
+    val scalaLib = Option(scala.Predef.getClass.getProtectionDomain.getCodeSource).map{
       _.getLocation.getPath
     }.orElse( for {
       // We are in Eclipse. Look in Eclipse plugins to find scala lib

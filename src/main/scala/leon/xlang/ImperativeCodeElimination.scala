@@ -85,16 +85,16 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
 
         val iteExpr = IfExpr(cRes, replaceNames(cFun, tScope(thenVal)), replaceNames(cFun, eScope(elseVal))).copiedFrom(ite)
 
-        val scope = ((body: Expr) => {
+        val scope = (body: Expr) => {
           val tupleId = FreshIdentifier("t", iteType)
-          cScope( Let(tupleId, iteExpr, Let(
-            resId, 
+          cScope(Let(tupleId, iteExpr, Let(
+            resId,
             tupleSelect(tupleId.toVariable, 1, modifiedVars.nonEmpty),
-            freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+            freshIds.zipWithIndex.foldLeft(body)((b, id) =>
               Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 2, true), b)
             ))
           ).copiedFrom(expr))
-        })
+        }
 
         (resId.toVariable, scope, cFun ++ modifiedVars.zip(freshIds).toMap)
       }
@@ -123,18 +123,18 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           case (mc @ MatchCase(pat, guard, _), newRhs) => MatchCase(pat, guard map { replaceNames(scrutFun, _)}, newRhs).setPos(mc)
         }).setPos(m)
 
-        val scope = ((body: Expr) => {
+        val scope = (body: Expr) => {
           val tupleId = FreshIdentifier("t", matchType)
           scrutScope(
-            Let(tupleId, matchE, 
+            Let(tupleId, matchE,
               Let(resId, tupleSelect(tupleId.toVariable, 1, freshIds.nonEmpty),
-                freshIds.zipWithIndex.foldLeft(body)((b, id) => 
+                freshIds.zipWithIndex.foldLeft(body)((b, id) =>
                   Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 2, true), b)
                 )
               )
             )
           )
-        })
+        }
 
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
       }
@@ -159,7 +159,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val whileFunRecursiveCall = replaceNames(condFun,
             bodyScope(FunctionInvocation(whileFunDef.typed, modifiedVars.map(id => condBodyFun(id).toVariable)).setPos(wh)))
           val whileFunBaseCase =
-            tupleWrap(modifiedVars.map(id => condFun.get(id).getOrElse(modifiedVars2WhileFunVars(id)).toVariable))
+            tupleWrap(modifiedVars.map(id => condFun.getOrElse(id, modifiedVars2WhileFunVars(id)).toVariable))
           val whileFunBody = replaceNames(modifiedVars2WhileFunVars, 
             condScope(IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase)))
           whileFunDef.body = Some(whileFunBody)
@@ -174,7 +174,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
 
           //the mapping of the trivial post condition variables depends on whether the condition has had some side effect
           val trivialPostcondition: Option[Expr] = Some(Not(replace(
-            modifiedVars.map(id => (condFun.get(id).getOrElse(id).toVariable, modifiedVars2ResultVars(id.toVariable))).toMap,
+            modifiedVars.map(id => (condFun.getOrElse(id, id).toVariable, modifiedVars2ResultVars(id.toVariable))).toMap,
             whileFunCond)))
           val invariantPrecondition: Option[Expr] = wh.invariant.map(expr => replaceNames(modifiedVars2WhileFunVars, expr))
           val invariantPostcondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2ResultVars, expr))
@@ -186,16 +186,16 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
               })))
 
           val finalVars = modifiedVars.map(_.freshen)
-          val finalScope = ((body: Expr) => {
+          val finalScope = (body: Expr) => {
             val tupleId = FreshIdentifier("t", whileFunReturnType)
-            LetDef( whileFunDef, Let(
-              tupleId, 
-              FunctionInvocation(whileFunDef.typed, modifiedVars.map(_.toVariable)).setPos(wh), 
-              finalVars.zipWithIndex.foldLeft(body){(b, id) => 
+            LetDef(whileFunDef, Let(
+              tupleId,
+              FunctionInvocation(whileFunDef.typed, modifiedVars.map(_.toVariable)).setPos(wh),
+              finalVars.zipWithIndex.foldLeft(body) { (b, id) =>
                 Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 1, finalVars.size), b)
               }
             ))
-          })
+          }
 
           (UnitLiteral(), finalScope, modifiedVars.zip(finalVars).toMap)
         }

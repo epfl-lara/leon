@@ -22,9 +22,9 @@ trait Z3ModelReconstruction {
     
     variables.getZ3(id.toVariable).flatMap { z3ID =>
       expectedType match {
-        case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral(_))
+        case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral)
         case Int32Type =>
-          model.evalAs[Int](z3ID).map(IntLiteral(_)).orElse{
+          model.evalAs[Int](z3ID).map(IntLiteral).orElse{
             model.eval(z3ID).flatMap(t => softFromZ3Formula(model, t))
           }
         case IntegerType => model.evalAs[Int](z3ID).map(InfiniteIntegerLiteral(_))
@@ -40,16 +40,16 @@ trait Z3ModelReconstruction {
     var asMap = Map.empty[Identifier,Expr]
 
     def completeID(id : Identifier) : Unit = {
-      asMap = asMap + ((id -> simplestValue(id.getType)))
+      asMap = asMap + (id -> simplestValue(id.getType))
       reporter.debug("Completing variable '" + id + "' to simplest value")
     }
 
     for(id <- ids) {
       modelValue(model, id) match {
-        case None if (AUTOCOMPLETEMODELS) => completeID(id)
+        case None if AUTOCOMPLETEMODELS => completeID(id)
         case None => ;
-        case Some(v @ Variable(exprId)) if (AUTOCOMPLETEMODELS && exprId == id) => completeID(id)
-        case Some(ex) => asMap = asMap + ((id -> ex))
+        case Some(v @ Variable(exprId)) if AUTOCOMPLETEMODELS && exprId == id => completeID(id)
+        case Some(ex) => asMap = asMap + (id -> ex)
       }
     }
     asMap

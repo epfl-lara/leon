@@ -55,7 +55,7 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     }
 
     val vr = AnalysisPhase.run(ctx.copy(options = newOptions))(pgm4)
-    completeVerificationReport(vr, functionWasLoop _)
+    completeVerificationReport(vr, functionWasLoop)
   }
 
   def completeVerificationReport(vr: VerificationReport, functionWasLoop: FunDef => Boolean): VerificationReport = {

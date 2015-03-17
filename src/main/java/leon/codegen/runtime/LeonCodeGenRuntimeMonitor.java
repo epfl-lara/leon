@@ -12,12 +12,10 @@ public class LeonCodeGenRuntimeMonitor {
     }
 
     public void onInvoke() throws LeonCodeGenEvaluationException {
-        if(invocationsLeft < 0) {
-            return;
+        if(invocationsLeft > 0) {
+            invocationsLeft--;
         } else if(invocationsLeft == 0) {
             throw new LeonCodeGenEvaluationException("Maximum number of invocations reached.");
-        } else {
-          invocationsLeft--;
         }
     }
 }

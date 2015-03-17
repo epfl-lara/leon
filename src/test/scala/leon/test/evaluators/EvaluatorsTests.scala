@@ -85,10 +85,10 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     def asIntSet(e : Expr) : Option[Set[Int]] = e match {
       case FiniteSet(es) =>
-        val ois = es.map(_ match {
+        val ois = es.map {
           case IntLiteral(v) => Some(v)
           case _ => None
-        })
+        }
         if(ois.forall(_.isDefined))
           Some(ois.map(_.get).toSet)
         else
@@ -110,10 +110,10 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     def asIntMap(e : Expr) : Option[Map[Int,Int]] = e match {
       case FiniteMap(ss) =>
-        val oips : Seq[Option[(Int,Int)]] = ss.map(_ match {
-          case (IntLiteral(f),IntLiteral(t)) => Some(f -> t)
+        val oips : Seq[Option[(Int,Int)]] = ss.map {
+          case (IntLiteral(f), IntLiteral(t)) => Some(f -> t)
           case _ => None
-        })
+        }
         if(oips.forall(_.isDefined))
           Some(oips.map(_.get).toMap)
         else

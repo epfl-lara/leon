@@ -184,7 +184,7 @@ object Definitions {
   
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  case class ModuleDef(id: Identifier, defs : Seq[Definition], val isStandalone : Boolean) extends Definition {
+  case class ModuleDef(id: Identifier, defs : Seq[Definition], isStandalone : Boolean) extends Definition {
     
     def subDefinitions = defs
     
@@ -288,9 +288,9 @@ object Definitions {
   }
 
   /** Abstract classes. */
-  case class AbstractClassDef(val id: Identifier,
-                              val tparams: Seq[TypeParameterDef],
-                              val parent: Option[AbstractClassType]) extends ClassDef {
+  case class AbstractClassDef(id: Identifier,
+                              tparams: Seq[TypeParameterDef],
+                              parent: Option[AbstractClassType]) extends ClassDef {
 
     val fields = Nil
     val isAbstract   = true
@@ -301,10 +301,10 @@ object Definitions {
   }
 
   /** Case classes/objects. */
-  case class CaseClassDef(val id: Identifier,
-                          val tparams: Seq[TypeParameterDef],
-                          val parent: Option[AbstractClassType],
-                          val isCaseObject: Boolean) extends ClassDef {
+  case class CaseClassDef(id: Identifier,
+                          tparams: Seq[TypeParameterDef],
+                          parent: Option[AbstractClassType],
+                          isCaseObject: Boolean) extends ClassDef {
 
     private var _fields = Seq[ValDef]()
 
@@ -461,8 +461,8 @@ object Definitions {
       }
     }
 
-    private lazy val typesMap = {
-      (fd.tparams zip tps).toMap.filter(tt => tt._1 != tt._2)
+    private lazy val typesMap: Map[TypeParameterDef, TypeTree] = {
+      (fd.tparams zip tps).toMap.filter(tt => tt._1.tp != tt._2)
     }
 
     def translated(t: TypeTree): TypeTree = instantiateType(t, typesMap)

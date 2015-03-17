@@ -17,7 +17,7 @@ class InterruptManager(reporter: Reporter) extends Interruptible {
   val interrupted: AtomicBoolean = new AtomicBoolean(false)
 
   @inline
-  def isInterrupted() = interrupted.get()
+  def isInterrupted = interrupted.get()
 
   def interrupt() = synchronized {
     if (!interrupted.get()) {

@@ -20,7 +20,7 @@ abstract class CostModel(val name: String) {
   }
 }
 
-case class Cost(val minSize: Int) extends AnyVal with Ordered[Cost] {
+case class Cost(minSize: Int) extends AnyVal with Ordered[Cost] {
   def compare(that: Cost): Int = {
     this.minSize-that.minSize
   }

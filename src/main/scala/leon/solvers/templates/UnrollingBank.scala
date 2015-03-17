@@ -76,7 +76,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     appBlockersStack = appBlockersStack.drop(lvl)
   }
 
-  def dumpBlockers = {
+  def dumpBlockers() = {
     val generations = (callInfo.map(_._2._1).toSet ++ appInfo.map(_._2._1).toSet).toSeq.sorted
 
     generations.foreach { generation =>
@@ -92,7 +92,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     }
   }
 
-  def canUnroll = !callInfo.isEmpty || !appInfo.isEmpty
+  def canUnroll = callInfo.nonEmpty || appInfo.nonEmpty
 
   def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq
 

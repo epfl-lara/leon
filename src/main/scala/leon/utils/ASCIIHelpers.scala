@@ -129,7 +129,7 @@ object ASCIIHelpers {
 
   def line(str: String, sep: String, width: Int = 80): String = {
     val middle = " "+str+" "
-    val remSize = (width-middle.length)
+    val remSize = width - middle.length
     sep*math.floor(remSize/2).toInt+middle+sep*math.ceil(remSize/2).toInt
   }
 

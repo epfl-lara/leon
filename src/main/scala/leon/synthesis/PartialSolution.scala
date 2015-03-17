@@ -49,7 +49,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
   }
 
 
-  def getSolution(): Solution = {
+  def getSolution: Solution = {
     getSolutionFor(g.root)
   }
 

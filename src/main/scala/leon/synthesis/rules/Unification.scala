@@ -25,7 +25,7 @@ object Unification {
           }
       }.unzip
 
-      if (!toRemove.isEmpty) {
+      if (toRemove.nonEmpty) {
         val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq))
 
         List(decomp(List(sub), forward, this.name))

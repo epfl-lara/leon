@@ -12,13 +12,13 @@ object SeqUtils {
     val max = sizes.product
 
     val result = new ArrayBuffer[Tuple[T]](max)
-    var i = 0;
-    
+    var i = 0
+
     while (i < max) {
-      var c = i;
-      var sel = -1;
+      var c = i
+      var sel = -1
       val elem = for (s <- sizes) yield {
-        val index = c % s;
+        val index = c % s
         c = c / s
         sel += 1
         seqs(sel)(index)

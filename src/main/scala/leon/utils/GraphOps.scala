@@ -27,7 +27,7 @@ object GraphOps {
   def transitiveClosure[A](graph: Map[A,Set[A]]) : Map[A,Set[A]] = {
     def step(graph : Map[A, Set[A]]) : Map[A,Set[A]] = graph map {
       case (k, vs) => (k, vs ++ (vs flatMap { v =>
-        graph.get(v).getOrElse(Set())
+        graph.getOrElse(v, Set())
       }))
     }
     leon.purescala.TreeOps.fixpoint(step, -1)(graph)

@@ -266,7 +266,7 @@ trait ASTExtractors {
        * visibility. Does not match on the automatically generated companion
        * objects of case classes (or any synthetic class). */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
-        case ClassDef(_, name, tparams, impl) if ((cd.symbol.isModuleClass || cd.symbol.hasPackageFlag) && tparams.isEmpty && !cd.symbol.isSynthetic) => {
+        case ClassDef(_, name, tparams, impl) if (cd.symbol.isModuleClass || cd.symbol.hasPackageFlag) && tparams.isEmpty && !cd.symbol.isSynthetic => {
           Some((name.toString, impl))
         }
         case _ => None
@@ -279,7 +279,7 @@ trait ASTExtractors {
        * no abstract members. */
       def unapply(cd: ClassDef): Option[(String, Symbol, Template)] = cd match {
         // abstract class
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isAbstractClass) => Some((name.toString, cd.symbol, impl))
+        case ClassDef(_, name, tparams, impl) if cd.symbol.isAbstractClass => Some((name.toString, cd.symbol, impl))
 
         case _ => None
       }
@@ -287,11 +287,11 @@ trait ASTExtractors {
 
     object ExCaseClass {
       def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,ValDef)], Template)] = cd match {
-        case ClassDef(_, name, tparams, impl) if (cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8) => {
-          val constructor: DefDef = impl.children.find(child => child match {
+        case ClassDef(_, name, tparams, impl) if cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8 => {
+          val constructor: DefDef = impl.children.find {
             case ExConstructorDef() => true
             case _ => false
-          }).get.asInstanceOf[DefDef]
+          }.get.asInstanceOf[DefDef]
 
           val args = constructor.vparamss.flatten.map(vd => ( vd.symbol, vd))
           Some((name.toString, cd.symbol, args, impl))
@@ -324,21 +324,21 @@ trait ASTExtractors {
 
     object ExCaseClassSyntheticJunk {
       def unapply(cd: ClassDef): Boolean = cd match {
-        case ClassDef(_, _, _, _) if (cd.symbol.isSynthetic) => true
+        case ClassDef(_, _, _, _) if cd.symbol.isSynthetic => true
         case _ => false
       }
     }
 
     object ExConstructorDef {
       def unapply(dd: DefDef): Boolean = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name == nme.CONSTRUCTOR && tparams.isEmpty) => true
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if name == nme.CONSTRUCTOR && tparams.isEmpty => true
         case _ => false
       }
     }
 
     object ExMainFunctionDef {
       def unapply(dd: DefDef): Boolean = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(name.toString == "main" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 1) => {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if name.toString == "main" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 1 => {
           true
         }
         case _ => false
@@ -707,7 +707,7 @@ trait ASTExtractors {
 
     object ExSomeConstruction {
       def unapply(tree: Apply) : Option[(Type,Tree)] = tree match {
-        case Apply(s @ Select(New(tpt), n), arg) if (arg.size == 1 && n == nme.CONSTRUCTOR && tpt.symbol.name.toString == "Some") => tpt.tpe match {
+        case Apply(s @ Select(New(tpt), n), arg) if arg.size == 1 && n == nme.CONSTRUCTOR && tpt.symbol.name.toString == "Some" => tpt.tpe match {
           case TypeRef(_, sym, tpe :: Nil) => Some((tpe, arg(0)))
           case _ => None
         }
@@ -717,7 +717,7 @@ trait ASTExtractors {
 
     object ExCaseClassConstruction {
       def unapply(tree: Apply): Option[(Tree,Seq[Tree])] = tree match {
-        case Apply(s @ Select(New(tpt), n), args) if (n == nme.CONSTRUCTOR) => {
+        case Apply(s @ Select(New(tpt), n), args) if n == nme.CONSTRUCTOR => {
           Some((tpt, args))
         }
         case _ => None
@@ -747,7 +747,7 @@ trait ASTExtractors {
 
     object ExAnd {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(s @ Select(lhs, _), List(rhs)) if (s.symbol == Boolean_and) =>
+        case Apply(s @ Select(lhs, _), List(rhs)) if s.symbol == Boolean_and =>
           Some((lhs,rhs))
         case _ => None
       }
@@ -755,7 +755,7 @@ trait ASTExtractors {
   
     object ExOr {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(s @ Select(lhs, _), List(rhs)) if (s.symbol == Boolean_or) =>
+        case Apply(s @ Select(lhs, _), List(rhs)) if s.symbol == Boolean_or =>
           Some((lhs,rhs))
         case _ => None
       }
@@ -763,42 +763,42 @@ trait ASTExtractors {
   
     object ExNot {
       def unapply(tree: Select): Option[Tree] = tree match {
-        case Select(t, n) if (n == nme.UNARY_!) => Some(t)
+        case Select(t, n) if n == nme.UNARY_! => Some(t)
         case _ => None
       }
     }
   
     object ExEquals {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.EQ) => Some((lhs,rhs))
+        case Apply(Select(lhs, n), List(rhs)) if n == nme.EQ => Some((lhs,rhs))
         case _ => None
       }
     }
 
     object ExNotEquals {
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
-        case Apply(Select(lhs, n), List(rhs)) if (n == nme.NE) => Some((lhs,rhs))
+        case Apply(Select(lhs, n), List(rhs)) if n == nme.NE => Some((lhs,rhs))
         case _ => None
       }
     }
 
     object ExUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
-        case Select(t, n) if (n == nme.UNARY_- && hasBigIntType(t)) => Some(t)
+        case Select(t, n) if n == nme.UNARY_- && hasBigIntType(t) => Some(t)
         case _ => None
       }
     }
 
     object ExBVUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
-        case Select(t, n) if (n == nme.UNARY_- && hasIntType(t)) => Some(t)
+        case Select(t, n) if n == nme.UNARY_- && hasIntType(t) => Some(t)
         case _ => None
       }
     }
 
     object ExBVNot {
       def unapply(tree: Select): Option[Tree] = tree match {
-        case Select(t, n) if (n == nme.UNARY_~ && hasIntType(t)) => Some(t)
+        case Select(t, n) if n == nme.UNARY_~ && hasIntType(t) => Some(t)
         case _ => None
       }
     }
@@ -938,7 +938,7 @@ trait ASTExtractors {
       def unapply(tree: Apply): Option[(Tree, Tree, Tree)] = tree match {
         case Apply(
               s @ Select(lhs, update),
-              index :: newValue :: Nil) if(s.symbol.fullName.endsWith("Array.update")) => 
+              index :: newValue :: Nil) if s.symbol.fullName.endsWith("Array.update") =>
             Some((lhs, index, newValue))
         case _ => None
       }

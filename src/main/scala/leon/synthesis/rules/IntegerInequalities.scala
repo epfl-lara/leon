@@ -35,7 +35,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
     val ineqVars = lhsSides.foldLeft(Set[Identifier]())((acc, lhs) => acc ++ variablesOf(lhs))
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
-    val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains(_))
+    val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains)
 
     val processedVars: Set[(Identifier, Int)] = candidateVars.flatMap(v => {
       try {
@@ -104,7 +104,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         case (x :: Nil) => x
         case Nil => sys.error("cannot build a max expression with no argument")
       }
-      if(!lowerBounds.isEmpty)
+      if(lowerBounds.nonEmpty)
         maxFun.body = Some(maxRec(maxValDefs.map(vd => Variable(vd.id)).toList))
       def max(xs: Seq[Expr]): Expr = FunctionInvocation(maxFun.typed, xs)
       //define min function
@@ -118,7 +118,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
         case (x :: Nil) => x
         case Nil => sys.error("cannot build a min expression with no argument")
       }
-      if(!upperBounds.isEmpty)
+      if(upperBounds.nonEmpty)
         minFun.body = Some(minRec(minValDefs.map(vd => Variable(vd.id)).toList))
       def min(xs: Seq[Expr]): Expr = FunctionInvocation(minFun.typed, xs)
       val floorFun = new FunDef(FreshIdentifier("floorDiv"), Nil, Int32Type, Seq(
@@ -184,7 +184,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
               Some(Solution(And(newPre, pre), defs,
                 letTuple(subProblemxs, term,
                   Let(processedVar, witness,
-                    tupleWrap(problem.xs.map(Variable(_))))), isTrusted=s.isTrusted))
+                    tupleWrap(problem.xs.map(Variable)))), isTrusted=s.isTrusted))
             } else if(remainderIds.size > 1) {
               sys.error("TODO")
             } else {
@@ -202,7 +202,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
                   concretePre,
                   letTuple(subProblemxs, concreteTerm,
                     Let(processedVar, witness,
-                      tupleWrap(problem.xs.map(Variable(_))))
+                      tupleWrap(problem.xs.map(Variable)))
                   ),
                   FunctionInvocation(funDef.typed, Seq(Minus(loopCounter, IntLiteral(1))))
                 )

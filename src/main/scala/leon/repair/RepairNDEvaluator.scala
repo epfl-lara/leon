@@ -63,11 +63,11 @@ class RepairNDEvaluator(ctx: LeonContext, prog: Program, fd : FunDef, cond: Expr
       Try {
         treat(e => e)
       }.getOrElse {
-        treat( postMap{
+        treat( postMap {
           // Use reference equality, just in case cond appears again in the program
           case c if c eq cond => Some(not(cond))
           case _ => None
-        } _)
+        })
       }
       
     case _ => super.e(expr)     

@@ -39,7 +39,7 @@ class Stopwatch(name: String = "Stopwatch") {
     this
   }
 
-  def stop {
+  def stop() {
     end        = System.currentTimeMillis
     acc       += (end - beginning)
     beginning  = 0L

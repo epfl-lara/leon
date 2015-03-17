@@ -15,11 +15,11 @@ object Simplifiers {
 
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_),
-      simplifyLets _,
+      simplifyLets,
       simplifyPaths(uninterpretedZ3)(_),
-      simplifyArithmetic _,
+      simplifyArithmetic,
       evalGround(ctx, p),
-      normalizeExpression _
+      normalizeExpression
     )
 
     val simple = { expr: Expr =>
@@ -40,9 +40,9 @@ object Simplifiers {
 
     val simplifiers = List[Expr => Expr](
       simplifyTautologies(uninterpretedZ3)(_),
-      simplifyArithmetic _,
+      simplifyArithmetic,
       evalGround(ctx, p),
-      normalizeExpression _
+      normalizeExpression
     )
 
     val simple = { expr: Expr =>

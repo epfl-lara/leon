@@ -22,7 +22,7 @@ case object IntInduction extends Rule("Int Induction") {
 
         val postXs  = p.xs map (id => FreshIdentifier("r", id.getType, true))
 
-        val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
+        val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable)
 
         val newPhi     = subst(origId -> Variable(inductOn), p.phi)
         val newPc      = subst(origId -> Variable(inductOn), p.pc)

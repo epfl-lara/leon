@@ -30,7 +30,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     var ctx: LeonContext = null 
     var opts: SynthesisSettings = null
 
-    test(cat+": "+f.getName()+" Compilation") {
+    test(cat+": "+f.getName+" Compilation") {
       ctx = createLeonContext("--synthesis")
 
       opts = SynthesisSettings(searchBound = Some(bound), allSeeing = true)
@@ -43,7 +43,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     }
 
     for (ci <- chooses) {
-      test(cat+": "+f.getName()+" - "+ci.fd.id.name) {
+      test(cat+": "+f.getName+" - "+ci.fd.id.name) {
         val synthesizer = new Synthesizer(ctx, program, ci, opts)
         val (search, sols) = synthesizer.synthesize()
         if (sols.isEmpty) {

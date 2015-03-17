@@ -117,7 +117,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   def run(ctx: LeonContext)(p: Program): Program = {
     val options = processOptions(ctx)
 
-    def excludeByDefault(fd: FunDef): Boolean = (fd.annotations contains "library")
+    def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
 
     val fdFilter = {
       import OptionsHelpers._

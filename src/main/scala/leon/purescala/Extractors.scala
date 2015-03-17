@@ -37,7 +37,7 @@ object Extractors {
   }
 
   trait UnaryExtractable {
-    def extract: Option[(Expr, (Expr)=>Expr)];
+    def extract: Option[(Expr, (Expr)=>Expr)]
   }
 
   object BinaryOperator {
@@ -95,7 +95,7 @@ object Extractors {
   }
 
   trait BinaryExtractable {
-    def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)];
+    def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)]
   }
 
   object NAryOperator {
@@ -104,9 +104,9 @@ object Extractors {
         case Seq(pred) => Choose(pred, None)
         case Seq(pred, impl) => Choose(pred, Some(impl))
       }))
-      case fi @ FunctionInvocation(fd, args) => Some((args, (as => FunctionInvocation(fd, as).setPos(fi))))
-      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, (as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi))))
-      case fa @ Application(caller, args) => Some((caller +: args), (as => application(as.head, as.tail).setPos(fa)))
+      case fi @ FunctionInvocation(fd, args) => Some((args, as => FunctionInvocation(fd, as).setPos(fi)))
+      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi)))
+      case fa @ Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail).setPos(fa))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
@@ -177,7 +177,7 @@ object Extractors {
   }
 
   trait NAryExtractable {
-    def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)];
+    def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)]
   }
 
   object StringLiteral {
@@ -217,7 +217,7 @@ object Extractors {
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Let(i, e, TopLevelOrs(bs)) => Some(bs map (let(i,e,_)))
       case Or(exprs) =>
-        Some(exprs.flatMap(unapply(_)).flatten)
+        Some(exprs.flatMap(unapply).flatten)
       case e =>
         Some(Seq(e))
     }
@@ -226,7 +226,7 @@ object Extractors {
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
       case Let(i, e, TopLevelAnds(bs)) => Some(bs map (let(i,e,_)))
       case And(exprs) =>
-        Some(exprs.flatMap(unapply(_)).flatten)
+        Some(exprs.flatMap(unapply).flatten)
       case e =>
         Some(Seq(e))
     }

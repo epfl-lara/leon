@@ -4,24 +4,24 @@ package leon.codegen.runtime;
 
 // MurmurHash3, reproduced from std. Scala lib.
 public final class LeonCodeGenRuntimeHashing {
-  public static final int seqHash(Object[] elements, int seed) {
+  public static int seqHash(Object[] elements, int seed) {
     // I feel good about this line.
     int h = avalanche(seed ^ 0xcafebabe);
     int sz = elements.length;
     if(sz == 0) return h;
-    for(int i = 0; i < sz; i++) {
-      h = mix(h, elements[i].hashCode());
-    }
+      for (Object element : elements) {
+        h = mix(h, element.hashCode());
+      }
     return finalizeHash(h, sz);
   }
 
-  private static final int mix(int hash, int data) {
+  private static int mix(int hash, int data) {
     int h = mixLast(hash, data);
     h = Integer.rotateLeft(h, 13);
     return h * 5 + 0xe6546b64;
   }
 
-  private static final int mixLast(int hash, int data) {
+  private static int mixLast(int hash, int data) {
     int k = data;
     k *= 0xcc9e2d51;
     k  = Integer.rotateLeft(k, 15);
@@ -29,11 +29,11 @@ public final class LeonCodeGenRuntimeHashing {
     return hash ^ k;
   }
 
-  private static final int finalizeHash(int hash, int length) {
+  private static int finalizeHash(int hash, int length) {
     return avalanche(hash ^ length);
   }
 
-  private static final int avalanche(int hash) {
+  private static int avalanche(int hash) {
     int h = hash;
     h ^= h >>> 16;
     h *= 0x85ebca6b;

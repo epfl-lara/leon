@@ -9,7 +9,7 @@ sealed abstract class LeonOption {
 
 /** Boolean (on/off) options. Present means "on". */
 case class LeonFlagOption(name: String, value: Boolean) extends LeonOption {
-  override def toString() : String = {
+  override def toString: String = {
     if (value) {
       "--" + name
     } else {
@@ -38,7 +38,7 @@ case class LeonValueOption(name: String, value: String) extends LeonOption {
       None
   }
 
-  override def toString() : String = "--%s=%s".format(name, value)
+  override def toString: String = "--%s=%s".format(name, value)
 }
 
 sealed abstract class LeonOptionDef {

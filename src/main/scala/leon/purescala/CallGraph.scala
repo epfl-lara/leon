@@ -68,7 +68,7 @@ class CallGraph(p: Program) {
   }
 
   private def transitiveClosure() {
-    var changed = true;
+    var changed = true
     while(changed) {
       val newCalls = _transitiveCalls.flatMap {
         case (from, to) => _transitiveCallees.getOrElse(to, Set()).map((from, _))

@@ -5,7 +5,7 @@ package leon.utils
 object StreamUtils {
   def interleave[T](streams : Seq[Stream[T]]) : Stream[T] = {
     var ss = streams
-    while(!ss.isEmpty && ss.head.isEmpty) {
+    while(ss.nonEmpty && ss.head.isEmpty) {
       ss = ss.tail
     }
     if(ss.isEmpty) return Stream.empty
@@ -54,13 +54,13 @@ object StreamUtils {
 
       while(continue && d < dimensions) {
         var i = is.head
-        if(bounds(d).map(i > _).getOrElse(false)) {
+        if(bounds(d).exists(i > _)) {
           continue = false
         } else try {
           // TODO can we speed up by caching the random access into
           // the stream in an indexedSeq? After all, `i` increases
           // slowly.
-          tuple = (ss.head)(i) :: tuple
+          tuple = ss.head(i) :: tuple
           is = is.tail
           ss = ss.tail
           d += 1

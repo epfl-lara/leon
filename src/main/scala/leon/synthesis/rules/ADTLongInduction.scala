@@ -57,7 +57,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
             CaseClassPattern(None, cct, withIds.map(id => WildcardPattern(Some(id))))
 
           case CaseClassPattern(binder, sccd, sub) =>
-            CaseClassPattern(binder, sccd, sub.map(unrollPattern(id, cct, withIds) _))
+            CaseClassPattern(binder, sccd, sub.map(unrollPattern(id, cct, withIds)))
             
           case _ => on
         }
@@ -71,7 +71,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
                 val subIds = cct.fields.map(vd => FreshIdentifier(vd.id.name, vd.getType, true)).toList
 
                 val newIds = ids.filterNot(_ == id) ++ subIds
-                val newCalls = if (!subIds.isEmpty) {
+                val newCalls = if (subIds.nonEmpty) {
                   List(subIds.find(isRec)).flatten
                 } else {
                   List()
@@ -81,7 +81,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
                 //println(subIds)
                 val newPattern = unrollPattern(id, cct, subIds)(pat)
 
-                val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(cct, subIds.map(Variable(_)))), v))
+                val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(cct, subIds.map(Variable))), v))
 
                 InductCase(newIds, newCalls, newPattern, and(pc, CaseClassInstanceOf(cct, Variable(id))), newMap)
               }
@@ -91,7 +91,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
           }
         }
 
-        val cases = unroll(init).flatMap(unroll(_))
+        val cases = unroll(init).flatMap(unroll)
 
         val innerPhi = substAll(substMap, p.phi)
         val innerPC  = substAll(substMap, p.pc)
@@ -114,7 +114,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
           for (cid <- calls) {
             val postXs  = p.xs map (id => FreshIdentifier("r", id.getType, true))
             postXss = postXss ::: postXs
-            val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
+            val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable)
             postFs = substAll(postXsMap + (inductOn -> Variable(cid)), innerPhi) :: postFs
 
             recCalls += postXs -> (Variable(cid) +: residualArgs.map(id => Variable(id)))
@@ -132,7 +132,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
 
             val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn) +: residualArgDefs, DefType.MethodDef)
 
-            val cases = for ((sol, (problem, pat, calls, pc)) <- (sols zip subProblemsInfo)) yield {
+            val cases = for ((sol, (problem, pat, calls, pc)) <- sols zip subProblemsInfo) yield {
               globalPre ::= and(pc, sol.pre)
 
               SimpleCase(pat, calls.foldLeft(sol.term){ case (t, (binders, callargs)) => letTuple(binders, FunctionInvocation(newFun.typed, callargs), t) })
@@ -157,7 +157,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
 
               Some(Solution(orJoin(globalPre),
                             sols.flatMap(_.defs).toSet+newFun,
-                            FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable(_))),
+                            FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable)),
                             sols.forall(_.isTrusted)
                           ))
             }

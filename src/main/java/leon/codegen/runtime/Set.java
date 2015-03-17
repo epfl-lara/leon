@@ -84,9 +84,7 @@ public final class Set {
 
     Set other = (Set)that;
 
-    if(this.size() != other.size()) return false;
-
-    return this.subsetOf(other);
+    return this.size() == other.size() && this.subsetOf(other);
   }
 
   @Override

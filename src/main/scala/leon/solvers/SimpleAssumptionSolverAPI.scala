@@ -9,7 +9,7 @@ import purescala.Trees._
 class SimpleAssumptionSolverAPI(sf: SolverFactory[AssumptionSolver]) extends SimpleSolverAPI(sf) {
 
   def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
-    val s = sf.getNewSolver
+    val s = sf.getNewSolver()
     try {
       s.assertCnstr(expression)
       s.checkAssumptions(assumptions) match {

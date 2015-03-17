@@ -64,7 +64,7 @@ object Algebra {
     val (na, nb) = (a.abs, b.abs)
     def gcd0(a: BigInt, b: BigInt): BigInt = {
       require(a >= b)
-      if(b == 0) a else gcd0(b, a % b)
+      if(b == BigInt(0)) a else gcd0(b, a % b)
     }
     if(na > nb) gcd0(na, nb) else gcd0(nb, na)
   }
@@ -176,7 +176,7 @@ object Algebra {
   def extendedEuclid(a: BigInt, b: BigInt): (BigInt, BigInt) = {
     def rec(a: BigInt, b: BigInt): (BigInt, BigInt) = {
       require(a >= 0 && b >= 0)
-      if(b == 0) (1, 0) else {
+      if(b == BigInt(0)) (1, 0) else {
         val (q, r) = divide(a, b)
         val (s, t) = extendedEuclid(b, r)
         (t, s - q * t)

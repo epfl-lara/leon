@@ -50,23 +50,27 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
     }
 
 
-    candidates.flatMap(_ match {
+    candidates.flatMap {
       case List(a1, a2) =>
 
         val subLT = p.copy(pc = and(LessThan(Variable(a1), Variable(a2)), p.pc))
         val subEQ = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc))
         val subGT = p.copy(pc = and(GreaterThan(Variable(a1), Variable(a2)), p.pc))
 
-        val onSuccess: List[Solution] => Option[Solution] = { 
-          case sols @ List(sLT, sEQ, sGT) =>
-            val pre  = orJoin(sols.map(_.pre))
+        val onSuccess: List[Solution] => Option[Solution] = {
+          case sols@List(sLT, sEQ, sGT) =>
+            val pre = orJoin(sols.map(_.pre))
             val defs = sLT.defs ++ sEQ.defs ++ sGT.defs
 
-            val term = IfExpr(LessThan(Variable(a1), Variable(a2)),
-                              sLT.term,
-                              IfExpr(Equals(Variable(a1), Variable(a2)),
-                                     sEQ.term,
-                                     sGT.term))
+            val term = IfExpr(
+              LessThan(Variable(a1), Variable(a2)),
+              sLT.term,
+              IfExpr(
+                Equals(Variable(a1), Variable(a2)),
+                sEQ.term,
+                sGT.term
+              )
+            )
 
             Some(Solution(pre, defs, term, sols.forall(_.isTrusted)))
           case _ =>
@@ -76,6 +80,6 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
         Some(decomp(List(subLT, subEQ, subGT), onSuccess, s"Ineq. Split on '$a1' and '$a2'"))
       case _ =>
         None
-    })
+    }
   }
 }
