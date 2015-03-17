@@ -54,7 +54,7 @@ case object ADTInduction extends Rule("ADT Induction") {
           val inputs = (for (id <- newIds) yield {
             if (id.getType == origId.getType) {
               val postXs  = p.xs map (id => FreshIdentifier("r", id.getType, true))
-              val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable(_))
+              val postXsMap = (p.xs zip postXs).toMap.mapValues(Variable)
 
               recCalls += postXs -> (Variable(id) +: residualArgs.map(id => Variable(id)))
 
@@ -65,9 +65,9 @@ case object ADTInduction extends Rule("ADT Induction") {
             }
           }).flatten
 
-          val subPhi = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerPhi)
-          val subPC  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerPC)
-          val subWS  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable(_)))), innerWS)
+          val subPhi = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerPhi)
+          val subPC  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerPC)
+          val subWS  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerWS)
 
           val subPre = CaseClassInstanceOf(cct, Variable(origId))
 
@@ -108,7 +108,7 @@ case object ADTInduction extends Rule("ADT Induction") {
 
               Some(Solution(orJoin(globalPre),
                             sols.flatMap(_.defs).toSet+newFun,
-                            FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable(_))),
+                            FunctionInvocation(newFun.typed, Variable(origId) :: oas.map(Variable)),
                             sols.forall(_.isTrusted)
                           ))
             }

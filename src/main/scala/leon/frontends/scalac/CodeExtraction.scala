@@ -831,7 +831,7 @@ trait CodeExtraction extends ASTExtractors {
     
     private def extractObjectDef(id : Identifier, defs: List[Tree], isStandalone : Boolean) {
 
-      val newDefs = defs.flatMap{ t => t match {
+      val newDefs = defs.flatMap {
         case t if isIgnored(t.symbol) =>
           None
 
@@ -850,10 +850,10 @@ trait CodeExtraction extends ASTExtractors {
           Some(defsToDefs(sym))
         case ExFieldDef(sym, _, _) =>
           Some(defsToDefs(sym))
-          
+
         case _ =>
           None
-      }}
+      }
 
       // We check nothing else is polluting the object
       for (t <- defs) t match {
@@ -1919,9 +1919,9 @@ trait CodeExtraction extends ASTExtractors {
           None
       }
 
-      if(exprOwners.exists(_ == None))
+      if(exprOwners.contains(None))
         None
-      else if(exprOwners.exists(_ == Some(None)))
+      else if(exprOwners.contains(Some(None)))
         Some(None)
       else if(exprOwners.exists(o1 => exprOwners.exists(o2 => o1 != o2)))
         Some(None)

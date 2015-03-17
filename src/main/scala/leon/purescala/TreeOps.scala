@@ -537,10 +537,10 @@ object TreeOps {
         Some(replace(Map((Variable(i) -> t)), b))
 
       case letExpr @ Let(i,e,b) if isDeterministic(b) => {
-        val occurences = count{ (e: Expr) => e match {
+        val occurences = count {
           case Variable(x) if x == i => 1
           case _ => 0
-        }}(b)
+        }(b)
 
         if(occurences == 0) {
           Some(b)
@@ -1443,7 +1443,7 @@ object TreeOps {
     }
 
     def idHomo(i1: Identifier, i2: Identifier)(implicit map: Map[Identifier, Identifier]) = {
-      i1 == i2 || map.get(i1).exists(_ == i2)
+      i1 == i2 || map.get(i1).contains(i2)
     }
 
     def fdHomo(fd1: FunDef, fd2: FunDef)(implicit map: Map[Identifier, Identifier]) = {
@@ -2202,21 +2202,21 @@ object TreeOps {
                 
           }
 
-          val newCases = resCases.flatMap { c => c match {
-            case SimpleCase(wp: WildcardPattern, m @ MatchExpr(ex, cases)) if ex == scrutinee  =>
+          val newCases = resCases.flatMap {
+            case SimpleCase(wp: WildcardPattern, m@MatchExpr(ex, cases)) if ex == scrutinee =>
               cases
 
-            case SimpleCase(pattern, m @ MatchExpr(v @ Variable(id), cases)) =>
+            case c@SimpleCase(pattern, m@MatchExpr(v@Variable(id), cases)) =>
               if (pattern.binders(id)) {
-                cases.map{ nc =>
+                cases.map { nc =>
                   SimpleCase(mergePattern(pattern, id, nc.pattern), nc.rhs)
                 }
               } else {
                 Seq(c)
               }
-            case _ => 
+            case c =>
               Seq(c)
-          }}
+          }
 
           var finalMatch = matchExpr(scrutinee, List(newCases.head)).asInstanceOf[MatchExpr]
 

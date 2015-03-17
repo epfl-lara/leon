@@ -601,7 +601,7 @@ trait SMTLIBTarget {
     reporter.ifDebug { debug =>
       SMTPrinter.printCommand(cmd, out)
       out.write("\n")
-      out.flush
+      out.flush()
     }
 
     interpreter.eval(cmd) match {

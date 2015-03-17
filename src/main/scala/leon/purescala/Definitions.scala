@@ -95,7 +95,7 @@ object Definitions {
       val fstream = new FileWriter(filename)
       val out = new BufferedWriter(fstream)
       out.write(ScalaPrinter(this))
-      out.close
+      out.close()
     }
     setSubDefOwners()
   }
@@ -171,7 +171,7 @@ object Definitions {
       val fstream = new FileWriter(filename)
       val out = new BufferedWriter(fstream)
       out.write(ScalaPrinter(this))
-      out.close
+      out.close()
     }
     
     setSubDefOwners()
@@ -204,11 +204,11 @@ object Definitions {
       case c @ CaseClassDef(_, _, None, _) => c
     }
     
-    def duplicate = copy(defs = defs map { _ match {
-      case f : FunDef => f.duplicate
-      case cd : ClassDef => cd.duplicate
+    def duplicate = copy(defs = defs map {
+      case f: FunDef => f.duplicate
+      case cd: ClassDef => cd.duplicate
       case other => other // FIXME: huh?
-    }})
+    })
       
     setSubDefOwners()
 
@@ -252,10 +252,10 @@ object Definitions {
     def knownChildren: Seq[ClassDef] = _children
 
     def knownDescendents: Seq[ClassDef] = {
-      knownChildren ++ (knownChildren.map(c => c match {
+      knownChildren ++ (knownChildren.map {
         case acd: AbstractClassDef => acd.knownDescendents
         case _ => Nil
-      }).foldLeft(List[ClassDef]())(_ ++ _))
+      }.foldLeft(List[ClassDef]())(_ ++ _))
     }
 
     def knownCCDescendents: Seq[CaseClassDef] = knownDescendents.collect {
