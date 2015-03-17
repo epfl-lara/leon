@@ -6,7 +6,6 @@ import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
-import leon.purescala.ExprOps._
 import leon.purescala.Types._
 
 import leon.solvers._
@@ -87,18 +86,18 @@ class FairZ3SolverTests extends LeonTestSuite {
     val f = And(b1, Not(b2))
 
     locally {
-      val (result, model) = solver.solveSAT(f)
+      val (result, _) = solver.solveSAT(f)
       assert(result === Some(true))
     }
 
     locally {
-      val (result, model, core) = solver.solveSATWithCores(f, Set(b1))
+      val (result, _, core) = solver.solveSATWithCores(f, Set(b1))
       assert(result === Some(true))
       assert(core.isEmpty)
     }
 
     locally {
-      val (result, model, core) = solver.solveSATWithCores(f, Set(b1, b2))
+      val (result, _, core) = solver.solveSATWithCores(f, Set(b1, b2))
       assert(result === Some(false))
       assert(core === Set(b2))
     }

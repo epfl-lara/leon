@@ -3,7 +3,6 @@
 package leon
 package synthesis
 
-import purescala.Definitions._
 import purescala.Expressions._
 import purescala.TreeNormalizations.linearArithmeticForm
 import purescala.Types._

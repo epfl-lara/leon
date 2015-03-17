@@ -2,21 +2,9 @@
 
 package leon.test.purescala
 
-import leon._
 import leon.test._
-import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
-import leon.frontends.scalac.ExtractionPhase
-
 import leon.purescala.Common._
-import leon.purescala.Expressions._
-import leon.purescala.Definitions._
-import leon.purescala.Types._
-import leon.datagen._
 import leon.utils.StreamUtils._
-
-import leon.evaluators._
-
-import org.scalatest.FunSuite
 
 class Streams extends LeonTestSuite {
   test("Cartesian Product 1") {

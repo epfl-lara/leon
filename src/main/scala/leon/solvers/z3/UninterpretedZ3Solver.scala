@@ -36,9 +36,9 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   )
   toggleWarningMessages(true)
 
-  initZ3
+  initZ3()
 
-  val solver = z3.mkSolver
+  val solver = z3.mkSolver()
 
   def push() {
     solver.push()
@@ -62,7 +62,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   }
 
   def getModel = {
-    modelToMap(solver.getModel, freeVariables)
+    modelToMap(solver.getModel(), freeVariables)
   }
 
   def getUnsatCore = {

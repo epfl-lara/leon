@@ -36,6 +36,7 @@ class ImportsTests extends LeonTestSuite {
   // Print and reparse tests
   private def testPrint(name : String, strs : List[String]) { test(name){
     val orig = parseStrings(strs )
+    // FIXME This is just nonsense. What are we reparsing?
     val output = orig.units map { ScalaPrinter(_) }
     // If we can reparse, we consider it successful.
     val after = parseStrings(strs)

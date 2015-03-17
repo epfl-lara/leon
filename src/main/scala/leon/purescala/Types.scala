@@ -135,7 +135,7 @@ object Types {
       case MultisetType(t) => Some((Seq(t), ts => MultisetType(ts.head)))
       case MapType(from,to) => Some((Seq(from, to), t => MapType(t(0), t(1))))
       case FunctionType(fts, tt) => Some((tt +: fts, ts => FunctionType(ts.tail.toList, ts.head)))
-      case t => Some(Nil, fake => t)
+      case t => Some(Nil, _ => t)
     }
   }
   

@@ -16,8 +16,6 @@ case object Ground extends Rule("Ground") {
         def apply(hctx: SearchContext): RuleApplication = {
           val solver = SimpleSolverAPI(new TimeoutSolverFactory(hctx.sctx.solverFactory, 10000L))
 
-          val tpe = tupleTypeWrap(p.xs.map(_.getType))
-
           val result = solver.solveSAT(p.phi) match {
             case (Some(true), model) =>
               val sol = Solution(BooleanLiteral(true), Set(), tupleWrap(p.xs.map(valuateWithModel(model))))

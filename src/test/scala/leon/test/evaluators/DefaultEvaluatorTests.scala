@@ -3,15 +3,10 @@
 package leon.test.evaluators
 
 import leon._
-import leon.evaluators._ 
-
-import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
-import leon.frontends.scalac.ExtractionPhase
-
+import leon.evaluators._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
-import leon.purescala.DefOps._
 import leon.purescala.Types._
 import leon.purescala.Constructors._
 

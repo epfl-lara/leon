@@ -5,7 +5,6 @@ package synthesis
 package rules
 
 import purescala.Expressions._
-import purescala.Definitions._
 import purescala.Common._
 import purescala.Types._
 import purescala.Constructors._
@@ -23,7 +22,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
       val (subOuts, outerOuts) = p.xs.map { x =>
         if (isDecomposable(x)) {
-          val ct @ CaseClassType(ccd @ CaseClassDef(name, _, _, _), tpes) = x.getType
+          val ct = x.getType.asInstanceOf[CaseClassType]
 
           val newIds = ct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.getType, true) }
 

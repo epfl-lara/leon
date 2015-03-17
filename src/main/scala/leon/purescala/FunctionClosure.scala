@@ -8,7 +8,6 @@ import Definitions._
 import Expressions._
 import Extractors._
 import ExprOps._
-import Types._
 import Constructors._
 
 object FunctionClosure extends TransformationPhase {
@@ -51,8 +50,7 @@ object FunctionClosure extends TransformationPhase {
       val capturedConstraints: Set[Expr] = pathConstraints.toSet
 
       val freshIds: Map[Identifier, Identifier] = capturedVars.map(id => (id, id.freshen)).toMap
-      val freshVars: Map[Expr, Expr] = freshIds.map(p => (p._1.toVariable, p._2.toVariable))
-      
+
       val extraValDefOldIds: Seq[Identifier] = capturedVars.toSeq
       val extraValDefFreshIds: Seq[Identifier] = extraValDefOldIds.map(freshIds(_))
       val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map(ValDef(_))
@@ -149,7 +147,6 @@ object FunctionClosure extends TransformationPhase {
         pathConstraints = pathConstraints.tail
         MatchCase(pattern, rGuard, rRhs)
       }
-      val tpe = csesRec.head.rhs.getType
       matchExpr(scrutRec, csesRec).copiedFrom(m)
     }
     case v @ Variable(id) => id2freshId.get(id) match {

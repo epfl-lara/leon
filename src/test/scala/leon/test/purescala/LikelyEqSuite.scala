@@ -2,12 +2,10 @@
 
 package leon.test.purescala
 
-import leon._
 import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
-
 
 class LikelyEqSuite extends LeonTestSuite with WithLikelyEq {
   def i(x: Int) = InfiniteIntegerLiteral(x)

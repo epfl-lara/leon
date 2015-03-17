@@ -13,13 +13,11 @@ import purescala.TreeNormalizations.NonLinearExpressionException
 import purescala.Types._
 import purescala.Constructors._
 import purescala.Definitions._
-import LinearEquations.elimVariable
 import leon.synthesis.Algebra.lcm
 
 case object IntegerInequalities extends Rule("Integer Inequalities") {
   def instantiateOn(implicit hctx: SearchContext, problem: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = problem.phi
-
 
     //assume that we only have inequalities
     var lhsSides: List[Expr] = Nil

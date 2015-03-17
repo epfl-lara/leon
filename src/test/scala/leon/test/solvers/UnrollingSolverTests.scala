@@ -1,6 +1,5 @@
 package leon.test.solvers
 
-import leon._
 import leon.test._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
@@ -32,10 +31,10 @@ class UnrollingSolverTests extends LeonTestSuite {
   private val sf = SolverFactory(() => new UnrollingSolver(testContext, program, new UninterpretedZ3Solver(testContext, program)))
   private def check(expr: Expr, expected: Option[Boolean], msg: String) : Unit = {
     test(msg) {
-      val solver = sf.getNewSolver
+      val solver = sf.getNewSolver()
       solver.assertCnstr(expr)
       assert(solver.check == expected)
-      solver.free
+      solver.free()
     }
   }
 

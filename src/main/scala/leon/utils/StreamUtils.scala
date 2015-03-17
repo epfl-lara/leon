@@ -53,7 +53,7 @@ object StreamUtils {
       var tuple : List[T] = Nil
 
       while(continue && d < dimensions) {
-        var i = is.head
+        val i = is.head
         if(bounds(d).exists(i > _)) {
           continue = false
         } else try {

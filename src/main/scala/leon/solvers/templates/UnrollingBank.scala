@@ -4,15 +4,9 @@ package leon
 package solvers
 package templates
 
-import utils._
 import purescala.Common._
 import purescala.Expressions._
-import purescala.Extractors._
-import purescala.ExprOps._
 import purescala.Types._
-import purescala.Definitions._
-
-import evaluators._
 
 class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[T]) {
   implicit val debugSection = utils.DebugSectionSolver
@@ -220,14 +214,14 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
 
   def promoteBlocker(b: T) = {
     if (callInfo contains b) {
-      val (gen, origGen, ast, fis) = callInfo(b)
+      val (_, origGen, ast, fis) = callInfo(b)
       
       callInfo += b -> (1, origGen, ast, fis)
     }
 
     if (blockerToApp contains b) {
       val app = blockerToApp(b)
-      val (gen, origGen, _, notB, infos) = appInfo(app)
+      val (_, origGen, _, notB, infos) = appInfo(app)
 
       appInfo += app -> (1, origGen, b, notB, infos)
     }

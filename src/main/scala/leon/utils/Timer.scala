@@ -44,11 +44,11 @@ class Timer() {
       val min = runs.min
       val max = runs.max
 
-      "(min: %3d, avg: %3d, max: %3d, n: %3d) %6d ms".format(min, tot/n, max, n, tot)
+      f"(min: $min%3d, avg: ${tot / n}%3d, max: $max%3d, n: $n%3d) $tot%6d ms"
     } else {
       val tot = runs.sum
 
-      "%6d ms".format(tot)
+      f"$tot%6d ms"
     }
   }
 }
@@ -88,7 +88,7 @@ class TimerStorage extends Dynamic {
   def timed[T](b: => T): T = {
     start()
     val res = b
-    stop
+    stop()
     res
   }
 

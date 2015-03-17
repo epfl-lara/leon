@@ -7,7 +7,6 @@ import Common._
 import Types._
 import Definitions._
 import Expressions._
-import TypeOps._
 import Extractors._
 import Constructors._
 import DefOps._
@@ -359,8 +358,8 @@ object ExprOps {
           case Variable(i) => subvs + i
           case LetDef(fd,_) => subvs -- fd.params.map(_.id)
           case Let(i,_,_) => subvs - i
-          case MatchLike(_, cses, _) => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
-          case Passes(_, _ , cses)   => subvs -- (cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b))
+          case MatchLike(_, cses, _) => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
+          case Passes(_, _ , cses)   => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
           case Lambda(args, body) => subvs -- args.map(_.id)
           case Forall(args, body) => subvs -- args.map(_.id)
           case _ => subvs
@@ -425,7 +424,7 @@ object ExprOps {
       val allBinders: Set[Identifier] = cse.pattern.binders
       val subMap: Map[Identifier,Identifier] = 
         Map(allBinders.map(i => (i, FreshIdentifier(i.name, i.getType, true))).toSeq : _*)
-      val subVarMap: Map[Expr,Expr] = subMap.map(kv => (Variable(kv._1) -> Variable(kv._2)))
+      val subVarMap: Map[Expr,Expr] = subMap.map(kv => Variable(kv._1) -> Variable(kv._2))
       
       MatchCase(
         rewritePattern(cse.pattern, subMap),
@@ -455,19 +454,16 @@ object ExprOps {
   }
   
   def applyAsMatches(p : Passes, f : Expr => Expr) = {
-    import p._
-    
     f(p.asConstraint) match {
       case Equals(newOut, MatchExpr(newIn, newCases)) => {
         val filtered = newCases flatMap {
-          case MatchCase(p,g,`newOut`) => None
+          case MatchCase(p, g, `newOut`) => None
           case other => Some(other)
         }
         Passes(newIn, newOut, filtered)
       }
       case other => other
     }
-    
   }
 
   def normalizeExpression(expr: Expr) : Expr = {
@@ -535,14 +531,14 @@ object ExprOps {
         Some(replace(Map((Variable(i) -> t)), b))
 
       case letExpr @ Let(i,e,b) if isDeterministic(b) => {
-        val occurences = count {
+        val occurrences = count {
           case Variable(x) if x == i => 1
           case _ => 0
         }(b)
 
-        if(occurences == 0) {
+        if(occurrences == 0) {
           Some(b)
-        } else if(occurences == 1) {
+        } else if(occurrences == 1) {
           Some(replace(Map((Variable(i) -> e)), b))
         } else {
           None
@@ -577,7 +573,7 @@ object ExprOps {
 
       case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
         val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-          case (v,i) => (v -> tupleSelect(tExpr, i + 1, true).copiedFrom(v))
+          case (v,i) => v -> tupleSelect(tExpr, i + 1, true).copiedFrom(v)
         }
 
         Some(replace(substMap, body))
@@ -2082,7 +2078,7 @@ object ExprOps {
           var scrutSet = Set[Expr]()
           var conditions = Map[Expr, CaseClassType]()
 
-          var matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
+          val matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
           for (CaseClassInstanceOf(cct, expr) <- matchingOn) {
             conditions += expr -> cct
 

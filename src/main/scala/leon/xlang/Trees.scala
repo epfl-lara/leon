@@ -13,11 +13,6 @@ import utils._
 object Trees {
   import purescala.PrinterHelpers._
 
-  private def ind(sb: StringBuffer, lvl: Int) : StringBuffer = {
-    sb.append("  " * lvl)
-    sb
-  }
-
   case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))

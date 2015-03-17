@@ -2,7 +2,6 @@
 
 package leon.test.purescala
 
-import leon._
 import leon.test._
 import leon.evaluators._
 import leon.purescala.Common._
@@ -48,7 +47,6 @@ trait WithLikelyEq {
         val counters: Array[Int] = vsOrder.map(_ => min)
         var i = 0
 
-        var cont = true
         while(i < counters.size && isEq) {
           val m: Map[Expr, Expr] = vsOrder.zip(counters).map{case (v, c) => (Variable(v), InfiniteIntegerLiteral(c))}.toMap
           val ne1 = replace(m, e1)

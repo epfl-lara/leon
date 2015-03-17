@@ -5,14 +5,7 @@ package solvers
 package smtlib
 
 import utils._
-import purescala._
-import Common._
-import Expressions._
-import Extractors._
-import ExprOps._
-import Types._
-import Definitions._
-
+import purescala.Definitions.Program
 
 abstract class SMTLIBSolver(val context: LeonContext,
                             val program: Program)

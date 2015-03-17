@@ -2,18 +2,11 @@
 
 package leon.test.purescala
 
-import leon._
 import leon.test._
-
-import leon.LeonContext
-
 import leon.purescala.Common._
-import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.ExprOps._
-
-import leon.solvers.z3._
 
 class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
   

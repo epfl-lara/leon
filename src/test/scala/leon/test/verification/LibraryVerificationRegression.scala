@@ -4,10 +4,6 @@ package leon.test.verification
 
 import leon._
 import leon.test._
-
-
-import java.io.File
-
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
 import leon.verification.AnalysisPhase

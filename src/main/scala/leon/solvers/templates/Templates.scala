@@ -11,8 +11,6 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Definitions._
 
-import evaluators._
-
 case class App[T](caller: T, tpe: TypeTree, args: Seq[T]) {
   override def toString = {
     "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")

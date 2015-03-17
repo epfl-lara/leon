@@ -26,7 +26,7 @@ case class LeonValueOption(name: String, value: String) extends LeonOption {
     Some(value.toInt)
   } catch {
     case _ : Throwable =>
-      ctx.reporter.error("Option --%s takes an integer as value.".format(name))
+      ctx.reporter.error(s"Option --$name takes an integer as value.")
       None
   }
 
@@ -34,11 +34,11 @@ case class LeonValueOption(name: String, value: String) extends LeonOption {
     Some(value.toLong)
   } catch {
     case _ : Throwable =>
-      ctx.reporter.error("Option --%s takes a long as value.".format(name))
+      ctx.reporter.error(s"Option --$name takes a long as value.")
       None
   }
 
-  override def toString: String = "--%s=%s".format(name, value)
+  override def toString: String = s"--$name=$value"
 }
 
 sealed abstract class LeonOptionDef {

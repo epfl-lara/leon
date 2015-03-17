@@ -5,12 +5,7 @@ import leon.test._
 
 import leon._
 import leon.purescala.Definitions._
-import leon.purescala.Expressions._
-import leon.purescala.ExprOps._
-import leon.solvers.z3._
-import leon.solvers.Solver
 import leon.synthesis._
-import leon.synthesis.utils._
 
 import java.io.File
 
@@ -45,7 +40,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     for (ci <- chooses) {
       test(cat+": "+f.getName+" - "+ci.fd.id.name) {
         val synthesizer = new Synthesizer(ctx, program, ci, opts)
-        val (search, sols) = synthesizer.synthesize()
+        val (_, sols) = synthesizer.synthesize()
         if (sols.isEmpty) {
           fail("Solution was not found. (Search bound: "+bound+")")
         }

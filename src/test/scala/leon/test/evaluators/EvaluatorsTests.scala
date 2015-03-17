@@ -8,7 +8,6 @@ import leon.evaluators._
 import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
 import leon.frontends.scalac.ExtractionPhase
 
-import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.DefOps._
@@ -30,7 +29,6 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen PreprocessingPhase
 
     val errorsBefore   = leonContext.reporter.errorCount
-    val warningsBefore = leonContext.reporter.warningCount
 
     val program = pipeline.run(leonContext)((str, Nil))
 
@@ -46,7 +44,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       case Some(fd: FunDef) =>
         FunctionInvocation(fd.typed, args.toSeq)
       case _ =>
-        throw new AssertionError("No function named '%s' defined in program.".format(fn))
+        throw new AssertionError(s"No function named '$fn' defined in program.")
     }
   }
 
@@ -55,7 +53,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       case Some(ccd: CaseClassDef) =>
         CaseClass(CaseClassType(ccd, Nil), args.toSeq)
       case _ =>
-        throw new AssertionError("No case class named '%s' defined in program.".format(name))
+        throw new AssertionError(s"No case class named '$name' defined in program.")
     }
   }
 
@@ -64,10 +62,10 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     evaluator.eval(in) match {
       case RuntimeError(msg) =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have succeeded, but it failed (%s).".format(in, evaluator.name, msg))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have succeeded, but it failed ($msg).")
 
       case EvaluatorError(msg) =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have succeeded, but the evaluator had an internal error (%s).".format(in, evaluator.name, msg))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have succeeded, but the evaluator had an internal error ($msg).")
 
       case Successful(result) =>
         result
@@ -77,7 +75,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   private def checkComp(evaluator : Evaluator, in : Expr, out : Expr) {
     val result = checkCompSuccess(evaluator, in)
     if(result != out)
-      throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced '%s' but produced '%s' instead.".format(in, evaluator.name, out, result))
+      throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced '$out' but produced '$result' instead.")
   }
 
   private def checkSetComp(evaluator : Evaluator, in : Expr, out : Set[Int]) {
@@ -101,7 +99,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
         ;
 
       case _ =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced a set '%s', but it produced '%s' instead.".format(in, evaluator.name, out, result))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced a set '$out', but it produced '$result' instead.")
     }
   }
 
@@ -126,7 +124,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
         ;
 
       case _ =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should produced a map '%s', but it produced '%s' instead.".format(in, evaluator.name, out, result))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should produced a map '$out', but it produced '$result' instead.")
     }
   }
 
@@ -135,10 +133,10 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     evaluator.eval(in) match {
       case EvaluatorError(msg) =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have failed, but it produced an internal error (%s).".format(in, evaluator.name, msg))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have failed, but it produced an internal error ($msg).")
 
       case Successful(result) =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have failed, but it produced the result '%s' instead.".format(in, evaluator.name, result))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have failed, but it produced the result '$result' instead.")
 
       case RuntimeError(_) =>
         // that's the desired outcome
@@ -150,10 +148,10 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     evaluator.eval(in) match {
       case RuntimeError(msg) =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced an internal error, but it failed instead (%s).".format(in, evaluator.name, msg))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced an internal error, but it failed instead ($msg).")
 
       case Successful(result) =>
-        throw new AssertionError("Evaluation of '%s' with evaluator '%s' should have produced an internal error, but it produced the result '%s' instead.".format(in, evaluator.name, result))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced an internal error, but it produced the result '$result' instead.")
 
       case EvaluatorError(_) =>
         // that's the desired outcome
@@ -284,7 +282,6 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val cons12a = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
     val cons12b = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
     val sing1 = mkCaseClass("MySingleton", IL(1))
-    val sing2 = mkCaseClass("MySingleton", IL(2))
 
     for(e <- evaluators) {
       checkComp(e, mkCall("size", nil), IL(0))
@@ -324,7 +321,6 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val nil = mkCaseClass("Nil")
     val cons12 = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
 
-    val semp = EmptySet(Int32Type)
     val s123 = NonemptySet(Set(IL(1), IL(2), IL(3)))
     val s246 = NonemptySet(Set(IL(2), IL(4), IL(6)))
 

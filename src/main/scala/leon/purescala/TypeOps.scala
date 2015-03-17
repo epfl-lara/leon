@@ -119,8 +119,6 @@ object TypeOps {
 
   def leastUpperBound(t1: TypeTree, t2: TypeTree): Option[TypeTree] = (t1,t2) match {
     case (c1: ClassType, c2: ClassType) =>
-      import scala.collection.immutable.Set
-
 
       def computeChain(ct: ClassType): List[ClassType] = ct.parent match {
         case Some(pct) =>
@@ -129,8 +127,8 @@ object TypeOps {
           List(ct)
       }
 
-      var chain1 = computeChain(c1)
-      var chain2 = computeChain(c2)
+      val chain1 = computeChain(c1)
+      val chain2 = computeChain(c2)
 
       val prefix = (chain1 zip chain2).takeWhile { case (ct1, ct2) => ct1 == ct2 }.map(_._1)
 

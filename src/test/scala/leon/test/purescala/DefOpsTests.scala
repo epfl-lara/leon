@@ -5,16 +5,12 @@ package leon.test.purescala
 import leon._
 import purescala.Definitions._
 import purescala.DefOps._
-import purescala.ScalaPrinter
 import frontends.scalac._
 import utils._
 import leon.test.LeonTestSuite
 
 private [purescala] object DefOpsHelper extends LeonTestSuite { 
   private def parseStrings(strs : List[String]) : Program = {
-    val settings : Settings = Settings(
-      verify = false
-    )
     val c = createLeonContext()
     val context : LeonContext = c.copy(settings = 
       c.settings.copy(verify = false)

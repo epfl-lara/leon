@@ -66,7 +66,7 @@ class ScopeSimplifier extends Transformer {
         }
 
         var curScope = newScope
-        var newSubPatterns = for (sp <- p.subPatterns) yield {
+        val newSubPatterns = for (sp <- p.subPatterns) yield {
           val (subPattern, subScope) = trPattern(sp, curScope)
           curScope = subScope
           subPattern
@@ -84,7 +84,6 @@ class ScopeSimplifier extends Transformer {
           case LiteralPattern(_, lit) => 
             LiteralPattern(newBinder, lit)
         }
-
 
         (newPattern, curScope)
       }

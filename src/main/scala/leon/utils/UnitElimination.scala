@@ -6,7 +6,6 @@ package utils
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import xlang.Trees._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Types._
@@ -133,7 +132,6 @@ object UnitElimination extends TransformationPhase {
         val csesRec = cses.map{ cse =>
           MatchCase(cse.pattern, cse.optGuard map removeUnit, removeUnit(cse.rhs))
         }
-        val tpe = csesRec.head.rhs.getType
         matchExpr(scrutRec, csesRec).setPos(m)
       }
       case _ => sys.error("not supported: " + expr)

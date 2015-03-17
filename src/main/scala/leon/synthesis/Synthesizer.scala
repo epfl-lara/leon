@@ -9,12 +9,8 @@ import purescala.ExprOps._
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ScalaPrinter
-import purescala.Types._
 import solvers._
-import solvers.combinators._
 import solvers.z3._
-
-import java.io.File
 
 import synthesis.graph._
 
@@ -74,7 +70,6 @@ class Synthesizer(val context : LeonContext,
     import verification.AnalysisPhase._
     import verification.VerificationContext
 
-    val ssol = sol.toSimplifiedExpr(context, program)
     reporter.info("Solution requires validation")
 
     val (npr, fds) = solutionToProgram(sol)
