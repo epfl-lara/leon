@@ -3,11 +3,12 @@
 package leon
 package purescala
 
+import Common._
+import Types._
+import Expressions._
+import ExprOps._
+
 object TreeNormalizations {
-  import Common._
-  import Types._
-  import Expressions._
-  import ExprOps._
 
   /* TODO: we should add CNF and DNF at least */
 

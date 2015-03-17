@@ -5,7 +5,6 @@ package purescala
 
 import purescala.Expressions._
 
-
 trait Transformer {
   def transform(e: Expr): Expr
 }

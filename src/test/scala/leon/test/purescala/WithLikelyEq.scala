@@ -7,8 +7,8 @@ import leon.test._
 import leon.evaluators._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.purescala.TreeOps.replace
-import leon.purescala.Trees._
+import leon.purescala.ExprOps.replace
+import leon.purescala.Expressions._
 
 /*
  * Determine if two expressions over arithmetic variables are likely to be equal.

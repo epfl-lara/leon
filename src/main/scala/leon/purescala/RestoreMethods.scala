@@ -1,12 +1,12 @@
-package leon.purescala
+package leon
+package purescala
 
-import leon._
-import leon.purescala.Definitions._
-import leon.purescala.Common._
-import leon.purescala.Expressions._
-import leon.purescala.ExprOps.{replaceFromIDs,functionCallsOf}
-import leon.purescala.DefOps.{applyOnFunDef,preMapOnFunDef}
-import leon.purescala.Types._
+import Definitions._
+import Common._
+import Expressions._
+import ExprOps.{replaceFromIDs,functionCallsOf}
+import DefOps.{applyOnFunDef,preMapOnFunDef}
+import Types._
 import utils.GraphOps._
 
 object RestoreMethods extends TransformationPhase {

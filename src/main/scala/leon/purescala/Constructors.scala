@@ -3,13 +3,14 @@
 package leon
 package purescala
 
+import Expressions._
+import ExprOps._
+import Definitions._
+import TypeOps._
+import Common._
+import Types._
+
 object Constructors {
-  import Expressions._
-  import ExprOps._
-  import Definitions._
-  import TypeOps._
-  import Common._
-  import Types._
 
   // If isTuple, the whole expression is returned. This is to avoid a situation
   // like tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x, which is not expected.
