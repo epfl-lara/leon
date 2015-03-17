@@ -3,8 +3,8 @@
 package leon
 package utils
 
-import purescala.Trees._
-import purescala.TypeTrees._
+import purescala.Expressions._
+import purescala.Types._
 import purescala.Definitions._
 
 case class OracleTraverser(oracle: Expr, tpe: TypeTree, program: Program) {

@@ -5,9 +5,9 @@ package evaluators
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.TreeOps._
-import purescala.Trees._
-import purescala.TypeTrees._
+import purescala.ExprOps._
+import purescala.Expressions._
+import purescala.Types._
 import purescala.Constructors._
 import purescala.Extractors._
 
@@ -504,7 +504,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       e(impl)
 
     case choose @ Choose(_, None) =>
-      import purescala.TreeOps.simplestValue
+      import purescala.ExprOps.simplestValue
 
       implicit val debugSection = utils.DebugSectionSynthesis
 
@@ -571,7 +571,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   }
 
   def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {
-    import purescala.TypeTreeOps.isSubtypeOf
+    import purescala.TypeOps.isSubtypeOf
 
     def matchesPattern(pat: Pattern, e: Expr): Option[Map[Identifier, Expr]] = (pat, e) match {
       case (InstanceOfPattern(ob, pct), CaseClass(ct, _)) =>

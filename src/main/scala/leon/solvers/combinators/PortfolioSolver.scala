@@ -5,7 +5,7 @@ package solvers
 package combinators
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 
 import utils.Interruptible
 import scala.concurrent._

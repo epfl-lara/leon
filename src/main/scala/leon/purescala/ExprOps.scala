@@ -9,12 +9,12 @@ import leon.solvers._
 
 import scala.collection.concurrent.TrieMap
 
-object TreeOps {
+object ExprOps {
   import Common._
-  import TypeTrees._
+  import Types._
   import Definitions._
-  import Trees._
-  import TypeTreeOps._
+  import Expressions._
+  import TypeOps._
   import Extractors._
   import Constructors._
   import DefOps._

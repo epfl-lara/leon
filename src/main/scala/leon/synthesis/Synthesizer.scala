@@ -5,11 +5,11 @@ package synthesis
 
 import purescala.Common._
 import purescala.Definitions.{Program, FunDef, ModuleDef, DefType, ValDef}
-import purescala.TreeOps._
-import purescala.Trees._
+import purescala.ExprOps._
+import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ScalaPrinter
-import purescala.TypeTrees._
+import purescala.Types._
 import solvers._
 import solvers.combinators._
 import solvers.z3._

@@ -3,7 +3,7 @@
 package leon
 package synthesis
 
-import purescala.Trees._
+import purescala.Expressions._
 
 import graph._
 

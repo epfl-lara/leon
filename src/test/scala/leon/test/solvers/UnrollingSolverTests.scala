@@ -2,8 +2,8 @@ package leon.test.solvers
 
 import leon._
 import leon.test._
-import leon.purescala.Trees._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.Types._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.solvers._

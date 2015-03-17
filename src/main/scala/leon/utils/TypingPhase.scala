@@ -4,9 +4,9 @@ package leon
 package utils
 
 import purescala.Common._
-import purescala.TreeOps.preTraversal
-import purescala.TypeTrees._
-import purescala.Trees._
+import purescala.ExprOps.preTraversal
+import purescala.Types._
+import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Constructors._
 

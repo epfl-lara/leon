@@ -5,10 +5,10 @@ package synthesis
 package utils
 
 import purescala.Definitions._
-import purescala.TypeTrees._
+import purescala.Types._
 import purescala.Extractors._
-import purescala.TypeTreeOps._
-import purescala.Trees._
+import purescala.TypeOps._
+import purescala.Expressions._
 import purescala.DefOps._
 import purescala.Common._
 import Witnesses._

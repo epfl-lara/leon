@@ -4,7 +4,7 @@ package leon
 package solvers
 
 import utils._
-import purescala.Trees.Expr
+import purescala.Expressions.Expr
 import purescala.Common.Identifier
 
 

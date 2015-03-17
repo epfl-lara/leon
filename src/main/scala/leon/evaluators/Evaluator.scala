@@ -5,7 +5,7 @@ package evaluators
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Expressions._
 
 abstract class Evaluator(val context : LeonContext, val program : Program) extends LeonComponent {
 

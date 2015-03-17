@@ -5,8 +5,8 @@ import leon.test._
 
 import leon._
 import leon.purescala.Definitions._
-import leon.purescala.Trees._
-import leon.purescala.TreeOps._
+import leon.purescala.Expressions._
+import leon.purescala.ExprOps._
 import leon.solvers.z3._
 import leon.solvers.Solver
 import leon.synthesis._

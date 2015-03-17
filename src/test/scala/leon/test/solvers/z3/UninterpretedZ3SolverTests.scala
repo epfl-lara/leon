@@ -6,9 +6,9 @@ import leon.test._
 
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.purescala.Trees._
-import leon.purescala.TreeOps._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.ExprOps._
+import leon.purescala.Types._
 
 import leon.solvers._
 import leon.solvers.z3._

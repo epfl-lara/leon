@@ -4,7 +4,7 @@ package leon
 package synthesis
 package rules
 
-import purescala.TypeTrees._
+import purescala.Types._
 
 import utils._
 

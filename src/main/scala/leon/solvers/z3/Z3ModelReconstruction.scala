@@ -6,9 +6,9 @@ package solvers.z3
 import z3.scala._
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Trees._
-import purescala.TreeOps._
-import purescala.TypeTrees._
+import purescala.Expressions._
+import purescala.ExprOps._
+import purescala.Types._
 
 trait Z3ModelReconstruction {
   self: AbstractZ3Solver =>

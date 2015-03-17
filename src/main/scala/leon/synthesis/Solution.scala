@@ -4,10 +4,10 @@ package leon
 package synthesis
 
 import purescala.Common._
-import purescala.Trees._
-import purescala.TypeTrees.{TypeTree,TupleType}
+import purescala.Expressions._
+import purescala.Types.{TypeTree,TupleType}
 import purescala.Definitions._
-import purescala.TreeOps._
+import purescala.ExprOps._
 import purescala.Constructors._
 
 import leon.utils.Simplifiers

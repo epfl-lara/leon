@@ -7,8 +7,8 @@ import utils._
 import Definitions.Definition
 
 object Common {
-  import Trees.Variable
-  import TypeTrees._
+  import Expressions.Variable
+  import Types._
 
   abstract class Tree extends Positioned with Serializable {
     def copiedFrom(o: Tree): this.type = {

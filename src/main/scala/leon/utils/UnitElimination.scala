@@ -5,11 +5,11 @@ package utils
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Expressions._
 import xlang.Trees._
 import purescala.Extractors._
 import purescala.Constructors._
-import purescala.TypeTrees._
+import purescala.Types._
 
 object UnitElimination extends TransformationPhase {
 

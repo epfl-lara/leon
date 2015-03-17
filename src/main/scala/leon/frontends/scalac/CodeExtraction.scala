@@ -17,13 +17,13 @@ import purescala.Definitions.{
   Import    => LeonImport,
   _
 }
-import purescala.Trees.{Expr => LeonExpr, This => LeonThis, _}
-import purescala.TypeTrees.{TypeTree => LeonType, _}
+import purescala.Expressions.{Expr => LeonExpr, This => LeonThis, _}
+import purescala.Types.{TypeTree => LeonType, _}
 import purescala.Common._
 import purescala.Extractors._
 import purescala.Constructors._
-import purescala.TreeOps._
-import purescala.TypeTreeOps._
+import purescala.ExprOps._
+import purescala.TypeOps._
 import purescala.DefOps.packageOf
 import xlang.Trees.{Block => LeonBlock, _}
 import xlang.TreeOps._

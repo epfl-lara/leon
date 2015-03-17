@@ -5,9 +5,9 @@ package datagen
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.TreeOps._
-import purescala.Trees._
-import purescala.TypeTrees._
+import purescala.ExprOps._
+import purescala.Expressions._
+import purescala.Types._
 import purescala.Extractors._
 import purescala.Constructors._
 

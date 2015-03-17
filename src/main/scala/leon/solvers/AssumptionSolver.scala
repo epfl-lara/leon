@@ -3,7 +3,7 @@
 package leon
 package solvers
 
-import purescala.Trees.Expr
+import purescala.Expressions.Expr
 
 trait AssumptionSolver extends Solver {
   def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]

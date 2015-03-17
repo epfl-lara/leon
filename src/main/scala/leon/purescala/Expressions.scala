@@ -6,10 +6,10 @@ package purescala
 import utils._
 
 /** AST definitions for Pure Scala. */
-object Trees {
+object Expressions {
   import Common._
-  import TypeTrees._
-  import TypeTreeOps._
+  import Types._
+  import TypeOps._
   import Definitions._
   import Extractors._
   import Constructors._

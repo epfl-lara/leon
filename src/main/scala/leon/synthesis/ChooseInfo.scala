@@ -5,8 +5,8 @@ package synthesis
 
 import purescala.Definitions._
 import purescala.Constructors._
-import purescala.Trees._
-import purescala.TreeOps._
+import purescala.Expressions._
+import purescala.ExprOps._
 import Witnesses._
 
 case class ChooseInfo(fd: FunDef,

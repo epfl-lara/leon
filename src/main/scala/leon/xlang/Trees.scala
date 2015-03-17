@@ -4,8 +4,8 @@ package leon
 package xlang
 
 import purescala.Common._
-import purescala.TypeTrees._
-import purescala.Trees._
+import purescala.Types._
+import purescala.Expressions._
 import purescala.Extractors._
 import purescala.{PrettyPrintable, PrinterContext}
 import utils._

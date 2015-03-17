@@ -3,15 +3,15 @@
 package leon
 package purescala
 
-import TreeOps.postMap
-import TypeTrees._
+import ExprOps.postMap
+import Types._
 import Definitions._
 import Common._
-import Trees._
+import Expressions._
 import Extractors._
 import Constructors._
 
-object TypeTreeOps {
+object TypeOps {
   def typeDepth(t: TypeTree): Int = t match {
     case NAryType(tps, builder) => 1+tps.foldLeft(0) { case (d, t) => d max typeDepth(t) }
   }

@@ -5,7 +5,7 @@ package solvers
 package combinators
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 
 abstract class RewritingSolver[+S <: Solver, T](underlying: S) {
   val context = underlying.context

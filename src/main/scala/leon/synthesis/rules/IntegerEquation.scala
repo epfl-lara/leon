@@ -5,12 +5,12 @@ package synthesis
 package rules
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Extractors._
 import purescala.Constructors._
-import purescala.TreeOps._
+import purescala.ExprOps._
 import purescala.TreeNormalizations._
-import purescala.TypeTrees._
+import purescala.Types._
 import purescala.Definitions._
 import LinearEquations.elimVariable
 import evaluators._

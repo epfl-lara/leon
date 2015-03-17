@@ -4,10 +4,10 @@ package smtlib
 
 import purescala._
 import Common._
-import Trees.{Assert => _, _}
+import Expressions.{Assert => _, _}
 import Extractors._
-import TreeOps._
-import TypeTrees._
+import ExprOps._
+import Types._
 import Constructors._
 import Definitions._
 import utils.IncrementalBijection

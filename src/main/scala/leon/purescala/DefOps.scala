@@ -2,7 +2,7 @@ package leon.purescala
 
 import Common._
 import Definitions._
-import Trees._
+import Expressions._
 
 object DefOps {
 
@@ -265,8 +265,8 @@ object DefOps {
   
   
   
-  import Trees.Expr
-  import TreeOps.{preMap, postMap}
+  import Expressions.Expr
+  import ExprOps.{preMap, postMap}
   
   /*
    * Apply an expression operation on all expressions contained in a FunDef

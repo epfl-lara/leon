@@ -4,7 +4,7 @@ package leon
 package synthesis
 package rules
 
-import purescala.TypeTrees._
+import purescala.Types._
 import utils._
 
 case object TEGIS extends TEGISLike[TypeTree]("TEGIS") {

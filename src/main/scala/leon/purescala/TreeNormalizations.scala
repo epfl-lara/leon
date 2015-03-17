@@ -5,9 +5,9 @@ package purescala
 
 object TreeNormalizations {
   import Common._
-  import TypeTrees._
-  import Trees._
-  import TreeOps._
+  import Types._
+  import Expressions._
+  import ExprOps._
 
   /* TODO: we should add CNF and DNF at least */
 

@@ -6,13 +6,13 @@ import bonsai._
 
 import Helpers._
 
-import purescala.Trees.{Or => LeonOr, _}
+import purescala.Expressions.{Or => LeonOr, _}
 import purescala.Common._
 import purescala.Definitions._
-import purescala.TypeTrees._
-import purescala.TreeOps._
+import purescala.Types._
+import purescala.ExprOps._
 import purescala.DefOps._
-import purescala.TypeTreeOps._
+import purescala.TypeOps._
 import purescala.Extractors._
 import purescala.ScalaPrinter
 import purescala.Constructors.finiteSet

@@ -4,11 +4,11 @@ package leon
 package evaluators
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Extractors._
 import purescala.Definitions._
-import purescala.TreeOps._
-import purescala.TypeTrees._
+import purescala.ExprOps._
+import purescala.Types._
 
 class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) extends RecursiveEvaluator(ctx, prog, maxSteps) {
   type RC = TracingRecContext

@@ -3,7 +3,7 @@
 package leon
 package datagen
 
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Common._
 import utils._
 

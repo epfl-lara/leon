@@ -3,9 +3,9 @@
 package leon
 package synthesis
 
-import leon.purescala.Trees._
-import leon.purescala.TreeOps._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.ExprOps._
+import leon.purescala.Types._
 import leon.purescala.Common._
 import leon.purescala.Constructors._
 import leon.purescala.Extractors._

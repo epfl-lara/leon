@@ -5,7 +5,7 @@ package purescala
 
 import Common._
 import Definitions._
-import Trees._
+import Expressions._
 
 object CompleteAbstractDefinitions extends TransformationPhase {
 

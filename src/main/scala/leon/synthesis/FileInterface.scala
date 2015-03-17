@@ -3,7 +3,7 @@
 package leon
 package synthesis
 
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Common.Tree
 import purescala.Definitions.Definition
 import purescala.ScalaPrinter

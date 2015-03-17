@@ -6,8 +6,8 @@ package combinators
 
 import purescala.Common._
 import purescala.Constructors._
-import purescala.Trees._
-import purescala.TreeOps._
+import purescala.Expressions._
+import purescala.ExprOps._
 
 class DNFSolver(val context: LeonContext,
                 underlyings: SolverFactory[Solver]) extends Solver {
