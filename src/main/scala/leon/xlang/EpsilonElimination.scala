@@ -8,7 +8,7 @@ import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.ExprOps._
-import leon.xlang.Trees._
+import leon.xlang.Expressions._
 
 object EpsilonElimination extends TransformationPhase {
 

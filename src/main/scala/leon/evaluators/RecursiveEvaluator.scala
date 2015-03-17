@@ -13,7 +13,7 @@ import purescala.Extractors._
 
 import solvers.TimeoutSolver
 
-import xlang.Trees._
+import xlang.Expressions._
 import solvers.SolverFactory
 import synthesis.ConvertHoles.convertHoles
 

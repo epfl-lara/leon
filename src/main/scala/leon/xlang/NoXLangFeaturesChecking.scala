@@ -8,7 +8,7 @@ import purescala.Definitions._
 
 import utils.Position
 
-import xlang.Trees._
+import xlang.Expressions._
 
 object NoXLangFeaturesChecking extends UnitPhase[Program] {
 
