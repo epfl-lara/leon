@@ -3,15 +3,14 @@
 package leon
 package purescala
 
-import scala.collection.generic.CanBuildFrom
 import utils.Library
+import Common._
+import Expressions._
+import ExprOps._
+import Types._
+import TypeOps._
 
 object Definitions {
-  import Common._
-  import Expressions._
-  import ExprOps._
-  import Types._
-  import TypeOps._
 
   sealed abstract class Definition extends Tree {
     

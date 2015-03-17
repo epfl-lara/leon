@@ -3,7 +3,6 @@
 package leon
 package purescala
 
-import ExprOps.postMap
 import Types._
 import Definitions._
 import Common._

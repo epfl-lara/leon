@@ -3,21 +3,18 @@
 package leon
 package purescala
 
-import utils._
+import Common._
+import Types._
+import TypeOps._
+import Definitions._
+import Extractors._
+import Constructors._
 
 /** AST definitions for Pure Scala. */
 object Expressions {
-  import Common._
-  import Types._
-  import TypeOps._
-  import Definitions._
-  import Extractors._
-  import Constructors._
-
 
   /* EXPRESSIONS */
   abstract class Expr extends Tree with Typed with Serializable {
-    // All Expr's have constant type
     override val getType: TypeTree
   }
 

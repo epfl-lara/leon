@@ -4,15 +4,13 @@ package leon
 package purescala
 
 import Expressions._
+import Common._
+import Types._
+import Definitions._
+import Constructors._
+import ExprOps._
 
 object Extractors {
-  import Common._
-  import Types._
-  import TypeOps._
-  import Definitions._
-  import Extractors._
-  import Constructors._
-  import ExprOps._
 
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {

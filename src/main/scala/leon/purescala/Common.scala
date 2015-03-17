@@ -4,11 +4,12 @@ package leon
 package purescala
 
 import utils._
+import Expressions.Variable
+import Types._
 import Definitions.Definition
 
 object Common {
-  import Expressions.Variable
-  import Types._
+
 
   abstract class Tree extends Positioned with Serializable {
     def copiedFrom(o: Tree): this.type = {

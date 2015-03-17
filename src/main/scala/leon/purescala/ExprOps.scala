@@ -3,21 +3,19 @@
 package leon
 package purescala
 
+import Common._
+import Types._
+import Definitions._
+import Expressions._
+import TypeOps._
+import Extractors._
+import Constructors._
+import DefOps._
 import utils.Simplifiers
-
-import leon.solvers._
-
+import solvers._
 import scala.collection.concurrent.TrieMap
 
 object ExprOps {
-  import Common._
-  import Types._
-  import Definitions._
-  import Expressions._
-  import TypeOps._
-  import Extractors._
-  import Constructors._
-  import DefOps._
 
   /**
    * Core API
