@@ -4,10 +4,10 @@ package leon
 package xlang
 
 import purescala.Expressions._
-import xlang.Trees._
+import xlang.Expressions._
 import purescala.ExprOps._
 
-object TreeOps {
+object ExprOps {
   
   def isXLang(expr: Expr): Boolean = exists {
     case Block(_, _) | Assignment(_, _) |

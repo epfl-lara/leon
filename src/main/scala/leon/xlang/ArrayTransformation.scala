@@ -7,7 +7,7 @@ import leon.LeonContext
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
-import leon.xlang.Trees._
+import leon.xlang.Expressions._
 import leon.purescala.Extractors._
 import leon.purescala.Types._
 

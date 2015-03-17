@@ -25,8 +25,8 @@ import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.TypeOps._
 import purescala.DefOps.packageOf
-import xlang.Trees.{Block => LeonBlock, _}
-import xlang.TreeOps._
+import xlang.Expressions.{Block => LeonBlock, _}
+import xlang.ExprOps._
 
 import utils.{DefinedPosition, Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition}
 

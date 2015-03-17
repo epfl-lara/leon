@@ -10,7 +10,7 @@ import leon.purescala.Extractors._
 import leon.purescala.Constructors._
 import leon.purescala.ExprOps._
 import leon.purescala.TypeOps._
-import leon.xlang.Trees._
+import leon.xlang.Expressions._
 
 object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef])] {
 

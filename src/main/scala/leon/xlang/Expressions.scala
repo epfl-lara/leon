@@ -10,7 +10,7 @@ import purescala.Extractors._
 import purescala.{PrettyPrintable, PrinterContext}
 import utils._
 
-object Trees {
+object Expressions {
   import purescala.PrinterHelpers._
 
   case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable {

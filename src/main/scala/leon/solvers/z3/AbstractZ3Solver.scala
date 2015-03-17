@@ -13,7 +13,7 @@ import purescala.Constructors._
 import purescala.Extractors._
 import purescala.Expressions._
 import purescala.TypeOps._
-import xlang.Trees._
+import xlang.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 
