@@ -6,7 +6,6 @@ import leon._
 import leon.test._
 import leon.utils.Interruptible
 import leon.solvers._
-import leon.solvers.combinators._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
@@ -46,7 +45,7 @@ class TimeoutSolverTests extends LeonTestSuite {
   }
 
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {
-    val s = sf.getNewSolver
+    val s = sf.getNewSolver()
     s.assertCnstr(e)
     s.check
   }

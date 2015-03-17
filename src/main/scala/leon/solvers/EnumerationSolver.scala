@@ -8,12 +8,9 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Expressions._
-import purescala.Extractors._
 import purescala.ExprOps._
-import purescala.Types._
 
 import datagen._
-
 
 class EnumerationSolver(val context: LeonContext, val program: Program) extends Solver with Interruptible with IncrementalSolver with NaiveAssumptionSolver {
   def name = "Enum"

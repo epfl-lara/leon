@@ -12,8 +12,6 @@ import purescala.Constructors._
 import purescala.Extractors._
 import evaluators._
 import utils.ExpressionGrammars.ValueGrammar
-import leon.utils.StreamUtils.cartesianProduct
-import bonsai._
 import bonsai.enumerators._
 
 class ExamplesFinder(ctx: LeonContext, program: Program) {
@@ -67,7 +65,6 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
     // Finally, we keep complete tests covering all as++xs
     val allIds  = (p.as ++ p.xs).toSet
     val insIds  = p.as.toSet
-    val outsIds = p.xs.toSet
 
     val examples = testClusters.toSeq.flatMap { t =>
       val ids = t.keySet

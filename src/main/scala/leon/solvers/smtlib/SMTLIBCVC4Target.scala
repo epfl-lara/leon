@@ -4,18 +4,15 @@ package leon
 package solvers
 package smtlib
 
-import utils._
 import purescala._
 import Common._
 import Expressions._
 import Extractors._
 import Constructors._
 import Types._
-import ExprOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands._
-import _root_.smtlib.theories._
 import _root_.smtlib.interpreters.CVC4Interpreter
 
 trait SMTLIBCVC4Target extends SMTLIBTarget {

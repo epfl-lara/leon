@@ -5,7 +5,6 @@ package solvers.z3
 
 import z3.scala._
 import purescala.Common._
-import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._

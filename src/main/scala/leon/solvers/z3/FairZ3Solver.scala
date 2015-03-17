@@ -4,17 +4,13 @@ package leon
 package solvers
 package z3
 
-import leon.utils._
-
 import _root_.z3.scala._
 
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.Extractors._
 import purescala.Constructors._
 import purescala.ExprOps._
-import purescala.Types._
 
 import solvers.templates._
 
@@ -101,7 +97,6 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       }).toMap
 
       val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
-      lazy val modelAsString = asMap.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
       val evalResult = evaluator.eval(formula, asMap)
 
       evalResult match {
@@ -158,9 +153,9 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   })
 
 
-  initZ3
+  initZ3()
 
-  val solver = z3.mkSolver
+  val solver = z3.mkSolver()
 
   private var varsInVC = List[Set[Identifier]](Set())
 
@@ -311,7 +306,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         // distinction is made inside.
         case Some(false) =>
 
-          val z3Core = solver.getUnsatCore
+          //@mk this seems to be dead code
+          val z3Core = solver.getUnsatCore()
 
           def coreElemToBlocker(c: Z3AST): (Z3AST, Boolean) = {
             z3.getASTKind(c) match {
@@ -331,7 +327,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           if (unrollUnsatCores) {
             unrollingBank.decreaseAllGenerations()
 
-            for (c <- solver.getUnsatCore) {
+            for (c <- solver.getUnsatCore()) {
               val (z3ast, pol) = coreElemToBlocker(c)
               assert(pol)
 
@@ -355,7 +351,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
             solver.push() // FIXME: remove when z3 bug is fixed
             val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
             solver.pop()  // FIXME: remove when z3 bug is fixed
-            timer.stop
+            timer.stop()
 
             res2 match {
               case Some(false) =>

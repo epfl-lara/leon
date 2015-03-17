@@ -4,7 +4,6 @@ package leon
 package solvers
 package smtlib
 
-import utils._
 import purescala._
 import Common._
 import Expressions._

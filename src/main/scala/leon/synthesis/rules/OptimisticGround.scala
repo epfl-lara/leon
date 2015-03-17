@@ -21,10 +21,8 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
           val xss = p.xs.toSet
           val ass = p.as.toSet
 
-          val tpe = tupleTypeWrap(p.xs.map(_.getType))
-
           var i = 0
-          var maxTries = 3
+          val maxTries = 3
 
           var result: Option[RuleApplication] = None
           var continue                        = true
@@ -35,7 +33,6 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
             //println("SOLVING " + phi + " ...")
             solver.solveSAT(phi) match {
               case (Some(true), satModel) =>
-                val satXsModel = satModel.filterKeys(xss) 
 
                 val newPhi = valuateWithModelIn(phi, xss, satModel)
 

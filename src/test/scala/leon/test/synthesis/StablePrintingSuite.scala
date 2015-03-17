@@ -11,7 +11,6 @@ import leon.purescala.PrinterContext
 import leon.purescala.PrinterOptions
 import leon.synthesis._
 
-import scala.collection.mutable
 import scala.collection.mutable.Stack
 import scala.io.Source
 

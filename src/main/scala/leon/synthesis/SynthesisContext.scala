@@ -6,12 +6,8 @@ package synthesis
 import solvers._
 import solvers.combinators.PortfolioSolverSynth
 import solvers.z3._
-
-import purescala.Expressions._
 import purescala.Definitions.{Program, FunDef}
-import purescala.Common.Identifier
 
-import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * This is global information per entire search, contains necessary information

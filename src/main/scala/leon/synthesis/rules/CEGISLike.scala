@@ -8,19 +8,13 @@ import leon.utils.SeqUtils
 import solvers._
 import solvers.z3._
 
-import verification._
 import purescala.Expressions._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.ExprOps._
 import purescala.DefOps._
-import purescala.TypeOps._
-import purescala.Extractors._
 import purescala.Constructors._
-import purescala.ScalaPrinter
-import purescala.PrinterOptions
-import utils.Helpers._
 
 import scala.collection.mutable.{HashMap=>MutableMap, ArrayBuffer}
 
@@ -29,7 +23,6 @@ import datagen._
 import codegen.CodeGenParams
 
 import utils._
-
 
 abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
@@ -52,7 +45,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val ctx  = sctx.context
 
     // CEGIS Flags to activate or deactivate features
-    val useUnsatCores         = sctx.settings.cegisUseUnsatCores
+    //val useUnsatCores         = sctx.settings.cegisUseUnsatCores
     val useOptTimeout         = sctx.settings.cegisUseOptTimeout
     val useVanuatoo           = sctx.settings.cegisUseVanuatoo
     val useCETests            = sctx.settings.cegisUseCETests
@@ -150,7 +143,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        * Returns all possible assignments to Bs in order to enumerate all possible programs
        */
       def allPrograms(): Traversable[Set[Identifier]] = {
-        import SeqUtils._
 
         if (allProgramsCount() > nProgramsLimit) {
            return Seq()
@@ -218,7 +210,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
         }
 
-        val resLets = p.xs.map(defFor)
         val res = tupleWrap(p.xs.map(defFor))
 
         val substMap : Map[Expr,Expr] = bsOrdered.zipWithIndex.map {
@@ -434,7 +425,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   }
               }
             } finally {
-              solver.free
+              solver.free()
             }
           }
 
@@ -691,7 +682,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               None
           }
         } finally {
-          solver.free
+          solver.free()
         }
       }
 
@@ -720,7 +711,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               None
           }
         } finally {
-          solver.free
+          solver.free()
         }
       }
 
@@ -733,9 +724,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       def apply(hctx: SearchContext): RuleApplication = {
         var result: Option[RuleApplication]   = None
         val sctx = hctx.sctx
-
-        var ass = p.as.toSet
-        var xss = p.xs.toSet
 
         val ndProgram = new NonDeterministicProgram(p)
         var unfolding = 1
@@ -819,8 +807,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           baseExampleInputs.iterator ++ cachedInputIterator
         }
 
-        val tpe = tupleTypeWrap(p.xs.map(_.getType))
-
         try {
           do {
             var skipCESearch = false
@@ -833,7 +819,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             }
 
             // Compute all programs that have not been excluded yet
-            var prunedPrograms: Set[Set[Identifier]] = ndProgram.allPrograms.toSet
+            var prunedPrograms: Set[Set[Identifier]] = ndProgram.allPrograms().toSet
 
             val nInitial = prunedPrograms.size
             sctx.reporter.debug("#Programs: "+nInitial)

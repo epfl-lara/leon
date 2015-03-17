@@ -66,7 +66,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
     case And(es) =>
       var soFar = path
       var continue = true
-      var r = andJoin(for(e <- es if continue) yield {
+      val r = andJoin(for(e <- es if continue) yield {
         val se = rec(e, soFar)
         if(se == BooleanLiteral(false)) continue = false
         soFar = register(se, soFar)
@@ -83,7 +83,6 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
       val rs = rec(scrut, path)
 
       var stillPossible = true
-      var pcSoFar = path
 
       val conds = matchCasePathConditions(me, path)
 
@@ -123,7 +122,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
     case Or(es) =>
       var soFar = path
       var continue = true
-      var r = orJoin(for(e <- es if continue) yield {
+      val r = orJoin(for(e <- es if continue) yield {
         val se = rec(e, soFar)
         if(se == BooleanLiteral(true)) continue = false
         soFar = register(Not(se), soFar)

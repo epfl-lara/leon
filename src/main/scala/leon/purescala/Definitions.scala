@@ -515,7 +515,6 @@ object Definitions {
     def postcondition = fd.postcondition.map {
       case post if typesMap.nonEmpty =>
         postCache.getOrElse(post, {
-          val nId = FreshIdentifier(id.name, translated(id.getType)).copiedFrom(id)
           val res = instantiateType(post, typesMap, paramsMap)
           postCache += (post -> res)
           res

@@ -48,7 +48,7 @@ object Main {
     reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
-      reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
+      reporter.info(f"${opt.usageOption}%-20s ${opt.usageDesc}")
     }
     reporter.info("(By default, Leon verifies PureScala programs.)")
     reporter.info("")
@@ -56,17 +56,16 @@ object Main {
 
     for (c <- allComponents.toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
-      reporter.info("%s (%s)".format(c.name, c.description))
+      reporter.info(s"${c.name} (${c.description})")
       for(opt <- c.definedOptions.toSeq.sortBy(_.name)) {
         // there is a non-breaking space at the beginning of the string :)
-        reporter.info("%-20s %s".format(opt.usageOption, opt.usageDesc))
+        reporter.info(f"${opt.usageOption}%-20s ${opt.usageDesc}")
       }
     }
     sys.exit(1)
   }
 
   def processOptions(args: Seq[String]): LeonContext = {
-    val phases = allPhases
 
     val initReporter = new DefaultReporter(Settings())
 

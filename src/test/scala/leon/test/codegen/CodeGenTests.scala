@@ -10,8 +10,6 @@ import leon.purescala.Types._
 import leon.evaluators.{CodeGenEvaluator,EvaluationResults}
 import EvaluationResults._
 
-import java.io._
-
 /*
  * To add a new test:
  * - Add your test, preferably in a new module, in the test variable

@@ -43,7 +43,7 @@ trait VerificationRegression extends LeonTestSuite {
       val (user, lib) = ast.units partition { _.isMainUnit }
       user map { u => Program(u.id.freshen, u :: lib) }
     }
-    for (p <- programs; displayName = p.id.name) test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
+    for (p <- programs; displayName = p.id.name) test(f"${nextInt()}%3d: $displayName ${leonOptions.mkString(" ")}") {
       val report = pipeBack.run(ctx)(p)
       block(Output(report, ctx.reporter))
     }
@@ -54,7 +54,7 @@ trait VerificationRegression extends LeonTestSuite {
 
     fs foreach { file => 
       assert(file.exists && file.isFile && file.canRead,
-        "Benchmark %s is not a readable file".format(file.getName))
+        s"Benchmark ${file.getName} is not a readable file")
     }
 
     val files = fs map { _.getPath }

@@ -41,8 +41,6 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
           val evalParams            = CodeGenParams(maxFunctionInvocations = 2000, checkContracts = true)
           val evaluator             = new DualEvaluator(sctx.context, sctx.program, evalParams)
 
-          val interruptManager      = sctx.context.interruptManager
-
           val enum = new MemoizedEnumerator[T, Expr](grammar.getProductions)
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
@@ -64,20 +62,18 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
               sctx.reporter.debug("Got expression "+e)
               timers.testing.start()
-              if (tests.forall{ case t =>
-                  val ts = System.currentTimeMillis
-                  val res = evaluator.eval(exprToTest, p.as.zip(t).toMap) match {
-                    case EvaluationResults.Successful(BooleanLiteral(true)) =>
-                      sctx.reporter.debug("Test "+t+" passed!")
-                      true
-                    case _ =>
-                      sctx.reporter.debug("Test "+t+" failed on "+e)
-                      failStat += t -> (failStat(t) + 1)
-                      false
-                  }
-                  res
-                }) {
-
+              if (tests.forall{ t =>
+                val res = evaluator.eval(exprToTest, p.as.zip(t).toMap) match {
+                  case EvaluationResults.Successful(BooleanLiteral(true)) =>
+                    sctx.reporter.debug("Test "+t+" passed!")
+                    true
+                  case _ =>
+                    sctx.reporter.debug("Test "+t+" failed on "+e)
+                    failStat += t -> (failStat(t) + 1)
+                    false
+                }
+                res
+              }) {
                 candidate = Some(tupleWrap(Seq(e)))
               }
               timers.testing.stop()

@@ -32,7 +32,7 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val ef = new ExamplesFinder(hctx.context, hctx.program)
 
-    var tests = ef.extractTests(p).collect {
+    val tests = ef.extractTests(p).collect {
       case io: InOutExample => (io.ins, io.outs)
     }
 
@@ -45,8 +45,6 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
           //val evaluator             = new DefaultEvaluator(sctx.context, sctx.program)
           val evaluator             = new DualEvaluator(sctx.context, sctx.program, evalParams)
-
-          val interruptManager      = sctx.context.interruptManager
 
           val grammar               = getGrammar(sctx, p)
 

@@ -4,7 +4,6 @@ package leon
 package synthesis
 package rules
 
-import solvers._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Extractors._

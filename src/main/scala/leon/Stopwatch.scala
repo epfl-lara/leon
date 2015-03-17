@@ -54,18 +54,18 @@ class Stopwatch(name: String = "Stopwatch") {
   }
     
   def profile[T](block: => T): T = {
-    if (isRunning) stop
+    if (isRunning) stop()
     
     start
     val result = block    // call-by-name
-    stop
+    stop()
     
     result
   }
 
   def isRunning = beginning != 0L
 
-  override def toString = "%20s: %5d%sms".format(name, getMillis, if (isRunning) "..." else "")
+  override def toString = f"$name%20s: $getMillis%5d${if (isRunning) "..." else ""}ms"
 }
 
 object StopwatchCollections {

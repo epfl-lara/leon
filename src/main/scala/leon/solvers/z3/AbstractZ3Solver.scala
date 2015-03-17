@@ -18,7 +18,6 @@ import purescala.ExprOps._
 import purescala.Types._
 
 import scala.collection.mutable.{Map => MutableMap}
-import scala.collection.mutable.{Set => MutableSet}
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
@@ -198,7 +197,7 @@ trait AbstractZ3Solver
       tupleMetaDecls = Map()
       setCardDecls   = Map()
 
-      prepareSorts
+      prepareSorts()
 
       isInitialized = true
 
@@ -215,7 +214,7 @@ trait AbstractZ3Solver
   protected[leon] def mapRangeSort(toType : TypeTree) : Z3Sort = mapRangeSorts.get(toType) match {
     case Some(z3sort) => z3sort
     case None => {
-      import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
+      import Z3Context.RegularSort
 
       val z3info = z3.mkADTSorts(
         Seq(
@@ -365,7 +364,6 @@ trait AbstractZ3Solver
 
   // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
   private def prepareSorts(): Unit = {
-    import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
 
     val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
       Seq(
@@ -487,8 +485,6 @@ trait AbstractZ3Solver
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
 
     class CantTranslateException extends Exception
-
-    val varsInformula: Set[Identifier] = variablesOf(expr)
 
     var z3Vars: Map[Identifier,Z3AST] = if(initialMap.nonEmpty) {
       initialMap
@@ -643,7 +639,6 @@ trait AbstractZ3Solver
         case tpe@MapType(fromType, toType) =>
           typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
           val fromSort = typeToSort(fromType)
-          val toSort = typeToSort(toType)
           elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
         case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
       }
@@ -791,7 +786,7 @@ trait AbstractZ3Solver
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
                     val elseValue = rec(elseZ3Value)
-                    var valuesMap = map.map { case (k,v) =>
+                    val valuesMap = map.map { case (k,v) =>
                       val index = rec(k) match {
                         case InfiniteIntegerLiteral(index) => index.toInt
                         case IntLiteral(index) => index

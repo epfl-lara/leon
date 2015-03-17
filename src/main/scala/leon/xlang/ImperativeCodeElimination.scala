@@ -3,14 +3,11 @@
 package leon
 package xlang
 
-import leon.TransformationPhase
-import leon.LeonContext
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Extractors._
 import leon.purescala.Constructors._
-import leon.purescala.Types._
 import leon.purescala.ExprOps._
 import leon.purescala.TypeOps._
 import leon.xlang.Trees._
@@ -228,7 +225,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         //Recall that here the nested function should not access mutable variables from an outside scope
         val newFd = fd.body match {
           case Some(b) =>
-            val (fdRes, fdScope, fdFun) = toFunction(b)
+            val (fdRes, fdScope, _) = toFunction(b)
             fd.body = Some(fdScope(fdRes))
             fd
           case None =>

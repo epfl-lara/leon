@@ -4,7 +4,6 @@ package leon
 package solvers
 package templates
 
-import utils._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Extractors._

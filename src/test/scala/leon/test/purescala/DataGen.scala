@@ -2,7 +2,6 @@
 
 package leon.test.purescala
 
-import leon._
 import leon.test._
 import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
 import leon.frontends.scalac.ExtractionPhase
@@ -14,8 +13,6 @@ import leon.purescala.Types._
 import leon.datagen._
 
 import leon.evaluators._
-
-import org.scalatest.FunSuite
 
 class DataGen extends LeonTestSuite {
   private def parseString(str : String) : Program = {
@@ -80,8 +77,6 @@ class DataGen extends LeonTestSuite {
     }.head
 
     assert(generator.generate(listType).take(100).toSet.size === 100, "Should be able to generate 100 different lists")
-
-    val evaluator = new CodeGenEvaluator(testContext, prog)
 
     val a = Variable(FreshIdentifier("a", Int32Type))
     val b = Variable(FreshIdentifier("b", Int32Type))

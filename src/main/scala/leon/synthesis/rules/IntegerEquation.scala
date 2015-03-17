@@ -11,7 +11,6 @@ import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.TreeNormalizations._
 import purescala.Types._
-import purescala.Definitions._
 import LinearEquations.elimVariable
 import evaluators._
 

@@ -5,11 +5,9 @@ package synthesis
 package rules
 
 import purescala.Expressions._
-import purescala.Definitions._
 import purescala.Common._
 import purescala.Types._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Constructors._
 
 case object DetupleInput extends NormalizingRule("Detuple In") {

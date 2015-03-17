@@ -35,7 +35,7 @@ class TimeoutFor(it: Interruptible) {
 
     timer.start()
     val res = body
-    timer.finishedRunning
+    timer.finishedRunning()
 
     if (reachedTimeout) {
       it.recoverInterrupt()

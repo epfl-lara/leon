@@ -10,7 +10,6 @@ import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.test.purescala.WithLikelyEq
 import leon.evaluators._
-import leon.LeonContext
 
 import leon.synthesis.LinearEquations._
 
@@ -105,7 +104,6 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
   
   test("particularSolution basecase") {
     def toExpr(es: Array[Expr]): Expr = {
-      val coef: Array[Expr] = es
       val vars: Array[Expr] = Array[Expr](i(1)) ++ Array[Expr](x, y)
       es.zip(vars).foldLeft[Expr](i(0))( (acc: Expr, p: (Expr, Expr)) => Plus(acc, Times(p._1, p._2)) )
     }
@@ -127,7 +125,6 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
 
   test("particularSolution preprocess") {
     def toExpr(es: Array[Expr], vs: Array[Expr]): Expr = {
-      val coef: Array[Expr] = es
       val vars: Array[Expr] = Array[Expr](i(1)) ++ vs
       es.zip(vars).foldLeft[Expr](i(0))( (acc: Expr, p: (Expr, Expr)) => Plus(acc, Times(p._1, p._2)) )
     }

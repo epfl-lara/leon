@@ -2,11 +2,9 @@
 
 package leon.test.purescala
 
-import leon._
 import leon.test._
 
 import leon.purescala.Common._
-import leon.purescala.Definitions._
 import leon.purescala.Constructors._
 import leon.purescala.Expressions._
 import leon.purescala.Types._

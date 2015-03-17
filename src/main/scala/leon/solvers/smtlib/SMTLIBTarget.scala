@@ -250,7 +250,7 @@ trait SMTLIBTarget {
           (freshSym("content"), RawArrayType(Int32Type, base))
         ))
 
-        var cdts = dts + (at -> DataType(sym, Seq(c)))
+        val cdts = dts + (at -> DataType(sym, Seq(c)))
 
         findDependencies(base, cdts)
       } else {
@@ -411,7 +411,7 @@ trait SMTLIBTarget {
        * ===== Map operations =====
        */
       case m @ FiniteMap(elems) =>
-        val mt @ MapType(from, to) = m.getType
+        val mt @ MapType(_, to) = m.getType
         val ms = declareSort(mt)
 
         val opt = declareOptionSort(to)

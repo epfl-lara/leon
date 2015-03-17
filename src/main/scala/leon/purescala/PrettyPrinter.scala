@@ -33,8 +33,8 @@ object PrinterHelpers {
       val printer = ctx.printer
       val sb      = printer.sb
 
-      var strings     = sc.parts.iterator
-      var expressions = args.iterator
+      val strings     = sc.parts.iterator
+      val expressions = args.iterator
 
       var extraInd = 0
       var firstElem = true
@@ -43,7 +43,7 @@ object PrinterHelpers {
         val s = strings.next.stripMargin
 
         // Compute indentation
-        var start = s.lastIndexOf('\n')
+        val start = s.lastIndexOf('\n')
         if(start >= 0 || firstElem) {
           var i = start+1
           while(i < s.length && s(i) == ' ') {

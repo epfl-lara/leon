@@ -1,6 +1,5 @@
 package leon.purescala
 
-import Common._
 import Definitions._
 import Expressions._
 
@@ -356,7 +355,7 @@ object DefOps {
     val res = p.copy(units = for (u <- p.units) yield {
       u.copy(
         modules = for (m <- u.modules) yield {
-          var newdefs = for (df <- m.defs) yield {
+          val newdefs = for (df <- m.defs) yield {
             df match {
               case `after` =>
                 found = true

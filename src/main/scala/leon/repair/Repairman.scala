@@ -113,8 +113,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           reporter.info(ASCIIHelpers.title("3. Synthesizing"))
           reporter.info(p)
       
-      
-          val t3    = new Timer().start
           synth.synthesize() match {
             case (search, sols) =>
               for (sol <- sols) {
@@ -214,22 +212,17 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val Seq(ci) = ChooseInfo.extractFromFunction(program, fd)
 
     val nci = ci.copy(pc = and(ci.pc, guide))
-    val p   = nci.problem
 
     new Synthesizer(ctx, program, nci, soptions)
   }
 
   private def focusRepair(program: Program, fd: FunDef, failingTests: List[Example]): (Expr, Expr) = {
 
-    val pre = fd.precondition.getOrElse(BooleanLiteral(true))
     val args = fd.params.map(_.id)
-    val argsWrapped = tupleWrap(args.map(_.toVariable))
 
     val spec = fd.postcondition.getOrElse(Lambda(Seq(ValDef(FreshIdentifier("res", fd.returnType, true))), BooleanLiteral(true)))
 
     val body = fd.body.get
-
-    val choose = Choose(spec)
 
     val evaluator = new DefaultEvaluator(ctx, program)
 
@@ -403,7 +396,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   
   private def discoverTests: VerificationResult = {
 
-    import bonsai._
     import bonsai.enumerators._
     import utils.ExpressionGrammars.ValueGrammar
 

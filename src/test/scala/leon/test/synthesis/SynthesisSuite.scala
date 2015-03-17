@@ -82,7 +82,7 @@ class SynthesisSuite extends LeonTestSuite {
   }
 
   def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(strats: PartialFunction[String, SynStrat]) {
-      test("Synthesizing %3d: [%s]".format(nextInt(), title)) {
+      test(f"Synthesizing ${nextInt()}%3d: [$title]") {
         val ctx = testContext.copy(settings = Settings(
             synthesis = true,
             xlang     = false,
@@ -94,7 +94,7 @@ class SynthesisSuite extends LeonTestSuite {
         val (program, results) = pipeline.run(ctx)((content, Nil))
 
         for ((f,cis) <- results; ci <- cis) {
-          info("%-20s".format(ci.fd.id.toString))
+          info(f"${ci.fd.id.toString}%-20s")
 
 
           val sctx = SynthesisContext(ctx,
