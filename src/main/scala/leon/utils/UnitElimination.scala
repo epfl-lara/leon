@@ -97,10 +97,8 @@ object UnitElimination extends TransformationPhase {
           val (newFd, rest) = if(fd.params.exists(vd => vd.getType == UnitType)) {
             val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
             freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
-            freshFunDef.precondition = fd.precondition //TODO: maybe removing unit from the conditions as well..
-            freshFunDef.postcondition = fd.postcondition//TODO: maybe removing unit from the conditions as well..
             fun2FreshFun += (fd -> freshFunDef)
-            freshFunDef.body = fd.body.map(b => removeUnit(b))
+            freshFunDef.fullBody = removeUnit(fd.fullBody)
             val restRec = removeUnit(b)
             fun2FreshFun -= fd
             (freshFunDef, restRec)
