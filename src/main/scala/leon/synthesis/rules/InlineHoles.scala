@@ -23,7 +23,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
     val discreteHoles = sctx.settings.distreteHoles
 
     if (!discreteHoles) {
-      return Nil;
+      return Nil
     }
 
     val Some(oracleHead) = sctx.program.definedFunctions.find(_.id.name == "Oracle.head")
@@ -51,7 +51,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
         case None =>
           cache += fd -> false
 
-          val res = fd.body.map(callsHolesExpr _).getOrElse(false)
+          val res = fd.body.exists(callsHolesExpr)
 
           cache += fd -> res
           res
@@ -118,7 +118,7 @@ case object InlineHoles extends Rule("Inline-Holes") {
         val newProblem1 = p.copy(phi = newPhi)
 
         Some(decomp(List(newProblem1), {
-          case List(s) if (s.pre != BooleanLiteral(false)) => Some(s)
+          case List(s) if s.pre != BooleanLiteral(false) => Some(s)
           case _ => None
         }, "Avoid Holes"))
       } else {

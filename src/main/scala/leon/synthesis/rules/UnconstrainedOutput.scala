@@ -12,7 +12,7 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 
-    if (!unconstr.isEmpty) {
+    if (unconstr.nonEmpty) {
       val sub = p.copy(xs = p.xs.filterNot(unconstr))
 
       val onSuccess: List[Solution] => Option[Solution] = { 

@@ -36,7 +36,7 @@ trait SMTLIBTarget {
     val file = context.files.headOption.map(_.getName).getOrElse("NA")  
     val n    = VCNumbers.getNext(targetName+file)
 
-    val dir = new java.io.File("vcs");
+    val dir = new java.io.File("vcs")
 
     if (!dir.isDirectory) {
       dir.mkdir

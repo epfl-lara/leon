@@ -258,7 +258,7 @@ object Trees {
     val getType = BooleanType
   }
 
-  case class Variable(val id: Identifier) extends Expr with Terminal {
+  case class Variable(id: Identifier) extends Expr with Terminal {
     val getType = id.getType
   }
 
@@ -491,7 +491,7 @@ object Trees {
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
     val getType = array.getType match {
       case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType(_)).getOrElse(Untyped).unveilUntyped
+        leastUpperBound(base, newValue.getType).map(ArrayType).getOrElse(Untyped).unveilUntyped
       case _ =>
         Untyped
     }
@@ -514,7 +514,7 @@ object Trees {
 
   // Provide an oracle (synthesizable, all-seeing choose)
   case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with UnaryExtractable {
-    require(!oracles.isEmpty)
+    require(oracles.nonEmpty)
 
     val getType = body.getType
 

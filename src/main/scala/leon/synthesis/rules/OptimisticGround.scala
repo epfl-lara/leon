@@ -12,7 +12,7 @@ import solvers._
 
 case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    if (!p.as.isEmpty && !p.xs.isEmpty) {
+    if (p.as.nonEmpty && p.xs.nonEmpty) {
       val res = new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext) = {
 
@@ -23,8 +23,8 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
 
           val tpe = tupleTypeWrap(p.xs.map(_.getType))
 
-          var i = 0;
-          var maxTries = 3;
+          var i = 0
+          var maxTries = 3
 
           var result: Option[RuleApplication] = None
           var continue                        = true

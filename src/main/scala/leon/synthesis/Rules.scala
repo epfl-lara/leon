@@ -84,7 +84,7 @@ abstract class SolutionBuilder {
   def apply(sols: List[Solution]): Option[Solution]
 }
 
-case class SolutionBuilderDecomp(val types: Seq[TypeTree], recomp: List[Solution] => Option[Solution]) extends SolutionBuilder {
+case class SolutionBuilderDecomp(types: Seq[TypeTree], recomp: List[Solution] => Option[Solution]) extends SolutionBuilder {
   def apply(sols: List[Solution]): Option[Solution] = {
     assert(types.size == sols.size)
     recomp(sols)
@@ -95,7 +95,7 @@ case class SolutionBuilderDecomp(val types: Seq[TypeTree], recomp: List[Solution
  * Used by rules expected to close, no decomposition but maybe we already know
  * the solution when instantiating
  */
-case class SolutionBuilderCloser(val osol: Option[Solution] = None) extends SolutionBuilder {
+case class SolutionBuilderCloser(osol: Option[Solution] = None) extends SolutionBuilder {
   val types = Nil
   def apply(sols: List[Solution]) = {
     assert(sols.isEmpty)

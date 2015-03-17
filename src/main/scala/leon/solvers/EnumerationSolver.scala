@@ -18,11 +18,11 @@ import datagen._
 class EnumerationSolver(val context: LeonContext, val program: Program) extends Solver with Interruptible with IncrementalSolver with NaiveAssumptionSolver {
   def name = "Enum"
 
-  val maxTried = 10000;
+  val maxTried = 10000
 
   var datagen: Option[DataGenerator] = None
 
-  private var interrupted = false;
+  private var interrupted = false
 
   var freeVars    = List[List[Identifier]](Nil)
   var constraints = List[List[Expr]](Nil)
@@ -86,7 +86,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   }
 
   def interrupt(): Unit = {
-    interrupted = true;
+    interrupted = true
 
     datagen.foreach{ s =>
       s.interrupt

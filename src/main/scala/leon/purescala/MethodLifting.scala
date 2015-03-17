@@ -85,10 +85,10 @@ object MethodLifting extends TransformationPhase {
       // We remove methods from class definitions and add corresponding functions
       val newDefs = m.defs.flatMap {
         case acd: AbstractClassDef if acd.methods.nonEmpty =>
-          acd +: acd.methods.map(translateMethod(_))
+          acd +: acd.methods.map(translateMethod)
 
         case ccd: CaseClassDef if ccd.methods.nonEmpty =>
-          ccd +: ccd.methods.map(translateMethod(_))
+          ccd +: ccd.methods.map(translateMethod)
 
         case fd: FunDef =>
           List(translateMethod(fd))

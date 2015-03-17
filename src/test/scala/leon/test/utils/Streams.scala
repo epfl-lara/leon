@@ -23,12 +23,12 @@ class Streams extends LeonTestSuite {
     val s1 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
-             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty
 
     val s2 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
-             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty
 
     val ss = cartesianProduct(List(s1, s2))
 
@@ -41,12 +41,12 @@ class Streams extends LeonTestSuite {
     val s1 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
-             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty
 
     val s2 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
-             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty;
+             FreshIdentifier("B", alwaysShowUniqueID = true) #:: Stream.empty
 
     val tmp1 = s1.mkString
     val tmp2 = s2.mkString
@@ -61,12 +61,12 @@ class Streams extends LeonTestSuite {
     val s1 = 1 #::
              2 #::
              3 #::
-             4 #:: Stream.empty;
+             4 #:: Stream.empty
 
     val s2 = 5 #::
              6 #::
              7 #::
-             8 #:: Stream.empty;
+             8 #:: Stream.empty
 
     val tmp1 = s1.mkString
     val tmp2 = s2.mkString

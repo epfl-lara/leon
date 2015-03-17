@@ -11,12 +11,12 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
    */
   def and(that: Histogram): Histogram = {
     val a = Array.fill(bound)(0d)
-    var i = 0;
+    var i = 0
     while(i < bound) {
-      var j = 0;
+      var j = 0
       while(j <= i) {
 
-        val v1 = (this.values(j) * that.values(i-j))
+        val v1 = this.values(j) * that.values(i - j)
         val v2 = a(i)
 
         a(i) = v1+v2 - (v1*v2)
@@ -39,7 +39,7 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
    */
   def or(that: Histogram): Histogram = {
     val a = Array.fill(bound)(0d)
-    var i = 0;
+    var i = 0
     while(i < bound) {
       val v1 = this.values(i)
       val v2 = that.values(i)
@@ -57,27 +57,27 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
   }
 
   lazy val mode = {
-    var max    = 0d;
-    var argMax = -1;
-    var i      = 0;
+    var max    = 0d
+    var argMax = -1
+    var i      = 0
     while(i < bound) {
       if ((argMax < 0) || values(i) > max) {
-        argMax = i;
+        argMax = i
         max = values(i)
       }
-      i += 1;
+      i += 1
     }
     (max, argMax)
   }
 
   lazy val firstNonZero = {
-    var i      = 0;
+    var i      = 0
     var mini   = -1
     while(i < bound && mini < 0) {
       if (values(i) > 0) {
-        mini = i;
+        mini = i
       }
-      i += 1;
+      i += 1
     }
     if (mini >= 0) {
       (values(mini), mini)
@@ -87,9 +87,9 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
   }
 
   lazy val moment = {
-    var i      = 0;
-    var moment = 0d;
-    var allV   = 0d;
+    var i      = 0
+    var moment = 0d
+    var allV   = 0d
     while(i < bound) {
       val v = values(i)
       moment += v*i
@@ -122,11 +122,11 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
   def rescaled(by: Double): Histogram = {
     val a = new Array[Double](bound)
 
-    var i = 0;
+    var i = 0
     while(i < bound) {
       val v = values(i)
       
-      val nv = 1-Math.pow(1-v, by);
+      val nv = 1-Math.pow(1-v, by)
 
       a(i) = nv
 
@@ -153,8 +153,8 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
   }
 
   override def toString: String = {
-    var lastv = -1d;
-    var fromi = -1;
+    var lastv = -1d
+    var fromi = -1
     val entries = new scala.collection.mutable.ArrayBuffer[((Int, Int), Double)]()
 
 
@@ -162,7 +162,7 @@ class Histogram(val bound: Int, val values: Array[Double]) extends Ordered[Histo
       val v = values(i)
       if (lastv < 0) {
         lastv = v
-        fromi = i;
+        fromi = i
       }
 
       if (lastv != v) {

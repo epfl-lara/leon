@@ -19,7 +19,7 @@ object SolverFactory {
     }
   }
 
-  val definedSolvers = Set("fairz3", "unrollz3", "enum", "smt", "smt-z3", "smt-cvc4");
+  val definedSolvers = Set("fairz3", "unrollz3", "enum", "smt", "smt-z3", "smt-cvc4")
 
   def getFromSettings[S](ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     import combinators._

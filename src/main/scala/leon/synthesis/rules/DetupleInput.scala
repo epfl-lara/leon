@@ -27,14 +27,14 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
 
         val map = (ccd.fields zip newIds).map{ case (vd, nid) => nid -> CaseClassSelector(cct, Variable(id), vd.id) }.toMap
 
-        (newIds.toList, CaseClass(cct, newIds.map(Variable(_))), map)
+        (newIds.toList, CaseClass(cct, newIds.map(Variable)), map)
 
       case TupleType(ts) =>
         val newIds = ts.zipWithIndex.map{ case (t, i) => FreshIdentifier(id.name+"_"+(i+1), t, true) }
 
-        val map = (newIds.zipWithIndex).map{ case (nid, i) => nid -> TupleSelect(Variable(id), i+1) }.toMap
+        val map = newIds.zipWithIndex.map{ case (nid, i) => nid -> TupleSelect(Variable(id), i+1) }.toMap
 
-        (newIds.toList, tupleWrap(newIds.map(Variable(_))), map)
+        (newIds.toList, tupleWrap(newIds.map(Variable)), map)
 
       case _ => sys.error("woot")
     }

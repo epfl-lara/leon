@@ -279,7 +279,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
         case Some(true) => // SAT
 
-          val z3model = solver.getModel
+          val z3model = solver.getModel()
 
           if (this.checkModels) {
             val (isValid, model) = validateModel(z3model, entireFormula, allVars, silenceErrors = false)
@@ -303,7 +303,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
         case Some(false) if !unrollingBank.canUnroll =>
 
-          val core = z3CoreToCore(solver.getUnsatCore)
+          val core = z3CoreToCore(solver.getUnsatCore())
 
           foundAnswer(Some(false), core = core)
 
@@ -333,7 +333,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
             for (c <- solver.getUnsatCore) {
               val (z3ast, pol) = coreElemToBlocker(c)
-              assert(pol == true)
+              assert(pol)
 
               unrollingBank.promoteBlocker(z3ast)
             }

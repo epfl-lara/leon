@@ -38,8 +38,8 @@ object SCC {
           val x :: xs = s
           c = c + x
           s = xs
-          stop = (x == v)
-        } while(!stop);
+          stop = x == v
+        } while(!stop)
         components = c :: components
       }
     }

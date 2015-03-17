@@ -14,7 +14,7 @@ class DNFSolver(val context: LeonContext,
 
   def name = "DNF("+underlyings.name+")"
 
-  def free {}
+  def free() {}
 
   private var theConstraint : Option[Expr] = None
   private var theModel : Option[Map[Identifier,Expr]] = None
@@ -22,7 +22,7 @@ class DNFSolver(val context: LeonContext,
   import context.reporter._
 
   def assertCnstr(expression : Expr) {
-    if(!theConstraint.isEmpty) { fatalError("Multiple assertCnstr(...).") }
+    if(theConstraint.isDefined) { fatalError("Multiple assertCnstr(...).") }
     theConstraint = Some(expression)
   }
 
@@ -73,7 +73,7 @@ class DNFSolver(val context: LeonContext,
   }
 
   def getModel : Map[Identifier,Expr] = {
-    val vs : Set[Identifier] = theConstraint.map(variablesOf(_)).getOrElse(Set.empty)
+    val vs : Set[Identifier] = theConstraint.map(variablesOf).getOrElse(Set.empty)
     theModel.getOrElse(Map.empty).filter(p => vs(p._1))
   }
 
@@ -100,7 +100,7 @@ class DNFSolver(val context: LeonContext,
   private def dnf(expr : Expr) : Expr = expr match {
     case And(es) =>
       val (ors, lits) = es.partition(_.isInstanceOf[Or])
-      if(!ors.isEmpty) {
+      if(ors.nonEmpty) {
         val orHead = ors.head.asInstanceOf[Or]
         val orTail = ors.tail
         orJoin(orHead.exprs.map(oe => dnf(andJoin(filterObvious(lits ++ (oe +: orTail))))))
@@ -109,7 +109,7 @@ class DNFSolver(val context: LeonContext,
       }
 
     case Or(es) =>
-      orJoin(es.map(dnf(_)))
+      orJoin(es.map(dnf))
 
     case _ => expr
   }
@@ -125,7 +125,7 @@ class DNFSolver(val context: LeonContext,
     }
 
     val both : Set[Identifier] = pos.toSet intersect neg.toSet
-    if(!both.isEmpty) {
+    if(both.nonEmpty) {
       Seq(BooleanLiteral(false))
     } else {
       exprs

@@ -32,7 +32,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   trait RecContext {
     def mappings: Map[Identifier, Expr]
 
-    def newVars(news: Map[Identifier, Expr]): RC;
+    def newVars(news: Map[Identifier, Expr]): RC
 
     def withNewVar(id: Identifier, v: Expr): RC = {
       newVars(mappings + (id -> v))
@@ -76,7 +76,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
-        case Some(v) if (v != expr) =>
+        case Some(v) if v != expr =>
           e(v)
         case Some(v) =>
           v
@@ -222,7 +222,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       }
 
     case CaseClass(cd, args) =>
-      CaseClass(cd, args.map(e(_)))
+      CaseClass(cd, args.map(e))
 
     case CaseClassInstanceOf(cct, expr) =>
       val le = e(expr)
@@ -289,14 +289,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case Division(l,r) =>
       (e(l), e(r)) match {
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
-          if(i2 != 0) InfiniteIntegerLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+          if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
       }
 
     case Modulo(l,r) =>
       (e(l), e(r)) match {
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => 
-          if(i2 != 0) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
+          if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
       }
 
@@ -395,7 +395,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case SetIntersection(s1,s2) =>
       (e(s1), e(s2)) match {
         case (f @ FiniteSet(els1), FiniteSet(els2)) => {
-          val newElems = (els1 intersect els2)
+          val newElems = els1 intersect els2
           val SetType(tpe) = f.getType
           finiteSet(newElems, tpe)
         }
@@ -429,7 +429,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case f @ FiniteSet(els) => 
       val SetType(tp) = f.getType
-      finiteSet(els.map(e(_)), tp)
+      finiteSet(els.map(e), tp)
     case i @ IntLiteral(_) => i
     case i @ InfiniteIntegerLiteral(_) => i
     case b @ BooleanLiteral(_) => b
@@ -517,9 +517,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       if (clpCache contains (choose, ins)) {
         clpCache((choose, ins))
       } else {
-        val tStart = System.currentTimeMillis;
+        val tStart = System.currentTimeMillis
 
-        val solver = SolverFactory.getFromSettings(ctx, program).getNewSolver
+        val solver = SolverFactory.getFromSettings(ctx, program).getNewSolver()
 
         val eqs = p.as.map {
           case id =>
@@ -532,13 +532,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         try {
           solver.check match {
             case Some(true) =>
-              val model = solver.getModel;
+              val model = solver.getModel
 
               val valModel = valuateWithModel(model) _
 
               val res = p.xs.map(valModel)
               val leonRes = tupleWrap(res)
-              val total = System.currentTimeMillis-tStart;
+              val total = System.currentTimeMillis-tStart
 
               ctx.reporter.debug("Synthesis took "+total+"ms")
               ctx.reporter.debug("Finished synthesis with "+leonRes.asString(ctx))

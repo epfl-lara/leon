@@ -55,11 +55,11 @@ trait AbstractZ3Solver
     freed = true
     if (z3 ne null) {
       z3.delete()
-      z3 = null;
+      z3 = null
     }
   }
 
-  protected[z3] var interrupted = false;
+  protected[z3] var interrupted = false
 
   override def interrupt() {
     interrupted = true
@@ -89,7 +89,7 @@ trait AbstractZ3Solver
 
   object LeonType {
     def unapply(a: Z3Sort): Option[(TypeTree)] = {
-      sorts.getLeon(a).map(tt => (tt))
+      sorts.getLeon(a).map(tt => tt)
     }
   }
 
@@ -340,7 +340,7 @@ trait AbstractZ3Solver
 
     val resultingZ3Info = z3.mkADTSorts(defs)
 
-    for ((z3Inf, (root, childrenList)) <- (resultingZ3Info zip newHierarchies)) {
+    for ((z3Inf, (root, childrenList)) <- resultingZ3Info zip newHierarchies) {
       sorts += (root -> z3Inf._1)
       assert(childrenList.size == z3Inf._2.size)
       for ((child, (consFun, testFun)) <- childrenList zip (z3Inf._2 zip z3Inf._3)) {
@@ -351,7 +351,7 @@ trait AbstractZ3Solver
       }
       for ((child, fieldFuns) <- childrenList zip z3Inf._4) {
         assert(child.fields.size == fieldFuns.size)
-        for ((fid, selFun) <- (child.fields.map(_.id) zip fieldFuns)) {
+        for ((fid, selFun) <- child.fields.map(_.id) zip fieldFuns) {
           adtFieldSelectors += ((child, fid) -> selFun)
           reverseADTFieldSelectors += (selFun -> (child, fid))
         }
@@ -364,7 +364,7 @@ trait AbstractZ3Solver
   }
 
   // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
-  private def prepareSorts: Unit = {
+  private def prepareSorts(): Unit = {
     import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
 
     val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
@@ -490,7 +490,7 @@ trait AbstractZ3Solver
 
     val varsInformula: Set[Identifier] = variablesOf(expr)
 
-    var z3Vars: Map[Identifier,Z3AST] = if(!initialMap.isEmpty) {
+    var z3Vars: Map[Identifier,Z3AST] = if(initialMap.nonEmpty) {
       initialMap
     } else {
       // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
@@ -504,7 +504,7 @@ trait AbstractZ3Solver
       case LetTuple(ids, e, b) => {
         var ix = 1
         z3Vars = z3Vars ++ ids.map((id) => {
-          val entry = (id -> rec(tupleSelect(e, ix, ids.size)))
+          val entry = id -> rec(tupleSelect(e, ix, ids.size))
           ix += 1
           entry
         })
@@ -526,7 +526,7 @@ trait AbstractZ3Solver
         typeToSort(tu.getType) // Make sure we generate sort & meta info
         val meta = tupleMetaDecls(normalizeType(tu.getType))
 
-        meta.cons(args.map(rec(_)): _*)
+        meta.cons(args.map(rec): _*)
 
       case ts @ TupleSelect(tu, i) =>
         typeToSort(tu.getType) // Make sure we generate sort & meta info
@@ -560,8 +560,8 @@ trait AbstractZ3Solver
       }
 
       case ite @ IfExpr(c, t, e) => z3.mkITE(rec(c), rec(t), rec(e))
-      case And(exs) => z3.mkAnd(exs.map(rec(_)): _*)
-      case Or(exs) => z3.mkOr(exs.map(rec(_)): _*)
+      case And(exs) => z3.mkAnd(exs.map(rec): _*)
+      case Or(exs) => z3.mkOr(exs.map(rec): _*)
       case Implies(l, r) => z3.mkImplies(rec(l), rec(r))
       case Not(Equals(l, r)) => z3.mkDistinct(rec(l), rec(r))
       case Not(e) => z3.mkNot(rec(e))
@@ -609,7 +609,7 @@ trait AbstractZ3Solver
       case c @ CaseClass(ct, args) =>
         typeToSort(ct) // Making sure the sort is defined
         val constructor = adtConstructors(ct)
-        constructor(args.map(rec(_)): _*)
+        constructor(args.map(rec): _*)
 
       case c @ CaseClassSelector(cct, cc, sel) =>
         typeToSort(cct) // Making sure the sort is defined
@@ -622,7 +622,7 @@ trait AbstractZ3Solver
         tester(rec(e))
 
       case f @ FunctionInvocation(tfd, args) =>
-        z3.mkApp(functionDefToDecl(tfd), args.map(rec(_)): _*)
+        z3.mkApp(functionDefToDecl(tfd), args.map(rec): _*)
 
       case fa @ Application(caller, args) =>
         z3.mkSelect(rec(caller), rec(tupleWrap(args)))
@@ -797,7 +797,7 @@ trait AbstractZ3Solver
                         case IntLiteral(index) => index
                         case _ => throw new CantTranslateException(t)
                       }
-                      (index -> rec(v))
+                      index -> rec(v)
                     }
 
                     finiteArray(valuesMap, Some(elseValue, IntLiteral(length)), dt)
@@ -837,7 +837,7 @@ trait AbstractZ3Solver
 
               case _ =>
                 import Z3DeclKind._
-                val rargs = args.map(rec(_))
+                val rargs = args.map(rec)
                 z3.getDeclKind(decl) match {
                   case OpTrue =>    BooleanLiteral(true)
                   case OpFalse =>   BooleanLiteral(false)

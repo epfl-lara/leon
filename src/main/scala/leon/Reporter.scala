@@ -14,7 +14,7 @@ abstract class Reporter(settings: Settings) {
   case object INTERNAL extends Severity
   case class  DEBUG(section: DebugSection) extends Severity
 
-  case class Message(severity: Severity, position: Position, msg: Any);
+  case class Message(severity: Severity, position: Position, msg: Any)
 
   private var _errorCount : Int = 0
   private var _warningCount : Int = 0
@@ -155,7 +155,7 @@ class DefaultReporter(settings: Settings) extends Reporter(settings) {
 
             val carret = if (bp.line == ep.line) {
               val width = Math.max(ep.col - bp.col, 1)
-              ("^" * width)
+              "^" * width
             } else {
               val width = Math.max(line.length+1-bp.col, 1)
               ("^" * width)+"..."

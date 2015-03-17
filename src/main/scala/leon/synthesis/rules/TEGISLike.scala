@@ -21,7 +21,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
     rootLabel: TypeTree => T,
     enumLimit: Int = 10000,
     reorderInterval: Int = 50
-  );
+  )
 
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
 
@@ -43,18 +43,18 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           val interruptManager      = sctx.context.interruptManager
 
-          val enum = new MemoizedEnumerator[T, Expr](grammar.getProductions _)
+          val enum = new MemoizedEnumerator[T, Expr](grammar.getProductions)
 
           val targetType = tupleTypeWrap(p.xs.map(_.getType))
 
-          val timers = sctx.context.timers.synthesis.rules.tegis;
+          val timers = sctx.context.timers.synthesis.rules.tegis
 
           val allExprs = enum.iterator(params.rootLabel(targetType))
 
           var failStat = Map[Seq[Expr], Int]().withDefaultValue(0)
 
           var candidate: Option[Expr] = None
-          var n = 1;
+          var n = 1
 
           def findNext(): Option[Expr] = {
             candidate = None
@@ -92,16 +92,16 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
             candidate
           }
 
-          def toStream(): Stream[Solution] = {
+          def toStream: Stream[Solution] = {
             findNext() match {
               case Some(e) =>
-                Stream.cons(Solution(BooleanLiteral(true), Set(), e, isTrusted = false), toStream())
+                Stream.cons(Solution(BooleanLiteral(true), Set(), e, isTrusted = false), toStream)
               case None =>
                 Stream.empty
             }
           }
 
-          RuleClosed(toStream())
+          RuleClosed(toStream)
         } else {
           sctx.reporter.debug("No test available")
           RuleFailed()

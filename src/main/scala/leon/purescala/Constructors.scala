@@ -132,10 +132,10 @@ object Constructors {
    
 
   def and(exprs: Expr*): Expr = {
-    val flat = exprs.flatMap(_ match {
+    val flat = exprs.flatMap {
       case And(es) => es
       case o => Seq(o)
-    })
+    }
 
     var stop = false
     val simpler = for(e <- flat if !stop && e != BooleanLiteral(true)) yield {
@@ -153,10 +153,10 @@ object Constructors {
   def andJoin(es: Seq[Expr]) = and(es :_*)
 
   def or(exprs: Expr*): Expr = {
-    val flat = exprs.flatMap(_ match {
+    val flat = exprs.flatMap {
       case Or(es) => es
       case o => Seq(o)
-    })
+    }
 
     var stop = false
     val simpler = for(e <- flat if !stop && e != BooleanLiteral(false)) yield {
@@ -204,7 +204,7 @@ object Constructors {
   }
 
   def finiteArray(els: Seq[Expr]): Expr = {
-    require(!els.isEmpty)
+    require(els.nonEmpty)
     finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway 
   }
 

@@ -15,7 +15,7 @@ case object Assert extends NormalizingRule("Assert") {
         val xsSet = p.xs.toSet
         val (exprsA, others) = exprs.partition(e => (variablesOf(e) & xsSet).isEmpty)
 
-        if (!exprsA.isEmpty) {
+        if (exprsA.nonEmpty) {
           if (others.isEmpty) {
             Some(solve(Solution(andJoin(exprsA), Set(), tupleWrap(p.xs.map(id => simplestValue(id.getType))))))
           } else {

@@ -149,8 +149,8 @@ object Graphs {
     def union(that: This): This = copy(
       vertices = this.V ++ that.V,
       edges    = this.E ++ that.E,
-      ins      = ((this.ins.keySet  ++ that.ins.keySet) map { k => (k -> (this.ins(k) ++ that.ins(k))) }).toMap.withDefaultValue(Set()),
-      outs     = ((this.outs.keySet ++ that.outs.keySet) map { k => (k -> (this.outs(k) ++ that.outs(k))) }).toMap.withDefaultValue(Set())
+      ins      = ((this.ins.keySet  ++ that.ins.keySet) map { k => k -> (this.ins(k) ++ that.ins(k)) }).toMap.withDefaultValue(Set()),
+      outs     = ((this.outs.keySet ++ that.outs.keySet) map { k => k -> (this.outs(k) ++ that.outs(k)) }).toMap.withDefaultValue(Set())
     )
 
     def stronglyConnectedComponents: Seq[Set[Vertex]] = ???

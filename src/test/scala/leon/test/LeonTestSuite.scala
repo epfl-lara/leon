@@ -3,7 +3,7 @@
 package leon.test
 
 import leon._
-import leon.{LeonContext,Settings}
+import leon.LeonContext
 import leon.utils._
 
 import scala.io.Source
@@ -16,8 +16,8 @@ import java.io.File
 
 trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   // Hard-code resource directory, for Eclipse purposes
-  val resourceDirHard = "src/test/resources/regression/"
-  
+  val resourceDirHard = "src/test/resources/"
+
   def now() = {
     System.currentTimeMillis
   }
@@ -32,7 +32,7 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
         true
       } else {
         val msd = ms.toDouble
-        (msd < avg + 3*stddev + 20)
+        msd < avg + 3*stddev + 20
       }
     }
 
@@ -62,7 +62,7 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   def bookKeepingFile(id: String) = {
     import java.io.File
 
-    val f = new File(System.getProperty("user.dir")+"/.test-history/"+id+".log");
+    val f = new File(System.getProperty("user.dir")+"/.test-history/"+id+".log")
 
     f.getParentFile.mkdirs()
 
@@ -72,8 +72,8 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   def getStats(id: String): Statistics = {
     val f = bookKeepingFile(id)
 
-    if (f.canRead()) {
-      Statistics(Source.fromFile(f).getLines.flatMap{ line =>
+    if (f.canRead) {
+      Statistics(Source.fromFile(f).getLines().flatMap{ line =>
         val l = line.trim
         if (l.length > 0) {
           Some(line.toLong)
@@ -93,7 +93,7 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
 
     val fw = new FileWriter(f, true)
     fw.write(stats.values.head+"\n")
-    fw.close
+    fw.close()
   }
 
   override implicit val defaultInterruptor = new Interruptor {
@@ -137,7 +137,6 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
 
  
   def resourceDir(dir : String) : File = {
-    import scala.collection.JavaConversions._
 
     val d = this.getClass.getClassLoader.getResource(dir)
 
@@ -146,7 +145,7 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
       new File(resourceDirHard + dir)
     }
     else {
-      new File(d.toURI())
+      new File(d.toURI)
     }
   }
 
@@ -154,15 +153,14 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   
   
   def filesInResourceDir(dir : String, filter : String=>Boolean = all) : Iterable[File] = {
-    import scala.collection.JavaConversions._
 
     val d = this.getClass.getClassLoader.getResource(dir)
 
     val asFile = if(d == null || d.getProtocol != "file") {
       // We are in Eclipse. The only way we are saved is by hard-coding the path
       new File(resourceDirHard + dir)
-    } else new File(d.toURI())
+    } else new File(d.toURI)
 
-    asFile.listFiles().filter(f => filter(f.getPath()))
+    asFile.listFiles().filter(f => filter(f.getPath))
   }
 }

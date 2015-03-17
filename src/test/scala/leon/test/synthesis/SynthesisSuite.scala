@@ -3,19 +3,10 @@
 package leon.test.synthesis
 import leon.test._
 import leon._
-import leon.purescala.Definitions._
-import leon.purescala.Trees._
-import leon.purescala.TreeOps._
-import leon.solvers.z3._
-import leon.solvers.Solver
 import leon.synthesis._
 import leon.synthesis.graph._
 import leon.synthesis.utils._
 import leon.utils.PreprocessingPhase
-
-import org.scalatest.matchers.ShouldMatchers._
-
-import java.io.{BufferedWriter, FileWriter, File}
 
 class SynthesisSuite extends LeonTestSuite {
   private var counter : Int = 0
@@ -24,9 +15,11 @@ class SynthesisSuite extends LeonTestSuite {
     counter
   }
 
-  abstract class SynStrat(val ruleName: String);
-  case class Decomp(n: String, sub: Seq[SynStrat]) extends SynStrat(n);
-  case class Close(n: String) extends SynStrat(n);
+  abstract class SynStrat(val ruleName: String)
+
+  case class Decomp(n: String, sub: Seq[SynStrat]) extends SynStrat(n)
+
+  case class Close(n: String) extends SynStrat(n)
 
 
   class TestSearch(ctx: LeonContext,
@@ -81,7 +74,7 @@ class SynthesisSuite extends LeonTestSuite {
     }
 
     def matchingDesc(app: RuleInstantiation, n: String): Boolean = {
-      import java.util.regex.Pattern;
+      import java.util.regex.Pattern
       val pattern = Pattern.quote(n).replace("*", "\\E.*\\Q")
       app.toString.matches(pattern)
     }

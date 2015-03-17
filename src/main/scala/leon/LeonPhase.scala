@@ -29,7 +29,7 @@ abstract class UnitPhase[T] extends LeonPhase[T, T] {
 }
 
 case class NoopPhase[T]() extends LeonPhase[T, T] {
-  val name = "noop";
+  val name = "noop"
   val description = "no-op"
   override def run(ctx: LeonContext)(v: T) = v
 }

@@ -37,7 +37,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     grammar: ExpressionGrammar[T],
     rootLabel: TypeTree => T,
     maxUnfoldings: Int = 3
-  );
+  )
 
   def getParams(sctx: SynthesisContext, p: Problem): CegisParams
 
@@ -46,7 +46,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val cexSolverTo = 2000L
 
     // Track non-deterministic programs up to 50'000 programs, or give up
-    val nProgramsLimit = 100000;
+    val nProgramsLimit = 100000
 
     val sctx = hctx.sctx
     val ctx  = sctx.context
@@ -213,17 +213,17 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         // We order the lets base don dependencies
         def defFor(c: Identifier): Expr = {
-          cDeps(c).filter(lets contains _).foldLeft(lets(c)) {
+          cDeps(c).filter(lets.contains).foldLeft(lets(c)) {
             case (e, c) => Let(c, defFor(c), e)
           }
         }
 
-        val resLets = p.xs.map(defFor(_))
+        val resLets = p.xs.map(defFor)
         val res = tupleWrap(p.xs.map(defFor))
 
-        val substMap : Map[Expr,Expr] = (bsOrdered.zipWithIndex.map {
-          case (b,i) => Variable(b) -> ArraySelect(bArrayId.toVariable, IntLiteral(i))
-        }).toMap
+        val substMap : Map[Expr,Expr] = bsOrdered.zipWithIndex.map {
+          case (b, i) => Variable(b) -> ArraySelect(bArrayId.toVariable, IntLiteral(i))
+        }.toMap
 
         val simplerRes = simplifyLets(res)
 
@@ -460,8 +460,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         val initialBs = remainingBs ++ (if (finalUnfolding) Set() else closedBs.keySet)
 
-        var cParent = Map[Identifier, Identifier]();
-        var cOfB    = Map[Identifier, Identifier]();
+        var cParent = Map[Identifier, Identifier]()
+        var cOfB    = Map[Identifier, Identifier]()
         var underBs = Map[Identifier, Set[Identifier]]()
 
         for ((cparent, alts) <- cTree;
@@ -565,7 +565,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
       def unfold(finalUnfolding: Boolean): Boolean = {
         var newBs = Set[Identifier]()
-        var unfoldedSomething = false;
+        var unfoldedSomething = false
 
         def freshB() = {
           val id = FreshIdentifier("B", BooleanType, true)
@@ -607,7 +607,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               val cs = cToLabel.map(_._1)
               val ex = gen.builder(cs.map(_.toVariable))
 
-              if (!cs.isEmpty) {
+              if (cs.nonEmpty) {
                 closedBs += b -> cs.toSet
               }
 
@@ -630,7 +630,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         }
 
         sctx.reporter.ifDebug { printer =>
-          printer("Grammar so far:");
+          printer("Grammar so far:")
           grammar.printProductions(printer)
         }
 
@@ -660,7 +660,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           val activeBs = alts.map(_._1).filter(isBActive)
 
           if (activeBs.nonEmpty) {
-            val oneOf = orJoin(activeBs.map(_.toVariable));
+            val oneOf = orJoin(activeBs.map(_.toVariable))
             //println(" - "+oneOf)
             solver.assertCnstr(oneOf)
           }
@@ -677,7 +677,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             case Some(true) =>
               val model = solver.getModel
 
-              val bModel = bs.filter(b => model.get(b).map(_ == BooleanLiteral(true)).getOrElse(false))
+              val bModel = bs.filter(b => model.get(b).contains(BooleanLiteral(true)))
 
               //println("Found potential expr: "+getExpr(bModel)+" under inputs: "+model)
               Some(Some(bModel))
@@ -803,14 +803,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             i
           }
 
-          def hasNext() = inputIterator.hasNext
+          def hasNext = inputIterator.hasNext
         }
 
         val failedTestsStats = new MutableMap[Seq[Expr], Int]().withDefaultValue(0)
 
-        def hasInputExamples() = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
+        def hasInputExamples = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
 
-        var n = 1;
+        var n = 1
         def allInputExamples() = {
           if (n % 1000 == 0) {
             baseExampleInputs = baseExampleInputs.sortBy(e => -failedTestsStats(e))
@@ -849,11 +849,11 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             //  }
             //}
 
-            var wrongPrograms = Set[Set[Identifier]]();
+            var wrongPrograms = Set[Set[Identifier]]()
 
             // We further filter the set of working programs to remove those that fail on known examples
-            if (hasInputExamples()) {
-              for (bs <- prunedPrograms if !interruptManager.isInterrupted()) {
+            if (hasInputExamples) {
+              for (bs <- prunedPrograms if !interruptManager.isInterrupted) {
                 var valid = true
                 val examples = allInputExamples()
                 while(valid && examples.hasNext) {
@@ -864,7 +864,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     wrongPrograms += bs
                     prunedPrograms -= bs
 
-                    valid = false;
+                    valid = false
                   }
                 }
 
@@ -885,11 +885,11 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               }
             }
 
-            if (nPassing == 0 || interruptManager.isInterrupted()) {
+            if (nPassing == 0 || interruptManager.isInterrupted) {
               // No test passed, we can skip solver and unfold again, if possible
-              skipCESearch = true;
+              skipCESearch = true
             } else {
-              var doFilter = true;
+              var doFilter = true
 
               if (validateUpTo > 0) {
                 // Validate the first N programs individualy
@@ -902,7 +902,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                       // All programs failed verification, we filter everything out and unfold
                       //ndProgram.shrinkTo(Set(), unfolding == maxUnfoldings)
                       doFilter     = false
-                      skipCESearch = true;
+                      skipCESearch = true
                     }
                 }
               }
@@ -914,20 +914,20 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   ndProgram.shrinkTo(bssToKeep, unfolding == maxUnfoldings)
                 } else {
                   wrongPrograms.foreach {
-                    ndProgram.excludeProgram(_)
+                    ndProgram.excludeProgram
                   }
                 }
               }
             }
 
             // CEGIS Loop at a given unfolding level
-            while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted()) {
+            while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted) {
 
               ndProgram.solveForTentativeProgram() match {
                 case Some(Some(bs)) =>
                   // Should we validate this program with Z3?
 
-                  val validateWithZ3 = if (useCETests && hasInputExamples()) {
+                  val validateWithZ3 = if (useCETests && hasInputExamples) {
 
                     if (allInputExamples().forall(ndProgram.testForProgram(bs))) {
                       // All valid inputs also work with this, we need to
@@ -981,14 +981,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             }
 
             unfolding += 1
-          } while(unfolding <= maxUnfoldings && result.isEmpty && !interruptManager.isInterrupted())
+          } while(unfolding <= maxUnfoldings && result.isEmpty && !interruptManager.isInterrupted)
 
           result.getOrElse(RuleFailed())
 
         } catch {
           case e: Throwable =>
             sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
-            e.printStackTrace
+            e.printStackTrace()
             RuleFailed()
         } finally {
           ndProgram.free()

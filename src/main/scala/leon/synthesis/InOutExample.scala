@@ -7,7 +7,7 @@ import purescala.Trees._
 import leon.utils.ASCIIHelpers._
 
 class Example(val ins: Seq[Expr])
-case class InOutExample(is: Seq[Expr], val outs: Seq[Expr]) extends Example(is)
+case class InOutExample(is: Seq[Expr], outs: Seq[Expr]) extends Example(is)
 case class InExample(is: Seq[Expr]) extends Example(is)
 
 class ExamplesTable(title: String, ts: Seq[Example]) {

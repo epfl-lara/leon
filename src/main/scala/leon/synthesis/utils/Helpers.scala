@@ -49,10 +49,10 @@ object Helpers {
       case _ => None
     }
     
-    val knownSmallers = (clauses.collect {
-      case Equals(v: Variable, s @ CaseClassSelector(cct, r, _)) => subExprsOf(s, v)
-      case Equals(s @ CaseClassSelector(cct, r, _), v: Variable) => subExprsOf(s, v)
-    }).flatten.groupBy(_._1).mapValues(v => v.map(_._2))
+    val knownSmallers = clauses.collect {
+      case Equals(v: Variable, s@CaseClassSelector(cct, r, _)) => subExprsOf(s, v)
+      case Equals(s@CaseClassSelector(cct, r, _), v: Variable) => subExprsOf(s, v)
+    }.flatten.groupBy(_._1).mapValues(v => v.map(_._2))
 
     def argsSmaller(e: Expr, tpe: TypeTree): Seq[Expr] = e match {
       case CaseClass(cct, args) =>

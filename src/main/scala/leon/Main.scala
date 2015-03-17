@@ -54,7 +54,7 @@ object Main {
     reporter.info("")
     reporter.info("Additional options, by component:")
 
-    for (c <- allComponents.toSeq.sortBy(_.name) if !c.definedOptions.isEmpty) {
+    for (c <- allComponents.toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
       reporter.info("%s (%s)".format(c.name, c.description))
       for(opt <- c.definedOptions.toSeq.sortBy(_.name)) {

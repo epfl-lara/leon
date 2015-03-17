@@ -28,7 +28,7 @@ class XLangVerificationRegression extends LeonTestSuite {
     XLangAnalysisPhase
 
   private def mkTest(file : File, leonOptions : Seq[String], forError: Boolean)(block: Output=>Unit) = {
-    val fullName = file.getPath()
+    val fullName = file.getPath
     val start = fullName.indexOf("regression")
 
     val displayName = if(start != -1) {

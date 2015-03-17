@@ -213,41 +213,41 @@ trait CodeExtraction extends ASTExtractors {
                          
             var standaloneDefs = List[Tree]()
             
-            val modules = lst.flatMap { _ match {
-              
+            val modules = lst.flatMap {
+
               case t if isIgnored(t.symbol) =>
                 None
-                
-              case po@ExObjectDef(n, templ) if n == "package" =>  
+
+              case po@ExObjectDef(n, templ) if n == "package" =>
                 outOfSubsetError(po, "No other definitions are allowed in a file with a package object.")
-                
+
               case ExObjectDef(n, templ) if n != "package" =>
                 Some(TempModule(FreshIdentifier(n), templ.body, false))
 
               /*
-              case d @ ExCompanionObjectSynthetic(_, sym, templ) => 
+              case d @ ExCompanionObjectSynthetic(_, sym, templ) =>
                 // Find default param. implementations
-                templ.body foreach { 
+                templ.body foreach {
                   case ExDefaultValueFunction(sym, _, _, _, owner, index, _) =>
                     val namePieces = sym.toString.reverse.split("\\$", 3).reverse map { _.reverse }
                     assert(namePieces.length == 3 && namePieces(0)== "$lessinit$greater" && namePieces(1) == "default") // FIXME : maybe $lessinit$greater?
                     val index = namePieces(2).toInt
                     val theParam = sym.companionClass.paramss.head(index - 1)
                     paramsToDefaultValues += theParam -> body
-                  case _ => 
-                } 
-                None 
+                  case _ =>
+                }
+                None
               */
 
-              case d @ ExAbstractClass(_, _, _) =>
+              case d@ExAbstractClass(_, _, _) =>
                 standaloneDefs ::= d
                 None
 
-              case d @ ExCaseClass(_, _, _, _) =>
+              case d@ExCaseClass(_, _, _, _) =>
                 standaloneDefs ::= d
                 None
-                
-              case d @ ExCaseClassSyntheticJunk() =>
+
+              case d@ExCaseClassSyntheticJunk() =>
                 None
 
               case cd: ClassDef =>
@@ -257,7 +257,7 @@ trait CodeExtraction extends ASTExtractors {
               case other =>
                 outOfSubsetError(other, "Expected: top-level object/class.")
                 None
-            }}
+            }
             
             // File name without extension
             val unitName = u.source.file.name.replaceFirst("[.][^.]+$", "")
@@ -359,7 +359,7 @@ trait CodeExtraction extends ASTExtractors {
       val allSels = sels map { prefix :+ _.name.toString }
       // Make a different import for each selector at the end of the chain
       allSels flatMap { selectors => 
-        assert(!selectors.isEmpty)
+        assert(selectors.nonEmpty)
         val (thePath, isWild) = selectors.last match {
           case "_" => (selectors.dropRight(1), true)
           case _   => (selectors, false)
@@ -1015,7 +1015,7 @@ trait CodeExtraction extends ASTExtractors {
         val nil = CaseClassPattern(None, CaseClassType(nilClass, Seq(CharType)), Seq())
         val consType = CaseClassType(consClass, Seq(CharType))
         def mkCons(hd: Pattern, tl: Pattern) = CaseClassPattern(None, consType, Seq(hd,tl))
-        val chars = s.toCharArray()//.asInstanceOf[Seq[Char]]
+        val chars = s.toCharArray//.asInstanceOf[Seq[Char]]
         def charPat(ch : Char) = LiteralPattern(None, CharLiteral(ch))
         (chars.foldRight(nil)( (ch: Char, p : Pattern) => mkCons( charPat(ch), p)), dctx)
 
@@ -1105,7 +1105,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExPasses(in, out, cases) =>
           val ine = extractTree(in)
           val oute = extractTree(out)
-          val rc = cases.map(extractMatchCase(_))
+          val rc = cases.map(extractMatchCase)
 
           // @mk: FIXME: this whole sanity checking is very dodgy at best.
           val ines = unwrapTuple(ine, ine.isInstanceOf[Tuple]) // @mk We untuple all tuples
@@ -1122,7 +1122,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExGives(sel, cses) =>
           val rs = extractTree(sel)
-          val rc = cses.map(extractMatchCase(_))
+          val rc = cses.map(extractMatchCase)
           gives(rs, rc)
 
         case ExArrayLiteral(tpe, args) =>
@@ -1404,7 +1404,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt) match {
             case cct: CaseClassType =>
-              val nargs = args.map(extractTree(_))
+              val nargs = args.map(extractTree)
               CaseClass(cct, nargs)
 
             case _ =>
@@ -1456,14 +1456,14 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExFiniteSet(tt, args)  =>
           val underlying = extractType(tt)
-          finiteSet(args.map(extractTree(_)).toSet, underlying)
+          finiteSet(args.map(extractTree).toSet, underlying)
         case ExEmptySet(tt) =>
           val underlying = extractType(tt)
           EmptySet(underlying)
 
         case ExFiniteMultiset(tt, args) =>
           val underlying = extractType(tt)
-          finiteMultiset(args.map(extractTree(_)),underlying)
+          finiteMultiset(args.map(extractTree),underlying)
 
         case ExEmptyMultiset(tt) =>
           val underlying = extractType(tt)
@@ -1538,7 +1538,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)
-          val rc = cses.map(extractMatchCase(_))
+          val rc = cses.map(extractMatchCase)
           matchExpr(rs, rc)
 
         case t: This =>
@@ -1558,8 +1558,8 @@ trait CodeExtraction extends ASTExtractors {
 
         case l @ ExListLiteral(tpe, elems) =>
           val rtpe = extractType(tpe)
-          val cons = CaseClassType(libraryCaseClass(l.pos, "leon.collection.Cons"), Seq(rtpe));
-          val nil  = CaseClassType(libraryCaseClass(l.pos, "leon.collection.Nil"),  Seq(rtpe));
+          val cons = CaseClassType(libraryCaseClass(l.pos, "leon.collection.Cons"), Seq(rtpe))
+          val nil  = CaseClassType(libraryCaseClass(l.pos, "leon.collection.Nil"),  Seq(rtpe))
 
           elems.foldRight(CaseClass(nil, Seq())) {
             case (e, ls) => CaseClass(cons, Seq(extractTree(e), ls))
@@ -1569,10 +1569,10 @@ trait CodeExtraction extends ASTExtractors {
           CharLiteral(c)
 
         case str @ ExStringLiteral(s) =>
-          val chars = s.toList.map(CharLiteral(_))
+          val chars = s.toList.map(CharLiteral)
           
-          val consChar = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Cons"), Seq(CharType));
-          val nilChar  = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Nil"),  Seq(CharType));
+          val consChar = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Cons"), Seq(CharType))
+          val nilChar  = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Nil"),  Seq(CharType))
 
           val charList = chars.foldRight(CaseClass(nilChar, Seq())) {
             case (c, s) => CaseClass(consChar, Seq(c, s))
@@ -1933,9 +1933,9 @@ trait CodeExtraction extends ASTExtractors {
   }
 
   def containsLetDef(expr: LeonExpr): Boolean = {
-    exists { _ match {
+    exists {
       case (l: LetDef) => true
       case _ => false
-    }}(expr)
+    }(expr)
   }
 }

@@ -6,21 +6,16 @@ package synthesis
 
 import leon._
 import leon.purescala.Definitions._
-import leon.purescala.Common._
-import leon.purescala.Trees._
 import leon.purescala.ScalaPrinter
 import leon.purescala.PrinterContext
 import leon.purescala.PrinterOptions
-import leon.purescala.TreeOps._
-import leon.solvers.z3._
-import leon.solvers.Solver
 import leon.synthesis._
-import leon.synthesis.utils._
 
+import scala.collection.mutable
 import scala.collection.mutable.Stack
 import scala.io.Source
 
-import java.io.{File, BufferedWriter, FileWriter}
+import java.io.File
 
 class StablePrintingSuite extends LeonTestSuite {
   private def forEachFileIn(path : String)(block : File => Unit) {
@@ -50,7 +45,7 @@ class StablePrintingSuite extends LeonTestSuite {
       def info(task: String): String = {
         val r = if (rules.isEmpty) "<init>" else "after "+rules.head
 
-        val indent = "  "*(rules.size)+" "
+        val indent = "  "* rules.size +" "
 
         f"${indent+r}%-40s [$task%s]"
       }
@@ -62,7 +57,7 @@ class StablePrintingSuite extends LeonTestSuite {
 
       val workList = Stack[Job](Job(res, Set(), Nil))
 
-      while(!workList.isEmpty) {
+      while(workList.nonEmpty) {
         val reporter = new TestSilentReporter
         val ctx = createLeonContext("--synthesis").copy(reporter = reporter)
         val j = workList.pop()
@@ -86,7 +81,7 @@ class StablePrintingSuite extends LeonTestSuite {
           for ((ci, i) <- chooses.zipWithIndex if j.choosesToProcess(i) || j.choosesToProcess.isEmpty) {
             val synthesizer = new Synthesizer(ctx, pgm, ci, opts)
             val sctx = SynthesisContext.fromSynthesizer(synthesizer)
-            val search = synthesizer.getSearch()
+            val search = synthesizer.getSearch
             val hctx = SearchContext(sctx, ci, search.g.root, search)
             val problem = ci.problem
             info(j.info("synthesis "+problem))
@@ -96,7 +91,7 @@ class StablePrintingSuite extends LeonTestSuite {
               a.apply(hctx) match {
                 case RuleClosed(sols) =>
                 case RuleExpanded(sub) =>
-                  a.onSuccess(sub.map(Solution.choose(_))) match {
+                  a.onSuccess(sub.map(Solution.choose)) match {
                     case Some(sol) =>
                       val result = sol.toSimplifiedExpr(ctx, pgm)
 

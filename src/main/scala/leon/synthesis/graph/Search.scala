@@ -9,11 +9,11 @@ import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
 abstract class Search(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: CostModel) extends Interruptible {
-  val g = new Graph(costModel, p);
+  val g = new Graph(costModel, p)
 
   def findNodeToExpandFrom(n: Node): Option[Node]
 
-  val interrupted = new AtomicBoolean(false);
+  val interrupted = new AtomicBoolean(false)
 
   def doStep(n: Node, sctx: SynthesisContext): Unit = {
     ctx.timers.synthesis.step.timed {
@@ -100,7 +100,8 @@ class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: Cost
     }
   }
 
-  var counter = 0;
+  var counter = 0
+
   def findNodeToExpandFrom(from: Node): Option[Node] = {
     counter += 1
     ctx.timers.synthesis.search.find.timed {
@@ -183,7 +184,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
   }
 
   override def doStep(n: Node, sctx: SynthesisContext) = {
-    super.doStep(n, sctx);
+    super.doStep(n, sctx)
 
     // Backtrack view to a point where node is neither closed nor solved
     if (n.isDeadEnd || n.isSolved) {
@@ -309,7 +310,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
             continue = false
 
           case e: Throwable =>
-            error("Woops: "+e.getMessage())
+            error("Woops: "+e.getMessage)
             e.printStackTrace()
         }
       }

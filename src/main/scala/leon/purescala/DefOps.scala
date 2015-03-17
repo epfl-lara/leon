@@ -125,7 +125,7 @@ object DefOps {
     val index = rootPath lastIndexWhere { isImportedBy(_, unitOf(base).toSeq.flatMap { _.imports }) }
     val pathFromImport = rootPath drop scala.math.max(index, 0)
     val finalPath = if (pathFromAncestor.length <= pathFromImport.length) pathFromAncestor else pathFromImport
-    assert(!finalPath.isEmpty)
+    assert(finalPath.nonEmpty)
     
     // Package 
     val pack = if (finalPath.head.isInstanceOf[UnitDef]) {
@@ -167,7 +167,7 @@ object DefOps {
     require(programOf(base).isDefined)
 
     val fullNameList = fullName.split("\\.").toList map scala.reflect.NameTransformer.encode
-    require(!fullNameList.isEmpty)
+    require(fullNameList.nonEmpty)
     
     def onCondition[A](cond:Boolean)(body : => Option[A]) : Option[A] = {
       if (cond) body else None
@@ -199,7 +199,7 @@ object DefOps {
           val visible = visibleDefsFrom(base).toList
           val defs : List[Definition] = 
             if(exploreStandalones) 
-              visible ++ (visible.collect{ case ModuleDef(_,subs,true) => subs }.flatten)
+              visible ++ visible.collect { case ModuleDef(_, subs, true) => subs}.flatten
             else visible
           defs find { _.id.toString == fullNameList.head }
         }

@@ -30,7 +30,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
     var eqxs: List[Identifier] = List()
 
     var optionNormalizedEq: Option[List[Expr]] = None
-    while(!candidates.isEmpty && optionNormalizedEq == None) {
+    while(candidates.nonEmpty && optionNormalizedEq == None) {
       val eq@Equals(_,_) = candidates.head
       candidates = candidates.tail
       
@@ -104,7 +104,7 @@ case object IntegerEquation extends Rule("Integer Equation") {
               val id2res: Map[Expr, Expr] = 
                 freshsubxs.zip(subproblemxs).map{case (id1, id2) => (Variable(id1), Variable(id2))}.toMap ++
                 neqxs.map(id => (Variable(id), eqSubstMap(Variable(id)))).toMap
-              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(letTuple(subproblemxs, freshTerm, replace(id2res, tupleWrap(problem.xs.map(Variable(_))))))), s.isTrusted))
+              Some(Solution(and(eqPre, freshPre), defs, simplifyArithmetic(simplifyLets(letTuple(subproblemxs, freshTerm, replace(id2res, tupleWrap(problem.xs.map(Variable)))))), s.isTrusted))
             }
 
             case _ =>

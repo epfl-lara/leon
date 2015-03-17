@@ -41,7 +41,7 @@ case object ADTSplit extends Rule("ADT Split.") {
 
         val cases = optCases.flatten
 
-        if (!cases.isEmpty) {
+        if (cases.nonEmpty) {
           Some((id, act, cases))
         } else {
           None
@@ -57,9 +57,9 @@ case object ADTSplit extends Rule("ADT Split.") {
 
            val args   = cct.fields.map { vd => FreshIdentifier(vd.id.name, vd.getType, true) }.toList
 
-           val subPhi = subst(id -> CaseClass(cct, args.map(Variable(_))), p.phi)
-           val subPC  = subst(id -> CaseClass(cct, args.map(Variable(_))), p.pc)
-           val subWS  = subst(id -> CaseClass(cct, args.map(Variable(_))), p.ws)
+           val subPhi = subst(id -> CaseClass(cct, args.map(Variable)), p.phi)
+           val subPC  = subst(id -> CaseClass(cct, args.map(Variable)), p.pc)
+           val subWS  = subst(id -> CaseClass(cct, args.map(Variable)), p.ws)
            val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs)
            val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
 
@@ -71,7 +71,7 @@ case object ADTSplit extends Rule("ADT Split.") {
           case sols =>
             var globalPre = List[Expr]()
 
-            val cases = for ((sol, (cct, problem, pattern)) <- (sols zip subInfo)) yield {
+            val cases = for ((sol, (cct, problem, pattern)) <- sols zip subInfo) yield {
               if (sol.pre != BooleanLiteral(true)) {
                 val substs = (for ((field,arg) <- cct.fields zip problem.as ) yield {
                   (arg, CaseClassSelector(cct, id.toVariable, field.id))

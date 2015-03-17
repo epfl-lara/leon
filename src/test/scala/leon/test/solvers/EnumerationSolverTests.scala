@@ -14,7 +14,7 @@ import leon.purescala.TypeTrees._
 
 class EnumerationSolverTests extends LeonTestSuite {
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {
-    val s = sf.getNewSolver
+    val s = sf.getNewSolver()
     s.assertCnstr(e)
     s.check
   }

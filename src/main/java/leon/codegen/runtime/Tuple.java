@@ -49,7 +49,7 @@ public final class Tuple {
   @Override
   final public int hashCode() {
     if(_hash != 0) return _hash;
-    int seed = (new String("Tuple" + getArity())).hashCode();
+    int seed = ("Tuple" + getArity()).hashCode();
     int h = LeonCodeGenRuntimeHashing.seqHash(elements, seed);
     _hash = h;
     return h;

@@ -199,7 +199,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case (t: codegen.runtime.Tuple, tpe) =>
       val r = t.__getRead()
 
-      val parts = unwrapTupleType(tpe, t.getArity())
+      val parts = unwrapTupleType(tpe, t.getArity)
 
       val c = getConstructors(tpe)(0)
 
@@ -231,7 +231,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       val ttype = tupleTypeWrap(argorder.map(_.getType))
       val tid = FreshIdentifier("tup", ttype)
 
-      val map = argorder.zipWithIndex.map{ case (id, i) => (id -> tupleSelect(Variable(tid), i+1, argorder.size)) }.toMap
+      val map = argorder.zipWithIndex.map{ case (id, i) => id -> tupleSelect(Variable(tid), i + 1, argorder.size) }.toMap
 
       val newExpr = replaceFromIDs(map, expression)
 
@@ -270,7 +270,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       })
     } catch {
       case t: Throwable =>
-        ctx.reporter.warning("Error while compiling expression: "+t.getMessage); t.printStackTrace
+        ctx.reporter.warning("Error while compiling expression: "+t.getMessage); t.printStackTrace()
         None
     }
   }
@@ -299,17 +299,17 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
      * - Too large means repetitive (and not useful models) before reaching maxEnumerated
      */
 
-    val maxIsomorphicModels = maxValid+1;
+    val maxIsomorphicModels = maxValid+1
 
     val it  = gen.enumerate(tupleTypeWrap(ins.map(_.getType)))
 
-    return new Iterator[Seq[Expr]] {
+    new Iterator[Seq[Expr]] {
       var total = 0
       var found = 0
 
       var theNext: Option[Seq[Expr]] = None
 
-      def hasNext() = {
+      def hasNext = {
         if (total == 0) {
           theNext = computeNext()
         }
@@ -327,20 +327,20 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       def computeNext(): Option[Seq[Expr]] = {
         //return None
         while(total < maxEnumerated && found < maxValid && it.hasNext && !interrupted.get) {
-          val model = it.next
+          val model = it.next()
 
           if (model eq null) {
             total = maxEnumerated
           } else {
             total += 1
 
-            var failed = false;
+            var failed = false
 
             for (r <- runners) r(model) match {
               case (EvaluationResults.Successful(BooleanLiteral(true)), _) =>
 
               case (_, Some(pattern)) =>
-                failed = true;
+                failed = true
                 it.exclude(pattern)
 
               case (_, None) =>
@@ -359,7 +359,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
                 it.skipIsomorphic()
               }
 
-              return Some(unwrapTuple(model, ins.size));
+              return Some(unwrapTuple(model, ins.size))
             }
 
             //if (total % 1000 == 0) {

@@ -70,7 +70,7 @@ object UnitElimination extends TransformationPhase {
         val TupleType(tpes) = t.getType
         val simpleTypes = tpes map simplifyType
         val newArity = tpes.count(_ != UnitType)
-        val newIndex = simpleTypes.take(index).filter(_ != UnitType).size
+        val newIndex = simpleTypes.take(index).count(_ != UnitType)
         tupleSelect(removeUnit(t), newIndex, newArity)
       }
       case Let(id, e, b) => {
@@ -78,7 +78,7 @@ object UnitElimination extends TransformationPhase {
           removeUnit(b)
         else {
           id.getType match {
-            case TupleType(tpes) if tpes.exists(_ == UnitType) => {
+            case TupleType(tpes) if tpes.contains(UnitType) => {
               val newTupleType = tupleTypeWrap(tpes.filterNot(_ == UnitType))
               val freshId = FreshIdentifier(id.name, newTupleType)
               id2FreshId += (id -> freshId)
@@ -120,7 +120,7 @@ object UnitElimination extends TransformationPhase {
         IfExpr(removeUnit(cond), thenRec, elseRec)
       }
       case n @ NAryOperator(args, recons) => {
-        recons(args.map(removeUnit(_)))
+        recons(args.map(removeUnit))
       }
       case b @ BinaryOperator(a1, a2, recons) => {
         recons(removeUnit(a1), removeUnit(a2))

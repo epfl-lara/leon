@@ -4,7 +4,7 @@ package utils
 class TimeoutFor(it: Interruptible) {
   private class Countdown(timeout: Long, onTimeout: => Unit) extends Thread {
     private var keepRunning = true
-    override def run : Unit = {
+    override def run() : Unit = {
       val startTime : Long = System.currentTimeMillis
       var exceeded : Boolean = false
 
@@ -20,7 +20,7 @@ class TimeoutFor(it: Interruptible) {
       }
     }
 
-    def finishedRunning : Unit = {
+    def finishedRunning() : Unit = {
       keepRunning = false
     }
   }
@@ -33,7 +33,7 @@ class TimeoutFor(it: Interruptible) {
       reachedTimeout = true
     })
 
-    timer.start
+    timer.start()
     val res = body
     timer.finishedRunning
 

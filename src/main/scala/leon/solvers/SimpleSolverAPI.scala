@@ -8,7 +8,7 @@ import purescala.Trees._
 
 class SimpleSolverAPI(sf: SolverFactory[Solver]) {
   def solveVALID(expression: Expr): Option[Boolean] = {
-    val s = sf.getNewSolver
+    val s = sf.getNewSolver()
     try {
       s.assertCnstr(Not(expression))
       s.check.map(r => !r)
@@ -18,7 +18,7 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
   }
 
   def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
-    val s = sf.getNewSolver
+    val s = sf.getNewSolver()
     try {
       s.assertCnstr(expression)
       s.check match {

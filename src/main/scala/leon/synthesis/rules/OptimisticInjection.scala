@@ -20,7 +20,7 @@ case object OptimisticInjection extends Rule("Opt. Injection") {
     }
 
     val candidates = eqfuncalls.groupBy(_._1).filter(_._2.size > 1)
-    if (!candidates.isEmpty) {
+    if (candidates.nonEmpty) {
 
       var newExprs = exprs
       for (cands <- candidates.values) {

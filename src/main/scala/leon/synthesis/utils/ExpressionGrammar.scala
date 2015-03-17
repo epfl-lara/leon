@@ -37,7 +37,7 @@ abstract class ExpressionGrammar[T <% Typed] {
   def computeProductions(t: T): Seq[Gen]
 
   def filter(f: Gen => Boolean) = {
-    val that = this;
+    val that = this
     new ExpressionGrammar[T] {
       def computeProductions(t: T) = that.computeProductions(t).filter(f)
     }
@@ -218,9 +218,10 @@ object ExpressionGrammars {
     
     type L = Label[String]
 
-    private var counter = -1;
+    private var counter = -1
+
     def getNext(): Int = {
-      counter += 1;
+      counter += 1
       counter
     }
 
@@ -353,7 +354,7 @@ object ExpressionGrammars {
 
        val isRecursiveCall = (prog.callGraph.transitiveCallers(cfd) + cfd) contains fd
 
-       val isDet = fd.body.map(isDeterministic).getOrElse(false)
+       val isDet = fd.body.exists(isDeterministic)
 
        if (!isRecursiveCall && isDet) {
          val free = fd.tparams.map(_.tp)
@@ -416,7 +417,7 @@ object ExpressionGrammars {
       case g: Generator[Label[T], Expr] =>
         if (l.depth == Some(bound) && g.subTrees.nonEmpty) {
           None  
-        } else if (l.depth.map(_ > bound).getOrElse(false)) {
+        } else if (l.depth.exists(_ > bound)) {
           None
         } else {
           Some(Generator(g.subTrees.map(sl => sl.copy(depth = l.depth.map(_+1).orElse(Some(1)))), g.builder))

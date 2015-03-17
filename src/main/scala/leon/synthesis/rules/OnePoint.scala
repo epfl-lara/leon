@@ -25,7 +25,7 @@ case object OnePoint extends NormalizingRule("One-point") {
         (x, e, eq)
     }
 
-    if (!candidates.isEmpty) {
+    if (candidates.nonEmpty) {
       val (x, e, eq) = candidates.head
 
       val others = exprs.filter(_ != eq)
@@ -35,7 +35,7 @@ case object OnePoint extends NormalizingRule("One-point") {
 
       val onSuccess: List[Solution] => Option[Solution] = {
         case List(s @ Solution(pre, defs, term)) =>
-          Some(Solution(pre, defs, letTuple(oxs, term, subst(x -> e, tupleWrap(p.xs.map(Variable(_))))), s.isTrusted))
+          Some(Solution(pre, defs, letTuple(oxs, term, subst(x -> e, tupleWrap(p.xs.map(Variable)))), s.isTrusted))
         case _ =>
           None
       }

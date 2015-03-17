@@ -20,7 +20,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   protected var interrupted = false
 
-  override def interrupt: Unit = {
+  override def interrupt(): Unit = {
     interrupted = true
     interpreter.interrupt()
   }
@@ -38,7 +38,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   override def free() = {
     interpreter.free()
-    reporter.ifDebug { _ => out.close }
+    reporter.ifDebug { _ => out.close() }
   }
 
 }

@@ -27,7 +27,7 @@ case object DetupleOutput extends Rule("Detuple Out") {
 
           val newIds = ct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.getType, true) }
 
-          val newCC = CaseClass(ct, newIds.map(Variable(_)))
+          val newCC = CaseClass(ct, newIds.map(Variable))
 
           subProblem = subst(x -> newCC, subProblem)
 

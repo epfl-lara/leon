@@ -17,10 +17,10 @@ case object InnerCaseSplit extends Rule("Inner-Case-Split"){
         var phi = p.phi
         phi match {
           case Not(And(es)) =>
-            phi = orJoin(es.map(not(_)))
+            phi = orJoin(es.map(not))
             
           case Not(Or(es)) =>
-            phi = andJoin(es.map(not(_)))
+            phi = andJoin(es.map(not))
 
           case _ =>
         }

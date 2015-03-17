@@ -39,12 +39,12 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
 
     val allArgs = if (params.requireMonitor) monitor +: args else args
 
-    ctx.reporter.debug(s"Calling ${className}.${methodName}(${args.mkString(",")})")
+    ctx.reporter.debug(s"Calling $className.$methodName(${args.mkString(",")})")
 
     try {
       val cl = unit.loader.loadClass(className)
 
-      val meth = cl.getMethods().find(_.getName() == methodName).get
+      val meth = cl.getMethods.find(_.getName == methodName).get
 
       val res = if (allArgs.isEmpty) {
         meth.invoke(null)
@@ -67,12 +67,12 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
 
     val (className, fieldName, _) = unit.leonFunDefToJVMInfo(fd).get
 
-    ctx.reporter.debug(s"Retrieving ${className}.${fieldName}")
+    ctx.reporter.debug(s"Retrieving $className.$fieldName")
 
     try {
       val cl = unit.loader.loadClass(className)
 
-      val field = cl.getFields().find(_.getName() == fieldName).get
+      val field = cl.getFields.find(_.getName == fieldName).get
 
       val res = field.get(null)
 

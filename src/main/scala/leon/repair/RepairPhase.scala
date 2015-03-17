@@ -37,7 +37,7 @@ object RepairPhase extends LeonPhase[Program, Program] {
       filterInclusive(repairFuns.map(fdMatcher), None)
     }
 
-    val toRepair = funDefsFromMain(program).toList.sortWith((fd1, fd2) => fd1.getPos < fd2.getPos).filter(fdFilter).filter{ _.hasPostcondition }
+    val toRepair = funDefsFromMain(program).toList.filter(fdFilter).filter{ _.hasPostcondition }.sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
 
     if (toRepair.isEmpty) reporter.warning("No functions found with the given names")
     

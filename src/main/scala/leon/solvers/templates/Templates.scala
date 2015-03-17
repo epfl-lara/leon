@@ -142,13 +142,13 @@ object Template {
       lambdas.map { case (idT, template) => template.id -> idT }
     }
 
-    val encodeExpr : Expr => T = encoder.encodeExpr(idToTrId) _
+    val encodeExpr : Expr => T = encoder.encodeExpr(idToTrId)
 
     val clauses : Seq[T] = (for ((b,es) <- guardedExprs; e <- es) yield {
       encodeExpr(Implies(Variable(b), e))
     }).toSeq
 
-    val extractInfos : Expr => (Set[TemplateCallInfo[T]], Set[App[T]]) = functionCallInfos(encodeExpr) _
+    val extractInfos : Expr => (Set[TemplateCallInfo[T]], Set[App[T]]) = functionCallInfos(encodeExpr)
     val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
     val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
 

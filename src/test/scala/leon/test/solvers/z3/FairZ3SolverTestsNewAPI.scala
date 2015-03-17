@@ -18,7 +18,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     testCounter += 1
 
     test("Solver test #" + testCounter) {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver()
 
       try {
         sub.assertCnstr(Not(expr))
@@ -105,7 +105,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     }
 
     locally {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver()
       try {
         sub.assertCnstr(f)
         val result = sub.checkAssumptions(Set(b1))
@@ -118,7 +118,7 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
     }
 
     locally {
-      val sub = solver.getNewSolver
+      val sub = solver.getNewSolver()
       try {
         sub.assertCnstr(f)
 
