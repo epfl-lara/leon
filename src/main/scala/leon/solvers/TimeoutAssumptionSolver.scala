@@ -3,7 +3,7 @@
 package leon
 package solvers
 
-import purescala.Trees.Expr
+import purescala.Expressions.Expr
 
 trait TimeoutAssumptionSolver extends TimeoutSolver with AssumptionSolver {
 

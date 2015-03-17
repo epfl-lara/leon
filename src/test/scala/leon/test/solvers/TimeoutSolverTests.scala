@@ -9,8 +9,8 @@ import leon.solvers._
 import leon.solvers.combinators._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.purescala.Trees._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.Types._
 
 class TimeoutSolverTests extends LeonTestSuite {
   private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with Interruptible{

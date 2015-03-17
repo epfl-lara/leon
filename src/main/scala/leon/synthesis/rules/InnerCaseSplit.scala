@@ -4,7 +4,7 @@ package leon
 package synthesis
 package rules
 
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Constructors._
 
 case object InnerCaseSplit extends Rule("Inner-Case-Split"){

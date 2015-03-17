@@ -3,7 +3,7 @@
 package leon
 package xlang
 
-import purescala.TreeOps.collect
+import purescala.ExprOps.collect
 import purescala.Definitions._
 
 import utils.Position

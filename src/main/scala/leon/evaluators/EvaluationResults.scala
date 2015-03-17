@@ -3,7 +3,7 @@
 package leon
 package evaluators
 
-import purescala.Trees.Expr
+import purescala.Expressions.Expr
 
 object EvaluationResults {
   /** Possible results of expression evaluation. */

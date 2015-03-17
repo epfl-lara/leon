@@ -8,10 +8,10 @@ import leon.purescala.DefOps._
 import leon.purescala.Definitions._
 import leon.purescala.Extractors._
 import leon.purescala.PrinterHelpers._
-import leon.purescala.TreeOps.{isListLiteral, simplestValue}
-import leon.purescala.Trees._
-import leon.purescala.TypeTreeOps.leastUpperBound
-import leon.purescala.TypeTrees._
+import leon.purescala.ExprOps.{isListLiteral, simplestValue}
+import leon.purescala.Expressions._
+import leon.purescala.TypeOps.leastUpperBound
+import leon.purescala.Types._
 import leon.synthesis.Witnesses._
 
 case class PrinterContext(

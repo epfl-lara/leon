@@ -5,11 +5,11 @@ package purescala
 
 import scala.language.implicitConversions
 
-object TypeTrees {
+object Types {
   import Common._
-  import Trees._
+  import Expressions._
   import Definitions._
-  import TypeTreeOps._
+  import TypeOps._
 
   trait Typed {
     def getType: TypeTree

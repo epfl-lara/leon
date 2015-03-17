@@ -9,10 +9,10 @@ import leon.solvers._
 
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Extractors._
-import purescala.TreeOps._
-import purescala.TypeTrees._
+import purescala.ExprOps._
+import purescala.Types._
 
 /** This is a rather direct mapping to Z3, where all functions are left uninterpreted.
  *  It reports the results as follows (based on the negation of the formula):

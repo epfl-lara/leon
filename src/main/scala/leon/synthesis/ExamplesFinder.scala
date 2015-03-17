@@ -3,10 +3,10 @@
 package leon
 package synthesis
 
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Definitions._
-import purescala.TreeOps._
-import purescala.TypeTrees.TypeTree
+import purescala.ExprOps._
+import purescala.Types.TypeTree
 import purescala.Common._
 import purescala.Constructors._
 import purescala.Extractors._

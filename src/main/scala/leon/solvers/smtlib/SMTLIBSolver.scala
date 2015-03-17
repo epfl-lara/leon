@@ -7,10 +7,10 @@ package smtlib
 import utils._
 import purescala._
 import Common._
-import Trees._
+import Expressions._
 import Extractors._
-import TreeOps._
-import TypeTrees._
+import ExprOps._
+import Types._
 import Definitions._
 
 

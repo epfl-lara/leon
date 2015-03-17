@@ -2,8 +2,8 @@ package leon
 package utils
 
 import purescala.Definitions._
-import purescala.Trees._
-import purescala.TreeOps._
+import purescala.Expressions._
+import purescala.ExprOps._
 import purescala.ScopeSimplifier
 import solvers.z3.UninterpretedZ3Solver
 import solvers._

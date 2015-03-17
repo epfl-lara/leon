@@ -3,9 +3,9 @@
 package leon
 package xlang
 
-import purescala.Trees._
+import purescala.Expressions._
 import xlang.Trees._
-import purescala.TreeOps._
+import purescala.ExprOps._
 
 object TreeOps {
   

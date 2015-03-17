@@ -11,8 +11,8 @@ import PrinterHelpers._
 /** This pretty-printer only print valid scala syntax */
 class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, sb) {
   import Common._
-  import Trees._
-  import TypeTrees._
+  import Expressions._
+  import Types._
   import Definitions._
 
   import java.lang.StringBuffer
@@ -54,7 +54,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case SetCardinality(s)    => p"$s.size"
 
       case a@FiniteArray(elems, oDef, size) => {
-        import TreeOps._
+        import ExprOps._
         val ArrayType(underlying) = a.getType
         val default = oDef.getOrElse(simplestValue(underlying))
         size match {

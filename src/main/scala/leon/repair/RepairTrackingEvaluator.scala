@@ -3,8 +3,8 @@ package leon.repair
 import scala.collection.immutable.Map
 import scala.collection.mutable.{Map => MMap}
 import leon.purescala.Common._
-import leon.purescala.Trees._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.Types._
 import leon.purescala.Definitions._
 import leon.LeonContext
 import leon.evaluators.RecursiveEvaluator

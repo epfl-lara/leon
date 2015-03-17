@@ -5,8 +5,8 @@ package synthesis
 
 import graph._
 
-import purescala.Trees._
-import purescala.TreeOps._
+import purescala.Expressions._
+import purescala.ExprOps._
 
 abstract class CostModel(val name: String) {
   def solution(s: Solution): Cost

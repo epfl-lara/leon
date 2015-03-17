@@ -5,11 +5,11 @@ package purescala
 
 import Common._
 import Definitions._
-import Trees._
+import Expressions._
 import Extractors._
-import TreeOps._
-import TypeTrees._
-import TypeTreeOps.instantiateType
+import ExprOps._
+import Types._
+import TypeOps.instantiateType
 
 object MethodLifting extends TransformationPhase {
 

@@ -3,9 +3,9 @@
 package leon
 package purescala
 
-import Trees._
-import TypeTrees._
-import TreeOps._
+import Expressions._
+import Types._
+import ExprOps._
 import Extractors._
 import Constructors._
 import solvers._

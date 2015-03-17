@@ -8,10 +8,10 @@ import utils.Library
 
 object Definitions {
   import Common._
-  import Trees._
-  import TreeOps._
-  import TypeTrees._
-  import TypeTreeOps._
+  import Expressions._
+  import ExprOps._
+  import Types._
+  import TypeOps._
 
   sealed abstract class Definition extends Tree {
     

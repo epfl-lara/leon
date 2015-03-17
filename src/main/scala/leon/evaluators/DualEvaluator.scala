@@ -4,9 +4,9 @@ package leon
 package evaluators
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Definitions._
-import purescala.TypeTrees._
+import purescala.Types._
 
 import codegen._
 

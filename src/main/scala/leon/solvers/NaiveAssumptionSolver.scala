@@ -6,11 +6,11 @@ package solvers
 import utils._
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Extractors._
 import purescala.Constructors._
-import purescala.TreeOps._
-import purescala.TypeTrees._
+import purescala.ExprOps._
+import purescala.Types._
 
 trait NaiveAssumptionSolver extends AssumptionSolver {
   self: IncrementalSolver =>

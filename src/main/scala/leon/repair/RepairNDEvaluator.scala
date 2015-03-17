@@ -2,9 +2,9 @@ package leon.repair
 
 import leon.purescala._
 import Definitions._
-import Trees._
-import TypeTrees._
-import TreeOps.postMap
+import Expressions._
+import Types._
+import ExprOps.postMap
 import Constructors.not
 import leon.LeonContext
 import leon.evaluators.DefaultEvaluator

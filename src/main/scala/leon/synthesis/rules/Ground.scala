@@ -5,8 +5,8 @@ package synthesis
 package rules
 
 import solvers._
-import purescala.Trees._
-import purescala.TreeOps._
+import purescala.Expressions._
+import purescala.ExprOps._
 import purescala.Constructors._
 
 case object Ground extends Rule("Ground") {

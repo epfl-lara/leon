@@ -5,7 +5,7 @@ package solvers
 package templates
 
 import purescala.Common.Identifier
-import purescala.Trees.Expr
+import purescala.Expressions.Expr
 
 trait TemplateEncoder[T] {
   def encodeId(id: Identifier): T

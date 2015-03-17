@@ -2,7 +2,7 @@
 package leon
 package synthesis
 
-import purescala.TreeOps._
+import purescala.ExprOps._
 
 import purescala.ScalaPrinter
 import purescala.Definitions.{Program, FunDef}

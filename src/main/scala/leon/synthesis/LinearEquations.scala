@@ -4,9 +4,9 @@ package leon
 package synthesis
 
 import purescala.Definitions._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.TreeNormalizations.linearArithmeticForm
-import purescala.TypeTrees._
+import purescala.Types._
 import purescala.Common._
 import evaluators._
 

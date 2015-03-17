@@ -3,10 +3,10 @@ package leon.purescala
 import leon._
 import leon.purescala.Definitions._
 import leon.purescala.Common._
-import leon.purescala.Trees._
-import leon.purescala.TreeOps.{replaceFromIDs,functionCallsOf}
+import leon.purescala.Expressions._
+import leon.purescala.ExprOps.{replaceFromIDs,functionCallsOf}
 import leon.purescala.DefOps.{applyOnFunDef,preMapOnFunDef}
-import leon.purescala.TypeTrees._
+import leon.purescala.Types._
 import utils.GraphOps._
 
 object RestoreMethods extends TransformationPhase {

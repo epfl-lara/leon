@@ -1,10 +1,10 @@
 package leon.synthesis
 
 import leon.purescala._
-import TypeTrees._
+import Types._
 import Definitions.TypedFunDef
 import Extractors._
-import Trees.Expr
+import Expressions.Expr
 
 
 object Witnesses {

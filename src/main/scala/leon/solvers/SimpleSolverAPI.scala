@@ -4,7 +4,7 @@ package leon
 package solvers
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 
 class SimpleSolverAPI(sf: SolverFactory[Solver]) {
   def solveVALID(expression: Expr): Option[Boolean] = {

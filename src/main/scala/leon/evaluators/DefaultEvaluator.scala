@@ -4,7 +4,7 @@ package leon
 package evaluators
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Definitions._
 
 class DefaultEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {

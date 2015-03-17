@@ -4,10 +4,10 @@ package leon
 package synthesis
 package rules
 
-import purescala.Trees._
+import purescala.Expressions._
 import purescala.Common._
-import purescala.TypeTrees._
-import purescala.TreeOps._
+import purescala.Types._
+import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Definitions._

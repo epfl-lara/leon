@@ -7,10 +7,10 @@ package smtlib
 import utils._
 import purescala._
 import Common._
-import Trees._
+import Expressions._
 import Extractors._
-import TypeTrees._
-import TreeOps.simplestValue
+import Types._
+import ExprOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{DefineSort, GetModel, DefineFun}

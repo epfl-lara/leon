@@ -4,8 +4,8 @@ package leon
 package purescala
 
 import Definitions._
-import Trees._
-import TreeOps._
+import Expressions._
+import ExprOps._
 
 class CallGraph(p: Program) {
 

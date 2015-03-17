@@ -6,10 +6,10 @@ import leon.TransformationPhase
 import leon.LeonContext
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.purescala.Trees._
+import leon.purescala.Expressions._
 import leon.xlang.Trees._
 import leon.purescala.Extractors._
-import leon.purescala.TypeTrees._
+import leon.purescala.Types._
 
 object ArrayTransformation extends TransformationPhase {
 

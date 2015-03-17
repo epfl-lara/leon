@@ -5,7 +5,7 @@ package solvers
 package templates
 
 import purescala.Definitions.TypedFunDef
-import purescala.TypeTrees.TypeTree
+import purescala.Types.TypeTree
 
 case class TemplateCallInfo[T](tfd: TypedFunDef, args: Seq[T]) {
   override def toString = {

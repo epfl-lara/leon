@@ -5,8 +5,8 @@ package leon.test.codegen
 import leon._
 import leon.codegen._
 import leon.purescala.Definitions._
-import leon.purescala.Trees._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.Types._
 import leon.evaluators.{CodeGenEvaluator,EvaluationResults}
 import EvaluationResults._
 

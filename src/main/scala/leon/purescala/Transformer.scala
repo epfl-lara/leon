@@ -3,7 +3,7 @@
 package leon
 package purescala
 
-import purescala.Trees._
+import purescala.Expressions._
 
 
 trait Transformer {

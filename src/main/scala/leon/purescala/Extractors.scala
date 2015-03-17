@@ -3,16 +3,16 @@
 package leon
 package purescala
 
-import Trees._
+import Expressions._
 
 object Extractors {
   import Common._
-  import TypeTrees._
-  import TypeTreeOps._
+  import Types._
+  import TypeOps._
   import Definitions._
   import Extractors._
   import Constructors._
-  import TreeOps._
+  import ExprOps._
 
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {

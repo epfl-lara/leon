@@ -5,10 +5,10 @@ package purescala
 
 import Common._
 import Definitions._
-import Trees._
+import Expressions._
 import Extractors._
-import TreeOps._
-import TypeTrees._
+import ExprOps._
+import Types._
 import Constructors._
 
 object FunctionClosure extends TransformationPhase {

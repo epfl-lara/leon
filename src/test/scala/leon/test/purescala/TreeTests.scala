@@ -8,8 +8,8 @@ import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Constructors._
-import leon.purescala.Trees._
-import leon.purescala.TypeTrees._
+import leon.purescala.Expressions._
+import leon.purescala.Types._
 
 class TreeTests extends LeonTestSuite {
 

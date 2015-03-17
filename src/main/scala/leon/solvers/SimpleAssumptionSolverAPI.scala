@@ -4,7 +4,7 @@ package leon
 package solvers
 
 import purescala.Common._
-import purescala.Trees._
+import purescala.Expressions._
 
 class SimpleAssumptionSolverAPI(sf: SolverFactory[AssumptionSolver]) extends SimpleSolverAPI(sf) {
 

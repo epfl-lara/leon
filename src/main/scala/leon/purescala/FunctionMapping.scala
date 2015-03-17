@@ -4,9 +4,9 @@ package leon
 package purescala
 
 import Definitions._
-import Trees._
-import TreeOps._
-import TypeTrees._
+import Expressions._
+import ExprOps._
+import Types._
 
 abstract class FunctionMapping extends TransformationPhase {
   
