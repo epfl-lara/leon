@@ -1048,6 +1048,8 @@ trait CodeExtraction extends ASTExtractors {
           (e, Some(last))
         case Block(e :: es, last) =>
           (e, Some(Block(es, last)))
+        case Block(Nil, last) =>
+          (last, None)
         case e =>
           (e, None)
       }
@@ -1753,6 +1755,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // default behaviour is to complain :)
         case _ =>
+          println(tr.getClass)
           outOfSubsetError(tr, "Could not extract as PureScala")
       }
 
