@@ -153,29 +153,6 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
     var lambdas = Map[T, LambdaTemplate[T]]()
     @inline def registerLambda(idT: T, lambda: LambdaTemplate[T]) : Unit = lambdas += idT -> lambda
 
-    // Group elements that satisfy p toghether
-    // List(a, a, a, b, c, a, a), with p = _ == a will produce:
-    // List(List(a,a,a), List(b), List(c), List(a, a))
-    def groupWhile(p: T => Boolean, l: Seq[T]): Seq[Seq[T]] = {
-      var res: Seq[Seq[T]] = Nil
-
-      var c = l
-
-      while(c.nonEmpty) {
-        val (span, rest) = c.span(p)
-
-        if (span.isEmpty) {
-          res = res :+ Seq(rest.head)
-          c   = rest.tail
-        } else {
-          res = res :+ span
-          c  = rest
-        }
-      }
-
-      res
-    }
-
     def requireDecomposition(e: Expr) = {
       exists{
         case (_: FunctionInvocation) | (_: Assert) | (_: Ensuring) | (_: Choose) | (_: Application) => true
