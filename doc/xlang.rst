@@ -37,7 +37,7 @@ The above example illustrates three new features introduced by XLang:
 
 2. Blocks of expressions
 
-3. Assignment
+3. Assignments
 
 You can use Scala variables with a few restrictions. The variables can only be
 declared and used locally in the same function, and inner functions cannot
@@ -70,9 +70,37 @@ declarations.
 While loops 
 ***********
 
+You can use the ``while`` keyword. While loops usually combine the ability to
+declare variables and make a sequence of assignments in order to compute
+something useful:
+
+.. code-block:: scala
+
+   def foo(x: Int): Int = {
+     var res = 0
+     var i = 0
+     while(i < 10) {
+       res = res + i
+       i = i + 1
+     }
+     res
+   }
+
+Leon will automatically generate a postcondition to the ``while`` loop, using
+the negation of the loop condition. It will automatically prove that
+verification condition and you should see an ``invariant postcondition`` marked
+as ``valid``.
+
+Leon internally handle loops as a function with a postcondition. For the end-user it
+means that Leon is only going to rely on the postcondition of the loop to prove properties
+of code relying on loops.
+
 Arrays
 ******
 
+PureScala supports functional arrays, that is, the operations ``apply`` and ``updated`` which do
+not modify an array but only returns some result. In particular, ``updated`` returns a new copy
+of the array.
 
 .. note::
    some note comes here
