@@ -33,18 +33,46 @@ syntax.
 
 The above example illustrates three new features introduced by XLang:
 
-1. Declaring a variable in a local scope
+1. Declaring a variable in a local scope 
 
-2. Blocks of statement
+2. Blocks of expressions
 
 3. Assignment
 
+You can use Scala variables with a few restrictions. The variables can only be
+declared and used locally in the same function, and inner functions cannot
+close over them. XLang introduces the possibility to use sequences of
+expressions (blocks) -- a feature not available in PureScala, where you're only
+option is a sequence of ``val`` which essentially introduce nested ``let``
+declarations.
+
+.. warning::
+   Be careful when combining variables with nested functions from PureScala. Leon
+   will reject code with nested functions accessing a variable from an outside scope:
+   
+   .. code-block::  scala
+
+      def foo(x: Int) = {
+        var a = 12
+        def bar(y: Int): Int = {
+          a = a + 1
+          a + y
+        }
+        bar(17)
+      }
+
+   The problem with such code is the complications involved in representing closures as
+   they need a pointer to an environment containing the variables. Leon is only able
+   to handle closures with ``val``, where it is sufficient to explicitly pass the values
+   as parameters.
+
 
 While loops 
+***********
 
 Arrays
+******
 
-Nested function closure on local variables.
 
 .. note::
    some note comes here
