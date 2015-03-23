@@ -222,21 +222,21 @@ object Constructors {
     NonemptyArray(els.zipWithIndex.map{ _.swap }.toMap, defaultLength)
   }
 
+  /*
+   * Take a mapping from keys to values and a default expression and return a lambda of the form
+   * (x1, ..., xn) =>
+   *   if      ( key1 == (x1, ..., xn) ) value1
+   *   else if ( key2 == (x1, ..., xn) ) value2
+   *   ...
+   *   else    default
+   */
   def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
     val args = inputTypes map { tpe => ValDef(FreshIdentifier("x", tpe, true)) }
-    if (els.isEmpty) {
-      Lambda(args, default)
-    } else {
-      val theMap = NonemptyMap(els)
-      val theMapVar = FreshIdentifier("pairs", theMap.getType, true)
-      val argsAsExpr = tupleWrap(args map { _.toVariable })
-      val body = Let(theMapVar, theMap,  IfExpr(
-        MapIsDefinedAt(Variable(theMapVar), argsAsExpr), 
-        MapGet(Variable(theMapVar), argsAsExpr), 
-        default
-      ))
-      Lambda(args, body)
+    val argsExpr = tupleWrap(args map { _.toVariable })
+    val body = els.foldRight(default) { case ((key, value), default) =>
+      IfExpr(Equals(argsExpr, key), value, default)
     }
+    Lambda(args, body)
   }
 
   def application(fn: Expr, realArgs: Seq[Expr]) = fn match {

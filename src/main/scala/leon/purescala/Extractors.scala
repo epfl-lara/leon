@@ -234,26 +234,36 @@ object Extractors {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
   }
 
+  /*
+   * Extract a default expression and key-value pairs from a lambda constructed with
+   * Constructors.finiteLambda
+   */
   object FiniteLambda {
     def unapply(lambda: Lambda): Option[(Expr, Seq[(Expr, Expr)])] = {
       val inSize = lambda.getType.asInstanceOf[FunctionType].from.size
-      lambda match {
-        case Lambda(args, Let(theMapVar, FiniteMap(pairs), IfExpr(
-          MapIsDefinedAt(Variable(theMapVar1), targs2), 
-          MapGet(Variable(theMapVar2), targs3), 
-          default
-        ))) if {
-          val args2 = unwrapTuple(targs2, inSize)
-          val args3 = unwrapTuple(targs3, inSize)
-          (args map { x: ValDef => x.toVariable }) == args2 && 
-          args2 == args3 && theMapVar == theMapVar1 && 
-          theMapVar == theMapVar2
+      val Lambda(args, body) = lambda
+      def step(e: Expr): (Option[(Expr, Expr)], Expr) = e match {
+        case IfExpr(Equals(argsExpr, key), value, default) if {
+          val formal = args.map{ _.id }
+          val real = unwrapTuple(argsExpr, inSize).collect{ case Variable(id) => id}
+          formal == real
         } =>
-          Some(default, pairs)
-        case Lambda(args, default) if (variablesOf(default) & args.toSet.map{x: ValDef => x.id}).isEmpty =>
-          Some(default, Seq())
-        case _ => None
+          (Some((key, value)), default)
+        case other =>
+          (None, other)
       }
+
+      def rec(e: Expr): (Expr, Seq[(Expr, Expr)]) = {
+        step(e) match {
+          case (None, default) => (default, Seq())
+          case (Some(pair), default) =>
+            val (defaultRest, pairs) = rec(default)
+            (defaultRest, pair +: pairs)
+        }
+      }
+
+      Some(rec(body))
+
     }
   }
 
