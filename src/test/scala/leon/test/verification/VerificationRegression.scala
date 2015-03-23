@@ -37,13 +37,13 @@ trait VerificationRegression extends LeonTestSuite {
       PreprocessingPhase andThen
       pipeFront
 
-    val ctx = createLeonContext(leonOptions:_*)
     val ast = extraction.run(createLeonContext((files ++ leonOptions):_*))(files)
     val programs = {
       val (user, lib) = ast.units partition { _.isMainUnit }
       user map { u => Program(u.id.freshen, u :: lib) }
     }
     for (p <- programs; displayName = p.id.name) test(f"${nextInt()}%3d: $displayName ${leonOptions.mkString(" ")}") {
+      val ctx = createLeonContext(leonOptions:_*)
       val report = pipeBack.run(ctx)(p)
       block(Output(report, ctx.reporter))
     }
