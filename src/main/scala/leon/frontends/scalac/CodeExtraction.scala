@@ -1071,7 +1071,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case t @ ExHoldsExpression(body) =>
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos).setOwner(currentFunDef)
-          val post = Lambda(Seq(LeonValDef(resId)), Variable(resId).setPos(current.pos))
+          val post = Lambda(Seq(LeonValDef(resId)), Variable(resId)).setPos(current.pos)
 
           val b = try {
             extractTree(body)
