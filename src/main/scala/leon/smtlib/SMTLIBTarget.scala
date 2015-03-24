@@ -26,8 +26,8 @@ abstract class SMTLIBTarget(context: LeonContext) {
 
   val interpreter = getNewInterpreter()
 
-  val out = new java.io.FileWriter(s"vcs-$targetName.smt2", true)
-  /*reporter.ifDebug { debug =>
+  /*val out = new java.io.FileWriter(s"vcs-$targetName.smt2", true)
+  reporter.ifDebug { debug =>
     out.write("; -----------------------------------------------------\n")
   }*/
 
@@ -417,12 +417,12 @@ abstract class SMTLIBTarget(context: LeonContext) {
       case res => res
     }
   }
-
+  
   def assertCnstr(expr: Expr): Unit = {
     variablesOf(expr).foreach(declareVariable)
     val sexpr = toSMT(expr)(Map())
     sendCommand(Assert(sexpr))
-  }
+  }  
 
   /*override def check: Option[Boolean] = sendCommand(CheckSat) match {
     case CheckSatResponse(SatStatus)     => Some(true)

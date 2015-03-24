@@ -398,7 +398,7 @@ object Util {
 /**
  * maps all real valued variables and literals to new integer variables/literals and
  * performs the reverse mapping 
- * 
+ * Note: this should preserve the template identifier property
  */
 class RealToInt {
   
@@ -411,7 +411,12 @@ class RealToInt {
       case RealLiteral(_,_) => throw IllegalStateException("Real literal with non-unit denominator")
       case v @ Variable(realId) if (v.getType == RealType) => {
         val newId = realToIntId.getOrElse(realId, {
-          val freshId = FreshIdentifier(realId.name, true).setType(Int32Type)
+          //note: the fresh identifier has to be a template identifier if the original one is a template identifier
+          val freshId = if (TemplateIdFactory.IsTemplateIdentifier(realId))
+            TemplateIdFactory.freshIdentifier(realId.name, Int32Type)
+          else
+            FreshIdentifier(realId.name, true).setType(Int32Type)
+            
           realToIntId += (realId -> freshId)
           intToRealId += (freshId -> realId)
           freshId
@@ -435,6 +440,19 @@ class RealToInt {
        else pair
        (key -> value)
      })
+  }
+
+  def mapModel(model: Map[Identifier, Expr]): Map[Identifier, Expr] = {
+    model.collect {
+      case (k, RealLiteral(n, 1)) =>        
+          (realToIntId(k), IntLiteral(n))                   
+      case (k, v) =>
+        if(realToIntId.contains(k)) {
+          (realToIntId(k), v)  
+        } else {
+          (k ,v)
+        }
+    }.toMap
   }  
 }
 

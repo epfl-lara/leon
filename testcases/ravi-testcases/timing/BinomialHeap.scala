@@ -177,7 +177,7 @@ object BinomialHeap {
 	  }
   } ensuring(res => true template((a,b,c) => time <= a*minTreeChildren(h) + b*treeNum(h) + c))
   
-  def heapSize(h: BinomialHeap) : Int = {
+  /*def heapSize(h: BinomialHeap) : Int = {
     h match {
       NilHeap() => 0
       ConsHeap(head, tail) =>
@@ -201,6 +201,6 @@ object BinomialHeap {
   def sizeProperty(tree: TreeNode) : Int = {
     val (r, _, _) = tree
     treeSize(tree) == twopower(r)
-  }
+  }*/
    
 }

@@ -17,23 +17,32 @@ import _root_.smtlib.CommandResponses.SExprResponse
 import _root_.smtlib.CommandResponses._
 import _root_.smtlib._
 
-class SMTLIBStreamWriter(writer: Writer, context: LeonContext) extends SMTLIBTarget(context) {  
+class SMTLIBConverter(ctx: LeonContext){
 
-  def targetName = "z3"
+  var commands = List[Command]()
+  val target = new SMTLIBZ3Target(ctx) {
+    def getNewInterpreter() = new Interpreter {
+      override def eval(cmd: Command): CommandResponse = {
+        commands :+= cmd
+        Success
+      }
 
-  def getNewInterpreter() = new Interpreter {
-
-    override def eval(cmd: Command): CommandResponse = {
-      _root_.smtlib.PrettyPrinter(cmd, writer)
-      writer.write("\n")
-      writer.flush
-      Success
-    }
-
-    override def free(): Unit = {
-      //nothing to be done here
+      override def free(): Unit = {
+        //nothing to be done here
+      }
     }
   }
+  
+  def toSExprAndDefinitions(expr: Expr) : (List[Command],SExpr) = {
+    variablesOf(expr).foreach(target.declareVariable)
+    val sexpr = target.toSMT(expr)(Map())
+    (commands, sexpr)
+  }
+}
+
+abstract class SMTLIBZ3Target(context: LeonContext) extends SMTLIBTarget(context) {  
+
+  def targetName = "z3"  
 
   val extSym = SSymbol("_")
 
