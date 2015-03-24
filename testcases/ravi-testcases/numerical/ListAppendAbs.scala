@@ -16,5 +16,5 @@ object ListAppendAbs
 	    b
 	  else
 	    app0(a-1,b+1)	    
-	} ensuring(res => true template((p : Float, q : Float, r: Float) => (p*res + q*a + r*b == 0 && q >= -1 && r >= -1)))
+	} ensuring(res => true template((p, q, r) => (p*res + q*a + r*b == 0 && q >= -1 && r >= -1)))
 } 
