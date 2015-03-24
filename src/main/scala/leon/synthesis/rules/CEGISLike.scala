@@ -227,7 +227,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        * the current unfolding level
        */
       private val outerSolution = {
-        val part = new PartialSolution(hctx.search.g)
+        val part = new PartialSolution(hctx.search.g, true)
         e : Expr => part.solutionAround(hctx.currentNode)(e).getOrElse {
           sctx.reporter.fatalError("Unable to create outer solution")
         }
@@ -439,7 +439,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
       // Explicitly remove program computed by bValues from the search space
       def excludeProgram(bValues: Set[Identifier]): Unit = {
-        excludedPrograms += bValues
+        val bvs = bValues.filter(isBActive)
+        //println(f" (-)  ${bvs.mkString(", ")}%-40s  ("+getExpr(bvs)+")")
+        excludedPrograms += bvs
       }
 
       /**
@@ -525,6 +527,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         bs           = cTree.map(_._2.map(_._1)).flatten.toSet
         bsOrdered    = bs.toSeq.sortBy(_.id)
 
+        excludedPrograms = excludedPrograms.filter(_.forall(bs))
+
         //debugCExpr(cTree)
         updateCTree()
       }
@@ -571,6 +575,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         }
 
         closedBs = Map[Identifier, Set[Identifier]]()
+
+        // Set of Cs that still have no active alternatives after unfolding
+        var postClosedCs = Set[Identifier]()
 
         for (c <- unfoldBehind) {
           var alts = grammar.getProductions(labels(c))
@@ -628,6 +635,26 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         bs           = bs ++ newBs
         bsOrdered    = bs.toSeq.sortBy(_.id)
 
+        /**
+         * Close dead-ends
+         *
+         * Find 'c' that have no active alternatives, then close all 'b's that
+         * depend on such "dead" 'c's
+         */
+        var deadCs = Set[Identifier]()
+
+        for ((c, alts) <- cTree) {
+          if (alts.forall{ case (b, _, _) => !isBActive(b) }) {
+            deadCs += c
+          }
+        }
+
+        for ((_, alts) <- cTree; (b, _, cs) <- alts) {
+          if ((cs & deadCs).nonEmpty) {
+            closedBs += (b -> closedBs.getOrElse(b, Set()))
+          }
+        }
+
         //debugCExpr(cTree)
         updateCTree()
 
@@ -635,8 +662,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
-        val solver = (new FairZ3Solver(ctx, programCTree) with TimeoutSolver).setTimeout(exSolverTo)
+        val solver  = (new FairZ3Solver(ctx, programCTree) with TimeoutSolver).setTimeout(exSolverTo)
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
+        //debugCExpr(cTree)
+
+        //println(" --- PhiFD ---")
+        //println(phiFd.fullBody.asString(ctx))
 
         val fixedBs = finiteArray(bsOrdered.map(_.toVariable), None, BooleanType)
         val cnstrFixed = replaceFromIDs(Map(bArrayId -> fixedBs), cnstr)
@@ -647,19 +678,40 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         solver.assertCnstr(toFind)
 
         // oneOfBs
+        //println(" -- OneOf:")
         for ((c, alts) <- cTree) {
           val activeBs = alts.map(_._1).filter(isBActive)
 
+          val either = for (a1 <- activeBs; a2 <- activeBs if a1.globalId < a2.globalId) yield {
+            Or(Not(a1.toVariable), Not(a2.toVariable))
+          }
+
           if (activeBs.nonEmpty) {
+            //println(" - "+andJoin(either))
+            solver.assertCnstr(andJoin(either))
+
             val oneOf = orJoin(activeBs.map(_.toVariable))
             //println(" - "+oneOf)
             solver.assertCnstr(oneOf)
           }
         }
 
+        //println(" -- Excluded:")
+        //println(" -- Active:")
+        val isActive = andJoin(bsOrdered.filterNot(isBActive).map(id => Not(id.toVariable)))
+        //println("  - "+isActive)
+        solver.assertCnstr(isActive)
+
+
+        for (b <- bs.filterNot(isBActive)) {
+
+        }
+
+        //println(" -- Excluded:")
         for (ex <- excludedPrograms) {
           val notThisProgram = Not(andJoin(ex.map(_.toVariable).toSeq))
-          //println(" - "+notThisProgram)
+
+          //println(f"  - $notThisProgram%-40s ("+getExpr(ex)+")")
           solver.assertCnstr(notThisProgram)
         }
 
@@ -670,16 +722,21 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
               val bModel = bs.filter(b => model.get(b).contains(BooleanLiteral(true)))
 
-              //println("Found potential expr: "+getExpr(bModel)+" under inputs: "+model)
+              //println("Tentative expr: "+getExpr(bModel))
               Some(Some(bModel))
 
             case Some(false) =>
-              println("No Model!")
+              //println("UNSAT!")
               Some(None)
 
             case None =>
-              println("Timeout!")
-              None
+              /**
+               * If the remaining tentative programs are all infeasible, it
+               * might timeout instead of returning Some(false). We might still
+               * benefit from unfolding further
+               */
+              ctx.reporter.debug("Timeout while getting tentative program!")
+              Some(None)
           }
         } finally {
           solver.free()
@@ -884,6 +941,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     doFilter = false
                     result = Some(RuleClosed(sols))
                   case Right(cexs) =>
+                    baseExampleInputs ++= cexs
+
                     if (nPassing <= validateUpTo) {
                       // All programs failed verification, we filter everything out and unfold
                       //ndProgram.shrinkTo(Set(), unfolding == maxUnfoldings)
@@ -929,7 +988,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     true
                   }
 
-                  if (true || validateWithZ3) {
+                  if (validateWithZ3) {
                     ndProgram.solveForCounterExample(bs) match {
                       case Some(Some(inputsCE)) =>
                         // Found counter example!
@@ -938,6 +997,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                         // Retest whether the newly found C-E invalidates all programs
                         if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(inputsCE))) {
                           skipCESearch = true
+                        } else {
+                          ndProgram.excludeProgram(bs)
                         }
 
                       case Some(None) =>
