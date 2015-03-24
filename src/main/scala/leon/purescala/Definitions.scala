@@ -437,6 +437,8 @@ object Definitions {
       TypedFunDef(this, tparams.map(_.tp))
     }
 
+    def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
+
     setSubDefOwners()
     // Deprecated, old API
     @deprecated("Use .body instead", "2.3")

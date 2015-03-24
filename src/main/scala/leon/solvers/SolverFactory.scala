@@ -19,7 +19,7 @@ object SolverFactory {
     }
   }
 
-  val definedSolvers = Set("fairz3", "unrollz3", "enum", "smt", "smt-z3", "smt-cvc4")
+  val definedSolvers = Set("fairz3", "unrollz3", "enum", "smt", "smt-z3", "smt-cvc4", "smt-2.5-cvc4")
 
   def getFromSettings[S](ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     import combinators._
@@ -41,6 +41,9 @@ object SolverFactory {
 
       case "smt-cvc4" =>
         SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBCVC4Target) with TimeoutSolver)
+
+      case "smt-2.5-cvc4" =>
+        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBUnrollingCVC4Target with TimeoutSolver)
 
       case _ =>
         ctx.reporter.fatalError("Unknown solver "+name)
