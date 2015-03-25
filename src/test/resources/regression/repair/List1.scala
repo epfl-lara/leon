@@ -5,6 +5,7 @@ package leon.custom
 import leon._
 import leon.lang._
 import leon.annotation._
+import leon.collection._
 
 sealed abstract class List0[T] {
   def size: Int = (this match {
