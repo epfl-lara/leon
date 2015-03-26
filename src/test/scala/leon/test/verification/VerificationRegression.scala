@@ -31,21 +31,23 @@ trait VerificationRegression extends LeonTestSuite {
   val pipeFront: Pipeline[Program, Program]
   val pipeBack : Pipeline[Program, VerificationReport]
 
-  private def mkTest(files: List[String], leonOptions : Seq[String])(block: Output=>Unit) = {
+  private def mkTest(files: List[String])(block: Output=>Unit) = {
     val extraction = 
       ExtractionPhase andThen
       PreprocessingPhase andThen
       pipeFront
 
-    val ast = extraction.run(createLeonContext((files ++ leonOptions):_*))(files)
+    val ast = extraction.run(createLeonContext(files:_*))(files)
     val programs = {
       val (user, lib) = ast.units partition { _.isMainUnit }
       user map { u => Program(u.id.freshen, u :: lib) }
     }
-    for (p <- programs; displayName = p.id.name) test(f"${nextInt()}%3d: $displayName ${leonOptions.mkString(" ")}") {
-      val ctx = createLeonContext(leonOptions:_*)
-      val report = pipeBack.run(ctx)(p)
-      block(Output(report, ctx.reporter))
+    for (p <- programs; options <- optionVariants) {
+      test(f"${nextInt()}%3d: ${p.id.name} ${options.mkString(" ")}") {
+        val ctx = createLeonContext(options: _*)
+        val report = pipeBack.run(ctx)(p)
+        block(Output(report, ctx.reporter))
+      }
     }
   }
 
@@ -59,9 +61,7 @@ trait VerificationRegression extends LeonTestSuite {
 
     val files = fs map { _.getPath }
 
-    for (options <- optionVariants) { 
-      mkTest(files, options)(block)
-    }
+    mkTest(files)(block)
   }
   
   

@@ -45,10 +45,12 @@ class PureScalaVerificationRegression extends VerificationRegression {
   
   forEachFileIn("valid") { output =>
     val Output(report, reporter) = output
-    assert(report.totalConditions === report.totalValid,
-           "All verification conditions ("+report.totalConditions+") should be valid.")
-    assert(reporter.errorCount === 0)
-    assert(reporter.warningCount === 0)
+    for (vc <- report.conditions) {
+      if (vc.value != Some(true)) {
+        fail("The following verification condition was invalid: " + vc.toString + " @" + vc.getPos)
+      }
+    }
+    reporter.terminateIfError()
   }
 
   forEachFileIn("invalid") { output =>
@@ -57,8 +59,6 @@ class PureScalaVerificationRegression extends VerificationRegression {
            "There should be at least one invalid verification condition.")
     assert(report.totalUnknown === 0,
            "There should not be unknown verification conditions.")
-    assert(reporter.errorCount >= report.totalInvalid)
-    assert(reporter.warningCount === 0)
   }
 
 }
