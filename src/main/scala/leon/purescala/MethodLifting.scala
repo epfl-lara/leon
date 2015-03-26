@@ -20,36 +20,38 @@ object MethodLifting extends TransformationPhase {
     // First we create the appropriate functions from methods:
     var mdToFds  = Map[FunDef, FunDef]()
 
-    program.classHierarchyRoots.filter(_.methods.nonEmpty) flatMap { cd =>
-      cd.methods.map { fd =>
-        // We import class type params and freshen them
-        val ctParams = cd.tparams map { _.freshen }
-        val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
+    for {
+      cd <- program.classHierarchyRoots
+      if cd.methods.nonEmpty
+      fd <- cd.methods
+    } {
+      // We import class type params and freshen them
+      val ctParams = cd.tparams map { _.freshen }
+      val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
 
-        val id = FreshIdentifier(cd.id.name+"$"+fd.id.name).setPos(fd.id)
-        val recType = classDefToClassType(cd, ctParams.map(_.tp))
-        val retType = instantiateType(fd.returnType, tparamsMap)
-        val fdParams = fd.params map { vd =>
-          val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
-          ValDef(newId).setPos(vd.getPos)
-        }
-        val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
-
-        val receiver = FreshIdentifier("$this", recType).setPos(cd.id)
-
-        val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams, fd.defType)
-        nfd.copyContentFrom(fd)
-        nfd.setPos(fd)
-        nfd.fullBody = instantiateType(nfd.fullBody, tparamsMap, paramsMap)
-
-        mdToFds += fd -> nfd
+      val id = FreshIdentifier(cd.id.name+"$"+fd.id.name).setPos(fd.id)
+      val recType = classDefToClassType(cd, ctParams.map(_.tp))
+      val retType = instantiateType(fd.returnType, tparamsMap)
+      val fdParams = fd.params map { vd =>
+        val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
+        ValDef(newId).setPos(vd.getPos)
       }
+      val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
+
+      val receiver = FreshIdentifier("$this", recType).setPos(cd.id)
+
+      val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams, fd.defType)
+      nfd.copyContentFrom(fd)
+      nfd.setPos(fd)
+      nfd.fullBody = instantiateType(nfd.fullBody, tparamsMap, paramsMap)
+
+      mdToFds += fd -> nfd
     }
 
     def translateMethod(fd: FunDef) = {
       val (nfd, rec) = mdToFds.get(fd) match {
         case Some(nfd) =>
-          (nfd, Some(() => Variable(nfd.params(0).id)))
+          (nfd, Some(() => Variable(nfd.params.head.id)))
         case None =>
           (fd, None)
       }

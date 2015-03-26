@@ -196,12 +196,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val lets = (for ((c, alts) <- cTree) yield {
           val activeAlts = alts.filter(a => isBActive(a._1))
 
-          val expr = activeAlts.foldLeft(simplestValue(c.getType): Expr){
+          val expr = activeAlts.foldLeft(simplestValue(c.getType): Expr) {
             case (e, (b, ex, _)) => IfExpr(b.toVariable, ex, e)
           }
 
           (c, expr)
-        }).toMap
+        })
 
         // We order the lets base don dependencies
         def defFor(c: Identifier): Expr = {
@@ -265,7 +265,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val chFd = hctx.ci.fd
         val prog0 = hctx.program
 
-        val affected = prog0.callGraph.transitiveCallers(chFd).toSet ++ Set(chFd, cTreeFd, phiFd) ++ fullSol.defs
+        val affected = prog0.callGraph.transitiveCallers(chFd) ++ Set(chFd, cTreeFd, phiFd) ++ fullSol.defs
 
         cTreeFd.body = None
         phiFd.body   = Some(
@@ -894,7 +894,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               }
 
               if (doFilter) {
-                if (((nPassing < nInitial*filterThreshold)) && useBssFiltering) {
+                if (nPassing < nInitial * filterThreshold && useBssFiltering) {
                   // We shrink the program to only use the bs mentionned
                   val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
                   ndProgram.shrinkTo(bssToKeep, unfolding == maxUnfoldings)

@@ -184,7 +184,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore") || (s.isImplicit) || (s.fullName.toString.endsWith(".main"))
+      (annotationsOf(s) contains "ignore") || s.isImplicit || s.fullName.toString.endsWith(".main")
     }
 
     def isExtern(s: Symbol) = {
@@ -195,24 +195,24 @@ trait CodeExtraction extends ASTExtractors {
       try {
         def isLib(u : CompilationUnit) = Build.libFiles contains u.source.file.absolute.path
         
-        val templates: List[TempUnit] = units.reverse.map { u => u.body match {
-        
+        val templates: List[TempUnit] = units.reverseMap { u => u.body match {
+
           // Unit with a single package object
           case PackageDef(refTree, List(PackageDef(inner, List(ExObjectDef(n, templ))))) if n == "package" =>
             // File name without extension
             val unitName = extractPackageRef(inner).mkString("$") + "$package"
-            val id = FreshIdentifier(unitName+ "$standalone")
+            val id = FreshIdentifier(unitName + "$standalone")
             TempUnit(unitName,
               extractPackageRef(refTree) ++ extractPackageRef(inner),
-              List( TempModule(id, templ.body, true) ),
+              List(TempModule(id, templ.body, true)),
               imports.getOrElse(refTree, Nil),
               !isLib(u)
             )
-   
-          case pd @ PackageDef(refTree, lst) =>
-                         
+
+          case pd@PackageDef(refTree, lst) =>
+
             var standaloneDefs = List[Tree]()
-            
+
             val modules = lst.flatMap {
 
               case t if isIgnored(t.symbol) =>
@@ -258,16 +258,16 @@ trait CodeExtraction extends ASTExtractors {
                 outOfSubsetError(other, "Expected: top-level object/class.")
                 None
             }
-            
+
             // File name without extension
             val unitName = u.source.file.name.replaceFirst("[.][^.]+$", "")
-            val finalModules = 
-              if (standaloneDefs.isEmpty) modules 
+            val finalModules =
+              if (standaloneDefs.isEmpty) modules
               else {
-                val id = FreshIdentifier(unitName+ "$standalone")
-                ( TempModule(id , standaloneDefs, true) ) :: modules
+                val id = FreshIdentifier(unitName + "$standalone")
+                TempModule(id, standaloneDefs, true) :: modules
               }
-            
+
             TempUnit(unitName,
               extractPackageRef(refTree),
               finalModules,
@@ -342,7 +342,7 @@ trait CodeExtraction extends ASTExtractors {
         case EmptyTree => List()
         case _ => ctx.reporter.internalError("getSelectChain: unexpected Tree:\n" + e.toString)
       } 
-      rec(e).reverse map { _.toString }
+      rec(e).reverseMap(_.toString)
     }
     
     private def extractPackageRef(refPath : RefTree) : PackageRef =       
@@ -381,7 +381,7 @@ trait CodeExtraction extends ASTExtractors {
 
     def oracleType(pos: Position, tpe: LeonType) = {
       classesToClasses.find {
-        case (sym, cl) => (sym.fullName.toString == "leon.lang.synthesis.Oracle")
+        case (sym, cl) => sym.fullName.toString == "leon.lang.synthesis.Oracle"
       } match {
         case Some((_, cd)) =>
           classDefToClassType(cd, List(tpe))
@@ -1481,7 +1481,7 @@ trait CodeExtraction extends ASTExtractors {
           val toUnderlying   = extractType(tt)
 
           val singletons: Seq[(LeonExpr, LeonExpr)] = elems.collect {
-            case ExTuple(tpes, trees) if (trees.size == 2) =>
+            case ExTuple(tpes, trees) if trees.size == 2 =>
               (extractTree(trees(0)), extractTree(trees(1)))
           }
 
@@ -1929,7 +1929,7 @@ trait CodeExtraction extends ASTExtractors {
       else if(exprOwners.exists(o1 => exprOwners.exists(o2 => o1 != o2)))
         Some(None)
       else
-        exprOwners(0)
+        exprOwners.head
     }
 
     def getOwner(expr: LeonExpr): Option[Option[FunDef]] = getOwner(getReturnedExpr(expr))

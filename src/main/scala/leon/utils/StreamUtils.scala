@@ -9,7 +9,7 @@ object StreamUtils {
       ss = ss.tail
     }
     if(ss.isEmpty) return Stream.empty
-    if(ss.size == 1) return ss(0)
+    if(ss.size == 1) return ss.head
 
     // TODO: This circular-shifts the list. I'd be interested in a constant time
     // operation. Perhaps simply by choosing the right data-structure?

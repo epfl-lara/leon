@@ -47,7 +47,7 @@ trait WithLikelyEq {
         val counters: Array[Int] = vsOrder.map(_ => min)
         var i = 0
 
-        while(i < counters.size && isEq) {
+        while(i < counters.length && isEq) {
           val m: Map[Expr, Expr] = vsOrder.zip(counters).map{case (v, c) => (Variable(v), InfiniteIntegerLiteral(c))}.toMap
           val ne1 = replace(m, e1)
           val ne2 = replace(m, e2)
@@ -68,11 +68,11 @@ trait WithLikelyEq {
           if(counters(i) < max)
             counters(i) += 1
           else {
-            while(i < counters.size && counters(i) >= max) {
+            while(i < counters.length && counters(i) >= max) {
               counters(i) = min
               i += 1
             }
-            if(i < counters.size) {
+            if(i < counters.length) {
               counters(i) += 1
               i = 0
             }

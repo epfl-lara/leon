@@ -46,7 +46,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
   private def getConstructorFor(t: CaseClassType, act: AbstractClassType): Constructor[Expr, TypeTree] = {
     // We "up-cast" the returnType of the specific caseclass generator to match its superclass
-    getConstructors(t)(0).copy(retType = act)
+    getConstructors(t).head.copy(retType = act)
   }
 
 
@@ -175,7 +175,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
             case act : AbstractClassType =>
               getConstructorFor(cct, act)
             case cct : CaseClassType =>
-              getConstructors(cct)(0)
+              getConstructors(cct).head
           }
 
           val fields = cc.productElements()
@@ -201,7 +201,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       val parts = unwrapTupleType(tpe, t.getArity)
 
-      val c = getConstructors(tpe)(0)
+      val c = getConstructors(tpe).head
 
       val elems = for (i <- 0 until t.getArity) yield {
         if (((r >> i) & 1) == 1) {
@@ -245,7 +245,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           val result  = ce.evalFromJVM(jvmArgs, monitor)
 
           // jvmArgs is getting updated by evaluating
-          val pattern = valueToPattern(jvmArgs(0), ttype)
+          val pattern = valueToPattern(jvmArgs.head, ttype)
 
           (EvaluationResults.Successful(result), if (!pattern._2) Some(pattern._1) else None)
         } catch {

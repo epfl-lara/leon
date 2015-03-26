@@ -88,7 +88,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
           case _ => None
         }
         if(ois.forall(_.isDefined))
-          Some(ois.map(_.get).toSet)
+          Some(ois.map(_.get))
         else
           None
       case _ => None

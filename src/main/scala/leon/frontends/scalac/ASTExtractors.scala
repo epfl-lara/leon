@@ -338,7 +338,7 @@ trait ASTExtractors {
 
     object ExMainFunctionDef {
       def unapply(dd: DefDef): Boolean = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if name.toString == "main" && tparams.isEmpty && vparamss.size == 1 && vparamss(0).size == 1 => {
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if name.toString == "main" && tparams.isEmpty && vparamss.size == 1 && vparamss.head.size == 1 => {
           true
         }
         case _ => false
@@ -432,7 +432,7 @@ trait ASTExtractors {
             
             // Split the name into pieces, to find owner of the parameter + param.index
             // Form has to be <owner name>$default$<param index>
-            val symPieces = sym.name.toString.reverse.split("\\$",3).reverse map { _.reverse }
+            val symPieces = sym.name.toString.reverse.split("\\$", 3).reverseMap(_.reverse)
             
             try {
               if (symPieces(1) != "default" || symPieces(0) == "copy") throw new IllegalArgumentException("")
@@ -508,7 +508,7 @@ trait ASTExtractors {
         case a @ Apply(
               TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "withOracle"), types),
               Function(vds, body) :: Nil) =>
-            Some(((types zip vds.map(_.symbol)).toList, body))
+            Some(((types zip vds.map(_.symbol)), body))
         case _ => None
       }
     }
@@ -525,7 +525,7 @@ trait ASTExtractors {
         case a @ Apply(
             TypeApply(s @ ExSymbol("leon", "lang", "forall"), types),
             Function(vds, predicateBody) :: Nil) =>
-          Some(((types zip vds.map(_.symbol)).toList, predicateBody))
+          Some(((types zip vds.map(_.symbol)), predicateBody))
         case _ => None
       }
     }
@@ -708,7 +708,7 @@ trait ASTExtractors {
     object ExSomeConstruction {
       def unapply(tree: Apply) : Option[(Type,Tree)] = tree match {
         case Apply(s @ Select(New(tpt), n), arg) if arg.size == 1 && n == nme.CONSTRUCTOR && tpt.symbol.name.toString == "Some" => tpt.tpe match {
-          case TypeRef(_, sym, tpe :: Nil) => Some((tpe, arg(0)))
+          case TypeRef(_, sym, tpe :: Nil) => Some((tpe, arg.head))
           case _ => None
         }
         case _ => None

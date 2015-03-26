@@ -185,7 +185,7 @@ object Extractors {
           val lib = p.library
     
           if (Some(cct.classDef) == lib.String) {
-            isListLiteral(args(0)) match {
+            isListLiteral(args.head) match {
               case Some((_, chars)) =>
                 val str = chars.map {
                   case CharLiteral(c) => Some(c)

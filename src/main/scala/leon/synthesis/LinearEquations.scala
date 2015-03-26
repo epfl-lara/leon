@@ -37,12 +37,12 @@ object LinearEquations {
       val freshVars: Array[Identifier] = basis(0).map(_ => FreshIdentifier("v", IntegerType, true))
 
       val tbasis = basis.transpose
-      assert(freshVars.size == tbasis.size)
+      assert(freshVars.length == tbasis.length)
       val basisWithFreshVars: Array[Array[Expr]] = freshVars.zip(tbasis).map{
         case (lambda, column) => column.map((i: BigInt) => Times(InfiniteIntegerLiteral(i), Variable(lambda)): Expr)
       }.transpose
       val combinationBasis: Array[Expr] = basisWithFreshVars.map((v: Array[Expr]) => v.foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, e) => Plus(acc, e)))
-      assert(combinationBasis.size == sol.size)
+      assert(combinationBasis.length == sol.size)
       val subst: List[Expr] = sol.zip(combinationBasis.toList).map(p => Plus(p._1, p._2): Expr)
 
       (pre, subst, freshVars.toList)
@@ -59,9 +59,9 @@ object LinearEquations {
   //we are returning a matrix where the columns are the vectors
   def linearSet(evaluator: Evaluator, as: Set[Identifier], coef: Array[BigInt]): Array[Array[BigInt]] = {
 
-    val K = Array.ofDim[BigInt](coef.size, coef.size-1)
-    for(i <- 0 until K.size) {
-      for(j <- 0 until K(i).size) {
+    val K = Array.ofDim[BigInt](coef.length, coef.length-1)
+    for(i <- 0 until K.length) {
+      for(j <- 0 until K(i).length) {
         if(i < j)
           K(i)(j) = 0
         else if(i == j) {
@@ -69,7 +69,7 @@ object LinearEquations {
         }
       }
     }
-    for(j <- 0 until K.size - 1) {
+    for(j <- 0 until K.length - 1) {
       val (_, sols) = particularSolution(as, InfiniteIntegerLiteral(coef(j)*K(j)(j)) :: coef.drop(j+1).map(InfiniteIntegerLiteral).toList)
       var i = 0
       while(i < sols.size) {

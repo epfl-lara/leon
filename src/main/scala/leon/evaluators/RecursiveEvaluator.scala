@@ -634,6 +634,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     }
   }
 
-  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = "Type error : expected %s, found %s.".format(expected, tree)
+  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected $expected, found $tree."
 
 }

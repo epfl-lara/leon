@@ -41,7 +41,7 @@ object Graphs {
 
     // Returns the set of edges between two vertices
     def edgesBetween(from: Vertex, to: Vertex) = {
-      E.filter(e => (e.v1 == from && e.v2 == to))
+      E.filter(e => e.v1 == from && e.v2 == to)
     }
 
     /**
@@ -99,8 +99,8 @@ object Graphs {
     def this (vertices: Set[Vertex], edges: Set[Edge]) =
       this(vertices,
            edges,
-           edges.groupBy(_.v2 : VertexAbs).toMap.withDefaultValue(Set()),
-           edges.groupBy(_.v1 : VertexAbs).toMap.withDefaultValue(Set()))
+           edges.groupBy(_.v2: VertexAbs).withDefaultValue(Set()),
+           edges.groupBy(_.v1: VertexAbs).withDefaultValue(Set()))
 
     def this() = this(Set(), Set())
 

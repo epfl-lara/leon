@@ -72,20 +72,20 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
-        if(functions containsZ3 p._1) {
+        if (functions containsZ3 p._1) {
           val tfd = functions.toLeon(p._1)
-          if(!tfd.hasImplementation) {
-            val (cses, default) = p._2 
+          if (!tfd.hasImplementation) {
+            val (cses, default) = p._2
             val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
-                            andJoin(
-                              q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
-                            ),
-                            fromZ3Formula(model, q._2),
-                            expr))
+              andJoin(
+                q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
+              ),
+              fromZ3Formula(model, q._2),
+              expr))
             Seq((tfd.id, ite))
           } else Seq()
         } else Seq()
-      }).toMap
+      })
 
       val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
         if(functions containsZ3 p._1) {
@@ -314,7 +314,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
               case Z3AppAST(decl, args) =>
                 z3.getDeclKind(decl) match {
                   case Z3DeclKind.OpNot =>
-                    (args(0), true)
+                    (args.head, true)
                   case Z3DeclKind.OpUninterpreted =>
                     (c, false)
                 }

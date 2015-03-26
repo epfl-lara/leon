@@ -24,7 +24,7 @@ class StopwatchCollection(name: String) {
     result
   }
 
-  override def toString = "%20s: %5dms".format(name, acc)
+  override def toString = f"$name%20s: ${acc}%5dms"
 }
 
 /** Implements a stopwatch for profiling purposes */

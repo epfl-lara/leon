@@ -43,8 +43,8 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
   def checkVectorSpace(basis: Array[Array[Int]], equation: Array[Int]): Unit = 
     checkVectorSpace(basis.map(_.map(i => BigInt(i))), equation.map(i => BigInt(i)))
   def checkVectorSpace(basis: Array[Array[BigInt]], equation: Array[BigInt]): Unit = {
-    require(basis.size == basis(0).size + 1 && basis.size == equation.size)
-    val n = basis(0).size
+    require(basis.length == basis(0).length + 1 && basis.length == equation.length)
+    val n = basis(0).length
     val min: BigInt = -5
     val max: BigInt = 5
     val components = Array.fill(n)(min)
@@ -72,18 +72,18 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
 
   //val that the sol vector with the term in the equation
   def eval(sol: Array[BigInt], equation: Array[BigInt]): BigInt = {
-    require(sol.size == equation.size)
+    require(sol.length == equation.length)
     sol.zip(equation).foldLeft(BigInt(0))((acc, p) => acc + p._1 * p._2)
   }
 
   //multiply the matrix by the vector: [M1 M2 .. Mn] * [v1 .. vn] = v1*M1 + ... + vn*Mn]
   def mult(matrix: Array[Array[BigInt]], vector: Array[BigInt]): Array[BigInt] = {
-    require(vector.size == matrix(0).size && vector.size > 0)
+    require(vector.length == matrix(0).length && vector.length > 0)
     val tmat = matrix.transpose
     var tmp: Array[BigInt] = null
     tmp = mult(vector(0), tmat(0))
     var i = 1
-    while(i < vector.size) {
+    while(i < vector.length) {
       tmp = add(tmp, mult(vector(i), tmat(i)))
       i += 1
     }
@@ -92,7 +92,7 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
 
   def mult(c: BigInt, v: Array[BigInt]): Array[BigInt] = v.map(_ * c)
   def add(v1: Array[BigInt], v2: Array[BigInt]): Array[BigInt] = {
-    require(v1.size == v2.size)
+    require(v1.length == v2.length)
     v1.zip(v2).map(p => p._1 + p._2)
   }
 
@@ -197,16 +197,16 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
     val counters: Array[Int] = (1 to nbValues).map(_ => min).toArray
     var i = 0
 
-    while(i < counters.size) {
+    while(i < counters.length) {
       app(counters)
       if(counters(i) < max)
         counters(i) += 1
       else {
-        while(i < counters.size && counters(i) >= max) {
+        while(i < counters.length && counters(i) >= max) {
           counters(i) = min
           i += 1
         }
-        if(i < counters.size) {
+        if(i < counters.length) {
           counters(i) += 1
           i = 0
         }

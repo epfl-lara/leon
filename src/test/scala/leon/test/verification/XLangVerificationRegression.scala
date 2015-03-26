@@ -37,9 +37,9 @@ class XLangVerificationRegression extends LeonTestSuite {
       fullName
     }
 
-    test("%3d: %s %s".format(nextInt(), displayName, leonOptions.mkString(" "))) {
+    test(f"${nextInt()}%3d: $displayName ${leonOptions.mkString(" ")}") {
       assert(file.exists && file.isFile && file.canRead,
-             "Benchmark %s is not a readable file".format(displayName))
+             s"Benchmark $displayName is not a readable file")
 
       val ctx = createLeonContext((file.getPath +: leonOptions) :_*)
 

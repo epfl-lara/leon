@@ -1,6 +1,6 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon.test.purescala
+package leon.test.utils
 
 import leon.test._
 import leon.purescala.Common._

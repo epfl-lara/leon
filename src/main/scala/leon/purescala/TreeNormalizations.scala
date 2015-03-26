@@ -54,7 +54,7 @@ object TreeNormalizations {
     }
 
     var exprs: Seq[Expr] = expandedForm(expr)
-    val res: Array[Expr] = new Array(xs.size + 1)
+    val res: Array[Expr] = new Array(xs.length + 1)
 
     xs.zipWithIndex.foreach{case (id, index) => {
       val (terms, rests) = exprs.partition(containsId(_, id))

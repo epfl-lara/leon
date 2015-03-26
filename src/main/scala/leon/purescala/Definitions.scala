@@ -246,7 +246,7 @@ object Definitions {
       _methods = Nil
     }
 
-    def methods = _methods.toList
+    def methods = _methods
 
     def knownChildren: Seq[ClassDef] = _children
 

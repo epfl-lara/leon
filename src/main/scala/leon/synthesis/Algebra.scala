@@ -48,7 +48,7 @@ object Algebra {
   def gcd(as: Seq[Int]): Int = {
     require(as.length >= 1)
     if(as.length == 1)
-      as(0).abs
+      as.head.abs
     else {
       var tmp = gcd(as(0), as(1))
       var i = 2
@@ -83,7 +83,7 @@ object Algebra {
   def gcd(as: Seq[BigInt]): BigInt = {
     require(as.length >= 1)
     if(as.length == 1)
-      as(0).abs
+      as.head.abs
     else {
       var tmp = gcd(as(0), as(1))
       var i = 2
@@ -114,7 +114,7 @@ object Algebra {
   def lcm(as: Seq[Int]): Int = {
     require(as.length >= 1)
     if(as.length == 1)
-      as(0).abs
+      as.head.abs
     else {
       var tmp = lcm(as(0), as(1))
       var i = 2
@@ -192,18 +192,18 @@ object Algebra {
 
   //val that the sol vector with the term in the equation
   def eval(sol: Array[Int], equation: Array[Int]): Int = {
-    require(sol.size == equation.size)
+    require(sol.length == equation.length)
     sol.zip(equation).foldLeft(0)((acc, p) => acc + p._1 * p._2)
   }
 
   //multiply the matrix by the vector: [M1 M2 .. Mn] * [v1 .. vn] = v1*M1 + ... + vn*Mn]
   def mult(matrix: Array[Array[Int]], vector: Array[Int]): Array[Int] = {
-    require(vector.size == matrix(0).size && vector.size > 0)
+    require(vector.length == matrix(0).length && vector.length > 0)
     val tmat = matrix.transpose
     var tmp: Array[Int] = null
     tmp = mult(vector(0), tmat(0))
     var i = 1
-    while(i < vector.size) {
+    while(i < vector.length) {
       tmp = add(tmp, mult(vector(i), tmat(i)))
       i += 1
     }
@@ -213,7 +213,7 @@ object Algebra {
   def mult(c: Int, v: Array[Int]): Array[Int] = v.map(_ * c)
 
   def add(v1: Array[Int], v2: Array[Int]): Array[Int] = {
-    require(v1.size == v2.size)
+    require(v1.length == v2.length)
     v1.zip(v2).map(p => p._1 + p._2)
   }
 

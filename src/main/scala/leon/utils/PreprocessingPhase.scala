@@ -7,6 +7,7 @@ import purescala.Definitions.Program
 
 import purescala.{MethodLifting, CompleteAbstractDefinitions}
 import synthesis.{ConvertWithOracle, ConvertHoles}
+import verification.InjectAsserts
 
 object PreprocessingPhase extends TransformationPhase {
 

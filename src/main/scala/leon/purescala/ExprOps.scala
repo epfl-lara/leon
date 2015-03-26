@@ -528,7 +528,7 @@ object ExprOps {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
       case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
-        Some(replace(Map((Variable(i) -> t)), b))
+        Some(replace(Map(Variable(i) -> t), b))
 
       case letExpr @ Let(i,e,b) if isDeterministic(b) => {
         val occurrences = count {
@@ -539,7 +539,7 @@ object ExprOps {
         if(occurrences == 0) {
           Some(b)
         } else if(occurrences == 1) {
-          Some(replace(Map((Variable(i) -> e)), b))
+          Some(replace(Map(Variable(i) -> e), b))
         } else {
           None
         }
@@ -550,7 +550,7 @@ object ExprOps {
 
         val (remIds, remExprs) = (ids zip exprs).filter { 
           case (id, value: Terminal) =>
-            newBody = replace(Map((Variable(id) -> value)), newBody)
+            newBody = replace(Map(Variable(id) -> value), newBody)
             //we replace, so we drop old
             false
           case (id, value) =>
@@ -562,7 +562,7 @@ object ExprOps {
             if(occurences == 0) {
               false
             } else if(occurences == 1) {
-              newBody = replace(Map((Variable(id) -> value)), newBody)
+              newBody = replace(Map(Variable(id) -> value), newBody)
               false
             } else {
               true
@@ -604,7 +604,7 @@ object ExprOps {
           Some(body)
         } else if(total == 1) {
           val substMap : Map[Expr,Expr] = ids.map(Variable(_) : Expr).zipWithIndex.toMap.map {
-            case (v,i) => (v -> tupleSelect(tExpr, i + 1, ids.size).copiedFrom(v))
+            case (v,i) => v -> tupleSelect(tExpr, i + 1, ids.size).copiedFrom(v)
           }
 
           Some(replace(substMap, body))
@@ -1969,7 +1969,7 @@ object ExprOps {
           Some((cct.tps.head, Nil))
         } else if (Some(cct.classDef) == lib.Cons) {
           isListLiteral(args(1)).map { case (_, t) =>
-            (cct.tps.head, args(0) :: t)
+            (cct.tps.head, args.head :: t)
           } 
         } else None
       } 

@@ -81,7 +81,7 @@ case object ADTInduction extends Rule("ADT Induction") {
 
             val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn) +: residualArgDefs, DefType.MethodDef)
 
-            val cases = for ((sol, (problem, pre, cct, ids, calls)) <- (sols zip subProblemsInfo)) yield {
+            val cases = for ((sol, (problem, pre, cct, ids, calls)) <- sols zip subProblemsInfo) yield {
               globalPre ::= and(pre, sol.pre)
 
               val caze = CaseClassPattern(None, cct, ids.map(id => WildcardPattern(Some(id))))

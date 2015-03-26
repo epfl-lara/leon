@@ -104,7 +104,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
     import hctx.sctx.reporter.info
 
-    val prefix = "[%-20s] ".format(Option(ri.rule).getOrElse("?"))
+    val prefix = f"[${Option(ri.rule).getOrElse("?")}%-20s] "
 
     info(prefix+ri.problem)
 

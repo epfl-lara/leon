@@ -599,9 +599,9 @@ trait SMTLIBTarget {
           val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
 
           if(size > 10) {
-            val definedElements = elems.collect{
+            val definedElements = elems.collect {
               case (IntLiteral(i), value) => (i, value)
-            }.toMap
+            }
             finiteArray(definedElements, Some(default, IntLiteral(size)), baseType)
 
           } else {

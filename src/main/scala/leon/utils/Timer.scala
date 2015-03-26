@@ -159,7 +159,7 @@ class TimerStorage extends Dynamic {
 
       }
 
-      ts.keys.reverse.map(n => n -> ts.fields(n)).foreach { case (name, nts) =>
+      ts.keys.reverseMap(n => n -> ts.fields(n)).foreach { case (name, nts) =>
         output(nts, (ts -> name) :: path)
       }
     }

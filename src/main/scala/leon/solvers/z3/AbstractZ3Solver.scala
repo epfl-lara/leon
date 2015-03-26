@@ -723,7 +723,7 @@ trait AbstractZ3Solver
 
       kind match {
         case Z3NumeralIntAST(Some(v)) => {
-          val leading = t.toString.substring(0, 2 min t.toString.size)
+          val leading = t.toString.substring(0, 2 min t.toString.length)
           if(leading == "#x") {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) => IntLiteral(hexa.toInt)
@@ -755,10 +755,10 @@ trait AbstractZ3Solver
             FunctionInvocation(tfd, args.map(rec))
           } else if(argsSize == 1 && (reverseADTTesters contains decl)) {
             val cct = reverseADTTesters(decl)
-            CaseClassInstanceOf(cct, rec(args(0)))
+            CaseClassInstanceOf(cct, rec(args.head))
           } else if(argsSize == 1 && (reverseADTFieldSelectors contains decl)) {
             val (cct, fid) = reverseADTFieldSelectors(decl)
-            CaseClassSelector(cct, rec(args(0)), fid)
+            CaseClassSelector(cct, rec(args.head), fid)
           } else if(reverseADTConstructors contains decl) {
             val cct = reverseADTConstructors(decl)
             assert(argsSize == cct.fields.size)
@@ -884,10 +884,10 @@ trait AbstractZ3Solver
           FunctionInvocation(tfd, args.map(rec))
         } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
           val cct = reverseADTTesters(decl)
-          CaseClassInstanceOf(cct, rec(args(0)))
+          CaseClassInstanceOf(cct, rec(args.head))
         } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
           val (cct, fid) = reverseADTFieldSelectors(decl)
-          CaseClassSelector(cct, rec(args(0)), fid)
+          CaseClassSelector(cct, rec(args.head), fid)
         } else if(reverseADTConstructors.isDefinedAt(decl)) {
           val cct = reverseADTConstructors(decl)
           CaseClass(cct, args.map(rec))

@@ -18,7 +18,10 @@ object EpsilonElimination extends TransformationPhase {
   def apply(ctx: LeonContext, pgm: Program): Program = {
 
     val allFuns = pgm.definedFunctions
-    allFuns.foreach(fd => fd.body.map(body => {
+    for {
+      fd <- allFuns
+      body <- fd.body
+    } {
       val newBody = postMap{
         case eps@Epsilon(pred, tpe) =>
           val freshName   = FreshIdentifier("epsilon")
@@ -33,7 +36,7 @@ object EpsilonElimination extends TransformationPhase {
           None
       }(body)
       fd.body = Some(newBody)
-    }))
+    }
     pgm
   }
 

@@ -27,11 +27,14 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
     parent = null
 
     val allFuns = pgm.definedFunctions
-    allFuns.foreach(fd => fd.body.map(body => {
+    for {
+      fd <- allFuns
+      body <- fd.body
+    } {
       parent = fd
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
-    }))
+    }
     (pgm, wasLoop)
   }
 
