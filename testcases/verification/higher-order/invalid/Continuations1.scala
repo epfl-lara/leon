@@ -20,8 +20,8 @@ object Continuations1 {
     pythagoras_cps(a, b)(_ == a*a + b*b)
   }.holds
 
-  def lemma2(a: BigInt, b: BigInt): Boolean = {
-    require(a > 0 && b > 0)
-    pythagoras_cps(a, b)(_ == a*a)
+  def lemma2(a: BigInt, b: BigInt, c: BigInt): Boolean = {
+    require(a > 0 && b > 0 && c > 0)
+    pythagoras_cps(a, b)(_ == c*c)
   }.holds
 }

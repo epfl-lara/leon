@@ -88,7 +88,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
         clauses ++= newClauses
         newCalls.foreach(p => callBlockers += p._1 -> (callBlockers(p._1) ++ p._2))
         newApps.foreach(p => appBlockers += p._1 -> (appBlockers(p._1) ++ p._2))
-      } else {
+      } else if (!freeLambdas(tpe).contains(caller)) {
         val key = b -> app
 
         // make sure that even if byType(tpe) is empty, app is recorded in blockers
