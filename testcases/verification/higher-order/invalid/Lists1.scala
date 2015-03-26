@@ -19,13 +19,6 @@ object Lists1 {
 
   def positive_lemma(list: List[Int]): Boolean = {
     positive(list) == forall(list, gt(0))
-  }
-
-  def failling_1(list: List[Int]): Boolean = {
-    list match {
-      case Nil() => positive_lemma(list)
-      case Cons(head, tail) => positive_lemma(list) && failling_1(tail)
-    }
   }.holds
 }
 
