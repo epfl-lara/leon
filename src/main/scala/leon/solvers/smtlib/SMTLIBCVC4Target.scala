@@ -6,14 +6,15 @@ package smtlib
 
 import purescala._
 import Common._
-import Expressions._
+import Expressions.{Assert => _, _}
 import Extractors._
 import Constructors._
 import Types._
 
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
+import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, ForAll => SMTForall, _}
 import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
+import _root_.smtlib.theories._
 
 trait SMTLIBCVC4Target extends SMTLIBTarget {
   this: SMTLIBSolver =>
@@ -89,12 +90,6 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       super[SMTLIBTarget].fromSMT(s, tpe)
   }
 
-  def encodeMapType(tpe: TypeTree): TypeTree = tpe match {
-    case MapType(from, to) =>
-      tupleTypeWrap(Seq(SetType(from), RawArrayType(from, to)))
-    case _ => sys.error("Woot")
-  }
-
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
     case a @ FiniteArray(elems, default, size) =>
       val tpe @ ArrayType(base) = normalizeType(a.getType)
@@ -108,6 +103,26 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
       FunctionApplication(constructors.toB(tpe), Seq(toSMT(size), ar))
 
+    case fm @ FiniteMap(elems) =>
+      import OptionManager._
+      val mt @ MapType(from, to) = fm.getType
+      val ms = declareSort(mt)
+
+      var m: Term = declareVariable(FreshIdentifier("mapconst", RawArrayType(from, leonOptionType(to))))
+
+      sendCommand(Assert(SMTForall(
+        SortedVar(SSymbol("mapelem"), declareSort(from)), Seq(),
+        Core.Equals(
+          ArraysEx.Select(m, SSymbol("mapelem")),
+          toSMT(mkLeonNone(to))
+        )
+      )))
+
+      for ((k, v) <- elems) {
+        m = FunctionApplication(SSymbol("store"), Seq(m, toSMT(k), toSMT(mkLeonSome(v))))
+      }
+
+      m
     /**
      * ===== Set operations =====
      */

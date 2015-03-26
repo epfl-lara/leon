@@ -12,7 +12,7 @@ import Types._
 import ExprOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
-import _root_.smtlib.parser.Commands.{DefineSort, GetModel, DefineFun}
+import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
 import _root_.smtlib.parser.CommandsResponses.GetModelResponseSuccess
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
@@ -73,7 +73,10 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         unsupported(" as-array on non-function or unknown symbol "+k)
       }
 
-    case (FunctionApplication(QualifiedIdentifier(SimpleSymbol(SSymbol("const")), Some(ArraysEx.ArraySort(k, v))), Seq(defV)), tpe) =>
+    case (FunctionApplication(
+      QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), Some(ArraysEx.ArraySort(k, v))),
+      Seq(defV)
+    ), tpe) =>
       val ktpe = sorts.fromB(k)
       val vtpe = sorts.fromB(v)
 
@@ -141,8 +144,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   }
 
   def extractRawArray(s: DefineFun)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): RawArrayValue = s match {
-    case DefineFun(a, List(SortedVar(arg, akind)), rkind, body) =>
-
+    case DefineFun(SMTFunDef(a, Seq(SortedVar(arg, akind)), rkind, body)) =>
       val argTpe = sorts.toA(akind)
       val retTpe = sorts.toA(rkind)
 
@@ -178,7 +180,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
     // First pass to gather functions (arrays defs)
     for (me <- smodel) me match {
-      case me @ DefineFun(a, args, _, _) if args.nonEmpty =>
+      case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
         modelFunDefs += a -> me
       case _ =>
     }
@@ -186,7 +188,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     var model = Map[Identifier, Expr]()
 
     for (me <- smodel) me match {
-      case DefineFun(s, args, kind, e) =>
+      case DefineFun(SMTFunDef(s, args, kind, e)) =>
         if(args.isEmpty) {
           variables.getA(s) match {
             case Some(id) =>
@@ -205,8 +207,9 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   object ArrayMap {
     def apply(op: SSymbol, arrs: Term*) = {
       FunctionApplication(
-        QualifiedIdentifier(SMTIdentifier(SSymbol("(_ map "+op.name+")"))), //hack to get around Z3 syntax
-        arrs)
+        QualifiedIdentifier(SMTIdentifier(SSymbol("map"), List(op))),
+        arrs
+      )
     }
   }
 

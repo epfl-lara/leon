@@ -14,7 +14,7 @@ import utils.IncrementalBijection
 
 import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
-import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, _}
+import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, _}
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import _root_.smtlib.theories._
@@ -52,8 +52,57 @@ trait SMTLIBTarget {
   val selectors    = new IncrementalBijection[(TypeTree, Int), SSymbol]()
   val testers      = new IncrementalBijection[TypeTree, SSymbol]()
   val variables    = new IncrementalBijection[Identifier, SSymbol]()
+  val classes      = new IncrementalBijection[CaseClassDef, SSymbol]()
   val sorts        = new IncrementalBijection[TypeTree, Sort]()
   val functions    = new IncrementalBijection[TypedFunDef, SSymbol]()
+
+  protected object OptionManager {
+    lazy val leonOption = program.library.Option.get
+    lazy val leonSome = program.library.Some.get
+    lazy val leonNone = program.library.None.get
+    def leonOptionType(tp: TypeTree) = AbstractClassType(leonOption, Seq(tp))
+
+    def mkLeonSome(e: Expr) = CaseClass(CaseClassType(leonSome, Seq(e.getType)), Seq(e))
+    def mkLeonNone(tp: TypeTree) = CaseClass(CaseClassType(leonNone, Seq(tp)), Seq())
+
+    def someTester(tp: TypeTree): SSymbol = {
+      val someTp = CaseClassType(leonSome, Seq(tp))
+      testers.getB(someTp) match {
+        case Some(s) => s
+        case None =>
+          declareOptionSort(tp)
+          someTester(tp)
+      }
+    }
+    def someConstructor(tp: TypeTree): SSymbol = {
+      val someTp = CaseClassType(leonSome, Seq(tp))
+      constructors.getB(someTp) match {
+        case Some(s) => s
+        case None =>
+          declareOptionSort(tp)
+          someConstructor(tp)
+      }
+    }
+    def someSelector(tp: TypeTree): SSymbol = {
+      val someTp = CaseClassType(leonSome, Seq(tp))
+      selectors.getB(someTp,0) match {
+        case Some(s) => s
+        case None =>
+          declareOptionSort(tp)
+          someSelector(tp)
+      }
+    }
+
+    def inlinedOptionGet(t : Term, tp: TypeTree): Term = {
+      FunctionApplication(SSymbol("ite"), Seq(
+          FunctionApplication(someTester(tp), Seq(t)),
+          FunctionApplication(someSelector(tp), Seq(t)),
+          declareVariable(FreshIdentifier("error_value", tp))
+        )
+      )
+    }
+
+  }
 
   def normalizeType(t: TypeTree): TypeTree = t match {
     case ct: ClassType if ct.parent.isDefined => ct.parent.get
@@ -82,6 +131,15 @@ trait SMTLIBTarget {
 
     case ft @ FunctionType(from, to) =>
       finiteLambda(r.default, r.elems.toSeq, from)
+
+    case MapType(from, to) =>
+      // We expect a RawArrayValue with keys in from and values in Option[to],
+      // with default value == None
+      require(from == r.keyTpe && r.default == OptionManager.mkLeonNone(to))
+      val elems = r.elems.mapValues {
+        case CaseClass(leonSome, Seq(x)) => x
+      }.toSeq
+      finiteMap(elems, from, to)
 
     case _ =>
       unsupported("Unable to extract from raw array for "+tpe)
@@ -122,54 +180,25 @@ trait SMTLIBTarget {
     }
   }
 
-  var mapSort: Option[SSymbol] = None
-  var optionSort: Option[SSymbol] = None
-
   def declareOptionSort(of: TypeTree): Sort = {
-    optionSort match {
-      case None =>
-        val t      = SSymbol("T")
-
-        val s      = SSymbol("Option")
-        val some   = SSymbol("Some")
-        val some_v = SSymbol("Some_v")
-        val none   = SSymbol("None")
-
-        val caseSome = SList(some, SList(some_v, t))
-        val caseNone = SList(none)
-
-        val cmd = NonStandardCommand(SList(SSymbol("declare-datatypes"), SList(t), SList(SList(s, caseSome, caseNone))))
-        sendCommand(cmd)
-
-        optionSort = Some(s)
-      case _ =>
-    }
-
-    Sort(SMTIdentifier(optionSort.get), Seq(declareSort(of)))
+    declareSort(OptionManager.leonOptionType(of))
   }
 
   def declareMapSort(from: TypeTree, to: TypeTree): Sort = {
-    mapSort match {
-      case None =>
-        val m = SSymbol("Map")
-        val a = SSymbol("A")
-        val b = SSymbol("B")
-        mapSort = Some(m)
+    sorts.cachedB(MapType(from, to)) {
+        val m = freshSym("Map")
 
-        val optSort = declareOptionSort(to)
+        val toSort = declareOptionSort(to)
+        val fromSort = declareSort(from)
 
         val arraySort = Sort(SMTIdentifier(SSymbol("Array")),
-                             Seq(Sort(SMTIdentifier(a)), optSort))
+                             Seq(fromSort, toSort))
+        val cmd = DefineSort(m, Seq(), arraySort)
 
-        val cmd = DefineSort(m, Seq(a, b), arraySort)
         sendCommand(cmd)
-      case _ =>
+        Sort(SMTIdentifier(m), Seq())
     }
-
-    Sort(SMTIdentifier(mapSort.get), Seq(declareSort(from), declareSort(to)))
   }
-
-
 
   def freshSym(id: Identifier): SSymbol = freshSym(id.name)
   def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
@@ -315,7 +344,11 @@ trait SMTLIBTarget {
         FreshIdentifier(tfd.id.name)
       }
       val s = id2sym(id)
-      sendCommand(DeclareFun(s, tfd.params.map(p => declareSort(p.getType)), declareSort(tfd.returnType)))
+      sendCommand(DeclareFun(
+        s,
+        tfd.params.map( (p: ValDef) => declareSort(p.getType)),
+        declareSort(tfd.returnType)
+      ))
       s
     }
   }
@@ -348,8 +381,7 @@ trait SMTLIBTarget {
         )
 
       case er @ Error(tpe, _) =>
-        val s = declareVariable(FreshIdentifier("error_value", tpe))
-        s
+        declareVariable(FreshIdentifier("error_value", tpe))
 
       case s @ CaseClassSelector(cct, e, id) =>
         declareSort(cct)
@@ -411,26 +443,38 @@ trait SMTLIBTarget {
        * ===== Map operations =====
        */
       case m @ FiniteMap(elems) =>
+        import OptionManager._
         val mt @ MapType(_, to) = m.getType
         val ms = declareSort(mt)
 
-        val opt = declareOptionSort(to)
-
-        var res: Term = FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ms)), List(QualifiedIdentifier(SMTIdentifier(SSymbol("None")), Some(opt))))
+        var res: Term = FunctionApplication(
+          QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ms)),
+          List(toSMT(mkLeonNone(to)))
+        )
         for ((k, v) <- elems) {
-          res = ArraysEx.Store(res, toSMT(k), FunctionApplication(SSymbol("Some"), List(toSMT(v))))
+          res = ArraysEx.Store(res, toSMT(k), toSMT(mkLeonSome(v)))
         }
 
         res
 
       case MapGet(m, k) =>
-        declareSort(m.getType)
-        FunctionApplication(SSymbol("Some_v"), List(ArraysEx.Select(toSMT(m), toSMT(k))))
+        import OptionManager._
+        val mt@MapType(_, vt) = m.getType
+        declareSort(mt)
+        // m(k) becomes
+        // (Option$get (select m k))
+        inlinedOptionGet(ArraysEx.Select(toSMT(m), toSMT(k)), vt)
 
       case MapIsDefinedAt(m, k) =>
-        declareSort(m.getType)
-        FunctionApplication(SSymbol("is-Some"), List(ArraysEx.Select(toSMT(m), toSMT(k))))
-
+        import OptionManager._
+        val mt@MapType(_, vt) = m.getType
+        declareSort(mt)
+        // m.isDefinedAt(k) becomes
+        // (Option$isDefined (select m k))
+        FunctionApplication(
+          someTester(vt),
+          Seq(ArraysEx.Select(toSMT(m), toSMT(k)))
+        )
       /**
        * ===== Everything else =====
        */
@@ -522,7 +566,7 @@ trait SMTLIBTarget {
     case (Core.True(), BooleanType)  => BooleanLiteral(true)
     case (Core.False(), BooleanType)  => BooleanLiteral(false)
 
-    case (FixedSizeBitVectors.BitVectorConstant(n, 32), Int32Type) => IntLiteral(n.toInt)
+    case (FixedSizeBitVectors.BitVectorConstant(n, b), Int32Type) if b == BigInt(32) => IntLiteral(n.toInt)
     case (SHexadecimal(hexa), Int32Type) => IntLiteral(hexa.toInt)
 
     case (SimpleSymbol(s), _: ClassType) if constructors.containsB(s) =>
