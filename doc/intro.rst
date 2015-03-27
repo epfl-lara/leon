@@ -39,13 +39,13 @@ expression. It attempts to prove it using a combination of an internal
 algorithm and external automated theorem proving. Leon will return one of the
 following:
 
-* The postcondition is `valid`. In that case, Leon was able to prove that for **any**
+* The postcondition is ``valid``. In that case, Leon was able to prove that for **any**
   input to the function satisfiying the precondition, the postcondition will always hold.
-* The postcondition is `invalid`. It means that Leon disproved the postcondition and
+* The postcondition is ``invalid``. It means that Leon disproved the postcondition and
   that there exists at least one input satisfying the precondition and such that the
   postcondition does not hold. Leon will always return a concrete counterexample, very
   useful when trying to understand why a function is not satisfying its contract.
-* The postcondition is `unknown`. It means Leon is unable to prove or find a counterexample.
+* The postcondition is ``unknown``. It means Leon is unable to prove or find a counterexample.
   It usually happens after a timeout or an internal error occuring in the external 
   theorem prover. 
 
