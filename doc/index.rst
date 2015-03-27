@@ -12,8 +12,8 @@ Contents:
    :maxdepth: 2
 
    intro
-   installation
    gettingstarted
+   installation
    purescala
    xlang
    verification
