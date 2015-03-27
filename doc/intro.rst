@@ -46,4 +46,20 @@ following:
   postcondition does not hold. Leon will always return a concrete counterexample, very
   useful when trying to understand why a function is not satisfying its contract.
 * The postcondition is `unknown`. It means Leon is unable to prove or find a counterexample.
-  It usually happens after a timeout or an internal error in the external theorem prover. 
+  It usually happens after a timeout or an internal error occuring in the external 
+  theorem prover. 
+
+Leon will also verify for each call site that the precondition of the invoked
+function cannot be violated.
+
+Leon supports verification of a significant part of the Scala language, described in the
+sections :ref:`Pure Scala <purescala>` and :ref:`XLang <xlang>`.
+
+
+Automated Repair of Programs
+----------------------------
+
+
+Program Synthesis
+-----------------
+
