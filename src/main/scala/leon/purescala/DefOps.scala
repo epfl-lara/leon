@@ -394,7 +394,7 @@ object DefOps {
     import leon.utils.SearchSpace.reachable
     reachable(
       sources,
-      (tfd: TypedFunDef) => functionCallsOf(tfd.fd.fullBody) map { _.tfd },
+      (tfd: TypedFunDef) => functionCallsOf(tfd.fullBody) map { _.tfd },
       limit
     )
   }

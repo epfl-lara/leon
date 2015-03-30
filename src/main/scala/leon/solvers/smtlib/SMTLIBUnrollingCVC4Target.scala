@@ -26,7 +26,7 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
         )
       }
 
-      val (smtFunDecls, smtBodies) = funs.toSeq.collect {
+      val smtFunDecls = funs.toSeq.collect {
         case tfd if !functions.containsA(tfd) && tfd.params.nonEmpty =>
           val id = if (tfd.tps.isEmpty) {
             tfd.id
@@ -35,17 +35,19 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
           }
           val sym = id2sym(id)
           functions +=(tfd, sym)
-          (
-            FunDec(
-              sym,
-              tfd.params map { p => SortedVar(id2sym(p.id), declareSort(p.getType)) },
-              declareSort(tfd.returnType)
-            ),
-            toSMT(matchToIfThenElse(tfd.body.get))(tfd.params.map { p =>
-              (p.id, id2sym(p.id): Term)
-            }.toMap)
-            )
-      }.unzip
+          FunDec(
+            sym,
+            tfd.params map { p => SortedVar(id2sym(p.id), declareSort(p.getType)) },
+            declareSort(tfd.returnType)
+          )
+      }
+      val smtBodies = smtFunDecls map { case FunDec(sym, _, _) =>
+        val tfd = functions.toA(sym)
+        toSMT(matchToIfThenElse(tfd.body.get))(tfd.params.map { p =>
+          (p.id, id2sym(p.id): Term)
+        }.toMap
+      )
+      }
 
       if (smtFunDecls.nonEmpty) sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
       functions.toB(tfd)

@@ -498,6 +498,15 @@ object Definitions {
     private var trCache = Map[Expr, Expr]()
     private var postCache = Map[Expr, Expr]()
 
+    def fullBody = {
+      val fb = fd.fullBody
+      trCache.getOrElse(fb, {
+        val res = translated(fb)
+        trCache += fb -> res
+        res
+      })
+    }
+
     def body = fd.body.map { b =>
       trCache.getOrElse(b, {
         val res = translated(b)

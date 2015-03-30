@@ -52,7 +52,6 @@ trait SMTLIBTarget {
   val selectors    = new IncrementalBijection[(TypeTree, Int), SSymbol]()
   val testers      = new IncrementalBijection[TypeTree, SSymbol]()
   val variables    = new IncrementalBijection[Identifier, SSymbol]()
-  val classes      = new IncrementalBijection[CaseClassDef, SSymbol]()
   val sorts        = new IncrementalBijection[TypeTree, Sort]()
   val functions    = new IncrementalBijection[TypedFunDef, SSymbol]()
 
@@ -646,7 +645,6 @@ trait SMTLIBTarget {
       out.write("\n")
       out.flush()
     }
-
     interpreter.eval(cmd) match {
       case err@ErrorResponse(msg) if !interrupted =>
         reporter.fatalError("Unexpected error from smt-"+targetName+" solver: "+msg)
