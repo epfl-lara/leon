@@ -46,8 +46,7 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
         val tfd = functions.toA(sym)
         toSMT(matchToIfThenElse(tfd.body.get))(tfd.params.map { p =>
           (p.id, id2sym(p.id): Term)
-        }.toMap
-      )
+        }.toMap)
       }
 
       if (smtFunDecls.nonEmpty) sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
@@ -55,6 +54,7 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
     }
   }
 
+  // For this solver, we prefer the variables of assert() commands to be exist. quantified instead of free
   override def assertCnstr(expr: Expr): Unit = {
     val existentials = variablesOf(expr).toSeq
 
