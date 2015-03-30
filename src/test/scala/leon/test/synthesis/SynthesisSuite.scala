@@ -299,20 +299,20 @@ object SortedList {
 }
     """) {
     case "concat" =>
-      Decomp("ADT Induction on 'in1'", List(
+      Decomp("ADT Split on 'in1'", List(
         Close("CEGIS"),
         Close("CEGIS")
       ))
 
     case "insert" =>
-      Decomp("ADT Induction on 'in1'", List(
+      Decomp("ADT Split on 'in1'", List(
         Close("CEGIS"),
         Close("CEGIS")
       ))
 
     case "insertSorted" =>
       Decomp("Assert isSorted(in1)", List(
-        Decomp("ADT Induction on 'in1'", List(
+        Decomp("ADT Split on 'in1'", List(
           Decomp("Ineq. Split on 'head*' and 'v*'", List(
             Close("CEGIS"),
             Decomp("Equivalent Inputs *", List(
@@ -356,7 +356,7 @@ object ChurchNumerals {
 }
     """) {
     case "add" =>
-      Decomp("ADT Induction on 'y'", List(
+      Decomp("ADT Split on 'y'", List(
         Close("CEGIS"),
         Close("CEGIS")
       ))
