@@ -63,6 +63,24 @@ trait VerificationRegression extends LeonTestSuite {
 
     mkTest(files)(block)
   }
-  
-  
+
+  def test() = {
+    forEachFileIn("valid") { output =>
+      val Output(report, reporter) = output
+      for ((vc, vr) <- report.vrs) {
+        if (!vr.isValid) {
+          fail("The following verification condition was invalid: " + vc.toString + " @" + vc.getPos)
+        }
+      }
+      reporter.terminateIfError()
+    }
+
+    forEachFileIn("invalid") { output =>
+      val Output(report, reporter) = output
+      assert(report.totalInvalid > 0,
+        "There should be at least one invalid verification condition.")
+      assert(report.totalUnknown === 0,
+        "There should not be unknown verification conditions.")
+    }
+  }
 }

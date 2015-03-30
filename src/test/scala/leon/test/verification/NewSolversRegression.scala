@@ -2,16 +2,15 @@
 
 package leon.test.verification
 
+import _root_.smtlib.interpreters._
 import leon._
 import leon.verification.AnalysisPhase
 
-import _root_.smtlib.interpreters._
-
 // If you add another regression test, make sure it contains one object whose name matches the file name
 // This is because we compile all tests from each folder separately.
-class PureScalaVerificationRegression extends VerificationRegression {
+class NewSolversRegression extends VerificationRegression {
   
-  val testDir = "regression/verification/purescala/"
+  val testDir = "regression/verification/newsolvers/"
   val pipeFront = xlang.NoXLangFeaturesChecking
   val pipeBack = AnalysisPhase
   val optionVariants: List[List[String]] = {
@@ -31,21 +30,17 @@ class PureScalaVerificationRegression extends VerificationRegression {
         false
     }
 
-    List(
-      List("--feelinglucky"),
-      List("--codegen", "--evalground", "--feelinglucky"),
-      List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky")
+    (
+      if (isZ3Available)
+        List(List("--solvers=smt-z3-quantified", "--feelinglucky"))
+      else Nil
     ) ++ (
-      if (isZ3Available) List(
-        List("--solvers=smt-z3", "--feelinglucky")
-      ) else Nil
-    ) ++ (
-      if (isCVC4Available) List(
-        List("--solvers=smt-cvc4", "--feelinglucky")
-      ) else Nil
+      if (isCVC4Available)
+        List(List("--solvers=smt-2.5-cvc4", "--feelinglucky"))
+      else Nil
     )
   }
-
+  
   test()
 
 }
