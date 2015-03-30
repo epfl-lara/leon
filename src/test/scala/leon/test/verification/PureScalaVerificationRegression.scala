@@ -36,9 +36,15 @@ class PureScalaVerificationRegression extends VerificationRegression {
       List("--codegen", "--evalground", "--feelinglucky"),
       List("--solvers=fairz3,enum", "--codegen", "--evalground", "--feelinglucky")
     ) ++ (
-      if (isZ3Available) List(List("--solvers=smt-z3", "--feelinglucky")) else Nil
+      if (isZ3Available) List(
+        List("--solvers=smt-z3", "--feelinglucky"),
+        List("--solvers=smt-z3-quantified", "--feelinglucky")
+      ) else Nil
     ) ++ (
-      if (isCVC4Available) List(List("--solvers=smt-cvc4", "--feelinglucky")) else Nil
+      if (isCVC4Available) List(
+        List("--solvers=smt-cvc4", "--feelinglucky"),
+        List("--solvers=smt-2.5-cvc4", "--feelinglucky")
+      ) else Nil
     )
   }
   
