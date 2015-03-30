@@ -1541,6 +1541,8 @@ trait CodeExtraction extends ASTExtractors {
           CaseClass(CaseClassType(libraryCaseClass(str.pos, "leon.lang.string.String"), Seq()), Seq(charList))
 
 
+        case ExImplies(lhs, rhs) =>
+          Implies(extractTree(lhs), extractTree(rhs)).setPos(current.pos)
 
         case c @ ExCall(rec, sym, tps, args) =>
           val rrec = rec match {

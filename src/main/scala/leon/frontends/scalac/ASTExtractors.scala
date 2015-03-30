@@ -155,10 +155,29 @@ trait ASTExtractors {
 
     object ExHoldsExpression {
       def unapply(tree: Select) : Option[Tree] = tree match {
-        case Select(Apply(ExSymbol("leon", "lang", "any2IsValid"), realExpr :: Nil), ExNamed("holds")) =>
-            Some(realExpr)
+        case Select(
+          Apply(ExSelected("leon", "lang", "package", "BooleanDecorations"), realExpr :: Nil),
+          ExNamed("holds")
+        ) => Some(realExpr)
         case _ => None
        }
+    }
+
+    object ExImplies {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case
+          Apply(
+            Select(
+              Apply(
+                ExSelected("leon", "lang", "package", "BooleanDecorations"),
+                lhs :: Nil
+              ),
+              ExNamed("$eq$eq$greater")
+            ),
+            rhs :: Nil
+          ) => Some((lhs, rhs))
+        case _ => None
+      }
     }
 
     object ExRequiredExpression {

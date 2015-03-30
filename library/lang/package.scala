@@ -7,15 +7,15 @@ import scala.language.implicitConversions
 
 package object lang {
   @ignore
-  sealed class IsValid(val property : Boolean) {
+  implicit class BooleanDecorations(val underlying: Boolean) {
     def holds : Boolean = {
-      assert(property)
-      property
+      assert(underlying)
+      underlying
+    }
+    def ==> (that: Boolean): Boolean = {
+      !underlying || that
     }
   }
-
-  @ignore
-  implicit def any2IsValid(x: Boolean) : IsValid = new IsValid(x)
 
   @ignore
   object InvariantFunction {
