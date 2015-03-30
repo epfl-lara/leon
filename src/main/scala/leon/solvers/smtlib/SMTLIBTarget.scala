@@ -4,7 +4,7 @@ package smtlib
 
 import purescala._
 import Common._
-import Expressions.{Assert => _, _}
+import Expressions._
 import Extractors._
 import ExprOps._
 import Types._
@@ -14,7 +14,7 @@ import utils.IncrementalBijection
 
 import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
-import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, _}
+import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, Assert => SMTAssert, _}
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import _root_.smtlib.theories._
@@ -490,6 +490,7 @@ trait SMTLIBTarget {
 
       case e @ BinaryOperator(a, b, _) =>
         e match {
+          case (_: Assert) => toSMT(IfExpr(a, b, Error(b.getType, "assertion failed")))
           case (_: Equals) => Core.Equals(toSMT(a), toSMT(b))
           case (_: Implies) => Core.Implies(toSMT(a), toSMT(b))
           case (_: Plus) => Ints.Add(toSMT(a), toSMT(b))
@@ -655,7 +656,7 @@ trait SMTLIBTarget {
   override def assertCnstr(expr: Expr): Unit = {
     variablesOf(expr).foreach(declareVariable)
     val term = toSMT(expr)(Map())
-    sendCommand(Assert(term))
+    sendCommand(SMTAssert(term))
   }
 
   override def check: Option[Boolean] = sendCommand(CheckSat()) match {
