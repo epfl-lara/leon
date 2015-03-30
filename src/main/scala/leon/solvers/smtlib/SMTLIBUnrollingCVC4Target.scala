@@ -3,9 +3,10 @@
 package leon
 package solvers.smtlib
 
+import leon.purescala.Expressions.Expr
 import purescala.Definitions.TypedFunDef
 import purescala.DefOps.typedTransitiveCallees
-import purescala.ExprOps.matchToIfThenElse
+import leon.purescala.ExprOps.{variablesOf, matchToIfThenElse}
 import smtlib.parser.Commands._
 import smtlib.parser.Terms._
 
@@ -52,6 +53,22 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
       if (smtFunDecls.nonEmpty) sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
       functions.toB(tfd)
     }
+  }
+
+  override def assertCnstr(expr: Expr): Unit = {
+    val existentials = variablesOf(expr).toSeq
+
+    val term = if (existentials.isEmpty) toSMT(expr)(Map()) else {
+      val es = existentials map { id =>
+        SortedVar(id2sym(id), declareSort(id.getType))
+      }
+      Exists(
+        es.head,
+        es.tail,
+        toSMT(expr)(existentials.map { id => id -> (id2sym(id): Term)}.toMap)
+      )
+    }
+    sendCommand(Assert(term))
   }
 
 }
