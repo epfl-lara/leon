@@ -409,7 +409,7 @@ object ExprOps {
   }).setPos(expr)
 
   // rewrites pattern-matching expressions to use fresh variables for the binders
-  // TODO: Unused, and untested
+  // ATTENTION: Unused, and untested
   def freshenLocals(expr: Expr) : Expr = {
     def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
       case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
@@ -2186,7 +2186,7 @@ object ExprOps {
               } else {
                 TuplePattern(ob, subs)
               }
-            case LiteralPattern(ob, lit) => // TODO: is this correct?
+            case LiteralPattern(ob, lit) =>
               if (ob == Some(anchor)) {
                 sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
                 pat

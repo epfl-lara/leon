@@ -888,18 +888,15 @@ trait CodeExtraction extends ASTExtractors {
         s.symbol -> (() => Variable(vd.id))
       }
 
-
       val fctx = dctx.withNewVars(newVars)
 
-      
-      // If this is a lazy field definition, drop the assignment/ accessing TODO
+      // If this is a lazy field definition, drop the assignment/ accessing
       val body = 
         if (funDef.defType == DefType.LazyFieldDef) { body0 match {
           case Block(List(Assign(_, realBody)),_ ) => realBody
           case _ => outOfSubsetError(body0, "Wrong form of lazy accessor")
         }} else body0
-        
-     
+
       val finalBody = try {
         flattenBlocks(extractTree(body)(fctx)) match {
           case e if e.getType.isInstanceOf[ArrayType] =>

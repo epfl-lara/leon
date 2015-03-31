@@ -332,7 +332,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                   // First is always true, focus on rest
                   focus(andJoin(exs), env)
                 case Some(false) =>
-                  // FIXME: Seems all test break when we evaluate to false, try true???
+                  // Seems all test break when we evaluate to false, try true???
                   (choose, BooleanLiteral(true))
                 case None =>
                   // We cannot focus any further
@@ -350,7 +350,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
                     // First is always false, focus on rest
                     focus(orJoin(exs), env)
                   case Some(true) =>
-                    // FIXME: Seems all test break when we evaluate to true, try false???
+                    // Seems all test break when we evaluate to true, try false???
                     (choose, BooleanLiteral(false))
                   case None =>
                     // We cannot focus any further

@@ -95,11 +95,10 @@ trait SMTLIBTarget {
 
     def inlinedOptionGet(t : Term, tp: TypeTree): Term = {
       FunctionApplication(SSymbol("ite"), Seq(
-          FunctionApplication(someTester(tp), Seq(t)),
-          FunctionApplication(someSelector(tp), Seq(t)),
-          declareVariable(FreshIdentifier("error_value", tp))
-        )
-      )
+        FunctionApplication(someTester(tp), Seq(t)),
+        FunctionApplication(someSelector(tp), Seq(t)),
+        declareVariable(FreshIdentifier("error_value", tp))
+      ))
     }
 
   }

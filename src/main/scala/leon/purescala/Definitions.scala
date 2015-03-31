@@ -30,15 +30,15 @@ object Definitions {
     override def copiedFrom(o : Tree) : this.type = {
       super.copiedFrom(o)
       o match {
-        case df : Definition if df.owner.isDefined => this.setOwner(df.owner.get) 
-        case _ => this // FIXME should this ever happen?
+        case df : Definition if df.owner.isDefined =>
+          this.setOwner(df.owner.get)
+        case _ =>
+          this
       }
       
     }
 
-    // TODO: this seems quite elegant, but make sure it works
     def setSubDefOwners() = for (df <- subDefinitions) df.setOwner(this)
-    
      
   }
 
@@ -206,7 +206,7 @@ object Definitions {
     def duplicate = copy(defs = defs map {
       case f: FunDef => f.duplicate
       case cd: ClassDef => cd.duplicate
-      case other => other // FIXME: huh?
+      case other => other
     })
       
     setSubDefOwners()
