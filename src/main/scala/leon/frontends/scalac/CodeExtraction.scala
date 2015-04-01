@@ -1067,7 +1067,14 @@ trait CodeExtraction extends ASTExtractors {
               NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
           }
 
-          Ensuring(b, post)
+          val closure = post.getType match {
+            case BooleanType =>
+              val resId = FreshIdentifier("res", BooleanType).setPos(post).setOwner(currentFunDef)
+              Lambda(Seq(LeonValDef(resId)), post).setPos(post)
+            case _ => post
+          }
+
+          Ensuring(b, closure)
 
         case t @ ExHoldsExpression(body) =>
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos).setOwner(currentFunDef)
