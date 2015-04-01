@@ -289,7 +289,9 @@ object Main {
     }
   }
 
-  def execute(args: Seq[String], ctx: LeonContext): Unit = {
+  def execute(args: Seq[String], ctx0: LeonContext): Unit = {
+    val ctx = ctx0.copy(reporter = new DefaultReporter(ctx0.settings))
+
     try {
       // Compute leon pipeline
       val pipeline = computePipeline(ctx.settings)
