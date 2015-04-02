@@ -36,6 +36,7 @@ object Main {
       LeonFlagOptionDef ("repair",      "--repair",             "Repair selected functions"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
+      LeonFlagOptionDef ("watch",       "--watch",              "Rerun pipeline when file changes"),
       LeonValueOptionDef("solvers",     "--solvers=s1,s2",      "Use solvers s1 and s2 (fairz3,enum,smt)"),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
       LeonFlagOptionDef ("noop",        "--noop",               "No operation performed, just output program"),
@@ -241,6 +242,8 @@ object Main {
     pipeProcess
   }
 
+  private var hasFatal = false;
+
   def main(args: Array[String]) {
     val argsl = args.toList
 
@@ -263,10 +266,33 @@ object Main {
         sys.exit(1)
     }
 
+    ctx.interruptManager.registerSignalHandler()
+
+    val doWatch = ctx.options.exists {
+      case LeonFlagOption("watch", value) => value
+      case _ => false
+    }
+
+    if (doWatch) {
+      val watcher = new FilesWatcher(ctx, ctx.files)
+      watcher.onChange {
+        execute(args, ctx)
+      }
+    } else {
+      execute(args, ctx)
+    }
+
+    if (hasFatal) {
+      sys.exit(1)
+    } else {
+      sys.exit(0)
+    }
+  }
+
+  def execute(args: Seq[String], ctx0: LeonContext): Unit = {
+    val ctx = ctx0.copy(reporter = new DefaultReporter(ctx0.settings))
 
     try {
-      ctx.interruptManager.registerSignalHandler()
-
       // Compute leon pipeline
       val pipeline = computePipeline(ctx.settings)
 
@@ -290,7 +316,7 @@ object Main {
       }
     } catch {
       case LeonFatalError(None) =>
-        sys.exit(1)
+        hasFatal = true
 
       case LeonFatalError(Some(msg)) =>
         // For the special case of fatal errors not sent though Reporter, we
@@ -301,7 +327,8 @@ object Main {
           case _: LeonFatalError =>
         }
 
-        sys.exit(1)
+        hasFatal = true
     }
   }
+
 }
