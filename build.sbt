@@ -35,10 +35,10 @@ Keys.fork in Test := true
 
 logBuffered in Test := false
 
-testOptions in Test += Tests.Argument("-oDF")
-
 javaOptions in Test ++= Seq("-Xss32M", "-Xmx4G", "-XX:MaxPermSize=128M")
 
-parallelExecution in test := false
+parallelExecution in Test := false
+
+testOptions in Test := Seq(Tests.Filter(s => s.endsWith("LeonAllTests")), Tests.Argument("-oDF"))
 
 sourcesInBase in Compile := false
