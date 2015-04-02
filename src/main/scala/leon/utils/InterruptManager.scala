@@ -12,20 +12,43 @@ import java.util.WeakHashMap
 class InterruptManager(reporter: Reporter) extends Interruptible {
   private[this] val interruptibles = new WeakHashMap[Interruptible, Boolean]()
   private[this] val sigINT = new Signal("INT")
-  private[this] var oldHandler: SignalHandler = null
+  private[this] val withinTimeout: AtomicBoolean = new AtomicBoolean(false)
+  private[this] val handler = new SignalHandler {
+    def handle(sig: Signal) {
+      println()
+      if (withinTimeout.get()) {
+        reporter.warning("Aborting Leon...")
+        System.exit(1)
+      }
+      else {
+        reporter.warning("Interrupted...")
+        setTimeout()
+        interrupt()
+      }
+    }
+  }
+  private val exitWindow = 1000
+  private[this] def setTimeout() = {
+    import scala.concurrent.Future
+    import scala.concurrent.ExecutionContext.Implicits.global
+    withinTimeout.set(true)
+    Future { Thread.sleep(exitWindow) } onComplete { _ => withinTimeout.set(false) }
+    ()
+  }
 
   val interrupted: AtomicBoolean = new AtomicBoolean(false)
 
   @inline
-  def isInterrupted = interrupted.get()
+  def isInterrupted = interrupted.get
 
   def interrupt() = synchronized {
-    if (!interrupted.get()) {
+    if (!isInterrupted) {
       interrupted.set(true)
 
       val it = interruptibles.keySet.iterator
+
       for (i <- it) {
-         i.interrupt()
+        i.interrupt()
       }
     } else {
       reporter.warning("Already interrupted!")
@@ -33,7 +56,7 @@ class InterruptManager(reporter: Reporter) extends Interruptible {
   }
 
   def recoverInterrupt() = synchronized {
-    if (interrupted.get()) {
+    if (isInterrupted) {
       interrupted.set(false)
 
       val it = interruptibles.keySet.iterator
@@ -46,22 +69,18 @@ class InterruptManager(reporter: Reporter) extends Interruptible {
   }
 
   def registerForInterrupts(i: Interruptible) = synchronized {
-    if (interrupted.get) {
+    if (isInterrupted) {
       i.interrupt()
     }
     interruptibles.put(i, true)
   }
 
-  def registerSignalHandler() {
-    oldHandler = Signal.handle(sigINT, new SignalHandler {
-      def handle(sig: Signal) {
-        Signal.handle(sigINT, oldHandler)
-        println
-        reporter.warning("Aborting Leon...")
-
-        interrupt()
-
-      }
-    })
+  // We should not need this because keys should automatically be removed
+  // from the WeakHashMap when gc'ed.
+  // But let's have it anyway!
+  def unregisterForInterrupts(i: Interruptible) = synchronized {
+    interruptibles.remove(i)
   }
+
+  def registerSignalHandler() = Signal.handle(sigINT, handler)
 }

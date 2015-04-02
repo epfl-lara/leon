@@ -378,7 +378,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       vctx, 
       vcs, 
       checkInParallel = true,
-      interruptOn = _.counterExample.isDefined 
+      stopAfter = _.counterExample.isDefined
     )
 
     val theVCs = vcs.getOrElse(fd, Nil)

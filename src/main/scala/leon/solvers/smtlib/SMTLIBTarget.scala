@@ -664,7 +664,7 @@ trait SMTLIBTarget {
     case CheckSatStatus(SatStatus)     => Some(true)
     case CheckSatStatus(UnsatStatus)   => Some(false)
     case CheckSatStatus(UnknownStatus) => None
-    case _                               => None
+    case _                             => None
   }
 
   override def getModel: Map[Identifier, Expr] = {
