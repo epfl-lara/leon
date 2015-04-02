@@ -168,6 +168,10 @@ but instead
 Changelog
 ---------
 
+#### v?.?
+
+* Add --watch option to automatically re-run Leon after file modifications.
+
 #### v3.0
 *Released 17.02.2015*
 
