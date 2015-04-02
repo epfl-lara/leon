@@ -11,6 +11,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
                             val program: Program)
   extends IncrementalSolver with Interruptible with SMTLIBTarget {
 
+  context.interruptManager.registerForInterrupts(this)
+
   protected var interrupted = false
 
   override def interrupt(): Unit = {
@@ -31,6 +33,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   override def free() = {
     interpreter.free()
+    context.interruptManager.unregisterForInterrupts(this)
     reporter.ifDebug { _ => out.close() }
   }
 
