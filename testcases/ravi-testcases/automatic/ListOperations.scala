@@ -1,4 +1,4 @@
-import leon.Utils._
+import leon.lang.invariantLang._
 
 object ListOperations {
   sealed abstract class List
@@ -14,13 +14,13 @@ object ListOperations {
     case Nil() => l2
     case Cons(x, xs) => Cons(x, append(xs, l2))
 
-  }) //ensuring (res => true template ((a, b, c) => a * size(l1) + b * size(l2) + c * size(res) == 0))
+  }) //ensuring (res => size(l1) + size(l2) == size(res))
 
   def reverseRec(l1: List, l2: List): List = (l1 match {
     case Nil() => l2
     case Cons(x, xs) => reverseRec(xs, Cons(x, l2))
 
-  }) //ensuring (res => true template ((p, q, r) => p * size(l1) + q * size(l2) + r * size(res) == 0))
+  }) //ensuring (res => size(l1) + size(l2) == size(res))
 
   def reverse(l: List): List = {
     reverseRec(l, Nil())

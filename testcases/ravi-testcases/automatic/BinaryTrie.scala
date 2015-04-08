@@ -1,5 +1,5 @@
-import leon.Utils._
-import scala.collection.immutable.Set
+import leon.lang.invariantLang._
+
 
 object BinaryTrie {    
   sealed abstract class Tree

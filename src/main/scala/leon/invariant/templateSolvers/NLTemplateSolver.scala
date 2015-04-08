@@ -68,7 +68,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
   private var lastFoundModel : Option[Map[Identifier,Expr]] = None
   
   //for miscellaneous things
-  val trackNumericalDisjuncts = true
+  val trackNumericalDisjuncts = false
   var numericalDisjuncts = List[Expr]()
   
   protected def splitVC(fd: FunDef) : (Expr,Expr) = {
@@ -417,7 +417,7 @@ class NLTemplateSolver(ctx : InferenceContext, rootFun: FunDef, ctrTracker: Cons
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
 
     if (this.dumpNLCtrsAsSMTLIB) {
-      val filename = program.id + "-nlctr" + FileCountGUID.getID + ".smt2"
+      val filename = ctx.program.modules.last.id  + "-nlctr" + FileCountGUID.getID + ".smt2"
       if (Util.atomNum(nlctrs) >= 5) {
         if (solveAsBitvectors)
           Util.toZ3SMTLIB(nlctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)

@@ -242,7 +242,7 @@ abstract class SMTLIBTarget(context: LeonContext) {
 
       case s @ CaseClassSelector(cct, e, id) =>
         declareSort(cct)
-        SList(selectors.toB((cct, cct.fields.map(_.id).indexOf(s.selector.id))), toSMT(e))
+        SList(selectors.toB((cct, cct.fields.map(_.id).indexOf(id))), toSMT(e))
 
       case CaseClassInstanceOf(cct, e) =>
         declareSort(cct)

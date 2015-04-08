@@ -15,7 +15,7 @@ object InsertionSort {
       case Nil() => Cons(e,Nil())
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
     } 
-  } //ensuring(res => true template((a,b,c) => a*size(res) + b*size(l) +c == 0))
+  } //ensuring(res => size(res) = size(l) + 1)
 
   def sort(l: List): List = (l match {
     case Nil() => Nil()

@@ -1,5 +1,4 @@
-import leon.Utils._
-import leon.Annotations._
+import leon.lang.invariantLang._
 
 object AmortizedQueue {
   sealed abstract class List
@@ -22,7 +21,7 @@ object AmortizedQueue {
     case Nil() => l2
     case Cons(x,xs) => Cons(x, concat(xs, l2))
     
-  }) //ensuring (res => size(res) == size(l1) + size(l2) template((a,b,c) => time <= a*size(l1) + b))
+  }) //ensuring (res => size(res) == size(l1) + size(l2))
 
   def isAmortized(q : Queue) : Boolean = size(q.front) >= size(q.rear)
 
@@ -35,11 +34,11 @@ object AmortizedQueue {
     case Nil() => l2
     case Cons(x, xs) => reverseRec(xs, Cons(x, l2))
 
-  }) //ensuring (res =>  size(l1) + size(l2) == size(res) template((a,b) => time <= a*size(l1) + b))
+  }) //ensuring (res =>  size(l1) + size(l2) == size(res))
 
   def reverse(l: List): List = {
     reverseRec(l, Nil())    
-  } //ensuring (res => size(l) == size(res) template((a,b) => time <= a*size(l) + b))
+  } //ensuring (res => size(l) == size(res))
   
   def amortizedQueue(front : List, rear : List) : Queue = {
     if (size(rear) <= size(front))
@@ -53,15 +52,6 @@ object AmortizedQueue {
     amortizedQueue(q.front, Cons(elem, q.rear))
     
   }) ensuring(res =>  qsize(res) == qsize(q) + 1)
-
-  /*def dequeue(q : Queue) : Queue = {
-    require(isAmortized(q) && !isEmpty(q))
-    q match {
-      case Queue(Cons(f, fs), rear) => amortizedQueue(fs, rear)
-      case _ => Queue(Nil(),Nil())
-    }
-  } */
-  //ensuring(res =>  qsize(res) == qsize(q) - 1) not provable why  ??
   
   
   def removeLast(l : List) : List = {

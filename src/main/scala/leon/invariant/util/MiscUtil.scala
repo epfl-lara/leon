@@ -39,7 +39,7 @@ object MiscUtil {
     val intSol = if (sol.isDefined) Some(realToInt.mapModel(sol.get))
     			 else sol
 
-    val converter = new SMTLIBConverter(ctx)
+    val converter = new ExprToSMTLIB(ctx)
     val (commands, sexpr) = converter.toSExprAndDefinitions(Not(intExpr))
     //collect all non-template variables in intExpr
     val varmap = converter.target.variables
@@ -77,7 +77,7 @@ object MiscUtil {
     //and the unquantified body
     /*if (intSol.isDefined && !intSol.get.values.exists(_.isInstanceOf[RealLiteral])) {      
       val exprWithSolution = And(intExpr, Util.modelToExpr(intSol.get))
-      val (commands, sexpr) = (new SMTLIBConverter(ctx)).toSExprAndDefinitions(exprWithSolution)
+      val (commands, sexpr) = (new ExprToSMTLIB(ctx)).toSExprAndDefinitions(exprWithSolution)
       val body = commands :+ Assert(sexpr) :+ NonStandardCommand(SList(SSymbol("check-sat")))       
       writeSMTFile(filePrefix+"-verify", header, body, List())
     }*/    

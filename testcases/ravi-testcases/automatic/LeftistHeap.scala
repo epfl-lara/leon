@@ -43,7 +43,7 @@ object LeftistHeap {
             makeT(v2, l2, merge(h1, r2))
       }
     }
-  }     
+  } //ensuring(res => size(res) == size(h1) + size(h2))
 
   private def makeT(value: Int, left: Heap, right: Heap) : Heap = {
     if(rightHeight(left) >= rightHeight(right))

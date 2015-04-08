@@ -19,6 +19,7 @@ object Main {
       xlang.XlangAnalysisPhase,
       InferInvariantsPhase,
       horncl.LeonToHornPhase,
+      smtlib.LeonToSMTLIBPhase,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase      
@@ -34,6 +35,7 @@ object Main {
       LeonFlagOptionDef ("termination", "--termination",        "Check program termination"),
       LeonFlagOptionDef ("inferInv",   "--inferInv",          "Invariant Inference"),
       LeonFlagOptionDef ("genHorn",   "--genHorn",          "Dumping Leon programs as Horn Clauses in SMTLIBv2 format"),
+      LeonFlagOptionDef ("genSMTLIB",   "--genSMTLIB",          "Generate SMTLIB v2 files from leon programs"),
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("library",     "--library",            "Inject Leon standard library"),
@@ -145,6 +147,8 @@ object Main {
         settings = settings.copy(inferInv = value)
       case LeonFlagOption("genHorn", value) =>
         settings = settings.copy(genHorn = value)
+      case LeonFlagOption("genSMTLIB", value) =>
+        settings = settings.copy(genSMTLIB = value)
       case LeonFlagOption("synthesis", value) =>
         settings = settings.copy(synthesis = value)
       case LeonFlagOption("library", value) =>
@@ -218,6 +222,8 @@ object Main {
         InferInvariantsPhase
       } else if (settings.genHorn){
         horncl.LeonToHornPhase
+      } else if (settings.genSMTLIB){
+        smtlib.LeonToSMTLIBPhase
       } else if (settings.xlang) {
         XlangAnalysisPhase
       } else if (settings.verify) {
