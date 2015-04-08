@@ -45,7 +45,7 @@ object Main {
 
   lazy val allOptions = allComponents.flatMap(_.definedOptions) ++ topLevelOptions
 
-  def displayHelp(reporter: Reporter) {
+  def displayHelp(reporter: Reporter, error: Boolean) {
     reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
@@ -63,8 +63,10 @@ object Main {
         reporter.info(f"${opt.usageOption}%-20s ${opt.usageDesc}")
       }
     }
-    sys.exit(1)
+    exit(error)
   }
+
+  private def exit(error: Boolean) = sys.exit(if (error) 1 else 0)
 
   def processOptions(args: Seq[String]): LeonContext = {
 
@@ -129,7 +131,7 @@ object Main {
             Some(LeonFlagOption(fod.name, v))
           case None =>
             initReporter.error("Invalid option usage: --"+fod.name+"="+value)
-            displayHelp(initReporter)
+            displayHelp(initReporter, error=true)
             None
         }
       case (vod: LeonValueOptionDef, value) =>
@@ -174,7 +176,7 @@ object Main {
       case LeonFlagOption("noop", true) =>
         settings = settings.copy(verify = false)
       case LeonFlagOption("help", true) =>
-        displayHelp(initReporter)
+        displayHelp(initReporter, error = false)
       case _ =>
     }
 
@@ -204,6 +206,8 @@ object Main {
 
   def computePipeline(settings: Settings): Pipeline[List[String], Any] = {
     import purescala.Definitions.Program
+    import purescala.{FunctionClosure, RestoreMethods}
+    import utils.FileOutputPhase
     import frontends.scalac.ExtractionPhase
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
@@ -232,9 +236,9 @@ object Main {
       } else if (settings.xlang) {
         XLangAnalysisPhase
       } else if (settings.verify) {
-        purescala.FunctionClosure andThen AnalysisPhase
+        FunctionClosure andThen AnalysisPhase
       } else {
-        purescala.RestoreMethods andThen utils.FileOutputPhase
+        RestoreMethods andThen FileOutputPhase
       }
     }
 
@@ -242,7 +246,7 @@ object Main {
     pipeProcess
   }
 
-  private var hasFatal = false;
+  private var hasFatal = false
 
   def main(args: Array[String]) {
     val argsl = args.toList
@@ -250,9 +254,10 @@ object Main {
     // Process options
     val ctx = try {
       processOptions(argsl)
+
     } catch {
       case LeonFatalError(None) =>
-        sys.exit(1)
+        exit(error=true)
 
       case LeonFatalError(Some(msg)) =>
         // For the special case of fatal errors not sent though Reporter, we
@@ -263,7 +268,7 @@ object Main {
           case _: LeonFatalError =>
         }
 
-        sys.exit(1)
+        exit(error=true)
     }
 
     ctx.interruptManager.registerSignalHandler()
@@ -282,11 +287,7 @@ object Main {
       execute(args, ctx)
     }
 
-    if (hasFatal) {
-      sys.exit(1)
-    } else {
-      sys.exit(0)
-    }
+    exit(hasFatal)
   }
 
   def execute(args: Seq[String], ctx0: LeonContext): Unit = {
@@ -314,6 +315,7 @@ object Main {
       ctx.reporter.whenDebug(DebugSectionTimers) { debug =>
         ctx.timers.outputTable(debug)
       }
+      hasFatal = false
     } catch {
       case LeonFatalError(None) =>
         hasFatal = true
