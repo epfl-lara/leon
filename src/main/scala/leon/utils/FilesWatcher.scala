@@ -26,8 +26,9 @@ case class FilesWatcher(ctx: LeonContext, files: Seq[File]) {
 
       val events = key.pollEvents()
 
-      if (events.exists{_.context match {
-        case (p: Path) => toWatch(p.toFile.getAbsoluteFile)
+      if (events.exists{ _.context match {
+        case (p: Path) =>
+          dirs exists { dir => toWatch(new File(dir, p.toFile.getName))}
         case e => false
       }}) {
         val currentHashes = toWatch.map(md5file)
