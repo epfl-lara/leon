@@ -2,24 +2,22 @@
 
 package leon.xlang
 
-import leon.TransformationPhase
-import leon.LeonContext
+import leon.{UnitPhase, TransformationPhase, LeonContext}
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.ExprOps._
 import leon.xlang.Expressions._
 
-object EpsilonElimination extends TransformationPhase {
+object EpsilonElimination extends UnitPhase[Program] {
 
   val name = "Epsilon Elimination"
   val description = "Remove all epsilons from the program"
 
-  def apply(ctx: LeonContext, pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program) = {
 
-    val allFuns = pgm.definedFunctions
     for {
-      fd <- allFuns
+      fd <- pgm.definedFunctions
       body <- fd.body
     } {
       val newBody = postMap{
@@ -37,7 +35,6 @@ object EpsilonElimination extends TransformationPhase {
       }(body)
       fd.body = Some(newBody)
     }
-    pgm
   }
 
 }
