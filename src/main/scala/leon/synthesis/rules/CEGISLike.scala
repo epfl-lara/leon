@@ -840,13 +840,11 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val cachedInputIterator = new Iterator[Seq[Expr]] {
           def next() = {
             val i = inputIterator.next()
-            println("Found "+i)
             baseExampleInputs += i
             i
           }
 
           def hasNext = {
-            println("Has next? "+ inputIterator.hasNext)
             inputIterator.hasNext
           }
         }

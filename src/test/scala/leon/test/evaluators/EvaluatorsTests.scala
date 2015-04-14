@@ -460,7 +460,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     implicit val prog = parseString(p)
 
-    val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams(maxFunctionInvocations = 32))
+    val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams.default.copy(maxFunctionInvocations = 32))
     checkEvaluatorError(e, mkCall("c", IL(42)))
   }
 
@@ -479,7 +479,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
 
     implicit val prog = parseString(p)
 
-    val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams(checkContracts = true))
+    val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams.default)
     checkError(e, mkCall("c", IL(-42)))
   }
 
