@@ -15,7 +15,7 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
   val description = "Evaluator for PureScala expressions based on compilation to JVM"
 
   /** Another constructor to make it look more like other `Evaluator`s. */
-  def this(ctx : LeonContext, prog : Program, params: CodeGenParams = CodeGenParams()) {
+  def this(ctx : LeonContext, prog : Program, params: CodeGenParams = CodeGenParams.default) {
     this(ctx, new CompilationUnit(ctx, prog, params))
   }
 

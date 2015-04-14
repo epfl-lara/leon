@@ -14,6 +14,7 @@ import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.TypeOps._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.ScalaPrinter
 import purescala.Constructors.finiteSet
 
@@ -80,33 +81,33 @@ object ExpressionGrammars {
         List(
           Generator(Nil, { _ => BooleanLiteral(true) }),
           Generator(Nil, { _ => BooleanLiteral(false) }),
-          Generator(List(BooleanType), { case Seq(a) => Not(a) }),
-          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => And(a, b) }),
-          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => LeonOr(a, b) }),
+          Generator(List(BooleanType),              { case Seq(a)    => not(a) }),
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => and(a, b) }),
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => or(a, b) }),
           Generator(List(Int32Type, Int32Type),     { case Seq(a, b) => LessThan(a, b) }),
           Generator(List(Int32Type, Int32Type),     { case Seq(a, b) => LessEquals(a, b) }),
-          Generator(List(Int32Type,   Int32Type  ), { case Seq(a, b) => Equals(a, b) }),
+          Generator(List(Int32Type,   Int32Type  ), { case Seq(a, b) => equality(a, b) }),
           Generator(List(IntegerType, IntegerType), { case Seq(a, b) => LessThan(a, b) }),
           Generator(List(IntegerType, IntegerType), { case Seq(a, b) => LessEquals(a, b) }),
-          Generator(List(IntegerType, IntegerType), { case Seq(a, b) => Equals(a, b) }),
-          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => Equals(a, b) })
+          Generator(List(IntegerType, IntegerType), { case Seq(a, b) => equality(a, b) }),
+          Generator(List(BooleanType, BooleanType), { case Seq(a, b) => equality(a, b) })
         )
       case Int32Type =>
         List(
           Generator(Nil, { _ => IntLiteral(0) }),
           Generator(Nil, { _ => IntLiteral(1) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => BVPlus(a, b) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => BVMinus(a, b) }),
-          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => BVTimes(a, b) })
+          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => plus(a, b) }),
+          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => minus(a, b) }),
+          Generator(List(Int32Type, Int32Type), { case Seq(a,b) => times(a, b) })
         )
 
       case IntegerType =>
         List(
           Generator(Nil, { _ => InfiniteIntegerLiteral(0) }),
           Generator(Nil, { _ => InfiniteIntegerLiteral(1) }),
-          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => Plus(a, b) }),
-          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => Minus(a, b) }),
-          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => Times(a, b) })
+          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => plus(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => minus(a, b) }),
+          Generator(List(IntegerType, IntegerType), { case Seq(a,b) => times(a, b) })
         )
 
       case TupleType(stps) =>

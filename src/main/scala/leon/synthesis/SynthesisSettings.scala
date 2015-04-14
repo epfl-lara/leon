@@ -22,14 +22,9 @@ case class SynthesisSettings(
   functionsToIgnore: Set[FunDef]      = Set(),
   
   // Cegis related options
-  cegisUseUnsatCores: Boolean         = true,
-  cegisUseOptTimeout: Boolean         = true,
-  cegisUseBssFiltering: Boolean       = true,
-  cegisGenerateFunCalls: Boolean      = true,
-  cegisUseCETests: Boolean            = true,
-  cegisUseCEPruning: Boolean          = true,
-  cegisUseBPaths: Boolean             = true,
-  cegisUseVanuatoo: Boolean           = false,
+  cegisUseOptTimeout: Option[Boolean] = None,
+  cegisUseShrink: Option[Boolean]     = None,
+  cegisUseVanuatoo: Option[Boolean]   = None,
 
   // Oracles and holes
   distreteHoles: Boolean              = false

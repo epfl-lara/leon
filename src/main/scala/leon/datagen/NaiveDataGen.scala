@@ -42,7 +42,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         BooleanLiteral(true) #:: BooleanLiteral(false) #:: Stream.empty
 
       case Int32Type =>
-        IntLiteral(0) #:: IntLiteral(1) #:: IntLiteral(-1) #:: Stream.empty
+        IntLiteral(0) #:: IntLiteral(1) #:: IntLiteral(2) #:: IntLiteral(-1) #:: Stream.empty
 
       case tp: TypeParameter =>
         tpStream(tp)

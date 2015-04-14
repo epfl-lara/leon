@@ -4,6 +4,7 @@ package leon
 package purescala
 
 import Expressions._
+import Extractors._
 import ExprOps._
 import Definitions._
 import TypeOps._
@@ -251,6 +252,47 @@ object Constructors {
       val (ids, es) = notInline.unzip
       letTuple(ids, tupleWrap(es), newBody)
     case _ => Application(fn, realArgs)
+  }
+
+  def equality(a: Expr, b: Expr) = {
+    if (a == b && isDeterministic(a)) {
+      BooleanLiteral(true)
+    } else  {
+      Equals(a, b)
+    }
+  }
+
+  def plus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
+    case (InfiniteIntegerLiteral(bi), _) if bi == 0 => rhs
+    case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
+    case (IntLiteral(0), _) => rhs
+    case (_, IntLiteral(0)) => lhs
+    case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Plus(lhs, rhs)
+    case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVPlus(lhs, rhs)
+  }
+
+  def minus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
+    case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
+    case (_, IntLiteral(0)) => lhs
+    case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Minus(lhs, rhs)
+    case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
+  }
+
+  def times(lhs: Expr, rhs: Expr): Expr = {
+    val r = (lhs, rhs) match {
+      case (InfiniteIntegerLiteral(bi), _) if bi == 1 => rhs
+      case (_, InfiniteIntegerLiteral(bi)) if bi == 1 => lhs
+      case (InfiniteIntegerLiteral(bi), _) if bi == 0 => InfiniteIntegerLiteral(0)
+      case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => InfiniteIntegerLiteral(0)
+      case (IntLiteral(1), _) => rhs
+      case (_, IntLiteral(1)) => lhs
+      case (IntLiteral(0), _) => IntLiteral(0)
+      case (_, IntLiteral(0)) => IntLiteral(0)
+      case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
+      case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVTimes(lhs, rhs)
+    }
+    println("!@#!@# "+lhs+" * "+rhs+" == "+r)
+    r
   }
 
 }

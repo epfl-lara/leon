@@ -25,10 +25,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     LeonValueOptionDef("costmodel",       "--costmodel=cm",    "Use a specific cost model for this search"),
     LeonValueOptionDef("functions",       "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,.."),
     // CEGIS options
-    LeonFlagOptionDef( "cegis:gencalls",   "--cegis:gencalls",      "Include function calls in CEGIS generators",      true),
-    LeonFlagOptionDef( "cegis:unintprobe", "--cegis:unintprobe",    "Check for UNSAT without bloecks and with uninterpreted functions", false),
-    LeonFlagOptionDef( "cegis:bssfilter",  "--cegis:bssfilter",     "Filter non-det programs when tests pruning works well", true),
-    LeonFlagOptionDef( "cegis:unsatcores", "--cegis:unsatcores",    "Use UNSAT-cores in pruning", true),
+    LeonFlagOptionDef( "cegis:shrink",     "--cegis:shrink",        "Shrink non-det programs when tests pruning works well", true),
     LeonFlagOptionDef( "cegis:opttimeout", "--cegis:opttimeout",    "Consider a time-out of CE-search as untrusted solution", true),
     LeonFlagOptionDef( "cegis:vanuatoo",   "--cegis:vanuatoo",      "Generate inputs using new korat-style generator", false),
     LeonFlagOptionDef( "holes:discrete",   "--holes:discrete",      "Oracles get split", false)
@@ -82,23 +79,17 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       case LeonFlagOption("derivtrees", v) =>
         options = options.copy(generateDerivationTrees = v)
 
-      case LeonFlagOption("cegis:unsatcores", v) =>
-        options = options.copy(cegisUseUnsatCores = v)
-
       case LeonFlagOption("cegis:bssfilter", v) =>
-        options = options.copy(cegisUseBssFiltering = v)
+        options = options.copy(cegisUseShrink = Some(v))
 
       case LeonFlagOption("cegis:opttimeout", v) =>
-        options = options.copy(cegisUseOptTimeout = v)
-
-      case LeonFlagOption("cegis:gencalls", v) =>
-        options = options.copy(cegisGenerateFunCalls = v)
+        options = options.copy(cegisUseOptTimeout = Some(v))
 
       case LeonFlagOption("cegis:vanuatoo", v) =>
-        options = options.copy(cegisUseVanuatoo = v)
+        options = options.copy(cegisUseVanuatoo = Some(v))
 
-      case LeonFlagOption("holes:discrete", v) =>
-        options = options.copy(distreteHoles = v)
+//      case LeonFlagOption("holes:discrete", v) =>
+//        options = options.copy(distreteHoles = v)
 
       case _ =>
     }

@@ -1286,6 +1286,8 @@ object ExprOps {
     preTraversal{
       case Choose(_, None) => return false
       case Hole(_, _) => return false
+      //@EK FIXME: do we need it? 
+      //case Error(_, _) => return false
       case Gives(_,_) => return false
       case _ =>
     }(e)

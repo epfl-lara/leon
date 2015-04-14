@@ -45,16 +45,15 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val ctx  = sctx.context
 
     // CEGIS Flags to activate or deactivate features
-    //val useUnsatCores         = sctx.settings.cegisUseUnsatCores
-    val useOptTimeout         = sctx.settings.cegisUseOptTimeout
-    val useVanuatoo           = sctx.settings.cegisUseVanuatoo
-    val useCETests            = sctx.settings.cegisUseCETests
+    val useOptTimeout         = sctx.settings.cegisUseOptTimeout.getOrElse(true)
+    val useVanuatoo           = sctx.settings.cegisUseVanuatoo.getOrElse(false)
+    val useShrink             = sctx.settings.cegisUseShrink.getOrElse(true)
 
     // Limits the number of programs CEGIS will specifically validate individually
     val validateUpTo          = 5
 
-    val useBssFiltering       = sctx.settings.cegisUseBssFiltering
-    val filterThreshold       = 1.0/2
+    // Shrink the program when the ratio of passing cases is less than the threshold
+    val shrinkThreshold       = 1.0/2
 
     val interruptManager      = sctx.context.interruptManager
 
@@ -317,7 +316,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             None
         }(cTree))
 
-        val evalParams = CodeGenParams(maxFunctionInvocations = -1, doInstrument = false)
+        val evalParams = CodeGenParams.default
 
         //println("-- "*30)
         //println(programCTree)
@@ -791,7 +790,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         var baseExampleInputs: ArrayBuffer[Seq[Expr]] = new ArrayBuffer[Seq[Expr]]()
 
         // We populate the list of examples with a predefined one
-        sctx.reporter.debug("Acquiring list of examples")
+        sctx.reporter.debug("Acquiring initial list of examples")
 
         val ef = new ExamplesFinder(sctx.context, sctx.program)
         baseExampleInputs ++= ef.extractTests(p).map(_.ins).toSet
@@ -836,19 +835,22 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
           new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, pc, 20, 3000)
         } else {
-          val evalParams = CodeGenParams(maxFunctionInvocations = -1, doInstrument = false)
-          val evaluator  = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
-          new NaiveDataGen(sctx.context, sctx.program, evaluator).generateFor(p.as, pc, 20, 1000)
+          val evaluator  = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
+          new GrammarDataGen(evaluator, ExpressionGrammars.ValueGrammar).generateFor(p.as, pc, 20, 1000)
         }
 
         val cachedInputIterator = new Iterator[Seq[Expr]] {
           def next() = {
             val i = inputIterator.next()
+            println("Found "+i)
             baseExampleInputs += i
             i
           }
 
-          def hasNext = inputIterator.hasNext
+          def hasNext = {
+            println("Has next? "+ inputIterator.hasNext)
+            inputIterator.hasNext
+          }
         }
 
         val failedTestsStats = new MutableMap[Seq[Expr], Int]().withDefaultValue(0)
@@ -903,7 +905,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   val e = examples.next()
                   if (!ndProgram.testForProgram(bs)(e)) {
                     failedTestsStats(e) += 1
-                    sctx.reporter.debug(" Program: "+ndProgram.getExpr(bs)+" failed on "+e.mkString(" ; "))
+                    sctx.reporter.debug(f" Program: ${ndProgram.getExpr(bs)}%-80s failed on: ${e.mkString(", ")}")
                     wrongPrograms += bs
                     prunedPrograms -= bs
 
@@ -927,6 +929,16 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 printer(" - ...")
               }
             }
+            sctx.reporter.debug("#Tests: "+baseExampleInputs.size)
+            sctx.reporter.ifDebug{ printer =>
+              for (i <- baseExampleInputs.take(10)) {
+                printer(" - "+i.mkString(", "))
+              }
+              if(baseExampleInputs.size > 10) {
+                printer(" - ...")
+              }
+            }
+
 
             if (nPassing == 0 || interruptManager.isInterrupted) {
               // No test passed, we can skip solver and unfold again, if possible
@@ -953,7 +965,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               }
 
               if (doFilter) {
-                if (nPassing < nInitial * filterThreshold && useBssFiltering) {
+                if (nPassing < nInitial * shrinkThreshold && useShrink) {
                   // We shrink the program to only use the bs mentionned
                   val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
                   ndProgram.shrinkTo(bssToKeep, unfolding == maxUnfoldings)
@@ -972,7 +984,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 case Some(Some(bs)) =>
                   // Should we validate this program with Z3?
 
-                  val validateWithZ3 = if (useCETests && hasInputExamples) {
+                  val validateWithZ3 = if (hasInputExamples) {
 
                     if (allInputExamples().forall(ndProgram.testForProgram(bs))) {
                       // All valid inputs also work with this, we need to

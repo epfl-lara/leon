@@ -58,8 +58,12 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
       (Nil, Nil)
   }
 
-  def extractTests(p: Problem): Seq[Example] = {
+  def generateTests(p: Problem): Seq[Example] = {
+    Nil
+  }
 
+  // Extract examples from the passes found in expression
+  def extractTests(p: Problem): Seq[Example] = {
     val testClusters = extractTestsOf(and(p.pc, p.phi))
 
     // Finally, we keep complete tests covering all as++xs
