@@ -150,13 +150,13 @@ object ExpressionGrammars {
         List(
           Generator(Nil, { _ => IntLiteral(0) }),
           Generator(Nil, { _ => IntLiteral(1) }),
-          Generator(Nil, { _ => IntLiteral(-1) })
+          Generator(Nil, { _ => IntLiteral(42) })
         )
       case IntegerType =>
         List(
           Generator(Nil, { _ => InfiniteIntegerLiteral(0) }),
           Generator(Nil, { _ => InfiniteIntegerLiteral(1) }),
-          Generator(Nil, { _ => InfiniteIntegerLiteral(-1) })
+          Generator(Nil, { _ => InfiniteIntegerLiteral(42) })
         )
 
       case tp@TypeParameter(_) =>
