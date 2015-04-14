@@ -1,4 +1,5 @@
-/* Copyright 2009-2014 EPFL, Lausanne */
+/* Copyright 2009-2015 EPFL, Lausanne */
+
 package leon.codegen.runtime;
 
 import java.math.BigInteger;

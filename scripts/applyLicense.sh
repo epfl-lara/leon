@@ -1,4 +1,4 @@
-printf "/* Copyright 2009-2014 EPFL, Lausanne */\n\n" > /tmp/Leon-license
+printf "/* Copyright 2009-2015 EPFL, Lausanne */\n\n" > /tmp/Leon-license
 
 for f in $(find {src,library} -name "*.java" -o -name "*.scala") ;do
   if [ -f $f ]; then

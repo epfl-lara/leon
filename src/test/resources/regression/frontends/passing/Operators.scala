@@ -1,3 +1,5 @@
+/* Copyright 2009-2015 EPFL, Lausanne */
+
 object Operators {
   
   case class HasOps(i : Int){

@@ -1,3 +1,5 @@
+/* Copyright 2009-2015 EPFL, Lausanne */
+
 package leon.synthesis.graph
 
 import java.io.{File, FileWriter, BufferedWriter}

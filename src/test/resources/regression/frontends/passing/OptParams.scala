@@ -1,3 +1,5 @@
+/* Copyright 2009-2015 EPFL, Lausanne */
+
 object OptParams {
 
   def foo( x : Int, y : Int = 12 ) = x + y

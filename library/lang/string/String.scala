@@ -1,5 +1,7 @@
-/* Copyright 2009-2014 EPFL, Lausanne */
+/* Copyright 2009-2015 EPFL, Lausanne */
+
 package leon.lang.string
+
 import leon.annotation._
 
 @library
