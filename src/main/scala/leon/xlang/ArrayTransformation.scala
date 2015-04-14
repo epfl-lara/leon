@@ -2,7 +2,7 @@
 
 package leon.xlang
 
-import leon.TransformationPhase
+import leon.UnitPhase
 import leon.LeonContext
 import leon.purescala.Common._
 import leon.purescala.Definitions._
@@ -11,16 +11,15 @@ import leon.xlang.Expressions._
 import leon.purescala.Extractors._
 import leon.purescala.Types._
 
-object ArrayTransformation extends TransformationPhase {
+object ArrayTransformation extends UnitPhase[Program] {
 
   val name = "Array Transformation"
   val description = "Add bound checking for array access and remove array update with side effect"
 
-  def apply(ctx: LeonContext, pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program) = {
     pgm.definedFunctions.foreach(fd => {
       fd.fullBody = transform(fd.fullBody)(Map())
     })
-    pgm
   }
 
   def transform(expr: Expr)(implicit env: Map[Identifier, Identifier]): Expr = (expr match {

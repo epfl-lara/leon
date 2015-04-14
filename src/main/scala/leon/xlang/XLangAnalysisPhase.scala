@@ -16,10 +16,10 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
 
   def run(ctx: LeonContext)(pgm: Program): VerificationReport = {
 
-    val pgm1 = ArrayTransformation(ctx, pgm)
-    val pgm2 = EpsilonElimination(ctx, pgm1)
-    val (pgm3, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm2)
-    val pgm4 = purescala.FunctionClosure.run(ctx)(pgm3)
+    ArrayTransformation(ctx, pgm) // In-place
+    EpsilonElimination(ctx, pgm)  // In-place
+    val (pgm1, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm)
+    val pgm2 = purescala.FunctionClosure.run(ctx)(pgm1)
 
     def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
       case Some(nested) => // could have been a LetDef originally
@@ -28,7 +28,7 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     }
 
     var subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
-    pgm4.definedFunctions.foreach { fd => fd.owner match {
+    pgm2.definedFunctions.foreach { fd => fd.owner match {
       case Some(p : FunDef) =>
         subFunctionsOf += p -> (subFunctionsOf(p) + fd)
       case _ =>
@@ -54,7 +54,7 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
       case opt => opt
     }
 
-    val vr = AnalysisPhase.run(ctx.copy(options = newOptions))(pgm4)
+    val vr = AnalysisPhase.run(ctx.copy(options = newOptions))(pgm2)
     completeVerificationReport(vr, functionWasLoop)
   }
 
