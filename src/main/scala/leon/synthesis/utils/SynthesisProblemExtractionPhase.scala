@@ -4,6 +4,7 @@ package leon
 package synthesis
 package utils
 
+import purescala.DefOps.funDefsFromMain
 import purescala.Definitions._
 
 object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Program, Map[FunDef, Seq[ChooseInfo]])] {
@@ -12,7 +13,7 @@ object SynthesisProblemExtractionPhase extends LeonPhase[Program, (Program, Map[
 
   def run(ctx: LeonContext)(p: Program): (Program, Map[FunDef, Seq[ChooseInfo]]) = {
     // Look for choose()
-    val results = for (f <- p.definedFunctions.sortBy(_.id.toString) if f.body.isDefined) yield {
+    val results = for (f <- funDefsFromMain(p).toSeq.sortBy(_.id.toString) if f.body.isDefined) yield {
       f -> ChooseInfo.extractFromFunction(p, f)
     }
 

@@ -118,68 +118,6 @@ class SynthesisSuite extends LeonTestSuite {
       }
   }
 
-//  def synthesizeWith(search: SearchContext, p: Problem, ss: Apply): Solution = {
-//    val apps = hctx.sctx.rules flatMap { _.instantiateOn(hctx, p)}
-//
-//    def matchingDesc(app: RuleInstantiation, ss: Apply): Boolean = {
-//      import java.util.regex.Pattern;
-//      val pattern = Pattern.quote(ss.desc).replace("*", "\\E.*\\Q")
-//      app.toString.matches(pattern)
-//    }
-//
-//    apps.filter(matchingDesc(_, ss)) match {
-//      case app :: Nil =>
-//        app.apply(hctx) match {
-//          case RuleClosed(sols) =>
-//            assert(sols.nonEmpty)
-//            assert(ss.andThen.isEmpty)
-//            sols.head
-//
-//          case RuleExpanded(sub) =>
-//            val subSols = (sub zip ss.andThen) map { case (p, ss) => synthesizeWith(hctx, p, ss) }
-//            app.onSuccess(subSols).get
-//        }
-//
-//      case Nil =>
-//        throw new AssertionError("Failed to find "+ss.desc+". Available: "+apps.mkString(", "))
-//
-//      case xs =>
-//        throw new AssertionError("Ambiguous "+ss.desc+". Found: "+xs.mkString(", "))
-//    }
-//  }
-//
-//  def synthesize(title: String)(program: String)(strategies: PartialFunction[String, Apply]) {
-//    forProgram(title)(program) {
-//      case (hctx, fd, p) =>
-//        strategies.lift.apply(fd.id.toString) match {
-//          case Some(ss) =>
-//            synthesizeWith(hctx, p, ss)
-//
-//          case None =>
-//            assert(false, "Function "+fd.id.toString+" not found")
-//        }
-//    }
-//  }
-//
-//
-//  def assertAllAlternativesSucceed(hctx: SearchContext, rr: Traversable[RuleInstantiation]) {
-//    assert(!rr.isEmpty)
-//
-//    for (r <- rr) {
-//      assertRuleSuccess(hctx, r)
-//    }
-//  }
-//
-//  def assertRuleSuccess(hctx: SearchContext, rr: RuleInstantiation): Option[Solution] = {
-//    rr.apply(hctx) match {
-//      case RuleClosed(sols) if sols.nonEmpty =>
-//        sols.headOption
-//      case _ =>
-//        assert(false, "Rule did not succeed")
-//        None
-//    }
-//  }
-
   forProgram("Ground Enum", SynthesisSettings(selectedSolvers = Set("enum")))(
     """
 import leon.annotation._
