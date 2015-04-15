@@ -40,6 +40,7 @@ javaOptions in Test ++= Seq("-Xss32M", "-Xmx4G", "-XX:MaxPermSize=128M")
 parallelExecution in Test := false
 
 testOptions in (Test, test) := Seq(Tests.Filter(s => s.endsWith("LeonAllTests")), Tests.Argument("-oDF"))
+
 testOptions in (Test, testOnly) := Seq(Tests.Argument("-oDF"))
 
 sourcesInBase in Compile := false

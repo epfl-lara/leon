@@ -16,7 +16,7 @@ import scala.collection.mutable.{Map=>MutableMap}
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-@deprecated("3.4", "NaiveDataGen is deprecated, use GrammarDataGen with ValueGrammar")
+@deprecated("Stream-based datagen is deprecated, use GrammarDataGen with ValueGrammar instead", "3.0")
 class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds : Option[Map[TypeTree,Seq[Expr]]] = None) extends DataGenerator {
 
   val bounds = _bounds.getOrElse(Map())
