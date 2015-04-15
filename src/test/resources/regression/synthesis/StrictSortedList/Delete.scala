@@ -2,7 +2,7 @@ import leon.lang._
 import leon.lang.synthesis._
 import leon.annotation._
 
-object Diff {
+object Delete {
   sealed abstract class List
   case class Cons(head: BigInt, tail: List) extends List
   case object Nil extends List
@@ -17,22 +17,17 @@ object Diff {
     case Cons(i, t) => Set(i) ++ content(t)
   }
 
-  def delete(in1: List, v: BigInt): List = {
-    in1 match {
-      case Cons(h,t) =>
-        if (h == v) {
-          delete(t, v)
-        } else {
-          Cons(h, delete(t, v))
-        }
-      case Nil =>
-        Nil
-    }
-  } ensuring { content(_) == content(in1) -- Set(v) }
+  def isSorted(list : List) : Boolean = list match {
+    case Nil => true
+    case Cons(_, Nil) => true
+    case Cons(x1, Cons(x2, _)) if(x1 >= x2) => false
+    case Cons(_, xs) => isSorted(xs)
+  }
 
-  def diff(in1: List, in2: List) = {
+  def delete(in1: List, v: BigInt) = {
+    require(isSorted(in1))
     choose { (out : List) =>
-      content(out) == content(in1) -- content(in2)
+      (content(out) == content(in1) -- Set(v)) && isSorted(out)
     }
   }
 }
