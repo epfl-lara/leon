@@ -184,7 +184,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore") || s.isImplicit || s.fullName.toString.endsWith(".main")
+      (annotationsOf(s) contains "ignore") || s.fullName.toString.endsWith(".main")
     }
 
     def isExtern(s: Symbol) = {
@@ -867,7 +867,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExFieldDef(_,_,_) =>
         case ExLazyFieldDef() => 
         case ExFieldAccessorFunction() => 
-        case d if isIgnored(d.symbol) =>
+        case d if isIgnored(d.symbol) || (d.symbol.isImplicit && d.symbol.isSynthetic) =>
         case tree =>
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
       }
@@ -1759,8 +1759,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // default behaviour is to complain :)
         case _ =>
-          println(tr.getClass)
-          outOfSubsetError(tr, "Could not extract as PureScala")
+          outOfSubsetError(tr, "Could not extract as PureScala (Scala tree of type "+tr.getClass+")")
       }
 
       res.setPos(current.pos)
