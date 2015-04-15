@@ -699,11 +699,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         //println("  - "+isActive)
         solver.assertCnstr(isActive)
 
-
-        for (b <- bs.filterNot(isBActive)) {
-
-        }
-
         //println(" -- Excluded:")
         for (ex <- excludedPrograms) {
           val notThisProgram = Not(andJoin(ex.map(_.toVariable).toSeq))
