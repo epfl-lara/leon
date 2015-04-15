@@ -12,8 +12,18 @@ import java.io.File
 case class LeonContext(
   reporter: Reporter,
   interruptManager: InterruptManager,
-  settings: Settings = Settings(),
-  options: Seq[LeonOption] = Seq(),
+  options: Seq[LeonOption[Any]] = Seq(),
   files: Seq[File] = Seq(),
   timers: TimerStorage = new TimerStorage
-)
+) {
+
+  // @mk: This is not typesafe, because equality for options is implemented as name equality.
+  // It will fail if an LeonOptionDef is passed that has the same name
+  // with one in Main,allOptions, but is different
+  def findOption[A](optDef: LeonOptionDef[A]): Option[A] = options.collectFirst {
+    case LeonOption(`optDef`, value) => value.asInstanceOf[A]
+  }
+
+  def findOptionOrDefault[A](optDef: LeonOptionDef[A]): A =
+    findOption(optDef).getOrElse(optDef.default)
+}

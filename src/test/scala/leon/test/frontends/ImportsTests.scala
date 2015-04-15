@@ -9,17 +9,13 @@ import purescala.ScalaPrinter
 import frontends.scalac._
 import utils._
 
-
 class ImportsTests extends LeonTestSuite {
   private def parseStrings(strs : List[String]) : Program = {
-    val settings : Settings = Settings(
-      verify = false
-    )
-    val reporter = new DefaultReporter(settings)
+
+    val reporter = new DefaultReporter(Set())
     val context : LeonContext = LeonContext(
       reporter,
       new InterruptManager(reporter),
-      settings,
       Seq()
     )
     

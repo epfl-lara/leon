@@ -48,7 +48,6 @@ object Rules {
     DetupleOutput,
     DetupleInput,
     ADTSplit,
-    InlineHoles,
     //IntegerEquation,
     //IntegerInequalities,
     IntInduction,

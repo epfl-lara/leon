@@ -25,26 +25,14 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   enclosing =>
 
-  val (feelingLucky, checkModels, useCodeGen, evalGroundApps, unrollUnsatCores) = locally {
-    var lucky            = false
-    var check            = false
-    var codegen          = false
-    var evalground       = false
-    var unrollUnsatCores = false
+  val feelingLucky      = context.findOptionOrDefault(FeelingLucky)
+  val checkModels       = context.findOptionOrDefault(CheckModels)
+  val useCodeGen        = context.findOptionOrDefault(UseCodeGen)
+  val evalGroundApps    = context.findOptionOrDefault(EvalGround)
+  val unrollUnsatCores  = context.findOptionOrDefault(UnrollCores)
 
-    for(opt <- context.options) opt match {
-      case LeonFlagOption("checkmodels", v)        => check            = v
-      case LeonFlagOption("feelinglucky", v)       => lucky            = v
-      case LeonFlagOption("codegen", v)            => codegen          = v
-      case LeonFlagOption("evalground", v)         => evalground       = v
-      case LeonFlagOption("fairz3:unrollcores", v) => unrollUnsatCores = v
-      case _ =>
-    }
-
-    (lucky, check, codegen, evalground, unrollUnsatCores)
-  }
-
-  private val evaluator : Evaluator = if(useCodeGen) {
+  private val evaluator: Evaluator =
+    if(useCodeGen) {
       // TODO If somehow we could not recompile each time we create a solver,
       // that would be good?
       new CodeGenEvaluator(context, program)

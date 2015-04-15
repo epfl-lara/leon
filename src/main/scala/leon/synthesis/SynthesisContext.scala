@@ -8,7 +8,6 @@ import solvers.combinators.PortfolioSolverSynth
 import solvers.z3._
 import purescala.Definitions.{Program, FunDef}
 
-
 /**
  * This is global information per entire search, contains necessary information
  */

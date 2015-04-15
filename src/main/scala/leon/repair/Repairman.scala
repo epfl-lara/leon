@@ -372,7 +372,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solver = SolverFactory.getFromSettings(ctx, prog).withTimeout(timeoutMs)
     val vctx = VerificationContext(ctx, prog, solver, reporter)
-    val vcs = AnalysisPhase.generateVCs(vctx, Some(List(fd.id.name)))
+    val vcs = AnalysisPhase.generateVCs(vctx, Some(Seq(fd.id.name)))
 
     val report = AnalysisPhase.checkVCs(
       vctx, 

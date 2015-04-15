@@ -31,7 +31,7 @@ object SolverFactory {
   )
 
   def getFromSettings(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    getFromName(ctx, program)(ctx.settings.selectedSolvers.toSeq : _*)
+    getFromName(ctx, program)(ctx.findOptionOrDefault(SharedOptions.SelectedSolvers).toSeq : _*)
   }
 
   def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
@@ -66,15 +66,20 @@ object SolverFactory {
         SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBCVC4CounterExampleTarget with TimeoutSolver)
 
       case _ =>
-        ctx.reporter.fatalError("Unknown solver "+name)
+        ctx.reporter.error(s"Unknown solver $name")
+        showSolvers()
     }
 
-    val solvers = names.toSeq.toSet
+    def showSolvers() = {
+      ctx.reporter.error("Available:\n" + definedSolvers.map {"  - " + _}.mkString("\n"))
+      ctx.reporter.fatalError("Aborting Leon...")
+    }
 
-    val selectedSolvers = solvers.map(getSolver)
+    val selectedSolvers = names.map(getSolver)
 
     if (selectedSolvers.isEmpty) {
-      ctx.reporter.fatalError("No solver selected. Aborting")
+      ctx.reporter.error(s"No solver selected.")
+      showSolvers()
     } else if (selectedSolvers.size == 1) {
       selectedSolvers.head
     } else {

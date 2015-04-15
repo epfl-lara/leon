@@ -8,7 +8,7 @@ abstract class Pipeline[-F, +T] {
   def andThen[G](thenn: Pipeline[T, G]): Pipeline[F, G] = new Pipeline[F,G] {
     def run(ctx : LeonContext)(v : F) : G = {
       val s = self.run(ctx)(v)
-      if(ctx.settings.terminateAfterEachPhase) ctx.reporter.terminateIfError()
+      if(ctx.findOptionOrDefault(SharedOptions.StrictPhases)) ctx.reporter.terminateIfError()
       thenn.run(ctx)(s)
     }
   }

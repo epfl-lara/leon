@@ -38,9 +38,9 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
 
 
     val newOptions = ctx.options map {
-      case LeonValueOption("functions", ListValue(fs)) => {
+      case LeonOption(SharedOptions.FunctionsOptionDef, fs) => {
         var freshToAnalyse: Set[String] = Set()
-        fs.foreach((toAnalyse: String) => {
+        fs.asInstanceOf[Seq[String]].foreach((toAnalyse: String) => {
           pgm.definedFunctions.find(_.id.name == toAnalyse) match {
             case Some(fd) => {
               val children = subFunctionsOf(fd)
@@ -51,7 +51,7 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
           }
         })
 
-        LeonValueOption("functions", ListValue(freshToAnalyse.toList))
+        LeonOption(SharedOptions.FunctionsOptionDef)(freshToAnalyse.toList)
       }
       case opt => opt
     }

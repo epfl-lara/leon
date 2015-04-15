@@ -8,7 +8,7 @@ import purescala.Common.FreshIdentifier
 
 import utils._
 
-import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
+import scala.tools.nsc.{Settings,CompilerCommand}
 import java.io.File
 
 object ExtractionPhase extends LeonPhase[List[String], Program] {
@@ -16,12 +16,16 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
   val name = "Scalac Extraction"
   val description = "Extraction of trees from the Scala Compiler"
 
+  val StrictCompilation = LeonFlagOptionDef("strictCompilation", "Exit Leon after an error in compilation", true)
+
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(StrictCompilation)
+
   implicit val debug = DebugSectionTrees
 
   def run(ctx: LeonContext)(args: List[String]): Program = {
     val timer = ctx.timers.frontend.start()
 
-    val settings = new NSCSettings
+    val settings = new Settings
 
     val scalaLib = Option(scala.Predef.getClass.getProtectionDomain.getCodeSource).map{
       _.getLocation.getPath

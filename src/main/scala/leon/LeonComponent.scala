@@ -9,5 +9,5 @@ trait LeonComponent {
   val name : String
   val description : String
 
-  val definedOptions : Set[LeonOptionDef] = Set()
+  val definedOptions : Set[LeonOptionDef[Any]] = Set()
 }

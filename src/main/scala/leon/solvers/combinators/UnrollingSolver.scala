@@ -10,24 +10,15 @@ import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
 
-import solvers.templates._
+import z3.FairZ3Component.{FeelingLucky, UseCodeGen}
+import templates._
 import utils.Interruptible
 import evaluators._
 
 class UnrollingSolver(val context: LeonContext, program: Program, underlying: IncrementalSolver with Interruptible) extends Solver with Interruptible {
 
-  val (feelingLucky, useCodeGen) = locally {
-    var lucky            = false
-    var codegen          = false
-
-    for(opt <- context.options) opt match {
-      case LeonFlagOption("feelinglucky", v)       => lucky   = v
-      case LeonFlagOption("codegen", v)            => codegen = v
-      case _ =>
-    }
-
-    (lucky, codegen)
-  }
+  val feelingLucky  = context.findOptionOrDefault(FeelingLucky)
+  val useCodeGen    = context.findOptionOrDefault(UseCodeGen)
 
   private val evaluator : Evaluator = {
     if(useCodeGen) {

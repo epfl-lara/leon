@@ -11,11 +11,8 @@ import leon.test.LeonTestSuite
 
 private [purescala] object DefOpsHelper extends LeonTestSuite { 
   private def parseStrings(strs : List[String]) : Program = {
-    val c = createLeonContext()
-    val context : LeonContext = c.copy(settings = 
-      c.settings.copy(verify = false)
-    )
-      
+    val context = createLeonContext()
+
     val pipeline = 
       ExtractionPhase andThen 
       PreprocessingPhase 

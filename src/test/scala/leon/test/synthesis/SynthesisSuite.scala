@@ -83,11 +83,7 @@ class SynthesisSuite extends LeonTestSuite {
 
   def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(strats: PartialFunction[String, SynStrat]) {
       test(f"Synthesizing ${nextInt()}%3d: [$title]") {
-        val ctx = testContext.copy(settings = Settings(
-            synthesis = true,
-            xlang     = false,
-            verify    = false
-          ))
+        val ctx = testContext
 
         val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen PreprocessingPhase andThen SynthesisProblemExtractionPhase
 

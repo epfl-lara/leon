@@ -1,6 +1,5 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-
 package leon
 package synthesis
 
@@ -14,98 +13,51 @@ import graph._
 
 object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
-  val description = "Synthesis"
+  val description = "Partial synthesis of \"choose\" constructs"
 
-  override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonFlagOptionDef( "inplace",         "--inplace",         "Debug level"),
-    LeonFlagOptionDef( "allseeing",       "--allseeing",       "Also synthesize functions using holes"),
-    LeonValueOptionDef("parallel",        "--parallel[=N]",    "Parallel synthesis search using N workers", Some("5")),
-    LeonValueOptionDef( "manual",         "--manual[=cmd]",    "Manual search", Some("")),
-    LeonFlagOptionDef( "derivtrees",      "--derivtrees",      "Generate derivation trees"),
-    LeonFlagOptionDef( "firstonly",       "--firstonly",       "Stop as soon as one synthesis solution is found", true),
-    LeonValueOptionDef("timeout",         "--timeout=T",       "Timeout after T seconds when searching for synthesis solutions .."),
-    LeonValueOptionDef("costmodel",       "--costmodel=cm",    "Use a specific cost model for this search"),
-    LeonValueOptionDef("functions",       "--functions=f1:f2", "Limit synthesis of choose found within f1,f2,.."),
-    // CEGIS options
-    LeonFlagOptionDef( "cegis:shrink",     "--cegis:shrink",        "Shrink non-det programs when tests pruning works well", true),
-    LeonFlagOptionDef( "cegis:opttimeout", "--cegis:opttimeout",    "Consider a time-out of CE-search as untrusted solution", true),
-    LeonFlagOptionDef( "cegis:vanuatoo",   "--cegis:vanuatoo",      "Generate inputs using new korat-style generator", false),
-    LeonFlagOptionDef( "holes:discrete",   "--holes:discrete",      "Oracles get split", false)
-  )
+  val Manual      = LeonStringOptionDef("manual", "Manual search", default = "", "cmd")
+  val CostModel   = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
+  val DerivTrees  = LeonFlagOptionDef( "derivtrees", "Generate derivation trees", false)
+
+  // CEGIS options
+  val CEGISShrink     = LeonFlagOptionDef( "cegis:shrink",     "Shrink non-det programs when tests pruning works well",  true)
+  val CEGISOptTimeout = LeonFlagOptionDef( "cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true)
+  val CEGISVanuatoo   = LeonFlagOptionDef( "cegis:vanuatoo",   "Generate inputs using new korat-style generator",       false)
+
+  override val definedOptions : Set[LeonOptionDef[Any]] =
+    Set(Manual, CostModel, DerivTrees, CEGISShrink, CEGISOptTimeout, CEGISVanuatoo)
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
-    var options = SynthesisSettings()
+    val ms = ctx.findOption(Manual)
+    SynthesisSettings(
+      manualSearch = ms,
+      functions = ctx.findOption(SharedOptions.FunctionsOptionDef) map { _.toSet },
+      timeoutMs = ctx.findOption(SharedOptions.Timeout) map { _ * 1000 },
+      generateDerivationTrees = ctx.findOptionOrDefault(DerivTrees),
+      cegisUseOptTimeout = ctx.findOption(CEGISOptTimeout),
+      cegisUseShrink = ctx.findOption(CEGISShrink),
+      cegisUseVanuatoo = ctx.findOption(CEGISVanuatoo),
+      rules = Rules.all ++ (ms map { _ => rules.AsChoose}),
+      costModel = {
+        ctx.findOption(CostModel) match {
+          case None => CostModels.default
+          case Some(name) => CostModels.all.find(_.name.toLowerCase == name.toLowerCase) match {
+            case Some(model) => model
+            case None =>
+              var errorMsg = "Unknown cost model: " + name + "\n" +
+                "Defined cost models: \n"
 
-    for(opt <- ctx.options) opt match {
-      case LeonValueOption("manual", cmd) =>
-        options = options.copy(manualSearch = Some(cmd))
+              for (cm <- CostModels.all.toSeq.sortBy(_.name)) {
+                errorMsg += " - " + cm.name + (if (cm == CostModels.default) " (default)" else "") + "\n"
+              }
 
-      case LeonFlagOption("allseeing", v) =>
-        options = options.copy(allSeeing = v)
+              ctx.reporter.fatalError(errorMsg)
+          }
 
-      case LeonFlagOption("inplace", v) =>
-        options = options.copy(inPlace = v)
-
-      case LeonValueOption("functions", ListValue(fs)) =>
-        options = options.copy(filterFuns = Some(fs.toSet))
-
-      case LeonValueOption("costmodel", cm) =>
-        CostModels.all.find(_.name.toLowerCase == cm.toLowerCase) match {
-          case Some(model) =>
-            options = options.copy(costModel = model)
-          case None =>
-
-            var errorMsg = "Unknown cost model: " + cm + "\n" +
-                           "Defined cost models: \n"
-
-            for (cm <- CostModels.all.toSeq.sortBy(_.name)) {
-              errorMsg += " - " + cm.name + (if(cm == CostModels.default) " (default)" else "") + "\n"
-            }
-
-            ctx.reporter.fatalError(errorMsg)
         }
-
-      case v @ LeonValueOption("timeout", _) =>
-        v.asInt(ctx).foreach { t =>
-          options = options.copy(timeoutMs  = Some(t.toLong))
-        } 
-
-      case LeonFlagOption("firstonly", v) =>
-        options = options.copy(firstOnly = v)
-
-      case o @ LeonValueOption("parallel", nWorkers) =>
-        o.asInt(ctx).foreach { nWorkers =>
-          options = options.copy(searchWorkers = nWorkers)
-        }
-
-      case LeonFlagOption("derivtrees", v) =>
-        options = options.copy(generateDerivationTrees = v)
-
-      case LeonFlagOption("cegis:bssfilter", v) =>
-        options = options.copy(cegisUseShrink = Some(v))
-
-      case LeonFlagOption("cegis:opttimeout", v) =>
-        options = options.copy(cegisUseOptTimeout = Some(v))
-
-      case LeonFlagOption("cegis:vanuatoo", v) =>
-        options = options.copy(cegisUseVanuatoo = Some(v))
-
-//      case LeonFlagOption("holes:discrete", v) =>
-//        options = options.copy(distreteHoles = v)
-
-      case _ =>
-    }
-
-    if (options.manualSearch.isDefined) {
-      options = options.copy(
-        rules = rules.AsChoose +:
-                options.rules
-      )
-    }
-
-    options
+      }
+    )
   }
-
 
   def run(ctx: LeonContext)(p: Program): Program = {
     val options = processOptions(ctx)
@@ -116,7 +68,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       import OptionsHelpers._
       val ciTofd = { (ci: ChooseInfo) => ci.fd }
 
-      filterInclusive(options.filterFuns.map(fdMatcher), Some(excludeByDefault _)) compose ciTofd
+      filterInclusive(options.functions.map(fdMatcher), Some(excludeByDefault _)) compose ciTofd
     }
 
     val chooses = ChooseInfo.extractFromProgram(p).filter(fdFilter)

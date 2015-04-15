@@ -113,11 +113,11 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
           body
         } catch {
           case fe: LeonFatalError =>
-          testContext.reporter match {
-            case sr: TestSilentReporter =>
-              sr.lastErrors ++= fe.msg
-              throw new TestFailedException(sr.lastErrors.mkString("\n"), fe, 5)
-          }
+            testContext.reporter match {
+              case sr: TestSilentReporter =>
+                sr.lastErrors ++= fe.msg
+                throw new TestFailedException(sr.lastErrors.mkString("\n"), fe, 5)
+            }
         }
       }
 

@@ -1,9 +1,9 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
 package leon.test
-import leon.{DefaultReporter,Settings}
+import leon.DefaultReporter
 
-class TestSilentReporter extends DefaultReporter(Settings()) {
+class TestSilentReporter extends DefaultReporter(Set()) {
   var lastErrors: List[String] = Nil
 
   override def emit(msg: Message): Unit = msg match { 

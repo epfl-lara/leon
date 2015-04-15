@@ -12,24 +12,11 @@ object RepairPhase extends LeonPhase[Program, Program] {
 
   implicit val debugSection = utils.DebugSectionRepair
 
-  override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonValueOptionDef("functions", "--functions=f1:f2",   "Repair functions f1,f2,...")
-  )
-
   def run(ctx: LeonContext)(program: Program): Program = {
-    var repairFuns: Option[Seq[String]] = None
-    var verifTimeoutMs: Option[Long] = None
+    var repairFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.FunctionsOptionDef)
+    var verifTimeoutMs: Option[Long] = ctx.findOption(SharedOptions.Timeout) map { _ * 1000 }
 
     val reporter = ctx.reporter
-
-    for(opt <- ctx.options) opt match {
-      case v @ LeonValueOption("timeout", _) =>
-        verifTimeoutMs = v.asLong(ctx) map { _ * 1000L }
-      case LeonValueOption("functions", ListValue(fs)) =>
-        repairFuns = Some(fs)
-      case _ =>
-    }
-
 
     val fdFilter = {
       import OptionsHelpers._

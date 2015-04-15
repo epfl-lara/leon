@@ -4,6 +4,7 @@ package leon
 package solvers
 package smtlib
 
+import leon.OptionParsers._
 import purescala._
 import Common._
 import Expressions.{Assert => _, _}
@@ -22,9 +23,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
   def targetName = "cvc4"
 
   def userDefinedOps(ctx: LeonContext) = {
-    ctx.options.collect {
-      case LeonValueOption("solver:cvc4", value) => value
-    }
+    ctx.findOptionOrDefault(SMTLIBCVC4Component.CVC4Options)
   }
 
   def interpreterOps(ctx: LeonContext) = {
@@ -36,7 +35,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       "--dt-rewrite-error-sel",
       "--print-success",
       "--lang", "smt"
-    ) ++ userDefinedOps(ctx)
+    ) ++ userDefinedOps(ctx).toSeq
   }
 
   def getNewInterpreter(ctx: LeonContext) = {
@@ -188,7 +187,13 @@ object SMTLIBCVC4Component extends LeonComponent {
 
   val description = "Solver invoked when --solvers=smt-cvc4"
 
-  override val definedOptions : Set[LeonOptionDef] = Set(
-    LeonValueOptionDef("solver:cvc4", "--solver:cvc4=<cvc4-opt>", "Pass extra arguments to CVC4")
-  )
+  case object CVC4Options extends LeonOptionDef[Set[String]] {
+    val name = "solver:cvc4"
+    val description = "Pass extra arguments to CVC4"
+    val default = Set("")
+    val parser = setParser(stringParser)
+    val usageRhs = "<cvc4-opt>"
+  }
+
+  override val definedOptions : Set[LeonOptionDef[Any]] = Set(CVC4Options)
 }

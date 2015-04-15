@@ -20,7 +20,7 @@ class TerminationRegression extends LeonTestSuite {
   private def mkPipeline : Pipeline[List[String],TerminationReport] =
     leon.frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase andThen leon.termination.TerminationPhase
 
-  private def mkTest(file : File, leonOptions: Seq[LeonOption], forError: Boolean)(block: Output=>Unit) = {
+  private def mkTest(file : File, leonOptions: Seq[LeonOption[Any]], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath
     val start = fullName.indexOf("regression")
 
@@ -35,13 +35,7 @@ class TerminationRegression extends LeonTestSuite {
              s"Benchmark $displayName is not a readable file")
 
       val ctx = testContext.copy(
-        settings = Settings(
-          synthesis = false,
-          xlang     = false,
-          verify    = false,
-          termination = true
-        ),
-        options = leonOptions.toList,
+        options = leonOptions,
         files = List(file)
       )
 

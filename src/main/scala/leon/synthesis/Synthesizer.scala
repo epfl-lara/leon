@@ -30,9 +30,6 @@ class Synthesizer(val context : LeonContext,
   def getSearch: Search = {
     if (settings.manualSearch.isDefined) {
       new ManualSearch(context, ci, problem, settings.costModel, settings.manualSearch)
-    } else if (settings.searchWorkers > 1) {
-      ???
-      //new ParallelSearch(this, problem, options.searchWorkers)
     } else {
       new SimpleSearch(context, ci, problem, settings.costModel, settings.searchBound)
     }
@@ -79,7 +76,7 @@ class Synthesizer(val context : LeonContext,
     val solverf = SolverFactory.getFromName(context, npr)("fairz3").withTimeout(timeout)
 
     val vctx = VerificationContext(context, npr, solverf, context.reporter)
-    val vcs = generateVCs(vctx, Some(fds.map(_.id.name).toSeq))
+    val vcs = generateVCs(vctx, Some(fds.map(_.id.name)))
     val vcreport = checkVCs(vctx, vcs)
 
     if (vcreport.totalValid == vcreport.totalConditions) {
