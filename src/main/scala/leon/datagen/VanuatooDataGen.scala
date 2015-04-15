@@ -12,13 +12,14 @@ import purescala.Extractors._
 import purescala.Constructors._
 
 import codegen.CompilationUnit
+import codegen.CodeGenParams
 import codegen.runtime.LeonCodeGenRuntimeMonitor
 import vanuatoo.{Pattern => VPattern, _}
 
 import evaluators._
 
 class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
-  val unit = new CompilationUnit(ctx, p)
+  val unit = new CompilationUnit(ctx, p, CodeGenParams.default.copy(doInstrument = true))
 
   val ints = (for (i <- Set(0, 1, 2, 3)) yield {
     i -> Constructor[Expr, TypeTree](List(), Int32Type, s => IntLiteral(i), ""+i)

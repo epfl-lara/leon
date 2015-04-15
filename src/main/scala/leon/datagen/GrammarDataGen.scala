@@ -28,28 +28,36 @@ import synthesis.utils._
   * e.g. by passing trees representing variables for the "bounds". */
 class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] = ExpressionGrammars.ValueGrammar) extends DataGenerator {
 
-  def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
+  def generate(tpe: TypeTree): Iterator[Expr] = {
     val enum = new MemoizedEnumerator[TypeTree, Expr](grammar.getProductions)
-    val values = enum.iterator(tupleTypeWrap(ins.map{ _.getType }))
+    enum.iterator(tpe)
+  }
 
-    val detupled = values.map {
-      v => unwrapTuple(v, ins.size)
-    }
-    
-    def filterCond(vs: Seq[Expr]): Boolean = satisfying match {
-      case BooleanLiteral(true) =>
-        true 
-      case e => 
-        // in -> e should be enough. We shouldn't find any subexpressions of in.
-        evaluator.eval(e, (ins zip vs).toMap) match {
-          case EvaluationResults.Successful(BooleanLiteral(true)) => true
-          case _ => false
-        }
-    }
+  def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
+    if (ins.isEmpty) {
+      Iterator.empty
+    } else {
+      val values = generate(tupleTypeWrap(ins.map{ _.getType }))
 
-    detupled.take(maxEnumerated)
-            .filter(filterCond)
-            .take(maxValid)
+      val detupled = values.map {
+        v => unwrapTuple(v, ins.size)
+      }
+
+      def filterCond(vs: Seq[Expr]): Boolean = satisfying match {
+        case BooleanLiteral(true) =>
+          true 
+        case e => 
+          // in -> e should be enough. We shouldn't find any subexpressions of in.
+          evaluator.eval(e, (ins zip vs).toMap) match {
+            case EvaluationResults.Successful(BooleanLiteral(true)) => true
+            case _ => false
+          }
+      }
+
+      detupled.take(maxEnumerated)
+              .filter(filterCond)
+              .take(maxValid)
+    }
   }
 
 }

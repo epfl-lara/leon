@@ -278,21 +278,17 @@ object Constructors {
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
   }
 
-  def times(lhs: Expr, rhs: Expr): Expr = {
-    val r = (lhs, rhs) match {
-      case (InfiniteIntegerLiteral(bi), _) if bi == 1 => rhs
-      case (_, InfiniteIntegerLiteral(bi)) if bi == 1 => lhs
-      case (InfiniteIntegerLiteral(bi), _) if bi == 0 => InfiniteIntegerLiteral(0)
-      case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => InfiniteIntegerLiteral(0)
-      case (IntLiteral(1), _) => rhs
-      case (_, IntLiteral(1)) => lhs
-      case (IntLiteral(0), _) => IntLiteral(0)
-      case (_, IntLiteral(0)) => IntLiteral(0)
-      case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
-      case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVTimes(lhs, rhs)
-    }
-    println("!@#!@# "+lhs+" * "+rhs+" == "+r)
-    r
+  def times(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
+    case (InfiniteIntegerLiteral(bi), _) if bi == 1 => rhs
+    case (_, InfiniteIntegerLiteral(bi)) if bi == 1 => lhs
+    case (InfiniteIntegerLiteral(bi), _) if bi == 0 => InfiniteIntegerLiteral(0)
+    case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => InfiniteIntegerLiteral(0)
+    case (IntLiteral(1), _) => rhs
+    case (_, IntLiteral(1)) => lhs
+    case (IntLiteral(0), _) => IntLiteral(0)
+    case (_, IntLiteral(0)) => IntLiteral(0)
+    case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
+    case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVTimes(lhs, rhs)
   }
 
 }

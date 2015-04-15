@@ -59,7 +59,7 @@ class DataGen extends LeonTestSuite {
     val prog = parseString(p)
 
     val eval      = new DefaultEvaluator(testContext, prog)
-    val generator = new NaiveDataGen(testContext, prog, eval)
+    val generator = new GrammarDataGen(eval)
 
     generator.generate(BooleanType).toSet.size === 2
     generator.generate(TupleType(Seq(BooleanType,BooleanType))).toSet.size === 4
