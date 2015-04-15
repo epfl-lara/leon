@@ -13,12 +13,10 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Types._
 import purescala.ExprOps._
-import purescala.DefOps._
 import purescala.TypeOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.ScalaPrinter
-import purescala.Constructors.finiteSet
 
 import scala.language.implicitConversions
 
@@ -40,16 +38,15 @@ abstract class ExpressionGrammar[T <% Typed] {
   def computeProductions(t: T): Seq[Gen]
 
   def filter(f: Gen => Boolean) = {
-    val that = this
     new ExpressionGrammar[T] {
-      def computeProductions(t: T) = that.computeProductions(t).filter(f)
+      def computeProductions(t: T) = ExpressionGrammar.this.computeProductions(t).filter(f)
     }
   }
 
   final def ||(that: ExpressionGrammar[T]): ExpressionGrammar[T] = {
     ExpressionGrammars.Or(Seq(this, that))
   }
-
+ 
 
   final def printProductions(printer: String => Unit) {
     for ((t, gs) <- cache; g <- gs) {
@@ -221,11 +218,12 @@ object ExpressionGrammars {
     
     type L = Label[String]
 
-    private var counter = -1
-
-    def getNext(): Int = {
-      counter += 1
-      counter
+    val getNext: () => Int = {
+      var counter = -1
+      () => {
+        counter += 1
+        counter
+      }
     }
 
     lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
@@ -241,7 +239,7 @@ object ExpressionGrammars {
 
       def getLabel(t: TypeTree) = {
         val tpe = bestRealType(t)
-        val c = getNext
+        val c = getNext()
         Label(tpe, "G"+c)
       }
 
