@@ -45,8 +45,8 @@ class PureScalaVerificationRegression extends VerificationRegression {
   
   forEachFileIn("valid") { output =>
     val Output(report, reporter) = output
-    for (vc <- report.conditions) {
-      if (vc.value != Some(true)) {
+    for ((vc, vr) <- report.vrs) {
+      if (!vr.isValid) {
         fail("The following verification condition was invalid: " + vc.toString + " @" + vc.getPos)
       }
     }

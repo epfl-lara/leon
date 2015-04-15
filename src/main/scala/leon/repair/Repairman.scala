@@ -35,7 +35,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   private object VRes {
     trait VerificationResult
     case object Valid extends VerificationResult
-    case class NotValid(passing : List[Example], failing : List[Example]) extends VerificationResult
+    case class NotValid(passing : Seq[Example], failing : Seq[Example]) extends VerificationResult
   }
 
   def programSize(pgm: Program): Int = {
@@ -372,25 +372,26 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solver = new TimeoutSolverFactory(SolverFactory.getFromSettings(ctx, prog), timeoutMs)
     val vctx = VerificationContext(ctx, prog, solver, reporter)
-    val vcs = AnalysisPhase.generateVerificationConditions(vctx, Some(List(fd.id.name)))
+    val vcs = AnalysisPhase.generateVCs(vctx, Some(List(fd.id.name)))
 
-    AnalysisPhase.checkVerificationConditions(
+    val report = AnalysisPhase.checkVCs(
       vctx, 
       vcs, 
       checkInParallel = true,
-      stopAfter = _.counterExample.isDefined
+      stopAfter = Some({ (vc, vr) => vr.isInvalid })
     )
 
-    val theVCs = vcs.getOrElse(fd, Nil)
-    
-    if(theVCs.forall{ _.value == Some(true) } ) {
+    val vrs = report.vrs
+
+    if(vrs.forall{ _._2.isValid }) {
       Valid
     } else { 
       NotValid(Nil, 
-        theVCs.flatMap { _.counterExample map { 
-          m => InExample(fd.params.map{vd => m(vd.id)})
+        vrs.collect { 
+          case (_, VCResult(VCStatus.Invalid(ex), _, _)) =>
+            InExample(fd.params.map{vd => ex(vd.id)})
         }
-      })
+      )
     }
   }
   

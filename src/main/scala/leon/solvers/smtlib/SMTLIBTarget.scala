@@ -33,7 +33,7 @@ trait SMTLIBTarget {
   var out: java.io.FileWriter = _
 
   reporter.ifDebug { debug =>
-    val file = context.files.headOption.map(_.getName).getOrElse("NA")  
+    val file = context.files.headOption.map(_.getName).getOrElse("NA")
     val n    = VCNumbers.getNext(targetName+file)
 
     val dir = new java.io.File("vcs")
@@ -42,7 +42,7 @@ trait SMTLIBTarget {
       dir.mkdir
     }
 
-    out = new java.io.FileWriter(s"vcs/$targetName-$file-$n.smt2", true)
+    out = new java.io.FileWriter(s"vcs/$targetName-$file-$n.smt2", false)
   }
 
   def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
