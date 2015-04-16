@@ -26,7 +26,6 @@ class PureScalaVerificationRegression extends VerificationRegression {
     val isCVC4Available = try {
       new CVC4Interpreter()
       true
-      // @EK: CVC4 works on most testcases already, but not all and thus cannot be used in regression.
     } catch {
       case e: java.io.IOException =>
         false
