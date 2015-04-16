@@ -15,7 +15,7 @@ class NewSolversRegression extends VerificationRegression {
   val pipeBack = AnalysisPhase
   val optionVariants: List[List[String]] = {
     val isZ3Available = try {
-      new Z3Interpreter()
+      Z3Interpreter.buildDefault
       true
     } catch {
       case e: java.io.IOException =>
@@ -23,7 +23,7 @@ class NewSolversRegression extends VerificationRegression {
     }
 
     val isCVC4Available = try {
-      new CVC4Interpreter()
+      CVC4Interpreter.buildDefault
       true
     } catch {
       case e: java.io.IOException =>

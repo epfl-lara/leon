@@ -21,7 +21,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
   def targetName = "cvc4"
 
-  def getNewInterpreter() = new CVC4Interpreter
+  def getNewInterpreter() = CVC4Interpreter.buildDefault
 
   override def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)

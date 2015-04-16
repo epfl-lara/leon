@@ -23,7 +23,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
   def targetName = "z3"
 
-  def getNewInterpreter() = new Z3Interpreter
+  def getNewInterpreter() = Z3Interpreter.buildDefault
 
   val extSym = SSymbol("_")
 
