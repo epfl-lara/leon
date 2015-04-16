@@ -8,6 +8,8 @@ import leon.verification.AnalysisPhase
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
 // This is because we compile all tests from each folder separately.
+
+// This class is currently NOT in LeonAllTests
 class NewSolversRegression extends VerificationRegression {
   
   val testDir = "regression/verification/newsolvers/"
@@ -30,15 +32,15 @@ class NewSolversRegression extends VerificationRegression {
         false
     }
 
-    //(
-     // if (isZ3Available)
-        //List(List("--solvers=smt-z3-quantified", "--feelinglucky", "--timeout=3"))
-      //else Nil
-    //) ++ (
+    (
+      if (isZ3Available)
+        List(List("--solvers=smt-z3-quantified", "--feelinglucky", "--timeout=3"))
+      else Nil
+    ) ++ (
       if (isCVC4Available)
         List(List("--solvers=smt-2.5-cvc4", "--feelinglucky"))
       else Nil
-    //)
+    )
   }
   
   test()
