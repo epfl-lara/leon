@@ -19,7 +19,16 @@ object SolverFactory {
     }
   }
 
-  val definedSolvers = Set("fairz3", "unrollz3", "enum", "smt", "smt-z3", "smt-z3-quantified", "smt-cvc4", "smt-2.5-cvc4")
+  val definedSolvers = Map(
+    "fairz3"         -> "Native Z3 with z3-templates for unfolding (default)",
+    "smt-cvc4"       -> "CVC4 through SMT-LIB",
+    "smt-z3"         -> "Z3 through SMT-LIB",
+    "smt-z3-q"       -> "Z3 through SMT-LIB, with quantified encoding",
+    "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasonning, for proofs only",
+    "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
+    "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
+    "enum"           -> "Enumeration-based counter-example-finder"
+  )
 
   def getFromSettings[S](ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     import combinators._
@@ -36,17 +45,20 @@ object SolverFactory {
       case "enum"   =>
         SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
 
-      case "smt" | "smt-z3" =>
+      case "smt-z3" =>
         SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBZ3Target) with TimeoutSolver)
 
-      case "smt-z3-quantified" =>
+      case "smt-z3-q" =>
         SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBZ3QuantifiedTarget with TimeoutSolver)
 
       case "smt-cvc4" =>
         SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBCVC4Target) with TimeoutSolver)
 
-      case "smt-2.5-cvc4" =>
-        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBUnrollingCVC4Target with TimeoutSolver)
+      case "smt-cvc4-proof" =>
+        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBCVC4ProofTarget with TimeoutSolver)
+
+      case "smt-cvc4-cex" =>
+        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBCVC4CounterExampleTarget with TimeoutSolver)
 
       case _ =>
         ctx.reporter.fatalError("Unknown solver "+name)

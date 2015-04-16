@@ -45,6 +45,8 @@ sealed abstract class LeonOptionDef {
   val name: String
   val usageOption: String
   val usageDesc: String
+
+  def usageDescs = usageDesc.split("\n").toList
 }
 
 case class LeonFlagOptionDef(name: String,

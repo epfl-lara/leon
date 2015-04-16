@@ -28,7 +28,8 @@ object Main {
 
   // Add whatever you need here.
   lazy val allComponents : Set[LeonComponent] = allPhases.toSet ++ Set(
-    new solvers.z3.FairZ3Component{}
+    new solvers.z3.FairZ3Component{},
+    solvers.smtlib.SMTLIBCVC4Component
   )
 
   lazy val topLevelOptions : Set[LeonOptionDef] = Set(
@@ -37,7 +38,10 @@ object Main {
       LeonFlagOptionDef ("synthesis",   "--synthesis",          "Partial synthesis of choose() constructs"),
       LeonFlagOptionDef ("xlang",       "--xlang",              "Support for extra program constructs (imperative,...)"),
       LeonFlagOptionDef ("watch",       "--watch",              "Rerun pipeline when file changes"),
-      LeonValueOptionDef("solvers",     "--solvers=s1,s2",      "Use solvers s1 and s2 (fairz3,enum,smt-z3,smt-cvc4)"),
+      LeonValueOptionDef("solvers",     "--solvers=s1,s2",      "Use solvers s1 and s2 \nAvailable:"+
+                                                                SolverFactory.definedSolvers.toSeq.sortBy(_._1).map {
+                                                                  case (name, desc) =>  f"\n  $name%-14s : $desc"
+                                                                }.mkString("")),
       LeonValueOptionDef("debug",       "--debug=<sections..>", "Enables specific messages"),
       LeonFlagOptionDef ("noop",        "--noop",               "No operation performed, just output program"),
       LeonFlagOptionDef ("help",        "--help",               "Show help")
@@ -49,9 +53,13 @@ object Main {
     reporter.info("usage: leon [--xlang] [--termination] [--synthesis] [--help] [--debug=<N>] [..] <files>")
     reporter.info("")
     for (opt <- topLevelOptions.toSeq.sortBy(_.name)) {
-      reporter.info(f"${opt.usageOption}%-20s ${opt.usageDesc}")
+      val (uhead :: utail) = opt.usageDescs
+      reporter.info(f"${opt.usageOption}%-20s ${uhead}")
+      for(u <- utail) {
+        reporter.info(f"${""}%-20s ${u}")
+      }
+
     }
-    reporter.info("(By default, Leon verifies PureScala programs.)")
     reporter.info("")
     reporter.info("Additional options, by component:")
 
@@ -151,7 +159,7 @@ object Main {
       case LeonFlagOption("xlang", value) =>
         settings = settings.copy(xlang = value)
       case LeonValueOption("solvers", ListValue(ss)) =>
-        val available = SolverFactory.definedSolvers
+        val available = SolverFactory.definedSolvers.keySet
         val unknown = ss.toSet -- available
         if (unknown.nonEmpty) {
           initReporter.error("Unknown solver(s): "+unknown.mkString(", ")+" (Available: "+available.mkString(", ")+")")

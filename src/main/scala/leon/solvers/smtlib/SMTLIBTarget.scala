@@ -34,9 +34,12 @@ trait SMTLIBTarget {
   val reporter = context.reporter
 
   def targetName: String
-  def getNewInterpreter(): SMTInterpreter
 
-  val interpreter = getNewInterpreter()
+  def interpreterOps(ctx: LeonContext): Seq[String]
+
+  def getNewInterpreter(ctx: LeonContext): SMTInterpreter
+
+  val interpreter = getNewInterpreter(context)
 
   var out: java.io.FileWriter = _
 
@@ -694,7 +697,7 @@ trait SMTLIBTarget {
     case CheckSatStatus(SatStatus)     => Some(true)
     case CheckSatStatus(UnsatStatus)   => Some(false)
     case CheckSatStatus(UnknownStatus) => None
-    case _                             => None
+    case e                             => None
   }
 
   override def getModel: Map[Identifier, Expr] = {

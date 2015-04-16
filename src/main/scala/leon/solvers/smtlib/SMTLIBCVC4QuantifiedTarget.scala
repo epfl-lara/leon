@@ -12,12 +12,11 @@ import leon.purescala.ExprOps.matchToIfThenElse
 import smtlib.parser.Commands._
 import smtlib.parser.Terms._
 
-trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
+trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
   this: SMTLIBSolver =>
 
   private val typedFunDefExplorationLimit = 10000
 
-  override def targetName = "2.5-cvc4"
   override def declareFunction(tfd: TypedFunDef): SSymbol = {
     if (tfd.params.isEmpty) {
       super[SMTLIBCVC4Target].declareFunction(tfd)
