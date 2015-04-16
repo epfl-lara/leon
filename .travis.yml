@@ -16,9 +16,10 @@ notifications:
         - regwblanc@gmail.com
     irc: "chat.freenode.net#epfl-lara"
 
-before_script: 
+before_script:
     - sbt compile
     - sbt script
+    - source travis/fetchCVC4.sh
 
 script:
-    - sbt -jvm-opts travis/jvmopts test
+    - sbt test

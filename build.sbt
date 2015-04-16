@@ -35,7 +35,7 @@ Keys.fork in Test := true
 
 logBuffered in Test := false
 
-javaOptions in Test ++= Seq("-Xss32M", "-Xmx4G", "-XX:MaxPermSize=128M")
+javaOptions in Test ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
 
 parallelExecution in Test := false
 
