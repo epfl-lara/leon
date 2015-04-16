@@ -3,11 +3,12 @@
 package leon
 package solvers.smtlib
 
-import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Expressions.Expr
-import leon.purescala.Definitions.{ValDef, TypedFunDef}
+import purescala.Common.FreshIdentifier
+import purescala.Expressions.{FunctionInvocation, BooleanLiteral, Expr, Implies}
+import purescala.Definitions.TypedFunDef
+import purescala.Constructors.application
 import purescala.DefOps.typedTransitiveCallees
-import leon.purescala.ExprOps.{variablesOf, matchToIfThenElse}
+import leon.purescala.ExprOps.matchToIfThenElse
 import smtlib.parser.Commands._
 import smtlib.parser.Terms._
 
@@ -28,34 +29,38 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
         )
       }
 
-      val smtFunDecls = funs.toSeq.flatMap {
-        case tfd if tfd.params.isEmpty =>
-          // FIXME: Here we actually want to call super[SMTLIBCVC4Target].declareFunction(tfd),
-          // but we inline it to work around a freakish compiler bug
-          if (!functions.containsA(tfd)) {
-            val id = if (tfd.tps.isEmpty) {
-              tfd.id
-            } else {
-              FreshIdentifier(tfd.id.name)
-            }
-            sendCommand( DeclareFun(id2sym(id),Seq(),declareSort(tfd.returnType)) )
-          }
-          None
-        case tfd if !functions.containsA(tfd) && tfd.params.nonEmpty =>
+      val (withParams, withoutParams) = funs.toSeq partition( _.params.nonEmpty)
+
+      withoutParams foreach { tfd =>
+        // FIXME: Here we actually want to call super[SMTLIBCVC4Target].declareFunction(tfd),
+        // but we inline it to work around a freakish compiler bug
+        if (!functions.containsA(tfd)) {
           val id = if (tfd.tps.isEmpty) {
             tfd.id
           } else {
-            tfd.id.freshen
+            FreshIdentifier(tfd.id.name)
           }
-          val sym = id2sym(id)
-          functions +=(tfd, sym)
-          Some(FunDec(
-            sym,
-            tfd.params map { p => SortedVar(id2sym(p.id), declareSort(p.getType)) },
-            declareSort(tfd.returnType)
-          ))
-        case _ => None
+          sendCommand(DeclareFun(id2sym(id), Seq(), declareSort(tfd.returnType)))
+        }
       }
+
+      val seen = withParams filterNot functions.containsA
+
+      val smtFunDecls = seen map { tfd =>
+        val id = if (tfd.tps.isEmpty) {
+          tfd.id
+        } else {
+          tfd.id.freshen
+        }
+        val sym = id2sym(id)
+        functions +=(tfd, sym)
+        FunDec(
+          sym,
+          tfd.params map { p => SortedVar(id2sym(p.id), declareSort(p.getType)) },
+          declareSort(tfd.returnType)
+        )
+      }
+
       val smtBodies = smtFunDecls map { case FunDec(sym, _, _) =>
         val tfd = functions.toA(sym)
         toSMT(matchToIfThenElse(tfd.body.get))(tfd.params.map { p =>
@@ -63,26 +68,26 @@ trait SMTLIBUnrollingCVC4Target extends SMTLIBCVC4Target {
         }.toMap)
       }
 
-      if (smtFunDecls.nonEmpty) sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
+      if (smtFunDecls.nonEmpty) {
+        sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
+        // Assert contracts for defined functions
+        for {
+          tfd <- seen
+          post <- tfd.postcondition
+        } {
+          val term = Implies(
+            tfd.precondition getOrElse BooleanLiteral(true),
+            application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
+          )
+          sendCommand(Assert(quantifiedTerm(ForAll, term)))
+        }
+      }
       functions.toB(tfd)
     }
   }
 
   // For this solver, we prefer the variables of assert() commands to be exist. quantified instead of free
-  override def assertCnstr(expr: Expr): Unit = {
-    val existentials = variablesOf(expr).toSeq
-
-    val term = if (existentials.isEmpty) toSMT(expr)(Map()) else {
-      val es = existentials map { id =>
-        SortedVar(id2sym(id), declareSort(id.getType))
-      }
-      Exists(
-        es.head,
-        es.tail,
-        toSMT(expr)(existentials.map { id => id -> (id2sym(id): Term)}.toMap)
-      )
-    }
-    sendCommand(Assert(term))
-  }
+  override def assertCnstr(expr: Expr) =
+    sendCommand(Assert(quantifiedTerm(Exists, expr)))
 
 }

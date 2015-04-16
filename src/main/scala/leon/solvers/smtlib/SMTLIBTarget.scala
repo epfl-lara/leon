@@ -15,7 +15,13 @@ import utils.IncrementalBijection
 import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
 import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, Assert => SMTAssert, _}
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Let => SMTLet, _}
+import _root_.smtlib.parser.Terms.{
+  Identifier => SMTIdentifier,
+  Let => SMTLet,
+  ForAll => SMTForall,
+  Exists => SMTExists,
+  _
+}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import _root_.smtlib.theories._
 import _root_.smtlib.{Interpreter => SMTInterpreter}
@@ -107,6 +113,28 @@ trait SMTLIBTarget {
     case tt: TupleType => tupleTypeWrap(tt.bases.map(normalizeType))
     case _ =>   t
   }
+
+  protected def quantifiedTerm(
+    quantifier: (SortedVar, Seq[SortedVar], Term) => Term,
+    vars: Seq[Identifier],
+    body: Expr
+  ) : Term = {
+    if (vars.isEmpty) toSMT(body)(Map())
+    else {
+      val sortedVars = vars map { id =>
+        SortedVar(id2sym(id), declareSort(id.getType))
+      }
+      quantifier(
+        sortedVars.head,
+        sortedVars.tail,
+        toSMT(body)(vars.map{ id => id -> (id2sym(id): Term)}.toMap)
+      )
+    }
+  }
+
+  // Returns a quantified term where all free variables in the body have been quantified
+  protected def quantifiedTerm(quantifier: (SortedVar, Seq[SortedVar], Term) => Term, body: Expr): Term =
+    quantifiedTerm(quantifier, variablesOf(body).toSeq, body)
 
   // Corresponds to a smt map, not a leon/scala array
   // Should NEVER escape past SMT-world
