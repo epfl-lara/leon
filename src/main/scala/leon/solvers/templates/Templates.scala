@@ -17,6 +17,30 @@ case class App[T](caller: T, tpe: TypeTree, args: Seq[T]) {
   }
 }
 
+object Instantiation {
+  type Clauses[T] = Seq[T]
+  type CallBlockers[T] = Map[T, Set[TemplateCallInfo[T]]]
+  type AppBlockers[T] = Map[(T, App[T]), Set[TemplateAppInfo[T]]]
+  type Instantiation[T] = (Clauses[T], CallBlockers[T], AppBlockers[T])
+
+  def empty[T] = (Seq.empty[T], Map.empty[T, Set[TemplateCallInfo[T]]], Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]])
+
+  implicit class InstantiationWrapper[T](i: Instantiation[T]) {
+    def merge(that: Instantiation[T]): Instantiation[T] = {
+      val (thisClauses, thisBlockers, thisApps) = i
+      val (thatClauses, thatBlockers, thatApps) = that
+
+      (
+        thisClauses ++ thatClauses,
+        (thisBlockers.keys ++ thatBlockers.keys).map(k => k -> (thisBlockers.getOrElse(k, Set.empty) ++ thatBlockers.getOrElse(k, Set.empty))).toMap,
+        (thisApps.keys ++ thatApps.keys).map(k => k -> (thisApps.getOrElse(k, Set.empty) ++ thatApps.getOrElse(k, Set.empty))).toMap
+      )
+    }
+  }
+}
+
+import Instantiation.{empty => _, _}
+
 trait Template[T] { self =>
   val encoder : TemplateEncoder[T]
   val lambdaManager : LambdaManager[T]
@@ -32,7 +56,7 @@ trait Template[T] { self =>
 
   private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
 
-  def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
+  def instantiate(aVar: T, args: Seq[T]): Instantiation[T] = {
 
     val baseSubstMap : Map[T,T] = substCache.get(args) match {
       case Some(subst) => subst
@@ -57,22 +81,17 @@ trait Template[T] { self =>
       substituter(b) -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
     }
 
-    val (newLambdas, lambdaClauses) = lambdas.foldLeft((Map.empty[T,LambdaTemplate[T]], Seq.empty[T])) {
-      case ((newLambdas, clauses), (idT, lambda)) =>
+    val lambdaInstantiation = lambdas.foldLeft(Instantiation.empty[T]) {
+      case (acc, (idT, lambda)) =>
         val newIdT = substituter(idT)
         val newTemplate = lambda.substitute(substMap)
-        val eqClauses = lambdaManager.equalityClauses(newIdT, newTemplate)
-        (newLambdas + (newIdT -> newTemplate), clauses ++ eqClauses)
+        val instantiation = lambdaManager.instantiateLambda(newIdT, newTemplate)
+        acc merge instantiation
     }
 
-    val (appClauses, appBlockers, appApps) = lambdaManager.instantiate(newApplications, newLambdas)
+    val appInstantiation = lambdaManager.instantiateApps(newApplications)
 
-    val allClauses = newClauses ++ appClauses ++ lambdaClauses
-    val allBlockers = (newBlockers.keys ++ appBlockers.keys).map { k =>
-      k -> (newBlockers.getOrElse(k, Set.empty) ++ appBlockers.getOrElse(k, Set.empty))
-    }.toMap
-
-    (allClauses, allBlockers, appApps)
+    (newClauses, newBlockers, Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]]) merge lambdaInstantiation merge appInstantiation
   }
 
   override def toString : String = "Instantiated template"
@@ -368,7 +387,7 @@ class LambdaTemplate[T] private (
   val applications: Map[T, Set[App[T]]],
   val lambdas: Map[T, LambdaTemplate[T]],
   private[templates] val dependencies: Map[Identifier, T],
-  private val structuralKey: Lambda,
+  private[templates] val structuralKey: Lambda,
   stringRepr: () => String) extends Template[T] {
 
   val tpe = id.getType
