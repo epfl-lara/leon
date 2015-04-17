@@ -4,6 +4,7 @@ package leon
 
 import leon.annotation._
 import leon.collection.List
+import leon.lang._
 import leon.lang.synthesis.choose
 
 package object collection {

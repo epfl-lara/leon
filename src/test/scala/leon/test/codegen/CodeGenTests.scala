@@ -127,7 +127,8 @@ class CodeGenTests extends test.LeonTestSuite {
 
 
   val code = """
-    
+    import leon.lang._
+
     object simple {
       abstract class Abs
       case class Conc(x : Int) extends Abs

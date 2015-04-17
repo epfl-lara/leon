@@ -36,10 +36,11 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
       "make sure to set the ECLIPSE_HOME environment variable to your Eclipse installation home directory"
     ))
     
-    settings.classpath.value = scalaLib
-    settings.usejavacp.value = false
-    settings.Yrangepos.value = true
-    settings.skip.value      = List("patmat")
+    settings.classpath.value   = scalaLib
+    settings.usejavacp.value   = false
+    settings.deprecation.value = true
+    settings.Yrangepos.value   = true
+    settings.skip.value        = List("patmat")
 
     val compilerOpts = Build.libFiles ::: args.filterNot(_.startsWith("--"))
 

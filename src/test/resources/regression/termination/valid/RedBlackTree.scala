@@ -1,7 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-import scala.collection.immutable.Set
-//import scala.collection.immutable.Multiset
+import leon.lang._
 
 object RedBlackTree { 
   sealed abstract class Color

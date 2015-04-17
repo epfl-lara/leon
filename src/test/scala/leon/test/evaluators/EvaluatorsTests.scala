@@ -298,7 +298,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   test("Sets") {
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  sealed abstract class List
                |  case class Nil() extends List
                |  case class Cons(head : Int, tail : List) extends List
@@ -343,20 +344,21 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   test("Maps") {
-    val p = """|object Program {
-               |sealed abstract class PList
-               |case class PNil() extends PList
-               |case class PCons(headfst : Int, headsnd : Int, tail : PList) extends PList
+    val p = """|import leon.lang._
+               |object Program {
+               |  sealed abstract class PList
+               |  case class PNil() extends PList
+               |  case class PCons(headfst : Int, headsnd : Int, tail : PList) extends PList
                |
-               |def toMap(pl : PList) : Map[Int,Int] = pl match {
-               |  case PNil() => Map.empty[Int,Int]
-               |  case PCons(f,s,xs) => toMap(xs).updated(f, s)
-               |}
+               |  def toMap(pl : PList) : Map[Int,Int] = pl match {
+               |    case PNil() => Map.empty[Int,Int]
+               |    case PCons(f,s,xs) => toMap(xs).updated(f, s)
+               |  }
                |
-               |def finite0() : Map[Int,Int] = Map[Int, Int]()
-               |def finite1() : Map[Int,Int] = Map(1 -> 2)
-               |def finite2() : Map[Int,Int] = Map(2 -> 3, 1 -> 2)
-               |def finite3() : Map[Int,Int] = finite1().updated(2, 3)
+               |  def finite0() : Map[Int,Int] = Map[Int, Int]()
+               |  def finite1() : Map[Int,Int] = Map(1 -> 2)
+               |  def finite2() : Map[Int,Int] = Map(2 -> 3, 1 -> 2)
+               |  def finite3() : Map[Int,Int] = finite1().updated(2, 3)
                |}""".stripMargin
 
     implicit val prog = parseString(p)
@@ -377,7 +379,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   test("Arrays") {
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  def boolArrayRead(bools : Array[Boolean], index : Int) : Boolean = bools(index)
                |
                |  def intArrayRead(ints : Array[Int], index : Int) : Int = ints(index)
@@ -410,7 +413,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   test("Sets and maps of structures") {
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  case class MyPair(x : Int, y : Boolean)
                |
                |  def buildPairCC(x : Int, y : Boolean) : MyPair = MyPair(x,y)
@@ -432,7 +436,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   test("Executing Chooses") {
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  import leon.lang._
                |  import leon.lang.synthesis._
                |
@@ -451,7 +456,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   test("Infinite Recursion") {
     import leon.codegen._
 
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  import leon.lang._
                |
                |  def c(i : Int) : Int = c(i-1)
@@ -467,7 +473,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   test("Wrong Contracts") {
     import leon.codegen._
 
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  import leon.lang._
                |
                |  def c(i : Int) : Int = {
@@ -484,7 +491,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   test("Pattern Matching") {
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  abstract class List;
                |  case class Cons(h: Int, t: List) extends List;
                |  case object Nil extends List;
