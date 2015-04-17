@@ -5,17 +5,14 @@ package purescala
 
 import Constructors._
 import Extractors._
-
 import PrinterHelpers._
+import Common._
+import Expressions._
+import Types._
+import Definitions._
 
 /** This pretty-printer only print valid scala syntax */
 class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, sb) {
-  import Common._
-  import Expressions._
-  import Types._
-  import Definitions._
-
-  import java.lang.StringBuffer
 
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
    

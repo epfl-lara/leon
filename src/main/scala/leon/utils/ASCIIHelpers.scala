@@ -28,7 +28,7 @@ object ASCIIHelpers {
 
             val cols = constraints.getOrElse(k, 1)
 
-            val size = c.vString.size
+            val size = c.vString.length
 
             constraints += k -> (cols max size)
 
@@ -67,13 +67,13 @@ object ASCIIHelpers {
     def render: String = {
       val colSizes = computeColumnSizes
 
-      val fullWidth = Math.max(colSizes.sum + colSizes.size*2, title.size + 7)
+      val fullWidth = Math.max(colSizes.sum + colSizes.size*2, title.length + 7)
 
       val sb = new StringBuffer
 
-      sb append "  ┌─"+("─"*title.size)+"─┐\n"
-      sb append "╔═╡ "+      title     +" ╞" + ("═" * (fullWidth-title.size-5)) + "╗\n"
-      sb append "║ └─"+("─"*title.size)+"─┘" + (" " * (fullWidth-title.size-5)) + "║\n"
+      sb append "  ┌─"+("─"*title.length)+"─┐\n"
+      sb append "╔═╡ "+      title     +" ╞" + ("═" * (fullWidth-title.length-5)) + "╗\n"
+      sb append "║ └─"+("─"*title.length)+"─┘" + (" " * (fullWidth-title.length-5)) + "║\n"
 
       for (r <- rows) r match {
         case Separator =>

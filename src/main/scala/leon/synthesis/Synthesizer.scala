@@ -4,7 +4,7 @@ package leon
 package synthesis
 
 import purescala.Common._
-import purescala.Definitions.{Program, FunDef, ModuleDef, DefType, ValDef}
+import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.Expressions._
 import purescala.Constructors._

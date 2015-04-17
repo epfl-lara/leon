@@ -3,23 +3,13 @@
 package leon
 package datagen
 
-import purescala.Common._
 import purescala.Expressions._
-import purescala.Types._
-import purescala.Definitions._
-import utils.StreamUtils._
-
-import purescala.Definitions._
-import purescala.ExprOps._
 import purescala.Types.TypeTree
 import purescala.Common._
 import purescala.Constructors._
 import purescala.Extractors._
 import evaluators._
-import synthesis.utils._
 import bonsai.enumerators._
-
-import scala.collection.mutable.{Map=>MutableMap}
 
 import synthesis.utils._
 

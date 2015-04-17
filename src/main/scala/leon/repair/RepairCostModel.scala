@@ -2,8 +2,8 @@
 
 package leon
 package repair
-import synthesis._
 
+import synthesis._
 import synthesis.rules._
 import repair.rules._
 

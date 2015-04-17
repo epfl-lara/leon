@@ -8,16 +8,12 @@ import synthesis._
 
 import leon.utils.Simplifiers
 import purescala.Expressions._
-import purescala.Definitions._
-import purescala.Common._
-import purescala.Types._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 
 import Witnesses._
 
-import solvers._
 import graph._
 
 case object GuidedCloser extends NormalizingRule("Guided Closer") {

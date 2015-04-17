@@ -3,8 +3,8 @@
 package leon
 package solvers
 
-import purescala.Common._
-import purescala.Expressions._
+import purescala.Common.Identifier
+import purescala.Expressions.Expr
 
 class SimpleAssumptionSolverAPI(sf: SolverFactory[AssumptionSolver]) extends SimpleSolverAPI(sf) {
 

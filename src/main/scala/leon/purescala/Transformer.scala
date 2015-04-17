@@ -3,7 +3,7 @@
 package leon
 package purescala
 
-import purescala.Expressions._
+import purescala.Expressions.Expr
 
 trait Transformer {
   def transform(e: Expr): Expr

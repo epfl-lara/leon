@@ -4,10 +4,6 @@ package leon
 package frontends.scalac
 
 import scala.tools.nsc._
-import scala.tools.nsc.plugins._
-
-import purescala.Definitions.Program
-import purescala.Definitions.{ModuleDef => LeonModuleDef, _}
 import utils.{Position => LeonPosition, RangePosition => LeonRangePosition, OffsetPosition => LeonOffsetPosition}
 
 trait SaveImports extends SubComponent {
