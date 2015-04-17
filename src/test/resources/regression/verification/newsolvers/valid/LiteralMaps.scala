@@ -1,4 +1,5 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
+import leon.lang._
 
 object LiteralMaps {
   def test(): Map[Int, Int] = {

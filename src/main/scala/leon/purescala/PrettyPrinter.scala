@@ -372,7 +372,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case BVShiftLeft(l,r)          => optP { p"$l << $r" }
       case BVAShiftRight(l,r)        => optP { p"$l >> $r" }
       case BVLShiftRight(l,r)        => optP { p"$l >>> $r" }
-      case FiniteSet(rs)             => p"{${rs.toSeq}}"
+      case fs @ FiniteSet(rs)        => p"{${rs.toSeq}}"
+      case fm @ FiniteMap(rs)        => p"{$rs}"
       case FiniteMultiset(rs)        => p"{|$rs|)"
       case EmptyMultiset(_)          => p"\u2205"
       case Not(ElementOfSet(e,s))    => p"$e \u2209 $s"
@@ -435,8 +436,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case TypeParameterDef(tp)      => p"$tp"
       case TypeParameter(id)         => p"$id"
 
-      case FiniteMap(rs) =>
-        p"{$rs}"
 
       case IfExpr(c, t, ie : IfExpr) =>
         optP {

@@ -313,6 +313,11 @@ object TypeOps {
             val SetType(tp) = s.getType
             EmptySet(tpeSub(tp)).copiedFrom(s)
 
+          case m @ FiniteMap(elements) if elements.isEmpty =>
+            val MapType(a,b) = m.getType
+            EmptyMap(tpeSub(a), tpeSub(b)).copiedFrom(m)
+
+
           case v @ Variable(id) if idsMap contains id =>
             Variable(idsMap(id)).copiedFrom(v)
 

@@ -1413,8 +1413,20 @@ trait CodeExtraction extends ASTExtractors {
             case cct: CaseClassType =>
               CaseClass(cct, args.map(extractTree))
 
-            case SetType(underlying) =>
-              finiteSet(args.map(extractTree).toSet, underlying)
+            case SetType(a) =>
+              finiteSet(args.map(extractTree).toSet, a)
+
+            case MapType(a, b) =>
+              val singletons: Seq[(LeonExpr, LeonExpr)] = args.collect {
+                case ExTuple(tpes, trees) if trees.size == 2 =>
+                  (extractTree(trees(0)), extractTree(trees(1)))
+              }
+
+              if (singletons.size != args.size) {
+                outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
+              }
+
+              finiteMap(singletons, a, b)
 
             case _ =>
               outOfSubsetError(tr, "Construction of a non-case class.")
@@ -1470,26 +1482,6 @@ trait CodeExtraction extends ASTExtractors {
         case ExEmptyMultiset(tt) =>
           val underlying = extractType(tt)
           EmptyMultiset(underlying)
-
-        case ExEmptyMap(ft, tt) =>
-          val fromUnderlying = extractType(ft)
-          val toUnderlying   = extractType(tt)
-          EmptyMap(fromUnderlying, toUnderlying)
-
-        case ExLiteralMap(ft, tt, elems) =>
-          val fromUnderlying = extractType(ft)
-          val toUnderlying   = extractType(tt)
-
-          val singletons: Seq[(LeonExpr, LeonExpr)] = elems.collect {
-            case ExTuple(tpes, trees) if trees.size == 2 =>
-              (extractTree(trees(0)), extractTree(trees(1)))
-          }
-
-          if (singletons.size != elems.size) {
-            outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
-          }
-
-          finiteMap(singletons, fromUnderlying, toUnderlying)
 
         case ExArrayFill(baseType, length, defaultValue) =>
           val lengthRec = extractTree(length)
@@ -1797,13 +1789,16 @@ trait CodeExtraction extends ASTExtractors {
       case TypeRef(_, sym, btt :: Nil) if isScalaSetSym(sym) =>
         outOfSubsetError(pos, "Scala's Set API is no longer extracted. Make sure you import leon.lang.Set that defines supported Set operations.")
 
+      case TypeRef(_, sym, List(a,b)) if isScalaMapSym(sym) =>
+        outOfSubsetError(pos, "Scala's Map API is no longer extracted. Make sure you import leon.lang.Map that defines supported Map operations.")
+
       case TypeRef(_, sym, btt :: Nil) if isSetSym(sym) =>
         SetType(extractType(btt))
 
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) =>
         MultisetType(extractType(btt))
 
-      case TypeRef(_, sym, List(ftt,ttt)) if isMapTraitSym(sym) =>
+      case TypeRef(_, sym, List(ftt,ttt)) if isMapSym(sym) =>
         MapType(extractType(ftt), extractType(ttt))
 
       case TypeRef(_, sym, List(t1,t2)) if isTuple2(sym) =>

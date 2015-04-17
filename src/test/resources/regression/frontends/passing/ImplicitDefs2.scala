@@ -7,7 +7,6 @@ import leon.collection.{Option,None,Some}
 //import leon.proof._
 
 // FIXME: the following should go into the leon.proof package object.
-import leon.annotation._
 import scala.language.implicitConversions
 object proof {
   

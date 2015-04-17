@@ -30,7 +30,8 @@ class DataGen extends LeonTestSuite {
   }
 
   test("Lists") {
-    val p = """|object Program {
+    val p = """|import leon.lang._
+               |object Program {
                |  sealed abstract class List
                |  case class Cons(head : Int, tail : List) extends List
                |  case object Nil extends List

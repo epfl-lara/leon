@@ -25,9 +25,10 @@ trait ASTExtractors {
   protected lazy val tuple3Sym          = classFromName("scala.Tuple3")
   protected lazy val tuple4Sym          = classFromName("scala.Tuple4")
   protected lazy val tuple5Sym          = classFromName("scala.Tuple5")
-  protected lazy val mapSym             = classFromName("scala.collection.immutable.Map")
+  protected lazy val scalaMapSym        = classFromName("scala.collection.immutable.Map")
   protected lazy val scalaSetSym        = classFromName("scala.collection.immutable.Set")
   protected lazy val setSym             = classFromName("leon.lang.Set")
+  protected lazy val mapSym             = classFromName("leon.lang.Map")
   protected lazy val optionClassSym     = classFromName("scala.Option")
   protected lazy val arraySym           = classFromName("scala.Array")
   protected lazy val someClassSym       = classFromName("scala.Some")
@@ -65,8 +66,12 @@ trait ASTExtractors {
     getResolvedTypeSym(sym) == scalaSetSym
   }
 
-  def isMapTraitSym(sym: Symbol) : Boolean = {
+  def isMapSym(sym: Symbol) : Boolean = {
     getResolvedTypeSym(sym) == mapSym
+  }
+
+  def isScalaMapSym(sym: Symbol) : Boolean = {
+    getResolvedTypeSym(sym) == scalaMapSym
   }
 
   def isMultisetTraitSym(sym: Symbol) : Boolean = {
