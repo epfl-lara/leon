@@ -3,9 +3,9 @@
 package leon.codegen.runtime;
 
 public interface CaseClass { 
-  public abstract int __getRead();
+  int __getRead();
 
-  public abstract Object[] productElements();
+  Object[] productElements();
 
-  public abstract String productName();
+  String productName();
 }
