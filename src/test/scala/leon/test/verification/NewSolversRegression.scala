@@ -42,7 +42,4 @@ class NewSolversRegression extends VerificationRegression {
       else Nil
     )
   }
-  
-  test()
-
 }

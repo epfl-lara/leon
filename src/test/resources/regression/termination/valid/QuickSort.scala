@@ -1,6 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-import scala.collection.immutable.Set
+import leon.lang._
 
 object QuickSort {
   sealed abstract class List

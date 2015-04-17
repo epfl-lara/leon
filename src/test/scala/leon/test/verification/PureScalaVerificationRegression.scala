@@ -46,6 +46,4 @@ class PureScalaVerificationRegression extends VerificationRegression {
     )
   }
 
-  test()
-
 }

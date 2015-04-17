@@ -26,7 +26,8 @@ trait ASTExtractors {
   protected lazy val tuple4Sym          = classFromName("scala.Tuple4")
   protected lazy val tuple5Sym          = classFromName("scala.Tuple5")
   protected lazy val mapSym             = classFromName("scala.collection.immutable.Map")
-  protected lazy val setSym             = classFromName("scala.collection.immutable.Set")
+  protected lazy val scalaSetSym        = classFromName("scala.collection.immutable.Set")
+  protected lazy val setSym             = classFromName("leon.lang.Set")
   protected lazy val optionClassSym     = classFromName("scala.Option")
   protected lazy val arraySym           = classFromName("scala.Array")
   protected lazy val someClassSym       = classFromName("scala.Some")
@@ -56,15 +57,19 @@ trait ASTExtractors {
     }
   }
 
-  def isSetTraitSym(sym : Symbol) : Boolean = {
+  def isSetSym(sym: Symbol) : Boolean = {
     getResolvedTypeSym(sym) == setSym
   }
 
-  def isMapTraitSym(sym : Symbol) : Boolean = {
+  def isScalaSetSym(sym: Symbol) : Boolean = {
+    getResolvedTypeSym(sym) == scalaSetSym
+  }
+
+  def isMapTraitSym(sym: Symbol) : Boolean = {
     getResolvedTypeSym(sym) == mapSym
   }
 
-  def isMultisetTraitSym(sym : Symbol) : Boolean = {
+  def isMultisetTraitSym(sym: Symbol) : Boolean = {
     sym == multisetTraitSym
   }
 
@@ -323,8 +328,9 @@ trait ASTExtractors {
     }
 
     object ExCaseClassSyntheticJunk {
-      def unapply(cd: ClassDef): Boolean = cd match {
+      def unapply(cd: Tree): Boolean = cd match {
         case ClassDef(_, _, _, _) if cd.symbol.isSynthetic => true
+        case DefDef(_, _, _, _, _, _) if cd.symbol.isSynthetic && (cd.symbol.isCase || cd.symbol.isPrivate) => true
         case _ => false
       }
     }
@@ -815,23 +821,6 @@ trait ASTExtractors {
       }
     }
 
-    object ExEmptySet {
-      def unapply(tree: TypeApply): Option[Tree] = tree match {
-        case TypeApply(
-          Select(
-            Select(
-              Select(
-                Select(Ident(s), collectionName),
-                immutableName),
-              setName),
-            emptyName),  theTypeTree :: Nil) if (
-            collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && emptyName.toString == "empty"
-          ) => Some(theTypeTree)
-        case TypeApply(Select(Select(Select(This(scalaName), predefName), setname), applyName), theTypeTree :: Nil)  if ("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString) && "empty".equals(applyName.toString)) => Some(theTypeTree)
-        case _ => None
-      }
-    }
-
     object ExEmptyMultiset {
       def unapply(tree: TypeApply): Option[Tree] = tree match {
         case TypeApply(
@@ -864,14 +853,6 @@ trait ASTExtractors {
           Some((fromTypeTree, toTypeTree))
         case _ =>
           None
-      }
-    }
-
-    object ExFiniteSet {
-      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
-        case Apply(TypeApply(Select(Select(Select(Select(Ident(s), collectionName), immutableName), setName), applyName), theTypeTree :: Nil), args) if (collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Set" && applyName.toString == "apply") => Some((theTypeTree, args))
-        case Apply(TypeApply(Select(Select(Select(This(scalaName), predefName), setName), applyName), theTypeTree :: Nil), args) if ("scala".equals(scalaName.toString) && "Predef".equals(predefName.toString) && setName.toString == "Set" && "apply".equals(applyName.toString)) => Some((theTypeTree, args))
-        case _ => None
       }
     }
 

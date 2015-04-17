@@ -103,7 +103,6 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   }
 
   override def test(name: String, tags: Tag*)(body: => Unit) {
-
     super.test(name, tags: _*) {
       val id = testIdentifier(name)
 

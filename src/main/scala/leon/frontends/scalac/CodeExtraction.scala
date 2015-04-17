@@ -869,6 +869,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExFieldAccessorFunction() => 
         case d if isIgnored(d.symbol) || (d.symbol.isImplicit && d.symbol.isSynthetic) =>
         case tree =>
+          println(tree)
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
       }
 
@@ -1410,8 +1411,10 @@ trait CodeExtraction extends ASTExtractors {
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt) match {
             case cct: CaseClassType =>
-              val nargs = args.map(extractTree)
-              CaseClass(cct, nargs)
+              CaseClass(cct, args.map(extractTree))
+
+            case SetType(underlying) =>
+              finiteSet(args.map(extractTree).toSet, underlying)
 
             case _ =>
               outOfSubsetError(tr, "Construction of a non-case class.")
@@ -1459,13 +1462,6 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(_, rt), IsTyped(_, lt)) =>
               outOfSubsetError(tr, "Invalid comparison: (_: "+rt+") == (_: "+lt+")")
           }
-
-        case ExFiniteSet(tt, args)  =>
-          val underlying = extractType(tt)
-          finiteSet(args.map(extractTree).toSet, underlying)
-        case ExEmptySet(tt) =>
-          val underlying = extractType(tt)
-          EmptySet(underlying)
 
         case ExFiniteMultiset(tt, args) =>
           val underlying = extractType(tt)
@@ -1689,11 +1685,11 @@ trait CodeExtraction extends ASTExtractors {
               or(a1, a2)
 
             // Set methods
-            case (IsTyped(a1, SetType(b1)), "min", Nil) =>
-              SetMin(a1)
+            //case (IsTyped(a1, SetType(b1)), "min", Nil) =>
+            //  SetMin(a1)
 
-            case (IsTyped(a1, SetType(b1)), "max", Nil) =>
-              SetMax(a1)
+            //case (IsTyped(a1, SetType(b1)), "max", Nil) =>
+            //  SetMax(a1)
 
             case (IsTyped(a1, SetType(b1)), "++", List(IsTyped(a2, SetType(b2))))  if b1 == b2 =>
               SetUnion(a1, a2)
@@ -1709,6 +1705,9 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(a1, SetType(b1)), "contains", List(a2)) =>
               ElementOfSet(a2, a1)
+
+            case (IsTyped(a1, SetType(b1)), "isEmpty", List()) =>
+              Equals(a1, finiteSet(Set(), b1))
 
             // Multiset methods
             case (IsTyped(a1, MultisetType(b1)), "++", List(IsTyped(a2, MultisetType(b2))))  if b1 == b2 =>
@@ -1795,7 +1794,10 @@ trait CodeExtraction extends ASTExtractors {
       case TypeRef(_, sym, _) if isBigIntSym(sym) =>
         IntegerType
 
-      case TypeRef(_, sym, btt :: Nil) if isSetTraitSym(sym) =>
+      case TypeRef(_, sym, btt :: Nil) if isScalaSetSym(sym) =>
+        outOfSubsetError(pos, "Scala's Set API is no longer extracted. Make sure you import leon.lang.Set that defines supported Set operations.")
+
+      case TypeRef(_, sym, btt :: Nil) if isSetSym(sym) =>
         SetType(extractType(btt))
 
       case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) =>
