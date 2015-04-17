@@ -1,7 +1,6 @@
-d=`date +%Y-%m-%d --date="2 days ago"`
 dir=$(cd -P -- "$(dirname -- "$0")" && pwd -P)
 mkdir -p $dir/builds
-curl http://cvc4.cs.nyu.edu/builds/x86_64-linux-opt/unstable/cvc4-$d-x86_64-linux-opt -o $dir/builds/cvc4
+curl http://lara.epfl.ch/~ekneuss/cvc4-builds/cvc4-2015-04-17-x86_64-linux-opt -o $dir/builds/cvc4
 
 chmod u+x $dir/builds/cvc4
 
