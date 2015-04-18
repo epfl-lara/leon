@@ -267,9 +267,12 @@ sealed abstract class List[T] {
       BigInt(0)
   }
 
+  def splitAtIndex(index: BigInt) : (List[T], List[T]) = {
+    (take(index), drop(index))
+  } ensuring { res => res._1 ++ res._2 == this }
+
   def evenSplit: (List[T], List[T]) = {
-    val c = size/2
-    (take(c), drop(c))
+    splitAtIndex(size/2)
   }
 
   def insertAt(pos: BigInt, l: List[T]): List[T] = {
