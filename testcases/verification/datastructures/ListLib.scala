@@ -265,10 +265,20 @@ sealed abstract class List[T] {
       BigInt(0)
   }
 
-  @library
-  def splitAtIndex(index: BigInt) : (List[T], List[T]) = {
-    (take(index), drop(index))
-  } ensuring { res => res._1 ++ res._2 == this }
+  def splitAtIndex(index: BigInt) : (List[T], List[T]) = { this match {
+    case Nil() => (Nil(), Nil())
+    case Cons(h, rest) => {
+      if (index <= BigInt(0)) {
+        (Nil(), this)
+      } else {
+        val (left,right) = rest.splitAtIndex(index - 1)
+        (Cons(h,left), right)
+      }
+    }
+  }} ensuring { res =>
+    res._1 ++ res._2 == this && 
+    res._1 == take(index) && res._2 == drop(index)
+  }
 
   def evenSplit: (List[T], List[T]) = {
     splitAtIndex(size/2)
