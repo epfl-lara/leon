@@ -702,20 +702,24 @@ trait SMTLIBTarget {
 
   override def getModel: Map[Identifier, Expr] = {
     val syms = variables.bSet.toList
-    val cmd: Command = 
-      GetValue(syms.head, 
-               syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
-              )
+    if (syms.isEmpty) {
+      Map()
+    } else {
+      val cmd: Command = 
+        GetValue(syms.head, 
+                 syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
+                )
 
 
-    val GetValueResponseSuccess(valuationPairs) = sendCommand(cmd)
+      val GetValueResponseSuccess(valuationPairs) = sendCommand(cmd)
 
-    valuationPairs.collect {
-      case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
-        val id = variables.toA(sym)
+      valuationPairs.collect {
+        case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
+          val id = variables.toA(sym)
 
-        (id, fromSMT(value, id.getType)(Map(), Map()))
-    }.toMap
+          (id, fromSMT(value, id.getType)(Map(), Map()))
+      }.toMap
+    }
   }
 
   override def push(): Unit = {
