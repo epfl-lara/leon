@@ -2,6 +2,7 @@ package leon.lang
 import leon.annotation._
 
 object Map {
+  @library
   def empty[A,B] = Map[A,B]()
 }
 

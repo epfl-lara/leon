@@ -2,6 +2,7 @@ package leon.lang
 import leon.annotation._
 
 object Set {
+  @library
   def empty[T] = Set[T]()
 }
 
