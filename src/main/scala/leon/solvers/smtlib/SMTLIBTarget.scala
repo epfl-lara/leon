@@ -164,8 +164,9 @@ trait SMTLIBTarget {
       // We expect a RawArrayValue with keys in from and values in Option[to],
       // with default value == None
       require(from == r.keyTpe && r.default == OptionManager.mkLeonNone(to))
-      val elems = r.elems.mapValues {
-        case CaseClass(leonSome, Seq(x)) => x
+      val elems = r.elems.flatMap {
+        case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
+        case (k, _) => None
       }.toSeq
       finiteMap(elems, from, to)
 
