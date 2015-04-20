@@ -28,9 +28,14 @@ it would prove that the postcondition always hold, assuming a given precondition
 hold. A simple example:
 
 .. code-block:: scala
+
    def factorial(n: Int): Int = {
      require(n >= 0)
-     if(n == 0) 1 else n * factorial(n - 1)
+     if(n == 0) {
+       1
+     } else {
+       n * factorial(n - 1)
+     }
    } ensuring(res => res >= 0)
 
 Leon generates a ``postcondition`` verification condition for the above
@@ -56,10 +61,11 @@ Leon supports verification of a significant part of the Scala language, describe
 sections :ref:`Pure Scala <purescala>` and :ref:`XLang <xlang>`.
 
 
-Automated Repair of Programs
-----------------------------
 
 
 Program Synthesis
 -----------------
 
+
+Program Repair
+--------------
