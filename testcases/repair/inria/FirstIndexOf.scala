@@ -4,7 +4,7 @@ import leon.lang.synthesis._
 
 
 object FirstIndexOf {
-  def firstIndexOf(l: List[Int], v: Int): Int = {
+  def firstIndexOf(l: List[Int], v: Int): BigInt = {
     l match {
       case Cons(h, t) if v == h => 0
       case Cons(h, t) =>
@@ -17,7 +17,7 @@ object FirstIndexOf {
         -1
     }
   } ensuring {
-    (res: Int) => (if (l.content contains v) {
+    (res: BigInt) => (if (l.content contains v) {
       l.size > res && l.apply(res) == v
     } else {
       res == -1

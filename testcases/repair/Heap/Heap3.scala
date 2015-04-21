@@ -4,8 +4,8 @@
  * Date: 20.11.2013
  **/
 
+import leon.lang._
 import leon.collection._
-import leon._ 
 
 object HeapSort {
  

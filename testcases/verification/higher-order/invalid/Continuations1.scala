@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.collection._
 
 object Continuations1 {
   def add_cps[T](x: BigInt, y: BigInt)(f: BigInt => T): T = {

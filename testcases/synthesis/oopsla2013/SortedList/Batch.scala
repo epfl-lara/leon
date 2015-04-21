@@ -47,7 +47,7 @@ object SortedList {
 
     choose {
       (out : List) =>
-        && (content(out) == content(in1) ++ content(in2)) && isSorted(out)
+        (content(out) == content(in1) ++ content(in2)) && isSorted(out)
     }
   }
 
@@ -56,7 +56,7 @@ object SortedList {
 
     choose {
       (out : List) =>
-        && (content(out) == content(in1) -- content(in2)) && isSorted(out)
+        (content(out) == content(in1) -- content(in2)) && isSorted(out)
     }
   }
 

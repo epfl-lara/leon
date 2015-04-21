@@ -9,11 +9,11 @@ object Foo {
     //Cons[Int](i, l).slice(0, i)
     ???[List[Int]]
   } ensuring { (res: List[Int]) =>
-    passes((l, i), res)(Map[(List[Int], Int), List[Int]](
-      (Nil[Int](), 2) -> Cons(2, Nil[Int]()),
-      (Cons(1, Nil()), 2) -> Cons(2, Cons(1, Nil())),
-      (Cons(1, Cons(2, Cons(3, Nil()))), 3) -> Cons(3, Cons(1, Cons(2, Nil())))
-    ))
+    ((l, i), res) passes {
+      case (Nil(), 2) => Cons(2, Nil[Int]())
+      case (Cons(1, Nil()), 2) => Cons(2, Cons(1, Nil()))
+      case (Cons(1, Cons(2, Cons(3, Nil()))), 3) => Cons(3, Cons(1, Cons(2, Nil())))
+    }
   }
 
 }

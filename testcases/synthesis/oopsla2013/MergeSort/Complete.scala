@@ -1,5 +1,3 @@
-import scala.collection.immutable.Set
-
 import leon.lang._
 
 object MergeSort {

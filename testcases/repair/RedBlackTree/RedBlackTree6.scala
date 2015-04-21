@@ -1,5 +1,5 @@
-import leon._
-import lang._
+import leon.lang._
+import leon.collection._
 import annotation._
 
 object RedBlackTree { 

@@ -1,3 +1,5 @@
+import leon.lang._
+
 object BubbleFun {
 
     // --------------------- sort ----------------------

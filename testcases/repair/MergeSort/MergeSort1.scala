@@ -1,3 +1,5 @@
+import leon.lang._
+
 object MergeSort {
 
   abstract class List {

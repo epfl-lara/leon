@@ -107,7 +107,7 @@ object SparseVector {
       case Nil =>
         None
     }
-  } ensuring { res => ((indices(sv) contains at) == isDefined(res)) && (!isDefined(res) || (values(sv) contains valueOf(res)) }
+  } ensuring { res => ((indices(sv) contains at) == isDefined(res)) && (!isDefined(res) || (values(sv) contains valueOf(res))) }
 
   // def get(sv: SparseVector, at: Int): Option = choose {
   //   (res: Option) => invariant(sv) && ((indices(sv) contains at) == isDefined(res)) && (!isDefined(res) || (values(sv) contains valueOf(res)))

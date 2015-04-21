@@ -152,7 +152,17 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
 
   
   
-  def filesInResourceDir(dir : String, filter : String=>Boolean = all) : Iterable[File] = {
+  def scanFilesIn(f: File, filter: String=>Boolean = all, recursive: Boolean = false): Iterable[File] = {
+    f.listFiles().flatMap{f =>
+      if (f.isDirectory && recursive) {
+        scanFilesIn(f, filter, recursive)   
+      } else {
+        List(f) 
+      }
+    }.filter(f => filter(f.getPath))
+  }
+
+  def filesInResourceDir(dir : String, filter : String=>Boolean = all, recursive: Boolean = false) : Iterable[File] = {
 
     val d = this.getClass.getClassLoader.getResource(dir)
 
@@ -161,6 +171,6 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
       new File(resourceDirHard + dir)
     } else new File(d.toURI)
 
-    asFile.listFiles().filter(f => filter(f.getPath))
+    scanFilesIn(asFile, filter, recursive)
   }
 }

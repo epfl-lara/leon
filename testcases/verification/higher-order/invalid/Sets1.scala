@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.collection._
 
 object Sets1 {
   def set(i: Int): Int => Boolean = x => x == i

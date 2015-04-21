@@ -4,6 +4,7 @@ package leon.custom
 
 import leon._
 import leon.lang._
+import leon.collection._
 import leon.annotation._
 
 sealed abstract class List0[T] {

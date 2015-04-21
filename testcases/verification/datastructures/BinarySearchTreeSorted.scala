@@ -1,6 +1,6 @@
 import leon.lang._
 import leon.annotation._
-import leon._
+import leon.collection._
 
 object BinaryTree {
   sealed abstract class Tree

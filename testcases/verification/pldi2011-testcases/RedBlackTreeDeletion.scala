@@ -1,4 +1,4 @@
-import scala.collection.immutable.Set
+import leon.lang._
 import leon.annotation._
 
 object RedBlackTree { 
@@ -238,7 +238,7 @@ object RedBlackTree {
         val maxV = max(l)
         val newL = removeMax(l)
         bubble(c, newL, maxV, r)
-      case _ => throw new Exception("Removing an unexpected tree")
+      case _ => error[Tree]("Removing an unexpected tree")
     }
   } ensuring(res => hasRedBlackDesc(res))
 

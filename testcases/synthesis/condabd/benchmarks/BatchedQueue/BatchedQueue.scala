@@ -1,4 +1,5 @@
-import scala.collection.immutable.Set
+import leon.lang._
+import leon.collection._
 
 import leon.lang._
 

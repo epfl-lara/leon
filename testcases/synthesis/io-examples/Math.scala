@@ -10,25 +10,17 @@ object Math {
     } else {
       ???[Int]
     }
-  } ensuring {
-    passes(a, _)(Map(
-      0 -> 0,
-      1 -> 1,
-      2 -> 1,
-      3 -> 2,
-      4 -> 3,
-      5 -> 5,
-      18 -> 2584
-    ))
-  }
-
-  def abs(a: Int): Int = {
-    if (?(a >= 0, a <= 0, a == 0, a != 0)) {
-      a
-    } else {
-      -a
+  } ensuring { res =>
+    (a, res) passes {
+      case 0  => 0
+      case 1  => 1
+      case 2  => 1
+      case 3  => 2
+      case 4  => 3
+      case 5  => 5
+      case 18 => 2584
     }
-  } ensuring { _ >= 0 }
+  }
 
 
 

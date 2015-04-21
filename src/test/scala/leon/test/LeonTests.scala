@@ -30,9 +30,12 @@ class LeonFunTests extends Suites(
   new SynthesisSuite,
   new SynthesisRegressionSuite,
 
+
   new LibraryVerificationRegression,
   new PureScalaVerificationRegression,
-  new XLangVerificationRegression
+  new XLangVerificationRegression,
+
+  new TestCasesCompile
 )
 
 class LeonUnitTests extends Suites(

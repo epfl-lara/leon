@@ -1,4 +1,4 @@
-import scala.collection.immutable.Set
+import leon.lang._
 
 object ListTree { 
   /* Trees holding integers and internal lists */

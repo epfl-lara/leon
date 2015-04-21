@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.collection._
 
 object Lists1 {
   abstract class List[T]

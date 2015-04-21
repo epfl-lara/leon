@@ -1,4 +1,4 @@
-import scala.collection.immutable.Set
+import leon.lang._
 
 object PaperExamples {
   sealed abstract class List

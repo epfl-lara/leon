@@ -1,3 +1,6 @@
+import leon.lang._
+import leon.collection._
+
 object BSTSimpler {
   sealed abstract class Tree
   case class Node(left: Tree, value: Int, right: Tree) extends Tree

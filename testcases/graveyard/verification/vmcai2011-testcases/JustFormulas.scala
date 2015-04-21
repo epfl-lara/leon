@@ -1,4 +1,4 @@
-import scala.collection.immutable.Set
+import leon.lang._
 
 object JustFormulas {
   // These are just to provide some "uninterpreted function symbols"

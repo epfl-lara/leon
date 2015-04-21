@@ -1,3 +1,5 @@
+import leon.lang._
+
 object IntOperations {
     def sum(a: Int, b: Int) : Int = {
         require(b >= 0)

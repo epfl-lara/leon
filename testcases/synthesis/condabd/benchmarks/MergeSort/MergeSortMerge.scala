@@ -30,7 +30,7 @@ object MergeSort {
   def merge(aList : List, bList : List) : List = {
     require(isSorted(aList) && isSorted(bList))
     choose( (res: List) =>
-    	ensuring(res => contents(res) == contents(aList) ++ contents(bList) && isSorted(res))
+    	contents(res) == contents(aList) ++ contents(bList) && isSorted(res)
   	)
   }
 
