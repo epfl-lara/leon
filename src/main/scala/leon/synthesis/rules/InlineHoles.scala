@@ -5,6 +5,7 @@ package synthesis
 package rules
 
 import scala.annotation.tailrec
+import scala.concurrent.duration._
 
 import solvers._
 
@@ -108,8 +109,8 @@ case object InlineHoles extends Rule("Inline-Holes") {
 
       // Creates two alternative branches:
       // 1) a version with holes unreachable, on which this rule won't re-apply
-      val sfact  = new TimeoutSolverFactory(sctx.solverFactory, 500L)
-      val solver = SimpleSolverAPI(new TimeoutSolverFactory(sctx.solverFactory, 2000L))
+      val sfact  = sctx.solverFactory.withTimeout(500.millis)
+      val solver = SimpleSolverAPI(sctx.solverFactory.withTimeout(2.seconds))
 
       val(holesAvoidable, _) = solver.solveSAT(and(p.pc, pc))
 

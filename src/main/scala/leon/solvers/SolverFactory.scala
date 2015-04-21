@@ -30,10 +30,15 @@ object SolverFactory {
     "enum"           -> "Enumeration-based counter-example-finder"
   )
 
-  def getFromSettings[S](ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+  def getFromSettings(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+    getFromName(ctx, program)(ctx.settings.selectedSolvers.toSeq : _*)
+  }
+
+  def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
     import combinators._
     import z3._
     import smtlib._
+
 
     def getSolver(name: String): SolverFactory[TimeoutSolver] = name match {
       case "fairz3" =>
@@ -64,7 +69,9 @@ object SolverFactory {
         ctx.reporter.fatalError("Unknown solver "+name)
     }
 
-    val selectedSolvers = ctx.settings.selectedSolvers.map(getSolver)
+    val solvers = names.toSeq.toSet
+
+    val selectedSolvers = solvers.map(getSolver)
 
     if (selectedSolvers.isEmpty) {
       ctx.reporter.fatalError("No solver selected. Aborting")

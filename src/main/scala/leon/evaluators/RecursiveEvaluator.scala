@@ -11,8 +11,6 @@ import purescala.Types._
 import purescala.Constructors._
 import purescala.Extractors._
 
-import solvers.TimeoutSolver
-
 import xlang.Expressions._
 import solvers.SolverFactory
 import synthesis.ConvertHoles.convertHoles

@@ -62,7 +62,7 @@ object Common {
       case Some(ow) => ow.id :: ow.id.ownerChain
     }
 
-    def fullName: String = ownerChain.map(_.name).mkString(".")
+    def fullName: String = (ownerChain.map(_.name) :+ name).mkString(".")
 
   }
 

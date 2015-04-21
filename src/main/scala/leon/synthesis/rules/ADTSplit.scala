@@ -15,7 +15,7 @@ import solvers._
 
 case object ADTSplit extends Rule("ADT Split.") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(new TimeoutSolverFactory(hctx.sctx.solverFactory, 200L))
+    val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(200L))
 
     val candidates = p.as.collect {
       case IsTyped(id, act @ AbstractClassType(cd, tpes)) =>

@@ -12,6 +12,8 @@ import purescala.ScalaPrinter
 import solvers._
 import solvers.z3._
 
+import scala.concurrent.duration._
+
 import synthesis.graph._
 
 class Synthesizer(val context : LeonContext,
@@ -56,7 +58,7 @@ class Synthesizer(val context : LeonContext,
       case sol if sol.isTrusted =>
         (sol, true)
       case sol =>
-        validateSolution(s, sol, 5000L)
+        validateSolution(s, sol, 5.seconds)
     }
 
     (s, if (result.isEmpty) {
@@ -66,7 +68,7 @@ class Synthesizer(val context : LeonContext,
     })
   }
 
-  def validateSolution(search: Search, sol: Solution, timeoutMs: Long): (Solution, Boolean) = {
+  def validateSolution(search: Search, sol: Solution, timeout: Duration): (Solution, Boolean) = {
     import verification.AnalysisPhase._
     import verification.VerificationContext
 
@@ -74,7 +76,7 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val solverf = SolverFactory(() => (new FairZ3Solver(context, npr) with TimeoutSolver).setTimeout(timeoutMs))
+    val solverf = SolverFactory.getFromName(context, npr)("fairz3").withTimeout(timeout)
 
     val vctx = VerificationContext(context, npr, solverf, context.reporter)
     val vcs = generateVCs(vctx, Some(fds.map(_.id.name).toSeq))
