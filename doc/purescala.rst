@@ -252,6 +252,8 @@ Set
 
 .. code-block:: scala
 
+ import leon.lang.Set // Required to have support for Sets
+
  val s1 = Set(1,2,3,1)
  val s2 = Set[Int]()
 
@@ -278,6 +280,8 @@ Map
 ###
 
 .. code-block:: scala
+
+ import leon.lang.Map // Required to have support for Maps
 
  val  m = Map[Int, Boolean](42 -> false)
 

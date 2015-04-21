@@ -4,7 +4,7 @@ Getting Started
 ===============
 
 This section gives a very quick overview of how to build and start using Leon;
-refer to the following :ref:`section <installation>` if you wish (or need) more
+refer to the following :ref:`installation` if you wish (or need) more
 detailed information on how to setup Leon on your system.
 
 To build Leon, you will need, the following:
@@ -20,34 +20,35 @@ To build, type this::
 
 Then you can try e.g::
 
-    $ ./leon ./testcases/verification/sas2011-testcases/RedBlackTree.scala
+    $ ./leon --solvers=smt-cvc4 ./testcases/verification/sas2011-testcases/RedBlackTree.scala
 
 and get something like this::
 
-    ┌──────────────────────┐
-  ╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════╗
-  ║ └──────────────────────┘                                                                     ║
-  ║ add                            postcondition            83:22    valid        Z3-f     0.057 ║
-  ║ add                            precondition             82:5     valid        Z3-f     0.017 ║
-  ║ add                            precondition             82:15    valid        Z3-f     0.003 ║
-  ║ balance                        match exhaustiveness     91:5     valid        Z3-f     0.005 ║
-  ║ balance                        postcondition            102:22   valid        Z3-f     0.055 ║
-  ║ blackBalanced                  match exhaustiveness     46:43    valid        Z3-f     0.003 ║
-  ║ blackHeight                    match exhaustiveness     51:40    valid        Z3-f     0.004 ║
-  ║ buggyAdd                       postcondition            88:22    invalid      Z3-f     1.162 ║
-  ║ buggyAdd                       precondition             87:5     invalid      Z3-f     0.027 ║
-  ║ buggyBalance                   match exhaustiveness     105:5    invalid      Z3-f     0.007 ║
-  ║ buggyBalance                   postcondition            116:22   invalid      Z3-f     0.017 ║
-  ║ content                        match exhaustiveness     18:37    valid        Z3-f     0.034 ║
-  ║ ins                            match exhaustiveness     60:5     valid        Z3-f     0.003 ║
-  ║ ins                            postcondition            67:22    valid        Z3-f     1.753 ║
-  ║ ins                            precondition             63:37    valid        Z3-f     0.011 ║
-  ║ ins                            precondition             65:40    valid        Z3-f     0.012 ║
-  ║ makeBlack                      postcondition            78:21    valid        Z3-f     0.012 ║
-  ║ redDescHaveBlackChildren       match exhaustiveness     41:53    valid        Z3-f     0.003 ║
-  ║ redNodesHaveBlackChildren      match exhaustiveness     35:54    valid        Z3-f     0.004 ║
-  ║ size                           match exhaustiveness     23:33    valid        Z3-f     0.004 ║
-  ║ size                           postcondition            26:15    valid        Z3-f     0.043 ║
-  ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
-  ║ total: 21     valid: 17     invalid: 4      unknown 0                                  3.236 ║
-  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
+   ┌──────────────────────┐
+ ╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════╗
+ ║ └──────────────────────┘                                                                   ║
+ ║ add                          postcondition          82:15   valid    U:smt-cvc4      0.258 ║
+ ║ add                          precondition           81:15   valid    U:smt-cvc4      0.007 ║
+ ║ add                          precondition           81:5    valid    U:smt-cvc4      0.049 ║
+ ║ balance                      match exhaustiveness   90:5    valid    U:smt-cvc4      0.006 ║
+ ║ balance                      postcondition          101:15  valid    U:smt-cvc4      0.301 ║
+ ║ blackBalanced                match exhaustiveness   45:43   valid    U:smt-cvc4      0.006 ║
+ ║ blackHeight                  match exhaustiveness   50:40   valid    U:smt-cvc4      0.009 ║
+ ║ buggyAdd                     postcondition          87:15   invalid  U:smt-cvc4      1.561 ║
+ ║ buggyAdd                     precondition           86:5    invalid  U:smt-cvc4      0.135 ║
+ ║ buggyBalance                 match exhaustiveness   104:5   invalid  U:smt-cvc4      0.008 ║
+ ║ buggyBalance                 postcondition          115:15  invalid  U:smt-cvc4      0.211 ║
+ ║ content                      match exhaustiveness   17:37   valid    U:smt-cvc4      0.030 ║
+ ║ ins                          match exhaustiveness   59:5    valid    U:smt-cvc4      0.007 ║
+ ║ ins                          postcondition          66:15   valid    U:smt-cvc4      3.996 ║
+ ║ ins                          precondition           62:37   valid    U:smt-cvc4      0.034 ║
+ ║ ins                          precondition           64:40   valid    U:smt-cvc4      0.036 ║
+ ║ makeBlack                    postcondition          77:14   valid    U:smt-cvc4      0.036 ║
+ ║ redDescHaveBlackChildren     match exhaustiveness   40:53   valid    U:smt-cvc4      0.005 ║
+ ║ redNodesHaveBlackChildren    match exhaustiveness   34:54   valid    U:smt-cvc4      0.007 ║
+ ║ size                         match exhaustiveness   22:33   valid    U:smt-cvc4      0.005 ║
+ ║ size                         postcondition          25:15   valid    U:smt-cvc4      0.055 ║
+ ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+ ║ total: 21     valid: 17     invalid: 4      unknown 0                                6.762 ║
+ ╚════════════════════════════════════════════════════════════════════════════════════════════╝
+
