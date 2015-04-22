@@ -52,6 +52,7 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case SetDifference(l,r)   => p"$l -- $r"
       case SetIntersection(l,r) => p"$l & $r"
       case SetCardinality(s)    => p"$s.size"
+      case InfiniteIntegerLiteral(v)        => p"BigInt($v)"
 
       case a@FiniteArray(elems, oDef, size) => {
         import ExprOps._
