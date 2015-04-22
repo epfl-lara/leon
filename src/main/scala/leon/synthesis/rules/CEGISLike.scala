@@ -143,8 +143,10 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        */
       def allPrograms(): Traversable[Set[Identifier]] = {
 
-        if (allProgramsCount() > nProgramsLimit) {
-           return Seq()
+        val allCount = allProgramsCount()
+        if (allCount > nProgramsLimit) {
+          ctx.reporter.debug(s"Exceeded program limit: $allCount > $nProgramsLimit")
+          return Seq()
         }
 
         var cache = Map[Identifier, Seq[Set[Identifier]]]()
