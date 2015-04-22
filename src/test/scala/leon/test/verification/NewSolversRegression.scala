@@ -34,11 +34,11 @@ class NewSolversRegression extends VerificationRegression {
 
     (
       if (isZ3Available)
-        List(List("--solvers=smt-z3-quantified", "--feelinglucky", "--timeout=3"))
+        List(List("--solvers=smt-z3-q", "--feelinglucky", "--timeout=3"))
       else Nil
     ) ++ (
       if (isCVC4Available)
-        List(List("--solvers=smt-2.5-cvc4", "--feelinglucky"))
+        List(List("--solvers=smt-cvc4-proof", "--feelinglucky",  "--timeout=5"))
       else Nil
     )
   }
