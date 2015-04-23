@@ -88,7 +88,7 @@ In any case, we recommend that you install both solvers separately and have
 their binaries available in the ``$PATH``.
 
 Since the default solver uses the native Z3 API, you will have to explicitly
-specify another solver if this native layer is not available for you. Check the
+specify another solver if this native layer is not available to you. Check the
 the ``--solvers`` command line option:
 
 :: 
