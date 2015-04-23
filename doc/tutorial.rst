@@ -8,16 +8,15 @@ Sorting Lists
 
 This tutorial shows how to define lists as algebraic data
 types, how to **verify** certain properties of an insertion
-sort, as well as how to use Leon to **synthesize**
-operations from specifications.
+sort. We finish showing how to use Leon to **synthesize**
+provably correct operations from specifications.
 
-Defining lists
-^^^^^^^^^^^^^^
+A Preview of Synthesis
+^^^^^^^^^^^^^^^^^^^^^^
 
-Leon has a built-in data type of polymorphic lists (see 
-
-Let us start by specifying a function that sorts **two**
-mathematical integers.
+As a preview, let us start by **specifying** a function that
+sorts **two** mathematical integers. Here is what we need
+to write.
 
 .. code-block:: scala
 
@@ -28,4 +27,57 @@ mathematical integers.
       Set(x,y) == Set(res._1, res._2) && res._1 <= res._2
     }
   }
+
+A Leon program consists of one or more modules delimited by
+`object` and `class` declarations. We use `import` to
+include core constructs that are specific to Leon. Note
+that, with the definitions in `leon._` packages, Leon
+programs should also compile with the standard Scala
+compiler. In that sense, Leon is a proper subset of Scala.
+
+Our initial function that "sorts" two mathematical integers
+is named `sort2`.  Namely, it accepts two arguments, `x` and
+`y`, and returns a tuple, which we will here denote `res`.
+
+Note that we use `BigInt` to denote unbounded mathematical
+integers. As in Scala and Java, `Int` denotes 32-bit
+integers, whereas `BigInt` denotes unbounded integers.
+
+We write `res._1` for the first component of the return
+tuple and `res._2` for the second component of the returned
+tuple.
+
+The specification says that the set of arguments is equal to
+the set consisting of the returned tuple elements. The
+notation `Set(x1,x2,...,xN)` denotes a set containing
+elements `x1`, `x2`,..., `xN` .
+
+Finally, the `choose` construct takes a variable name (here,
+`res`) denoting the value of interest and then gives, after
+`=>` a property that this value should satisfy. This
+construct allows us to say that we are interested in
+computing a result `res` tuple storing the same set as
+`{x,y}` but with `x <= y`.
+
+After typing this code at e.g. http://leon.epfl.ch, we can
+select to synthesize a function corresponding to `choose`.
+The system then synthesizes a computation that satisfies
+the specification, such as, for, example:
+
+.. code-block:: scala
+
+    def sort2(x : BigInt, y : BigInt) = choose{(res: (BigInt,BigInt)) =>
+      if (x < y) x
+      else y
+    }
+
+
+Defining lists
+^^^^^^^^^^^^^^
+
+Let us now move to defining sorting of any number of elements.
+For this purpose, we will define our own lists of `BigInt`.
+Note that Leon has a built-in data type of polymorphic lists
+(see :ref:`Leon Library <library>`), but here we define our own,
+to make the example self-contained (and more tractable for synthesis).
 
