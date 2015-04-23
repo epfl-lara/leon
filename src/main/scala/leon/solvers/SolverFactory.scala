@@ -36,7 +36,7 @@ object SolverFactory {
     }.mkString("")
 
   def getFromSettings(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    getFromName(ctx, program)(ctx.findOptionOrDefault(SharedOptions.SelectedSolvers).toSeq : _*)
+    getFromName(ctx, program)(ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers).toSeq : _*)
   }
 
   def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {

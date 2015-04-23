@@ -11,7 +11,7 @@ object FileOutputPhase extends UnitPhase[Program] {
   val name = "File output"
   val description = "Output parsed/generated program to the specified directory (default: leon.out)"
 
-  val OutputDirectory = new LeonOptionDef[String] {
+  val optOutputDirectory = new LeonOptionDef[String] {
     val name = "o"
     val description = "Output directory"
     val default = "leon.out"
@@ -19,11 +19,11 @@ object FileOutputPhase extends UnitPhase[Program] {
     val parser = (x: String) => x
   }
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(OutputDirectory)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optOutputDirectory)
 
   def apply(ctx:LeonContext, p : Program) {
     // Get the output file name from command line, or use default
-    val outputFolder = ctx.findOptionOrDefault(OutputDirectory)
+    val outputFolder = ctx.findOptionOrDefault(optOutputDirectory)
     try {
       new File(outputFolder).mkdir()
     } catch {

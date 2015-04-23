@@ -23,7 +23,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
   def targetName = "cvc4"
 
   def userDefinedOps(ctx: LeonContext) = {
-    ctx.findOptionOrDefault(SMTLIBCVC4Component.CVC4Options)
+    ctx.findOptionOrDefault(SMTLIBCVC4Component.optCVC4Options)
   }
 
   def interpreterOps(ctx: LeonContext) = {
@@ -187,7 +187,7 @@ object SMTLIBCVC4Component extends LeonComponent {
 
   val description = "Solver invoked when --solvers=smt-cvc4"
 
-  case object CVC4Options extends LeonOptionDef[Set[String]] {
+  val optCVC4Options = new LeonOptionDef[Set[String]] {
     val name = "solver:cvc4"
     val description = "Pass extra arguments to CVC4"
     val default = Set("")
@@ -195,5 +195,5 @@ object SMTLIBCVC4Component extends LeonComponent {
     val usageRhs = "<cvc4-opt>"
   }
 
-  override val definedOptions : Set[LeonOptionDef[Any]] = Set(CVC4Options)
+  override val definedOptions : Set[LeonOptionDef[Any]] = Set(optCVC4Options)
 }

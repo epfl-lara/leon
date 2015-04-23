@@ -34,17 +34,17 @@ object Main {
     val name = "main"
     val description = "The main Leon component, handling the top-level options"
 
-    val Termination = LeonFlagOptionDef("termination", "Check program termination",                             false)
-    val Repair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
-    val Synthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
-    val XLang       = LeonFlagOptionDef("xlang",       "Support for extra program constructs (imperative,...)", false)
-    val Watch       = LeonFlagOptionDef("watch",       "Rerun pipeline when file changes",                      false)
-    val Noop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
-    val Verify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             true )
-    val Help        = LeonFlagOptionDef("help",        "Show help message",                                     false)
+    val optTermination = LeonFlagOptionDef("termination", "Check program termination",                             false)
+    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
+    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
+    val optXLang       = LeonFlagOptionDef("xlang",       "Support for extra program constructs (imperative,...)", false)
+    val optWatch       = LeonFlagOptionDef("watch",       "Rerun pipeline when file changes",                      false)
+    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
+    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             true )
+    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(Termination, Repair, Synthesis, XLang, Watch, Noop, Help, Verify)
+      Set(optTermination, optRepair, optSynthesis, optXLang, optWatch, optNoop, optHelp, optVerify)
 
   }
 
@@ -94,7 +94,7 @@ object Main {
 
     val reporter = new DefaultReporter(
       leonOptions.collectFirst {
-        case LeonOption(SharedOptions.Debug, sections) => sections.asInstanceOf[Set[DebugSection]]
+        case LeonOption(SharedOptions.optDebug, sections) => sections.asInstanceOf[Set[DebugSection]]
       }.getOrElse(Set[DebugSection]())
     )
 
@@ -124,13 +124,13 @@ object Main {
     import repair.RepairPhase
     import MainComponent._
 
-    val helpF        = ctx.findOptionOrDefault(Help)
-    val noopF        = ctx.findOptionOrDefault(Noop)
-    val synthesisF   = ctx.findOptionOrDefault(Synthesis)
-    val xlangF       = ctx.findOptionOrDefault(XLang)
-    val repairF      = ctx.findOptionOrDefault(Repair)
-    val terminationF = ctx.findOptionOrDefault(Termination)
-    val verifyF      = ctx.findOptionOrDefault(Verify)
+    val helpF        = ctx.findOptionOrDefault(optHelp)
+    val noopF        = ctx.findOptionOrDefault(optNoop)
+    val synthesisF   = ctx.findOptionOrDefault(optSynthesis)
+    val xlangF       = ctx.findOptionOrDefault(optXLang)
+    val repairF      = ctx.findOptionOrDefault(optRepair)
+    val terminationF = ctx.findOptionOrDefault(optTermination)
+    val verifyF      = ctx.findOptionOrDefault(optVerify)
 
     if (helpF) {
       displayHelp(ctx.reporter, error = false)
@@ -186,7 +186,7 @@ object Main {
 
     ctx.interruptManager.registerSignalHandler()
 
-    val doWatch = ctx.findOptionOrDefault(MainComponent.Watch)
+    val doWatch = ctx.findOptionOrDefault(MainComponent.optWatch)
 
     if (doWatch) {
       val watcher = new FilesWatcher(ctx, ctx.files)

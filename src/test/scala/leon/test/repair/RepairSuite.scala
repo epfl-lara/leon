@@ -30,7 +30,7 @@ class RepairSuite extends LeonTestSuite {
     val ctx = LeonContext(
       reporter = reporter,
       interruptManager = new InterruptManager(reporter),
-      options = Seq(LeonOption(SharedOptions.FunctionsOptionDef)(Seq(fileToFun(name))))
+      options = Seq(LeonOption(SharedOptions.optFunctions)(Seq(fileToFun(name))))
     )
 
     test(name) {

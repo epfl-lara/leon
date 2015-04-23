@@ -15,31 +15,31 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
   val description = "Partial synthesis of \"choose\" constructs"
 
-  val Manual      = LeonStringOptionDef("manual", "Manual search", default = "", "cmd")
-  val CostModel   = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
-  val DerivTrees  = LeonFlagOptionDef( "derivtrees", "Generate derivation trees", false)
+  val optManual      = LeonStringOptionDef("manual", "Manual search", default = "", "cmd")
+  val optCostModel   = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")
+  val optDerivTrees  = LeonFlagOptionDef( "derivtrees", "Generate derivation trees", false)
 
   // CEGIS options
-  val CEGISShrink     = LeonFlagOptionDef( "cegis:shrink",     "Shrink non-det programs when tests pruning works well",  true)
-  val CEGISOptTimeout = LeonFlagOptionDef( "cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true)
-  val CEGISVanuatoo   = LeonFlagOptionDef( "cegis:vanuatoo",   "Generate inputs using new korat-style generator",       false)
+  val optCEGISShrink     = LeonFlagOptionDef( "cegis:shrink",     "Shrink non-det programs when tests pruning works well",  true)
+  val optCEGISOptTimeout = LeonFlagOptionDef( "cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true)
+  val optCEGISVanuatoo   = LeonFlagOptionDef( "cegis:vanuatoo",   "Generate inputs using new korat-style generator",       false)
 
   override val definedOptions : Set[LeonOptionDef[Any]] =
-    Set(Manual, CostModel, DerivTrees, CEGISShrink, CEGISOptTimeout, CEGISVanuatoo)
+    Set(optManual, optCostModel, optDerivTrees, optCEGISShrink, optCEGISOptTimeout, optCEGISVanuatoo)
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
-    val ms = ctx.findOption(Manual)
+    val ms = ctx.findOption(optManual)
     SynthesisSettings(
       manualSearch = ms,
-      functions = ctx.findOption(SharedOptions.FunctionsOptionDef) map { _.toSet },
-      timeoutMs = ctx.findOption(SharedOptions.Timeout) map { _ * 1000 },
-      generateDerivationTrees = ctx.findOptionOrDefault(DerivTrees),
-      cegisUseOptTimeout = ctx.findOption(CEGISOptTimeout),
-      cegisUseShrink = ctx.findOption(CEGISShrink),
-      cegisUseVanuatoo = ctx.findOption(CEGISVanuatoo),
+      functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
+      timeoutMs = ctx.findOption(SharedOptions.optTimeout) map { _ * 1000 },
+      generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
+      cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),
+      cegisUseShrink = ctx.findOption(optCEGISShrink),
+      cegisUseVanuatoo = ctx.findOption(optCEGISVanuatoo),
       rules = Rules.all ++ (ms map { _ => rules.AsChoose}),
       costModel = {
-        ctx.findOption(CostModel) match {
+        ctx.findOption(optCostModel) match {
           case None => CostModels.default
           case Some(name) => CostModels.all.find(_.name.toLowerCase == name.toLowerCase) match {
             case Some(model) => model

@@ -16,9 +16,9 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
   val name = "Scalac Extraction"
   val description = "Extraction of trees from the Scala Compiler"
 
-  val StrictCompilation = LeonFlagOptionDef("strictCompilation", "Exit Leon after an error in compilation", true)
+  val optStrictCompilation = LeonFlagOptionDef("strictCompilation", "Exit Leon after an error in compilation", true)
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(StrictCompilation)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optStrictCompilation)
 
   implicit val debug = DebugSectionTrees
 

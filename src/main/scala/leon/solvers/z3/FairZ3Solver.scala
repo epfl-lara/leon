@@ -25,11 +25,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   enclosing =>
 
-  val feelingLucky      = context.findOptionOrDefault(FeelingLucky)
-  val checkModels       = context.findOptionOrDefault(CheckModels)
-  val useCodeGen        = context.findOptionOrDefault(UseCodeGen)
-  val evalGroundApps    = context.findOptionOrDefault(EvalGround)
-  val unrollUnsatCores  = context.findOptionOrDefault(UnrollCores)
+  val feelingLucky      = context.findOptionOrDefault(optFeelingLucky)
+  val checkModels       = context.findOptionOrDefault(optCheckModels)
+  val useCodeGen        = context.findOptionOrDefault(optUseCodeGen)
+  val evalGroundApps    = context.findOptionOrDefault(optEvalGround)
+  val unrollUnsatCores  = context.findOptionOrDefault(optUnrollCores)
 
   private val evaluator: Evaluator =
     if(useCodeGen) {

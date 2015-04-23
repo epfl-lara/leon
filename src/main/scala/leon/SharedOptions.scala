@@ -10,9 +10,9 @@ object SharedOptions extends LeonComponent {
   val name = "sharedOptions"
   val description = "Options shared by multiple components of Leon"
 
-  val StrictPhases = LeonFlagOptionDef("strict", "Terminate after each phase if there is an error", true)
+  val optStrictPhases = LeonFlagOptionDef("strict", "Terminate after each phase if there is an error", true)
 
-  case object FunctionsOptionDef extends LeonOptionDef[Seq[String]] {
+  val optFunctions = new LeonOptionDef[Seq[String]] {
     val name = "functions"
     val description = "Only consider functions f1, f2, ..."
     val default = Seq[String]()
@@ -20,7 +20,7 @@ object SharedOptions extends LeonComponent {
     val usageRhs = "f1,f2,..."
   }
 
-  case object SelectedSolvers extends LeonOptionDef[Set[String]] {
+  val optSelectedSolvers = new LeonOptionDef[Set[String]] {
     val name = "solvers"
     val description = "Use solvers s1, s2,...\n" + solvers.SolverFactory.availableSolversPretty
     val default = Set("fairz3")
@@ -28,7 +28,7 @@ object SharedOptions extends LeonComponent {
     val usageRhs = "s1,s2,..."
   }
 
-  case object Debug extends LeonOptionDef[Set[DebugSection]] {
+  val optDebug = new LeonOptionDef[Set[DebugSection]] {
     import OptionParsers._
     val name = "debug"
     val description = "Enable detailed messages per component"
@@ -51,7 +51,13 @@ object SharedOptions extends LeonComponent {
     val parser: String => Set[DebugSection] = setParser[Set[DebugSection]](debugParser)(_).flatten
   }
 
-  val Timeout = LeonLongOptionDef("timeout", "Set a timeout for each verification/repair (in sec.)", 0L, "t")
+  val optTimeout = LeonLongOptionDef("timeout", "Set a timeout for each verification/repair (in sec.)", 0L, "t")
 
-  override val definedOptions: Set[LeonOptionDef[Any]] = Set(StrictPhases, FunctionsOptionDef, SelectedSolvers, Debug, Timeout)
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(
+    optStrictPhases,
+    optFunctions,
+    optSelectedSolvers,
+    optDebug,
+    optTimeout
+  )
 }

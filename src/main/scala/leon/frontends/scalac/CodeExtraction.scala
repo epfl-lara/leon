@@ -87,7 +87,7 @@ trait CodeExtraction extends ASTExtractors {
   /** An exception thrown when non-purescala compatible code is encountered. */
   sealed class ImpureCodeEncounteredException(pos: Position, msg: String, ot: Option[Tree]) extends Exception(msg) {
     def emit() {
-      val debugInfo = if (ctx.findOptionOrDefault(SharedOptions.Debug) contains utils.DebugSectionTrees) {
+      val debugInfo = if (ctx.findOptionOrDefault(SharedOptions.optDebug) contains utils.DebugSectionTrees) {
         ot.map { t => 
           val strWr = new java.io.StringWriter()
           new global.TreePrinter(new java.io.PrintWriter(strWr)).printTree(t)
@@ -97,7 +97,7 @@ trait CodeExtraction extends ASTExtractors {
         ""
       }
 
-      if (ctx.findOptionOrDefault(ExtractionPhase.StrictCompilation)) {
+      if (ctx.findOptionOrDefault(ExtractionPhase.optStrictCompilation)) {
         reporter.error(pos, msg + debugInfo)
       } else {
         reporter.warning(pos, msg + debugInfo)
@@ -919,7 +919,7 @@ trait CodeExtraction extends ASTExtractors {
         if (!dctx.isExtern) {
           e.emit()
           //val pos = if (body0.pos == NoPosition) NoPosition else leonPosToScalaPos(body0.pos.source, funDef.getPos)
-          if (ctx.findOptionOrDefault(ExtractionPhase.StrictCompilation)) {
+          if (ctx.findOptionOrDefault(ExtractionPhase.optStrictCompilation)) {
             reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. (Forgot @extern ?)")
           } else {
             reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully unavailable to Leon.")

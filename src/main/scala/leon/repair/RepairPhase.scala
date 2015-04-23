@@ -13,8 +13,8 @@ object RepairPhase extends LeonPhase[Program, Program] {
   implicit val debugSection = utils.DebugSectionRepair
 
   def run(ctx: LeonContext)(program: Program): Program = {
-    val repairFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.FunctionsOptionDef)
-    val verifTimeoutMs: Option[Long] = ctx.findOption(SharedOptions.Timeout) map { _ * 1000 }
+    val repairFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
+    val verifTimeoutMs: Option[Long] = ctx.findOption(SharedOptions.optTimeout) map { _ * 1000 }
 
     val reporter = ctx.reporter
 
