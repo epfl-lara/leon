@@ -190,7 +190,7 @@ object SMTLIBCVC4Component extends LeonComponent {
   val optCVC4Options = new LeonOptionDef[Set[String]] {
     val name = "solver:cvc4"
     val description = "Pass extra arguments to CVC4"
-    val default = Set("")
+    val default = Set[String]()
     val parser = setParser(stringParser)
     val usageRhs = "<cvc4-opt>"
   }
