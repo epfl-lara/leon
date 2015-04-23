@@ -171,7 +171,7 @@ class DefaultReporter(debugSections: Set[DebugSection]) extends Reporter(debugSe
   }
 
   protected def reline(pfx: String, msg: String) : String = {
-    pfx+" "+msg.replaceAll("\n", "\n" + (" " * prefixSize))
+    pfx+" "+msg.replaceAll("\n", s"\n$pfx ")
   }
 
 }
