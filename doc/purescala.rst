@@ -1,29 +1,36 @@
 .. _purescala:
 
-Pure Scala: Leon's Core Input Language
-======================================
+Pure Scala: Leon's Language
+===========================
 
+The input to Leon is a purely functional subset of Scala,
+which we call **Pure Scala**. Constructs specific for Leon
+are defined inside Leon's libraries in package `leon` and
+its subpackages. Leon invokes standard `scalac` compiler on
+the input file, then performs additional checks to ensure
+that the given program belongs to Pure Scala.
 
-Leon supports two kinds of top-level declarations:
+Pure Scala supports two kinds of top-level declarations:
 
-1. ADT definitions in the form of an abstract class and case classes/objects
+1. Algebraic Data Type (ADT) definitions in the form of an
+   abstract class and case classes/objects
 
 .. code-block:: scala
 
-   abstract class Foo
-   case class Bar(a: Int) extends Foo
-   case object Gee extends Foo
+   abstract class MyList
+   case object MyEmpty extends MyList
+   case class MyCons(elem: BigInt, rest: MyList) extends MyList
 
 2. Objects/modules, for grouping classes and functions
 
 .. code-block:: scala
 
    object Specs {
-      def foo(a: Int) = {
+      def increment(a: BigInt): BigInt = {
          a + 1
       }
 
-      case class Foo(a: Int)
+      case class Identifier(id: BigInt)
    }
 
 
