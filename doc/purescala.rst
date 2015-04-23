@@ -1,7 +1,7 @@
 .. _purescala:
 
-Pure Scala
-=============================
+Pure Scala: Leon's Core Input Language
+======================================
 
 
 Leon supports two kinds of top-level declarations:

@@ -16,6 +16,7 @@ Contents:
    tutorial
    installation
    purescala
+   library
    xlang
    verification
    synthesis
