@@ -101,7 +101,7 @@ img {
 div.admonition {
   margin-top: 10px;
   margin-bottom: 10px;
-  border: 1px solid #6CA2C5;
+  border: 1px solid #CCC;
 }
 
 div.admonition p {
@@ -113,7 +113,7 @@ div.admonition div.highlight {
 }
 
 p.admonition-title {
-  background: #6CA2C5;
+  background: #CCC;
   font-weight: bold;
   color: white;
 }
