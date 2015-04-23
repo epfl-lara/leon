@@ -51,6 +51,7 @@ object Main {
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
 
   def displayHelp(reporter: Reporter, error: Boolean) = {
+    reporter.info("Top-level options:")
     reporter.info("")
 
     for (opt <- (MainComponent.definedOptions ++ SharedOptions.definedOptions).toSeq.sortBy(_.name)) {
@@ -68,6 +69,11 @@ object Main {
       }
     }
     exit(error)
+  }
+
+  def displayVersion(reporter: Reporter) = {
+    reporter.info("Leon verification and synthesis tool (http://leon.epfl.ch/)")
+    reporter.info("")
   }
 
   private def exit(error: Boolean) = sys.exit(if (error) 1 else 0)
@@ -133,6 +139,7 @@ object Main {
     val verifyF      = ctx.findOptionOrDefault(optVerify)
 
     if (helpF) {
+      displayVersion(ctx.reporter)
       displayHelp(ctx.reporter, error = false)
     } else {
       val pipeBegin: Pipeline[List[String], Program] =
