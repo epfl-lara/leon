@@ -73,6 +73,7 @@ SMT Solvers
 
 Leon relies on SMT solvers to solve the constraints it generates. We currently
 support two major SMT solvers: 
+
   * CVC4, http://cvc4.cs.nyu.edu/web/
   * Z3, https://github.com/Z3Prover/z3
 
