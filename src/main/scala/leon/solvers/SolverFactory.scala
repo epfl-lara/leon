@@ -29,6 +29,11 @@ object SolverFactory {
     "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
     "enum"           -> "Enumeration-based counter-example-finder"
   )
+  
+  val availableSolversPretty = "Available: " +
+    solvers.SolverFactory.definedSolvers.toSeq.sortBy(_._1).map {
+      case (name, desc) =>  f"\n  $name%-14s : $desc"
+    }.mkString("")
 
   def getFromSettings(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     getFromName(ctx, program)(ctx.findOptionOrDefault(SharedOptions.SelectedSolvers).toSeq : _*)
@@ -71,7 +76,7 @@ object SolverFactory {
     }
 
     def showSolvers() = {
-      ctx.reporter.error("Available:\n" + definedSolvers.map {"  - " + _}.mkString("\n"))
+      ctx.reporter.error(availableSolversPretty)
       ctx.reporter.fatalError("Aborting Leon...")
     }
 

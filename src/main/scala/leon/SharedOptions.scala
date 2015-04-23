@@ -22,7 +22,7 @@ object SharedOptions extends LeonComponent {
 
   case object SelectedSolvers extends LeonOptionDef[Set[String]] {
     val name = "solvers"
-    val description = "Use solvers s1, s2, ... in parallel (default: fairz3)"
+    val description = "Use solvers s1, s2,...\n" + solvers.SolverFactory.availableSolversPretty
     val default = Set("fairz3")
     val parser = setParser(stringParser)
     val usageRhs = "s1,s2,..."

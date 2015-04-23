@@ -54,12 +54,7 @@ object Main {
     reporter.info("")
 
     for (opt <- (MainComponent.definedOptions ++ SharedOptions.definedOptions).toSeq.sortBy(_.name)) {
-      val (uhead :: utail) = opt.usageDescs
-      reporter.info(f"${opt.usageDesc}%-20s ${uhead}")
-      for(u <- utail) {
-        reporter.info(f"${""}%-20s ${u}")
-      }
-
+      reporter.info(opt.helpString)
     }
     reporter.info("")
     reporter.info("Additional options, by component:")

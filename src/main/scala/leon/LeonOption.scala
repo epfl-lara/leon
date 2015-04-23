@@ -14,8 +14,10 @@ abstract class LeonOptionDef[+A] {
     if (usageRhs.isEmpty) s"--$name"
     else s"--$name=$usageRhs"
   }
-  def usageDescs = usageDesc.split("\n").toList
-  def helpString = f"${usageDesc}%-21s ${description}"
+  def helpString = {
+    val (hd :: tl) = description.split("\n").toList
+    (f"$usageDesc%-21s $hd" :: ( tl map (" " * 22 + _))).mkString("\n")
+  }
 
   private def parseValue(s: String)(implicit reporter: Reporter): A = {
     try { parser(s) }
@@ -83,10 +85,10 @@ object OptionParsers {
     case _  => throw new IllegalArgumentException
   }
   def seqParser[A](base: OptionParser[A]): OptionParser[Seq[A]] = s => {
-    s.split(",").map(base)
+    s.split(",").filter(_.nonEmpty).map(base)
   }
   def setParser[A](base: OptionParser[A]): OptionParser[Set[A]] = s => {
-    s.split(",").map(base).toSet
+    s.split(",").filter(_.nonEmpty).map(base).toSet
   }
 
 }
