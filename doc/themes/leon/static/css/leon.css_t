@@ -493,6 +493,8 @@ and (max-device-width : 768px) {
         display:none;
     }
     div.document {
+        padding-left: 10px;
+        padding-right: 10px;
         width: 100% !important;
         float: none !important;
     }
