@@ -12,17 +12,23 @@ To build Leon, you will need, the following:
 * a 1.7 Java Development Kit, from Oracle (to run sbt and scala)
 * sbt, at least version 0.13.X (to build Leon)
 
-To build, type this::
+To build, type this
+
+.. code-block:: bash
 
     $ sbt clean
     $ sbt compile # takes about 3 minutes
     $ sbt script
 
-Then you can try e.g::
+Then you can try e.g
+
+.. code-block:: bash
 
     $ ./leon --solvers=smt-cvc4 ./testcases/verification/sas2011-testcases/RedBlackTree.scala
 
-and get something like this::
+and get something like this
+
+.. code-block:: bash
 
    ┌──────────────────────┐
  ╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════╗

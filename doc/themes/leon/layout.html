@@ -7,10 +7,21 @@
 {% block header %}
     <div class="header-wrapper">
       <div class="header">
-        {%- block headertitle %}
-        <div class="headertitle left"><a
-          href="{{ pathto(master_doc) }}">{{ shorttitle|e }}</a></div>
-        {%- endblock %}
+        <div class="left">
+            {%- block headertitle %}
+            <div class="headertitle"><a
+              href="{{ pathto(master_doc) }}">{{ shorttitle|e }}</a></div>
+            {%- endblock %}
+            <div class="rel">
+              {%- if prev %}
+              <a href="{{ prev.link|e }}">{{ prev.title }}</a> | 
+              {%- endif %}
+              <a class="uplink" href="{{ pathto(master_doc) }}">{{ _('Contents') }}</a>
+              {%- if next %}
+              | <a href="{{ next.link|e }}">{{ next.title }}</a>
+              {%- endif %}
+            </div>
+        </div>
         {%- block sidebarsearch %}
         <div class="right">
           <form class="search" action="{{ pathto('search') }}" method="get">

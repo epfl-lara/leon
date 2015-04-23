@@ -142,7 +142,6 @@ div.header .headertitle a {
 }
 
 div.header div.rel {
-  display:none;
   font-size: 0.8em;
 }
 
@@ -483,4 +482,18 @@ div.viewcode-block:target {
     background-color: #f4debf;
     border-top: 1px solid #ac9;
     border-bottom: 1px solid #ac9;
+}
+
+@media only screen
+and (max-device-width : 768px) {
+    body {
+        background: white !important;
+    }
+    div.sidebar {
+        display:none;
+    }
+    div.document {
+        width: 100% !important;
+        float: none !important;
+    }
 }

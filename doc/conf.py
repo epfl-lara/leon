@@ -112,7 +112,7 @@ html_theme_options = {
   "linkcolor": '#2980B9',
   "headerlinkcolor": '#6CA2C5',
   "headerfont": 'Arial, sans-serif',
-  "bodyfont": '"Lato","proxima-nova","Helvetica Neue",Arial,sans-serif',
+  "bodyfont": 'Arial, sans-serif',
   "headercolor1": "#19214F",
   "headercolor2": "#19214F",
 }
