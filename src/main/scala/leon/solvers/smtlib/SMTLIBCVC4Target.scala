@@ -127,7 +127,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case fm @ FiniteMap(elems) =>
       import OptionManager._
       val mt @ MapType(from, to) = fm.getType
-      val ms = declareSort(mt)
+      declareSort(mt)
 
       var m: Term = declareVariable(FreshIdentifier("mapconst", RawArrayType(from, leonOptionType(to))))
 
