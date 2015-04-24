@@ -565,8 +565,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           throw RuntimeError("MatchError: "+rscrut+" did not match any of the cases")
       }
 
+    case l : CharLiteral => l
+
     case other =>
-      context.reporter.error(other.getPos, "Error: don't know how to handle " + other + " in Evaluator.")
+      context.reporter.error(other.getPos, "Error: don't know how to handle " + other + " in Evaluator ("+other.getClass+").")
       throw EvalError("Unhandled case in Evaluator : " + other) 
   }
 

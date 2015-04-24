@@ -21,7 +21,8 @@ object Main {
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase,
-      repair.RepairPhase
+      repair.RepairPhase,
+      evaluators.EvaluationPhase
     )
   }
 
@@ -42,9 +43,10 @@ object Main {
     val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             true )
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
+    val optEval        = LeonFlagOptionDef("eval",        "Evaluate ground functions",                             false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optXLang, optWatch, optNoop, optHelp, optVerify)
+      Set(optTermination, optRepair, optSynthesis, optXLang, optWatch, optNoop, optHelp, optVerify, optEval)
 
   }
 
@@ -128,6 +130,7 @@ object Main {
     import xlang.XLangAnalysisPhase
     import verification.AnalysisPhase
     import repair.RepairPhase
+    import evaluators.EvaluationPhase
     import MainComponent._
 
     val helpF        = ctx.findOptionOrDefault(optHelp)
@@ -137,6 +140,7 @@ object Main {
     val repairF      = ctx.findOptionOrDefault(optRepair)
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
+    val evalF        = ctx.findOptionOrDefault(optEval)
 
     if (helpF) {
       displayVersion(ctx.reporter)
@@ -157,6 +161,7 @@ object Main {
         else if (repairF) RepairPhase
         else if (terminationF) TerminationPhase
         else if (xlangF) XLangAnalysisPhase
+        else if (evalF) EvaluationPhase
         else if (verifyF) FunctionClosure andThen AnalysisPhase
         else    NoopPhase()
       }
