@@ -33,33 +33,37 @@ object Main {
 
   object MainComponent extends LeonComponent {
     val name = "main"
-    val description = "The main Leon component, handling the top-level options"
+    val description = "Options that determine the feature of Leon to be used (mutually exclusive). Default: verify"
 
     val optTermination = LeonFlagOptionDef("termination", "Check program termination",                             false)
     val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
     val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
     val optXLang       = LeonFlagOptionDef("xlang",       "Support for extra program constructs (imperative,...)", false)
-    val optWatch       = LeonFlagOptionDef("watch",       "Rerun pipeline when file changes",                      false)
     val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             true )
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
     val optEval        = LeonFlagOptionDef("eval",        "Evaluate ground functions",                             false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optXLang, optWatch, optNoop, optHelp, optVerify, optEval)
+      Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optVerify, optEval)
 
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
 
   def displayHelp(reporter: Reporter, error: Boolean) = {
-    reporter.info("Top-level options:")
-    reporter.info("")
-
-    for (opt <- (MainComponent.definedOptions ++ SharedOptions.definedOptions).toSeq.sortBy(_.name)) {
+    reporter.info(MainComponent.description)
+    for (opt <- MainComponent.definedOptions.toSeq.sortBy(_.name)) {
       reporter.info(opt.helpString)
     }
     reporter.info("")
+
+    reporter.info("Additional top-level options")
+    for (opt <- SharedOptions.definedOptions.toSeq.sortBy(_.name)) {
+      reporter.info(opt.helpString)
+    }
+    reporter.info("")
+      
     reporter.info("Additional options, by component:")
 
     for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
@@ -198,7 +202,7 @@ object Main {
 
     ctx.interruptManager.registerSignalHandler()
 
-    val doWatch = ctx.findOptionOrDefault(MainComponent.optWatch)
+    val doWatch = ctx.findOptionOrDefault(SharedOptions.optWatch)
 
     if (doWatch) {
       val watcher = new FilesWatcher(ctx, ctx.files)

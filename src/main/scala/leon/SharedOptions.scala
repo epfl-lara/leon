@@ -12,6 +12,8 @@ object SharedOptions extends LeonComponent {
 
   val optStrictPhases = LeonFlagOptionDef("strict", "Terminate after each phase if there is an error", true)
 
+  val optWatch = LeonFlagOptionDef("watch", "Rerun pipeline when file changes", false)
+  
   val optFunctions = new LeonOptionDef[Seq[String]] {
     val name = "functions"
     val description = "Only consider functions f1, f2, ..."
@@ -31,7 +33,10 @@ object SharedOptions extends LeonComponent {
   val optDebug = new LeonOptionDef[Set[DebugSection]] {
     import OptionParsers._
     val name = "debug"
-    val description = "Enable detailed messages per component"
+    val description = (
+      "Enable detailed messages per component.\nAvailable:" +:
+      DebugSections.all.toSeq.map(_.name).sorted
+    ).mkString("\n  ")
     val default = Set[DebugSection]()
     val usageRhs = "d1,d2,..."
     val debugParser: OptionParser[Set[DebugSection]] = s => {
