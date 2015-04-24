@@ -129,15 +129,8 @@ present it as an untrusted solution.
 Repairing with IO-examples
 --------------------------
 
-Sometimes, a complete formal specification is hard to express,
-especially when it comes to simple, elementary functions. In such cases,
-it may be easier to provide a set of IO-examples. However, IO-examples can never
-cover all the possible executions of the function and are thus weaker than a formal
-specification. 
-
-Leon provides a powerful compromise between these two extremes.
-It introduces *symbolic IO-examples*, expressed through a specialized ``passes``
-construct, which resembles pattern-matching:
+In the :ref:`Pure Scala <purescala>` section, we have presented the ``passes`` construct.
+This construct is especially useful when it comes to repair. Look at the following example:
 
 .. code-block:: scala
 
@@ -163,34 +156,8 @@ In the above example, the programmer has chosen to specify drop through a
 list of IO-examples, describing what the function should do in the cases where
 the elements to drop are more than the size of the list,
 or 0, 1 or 2 elements are to be dropped by a list with enough elements.
-Notice that the examples are symbolic, in that the elements of the lists are
-left as arbitrary values. 
 
-The semantics of ``passes: ( (A, B) => Boolean)`` are the following:
-
-.. code-block:: scala
-
-  (a, b) passes {
-    case p1 => e1
-    case p2 => e2
-    ...
-    case pN => eN
-  }
-
-where ``a: A`` is a tuple of method parameters and/or ``this``, ``b: B``,
-and for each i ``pi: A`` and ``ei: B``, is equivalent to
-
-.. code-block:: scala
-
-  a match {
-    case p1 => b == e1
-    case p2 => b == e2
-    ...
-    case pN => b == eN
-    case _  => true
-  }
-
-Leon will manage to repair this program: ::
+Leon manages to repair this program: ::
 
   ...
   [  Info  ] Found trusted solution!
@@ -206,5 +173,4 @@ Leon will manage to repair this program: ::
   [  Info  ]     t.drop(i - 1)
   [  Info  ] }
   ...
-
 

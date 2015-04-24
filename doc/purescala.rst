@@ -297,3 +297,64 @@ Map
  m contains index
  m.updated(index, value)
 
+
+Symbolic Input-Output examples
+------------------------------
+
+Sometimes, a complete formal specification is hard to write,
+especially when it comes to simple, elementary functions. In such cases,
+it may be easier to provide a set of IO-examples. On the other hand,
+IO-examples can never cover all the possible executions of a function,
+and are thus weaker than a formal specification. 
+
+Leon provides a powerful compromise between these two extremes.
+It introduces *symbolic IO-examples*, expressed through a specialized ``passes``
+construct, which resembles pattern-matching:
+
+.. code-block:: scala
+
+  sealed abstract class List {
+    
+    def size: Int = (this match {
+      case Nil() => 0
+      case Cons(h, t) => 1 + t.size
+    }) ensuring { res => (this, res) passes {
+      case Nil() => 0
+      case Cons(_, Nil()) => 1
+      case Cons(_, Cons(_, Nil())) => 2
+    }}
+  }
+  case class Cons[T](h: T, t: List[T]) extends List[T]
+  case class Nil[T]() extends List[T]
+
+
+In the above example, the programmer has chosen to partially specify ``size``
+through a list of IO-examples, describing what the function should do 
+for lists of size 0, 1 or 2.
+Notice that the examples are symbolic, in that the elements of the lists are
+left unconstrained.
+
+The semantics of ``passes`` is the following.
+Let ``a: A`` be a tuple of method parameters and/or ``this``, ``b: B``,
+and for each i ``pi: A`` and ``ei: B``. Then
+
+.. code-block:: scala
+
+  (a, b) passes {
+    case p1 => e1
+    case p2 => e2
+    ...
+    case pN => eN
+  }
+
+is equivalent to
+
+.. code-block:: scala
+
+  a match {
+    case p1 => b == e1
+    case p2 => b == e2
+    ...
+    case pN => b == eN
+    case _  => true
+  }
