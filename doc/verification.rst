@@ -44,7 +44,8 @@ important part in a contract is the postcondition. The postcondition specifies
 the behaviour of the function. It takes into account the precondition and only
 asserts the property of the output when the input satisfies the precondition.
 
-Formally, we consider a function
+Formally, we consider a function with a single parameter (one can generalize
+the following for any number of parameters):
 
 .. code-block:: scala
 
@@ -94,6 +95,49 @@ chapter on Leon's algorithms.
 
 Preconditions
 *************
+
+Preconditions are used as part of the contract of functions. They are a way to
+restrict the input to only relevant inputs, without having to implement guards
+and error handling in the functions themselves.
+
+Preconditions are contracts that the call sites should respect, and thus are
+not checked as part of verifying the function. Given the following definition:
+
+.. code-block:: scala
+
+   def f(x: A): B = {
+     require(prec)
+     body
+   }
+    
+
+For each call site in the whole program (including in ``f`` itself):
+
+.. code-block:: scala
+
+   ...
+   f(e) 
+   ...
+
+where the expression :math:`\mbox{e}(x)` is an expression of type ``A`` with
+free variables among :math:`\{ x \}`. Let us define the path condition on :math:`x`
+at that program point as :math:`\mbox{pc}(x)`. The path condition is a formula that
+summarizes the facts known about :math:`x` at that call site. A typical example is
+when the call site is inside an if expression:
+
+.. code-block:: scala
+
+   if(x > 0)
+     f(x) 
+     
+The path condition on :math:`x` would include the fact that :math:`x > 0`. This
+path condition is then used as a precondition of proving the validity of the
+call to :math:`\mbox{f}`. Formally, for each such call site, Leon will attempt
+to prove the following theorem:
+
+.. math::
+
+   \forall x. \mbox{pc}(x) \implies \mbox{prec}(\mbox{e}(x))
 
 
 Loop invariants
