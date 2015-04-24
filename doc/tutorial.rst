@@ -11,8 +11,8 @@ types, how to **verify** certain properties of an insertion
 sort. We finish showing how to use Leon to **synthesize**
 provably correct operations from specifications.
 
-A Preview of Synthesis
-^^^^^^^^^^^^^^^^^^^^^^
+A Preview of Specification and Synthesis
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 As a preview, let us start by **specifying** a function that
 sorts **two** mathematical integers. Here is what we need
@@ -57,10 +57,14 @@ Finally, the `choose` construct takes a variable name (here,
 `=>` a property that this value should satisfy. This
 construct allows us to say that we are interested in
 computing a result `res` tuple storing the same set as
-`{x,y}` but with `x <= y`.
+`{x,y}` but with the first component less then or equal the
+second one.  If we view the input as a list of two elements
+and the returned tuple as the resulting list of two
+elements, we should have performed a very special case of
+sorting. Note that the result is uniquely specified.
 
-After typing this code at e.g. http://leon.epfl.ch, we can
-select to synthesize a function corresponding to `choose`.
+After invoking Leon on this code (using e.g. http://leon.epfl.ch), we can
+choose to synthesize a function corresponding to `choose`.
 The system then synthesizes a computation that satisfies
 the specification, such as, for, example:
 
@@ -71,6 +75,24 @@ the specification, such as, for, example:
       else y
     }
 
+Depending on the particular run, Leon may also produce a solution such as
+
+.. code-block:: scala
+
+  def sort2(x : BigInt, y : BigInt): (BigInt, BigInt) = {
+    if (x < y) {
+      (x, y)
+    } else if (x == y) {
+      (x, x)
+    } else {
+      (y, x)
+    }
+  }
+
+This code performs some unnecessary case analysis, but still
+satisfies our specification. In this case, the specification
+is unambiguous, so all programs that one can synthesize
+compute the same results for all inputs.
 
 Defining lists
 ^^^^^^^^^^^^^^
