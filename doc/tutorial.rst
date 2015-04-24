@@ -143,11 +143,15 @@ Defining Lists and Their Properties
 -----------------------------------
 
 We next consider sorting an unbounded number of elements.
-
 For this purpose, we define a data structure for lists of
 integers.  Leon has a built-in data type of parametric
 lists, see :ref:`Leon Library <library>`, but here we define
-our own variant instead. We use a recursive algebraic data type
+our own variant instead. 
+
+Lists
+^^^^^
+
+We use a recursive algebraic data type
 definition, expressed using Scala's **case classes**.
 
 .. code-block:: scala
@@ -155,4 +159,192 @@ definition, expressed using Scala's **case classes**.
   sealed abstract class List
   case object Nil extends List
   case class Cons(head: BigInt, tail: List) extends List
+
+We can read the definition as follows: List is defined
+by applying the following two rules finitely many times:
+
+  * empty list `Nil` is a list
+  * if `head` is an integer and `tail` is a `List`, then
+    `Cons(head,tail)` is a `List`.
+
+A list containing elements 5, 2, and 7, in that order, can
+be written as
+
+.. code-block:: scala
+
+    Cons(5, Cons(2, Cons(7, Nil)))
+
+Having defined the structure of lists, we can move on to
+define some semantic properties of lists that are of
+interests. For this purpose, we use recursive functions
+defined on lists. 
+
+Size of a List
+^^^^^^^^^^^^^^
+
+As the starting point, we define size of a list.
+
+.. code-block:: scala
+
+    def size(l: List) : BigInt = (l match {
+        case Nil => 0
+        case Cons(x, rest) => 1 + size(rest)
+    })
+
+We can add a specification that the size is non-negative.
+
+.. code-block:: scala
+
+    def size(l: List) : BigInt = (l match {
+        case Nil => 0
+        case Cons(x, rest) => 1 + size(rest)
+    }) ensuring(res => res >= 0)
+
+The construct `ensuring(res => P)` denotes that, if
+we denote by `res` the return value of the function,
+then `res` satisfies the boolean-valued expression `P`.
+We call the predicate `P` the **postcondition**.
+
+Sorted Lists
+^^^^^^^^^^^^
+
+We define properties of values simply as executable
+predicates that check if the property holds. The following
+is a property that a list is sorted in a strictly ascending
+order.
+
+.. code-block:: scala
+
+    def isSorted(l : List) : Boolean = l match {
+      case Nil => true
+      case Cons(_,Nil) => true
+      case Cons(x1, Cons(x2, rest)) => 
+        x1 < x2 && isSorted(Cons(x2,rest))
+    }
+
+Insertion into Sorted List
+--------------------------
+
+.. code-block:: scala
+
+  def sInsert(x : BigInt, l : List) : List = {
+    require(isSorted(l))
+    l match {
+      case Nil => Cons(x, Nil)
+      case Cons(e, rest) if (x == e) => l
+      case Cons(e, rest) if (x < e) => Cons(x, Cons(e,rest))
+      case Cons(e, rest) if (x > e) => Cons(e, sInsert(x,rest))
+    }
+  } ensuring {(res:List) => isSorted(res)}
+
+Being Sorted is Not Enough
+--------------------------
+
+A function such as this one is correct.
+
+.. code-block:: scala
+
+    def fsInsert(x : BigInt, l : List) : List = {
+      require(isSorted(l))
+      Nil
+    } ensuring {(res:List) => isSorted(res)}
+
+So, our specification may be considered weak.
+
+Using Size in Specification
+---------------------------
+
+Consider a stronger additional postcondition property:
+
+.. code-block:: scala
+
+  size(res) == size(l) + 1
+
+Does it hold? If we try to add it, we obtain a counterexample.
+A correct strengthening, taking into account that the element
+may or may not already be in the list, is:
+
+.. code-block:: scala
+
+  size(l) <= size(res) && size(res) <= size(l) + 1
+
+Using Content in Specification
+------------------------------
+
+A stronger specification needs to talk about the `content`
+of the list.
+
+.. code-block:: scala
+
+  def sInsert(x : BigInt, l : List) : List = {
+    require(isSorted(l))
+    l match {
+      case Nil => Cons(x, Nil)
+      case Cons(e, rest) if (x == e) => l
+      case Cons(e, rest) if (x < e) => Cons(x, Cons(e,rest))
+      case Cons(e, rest) if (x > e) => Cons(e, sInsert(x,rest))
+    }
+  } ensuring {(res:List) => 
+     isSorted(res) && content(res) == content(l) ++ Set(x)}
+
+To compute content, in this example we use sets, even though
+it might be better in general to use multisets.
+
+.. code-block:: scala
+
+  def content(l: List): Set[BigInt] = l match {
+    case Nil => Set()
+    case Cons(i, t) => Set(i) ++ content(t)
+  }
+
+
+Sorting Specification and Running It
+------------------------------------
+
+.. code-block:: scala
+
+  def sortMagic(l : List) = choose{(res:List) => 
+    isSorted(res) && content(res) == content(l)
+  }
+
+We can execute it.
+
+.. code-block:: scala
+
+  def mm = sortMagic(Cons(20, Cons(5, Cons(50, Cons(2, Nil)))))
+
+obtaining the expected `Cons(2, Cons(5, Cons(20, Cons(50, Nil))))`.
+
+
+Synthesizing Sort
+-----------------
+
+By asking the system to synthesize the `choose` construct,
+we may obtain a function such as the following, which gives
+us the natural insertion sort.
+
+.. code-block:: scala
+
+    def sortMagic(l : List): List = {
+      l match {
+        case Cons(head, tail) =>
+          sInsert(head, sortMagic(tail))
+        case Nil => Nil
+      }
+    }
+
+Going back and Synthesizing Insertion
+-------------------------------------
+
+In fact, if we had a precise enough specification of insert,
+we could have synthesized it from the specification.
+
+.. code-block:: scala
+
+  def insertMagic(x: BigInt, l: List): List = {
+    require(isSorted(l))
+    choose {(res: List) => 
+      isSorted(res) && content(res) == content(l) ++ Set[BigInt](x)
+    }
+  }
 

@@ -7,7 +7,7 @@ Web Interface
 -------------
 
 The simplest way to try out Leon is to use it through the
-web interface http://leon.epfl.ch . The web interface uses
+web interface http://leon.epfl.ch. The web interface uses
 standard Javascript and should run in most browsers,
 including Chrome and Firefox. 
 
@@ -36,8 +36,8 @@ sample program from the web interface will erase the
 previously entered program.
 
 The web interface fixes particular settings including the
-timeout values for verification and synthesis tasks; for
-longer task we currently recommend using a command line.
+timeout values for verification and synthesis tasks. For
+longer tasks we currently recommend using the command line.
 
 Command Line
 ------------
