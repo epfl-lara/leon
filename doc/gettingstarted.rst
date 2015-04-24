@@ -99,7 +99,7 @@ be used directly from the shell, see
 Asking Questions
 ----------------
 
-We are active on http://stackoverflow.com . 
+We are active on http://stackoverflow.com. 
 
-`Try searching for the leon tag. <http://stackoverflow.com/questions/tagged/leon?sort=newest>`_
+Try `searching for the leon tag <http://stackoverflow.com/questions/tagged/leon?sort=newest>`_.
 
