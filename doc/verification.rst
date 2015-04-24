@@ -184,11 +184,37 @@ that point (3) holds as well.
 Array access safety
 *******************
 
+Leon generates verification conditions for the safety of array accesses. For
+each array variable, Leon carries along a symbolic information on its length.
+This information is used to prove that each expression used as an index in the
+array is strictly smaller than that length. The expression is also checked to
+be positive.
 
 Pattern matching exhaustiveness
 *******************************
 
+Leon verifies that pattern matching is exhaustive. The regular Scala compiler
+only considers the types of expression involved in pattern matching, but Leon
+will consider information such as precondition to formally prove the
+exhaustiveness of pattern matching.
 
+As an example, the following code should issue a warning with Scala:
+
+.. code-block:: scala
+
+   abstract class List
+   case class Cons(head: Int, tail: List) extends List
+   case object Nil extends List
+
+   def getHead(l: List): Int = {
+     require(!l.isInstanceOf[Nil])
+     l match {
+       case Cons(x, _) => x
+     }
+   }
+
+But Leon will actually prove that the pattern matching is actually exhaustive,
+relying on the given precondition.
 
 Proving mathematical theorems with Leon
 ---------------------------------------
