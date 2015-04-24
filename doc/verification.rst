@@ -51,16 +51,46 @@ Formally, we consider a function
    def f(x: A): B = {
      require(prec)
      body
-   } ensuring(res => post)
+   } ensuring(r => post)
 
-where, ``prec`` is a boolean expression with free variables contained in
-``{x}``, and ``post`` is a boolean expression with free variables contained in
-``{x, res}``. The types of ``x`` and ``res`` are respectively ``A`` and ``B``.
+where, :math:`\mbox{prec}(x)` is a boolean expression with free variables
+contained in :math:`\{ x \}`, :math:`\mbox{body}(x)` is a boolean expression with
+free variables contained in :math:`\{ x \}` and :math:`\mbox{post}(x, r)` is a
+boolean expression with free variables contained in :math:`\{ x, r \}`. The
+types of :math:`x` and :math:`r` are respectively ``A`` and ``B``. We write
+:math:`\mbox{expr}(a)` to mean the substitution in :math:`\mbox{expr}` of its
+free variable by :math:`a`.
 
 Leon attempts to prove the following theorem:
 
-::
-  forall x, prec(x) implies post(body(x), x)
+.. math::
+
+  \forall x. \mbox{prec}(x) \implies \mbox{post}(x, \mbox{body}(x))
+
+If Leon is able to prove the above theorem, it returns ``valid`` for the
+function ``f``. This gives you a guarantee that the function ``f`` is correct
+with respect to its contract.
+
+However, if the theorem is not valid, Leon will return a counterexample to the
+theorem. The negation of the theorem is:
+
+.. math::
+
+  \exists x. \mbox{prec}(x) \land \neg \mbox{post}(x, \mbox{body}(x))
+
+and to prove the validity of the negation, Leon finds a witness :math:`x` --- a
+counterexample --- such that the precondition is verified and the postcondition
+is not.
+
+The general problem of verification is undecidable for a Turing-complete
+language, and the Leon language is Turing-complete. So Leon has to be
+incomplete in some sense. Generally, Leon will eventually find a counterexample
+if one exists. However, in practice some program structures require too many
+unrollings and Leon is likely to timeout (or being out of memory) before
+finding the counterexample.  When the postcondition is valid, it could also
+happen that Leon keeps unrolling the program forever, without being able to
+prove the correctness. We discuss the exact conditions for this in the
+chapter on Leon's algorithms.
 
 Preconditions
 *************
