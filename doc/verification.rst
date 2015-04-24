@@ -218,3 +218,12 @@ relying on the given precondition.
 
 Proving mathematical theorems with Leon
 ---------------------------------------
+
+As we have seen, verifying the contract of a function is really proving a mathematical
+theorem. In some sense, Leon can be seen as a (mostly) automated theorem prover. It is
+automated in the sense that once the property stated, Leon will proceed with searching
+for a proof without any user interaction. In practice however, many theorems will be fairly
+difficult to prove, and it is possible for the user to provide hints to Leon. 
+  
+Hints typically take the form of simpler properties that combine in order to prove
+more complicated ones.
