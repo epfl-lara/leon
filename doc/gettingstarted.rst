@@ -3,24 +3,56 @@
 Getting Started
 ===============
 
-This section gives a very quick overview of how to build and start using Leon;
-refer to the following :ref:`installation` if you wish (or need) more
-detailed information on how to setup Leon on your system.
+Web Interface
+-------------
 
-To build Leon, you will need, the following:
+The simplest way to try out Leon is to use it through the
+web interface http://leon.epfl.ch . The web interface uses
+standard Javascript and should run in most browsers,
+including Chrome and Firefox. 
 
-* a 1.7 Java Development Kit, from Oracle (to run sbt and scala)
-* sbt, at least version 0.13.X (to build Leon)
+The web interface requires you to enter your entire program
+into the single web editor buffer. For example, you can
+paste into the editor the definition of the following `max`
+function on unbounded integers:
 
-To build, type this
+.. code-block:: scala
+
+  object Max {
+    def max(x: BigInt, y: BigInt): BigInt = {
+      if (x <= y) y
+      else x
+    } ensuring(res => x <= res && y <= res)
+  }
+
+The above program should verify. If you change `y <= res`
+into `y < res`, Leon should report a counterexample; try
+clicking on the names of parameters `x` and `y` as well
+as various parts in the `ensuring` clause.
+
+You can also select from a number of predefined examples,
+and then edit them subsequently.  Selecting a different
+sample program from the web interface will erase the
+previously entered program.
+
+The web interface fixes particular settings including the
+timeout values for verification and synthesis tasks; for
+longer task we currently recommend using a command line.
+
+Command Line
+------------
+
+Leon can be used as a command line tool, which exposes most
+of the functionality. To see the main options, use 
 
 .. code-block:: bash
 
-    $ sbt clean
-    $ sbt compile # takes about 3 minutes
-    $ sbt script
+  ./leon --help
 
-Then you can try e.g
+in your command line shell while in the top-level Leon directory.
+
+You can try some of the examples from the `testcases/` directory 
+distributed with Leon:
 
 .. code-block:: bash
 
@@ -57,4 +89,17 @@ and get something like this
  ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
  ║ total: 21     valid: 17     invalid: 4      unknown 0                                6.762 ║
  ╚════════════════════════════════════════════════════════════════════════════════════════════╝
+
+
+For more details on how to build Leon from sources that can
+be used directly from the shell, see
+:ref:`installation`. 
+
+
+Asking Questions
+----------------
+
+We are active on http://stackoverflow.com . 
+
+`Try searching for the leon tag. <http://stackoverflow.com/questions/tagged/leon?sort=newest>`_
 

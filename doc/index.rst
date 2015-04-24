@@ -13,8 +13,8 @@ Contents:
 
    intro
    gettingstarted
-   tutorial
    installation
+   tutorial
    purescala
    library
    xlang
