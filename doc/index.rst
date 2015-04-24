@@ -21,6 +21,7 @@ Contents:
    verification
    synthesis
    repair
+   options
    references
 
 
