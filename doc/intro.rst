@@ -68,7 +68,7 @@ Program Synthesis
 
 
 Program Repair
--------------
+--------------
 
 Leon can repair buggy :ref:`Pure Scala <purescala>` programs.
 Given a specification and an erroneous implementation, Leon will
