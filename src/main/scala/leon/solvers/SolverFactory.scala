@@ -24,7 +24,7 @@ object SolverFactory {
     "smt-cvc4"       -> "CVC4 through SMT-LIB",
     "smt-z3"         -> "Z3 through SMT-LIB",
     "smt-z3-q"       -> "Z3 through SMT-LIB, with quantified encoding",
-    "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasonning, for proofs only",
+    "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
     "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
     "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
     "enum"           -> "Enumeration-based counter-example-finder"

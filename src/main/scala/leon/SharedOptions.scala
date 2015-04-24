@@ -56,7 +56,7 @@ object SharedOptions extends LeonComponent {
     val parser: String => Set[DebugSection] = setParser[Set[DebugSection]](debugParser)(_).flatten
   }
 
-  val optTimeout = LeonLongOptionDef("timeout", "Set a timeout for each verification/repair (in sec.)", 0L, "t")
+  val optTimeout = LeonLongOptionDef("timeout", "Set a timeout for attempting to prove a verification condition/ repair a function (in sec.)", 0L, "t")
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
     optStrictPhases,
