@@ -1,7 +1,7 @@
 .. _cmdlineoptions:
 
-Command Line Options
-====================
+Command Line
+============
 
 Here is an overview of the command-line options that Leon recognizes: 
 

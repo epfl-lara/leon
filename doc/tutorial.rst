@@ -92,8 +92,8 @@ parameters, such as
 
     def test1 = sort2(30, 4)
 
-Hovering over the definition of test1 should display
-the computed tuple `(4,30)`.
+Hovering over `test1` should display the computed result
+`(4,30)`. From :ref:`cmdlineoptions`, use `--eval`.
 
 This shows that Leon's evaluator can also execute `choose`
 constructs. In other words, it supports programming
@@ -136,16 +136,23 @@ Depending on the particular run, Leon may also produce a solution such as
 
 This code performs some unnecessary case analysis, but still
 satisfies our specification. In this case, the specification
-is unambiguous, so all programs that one can synthesize
-compute the same results for all inputs.
+of the program output is unambiguous, so all programs that
+one can synthesize compute the same results for all inputs.
 
-Defining Unbounded Lists
-------------------------
+Defining Lists and Their Properties
+-----------------------------------
 
-Let us now consider sorting of any number of elements.
+We next consider sorting an unbounded number of elements.
 
-For this purpose, we define the data structure of lists of
-(big) integers.  Leon has a built-in data type of
-polymorphic lists, see :ref:`Leon Library <library>`, but
-here we define our own variant.
+For this purpose, we define a data structure for lists of
+integers.  Leon has a built-in data type of parametric
+lists, see :ref:`Leon Library <library>`, but here we define
+our own variant instead. We use a recursive algebraic data type
+definition, expressed using Scala's **case classes**.
+
+.. code-block:: scala
+
+  sealed abstract class List
+  case object Nil extends List
+  case class Cons(head: BigInt, tail: List) extends List
 
