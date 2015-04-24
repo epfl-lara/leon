@@ -1,10 +1,12 @@
+.. _cmdlineoptions:
+
 Command Line Options
 ====================
 
 Here is an overview of the command-line options that Leon recognizes: 
 
-Choosing the feature to use:
-----------------------------
+Choosing the feature to use
+---------------------------
 
 The first group of options determine which feature of Leon will be used. They are mutually exclusive,
 with ``--verify`` being the default.

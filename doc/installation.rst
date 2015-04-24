@@ -88,20 +88,5 @@ In any case, we recommend that you install both solvers separately and have
 their binaries available in the ``$PATH``.
 
 Since the default solver uses the native Z3 API, you will have to explicitly
-specify another solver if this native layer is not available to you. Check the
-the ``--solvers`` command line option:
-
-:: 
-
- --solvers=s1,s2      Use solvers s1 and s2
-                      Available:
-                        enum           : Enumeration-based counter-example-finder
-                        fairz3         : Native Z3 with z3-templates for unfolding (default)
-                        smt-cvc4       : CVC4 through SMT-LIB
-                        smt-cvc4-cex   : CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only
-                        smt-cvc4-proof : CVC4 through SMT-LIB, in-solver inductive reasonning, for proofs only
-                        smt-z3         : Z3 through SMT-LIB
-                        smt-z3-q       : Z3 through SMT-LIB, with quantified encoding
-                        unrollz3       : Native Z3 with leon-templates for unfolding
-
-
+specify another solver if this native layer is not available to you. Check also the
+the ``--solvers`` in :ref:`cmdlineoptions` .

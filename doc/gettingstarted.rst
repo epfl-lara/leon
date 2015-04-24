@@ -93,7 +93,8 @@ and get something like this
 
 For more details on how to build Leon from sources that can
 be used directly from the shell, see
-:ref:`installation`. 
+:ref:`installation`.  In addition to invoking `./leon --help` you
+may wish to consult :ref:`cmdlineoptions`.
 
 
 Asking Questions

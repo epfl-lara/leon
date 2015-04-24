@@ -1,22 +1,22 @@
 .. _tutorial:
 
-Tutorials
-=========
+Tutorial: Sorting
+=================
 
-For these tutorials we occasionally assume that the user is using the web 
+This tutorial shows how to:
+
+  * define lists as algebraic data types
+  * specify sortedness of a list and use function contracts
+  * verify properties of an insertion into a sorted list
+  * execute or synthesize provably correct operations using specifications alone,
+    without the need to write implementation
+
+For this tutorial we occasionally assume that the user is using the web 
 interface. The functionality is also available (possibly with less
 convenient interface) from the command line, see :ref:`gettingstarted`.
 
-Sorting Lists
--------------
-
-This tutorial shows how to define lists as algebraic data
-types, how to **verify** certain properties of an insertion
-sort. We finish showing how to use Leon to **synthesize**
-provably correct operations from specifications.
-
-A Preview of Specification and Synthesis
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Sorting Two Elements
+--------------------
 
 As a preview, let us start by **specifying** a function that
 sorts **two** mathematical integers. Here is what we need
@@ -82,7 +82,7 @@ length two.  Note that the result is uniquely specified, no
 matter what the values of `x` and `y` are.
 
 Evaluating exppressions containing choose
-.........................................
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Leon contains a built-in evaluator. To see it in action in
 the web interface, just define a function without
@@ -105,7 +105,7 @@ more efficient code. Leon can automate this process
 in some cases, using **synthesis**.
 
 Synthesizing the sort of two elements
-.....................................
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Instead of executing `choose` using a constraint solver
 during execution, we can alternatively instruct Leon to
@@ -139,13 +139,13 @@ satisfies our specification. In this case, the specification
 is unambiguous, so all programs that one can synthesize
 compute the same results for all inputs.
 
-Defining lists
-^^^^^^^^^^^^^^
+Defining Unbounded Lists
+------------------------
 
 Let us now consider sorting of any number of elements.
 
 For this purpose, we define the data structure of lists of
-(big) integers.  (Leon has a built-in data type of
+(big) integers.  Leon has a built-in data type of
 polymorphic lists, see :ref:`Leon Library <library>`, but
-here we will define our own variant.)
+here we define our own variant.
 

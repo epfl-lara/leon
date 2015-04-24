@@ -1,7 +1,7 @@
 .. _purescala:
 
-Pure Scala: Leon's Language
-===========================
+Pure Scala
+==========
 
 The input to Leon is a purely functional subset of Scala,
 which we call **Pure Scala**. Constructs specific for Leon
