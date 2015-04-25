@@ -5,7 +5,9 @@ Tutorial: Sorting
 
 This tutorial shows how to:
 
+  * use the `choose` construct for synthesis and constraint solving
   * define lists as algebraic data types
+  * use sets to specify properties of interest
   * specify sortedness of a list and use function contracts
   * verify properties of an insertion into a sorted list
   * execute or synthesize provably correct operations using specifications alone,
@@ -104,8 +106,8 @@ to eventually replace your `choose` constructs with
 more efficient code. Leon can automate this process
 in some cases, using **synthesis**.
 
-Synthesizing the sort of two elements
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Synthesizing Sort for Two Elements
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Instead of executing `choose` using a constraint solver
 during execution, we can alternatively instruct Leon to
@@ -138,6 +140,61 @@ This code performs some unnecessary case analysis, but still
 satisfies our specification. In this case, the specification
 of the program output is unambiguous, so all programs that
 one can synthesize compute the same results for all inputs.
+
+Remarks on Uniqueness
+^^^^^^^^^^^^^^^^^^^^^
+
+Let us give a name to the specification for `sort2`.
+
+.. code-block:: scala
+
+  def sort2spec(x: BigInt, y: BigInt, res: (BigInt, BigInt)): Boolean = {
+    Set(x,y) == Set(res._1, res._2) && res._1 <= res._2
+  }
+
+We can then prove that the result is unique, by asking Leon
+to show the following function returns `true` for all inputs
+for which the `require` clause holds.
+
+.. code-block:: scala
+
+  def unique2(x: BigInt, y: BigInt, 
+            res1: (BigInt, BigInt),
+            res2: (BigInt, BigInt)): Boolean = {
+    require(sort2spec(x,y,res1) && sort2spec(x,y,res2))
+    res1 == res2
+  }.holds
+
+In contrast, if we define the corresponding specification for three integers
+
+.. code-block:: scala
+
+  def sort3spec(x: BigInt, y: BigInt, z: BigInt, res: (BigInt, BigInt, BigInt)): Boolean = {
+    Set(x,y,z) == Set(res._1, res._2, res._3) && res._1 <= res._2 && res._2 <= res._3
+  }
+
+Then uniqueness of the solution is the following conjecture:
+
+.. code-block:: scala
+  
+  def unique3(x: BigInt, y: BigInt, z: BigInt, 
+      res1: (BigInt, BigInt, BigInt),
+      res2: (BigInt, BigInt, BigInt)): Boolean = {
+    require(sort3spec(x,y,z,res1) && sort3spec(x,y,z,res2))
+    res1 == res2
+  }.holds
+
+This time, however, Leon will report a counterexample, indicating
+that the conjecture does not hold. One such counterexample is
+0, 1, 1, for which the result (0, 0, 1) also satisfies the specification,
+because sets ignore the duplicates, so 
+
+.. code-block:: scala
+
+    Set(x,y,z) == Set(res._1, res._2, res._2)
+
+is true. This shows that writing specifications can be subtle, but Leon's
+capabilities can help in the process as well.
 
 Defining Lists and Their Properties
 -----------------------------------
