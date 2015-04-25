@@ -46,8 +46,8 @@ Invoking ``leon --repair --functions=moddiv`` will yield: ::
   [  Info  ] =============================== 3. Synthesizing ===============================
   [  Info  ] ⟦ a;b, ↓ moddiv(a, b) && ⊙ {(1, 0)} && a >= 0 && b > 0 && b > a ≺  ⟨ val res = x27;
   [  Info  ] b * res._2 + res._1 == a ⟩ x27 ⟧ 
-  [  Info  ] [CEGLESS             ] ⟦ a;b, ↓ moddiv(a, b) && ⊙ {(1, 0)} && a >= 0 && b > 0 && b > a ≺  ⟨ val res = x27;
-  [  Info  ] b * res._2 + res._1 == a ⟩ x27 ⟧ 
+  [  Info  ] [CEGLESS             ] ⟦ a;b, ↓ moddiv(a, b) && ⊙ {(1, 0)} && a >= 0 && b > 0 && b > a ≺
+  [  Info  ]                          ⟨ val res = x27; b * res._2 + res._1 == a ⟩ x27 ⟧ 
   [  Info  ] [CEGLESS             ] Solved with: ⟨ true |  (a, 0) ⟩...
   [  Info  ] Finished in 1995ms
   [  Info  ] Found trusted solution!
