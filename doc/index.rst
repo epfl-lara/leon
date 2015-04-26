@@ -20,6 +20,7 @@ Contents:
    library
    xlang
    verification
+   limitations
    synthesis
    repair
    options
