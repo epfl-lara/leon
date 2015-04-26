@@ -94,5 +94,5 @@ and get something like this
 For more details on how to build Leon from sources that can
 be used directly from the shell, see
 :ref:`installation`.  In addition to invoking `./leon --help` you
-may wish to consult :ref:`cmdlineoptions`.
+may wish to consult :ref:`cmdlineoptions` options.
 
