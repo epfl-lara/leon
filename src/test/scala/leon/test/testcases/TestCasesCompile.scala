@@ -50,4 +50,7 @@ class TestCasesCompile extends LeonTestSuite {
   forEachFileIn(baseDir+"verification/") { f =>
     testFrontend(f, slashes)
   }
+  forEachFileIn(baseDir+"web/") { f =>
+    testFrontend(f, slashes)
+  }
 }
