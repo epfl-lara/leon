@@ -15,6 +15,7 @@ Contents:
    gettingstarted
    installation
    tutorial
+   faq
    purescala
    library
    xlang

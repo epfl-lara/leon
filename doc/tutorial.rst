@@ -217,15 +217,16 @@ definition, expressed using Scala's **case classes**.
   case object Nil extends List
   case class Cons(head: BigInt, tail: List) extends List
 
-We can read the definition as follows: List is defined
-by applying the following two rules finitely many times:
+We can read the definition as follows: the set of lists is
+defined as the least set that satisfies them:
 
   * empty list `Nil` is a list
   * if `head` is an integer and `tail` is a `List`, then
     `Cons(head,tail)` is a `List`.
 
-A list containing elements 5, 2, and 7, in that order, can
-be written as
+Each list is constructed by applying the above two rules
+finitely many times.  A concrete list containing elements 5,
+2, and 7, in that order, is denoted
 
 .. code-block:: scala
 

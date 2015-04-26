@@ -96,11 +96,3 @@ be used directly from the shell, see
 :ref:`installation`.  In addition to invoking `./leon --help` you
 may wish to consult :ref:`cmdlineoptions`.
 
-
-Asking Questions
-----------------
-
-We are active on http://stackoverflow.com. 
-
-Try `searching for the leon tag <http://stackoverflow.com/questions/tagged/leon?sort=newest>`_.
-
