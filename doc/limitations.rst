@@ -47,13 +47,23 @@ second argument of `/` or `%` is not a constant literal.
 Out of Memory Errors
 ^^^^^^^^^^^^^^^^^^^^
 
+By default Leon assumes that unbounded data types can
+be arbitrarily large and that all well-founded recursive
+functions have enough stack space to finish their computation.
+Thus a verified program may crash at run-time due to:
+  * stack overflow
+  * heap overflow
+
 Algebraic data types are assumed to be arbitrarily large.
 In any given execution, there will be actual bounds on the
 total available memory, so the program could crash with out
 of memory error when trying to allocate another value of
-algebraic data type. This is a common limitation. For a safety
-critical application you may wish to write pre and postconditions
-that enforce a bound on the maximum size of the data structures
-that your application manipulates. For this purpose, you can
-define size functions that return `BigInt` data types.
+algebraic data type. 
+
+For a safety critical application you may wish to resort to
+tail-recursive programs only, and also write preconditions
+and postconditions that enforce a bound on the maximum size
+of the data structures that your application
+manipulates. For this purpose, you can define size functions
+that return `BigInt` data types.
 

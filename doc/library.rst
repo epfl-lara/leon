@@ -31,19 +31,5 @@ Here is a quick summary of what to import.
 |`leon.lang.synthesis`           | choose, ???, ?, ?!                                 +
 +--------------------------------+----------------------------------------------------+
 
-In the sequel we outline some of the libraries. To learn more, we encourage you to
+To learn more, we encourage you to
 look in the `library/` subdirectory of Leon distribution.
-
-List
-^^^^
-
-Set
-^^^
-
-Option
-^^^^^^
-
-Map
-^^^
-
-

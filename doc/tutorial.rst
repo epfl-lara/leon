@@ -5,24 +5,208 @@ Tutorial: Sorting
 
 This tutorial shows how to:
 
+  * use `ensuring`, `require`, and `holds` constructs
+  * learn the difference between `Int` and `BigInt`
   * use the `choose` construct for synthesis and constraint solving
   * define lists as algebraic data types
-  * use sets to specify properties of interest
-  * specify sortedness of a list and use function contracts
-  * verify properties of an insertion into a sorted list
-  * execute or synthesize provably correct operations using specifications alone,
-    without the need to write implementation
+  * use sets and recursive function to specify data structures
+  * synthesize insertion into a sorted list
+  * synthesize sorting on lists
 
-For this tutorial we occasionally assume that the user is using the web 
-interface. The functionality is also available (possibly with less
-convenient interface) from the command line, see :ref:`gettingstarted`.
+We assume that the user is using the web interface. The
+functionality is also available (possibly with less
+convenient interface) from the command line, see
+:ref:`gettingstarted`.
+
+Warm-up: Max
+------------
+
+As a warm-up we define and debug a `max` function in Leon
+and specify its properties.  Leon uses Scala constructs
+`require` and `ensuring` to document preconditions and
+postconditions of functions. However, in addition to
+checking these conditions at run-time (which standard Scala
+does), Leon can analyze the specifications statically and
+prove them for all executions, or automatically find
+inputs for which the conditions fail. Moreover, it can
+use specifications for constraint execution, 
+synthesis, and repair. 
+
+Consider the following definition inside an object `TestMax`.
+
+.. code-block:: scala
+
+  object TestMax {
+    def max(x: Int, y: Int): Int = {
+      val d = x - y
+      if (d > 0) x
+      else y
+    } ensuring(res => 
+      x <= res && y <= res && (res == x || res == y))
+  }
+
+A Leon program consists of one or more modules delimited by
+`object` and `class` declarations. 
+The code of `max` attempts to compute maximum of two given arguments
+by subtracting them. If the result is positive, it returns
+the first one, otherwise, it returns the second one.
+
+To specify the correctness of the computed result, we use
+the `ensuring` clause.  In this case, the clause specifies
+that the result is larger than `x` and than `y`, and that it
+equals to one of them. The construct `ensuring(res => P)`
+denotes that, if we denote by `res` the return value of the
+function, then `res` satisfies the boolean-valued expression
+`P`.  The name `res` we chose is an arbitrary bound variable
+(even though we often tend to use `res`).
+
+We can evaluate this code on some values by writing
+parameterless functions and inspecting what they evaluate
+to. The web interface will display these results for us.
+
+.. code-block:: scala
+
+  def test1 = max(10, 5)
+  def test2 = max(-5, 5)
+  def test3 = max(-5, -7)
+
+The code seems to work correctly on the example values.
+However, Leon automatically finds that it is not correct,
+showing us a counter-example inputs, such as 
+
+.. code-block:: scala
+
+  x -> -1639624704
+  y -> 1879048192
+
+We may wish to define a test method 
+
+.. code-block:: scala
+
+  def test4 = max(-1639624704, 1879048192)
+
+whose evaluation indeed results in `ensuring` condition being violated.
+The problem is due to overflow of 32-bit integers, due to which
+the value `d` becomes positive, even though `x` is negative and thus smaller than
+the large positive value `y`.
+As in Scala, the `Int` type denotes 32-bit
+integers with the usual signed arithmetic operations from
+computer architecture and the JVM specification.
+
+To use unbounded integers, we simply change the types to
+`BigInt`, obtaining a program that verifies (and, as
+expected, passes all the test cases).
+
+.. code-block:: scala
+
+    def max(x: BigInt, y: BigInt): BigInt = {
+      val d = x - y
+      if (d > 0) x
+      else y
+    } ensuring(res => 
+      x <= res && y <= res && (res == x || res == y))
+
+As a possibly simpler specification, we could have also
+defined the reference implementation 
+
+.. code-block:: scala
+
+  def rmax(x: BigInt, y: BigInt) = {
+    if (x <= y) x else y
+  }
+
+and then used as postcondition of `max` simply
+
+.. code-block:: scala
+
+  ensuring (res =>  res == rmax(x,y))
+
+In general, Leon uses both function body and function
+specification when reasoning about the function and its
+uses. Thus, we need not repeat in the postcondition those
+aspects of function body that follow directly through
+inlining the function, but we may wish to state those
+that require induction to prove.
+
+The fact that we can use functions in preconditions
+and postconditions allows us to state fairly general
+properties. For example, the following lemma verifies
+a number of algebraic properties of `max`.
+
+.. code-block:: scala
+
+  def max_lemma(x: BigInt, y: BigInt, z: BigInt): Boolean = {
+    max(x,x) == x &&
+    max(x,y) == max(y,x) &&
+    max(x,max(y,z)) == max(max(x,y), z) && 
+    max(x,y) + z == max(x + z, y + z)
+  } holds
+
+Here `holds` operator on the function body is an
+abbreviation for the postcondition stating that the returned
+result is always true, that is, for
+
+.. code-block:: scala
+
+  ensuring(res => res==true)
+
+As a guideline, we typically use `holds` to express such
+algebraic properties that relate multiple invocations of
+functions, whereas we use `ensuring` to document property of
+an arbitrary single invocation of a function. Leon is more likely to automatically
+use the property of a function if it is associated with it using
+`ensuring` than using an external lemma.
+
+Going back to our buggy implementation of `max` on `Int`-s,
+an alternative to using `BigInt`-s is to decide that
+the method should only be used under certain conditions,
+such as `x` and `y` being non-negative. To specify the
+conditions on input, we use the `require` clause.
+
+.. code-block:: scala
+
+  def max(x: Int, y: Int): Int = {
+    require(0 <= x && 0 <= y)
+    val d = x - y
+    if (d > 0) x
+    else y
+  } ensuring (res => 
+    x <= res && y <= res && (res == x || res == y))
+
+This program verifies and indeed works correctly on
+non-negative 32-bit integers as inputs.  Curiously, if we
+instead require `x` and `y` to be non-positive (a seemingly
+symmetrical specification) , the resulting program
+
+.. code-block:: scala
+
+  def max(x: Int, y: Int): Int = {
+    require(x <= 0 && y <= 0)
+    val d = x - y
+    if (d > 0) x
+    else y
+  } ensuring (res => 
+    x <= res && y <= res && (res == x || res == y))
+
+breaks with the counterexample
+
+.. code-block:: scala
+
+  x -> 0
+  y -> -2147483648
+
+The reason is that there is one more negative `Int` than
+the positive `Int`-s, so the subtraction can still overflow
+in this particular case. 
+
+In the sequel we will mostly use `BigInt` types.
 
 Sorting Two Elements
 --------------------
 
-As a preview, let us start by **specifying** a function that
-sorts **two** mathematical integers. Here is what we need
-to write.
+As a step towards sorting, let us specify a function that
+sorts **two** mathematical integers. Here is what we need to
+write.
 
 .. code-block:: scala
 
@@ -34,8 +218,7 @@ to write.
     }
   }
 
-A Leon program consists of one or more modules delimited by
-`object` and `class` declarations. We use `import` to
+We use `import` to
 include core constructs that are specific to Leon. Note
 that, with the definitions in `leon._` packages, Leon
 programs should also compile with the standard Scala
@@ -48,11 +231,7 @@ which stores either `(x,y)` or `(y,x)` such that the first
 component is less than equal the second component.
 
 Note that we use `BigInt` to denote unbounded mathematical
-integers. As in Scala and Java, `Int` denotes 32-bit
-integers with the usual signed arithmetic operations from
-computer architecture. In contrast, `BigInt` denotes the
-unbounded integers, which closely mimic mathematical
-integers.
+integers. 
 
 As usual in Scala, we write `res._1` for the first component
 of the return tuple `res`, and `res._2` for the second
@@ -86,25 +265,25 @@ matter what the values of `x` and `y` are.
 Evaluating exppressions containing choose
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Leon contains a built-in evaluator. To see it in action in
-the web interface, just define a function without
-parameters, such as 
+Leon's built-in evaluator also works for `choose`
+constructs.  To see it in action in the web interface, just
+define a function without parameters, such as
 
 .. code-block:: scala
 
-    def test1 = sort2(30, 4)
+    def testSort2 = sort2(30, 4)
 
-Hovering over `test1` should display the computed result
-`(4,30)`. From :ref:`cmdlineoptions`, use `--eval`.
+Hovering over `testSort2` should display the computed result
+`(4,30)`. (From :ref:`cmdlineoptions`, use `--eval`.)
 
-This shows that Leon's evaluator can also execute `choose`
-constructs. In other words, it supports programming
-with constraints. Executing the `choose` construct
-is, however, expensive. Moreover, the execution times
-are not very predictable. This is why it is desirable
-to eventually replace your `choose` constructs with
-more efficient code. Leon can automate this process
-in some cases, using **synthesis**.
+Thanks to the ability to execute `choose` constructs Leon
+supports programming with fairly general
+constraints. Executing the `choose` construct is, however,
+expensive. Moreover, the execution times are not very
+predictable. This is why it is desirable to eventually
+replace your `choose` constructs with more efficient
+code. Leon can automate this process in some cases, using
+**synthesis**.
 
 Synthesizing Sort for Two Elements
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -258,10 +437,6 @@ We can add a specification that the size is non-negative.
         case Cons(x, rest) => 1 + size(rest)
     }) ensuring(res => res >= 0)
 
-The construct `ensuring(res => P)` denotes that, if
-we denote by `res` the return value of the function,
-then `res` satisfies the boolean-valued expression `P`.
-We call the predicate `P` the **postcondition**.
 
 Sorted Lists
 ^^^^^^^^^^^^
