@@ -1,15 +1,15 @@
 .. _cmdlineoptions:
 
-Command Line
-============
+Command Line Options
+====================
 
 Here is an overview of the command-line options that Leon recognizes: 
 
-Choosing the feature to use
+Choosing which Leon feature to use
 ---------------------------
 
-The first group of options determine which feature of Leon will be used. They are mutually exclusive,
-with ``--verify`` being the default.
+The first group of options determine which feature of Leon will be used.
+These options are mutually exclusive. By default, ``--verify`` is chosen.
 
 * ``--eval`` 
  
@@ -61,11 +61,11 @@ These options are available by all Leon components:
   
   * ``leon`` (The top-level component)
   
-  * ``options`` (Prints parsed options)
+  * ``options`` (Options parsed by Leon)
   
   * ``repair`` (Program repair)
   
-  * ``solver`` (SMT solvers)
+  * ``solver`` (SMT solvers and their wrappers)
   
   * ``synthesis`` (Program synthesis)
   
@@ -77,29 +77,33 @@ These options are available by all Leon components:
   
   * ``verification`` (Verification)
   
-  * ``xlang`` (Transformation of xlang into purescala programs)
+  * ``xlang`` (Transformation of XLang into Pure Scala programs)
 
 
 * ``--functions=f1,f2,...``
   
-  Only consider functions f1, f2, ... . This applies to all functionalities where Leon manipulates
-  the input in a per-function basis.
+  Only consider functions f1, f2, ... . This applies to all functionalities 
+  where Leon manipulates the input in a per-function basis.
 
 * ``--solvers=s1,s2,...`` 
   
-  Use solvers s1, s2,... . If more than one solver is chosen, all chosen solvers will be used in parallel,
-  and the best result will be presented. By default, the ``fairz3`` solver is picked.
-  Some solvers are specialized to proving verification conditions and will have hard time finding
-  a counterexample in case of an invalid verification condition, some are specialized on finding
+  Use solvers s1, s2,... . If more than one solver is chosen, all chosen 
+  solvers will be used in parallel, and the best result will be presented.
+  By default, the ``fairz3`` solver is picked.
+ 
+  Some solvers are specialized in proving verification conditions 
+  and will have hard time finding a counterexample in case of an invalid 
+  verification condition, whereas some are specialized in finding
   counterexamples, and some provide a compromise between the two.
+  Also, some solvers do not as of now support higher-order functions.
 
   Available solvers include:
   
   * ``enum`` 
     
-    Uses enumeration-based techniques to discover counter-examples.
-    This solver actually does not invoke an SMT solver and operates entirely on the level
-    of Leon trees.
+    Uses enumeration-based techniques to discover counterexamples.
+    This solver does not actually invoke an SMT solver,
+    and operates entirely on the level of Leon trees.
 
   * ``fairz3``
 
@@ -107,29 +111,34 @@ These options are available by all Leon components:
   
   * ``smt-cvc4``
     
-    CVC4 through SMT-LIB. An algorithm within Leon takes up the unfolding of recursive functions,
-    lambdas etc. To use this and the following CVC4-based solvers, you will need to have the ``cvc4``
-    executable in your system path (recommended is the latest unstable version).
+    CVC4 through SMT-LIB. An algorithm within Leon takes up the unfolding 
+    of recursive functions, handling of lambdas etc. To use this or any 
+    of the following CVC4-based solvers, you need to have the ``cvc4``
+    executable in your system path (the latest unstable version is recommended).
   
   * ``smt-cvc4-cex``
  
     CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only.
+    Currently, this solver does not handle higher-order functions.
   
   * ``smt-cvc4-proof``
    
-    CVC4 through SMT-LIB, for proofs only. Inductive reasoning happens within the solver,
-    through use of the SMTLIB-2.5 standard.
+    CVC4 through SMT-LIB, for proofs only. Inductive reasoning happens
+    within the solver, through use of the SMTLIB-2.5 standard.
+    Currently, this solver does not handle higher-order functions.
   
   * ``smt-z3``
    
-    Z3 through SMT-LIB. To use this or the next solver, you will need to have the ``z3``
-    executable in your program path (recommended: latest unstable version).
-    Inductive reasoning happens on the Leon side (similarly to ``smt-cvc4``).
+    Z3 through SMT-LIB. To use this or the next solver, you need to 
+    have the ``z3`` executable in your program path (the latest stable version
+    is recommended). Inductive reasoning happens on the Leon side
+    (similarly to ``smt-cvc4``).
   
   * ``smt-z3-q``
    
-    Z3 through SMT-LIB, but (recursive) functions are encoded with universal quantification,
-    and inductive reasoning happens within the solver.
+    Z3 through SMT-LIB, but (recursive) functions are encoded with universal
+    quantification, and inductive reasoning happens within the solver.
+    Currently, this solver does not handle higher-order functions.
   
   * ``unrollz3``
     
@@ -142,7 +151,8 @@ These options are available by all Leon components:
 
 * ``--timeout=t``
 
-  Set a timeout for attempting to prove a verification condition/ repair a function (in sec.)
+  Set a timeout for each attempt to prove one verification condition/
+  repair one function (in sec.)
     
 Additional Options, by Component:
 ---------------------------------
@@ -167,19 +177,20 @@ Synthesis
 
 * ``--cegis:opttimeout``
 
-  Consider a time-out of CE-search as untrusted solution
+  Consider a time-out of CE-search as untrusted solution.
 
 * ``--cegis:shrink``
 
-  Shrink non-det programs when tests pruning works well
+  Shrink non-det programs when tests pruning works well.
 
 * ``--cegis:vanuatoo``
  
-  Generate inputs using new korat-style generator
+  Generate inputs using new korat-style generator.
   
 * ``--costmodel=cm``
   
-  Use a specific cost model for this search
+  Use a specific cost model for this search.
+  Available: ``Naive``, ``WeightedBranches``
 
 * ``--derivtrees``
   
@@ -189,34 +200,35 @@ Synthesis
 * ``--manual=cmd``
   
   Override Leon's automated search through the space of programs during synthesis.
-  When this option is chosen, the user gets to traverse the space manually
-  and choose how deductive synthesis rules are instantiated.
+  Instead, the user can navigate the program space manually
+  by choosing which deductive synthesis rules is instantiated each time.
 
-  The optional ``cmd`` argument is a series of natural numbers in the form ``n1,n1,...,nk``.
-  It represents the series of command indexes that the search should instantiate at the 
-  beginning of the search. Useful for repeated search attempts.
+  The optional ``cmd`` argument is a series of natural numbers in the form
+  ``n1,n1,...,nk``. It represents the series of command indexes that the search
+  should instantiate at the beginning of the search.
+  Useful for repeated search attempts.
 
 Fair-z3 Solver
 **************
 * ``--checkmodels``
 
-  Double-check counter-examples with evaluator
+  Double-check counter-examples with evaluator.
 
 * ``--codegen``
   
-  Use compiled evaluator instead of interpreter
+  Use compiled evaluator instead of interpreter.
 
 * ``--evalground``
  
-  Use evaluator on functions applied to ground arguments
+  Use evaluator on functions applied to ground arguments.
   
 * ``--feelinglucky``
   
-  Use evaluator to find counter-examples early
+  Use evaluator to find counter-examples early.
 
 * ``--unrollcores``
  
-  Use unsat-cores to drive unrolling while remaining fair
+  Use unsat-cores to drive unrolling while remaining fair.
   
 CVC4-solver
 ***********
