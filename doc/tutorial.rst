@@ -296,10 +296,12 @@ specification, such as, for, example:
 
 .. code-block:: scala
 
-    def sort2(x : BigInt, y : BigInt) = choose{(res: (BigInt,BigInt)) =>
-      if (x < y) x
-      else y
-    }
+  def sort2(x : BigInt, y : BigInt): (BigInt, BigInt) = {
+    if (x < y)
+      (x, y)
+    else
+      (y, x)
+  }
 
 Depending on the particular run, Leon may also produce a solution such as
 
@@ -349,7 +351,8 @@ In contrast, if we define the corresponding specification for three integers
 .. code-block:: scala
 
   def sort3spec(x: BigInt, y: BigInt, z: BigInt, res: (BigInt, BigInt, BigInt)): Boolean = {
-    Set(x,y,z) == Set(res._1, res._2, res._3) && res._1 <= res._2 && res._2 <= res._3
+    Set(x,y,z) == Set(res._1, res._2, res._3) && 
+    res._1 <= res._2 && res._2 <= res._3
   }
 
 Then uniqueness of the solution is the following conjecture:
