@@ -206,13 +206,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             |  $post
             |}"""
 
-      case Gives(s, tests) => 
-        optP {
-          p"""|$s gives {
-              |  ${nary(tests, "\n")}
-              |}"""
-        }
-      
       case p@Passes(in, out, tests) =>
         optP {
           p"""|($in, $out) passes {
@@ -749,7 +742,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false
     case (ie: IfExpr, _) => true
-    case (me: MatchLike, _ ) => true
+    case (me: MatchExpr, _ ) => true
     case (e1: Expr, Some(e2: Expr)) if precedence(e1) > precedence(e2) => false
     case (_, _) => true
   }

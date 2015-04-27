@@ -54,8 +54,6 @@ object ConvertHoles extends LeonPhase[Program, Program] {
         var holes  = List[Identifier]()
 
         val withoutHoles = preMap {
-          case p : Gives if treatGives =>
-            Some(p.asMatchWithHole)
           case h : Hole =>
             val (expr, ids) = toExpr(h)
 

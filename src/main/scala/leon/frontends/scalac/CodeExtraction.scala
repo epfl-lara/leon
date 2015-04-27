@@ -1124,11 +1124,6 @@ trait CodeExtraction extends ASTExtractors {
           }
           passes(ine, oute, rc)
 
-        case ExGives(sel, cses) =>
-          val rs = extractTree(sel)
-          val rc = cses.map(extractMatchCase)
-          gives(rs, rc)
-
         case ExArrayLiteral(tpe, args) =>
           finiteArray(args.map(extractTree), None, extractType(tpe)(dctx, current.pos))
 

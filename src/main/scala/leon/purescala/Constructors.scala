@@ -105,9 +105,6 @@ object Constructors {
     }
   }
 
-  def gives(scrutinee : Expr, cases : Seq[MatchCase]) : Gives =
-    Gives(scrutinee, filterCases(scrutinee.getType, None, cases))
-  
   def passes(in : Expr, out : Expr, cases : Seq[MatchCase]): Expr = {
     val resultingCases = filterCases(in.getType, Some(out.getType), cases)
     if (resultingCases.nonEmpty) {

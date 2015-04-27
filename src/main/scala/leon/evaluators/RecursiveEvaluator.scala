@@ -109,7 +109,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case en@Ensuring(body, post) =>
       if ( exists{
         case Hole(_,_) => true
-        case Gives(_,_) => true
         case _ => false
       }(en)) 
         e(convertHoles(en, ctx, true))
@@ -493,8 +492,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case gv: GenericValue =>
       gv
 
-    case g : Gives =>
-      e(convertHoles(g, ctx, true)) 
   
     case p : Passes => 
       e(p.asConstraint)

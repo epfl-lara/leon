@@ -355,7 +355,7 @@ object ExprOps {
           case Variable(i) => subvs + i
           case LetDef(fd,_) => subvs -- fd.params.map(_.id)
           case Let(i,_,_) => subvs - i
-          case MatchLike(_, cses, _) => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
+          case MatchExpr(_, cses) => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
           case Passes(_, _ , cses)   => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
           case Lambda(args, body) => subvs -- args.map(_.id)
           case Forall(args, body) => subvs -- args.map(_.id)
@@ -432,8 +432,8 @@ object ExprOps {
 
 
     postMap({
-      case m @ MatchLike(s, cses, builder) =>
-        Some(builder(s, cses.map(freshenCase)).copiedFrom(m))
+      case m @ MatchExpr(s, cses) =>
+        Some(matchExpr(s, cses.map(freshenCase)).copiedFrom(m))
 
       case p @ Passes(in, out, cses) =>
         Some(Passes(in, out, cses.map(freshenCase)).copiedFrom(p))
@@ -621,7 +621,7 @@ object ExprOps {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
       case l @ Let(i,e,b) => rec(b, s + (i -> rec(e, s)))
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
-      case m @ MatchLike(scrut,cses,builder) => builder(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
+      case m @ MatchExpr(scrut, cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
       case n @ NAryOperator(args, recons) => {
         var change = false
@@ -851,10 +851,6 @@ object ExprOps {
       case p: Passes =>
         // This introduces a MatchExpr
         Some(p.asConstraint)
-
-      case g: Gives =>
-        // This introduces a MatchExpr
-        Some(g.asMatch)
 
       case _ => None
     }
@@ -1236,7 +1232,7 @@ object ExprOps {
     case t: Terminal =>
       1
 
-    case ml: MatchLike =>
+    case ml: MatchExpr =>
       ml.cases.foldLeft(formulaSize(ml.scrutinee)) {
         case (s, MatchCase(p, og, rhs)) =>
           s + formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
@@ -1262,7 +1258,6 @@ object ExprOps {
       case Hole(_, _) => return false
       //@EK FIXME: do we need it? 
       //case Error(_, _) => return false
-      case Gives(_,_) => return false
       case _ =>
     }(e)
     true
@@ -1496,7 +1491,7 @@ object ExprOps {
           fdHomo(fd1, fd2) &&
           isHomo(e1, e2)(map + (fd1.id -> fd2.id))
 
-        case Same(MatchLike(s1, cs1, _), MatchLike(s2, cs2, _)) =>
+        case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
           cs1.size == cs2.size && isHomo(s1, s2) && casesMatch(cs1,cs2)
           
         case (Passes(in1, out1, cs1), Passes(in2, out2, cs2)) =>

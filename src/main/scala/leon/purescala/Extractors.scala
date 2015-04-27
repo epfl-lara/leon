@@ -142,7 +142,7 @@ object Extractors {
         Seq(cond, thenn, elze), 
         (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))
       ))
-      case MatchLike(scrut, cases, builder) => Some((
+      case MatchExpr(scrut, cases) => Some((
         scrut +: cases.flatMap { 
           case SimpleCase(_, e) => Seq(e)
           case GuardedCase(_, e1, e2) => Seq(e1, e2) 
@@ -154,7 +154,7 @@ object Extractors {
             case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
           }
 
-          builder(es(0), newcases)
+          matchExpr(es(0), newcases)
         }
       ))
       case Passes(in, out, cases) => Some((
@@ -301,17 +301,6 @@ object Extractors {
         Some((els, None, IntLiteral(els.size)))
       case _ => 
         None
-    }
-  }
-  
-  object MatchLike {
-    def unapply(m : MatchLike) : Option[(Expr, Seq[MatchCase], (Expr, Seq[MatchCase]) => Expr)] = {
-      Option(m) map { m => 
-        (m.scrutinee, m.cases, m match {
-          case _ : MatchExpr  => matchExpr
-          case _ : Gives      => gives
-        })
-      }
     }
   }
 
