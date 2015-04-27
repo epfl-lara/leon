@@ -13,7 +13,7 @@ import TypeOps._
 object Types {
 
   trait Typed {
-    def getType: TypeTree
+    val getType: TypeTree
     def isTyped : Boolean = getType != Untyped
   }
 

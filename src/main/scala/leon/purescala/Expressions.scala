@@ -14,9 +14,7 @@ import Constructors._
 object Expressions {
 
   /* EXPRESSIONS */
-  abstract class Expr extends Tree with Typed {
-    override val getType: TypeTree
-  }
+  abstract class Expr extends Tree with Typed
 
   trait Terminal {
     self: Expr =>

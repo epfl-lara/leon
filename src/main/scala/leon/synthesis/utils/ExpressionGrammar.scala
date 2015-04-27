@@ -198,7 +198,7 @@ object ExpressionGrammars {
   }
 
   case class Label[T](t: TypeTree, l: T, depth: Option[Int] = None) extends Typed {
-    def getType = t
+    val getType = t
 
     override def toString = t.toString+"#"+l+depth.map(d => "@"+d).getOrElse("")
   }
