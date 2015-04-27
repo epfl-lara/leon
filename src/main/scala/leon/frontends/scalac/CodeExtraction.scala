@@ -3,9 +3,7 @@
 package leon
 package frontends.scalac
 
-import scala.tools.nsc._
 import scala.reflect.internal.util._
-import scala.tools.nsc.plugins._
 
 import scala.language.implicitConversions
 
@@ -37,7 +35,6 @@ trait CodeExtraction extends ASTExtractors {
   import global.definitions._
   import StructuralExtractors._
   import ExpressionExtractors._
-  import ExtractorHelpers._
   import scala.collection.immutable.Set
 
   val reporter = self.ctx.reporter
@@ -1145,7 +1142,6 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExTuple(tpes, exprs) =>
           val tupleExprs = exprs.map(e => extractTree(e))
-          val tupleType = TupleType(tupleExprs.map(expr => expr.getType))
           Tuple(tupleExprs)
 
         case ExErrorExpression(str, tpt) =>
@@ -1349,8 +1345,6 @@ trait CodeExtraction extends ASTExtractors {
           }
 
         case hole @ ExHoleExpression(tpt, exprs) =>
-          val leonExprs = exprs.map(extractTree)
-
           Hole(extractType(tpt), exprs.map(extractTree))
 
         case ops @ ExWithOracleExpression(oracles, body) =>
