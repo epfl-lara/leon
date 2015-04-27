@@ -144,7 +144,7 @@ sealed abstract class List[T] {
   def zip[B](that: List[B]): List[(T, B)] = { (this, that) match {
     case (Cons(h1, t1), Cons(h2, t2)) =>
       Cons((h1, h2), t1.zip(t2))
-    case (_) =>
+    case _ =>
       Nil()
   }} ensuring { _.size == (
     if (this.size <= that.size) this.size else that.size
