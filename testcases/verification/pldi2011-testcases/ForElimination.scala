@@ -12,7 +12,7 @@ object ForElimination {
   case class Assign(varID: Int, expr: Expression) extends Statement
   case class Skip() extends Statement
   case class Block(body: List) extends Statement
-  case class IfThenElse(expr: Expression, then: Statement, elze: Statement) extends Statement
+  case class IfThenElse(expr: Expression, thenn: Statement, elze: Statement) extends Statement
   case class While(expr: Expression, body: Statement) extends Statement
   case class For(init: Statement, expr: Expression, step: Statement, body: Statement) extends Statement
 
@@ -39,7 +39,7 @@ object ForElimination {
  
   def forLoopsWellFormed(stat: Statement): Boolean = (stat match {
     case Block(body) => forLoopsWellFormedList(body)
-    case IfThenElse(_, then, elze) => forLoopsWellFormed(then) && forLoopsWellFormed(elze)
+    case IfThenElse(_, thenn, elze) => forLoopsWellFormed(thenn) && forLoopsWellFormed(elze)
     case While(_, body) => forLoopsWellFormed(body)
     case For(init, _, step, body) => isForFree(init) && isForFree(step) && forLoopsWellFormed(body)
     case _ => true
@@ -54,7 +54,7 @@ object ForElimination {
 
   def eliminateWhileLoops(stat: Statement): Statement = (stat match {
     case Block(body) => Block(eliminateWhileLoopsList(body))
-    case IfThenElse(expr, then, elze) => IfThenElse(expr, eliminateWhileLoops(then), eliminateWhileLoops(elze))
+    case IfThenElse(expr, thenn, elze) => IfThenElse(expr, eliminateWhileLoops(thenn), eliminateWhileLoops(elze))
     case While(expr, body) => For(Skip(), expr, Skip(), eliminateWhileLoops(body))
     case For(init, expr, step, body) => For(eliminateWhileLoops(init), expr, eliminateWhileLoops(step), eliminateWhileLoops(body))
     case other => other
@@ -73,7 +73,7 @@ object ForElimination {
     // require(forLoopsWellFormed(stat))
     stat match {
       case Block(body) => Block(eliminateForLoopsList(body))
-      case IfThenElse(expr, then, elze) => IfThenElse(expr, eliminateForLoops(then), eliminateForLoops(elze))
+      case IfThenElse(expr, thenn, elze) => IfThenElse(expr, eliminateForLoops(thenn), eliminateForLoops(elze))
       case While(expr, body) => While(expr, eliminateForLoops(body))
       case For(init, expr, step, body) => Block(Cons(eliminateForLoops(init), Cons(While(expr, Block(Cons(eliminateForLoops(body), Cons(eliminateForLoops(step), Nil())))), Nil())))
       case other => other
@@ -87,7 +87,7 @@ object ForElimination {
 
   def isWhileFree(stat: Statement): Boolean = stat match {
     case Block(body) => isWhileFreeList(body)
-    case IfThenElse(_, then, elze) => isWhileFree(then) && isWhileFree(elze)
+    case IfThenElse(_, thenn, elze) => isWhileFree(thenn) && isWhileFree(elze)
     case While(_, body) => false
     case For(init,_,step,body) => isWhileFree(init) && isWhileFree(step) && isWhileFree(body)
     case _ => true
@@ -100,7 +100,7 @@ object ForElimination {
  
   def isForFree(stat: Statement): Boolean = stat match {
     case Block(body) => isForFreeList(body)
-    case IfThenElse(_, then, elze) => isForFree(then) && isForFree(elze)
+    case IfThenElse(_, thenn, elze) => isForFree(thenn) && isForFree(elze)
     case While(_, body) => isForFree(body)
     case For(_,_,_,_) => false
     case _ => true
