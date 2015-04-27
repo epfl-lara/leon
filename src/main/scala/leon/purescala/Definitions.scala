@@ -145,11 +145,11 @@ object Definitions {
   
     
   case class UnitDef(
-      id: Identifier, 
-      modules : Seq[ModuleDef],
-      pack : PackageRef,
-      imports : Seq[Import],
-      isMainUnit : Boolean // false for libraries/imports
+    id: Identifier,
+    modules : Seq[ModuleDef],
+    pack : PackageRef,
+    imports : Seq[Import],
+    isMainUnit : Boolean // false for libraries/imports
   ) extends Definition {
      
     def subDefinitions = modules ++ imports
@@ -195,9 +195,9 @@ object Definitions {
       case ctd: ClassDef if !ctd.hasParent => ctd
     }
 
-    lazy val algebraicDataTypes : Map[AbstractClassDef, Seq[CaseClassDef]] = (defs.collect {
-      case c @ CaseClassDef(_, _, Some(p), _) => c
-    }).groupBy(_.parent.get.classDef)
+    lazy val algebraicDataTypes : Map[AbstractClassDef, Seq[CaseClassDef]] = defs.collect {
+      case c@CaseClassDef(_, _, Some(p), _) => c
+    }.groupBy(_.parent.get.classDef)
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
       case c @ CaseClassDef(_, _, None, _) => c

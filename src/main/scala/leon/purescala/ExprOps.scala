@@ -12,7 +12,6 @@ import Constructors._
 import DefOps._
 import utils.Simplifiers
 import solvers._
-import scala.collection.concurrent.TrieMap
 
 object ExprOps {
 
@@ -275,8 +274,6 @@ object ExprOps {
   
   
   
-  
-  
   ///*
   // * Turn a total function returning Option[A] into a partial function
   // * returning A.
@@ -343,9 +340,9 @@ object ExprOps {
 
 
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
-    postMap( {
-        case Variable(i) => substs.get(i)
-        case _ => None
+    postMap({
+      case Variable(i) => substs.get(i)
+      case _ => None
     })(expr)
   }
 
@@ -369,8 +366,8 @@ object ExprOps {
 
   def containsFunctionCalls(expr: Expr): Boolean = {
     exists{
-        case _: FunctionInvocation => true
-        case _ => false
+      case _: FunctionInvocation => true
+      case _ => false
     }(expr)
   }
 
@@ -2133,9 +2130,9 @@ object ExprOps {
           }
 
           val resCases = List(
-                           SimpleCase(simplifyPattern(pattern), newThen),
-                           SimpleCase(WildcardPattern(None), elze)
-                         )
+            SimpleCase(simplifyPattern(pattern), newThen),
+            SimpleCase(WildcardPattern(None), elze)
+          )
 
           def mergePattern(to: Pattern, anchor: Identifier, pat: Pattern): Pattern = to match {
             case CaseClassPattern(ob, cd, subs) =>

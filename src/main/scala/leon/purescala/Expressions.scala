@@ -14,7 +14,7 @@ import Constructors._
 object Expressions {
 
   /* EXPRESSIONS */
-  abstract class Expr extends Tree with Typed with Serializable {
+  abstract class Expr extends Tree with Typed {
     override val getType: TypeTree
   }
 
@@ -22,7 +22,7 @@ object Expressions {
     self: Expr =>
   }
 
-  case class NoTree(tpe: TypeTree) extends Expr with Terminal with Typed {
+  case class NoTree(tpe: TypeTree) extends Expr with Terminal {
     val getType = tpe
   }
 
@@ -33,7 +33,7 @@ object Expressions {
     val getType = tpe
   }
 
-  case class Require(pred: Expr, body: Expr) extends Expr with Typed {
+  case class Require(pred: Expr, body: Expr) extends Expr {
     val getType = body.getType
   }
 
