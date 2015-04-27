@@ -268,3 +268,32 @@ in the object ``ListSpecs``:
 +---------------------------------------------------------------+--------------------------------------------------------+
 | ``scanVsFoldRight[A,B](l: List[A], z: B, f: (A,B) => B)``     | ``l.scanRight(f)(z).head == l.foldRight(f)(z)``        |
 +---------------------------------------------------------------+--------------------------------------------------------+
+
+Set[T], Map[T]
+--------------
+
+Leon uses its own Sets and Maps, which are defined in the ``leon.lang`` package.
+However, these classes are are not implemented within Leon.
+Instead, they are parsed into specialized trees.
+Methods of these classes are mapped to specialized trees within SMT solvers.
+For code generation, we rely on Java Sets and Maps.
+
+The API of these classes is a subset of the Scala API and can be found
+in the :ref:`purescala` section.
+
+Additionally, the following functions for Sets are provided in the
+``leon.collection`` package:
+
+
++-----------------------------------------------------------+-------------------------------------------+
+| Function signature                                        | Short description                         |
++===========================================================+===========================================+
+| ``setToList[A](set: Set[A]): List[A]``                    | Transforms the Set ``set`` into a List.   |
++-----------------------------------------------------------+-------------------------------------------+
+| ``setForall[A](set: Set[A], p: A => Boolean): Boolean``   | Tests whether predicate ``p`` holds       |
+|                                                           | for all elements of Set ``set``.          |
++-----------------------------------------------------------+-------------------------------------------+
+| ``setExists[A](set: Set[A], p: A => Boolean): Boolean``   | Tests whether predicate ``p`` holds       |
+|                                                           | for all elements of Set ``set``.          |
++-----------------------------------------------------------+-------------------------------------------+
+
