@@ -6,18 +6,18 @@ object EpflOpenDays {
   @library
   sealed abstract class Piece {
     def valeur: BigInt = this match {
-      case Cent5  => 5
-      case Cent10 => 10
-      case Cent20 => 20
-      case Cent50 => 50
-      case Fr1    => 100
-      case Fr2    => 200
-      case Fr5    => 500
-      case Bi10   => 1000
-      case Bi20   => 2000
-      case Bi50   => 5000
-      case Bi100  => 10000
-      case Bi200  => 20000
+      case Cent5  =>      5
+      case Cent10 =>     10
+      case Cent20 =>     20
+      case Cent50 =>     50
+      case Fr1    =>    100
+      case Fr2    =>    200
+      case Fr5    =>    500
+      case Bi10   =>   1000
+      case Bi20   =>   2000
+      case Bi50   =>   5000
+      case Bi100  =>  10000
+      case Bi200  =>  20000
       case Bi1000 => 100000
     }
   }
