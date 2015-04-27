@@ -170,7 +170,7 @@ object Simplifier {
     case And(lhs, rhs) => And(simplify(lhs), simplify(rhs))
     case Or(lhs, rhs) => And(simplify(lhs), simplify(rhs))
     case LessThan(lhs, rhs) => LessThan(simplify(lhs), simplify(rhs))
-    case Ite(cond, then, elze) => Ite(simplify(cond), simplify(then), simplify(elze))
+    case Ite(cond, thn, elze) => Ite(simplify(cond), simplify(thn), simplify(elze))
     case _ => e
   }) ensuring {
     res => run(res)(m) == run(e)(m)
@@ -189,11 +189,11 @@ object Runtime {
     case IntLiteral(v) => v
     case Var(id) => if (m contains id) m(id) else 0
     case LessThan(lhs, rhs) => if (run(lhs) < run(rhs)) 1 else 0
-    case Ite(cond, then, elze) => if (run(cond) != 0) run(then) else run(elze)
+    case Ite(cond, thn, elze) => if (run(cond) != 0) run(thn) else run(elze)
   }
   
   def test() = {
-    run(Plus(IntLiteral(42), Var(0)))(Map(0 -> 1)) 
+    run(Plus(IntLiteral(42), Var(0)))(Map(BigInt(0) -> BigInt(1))) 
   }
 }
 

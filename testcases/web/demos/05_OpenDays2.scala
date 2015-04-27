@@ -5,7 +5,7 @@ import leon.annotation._
 object EpflOpenDays {
   @library
   sealed abstract class Piece {
-    def valeur = this match {
+    def valeur: BigInt = this match {
       case Cent5  => 5
       case Cent10 => 10
       case Cent20 => 20
@@ -18,9 +18,8 @@ object EpflOpenDays {
       case Bi50   => 5000
       case Bi100  => 10000
       case Bi200  => 20000
-      case Bi1000 => 100000    
+      case Bi1000 => 100000
     }
-    
   }
   case object Cent5 extends Piece
   case object Cent10 extends Piece
@@ -36,7 +35,7 @@ object EpflOpenDays {
   case object Bi200 extends Piece
   case object Bi1000 extends Piece
 
-  
+
   @library
   sealed abstract class Liste {
     def somme: BigInt = {
@@ -55,7 +54,7 @@ object EpflOpenDays {
     else if (v >= Bi200.valeur )  Bi200
     else if (v >= Bi100.valeur )  Bi100
     else if (v >= Bi50.valeur )   Bi50
-    else if (v >= Bi20.valeur )   Bi100
+    else if (v >= Bi20.valeur )   Bi100 // *wink* *wink*
     else if (v >= Bi10.valeur )   Bi10
     else if (v >= Fr5.valeur )    Fr5
     else if (v >= Fr2.valeur )    Fr2

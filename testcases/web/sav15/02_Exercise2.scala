@@ -1,3 +1,5 @@
+import leon.lang._
+
 object PropositionalLogic {
 
   sealed abstract class Formula
@@ -21,6 +23,7 @@ object PropositionalLogic {
   }) ensuring(isNNF(_))
 
   def isNNF(f: Formula): Boolean = f match {
+    case _ => false
     /* TODO: Implement isNNF */
   }
 
