@@ -51,6 +51,7 @@ By default Leon assumes that unbounded data types can
 be arbitrarily large and that all well-founded recursive
 functions have enough stack space to finish their computation.
 Thus a verified program may crash at run-time due to:
+
   * stack overflow
   * heap overflow
 

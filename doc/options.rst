@@ -14,7 +14,7 @@ you can do it by using a single dash ``-``. For example, ``-Ybrowse:typer``.
 The rest of this section presents all command-line options that Leon recognizes.
 
 Choosing which Leon feature to use
----------------------------
+----------------------------------
 
 The first group of options determine which feature of Leon will be used.
 These options are mutually exclusive. By default, ``--verify`` is chosen.
