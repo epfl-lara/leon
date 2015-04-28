@@ -70,10 +70,19 @@ def max(x: Int, y: Int): Int = {
   }
 */
 
+/*
+  def sort2(x : BigInt, y : BigInt) = {
+    ???[(BigInt, BigInt)]
+  } ensuring{(res: (BigInt,BigInt)) =>
+    Set(x,y) == Set(res._1, res._2) && res._1 <= res._2
+  }
+*/
+
+
 // def testSort2 = sort2(30, 4)
 
 /*
-  def sort2(x : BigInt, y : BigInt) = choose{(res: (BigInt,BigInt)) => 
+  def sort2(x: BigInt, y: BigInt) = choose{(res: (BigInt,BigInt)) => 
     sort2spec(x,y,res)
   }
 
@@ -90,14 +99,14 @@ def max(x: Int, y: Int): Int = {
  */
 
 /*
-  def sort3spec(x: BigInt, y: BigInt, z: BigInt, res: (BigInt, BigInt, BigInt)): Boolean = {
+  def sort3spec(x: BigInt, y: BigInt, z: BigInt, res: (BigInt,BigInt,BigInt)): Boolean = {
     Set(x,y,z) == Set(res._1, res._2, res._3) && 
     res._1 <= res._2 && res._2 <= res._3
   }
 
   def unique3(x: BigInt, y: BigInt, z: BigInt,
-         res1: (BigInt, BigInt, BigInt),
-         res2: (BigInt, BigInt, BigInt)): Boolean = {
+         res1: (BigInt,BigInt,BigInt),
+         res2: (BigInt,BigInt,BigInt)): Boolean = {
     require(sort3spec(x,y,z,res1) && sort3spec(x,y,z,res2))
     res1 == res2
   }.holds
@@ -112,7 +121,7 @@ def max(x: Int, y: Int): Int = {
   case object Nil extends List
   case class Cons(head: BigInt, tail: List) extends List
 
-  def size(l: List) : BigInt = (l match {
+  def size(l: List): BigInt = (l match {
       case Nil => 0
       case Cons(x, rest) => x + size(rest)
   }) 
@@ -129,7 +138,7 @@ def max(x: Int, y: Int): Int = {
 */
 
 /*
-  def isSorted(l : List) : Boolean = l match {
+  def isSorted(l: List): Boolean = l match {
     case Nil => true
     case Cons(_,Nil) => true
     case Cons(x1, Cons(x2, rest)) => 
@@ -140,7 +149,7 @@ def max(x: Int, y: Int): Int = {
   //def t2 = isSorted(Cons(15, Cons(15, Nil)))
 
 /*
-  def sInsert(x : BigInt, l : List) : List = {
+  def sInsert(x: BigInt, l: List): List = {
     require(isSorted(l))
     l match {
       case Nil => Cons(x, Nil)
@@ -166,7 +175,7 @@ def max(x: Int, y: Int): Int = {
   //def m = insertMagic(17, Cons(10, Cons(15, Cons(20, Nil))))
 
 /*
-  def sortMagic(l : List) = {
+  def sortMagic(l: List) = {
      ???[List]
   } ensuring((res:List) => 
     isSorted(res) && content(res) == content(l))
@@ -175,7 +184,7 @@ def max(x: Int, y: Int): Int = {
   // def mm = sortMagic(Cons(20, Cons(5, Cons(50, Cons(2, Nil)))))
 
 /*
-  def sInsert(x : BigInt, l : List) : List = {
+  def sInsert(x: BigInt, l: List): List = {
     require(isSorted(l))
     l match {
       case Nil => Cons(x, Nil)
