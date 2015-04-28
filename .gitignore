@@ -24,6 +24,7 @@ last.log
 *.last
 *.table
 *.log
+vcs/
 
 #eclipse
 .cache
