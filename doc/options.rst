@@ -3,7 +3,15 @@
 Command Line Options
 ====================
 
-Here is an overview of the command-line options that Leon recognizes: 
+Leon's command line options have the form ``--option`` or ``--option=value``.
+To enable a flag option, use ``--option=true`` or ``on`` or ``yes``,
+or just ``--option``. To disable a flag option, use ``--option=false``
+or ``off`` or ``no``.
+
+Additionally, if you need to pass options to the ``scalac`` frontend of Leon,
+you can do it by using a single dash ``-``. For example, ``-Ybrowse:typer``.
+
+The rest of this section presents all command-line options that Leon recognizes.
 
 Choosing which Leon feature to use
 ---------------------------
