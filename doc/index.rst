@@ -15,7 +15,6 @@ Contents:
    gettingstarted
    installation
    tutorial
-   faq
    purescala
    library
    xlang
@@ -24,6 +23,7 @@ Contents:
    synthesis
    repair
    options
+   faq
    references
 
 
