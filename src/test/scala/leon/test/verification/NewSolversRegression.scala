@@ -38,7 +38,7 @@ class NewSolversRegression extends VerificationRegression {
       else Nil
     ) ++ (
       if (isCVC4Available)
-        List(List("--solvers=smt-cvc4-proof", "--feelinglucky",  "--timeout=5"))
+        List(List("--solvers=smt-cvc4-proof", "--feelinglucky",  "--timeout=3"))
       else Nil
     )
   }
