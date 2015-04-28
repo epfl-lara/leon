@@ -1562,7 +1562,7 @@ object ExprOps {
      *
      * We then check that P1+P4 covers every T1, etc..
      *
-     * @EK: We ignore type parameters here, we might want to make sure it's
+     * TODO: We ignore type parameters here, we might want to make sure it's
      * valid. What's Leon's semantics w.r.t. erasure?
      */ 
     def areExaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
