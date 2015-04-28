@@ -101,7 +101,7 @@ object OptionsHelpers {
   def nameValue(s: String) = s match {
     case matcher(name, value) => (name, value)
     case matcherWithout(name) => (name, "")
-    case _ => sys.error("") // FIXME
+    case _ => throw new IllegalArgumentException
   }
 
   // helper for options that include patterns

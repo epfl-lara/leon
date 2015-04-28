@@ -95,7 +95,14 @@ object Main {
     val files = args.filterNot(_.startsWith("-")).map(new java.io.File(_))
 
     val leonOptions: Set[LeonOption[Any]] = options.map { opt =>
-      val (name, value) = OptionsHelpers.nameValue(opt)
+      val (name, value) = try {
+        OptionsHelpers.nameValue(opt)
+      } catch {
+        case _ : IllegalArgumentException =>
+          initReporter.fatalError(
+            s"Malformed option $opt. Options should have the form --name or --name=value"
+          )
+      }
       // Find respective LeonOptionDef, or report an unknown option
       val df = allOptions.find(_. name == name).getOrElse{
         initReporter.error(s"Unknown option: $name")
