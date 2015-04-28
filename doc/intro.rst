@@ -66,6 +66,63 @@ sections :ref:`Pure Scala <purescala>` and :ref:`XLang <xlang>`.
 Program Synthesis
 -----------------
 
+As seen with verification, specifications provide an alternative and more
+descriptive way of caracterizing the behavior of a function. 
+Leon defines ways to use specifications instead of an actual implementation
+within your programs:
+
+* a ``choose`` construct that describes explicitly a value with a
+  specification. For instance, one could synthesize a function inserting into a
+  sorted list by:
+
+.. code-block:: scala
+
+  def insert1(in: List, v: BigInt) = {
+    require(isSorted(in1))
+    choose { (out: List) =>
+      (content(out) == content(in1) ++ Set(v)) && isSorted(out)
+    }
+  }
+
+* a hole (``???``) that can be placed anywhere in a specified function. Leon
+  will fill it with values such that the overall specification is satisfied.
+  This construct is especially useful when only a small part of the function
+  is missing.
+
+.. code-block:: scala
+
+  def insert2(in: List, v: BigInt) = {
+    require(isSorted(in1))
+    in match {
+      case Cons(h, t) =>
+        if (h < v) {
+          Cons(h, in)
+        } else if (h == v) {
+          in
+        } else {
+           ???[List]
+        }
+      case Nil =>
+        Nil
+    }
+  } ensuring { out =>
+    (content(out) == content(in1) ++ Set(v)) && isSorted(out)
+  }
+
+
+Given such programs, Leon can:
+
+ 1) Execute them: when the evaluator encounters a ``choose`` construct, it
+ solves the constraint at runtime by invoking an SMT solver. This allows some
+ form of constraint solving programming.
+
+ 2) Attempt to translate specifications to a traditional implementation by
+ applying program synthesis. In our case, Leon will automatically synthesize
+ the hole in ``insert2`` with ``Cons(h, insert2(v, t))``. This automated
+ translation is described in further details in the section on :ref:`synthesis
+ <Synthesis>`.
+
+
 
 Program Repair
 --------------
