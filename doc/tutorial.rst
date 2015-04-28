@@ -432,7 +432,23 @@ As the starting point, we define size of a list.
         case Cons(x, rest) => 1 + size(rest)
     })
 
-We can add a specification that the size is non-negative.
+The definition uses *pattern matching* to define size of the
+list in the case it is empty (where it is zero) and when it
+is non-empty, or, if its non-empty, then it has a head `x`
+and the rest of the list `rest`, so the size is one plus the
+size of the rest. Thus `size` is a recursive function.  A
+strength of Leon is that it allows using such recursive
+functions in specifications.
+
+It makes little sense to try to write a complete
+specification of `size`, given that its recursive definition
+is already a pretty clear description of its
+meaning. However, it is useful to add a consequence of this
+definition, namely that the size is non-negative. The reason
+is that Leon most of the time reasons by unfolding `size`,
+and the property of size being non-negative is not revealed
+by such unfolding. Once specified, the non-negativity is
+easily proven and Leon will make use of it.
 
 .. code-block:: scala
 
@@ -479,7 +495,9 @@ which is a building block for an insertion sort.
 
 Leon verifies that the returned list is indeed sorted. Note
 how we are again using a recursively defined function to
-specify another function.
+specify another function. We can introduce a bug into the
+definition above and examine the counterexamples that Leon
+finds.
 
 Being Sorted is Not Enough
 --------------------------
