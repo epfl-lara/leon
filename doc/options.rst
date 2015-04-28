@@ -127,12 +127,14 @@ These options are available by all Leon components:
   * ``smt-cvc4-cex``
  
     CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only.
+    Recursive functions are not unrolled, but encoded through the
+    ``define-funs-rec`` construct available in the new SMTLIB-2.5 standard.
     Currently, this solver does not handle higher-order functions.
   
   * ``smt-cvc4-proof``
    
-    CVC4 through SMT-LIB, for proofs only. Inductive reasoning happens
-    within the solver, through use of the SMTLIB-2.5 standard.
+    CVC4 through SMT-LIB, for proofs only. Functions are encoded as in 
+    ``smt-cvc4-cex``.
     Currently, this solver does not handle higher-order functions.
   
   * ``smt-z3``
