@@ -174,4 +174,15 @@ def max(x: Int, y: Int): Int = {
 
   // def mm = sortMagic(Cons(20, Cons(5, Cons(50, Cons(2, Nil)))))
 
+/*
+  def sInsert(x : BigInt, l : List) : List = {
+    require(isSorted(l))
+    l match {
+      case Nil => Cons(x, Nil)
+      case Cons(e, rest) => Cons(e, sInsert(x,rest))
+    }
+  } ensuring {(res:List) => 
+     isSorted(res) && content(res) == content(l) ++ Set(x)}
+ */
+
 }
