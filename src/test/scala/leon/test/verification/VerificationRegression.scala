@@ -4,6 +4,7 @@ package leon.test.verification
 
 import leon._
 import leon.test._
+import leon.verification.VCStatus._
 
 import leon.verification.VerificationReport
 import leon.purescala.Definitions.Program
@@ -79,10 +80,9 @@ trait VerificationRegression extends LeonTestSuite {
   override def run(testName: Option[String], args: Args): Status = {
     forEachFileIn("valid") { output =>
       val Output(report, reporter) = output
-      for ((vc, vr) <- report.vrs) {
-        if (!vr.isValid) {
-          fail("The following verification condition was invalid: " + vc.toString + " @" + vc.getPos)
-        }
+      for ((vc, vr) <- report.vrs if (!vr.isValid)) {
+        val status = if (vr.isInvalid) "invalid" else "inconclusive"
+        fail(s"The following verification condition was $status: $vc @${vc.getPos}")
       }
       reporter.terminateIfError()
     }
