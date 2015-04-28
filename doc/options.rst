@@ -144,8 +144,16 @@ These options are available by all Leon components:
   
   * ``smt-z3-q``
    
-    Z3 through SMT-LIB, but (recursive) functions are encoded with universal
-    quantification, and inductive reasoning happens within the solver.
+    Z3 through SMT-LIB, but (recursive) functions are not unrolled and are 
+    instead encoded with universal quantification.
+    For example, ``def foo(x:A) = e`` would be encoded by asserting
+    
+    .. math::
+    
+      \forall (x:A). foo(x) = e
+
+    even if ``e`` contains an invocation to ``foo``.
+
     Currently, this solver does not handle higher-order functions.
   
   * ``unrollz3``
