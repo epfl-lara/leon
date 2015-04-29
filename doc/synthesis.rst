@@ -20,17 +20,44 @@ Deductive Synthesis Framework
 Closing Rules
 -------------
 
+Ground
+^^^^^^
+
+This rule applies when the synthesis problem has no input variables. If the
+specification is satisfiable, its model corresponds to a valid solution. We
+rely on SMT solvers to check satisfiability of the formulas. For instance:
+
+.. code-block:: scala
+
+  choose ((x: Int, y: Int) => x > 42 && y > x)
+
+can trivially be synthesized by ``(1000, 1001)``.
+
+If the specification turns out to be UNSAT, the synthesis problem is impossible
+and we synthesize it as an ``error`` with a ``false`` precondition.
+
+
 Optimistic Ground
 ^^^^^^^^^^^^^^^^^
+
+This rule acts like `Ground`, but without the requirement on the absence of input
+variables. The reasonning is that even though the problem has input variables,
+the solutions might still be a constant expression.
+
+`Optimistic Ground` also tries to satisfy the specification, but it also needs
+to validate the resulting model. That is, given a valuation of output
+variables, it checks whether it exists a valuation for input variables such that
+the specification is violated. The model is discarded if such counter-example
+is found. If no counter-example exist, we solve the synthesis problem with the
+corresponding values.
+
+The rule tries at most three times to discover a valid value.
 
 CEGIS
 ^^^^^
 
 TEGIS
 ^^^^^
-
-Ground
-^^^^^^
 
 Decomposing Rules
 -----------------
@@ -142,22 +169,20 @@ This allows Leon to synthesize a well-structured recursive function.
 One Point
 ^^^^^^^^^
 
-This syntactic rule considers equalities of a variable at the top level of the
+This syntactic rule considers equalities of an output variable at the top level of the
 specification, and substitutes the variable with the corresponding expression in
 the rest of the formula. Given the following specification:
 
 .. math::
-    a = expr \land \phi
+    res1 = expr \land \phi
   
 and assuming :math:`expr` does not use :math:`a`, we generate the alternative and
 arguable simpler specification:
 
 
 .. math::
-    \phi[a \rightarrow expr]
+    \phi[res1 \rightarrow expr]
 
-This rule is typically combined with `Unused Input` or `Unconstrained Output` to
-actually eliminate the input or output variable form the synthesis problem.
 
 Assert
 ^^^^^^
@@ -212,16 +237,46 @@ redundancies. We consider two kinds of equivalences:
 
  1) Simple equivalences: the specification contains  :math:`a = b` at the top
  level.
-Equivawhetherlent input takes a synthesis problem with two compatible input variables
-`a` and `b` relies on an SMT solver to establish if the path-condition implies
-that `a == b`
+
+ 2) ADT equialences: the specification contains :math:`l.isInstanceOf[Cons]
+ \land h = l.head \land t = l.tail` which entails :math:`l = Cons(h, t)` and
+ thus allows us to substitute :math:`l` by :math:`Cons(h, t)`.
+
+Eliminating equivalences prevents explosion of redundant rule instanciations.
+For instance, if you have four integer variables where three of them are
+equivalent, Leon has 6 ways of applying `Inequality Split`. After
+eliminating equivalences, only one application remains posible.
 
 Unused Input
 ^^^^^^^^^^^^
 
+This rule tracks input variables (variables originally in scope of the
+``choose``) that are not constrained by the specification or the
+path-condition. These input variables carry no information and are thus
+basically useless. The rule consequently eliminates them from the set of input
+variables with which rules may be instantiated.
+
 Unconstrained Output
 ^^^^^^^^^^^^^^^^^^^^
 
+This rule is the dual of ``Unused Input``: it tracks output variable (result
+values) that are not constrained. Such variables can be trivially synthesized
+by any value or expression of the right type. For instance: 
+
+.. code-block:: scala
+
+  choose ((x: Int, y: T) => spec(y))
+
+becomes
+
+.. code-block:: scala
+
+  (0, choose ((y: T) => spec(y)))
+
+Leon will use the simplest value of the given type, when available. Note this
+rule is not able to synthesize variables of generic types, as no literal values
+exist for these. While ``null`` may be appropriate in Scala, Leon does not
+define it.
 
 ..
     Unification.DecompTrivialClash,
