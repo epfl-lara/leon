@@ -2,18 +2,17 @@ import leon.lang._
 import leon.lang.synthesis._
 import leon.annotation._
 object Max {
-/*
   def max(x: Int, y: Int): Int = {
     val d = x - y
     if (d > 0) x
     else y
-  } ensuring(res =>
-    x <= res && y <= res && (res == x || res == y))
-*/
+  }
+  // ensuring(res => (res == x || res == y))
+  //  x <= res && y <= res
 
-  //def test1 = max(10, 5)
-  //def test2 = max(-5, 5)
-  //def test3 = max(-5, -7)
+  def test1 = max(10, 5)
+  def test2 = max(-5, 5)
+  def test3 = max(-5, -7)
 
   //def test4 = max(-1639624704, 1879048192)
 
