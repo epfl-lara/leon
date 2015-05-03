@@ -28,7 +28,8 @@ object EvaluationPhase extends LeonPhase[Program, Unit] {
 
     if (toEvaluate.isEmpty) reporter.warning("No ground functions found with the given names")
     
-    val eval = new DefaultEvaluator(ctx, program)
+    val eval = new CodeGenEvaluator(ctx, program)
+    //val eval = new DefaultEvaluator(ctx, program)
     for (fd <- toEvaluate) {
       reporter.info(s" - Evaluating ${fd.id}")
       val call = FunctionInvocation(fd.typedWithDef, Seq())
