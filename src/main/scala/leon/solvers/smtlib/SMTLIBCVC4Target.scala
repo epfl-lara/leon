@@ -32,7 +32,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       "--produce-models",
       "--no-incremental",
       "--tear-down-incremental",
-      "--dt-rewrite-error-sel",
+//      "--dt-rewrite-error-sel", // Removing since it causes CVC4 to segfault on some inputs
       "--print-success",
       "--lang", "smt"
     ) ++ userDefinedOps(ctx).toSeq
