@@ -81,9 +81,9 @@ class SynthesisSuite extends LeonTestSuite {
 
   }
 
-  def forProgram(title: String, opts: SynthesisSettings = SynthesisSettings())(content: String)(strats: PartialFunction[String, SynStrat]) {
+  def forProgram(title: String, opts: Seq[LeonOption[Any]] = Nil)(content: String)(strats: PartialFunction[String, SynStrat]) {
       test(f"Synthesizing ${nextInt()}%3d: [$title]") {
-        val ctx = testContext
+        val ctx = testContext.copy(options = opts ++ testContext.options)
 
         val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen PreprocessingPhase andThen SynthesisProblemExtractionPhase
 
@@ -92,9 +92,12 @@ class SynthesisSuite extends LeonTestSuite {
         for ((f,cis) <- results; ci <- cis) {
           info(f"${ci.fd.id.toString}%-20s")
 
-          val sctx = SynthesisContext(ctx, opts, ci.fd, program)
+          val sctx = SynthesisContext(ctx,
+                                      SynthesisSettings(),
+                                      ci.fd,
+                                      program)
 
-          val p    = ci.problem
+          val p      = ci.problem
 
           if (strats.isDefinedAt(f.id.name)) {
             val search = new TestSearch(ctx, ci, p, strats(f.id.name))
@@ -109,7 +112,7 @@ class SynthesisSuite extends LeonTestSuite {
       }
   }
 
-  forProgram("Ground Enum", SynthesisSettings(selectedSolvers = Set("enum")))(
+  forProgram("Ground Enum", Seq(LeonOption(SharedOptions.optSelectedSolvers)(Set("enum"))))(
     """
 import leon.annotation._
 import leon.lang._

@@ -12,7 +12,6 @@ case class SynthesisSettings(
   rules: Seq[Rule]                    = Rules.all,
   manualSearch: Option[String]        = None,
   searchBound: Option[Int]            = None,
-  selectedSolvers: Set[String]        = Set("fairz3"),
   functions: Option[Set[String]]      = None,
   functionsToIgnore: Set[FunDef]      = Set(),
   

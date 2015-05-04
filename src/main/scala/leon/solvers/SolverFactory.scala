@@ -3,6 +3,10 @@
 package leon
 package solvers
 
+import combinators._
+import z3._
+import smtlib._
+
 import purescala.Definitions._
 import scala.reflect.runtime.universe._
 
@@ -40,10 +44,6 @@ object SolverFactory {
   }
 
   def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
-    import combinators._
-    import z3._
-    import smtlib._
-
 
     def getSolver(name: String): SolverFactory[TimeoutSolver] = name match {
       case "fairz3" =>
@@ -91,6 +91,18 @@ object SolverFactory {
       SolverFactory( () => new PortfolioSolver(ctx, selectedSolvers.toSeq) with TimeoutSolver)
     }
 
+  }
+
+  // Solver qualifiers that get used internally:
+
+  // Fast solver used by simplifiactions, to discharge simple tautologies
+  def uninterpreted(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+    SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBZ3Target with TimeoutSolver)
+  }
+
+  // Full featured solver used by default
+  def default(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+    getFromName(ctx, program)("fairz3")
   }
 
 }

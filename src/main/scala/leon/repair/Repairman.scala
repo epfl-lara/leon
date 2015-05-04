@@ -25,6 +25,8 @@ import rules._
 import graph.DotGenerator
 import leon.utils.ASCIIHelpers.title
 
+import scala.concurrent.duration._
+
 class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   val reporter = ctx.reporter
 
@@ -469,7 +471,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       None
     } else {
       val diff = and(p.pc, not(Equals(s1, s2)))
-      val solver = (new FairZ3Solver(ctx, program) with TimeoutSolver).setTimeout(1000)
+      val solver = SolverFactory.default(ctx, program).withTimeout(1.second).getNewSolver()
 
       solver.assertCnstr(diff)
       solver.check match {

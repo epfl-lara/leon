@@ -22,36 +22,20 @@ case class SynthesisContext(
 
   val rules = settings.rules
 
-  val allSolvers: Map[String, SolverFactory[SynthesisContext.SynthesisSolver]] = Map(
-    "fairz3" -> SolverFactory(() => new FairZ3Solver(context, program) with TimeoutAssumptionSolver),
-    "enum"   -> SolverFactory(() => new EnumerationSolver(context, program) with TimeoutAssumptionSolver)
-  )
+  val solverFactory = SolverFactory.getFromSettings(context, program)
 
-  val solversToUse = allSolvers.filterKeys(settings.selectedSolvers)
-
-  val solverFactory: SolverFactory[SynthesisContext.SynthesisSolver] = solversToUse.values.toSeq match {
-    case Seq() =>
-      reporter.fatalError("No solver selected. Aborting")
-    case Seq(value) =>
-      value
-    case more =>
-      SolverFactory( () => new PortfolioSolverSynth(context, more) with TimeoutAssumptionSolver )
-  }
-
-  def newSolver: SynthesisContext.SynthesisSolver = {
+  def newSolver = {
     solverFactory.getNewSolver()
   }
 
-  def newFastSolver: SynthesisContext.SynthesisSolver = {
-    new UninterpretedZ3Solver(context, program) with TimeoutAssumptionSolver
+  val fastSolverFactory = SolverFactory.uninterpreted(context, program)
+
+  def newFastSolver = {
+    fastSolverFactory.getNewSolver()
   }
-
-  val fastSolverFactory = SolverFactory(() => newFastSolver)
-
 }
 
 object SynthesisContext {
-  type SynthesisSolver = TimeoutAssumptionSolver with IncrementalSolver
 
   def fromSynthesizer(synth: Synthesizer) = {
     SynthesisContext(

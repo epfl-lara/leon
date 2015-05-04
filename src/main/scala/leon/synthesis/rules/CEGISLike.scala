@@ -392,7 +392,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             val cnstr = and(p.pc, letTuple(p.xs, sol, Not(p.phi)))
             //println("Solving for: "+cnstr)
 
-            val solver = (new FairZ3Solver(ctx, prog) with TimeoutSolver).setTimeout(cexSolverTo)
+            val solver = SolverFactory.default(ctx, prog).withTimeout(cexSolverTo).getNewSolver()
             try {
               solver.assertCnstr(cnstr)
               solver.check match {
@@ -658,7 +658,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
-        val solver  = (new FairZ3Solver(ctx, programCTree) with TimeoutSolver).setTimeout(exSolverTo)
+        val solver = SolverFactory.default(ctx, programCTree).withTimeout(exSolverTo).getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
         //debugCExpr(cTree)
 
@@ -735,7 +735,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
       def solveForCounterExample(bs: Set[Identifier]): Option[Option[Seq[Expr]]] = {
-        val solver = (new FairZ3Solver(ctx, programCTree) with TimeoutSolver).setTimeout(cexSolverTo)
+        val solver = SolverFactory.default(ctx, programCTree).withTimeout(cexSolverTo).getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
         val fixedBs = finiteArray(bsOrdered.map(b => BooleanLiteral(bs(b))), None, BooleanType)
