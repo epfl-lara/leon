@@ -185,14 +185,6 @@ object TypeOps {
     freshId(id, typeParamSubst(tps map { case (tpd, tp) => tpd.tp -> tp })(id.getType))
   }
 
-  def instantiateType(vd: ValDef, tps: Map[TypeParameterDef, TypeTree]): ValDef = {
-    val ValDef(id, forcedType) = vd
-    ValDef(
-      freshId(id, instantiateType(id.getType, tps)),
-      forcedType map ((tp: TypeTree) => instantiateType(tp, tps))
-    )
-  }
-
   def instantiateType(tpe: TypeTree, tps: Map[TypeParameterDef, TypeTree]): TypeTree = {
     if (tps.isEmpty) {
       tpe
@@ -313,7 +305,7 @@ object TypeOps {
               TypeParameterDef(tpeSub(p.tp).asInstanceOf[TypeParameter])
             }
             val returnType = tpeSub(fd.returnType)
-            val params = fd.params map (instantiateType(_, tps))
+            val params = fd.params map (vd => vd.copy(id = freshId(vd.id, tpeSub(vd.getType))))
             val newFd = fd.duplicate(id, tparams, params, returnType)
 
             val subCalls = preMap {
@@ -332,7 +324,7 @@ object TypeOps {
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>
               val tpe = tpeSub(arg.getType)
-              ValDef(freshId(arg.id, tpe))
+              arg.copy(id = freshId(arg.id, tpe))
             }
             val mapping = args.map(_.id) zip newArgs.map(_.id)
             Lambda(newArgs, rec(idsMap ++ mapping)(body)).copiedFrom(l)
@@ -340,7 +332,7 @@ object TypeOps {
           case f @ Forall(args, body) =>
             val newArgs = args.map { arg =>
               val tpe = tpeSub(arg.getType)
-              ValDef(freshId(arg.id, tpe))
+              arg.copy(id = freshId(arg.id, tpe))
             }
             val mapping = args.map(_.id) zip newArgs.map(_.id)
             Forall(newArgs, rec(idsMap ++ mapping)(body)).copiedFrom(f)

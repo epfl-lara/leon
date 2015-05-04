@@ -11,6 +11,7 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
 import purescala.Constructors._
 import purescala.Definitions._
 
@@ -18,7 +19,7 @@ import _root_.smtlib.common._
 import _root_.smtlib.printer.{ RecursivePrinter => SMTPrinter }
 import _root_.smtlib.parser.Commands.{
   Constructor => SMTConstructor,
-  FunDef => _,
+  FunDef => SMTFunDef,
   Assert => _,
   _
 }
@@ -147,14 +148,15 @@ trait SMTLIBTarget extends Interruptible {
   protected def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
 
   /* Metadata for CC, and variables */
-  protected val constructors = new IncrementalBijection[TypeTree, SSymbol]()
-  protected val selectors = new IncrementalBijection[(TypeTree, Int), SSymbol]()
-  protected val testers = new IncrementalBijection[TypeTree, SSymbol]()
-  protected val variables = new IncrementalBijection[Identifier, SSymbol]()
+  protected val constructors  = new IncrementalBijection[TypeTree, SSymbol]()
+  protected val selectors     = new IncrementalBijection[(TypeTree, Int), SSymbol]()
+  protected val testers       = new IncrementalBijection[TypeTree, SSymbol]()
+  protected val variables     = new IncrementalBijection[Identifier, SSymbol]()
   protected val genericValues = new IncrementalBijection[GenericValue, SSymbol]()
-  protected val sorts = new IncrementalBijection[TypeTree, Sort]()
-  protected val functions = new IncrementalBijection[TypedFunDef, SSymbol]()
-  protected val errors = new IncrementalBijection[Unit, Boolean]()
+  protected val sorts         = new IncrementalBijection[TypeTree, Sort]()
+  protected val functions     = new IncrementalBijection[TypedFunDef, SSymbol]()
+  protected val lambdas       = new IncrementalBijection[FunctionType, SSymbol]()
+  protected val errors        = new IncrementalBijection[Unit, Boolean]()
   protected def hasError = errors.getB(()) contains true
   protected def addError() = errors += () -> true
 
@@ -247,7 +249,7 @@ trait SMTLIBTarget extends Interruptible {
           declareSort(RawArrayType(from, library.optionType(to)))
 
         case FunctionType(from, to) =>
-          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(tupleTypeWrap(from)), declareSort(to)))
+          Ints.IntSort()
 
         case tp: TypeParameter =>
           declareUninterpretedSort(tp)
@@ -326,6 +328,20 @@ trait SMTLIBTarget extends Interruptible {
         s,
         tfd.params.map((p: ValDef) => declareSort(p.getType)),
         declareSort(tfd.returnType)))
+      s
+    }
+  }
+
+  protected def declareLambda(tpe: FunctionType): SSymbol = {
+    val realTpe = bestRealType(tpe).asInstanceOf[FunctionType]
+    lambdas.cachedB(realTpe) {
+      val id = FreshIdentifier("dynLambda")
+      val s = id2sym(id)
+      emit(DeclareFun(
+        s,
+        (realTpe +: realTpe.from).map(declareSort),
+        declareSort(realTpe.to)
+      ))
       s
     }
   }
@@ -523,7 +539,10 @@ trait SMTLIBTarget extends Interruptible {
        * ===== Everything else =====
        */
       case ap @ Application(caller, args) =>
-        ArraysEx.Select(toSMT(caller), toSMT(tupleWrap(args)))
+        FunctionApplication(
+          declareLambda(caller.getType.asInstanceOf[FunctionType]),
+          (caller +: args).map(toSMT)
+        )
 
       case Not(u)          => Core.Not(toSMT(u))
       case UMinus(u)       => Ints.Neg(toSMT(u))
@@ -643,6 +662,67 @@ trait SMTLIBTarget extends Interruptible {
               val denom = BigInt(new java.math.BigDecimal(1).scaleByPowerOfTen(scale).toBigInteger())
               FractionalLiteral(num, denom)
           }
+        }
+
+      case (SNumeral(n), Some(ft @ FunctionType(from, to))) =>
+        val dynLambda = lambdas.toB(ft)
+        letDefs.get(dynLambda) match {
+          case Some(DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body))) =>
+
+            object EQ {
+              def unapply(t: Term): Option[(Term, Term)] = t match {
+                case Core.Equals(e1, e2) => Some((e1, e2))
+                case FunctionApplication(f, Seq(e1, e2)) if f.toString == "=" => Some((e1, e2))
+                case _ => None
+              }
+            }
+
+            object Num {
+              def unapply(t: Term): Option[BigInt] = t match {
+                case SNumeral(n) => Some(n)
+                case FunctionApplication(f, Seq(SNumeral(n))) if f.toString == "-" => Some(-n)
+                case _ => None
+              }
+            }
+
+            val d = symbolToQualifiedId(dispatcher)
+            def dispatch(t: Term): Term = t match {
+              case Core.ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
+                if (ni == n) thenn else dispatch(elze)
+              case Core.ITE(Core.And(EQ(di, Num(ni)), _), thenn, elze) if di == d =>
+                if (ni == n) thenn else dispatch(elze)
+              case _ => t
+            }
+
+            def extract(t: Term): Expr = {
+              def recCond(term: Term, index: Int): Seq[Expr] = term match {
+                case Core.And(e1, e2) =>
+                  val e1s = recCond(e1, index)
+                  e1s ++ recCond(e2, index + e1s.size)
+                case EQ(e1, e2) =>
+                  recCond(e2, index)
+                case _ => Seq(fromSMT(term, from(index)))
+              }
+
+              def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
+                case Core.ITE(cond, thenn, elze) =>
+                  val cs = recCond(cond, matchers.size)
+                  recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
+                case _ => Seq(matchers -> fromSMT(term, to))
+              }
+
+              val cases = recCases(t, Seq.empty)
+              val (default, rest) = cases.partition(_._1.isEmpty)
+              
+              assert(default.size == 1 && rest.forall(_._1.size == from.size))
+              PartialLambda(rest, Some(default.head._2), ft)
+            }
+
+            val lambdaTerm = dispatch(body)
+            val lambda = extract(lambdaTerm)
+            lambda
+
+          case None => unsupported(InfiniteIntegerLiteral(n), "Unknown function ref")
         }
 
       case (SNumeral(n), Some(RealType)) =>

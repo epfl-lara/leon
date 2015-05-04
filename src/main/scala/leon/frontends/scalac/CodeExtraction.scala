@@ -522,7 +522,7 @@ trait CodeExtraction extends ASTExtractors {
           val fields = args.map { case (fsym, t) =>
             val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
             val id = cachedWithOverrides(fsym, Some(ccd), tpe)
-            LeonValDef(id.setPos(t.pos), Some(tpe)).setPos(t.pos)
+            LeonValDef(id.setPos(t.pos)).setPos(t.pos)
           }
           //println(s"Fields of $sym")
           ccd.setFields(fields)
@@ -629,9 +629,10 @@ trait CodeExtraction extends ASTExtractors {
 
       val newParams = sym.info.paramss.flatten.map{ sym =>
         val ptpe = leonType(sym.tpe)(nctx, sym.pos)
-        val newID = FreshIdentifier(sym.name.toString, ptpe).setPos(sym.pos)
+        val tpe = if (sym.isByNameParam) FunctionType(Seq(), ptpe) else ptpe
+        val newID = FreshIdentifier(sym.name.toString, tpe).setPos(sym.pos)
         owners += (newID -> None)
-        LeonValDef(newID).setPos(sym.pos)
+        LeonValDef(newID, sym.isByNameParam).setPos(sym.pos)
       }
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
@@ -768,8 +769,9 @@ trait CodeExtraction extends ASTExtractors {
         vd.defaultValue = paramsToDefaultValues.get(s.symbol)
       }
 
-      val newVars = for ((s, vd) <- params zip funDef.params) yield {
-        s.symbol -> (() => Variable(vd.id))
+      val newVars = for ((s, vd) <- params zip funDef.params) yield s.symbol -> {
+        if (s.symbol.isByNameParam) () => Application(Variable(vd.id), Seq())
+        else () => Variable(vd.id)
       }
 
       val fctx = dctx.withNewVars(newVars).copy(isExtern = funDef.annotations("extern"))
@@ -1530,23 +1532,24 @@ trait CodeExtraction extends ASTExtractors {
               val fd = getFunDef(sym, c.pos)
 
               val newTps = tps.map(t => extractType(t))
+              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
 
-              FunctionInvocation(fd.typed(newTps), args)
+              FunctionInvocation(fd.typed(newTps), argsByName)
 
             case (IsTyped(rec, ct: ClassType), _, args) if isMethod(sym) =>
               val fd = getFunDef(sym, c.pos)
               val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t))
+              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
 
-              MethodInvocation(rec, cd, fd.typed(newTps), args)
+              MethodInvocation(rec, cd, fd.typed(newTps), argsByName)
 
             case (IsTyped(rec, ft: FunctionType), _, args) =>
               application(rec, args)
 
-            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.fields.exists(_.id.name == name) =>
-
-              val fieldID = cct.fields.find(_.id.name == name).get.id
+            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.classDef.fields.exists(_.id.name == name) =>
+              val fieldID = cct.classDef.fields.find(_.id.name == name).get.id
 
               caseClassSelector(cct, rec, fieldID)
 

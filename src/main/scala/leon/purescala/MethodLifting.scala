@@ -112,7 +112,7 @@ object MethodLifting extends TransformationPhase {
 
       val fdParams = fd.params map { vd =>
         val newId = FreshIdentifier(vd.id.name, tSubst(vd.id.getType))
-        ValDef(newId).setPos(vd.getPos)
+        vd.copy(id = newId).setPos(vd.getPos)
       }
       val paramsMap = fd.params.zip(fdParams).map{ case (from, to) => from.id -> to.id }.toMap
       val eSubst: Expr => Expr = instantiateType(_, tMap, paramsMap)
@@ -140,7 +140,7 @@ object MethodLifting extends TransformationPhase {
         val retType = instantiateType(fd.returnType, tparamsMap)
         val fdParams = fd.params map { vd =>
           val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
-          ValDef(newId).setPos(vd.getPos)
+          vd.copy(id = newId).setPos(vd.getPos)
         }
 
         val receiver = FreshIdentifier("thiss", recType).setPos(cd.id)

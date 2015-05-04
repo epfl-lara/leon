@@ -220,7 +220,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
           val resvar = FreshIdentifier("res", fd.returnType, true)
           // FIXME: Is this correct (ResultVariable(fd.returnType) -> resvar.toVariable))
           val ninv = replace(Map(ResultVariable(fd.returnType) -> resvar.toVariable), inv)
-          Some(Lambda(Seq(ValDef(resvar, Some(fd.returnType))), ninv))
+          Some(Lambda(Seq(ValDef(resvar)), ninv))
         }
       } else if (fd.postcondition.isDefined) {
         val Lambda(resultBinder, _) = fd.postcondition.get

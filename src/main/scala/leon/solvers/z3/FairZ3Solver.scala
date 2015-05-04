@@ -136,23 +136,21 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   private val freeVars    = new IncrementalSet[Identifier]()
   private val constraints = new IncrementalSeq[Expr]()
 
-
   val unrollingBank = new UnrollingBank(context, templateGenerator)
 
+  private val incrementals: List[IncrementalState] = List(
+    errors, freeVars, constraints, functions, generics, lambdas, sorts, variables,
+    constructors, selectors, testers, unrollingBank
+  )
+
   def push() {
-    errors.push()
     solver.push()
-    unrollingBank.push()
-    freeVars.push()
-    constraints.push()
+    incrementals.foreach(_.push())
   }
 
   def pop() {
-    errors.pop()
     solver.pop(1)
-    unrollingBank.pop()
-    freeVars.pop()
-    constraints.pop()
+    incrementals.foreach(_.pop())
   }
 
   override def check: Option[Boolean] = {

@@ -91,10 +91,11 @@ trait AbstractZ3Solver extends Solver {
   protected val adtManager = new ADTManager(context)
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
-  protected val functions  = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
-  protected val generics   = new IncrementalBijection[GenericValue, Z3FuncDecl]()
-  protected val sorts      = new IncrementalBijection[TypeTree, Z3Sort]()
-  protected val variables  = new IncrementalBijection[Expr, Z3AST]()
+  protected val functions = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
+  protected val generics  = new IncrementalBijection[GenericValue, Z3FuncDecl]()
+  protected val lambdas   = new IncrementalBijection[FunctionType, Z3FuncDecl]()
+  protected val sorts     = new IncrementalBijection[TypeTree, Z3Sort]()
+  protected val variables = new IncrementalBijection[Expr, Z3AST]()
 
   protected val constructors  = new IncrementalBijection[TypeTree, Z3FuncDecl]()
   protected val selectors     = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
@@ -108,6 +109,7 @@ trait AbstractZ3Solver extends Solver {
       z3 = new Z3Context(z3cfg)
 
       functions.clear()
+      lambdas.clear()
       generics.clear()
       sorts.clear()
       variables.clear()
@@ -190,7 +192,6 @@ trait AbstractZ3Solver extends Solver {
         }
       }
     }
-
   }
 
   // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
@@ -230,7 +231,6 @@ trait AbstractZ3Solver extends Solver {
         declareStructuralSort(tpe)
       }
 
-
     case tt @ SetType(base) =>
       sorts.cachedB(tt) {
         z3.mkSetSort(typeToSort(base))
@@ -257,10 +257,8 @@ trait AbstractZ3Solver extends Solver {
 
     case ft @ FunctionType(from, to) =>
       sorts.cachedB(ft) {
-        val fromSort = typeToSort(tupleTypeWrap(from))
-        val toSort = typeToSort(to)
-
-        z3.mkArraySort(fromSort, toSort)
+        val symbol = z3.mkFreshStringSymbol("fun")
+        z3.mkUninterpretedSort(symbol)
       }
 
     case other =>
@@ -496,7 +494,15 @@ trait AbstractZ3Solver extends Solver {
         z3.mkApp(functionDefToDecl(tfd), args.map(rec): _*)
 
       case fa @ Application(caller, args) =>
-        z3.mkSelect(rec(caller), rec(tupleWrap(args)))
+        val ft @ FunctionType(froms, to) = bestRealType(caller.getType)
+        val funDecl = lambdas.cachedB(ft) {
+          val sortSeq    = (ft +: froms).map(tpe => typeToSort(tpe))
+          val returnSort = typeToSort(to)
+
+          val name = FreshIdentifier("dynLambda").uniqueName
+          z3.mkFreshFuncDecl(name, sortSeq, returnSort)
+        }
+        z3.mkApp(funDecl, (caller +: args).map(rec): _*)
 
       case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
       case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
@@ -563,8 +569,25 @@ trait AbstractZ3Solver extends Solver {
     def rec(t: Z3AST, tpe: TypeTree): Expr = {
       val kind = z3.getASTKind(t)
 
-      kind match {
-        case Z3NumeralIntAST(Some(v)) => {
+      (kind, tpe) match {
+        case (Z3NumeralIntAST(Some(v)), ft @ FunctionType(fts, tt)) => lambdas.getB(ft) match {
+          case None => throw new IllegalArgumentException
+          case Some(decl) => model.getModelFuncInterpretations.find(_._1 == decl) match {
+            case None => throw new IllegalArgumentException
+            case Some((_, mapping, elseValue)) =>
+              val lambdaID = InfiniteIntegerLiteral(v)
+              val leonElseValue = rec(elseValue, tt)
+              PartialLambda(mapping.flatMap { case (z3Args, z3Result) =>
+                z3.getASTKind(z3Args.head) match {
+                  case Z3NumeralIntAST(Some(v)) if InfiniteIntegerLiteral(v) == lambdaID =>
+                    List((z3Args.tail zip fts).map(p => rec(p._1, p._2)) -> rec(z3Result, tt))
+                  case _ => Nil
+                }
+              }, Some(leonElseValue), ft)
+          }
+        }
+
+        case (Z3NumeralIntAST(Some(v)), _) =>
           val leading = t.toString.substring(0, 2 min t.toString.length)
           if(leading == "#x") {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
@@ -580,8 +603,8 @@ trait AbstractZ3Solver extends Solver {
           } else {
             InfiniteIntegerLiteral(v)
           }
-        }
-        case Z3NumeralIntAST(None) => {
+
+        case (Z3NumeralIntAST(None), _) =>
           _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) =>
                 tpe match {
@@ -591,9 +614,10 @@ trait AbstractZ3Solver extends Solver {
                 }
             case None => unsound(t, "could not translate Z3NumeralIntAST numeral")
           }
-        }
-        case Z3NumeralRealAST(n: BigInt, d: BigInt) => FractionalLiteral(n, d)
-        case Z3AppAST(decl, args) =>
+
+        case (Z3NumeralRealAST(n: BigInt, d: BigInt), _) => FractionalLiteral(n, d)
+
+        case (Z3AppAST(decl, args), _) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsB t)) {
             variables.toA(t)

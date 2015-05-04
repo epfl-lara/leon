@@ -334,8 +334,8 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Not(expr) => p"\u00AC$expr"
 
-      case vd@ValDef(id, _) =>
-        p"$id : ${vd.getType}"
+      case vd @ ValDef(id, lzy) =>
+        p"$id :${if (lzy) "=> " else ""} ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
       case This(_)              => p"this"
