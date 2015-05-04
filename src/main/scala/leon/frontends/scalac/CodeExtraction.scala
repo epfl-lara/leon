@@ -917,7 +917,7 @@ trait CodeExtraction extends ASTExtractors {
           e.emit()
           //val pos = if (body0.pos == NoPosition) NoPosition else leonPosToScalaPos(body0.pos.source, funDef.getPos)
           if (ctx.findOptionOrDefault(ExtractionPhase.optStrictCompilation)) {
-            reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. (Forgot @extern ?)")
+            reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. The function likely uses features not supported by Leon.")
           } else {
             reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully unavailable to Leon.")
           }
@@ -1397,25 +1397,25 @@ trait CodeExtraction extends ASTExtractors {
 
           Forall(vds, exBody)
 
+        case ExFiniteMap(tptFrom, tptTo, args) =>
+          val singletons: Seq[(LeonExpr, LeonExpr)] = args.collect {
+            case ExTuple(tpes, trees) if trees.size == 2 =>
+              (extractTree(trees(0)), extractTree(trees(1)))
+          }
+
+          if (singletons.size != args.size) {
+            outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
+          }
+
+          finiteMap(singletons, extractType(tptFrom), extractType(tptTo))
+
+        case ExFiniteSet(tpt, args) =>
+          finiteSet(args.map(extractTree).toSet, extractType(tpt))
+
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt) match {
             case cct: CaseClassType =>
               CaseClass(cct, args.map(extractTree))
-
-            case SetType(a) =>
-              finiteSet(args.map(extractTree).toSet, a)
-
-            case MapType(a, b) =>
-              val singletons: Seq[(LeonExpr, LeonExpr)] = args.collect {
-                case ExTuple(tpes, trees) if trees.size == 2 =>
-                  (extractTree(trees(0)), extractTree(trees(1)))
-              }
-
-              if (singletons.size != args.size) {
-                outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
-              }
-
-              finiteMap(singletons, a, b)
 
             case _ =>
               outOfSubsetError(tr, "Construction of a non-case class.")

@@ -861,6 +861,26 @@ trait ASTExtractors {
       }
     }
 
+    object ExFiniteSet {
+      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
+        case Apply(TypeApply(ExSelected("Set", "apply"), Seq(tpt)), args) =>
+          Some(tpt, args)
+        case Apply(TypeApply(ExSelected("leon", "lang", "Set", "apply"), Seq(tpt)), args) =>
+          Some(tpt, args)
+        case _ => None
+      }
+    }
+
+    object ExFiniteMap {
+      def unapply(tree: Apply): Option[(Tree, Tree, List[Tree])] = tree match {
+        case Apply(TypeApply(ExSelected("Map", "apply"), Seq(tptFrom, tptTo)), args) =>
+          Some((tptFrom, tptTo, args))
+        case Apply(TypeApply(ExSelected("leon", "lang", "Map", "apply"), Seq(tptFrom, tptTo)), args) =>
+          Some((tptFrom, tptTo, args))
+        case _ => None
+      }
+    }
+
     object ExFiniteMultiset {
       def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
         case Apply(

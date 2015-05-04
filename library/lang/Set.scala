@@ -2,18 +2,24 @@ package leon.lang
 import leon.annotation._
 
 object Set {
-  @library
-  def empty[T] = Set[T]()
+   @library
+   def empty[T] = Set[T]()
+
+   @ignore
+   def apply[T](elems: T*) = {
+     new Set[T](scala.collection.immutable.Set[T](elems : _*))
+   }
 }
 
 @ignore
-case class Set[T](elems: T*) {
-  def +(a: T): Set[T] = ???
-  def ++(a: Set[T]): Set[T] = ???
-  def -(a: T): Set[T] = ???
-  def --(a: Set[T]): Set[T] = ???
-  def contains(a: T): Boolean = ???
-  def isEmpty: Boolean = ???
-  def subsetOf(b: Set[T]): Boolean = ???
-  def &(a: Set[T]): Set[T] = ???
+class Set[T](val theSet: scala.collection.immutable.Set[T]) {
+   def +(a: T): Set[T] = new Set[T](theSet + a)
+   def ++(a: Set[T]): Set[T] = new Set[T](theSet ++ a.theSet)
+   def -(a: T): Set[T] = new Set[T](theSet - a)
+   def --(a: Set[T]): Set[T] = new Set[T](theSet -- a.theSet)
+   def contains(a: T): Boolean = theSet.contains(a)
+   def isEmpty: Boolean = theSet.isEmpty
+   def subsetOf(b: Set[T]): Boolean = theSet.subsetOf(b.theSet)
+   def &(a: Set[T]): Set[T] = new Set[T](theSet & a.theSet)
 }
+
