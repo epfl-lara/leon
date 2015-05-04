@@ -108,7 +108,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) {
     (clauses, callBlockers, appBlockers)
   }
 
-  def instantiateLambda(idT: T, template: LambdaTemplate[T]): Instantiation[T] = {
+  def registerLambda(idT: T, template: LambdaTemplate[T]): Instantiation[T] = {
     val eqClauses = equalityClauses(idT, template)
     val (clauses, blockers, apps) = instantiate(Map.empty, Map(idT -> template))
     (eqClauses ++ clauses, blockers, apps)

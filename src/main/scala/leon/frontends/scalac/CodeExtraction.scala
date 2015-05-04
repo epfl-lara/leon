@@ -592,8 +592,8 @@ trait CodeExtraction extends ASTExtractors {
             case ExFunctionDef(ownerSym, _ ,_ ,_, _) if ownerSym.name.toString == owner => ownerSym 
           } 
           registerDefaultMethod(tmpl.body, matcher, index, fd )
-                   
-          
+
+
         // Lazy fields
         case t @ ExLazyAccessorFunction(fsym, _, _)  =>
           if (parent.isDefined) {
@@ -635,9 +635,10 @@ trait CodeExtraction extends ASTExtractors {
 
       val newParams = sym.info.paramss.flatten.map{ sym =>
         val ptpe = toPureScalaType(sym.tpe)(nctx, sym.pos)
-        val newID = FreshIdentifier(sym.name.toString, ptpe).setPos(sym.pos)
+        val tpe = if (sym.isByNameParam) FunctionType(Seq(), ptpe) else ptpe
+        val newID = FreshIdentifier(sym.name.toString, tpe).setPos(sym.pos)
         owners += (newID -> None)
-        LeonValDef(newID).setPos(sym.pos)
+        LeonValDef(newID, sym.isByNameParam).setPos(sym.pos)
       }
 
       val tparamsDef = tparams.map(t => TypeParameterDef(t._2))
@@ -666,20 +667,19 @@ trait CodeExtraction extends ASTExtractors {
       val name = sym.name.toString
 
       val fieldType = if (isLazy) DefType.LazyFieldDef else DefType.StrictFieldDef
-      
+
       val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), Seq(), returnType, Seq(), fieldType)
 
       fd.setPos(sym.pos)
 
       fd.addAnnotation(annotationsOf(sym).toSeq : _*)
-      
+
       defsToDefs += sym -> fd
 
       fd
     }
-    
-    
-    
+
+
     private def collectFunSigs(defs: List[Tree]) = {
       // We collect defined function bodies
       for (d <- defs) d match {
@@ -799,7 +799,7 @@ trait CodeExtraction extends ASTExtractors {
           val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
 
           extractFunBody(fd, params, body)(DefContext(tparamsMap))
-          
+
         case ExLazyAccessorFunction(sym, _, body)  =>
           // Lazy vals
           val fd = defsToDefs(sym)
@@ -874,22 +874,23 @@ trait CodeExtraction extends ASTExtractors {
     }
 
 
-    private def extractFunBody(funDef: FunDef, params: Seq[ValDef], body0 : Tree)(implicit dctx: DefContext): FunDef = {
+    private def extractFunBody(funDef: FunDef, params: Seq[ValDef], body0: Tree)(implicit dctx: DefContext): FunDef = {
       currentFunDef = funDef
-      
+
       // Find defining function for params with default value
       for ((s,vd) <- params zip funDef.params) {
         vd.defaultValue = paramsToDefaultValues.get(s.symbol) 
       }
-      
-      val newVars = for ((s, vd) <- params zip funDef.params) yield {
-        s.symbol -> (() => Variable(vd.id))
-      }
+
+      val newVars = for ((s, vd) <- params zip funDef.params) yield s.symbol -> (() => {
+        if (s.symbol.isByNameParam) Application(Variable(vd.id), Seq())
+        else Variable(vd.id)
+      })
 
       val fctx = dctx.withNewVars(newVars)
 
       // If this is a lazy field definition, drop the assignment/ accessing
-      val body = 
+      val body =
         if (funDef.defType == DefType.LazyFieldDef) { body0 match {
           case Block(List(Assign(_, realBody)),_ ) => realBody
           case _ => outOfSubsetError(body0, "Wrong form of lazy accessor")
@@ -1584,24 +1585,24 @@ trait CodeExtraction extends ASTExtractors {
               val fd = getFunDef(sym, c.pos)
 
               val newTps = tps.map(t => extractType(t))
+              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
 
-              FunctionInvocation(fd.typed(newTps), args)
+              FunctionInvocation(fd.typed(newTps), argsByName)
 
             case (IsTyped(rec, ct: ClassType), _, args) if isMethod(sym) =>
               val fd = getFunDef(sym, c.pos)
               val cd = methodToClass(fd)
 
               val newTps = tps.map(t => extractType(t))
+              val argsByName = (fd.params zip args).map(p => if (p._1.isLazy) Lambda(Seq(), p._2) else p._2)
 
-              MethodInvocation(rec, cd, fd.typed(newTps), args)
+              MethodInvocation(rec, cd, fd.typed(newTps), argsByName)
 
             case (IsTyped(rec, ft: FunctionType), _, args) =>
               application(rec, args)
 
-            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.fields.exists(_.id.name == name) =>
-
-              val fieldID = cct.fields.find(_.id.name == name).get.id
-
+            case (IsTyped(rec, cct: CaseClassType), name, Nil) if cct.classDef.fields.exists(_.id.name == name) =>
+              val fieldID = cct.classDef.fields.find(_.id.name == name).get.id
               CaseClassSelector(cct, rec, fieldID)
 
             //BigInt methods

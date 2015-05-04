@@ -710,7 +710,7 @@ object ExprOps {
         })
 
       case CaseClassPattern(_, cct, subps) =>
-        val subExprs = (subps zip cct.fields) map {
+        val subExprs = (subps zip cct.classDef.fields) map {
           case (p, f) => p.binder.map(_.toVariable).getOrElse(CaseClassSelector(cct, in, f.id))
         }
         
@@ -769,8 +769,8 @@ object ExprOps {
               and(CaseClassInstanceOf(cct, in), bind(ob, in))
           }
         case CaseClassPattern(ob, cct, subps) =>
-          assert(cct.fields.size == subps.size)
-          val pairs = cct.fields.map(_.id).toList zip subps.toList
+          assert(cct.classDef.fields.size == subps.size)
+          val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(CaseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
           and(CaseClassInstanceOf(cct, in), together)
@@ -793,10 +793,10 @@ object ExprOps {
     case WildcardPattern(Some(id)) => Map(id -> in)
     case InstanceOfPattern(None, _) => Map.empty
     case InstanceOfPattern(Some(id), _) => Map(id -> in)
-    case CaseClassPattern(b, ccd, subps) => {
-      assert(ccd.fields.size == subps.size)
-      val pairs = ccd.fields.map(_.id).toList zip subps.toList
-      val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+    case CaseClassPattern(b, cct, subps) => {
+      assert(cct.classDef.fields.size == subps.size)
+      val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
+      val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(cct, in, p._1), p._2))
       val together = subMaps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
       b match {
         case Some(id) => Map(id -> in) ++ together

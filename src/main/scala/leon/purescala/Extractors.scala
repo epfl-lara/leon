@@ -239,31 +239,31 @@ object Extractors {
    * Constructors.finiteLambda
    */
   object FiniteLambda {
-    def unapply(lambda: Lambda): Option[(Expr, Seq[(Expr, Expr)])] = {
+    def unapply(lambda: Lambda): Option[(Expr, Seq[(Seq[Expr], Expr)])] = {
       val inSize = lambda.getType.asInstanceOf[FunctionType].from.size
       val Lambda(args, body) = lambda
-      def step(e: Expr): (Option[(Expr, Expr)], Expr) = e match {
-        case IfExpr(Equals(argsExpr, key), value, default) if {
+
+      def step(e: Expr): (Option[(Seq[Expr], Expr)], Expr) = e match {
+        case IfExpr(TopLevelAnds(joined), value, default) if {
           val formal = args.map{ _.id }
-          val real = unwrapTuple(argsExpr, inSize).collect{ case Variable(id) => id}
+          val real = joined.collect { case Equals(Variable(id), _) => id }
           formal == real
         } =>
-          (Some((key, value)), default)
+          (Some(joined.collect { case Equals(_, e) => e }, value), default)
         case other =>
           (None, other)
       }
 
-      def rec(e: Expr): (Expr, Seq[(Expr, Expr)]) = {
+      def rec(e: Expr): (Expr, Seq[(Seq[Expr], Expr)]) = {
         step(e) match {
           case (None, default) => (default, Seq())
-          case (Some(pair), default) =>
+          case (Some(keys), default) =>
             val (defaultRest, pairs) = rec(default)
-            (defaultRest, pair +: pairs)
+            (defaultRest, keys +: pairs)
         }
       }
 
       Some(rec(body))
-
     }
   }
 

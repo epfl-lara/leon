@@ -90,10 +90,13 @@ object Types {
         classDef.fields
       } else {
         // !! WARNING !!
-        // vd.id.getType will NOT match vd.tpe, but we kind of need this for selectorID2Index...
-        // See with Etienne about changing this!
-        // @mk Fixed this
-        classDef.fields.map(vd => ValDef(vd.id, Some(instantiateType(vd.getType, tmap))))
+        // vd.id changes but this should not be an issue as selector uses
+        // classDef.params ids which do not change!
+        classDef.fields.map { vd =>
+          val newTpe = instantiateType(vd.getType, tmap)
+          val newId = FreshIdentifier(vd.id.name, newTpe).copiedFrom(vd.id)
+          vd.copy(id = newId).setPos(vd)
+        }
       }
     }
 

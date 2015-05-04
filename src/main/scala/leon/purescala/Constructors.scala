@@ -228,11 +228,10 @@ object Constructors {
    *   ...
    *   else    default
    */
-  def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
+  def finiteLambda(default: Expr, els: Seq[(Seq[Expr], Expr)], inputTypes: Seq[TypeTree]): Lambda = {
     val args = inputTypes map { tpe => ValDef(FreshIdentifier("x", tpe, true)) }
-    val argsExpr = tupleWrap(args map { _.toVariable })
-    val body = els.foldRight(default) { case ((key, value), default) =>
-      IfExpr(Equals(argsExpr, key), value, default)
+    val body = els.foldRight(default) { case ((keys, value), default) =>
+      IfExpr(andJoin((args zip keys).map(p => Equals(p._1.toVariable, p._2))), value, default)
     }
     Lambda(args, body)
   }

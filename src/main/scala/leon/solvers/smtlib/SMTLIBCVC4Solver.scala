@@ -31,10 +31,11 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     Seq(
       "-q",
       "--produce-models",
-      "--no-incremental",
-      "--tear-down-incremental",
-      "--rewrite-divk",
+      "--incremental",
+//      "--no-incremental",
+//      "--tear-down-incremental",
 //      "--dt-rewrite-error-sel", // Removing since it causes CVC4 to segfault on some inputs
+      "--rewrite-divk",
       "--print-success",
       "--lang", "smt"
     ) ++ userDefinedOps(ctx).toSeq
@@ -76,16 +77,9 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), ft @ FunctionType(from,to)) =>
-      finiteLambda(fromSMT(elem, to), Seq.empty, from)
-
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
       val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
       RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
-
-    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
-      val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
-      finiteLambda(dflt, mapping :+ (fromSMT(key, tupleTypeWrap(from)) -> fromSMT(elem, to)), from)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       finiteSet(elems.map(fromSMT(_, base)).toSet, base)
