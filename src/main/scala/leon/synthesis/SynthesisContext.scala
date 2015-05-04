@@ -15,9 +15,10 @@ case class SynthesisContext(
   context: LeonContext,
   settings: SynthesisSettings,
   functionContext: FunDef,
-  program: Program,
-  reporter: Reporter
+  program: Program
 ) {
+
+  val reporter = context.reporter
 
   val rules = settings.rules
 
@@ -28,12 +29,13 @@ case class SynthesisContext(
 
   val solversToUse = allSolvers.filterKeys(settings.selectedSolvers)
 
-  val solverFactory: SolverFactory[SynthesisContext.SynthesisSolver] = if (solversToUse.isEmpty) {
-    reporter.fatalError("No solver selected. Aborting")
-  } else if (solversToUse.size == 1) {
-    solversToUse.values.head
-  } else {
-    SolverFactory( () => new PortfolioSolverSynth(context, solversToUse.values.toSeq) with TimeoutAssumptionSolver)
+  val solverFactory: SolverFactory[SynthesisContext.SynthesisSolver] = solversToUse.values.toSeq match {
+    case Seq() =>
+      reporter.fatalError("No solver selected. Aborting")
+    case Seq(value) =>
+      value
+    case more =>
+      SolverFactory( () => new PortfolioSolverSynth(context, more) with TimeoutAssumptionSolver )
   }
 
   def newSolver: SynthesisContext.SynthesisSolver = {
@@ -56,8 +58,7 @@ object SynthesisContext {
       synth.context,
       synth.settings,
       synth.ci.fd,
-      synth.program,
-      synth.reporter)
+      synth.program
+    )
   }
 }
-

@@ -194,7 +194,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
       private def computeCExpr(): Expr = {
 
-        val lets = (for ((c, alts) <- cTree) yield {
+        val lets = for ((c, alts) <- cTree) yield {
           val activeAlts = alts.filter(a => isBActive(a._1))
 
           val expr = activeAlts.foldLeft(simplestValue(c.getType): Expr) {
@@ -202,7 +202,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
 
           (c, expr)
-        })
+        }
 
         // We order the lets base don dependencies
         def defFor(c: Identifier): Expr = {
@@ -574,9 +574,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         }
 
         closedBs = Map[Identifier, Set[Identifier]]()
-
-        // Set of Cs that still have no active alternatives after unfolding
-        var postClosedCs = Set[Identifier]()
 
         for (c <- unfoldBehind) {
           var alts = grammar.getProductions(labels(c))

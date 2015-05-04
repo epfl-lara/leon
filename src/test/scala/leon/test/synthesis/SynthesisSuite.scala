@@ -92,14 +92,9 @@ class SynthesisSuite extends LeonTestSuite {
         for ((f,cis) <- results; ci <- cis) {
           info(f"${ci.fd.id.toString}%-20s")
 
+          val sctx = SynthesisContext(ctx, opts, ci.fd, program)
 
-          val sctx = SynthesisContext(ctx,
-                                      opts,
-                                      ci.fd,
-                                      program,
-                                      ctx.reporter)
-
-          val p      = ci.problem
+          val p    = ci.problem
 
           if (strats.isDefinedAt(f.id.name)) {
             val search = new TestSearch(ctx, ci, p, strats(f.id.name))

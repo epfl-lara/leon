@@ -347,7 +347,7 @@ object ExprOps {
   }
 
   def variablesOf(expr: Expr): Set[Identifier] = {
-    foldRight[Set[Identifier]]({
+    foldRight[Set[Identifier]]{
       case (e, subs) =>
         val subvs = subs.foldLeft(Set[Identifier]())(_ ++ _)
 
@@ -361,7 +361,7 @@ object ExprOps {
           case Forall(args, body) => subvs -- args.map(_.id)
           case _ => subvs
         }
-    })(expr)
+    }(expr)
   }
 
   def containsFunctionCalls(expr: Expr): Boolean = {
@@ -431,7 +431,7 @@ object ExprOps {
     }
 
 
-    postMap({
+    postMap{
       case m @ MatchExpr(s, cses) =>
         Some(matchExpr(s, cses.map(freshenCase)).copiedFrom(m))
 
@@ -443,11 +443,11 @@ object ExprOps {
         Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
 
       case _ => None
-    })(expr)
+    }(expr)
   }
 
   def depth(e: Expr): Int = {
-    foldRight[Int]({ (e, sub) => 1 + (0 +: sub).max })(e)
+    foldRight[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
   }
   
   def applyAsMatches(p : Passes, f : Expr => Expr) = {

@@ -442,7 +442,7 @@ object Expressions {
   
   case class MapGet(map: Expr, key: Expr) extends Expr {
     val getType = map.getType match {
-      case MapType(from, to) => to
+      case MapType(_, to) => to
       case _ => Untyped
     }
   }
