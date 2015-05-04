@@ -299,6 +299,25 @@ Map
  m.updated(index, value)
 
 
+Function
+########
+
+.. code-block:: scala
+
+ val f1 = (x: Int) => x + 1                 // simple anonymous function
+
+ val y  = 2
+ val f2 = (x: Int) => f1(x) + y             // closes over `f1` and `y`
+ val f3 = (x: Int) => if (x < 0) f1 else f2 // anonymous function returning another function
+
+ list.map(f1)      // functions can be passed around ...
+ list.map(f3(1) _) // ... and partially applied
+
+.. note::
+ No operators are defined on function-typed expressions, so specification is
+ currently quite limited.
+
+
 Symbolic Input-Output examples
 ------------------------------
 
