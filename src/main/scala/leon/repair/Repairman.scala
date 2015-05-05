@@ -83,19 +83,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
             for ((sol, i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
               val expr = sol.toSimplifiedExpr(ctx, synth.program)
-              reporter.info(ScalaPrinter(expr))
-            }
-            reporter.info(ASCIIHelpers.title("In context:"))
-
-
-            for ((sol, i) <- solutions.zipWithIndex) {
-              reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-              val expr = sol.toSimplifiedExpr(ctx, synth.program)
-              val nfd = fd.duplicate
-
-              nfd.body = Some(expr)
-
-              reporter.info(ScalaPrinter(nfd))
+              reporter.info(expr.asString(ctx))
             }
           }
         } finally {

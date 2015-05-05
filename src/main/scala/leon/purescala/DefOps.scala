@@ -283,14 +283,6 @@ object DefOps {
       fdMapCache(fd).getOrElse(fd)
     }
 
-    def replaceCalls(e: Expr): Expr = {
-      preMap {
-        case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
-          fiMapF(fi, fdMap(fd)).map(_.setPos(fi))
-        case _ =>
-          None
-      }(e)
-    }
 
     val newP = p.copy(units = for (u <- p.units) yield {
       u.copy(
@@ -300,7 +292,7 @@ object DefOps {
               df match {
                 case f : FunDef =>
                   val newF = fdMap(f)
-                  newF.fullBody = replaceCalls(newF.fullBody)
+                  newF.fullBody = replaceFunCalls(newF.fullBody, fdMap, fiMapF)
                   newF
                 case d =>
                   d
@@ -317,6 +309,15 @@ object DefOps {
     })
 
     (newP, fdMapCache.collect{ case (ofd, Some(nfd)) => ofd -> nfd })
+  }
+
+  def replaceFunCalls(e: Expr, fdMapF: FunDef => FunDef, fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
+    preMap {
+      case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
+        fiMapF(fi, fdMapF(fd)).map(_.setPos(fi))
+      case _ =>
+        None
+    }(e)
   }
 
   def addFunDefs(p: Program, fds: Traversable[FunDef], after: FunDef): Program = {

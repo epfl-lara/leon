@@ -31,4 +31,14 @@ object SeqUtils {
 
     result
   }
+
+  def sumTo(sum: Int, arity: Int): Seq[Seq[Int]] = {
+    if (arity == 1) {
+      Seq(Seq(sum))
+    } else {
+      (1 until sum).flatMap{ n => 
+        sumTo(sum-n, arity-1).map( r => n +: r)
+      }
+    }
+  }
 }

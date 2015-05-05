@@ -47,13 +47,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   }
 
   def initRC(mappings: Map[Identifier, Expr]): RC
-  def initGC: GC
+  def initGC(): GC
 
   private[this] var clpCache = Map[(Choose, Seq[Expr]), Expr]()
 
   def eval(ex: Expr, mappings: Map[Identifier, Expr]) = {
     try {
-      lastGC = Some(initGC)
+      lastGC = Some(initGC())
       ctx.timers.evaluators.recursive.runtime.start()
       EvaluationResults.Successful(e(ex)(initRC(mappings), lastGC.get))
     } catch {
@@ -78,7 +78,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(v) =>
           v
         case None =>
-          throw EvalError("No value for identifier " + id.name + " in mapping.")
+          throw EvalError("No value for identifier " + id.asString(ctx) + " in mapping.")
       }
 
     case Application(caller, args) =>
@@ -145,8 +145,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val evArgs = args map e
 
       // build a mapping for the function...
-      val frame = rctx.newVars(tfd.paramSubst(evArgs))
-      
+      val frame = rctx.withNewVars(tfd.paramSubst(evArgs))
+
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frame, gctx) match {
           case BooleanLiteral(true) =>

@@ -8,6 +8,8 @@ import bonsai._
 
 import Helpers._
 
+import leon.utils.SeqUtils.sumTo
+
 import purescala.Expressions.{Or => LeonOr, _}
 import purescala.Common._
 import purescala.Definitions._
@@ -411,6 +413,36 @@ object ExpressionGrammars {
        Generator[TypeTree, Expr](tfd.params.map(_.getType), { sub => FunctionInvocation(tfd, sub) })
      }
    }
+  }
+
+  case class SizedLabel[T <% Typed](underlying: T, size: Int) extends Typed {
+    val getType = underlying.getType
+
+    override def toString = underlying.toString+"|"+size+"|"
+  }
+
+  case class SizeBoundedGrammar[T <% Typed](g: ExpressionGrammar[T]) extends ExpressionGrammar[SizedLabel[T]] {
+    def computeProductions(sl: SizedLabel[T]): Seq[Gen] = {
+      if (sl.size <= 0) {
+        Nil
+      } else if (sl.size == 1) {
+        g.getProductions(sl.underlying).filter(_.subTrees.isEmpty).map {
+          case Generator(subTrees, builder) =>
+            Generator[SizedLabel[T], Expr](Nil, builder)
+        }
+      } else {
+        g.getProductions(sl.underlying).filter(_.subTrees.nonEmpty).flatMap {
+          case Generator(subTrees, builder) =>
+            val sizes = sumTo(sl.size-1, subTrees.size)
+
+            for (ss <- sizes) yield {
+              val subSizedLabels = (subTrees zip ss) map (s => SizedLabel(s._1, s._2))
+
+              Generator[SizedLabel[T], Expr](subSizedLabels, builder)
+            }
+        }
+      }
+    }
   }
 
   case class BoundedGrammar[T](g: ExpressionGrammar[Label[T]], bound: Int) extends ExpressionGrammar[Label[T]] {
