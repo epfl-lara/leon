@@ -20,8 +20,6 @@ import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _
 import _root_.smtlib.parser.Terms.{
   Identifier => SMTIdentifier,
   Let => SMTLet,
-  ForAll => SMTForall,
-  Exists => SMTExists,
   _
 }
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
