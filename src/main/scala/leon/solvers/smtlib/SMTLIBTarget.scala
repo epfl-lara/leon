@@ -505,6 +505,13 @@ trait SMTLIBTarget {
           someTester(vt),
           Seq(ArraysEx.Select(toSMT(m), toSMT(k)))
         )
+
+      case p : Passes =>
+        toSMT(matchToIfThenElse(p.asConstraint))
+
+      case m : MatchExpr =>
+        toSMT(matchToIfThenElse(m))
+
       /**
        * ===== Everything else =====
        */
@@ -574,7 +581,6 @@ trait SMTLIBTarget {
             }
           case _ => reporter.fatalError("Unhandled nary "+e)
         }
-
 
       case o => unsupported("Tree: " + o)
     }

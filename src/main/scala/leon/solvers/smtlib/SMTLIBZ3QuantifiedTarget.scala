@@ -50,21 +50,21 @@ trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target {
       val term = quantifiedTerm(
         SMTForall,
         tfd.params map { _.id },
-        matchToIfThenElse(Equals(
+        Equals(
           FunctionInvocation(tfd, tfd.params.map {_.toVariable}),
-          matchToIfThenElse(tfd.body.get)
-        ))
+          tfd.body.get
+        )
       )
       sendCommand(Assert(term))
 
       tfd.postcondition foreach { post =>
-        val axiom = matchToIfThenElse(implies(
+        val axiom = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
           application(
             post,
             Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable }))
           )
-        ))
+        )
         sendCommand(Assert(quantifiedTerm(SMTForall, axiom)))
       }
     }

@@ -6,9 +6,8 @@ package solvers.smtlib
 import purescala.Common.FreshIdentifier
 import purescala.Expressions.{FunctionInvocation, BooleanLiteral, Expr, Implies}
 import purescala.Definitions.TypedFunDef
-import purescala.Constructors.application
+import purescala.Constructors.{application, implies}
 import purescala.DefOps.typedTransitiveCallees
-import leon.purescala.ExprOps.matchToIfThenElse
 import smtlib.parser.Commands._
 import smtlib.parser.Terms._
 import smtlib.theories.Core.Equals
@@ -43,13 +42,13 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
 
       functions +=(tfd, id2sym(id))
 
-      val bodyAssert = Assert(Equals(id2sym(id): Term, toSMT(matchToIfThenElse(tfd.body.get))(Map())))
+      val bodyAssert = Assert(Equals(id2sym(id): Term, toSMT(tfd.body.get)(Map())))
 
       val specAssert = tfd.postcondition map { post =>
-        val term = matchToIfThenElse(Implies(
+        val term = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
           application(post, Seq(FunctionInvocation(tfd, Seq())))
-        ))
+        )
         Assert(toSMT(term)(Map()))
       }
 
@@ -75,7 +74,7 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
 
     val smtBodies = smtFunDecls map { case FunDec(sym, _, _) =>
       val tfd = functions.toA(sym)
-      toSMT(matchToIfThenElse(tfd.body.get))(tfd.params.map { p =>
+      toSMT(tfd.body.get)(tfd.params.map { p =>
         (p.id, id2sym(p.id): Term)
       }.toMap)
     }
@@ -87,10 +86,10 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
         tfd <- seen
         post <- tfd.postcondition
       } {
-        val term = matchToIfThenElse(Implies(
+        val term = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
           application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
-        ))
+        )
         sendCommand(Assert(quantifiedTerm(ForAll, term)))
       }
     }
