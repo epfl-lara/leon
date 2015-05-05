@@ -40,10 +40,20 @@ object SolverFactory {
     }.mkString("")
 
   def getFromSettings(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    getFromName(ctx, program)(ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers).toSeq : _*)
+    val names = ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers)
+
+    if (((names contains "fairz3") || (names contains "unrollz3")) && !hasNativeZ3) {
+      if (!reported) {
+        ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-based solver.")
+        reported = true
+      }
+      getFromName(ctx, program)("smt-z3")
+    } else {
+      getFromName(ctx, program)(names.toSeq : _*)
+    }
   }
 
-  def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
+  private def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
 
     def getSolver(name: String): SolverFactory[TimeoutSolver] = name match {
       case "fairz3" =>
@@ -95,14 +105,34 @@ object SolverFactory {
 
   // Solver qualifiers that get used internally:
 
+  private var reported = false
+
   // Fast solver used by simplifiactions, to discharge simple tautologies
   def uninterpreted(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
-    SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBZ3Target with TimeoutSolver)
+    if (hasNativeZ3) {
+      SolverFactory(() => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
+    } else {
+      if (!reported) {
+        ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-based solver.")
+        reported = true
+      }
+      SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBZ3Target with TimeoutSolver)
+    }
   }
 
   // Full featured solver used by default
   def default(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     getFromName(ctx, program)("fairz3")
+  }
+
+  lazy val hasNativeZ3 = {
+    try {
+      new _root_.z3.scala.Z3Config
+      true
+    } catch {
+      case _: java.lang.UnsatisfiedLinkError =>
+        false
+    }
   }
 
 }

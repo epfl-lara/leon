@@ -41,6 +41,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     sorts.cachedB(tpe) {
       tpe match {
         case SetType(base) =>
+          super.declareSort(BooleanType)
           declareSetSort(base)
         case _ =>
           super.declareSort(t)

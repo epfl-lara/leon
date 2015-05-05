@@ -144,9 +144,12 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       }
 
       m
+
     /**
      * ===== Set operations =====
      */
+
+
     case fs @ FiniteSet(elems) =>
       if (elems.isEmpty) {
         QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset")), Some(declareSort(fs.getType)))

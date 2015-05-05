@@ -73,7 +73,7 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fds) = solutionToProgram(sol)
 
-    val solverf = SolverFactory.getFromName(context, npr)("fairz3").withTimeout(timeout)
+    val solverf = SolverFactory.default(context, npr).withTimeout(timeout)
 
     val vctx = VerificationContext(context, npr, solverf, context.reporter)
     val vcs = generateVCs(vctx, Some(fds.map(_.id.name)))
