@@ -4,7 +4,7 @@ Frequently Asked Questions
 ==========================
 
 If you have a question, we suggest you post it at http://stackoverflow.com
-(ty `searching for the leon tag <http://stackoverflow.com/questions/tagged/leon?sort=newest>`_)
+(try `searching for the leon tag <http://stackoverflow.com/questions/tagged/leon?sort=newest>`_)
 or contact one of the authors of this documentation.
 
 Below we collect answers to some questions that came up.
