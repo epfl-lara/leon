@@ -160,11 +160,11 @@ object Main {
       val pipeBegin: Pipeline[List[String], Program] =
         if (xlangF)
           ExtractionPhase andThen
-            PreprocessingPhase andThen
-            xlang.NoXLangFeaturesChecking
+            PreprocessingPhase
         else
           ExtractionPhase andThen
-            PreprocessingPhase
+            PreprocessingPhase andThen
+            xlang.NoXLangFeaturesChecking
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
