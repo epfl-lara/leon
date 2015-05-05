@@ -32,7 +32,6 @@ vcs/
 .project
 .settings/
 .worksheet/
-testingSheet.sc
 
 #intellij
 .idea
