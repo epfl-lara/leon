@@ -27,11 +27,6 @@ package object lang {
 
   @ignore
   def error[T](reason: java.lang.String): T = sys.error(reason)
-
-  @ignore
-  implicit class Gives[A](v : A) {
-    def gives[B](tests : A => B) : B = tests(v)
-  }
  
   @ignore
   implicit class Passes[A,B](io : (A,B)) {

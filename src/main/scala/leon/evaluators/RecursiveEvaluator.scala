@@ -111,7 +111,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Hole(_,_) => true
         case _ => false
       }(en)) 
-        e(convertHoles(en, ctx, true))
+        e(convertHoles(en, ctx))
       else
         e(en.toAssert)
     

@@ -37,7 +37,7 @@ object ConvertHoles extends LeonPhase[Program, Program] {
    *
    */
 
-  def convertHoles(e : Expr, ctx : LeonContext, treatGives : Boolean = false) : Expr = { 
+  def convertHoles(e : Expr, ctx : LeonContext) : Expr = {
     val (pre, body, post) = breakDownSpecs(e)
 
     // Ensure that holes are not found in pre and/or post conditions
