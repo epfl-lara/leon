@@ -4,6 +4,7 @@ package leon
 package utils
 
 import purescala.Definitions.Program
+import purescala.ScalaPrinter
 
 import purescala.{MethodLifting, CompleteAbstractDefinitions}
 import synthesis.{ConvertWithOracle, ConvertHoles}
@@ -24,6 +25,7 @@ object PreprocessingPhase extends TransformationPhase {
       ConvertHoles                  andThen
       CompleteAbstractDefinitions   andThen
       InjectAsserts
+
 
     phases.run(ctx)(p)
   }

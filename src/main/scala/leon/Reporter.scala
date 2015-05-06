@@ -69,14 +69,18 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
   // Debugging
   private val debugMask = debugSections.foldLeft(0){ _ | _.mask }
 
+  def isDebugEnabled(implicit section: DebugSection): Boolean = {
+    (debugMask & section.mask) == section.mask
+  }
+
   def ifDebug(body: (Any => Unit) => Any)(implicit section: DebugSection) = {
-    if ((debugMask & section.mask) == section.mask) {
+    if (isDebugEnabled) {
       body( { (msg: Any) => emit(account(Message(DEBUG(section), NoPosition, msg))) } )
     }
   }
 
   def whenDebug(section: DebugSection)(body: (Any => Unit) => Any) {
-    if ((debugMask & section.mask) == section.mask) {
+    if (isDebugEnabled(section)) {
       body( { (msg: Any) => emit(account(Message(DEBUG(section), NoPosition, msg))) } )
     }
   }

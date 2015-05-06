@@ -153,6 +153,14 @@ object Main {
     val verifyF      = ctx.findOptionOrDefault(optVerify)
     val evalF        = ctx.findOptionOrDefault(optEval)
 
+    def debugTrees(title: String): LeonPhase[Program, Program] = {
+      if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
+        PrintTreePhase(title)
+      } else {
+        NoopPhase[Program]
+      }
+    }
+
     if (helpF) {
       displayVersion(ctx.reporter)
       displayHelp(ctx.reporter, error = false)
@@ -160,11 +168,15 @@ object Main {
       val pipeBegin: Pipeline[List[String], Program] =
         if (xlangF)
           ExtractionPhase andThen
-            PreprocessingPhase
+          debugTrees("Program after extraction") andThen
+          PreprocessingPhase andThen
+          debugTrees("Program after pre-processing")
         else
           ExtractionPhase andThen
-            PreprocessingPhase andThen
-            xlang.NoXLangFeaturesChecking
+          debugTrees("Program after extraction") andThen
+          PreprocessingPhase andThen
+          debugTrees("Program after pre-processing")
+          xlang.NoXLangFeaturesChecking
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
