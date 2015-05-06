@@ -63,6 +63,7 @@ object SharedOptions extends LeonComponent {
     optFunctions,
     optSelectedSolvers,
     optDebug,
+    optWatch,
     optTimeout
   )
 }
