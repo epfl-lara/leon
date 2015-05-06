@@ -34,7 +34,13 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
     // solving
     val fs = solversInsts.map { s =>
       Future {
-        (s, s.check, s.getModel)
+        val result = s.check
+        val model: Map[Identifier, Expr] = if (result == Some(true)) {
+          s.getModel
+        } else {
+          Map()
+        }
+        (s, result, model)
       }
     }
 
