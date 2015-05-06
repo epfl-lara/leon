@@ -12,7 +12,7 @@ object Map {
 }
 
 @ignore
-class Map[A, B](val theMap: scala.collection.immutable.Map[A,B]) {
+case class Map[A, B](val theMap: scala.collection.immutable.Map[A,B]) {
   def apply(k: A): B = theMap.apply(k)
   def ++(b: Map[A, B]): Map[A,B] = new Map (theMap ++ b.theMap)
   def updated(k: A, v: B): Map[A,B] = new Map(theMap.updated(k, v))
