@@ -148,8 +148,16 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     
   }
   
-  def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = tree match {
-    
+  def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
+    if (opts.printTypes) {
+      tree match {
+        case t: Expr =>
+          p"⟨"
+
+        case _ =>
+      }
+    }
+    tree match {
       case id: Identifier =>
         
         val name = if (opts.printUniqueIds) {
@@ -657,7 +665,15 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case (tree: PrettyPrintable) => tree.printWith(ctx)
 
       case _ => sb.append("Tree? (" + tree.getClass + ")")
-    
+    }
+    if (opts.printTypes) {
+      tree match {
+        case t: Expr=>
+          p" : ${t.getType} ⟩"
+
+        case _ =>
+      }
+    }
   }
 
   object FcallMethodInvocation {
