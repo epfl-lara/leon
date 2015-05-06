@@ -9,6 +9,7 @@ import smtlib._
 
 import purescala.Definitions._
 import scala.reflect.runtime.universe._
+import _root_.smtlib.interpreters._
 
 abstract class SolverFactory[+S <: Solver : TypeTag] {
   def getNewSolver(): S
@@ -43,11 +44,21 @@ object SolverFactory {
     val names = ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers)
 
     if (((names contains "fairz3") || (names contains "unrollz3")) && !hasNativeZ3) {
-      if (!reported) {
-        ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-based solver.")
-        reported = true
+      if (hasZ3) {
+        if (!reported) {
+          ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-z3.")
+          reported = true
+        }
+        getFromName(ctx, program)("smt-z3")
+      } else if (hasCVC4) {
+        if (!reported) {
+          ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-cvc4.")
+          reported = true
+        }
+        getFromName(ctx, program)("smt-cvc4")
+      } else {
+        ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
       }
-      getFromName(ctx, program)("smt-z3")
     } else {
       getFromName(ctx, program)(names.toSeq : _*)
     }
@@ -133,6 +144,22 @@ object SolverFactory {
       case _: java.lang.UnsatisfiedLinkError =>
         false
     }
+  }
+
+  lazy val hasZ3 = try {
+    Z3Interpreter.buildDefault
+    true
+  } catch {
+    case e: java.io.IOException =>
+      false
+  }
+
+  lazy val hasCVC4 = try {
+    CVC4Interpreter.buildDefault
+    true
+  } catch {
+    case e: java.io.IOException =>
+      false
   }
 
 }
