@@ -263,6 +263,9 @@ object TypeOps {
           case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
             FunctionInvocation(TypedFunDef(fd, tps.map(tpeSub)), args.map(srec)).copiedFrom(fi)
 
+          case mi @ MethodInvocation(r, cd, TypedFunDef(fd, tps), args) =>
+            MethodInvocation(srec(r), cd, TypedFunDef(fd, tps.map(tpeSub)), args.map(srec)).copiedFrom(mi)
+
           case cc @ CaseClass(ct, args) =>
             CaseClass(tpeSub(ct).asInstanceOf[CaseClassType], args.map(srec)).copiedFrom(cc)
 
