@@ -34,33 +34,33 @@ Then you can try e.g.
 and get something like this:
 
 <pre>
-    ┌──────────────────────┐
-  ╔═╡ Verification Summary ╞═════════════════════════════════════════════════════════════════════╗
-  ║ └──────────────────────┘                                                                     ║
-  ║ add                            postcondition            83:22    valid        Z3-f     0.057 ║
-  ║ add                            precondition             82:5     valid        Z3-f     0.017 ║
-  ║ add                            precondition             82:15    valid        Z3-f     0.003 ║
-  ║ balance                        match exhaustiveness     91:5     valid        Z3-f     0.005 ║
-  ║ balance                        postcondition            102:22   valid        Z3-f     0.055 ║
-  ║ blackBalanced                  match exhaustiveness     46:43    valid        Z3-f     0.003 ║
-  ║ blackHeight                    match exhaustiveness     51:40    valid        Z3-f     0.004 ║
-  ║ buggyAdd                       postcondition            88:22    invalid      Z3-f     1.162 ║
-  ║ buggyAdd                       precondition             87:5     invalid      Z3-f     0.027 ║
-  ║ buggyBalance                   match exhaustiveness     105:5    invalid      Z3-f     0.007 ║
-  ║ buggyBalance                   postcondition            116:22   invalid      Z3-f     0.017 ║
-  ║ content                        match exhaustiveness     18:37    valid        Z3-f     0.034 ║
-  ║ ins                            match exhaustiveness     60:5     valid        Z3-f     0.003 ║
-  ║ ins                            postcondition            67:22    valid        Z3-f     1.753 ║
-  ║ ins                            precondition             63:37    valid        Z3-f     0.011 ║
-  ║ ins                            precondition             65:40    valid        Z3-f     0.012 ║
-  ║ makeBlack                      postcondition            78:21    valid        Z3-f     0.012 ║
-  ║ redDescHaveBlackChildren       match exhaustiveness     41:53    valid        Z3-f     0.003 ║
-  ║ redNodesHaveBlackChildren      match exhaustiveness     35:54    valid        Z3-f     0.004 ║
-  ║ size                           match exhaustiveness     23:33    valid        Z3-f     0.004 ║
-  ║ size                           postcondition            26:15    valid        Z3-f     0.043 ║
-  ╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
-  ║ total: 21     valid: 17     invalid: 4      unknown 0                                  3.236 ║
-  ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                        ║
+║ add                        postcondition                         82:15   valid    Z3-f    0.066 ║
+║ add                        precond. (call ins(x, t))             81:15   valid    Z3-f    0.004 ║
+║ add                        precond. (call makeBlack(ins(x, t)))  81:5    valid    Z3-f    0.021 ║
+║ balance                    match exhaustiveness                  90:5    valid    Z3-f    0.006 ║
+║ balance                    postcondition                         101:15  valid    Z3-f    0.068 ║
+║ blackBalanced              match exhaustiveness                  45:43   valid    Z3-f    0.004 ║
+║ blackHeight                match exhaustiveness                  50:40   valid    Z3-f    0.005 ║
+║ buggyAdd                   postcondition                         87:15   invalid  Z3-f    2.080 ║
+║ buggyAdd                   precond. (call ins(x, t))             86:5    invalid  Z3-f    0.027 ║
+║ buggyBalance               match exhaustiveness                  104:5   invalid  Z3-f    0.007 ║
+║ buggyBalance               postcondition                         115:15  invalid  Z3-f    0.042 ║
+║ content                    match exhaustiveness                  17:37   valid    Z3-f    0.027 ║
+║ ins                        match exhaustiveness                  59:5    valid    Z3-f    0.004 ║
+║ ins                        postcondition                         66:15   valid    Z3-f    2.399 ║
+║ ins                        precond. (call ins(x, t.left))        62:37   valid    Z3-f    0.013 ║
+║ ins                        precond. (call ins(x, t.right))       64:40   valid    Z3-f    0.014 ║
+║ makeBlack                  postcondition                         77:14   valid    Z3-f    0.015 ║
+║ redDescHaveBlackChildren   match exhaustiveness                  40:53   valid    Z3-f    0.004 ║
+║ redNodesHaveBlackChildren  match exhaustiveness                  34:54   valid    Z3-f    0.005 ║
+║ size                       match exhaustiveness                  22:33   valid    Z3-f    0.004 ║
+║ size                       postcondition                         25:15   valid    Z3-f    0.023 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 21     valid: 17     invalid: 4      unknown 0                                     4.838 ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════╝
 </pre>
 
 Building Leon
