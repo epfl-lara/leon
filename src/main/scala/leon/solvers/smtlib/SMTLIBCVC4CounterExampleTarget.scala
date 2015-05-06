@@ -18,6 +18,7 @@ trait SMTLIBCVC4CounterExampleTarget extends SMTLIBCVC4QuantifiedTarget {
   override def interpreterOps(ctx: LeonContext) = {
     Seq(
       "-q",
+      "--produce-models",
       "--print-success",
       "--lang", "smt",
       "--fmf-fun"
