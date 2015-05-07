@@ -90,3 +90,19 @@ their binaries available in the ``$PATH``.
 Since the default solver uses the native Z3 API, you will have to explicitly
 specify another solver if this native layer is not available to you. Check also the
 the ``--solvers`` in :ref:`cmdlineoptions` .
+
+Building Documentation
+----------------------
+
+To build this documentation locally, you will need Sphinx (
+http://sphinx-doc.org/ ), a restructured text toolkit that
+was originally build to support Python documentation. You will
+also need `make`.
+
+After installing sphinx, entering the `doc/` directory of
+Leon and running `make html` should build the documentation
+in the HTML format. (Several other formats are supported,
+though we do not use them, so we do not vouch for the
+quality of the output.) As a top-level file for the HTML
+documentation check `doc/_build/html/index.html` (you may
+wish to bookmark this file in your browser).
