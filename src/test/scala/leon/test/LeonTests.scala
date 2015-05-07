@@ -16,7 +16,8 @@ import verification._
 
 class LeonAllTests extends Suites(
   new LeonUnitTests,
-  new LeonFunTests
+  new LeonFunTests,
+  new TestCasesCompile
 )
 
 class LeonFunTests extends Suites(
@@ -30,12 +31,9 @@ class LeonFunTests extends Suites(
   new SynthesisSuite,
   new SynthesisRegressionSuite,
 
-
   new LibraryVerificationRegression,
   new PureScalaVerificationRegression,
-  new XLangVerificationRegression,
-
-  new TestCasesCompile
+  new XLangVerificationRegression
 )
 
 class LeonUnitTests extends Suites(
