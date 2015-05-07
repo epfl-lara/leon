@@ -6,6 +6,7 @@ package smtlib
 
 import purescala._
 import Common._
+import Definitions.Program
 import Expressions._
 import Extractors._
 import Types._
@@ -18,8 +19,7 @@ import _root_.smtlib.parser.CommandsResponses.GetModelResponseSuccess
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
 
-trait SMTLIBZ3Target extends SMTLIBTarget {
-  this: SMTLIBSolver =>
+class SMTLIBZ3Target(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) {
 
   def targetName = "z3"
 
@@ -91,7 +91,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       fromRawArray(RawArrayValue(ktpe, Map(), fromSMT(defV, vtpe)), tpe)
 
     case _ =>
-      super[SMTLIBTarget].fromSMT(s, tpe)
+      super.fromSMT(s, tpe)
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {

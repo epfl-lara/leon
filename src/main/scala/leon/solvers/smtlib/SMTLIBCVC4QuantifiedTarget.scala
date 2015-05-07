@@ -3,18 +3,19 @@
 package leon
 package solvers.smtlib
 
-import purescala.Common.FreshIdentifier
-import leon.purescala.Expressions._
-import purescala.Definitions.TypedFunDef
-import purescala.Constructors.{application, implies}
-import purescala.DefOps.typedTransitiveCallees
+import purescala._
+import Common.FreshIdentifier
+import Expressions._
+import Definitions.{Program, TypedFunDef}
+import Constructors.{application, implies}
+import DefOps.typedTransitiveCallees
 import smtlib.parser.Commands.Assert
 import smtlib.parser.Commands._
 import smtlib.parser.Terms._
 import smtlib.theories.Core.Equals
 
-trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
-  this: SMTLIBSolver =>
+
+abstract class SMTLIBCVC4QuantifiedTarget(context: LeonContext, program: Program) extends SMTLIBCVC4Target(context, program) {
 
   override val targetName = "cvc4-quantified"
 

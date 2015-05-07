@@ -1,10 +1,11 @@
-package leon.solvers.smtlib
+package leon
+package solvers.smtlib
 
-import leon.purescala.DefOps._
-import leon.purescala.Definitions.TypedFunDef
-import leon.purescala.ExprOps._
-import leon.purescala.Expressions._
-import leon.purescala.Constructors._
+import purescala._
+import DefOps._
+import Definitions._
+import Expressions._
+import Constructors._
 import smtlib.parser.Commands.{DeclareFun, Assert}
 import smtlib.parser.Terms.{ForAll => SMTForall, SSymbol}
 
@@ -12,9 +13,7 @@ import smtlib.parser.Terms.{ForAll => SMTForall, SSymbol}
  * This solver models function definitions as universally quantified formulas.
  * It is not meant as an underlying solver to UnrollingSolver.
  */
-trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target {
-
-  this: SMTLIBSolver =>
+class SMTLIBZ3QuantifiedTarget(context: LeonContext, program: Program) extends SMTLIBZ3Target(context, program) {
 
   private val typedFunDefExplorationLimit = 10000
 

@@ -77,19 +77,19 @@ object SolverFactory {
         SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
 
       case "smt-z3" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBZ3Target) with TimeoutSolver)
+        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Target(ctx, program)) with TimeoutSolver)
 
       case "smt-z3-q" =>
-        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBZ3QuantifiedTarget with TimeoutSolver)
+        SolverFactory(() => new SMTLIBZ3QuantifiedTarget(ctx, program) with TimeoutSolver)
 
       case "smt-cvc4" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBSolver(ctx, program) with SMTLIBCVC4Target) with TimeoutSolver)
+        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Target(ctx, program)) with TimeoutSolver)
 
       case "smt-cvc4-proof" =>
-        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBCVC4ProofTarget with TimeoutSolver)
+        SolverFactory(() => new SMTLIBCVC4ProofTarget(ctx, program) with TimeoutSolver)
 
       case "smt-cvc4-cex" =>
-        SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBCVC4CounterExampleTarget with TimeoutSolver)
+        SolverFactory(() => new SMTLIBCVC4CounterExampleTarget(ctx, program) with TimeoutSolver)
 
       case _ =>
         ctx.reporter.error(s"Unknown solver $name")
@@ -118,7 +118,7 @@ object SolverFactory {
 
   private var reported = false
 
-  // Fast solver used by simplifiactions, to discharge simple tautologies
+  // Fast solver used by simplifications, to discharge simple tautologies
   def uninterpreted(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     if (hasNativeZ3) {
       SolverFactory(() => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
@@ -127,7 +127,7 @@ object SolverFactory {
         ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-based solver.")
         reported = true
       }
-      SolverFactory(() => new SMTLIBSolver(ctx, program) with SMTLIBZ3Target with TimeoutSolver)
+      SolverFactory(() => new SMTLIBZ3Target(ctx, program) with TimeoutSolver)
     }
   }
 
