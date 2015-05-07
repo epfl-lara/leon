@@ -6,12 +6,12 @@ import DefOps._
 import Definitions._
 import Expressions._
 import Constructors._
-import smtlib.parser.Commands.{DeclareFun, Assert}
+import smtlib.parser.Commands.{Assert => SMTAssert}
 import smtlib.parser.Terms.{ForAll => SMTForall, SSymbol}
 
 /**
  * This solver models function definitions as universally quantified formulas.
- * It is not meant as an underlying solver to UnrollingSolver.
+ * It is not meant as an underlying solver to UnrollingSolver, and does not handle HOFs.
  */
 class SMTLIBZ3QuantifiedTarget(context: LeonContext, program: Program) extends SMTLIBZ3Target(context, program) {
 
@@ -30,19 +30,7 @@ class SMTLIBZ3QuantifiedTarget(context: LeonContext, program: Program) extends S
 
     val smtFunDecls = funs.toSeq.collect {
       case tfd if !functions.containsA(tfd) =>
-        val id = if (tfd.tps.isEmpty) {
-          tfd.id
-        } else {
-          tfd.id.freshen
-        }
-        val sym = id2sym(id)
-        functions +=(tfd, sym)
-        sendCommand(DeclareFun(
-          sym,
-          tfd.params map { p => declareSort(p.getType) },
-          declareSort(tfd.returnType)
-        ))
-        sym
+        super.declareFunction(tfd)
     }
     smtFunDecls foreach { sym =>
       val tfd = functions.toA(sym)
@@ -54,7 +42,7 @@ class SMTLIBZ3QuantifiedTarget(context: LeonContext, program: Program) extends S
           tfd.body.get
         )
       )
-      sendCommand(Assert(term))
+      sendCommand(SMTAssert(term))
 
       tfd.postcondition foreach { post =>
         val axiom = implies(
@@ -64,7 +52,7 @@ class SMTLIBZ3QuantifiedTarget(context: LeonContext, program: Program) extends S
             Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable }))
           )
         )
-        sendCommand(Assert(quantifiedTerm(SMTForall, axiom)))
+        sendCommand(SMTAssert(quantifiedTerm(SMTForall, axiom)))
       }
     }
 
