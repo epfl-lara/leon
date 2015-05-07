@@ -16,7 +16,7 @@ import smtlib.theories.Core.Equals
 trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
   this: SMTLIBSolver =>
 
-  override val targetName = "cvc4-proof"
+  override val targetName = "cvc4-quantified"
 
   private val typedFunDefExplorationLimit = 10000
 

@@ -15,6 +15,8 @@ import smtlib.parser.Terms._
 trait SMTLIBCVC4ProofTarget extends SMTLIBCVC4QuantifiedTarget {
   this: SMTLIBSolver =>
 
+  override val targetName = "cvc4-proof"
+
   override def interpreterOps(ctx: LeonContext) = {
     Seq(
       "-q",
