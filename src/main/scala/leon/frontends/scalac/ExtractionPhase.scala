@@ -6,8 +6,6 @@ package frontends.scalac
 import purescala.Definitions.Program
 import purescala.Common.FreshIdentifier
 
-import purescala.ScalaPrinter
-
 import utils._
 
 import scala.tools.nsc.{Settings,CompilerCommand}

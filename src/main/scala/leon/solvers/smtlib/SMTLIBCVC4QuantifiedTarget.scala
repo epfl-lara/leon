@@ -4,10 +4,11 @@ package leon
 package solvers.smtlib
 
 import purescala.Common.FreshIdentifier
-import purescala.Expressions.{FunctionInvocation, BooleanLiteral, Expr, Implies}
+import leon.purescala.Expressions._
 import purescala.Definitions.TypedFunDef
 import purescala.Constructors.{application, implies}
 import purescala.DefOps.typedTransitiveCallees
+import smtlib.parser.Commands.Assert
 import smtlib.parser.Commands._
 import smtlib.parser.Terms._
 import smtlib.theories.Core.Equals
@@ -44,17 +45,23 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
 
       functions +=(tfd, id2sym(id))
 
-      val bodyAssert = Assert(Equals(id2sym(id): Term, toSMT(tfd.body.get)(Map())))
+      try {
+        val bodyAssert = Assert(Equals(id2sym(id): Term, toSMT(tfd.body.get)(Map())))
 
-      val specAssert = tfd.postcondition map { post =>
-        val term = implies(
-          tfd.precondition getOrElse BooleanLiteral(true),
-          application(post, Seq(FunctionInvocation(tfd, Seq())))
-        )
-        Assert(toSMT(term)(Map()))
+        val specAssert = tfd.postcondition map { post =>
+          val term = implies(
+            tfd.precondition getOrElse BooleanLiteral(true),
+            application(post, Seq(FunctionInvocation(tfd, Seq())))
+          )
+          Assert(toSMT(term)(Map()))
+        }
+
+        Seq(bodyAssert) ++ specAssert
+      } catch {
+        case _ : IllegalArgumentException =>
+          addError()
+          Seq()
       }
-
-      Seq(bodyAssert) ++ specAssert
     }
 
     val seen = withParams filterNot functions.containsA
@@ -76,9 +83,15 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target {
 
     val smtBodies = smtFunDecls map { case FunDec(sym, _, _) =>
       val tfd = functions.toA(sym)
-      toSMT(tfd.body.get)(tfd.params.map { p =>
-        (p.id, id2sym(p.id): Term)
-      }.toMap)
+      try {
+        toSMT(tfd.body.get)(tfd.params.map { p =>
+          (p.id, id2sym(p.id): Term)
+        }.toMap)
+      } catch {
+        case i: IllegalArgumentException =>
+          addError()
+          toSMT(Error(tfd.body.get.getType, ""))(Map())
+      }
     }
 
     if (smtFunDecls.nonEmpty) {
