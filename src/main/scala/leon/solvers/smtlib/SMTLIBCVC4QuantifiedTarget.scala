@@ -95,7 +95,12 @@ abstract class SMTLIBCVC4QuantifiedTarget(context: LeonContext, program: Program
           tfd.precondition getOrElse BooleanLiteral(true),
           application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
         )
-        sendCommand(SMTAssert(quantifiedTerm(ForAll, term)))
+        try {
+          sendCommand(SMTAssert(quantifiedTerm(ForAll, term)))
+        } catch {
+          case _ : IllegalArgumentException =>
+            addError()
+        }
       }
     }
 
@@ -107,6 +112,11 @@ abstract class SMTLIBCVC4QuantifiedTarget(context: LeonContext, program: Program
 
   // For this solver, we prefer the variables of assert() commands to be exist. quantified instead of free
   override def assertCnstr(expr: Expr) =
-    sendCommand(SMTAssert(quantifiedTerm(Exists, expr)))
+    try {
+      sendCommand(SMTAssert(quantifiedTerm(Exists, expr)))
+    } catch {
+      case _ : IllegalArgumentException =>
+        addError()
+    }
 
 }
