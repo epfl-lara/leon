@@ -682,9 +682,13 @@ trait SMTLIBTarget {
       out.write("\n")
       out.flush()
     }
-    if (hasError) Unsupported else interpreter.eval(cmd) match {
+    interpreter.eval(cmd) match {
       case err@ErrorResponse(msg) if !interrupted =>
-        reporter.fatalError("Unexpected error from smt-"+targetName+" solver: "+msg)
+        reporter.warning(s"Unexpected error from $name solver: $msg")
+        // Store that there was an error. Now all following check()
+        // invocations will return None
+        addError()
+        err
       case res => res
     }
   }
@@ -703,11 +707,14 @@ trait SMTLIBTarget {
 
   }
 
-  override def check: Option[Boolean] = sendCommand(CheckSat()) match {
-    case CheckSatStatus(SatStatus)     => Some(true)
-    case CheckSatStatus(UnsatStatus)   => Some(false)
-    case CheckSatStatus(UnknownStatus) => None
-    case e                             => None
+  override def check: Option[Boolean] = {
+    if (hasError) None
+    else sendCommand(CheckSat()) match {
+      case CheckSatStatus(SatStatus)     => Some(true)
+      case CheckSatStatus(UnsatStatus)   => Some(false)
+      case CheckSatStatus(UnknownStatus) => None
+      case e                             => None
+    }
   }
 
   override def getModel: Map[Identifier, Expr] = {
