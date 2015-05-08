@@ -1,10 +1,9 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.test.frontends
+package leon.test.testcases
 
 import leon._
 import test.LeonTestSuite
-import purescala.Definitions.Program
 import java.io.File
 
 class TestCasesCompile extends LeonTestSuite {

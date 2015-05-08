@@ -13,6 +13,7 @@ import synthesis._
 import termination._
 import utils._
 import verification._
+import testcases._
 
 class LeonAllTests extends Suites(
   new LeonUnitTests,
