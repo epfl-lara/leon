@@ -18,6 +18,8 @@ import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
 import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, Assert => SMTAssert, _}
 import _root_.smtlib.parser.Terms.{
+  ForAll => SMTForall,
+  Exists => SMTExists,
   Identifier => SMTIdentifier,
   Let => SMTLet,
   _
@@ -446,6 +448,42 @@ abstract class SMTLIBSolver(val context: LeonContext,
     }
   }
 
+  protected def declareMapUnion(from: TypeTree, to: TypeTree): SSymbol = {
+    // FIXME cache results
+    val a = declareSort(from)
+    val b = declareSort(OptionManager.leonOptionType(to))
+    val arraySort = Sort(SMTIdentifier(SSymbol("Array")), Seq(a, b))
+
+    val f = freshSym("map_union")
+
+    sendCommand(DeclareFun(f, Seq(arraySort, arraySort), arraySort))
+
+    val v  = SSymbol("v")
+    val a1 = SSymbol("a1")
+    val a2 = SSymbol("a2")
+
+    val axiom = SMTForall(
+      SortedVar(a1, arraySort), Seq(SortedVar(a2, arraySort), SortedVar(v,a)),
+      Core.Equals(
+        ArraysEx.Select(
+          FunctionApplication(f: QualifiedIdentifier, Seq(a1: Term, a2: Term)),
+          v: Term
+        ),
+        Core.ITE(
+          FunctionApplication(
+            OptionManager.someTester(to),
+            Seq(ArraysEx.Select(a2: Term, v: Term))
+          ),
+          ArraysEx.Select(a2,v),
+          ArraysEx.Select(a1,v)
+        )
+      )
+    )
+
+    sendCommand(SMTAssert(axiom))
+    f
+  }
+
   protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = {
     e match {
       case Variable(id) =>
@@ -567,6 +605,13 @@ abstract class SMTLIBSolver(val context: LeonContext,
         FunctionApplication(
           someTester(vt),
           Seq(ArraysEx.Select(toSMT(m), toSMT(k)))
+        )
+
+      case MapUnion(m1, m2) =>
+        val MapType(vk, vt) = m1.getType
+        FunctionApplication(
+          declareMapUnion(vk, vt),
+          Seq(toSMT(m1), toSMT(m2))
         )
 
       case p : Passes =>
