@@ -327,9 +327,9 @@ sealed abstract class List[T] {
     case Cons(h,t) => t.foldLeft(f(z,h))(f)
   }
 
-  def foldRight[R](f: (T,R) => R)(z: R): R = this match {
+  def foldRight[R](z: R)(f: (T,R) => R): R = this match {
     case Nil() => z
-    case Cons(h, t) => f(h, t.foldRight(f)(z))
+    case Cons(h, t) => f(h, t.foldRight(z)(f))
   }
  
   def scanLeft[R](z: R)(f: (R,T) => R): List[R] = this match {
@@ -337,10 +337,10 @@ sealed abstract class List[T] {
     case Cons(h,t) => z :: t.scanLeft(f(z,h))(f)
   }
 
-  def scanRight[R](f: (T,R) => R)(z: R): List[R] = { this match {
+  def scanRight[R](z: R)(f: (T,R) => R): List[R] = { this match {
     case Nil() => z :: Nil[R]()
     case Cons(h, t) => 
-      val rest@Cons(h1,_) = t.scanRight(f)(z)
+      val rest@Cons(h1,_) = t.scanRight(z)(f)
       f(h, h1) :: rest
   }} ensuring { !_.isEmpty }
 
@@ -525,7 +525,7 @@ object ListSpecs {
   
   @induct
   def scanVsFoldRight[A,B](l: List[A], z: B, f: (A,B) => B): Boolean = {
-    l.scanRight(f)(z).head == l.foldRight(f)(z)
+    l.scanRight(z)(f).head == l.foldRight(z)(f)
   }.holds
 
 }
