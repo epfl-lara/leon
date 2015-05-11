@@ -95,60 +95,60 @@ class SMTLIBZ3Target(context: LeonContext, program: Program) extends SMTLIBSolve
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
-      case a @ FiniteArray(elems, oDef, size) =>
-        val tpe @ ArrayType(base) = normalizeType(a.getType)
-        declareSort(tpe)
+    case a @ FiniteArray(elems, oDef, size) =>
+      val tpe @ ArrayType(base) = normalizeType(a.getType)
+      declareSort(tpe)
 
-        val default: Expr = oDef.getOrElse(simplestValue(base))
-        
-        var ar: Term = ArrayConst(declareSort(RawArrayType(Int32Type, base)), toSMT(default))
+      val default: Expr = oDef.getOrElse(simplestValue(base))
 
-        for ((i, e) <- elems) {
-          ar = ArraysEx.Store(ar, toSMT(IntLiteral(i)), toSMT(e))
-        }
+      var ar: Term = ArrayConst(declareSort(RawArrayType(Int32Type, base)), toSMT(default))
 
-        FunctionApplication(constructors.toB(tpe), List(toSMT(size), ar))
+      for ((i, e) <- elems) {
+        ar = ArraysEx.Store(ar, toSMT(IntLiteral(i)), toSMT(e))
+      }
 
-      /**
-       * ===== Set operations =====
-       */
-      case fs @ FiniteSet(elems) =>
-        val ss = declareSort(fs.getType)
-        var res: Term = FunctionApplication(
-          QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ss)),
-          Seq(toSMT(BooleanLiteral(false)))
-        )
+      FunctionApplication(constructors.toB(tpe), List(toSMT(size), ar))
 
-        for (e <- elems) {
-          res = ArraysEx.Store(res, toSMT(e), toSMT(BooleanLiteral(true)))
-        }
+    /**
+     * ===== Set operations =====
+     */
+    case fs @ FiniteSet(elems) =>
+      val ss = declareSort(fs.getType)
+      var res: Term = FunctionApplication(
+        QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ss)),
+        Seq(toSMT(BooleanLiteral(false)))
+      )
 
-        res
+      for (e <- elems) {
+        res = ArraysEx.Store(res, toSMT(e), toSMT(BooleanLiteral(true)))
+      }
 
-      case SubsetOf(ss, s) =>
-        // a isSubset b   ==>   (a zip b).map(implies) == (* => true)
-        val allTrue = ArrayConst(declareSort(s.getType), True())
+      res
 
-        SMTEquals(ArrayMap(SSymbol("implies"), toSMT(ss), toSMT(s)), allTrue)
+    case SubsetOf(ss, s) =>
+      // a isSubset b   ==>   (a zip b).map(implies) == (* => true)
+      val allTrue = ArrayConst(declareSort(s.getType), True())
 
-      case ElementOfSet(e, s) =>
-        ArraysEx.Select(toSMT(s), toSMT(e))
+      SMTEquals(ArrayMap(SSymbol("implies"), toSMT(ss), toSMT(s)), allTrue)
 
-      case SetDifference(a, b) =>
-        // a -- b
-        // becomes:
-        // a && not(b)
+    case ElementOfSet(e, s) =>
+      ArraysEx.Select(toSMT(s), toSMT(e))
 
-        ArrayMap(SSymbol("and"), toSMT(a), ArrayMap(SSymbol("not"), toSMT(b)))
+    case SetDifference(a, b) =>
+      // a -- b
+      // becomes:
+      // a && not(b)
 
-      case SetUnion(l, r) =>
-        ArrayMap(SSymbol("or"), toSMT(l), toSMT(r))
+      ArrayMap(SSymbol("and"), toSMT(a), ArrayMap(SSymbol("not"), toSMT(b)))
 
-      case SetIntersection(l, r) =>
-        ArrayMap(SSymbol("and"), toSMT(l), toSMT(r))
+    case SetUnion(l, r) =>
+      ArrayMap(SSymbol("or"), toSMT(l), toSMT(r))
 
-      case _ =>
-        super.toSMT(e)
+    case SetIntersection(l, r) =>
+      ArrayMap(SSymbol("and"), toSMT(l), toSMT(r))
+
+    case _ =>
+      super.toSMT(e)
   }
 
   def extractRawArray(s: DefineFun)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): RawArrayValue = s match {
