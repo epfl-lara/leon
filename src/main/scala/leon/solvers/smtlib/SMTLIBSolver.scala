@@ -786,7 +786,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       out.flush()
     }
     interpreter.eval(cmd) match {
-      case err@ErrorResponse(msg) if !interrupted =>
+      case err@ErrorResponse(msg) if !hasError && !interrupted =>
         reporter.warning(s"Unexpected error from $name solver: $msg")
         // Store that there was an error. Now all following check()
         // invocations will return None
@@ -799,7 +799,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   // Public solver interface
 
-  override def assertCnstr(expr: Expr): Unit = {
+  override def assertCnstr(expr: Expr): Unit = if(!hasError) {
     variablesOf(expr).foreach(declareVariable)
     try {
       val term = toSMT(expr)(Map())
