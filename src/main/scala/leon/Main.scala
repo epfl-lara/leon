@@ -175,7 +175,7 @@ object Main {
           ExtractionPhase andThen
           debugTrees("Program after extraction") andThen
           PreprocessingPhase andThen
-          debugTrees("Program after pre-processing")
+          debugTrees("Program after pre-processing") andThen
           xlang.NoXLangFeaturesChecking
 
       val pipeProcess: Pipeline[Program, Any] = {
