@@ -217,7 +217,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
-      require(r.default == BooleanLiteral(false), "Co-finite sets are not supported.")
+      if (r.default != BooleanLiteral(false)) {
+        reporter.warning("Co-finite sets are not supported.")
+        throw new IllegalArgumentException
+      }
       require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
 
       finiteSet(r.elems.keySet, base)
@@ -499,7 +502,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case IntLiteral(i) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
       case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v) => Core.BoolConst(v)
-      case StringLiteral(s) => SString(s)
       case Let(b,d,e) =>
         val id      = id2sym(b)
         val value   = toSMT(d)

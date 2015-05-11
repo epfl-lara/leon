@@ -10,6 +10,7 @@ import Definitions.Program
 import Expressions._
 import Extractors._
 import Types._
+import Constructors._
 import ExprOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
@@ -76,7 +77,7 @@ class SMTLIBZ3Target(context: LeonContext, program: Program) extends SMTLIBSolve
     case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), tpe) =>
       if (letDefs contains k) {
         // Need to recover value form function model
-        fromRawArray(extractRawArray(letDefs(k)), tpe)
+        fromRawArray(extractRawArray(letDefs(k), tpe), tpe)
       } else {
         unsupported(" as-array on non-function or unknown symbol "+k)
       }
@@ -151,10 +152,15 @@ class SMTLIBZ3Target(context: LeonContext, program: Program) extends SMTLIBSolve
       super.toSMT(e)
   }
 
-  def extractRawArray(s: DefineFun)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): RawArrayValue = s match {
+  def extractRawArray(s: DefineFun, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): RawArrayValue = s match {
     case DefineFun(SMTFunDef(a, Seq(SortedVar(arg, akind)), rkind, body)) =>
-      val argTpe = sorts.toA(akind)
-      val retTpe = sorts.toA(rkind)
+      val (argTpe, retTpe) = tpe match {
+        case SetType(base) => (base, BooleanType)
+        case ArrayType(base) => (Int32Type, base)
+        case FunctionType(args, ret) => (tupleTypeWrap(args), ret)
+        case RawArrayType(from, to) => (from, to)
+        case _ => unsupported("Unsupported type for (un)packing into raw arrays: "+tpe +" (got kinds "+akind+" -> "+rkind+")")
+      }
 
       def extractCases(e: Term): (Map[Expr, Expr], Expr) = e match {
         case ITE(SMTEquals(SimpleSymbol(`arg`), k), v, e) =>
