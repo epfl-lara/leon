@@ -285,46 +285,40 @@ sealed abstract class List[T] {
     (take(c), drop(c))
   }
 
-  def insertAt(pos: BigInt, l: List[T]): List[T] = {
-    if(pos < 0) {
-      insertAt(size + pos, l)
-    } else if(pos == BigInt(0)) {
-      l ++ this
-    } else {
-      this match {
-        case Cons(h, t) =>
-          Cons(h, t.insertAt(pos-1, l))
-        case Nil() =>
-          l
+  def insertAt(pos: BigInt, l: List[T]): List[T] = (this match {
+    case Nil() => l
+    case Cons(h, t) =>
+      if (pos < 0) {
+        insertAt(size + pos, l)
+      } else if (pos == BigInt(0)) {
+        l ++ this
+      } else {
+        Cons(h, t.insertAt(pos - 1, l))
       }
-    }
-  } ensuring { res =>
+  }) ensuring { res =>
     res.size == this.size + l.size &&
     res.content == this.content ++ l.content
   }
 
-  def replaceAt(pos: BigInt, l: List[T]): List[T] = {
-    if(pos < 0) {
-      replaceAt(size + pos, l)
-    } else if(pos == BigInt(0)) {
-      l ++ this.drop(l.size)
-    } else {
-      this match {
-        case Cons(h, t) =>
-          Cons(h, t.replaceAt(pos-1, l))
-        case Nil() =>
-          l
+  def replaceAt(pos: BigInt, l: List[T]): List[T] = (this match {
+    case Nil() => l
+    case Cons(h, t) =>
+      if (pos < 0) {
+        replaceAt(size + pos, l)
+      } else if (pos == BigInt(0)) {
+        l ++ this.drop(l.size)
+      } else {
+        Cons(h, t.replaceAt(pos - 1, l))
       }
-    }
-  } ensuring { res =>
+  }) ensuring { res =>
     res.content.subsetOf(l.content ++ this.content)
   }
 
   def rotate(s: BigInt): List[T] = {
-    if (s < 0) {
-      rotate(size + s)
-    } else if (s > size) {
-      rotate(s - size)
+    if (isEmpty) {
+      Nil()
+    } else if (s < 0) {
+      rotate(size+s)
     } else {
       drop(s) ++ take(s)
     }
