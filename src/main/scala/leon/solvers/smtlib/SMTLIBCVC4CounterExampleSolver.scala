@@ -5,7 +5,7 @@ package solvers.smtlib
 
 import purescala.Definitions.Program
 
-class SMTLIBCVC4CounterExampleTarget(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedTarget(context, program) {
+class SMTLIBCVC4CounterExampleSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
   override val targetName = "cvc4-cex"
 

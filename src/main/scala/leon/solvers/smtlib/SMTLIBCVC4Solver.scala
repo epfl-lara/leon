@@ -19,7 +19,7 @@ import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
 import _root_.smtlib.theories._
 
-class SMTLIBCVC4Target(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) {
+class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) {
 
   def targetName = "cvc4"
 

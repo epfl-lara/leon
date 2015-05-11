@@ -77,19 +77,19 @@ object SolverFactory {
         SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
 
       case "smt-z3" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Target(ctx, program)) with TimeoutSolver)
+        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
 
       case "smt-z3-q" =>
-        SolverFactory(() => new SMTLIBZ3QuantifiedTarget(ctx, program) with TimeoutSolver)
+        SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
 
       case "smt-cvc4" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Target(ctx, program)) with TimeoutSolver)
+        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
 
       case "smt-cvc4-proof" =>
-        SolverFactory(() => new SMTLIBCVC4ProofTarget(ctx, program) with TimeoutSolver)
+        SolverFactory(() => new SMTLIBCVC4ProofSolver(ctx, program) with TimeoutSolver)
 
       case "smt-cvc4-cex" =>
-        SolverFactory(() => new SMTLIBCVC4CounterExampleTarget(ctx, program) with TimeoutSolver)
+        SolverFactory(() => new SMTLIBCVC4CounterExampleSolver(ctx, program) with TimeoutSolver)
 
       case _ =>
         ctx.reporter.error(s"Unknown solver $name")
@@ -127,7 +127,7 @@ object SolverFactory {
         ctx.reporter.warning("The Z3 native interface is not available, falling back to smt-based solver.")
         reported = true
       }
-      SolverFactory(() => new SMTLIBZ3Target(ctx, program) with TimeoutSolver)
+      SolverFactory(() => new SMTLIBZ3Solver(ctx, program) with TimeoutSolver)
     }
   }
 

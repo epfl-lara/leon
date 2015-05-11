@@ -5,7 +5,7 @@ package solvers.smtlib
 
 import leon.purescala.Definitions.Program
 
-class SMTLIBCVC4ProofTarget(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedTarget(context, program) {
+class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
   override val targetName = "cvc4-proof"
 

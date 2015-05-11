@@ -14,7 +14,7 @@ import smtlib.theories.Core.Equals
 
 // This solver utilizes the define-funs-rec command of SMTLIB-2.5 to define mutually recursive functions.
 // It is not meant as an underlying solver to UnrollingSolver, and does not handle HOFs.
-abstract class SMTLIBCVC4QuantifiedTarget(context: LeonContext, program: Program) extends SMTLIBCVC4Target(context, program) {
+abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program) extends SMTLIBCVC4Solver(context, program) {
 
   override val targetName = "cvc4-quantified"
 

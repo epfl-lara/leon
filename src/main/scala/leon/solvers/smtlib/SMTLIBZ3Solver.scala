@@ -20,7 +20,7 @@ import _root_.smtlib.parser.CommandsResponses.GetModelResponseSuccess
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
 
-class SMTLIBZ3Target(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) {
+class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) {
 
   def targetName = "z3"
 
