@@ -325,6 +325,16 @@ object Expressions {
     require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val getType = IntegerType
   }
+  /*
+   * Division and Modulo follows Java/Scala semantics. Division corresponds
+   * to / operator on BigInt and Modulo corresponds to %. Note that in
+   * Java/Scala % is rather called remainder and the "mod" operator is also
+   * defined on BigInteger and differs from our Modulo. The "mod" operator
+   * returns an always positive remainder, while our Modulo could return
+   * a negative remainder. The following must hold:
+   *
+   *    Division(x, y) * y + Modulo(x, y) == x
+   */
   case class Division(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val getType = IntegerType
