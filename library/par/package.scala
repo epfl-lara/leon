@@ -8,16 +8,17 @@ import leon.lang.synthesis.choose
 
 package object par {
 
-  // @library
+  @library
   @inline
   def parallel[A,B](x: => A, y: => B) : (A,B) = {
     (x,y)
   }
 
+  @library
   case class Task[A](c: A) {
     def join: A = c
   }
 
-  // @library
+  @library
   def task[A](c: A) = Task(c)
 }

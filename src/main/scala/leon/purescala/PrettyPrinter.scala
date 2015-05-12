@@ -160,7 +160,9 @@ class PrettyPrinter(opts: PrinterOptions,
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"
-      case RealLiteral(d)       => p"$d"
+      case FractionalLiteral(n, d) =>
+        if (d == 1) p"$n"
+        else p"$n/$d"
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
@@ -286,7 +288,7 @@ class PrettyPrinter(opts: PrinterOptions,
               val orderedElements = es.toSeq.sortWith((e1, e2) => e1._1 < e2._1).map(el => el._2)
               p"Array($orderedElements)"
             } else if(length < 10) {
-              val elems = (0 until length).map(i => 
+              val elems = (0 until length).map(i =>
                 es.find(el => el._1 == i).map(el => el._2).getOrElse(d.get)
               )
               p"Array($elems)"
@@ -418,7 +420,7 @@ class PrettyPrinter(opts: PrinterOptions,
             |${nary(defs,"\n\n")}
             |"""
 
-      case Import(path, isWild) => 
+      case Import(path, isWild) =>
         if (isWild) {
           p"import ${nary(path,".")}._"
         } else {

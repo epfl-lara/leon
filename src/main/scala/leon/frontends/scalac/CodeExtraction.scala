@@ -139,7 +139,7 @@ trait CodeExtraction extends ASTExtractors {
 
     //This is a bit misleading, if an expr is not mapped then it has no owner, if it is mapped to None it means
     //that it can have any owner
-    private var owners: Map[Identifier, Option[FunDef]] = Map() 
+    private var owners: Map[Identifier, Option[FunDef]] = Map()
 
     // This one never fails, on error, it returns Untyped
     def leonType(tpt: Type)(implicit dctx: DefContext, pos: Position): LeonType = {
@@ -379,7 +379,7 @@ trait CodeExtraction extends ASTExtractors {
       val allSels = sels map { prefix :+ _.name.toString }
 
       // Make a different import for each selector at the end of the chain
-      allSels flatMap { selectors => 
+      allSels flatMap { selectors =>
         assert(selectors.nonEmpty)
         val (thePath, isWild) = selectors.last match {
           case "_" => (selectors.dropRight(1), true)
@@ -448,8 +448,8 @@ trait CodeExtraction extends ASTExtractors {
     private var methodToClass = Map[FunDef, LeonClassDef]()
 
     /**
-     * For the function in $defs with name $owner, find its parameter with index $index, 
-     * and registers $fd as the default value function for this parameter.  
+     * For the function in $defs with name $owner, find its parameter with index $index,
+     * and registers $fd as the default value function for this parameter.
      */
     private def registerDefaultMethod(
       defs : List[Tree],
@@ -548,7 +548,7 @@ trait CodeExtraction extends ASTExtractors {
 
       //println(s"Body of $sym")
 
-      // We collect the methods and fields 
+      // We collect the methods and fields
       for (d <- tmpl.body) d match {
         case EmptyTree =>
           // ignore
@@ -575,7 +575,7 @@ trait CodeExtraction extends ASTExtractors {
 
           cd.registerMethod(fd)
           val matcher: PartialFunction[Tree, Symbol] = {
-            case ExFunctionDef(ownerSym, _ ,_ ,_, _) if ownerSym.name.toString == owner => ownerSym 
+            case ExFunctionDef(ownerSym, _ ,_ ,_, _) if ownerSym.name.toString == owner => ownerSym
           }
           registerDefaultMethod(tmpl.body, matcher, index, fd )
 
@@ -765,7 +765,7 @@ trait CodeExtraction extends ASTExtractors {
 
       // Find defining function for params with default value
       for ((s,vd) <- params zip funDef.params) {
-        vd.defaultValue = paramsToDefaultValues.get(s.symbol) 
+        vd.defaultValue = paramsToDefaultValues.get(s.symbol)
       }
 
       val newVars = for ((s, vd) <- params zip funDef.params) yield {
@@ -775,7 +775,7 @@ trait CodeExtraction extends ASTExtractors {
       val fctx = dctx.withNewVars(newVars).copy(isExtern = funDef.annotations("extern"))
 
       // If this is a lazy field definition, drop the assignment/ accessing
-      val body = 
+      val body =
         if (funDef.flags.contains(IsField(true))) { body0 match {
           case Block(List(Assign(_, realBody)),_ ) => realBody
           case _ => outOfSubsetError(body0, "Wrong form of lazy accessor")
@@ -938,7 +938,7 @@ trait CodeExtraction extends ASTExtractors {
         val recGuard = extractTree(cd.guard)(ndctx)
 
         if(isXLang(recGuard)) {
-          outOfSubsetError(cd.guard.pos, "Guard expression must be pure") 
+          outOfSubsetError(cd.guard.pos, "Guard expression must be pure")
         }
 
         GuardedCase(recPattern, recGuard, recBody).setPos(cd.pos)
@@ -1110,7 +1110,7 @@ trait CodeExtraction extends ASTExtractors {
           LetDef(funDefWithBody, restTree)
 
         // FIXME case ExDefaultValueFunction
-        
+
         /**
          * XLang Extractors
          */
@@ -1218,7 +1218,7 @@ trait CodeExtraction extends ASTExtractors {
           rec match {
             case IntLiteral(n) =>
               InfiniteIntegerLiteral(BigInt(n))
-            case _ => 
+            case _ =>
               outOfSubsetError(tr, "Conversion from Int to BigInt")
           }
 
@@ -1227,7 +1227,7 @@ trait CodeExtraction extends ASTExtractors {
           val rd = extractTree(d)
           (rn, rd) match {
             case (InfiniteIntegerLiteral(n), InfiniteIntegerLiteral(d)) =>
-              RealLiteral(BigDecimal(n) / BigDecimal(d))
+              FractionalLiteral(n, d)
             case _ =>
               outOfSubsetError(tr, "Real not build from literals")
           }
@@ -1235,7 +1235,7 @@ trait CodeExtraction extends ASTExtractors {
           val rn = extractTree(n)
           rn match {
             case InfiniteIntegerLiteral(n) =>
-              RealLiteral(BigDecimal(n))
+              FractionalLiteral(n, 1)
             case _ =>
               outOfSubsetError(tr, "Real not build from literals")
           }
@@ -1482,7 +1482,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case str @ ExStringLiteral(s) =>
           val chars = s.toList.map(CharLiteral)
-          
+
           val consChar = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Cons"), Seq(CharType))
           val nilChar  = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Nil"),  Seq(CharType))
 
@@ -1810,11 +1810,11 @@ trait CodeExtraction extends ASTExtractors {
 
       case RefinedType(parents, defs) if defs.isEmpty =>
         /**
-         * For cases like if(a) e1 else e2 where 
+         * For cases like if(a) e1 else e2 where
          *   e1 <: C1,
          *   e2 <: C2,
          *   with C1,C2 <: C
-         * 
+         *
          * Scala might infer a type for C such as: Product with Serializable with C
          * we generalize to the first known type, e.g. C.
          */

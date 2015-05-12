@@ -48,9 +48,9 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
       eval(e, UnitLiteral())                === UnitLiteral()
       eval(e, InfiniteIntegerLiteral(0))    === InfiniteIntegerLiteral(0)
       eval(e, InfiniteIntegerLiteral(42))   === InfiniteIntegerLiteral(42)
-      eval(e, RealLiteral(0))               === RealLiteral(0)
-      eval(e, RealLiteral(42))              === RealLiteral(42)
-      eval(e, RealLiteral(13.255))          === RealLiteral(13.255)
+      eval(e, FractionalLiteral(0 ,1))      === FractionalLiteral(0 ,1)
+      eval(e, FractionalLiteral(42 ,1))     === FractionalLiteral(42, 1)
+      eval(e, FractionalLiteral(26, 3))     === FractionalLiteral(26, 3)
     }
   }
 
@@ -172,32 +172,29 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
   }
 
   test("Real Arightmetic") { implicit fix =>
-    for(e <- allEvaluators) {
-      eval(e, RealPlus(RealLiteral(3), RealLiteral(5)))     === RealLiteral(8)
-      eval(e, RealMinus(RealLiteral(7), RealLiteral(2)))    === RealLiteral(5)
-      eval(e, RealUMinus(RealLiteral(7)))                   === RealLiteral(-7)
-      eval(e, RealTimes(RealLiteral(2), RealLiteral(3)))    === RealLiteral(6)
-      eval(e, RealPlus(RealLiteral(2.5), RealLiteral(3.5))) === RealLiteral(6)
+    for (e <- allEvaluators) {
+      eval(e, RealPlus(FractionalLiteral(2, 3), FractionalLiteral(1, 3))) === FractionalLiteral(1, 1)
+      eval(e, RealMinus(FractionalLiteral(1, 1), FractionalLiteral(1, 4))) === FractionalLiteral(3, 4)
+      eval(e, RealUMinus(FractionalLiteral(7, 1))) === FractionalLiteral(-7, 1)
+      eval(e, RealTimes(FractionalLiteral(2, 3), FractionalLiteral(1, 3))) === FractionalLiteral(2, 9)
     }
   }
 
   test("Real Comparisons") { implicit fix =>
     for(e <- allEvaluators) {
-      eval(e, GreaterEquals(RealLiteral(7), RealLiteral(4))) === BooleanLiteral(true)
-      eval(e, GreaterEquals(RealLiteral(7), RealLiteral(7))) === BooleanLiteral(true)
-      eval(e, GreaterEquals(RealLiteral(4), RealLiteral(7))) === BooleanLiteral(false)
+      eval(e, GreaterEquals(FractionalLiteral(7, 1), FractionalLiteral(4, 2))) === BooleanLiteral(true)
+      eval(e, GreaterEquals(FractionalLiteral(7, 2), FractionalLiteral(49, 13))) === BooleanLiteral(false)
 
-      eval(e, GreaterThan(RealLiteral(7), RealLiteral(4)))  === BooleanLiteral(true)
-      eval(e, GreaterThan(RealLiteral(7), RealLiteral(7)))  === BooleanLiteral(false)
-      eval(e, GreaterThan(RealLiteral(4), RealLiteral(7)))  === BooleanLiteral(false)
+      eval(e, GreaterThan(FractionalLiteral(49, 13), FractionalLiteral(7, 2))) === BooleanLiteral(true)
+      eval(e, GreaterThan(FractionalLiteral(49, 14), FractionalLiteral(7, 2))) === BooleanLiteral(false)
+      eval(e, GreaterThan(FractionalLiteral(4, 2), FractionalLiteral(7, 1))) === BooleanLiteral(false)
 
-      eval(e, LessEquals(RealLiteral(7), RealLiteral(4)))   === BooleanLiteral(false)
-      eval(e, LessEquals(RealLiteral(7), RealLiteral(7)))   === BooleanLiteral(true)
-      eval(e, LessEquals(RealLiteral(4), RealLiteral(7)))   === BooleanLiteral(true)
+      eval(e, LessEquals(FractionalLiteral(7, 1), FractionalLiteral(4, 2))) === BooleanLiteral(false)
+      eval(e, LessEquals(FractionalLiteral(7, 2), FractionalLiteral(49, 13))) === BooleanLiteral(true)
 
-      eval(e, LessThan(RealLiteral(7), RealLiteral(4)))     === BooleanLiteral(false)
-      eval(e, LessThan(RealLiteral(7), RealLiteral(7)))     === BooleanLiteral(false)
-      eval(e, LessThan(RealLiteral(4), RealLiteral(7)))     === BooleanLiteral(true)
+      eval(e, LessThan(FractionalLiteral(49, 13), FractionalLiteral(7, 2))) === BooleanLiteral(false)
+      eval(e, LessThan(FractionalLiteral(49, 14), FractionalLiteral(7, 2))) === BooleanLiteral(false)
+      eval(e, LessThan(FractionalLiteral(4, 2), FractionalLiteral(7, 1))) === BooleanLiteral(true)
     }
   }
 
@@ -266,7 +263,7 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
   test("Array Default Value") { implicit fix  =>
     for (e <- allEvaluators) {
       val id = FreshIdentifier("id", Int32Type)
-      eqArray(eval(e, finiteArray(Map[Int, Expr](), Some(Variable(id), IntLiteral(7)), Int32Type), Map(id -> IntLiteral(27))).res, 
+      eqArray(eval(e, finiteArray(Map[Int, Expr](), Some(Variable(id), IntLiteral(7)), Int32Type), Map(id -> IntLiteral(27))).res,
                       finiteArray(Map[Int, Expr](), Some(IntLiteral(27), IntLiteral(7)), Int32Type))
     }
   }

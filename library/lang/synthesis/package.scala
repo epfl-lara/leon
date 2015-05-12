@@ -20,7 +20,7 @@ package object synthesis {
   @ignore
   def choose[A, B, C, D](predicate: (A, B, C, D) => Boolean): (A, B, C, D) = noImpl
   @ignore
-  def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noImpl
+  def choose[A, B, C, D, E](predicate: (A, B, C, D, E) => Boolean): (A, B, C, D, E) = noImpl      
 
   @ignore
   def ???[T]: T = noImpl

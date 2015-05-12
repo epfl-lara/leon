@@ -22,7 +22,7 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
 
   def eval(expression: Expr, model: solvers.Model) : EvaluationResult = {
     val toPairs = model.toSeq
-    compile(expression, toPairs.map(_._1)).map { e => 
+    compile(expression, toPairs.map(_._1)).map { e =>
       ctx.timers.evaluators.codegen.runtime.start()
       val res = e(model)
       ctx.timers.evaluators.codegen.runtime.stop()
@@ -57,8 +57,8 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
             EvaluationResults.EvaluatorError(e.getMessage)
 
           case e : java.lang.ExceptionInInitializerError =>
-            EvaluationResults.RuntimeError(e.getException.getMessage) 
-          
+            EvaluationResults.RuntimeError(e.getException.getMessage)
+
           case so : java.lang.StackOverflowError =>
             EvaluationResults.RuntimeError("Stack overflow")
 
