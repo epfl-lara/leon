@@ -1,4 +1,4 @@
-name := "Leon"
+name := "Leon-Orb"
 
 version := "2.3"
 

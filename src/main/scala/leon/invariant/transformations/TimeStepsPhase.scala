@@ -194,7 +194,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     }
     
        
-    def tupleifyRecur(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr, resIds: List[Identifier], timeIds: List[Identifier]) : Expr = {      
+    def tupleifyRecur(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr, 
+        resIds: List[Identifier], timeIds: List[Identifier]) : Expr = {      
     //note: subs.size should be zero if e is a terminal
       if(subs.size == 0)
       {
@@ -318,7 +319,6 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
       case t: Terminal =>
         tupleify(e, Seq(), { case Seq() => t })
     }
-
 
     def apply(e: Expr): Expr = {
       //lift all expressions that are used in matches to before matches.
