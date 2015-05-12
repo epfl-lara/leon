@@ -15,35 +15,6 @@ the SMT solvers invoked.
 Below we document several cases where we are aware that the
 discrepancy exists and provide suggested workarounds.
 
-Integer Division and Modulo
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-On `BigInt` data types, the division operator `/` and
-the modulo operator `%` should only be invoked with positive
-arguments. There are several specific issues.
-
-First, Leon currently does not check for division by zero.
-You can work around this by defining your own division operator
-with the corresponding precondition.
-
-Second, division has rounding-to-zero runtime semantics,
-following Java Virtual Machine and the `BigInt` library
-of Java and Scala, so `(-14)/3 == -4` and, more generally,
-`(-x)/y = -(x/y)`. In general, modulo operator `%` is defined
-so it can be used together with `/`, so that 
-`(x/y)*y + (x % y) == x`. Thus, `(-14) % 3 == -2`.
-
-In contrast, SMT solvers following the SMT-LIB standard use
-rounding to negative infinity, so `(-14)/3 == -5` is a
-theorem, and `(-14) % 3 == 1`. With SMT-LIB semantics, the
-result of modulo `x % y` is non-negative and less than the
-absolute value of `y`.
-
-For the moment we therefore recommend defining your own
-operators with appropriate preconditions. Note that the
-capabilities for automated proofs are limited when the
-second argument of `/` or `%` is not a constant literal.
-
 Out of Memory Errors
 ^^^^^^^^^^^^^^^^^^^^
 
