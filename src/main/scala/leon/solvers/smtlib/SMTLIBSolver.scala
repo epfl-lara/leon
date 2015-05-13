@@ -87,15 +87,14 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   /* Symbol handling */
   protected object SimpleSymbol {
+    def apply(sym: SSymbol) = QualifiedIdentifier(SMTIdentifier(sym, Seq()), None)
     def unapply(term: Term): Option[SSymbol] = term match {
       case QualifiedIdentifier(SMTIdentifier(sym, Seq()), None) => Some(sym)
       case _ => None
     }
   }
   import scala.language.implicitConversions
-  protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = {
-    QualifiedIdentifier(SMTIdentifier(s))
-  }
+  protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = SimpleSymbol(s)
 
   protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
 
@@ -250,7 +249,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
         case MapType(from, to) =>
           declareMapSort(from, to)
 
-        case FunctionType(from, to) =>
+        case ft: FunctionType =>
+          declareLambda(ft)
           Ints.IntSort()
 
         case TypeParameter(id) =>
@@ -752,63 +752,80 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
     case (SNumeral(n), ft @ FunctionType(from, to)) =>
       val dynLambda = lambdas.toB(ft)
-      letDefs.get(dynLambda) match {
-        case Some(DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body))) =>
+      val DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body)) = letDefs(dynLambda)
 
-          object EQ {
-            def unapply(t: Term): Option[(Term,Term)] = t match {
-              case SMTEquals(e1, e2) => Some((e1, e2))
-              case FunctionApplication(f, Seq(e1, e2)) if f.toString == "=" => Some((e1, e2))
-              case _ => None
-            }
-          }
-
-          object Num {
-            def unapply(t: Term): Option[BigInt] = t match {
-              case SNumeral(n) => Some(n)
-              case FunctionApplication(f, Seq(SNumeral(n))) if f.toString == "-" => Some(n)
-              case _ => None
-            }
-          }
-
-          val d = symbolToQualifiedId(dispatcher)
-          def dispatch(t: Term): Term = t match {
-            case ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
-              if (ni == n) thenn else dispatch(elze)
-            case ITE(SMTAnd(EQ(di, Num(ni)), _), thenn, elze) if di == d =>
-              if (ni == n) thenn else dispatch(elze)
-            case _ => t
-          }
-
-          def extract(t: Term): Expr = {
-            def recCond(term: Term, index: Int): Seq[Expr] = term match {
-              case SMTAnd(e1, e2) =>
-                val e1s = recCond(e1, index)
-                e1s ++ recCond(e2, index + e1s.size)
-              case EQ(e1, e2) =>
-                recCond(e2, index)
-              case _ => Seq(fromSMT(term, from(index)))
-            }
-
-            def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
-              case ITE(cond, thenn, elze) =>
-                val cs = recCond(cond, matchers.size)
-                recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
-              case _ => Seq(matchers -> fromSMT(term, to))
-            }
-
-            val cases = recCases(t, Seq.empty)
-            val (default, rest) = cases.partition(_._1.isEmpty)
-
-            assert(default.size == 1 && rest.forall(_._1.size == from.size))
-            finiteLambda(default.head._2, rest, from)
-          }
-
-          val lambdaTerm = dispatch(body)
-          val lambda = extract(lambdaTerm)
-          lambda
-        case None => unsupported("Unknown function ref: " + n)
+      object EQ {
+        def unapply(t: Term): Option[(Term,Term)] = t match {
+          case SMTEquals(e1, e2) => Some((e1, e2))
+          case FunctionApplication(SimpleSymbol(SSymbol("=")), Seq(e1, e2)) => Some((e1, e2))
+          case _ => None
+        }
       }
+
+      object AND {
+        def unapply(t: Term): Option[Seq[Term]] = t match {
+          case SMTAnd(e1, e2) => Some(Seq(e1, e2))
+          case FunctionApplication(SimpleSymbol(SSymbol("and")), args) => Some(args)
+          case _ => None
+        }
+        def apply(ts: Seq[Term]): Term = ts match {
+          case Seq() => unsupported("Unexpected empty conjunct")
+          case Seq(t) => t
+          case _ => FunctionApplication(SimpleSymbol(SSymbol("and")), ts)
+        }
+      }
+
+      object Num {
+        def unapply(t: Term): Option[BigInt] = t match {
+          case SNumeral(n) => Some(n)
+          case FunctionApplication(SimpleSymbol(SSymbol("-")), Seq(SNumeral(n))) => Some(n)
+          case _ => None
+        }
+      }
+
+      val d = symbolToQualifiedId(dispatcher)
+      def dispatch(t: Term): Term = t match {
+        case ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
+          if (ni == n) thenn else dispatch(elze)
+        case ITE(AND(EQ(di, Num(ni)) +: rest), thenn, elze) if di == d =>
+          if (ni == n) ITE(AND(rest), thenn, dispatch(elze)) else dispatch(elze)
+        case _ => t
+      }
+
+      def extract(t: Term): Expr = {
+        def recCond(term: Term, index: Int): Seq[Expr] = term match {
+          case AND(es) => es.foldLeft(Seq.empty[Expr]) { case (seq, e) =>
+            seq ++ recCond(e, index + seq.size)
+          }
+          case EQ(e1, e2) =>
+            recCond(e2, index)
+          case _ =>
+            Seq(fromSMT(term, from(index)))
+        }
+
+        def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
+          case ITE(cond, thenn, elze) =>
+            val cs = recCond(cond, matchers.size)
+            recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
+          case AND(es) if to == BooleanType =>
+            Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+          case EQ(e1, e2) if to == BooleanType =>
+            Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+          case _ =>
+            Seq(matchers -> fromSMT(term, to))
+        }
+
+        val cases = recCases(t, Seq.empty)
+        val (default, rest) = cases.partition(_._1.isEmpty)
+        val leonDefault = if (default.isEmpty && to == BooleanType) BooleanLiteral(false) else default.head._2
+
+        assert(rest.forall(_._1.size == from.size))
+        finiteLambda(leonDefault, rest, from)
+      }
+
+      val lambdaTerm = dispatch(body)
+      val lambda = extract(lambdaTerm)
+      lambda
 
     case (SimpleSymbol(s), tpe) if lets contains s =>
       fromSMT(lets(s), tpe)
@@ -856,20 +873,19 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
       fromSMT(body, tpe)(lets ++ defsMap, letDefs)
 
-    case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => {
-      app match {
-        case "-" =>
-          args match {
-            case List(a) => UMinus(fromSMT(a, IntegerType))
-            case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-          }
-
-        case _ =>
-          unsupported("Function "+app+" not handled in fromSMT: "+s)
+    case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => app match {
+      case "-" => args match {
+        case List(a) => UMinus(fromSMT(a, IntegerType))
+        case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+        case _ => unsupported("Function " + app + " not defined for arguments " + args)
       }
+      case _ =>
+        unsupported("Function "+app+" not handled in fromSMT: "+s)
     }
+
     case (QualifiedIdentifier(id, sort), tpe) =>
       unsupported("Unhandled case in fromSMT: " + id +": "+sort +" ("+tpe+")")
+
     case _ =>
       unsupported("Unhandled case in fromSMT: " + (s, tpe))
   }

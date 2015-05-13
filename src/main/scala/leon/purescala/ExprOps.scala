@@ -1359,8 +1359,8 @@ object ExprOps {
 
           val isType = CaseClassInstanceOf(cct, Variable(on))
 
-          val recSelectors = cct.fields.collect { 
-            case vd if vd.getType == on.getType => vd.id
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+            case (vd, tpe) if tpe == on.getType => vd.id
           }
 
           if (recSelectors.isEmpty) {
@@ -2082,12 +2082,12 @@ object ExprOps {
             substMap += prefix -> Variable(binder)
             substMap += CaseClassInstanceOf(ct, prefix) -> BooleanLiteral(true)
 
-            val subconds = for (f <- ct.fields) yield {
+            val subconds = for ((f,tpe) <- (ct.classDef.fields zip ct.fieldsTypes)) yield {
               val fieldSel = CaseClassSelector(ct, prefix, f.id)
               if (conditions contains fieldSel) {
                 computePatternFor(conditions(fieldSel), fieldSel)
               } else {
-                val b = FreshIdentifier(f.id.name, f.getType, true)
+                val b = FreshIdentifier(f.id.name, tpe, true)
                 substMap += fieldSel -> Variable(b)
                 WildcardPattern(Some(b))
               }
