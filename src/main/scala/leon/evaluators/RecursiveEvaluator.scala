@@ -512,7 +512,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       clpCache.getOrElse((choose, ins), {
         val tStart = System.currentTimeMillis
 
-        val solver = SolverFactory.getFromSettings(ctx, program).getNewSolver()
+        val solverf = SolverFactory.getFromSettings(ctx, program)
+        val solver  = solverf.getNewSolver()
 
         val eqs = p.as.map {
           case id =>
@@ -545,6 +546,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           }
         } finally {
           solver.free()
+          solverf.shutdown()
         }
       })
 

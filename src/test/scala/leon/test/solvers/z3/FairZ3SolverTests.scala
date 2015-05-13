@@ -53,6 +53,7 @@ class FairZ3SolverTests extends LeonTestSuite {
   private val y : Expr = Variable(FreshIdentifier("y", IntegerType))
   private def f(e : Expr) : Expr = FunctionInvocation(fDef.typed, e :: Nil)
 
+  // TODO: refactor this entire suite to support SolverFactory.shutdown
   private val solver = SimpleSolverAPI(SolverFactory(() => new FairZ3Solver(testContext, minimalProgram)))
 
   private val tautology1 : Expr = BooleanLiteral(true)

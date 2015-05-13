@@ -81,15 +81,3 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
     solversInsts.foreach(_.recoverInterrupt())
   }
 }
-
-class PortfolioSolverSynth(context: LeonContext, solvers: Seq[SolverFactory[AssumptionSolver with IncrementalSolver with Interruptible]])
-        extends PortfolioSolver[AssumptionSolver with IncrementalSolver with Interruptible](context, solvers) with IncrementalSolver with Interruptible with NaiveAssumptionSolver {
-
-  def push(): Unit = {
-    solversInsts.foreach(_.push())
-  }
-
-  def pop(lvl: Int): Unit = {
-    solversInsts.foreach(_.pop(lvl))
-  }
-}

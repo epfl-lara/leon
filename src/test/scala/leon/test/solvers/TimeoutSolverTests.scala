@@ -57,6 +57,8 @@ class TimeoutSolverTests extends LeonTestSuite {
 
     val x = Variable(FreshIdentifier("x", IntegerType))
     assert(check(sf, Equals(x, x)) === None)
+
+    sf.shutdown()
   }
 
   test("TimeoutSolver 2") {
@@ -65,5 +67,7 @@ class TimeoutSolverTests extends LeonTestSuite {
     val o = InfiniteIntegerLiteral(1)
     assert(check(sf, Equals(Plus(x, o), Plus(o, x))) === None)
     assert(check(sf, Equals(Plus(x, o), x)) === None)
+
+    sf.shutdown()
   }
 }

@@ -115,66 +115,70 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           reporter.info(ASCIIHelpers.title("3. Synthesizing"))
           reporter.info(p)
       
-          synth.synthesize() match {
-            case (search, sols) =>
-              for (sol <- sols) {
-      
-                // Validate solution if not trusted
-                if (!sol.isTrusted) {
-                  reporter.info("Found untrusted solution! Verifying...")
-                  val expr = sol.toSimplifiedExpr(ctx, program)
-                  ci.ch.impl = Some(expr)
-      
-                  getVerificationCounterExamples(ci.fd, program) match {
-                    case NotValid(_, ces) if ces.nonEmpty =>
-                      reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
-      
-                    case NotValid(_, _) =>
-                      solutions ::= sol
-                      reporter.warning("Solution is not trusted!")
+          try { 
+            synth.synthesize() match {
+              case (search, sols) =>
+                for (sol <- sols) {
+        
+                  // Validate solution if not trusted
+                  if (!sol.isTrusted) {
+                    reporter.info("Found untrusted solution! Verifying...")
+                    val expr = sol.toSimplifiedExpr(ctx, program)
+                    ci.ch.impl = Some(expr)
+        
+                    getVerificationCounterExamples(ci.fd, program) match {
+                      case NotValid(_, ces) if ces.nonEmpty =>
+                        reporter.error("I ended up finding this counter example:\n"+ces.mkString("  |  "))
+        
+                      case NotValid(_, _) =>
+                        solutions ::= sol
+                        reporter.warning("Solution is not trusted!")
 
-                    case Valid =>
-                      solutions ::= sol
-                      reporter.info("Solution was not trusted but post-validation passed!")
+                      case Valid =>
+                        solutions ::= sol
+                        reporter.info("Solution was not trusted but post-validation passed!")
+                    }
+                  } else {
+                    reporter.info("Found trusted solution!")
+                    solutions ::= sol
                   }
+                }
+        
+                if (synth.settings.generateDerivationTrees) {
+                  val dot = new DotGenerator(search.g)
+                  dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+                }
+        
+                if (solutions.isEmpty) {
+                  reporter.error(ASCIIHelpers.title("Failed to repair!"))
                 } else {
-                  reporter.info("Found trusted solution!")
-                  solutions ::= sol
-                }
-              }
-      
-              if (synth.settings.generateDerivationTrees) {
-                val dot = new DotGenerator(search.g)
-                dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
-              }
-      
-              if (solutions.isEmpty) {
-                reporter.error(ASCIIHelpers.title("Failed to repair!"))
-              } else {
 
-                reporter.info(ASCIIHelpers.title("Repair successful:"))
-                for ((sol, i) <- solutions.reverse.zipWithIndex) {
-                  reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-                  val expr = sol.toSimplifiedExpr(ctx, program)
-                  reporter.info(ScalaPrinter(expr))
-                }
-                reporter.info(ASCIIHelpers.title("In context:"))
-      
-      
-                for ((sol, i) <- solutions.reverse.zipWithIndex) {
-                  reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
-                  val expr = sol.toSimplifiedExpr(ctx, program)
-                  val nfd = fd.duplicate
-
-                  nfd.body = fd.body.map { b =>
-                    replace(Map(ci.source -> expr), b)
+                  reporter.info(ASCIIHelpers.title("Repair successful:"))
+                  for ((sol, i) <- solutions.reverse.zipWithIndex) {
+                    reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+                    val expr = sol.toSimplifiedExpr(ctx, program)
+                    reporter.info(ScalaPrinter(expr))
                   }
-      
-                  reporter.info(ScalaPrinter(nfd))
+                  reporter.info(ASCIIHelpers.title("In context:"))
+        
+        
+                  for ((sol, i) <- solutions.reverse.zipWithIndex) {
+                    reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+                    val expr = sol.toSimplifiedExpr(ctx, program)
+                    val nfd = fd.duplicate
+
+                    nfd.body = fd.body.map { b =>
+                      replace(Map(ci.source -> expr), b)
+                    }
+        
+                    reporter.info(ScalaPrinter(nfd))
+                  }
+        
                 }
-      
               }
-            }
+          } finally {
+            synth.shutdown()
+          }
       }
     }
   }
@@ -372,28 +376,32 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
   private def getVerificationCounterExamples(fd: FunDef, prog: Program): VerificationResult = {
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
-    val solver = SolverFactory.getFromSettings(ctx, prog).withTimeout(timeoutMs)
-    val vctx = VerificationContext(ctx, prog, solver, reporter)
+    val solverf = SolverFactory.getFromSettings(ctx, prog).withTimeout(timeoutMs)
+    val vctx = VerificationContext(ctx, prog, solverf, reporter)
     val vcs = AnalysisPhase.generateVCs(vctx, Some(Seq(fd.id.name)))
 
-    val report = AnalysisPhase.checkVCs(
-      vctx, 
-      vcs, 
-      checkInParallel = true,
-      stopAfter = Some({ (vc, vr) => vr.isInvalid })
-    )
-
-    val vrs = report.vrs
-
-    if(vrs.forall{ _._2.isValid }) {
-      Valid
-    } else { 
-      NotValid(Nil, 
-        vrs.collect { 
-          case (_, VCResult(VCStatus.Invalid(ex), _, _)) =>
-            InExample(fd.params.map{vd => ex(vd.id)})
-        }
+    try { 
+      val report = AnalysisPhase.checkVCs(
+        vctx, 
+        vcs, 
+        checkInParallel = true,
+        stopAfter = Some({ (vc, vr) => vr.isInvalid })
       )
+
+      val vrs = report.vrs
+
+      if(vrs.forall{ _._2.isValid }) {
+        Valid
+      } else { 
+        NotValid(Nil, 
+          vrs.collect { 
+            case (_, VCResult(VCStatus.Invalid(ex), _, _)) =>
+              InExample(fd.params.map{vd => ex(vd.id)})
+          }
+        )
+      }
+    } finally {
+      solverf.shutdown()
     }
   }
   
@@ -471,28 +479,34 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       None
     } else {
       val diff = and(p.pc, not(Equals(s1, s2)))
-      val solver = SolverFactory.default(ctx, program).withTimeout(1.second).getNewSolver()
+      val solverf = SolverFactory.default(ctx, program).withTimeout(1.second)
+      val solver  = solverf.getNewSolver()
 
-      solver.assertCnstr(diff)
-      solver.check match {
-        case Some(true) =>
-          val m = solver.getModel
-          val inputs = p.as.map(id => m.getOrElse(id, simplestValue(id.getType)))
-          val inputsMap = (p.as zip inputs).toMap
+      try {
+        solver.assertCnstr(diff)
+        solver.check match {
+          case Some(true) =>
+            val m = solver.getModel
+            val inputs = p.as.map(id => m.getOrElse(id, simplestValue(id.getType)))
+            val inputsMap = (p.as zip inputs).toMap
 
-          (e.eval(s1, inputsMap), e.eval(s2, inputsMap)) match {
-            case (EvaluationResults.Successful(tr1), EvaluationResults.Successful(tr2)) =>
-              val r1 = unwrapTuple(tr1, p.xs.size)
-              val r2 = unwrapTuple(tr2, p.xs.size)
-              Some((InOutExample(inputs, r1), InOutExample(inputs, r2)))
-            case _ =>
-              None
-          }
-        case Some(false) =>
-          None
-        case _ =>
-          // considered as equivalent
-          None
+            (e.eval(s1, inputsMap), e.eval(s2, inputsMap)) match {
+              case (EvaluationResults.Successful(tr1), EvaluationResults.Successful(tr2)) =>
+                val r1 = unwrapTuple(tr1, p.xs.size)
+                val r2 = unwrapTuple(tr2, p.xs.size)
+                Some((InOutExample(inputs, r1), InOutExample(inputs, r2)))
+              case _ =>
+                None
+            }
+          case Some(false) =>
+            None
+          case _ =>
+            // considered as equivalent
+            None
+        }
+      } finally {
+        solver.free()
+        solverf.shutdown()
       }
     }
   }

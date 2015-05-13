@@ -30,13 +30,18 @@ class UnrollingSolverTests extends LeonTestSuite {
     ))
   )
 
-  private val sf = SolverFactory(() => new UnrollingSolver(testContext, program, new UninterpretedZ3Solver(testContext, program)))
   private def check(expr: Expr, expected: Option[Boolean], msg: String) : Unit = {
     test(msg) {
+      val sf = SolverFactory(() => new UnrollingSolver(testContext, program, new UninterpretedZ3Solver(testContext, program)))
       val solver = sf.getNewSolver()
-      solver.assertCnstr(expr)
-      assert(solver.check == expected)
-      solver.free()
+
+      try { 
+        solver.assertCnstr(expr)
+        assert(solver.check == expected)
+      } finally { 
+        solver.free()
+        sf.shutdown()
+      }
     }
   }
 

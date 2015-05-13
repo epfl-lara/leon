@@ -19,7 +19,11 @@ class TransformationTests extends LeonTestSuite {
  
   val simpPaths = (p: Program, e : Expr) => {
     val uninterpretedZ3 = SolverFactory(() => new UninterpretedZ3Solver(testContext, p))
-    simplifyPaths(uninterpretedZ3)(e)
+    try {
+      simplifyPaths(uninterpretedZ3)(e)
+    } finally {
+      uninterpretedZ3.shutdown()
+    }
   }
 
   filesInResourceDir("regression/transformations").foreach { file =>

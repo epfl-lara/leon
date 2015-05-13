@@ -75,20 +75,24 @@ class Synthesizer(val context : LeonContext,
 
     val solverf = SolverFactory.default(context, npr).withTimeout(timeout)
 
-    val vctx = VerificationContext(context, npr, solverf, context.reporter)
-    val vcs = generateVCs(vctx, Some(fds.map(_.id.name)))
-    val vcreport = checkVCs(vctx, vcs)
+    try { 
+      val vctx = VerificationContext(context, npr, solverf, context.reporter)
+      val vcs = generateVCs(vctx, Some(fds.map(_.id.name)))
+      val vcreport = checkVCs(vctx, vcs)
 
-    if (vcreport.totalValid == vcreport.totalConditions) {
-      (sol, true)
-    } else if (vcreport.totalValid + vcreport.totalUnknown == vcreport.totalConditions) {
-      reporter.warning("Solution may be invalid:")
-      (sol, false)
-    } else {
-      reporter.warning("Solution was invalid:")
-      reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
-      reporter.warning(vcreport.summaryString)
-      (new PartialSolution(search.g, false).getSolution, false)
+      if (vcreport.totalValid == vcreport.totalConditions) {
+        (sol, true)
+      } else if (vcreport.totalValid + vcreport.totalUnknown == vcreport.totalConditions) {
+        reporter.warning("Solution may be invalid:")
+        (sol, false)
+      } else {
+        reporter.warning("Solution was invalid:")
+        reporter.warning(fds.map(ScalaPrinter(_)).mkString("\n\n"))
+        reporter.warning(vcreport.summaryString)
+        (new PartialSolution(search.g, false).getSolution, false)
+      }
+    } finally {
+      solverf.shutdown()
     }
   }
 
@@ -115,6 +119,11 @@ class Synthesizer(val context : LeonContext,
     })
 
     (npr, newDefs)
+  }
+
+  def shutdown(): Unit = {
+    sctx.solverFactory.shutdown()
+    sctx.fastSolverFactory.shutdown()
   }
 }
 

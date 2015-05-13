@@ -14,7 +14,12 @@ import _root_.smtlib.interpreters._
 abstract class SolverFactory[+S <: Solver : TypeTag] {
   def getNewSolver(): S
 
+  def init(): Unit = {}
+  def shutdown(): Unit = {}
+
   val name = typeOf[S].toString.split("\\.").last.replaceAll("Solver", "")+"*"
+
+  init()
 }
 
 object SolverFactory {

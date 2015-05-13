@@ -40,9 +40,13 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     for (ci <- chooses) {
       test(cat+": "+f.getName+" - "+ci.fd.id.name) {
         val synthesizer = new Synthesizer(ctx, program, ci, opts)
-        val (_, sols) = synthesizer.synthesize()
-        if (sols.isEmpty) {
-          fail("Solution was not found. (Search bound: "+bound+")")
+        try {
+          val (_, sols) = synthesizer.synthesize()
+          if (sols.isEmpty) {
+            fail("Solution was not found. (Search bound: "+bound+")")
+          }
+        } finally {
+          synthesizer.shutdown()
         }
       }
     }

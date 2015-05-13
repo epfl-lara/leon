@@ -392,7 +392,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             val cnstr = and(p.pc, letTuple(p.xs, sol, Not(p.phi)))
             //println("Solving for: "+cnstr)
 
-            val solver = SolverFactory.default(ctx, prog).withTimeout(cexSolverTo).getNewSolver()
+            val solverf = SolverFactory.default(ctx, prog).withTimeout(cexSolverTo)
+            val solver  = solverf.getNewSolver()
             try {
               solver.assertCnstr(cnstr)
               solver.check match {
@@ -425,6 +426,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               }
             } finally {
               solver.free()
+              solverf.shutdown()
             }
           }
 
@@ -658,7 +660,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
-        val solver = SolverFactory.default(ctx, programCTree).withTimeout(exSolverTo).getNewSolver()
+        val solverf = SolverFactory.default(ctx, programCTree).withTimeout(exSolverTo)
+        val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
         //debugCExpr(cTree)
 
@@ -668,45 +671,45 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val fixedBs = finiteArray(bsOrdered.map(_.toVariable), None, BooleanType)
         val cnstrFixed = replaceFromIDs(Map(bArrayId -> fixedBs), cnstr)
 
-        val toFind = and(p.pc, cnstrFixed)
-        //println(" --- Constraints ---")
-        //println(" - "+toFind)
-        solver.assertCnstr(toFind)
-
-        // oneOfBs
-        //println(" -- OneOf:")
-        for ((c, alts) <- cTree) {
-          val activeBs = alts.map(_._1).filter(isBActive)
-
-          val either = for (a1 <- activeBs; a2 <- activeBs if a1.globalId < a2.globalId) yield {
-            Or(Not(a1.toVariable), Not(a2.toVariable))
-          }
-
-          if (activeBs.nonEmpty) {
-            //println(" - "+andJoin(either))
-            solver.assertCnstr(andJoin(either))
-
-            val oneOf = orJoin(activeBs.map(_.toVariable))
-            //println(" - "+oneOf)
-            solver.assertCnstr(oneOf)
-          }
-        }
-
-        //println(" -- Excluded:")
-        //println(" -- Active:")
-        val isActive = andJoin(bsOrdered.filterNot(isBActive).map(id => Not(id.toVariable)))
-        //println("  - "+isActive)
-        solver.assertCnstr(isActive)
-
-        //println(" -- Excluded:")
-        for (ex <- excludedPrograms) {
-          val notThisProgram = Not(andJoin(ex.map(_.toVariable).toSeq))
-
-          //println(f"  - $notThisProgram%-40s ("+getExpr(ex)+")")
-          solver.assertCnstr(notThisProgram)
-        }
-
         try {
+          val toFind = and(p.pc, cnstrFixed)
+          //println(" --- Constraints ---")
+          //println(" - "+toFind)
+          solver.assertCnstr(toFind)
+
+          // oneOfBs
+          //println(" -- OneOf:")
+          for ((c, alts) <- cTree) {
+            val activeBs = alts.map(_._1).filter(isBActive)
+
+            val either = for (a1 <- activeBs; a2 <- activeBs if a1.globalId < a2.globalId) yield {
+              Or(Not(a1.toVariable), Not(a2.toVariable))
+            }
+
+            if (activeBs.nonEmpty) {
+              //println(" - "+andJoin(either))
+              solver.assertCnstr(andJoin(either))
+
+              val oneOf = orJoin(activeBs.map(_.toVariable))
+              //println(" - "+oneOf)
+              solver.assertCnstr(oneOf)
+            }
+          }
+
+          //println(" -- Excluded:")
+          //println(" -- Active:")
+          val isActive = andJoin(bsOrdered.filterNot(isBActive).map(id => Not(id.toVariable)))
+          //println("  - "+isActive)
+          solver.assertCnstr(isActive)
+
+          //println(" -- Excluded:")
+          for (ex <- excludedPrograms) {
+            val notThisProgram = Not(andJoin(ex.map(_.toVariable).toSeq))
+
+            //println(f"  - $notThisProgram%-40s ("+getExpr(ex)+")")
+            solver.assertCnstr(notThisProgram)
+          }
+
           solver.check match {
             case Some(true) =>
               val model = solver.getModel
@@ -731,20 +734,22 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
         } finally {
           solver.free()
+          solverf.shutdown()
         }
       }
 
       def solveForCounterExample(bs: Set[Identifier]): Option[Option[Seq[Expr]]] = {
-        val solver = SolverFactory.default(ctx, programCTree).withTimeout(cexSolverTo).getNewSolver()
+        val solverf = SolverFactory.default(ctx, programCTree).withTimeout(cexSolverTo)
+        val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
         val fixedBs = finiteArray(bsOrdered.map(b => BooleanLiteral(bs(b))), None, BooleanType)
         val cnstrFixed = replaceFromIDs(Map(bArrayId -> fixedBs), cnstr)
 
-        solver.assertCnstr(p.pc)
-        solver.assertCnstr(Not(cnstrFixed))
-
         try {
+          solver.assertCnstr(p.pc)
+          solver.assertCnstr(Not(cnstrFixed))
+
           solver.check match {
             case Some(true) =>
               val model = solver.getModel
@@ -760,6 +765,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
         } finally {
           solver.free()
+          solverf.shutdown()
         }
       }
 

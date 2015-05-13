@@ -80,30 +80,34 @@ class StablePrintingSuite extends LeonTestSuite {
           for ((ci, i) <- chooses.zipWithIndex if j.choosesToProcess(i) || j.choosesToProcess.isEmpty) {
             val synthesizer = new Synthesizer(ctx, pgm, ci, opts)
             val sctx = SynthesisContext.fromSynthesizer(synthesizer)
-            val search = synthesizer.getSearch
-            val hctx = SearchContext(sctx, ci, search.g.root, search)
-            val problem = ci.problem
-            info(j.info("synthesis "+problem))
-            val apps = sctx.rules flatMap { _.instantiateOn(hctx, problem)}
+            try { 
+              val search = synthesizer.getSearch
+              val hctx = SearchContext(sctx, ci, search.g.root, search)
+              val problem = ci.problem
+              info(j.info("synthesis "+problem))
+              val apps = sctx.rules flatMap { _.instantiateOn(hctx, problem)}
 
-            for (a <- apps) {
-              a.apply(hctx) match {
-                case RuleClosed(sols) =>
-                case RuleExpanded(sub) =>
-                  a.onSuccess(sub.map(Solution.choose)) match {
-                    case Some(sol) =>
-                      val result = sol.toSimplifiedExpr(ctx, pgm)
+              for (a <- apps) {
+                a.apply(hctx) match {
+                  case RuleClosed(sols) =>
+                  case RuleExpanded(sub) =>
+                    a.onSuccess(sub.map(Solution.choose)) match {
+                      case Some(sol) =>
+                        val result = sol.toSimplifiedExpr(ctx, pgm)
 
-                      val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, (indent: Int) => {
-                        val p = new ScalaPrinter(PrinterOptions())
-                        p.pp(result)(PrinterContext(result, Some(ci.fd), Some(ci.fd), indent, p))
-                        p.toString
-                      })
+                        val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, (indent: Int) => {
+                          val p = new ScalaPrinter(PrinterOptions())
+                          p.pp(result)(PrinterContext(result, Some(ci.fd), Some(ci.fd), indent, p))
+                          p.toString
+                        })
 
-                      workList push Job(newContent, (i to i+sub.size).toSet, a.toString :: j.rules)
-                    case None =>
-                  }
+                        workList push Job(newContent, (i to i+sub.size).toSet, a.toString :: j.rules)
+                      case None =>
+                    }
+                }
               }
+            } finally {
+              synthesizer.shutdown()
             }
           }
         }

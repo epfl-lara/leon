@@ -79,18 +79,22 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       val synthesizer = new Synthesizer(ctx, p, ci, options)
       val (search, solutions) = synthesizer.validate(synthesizer.synthesize())
 
-      val fd = ci.fd
+      try {
+        val fd = ci.fd
 
-      if (options.generateDerivationTrees) {
-        val dot = new DotGenerator(search.g)
-        dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+        if (options.generateDerivationTrees) {
+          val dot = new DotGenerator(search.g)
+          dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+        }
+
+        val (sol, _) = solutions.head
+
+        val expr = sol.toSimplifiedExpr(ctx, p)
+        fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
+        functions += fd
+      } finally {
+        synthesizer.shutdown()
       }
-
-      val (sol, _) = solutions.head
-
-      val expr = sol.toSimplifiedExpr(ctx, p)
-      fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
-      functions += fd
     }
 
     for (fd <- functions) {
