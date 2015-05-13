@@ -7,11 +7,12 @@ import purescala.Definitions.Program
 
 class SMTLIBCVC4CounterExampleSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
-  override val targetName = "cvc4-cex"
+  override def targetName = "cvc4-cex"
 
   override def interpreterOps(ctx: LeonContext) = {
     Seq(
       "-q",
+      "--rewrite-divk",
       "--produce-models",
       "--print-success",
       "--lang", "smt",

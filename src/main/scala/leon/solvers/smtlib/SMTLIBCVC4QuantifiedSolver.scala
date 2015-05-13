@@ -16,7 +16,7 @@ import smtlib.theories.Core.Equals
 // It is not meant as an underlying solver to UnrollingSolver, and does not handle HOFs.
 abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program) extends SMTLIBCVC4Solver(context, program) {
 
-  override val targetName = "cvc4-quantified"
+  override def targetName = "cvc4-quantified"
 
   private val typedFunDefExplorationLimit = 10000
 

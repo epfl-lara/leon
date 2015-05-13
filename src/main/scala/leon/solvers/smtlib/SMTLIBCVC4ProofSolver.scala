@@ -7,7 +7,7 @@ import leon.purescala.Definitions.Program
 
 class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
-  override val targetName = "cvc4-proof"
+  override def targetName = "cvc4-proof"
 
   override def interpreterOps(ctx: LeonContext) = {
     Seq(
@@ -15,6 +15,7 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
       "--print-success",
       "--lang", "smt",
       "--quant-ind",
+      "--rewrite-divk",
       "--conjecture-gen",
       "--conjecture-gen-per-round=3",
       "--conjecture-gen-gt-enum=40",

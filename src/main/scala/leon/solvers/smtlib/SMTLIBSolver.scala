@@ -87,15 +87,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   /** Translation from Leon Expressions etc. */
 
-  // Unique numbers
-  protected object VCNumbers {
-    private var nexts = Map[String, Int]().withDefaultValue(0)
-    def getNext(id: String) = {
-      val n = nexts(id)+1
-      nexts += id -> n
-      n
-    }
-  }
 
   // Symbols
   protected object SimpleSymbol {
@@ -904,3 +895,12 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
 }
 
+// Unique numbers
+protected object VCNumbers {
+  private var nexts = Map[String, Int]().withDefaultValue(0)
+  def getNext(id: String) = {
+    val n = nexts(id)+1
+    nexts += id -> n
+    n
+  }
+}
