@@ -1480,8 +1480,8 @@ object ExprOps {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = cct.fields.collect {
-            case vd if vd.getType == on.getType => vd.id
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+            case (vd, tpe) if tpe == on.getType => vd.id
           }
 
           if (recSelectors.isEmpty) {
