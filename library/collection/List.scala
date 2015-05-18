@@ -250,14 +250,14 @@ sealed abstract class List[T] {
     case Cons(h, t) =>
       t.lastOption.orElse(Some(h))
     case Nil() =>
-      None()
+      None[T]()
   }} ensuring { _.isDefined != this.isEmpty }
 
   def firstOption: Option[T] = { this match {
     case Cons(h, t) =>
       Some(h)
     case Nil() =>
-      None()
+      None[T]()
   }} ensuring { _.isDefined != this.isEmpty }
 
   def unique: List[T] = this match {
