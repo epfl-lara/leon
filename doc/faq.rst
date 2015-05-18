@@ -36,3 +36,17 @@ large, so, if the input list had the size `Int.MaxValue + 1`
 around and produce `Int.MinValue` (that is, -2^31), so the
 `ensuring` clause would not hold.
 
+Compiling Leon programs to bytecode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you don't use special constructs such as ``choose``, you should be able to
+compile Leon programs to `.class` using `scalac` and execute them directly on
+the JVM, or integrate them as part as other Scala-based projects.
+
+Beware that you need to explicitly include files files from the Leon library
+(that are implicitly bundled when you use the `./leon` script):
+
+.. code-block:: bash
+
+    $ mkdir out
+    $ scalac $(find path/to/leon/library/ -name "*.scala" | xargs) MyFile.scala -d out
