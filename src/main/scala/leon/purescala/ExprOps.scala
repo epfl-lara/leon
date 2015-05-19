@@ -1185,11 +1185,9 @@ object ExprOps {
     }
 
     def traverse(funDef: FunDef): Seq[T] = {
-      // @mk FIXME: This seems overly compicated
-      val precondition = funDef.precondition.map(e => matchToIfThenElse(e)).toSeq
-      val precTs = funDef.precondition.map(e => traverse(e)).toSeq.flatten
-      val bodyTs = funDef.body.map(e => traverse(e, precondition)).toSeq.flatten
-      val postTs = funDef.postcondition.map(p => traverse(p)).toSeq.flatten
+      val precTs = funDef.precondition.toSeq.flatMap(traverse)
+      val bodyTs = funDef.body.toSeq.flatMap(traverse(_, funDef.precondition.toSeq))
+      val postTs = funDef.postcondition.toSeq.flatMap(traverse)
       precTs ++ bodyTs ++ postTs
     }
 
