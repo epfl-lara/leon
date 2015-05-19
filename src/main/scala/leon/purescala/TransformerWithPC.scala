@@ -63,6 +63,10 @@ abstract class TransformerWithPC extends Transformer {
         se
       }).copiedFrom(e)
 
+    case i @ Implies(lhs, rhs) =>
+      val rc = rec(lhs, path)
+      Implies(rc, rec(rhs, register(rc, path))).copiedFrom(i)
+
     case o @ UnaryOperator(e, builder) =>
       builder(rec(e, path)).copiedFrom(o)
 
