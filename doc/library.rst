@@ -46,12 +46,8 @@ which instruct Leon to handle some functions or objects in a specialized way.
 |                   | including a function name in the ``--functions``  |
 |                   | command line option.                              |
 +-------------------+---------------------------------------------------+
-| ``@repair``       | (Currently unused)                                |
-+-------------------+---------------------------------------------------+
 | ``@induct``       | Use the inductive tactic when generating          |
 |                   | verification conditions.                          |
-+-------------------+---------------------------------------------------+
-| ``@extern``       | (Currently unused)                                |
 +-------------------+---------------------------------------------------+
 | ``@ignore``       | Ignore this definition when extracting Leon trees.|
 |                   | This annotation is useful to define functions     |

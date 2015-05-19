@@ -154,15 +154,13 @@ trait CodeExtraction extends ASTExtractors {
     case class DefContext(
         tparams: Map[Symbol, TypeParameter] = Map(),
         vars: Map[Symbol, () => LeonExpr] = Map(),
-        mutableVars: Map[Symbol, () => LeonExpr] = Map(),
-        isExtern: Boolean = false
+        mutableVars: Map[Symbol, () => LeonExpr] = Map()
       ) {
 
       def union(that: DefContext) = {
         copy(this.tparams ++ that.tparams,
              this.vars ++ that.vars,
-             this.mutableVars ++ that.mutableVars,
-             this.isExtern || that.isExtern)
+             this.mutableVars ++ that.mutableVars)
       }
 
       def isVariable(s: Symbol) = (vars contains s) || (mutableVars contains s)
@@ -182,10 +180,6 @@ trait CodeExtraction extends ASTExtractors {
 
     def isIgnored(s: Symbol) = {
       (annotationsOf(s) contains "ignore") || s.fullName.toString.endsWith(".main")
-    }
-
-    def isExtern(s: Symbol) = {
-      annotationsOf(s) contains "extern"
     }
     
     def extractUnits: List[UnitDef] = {
@@ -631,7 +625,7 @@ trait CodeExtraction extends ASTExtractors {
       // Type params of the function itself
       val tparams = extractTypeParams(sym.typeParams.map(_.tpe))
 
-      val nctx = dctx.copy(tparams = dctx.tparams ++ tparams.toMap, isExtern = isExtern(sym))
+      val nctx = dctx.copy(tparams = dctx.tparams ++ tparams.toMap)
 
       val newParams = sym.info.paramss.flatten.map{ sym =>
         val ptpe = toPureScalaType(sym.tpe)(nctx, sym.pos)
@@ -659,7 +653,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def defineFieldFunDef(sym : Symbol, isLazy : Boolean)(implicit dctx : DefContext) : FunDef = {
 
-      val nctx = dctx.copy(tparams = dctx.tparams, isExtern = isExtern(sym))
+      val nctx = dctx.copy(tparams = dctx.tparams)
 
       val returnType = toPureScalaType(sym.info.finalResultType)(nctx, sym.pos)
 
@@ -790,7 +784,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
 
-          extractFunBody(fd, params, body)(DefContext(tparamsMap, isExtern = isExtern(sym)))
+          extractFunBody(fd, params, body)(DefContext(tparamsMap))
 
         case ExDefaultValueFunction(sym, tparams, params, _ ,_ , _, body) =>
           // Default value functions
@@ -913,7 +907,6 @@ trait CodeExtraction extends ASTExtractors {
         }
       } catch {
         case e: ImpureCodeEncounteredException =>
-        if (!dctx.isExtern) {
           e.emit()
           //val pos = if (body0.pos == NoPosition) NoPosition else leonPosToScalaPos(body0.pos.source, funDef.getPos)
           if (ctx.findOptionOrDefault(ExtractionPhase.optStrictCompilation)) {
@@ -921,10 +914,9 @@ trait CodeExtraction extends ASTExtractors {
           } else {
             reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully unavailable to Leon.")
           }
-        }
 
-        funDef.addAnnotation("abstract")
-        NoTree(funDef.returnType)
+          funDef.addAnnotation("abstract")
+          NoTree(funDef.returnType)
       }
 
       funDef.fullBody = finalBody 
@@ -1055,12 +1047,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExEnsuredExpression(body, contract) =>
           val post = extractTree(contract)
 
-          val b = try {
-            extractTree(body)
-          } catch {
-            case (e: ImpureCodeEncounteredException) if dctx.isExtern =>
-              NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
-          }
+          val b = extractTree(body)
 
           val closure = post.getType match {
             case BooleanType =>
@@ -1075,12 +1062,7 @@ trait CodeExtraction extends ASTExtractors {
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos).setOwner(currentFunDef)
           val post = Lambda(Seq(LeonValDef(resId)), Variable(resId)).setPos(current.pos)
 
-          val b = try {
-            extractTree(body)
-          } catch {
-            case (e: ImpureCodeEncounteredException) if dctx.isExtern =>
-              NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
-          }
+          val b = extractTree(body)
 
           Ensuring(b, post)
 
@@ -1095,12 +1077,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExRequiredExpression(contract) =>
           val pre = extractTree(contract)
 
-          val b = try {
-            rest.map(extractTree).getOrElse(UnitLiteral())
-          } catch {
-            case (e: ImpureCodeEncounteredException) if dctx.isExtern =>
-              NoTree(toPureScalaType(current.tpe)(dctx, current.pos))
-          }
+          val b = rest.map(extractTree).getOrElse(UnitLiteral())
 
           rest = None
 
@@ -1186,7 +1163,7 @@ trait CodeExtraction extends ASTExtractors {
 
           fd.addAnnotation(annotationsOf(d.symbol).toSeq : _*)
 
-          val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap, isExtern = isExtern(sym))
+          val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap)
 
           val oldCurrentFunDef = currentFunDef
 
@@ -1879,15 +1856,7 @@ trait CodeExtraction extends ASTExtractors {
       if (seenClasses contains sym) {
         classDefToClassType(getClassDef(sym, NoPosition), tps)
       } else {
-        if (dctx.isExtern) {
-          unknownsToTP.getOrElse(sym, {
-            val tp = TypeParameter(FreshIdentifier(sym.name.toString, Untyped, true)) //FIXME
-            unknownsToTP += sym -> tp
-            tp
-          })
-        } else {
-          outOfSubsetError(NoPosition, "Unknown class "+sym.fullName)
-        }
+        outOfSubsetError(NoPosition, "Unknown class "+sym.fullName)
       }
     }
 
