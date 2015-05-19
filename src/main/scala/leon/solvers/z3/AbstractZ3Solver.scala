@@ -314,13 +314,11 @@ trait AbstractZ3Solver
       }
 
       // Define stuff
-      val defs = for ((root, childrenList) <- newHierarchies) yield {
-        (
-         root.toString,
-         childrenList.map(ccd => ccd.id.uniqueName),
-         childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.getType))))
-        )
-      }
+      val defs = for ((root, childrenList) <- newHierarchies) yield {(
+        root.toString,
+        childrenList.map(ccd => ccd.id.uniqueName),
+        childrenList.map(ccd => ccd.fields.map(f => (f.id.uniqueName, typeToSortRef(f.getType))))
+      )}
       (defs, newHierarchies)
     }
 
