@@ -3,10 +3,10 @@ import leon.annotation._
 
 object SumAndMax {
   sealed abstract class List
-  case class Cons(head : Int, tail : List) extends List
+  case class Cons(head : BigInt, tail : List) extends List
   case class Nil() extends List
 
-  def max(list : List) : Int = {
+  def max(list : List) : BigInt = {
     require(list != Nil())
     list match {
       case Cons(x, Nil()) => x
@@ -17,14 +17,14 @@ object SumAndMax {
     }
   }
 
-  def sum(list : List) : Int = list match {
-    case Nil() => 0
+  def sum(list : List) : BigInt = list match {
+    case Nil() => BigInt(0)
     case Cons(x, xs) => x + sum(xs)
   }
 
-  def size(list : List) : Int = (list match {
-    case Nil() => 0
-    case Cons(_, xs) => 1 + size(xs)
+  def size(list : List) : BigInt = (list match {
+    case Nil() => BigInt(0)
+    case Cons(_, xs) => size(xs) + 1
   }) ensuring(_ >= 0)
 
   def allPos(list : List) : Boolean = list match {
