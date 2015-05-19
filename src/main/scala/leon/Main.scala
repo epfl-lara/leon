@@ -224,7 +224,7 @@ object Main {
     val doWatch = ctx.findOptionOrDefault(SharedOptions.optWatch)
 
     if (doWatch) {
-      val watcher = new FilesWatcher(ctx, ctx.files)
+      val watcher = new FilesWatcher(ctx, ctx.files ++ Build.libFiles.map{ new java.io.File(_)})
       watcher.onChange {
         execute(args, ctx)
       }
