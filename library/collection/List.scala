@@ -451,7 +451,13 @@ sealed abstract class List[T] {
 
 @ignore
 object List {
-  def apply[T](elems: T*): List[T] = ???
+  def apply[T](elems: T*): List[T] = {
+    var l: List[T] = Nil[T]()
+    for (e <- elems) {
+      l = Cons(e, l)
+    }
+    l.reverse
+  }
 }
 
 @library
