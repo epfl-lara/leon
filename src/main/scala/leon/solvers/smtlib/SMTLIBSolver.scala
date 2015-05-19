@@ -639,27 +639,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val ar = toSMT(a)
         val br = toSMT(b)
 
-        val case1 = (
-          Core.And(Ints.LessThan(ar, Ints.NumeralLit(0)), Ints.LessThan(br, Ints.NumeralLit(0))),
-          Ints.Div(Ints.Neg(ar), Ints.Neg(br))
-        )
-        val case2 = (
-          Core.And(Ints.LessThan(ar, Ints.NumeralLit(0)), Ints.GreaterEquals(br, Ints.NumeralLit(0))),
-          Ints.Neg(Ints.Div(Ints.Neg(ar), br))
-        )
-        val case3 = (
-          Core.And(Ints.GreaterEquals(ar, Ints.NumeralLit(0)), Ints.LessThan(br, Ints.NumeralLit(0))),
-          Ints.Div(ar, br)
-        )
-        val case4 = (
-          Core.And(Ints.GreaterEquals(ar, Ints.NumeralLit(0)), Ints.GreaterEquals(br, Ints.NumeralLit(0))),
-          Ints.Div(ar, br)
-        )
-        
-        Core.ITE(case1._1, case1._2,
-          Core.ITE(case2._1, case2._2,
-            Core.ITE(case3._1, case3._2,
-              Core.ITE(case4._1, case4._2, Ints.NumeralLit(0)))))
+        Core.ITE(
+          Ints.GreaterEquals(ar, Ints.NumeralLit(0)),
+          Ints.Div(ar, br),
+          Ints.Neg(Ints.Div(Ints.Neg(ar), br)))
       }
       case Modulo(a,b) => {
         val q = toSMT(Division(a, b))
