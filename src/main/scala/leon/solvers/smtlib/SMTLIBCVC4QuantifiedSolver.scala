@@ -5,10 +5,11 @@ package solvers.smtlib
 
 import purescala._
 import Expressions._
-import Definitions.{Program, TypedFunDef}
+import Definitions._
 import Constructors.{application, implies}
 import DefOps.typedTransitiveCallees
-import smtlib.parser.Commands.{Assert => SMTAssert, _}
+import verification.VC
+import smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
 import smtlib.parser.Terms._
 import smtlib.theories.Core.Equals
 
@@ -17,6 +18,13 @@ import smtlib.theories.Core.Equals
 abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program) extends SMTLIBCVC4Solver(context, program) {
 
   override def targetName = "cvc4-quantified"
+  
+  private var currentFunDef: Option[FunDef] = None
+  def refersToCurrent(fd: FunDef) = {
+    (currentFunDef contains fd) || (currentFunDef exists {
+      program.callGraph.transitivelyCalls(fd, _)
+    })
+  }
 
   private val typedFunDefExplorationLimit = 10000
 
@@ -54,9 +62,9 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       }
     }
 
-    val seen = withParams filterNot functions.containsA
+    val notSeen = withParams filterNot functions.containsA
 
-    val smtFunDecls = seen map { tfd =>
+    val smtFunDecls = notSeen map { tfd =>
       val id = if (tfd.tps.isEmpty) {
         tfd.id
       } else {
@@ -85,12 +93,17 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
     }
 
     if (smtFunDecls.nonEmpty) {
+      //println("smtFuns: ")
+      //println(smtFunDecls map { _.name.name} mkString ", ")
+      //println(s"current: ${currentFunDef.get.id}")
       sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
       // Assert contracts for defined functions
       for {
-        tfd <- seen
+        // Exclude contracts of functions that refer to current to avoid unsoundness
+        tfd <- notSeen if !refersToCurrent(tfd.fd)
         post <- tfd.postcondition
       } {
+        //println(s"${tfd.id.uniqueName} does not refer to ${currentFunDef.get.id.uniqueName}")
         val term = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
           application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
@@ -118,5 +131,13 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       case _ : IllegalArgumentException =>
         addError()
     }
+
+  // We need to know the function context.
+  // The reason is we do not want to assume postconditions of functions referring to 
+  // the current function, as this may make the proof unsound
+  override def assertVC(vc: VC) = {
+    currentFunDef = Some(vc.fd)
+    super.assertVC(vc)
+  }
 
 }

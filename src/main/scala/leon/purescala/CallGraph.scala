@@ -37,6 +37,21 @@ class CallGraph(p: Program) {
   def transitiveCallees(from: Set[FunDef]): Set[FunDef] = from.flatMap(transitiveCallees)
   def transitiveCallers(to: Set[FunDef]): Set[FunDef] = to.flatMap(transitiveCallers)
 
+  lazy val stronglyConnectedComponents: Seq[Set[FunDef]] = {
+    def rec(funs: Set[FunDef]): Seq[Set[FunDef]] = {
+      if (funs.isEmpty) Seq()
+      else {
+        val h = funs.head
+        val component = transitiveCallees(h).filter{ transitivelyCalls(_, h) } + h
+        component +: rec(funs -- component)
+      }
+    }
+    rec(p.definedFunctions.toSet)
+  }
+  
+  def stronglyConnectedComponent(fd: FunDef) = 
+    stronglyConnectedComponents.find{ _.contains(fd) }.getOrElse(Set(fd))
+
   private def init() {
     _calls   = Set()
     _callers = Map()

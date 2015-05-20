@@ -4,9 +4,9 @@ package leon
 package solvers
 
 import utils.DebugSectionSolver
-import purescala.Expressions.Expr
+import purescala.Expressions._
 import purescala.Common.Identifier
-
+import verification.VC
 
 trait Solver {
   def name: String
@@ -15,6 +15,9 @@ trait Solver {
   implicit lazy val leonContext = context
 
   def assertCnstr(expression: Expr): Unit
+  def assertVC(vc: VC) = {
+    assertCnstr(Not(vc.condition))
+  }
 
   def check: Option[Boolean]
   def getModel: Map[Identifier, Expr]
