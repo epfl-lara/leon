@@ -1,8 +1,0 @@
-without postcondition:
-domain                    0   1   ok          0.05
-find                      0   1   ok        < 0.01
-noDuplicates              0   1   ok        < 0.01
-with postcondition:
-update                    0   0   ok          0.03
-updateElem                0   1   ok          0.05
-readOverWrite             0   0   ok          0.10

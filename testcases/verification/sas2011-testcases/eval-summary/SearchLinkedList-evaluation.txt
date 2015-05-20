@@ -1,5 +1,0 @@
-size                      0   1   ok          0.07
-contains                  0   1   ok        < 0.01
-firstZero                 0   1   ok          0.03
-firstZeroAtPos            0   1   ok        < 0.01
-goal                      0   0   ok        < 0.01

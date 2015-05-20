@@ -1,4 +1,0 @@
-with postcondition:
-size                      0   0   ok          0.11
-firstZero                 0   0   ok          0.03
-goal                      0   0   ok          0.01

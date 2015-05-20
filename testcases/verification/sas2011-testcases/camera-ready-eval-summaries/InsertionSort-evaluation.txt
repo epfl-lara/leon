@@ -1,7 +1,0 @@
-without postcondition:
-isSorted                  0   1   ok        < 0.01
-with postcondition:
-size                      0   0   ok          0.06
-sortedIns                 1   0   ok          0.24
-buggySortedIns            0   0   err         0.08
-sort                      1   0   ok          0.03

@@ -1,6 +1,0 @@
-max                       2   1   ok          0.08
-sum                       0   1   ok        < 0.01
-allPos                    0   1   ok        < 0.01
-size                      0   1   ok          0.01
-prop0                     1   0   ok        < 0.01
-property                  1   0   ok          0.22
