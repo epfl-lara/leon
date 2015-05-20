@@ -28,6 +28,25 @@ object InsertionSort {
     }
   }
 
+  def minProp0(l : List) : Boolean = (l match {
+    case Nil() => true
+    case c @ Cons(x, xs) => min(c) match {
+      case None() => false
+      case Some(m) => x >= m
+    }
+  }) holds
+
+  def minProp1(l : List) : Boolean = {
+    require(isSorted(l) && size(l) <= 5)
+    l match {
+      case Nil() => true
+      case c @ Cons(x, xs) => min(c) match {
+        case None() => false
+        case Some(m) => x == m
+      }
+    }
+  } holds
+
   def isSorted(l: List): Boolean = l match {
     case Nil() => true
     case Cons(x, Nil()) => true
