@@ -7,7 +7,7 @@
 import leon.lang._
 import leon.collection._
 
-object HeapSort {
+object Heaps {
  
   sealed abstract class Heap {
     val rank : Int = this match {
