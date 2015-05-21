@@ -73,6 +73,10 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
       val n = s.name.split("!").toList.last
       GenericValue(tp, n.toInt)
 
+    // XXX: (NV) Z3 doesn't seem to produce models for uninterpreted functions that
+    //      don't impact satisfiability...
+    case (SNumeral(n), ft: FunctionType) if !letDefs.isDefinedAt(lambdas.toB(ft)) =>
+      simplestValue(ft)
 
     case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), tpe) =>
       if (letDefs contains k) {
@@ -157,7 +161,6 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
       val (argTpe, retTpe) = tpe match {
         case SetType(base) => (base, BooleanType)
         case ArrayType(base) => (Int32Type, base)
-        case FunctionType(args, ret) => (tupleTypeWrap(args), ret)
         case RawArrayType(from, to) => (from, to)
         case _ => unsupported("Unsupported type for (un)packing into raw arrays: "+tpe +" (got kinds "+akind+" -> "+rkind+")")
       }
@@ -176,46 +179,6 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
 
     case _ =>
       unsupported("Unable to extract "+s)
-  }
-
-  // EK: We use get-model instead in order to extract models for arrays
-  override def getModel: Map[Identifier, Expr] = {
-
-    val cmd = GetModel()
-
-    val res = sendCommand(cmd)
-
-    val smodel: Seq[SExpr] = res match {
-      case GetModelResponseSuccess(model) => model
-      case _ => Nil
-    }
-
-    var modelFunDefs = Map[SSymbol, DefineFun]()
-
-    // First pass to gather functions (arrays defs)
-    for (me <- smodel) me match {
-      case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
-        modelFunDefs += a -> me
-      case _ =>
-    }
-
-    var model = Map[Identifier, Expr]()
-
-    for (me <- smodel) me match {
-      case DefineFun(SMTFunDef(s, args, kind, e)) =>
-        if(args.isEmpty) {
-          variables.getA(s) match {
-            case Some(id) =>
-              // EK: this is a little hack, we pass models for array functions as let-defs
-              model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
-            case _ => // function, should be handled elsewhere
-          }
-        }
-      case _ =>
-    }
-
-
-    model
   }
 
   object ArrayMap {

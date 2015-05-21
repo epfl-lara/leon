@@ -47,17 +47,15 @@ object Definitions {
    *  The optional tpe, if present, overrides the type of the underlying Identifier id
    *  This is useful to instantiate argument types of polymorphic functions
    */
-  case class ValDef(id: Identifier, tpe: Option[TypeTree] = None) extends Definition with Typed {
+  case class ValDef(val id: Identifier, val isLazy: Boolean = false) extends Definition with Typed {
     self: Serializable =>
 
-    val getType = tpe getOrElse id.getType
+    val getType = id.getType
 
     var defaultValue : Option[FunDef] = None
-      
+
     def subDefinitions = Seq()
 
-    // Warning: the variable will not have the same type as the ValDef, but 
-    // the Identifier type is enough for all use cases in Leon
     def toVariable : Variable = Variable(id)
 
     setSubDefOwners()
@@ -478,11 +476,10 @@ object Definitions {
       if (typesMap.isEmpty) {
         (fd.params, Map())
       } else {
-        val newParams = fd.params.map {
-          case vd @ ValDef(id, _) =>
-            val newTpe = translated(vd.getType)
-            val newId = FreshIdentifier(id.name, newTpe, true).copiedFrom(id)
-            ValDef(newId).setPos(vd)
+        val newParams = fd.params.map { vd =>
+          val newTpe = translated(vd.getType)
+          val newId = FreshIdentifier(vd.id.name, newTpe, true).copiedFrom(vd.id)
+          vd.copy(id = newId).setPos(vd)
         }
 
         val paramsMap: Map[Identifier, Identifier] = (fd.params zip newParams).map { case (vd1, vd2) => vd1.id -> vd2.id }.toMap

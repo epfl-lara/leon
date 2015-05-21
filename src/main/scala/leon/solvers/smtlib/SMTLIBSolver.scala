@@ -16,7 +16,7 @@ import Definitions._
 
 import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
-import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, Assert => SMTAssert, _}
+import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => SMTFunDef, Assert => SMTAssert, _}
 import _root_.smtlib.parser.Terms.{
   ForAll => SMTForall,
   Exists => SMTExists,
@@ -26,6 +26,7 @@ import _root_.smtlib.parser.Terms.{
 }
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import _root_.smtlib.theories._
+import _root_.smtlib.theories.Core.{ITE, Equals => SMTEquals, And => SMTAnd}
 import _root_.smtlib.{Interpreter => SMTInterpreter}
 
 
@@ -65,9 +66,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     new java.io.FileWriter(s"vcs/$targetName-$file-$n.smt2", false)
   } else null
 
-
   /* Interruptible interface */
-
   protected var interrupted = false
 
   context.interruptManager.registerForInterrupts(this)
@@ -88,15 +87,14 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   /* Symbol handling */
   protected object SimpleSymbol {
+    def apply(sym: SSymbol) = QualifiedIdentifier(SMTIdentifier(sym, Seq()), None)
     def unapply(term: Term): Option[SSymbol] = term match {
       case QualifiedIdentifier(SMTIdentifier(sym, Seq()), None) => Some(sym)
       case _ => None
     }
   }
   import scala.language.implicitConversions
-  protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = {
-    QualifiedIdentifier(SMTIdentifier(s))
-  }
+  protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = SimpleSymbol(s)
 
   protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
 
@@ -112,6 +110,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected val genericValues = new IncrementalBijection[GenericValue, SSymbol]()
   protected val sorts         = new IncrementalBijection[TypeTree, Sort]()
   protected val functions     = new IncrementalBijection[TypedFunDef, SSymbol]()
+  protected val lambdas       = new IncrementalBijection[FunctionType, SSymbol]()
   protected val errors        = new IncrementalBijection[Unit, Boolean]()
   protected def hasError = errors.getB(()) contains true
   protected def addError() = errors += () -> true
@@ -219,9 +218,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
     case RawArrayType(from, to) =>
       r
 
-    case ft @ FunctionType(from, to) =>
-      finiteLambda(r.default, r.elems.toSeq, from)
-
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],
       // with default value == None
@@ -253,8 +249,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
         case MapType(from, to) =>
           declareMapSort(from, to)
 
-        case FunctionType(from, to) =>
-          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(tupleTypeWrap(from)), declareSort(to)))
+        case ft: FunctionType =>
+          declareLambda(ft)
+          Ints.IntSort()
 
         case TypeParameter(id) =>
           val s = id2sym(id)
@@ -476,8 +473,20 @@ abstract class SMTLIBSolver(val context: LeonContext,
     f
   }
 
-  /* Translate a Leon Expr to an SMTLIB term */
+  protected def declareLambda(tpe: FunctionType): SSymbol = {
+    lambdas.cachedB(tpe) {
+      val id = FreshIdentifier("dynLambda")
+      val s = id2sym(id)
+      sendCommand(DeclareFun(
+        s,
+        (IntegerType +: tpe.from).map(declareSort),
+        declareSort(tpe.to)
+      ))
+      s
+    }
+  }
 
+  /* Translate a Leon Expr to an SMTLIB term */
   protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = {
     e match {
       case Variable(id) =>
@@ -623,7 +632,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
        * ===== Everything else =====
        */
       case ap @ Application(caller, args) =>
-        ArraysEx.Select(toSMT(caller), toSMT(tupleWrap(args)))
+        FunctionApplication(
+          declareLambda(caller.getType.asInstanceOf[FunctionType]),
+          (caller +: args).map(toSMT)
+        )
 
       case Not(u) => Core.Not(toSMT(u))
       case UMinus(u) => Ints.Neg(toSMT(u))
@@ -721,6 +733,83 @@ abstract class SMTLIBSolver(val context: LeonContext,
           unsupported("woot? for a single constructor for non-case-object: "+t)
       }
 
+    case (SNumeral(n), ft @ FunctionType(from, to)) =>
+      val dynLambda = lambdas.toB(ft)
+      val DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body)) = letDefs(dynLambda)
+
+      object EQ {
+        def unapply(t: Term): Option[(Term,Term)] = t match {
+          case SMTEquals(e1, e2) => Some((e1, e2))
+          case FunctionApplication(SimpleSymbol(SSymbol("=")), Seq(e1, e2)) => Some((e1, e2))
+          case _ => None
+        }
+      }
+
+      object AND {
+        def unapply(t: Term): Option[Seq[Term]] = t match {
+          case SMTAnd(e1, e2) => Some(Seq(e1, e2))
+          case FunctionApplication(SimpleSymbol(SSymbol("and")), args) => Some(args)
+          case _ => None
+        }
+        def apply(ts: Seq[Term]): Term = ts match {
+          case Seq() => unsupported("Unexpected empty conjunct")
+          case Seq(t) => t
+          case _ => FunctionApplication(SimpleSymbol(SSymbol("and")), ts)
+        }
+      }
+
+      object Num {
+        def unapply(t: Term): Option[BigInt] = t match {
+          case SNumeral(n) => Some(n)
+          case FunctionApplication(SimpleSymbol(SSymbol("-")), Seq(SNumeral(n))) => Some(n)
+          case _ => None
+        }
+      }
+
+      val d = symbolToQualifiedId(dispatcher)
+      def dispatch(t: Term): Term = t match {
+        case ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
+          if (ni == n) thenn else dispatch(elze)
+        case ITE(AND(EQ(di, Num(ni)) +: rest), thenn, elze) if di == d =>
+          if (ni == n) ITE(AND(rest), thenn, dispatch(elze)) else dispatch(elze)
+        case _ => t
+      }
+
+      def extract(t: Term): Expr = {
+        def recCond(term: Term, index: Int): Seq[Expr] = term match {
+          case AND(es) => es.foldLeft(Seq.empty[Expr]) { case (seq, e) =>
+            seq ++ recCond(e, index + seq.size)
+          }
+          case EQ(e1, e2) =>
+            recCond(e2, index)
+          case _ =>
+            Seq(fromSMT(term, from(index)))
+        }
+
+        def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
+          case ITE(cond, thenn, elze) =>
+            val cs = recCond(cond, matchers.size)
+            recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
+          case AND(es) if to == BooleanType =>
+            Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+          case EQ(e1, e2) if to == BooleanType =>
+            Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+          case _ =>
+            Seq(matchers -> fromSMT(term, to))
+        }
+
+        val cases = recCases(t, Seq.empty)
+        val (default, rest) = cases.partition(_._1.isEmpty)
+        val leonDefault = if (default.isEmpty && to == BooleanType) BooleanLiteral(false) else default.head._2
+
+        assert(rest.forall(_._1.size == from.size))
+        finiteLambda(leonDefault, rest, from)
+      }
+
+      val lambdaTerm = dispatch(body)
+      val lambda = extract(lambdaTerm)
+      lambda
+
     case (SimpleSymbol(s), tpe) if lets contains s =>
       fromSMT(lets(s), tpe)
 
@@ -767,20 +856,19 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
       fromSMT(body, tpe)(lets ++ defsMap, letDefs)
 
-    case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => {
-      app match {
-        case "-" =>
-          args match {
-            case List(a) => UMinus(fromSMT(a, IntegerType))
-            case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-          }
-
-        case _ =>
-          unsupported("Function "+app+" not handled in fromSMT: "+s)
+    case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => app match {
+      case "-" => args match {
+        case List(a) => UMinus(fromSMT(a, IntegerType))
+        case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+        case _ => unsupported("Function " + app + " not defined for arguments " + args)
       }
+      case _ =>
+        unsupported("Function "+app+" not handled in fromSMT: "+s)
     }
+
     case (QualifiedIdentifier(id, sort), tpe) =>
       unsupported("Unhandled case in fromSMT: " + id +": "+sort +" ("+tpe+")")
+
     case _ =>
       unsupported("Unhandled case in fromSMT: " + (s, tpe))
   }
@@ -837,25 +925,38 @@ abstract class SMTLIBSolver(val context: LeonContext,
   }
 
   override def getModel: Map[Identifier, Expr] = {
-    val syms = variables.bSet.toList
-    if (syms.isEmpty) {
-      Map()
-    } else {
-      val cmd: Command =
-        GetValue(syms.head,
-          syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
-        )
+    val cmd = GetModel()
 
+    val res = sendCommand(cmd)
 
-      val GetValueResponseSuccess(valuationPairs) = sendCommand(cmd)
-
-      valuationPairs.collect {
-        case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
-          val id = variables.toA(sym)
-
-          (id, fromSMT(value, id.getType)(Map(), Map()))
-      }.toMap
+    val smodel: Seq[SExpr] = res match {
+      case GetModelResponseSuccess(model) => model
+      case _ => Nil
     }
+
+    var modelFunDefs = Map[SSymbol, DefineFun]()
+
+    // first-pass to gather functions
+    for (me <- smodel) me match {
+      case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
+        modelFunDefs += a -> me
+      case _ =>
+    }
+
+    var model = Map[Identifier, Expr]()
+
+    for (me <- smodel) me match {
+      case DefineFun(SMTFunDef(s, args, kind, e)) if args.isEmpty =>
+        variables.getA(s) match {
+          case Some(id) =>
+            // EK: this is a little hack, we pass models for array functions as let-defs
+            model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+          case _ =>
+        }
+      case _ =>
+    }
+
+    model
   }
 
   override def push(): Unit = {
@@ -865,6 +966,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     variables.push()
     genericValues.push()
     sorts.push()
+    lambdas.push()
     functions.push()
     errors.push()
     sendCommand(Push(1))
@@ -879,6 +981,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     variables.pop()
     genericValues.pop()
     sorts.pop()
+    lambdas.pop()
     functions.pop()
     errors.pop()
 

@@ -171,8 +171,7 @@ class CompilationUnit(val ctx: LeonContext,
     case f @ purescala.Extractors.FiniteLambda(dflt, els) =>
       val l = new leon.codegen.runtime.FiniteLambda(exprToJVM(dflt))
 
-      for ((k,v) <- els) {
-        val ks = unwrapTuple(k, f.getType.asInstanceOf[FunctionType].from.size)
+      for ((ks,v) <- els) {
         // Force tuple even with 1/0 elems.
         val kJvm = tupleConstructor.newInstance(ks.map(exprToJVM).toArray).asInstanceOf[leon.codegen.runtime.Tuple]
         val vJvm = exprToJVM(v)

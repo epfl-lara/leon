@@ -105,7 +105,6 @@ trait AbstractZ3Solver
       this += (t._1, t._2)
     }
 
-
     def clear(): Unit = {
       z3ToLeon = Map()
       leonToZ3 = Map()
@@ -138,10 +137,11 @@ trait AbstractZ3Solver
   }
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
-  protected[leon] var functions = new Bijection[TypedFunDef, Z3FuncDecl]
-  protected[leon] var generics  = new Bijection[GenericValue, Z3FuncDecl]
-  protected[leon] var sorts     = new Bijection[TypeTree, Z3Sort]
-  protected[leon] var variables = new Bijection[Expr, Z3AST]
+  protected[leon] val functions = new Bijection[TypedFunDef, Z3FuncDecl]
+  protected[leon] val generics  = new Bijection[GenericValue, Z3FuncDecl]
+  protected[leon] val lambdas   = new Bijection[FunctionType, Z3FuncDecl]
+  protected[leon] val sorts     = new Bijection[TypeTree, Z3Sort]
+  protected[leon] val variables = new Bijection[Expr, Z3AST]
 
   // Meta decls and information used by several sorts
   case class ArrayDecls(cons: Z3FuncDecl, select: Z3FuncDecl, length: Z3FuncDecl)
@@ -189,6 +189,7 @@ trait AbstractZ3Solver
       z3 = new Z3Context(z3cfg)
 
       functions.clear()
+      lambdas.clear()
       generics.clear()
       sorts.clear()
       variables.clear()
@@ -348,7 +349,7 @@ trait AbstractZ3Solver
       }
       for ((child, fieldFuns) <- childrenList zip z3Inf._4) {
         assert(child.fields.size == fieldFuns.size)
-        for ((fid, selFun) <- child.fields.map(_.id) zip fieldFuns) {
+        for ((fid, selFun) <- child.classDef.fields.map(_.id) zip fieldFuns) {
           adtFieldSelectors += ((child, fid) -> selFun)
           reverseADTFieldSelectors += (selFun -> (child, fid))
         }
@@ -467,10 +468,8 @@ trait AbstractZ3Solver
 
     case ft @ FunctionType(from, to) =>
       sorts.toZ3OrCompute(ft) {
-        val fromSort = typeToSort(tupleTypeWrap(from))
-        val toSort = typeToSort(to)
-
-        z3.mkArraySort(fromSort, toSort)
+        val symbol = z3.mkFreshStringSymbol(ft.toString)
+        z3.mkUninterpretedSort(symbol)
       }
 
     case other =>
@@ -629,7 +628,16 @@ trait AbstractZ3Solver
         z3.mkApp(functionDefToDecl(tfd), args.map(rec): _*)
 
       case fa @ Application(caller, args) =>
-        z3.mkSelect(rec(caller), rec(tupleWrap(args)))
+        val ft @ FunctionType(froms, to) = normalizeType(caller.getType)
+        val ftSort = typeToSort(ft) // Making sure the sort is defined
+        val funDecl = lambdas.toZ3OrCompute(ft) {
+          val sortSeq    = ftSort +: froms.map(typeToSort)
+          val returnSort = typeToSort(to)
+
+          val name = FreshIdentifier("dynLambda").uniqueName
+          z3.mkFreshFuncDecl(name, sortSeq, returnSort)
+        }
+        z3.mkApp(funDecl, (caller +: args).map(rec): _*)
 
       case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
       case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
@@ -730,29 +738,27 @@ trait AbstractZ3Solver
       val sort = z3.getSort(t)
 
       kind match {
-        case Z3NumeralIntAST(Some(v)) => {
+        case Z3NumeralIntAST(Some(v)) =>
           val leading = t.toString.substring(0, 2 min t.toString.length)
           if(leading == "#x") {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) => IntLiteral(hexa.toInt)
-              case None => {
+              case None =>
                 println("Z3NumeralIntAST with None: " + t)
                 throw new CantTranslateException(t)
-              }
             }
           } else {
             InfiniteIntegerLiteral(v)
           }
-        }
-        case Z3NumeralIntAST(None) => {
+
+        case Z3NumeralIntAST(None) =>
           _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
             case Some(hexa) => IntLiteral(hexa.toInt)
-            case None => {
+            case None =>
               println("Z3NumeralIntAST with None: " + t)
               throw new CantTranslateException(t)
-            }
           }
-        }
+
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsZ3 t)) {
@@ -771,7 +777,7 @@ trait AbstractZ3Solver
             val cct = reverseADTConstructors(decl)
             assert(argsSize == cct.fields.size)
             CaseClass(cct, args.map(rec))
-          } else if (generics containsZ3 decl)  {
+          } else if (generics containsZ3 decl) {
             generics.toLeon(decl)
           } else {
             sort match {
@@ -806,6 +812,23 @@ trait AbstractZ3Solver
                     finiteArray(valuesMap, Some(elseValue, IntLiteral(length)), dt)
                 }
 
+              case LeonType(ft @ FunctionType(fts, tt)) => lambdas.getZ3(ft) match {
+                case Some(decl) => model.getModelFuncInterpretations.find(_._1 == decl) match {
+                  case Some((_, mapping, elseValue)) =>
+                    val leonElseValue = rec(elseValue)
+                    finiteLambda(leonElseValue, mapping.flatMap { case (z3Args, z3Result) =>
+                      if (t == z3Args.head) {
+                        List(z3Args.tail.map(rec) -> rec(z3Result))
+                      } else {
+                        Nil
+                      }
+                    }, fts)
+
+                  case None => throw new CantTranslateException(t)
+                }
+                case None => throw new CantTranslateException(t)
+              }
+
               case LeonType(tpe @ MapType(kt, vt)) =>
                 model.getArrayValue(t) match {
                   case None => throw new CantTranslateException(t)
@@ -816,15 +839,6 @@ trait AbstractZ3Solver
                     }
 
                     finiteMap(values, kt, vt)
-                }
-
-              case LeonType(FunctionType(fts, tt)) =>
-                model.getArrayValue(t) match {
-                  case None => throw new CantTranslateException(t)
-                  case Some((map, elseZ3Value)) =>
-                    val leonElseValue = rec(elseZ3Value)
-                    val leonMap = map.toSeq.map(p => rec(p._1) -> rec(p._2))
-                    finiteLambda(leonElseValue, leonMap, fts)
                 }
 
               case LeonType(tpe @ SetType(dt)) =>

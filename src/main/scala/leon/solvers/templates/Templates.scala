@@ -85,7 +85,7 @@ trait Template[T] { self =>
       case (acc, (idT, lambda)) =>
         val newIdT = substituter(idT)
         val newTemplate = lambda.substitute(substMap)
-        val instantiation = lambdaManager.instantiateLambda(newIdT, newTemplate)
+        val instantiation = lambdaManager.registerLambda(newIdT, newTemplate)
         acc merge instantiation
     }
 
@@ -291,19 +291,14 @@ object LambdaTemplate {
 
   private def structuralKey[T](lambda: Lambda, dependencies: Map[Identifier, T]): (Lambda, Map[Identifier,T]) = {
 
-    def closureIds(expr: Expr): Seq[Identifier] = {
-      val allVars : Seq[Identifier] = foldRight[Seq[Identifier]] {
-        (expr, idSeqs) => idSeqs.foldLeft(expr match {
-          case Variable(id) => Seq(id)
-          case _ => Seq.empty[Identifier]
-        })((acc, seq) => acc ++ seq)
-      } (expr)
+    val allVars : Seq[Identifier] = (foldRight[Seq[Identifier]] {
+      (expr, idSeqs) => idSeqs.foldLeft(expr match {
+        case Variable(id) => Seq(id)
+        case _ => Seq.empty[Identifier]
+      })((acc, seq) => acc ++ seq)
+    } (lambda) ++ lambda.args.map(_.id)).distinct
 
-      val vars = variablesOf(expr)
-      allVars.filter(vars(_)).distinct
-    }
-
-    val grouped : Map[TypeTree, Seq[Identifier]] = (lambda.args.map(_.id) ++ closureIds(lambda)).groupBy(_.getType)
+    val grouped : Map[TypeTree, Seq[Identifier]] = allVars.groupBy(_.getType)
     val subst : Map[Identifier, Identifier] = grouped.foldLeft(Map.empty[Identifier,Identifier]) { case (subst, (tpe, ids)) =>
       val currentVars = typedIds(tpe)
 
@@ -319,8 +314,12 @@ object LambdaTemplate {
       subst ++ (ids zip typedVars)
     }
 
-    val newArgs = lambda.args.map(vd => ValDef(subst(vd.id), vd.tpe))
-    val newBody = replaceFromIDs(subst.mapValues(_.toVariable), lambda.body)
+    val newArgs = lambda.args.map(vd => vd.copy(id = subst(vd.id)))
+    val newBody = replaceFromIDs(subst.mapValues(_.toVariable), postMap {
+      case Let(i, e, b) if subst.isDefinedAt(i) => Some(Let(subst(i), e, b))
+      case _ => None
+    } (lambda.body))
+
     val structuralLambda = Lambda(newArgs, newBody)
 
     val newDeps = dependencies.map { case (id, idT) => subst(id) -> idT }

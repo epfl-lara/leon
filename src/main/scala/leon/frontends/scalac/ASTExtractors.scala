@@ -426,9 +426,8 @@ trait ASTExtractors {
           true
         case _ => false
       }
-      
     }
-    
+
     object ExDefaultValueFunction{
       /** Matches a function that defines the default value of a parameter */
       def unapply(dd: DefDef): Option[(Symbol, Seq[Symbol], Seq[ValDef], Type, String, Int, Tree)] = {
@@ -437,11 +436,11 @@ trait ASTExtractors {
           case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
             vparamss.size <= 1 && name != nme.CONSTRUCTOR && sym.isSynthetic 
           ) => 
-            
+
             // Split the name into pieces, to find owner of the parameter + param.index
             // Form has to be <owner name>$default$<param index>
             val symPieces = sym.name.toString.reverse.split("\\$", 3).reverseMap(_.reverse)
-            
+
             try {
               if (symPieces(1) != "default" || symPieces(0) == "copy") throw new IllegalArgumentException("")
               val ownerString = symPieces(0)
