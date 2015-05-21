@@ -115,7 +115,7 @@ object Util {
   /**
    * Checks if the input expression has only template variables as free variables
    */
-  def isTemplateExpr(expr : Expr) :Boolean ={
+  def isTemplateExpr(expr : Expr) :Boolean = {
     var foundVar = false    
     simplePostTransform((e : Expr) => e match {    
       case Variable(id) => { 
@@ -212,13 +212,13 @@ object Util {
       case FunctionInvocation(_,_) | CaseClass(_,_) | Tuple(_) => {
         count += 1
         e
-      }                     
+      }
       case _ => e
     })(e)
     count
   }
   
-  def hasCalls(e: Expr) = numUIFADT(e) >= 1  
+  def hasCalls(e: Expr) = numUIFADT(e) >= 1
   
   def getCallExprs(ine: Expr) : Set[Expr] = {
     var calls = Set[Expr]()

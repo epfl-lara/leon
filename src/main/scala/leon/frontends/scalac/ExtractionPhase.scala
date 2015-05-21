@@ -11,7 +11,6 @@ import utils._
 import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
 
 object ExtractionPhase extends LeonPhase[List[String], Program] {
-
   val name = "Scalc Extraction"
   val description = "Extraction of trees from the Scala Compiler"
   val foundTime = false
@@ -31,10 +30,9 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
     val injected = if (ctx.settings.injectLibrary) {
       libFiles
     } else {
-      libFiles.filter(f => f.contains("/lang/") || f.contains("/annotation/"))      
+      libFiles.filter(f => f.contains("/lang/") || f.contains("/annotation/"))
     }
 
-    //println("Lib files: "+libFiles+"  chosen: "+injected)
     val compilerOpts = injected ::: args.filterNot(_.startsWith("--"))
 
     val command = new CompilerCommand(compilerOpts, settings) {

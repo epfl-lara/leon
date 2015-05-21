@@ -15,43 +15,43 @@ import leon.purescala.ScalaPrinter
 
 /**
  * TODO: is it necessary to create new functions even if it does not use time
- * TODO: can we use a different strategy for instrumentation. 
- * Instead of saying: let (x,y) = (let ... in (u,v)) in e2, we can use "let ... in e2[u/x,y/v]. 
+ * TODO: can we use a different strategy for instrumentation.
+ * Instead of saying: let (x,y) = (let ... in (u,v)) in e2, we can use "let ... in e2[u/x,y/v].
  */
 object TimeStepsPhase extends LeonPhase[Program,Program] {
   val name = "Expose Time Phase"
-  val description = "Expose runtime steps for each function"  
+  val description = "Expose runtime steps for each function"
 
   def run(ctx: LeonContext)(program: Program) : Program = {
-                    
+
     // Map from old fundefs to new fundefs
 	var funMap = Map[FunDef, FunDef]()
-  
+
 	//find functions that use time in the postcondition or are transitively called from such functions
 	var rootFuncs = Set[FunDef]()
-	program.definedFunctions.foreach((fd) => { 
-	  if(fd.hasPostcondition 
+	program.definedFunctions.foreach((fd) => {
+	  if(fd.hasPostcondition
 	      && ExpressionTransformer.isSubExpr(TimeVariable(), fd.postcondition.get._2)) {
 	    rootFuncs += fd
-	  } 
+	  }
 	  else {
 	    val funinfo = FunctionInfoFactory.getFunctionInfo(fd)
-        //	    if(FunctionInfoFactory.hasTemplate(fd) 
+        //	    if(FunctionInfoFactory.hasTemplate(fd)
         //	      && ExpressionTransformer.isSubExpr(TimeVariable(), FunctionInfoFactory.getTemplate(fd))) {
         if (funinfo.isDefined && funinfo.get.hasTemplate
           && ExpressionTransformer.isSubExpr(TimeVariable(), funinfo.get.getTemplate)) {
-          rootFuncs += fd
-        }	
-	  }     
+            rootFuncs += fd
+        }
+	  }
 	})
 	//find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
 	val cg = CallGraphUtil.constructCallGraph(program, onlyBody = true)
 	val callees = rootFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd))
 
-    //create new functions.  Augment the return type of a function iff the postcondition uses 'time' 
+    //create new functions.  Augment the return type of a function iff the postcondition uses 'time'
     // or if the function is transitively called from such a function
     for (fd <- program.definedFunctions) {
-      
+
       if (callees.contains(fd)) {
         val newRetType = TupleType(Seq(fd.returnType, Int32Type))
         val freshId = FreshIdentifier(fd.id.name, false).setType(newRetType)
@@ -70,24 +70,23 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     def mapCalls(ine: Expr): Expr = {
       simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(tfd, args) =>
-
           if (callees.contains(tfd.fd)) {
             TupleSelect(FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args), 1)
           } else {
-            val fi = FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)           
+            val fi = FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
             fi
           }
 
         case _ => e
       })(ine)
-    } 
-    
+    }
+
     for ((from, to) <- funMap) {
       //println("considering function: "+from.id.name)
       to.precondition  = from.precondition.map(mapCalls(_))
 
       to.postcondition = if (from.hasPostcondition) {
-        
+
         val (fromRes, fromCond) = from.postcondition.get
         val toResId = FreshIdentifier(fromRes.name, true).setType(to.returnType)
 
@@ -105,7 +104,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         if (frominfo.isDefined) {
           val transfunc = (e: Expr) => mapCalls(replace(substsMap, e))
           FunctionInfoFactory.createFunctionInfo(to, transfunc, frominfo.get)
-        }          
+        }
         //update the timeexpr of toinfo
         if (substsMap.contains(TimeVariable())) {
           val toinfo = FunctionInfoFactory.getOrMakeInfo(to)
@@ -113,44 +112,44 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         }
 
         //          val toTemplate = mapCalls(replace(substsMap, FunctionInfoFactory.getTemplate(from)))
-        //          //creating new template                     
+        //          //creating new template
         //          FunctionInfoFactory.setTemplate(to, toTemplate,
-        //              if(substsMap.contains(TimeVariable())) 
-        //                Some(substsMap(TimeVariable()))            
-        //              else None)          
+        //              if(substsMap.contains(TimeVariable()))
+        //                Some(substsMap(TimeVariable()))
+        //              else None)
         Some((toResId, toCond))
-        
+
       } else None
 
       //instrument the bodies of all 'callees' only for tracking time
       to.body = if (callees.contains(from)) {
         from.body.map(new ExposeTimes(ctx, getCostModel, funMap).apply _)
-      } else{        
-        val newbody = from.body.map(mapCalls _)        
+      } else{
+        val newbody = from.body.map(mapCalls _)
         newbody
-      } 
+      }
       //println("Fun: "+to)
-      
+
       //copy annotations
-      from.annotations.foreach((str) => {       
+      from.annotations.foreach((str) => {
         to.addAnnotation(str)
-      })      
+      })
     }
-    
+
     val newprog = Util.copyProgram(program, (defs: Seq[Definition]) => defs.map {
       case fd: FunDef => funMap(fd)
       case d => d
-    })    
-//    /println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
-    
+    })
+    println("After Time Instrumentation: \n"+ScalaPrinter.apply(newprog))
+
     //print all the templates
-    /*newprog.definedFunctions.foreach((fd) => 
+    /*newprog.definedFunctions.foreach((fd) =>
       if(FunctionInfoFactory.hasTemplate(fd))
         println("Function: "+fd.id+" template --> "+FunctionInfoFactory.getTemplate(fd))
         )*/
     newprog
   }
-  
+
   abstract class CostModel {
     def costOf(e: Expr): Int
     def costOfExpr(e: Expr) = IntLiteral(costOf(e))
@@ -161,11 +160,11 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
      new CostModel{
        override def costOf(e: Expr) : Int =  {
          e match {
-           case FunctionInvocation(fd,args) => 1           
+           case FunctionInvocation(fd,args) => 1 // XXX
            case t: Terminal => 0
-           case _ => 1           
+           case _ => 1
          }
-       }               
+       }
      }
   }
 
@@ -192,32 +191,39 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
         // You will have to handle FunctionInvocation specially here!
         tupleifyRecur(e,subs,recons,List[Identifier](),List[Identifier]())
     }
-    
-       
-    def tupleifyRecur(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr, 
-        resIds: List[Identifier], timeIds: List[Identifier]) : Expr = {      
+
+
+    def tupleifyRecur(e: Expr, subs: Seq[Expr], recons: Seq[Expr] => Expr,
+        resIds: List[Identifier], timeIds: List[Identifier]) : Expr = {
     //note: subs.size should be zero if e is a terminal
       if(subs.size == 0)
       {
         //base case (handle terminals and function invocation separately)
         e match {
           case t : Terminal => Tuple(Seq(recons(Seq()), getCostModel.costOfExpr(e)))
-          
-          case f@FunctionInvocation(tfd,args) => {            
+
+          case f@FunctionInvocation(tfd,args) => {
             val newFunInv = FunctionInvocation(TypedFunDef(funMap(tfd.fd),tfd.tps),resIds.map(Variable(_)))
-            
+
             //create a variables to store the result of function invocation
-            val resvar = FreshIdentifier("e", true).setType(e.getType)
-            val timevar = FreshIdentifier("t", true).setType(Int32Type)            
-            
-            val costofOp = Plus(getCostModel.costOfExpr(e),Variable(timevar))
+            val resvar = FreshIdentifier("e_base", true).setType(e.getType)
+            val timevar = FreshIdentifier("t_base", true).setType(Int32Type)
+
+            val costofOp = Plus(getCostModel.costOfExpr(e),
+              if (tfd.fd.annotations.contains("constantTime")) IntLiteral(1)
+              else Variable(timevar))
             val timePart =
-              timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))            
+              timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))
             val baseExpr = Tuple(Seq(Variable(resvar), timePart))
-                                    
+
             LetTuple(Seq(resvar,timevar),newFunInv,baseExpr)
+
+
+
+
+
           }
-          
+
           case _ => {
             val exprPart = recons(resIds.map(Variable(_)): Seq[Expr])
             val costofOp = getCostModel.costOfExpr(e)
@@ -225,38 +231,29 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
               timeIds.foldLeft(costofOp: Expr)((g: Expr, t: Identifier) => Plus(Variable(t), g))
             Tuple(Seq(exprPart, timePart))
           }
-        }    	
+        }
       }
       else
       {
         //recursion step
         val currentElem = subs.head
-        val resvar = FreshIdentifier("e", true).setType(currentElem.getType)
-        val timevar = FreshIdentifier("t", true).setType(Int32Type)
-                
+        val resvar = FreshIdentifier("e_recur", true).setType(currentElem.getType)
+        val timevar = FreshIdentifier("t_recur", true).setType(Int32Type)
+
         ///recursively call the method on subs.tail
         val recRes = tupleifyRecur(e,subs.tail,recons,resIds :+ resvar, timeIds :+ timevar)
-        
-        //transform the current element (handle function invocation separately)        
+
+        //transform the current element (handle function invocation separately)
         val newCurrExpr = transform(subs.head)
-        /*subs.head match {
-          case FunctionInvocation(fd,args) => {
-            //use the new function definition in funmap
-            val newfun = FunctionInvocation(funMap(fd),args)
-            //transform the function
-            transform(newfun)
-          } 
-          case _ => transform(subs.head)
-        }*/
-        
+
         //create the new expression for the current recursion step
         val newexpr = LetTuple(Seq(resvar, timevar ),newCurrExpr,recRes)
         newexpr
-      }      
+      }
     }
 
-    //TODO: need to handle Assume 
-    def transform(e: Expr): Expr = e match {    
+    //TODO: need to handle Assume
+    def transform(e: Expr): Expr = e match {
       case Let(i, v, b) =>
         val ir = FreshIdentifier("ir", true).setType(v.getType)
         val it = FreshIdentifier("it", true).setType(Int32Type)
@@ -268,7 +265,7 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
             Tuple(Seq(Variable(r), Plus(Variable(t), Plus(Variable(it), cm.costOfExpr(e)))))
           )
         )
-      
+
       case LetTuple(ids, v, b) =>
         val ir = FreshIdentifier("ir", true).setType(v.getType)
         val it = FreshIdentifier("it", true).setType(Int32Type)
@@ -285,27 +282,27 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
 
       case IfExpr(cond, then, elze) =>{
         // You need to handle this case specifically and differently
-        
+
         //create new variables that capture the result of the condition
         val rescond = FreshIdentifier("e", true).setType(cond.getType)
         val timecond = FreshIdentifier("t", true).setType(Int32Type)
-        
-        //transform the then branch        
+
+        //transform the then branch
         val resthen = FreshIdentifier("e", true).setType(then.getType)
         val timethen = FreshIdentifier("t", true).setType(Int32Type)
-        val newthen = LetTuple(Seq(resthen,timethen), transform(then), 
+        val newthen = LetTuple(Seq(resthen,timethen), transform(then),
             Tuple(Seq(Variable(resthen),Plus(Variable(timecond),Variable(timethen)))))
-                
-        //similarly transform the else branch 
+
+        //similarly transform the else branch
         val reselse = FreshIdentifier("e", true).setType(elze.getType)
         val timelse = FreshIdentifier("t", true).setType(Int32Type)
-        val newelse = LetTuple(Seq(reselse,timelse), transform(elze), 
+        val newelse = LetTuple(Seq(reselse,timelse), transform(elze),
             Tuple(Seq(Variable(reselse),Plus(Variable(timecond),Variable(timelse)))))
-                
+
         //create a final expression
-        LetTuple(Seq(rescond,timecond),transform(cond), IfExpr(Variable(rescond),newthen,newelse))                
+        LetTuple(Seq(rescond,timecond),transform(cond), IfExpr(Variable(rescond),newthen,newelse))
       }
-        
+
       // For all other operations, we go through a common tupleifier.
       case n @ NAryOperator(ss, recons) =>
         tupleify(e, ss, recons)
@@ -323,25 +320,25 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
     def apply(e: Expr): Expr = {
       //lift all expressions that are used in matches to before matches.
       val newe =  liftExprInMatch(e)
-      // Removes pattern matching by translating to equivalent if-then-else            
+      // Removes pattern matching by translating to equivalent if-then-else
       val input  = matchToIfThenElse(newe)
-      
-      // For debugging purposes      
+
+      // For debugging purposes
       /*println("#"*80)
       println("BEFORE:")
       println(input)*/
-            
+
       // Apply transformations
-      val res    = transform(input)      
+      val res    = transform(input)
       val simple = simplifyArithmetic(simplifyLets(res))
 
-      // For debugging purposes            
+      // For debugging purposes
       /*println("-"*80)
-      println("AFTER:")      
+      println("AFTER:")
       println(simple)*/
       simple
     }
-    
+
     def liftExprInMatch(ine: Expr) : Expr = {
       simplePostTransform((e: Expr) => e match {
         case MatchExpr(strut, cases) => strut match {
@@ -350,8 +347,8 @@ object TimeStepsPhase extends LeonPhase[Program,Program] {
             val freshid = FreshIdentifier("m",true).setType(strut.getType)
             Let(freshid, strut, MatchExpr(freshid.toVariable, cases))
           }
-        } 
-        case _ => e        
+        }
+        case _ => e
       })(ine)
     }
   }
