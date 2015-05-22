@@ -73,17 +73,17 @@ object ConstantPropagation {
    */
   case class Program(funcs: List[Function])
 
-  def size(l: List[Function]) : Int = l match {
+  def size(l: List[Function]) : Int = {l match {
     case Cons(_,t) => 1 + size(t)
     case Nil() => 0
-  }
+  }} 
 
   def sizeExprList(exprs: List[Expr]): Int = {
     exprs match {
       case Nil() => 0
       case Cons(currExpr, otherExprs) => sizeExpr(currExpr) + sizeExprList(otherExprs)
     }
-  }
+  } 
 
   def sizeExpr(e: Expr): Int = {
     e match {
@@ -94,14 +94,14 @@ object ConstantPropagation {
       }
       case _ => 1
     }
-  }
+  } 
 
   def sizeFuncList(funcs: List[Function]): Int = {
     funcs match {
       case Nil() => 0
       case Cons(currFunc, otherFuncs) => 1 + sizeExpr(currFunc.body) + sizeFuncList(otherFuncs)
     }
-  }
+  } 
 
   def initToBot(l: List[Function]): List[(Int /*function id*/,Element)] = {
     l match {
@@ -121,6 +121,7 @@ object ConstantPropagation {
    */
   def foldConstantsRec(p: Program, initVals: List[(Int /*function id*/ , Element)], noIters: Int)
   : List[(Int /*function id*/,Element)] = {
+    require(noIters >= 0)
      // if (noIters > 0) {
      //    val newVals = processFuns(p.funcs, initVals, initVals)
      //    if (newVals != initVals) // this  is not a constant time operation
@@ -129,12 +130,13 @@ object ConstantPropagation {
      //      newVals
      //  } else
      //    initVals
-     if (noIters < 0) {
+     if (noIters <= 0) {
         initVals
       }
       else
         foldConstantsRec(p, processFuns(p.funcs, initVals, initVals), noIters - 1)
-   } //ensuring(res => true template((a, b, c, d) => time <= a*(noIters*sizeFuncList(p.funcs)) + b*noIters + c*sizeFuncList(p.funcs) + d))
+   } ensuring(res => true template((a, b, d) => time <= a*(sizeFuncList(p.funcs)*noIters) + b*noIters + d))
+   //c*sizeFuncList(p.funcs) 
 
   /**
    * Initial fvals and oldVals are the same
@@ -152,14 +154,7 @@ object ConstantPropagation {
         Nil[(Int, Element)]() //this also handles precondition violations e.g. lists aren't of same size etc.
     }
   } ensuring(res => true template((a, b) => time <= a*sizeFuncList(funcs) + b))
-
-  def foldConstantsExprList(l: List[Expr], funcVals: List[(Int, Element)]): List[Expr] = {
-    l match {
-      case Nil() => Nil[Expr]()
-      case Cons(expr, otherExprs) => Cons(foldConstantsExpr(expr, funcVals), foldConstantsExprList(otherExprs, funcVals))
-    }
-  } ensuring(res => true template((a, b) => time <= a*sizeExprList(l) + b))
-
+  
   @constantTime
   def isConstantCall(args: List[Expr]): Boolean = {
     args match {
@@ -177,6 +172,13 @@ object ConstantPropagation {
       case Cons(_, otherFuncVals) => getFunctionVal(funcId, otherFuncVals)
     }
   }
+
+  def foldConstantsExprList(l: List[Expr], funcVals: List[(Int, Element)]): List[Expr] = {
+    l match {
+      case Nil() => Nil[Expr]()
+      case Cons(expr, otherExprs) => Cons(foldConstantsExpr(expr, funcVals), foldConstantsExprList(otherExprs, funcVals))
+    }
+  } ensuring(res => true template((a, b) => time <= a*sizeExprList(l) + b))
 
   def foldConstantsExpr(e: Expr, funcVals: List[(Int, Element)]): Expr = {
     e match {
