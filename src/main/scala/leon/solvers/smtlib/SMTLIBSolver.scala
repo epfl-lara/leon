@@ -52,7 +52,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   /* Printing VCs */
 
-  protected val out: java.io.FileWriter = if (reporter.isDebugEnabled) {
+  protected lazy val out: Option[java.io.FileWriter] = if (reporter.isDebugEnabled) Some {
     val file = context.files.headOption.map(_.getName).getOrElse("NA")
     val n    = VCNumbers.getNext(targetName+file)
 
@@ -63,7 +63,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     }
 
     new java.io.FileWriter(s"vcs/$targetName-$file-$n.smt2", false)
-  } else null
+  } else None
 
 
   /* Interruptible interface */
@@ -788,10 +788,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   /* Send a command to the solver */
   def sendCommand(cmd: Command): CommandResponse = {
-    reporter.ifDebug { debug =>
-      SMTPrinter.printCommand(cmd, out)
-      out.write("\n")
-      out.flush()
+    out foreach { o =>
+      SMTPrinter.printCommand(cmd, o)
+      o.write("\n")
+      o.flush()
     }
     interpreter.eval(cmd) match {
       case err@ErrorResponse(msg) if !hasError && !interrupted =>
@@ -810,7 +810,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
   def free() = {
     interpreter.free()
     context.interruptManager.unregisterForInterrupts(this)
-    reporter.ifDebug { _ => out.close() }
+    out foreach { _.close }
   }
 
   override def assertCnstr(expr: Expr): Unit = if(!hasError) {
