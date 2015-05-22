@@ -858,10 +858,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExFieldDef(_,_,_) =>
         case ExLazyFieldDef() => 
         case ExFieldAccessorFunction() => 
-        case d if // Various synthetic junk
-          isIgnored(d.symbol) ||
-          (d.symbol.isImplicit && d.symbol.isSynthetic ) ||
-          (d.symbol.isMethod && d.symbol.isSynthetic) =>
+        case d if isIgnored(d.symbol) || (d.symbol.isImplicit && d.symbol.isSynthetic) =>
         case tree =>
           println(tree)
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
