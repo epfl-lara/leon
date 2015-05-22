@@ -223,7 +223,7 @@ sealed abstract class List[T] {
           case Some(i) => Some(i+1)
         }
       }
-  }} ensuring { _.isDefined == this.contains(e) }
+    }} ensuring { res => !res.isDefined || (this.content contains e) }
 
   def init: List[T] = {
     require(!isEmpty)
@@ -410,7 +410,7 @@ sealed abstract class List[T] {
     case Nil() => None[T]()
     case Cons(h, t) if p(h) => Some(h)
     case Cons(_, t) => t.find(p)
-  }} ensuring { _.isDefined == exists(p) }
+  }} ensuring { res => !res.isDefined || content.contains(res.get) }
 
   def groupBy[R](f: T => R): Map[R, List[T]] = this match {
     case Nil() => Map.empty[R, List[T]]
