@@ -489,7 +489,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
         declareVariable(FreshIdentifier("Unit", UnitType))
 
-      case InfiniteIntegerLiteral(i) => if (i > 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
+      case InfiniteIntegerLiteral(i) => if (i >= 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
       case IntLiteral(i) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
       case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v) => Core.BoolConst(v)
