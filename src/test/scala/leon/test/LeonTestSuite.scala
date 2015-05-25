@@ -153,7 +153,7 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
   
   
   def scanFilesIn(f: File, filter: String=>Boolean = all, recursive: Boolean = false): Iterable[File] = {
-    f.listFiles().flatMap{f =>
+    Option(f.listFiles()).getOrElse(Array()).flatMap{f =>
       if (f.isDirectory && recursive) {
         scanFilesIn(f, filter, recursive)   
       } else {
