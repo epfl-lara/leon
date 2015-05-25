@@ -14,21 +14,17 @@ object Subtyping1 {
   }
 
   def treeMax(tree: Node): Int = {
-    tree match {
-      case Node(_, v, right) => right match {
-        case Leaf() => v
-        case Node(l, v, r) => treeMax(Node(l, v, r))
-      }
+    tree.right match {
+      case Leaf() => tree.value
+      case n:Node => treeMax(n)
     }
   } ensuring(content(tree).contains(_))
 
   def f2(tree: Node): Int = {
     require(treeMax(tree) > 0)
-    tree match {
-      case Node(_, v, right) => right match {
-        case Leaf() => v
-        case Node(l, v, r) => treeMax(Node(l, v, r))
-      }
+    tree.right match {
+      case Leaf() => tree.value
+      case n:Node => f2(n)
     }
   } ensuring(content(tree).contains(_))
 

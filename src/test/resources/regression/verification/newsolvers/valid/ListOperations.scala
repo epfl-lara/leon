@@ -2,103 +2,89 @@
 
 import leon.annotation._
 import leon.lang._
+import leon.collection._
 
 object ListOperations {
-    sealed abstract class List
-    case class Cons(head: Int, tail: List) extends List
-    case class Nil() extends List
 
-    sealed abstract class IntPairList
-    case class IPCons(head: IntPair, tail: IntPairList) extends IntPairList
-    case class IPNil() extends IntPairList
+  def size[A](l: List[A]) : BigInt = (l match {
+    case Nil() => BigInt(0)
+    case Cons(_, t) => BigInt(1) + size(t)
+  }) ensuring(res => res >= 0)
 
-    sealed abstract class IntPair
-    case class IP(fst: Int, snd: Int) extends IntPair
+  def content[A](l: List[A]) : Set[A] = l match {
+    case Nil() => Set[A]()
+    case Cons(h, t) => content(t) ++ Set[A](h)
+  }
 
-    def size(l: List) : BigInt = (l match {
-        case Nil() => BigInt(0)
-        case Cons(_, t) => 1 + size(t)
-    }) ensuring(res => res >= 0)
-
-    def iplSize(l: IntPairList) : BigInt = (l match {
-      case IPNil() => BigInt(0)
-      case IPCons(_, xs) => 1 + iplSize(xs)
-    }) ensuring(_ >= 0)
-
-    def zip(l1: List, l2: List) : IntPairList = {
-      // try to comment this and see how pattern-matching becomes
-      // non-exhaustive and post-condition fails
-      require(size(l1) == size(l2))
-
-      l1 match {
-        case Nil() => IPNil()
-        case Cons(x, xs) => l2 match {
-          case Cons(y, ys) => IPCons(IP(x, y), zip(xs, ys))
-        }
-      }
-    } ensuring(iplSize(_) == size(l1))
-
-    def sizeTailRec(l: List) : BigInt = sizeTailRecAcc(l, 0)
-    def sizeTailRecAcc(l: List, acc: BigInt) : BigInt = {
-     require(acc >= 0)
-     l match {
-       case Nil() => acc
-       case Cons(_, xs) => sizeTailRecAcc(xs, acc+1)
-     }
-    } ensuring(res => res == size(l) + acc)
-
-    def sizesAreEquiv(l: List) : Boolean = {
-      size(l) == sizeTailRec(l)
-    }.holds
-
-    def content(l: List) : Set[Int] = l match {
-      case Nil() => Set.empty[Int]
-      case Cons(x, xs) => Set(x) ++ content(xs)
+  def zip[A,B](l1: List[A], l2: List[B]): List[(A, B)] = {
+    // try to comment this and see how pattern-matching becomes
+    // non-exhaustive and post-condition fails
+    require(size(l1) == size(l2))
+    (l1, l2) match {
+      case (Nil(), Nil()) => 
+        Nil[(A, B)]()
+      case (Cons(x, xs), Cons(y, ys)) => 
+        Cons( (x,y), zip(xs, ys) )
     }
+  } ensuring(size(_) == size(l1))
 
-    def sizeAndContent(l: List) : Boolean = {
-      size(l) == BigInt(0) || content(l) != Set.empty[Int]
-    }.holds
-    
-    def drunk(l : List) : List = (l match {
-      case Nil() => Nil()
-      case Cons(x,l1) => Cons(x,Cons(x,drunk(l1)))
-    }) ensuring (size(_) == 2 * size(l))
+  def sizeTailRec[A](l: List[A]) : BigInt = sizeTailRecAcc(l, 0)
 
-    def reverse(l: List) : List = reverse0(l, Nil()) ensuring(content(_) == content(l))
-    def reverse0(l1: List, l2: List) : List = (l1 match {
-      case Nil() => l2
-      case Cons(x, xs) => reverse0(xs, Cons(x, l2))
-    }) ensuring(content(_) == content(l1) ++ content(l2))
+  def sizeTailRecAcc[A](l: List[A], acc: BigInt) : BigInt = {
+   require(acc >= 0)
+   l match {
+     case Nil() => acc
+     case Cons(_, xs) => sizeTailRecAcc(xs, acc+1)
+   }
+  } ensuring(res => res == size(l) + acc)
 
-    def append(l1 : List, l2 : List) : List = (l1 match {
-      case Nil() => l2
-      case Cons(x,xs) => Cons(x, append(xs, l2))
-    }) ensuring(content(_) == content(l1) ++ content(l2))
+  def sizesAreEquiv[A](l: List[A]) : Boolean = {
+    size(l) == sizeTailRec(l)
+  }.holds
 
-    @induct
-    def nilAppend(l : List) : Boolean = (append(l, Nil()) == l).holds
+  def sizeAndContent[A](l: List[A]) : Boolean = {
+    size(l) == BigInt(0) || content(l) != Set.empty[A]
+  }.holds
+  
+  def drunk[A](l : List[A]) : List[A] = (l match {
+    case Nil() => Nil()
+    case Cons(x,l1) => Cons(x,Cons(x,drunk(l1)))
+  }) ensuring (size(_) == 2 * size(l))
 
-    @induct
-    def appendAssoc(xs : List, ys : List, zs : List) : Boolean =
-      (append(append(xs, ys), zs) == append(xs, append(ys, zs))).holds
+  def reverse[A](l: List[A]) : List[A] = reverse0(l, Nil[A]()) ensuring(content(_) == content(l))
+  def reverse0[A](l1: List[A], l2: List[A]) : List[A] = (l1 match {
+    case Nil() => l2
+    case Cons(x, xs) => reverse0(xs, Cons[A](x, l2))
+  }) ensuring(content(_) == content(l1) ++ content(l2))
 
-    @induct
-    def sizeAppend(l1 : List, l2 : List) : Boolean =
-      (size(append(l1, l2)) == size(l1) + size(l2)).holds
+  def append[A](l1 : List[A], l2 : List[A]) : List[A] = (l1 match {
+    case Nil() => l2
+    case Cons(x,xs) => Cons[A](x, append(xs, l2))
+  }) ensuring(content(_) == content(l1) ++ content(l2))
 
-    @induct
-    def concat(l1: List, l2: List) : List = 
-      concat0(l1, l2, Nil()) ensuring(content(_) == content(l1) ++ content(l2))
+  @induct
+  def nilAppend[A](l : List[A]) : Boolean = (append(l, Nil[A]()) == l).holds
 
-    @induct
-    def concat0(l1: List, l2: List, l3: List) : List = (l1 match {
-      case Nil() => l2 match {
-        case Nil() => reverse(l3)
-        case Cons(y, ys) => {
-          concat0(Nil(), ys, Cons(y, l3))
-        }
+  @induct
+  def appendAssoc[A](xs : List[A], ys : List[A], zs : List[A]) : Boolean =
+    (append(append(xs, ys), zs) == append(xs, append(ys, zs))).holds
+
+  @induct
+  def sizeAppend[A](l1 : List[A], l2 : List[A]) : Boolean =
+    (size(append(l1, l2)) == size(l1) + size(l2)).holds
+
+  @induct
+  def concat[A](l1: List[A], l2: List[A]) : List[A] = 
+    concat0(l1, l2, Nil[A]()) ensuring(content(_) == content(l1) ++ content(l2))
+
+  @induct
+  def concat0[A](l1: List[A], l2: List[A], l3: List[A]) : List[A] = (l1 match {
+    case Nil() => l2 match {
+      case Nil() => reverse(l3)
+      case Cons(y, ys) => {
+        concat0(Nil[A](), ys, Cons(y, l3))
       }
-      case Cons(x, xs) => concat0(xs, l2, Cons(x, l3))
-    }) ensuring(content(_) == content(l1) ++ content(l2) ++ content(l3))
+    }
+    case Cons(x, xs) => concat0(xs, l2, Cons(x, l3))
+  }) ensuring(content(_) == content(l1) ++ content(l2) ++ content(l3))
 }

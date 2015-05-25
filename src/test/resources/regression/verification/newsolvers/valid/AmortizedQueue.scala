@@ -5,7 +5,7 @@ import leon.annotation._
 
 object AmortizedQueue {
   sealed abstract class List
-  case class Cons(head : Int, tail : List) extends List
+  case class Cons(head : BigInt, tail : List) extends List
   case class Nil() extends List
 
   sealed abstract class AbsQueue
@@ -16,8 +16,8 @@ object AmortizedQueue {
     case Cons(_, xs) => 1 + size(xs)
   }) ensuring(_ >= 0)
 
-  def content(l: List) : Set[Int] = l match {
-    case Nil() => Set.empty[Int]
+  def content(l: List) : Set[BigInt] = l match {
+    case Nil() => Set.empty[BigInt]
     case Cons(x, xs) => Set(x) ++ content(xs)
   }
   
@@ -51,7 +51,7 @@ object AmortizedQueue {
       Queue(concat(front, reverse(rear)), Nil())
   } ensuring(isAmortized(_))
 
-  def enqueue(queue : AbsQueue, elem : Int) : AbsQueue = (queue match {
+  def enqueue(queue : AbsQueue, elem : BigInt) : AbsQueue = (queue match {
     case Queue(front, rear) => amortizedQueue(front, Cons(elem, rear))
   }) ensuring(isAmortized(_))
 
@@ -62,7 +62,7 @@ object AmortizedQueue {
     }
   } ensuring (isAmortized(_))
 
-  def front(queue : AbsQueue) : Int = {
+  def front(queue : AbsQueue) : BigInt = {
     require(isAmortized(queue) && !isEmpty(queue))
     queue match {
       case Queue(Cons(f, _), _) => f
@@ -70,7 +70,7 @@ object AmortizedQueue {
   }
 
   // @induct
-  // def propEnqueue(rear : List, front : List, list : List, elem : Int) : Boolean = {
+  // def propEnqueue(rear : List, front : List, list : List, elem : BigInt) : Boolean = {
   //   require(isAmortized(Queue(front, rear)))
   //   val queue = Queue(front, rear)
   //   if (asList(queue) == list) {
@@ -80,7 +80,7 @@ object AmortizedQueue {
   // }.holds
 
   @induct
-  def propFront(queue : AbsQueue, list : List, elem : Int) : Boolean = {
+  def propFront(queue : AbsQueue, list : List, elem : BigInt) : Boolean = {
     require(!isEmpty(queue) && isAmortized(queue))
     if (asList(queue) == list) {
       list match {
@@ -91,7 +91,7 @@ object AmortizedQueue {
   }.holds
 
   @induct
-  def propTail(rear : List, front : List, list : List, elem : Int) : Boolean = {
+  def propTail(rear : List, front : List, list : List, elem : BigInt) : Boolean = {
     require(!isEmpty(Queue(front, rear)) && isAmortized(Queue(front, rear)))
     if (asList(Queue(front, rear)) == list) {
       list match {
@@ -101,14 +101,14 @@ object AmortizedQueue {
       true
   } //.holds
 
-  def enqueueAndFront(queue : AbsQueue, elem : Int) : Boolean = {
+  def enqueueAndFront(queue : AbsQueue, elem : BigInt) : Boolean = {
     if (isEmpty(queue))
       front(enqueue(queue, elem)) == elem
     else
       true
   }.holds
 
-  def enqueueDequeueThrice(queue : AbsQueue, e1 : Int, e2 : Int, e3 : Int) : Boolean = {
+  def enqueueDequeueThrice(queue : AbsQueue, e1 : BigInt, e2 : BigInt, e3 : BigInt) : Boolean = {
     if (isEmpty(queue)) {
       val q1 = enqueue(queue, e1)
       val q2 = enqueue(q1, e2)

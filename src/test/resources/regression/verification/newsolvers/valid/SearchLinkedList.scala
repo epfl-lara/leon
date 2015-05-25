@@ -5,7 +5,7 @@ import leon.annotation._
 
 object SearchLinkedList {
   sealed abstract class List
-  case class Cons(head : Int, tail : List) extends List
+  case class Cons(head : BigInt, tail : List) extends List
   case class Nil() extends List
 
   def size(list : List) : BigInt = (list match {
@@ -13,7 +13,7 @@ object SearchLinkedList {
     case Cons(_, xs) => 1 + size(xs)
   }) ensuring(_ >= 0)
 
-  def contains(list : List, elem : Int) : Boolean = (list match {
+  def contains(list : List, elem : BigInt) : Boolean = (list match {
     case Nil() => false
     case Cons(x, xs) => x == elem || contains(xs, elem)
   })

@@ -6,20 +6,20 @@ import leon.lang._
 object MergeSort {
   // Data types
   sealed abstract class List
-  case class Cons(head : Int, tail : List) extends List
+  case class Cons(head : BigInt, tail : List) extends List
   case class Nil() extends List
 
   sealed abstract class LList
   case class LCons(head : List, tail : LList) extends LList
   case class LNil() extends LList
 
-  def content(list : List) : Set[Int] = list match {
-    case Nil() => Set.empty[Int]
+  def content(list : List) : Set[BigInt] = list match {
+    case Nil() => Set.empty[BigInt]
     case Cons(x, xs) => Set(x) ++ content(xs)
   }
 
-  def lContent(llist : LList) : Set[Int] = llist match {
-    case LNil() => Set.empty[Int]
+  def lContent(llist : LList) : Set[BigInt] = llist match {
+    case LNil() => Set.empty[BigInt]
     case LCons(x, xs) => content(x) ++ lContent(xs)
   }
 
