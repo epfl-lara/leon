@@ -89,10 +89,11 @@ trait VerificationRegression extends LeonTestSuite {
 
     forEachFileIn("invalid") { output =>
       val Output(report, reporter) = output
-      assert(report.totalInvalid > 0,
-        "There should be at least one invalid verification condition.")
       assert(report.totalUnknown === 0,
         "There should not be unknown verification conditions.")
+      assert(report.totalInvalid > 0,
+        "There should be at least one invalid verification condition.")
+
     }
 
     super.run(testName, args)
