@@ -410,7 +410,10 @@ sealed abstract class List[T] {
     case Nil() => None[T]()
     case Cons(h, t) if p(h) => Some(h)
     case Cons(_, t) => t.find(p)
-  }} ensuring { res => !res.isDefined || content.contains(res.get) }
+  }} ensuring { res => res match {
+    case Some(r) => (content contains r) && p(r)
+    case None() => true
+  }}
 
   def groupBy[R](f: T => R): Map[R, List[T]] = this match {
     case Nil() => Map.empty[R, List[T]]
