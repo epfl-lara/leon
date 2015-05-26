@@ -6,6 +6,8 @@ package xlang
 import leon.purescala.Definitions._
 import leon.verification._
 
+import leon.utils._
+
 object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
 
   val name = "xlang analysis"
@@ -22,6 +24,11 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     EpsilonElimination(ctx, pgm)  // In-place
     val (pgm1, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm)
     val pgm2 = purescala.FunctionClosure.run(ctx)(pgm1)
+
+    if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
+      PrintTreePhase("Program after xlang transformations").run(ctx)(pgm2)
+    }
+
 
     def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
       case Some(nested) => // could have been a LetDef originally
