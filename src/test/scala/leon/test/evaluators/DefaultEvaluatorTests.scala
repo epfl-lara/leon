@@ -77,9 +77,66 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
     expectSuccessful(
       defaultEvaluator.eval(Times(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3))), 
       InfiniteIntegerLiteral(6))
+  }
+
+  test("Eval of division and modulo semantics for BigInt") {
+    expectSuccessful(
+      defaultEvaluator.eval(Division(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(3))
     expectSuccessful(
       defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3))), 
       InfiniteIntegerLiteral(1))
+
+    expectSuccessful(
+      defaultEvaluator.eval(Division(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(0))
+    expectSuccessful(
+      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(-1))
+
+    expectSuccessful(
+      defaultEvaluator.eval(Division(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))), 
+      InfiniteIntegerLiteral(0))
+    expectSuccessful(
+      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))), 
+      InfiniteIntegerLiteral(-1))
+
+    expectSuccessful(
+      defaultEvaluator.eval(Division(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3))), 
+      InfiniteIntegerLiteral(0))
+    expectSuccessful(
+      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3))), 
+      InfiniteIntegerLiteral(1))
+  }
+
+  test("Eval of division and modulo semantics for bit vectors") {
+    expectSuccessful(
+      defaultEvaluator.eval(BVDivision(IntLiteral(10), IntLiteral(3))), 
+      IntLiteral(3))
+    expectSuccessful(
+      defaultEvaluator.eval(BVModulo(IntLiteral(10), IntLiteral(3))), 
+      IntLiteral(1))
+
+    expectSuccessful(
+      defaultEvaluator.eval(BVDivision(IntLiteral(-1), IntLiteral(3))), 
+      IntLiteral(0))
+    expectSuccessful(
+      defaultEvaluator.eval(BVModulo(IntLiteral(-1), IntLiteral(3))), 
+      IntLiteral(-1))
+
+    expectSuccessful(
+      defaultEvaluator.eval(BVDivision(IntLiteral(-1), IntLiteral(-3))), 
+      IntLiteral(0))
+    expectSuccessful(
+      defaultEvaluator.eval(BVModulo(IntLiteral(-1), IntLiteral(-3))), 
+      IntLiteral(-1))
+
+    expectSuccessful(
+      defaultEvaluator.eval(BVDivision(IntLiteral(1), IntLiteral(-3))), 
+      IntLiteral(0))
+    expectSuccessful(
+      defaultEvaluator.eval(BVModulo(IntLiteral(1), IntLiteral(-3))), 
+      IntLiteral(1))
   }
 
   test("Eval of simple boolean operations") {
