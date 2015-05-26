@@ -161,6 +161,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   private def T = BooleanLiteral(true)
   private def F = BooleanLiteral(false)
   private def IL(i : Int) = IntLiteral(i)
+  private def BIL(i : Int) = InfiniteIntegerLiteral(i)
 
   test("Arithmetic") {
     val p = """|object Program {
@@ -195,10 +196,52 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       checkComp(e, mkCall("mod", IL(7), IL(-5)), IL(2))
       checkComp(e, mkCall("mod", IL(-7), IL(5)), IL(-2))
       checkComp(e, mkCall("mod", IL(-7), IL(-5)), IL(-2))
+      checkComp(e, mkCall("mod", IL(-1), IL(5)), IL(-1))
 
       // Things that should crash.
       checkError(e, mkCall("div", IL(42), IL(0))) 
       checkError(e, mkCall("mod", IL(42), IL(0)))
+    }
+  }
+
+  test("BigInt Arithmetic") {
+    val p = """|object Program {
+               |  def plus(x : BigInt, y : BigInt) : BigInt = x + y
+               |  def max(x : BigInt, y : BigInt) : BigInt = if(x >= y) x else y
+               |  def square(i : BigInt) : BigInt = { val j = i; j * i }
+               |  def abs(i : BigInt) : BigInt = if(i < 0) -i else i
+               |  def intSqrt(n : BigInt) : BigInt = intSqrt0(abs(n), 0)
+               |  def intSqrt0(n : BigInt, c : BigInt) : BigInt = {
+               |    val s = square(c+1)
+               |    if(s > n) c else intSqrt0(n, c+1)
+               |  }
+               |  def div(x : BigInt, y : BigInt) : BigInt = (x / y)
+               |  def mod(x : BigInt, y : BigInt) : BigInt = (x % y)
+               |}
+               |""".stripMargin
+
+    implicit val prog = parseString(p)
+    val evaluators = prepareEvaluators
+
+    for(e <- evaluators) {
+      // Some simple math.
+      checkComp(e, mkCall("plus", BIL(60), UMinus(BIL(18))), BIL(42))
+      checkComp(e, mkCall("max", BIL(4), BIL(42)), BIL(42))
+      checkComp(e, mkCall("max", BIL(42), UMinus(BIL(42))), BIL(42))
+      checkComp(e, mkCall("intSqrt", UMinus(BIL(1800))), BIL(42))
+      checkComp(e, mkCall("div", BIL(7), BIL(5)), BIL(1))
+      checkComp(e, mkCall("div", BIL(7), BIL(-5)), BIL(-1))
+      checkComp(e, mkCall("div", BIL(-7), BIL(5)), BIL(-1))
+      checkComp(e, mkCall("div", BIL(-7), BIL(-5)), BIL(1))
+      checkComp(e, mkCall("mod", BIL(7), BIL(5)), BIL(2))
+      checkComp(e, mkCall("mod", BIL(7), BIL(-5)), BIL(2))
+      checkComp(e, mkCall("mod", BIL(-7), BIL(5)), BIL(-2))
+      checkComp(e, mkCall("mod", BIL(-7), BIL(-5)), BIL(-2))
+      checkComp(e, mkCall("mod", BIL(-1), BIL(5)), BIL(-1))
+
+      // Things that should crash.
+      checkError(e, mkCall("div", BIL(42), BIL(0))) 
+      checkError(e, mkCall("mod", BIL(42), BIL(0)))
     }
   }
 
