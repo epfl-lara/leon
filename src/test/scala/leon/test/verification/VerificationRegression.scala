@@ -30,7 +30,7 @@ trait VerificationRegression extends LeonTestSuite {
   val pipeFront: Pipeline[Program, Program]
   val pipeBack : Pipeline[Program, VerificationReport]
 
-  private def mkTest(files: List[String])(block: Output=>Unit) = {
+  private def mkTest(files: List[String], cat: String)(block: Output=>Unit) = {
     val extraction =
       ExtractionPhase andThen
       PreprocessingPhase andThen
@@ -61,6 +61,7 @@ trait VerificationRegression extends LeonTestSuite {
             }
           case _ =>
         }
+        test("Compilation of test files in " + testDir + cat)(fail("Failed to compile"))
     }
   }
 
@@ -74,7 +75,7 @@ trait VerificationRegression extends LeonTestSuite {
 
     val files = fs map { _.getPath }
 
-    mkTest(files)(block)
+    mkTest(files, cat)(block)
   }
 
   override def run(testName: Option[String], args: Args): Status = {
