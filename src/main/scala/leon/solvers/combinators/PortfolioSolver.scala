@@ -6,6 +6,7 @@ package combinators
 
 import purescala.Common._
 import purescala.Expressions._
+import verification.VC
 
 import utils.Interruptible
 import scala.concurrent._
@@ -25,6 +26,10 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
 
   def assertCnstr(expression: Expr): Unit = {
     solversInsts.foreach(_.assertCnstr(expression))
+  }
+
+  override def assertVC(vc: VC): Unit = {
+    solversInsts.foreach(_.assertVC(vc))
   }
 
   def check: Option[Boolean] = {
