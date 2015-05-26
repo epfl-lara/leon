@@ -10,7 +10,7 @@ import Constructors.{application, implies}
 import DefOps.typedTransitiveCallees
 import verification.VC
 import smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
-import smtlib.parser.Terms._
+import smtlib.parser.Terms.{Exists => SMTExists, ForAll => SMTForall, _ }
 import smtlib.theories.Core.Equals
 
 // This solver utilizes the define-funs-rec command of SMTLIB-2.5 to define mutually recursive functions.
@@ -103,13 +103,13 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
         tfd <- notSeen if !refersToCurrent(tfd.fd)
         post <- tfd.postcondition
       } {
-        //println(s"${tfd.id.uniqueName} does not refer to ${currentFunDef.get.id.uniqueName}")
+        //currentFunDef foreach { f => println(s"${tfd.id.uniqueName} does not refer to ${f.id.uniqueName}") }
         val term = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
           application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
         )
         try {
-          sendCommand(SMTAssert(quantifiedTerm(ForAll, term)))
+          sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
         } catch {
           case _ : IllegalArgumentException =>
             addError()
@@ -123,20 +123,12 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
   }
 
-  // For this solver, we prefer the variables of assert() commands to be exist. quantified instead of free
-  override def assertCnstr(expr: Expr) =
-    try {
-      sendCommand(SMTAssert(quantifiedTerm(Exists, expr)))
-    } catch {
-      case _ : IllegalArgumentException =>
-        addError()
-    }
-
   // We need to know the function context.
   // The reason is we do not want to assume postconditions of functions referring to 
   // the current function, as this may make the proof unsound
   override def assertVC(vc: VC) = {
     currentFunDef = Some(vc.fd)
+    //println("Setting fundef to " + currentFunDef.get.id.uniqueName)
     super.assertVC(vc)
   }
 

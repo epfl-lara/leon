@@ -847,14 +847,18 @@ abstract class SMTLIBSolver(val context: LeonContext,
         )
 
 
-      val GetValueResponseSuccess(valuationPairs) = sendCommand(cmd)
+      sendCommand(cmd) match {
+        case GetValueResponseSuccess(valuationPairs) =>
 
-      valuationPairs.collect {
-        case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
-          val id = variables.toA(sym)
+          valuationPairs.collect {
+            case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
+              val id = variables.toA(sym)
 
-          (id, fromSMT(value, id.getType)(Map(), Map()))
-      }.toMap
+              (id, fromSMT(value, id.getType)(Map(), Map()))
+          }.toMap
+        case _ =>
+          Map() //FIXME improve this
+      }
     }
   }
 
