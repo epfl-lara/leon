@@ -252,6 +252,16 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
         }
         (i, scope, Map())
 
+      case And(args) => {
+        val ifExpr = args.reduceRight((el, acc) => IfExpr(el, acc, BooleanLiteral(false)))
+        toFunction(ifExpr)
+      }
+
+      case Or(args) => {
+        val ifExpr = args.reduceRight((el, acc) => IfExpr(el, BooleanLiteral(true), acc))
+        toFunction(ifExpr)
+      }
+
       case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
       case n @ NAryOperator(args, recons) => {
         val (recArgs, scope, fun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
