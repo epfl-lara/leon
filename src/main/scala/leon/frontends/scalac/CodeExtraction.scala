@@ -1322,7 +1322,14 @@ trait CodeExtraction extends ASTExtractors {
         case f @ ExArrayForallExpression(array, pred) =>
           val a = extractTree(array)
           val lambda = extractTree(pred)
-          ArrayForall(a, lambda)
+          ArrayForall(a, IntLiteral(0), ArrayLength(a), lambda)
+
+        case f @ ExArrayBoundedForallExpression(array, from, to, pred) =>
+          val ra = extractTree(array)
+          val rf = extractTree(from)
+          val rt = extractTree(to)
+          val lambda = extractTree(pred)
+          ArrayForall(ra, rf, rt, lambda)
 
         case ExFiniteMap(tptFrom, tptTo, args) =>
           val singletons: Seq[(LeonExpr, LeonExpr)] = args.collect {

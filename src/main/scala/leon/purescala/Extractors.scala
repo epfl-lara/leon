@@ -122,8 +122,6 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapIsDefinedAt(es(0), es(1)))
       case ArraySelect(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => ArraySelect(es(0), es(1)))
-      case ArrayForall(t1, t2) => 
-        Some(Seq(t1, t2), (es: Seq[Expr]) => ArrayForall(es(0), es(1)))
       case Let(binder, e, body) =>
         Some(Seq(e, body), (es: Seq[Expr]) => Let(binder, es(0), es(1)))
       case Require(pre, body) =>
@@ -169,6 +167,10 @@ object Extractors {
         val all = elems.map(_._2).toSeq
         Some((all, finiteArray))
       case Tuple(args) => Some((args, tupleWrap))
+      case ArrayForall(array, from, to, pred) => Some((
+        Seq(array, from, to, pred),
+        (as: Seq[Expr]) => ArrayForall(as(0), as(1), as(2), as(3))
+      ))
       case IfExpr(cond, thenn, elze) => Some((
         Seq(cond, thenn, elze),
         { case Seq(c, t, e) => IfExpr(c, t, e) }

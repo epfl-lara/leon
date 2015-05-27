@@ -601,6 +601,15 @@ trait ASTExtractors {
         case _ => None
       }
     }
+    object ExArrayBoundedForallExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayForall"), types),
+            List(array, from, to, pred)) =>
+          Some((array, from, to, pred))
+        case _ => None
+      }
+    }
 
     object ExArrayUpdated {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {

@@ -64,5 +64,7 @@ package object lang {
 
   @ignore
   def arrayForall[A](array: Array[A], pred: A => Boolean): Boolean = ???
+  @ignore
+  def arrayForall[A](array: Array[A], from: Int, to: Int, pred: A => Boolean): Boolean = ???
 
 }

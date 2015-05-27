@@ -563,11 +563,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
           )
         }
 
-      case ArrayForall(array, pred) =>
-        val recArray = toSMT(array)
+      case ArrayForall(array, from, to, pred) =>
         val tpe @ ArrayType(base) = normalizeType(array.getType)
-        val lengthSelector = selectors.toB((tpe, 0))
-        val length = FunctionApplication(lengthSelector, Seq(recArray))
 
         val contentSelector = selectors.toB((tpe, 1))
 
@@ -582,8 +579,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
           SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
           Core.Implies(
             Core.And(
-              FixedSizeBitVectors.SGreaterEquals(id2sym(index), FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(0))),
-              FixedSizeBitVectors.SLessThan(id2sym(index), length)),
+              FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
+              FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))),
             rSubstBody
           )
         )

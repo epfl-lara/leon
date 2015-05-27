@@ -157,7 +157,10 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
 
-      case ArrayForall(a, pred) => p"$a.forall($pred)"
+      case ArrayForall(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 => 
+        p"$a.forall($pred)"
+      case ArrayForall(a, from, to, pred) => 
+        p"$a.forall($from, $to, $pred)"
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" }

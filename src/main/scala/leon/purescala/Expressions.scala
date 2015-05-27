@@ -188,7 +188,7 @@ object Expressions {
     val getType = BooleanType
   }
 
-  case class ArrayForall(array: Expr, body: Expr) extends Expr {
+  case class ArrayForall(array: Expr, from: Expr, to: Expr, body: Expr) extends Expr {
     require(body.getType match {
       case FunctionType(_, BooleanType) => true
       case _ => false
