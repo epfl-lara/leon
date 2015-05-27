@@ -566,7 +566,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       /**
        * ===== Map operations =====
        */
-      case m @ FiniteMap(elems) =>
+      case m @ FiniteMap(elems, _, _) =>
         import OptionManager._
         val mt @ MapType(_, to) = m.getType
         val ms = declareSort(mt)

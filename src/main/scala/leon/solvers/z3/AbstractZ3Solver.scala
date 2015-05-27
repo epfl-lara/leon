@@ -636,20 +636,20 @@ trait AbstractZ3Solver
       case SetIntersection(s1, s2) => z3.mkSetIntersect(rec(s1), rec(s2))
       case SetUnion(s1, s2) => z3.mkSetUnion(rec(s1), rec(s2))
       case SetDifference(s1, s2) => z3.mkSetDifference(rec(s1), rec(s2))
-      case f @ FiniteSet(elems) => elems.foldLeft(z3.mkEmptySet(typeToSort(f.getType.asInstanceOf[SetType].base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
+      case f @ FiniteSet(elems, base) => elems.foldLeft(z3.mkEmptySet(typeToSort(base)))((ast, el) => z3.mkSetAdd(ast, rec(el)))
       case SetCardinality(s) =>
         val rs = rec(s)
         setCardDecls(s.getType)(rs)
 
       case SetMin(s) => intSetMinFun(rec(s))
       case SetMax(s) => intSetMaxFun(rec(s))
-      case f @ FiniteMap(elems) => f.getType match {
-        case tpe@MapType(fromType, toType) =>
-          typeToSort(tpe) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
+      case f @ FiniteMap(elems, fromType, toType) =>
+          typeToSort(MapType(fromType, toType)) //had to add this here because the mapRangeNoneConstructors was not yet constructed...
           val fromSort = typeToSort(fromType)
-          elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){ case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v))) }
-        case errorType => scala.sys.error("Unexpected type for finite map: " + (ex, errorType))
-      }
+          elems.foldLeft(z3.mkConstArray(fromSort, mapRangeNoneConstructors(toType)())){
+            case (ast, (k,v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(toType)(rec(v)))
+          }
+
       case mg @ MapGet(m,k) => m.getType match {
         case MapType(fromType, toType) =>
           val selected = z3.mkSelect(rec(m), rec(k))
@@ -658,7 +658,7 @@ trait AbstractZ3Solver
       }
       case MapUnion(m1,m2) => m1.getType match {
         case MapType(ft, tt) => m2 match {
-          case FiniteMap(ss) =>
+          case FiniteMap(ss, _, _) =>
             ss.foldLeft(rec(m1)){
               case (ast, (k, v)) => z3.mkStore(ast, rec(k), mapRangeSomeConstructors(tt)(rec(v)))
             }

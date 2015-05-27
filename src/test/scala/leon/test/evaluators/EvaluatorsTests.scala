@@ -82,7 +82,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val result = checkCompSuccess(evaluator, in)
 
     def asIntSet(e : Expr) : Option[Set[Int]] = e match {
-      case FiniteSet(es) =>
+      case FiniteSet(es, _) =>
         val ois = es.map {
           case IntLiteral(v) => Some(v)
           case _ => None
@@ -107,7 +107,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val result = checkCompSuccess(evaluator, in)
 
     def asIntMap(e : Expr) : Option[Map[Int,Int]] = e match {
-      case FiniteMap(ss) =>
+      case FiniteMap(ss, _, _) =>
         val oips : Seq[Option[(Int,Int)]] = ss.map {
           case (IntLiteral(f), IntLiteral(t)) => Some(f -> t)
           case _ => None
@@ -365,8 +365,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     val nil = mkCaseClass("Nil")
     val cons12 = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
 
-    val s123 = NonemptySet(Set(IL(1), IL(2), IL(3)))
-    val s246 = NonemptySet(Set(IL(2), IL(4), IL(6)))
+    val s123 = FiniteSet(Set(IL(1), IL(2), IL(3)), Int32Type)
+    val s246 = FiniteSet(Set(IL(2), IL(4), IL(6)), Int32Type)
 
     for(e <- evaluators) {
       checkSetComp(e, mkCall("finite"), Set(1, 2, 3))

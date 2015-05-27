@@ -113,7 +113,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     /**
      * ===== Set operations =====
      */
-    case fs @ FiniteSet(elems) =>
+    case fs @ FiniteSet(elems, base) =>
       val ss = declareSort(fs.getType)
       var res: Term = FunctionApplication(
         QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ss)),

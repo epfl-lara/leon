@@ -405,15 +405,10 @@ object Expressions {
   }
 
   /* Set expressions */
-  case class NonemptySet(elements: Set[Expr]) extends Expr {
-    require(elements.nonEmpty)
-    val getType = SetType(optionToType(leastUpperBound(elements.toSeq.map(_.getType)))).unveilUntyped
+  case class FiniteSet(elements: Set[Expr], base: TypeTree) extends Expr {
+    val getType = SetType(base).unveilUntyped
   }
-  
-  case class EmptySet(tpe: TypeTree) extends Expr with Terminal {
-    val getType = SetType(tpe).unveilUntyped
-  }
-  
+
   case class ElementOfSet(element: Expr, set: Expr) extends Expr {
     val getType = BooleanType
   }
@@ -435,21 +430,10 @@ object Expressions {
   }
 
   /* Map operations. */
-  case class NonemptyMap(singletons: Seq[(Expr, Expr)]) extends Expr {
-    require(singletons.nonEmpty)
-    val getType = {
-      val (keys, values) = singletons.unzip
-      MapType(
-        optionToType(leastUpperBound(keys.map(_.getType))),
-        optionToType(leastUpperBound(values.map(_.getType)))
-      ).unveilUntyped
-    }
-  }
-  
-  case class EmptyMap(keyType: TypeTree, valueType: TypeTree) extends Expr with Terminal {
+  case class FiniteMap(singletons: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) extends Expr {
     val getType = MapType(keyType, valueType).unveilUntyped
   }
-  
+
   case class MapGet(map: Expr, key: Expr) extends Expr {
     val getType = map.getType match {
       case MapType(_, to) => to

@@ -71,7 +71,7 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
       GenericValue(tp, n.toInt)
 
     case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), SetType(base)) =>
-      EmptySet(base)
+      FiniteSet(Set(), base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))
@@ -92,12 +92,12 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
 
     case (FunctionApplication(SimpleSymbol(SSymbol("insert")), elems), SetType(base)) =>
       val selems = elems.init.map(fromSMT(_, base))
-      val FiniteSet(se) = fromSMT(elems.last, tpe)
+      val FiniteSet(se, _) = fromSMT(elems.last, tpe)
       finiteSet(se ++ selems, base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
       finiteSet(elems.map(fromSMT(_, tpe) match {
-        case FiniteSet(elems) => elems
+        case FiniteSet(elems, _) => elems
       }).flatten.toSet, base)
 
     // FIXME (nicolas)
@@ -126,10 +126,9 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
 
       FunctionApplication(constructors.toB(tpe), Seq(toSMT(size), ar))
 
-    case fm @ FiniteMap(elems) =>
+    case fm @ FiniteMap(elems, from, to) =>
       import OptionManager._
-      val mt @ MapType(from, to) = fm.getType
-      declareSort(mt)
+      declareSort(MapType(from, to))
 
       var m: Term = declareVariable(FreshIdentifier("mapconst", RawArrayType(from, leonOptionType(to))))
 
@@ -152,7 +151,7 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
      */
 
 
-    case fs @ FiniteSet(elems) =>
+    case fs @ FiniteSet(elems, _) =>
       if (elems.isEmpty) {
         QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset")), Some(declareSort(fs.getType)))
       } else {

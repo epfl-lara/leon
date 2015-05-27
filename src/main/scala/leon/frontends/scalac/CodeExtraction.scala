@@ -1707,7 +1707,7 @@ trait CodeExtraction extends ASTExtractors {
               MapIsDefinedAt(a1, a2)
 
             case (IsTyped(a1, mt: MapType), "updated", List(k, v)) =>
-              MapUnion(a1, NonemptyMap(Seq((k, v))))
+              MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
 
             case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>
               MapUnion(a1, a2)

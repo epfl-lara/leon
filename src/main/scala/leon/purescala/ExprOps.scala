@@ -967,8 +967,8 @@ object ExprOps {
     case CharType                   => CharLiteral('a')
     case BooleanType                => BooleanLiteral(false)
     case UnitType                   => UnitLiteral()
-    case SetType(baseType)          => EmptySet(tpe)
-    case MapType(fromType, toType)  => EmptyMap(fromType, toType)
+    case SetType(baseType)          => FiniteSet(Set(), tpe)
+    case MapType(fromType, toType)  => FiniteMap(Nil, fromType, toType)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => EmptyArray(tpe)
 

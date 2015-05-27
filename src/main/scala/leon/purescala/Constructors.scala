@@ -188,8 +188,7 @@ object Constructors {
   }
 
   def finiteSet(els: Set[Expr], tpe: TypeTree) = {
-    if (els.isEmpty) EmptySet(tpe)
-    else NonemptySet(els)
+    FiniteSet(els, tpe)
   }
 
   def finiteMultiset(els: Seq[Expr], tpe: TypeTree) = {
@@ -198,8 +197,7 @@ object Constructors {
   }
 
   def finiteMap(els: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) = {
-    if (els.isEmpty) EmptyMap(keyType, valueType)
-    else NonemptyMap(els.distinct)
+    FiniteMap(els, keyType, valueType)
   }
 
   def finiteArray(els: Seq[Expr]): Expr = {

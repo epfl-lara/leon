@@ -312,14 +312,11 @@ object TypeOps {
           case ens @ Ensuring(body, pred) =>
             Ensuring(srec(body), rec(idsMap)(pred)).copiedFrom(ens)
 
-          case s @ FiniteSet(elements) if elements.isEmpty =>
-            val SetType(tp) = s.getType
-            EmptySet(tpeSub(tp)).copiedFrom(s)
+          case s @ FiniteSet(elems, tpe) =>
+            FiniteSet(elems.map(srec), tpeSub(tpe)).copiedFrom(s)
 
-          case m @ FiniteMap(elements) if elements.isEmpty =>
-            val MapType(a,b) = m.getType
-            EmptyMap(tpeSub(a), tpeSub(b)).copiedFrom(m)
-
+          case m @ FiniteMap(elems, from, to) =>
+            FiniteMap(elems.map{ case (k, v) => (srec(k), srec(v)) }, tpeSub(from), tpeSub(to)).copiedFrom(m)
 
           case v @ Variable(id) if idsMap contains id =>
             Variable(idsMap(id)).copiedFrom(v)

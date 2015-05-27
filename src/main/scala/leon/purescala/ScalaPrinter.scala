@@ -26,23 +26,9 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
       case Not(Equals(l, r))    => p"$l != $r"
       case Implies(l,r)         => pp(or(not(l), r))
       case Choose(pred, None) => p"choose($pred)"
-      case s @ FiniteSet(rss)    => {
-        val rs = rss.toSeq
-        s.getType match {
-          case SetType(ut) =>
-            p"Set[$ut]($rs)"
-          case _ =>
-            p"Set($rs)"
-        }
-      }
-      case m @ FiniteMap(els) => {
-        m.getType match {
-          case MapType(k,v) =>
-            p"Map[$k,$v]($els)"
-          case _ =>
-            p"Map($els)"
-        }
-      }
+      case s @ FiniteSet(rss, t) => p"Set[$t](${rss.toSeq})"
+      case m @ FiniteMap(els, k, v) => p"Map[$k,$v]($els)"
+      
       case ElementOfSet(e,s)    => p"$s.contains(e)"
       case SetUnion(l,r)        => p"$l ++ $r"
       case MapUnion(l,r)        => p"$l ++ $r"
