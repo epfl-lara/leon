@@ -183,6 +183,19 @@ object Expressions {
     }
   }
 
+  case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
+    require(body.getType == BooleanType)
+    val getType = BooleanType
+  }
+
+  case class ArrayForall(array: Expr, body: Expr) extends Expr {
+    require(body.getType match {
+      case FunctionType(_, BooleanType) => true
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+
   /** The '''this''' keyword */
   case class This(ct: ClassType) extends Expr with Terminal {
     val getType = ct

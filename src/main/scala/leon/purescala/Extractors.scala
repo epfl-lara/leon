@@ -122,6 +122,8 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapIsDefinedAt(es(0), es(1)))
       case ArraySelect(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => ArraySelect(es(0), es(1)))
+      case ArrayForall(t1, t2) => 
+        Some(Seq(t1, t2), (es: Seq[Expr]) => ArrayForall(es(0), es(1)))
       case Let(binder, e, body) =>
         Some(Seq(e, body), (es: Seq[Expr]) => Let(binder, es(0), es(1)))
       case Require(pre, body) =>

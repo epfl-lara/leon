@@ -562,6 +562,33 @@ abstract class SMTLIBSolver(val context: LeonContext,
             sub.map(toSMT)
           )
         }
+
+      case ArrayForall(array, pred) =>
+        val recArray = toSMT(array)
+        val tpe @ ArrayType(base) = normalizeType(array.getType)
+        val lengthSelector = selectors.toB((tpe, 0))
+        val length = FunctionApplication(lengthSelector, Seq(recArray))
+
+        val contentSelector = selectors.toB((tpe, 1))
+
+        val index = FreshIdentifier("i", base)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el, _)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> ArraySelect(array, index.toVariable)), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTForall(
+          SortedVar(id2sym(index), declareSort(base)), Seq(),
+          Core.Implies(
+            Core.And(
+              FixedSizeBitVectors.SGreaterEquals(id2sym(index), FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(0))),
+              FixedSizeBitVectors.SLessThan(id2sym(index), length)),
+            rSubstBody
+          )
+        )
+      
+
       case o =>
         reporter.warning(s"Unsupported Tree in smt-$targetName: $o")
         throw new IllegalArgumentException
