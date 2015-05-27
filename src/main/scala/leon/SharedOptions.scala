@@ -22,6 +22,8 @@ object SharedOptions extends LeonComponent {
     val usageRhs = "f1,f2,..."
   }
 
+  val optEval = LeonStringOptionDef("eval", "Evaluate ground functions", "default", "--eval[=code|default]")
+
   val optSelectedSolvers = new LeonOptionDef[Set[String]] {
     val name = "solvers"
     val description = "Use solvers s1, s2,...\n" + solvers.SolverFactory.availableSolversPretty
@@ -64,6 +66,7 @@ object SharedOptions extends LeonComponent {
     optSelectedSolvers,
     optDebug,
     optWatch,
+    optEval,
     optTimeout
   )
 }

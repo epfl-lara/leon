@@ -16,6 +16,8 @@ object EvaluationPhase extends LeonPhase[Program, Unit] {
   def run(ctx: LeonContext)(program: Program): Unit = {
     val evalFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
 
+    val evaluator = ctx.findOptionOrDefault(SharedOptions.optEval)
+
     val reporter = ctx.reporter
 
     val fdFilter = {
@@ -27,9 +29,15 @@ object EvaluationPhase extends LeonPhase[Program, Unit] {
     val toEvaluate = funDefsFromMain(program).toList.filter(_.params.size == 0).filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)
 
     if (toEvaluate.isEmpty) reporter.warning("No ground functions found with the given names")
-    
-    val eval = new CodeGenEvaluator(ctx, program)
-    //val eval = new DefaultEvaluator(ctx, program)
+
+    val eval = if (evaluator == "codegen") {
+      new CodeGenEvaluator(ctx, program)
+    } else if (evaluator == "default" || evaluator == "") {
+      new DefaultEvaluator(ctx, program)
+    } else {
+      reporter.fatalError(s"Unknown evaluator '$evaluator'. Available: default, codegen")
+    }
+
     for (fd <- toEvaluate) {
       reporter.info(s" - Evaluating ${fd.id}")
       val call = FunctionInvocation(fd.typedWithDef, Seq())

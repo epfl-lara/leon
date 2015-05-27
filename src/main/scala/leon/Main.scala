@@ -42,10 +42,9 @@ object Main {
     val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             true )
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
-    val optEval        = LeonFlagOptionDef("eval",        "Evaluate ground functions",                             false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optVerify, optEval)
+      Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optVerify)
 
   }
 
@@ -151,7 +150,7 @@ object Main {
     val repairF      = ctx.findOptionOrDefault(optRepair)
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
-    val evalF        = ctx.findOptionOrDefault(optEval)
+    val evalF        = ctx.findOption(SharedOptions.optEval)
 
     def debugTrees(title: String): LeonPhase[Program, Program] = {
       if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
@@ -184,7 +183,7 @@ object Main {
         else if (repairF) RepairPhase
         else if (terminationF) TerminationPhase
         else if (xlangF) XLangAnalysisPhase
-        else if (evalF) EvaluationPhase
+        else if (evalF.isDefined) EvaluationPhase
         else if (verifyF) FunctionClosure andThen AnalysisPhase
         else    NoopPhase()
       }
