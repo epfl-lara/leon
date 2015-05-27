@@ -993,6 +993,10 @@ trait CodeExtraction extends ASTExtractors {
             outOfSubsetError(a, "Invalid type "+a.tpe+" for .isInstanceOf")
         }
 
+      case ExBigIntPattern(n: Literal) =>
+        val lit = InfiniteIntegerLiteral(BigInt(n.value.stringValue))
+        (LiteralPattern(binder, lit), dctx)
+
       case ExInt32Literal(i)   => (LiteralPattern(binder, IntLiteral(i)),     dctx)
       case ExBooleanLiteral(b) => (LiteralPattern(binder, BooleanLiteral(b)), dctx)
       case ExUnitLiteral()     => (LiteralPattern(binder, UnitLiteral()),     dctx)
@@ -1277,9 +1281,9 @@ trait CodeExtraction extends ASTExtractors {
           val newValueRec = extractTree(newValue)
           ArrayUpdate(lhsRec, indexRec, newValueRec)
 
-        case ExBigIntLiteral(n: Literal) => {
+        case ExBigIntLiteral(n: Literal) =>
           InfiniteIntegerLiteral(BigInt(n.value.stringValue))
-        }
+
         case ExBigIntLiteral(n) => outOfSubsetError(tr, "Non-literal BigInt constructor")
 
         case ExIntToBigInt(tree) => {

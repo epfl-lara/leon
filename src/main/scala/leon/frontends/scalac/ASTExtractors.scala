@@ -229,6 +229,8 @@ trait ASTExtractors {
       def unapply(tree: Tree): Option[Tree] = tree  match {
         case Apply(ExSelected("scala", "package", "BigInt", "apply"), n :: Nil) =>
           Some(n)
+        case Apply(ExSelected("leon", "lang", "package", "BigInt", "apply"), n :: Nil) =>
+          Some(n)
         case _ =>
           None
       }
@@ -819,6 +821,15 @@ trait ASTExtractors {
     object ExPatternMatching {
       def unapply(tree: Match): Option[(Tree,List[CaseDef])] =
         if(tree != null) Some((tree.selector, tree.cases)) else None
+    }
+
+    object ExBigIntPattern {
+      def unapply(tree: UnApply): Option[Tree] = tree match {
+        case ua @ UnApply(Apply(ExSelected("leon", "lang", "package", "BigInt", "unapply"), _), List(l)) =>
+          Some(l)
+        case _ =>
+          None
+      }
     }
 
     object ExIsInstanceOf {
