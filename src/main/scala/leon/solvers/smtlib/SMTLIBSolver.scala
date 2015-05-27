@@ -571,7 +571,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
         val contentSelector = selectors.toB((tpe, 1))
 
-        val index = FreshIdentifier("i", base)
+        val index = FreshIdentifier("i", Int32Type)
         declareVariable(index)
 
         val Lambda(Seq(ValDef(el, _)), predBody) = pred
@@ -579,7 +579,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val rSubstBody = toSMT(substBody)
 
         SMTForall(
-          SortedVar(id2sym(index), declareSort(base)), Seq(),
+          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
           Core.Implies(
             Core.And(
               FixedSizeBitVectors.SGreaterEquals(id2sym(index), FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(0))),
