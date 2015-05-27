@@ -158,10 +158,9 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
     }
   }
 
-  private def T = BooleanLiteral(true)
-  private def F = BooleanLiteral(false)
-  private def IL(i : Int) = IntLiteral(i)
-  private def BIL(i : Int) = InfiniteIntegerLiteral(i)
+  private val T = BooleanLiteral(true)
+  private val F = BooleanLiteral(false)
+  import purescala.Expressions.{IntLiteral => IL, InfiniteIntegerLiteral => BIL}
 
   test("Arithmetic") {
     val p = """|object Program {
@@ -581,6 +580,42 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       checkComp(e, mkCall("f4"), IL(1))
       checkComp(e, mkCall("f5"), IL(1))
       checkComp(e, mkCall("f6"), IL(1))
+    }
+  }
+
+  test("Lambda functions") {
+    val p = """import leon.lang._
+              |object Program {
+              |  val foo1 = (x: BigInt) => x
+              |  val foo2 = {
+              |    val a = BigInt(1)
+              |    (x: BigInt) => a + x
+              |  }
+              |  val foo3 = {
+              |    val f1 = (x: BigInt) => x + 1
+              |    val f2 = (x: BigInt) => x + 2
+              |    (x: BigInt, y: BigInt) => f1(x) + f2(y)
+              |  }
+              |  def foo4(x: BigInt) = (i: BigInt) => i + x
+              |}""".stripMargin
+
+    implicit val prog = parseString(p)
+    val evaluators = prepareEvaluators
+
+    def checkLambda(evaluator: Evaluator, in: Expr, out: PartialFunction[Expr, Boolean]) {
+      val result = checkCompSuccess(evaluator, in)
+      if (!out.isDefinedAt(result) || !out(result))
+        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' produced invalid '$result'.")
+    }
+
+    val ONE = BIL(1)
+    val TWO = BIL(2)
+
+    for(e <- evaluators) {
+      checkLambda(e, mkCall("foo1"), { case Lambda(Seq(vd), Variable(id)) if vd.id == id => true })
+      checkLambda(e, mkCall("foo2"), { case Lambda(Seq(vd), Plus(ONE, Variable(id))) if vd.id == id => true })
+      checkLambda(e, mkCall("foo3"), { case Lambda(Seq(vx, vy), Plus(Plus(Variable(x), ONE), Plus(Variable(y), TWO))) if vx.id == x && vy.id == y => true })
+      checkLambda(e, mkCall("foo4", TWO), { case Lambda(Seq(vd), Plus(Variable(id), TWO)) if vd.id == id => true })
     }
   }
 }
