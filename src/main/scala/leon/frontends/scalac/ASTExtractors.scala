@@ -610,6 +610,42 @@ trait ASTExtractors {
         case _ => None
       }
     }
+    object ExBoundedForallExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "boundedForall"), types),
+            List(from, to, pred)) =>
+          Some((from, to, pred))
+        case _ => None
+      }
+    }
+    object ExArrayExistsExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayExists"), types),
+            List(array, pred)) =>
+          Some((array, pred))
+        case _ => None
+      }
+    }
+    object ExArrayBoundedExistsExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "arrayExists"), types),
+            List(array, from, to, pred)) =>
+          Some((array, from, to, pred))
+        case _ => None
+      }
+    }
+    object ExBoundedExistsExpression {
+      def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
+        case a @ Apply(
+            TypeApply(s @ ExSymbol("leon", "lang", "boundedExists"), types),
+            List(from, to, pred)) =>
+          Some((from, to, pred))
+        case _ => None
+      }
+    }
 
     object ExArrayUpdated {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {

@@ -195,6 +195,28 @@ object Expressions {
     })
     val getType = BooleanType
   }
+  case class ArrayExists(array: Expr, from: Expr, to: Expr, body: Expr) extends Expr {
+    require(body.getType match {
+      case FunctionType(_, BooleanType) => true
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+
+  case class BoundedForall(from: Expr, to: Expr, body: Expr) extends Expr {
+    require(body.getType match {
+      case FunctionType(Seq(Int32Type), BooleanType) => true
+      case _ => false
+    })
+    val getType = BooleanType
+  }
+  case class BoundedExists(from: Expr, to: Expr, body: Expr) extends Expr {
+    require(body.getType match {
+      case FunctionType(Seq(Int32Type), BooleanType) => true
+      case _ => false
+    })
+    val getType = BooleanType
+  }
 
   /** The '''this''' keyword */
   case class This(ct: ClassType) extends Expr with Terminal {

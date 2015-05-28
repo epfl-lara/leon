@@ -175,6 +175,12 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
         case ArrayForall(a, from, to, Lambda(args, body)) =>
           ArrayForall(rec(pathVar, a), rec(pathVar, from), rec(pathVar, to), Lambda(args, rec(pathVar, body)))
+        case BoundedForall(from, to, Lambda(args, body)) =>
+          BoundedForall(rec(pathVar, from), rec(pathVar, to), Lambda(args, rec(pathVar, body)))
+        case ArrayExists(a, from, to, Lambda(args, body)) =>
+          ArrayExists(rec(pathVar, a), rec(pathVar, from), rec(pathVar, to), Lambda(args, rec(pathVar, body)))
+        case BoundedExists(from, to, Lambda(args, body)) =>
+          BoundedExists(rec(pathVar, from), rec(pathVar, to), Lambda(args, rec(pathVar, body)))
 
         case l @ Let(i, e : Lambda, b) =>
           val re = rec(pathVar, e) // guaranteed variable!

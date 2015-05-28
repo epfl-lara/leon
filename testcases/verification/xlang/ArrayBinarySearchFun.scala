@@ -1,6 +1,8 @@
 import leon.lang._
 
-object BinarySearchFun {
+object ArrayBinarySearchFun {
+
+  //def binarySearchOverflow()
 
   def binarySearch(a: Array[Int], key: Int, low: Int, high: Int): Int = ({
     require(a.length > 0 && sorted(a, low, high) &&
@@ -8,7 +10,7 @@ object BinarySearchFun {
     )
 
     if(low <= high) {
-      val i = (high + low) / 2
+      val i = (high + low) / 2 //overflow
       val v = a(i)
 
       if(v == key) i
@@ -55,5 +57,3 @@ object BinarySearchFun {
     } else (isSorted, k)
   }
 }
-
-// vim: set ts=4 sw=4 et:

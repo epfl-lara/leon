@@ -161,6 +161,15 @@ class PrettyPrinter(opts: PrinterOptions,
         p"$a.forall($pred)"
       case ArrayForall(a, from, to, pred) => 
         p"$a.forall($from, $to, $pred)"
+      case BoundedForall(from, to, pred) => 
+        p"forall($from, $to, $pred)"
+
+      case ArrayExists(a, IntLiteral(0), ArrayLength(a2), pred) if a == a2 => 
+        p"$a.exists($pred)"
+      case ArrayExists(a, from, to, pred) => 
+        p"$a.exists($from, $to, $pred)"
+      case BoundedExists(from, to, pred) => 
+        p"exists($from, $to, $pred)"
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" }

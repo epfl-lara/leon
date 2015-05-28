@@ -566,8 +566,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case ArrayForall(array, from, to, pred) =>
         val tpe @ ArrayType(base) = normalizeType(array.getType)
 
-        val contentSelector = selectors.toB((tpe, 1))
-
         val index = FreshIdentifier("i", Int32Type)
         declareVariable(index)
 
@@ -584,7 +582,59 @@ abstract class SMTLIBSolver(val context: LeonContext,
             rSubstBody
           )
         )
+      case ArrayExists(array, from, to, pred) =>
+        val tpe @ ArrayType(base) = normalizeType(array.getType)
+
+        val index = FreshIdentifier("i", Int32Type)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el, _)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> ArraySelect(array, index.toVariable)), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTExists(
+          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          Core.And(
+            FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
+            FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to)),
+            rSubstBody
+          )
+        )
       
+
+      case BoundedForall(from, to, pred) =>
+        val index = FreshIdentifier("i", Int32Type)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el, _)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> index.toVariable), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTForall(
+          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          Core.Implies(
+            Core.And(
+              FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
+              FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))),
+            rSubstBody
+          )
+        )
+      case BoundedExists(from, to, pred) =>
+        val index = FreshIdentifier("i", Int32Type)
+        declareVariable(index)
+
+        val Lambda(Seq(ValDef(el, _)), predBody) = pred
+        val substBody = replaceFromIDs(Map(el -> index.toVariable), predBody)
+        val rSubstBody = toSMT(substBody)
+
+        SMTExists(
+          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          Core.And(
+            FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
+            FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to)),
+            rSubstBody
+          )
+        )
 
       case o =>
         reporter.warning(s"Unsupported Tree in smt-$targetName: $o")
