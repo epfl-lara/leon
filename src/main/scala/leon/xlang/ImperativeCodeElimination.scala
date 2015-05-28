@@ -155,7 +155,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), Nil, whileFunReturnType, whileFunValDefs,DefType.MethodDef).setPos(wh)
           wasLoop += whileFunDef
           
-          val whileFunCond = condRes
+          val whileFunCond = condScope(condRes)
           val whileFunRecursiveCall = replaceNames(condFun,
             bodyScope(FunctionInvocation(whileFunDef.typed, modifiedVars.map(id => condBodyFun(id).toVariable)).setPos(wh)))
           val whileFunBaseCase =
