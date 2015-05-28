@@ -82,6 +82,10 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
         unsupported(" as-array on non-function or unknown symbol "+k)
       }
 
+    case (FunctionApplication(SimpleSymbol(app), Seq(arg)), tpe) if letDefs.contains(app) =>
+      val rawArray = extractRawArray(letDefs(app), ArrayType(IntegerType))
+      rawArray.elems(fromSMT(arg, Int32Type))
+
     case (FunctionApplication(
       QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), Some(ArraysEx.ArraySort(k, v))),
       Seq(defV)
