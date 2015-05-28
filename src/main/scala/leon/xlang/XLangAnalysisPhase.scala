@@ -87,7 +87,7 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
                        case VCKinds.Precondition => VCXLangKinds.InvariantInd
                        case _ => vc.kind
                      },
-                     vc.tactic)
+                     vc.tactic).setPos(vc.getPos)
 
         nvc -> ovr
       } else {

@@ -181,9 +181,11 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           whileFunDef.precondition = invariantPrecondition
           whileFunDef.postcondition = trivialPostcondition.map(expr => 
               Lambda(Seq(ValDef(resVar.id)), and(expr, invariantPostcondition match { 
-                case Some(e) => e
-                case None => BooleanLiteral(true)
-              })))
+                  case Some(e) => e
+                  case None => BooleanLiteral(true)
+                }).setPos(wh)
+              ).setPos(wh)
+            )
 
           val finalVars = modifiedVars.map(_.freshen)
           val finalScope = (body: Expr) => {
