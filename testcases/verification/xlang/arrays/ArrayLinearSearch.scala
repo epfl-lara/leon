@@ -15,20 +15,17 @@ object ArrayLinearSearch {
       i += 1
     }) invariant(
          i >= 0 && i <= a.length && (
-          //if(found)
-          //  arrayExists(a, 0, i, (y: BigInt) => y == x)
-          //else true
-          found || arrayForall(a, 0, i, (y: BigInt) => y != x)
-        )
+         if(found)
+           arrayExists(a, 0, i, (y: BigInt) => y == x)
+         else true)
        )
     found
 
   } ensuring(res => {
-      //if(res)
-      //  arrayExists(a, (y: BigInt) => y == x)
-      //else
-      //  true
-      res || arrayForall(a, (y: BigInt) => y != x)
+      if(res)
+        arrayExists(a, (y: BigInt) => y == x)
+      else
+        true
     })
 
 }
