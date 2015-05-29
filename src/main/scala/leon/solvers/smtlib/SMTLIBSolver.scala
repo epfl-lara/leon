@@ -651,18 +651,22 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case LessThan(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
         case IntegerType => Ints.LessThan(toSMT(a), toSMT(b))
+        case CharType => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
       }
       case LessEquals(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
         case IntegerType => Ints.LessEquals(toSMT(a), toSMT(b))
+        case CharType => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
       }
       case GreaterThan(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
         case IntegerType => Ints.GreaterThan(toSMT(a), toSMT(b))
+        case CharType => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
       }
       case GreaterEquals(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
         case IntegerType => Ints.GreaterEquals(toSMT(a), toSMT(b))
+        case CharType => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
       }
       case BVPlus(a,b) => FixedSizeBitVectors.Add(toSMT(a), toSMT(b))
       case BVMinus(a,b) => FixedSizeBitVectors.Sub(toSMT(a), toSMT(b))
@@ -700,6 +704,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
     case (_, UnitType) =>
       UnitLiteral()
+
+    case (FixedSizeBitVectors.BitVectorConstant(n, b), CharType) if b == BigInt(32) =>
+      CharLiteral(n.toInt.toChar)
 
     case (SHexadecimal(h), CharType) =>
       CharLiteral(h.toInt.toChar)

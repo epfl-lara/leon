@@ -596,18 +596,22 @@ trait AbstractZ3Solver
       case LessThan(l, r) => l.getType match {
         case IntegerType => z3.mkLT(rec(l), rec(r))
         case Int32Type => z3.mkBVSlt(rec(l), rec(r))
+        case CharType => z3.mkBVSlt(rec(l), rec(r))
       }
       case LessEquals(l, r) => l.getType match {
         case IntegerType => z3.mkLE(rec(l), rec(r))
         case Int32Type => z3.mkBVSle(rec(l), rec(r))
+        case CharType => z3.mkBVSle(rec(l), rec(r))
       }
       case GreaterThan(l, r) => l.getType match {
         case IntegerType => z3.mkGT(rec(l), rec(r))
         case Int32Type => z3.mkBVSgt(rec(l), rec(r))
+        case CharType => z3.mkBVSgt(rec(l), rec(r))
       }
       case GreaterEquals(l, r) => l.getType match {
         case IntegerType => z3.mkGE(rec(l), rec(r))
         case Int32Type => z3.mkBVSge(rec(l), rec(r))
+        case CharType => z3.mkBVSge(rec(l), rec(r))
       }
 
       case c @ CaseClass(ct, args) =>

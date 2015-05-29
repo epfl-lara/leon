@@ -1715,7 +1715,20 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>
               MapUnion(a1, a2)
-              
+
+            // Char operations
+            case (IsTyped(a1, CharType), ">", List(IsTyped(a2, CharType))) =>
+              GreaterThan(a1, a2)
+
+            case (IsTyped(a1, CharType), ">=", List(IsTyped(a2, CharType))) =>
+              GreaterEquals(a1, a2)
+
+            case (IsTyped(a1, CharType), "<", List(IsTyped(a2, CharType))) =>
+              LessThan(a1, a2)
+
+            case (IsTyped(a1, CharType), "<=", List(IsTyped(a2, CharType))) =>
+              LessEquals(a1, a2)
+
             case (_, name, _) =>
               outOfSubsetError(tr, "Unknown call to "+name)
           }
