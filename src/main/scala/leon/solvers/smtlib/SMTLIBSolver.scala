@@ -603,7 +603,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
       
 
       case BoundedForall(from, to, pred) =>
-        val index = FreshIdentifier("i", IntegerType)
+        val intType = from.getType
+        val index = FreshIdentifier("i", intType)
         declareVariable(index)
 
         val Lambda(Seq(ValDef(el, _)), predBody) = pred
@@ -611,16 +612,23 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val rSubstBody = toSMT(substBody)
 
         SMTForall(
-          SortedVar(id2sym(index), declareSort(IntegerType)), Seq(),
+          SortedVar(id2sym(index), declareSort(intType)), Seq(),
           Core.Implies(
             Core.And(
-              Ints.GreaterEquals(id2sym(index), toSMT(from)),
-              Ints.LessThan(id2sym(index), toSMT(to))),
+              (if(intType == Int32Type)
+                FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from))
+              else
+                Ints.GreaterEquals(id2sym(index), toSMT(from))),
+              (if(intType == Int32Type)
+                FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))
+              else
+                Ints.LessThan(id2sym(index), toSMT(to)))),
             rSubstBody
           )
         )
       case BoundedExists(from, to, pred) =>
-        val index = FreshIdentifier("i", IntegerType)
+        val intType = from.getType
+        val index = FreshIdentifier("i", intType)
         declareVariable(index)
 
         val Lambda(Seq(ValDef(el, _)), predBody) = pred
@@ -628,10 +636,16 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val rSubstBody = toSMT(substBody)
 
         SMTExists(
-          SortedVar(id2sym(index), declareSort(IntegerType)), Seq(),
+          SortedVar(id2sym(index), declareSort(intType)), Seq(),
           Core.And(
-            Ints.GreaterEquals(id2sym(index), toSMT(from)),
-            Ints.LessThan(id2sym(index), toSMT(to)),
+            (if(intType == Int32Type)
+              FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from))
+            else
+              Ints.GreaterEquals(id2sym(index), toSMT(from))),
+            (if(intType == Int32Type)
+              FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))
+            else
+              Ints.LessThan(id2sym(index), toSMT(to))),
             rSubstBody
           )
         )

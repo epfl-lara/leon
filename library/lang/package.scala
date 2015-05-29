@@ -74,6 +74,10 @@ package object lang {
   @ignore
   def boundedForall(from: BigInt, to: BigInt, pred: BigInt => Boolean): Boolean = ???
   @ignore
+  def boundedForall(from: Int, to: Int, pred: Int => Boolean): Boolean = ???
+  @ignore
   def boundedExists(from: BigInt, to: BigInt, pred: BigInt => Boolean): Boolean = ???
+  @ignore
+  def boundedExists(from: Int, to: Int, pred: Int => Boolean): Boolean = ???
 
 }
