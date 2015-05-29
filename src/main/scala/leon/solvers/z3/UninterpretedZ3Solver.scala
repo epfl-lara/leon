@@ -66,7 +66,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   }
 
   def getUnsatCore = {
-    solver.getUnsatCore().map(ast => fromZ3Formula(null, ast) match {
+    solver.getUnsatCore().map(ast => fromZ3Formula(null, ast, BooleanType) match {
       case n @ Not(Variable(_)) => n
       case v @ Variable(_) => v
       case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")

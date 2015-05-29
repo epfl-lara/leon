@@ -86,12 +86,6 @@ trait AbstractZ3Solver
     }
   }
 
-  object LeonType {
-    def unapply(a: Z3Sort): Option[(TypeTree)] = {
-      sorts.getLeon(a).map(tt => tt)
-    }
-  }
-
   class Bijection[A, B] {
     var leonToZ3 = Map[A, B]()
     var z3ToLeon = Map[B, A]()
@@ -559,7 +553,7 @@ trait AbstractZ3Solver
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
       case InfiniteIntegerLiteral(v) => z3.mkNumeral(v.toString, typeToSort(IntegerType))
-      case CharLiteral(c) => z3.mkInt(c, typeToSort(Int32Type))
+      case CharLiteral(c) => z3.mkInt(c, typeToSort(CharType))
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case UnitLiteral() => unitValue
       case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
@@ -728,17 +722,32 @@ trait AbstractZ3Solver
     }
   }
 
-  protected[leon] def fromZ3Formula(model: Z3Model, tree : Z3AST) : Expr = {
-    def rec(t: Z3AST): Expr = {
+  protected[leon] def fromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree) : Expr = {
+
+    // This is unsafe and should be avoided because sorts<->types are not a bijection
+    // For instance, both Int32Type and CharType compile to BV32
+
+    def recGuess(t: Z3AST): Expr = {
+      val s = z3.getSort(t)
+      rec(t, sorts.toLeon(s))
+    }
+
+    def rec(t: Z3AST, tpe: TypeTree): Expr = {
       val kind = z3.getASTKind(t)
-      val sort = z3.getSort(t)
 
       kind match {
         case Z3NumeralIntAST(Some(v)) => {
           val leading = t.toString.substring(0, 2 min t.toString.length)
           if(leading == "#x") {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
-              case Some(hexa) => IntLiteral(hexa.toInt)
+              case Some(hexa) =>
+                tpe match {
+                  case Int32Type => IntLiteral(hexa.toInt)
+                  case CharType  => CharLiteral(hexa.toInt.toChar)
+                  case _ =>
+                    println("Unexpected target type for BV value: " + tpe)
+                    throw new CantTranslateException(t)
+                }
               case None => {
                 println("Z3NumeralIntAST with None: " + t)
                 throw new CantTranslateException(t)
@@ -750,7 +759,14 @@ trait AbstractZ3Solver
         }
         case Z3NumeralIntAST(None) => {
           _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
-            case Some(hexa) => IntLiteral(hexa.toInt)
+              case Some(hexa) =>
+                tpe match {
+                  case Int32Type => IntLiteral(hexa.toInt)
+                  case CharType  => CharLiteral(hexa.toInt.toChar)
+                  case _ =>
+                    println("Unexpected target type for BV value: " + tpe)
+                    throw new CantTranslateException(t)
+                }
             case None => {
               println("Z3NumeralIntAST with None: " + t)
               throw new CantTranslateException(t)
@@ -764,87 +780,85 @@ trait AbstractZ3Solver
           } else if(functions containsZ3 decl) {
             val tfd = functions.toLeon(decl)
             assert(tfd.params.size == argsSize)
-            FunctionInvocation(tfd, args.map(rec))
+            FunctionInvocation(tfd, args.zip(tfd.params).map{ case (a, p) => rec(a, p.getType) })
           } else if(argsSize == 1 && (reverseADTTesters contains decl)) {
             val cct = reverseADTTesters(decl)
-            CaseClassInstanceOf(cct, rec(args.head))
+            CaseClassInstanceOf(cct, rec(args.head, cct.root))
           } else if(argsSize == 1 && (reverseADTFieldSelectors contains decl)) {
             val (cct, fid) = reverseADTFieldSelectors(decl)
-            CaseClassSelector(cct, rec(args.head), fid)
+            CaseClassSelector(cct, rec(args.head, cct), fid)
           } else if(reverseADTConstructors contains decl) {
             val cct = reverseADTConstructors(decl)
             assert(argsSize == cct.fields.size)
-            CaseClass(cct, args.map(rec))
+            CaseClass(cct, args.zip(cct.fieldsTypes).map{ case (a, t) => rec(a, t) })
           } else if (generics containsZ3 decl)  {
             generics.toLeon(decl)
           } else {
-            sort match {
-              case LeonType(tp: TypeParameter) =>
+            tpe match {
+              case tp: TypeParameter =>
                 val id = t.toString.split("!").last.toInt
                 GenericValue(tp, id)
 
-              case LeonType(tp: TupleType) =>
-                val rargs = args.map(rec)
+              case TupleType(ts) =>
+                val rargs = args.zip(ts).map{ case (a, t) => rec(a, t) }
                 tupleWrap(rargs)
 
-              case LeonType(at @ ArrayType(dt)) =>
+              case at @ ArrayType(dt) =>
                 assert(args.size == 2)
-                val length = rec(args(1)) match {
-                  case InfiniteIntegerLiteral(length) => length.toInt
+                val length = rec(args(1), Int32Type) match {
                   case IntLiteral(length) => length
                   case _ => throw new CantTranslateException(t)
                 }
                 model.getArrayValue(args(0)) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
-                    val elseValue = rec(elseZ3Value)
+                    val elseValue = rec(elseZ3Value, dt)
                     val valuesMap = map.map { case (k,v) =>
-                      val index = rec(k) match {
-                        case InfiniteIntegerLiteral(index) => index.toInt
+                      val index = rec(k, Int32Type) match {
                         case IntLiteral(index) => index
                         case _ => throw new CantTranslateException(t)
                       }
-                      index -> rec(v)
+                      index -> rec(v, dt)
                     }
 
                     finiteArray(valuesMap, Some(elseValue, IntLiteral(length)), dt)
                 }
 
-              case LeonType(tpe @ MapType(kt, vt)) =>
+              case tpe @ MapType(kt, vt) =>
                 model.getArrayValue(t) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
                     val values = map.toSeq.map { case (k, v) => (k, z3.getASTKind(v)) }.collect {
                       case (k, Z3AppAST(cons, arg :: Nil)) if cons == mapRangeSomeConstructors(vt) =>
-                        (rec(k), rec(arg))
+                        (rec(k, kt), rec(arg, vt))
                     }
 
                     finiteMap(values, kt, vt)
                 }
 
-              case LeonType(FunctionType(fts, tt)) =>
+              case FunctionType(fts, tt) =>
                 model.getArrayValue(t) match {
                   case None => throw new CantTranslateException(t)
                   case Some((map, elseZ3Value)) =>
-                    val leonElseValue = rec(elseZ3Value)
-                    val leonMap = map.toSeq.map(p => rec(p._1) -> rec(p._2))
+                    val leonElseValue = rec(elseZ3Value, tt)
+                    val leonMap = map.toSeq.map(p => rec(p._1, tupleTypeWrap(fts)) -> rec(p._2, tt))
                     finiteLambda(leonElseValue, leonMap, fts)
                 }
 
-              case LeonType(tpe @ SetType(dt)) =>
+              case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
                   case None => throw new CantTranslateException(t)
                   case Some(set) =>
-                    val elems = set.map(e => rec(e))
+                    val elems = set.map(e => rec(e, dt))
                     finiteSet(elems, dt)
                 }
 
-              case LeonType(UnitType) =>
+              case UnitType =>
                 UnitLiteral()
 
               case _ =>
                 import Z3DeclKind._
-                val rargs = args.map(rec)
+                val rargs = args.map(recGuess)
                 z3.getDeclKind(decl) match {
                   case OpTrue =>    BooleanLiteral(true)
                   case OpFalse =>   BooleanLiteral(false)
@@ -879,59 +893,12 @@ trait AbstractZ3Solver
           throw new CantTranslateException(t)
       }
     }
-    rec(tree)
+    rec(tree, tpe)
   }
 
-  // Tries to convert a Z3AST into a *ground* Expr. Doesn't try very hard, because
-  //   1) we assume Z3 simplifies ground terms, so why match for +, etc, and
-  //   2) we use this precisely in one context, where we know function invocations won't show up, etc.
-  protected[leon] def asGround(tree : Z3AST) : Option[Expr] = {
-    val e = new Exception("Not ground.")
-
-    def rec(t : Z3AST) : Expr = z3.getASTKind(t) match {
-      case Z3AppAST(decl, args) => {
-        val argsSize = args.size
-        if(functions containsZ3 decl) {
-          val tfd = functions.toLeon(decl)
-          FunctionInvocation(tfd, args.map(rec))
-        } else if(argsSize == 1 && reverseADTTesters.isDefinedAt(decl)) {
-          val cct = reverseADTTesters(decl)
-          CaseClassInstanceOf(cct, rec(args.head))
-        } else if(argsSize == 1 && reverseADTFieldSelectors.isDefinedAt(decl)) {
-          val (cct, fid) = reverseADTFieldSelectors(decl)
-          CaseClassSelector(cct, rec(args.head), fid)
-        } else if(reverseADTConstructors.isDefinedAt(decl)) {
-          val cct = reverseADTConstructors(decl)
-          CaseClass(cct, args.map(rec))
-        } else {
-          z3.getSort(t) match {
-            case LeonType(t : TupleType) =>
-              tupleWrap(args.map(rec))
-
-            case _ =>
-              import Z3DeclKind._
-              z3.getDeclKind(decl) match {
-                case OpTrue => BooleanLiteral(true)
-                case OpFalse => BooleanLiteral(false)
-                case _ => throw e
-              }
-          }
-        }
-      }
-      case Z3NumeralIntAST(Some(v)) => InfiniteIntegerLiteral(v)
-      case _ => throw e
-    }
-
+  protected[leon] def softFromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree) : Option[Expr] = {
     try {
-      Some(rec(tree))
-    } catch {
-      case e : Exception => None
-    }
-  }
-
-  protected[leon] def softFromZ3Formula(model: Z3Model, tree : Z3AST) : Option[Expr] = {
-    try {
-      Some(fromZ3Formula(model, tree))
+      Some(fromZ3Formula(model, tree, tpe))
     } catch {
       case e: CantTranslateException => None
     }

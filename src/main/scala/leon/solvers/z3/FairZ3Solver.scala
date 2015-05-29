@@ -11,6 +11,7 @@ import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ExprOps._
+import purescala.Types._
 
 import solvers.templates._
 
@@ -64,11 +65,11 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
           val tfd = functions.toLeon(p._1)
           if (!tfd.hasImplementation) {
             val (cses, default) = p._2
-            val ite = cses.foldLeft(fromZ3Formula(model, default))((expr, q) => IfExpr(
+            val ite = cses.foldLeft(fromZ3Formula(model, default, tfd.returnType))((expr, q) => IfExpr(
               andJoin(
-                q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1), Variable(a12._2.id)))
+                q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1, a12._2.getType), Variable(a12._2.id)))
               ),
-              fromZ3Formula(model, q._2),
+              fromZ3Formula(model, q._2, tfd.returnType),
               expr))
             Seq((tfd.id, ite))
           } else Seq()
@@ -79,7 +80,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
         if(functions containsZ3 p._1) {
           val tfd = functions.toLeon(p._1)
           if(!tfd.hasImplementation) {
-            Seq((tfd.id, fromZ3Formula(model, p._2)))
+            Seq((tfd.id, fromZ3Formula(model, p._2, tfd.returnType)))
           } else Seq()
         } else Seq()
       }).toMap
@@ -223,7 +224,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     val assumptionsAsZ3Set: Set[Z3AST] = assumptionsAsZ3.toSet
 
     def z3CoreToCore(core: Seq[Z3AST]): Set[Expr] = {
-      core.filter(assumptionsAsZ3Set).map(ast => fromZ3Formula(null, ast) match {
+      core.filter(assumptionsAsZ3Set).map(ast => fromZ3Formula(null, ast, BooleanType) match {
           case n @ Not(Variable(_)) => n
           case v @ Variable(_) => v
           case x => scala.sys.error("Impossible element extracted from core: " + ast + " (as Leon tree : " + x + ")")
