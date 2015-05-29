@@ -1,5 +1,6 @@
 # Vim
 *.swp
+*.swo
 
 # emacs
 *~
