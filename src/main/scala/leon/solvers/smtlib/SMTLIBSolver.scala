@@ -729,6 +729,13 @@ abstract class SMTLIBSolver(val context: LeonContext,
         unsupported("Unknown symbol: "+s)
       }
 
+    case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
+      IfExpr(
+        fromSMT(cond, BooleanType),
+        fromSMT(thenn, t),
+        fromSMT(elze, t)
+      )
+
     case (FunctionApplication(SimpleSymbol(s), args), tpe) if constructors.containsB(s) =>
       constructors.toA(s) match {
         case cct: CaseClassType =>
