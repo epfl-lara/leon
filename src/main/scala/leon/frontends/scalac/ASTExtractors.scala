@@ -613,7 +613,7 @@ trait ASTExtractors {
     object ExBoundedForallExpression {
       def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
         case a @ Apply(
-            TypeApply(s @ ExSymbol("leon", "lang", "boundedForall"), types),
+            ExSymbol("leon", "lang", "boundedForall"),
             List(from, to, pred)) =>
           Some((from, to, pred))
         case _ => None
@@ -640,7 +640,7 @@ trait ASTExtractors {
     object ExBoundedExistsExpression {
       def unapply(tree: Apply) : Option[(Tree, Tree, Tree)] = tree match {
         case a @ Apply(
-            TypeApply(s @ ExSymbol("leon", "lang", "boundedExists"), types),
+            ExSymbol("leon", "lang", "boundedExists"),
             List(from, to, pred)) =>
           Some((from, to, pred))
         case _ => None

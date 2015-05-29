@@ -72,8 +72,8 @@ package object lang {
   def arrayExists[A](array: Array[A], from: Int, to: Int, pred: A => Boolean): Boolean = ???
 
   @ignore
-  def boundedForall(from: Int, to: Int, pred: Int => Boolean): Boolean = ???
+  def boundedForall(from: BigInt, to: BigInt, pred: BigInt => Boolean): Boolean = ???
   @ignore
-  def boundedExists(from: Int, to: Int, pred: Int => Boolean): Boolean = ???
+  def boundedExists(from: BigInt, to: BigInt, pred: BigInt => Boolean): Boolean = ???
 
 }

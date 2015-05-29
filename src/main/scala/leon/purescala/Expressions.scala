@@ -205,14 +205,14 @@ object Expressions {
 
   case class BoundedForall(from: Expr, to: Expr, body: Expr) extends Expr {
     require(body.getType match {
-      case FunctionType(Seq(Int32Type), BooleanType) => true
+      case FunctionType(Seq(IntegerType), BooleanType) => true
       case _ => false
     })
     val getType = BooleanType
   }
   case class BoundedExists(from: Expr, to: Expr, body: Expr) extends Expr {
     require(body.getType match {
-      case FunctionType(Seq(Int32Type), BooleanType) => true
+      case FunctionType(Seq(IntegerType), BooleanType) => true
       case _ => false
     })
     val getType = BooleanType

@@ -603,7 +603,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       
 
       case BoundedForall(from, to, pred) =>
-        val index = FreshIdentifier("i", Int32Type)
+        val index = FreshIdentifier("i", IntegerType)
         declareVariable(index)
 
         val Lambda(Seq(ValDef(el, _)), predBody) = pred
@@ -611,16 +611,16 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val rSubstBody = toSMT(substBody)
 
         SMTForall(
-          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          SortedVar(id2sym(index), declareSort(IntegerType)), Seq(),
           Core.Implies(
             Core.And(
-              FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
-              FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to))),
+              Ints.GreaterEquals(id2sym(index), toSMT(from)),
+              Ints.LessThan(id2sym(index), toSMT(to))),
             rSubstBody
           )
         )
       case BoundedExists(from, to, pred) =>
-        val index = FreshIdentifier("i", Int32Type)
+        val index = FreshIdentifier("i", IntegerType)
         declareVariable(index)
 
         val Lambda(Seq(ValDef(el, _)), predBody) = pred
@@ -628,10 +628,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val rSubstBody = toSMT(substBody)
 
         SMTExists(
-          SortedVar(id2sym(index), declareSort(Int32Type)), Seq(),
+          SortedVar(id2sym(index), declareSort(IntegerType)), Seq(),
           Core.And(
-            FixedSizeBitVectors.SGreaterEquals(id2sym(index), toSMT(from)),
-            FixedSizeBitVectors.SLessThan(id2sym(index), toSMT(to)),
+            Ints.GreaterEquals(id2sym(index), toSMT(from)),
+            Ints.LessThan(id2sym(index), toSMT(to)),
             rSubstBody
           )
         )
