@@ -650,8 +650,35 @@ trait ASTExtractors {
     object ExArrayUpdated {
       def unapply(tree: Apply): Option[(Tree,Tree,Tree)] = tree match {
         case Apply(
-              Apply(TypeApply(Select(Apply(ExSelected("scala", "Predef", s), Seq(lhs)), n), _), Seq(index, value)),
-              List(Apply(_, _))) if (s.toString contains "Array") && (n.toString == "updated") => Some((lhs, index, value))
+               Apply(
+                 TypeApply(
+                   Select(
+                     Apply(ExSelected("scala", "Predef", s), Seq(lhs)), 
+                     n
+                   ), 
+                   _
+                 ), 
+                 Seq(index, value)
+               ),
+               List(Apply(_, _))
+             ) if (s.toString contains "Array") && 
+                  (n.toString == "updated") => 
+          Some((lhs, index, value))
+        case Apply(
+               Apply(
+                 TypeApply(
+                   Select(
+                     Apply(TypeApply(ExSelected("scala", "Predef", s), tpes), Seq(lhs)),
+                     n
+                   ),
+                   _
+                 ), 
+                 Seq(index, value)
+               ),
+               List(Apply(_, _))
+             ) if (s.toString contains "Array") && 
+                  (n.toString == "updated") => 
+          Some((lhs, index, value))
         case _ => None
       }
     }
