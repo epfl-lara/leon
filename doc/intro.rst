@@ -1,22 +1,34 @@
 Introduction
 ============
 
-The Leon system is an automated system for verifying, repairing, and
-synthesizing Scala programs.
+The Leon system aims to help developers build verified Scala software.
+It encourages using a small set of core Scala features, but provides
+advanced automation functionality users do not obtain in today's 
+compilers and development environments for programming languages. 
+In particular, Leon can
 
-Leon supports programs written in :ref:`Pure Scala <purescala>`, a purely
-functional subset of Scala.  The :ref:`XLang <xlang>` extension enables Leon to
-work on a richer subset of Scala, including imperative features. From the
-perspective of the end user, that distinction between the two sets of features
-should be mostly meaningless, but it can help getting an intuition when trying
-to prove difficult properties.
+* verify statically that your program confirms to a given
+  specification and that it cannot crash at run-time
 
+* repair a program for you to ensure that the above holds
+
+* automatically execute and synthesize working functions
+  from partial input/output specifications and test cases.
+
+Leon primarily supports programs written in :ref:`Pure Scala <purescala>`, a purely
+functional subset of Scala.  That said, the :ref:`XLang <xlang>` extension enables Leon to
+work on a richer subset of Scala, including imperative features. 
 The :ref:`Pure Scala <purescala>` features are at the *core* of the Leon
 system. They are considered as primitives and get a personalized treatment in
-the solving algorithms of Leon. On the other hand, any feature introduced by
-:ref:`XLang <xlang>` can be --- and is --- encoded into a mix of Pure Scala
-concepts. However, they are more than just syntactic sugar --- some of those
-features actually require significant modification of the original program.
+the solving algorithms of Leon. On the other hand, features introduced by
+:ref:`XLang <xlang>` are handled by translation into Pure Scala
+concepts. They are often more than just syntactic sugar, because some of them
+require significant modification of the original program, such as introducing
+additional parameters to a set of functions.
+
+If you would like to use Leon now, check the :ref:`Getting Started <gettingstarted>`
+section and try our :ref:`Tutorial <tutorial>`.
+To learn more about the functionality that Leon provides, read on below.
 
 Software Verification
 ---------------------

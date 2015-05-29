@@ -96,7 +96,7 @@ Building Documentation
 
 To build this documentation locally, you will need Sphinx (
 http://sphinx-doc.org/ ), a restructured text toolkit that
-was originally build to support Python documentation. You will
+was originally developed to support Python documentation. You will
 also need `make`.
 
 After installing sphinx, entering the `doc/` directory of

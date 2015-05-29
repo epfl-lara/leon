@@ -30,7 +30,7 @@ into `y < res`, Leon should report a counterexample; try
 clicking on the names of parameters `x` and `y` as well
 as various parts in the `ensuring` clause.
 
-You can also select from a number of predefined examples,
+You can also **select from a number of provided examples**,
 and then edit them subsequently.  Selecting a different
 sample program from the web interface will erase the
 previously entered program.
