@@ -26,7 +26,7 @@ class NewSolversRegression extends VerificationRegression {
     }
 
     if (isCVC4Available)
-      List(List("--solvers=smt-cvc4-cex,smt-cvc4-proof", "--timeout=15"))
+      List(List("--solvers=smt-cvc4-cex,smt-cvc4-proof", "--feelinglucky", "--timeout=3"))
     else Nil
 
   }
