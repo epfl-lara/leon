@@ -225,7 +225,12 @@ abstract class SMTLIBSolver(val context: LeonContext,
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],
       // with default value == None
-      require(from == r.keyTpe && r.default == OptionManager.mkLeonNone(to))
+      if (r.default != OptionManager.mkLeonNone(to)) {
+        reporter.warning("Co-finite maps are not supported. (Default was "+r.default+")")
+        throw new IllegalArgumentException
+      }
+      require(r.keyTpe == from, s"Type error in solver model, expected $from, found ${r.keyTpe}")
+
       val elems = r.elems.flatMap {
         case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
         case (k, _) => None

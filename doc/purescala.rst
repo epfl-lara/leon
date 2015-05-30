@@ -297,6 +297,10 @@ Map
  m isDefinedAt index
  m contains index
  m.updated(index, value)
+ m + (index -> value)
+ m + (value, index)
+ m.get(index)
+ m.getOrElse(index, value2)
 
 
 Function

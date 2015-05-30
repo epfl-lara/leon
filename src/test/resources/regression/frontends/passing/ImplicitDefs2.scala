@@ -3,7 +3,6 @@ package leon.blup
 import leon._
 import leon.lang._
 import leon.annotation._
-import leon.collection.{Option,None,Some}
 //import leon.proof._
 
 // FIXME: the following should go into the leon.proof package object.

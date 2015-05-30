@@ -156,6 +156,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     case DefineFun(SMTFunDef(a, Seq(SortedVar(arg, akind)), rkind, body)) =>
       val (argTpe, retTpe) = tpe match {
         case SetType(base) => (base, BooleanType)
+        case MapType(from, to) => (from, OptionManager.leonOptionType(to))
         case ArrayType(base) => (Int32Type, base)
         case FunctionType(args, ret) => (tupleTypeWrap(args), ret)
         case RawArrayType(from, to) => (from, to)

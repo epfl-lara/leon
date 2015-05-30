@@ -520,6 +520,7 @@ trait CodeExtraction extends ASTExtractors {
 
         parent.foreach(_.classDef.registerChildren(ccd))
 
+
         classesToClasses += sym -> ccd
 
         val fields = args.map { case (symbol, t) =>
@@ -1704,6 +1705,19 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, MapType(_, vt)), "apply", List(a2)) =>
               MapGet(a1, a2)
 
+            case (IsTyped(a1, MapType(_, vt)), "get", List(a2)) =>
+              val someClass = CaseClassType(libraryCaseClass(sym.pos, "leon.lang.Some"), Seq(vt))
+              val noneClass = CaseClassType(libraryCaseClass(sym.pos, "leon.lang.None"), Seq(vt))
+
+              IfExpr(MapIsDefinedAt(a1, a2).setPos(current.pos),
+                CaseClass(someClass, Seq(MapGet(a1, a2).setPos(current.pos))).setPos(current.pos),
+                CaseClass(noneClass, Seq()).setPos(current.pos))
+
+            case (IsTyped(a1, MapType(_, vt)), "getOrElse", List(a2, a3)) =>
+              IfExpr(MapIsDefinedAt(a1, a2).setPos(current.pos),
+                MapGet(a1, a2).setPos(current.pos),
+                a3)
+
             case (IsTyped(a1, mt: MapType), "isDefinedAt", List(a2)) =>
               MapIsDefinedAt(a1, a2)
 
@@ -1712,6 +1726,17 @@ trait CodeExtraction extends ASTExtractors {
 
             case (IsTyped(a1, mt: MapType), "updated", List(k, v)) =>
               MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
+
+            case (IsTyped(a1, mt: MapType), "+", List(k, v)) =>
+              MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
+
+            case (IsTyped(a1, mt: MapType), "+", List(IsTyped(kv, TupleType(List(_, _))))) =>
+              kv match {
+                case Tuple(List(k, v)) =>
+                  MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
+                case kv =>
+                  MapUnion(a1, FiniteMap(Seq((TupleSelect(kv, 1), TupleSelect(kv, 2))), mt.from, mt.to))
+              }
 
             case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>
               MapUnion(a1, a2)
