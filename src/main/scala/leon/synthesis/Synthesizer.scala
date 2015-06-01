@@ -10,7 +10,6 @@ import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ScalaPrinter
 import solvers._
-import solvers.z3._
 
 import scala.concurrent.duration._
 

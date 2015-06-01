@@ -6,7 +6,6 @@ package purescala
 import Expressions._
 import Common._
 import Types._
-import Definitions._
 import Constructors._
 import ExprOps._
 
