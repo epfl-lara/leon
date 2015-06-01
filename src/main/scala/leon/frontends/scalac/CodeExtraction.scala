@@ -1596,6 +1596,8 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, IntegerType), "*", List(IsTyped(a2, IntegerType))) =>
               Times(a1, a2)
             case (IsTyped(a1, IntegerType), "%", List(IsTyped(a2, IntegerType))) =>
+              Remainder(a1, a2)
+            case (IsTyped(a1, IntegerType), "mod", List(IsTyped(a2, IntegerType))) =>
               Modulo(a1, a2)
             case (IsTyped(a1, IntegerType), "/", List(IsTyped(a2, IntegerType))) =>
               Division(a1, a2)
@@ -1616,7 +1618,7 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, Int32Type), "*", List(IsTyped(a2, Int32Type))) =>
               BVTimes(a1, a2)
             case (IsTyped(a1, Int32Type), "%", List(IsTyped(a2, Int32Type))) =>
-              BVModulo(a1, a2)
+              BVRemainder(a1, a2)
             case (IsTyped(a1, Int32Type), "/", List(IsTyped(a2, Int32Type))) =>
               BVDivision(a1, a2)
 

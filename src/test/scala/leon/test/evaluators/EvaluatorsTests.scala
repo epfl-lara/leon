@@ -174,7 +174,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
                |    if(s > n) c else intSqrt0(n, c+1)
                |  }
                |  def div(x : Int, y : Int) : Int = (x / y)
-               |  def mod(x : Int, y : Int) : Int = (x % y)
+               |  def rem(x : Int, y : Int) : Int = (x % y)
                |}
                |""".stripMargin
 
@@ -191,15 +191,15 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       checkComp(e, mkCall("div", IL(7), IL(-5)), IL(-1))
       checkComp(e, mkCall("div", IL(-7), IL(5)), IL(-1))
       checkComp(e, mkCall("div", IL(-7), IL(-5)), IL(1))
-      checkComp(e, mkCall("mod", IL(7), IL(5)), IL(2))
-      checkComp(e, mkCall("mod", IL(7), IL(-5)), IL(2))
-      checkComp(e, mkCall("mod", IL(-7), IL(5)), IL(-2))
-      checkComp(e, mkCall("mod", IL(-7), IL(-5)), IL(-2))
-      checkComp(e, mkCall("mod", IL(-1), IL(5)), IL(-1))
+      checkComp(e, mkCall("rem", IL(7), IL(5)), IL(2))
+      checkComp(e, mkCall("rem", IL(7), IL(-5)), IL(2))
+      checkComp(e, mkCall("rem", IL(-7), IL(5)), IL(-2))
+      checkComp(e, mkCall("rem", IL(-7), IL(-5)), IL(-2))
+      checkComp(e, mkCall("rem", IL(-1), IL(5)), IL(-1))
 
       // Things that should crash.
       checkError(e, mkCall("div", IL(42), IL(0))) 
-      checkError(e, mkCall("mod", IL(42), IL(0)))
+      checkError(e, mkCall("rem", IL(42), IL(0)))
     }
   }
 
@@ -215,7 +215,8 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
                |    if(s > n) c else intSqrt0(n, c+1)
                |  }
                |  def div(x : BigInt, y : BigInt) : BigInt = (x / y)
-               |  def mod(x : BigInt, y : BigInt) : BigInt = (x % y)
+               |  def rem(x : BigInt, y : BigInt) : BigInt = (x % y)
+               |  def mod(x : BigInt, y : BigInt) : BigInt = (x mod y)
                |}
                |""".stripMargin
 
@@ -232,14 +233,20 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
       checkComp(e, mkCall("div", BIL(7), BIL(-5)), BIL(-1))
       checkComp(e, mkCall("div", BIL(-7), BIL(5)), BIL(-1))
       checkComp(e, mkCall("div", BIL(-7), BIL(-5)), BIL(1))
+      checkComp(e, mkCall("rem", BIL(7), BIL(5)), BIL(2))
+      checkComp(e, mkCall("rem", BIL(7), BIL(-5)), BIL(2))
+      checkComp(e, mkCall("rem", BIL(-7), BIL(5)), BIL(-2))
+      checkComp(e, mkCall("rem", BIL(-7), BIL(-5)), BIL(-2))
+      checkComp(e, mkCall("rem", BIL(-1), BIL(5)), BIL(-1))
       checkComp(e, mkCall("mod", BIL(7), BIL(5)), BIL(2))
       checkComp(e, mkCall("mod", BIL(7), BIL(-5)), BIL(2))
-      checkComp(e, mkCall("mod", BIL(-7), BIL(5)), BIL(-2))
-      checkComp(e, mkCall("mod", BIL(-7), BIL(-5)), BIL(-2))
-      checkComp(e, mkCall("mod", BIL(-1), BIL(5)), BIL(-1))
+      checkComp(e, mkCall("mod", BIL(-7), BIL(5)), BIL(3))
+      checkComp(e, mkCall("mod", BIL(-7), BIL(-5)), BIL(3))
+      checkComp(e, mkCall("mod", BIL(-1), BIL(5)), BIL(4))
 
       // Things that should crash.
       checkError(e, mkCall("div", BIL(42), BIL(0))) 
+      checkError(e, mkCall("rem", BIL(42), BIL(0)))
       checkError(e, mkCall("mod", BIL(42), BIL(0)))
     }
   }

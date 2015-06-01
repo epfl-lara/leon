@@ -357,7 +357,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Minus(l,r)                => optP { p"$l - $r" }
       case Times(l,r)                => optP { p"$l * $r" }
       case Division(l,r)             => optP { p"$l / $r" }
-      case Modulo(l,r)               => optP { p"$l % $r" }
+      case Remainder(l,r)            => optP { p"$l % $r" }
+      case Modulo(l,r)               => optP { p"$l mod $r" }
       case LessThan(l,r)             => optP { p"$l < $r" }
       case GreaterThan(l,r)          => optP { p"$l > $r" }
       case LessEquals(l,r)           => optP { p"$l <= $r" }
@@ -366,7 +367,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case BVMinus(l,r)              => optP { p"$l - $r" }
       case BVTimes(l,r)              => optP { p"$l * $r" }
       case BVDivision(l,r)           => optP { p"$l / $r" }
-      case BVModulo(l,r)             => optP { p"$l % $r" }
+      case BVRemainder(l,r)          => optP { p"$l % $r" }
       case BVAnd(l,r)                => optP { p"$l & $r" }
       case BVOr(l,r)                 => optP { p"$l | $r" }
       case BVXOr(l,r)                => optP { p"$l ^ $r" }
@@ -741,9 +742,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: And | BinaryMethodCall(_, "&&", _)) => 3
     case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
     case (_: Equals | _: Not) => 5
-    case (_: Plus | _: BVPlus | _: Minus | _: BVMinus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 6
-    case (_: Times | _: BVTimes | _: Division | _: BVDivision | _: Modulo | _: BVModulo | BinaryMethodCall(_, "*" | "/", _)) => 7
-    case _ => 7
+    case (_: Modulo) => 6
+    case (_: Plus | _: BVPlus | _: Minus | _: BVMinus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 7
+    case (_: Times | _: BVTimes | _: Division | _: BVDivision | _: Remainder | _: BVRemainder | BinaryMethodCall(_, "*" | "/", _)) => 8
+    case _ => 9
   }
 
   def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {

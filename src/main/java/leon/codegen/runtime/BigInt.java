@@ -40,7 +40,10 @@ public final class BigInt {
   }
 
   public BigInt mod(BigInt that) {
-    return new BigInt(_underlying.mod(that.underlying()));
+    if(that.underlying().compareTo(new BigInteger("0")) < 0)
+      return new BigInt(_underlying.mod(that.underlying().negate()));
+    else
+      return new BigInt(_underlying.mod(that.underlying()));
   }
 
   public BigInt neg() {

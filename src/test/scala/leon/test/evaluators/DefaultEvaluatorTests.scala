@@ -79,10 +79,13 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
       InfiniteIntegerLiteral(6))
   }
 
-  test("Eval of division and modulo semantics for BigInt") {
+  test("Eval of division, remainder and modulo semantics for BigInt") {
     expectSuccessful(
       defaultEvaluator.eval(Division(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3))), 
       InfiniteIntegerLiteral(3))
+    expectSuccessful(
+      defaultEvaluator.eval(Remainder(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(1))
     expectSuccessful(
       defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3))), 
       InfiniteIntegerLiteral(1))
@@ -91,51 +94,60 @@ class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
       defaultEvaluator.eval(Division(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3))), 
       InfiniteIntegerLiteral(0))
     expectSuccessful(
-      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3))), 
+      defaultEvaluator.eval(Remainder(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3))), 
       InfiniteIntegerLiteral(-1))
+    expectSuccessful(
+      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3))), 
+      InfiniteIntegerLiteral(2))
 
     expectSuccessful(
       defaultEvaluator.eval(Division(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))), 
       InfiniteIntegerLiteral(0))
     expectSuccessful(
-      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))), 
+      defaultEvaluator.eval(Remainder(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))), 
       InfiniteIntegerLiteral(-1))
+    expectSuccessful(
+      defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))), 
+      InfiniteIntegerLiteral(2))
 
     expectSuccessful(
       defaultEvaluator.eval(Division(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3))), 
       InfiniteIntegerLiteral(0))
     expectSuccessful(
+      defaultEvaluator.eval(Remainder(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3))), 
+      InfiniteIntegerLiteral(1))
+    expectSuccessful(
       defaultEvaluator.eval(Modulo(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3))), 
       InfiniteIntegerLiteral(1))
   }
 
-  test("Eval of division and modulo semantics for bit vectors") {
+  test("Eval of division and remainder semantics for bit vectors") {
     expectSuccessful(
       defaultEvaluator.eval(BVDivision(IntLiteral(10), IntLiteral(3))), 
       IntLiteral(3))
     expectSuccessful(
-      defaultEvaluator.eval(BVModulo(IntLiteral(10), IntLiteral(3))), 
+      defaultEvaluator.eval(BVRemainder(IntLiteral(10), IntLiteral(3))), 
       IntLiteral(1))
 
     expectSuccessful(
       defaultEvaluator.eval(BVDivision(IntLiteral(-1), IntLiteral(3))), 
       IntLiteral(0))
     expectSuccessful(
-      defaultEvaluator.eval(BVModulo(IntLiteral(-1), IntLiteral(3))), 
+      defaultEvaluator.eval(BVRemainder(IntLiteral(-1), IntLiteral(3))), 
       IntLiteral(-1))
 
     expectSuccessful(
       defaultEvaluator.eval(BVDivision(IntLiteral(-1), IntLiteral(-3))), 
       IntLiteral(0))
     expectSuccessful(
-      defaultEvaluator.eval(BVModulo(IntLiteral(-1), IntLiteral(-3))), 
+      defaultEvaluator.eval(BVRemainder(IntLiteral(-1), IntLiteral(-3))), 
       IntLiteral(-1))
 
     expectSuccessful(
       defaultEvaluator.eval(BVDivision(IntLiteral(1), IntLiteral(-3))), 
       IntLiteral(0))
     expectSuccessful(
-      defaultEvaluator.eval(BVModulo(IntLiteral(1), IntLiteral(-3))), 
+      defaultEvaluator.eval(BVRemainder(IntLiteral(1), IntLiteral(-3))), 
       IntLiteral(1))
   }
 

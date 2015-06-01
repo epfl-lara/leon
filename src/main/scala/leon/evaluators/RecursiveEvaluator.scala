@@ -289,10 +289,21 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
       }
 
+    case Remainder(l,r) =>
+      (e(l), e(r)) match {
+        case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) =>
+          if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Remainder of division by 0.")
+        case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
+      }
     case Modulo(l,r) =>
       (e(l), e(r)) match {
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => 
-          if(i2 != BigInt(0)) InfiniteIntegerLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
+          if(i2 < 0)
+            InfiniteIntegerLiteral(i1 mod (-i2))
+          else if(i2 != BigInt(0)) 
+            InfiniteIntegerLiteral(i1 mod i2) 
+          else 
+            throw RuntimeError("Modulo of division by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
       }
 
@@ -309,10 +320,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 
-    case BVModulo(l,r) =>
+    case BVRemainder(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => 
-          if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Modulo by 0.")
+          if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Remainder of division by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
 

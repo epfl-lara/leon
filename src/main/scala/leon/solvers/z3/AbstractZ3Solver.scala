@@ -569,16 +569,19 @@ trait AbstractZ3Solver
           z3.mkUnaryMinus(z3.mkDiv(z3.mkUnaryMinus(rl), rr))
         )
       }
-      case Modulo(l, r) => {
+      case Remainder(l, r) => {
         val q = rec(Division(l, r))
         z3.mkSub(rec(l), z3.mkMul(rec(r), q))
+      }
+      case Modulo(l, r) => {
+        z3.mkMod(rec(l), rec(r))
       }
       case UMinus(e) => z3.mkUnaryMinus(rec(e))
       case BVPlus(l, r) => z3.mkBVAdd(rec(l), rec(r))
       case BVMinus(l, r) => z3.mkBVSub(rec(l), rec(r))
       case BVTimes(l, r) => z3.mkBVMul(rec(l), rec(r))
       case BVDivision(l, r) => z3.mkBVSdiv(rec(l), rec(r))
-      case BVModulo(l, r) => z3.mkBVSrem(rec(l), rec(r))
+      case BVRemainder(l, r) => z3.mkBVSrem(rec(l), rec(r))
       case BVUMinus(e) => z3.mkBVNeg(rec(e))
       case BVNot(e) => z3.mkBVNot(rec(e))
       case BVAnd(l, r) => z3.mkBVAnd(rec(l), rec(r))

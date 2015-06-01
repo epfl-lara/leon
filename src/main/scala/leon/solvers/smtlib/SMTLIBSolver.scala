@@ -649,9 +649,12 @@ abstract class SMTLIBSolver(val context: LeonContext,
           Ints.Div(ar, br),
           Ints.Neg(Ints.Div(Ints.Neg(ar), br)))
       }
-      case Modulo(a,b) => {
+      case Remainder(a,b) => {
         val q = toSMT(Division(a, b))
         Ints.Sub(toSMT(a), Ints.Mul(toSMT(b), q))
+      }
+      case Modulo(a,b) => {
+        Ints.Mod(toSMT(a), toSMT(b))
       }
       case LessThan(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
@@ -677,7 +680,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case BVMinus(a,b) => FixedSizeBitVectors.Sub(toSMT(a), toSMT(b))
       case BVTimes(a,b) => FixedSizeBitVectors.Mul(toSMT(a), toSMT(b))
       case BVDivision(a,b) => FixedSizeBitVectors.SDiv(toSMT(a), toSMT(b))
-      case BVModulo(a,b) => FixedSizeBitVectors.SRem(toSMT(a), toSMT(b))
+      case BVRemainder(a,b) => FixedSizeBitVectors.SRem(toSMT(a), toSMT(b))
       case BVAnd(a,b) => FixedSizeBitVectors.And(toSMT(a), toSMT(b))
       case BVOr(a,b) => FixedSizeBitVectors.Or(toSMT(a), toSMT(b))
       case BVXOr(a,b) => FixedSizeBitVectors.XOr(toSMT(a), toSMT(b))

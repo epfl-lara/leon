@@ -326,16 +326,20 @@ object Expressions {
     val getType = IntegerType
   }
   /*
-   * Division and Modulo follows Java/Scala semantics. Division corresponds
-   * to / operator on BigInt and Modulo corresponds to %. Note that in
-   * Java/Scala % is rather called remainder and the "mod" operator is also
-   * defined on BigInteger and differs from our Modulo. The "mod" operator
-   * returns an always positive remainder, while our Modulo could return
+   * Division and Remainder follows Java/Scala semantics. Division corresponds
+   * to / operator on BigInt and Remainder corresponds to %. Note that in
+   * Java/Scala % is called remainder and the "mod" operator (Modulo in Leon) is also
+   * defined on BigInteger and differs from Remainder. The "mod" operator
+   * returns an always positive remainder, while Remainder could return
    * a negative remainder. The following must hold:
    *
-   *    Division(x, y) * y + Modulo(x, y) == x
+   *    Division(x, y) * y + Remainder(x, y) == x
    */
   case class Division(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = IntegerType
+  }
+  case class Remainder(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val getType = IntegerType
   }
@@ -377,7 +381,7 @@ object Expressions {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  case class BVModulo(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
