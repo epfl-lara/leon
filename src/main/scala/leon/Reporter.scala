@@ -113,10 +113,24 @@ class DefaultReporter(debugSections: Set[DebugSection]) extends Reporter(debugSe
     case DEBUG(_) => "["+Console.MAGENTA          +" Debug  "+Console.RESET+"]"
   }
 
+  def smartPos(p: Position): String = {
+    if (p == NoPosition) {
+      ""
+    } else {
+      val target = p.file.getAbsolutePath()
+      val here   = new java.io.File(".").getAbsolutePath().stripSuffix(".")
+      val diff   = target.stripPrefix(here)
+
+      val filePos = diff+":"
+
+      filePos + p + ": "
+    }
+  }
+
   def emit(msg: Message) = {
     val posString = if (msg.position != NoPosition) { msg.position+": " } else { "" }
 
-    println(reline(severityToPrefix(msg.severity), posString + msg.msg.toString))
+    println(reline(severityToPrefix(msg.severity), smartPos(msg.position) + msg.msg.toString))
     printLineContent(msg.position)
   }
 
