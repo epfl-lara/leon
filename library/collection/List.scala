@@ -30,8 +30,9 @@ sealed abstract class List[T] {
     case Nil() => that
     case Cons(x, xs) => Cons(x, xs ++ that)
   }) ensuring { res =>
-    (res.content == this.content ++ that.content) && 
-    (res.size == this.size + that.size)
+    (res.content == this.content ++ that.content) &&
+    (res.size == this.size + that.size) &&
+    (that != Nil[T]() || res == this)
   }
 
   def head: T = {
@@ -285,6 +286,16 @@ sealed abstract class List[T] {
     (take(c), drop(c))
   }
 
+  def updated(i: BigInt, y: T): List[T] = {
+    require(0 <= i && i < this.size)
+    this match {
+      case Cons(x, tail) if i == 0 =>
+        Cons[T](y, tail)
+      case Cons(x, tail) =>
+        Cons[T](x, tail.updated(i - 1, y))
+    }
+  }
+
   def insertAt(pos: BigInt, l: List[T]): List[T] = (this match {
     case Nil() => l
     case Cons(h, t) =>
@@ -298,6 +309,21 @@ sealed abstract class List[T] {
   }) ensuring { res =>
     res.size == this.size + l.size &&
     res.content == this.content ++ l.content
+  }
+
+  def insertAt(pos: BigInt, e: T): List[T] = (this match {
+    case Nil() => Cons[T](e, Nil())
+    case Cons(h, t) =>
+      if (pos < 0) {
+        insertAt(size + pos, e)
+      } else if (pos == BigInt(0)) {
+        Cons(e, this)
+      } else {
+        Cons(h, t.insertAt(pos - 1, e))
+      }
+  }) ensuring { res =>
+    res.size == this.size + 1 &&
+    res.content == this.content ++ Set(e)
   }
 
   def replaceAt(pos: BigInt, l: List[T]): List[T] = (this match {
@@ -605,6 +631,53 @@ object ListSpecs {
   @induct
   def scanVsFoldRight[A,B](l: List[A], z: B, f: (A,B) => B): Boolean = {
     l.scanRight(z)(f).head == l.foldRight(z)(f)
+  }.holds
+
+  // A lemma about `append` and `updated`
+  def appendUpdate[T](l1: List[T], l2: List[T], i: BigInt, y: T): Boolean = {
+    require(0 <= i && i < l1.size + l2.size)
+    // induction scheme
+    (l1 match {
+      case Nil() => true
+      case Cons(x, xs) => if (i == 0) true else appendUpdate[T](xs, l2, i - 1, y)
+    }) &&
+      // lemma
+      ((l1 ++ l2).updated(i, y) == (
+        if (i < l1.size)
+          l1.updated(i, y) ++ l2
+        else
+          l1 ++ l2.updated(i - l1.size, y)))
+  }.holds
+
+  // a lemma about `append`, `take` and `drop`
+  def appendTakeDrop[T](l1: List[T], l2: List[T], n: BigInt): Boolean = {
+    //induction scheme
+    (l1 match {
+      case Nil() => true
+      case Cons(x, xs) => if (n <= 0) true else appendTakeDrop[T](xs, l2, n - 1)
+    }) &&
+      // lemma
+      ((l1 ++ l2).take(n) == (
+        if (n < l1.size) l1.take(n)
+        else if (n > l1.size) l1 ++ l2.take(n - l1.size)
+        else l1)) &&
+        ((l1 ++ l2).drop(n) == (
+          if (n < l1.size) l1.drop(n) ++ l2
+          else if (n > l1.size) l2.drop(n - l1.size)
+          else l2))
+  }.holds
+
+  // A lemma about `append` and `insertAt`
+  def appendInsert[T](l1: List[T], l2: List[T], i: BigInt, y: T): Boolean = {
+    require(0 <= i && i <= l1.size + l2.size)
+    (l1 match {
+      case Nil() => true
+      case Cons(x, xs) => if (i == 0) true else appendInsert[T](xs, l2, i - 1, y)
+    }) &&
+      // lemma
+      ((l1 ++ l2).insertAt(i, y) == (
+        if (i < l1.size) l1.insertAt(i, y) ++ l2
+        else l1 ++ l2.insertAt((i - l1.size), y)))
   }.holds
 
 }
