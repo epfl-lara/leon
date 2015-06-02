@@ -99,9 +99,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
     QualifiedIdentifier(SMTIdentifier(s))
   }
 
-  val adtManager = new ADTManager
+  protected val adtManager = new ADTManager(reporter)
 
-  val library = program.library
+  protected val library = program.library
 
   protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
 
@@ -251,11 +251,16 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   protected def declareStructuralSort(t: TypeTree): Sort = {
     // Populates the dependencies of the structural type to define.
-    val datatypes = adtManager.defineADT(t)
+    adtManager.defineADT(t) match {
+      case Left(adts) =>
+        declareDatatypes(adts)
+        sorts.toB(t)
 
-    declareDatatypes(datatypes)
+      case Right(conflicts) =>
+        conflicts.foreach { declareStructuralSort }
+        declareStructuralSort(t)
+    }
 
-    sorts.toB(t)
   }
 
   protected def declareVariable(id: Identifier): SSymbol = {

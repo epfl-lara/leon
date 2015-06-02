@@ -47,8 +47,6 @@ trait AbstractZ3Solver
     }
   }
 
-  class CantTranslateException(t: Z3AST) extends Exception("Can't translate from Z3 tree: " + t)
-
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
 
@@ -134,7 +132,7 @@ trait AbstractZ3Solver
   }
 
   // ADT Manager
-  protected[leon] val adtManager = new ADTManager
+  protected val adtManager = new ADTManager(reporter)
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
   protected[leon] var functions = new Bijection[TypedFunDef, Z3FuncDecl]
@@ -182,12 +180,22 @@ trait AbstractZ3Solver
   }
 
   def declareStructuralSort(t: TypeTree): Z3Sort = {
-    import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
-
     //println("///"*40)
     //println("Declaring for: "+ct)
 
-    val adts = adtManager.defineADT(t).toSeq
+    adtManager.defineADT(t) match {
+      case Left(adts) =>
+        declareDatatypes(adts.toSeq)
+        sorts.toZ3(t)
+
+      case Right(conflicts) =>
+        conflicts.foreach { declareStructuralSort }
+        declareStructuralSort(t)
+    }
+  }
+
+  def declareDatatypes(adts: Seq[(TypeTree, DataType)]): Unit = {
+    import Z3Context.{ADTSortReference, RecursiveType, RegularSort}
 
     val indexMap: Map[TypeTree, Int] = adts.map(_._1).zipWithIndex.toMap
 
@@ -228,9 +236,6 @@ trait AbstractZ3Solver
       }
     }
 
-    //println("\\\\\\"*40)
-
-    sorts.toZ3(t)
   }
 
   // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
@@ -312,9 +317,7 @@ trait AbstractZ3Solver
       }
   }
 
-  protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier,Z3AST] = Map.empty) : Option[Z3AST] = {
-
-    class CantTranslateException extends Exception
+  protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier, Z3AST] = Map.empty): Z3AST = {
 
     var z3Vars: Map[Identifier,Z3AST] = if(initialMap.nonEmpty) {
       initialMap
@@ -568,16 +571,11 @@ trait AbstractZ3Solver
 
       case _ => {
         reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex)
-        throw new CantTranslateException
+        throw new IllegalArgumentException
       }
     }
 
-    try {
-      val res = Some(rec(expr))
-      res
-    } catch {
-      case e: CantTranslateException => None
-    }
+    rec(expr)
   }
 
   protected def fromRawArray(r: Expr, tpe: TypeTree): Expr = r match {
@@ -614,12 +612,12 @@ trait AbstractZ3Solver
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ =>
-                    println("Unexpected target type for BV value: " + tpe)
-                    throw new CantTranslateException(t)
+                    reporter.warning("Unexpected target type for BV value: " + tpe)
+                    throw new IllegalArgumentException
                 }
               case None => {
-                println("Z3NumeralIntAST with None: " + t)
-                throw new CantTranslateException(t)
+                reporter.warning("Z3NumeralIntAST with None: " + t)
+                throw new IllegalArgumentException
               }
             }
           } else {
@@ -633,12 +631,12 @@ trait AbstractZ3Solver
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ =>
-                    println("Unexpected target type for BV value: " + tpe)
-                    throw new CantTranslateException(t)
+                    reporter.warning("Unexpected target type for BV value: " + tpe)
+                    throw new IllegalArgumentException
                 }
             case None => {
-              println("Z3NumeralIntAST with None: " + t)
-              throw new CantTranslateException(t)
+              reporter.warning("Z3NumeralIntAST with None: " + t)
+              throw new IllegalArgumentException
             }
           }
         }
@@ -671,12 +669,12 @@ trait AbstractZ3Solver
                   case (s : IntLiteral, RawArrayValue(_, elems, default)) =>
                     val entries = elems.map {
                       case (IntLiteral(i), v) => i -> v
-                      case _ => throw new CantTranslateException(t)
+                      case _ => throw new IllegalArgumentException
                     }
 
                     finiteArray(entries, Some(s, default), to)
                   case _ =>
-                    throw new CantTranslateException(t)
+                    throw new IllegalArgumentException
                 }
             }
           } else {
@@ -690,7 +688,7 @@ trait AbstractZ3Solver
                     }
 
                     RawArrayValue(from, entries, default)
-                  case None => throw new CantTranslateException(t)
+                  case None => throw new IllegalArgumentException
                 }
 
               case tp: TypeParameter =>
@@ -719,7 +717,7 @@ trait AbstractZ3Solver
 
               case FunctionType(fts, tt) =>
                 model.getArrayValue(t) match {
-                  case None => throw new CantTranslateException(t)
+                  case None => throw new IllegalArgumentException
                   case Some((map, elseZ3Value)) =>
                     val leonElseValue = rec(elseZ3Value, tt)
                     val leonMap = map.toSeq.map(p => rec(p._1, tupleTypeWrap(fts)) -> rec(p._2, tt))
@@ -728,7 +726,7 @@ trait AbstractZ3Solver
 
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
-                  case None => throw new CantTranslateException(t)
+                  case None => throw new IllegalArgumentException
                   case Some(set) =>
                     val elems = set.map(e => rec(e, dt))
                     finiteSet(elems, dt)
@@ -759,18 +757,17 @@ trait AbstractZ3Solver
             //      case OpIDiv =>    Division(rargs(0), rargs(1))
             //      case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
-                    System.err.println("Don't know what to do with this declKind : " + other)
-                    System.err.println("Expected type: " + tpe)
-                    System.err.println("Tree: " + t)
-                    System.err.println("The arguments are : " + args)
-                    new Exception().printStackTrace
-                    throw new CantTranslateException(t)
+                    reporter.warning("Don't know what to do with this declKind : " + other)
+                    reporter.warning("Expected type: " + tpe)
+                    reporter.warning("Tree: " + t)
+                    reporter.warning("The arguments are : " + args)
+                    throw new IllegalArgumentException
                 }
             }
           }
         case _ =>
-          System.err.println("Can't handle "+t)
-          throw new CantTranslateException(t)
+          reporter.warning("Can't handle "+t)
+          throw new IllegalArgumentException
       }
     }
     rec(tree, tpe)
@@ -780,7 +777,7 @@ trait AbstractZ3Solver
     try {
       Some(fromZ3Formula(model, tree, tpe))
     } catch {
-      case e: CantTranslateException => None
+      case e: IllegalArgumentException => None
     }
   }
 

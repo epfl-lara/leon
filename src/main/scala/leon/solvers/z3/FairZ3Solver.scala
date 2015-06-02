@@ -4,6 +4,7 @@ package leon
 package solvers
 package z3
 
+import utils.IncrementalBijection
 import _root_.z3.scala._
 
 import purescala.Common._
@@ -31,6 +32,10 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   val useCodeGen        = context.findOptionOrDefault(optUseCodeGen)
   val evalGroundApps    = context.findOptionOrDefault(optEvalGround)
   val unrollUnsatCores  = context.findOptionOrDefault(optUnrollCores)
+
+  protected val errors     = new IncrementalBijection[Unit, Boolean]()
+  protected def hasError   = errors.getB(()) contains true
+  protected def addError() = errors += () -> true
 
   private val evaluator: Evaluator =
     if(useCodeGen) {
@@ -122,9 +127,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
 
     def encodeExpr(bindings: Map[Identifier, Z3AST])(e: Expr): Z3AST = {
-      toZ3Formula(e, bindings).getOrElse {
-        reporter.fatalError("Failed to translate "+e+" to z3 ("+e.getClass+")")
-      }
+      toZ3Formula(e, bindings)
     }
 
     def substitute(substMap: Map[Z3AST, Z3AST]): Z3AST => Z3AST = {
@@ -153,6 +156,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   val unrollingBank = new UnrollingBank(reporter, templateGenerator)
 
   def push() {
+    errors.push()
     solver.push()
     unrollingBank.push()
     varsInVC = Set[Identifier]() :: varsInVC
@@ -160,6 +164,10 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   }
 
   def pop(lvl: Int = 1) {
+    for (i <- 1 until lvl) {
+      errors.pop()
+    }
+
     solver.pop(lvl)
     unrollingBank.pop(lvl)
     varsInVC = varsInVC.drop(lvl)
@@ -167,11 +175,19 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   }
 
   override def check: Option[Boolean] = {
-    fairCheck(Set())
+    if (hasError) {
+      None
+    } else {
+      fairCheck(Set())
+    }
   }
 
   override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
-    fairCheck(assumptions)
+    if (hasError) {
+      None
+    } else {
+      fairCheck(assumptions)
+    }
   }
 
   var foundDefinitiveAnswer = false
@@ -180,22 +196,27 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   var definitiveCore   : Set[Expr] = Set.empty
 
   def assertCnstr(expression: Expr) {
-    val freeVars = variablesOf(expression)
-    varsInVC = (varsInVC.head ++ freeVars) :: varsInVC.tail
+    try {
+      val freeVars = variablesOf(expression)
+      varsInVC = (varsInVC.head ++ freeVars) :: varsInVC.tail
 
-    // We make sure all free variables are registered as variables
-    freeVars.foreach { v =>
-      variables.toZ3OrCompute(Variable(v)) {
-        templateGenerator.encoder.encodeId(v)
+      // We make sure all free variables are registered as variables
+      freeVars.foreach { v =>
+        variables.toZ3OrCompute(Variable(v)) {
+          templateGenerator.encoder.encodeId(v)
+        }
       }
-    }
 
-    frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
+      frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
 
-    val newClauses = unrollingBank.getClauses(expression, variables.leonToZ3)
+      val newClauses = unrollingBank.getClauses(expression, variables.leonToZ3)
 
-    for (cl <- newClauses) {
-      solver.assertCnstr(cl)
+      for (cl <- newClauses) {
+        solver.assertCnstr(cl)
+      }
+    } catch {
+      case _: IllegalArgumentException =>
+        addError()
     }
   }
 
@@ -220,7 +241,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     }
 
     // these are the optional sequence of assumption literals
-    val assumptionsAsZ3: Seq[Z3AST]    = assumptions.flatMap(toZ3Formula(_)).toSeq
+    val assumptionsAsZ3: Seq[Z3AST]    = assumptions.map(toZ3Formula(_)).toSeq
     val assumptionsAsZ3Set: Set[Z3AST] = assumptionsAsZ3.toSet
 
     def z3CoreToCore(core: Seq[Z3AST]): Set[Expr] = {

@@ -4,10 +4,18 @@ package solvers
 import purescala.Types._
 import purescala.Common._
 
-case class DataType(sym: Identifier, cases: Seq[Constructor])
-case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)])
+case class DataType(sym: Identifier, cases: Seq[Constructor]) {
+  override def toString = {
+    "Datatype: "+sym.uniqueName+"\n"+cases.map(c => " - "+c.toString).mkString("\n")
+  }
+}
+case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)]) {
+  override def toString = {
+    sym.uniqueName+" ["+tpe+"] "+fields.map(f => f._1.uniqueName+": "+f._2).mkString("(", ", ", ")")
+  }
+}
 
-class ADTManager {
+class ADTManager(reporter: Reporter) {
   protected def freshId(id: Identifier): Identifier = freshId(id.name)
   protected def freshId(name: String): Identifier = FreshIdentifier(name)
 
@@ -24,68 +32,93 @@ class ADTManager {
   }
 
   protected var defined = Set[TypeTree]()
+  protected var locked  = Set[TypeTree]()
 
-  def defineADT(t: TypeTree): Map[TypeTree, DataType] = {
-    val adts = findDependencies(t)
-    for ((t, dt) <- adts) {
-      defined += t
+  protected var discovered = Map[TypeTree, DataType]()
+
+  def defineADT(t: TypeTree): Either[Map[TypeTree, DataType], Set[TypeTree]] = {
+    discovered = Map()
+    locked     = Set()
+
+    findDependencies(t)
+
+    val conflicts = discovered.keySet & locked
+
+    if (conflicts(t)) {
+      // There is no way to solve this, the type we requested is in conflict
+      reporter.warning("Encountered ADT '"+t+"' that can't be defined.")
+      reporter.warning("It appears it has recursive references through non-structural types (such as arrays, maps, or sets).")
+      throw new IllegalArgumentException
+    } else {
+      // We might be able to define some despite conflicts
+      if (conflicts.isEmpty) {
+        for ((t, dt) <- discovered) {
+          defined += t
+        }
+        Left(discovered)
+      } else {
+        Right(conflicts)
+      }
     }
-    adts
   }
 
-  protected def findDependencies(t: TypeTree, dts: Map[TypeTree, DataType] = Map()): Map[TypeTree, DataType] = t match {
+  def forEachType(t: TypeTree)(f: TypeTree => Unit): Unit = t match {
+    case NAryType(tps, builder) =>
+      f(t)
+      tps.foreach(forEachType(_)(f))
+  }
+
+  protected def findDependencies(t: TypeTree): Unit = t match {
+    case _: SetType | _: MapType =>
+      forEachType(t) { tpe =>
+        if (!defined(tpe)) {
+          locked += tpe
+        }
+      }
+
     case ct: ClassType =>
       val (root, sub) = getHierarchy(ct)
 
-      if (!(dts contains root) && !(defined contains root)) {
+      if (!(discovered contains root) && !(defined contains root)) {
         val sym = freshId(ct.id)
 
         val conss = sub.map { case cct =>
           Constructor(freshId(cct.id), cct, cct.fields.map(vd => (freshId(vd.id), vd.getType)))
         }
 
-        var cdts = dts + (root -> DataType(sym, conss))
+        discovered += (root -> DataType(sym, conss))
 
         // look for dependencies
         for (ct <- root +: sub; f <- ct.fields) {
-          cdts ++= findDependencies(f.getType, cdts)
+          findDependencies(f.getType)
         }
-
-        cdts
-      } else {
-        dts
       }
 
     case tt @ TupleType(bases) =>
-      if (!(dts contains t) && !(defined contains t)) {
+      if (!(discovered contains t) && !(defined contains t)) {
         val sym = freshId("tuple"+bases.size)
 
         val c = Constructor(freshId(sym.name), tt, bases.zipWithIndex.map {
           case (tpe, i) => (freshId("_"+(i+1)), tpe)
         })
 
-        var cdts = dts + (tt -> DataType(sym, Seq(c)))
+        discovered += (tt -> DataType(sym, Seq(c)))
 
         for (b <- bases) {
-          cdts ++= findDependencies(b, cdts)
+          findDependencies(b)
         }
-        cdts
-      } else {
-        dts
       }
 
     case UnitType =>
-      if (!(dts contains t) && !(defined contains t)) {
+      if (!(discovered contains t) && !(defined contains t)) {
 
         val sym = freshId("Unit")
 
-        dts + (t -> DataType(sym, Seq(Constructor(freshId(sym.name), t, Nil))))
-      } else {
-        dts
+        discovered += (t -> DataType(sym, Seq(Constructor(freshId(sym.name), t, Nil))))
       }
 
     case at @ ArrayType(base) =>
-      if (!(dts contains t) && !(defined contains t)) {
+      if (!(discovered contains t) && !(defined contains t)) {
         val sym = freshId("array")
 
         val c = Constructor(freshId(sym.name), at, List(
@@ -93,14 +126,11 @@ class ADTManager {
           (freshId("content"), RawArrayType(Int32Type, base))
         ))
 
-        val cdts = dts + (at -> DataType(sym, Seq(c)))
+        discovered += (at -> DataType(sym, Seq(c)))
 
-        findDependencies(base, cdts)
-      } else {
-        dts
+        findDependencies(base)
       }
 
     case _ =>
-      dts
   }
 }
