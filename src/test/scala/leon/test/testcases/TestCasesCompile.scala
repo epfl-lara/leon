@@ -5,6 +5,7 @@ package leon.test.testcases
 import leon._
 import test.LeonTestSuite
 import java.io.File
+import org.scalatest.ParallelTestExecution
 
 class TestCasesCompile extends LeonTestSuite {
   // Hard-code output directory, for Eclipse purposes
@@ -14,42 +15,38 @@ class TestCasesCompile extends LeonTestSuite {
   def testFrontend(f: File, strip: Int) = {
     val name = f.getAbsolutePath.split("/").toList.drop(strip).mkString("/")
 
-    test("Compiling testcase " + name) {
-      val ctx = createLeonContext()
-      try {
-        pipeline.run(ctx)(List(f.getAbsolutePath))
-      } catch {
-        case _: LeonFatalError =>
-          fail("Failed to compile.")
-      }
+    val ctx = createLeonContext()
+
+    try {
+      pipeline.run(ctx)(List(f.getAbsolutePath))
+      info(name)
+    } catch {
+      case _: LeonFatalError =>
+        fail("Failed to compile "+name)
     }
   }
 
-  private def forEachFileIn(path : String)(block : File => Unit) {
+  private def filesIn(path : String): Seq[File] = {
     val fs = filesInResourceDir(path, _.endsWith(".scala"), recursive=true)
 
-    for(f <- fs.toSeq.sortBy(_.getAbsolutePath)) {
-      block(f)
-    }
+    fs.toSeq
   }
 
   val baseDir = "regression/testcases/"
 
   val slashes = resourceDir(baseDir).getAbsolutePath.split("/").toList.size
 
-  forEachFileIn(baseDir+"repair/") { f =>
-    testFrontend(f, slashes)
-  }
-  forEachFileIn(baseDir+"runtime/") { f =>
-    testFrontend(f, slashes)
-  }
-  forEachFileIn(baseDir+"synthesis/") { f =>
-    testFrontend(f, slashes)
-  }
-  forEachFileIn(baseDir+"verification/") { f =>
-    testFrontend(f, slashes)
-  }
-  forEachFileIn(baseDir+"web/") { f =>
-    testFrontend(f, slashes)
+  test("Compiling testcases") {
+    val all = (filesIn(baseDir+"repair/") ++
+               filesIn(baseDir+"runtime/") ++
+               filesIn(baseDir+"synthesis/") ++
+               filesIn(baseDir+"verification/") ++
+               filesIn(baseDir+"web/")).sortBy(_.getAbsolutePath)
+
+    info("Compiling "+all.size+" testcases...")
+
+    all.par.foreach { f =>
+      testFrontend(f, slashes)
+    }
   }
 }
