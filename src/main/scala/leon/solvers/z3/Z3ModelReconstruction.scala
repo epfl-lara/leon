@@ -19,7 +19,7 @@ trait Z3ModelReconstruction {
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
     
-    variables.getZ3(id.toVariable).flatMap { z3ID =>
+    variables.getB(id.toVariable).flatMap { z3ID =>
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral)
         case Int32Type =>

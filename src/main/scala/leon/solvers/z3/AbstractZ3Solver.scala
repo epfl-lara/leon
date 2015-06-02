@@ -72,7 +72,7 @@ trait AbstractZ3Solver
   }
 
   def functionDefToDecl(tfd: TypedFunDef): Z3FuncDecl = {
-    functions.toZ3OrCompute(tfd) {
+    functions.cachedB(tfd) {
       val sortSeq    = tfd.params.map(vd => typeToSort(vd.getType))
       val returnSort = typeToSort(tfd.returnType)
 
@@ -81,7 +81,7 @@ trait AbstractZ3Solver
   }
 
   def genericValueToDecl(gv: GenericValue): Z3FuncDecl = {
-    generics.toZ3OrCompute(gv) {
+    generics.cachedB(gv) {
       z3.mkFreshFuncDecl(gv.tp.toString+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
     }
   }
@@ -132,13 +132,13 @@ trait AbstractZ3Solver
   }
 
   // ADT Manager
-  protected val adtManager = new ADTManager(reporter)
+  protected val adtManager = new ADTManager(context)
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
-  protected[leon] var functions = new Bijection[TypedFunDef, Z3FuncDecl]
-  protected[leon] var generics  = new Bijection[GenericValue, Z3FuncDecl]
-  protected[leon] var sorts     = new Bijection[TypeTree, Z3Sort]
-  protected[leon] var variables = new Bijection[Expr, Z3AST]
+  protected val functions  = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
+  protected val generics   = new IncrementalBijection[GenericValue, Z3FuncDecl]()
+  protected val sorts      = new IncrementalBijection[TypeTree, Z3Sort]()
+  protected val variables  = new IncrementalBijection[Expr, Z3AST]()
 
   protected val constructors  = new IncrementalBijection[TypeTree, Z3FuncDecl]()
   protected val selectors     = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
@@ -155,6 +155,9 @@ trait AbstractZ3Solver
       generics.clear()
       sorts.clear()
       variables.clear()
+      constructors.clear()
+      selectors.clear()
+      testers.clear()
 
       prepareSorts()
 
@@ -186,7 +189,7 @@ trait AbstractZ3Solver
     adtManager.defineADT(t) match {
       case Left(adts) =>
         declareDatatypes(adts.toSeq)
-        sorts.toZ3(t)
+        sorts.toB(t)
 
       case Right(conflicts) =>
         conflicts.foreach { declareStructuralSort }
@@ -269,16 +272,16 @@ trait AbstractZ3Solver
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
     case Int32Type | BooleanType | IntegerType | CharType =>
-      sorts.toZ3(oldtt)
+      sorts.toB(oldtt)
 
     case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | UnitType) =>
-      sorts.toZ3OrCompute(tpe) {
+      sorts.cachedB(tpe) {
         declareStructuralSort(tpe)
       }
 
 
     case tt @ SetType(base) =>
-      sorts.toZ3OrCompute(tt) {
+      sorts.cachedB(tt) {
         z3.mkSetSort(typeToSort(base))
       }
 
@@ -286,7 +289,7 @@ trait AbstractZ3Solver
       typeToSort(RawArrayType(fromType, library.optionType(toType)))
 
     case rat @ RawArrayType(from, to) =>
-      sorts.toZ3OrCompute(rat) {
+      sorts.cachedB(rat) {
         val fromSort = typeToSort(from)
         val toSort = typeToSort(to)
 
@@ -294,7 +297,7 @@ trait AbstractZ3Solver
       }
 
     case tt @ TypeParameter(id) =>
-      sorts.toZ3OrCompute(tt) {
+      sorts.cachedB(tt) {
         val symbol = z3.mkFreshStringSymbol(id.name)
         val newTPSort = z3.mkUninterpretedSort(symbol)
 
@@ -302,7 +305,7 @@ trait AbstractZ3Solver
       }
 
     case ft @ FunctionType(from, to) =>
-      sorts.toZ3OrCompute(ft) {
+      sorts.cachedB(ft) {
         val fromSort = typeToSort(tupleTypeWrap(from))
         val toSort = typeToSort(to)
 
@@ -310,7 +313,7 @@ trait AbstractZ3Solver
       }
 
     case other =>
-      sorts.toZ3OrCompute(other) {
+      sorts.cachedB(other) {
         reporter.warning(other.getPos, "Resorting to uninterpreted type for : " + other)
         val symbol = z3.mkIntSymbol(FreshIdentifier("unint").globalId)
         z3.mkUninterpretedSort(symbol)
@@ -324,7 +327,7 @@ trait AbstractZ3Solver
     } else {
       // FIXME TODO pleeeeeeeease make this cleaner. Ie. decide what set of
       // variable has to remain in a map etc.
-      variables.leonToZ3.collect{ case (Variable(id), p2) => id -> p2 }
+      variables.aToB.collect{ case (Variable(id), p2) => id -> p2 }
     }
 
     def rec(ex: Expr): Z3AST = ex match {
@@ -642,14 +645,14 @@ trait AbstractZ3Solver
         }
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
-          if(argsSize == 0 && (variables containsZ3 t)) {
-            variables.toLeon(t)
-          } else if(functions containsZ3 decl) {
-            val tfd = functions.toLeon(decl)
+          if(argsSize == 0 && (variables containsB t)) {
+            variables.toA(t)
+          } else if(functions containsB decl) {
+            val tfd = functions.toA(decl)
             assert(tfd.params.size == argsSize)
             FunctionInvocation(tfd, args.zip(tfd.params).map{ case (a, p) => rec(a, p.getType) })
-          } else if (generics containsZ3 decl)  {
-            generics.toLeon(decl)
+          } else if (generics containsB decl)  {
+            generics.toA(decl)
           } else if (constructors containsB decl) {
             constructors.toA(decl) match {
               case cct: CaseClassType =>

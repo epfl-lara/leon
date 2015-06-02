@@ -99,7 +99,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     QualifiedIdentifier(SMTIdentifier(s))
   }
 
-  protected val adtManager = new ADTManager(reporter)
+  protected val adtManager = new ADTManager(context)
 
   protected val library = program.library
 

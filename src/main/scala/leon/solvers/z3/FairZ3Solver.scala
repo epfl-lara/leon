@@ -66,8 +66,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
       val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
-        if (functions containsZ3 p._1) {
-          val tfd = functions.toLeon(p._1)
+        if (functions containsB p._1) {
+          val tfd = functions.toA(p._1)
           if (!tfd.hasImplementation) {
             val (cses, default) = p._2
             val ite = cses.foldLeft(fromZ3Formula(model, default, tfd.returnType))((expr, q) => IfExpr(
@@ -82,8 +82,8 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
       })
 
       val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
-        if(functions containsZ3 p._1) {
-          val tfd = functions.toLeon(p._1)
+        if(functions containsB p._1) {
+          val tfd = functions.toA(p._1)
           if(!tfd.hasImplementation) {
             Seq((tfd.id, fromZ3Formula(model, p._2, tfd.returnType)))
           } else Seq()
@@ -202,14 +202,14 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       // We make sure all free variables are registered as variables
       freeVars.foreach { v =>
-        variables.toZ3OrCompute(Variable(v)) {
+        variables.cachedB(Variable(v)) {
           templateGenerator.encoder.encodeId(v)
         }
       }
 
       frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
 
-      val newClauses = unrollingBank.getClauses(expression, variables.leonToZ3)
+      val newClauses = unrollingBank.getClauses(expression, variables.aToB)
 
       for (cl <- newClauses) {
         solver.assertCnstr(cl)

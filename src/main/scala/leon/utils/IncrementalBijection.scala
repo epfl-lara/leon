@@ -27,6 +27,14 @@ class IncrementalBijection[A,B] extends Bijection[A,B] {
     case None => recursiveGet(a2bStack, a)
   }
 
+  def aToB: Map[A,B] = {
+    a2bStack.reverse.foldLeft(Map[A,B]()) { _ ++ _ } ++ a2b
+  }
+
+  def bToA: Map[B,A] = {
+    b2aStack.reverse.foldLeft(Map[B,A]()) { _ ++ _ } ++ b2a
+  }
+
   override def containsA(a: A) = getB(a).isDefined
   override def containsB(b: B) = getA(b).isDefined
 

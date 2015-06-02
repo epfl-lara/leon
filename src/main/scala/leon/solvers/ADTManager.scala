@@ -2,20 +2,23 @@ package leon
 package solvers
 
 import purescala.Types._
+import purescala.TypeOps._
 import purescala.Common._
 
 case class DataType(sym: Identifier, cases: Seq[Constructor]) {
-  override def toString = {
-    "Datatype: "+sym.uniqueName+"\n"+cases.map(c => " - "+c.toString).mkString("\n")
+  def asString(implicit ctx: LeonContext) = {
+    "Datatype: "+sym.asString+"\n"+cases.map(c => " - "+c.asString(ctx)).mkString("\n")
   }
 }
 case class Constructor(sym: Identifier, tpe: TypeTree, fields: Seq[(Identifier, TypeTree)]) {
-  override def toString = {
-    sym.uniqueName+" ["+tpe+"] "+fields.map(f => f._1.uniqueName+": "+f._2).mkString("(", ", ", ")")
+  def asString(implicit ctx: LeonContext) = {
+    sym.asString(ctx)+" ["+tpe.asString(ctx)+"] "+fields.map(f => f._1.asString(ctx)+": "+f._2.asString(ctx)).mkString("(", ", ", ")")
   }
 }
 
-class ADTManager(reporter: Reporter) {
+class ADTManager(ctx: LeonContext) {
+  val reporter = ctx.reporter
+
   protected def freshId(id: Identifier): Identifier = freshId(id.name)
   protected def freshId(name: String): Identifier = FreshIdentifier(name)
 
