@@ -54,17 +54,18 @@ class TerminationRegression extends LeonTestSuite {
     }
   }
 
-  private def forEachFileIn(cat : String, forError: Boolean = false)(block : Output=>Unit) {
-    val fs = filesInResourceDir(
-      "regression/termination/" + cat,
-      _.endsWith(".scala"))
-
-    for(f <- fs) {
+  private def forEachFileIn(files: Iterable[File], forError: Boolean = false)(block : Output=>Unit) {
+    for(f <- files) {
       mkTest(f, Seq(), forError)(block)
     }
   }
 
-  forEachFileIn("valid") { output =>
+  def validFiles = filesInResourceDir("regression/termination/valid",            _.endsWith(".scala")) ++
+                   filesInResourceDir("regression/verification/purescala/valid", _.endsWith(".scala"))
+
+  def loopingFiles = filesInResourceDir("regression/termination/looping", _.endsWith(".scala"))
+
+  forEachFileIn(validFiles) { output =>
     val Output(report, reporter) = output
     val failures = report.results.collect { case (fd, guarantee) if !guarantee.isGuaranteed => fd }
     assert(failures.isEmpty, "Functions " + failures.map(_.id) + " should terminate")
@@ -73,7 +74,7 @@ class TerminationRegression extends LeonTestSuite {
     assert(reporter.warningCount === 0)
   }
 
-  forEachFileIn("looping") { output =>
+  forEachFileIn(loopingFiles) { output =>
     val Output(report, reporter) = output
     val looping = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("looping") }
     assert(looping.forall(p => p._2.isInstanceOf[LoopsGivenInputs] || p._2.isInstanceOf[CallsNonTerminating]),
