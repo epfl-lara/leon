@@ -4,6 +4,7 @@ package leon
 package purescala
 
 import Expressions._
+import Definitions._
 import ExprOps._
 import Extractors._
 import Constructors._
@@ -67,6 +68,16 @@ abstract class TransformerWithPC extends Transformer {
     case i @ Implies(lhs, rhs) =>
       val rc = rec(lhs, path)
       Implies(rc, rec(rhs, register(rc, path))).copiedFrom(i)
+
+    case bf @ BoundedForall(l, u, expr) =>
+      val Lambda(List(ValDef(i, _)), _) = expr
+      val newPath = register(And(GreaterEquals(i.toVariable, l), LessThan(i.toVariable, u)), path)
+      BoundedForall(rec(l, path), rec(u, path), rec(expr, newPath)).copiedFrom(bf)
+
+    case be @ BoundedExists(l, u, expr) =>
+      val Lambda(List(ValDef(i, _)), _) = expr
+      val newPath = register(And(GreaterEquals(i.toVariable, l), LessThan(i.toVariable, u)), path)
+      BoundedExists(rec(l, path), rec(u, path), rec(expr, newPath)).copiedFrom(be)
 
     case o @ Operator(es, builder) =>
       builder(es.map(rec(_, path))).copiedFrom(o)

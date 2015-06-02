@@ -4,9 +4,10 @@ import leon._
 
 object ArrayLinearSearch {
 
-  def exists(a: Array[BigInt], x: BigInt): Boolean = {
+  def exists(a: Array[BigInt], x: BigInt): Int = {
     require(a.length > 0)
 
+    var indexElement = -1
     var i = 0
     var found = false
     (while(!found && i < a.length) {
@@ -15,17 +16,21 @@ object ArrayLinearSearch {
       i += 1
     }) invariant(
          i >= 0 && i <= a.length && (
-         if(found)
-           arrayExists(a, 0, i, (y: BigInt) => y == x)
-         else true)
+           if(indexElement == -1)
+             arrayForall(a, 0, i, (el: BigInt) => el != x)
+           else {
+             indexElement >= 0 && indexElement <= i &&
+             a(indexElement) == x
+           }
+         )
        )
-    found
+    indexElement
 
   } ensuring(res => {
-      if(res)
-        arrayExists(a, (y: BigInt) => y == x)
+      if(res == -1)
+        arrayForall(a, (y: BigInt) => y != x)
       else
-        true
+        a(res) == x
     })
 
 }

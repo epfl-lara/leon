@@ -6,6 +6,7 @@ object BinarySearch {
 
   def binarySearch(a: Array[BigInt], key: BigInt): Int = ({
     require(a.length > 0 && sorted(a, 0, a.length - 1))
+
     var low = 0
     var high = a.length - 1
     var res = -1
