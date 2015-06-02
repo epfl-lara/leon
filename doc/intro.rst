@@ -3,9 +3,7 @@ Introduction
 
 The Leon system aims to help developers build verified Scala software.
 It encourages using a small set of core Scala features, but provides
-advanced automation functionality users do not obtain in today's 
-compilers and development environments for programming languages. 
-In particular, Leon can
+unique automation functionality. In particular, Leon can
 
 * verify statically that your program confirms to a given
   specification and that it cannot crash at run-time

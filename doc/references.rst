@@ -3,8 +3,7 @@
 References
 ==========
 
-The Leon system is documented in serveral talks and papers. Presentations describing and
-demonstrating Leon can be found below.
+The Leon system is documented in several papers and talks, which provide additional information on the algorithms and techniques we used in Leon.
 
 
 Videos
