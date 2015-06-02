@@ -114,38 +114,6 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
-    case a @ FiniteArray(elems, default, size) =>
-      val tpe @ ArrayType(base) = normalizeType(a.getType)
-      declareSort(tpe)
-
-      var ar: Term = declareVariable(FreshIdentifier("arrayconst", RawArrayType(Int32Type, base)))
-
-      for ((i, e) <- elems) {
-        ar = FunctionApplication(SSymbol("store"), Seq(ar, toSMT(IntLiteral(i)), toSMT(e)))
-      }
-
-      FunctionApplication(constructors.toB(tpe), Seq(toSMT(size), ar))
-
-    case fm @ FiniteMap(elems, from, to) =>
-      import OptionManager._
-      declareSort(MapType(from, to))
-
-      var m: Term = declareVariable(FreshIdentifier("mapconst", RawArrayType(from, leonOptionType(to))))
-
-      sendCommand(Assert(SMTForall(
-        SortedVar(SSymbol("mapelem"), declareSort(from)), Seq(),
-        Core.Equals(
-          ArraysEx.Select(m, SSymbol("mapelem")),
-          toSMT(mkLeonNone(to))
-        )
-      )))
-
-      for ((k, v) <- elems) {
-        m = FunctionApplication(SSymbol("store"), Seq(m, toSMT(k), toSMT(mkLeonSome(v))))
-      }
-
-      m
-
     /**
      * ===== Set operations =====
      */

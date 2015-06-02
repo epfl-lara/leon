@@ -96,35 +96,16 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
   }
 
   override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
-    case a @ FiniteArray(elems, oDef, size) =>
-      val tpe @ ArrayType(base) = normalizeType(a.getType)
-      declareSort(tpe)
-
-      val default: Expr = oDef.getOrElse(simplestValue(base))
-
-      var ar: Term = ArrayConst(declareSort(RawArrayType(Int32Type, base)), toSMT(default))
-
-      for ((i, e) <- elems) {
-        ar = ArraysEx.Store(ar, toSMT(IntLiteral(i)), toSMT(e))
-      }
-
-      FunctionApplication(constructors.toB(tpe), List(toSMT(size), ar))
 
     /**
      * ===== Set operations =====
      */
     case fs @ FiniteSet(elems, base) =>
       val ss = declareSort(fs.getType)
-      var res: Term = FunctionApplication(
-        QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ss)),
-        Seq(toSMT(BooleanLiteral(false)))
-      )
 
-      for (e <- elems) {
-        res = ArraysEx.Store(res, toSMT(e), toSMT(BooleanLiteral(true)))
-      }
-
-      res
+      toSMT(RawArrayValue(base, elems.map {
+        case k => k -> BooleanLiteral(true)
+      }.toMap, BooleanLiteral(false)))
 
     case SubsetOf(ss, s) =>
       // a isSubset b   ==>   (a zip b).map(implies) == (* => true)
@@ -156,7 +137,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     case DefineFun(SMTFunDef(a, Seq(SortedVar(arg, akind)), rkind, body)) =>
       val (argTpe, retTpe) = tpe match {
         case SetType(base) => (base, BooleanType)
-        case MapType(from, to) => (from, OptionManager.leonOptionType(to))
+        case MapType(from, to) => (from, library.optionType(to))
         case ArrayType(base) => (Int32Type, base)
         case FunctionType(args, ret) => (tupleTypeWrap(args), ret)
         case RawArrayType(from, to) => (from, to)

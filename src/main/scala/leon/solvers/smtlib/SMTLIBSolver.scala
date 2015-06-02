@@ -93,10 +93,15 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case _ => None
     }
   }
+
   import scala.language.implicitConversions
   protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = {
     QualifiedIdentifier(SMTIdentifier(s))
   }
+
+  val adtManager = new ADTManager
+
+  val library = program.library
 
   protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
 
@@ -116,57 +121,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected def hasError = errors.getB(()) contains true
   protected def addError() = errors += () -> true
 
-  /* A manager object for the Option type (since it is hard-coded for Maps) */
-  protected object OptionManager {
-    lazy val leonOption = program.library.Option.get
-    lazy val leonSome = program.library.Some.get
-    lazy val leonNone = program.library.None.get
-    def leonOptionType(tp: TypeTree) = AbstractClassType(leonOption, Seq(tp))
-
-    def mkLeonSome(e: Expr) = CaseClass(CaseClassType(leonSome, Seq(e.getType)), Seq(e))
-    def mkLeonNone(tp: TypeTree) = CaseClass(CaseClassType(leonNone, Seq(tp)), Seq())
-
-    def someTester(tp: TypeTree): SSymbol = {
-      val someTp = CaseClassType(leonSome, Seq(tp))
-      testers.getB(someTp) match {
-        case Some(s) => s
-        case None =>
-          declareOptionSort(tp)
-          someTester(tp)
-      }
-    }
-    def someConstructor(tp: TypeTree): SSymbol = {
-      val someTp = CaseClassType(leonSome, Seq(tp))
-      constructors.getB(someTp) match {
-        case Some(s) => s
-        case None =>
-          declareOptionSort(tp)
-          someConstructor(tp)
-      }
-    }
-    def someSelector(tp: TypeTree): SSymbol = {
-      val someTp = CaseClassType(leonSome, Seq(tp))
-      selectors.getB(someTp,0) match {
-        case Some(s) => s
-        case None =>
-          declareOptionSort(tp)
-          someSelector(tp)
-      }
-    }
-
-    def inlinedOptionGet(t : Term, tp: TypeTree): Term = {
-      FunctionApplication(SSymbol("ite"), Seq(
-        FunctionApplication(someTester(tp), Seq(t)),
-        FunctionApplication(someSelector(tp), Seq(t)),
-        declareVariable(FreshIdentifier("error_value", tp))
-      ))
-    }
-
-  }
-
-
   /* Helper functions */
-
 
   protected def normalizeType(t: TypeTree): TypeTree = t match {
     case ct: ClassType if ct.parent.isDefined => ct.parent.get
@@ -196,16 +151,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected def quantifiedTerm(quantifier: (SortedVar, Seq[SortedVar], Term) => Term, body: Expr): Term =
     quantifiedTerm(quantifier, variablesOf(body).toSeq, body)
 
-  // Corresponds to a smt map, not a leon/scala array
-  // Should NEVER escape past SMT-world
-  private[smtlib] case class RawArrayType(from: TypeTree, to: TypeTree) extends TypeTree
-
-  // Corresponds to a raw array value, which is coerced to a Leon expr depending on target type (set/array)
-  // Should NEVER escape past SMT-world
-  private[smtlib] case class RawArrayValue(keyTpe: TypeTree, elems: Map[Expr, Expr], default: Expr) extends Expr {
-    val getType = RawArrayType(keyTpe, default.getType)
-  }
-
   protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
       if (r.default != BooleanLiteral(false)) {
@@ -225,7 +170,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],
       // with default value == None
-      if (r.default != OptionManager.mkLeonNone(to)) {
+      if (r.default.getType != library.noneType(to)) {
         reporter.warning("Co-finite maps are not supported. (Default was "+r.default+")")
         throw new IllegalArgumentException
       }
@@ -256,7 +201,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
           Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(from), declareSort(to)))
 
         case MapType(from, to) =>
-          declareMapSort(from, to)
+          declareSort(RawArrayType(from, library.optionType(to)))
 
         case FunctionType(from, to) =>
           Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(tupleTypeWrap(from)), declareSort(to)))
@@ -276,133 +221,27 @@ abstract class SMTLIBSolver(val context: LeonContext,
     }
   }
 
-  protected def declareOptionSort(of: TypeTree): Sort = {
-    declareSort(OptionManager.leonOptionType(of))
-  }
-
-  protected def declareMapSort(from: TypeTree, to: TypeTree): Sort = {
-    sorts.cachedB(MapType(from, to)) {
-      val m = freshSym("Map")
-
-      val toSort = declareOptionSort(to)
-      val fromSort = declareSort(from)
-
-      val arraySort = Sort(SMTIdentifier(SSymbol("Array")),
-        Seq(fromSort, toSort))
-      val cmd = DefineSort(m, Seq(), arraySort)
-
-      sendCommand(cmd)
-      Sort(SMTIdentifier(m), Seq())
-    }
-  }
-
-  protected def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
-    case act: AbstractClassType =>
-      (act, act.knownCCDescendents)
-    case cct: CaseClassType =>
-      cct.parent match {
-        case Some(p) =>
-          getHierarchy(p)
-        case None =>
-          (cct, List(cct))
-      }
-  }
-
-  protected case class DataType(sym: SSymbol, cases: Seq[Constructor])
-  protected case class Constructor(sym: SSymbol, tpe: TypeTree, fields: Seq[(SSymbol, TypeTree)])
-
-  protected def findDependencies(t: TypeTree, dts: Map[TypeTree, DataType] = Map()): Map[TypeTree, DataType] = t match {
-    case ct: ClassType =>
-      val (root, sub) = getHierarchy(ct)
-
-      if (!(dts contains root) && !(sorts containsA root)) {
-        val sym = freshSym(ct.id)
-
-        val conss = sub.map { case cct =>
-          Constructor(freshSym(cct.id), cct, cct.fields.map(vd => (freshSym(vd.id), vd.getType)))
-        }
-
-        var cdts = dts + (root -> DataType(sym, conss))
-
-        // look for dependencies
-        for (ct <- root +: sub; f <- ct.fields) {
-          cdts ++= findDependencies(f.getType, cdts)
-        }
-
-        cdts
-      } else {
-        dts
-      }
-
-    case tt @ TupleType(bases) =>
-      if (!(dts contains t) && !(sorts containsA t)) {
-        val sym = freshSym("tuple"+bases.size)
-
-        val c = Constructor(freshSym(sym.name), tt, bases.zipWithIndex.map {
-          case (tpe, i) => (freshSym("_"+(i+1)), tpe)
-        })
-
-        var cdts = dts + (tt -> DataType(sym, Seq(c)))
-
-        for (b <- bases) {
-          cdts ++= findDependencies(b, cdts)
-        }
-        cdts
-      } else {
-        dts
-      }
-
-    case UnitType =>
-      if (!(dts contains t) && !(sorts containsA t)) {
-
-        val sym = freshSym("Unit")
-
-        dts + (t -> DataType(sym, Seq(Constructor(freshSym(sym.name), t, Nil))))
-      } else {
-        dts
-      }
-
-    case at @ ArrayType(base) =>
-      if (!(dts contains t) && !(sorts containsA t)) {
-        val sym = freshSym("array")
-
-        val c = Constructor(freshSym(sym.name), at, List(
-          (freshSym("size"), Int32Type),
-          (freshSym("content"), RawArrayType(Int32Type, base))
-        ))
-
-        val cdts = dts + (at -> DataType(sym, Seq(c)))
-
-        findDependencies(base, cdts)
-      } else {
-        dts
-      }
-
-    case _ =>
-      dts
-  }
-
   protected def declareDatatypes(datatypes: Map[TypeTree, DataType]): Unit = {
     // We pre-declare ADTs
     for ((tpe, DataType(sym, _)) <- datatypes) {
-      sorts += tpe -> Sort(SMTIdentifier(sym))
+      sorts += tpe -> Sort(SMTIdentifier(id2sym(sym)))
     }
 
     def toDecl(c: Constructor): SMTConstructor = {
-      val s = c.sym
+      val s = id2sym(c.sym)
 
       testers += c.tpe -> SSymbol("is-"+s.name)
       constructors += c.tpe -> s
 
       SMTConstructor(s, c.fields.zipWithIndex.map {
         case ((cs, t), i) =>
-          selectors += (c.tpe, i) -> cs
-          (cs, declareSort(t))
+          selectors += (c.tpe, i) -> id2sym(cs)
+          (id2sym(cs), declareSort(t))
       })
     }
 
     val adts = for ((tpe, DataType(sym, cases)) <- datatypes.toList) yield {
-      (sym, cases.map(toDecl))
+      (id2sym(sym), cases.map(toDecl))
     }
 
 
@@ -412,7 +251,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   protected def declareStructuralSort(t: TypeTree): Sort = {
     // Populates the dependencies of the structural type to define.
-    val datatypes = findDependencies(t)
+    val datatypes = adtManager.defineADT(t)
 
     declareDatatypes(datatypes)
 
@@ -443,42 +282,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
       ))
       s
     }
-  }
-
-  protected def declareMapUnion(from: TypeTree, to: TypeTree): SSymbol = {
-    // FIXME cache results
-    val a = declareSort(from)
-    val b = declareSort(OptionManager.leonOptionType(to))
-    val arraySort = Sort(SMTIdentifier(SSymbol("Array")), Seq(a, b))
-
-    val f = freshSym("map_union")
-
-    sendCommand(DeclareFun(f, Seq(arraySort, arraySort), arraySort))
-
-    val v  = SSymbol("v")
-    val a1 = SSymbol("a1")
-    val a2 = SSymbol("a2")
-
-    val axiom = SMTForall(
-      SortedVar(a1, arraySort), Seq(SortedVar(a2, arraySort), SortedVar(v,a)),
-      Core.Equals(
-        ArraysEx.Select(
-          FunctionApplication(f: QualifiedIdentifier, Seq(a1: Term, a2: Term)),
-          v: Term
-        ),
-        Core.ITE(
-          FunctionApplication(
-            OptionManager.someTester(to),
-            Seq(ArraysEx.Select(a2: Term, v: Term))
-          ),
-          ArraysEx.Select(a2,v),
-          ArraysEx.Select(a1,v)
-        )
-      )
-    )
-
-    sendCommand(SMTAssert(axiom))
-    f
   }
 
   /* Translate a Leon Expr to an SMTLIB term */
@@ -568,49 +371,69 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val constructor = constructors.toB(tpe)
         FunctionApplication(constructor, Seq(ssize, newcontent))
 
-      /**
-       * ===== Map operations =====
-       */
-      case m @ FiniteMap(elems, _, _) =>
-        import OptionManager._
-        val mt @ MapType(_, to) = m.getType
-        val ms = declareSort(mt)
+      case ra @ RawArrayValue(keyTpe, elems, default) =>
+        val s = declareSort(ra.getType)
 
         var res: Term = FunctionApplication(
-          QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(ms)),
-          List(toSMT(mkLeonNone(to)))
+          QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(s)),
+          List(toSMT(default))
         )
         for ((k, v) <- elems) {
-          res = ArraysEx.Store(res, toSMT(k), toSMT(mkLeonSome(v)))
+          res = ArraysEx.Store(res, toSMT(k), toSMT(v))
         }
 
         res
 
+      case a @ FiniteArray(elems, oDef, size) =>
+        val tpe @ ArrayType(to) = normalizeType(a.getType)
+        declareSort(tpe)
+
+        val default: Expr = oDef.getOrElse(simplestValue(to))
+
+        val arr = toSMT(RawArrayValue(Int32Type, elems.map {
+          case (k, v) => IntLiteral(k) -> v
+        }, default))
+
+        FunctionApplication(constructors.toB(tpe), List(toSMT(size), arr))
+
+      /**
+       * ===== Map operations =====
+       */
+      case m @ FiniteMap(elems, _, _) =>
+        val mt @ MapType(from, to) = m.getType
+        val ms = declareSort(mt)
+
+        toSMT(RawArrayValue(from, elems.map {
+          case (k, v) => k -> CaseClass(library.someType(to), Seq(v))
+        }.toMap, CaseClass(library.noneType(to), Seq())))
+
+
       case MapGet(m, k) =>
-        import OptionManager._
-        val mt@MapType(_, vt) = m.getType
+        val mt @ MapType(from, to) = m.getType
         declareSort(mt)
         // m(k) becomes
-        // (Option$get (select m k))
-        inlinedOptionGet(ArraysEx.Select(toSMT(m), toSMT(k)), vt)
-
-      case MapIsDefinedAt(m, k) =>
-        import OptionManager._
-        val mt@MapType(_, vt) = m.getType
-        declareSort(mt)
-        // m.isDefinedAt(k) becomes
-        // (Option$isDefined (select m k))
+        // (Some-value (select m k))
         FunctionApplication(
-          someTester(vt),
+          selectors.toB((library.someType(to), 0)),
           Seq(ArraysEx.Select(toSMT(m), toSMT(k)))
         )
 
-      case MapUnion(m1, m2) =>
-        val MapType(vk, vt) = m1.getType
+      case MapIsDefinedAt(m, k) =>
+        val mt @ MapType(from, to) = m.getType
+        declareSort(mt)
+        // m.isDefinedAt(k) becomes
+        // (is-Some (select m k))
         FunctionApplication(
-          declareMapUnion(vk, vt),
-          Seq(toSMT(m1), toSMT(m2))
+          testers.toB(library.someType(to)),
+          Seq(ArraysEx.Select(toSMT(m), toSMT(k)))
         )
+
+      case MapUnion(m1, FiniteMap(elems, _, _)) =>
+        val mt @ MapType(f, t) = m1.getType
+
+        elems.foldLeft(toSMT(m1)) { case (m, (k,v)) =>
+          ArraysEx.Store(m, toSMT(k), toSMT(CaseClass(library.someType(t), Seq(v))))
+        }
 
       case p : Passes =>
         toSMT(matchToIfThenElse(p.asConstraint))

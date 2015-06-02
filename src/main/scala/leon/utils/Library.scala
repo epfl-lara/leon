@@ -4,6 +4,7 @@ package leon
 package utils
 
 import purescala.Definitions._
+import purescala.Types._
 import purescala.DefOps.searchByFullName
 
 case class Library(pgm: Program) {
@@ -22,4 +23,8 @@ case class Library(pgm: Program) {
   def lookup(name: String): Option[Definition] = {
     searchByFullName(name, pgm)
   }
+
+  def optionType(tp: TypeTree) = AbstractClassType(Option.get, Seq(tp))
+  def someType(tp: TypeTree) = CaseClassType(Some.get, Seq(tp))
+  def noneType(tp: TypeTree) = CaseClassType(None.get, Seq(tp))
 }
