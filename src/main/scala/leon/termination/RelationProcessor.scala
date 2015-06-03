@@ -12,25 +12,28 @@ import leon.purescala.Constructors._
 import leon.purescala.Definitions._
 
 class RelationProcessor(
-    val checker: TerminationChecker with RelationBuilder with RelationComparator with Strengthener with StructuralSize
+    val checker: TerminationChecker,
+    val modules: RelationBuilder with RelationComparator with Strengthener with StructuralSize
   ) extends Processor with Solvable {
 
-  val name: String = "Relation Processor"
+  val name: String = "Relation Processor " + modules.comparisonMethod
 
-  def run(problem: Problem) = {
+  def run(problem: Problem): Option[Seq[Result]] = {
+    if (!modules.isApplicableFor(problem)) return None
+    
     reporter.debug("- Strengthening postconditions")
-    checker.strengthenPostconditions(problem.funSet)(this)
+    modules.strengthenPostconditions(problem.funSet)(this)
 
     reporter.debug("- Strengthening applications")
-    checker.strengthenApplications(problem.funSet)(this)
+    modules.strengthenApplications(problem.funSet)(this)
 
     val formulas = problem.funDefs.map({ funDef =>
-      funDef -> checker.getRelations(funDef).collect({
+      funDef -> modules.getRelations(funDef).collect({
         case Relation(_, path, FunctionInvocation(tfd, args), _) if problem.funSet(tfd.fd) =>
-          val (e1, e2) = (tupleWrap(funDef.params.map(_.toVariable)), tupleWrap(args))
+          val args0 = funDef.params.map(_.toVariable)
           def constraint(expr: Expr) = implies(andJoin(path.toSeq), expr)
-          val greaterThan = checker.sizeDecreasing(e1, e2)
-          val greaterEquals = checker.softDecreasing(e1, e2)
+          val greaterThan = modules.sizeDecreasing(args0, args)
+          val greaterEquals = modules.softDecreasing(args0, args)
           (tfd.fd, (constraint(greaterThan), constraint(greaterEquals)))
       })
     })

@@ -26,16 +26,16 @@ trait Processor {
 
 trait Solvable extends Processor {
 
-  val checker : TerminationChecker with Strengthener with StructuralSize
+  val modules: Strengthener with StructuralSize
 
   private val solver: SolverFactory[Solver] = {
     val program     : Program     = checker.program
     val context     : LeonContext = checker.context
-    val sizeModule  : ModuleDef   = ModuleDef(FreshIdentifier("$size"), checker.defs.toSeq, false)
+    val sizeModule  : ModuleDef   = ModuleDef(FreshIdentifier("$size"), modules.defs.toSeq, false)
     val sizeUnit    : UnitDef     = UnitDef(FreshIdentifier("$size"),Seq(sizeModule)) 
     val newProgram  : Program     = program.copy( units = sizeUnit :: program.units)
 
-    SolverFactory.default(context, newProgram).withTimeout(500.millisecond)
+    SolverFactory.getFromSettings(context, newProgram).withTimeout(500.millisecond)
   }
 
   type Solution = (Option[Boolean], Map[Identifier, Expr])

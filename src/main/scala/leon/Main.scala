@@ -148,6 +148,7 @@ object Main {
     val synthesisF   = ctx.findOptionOrDefault(optSynthesis)
     val xlangF       = ctx.findOptionOrDefault(optXLang)
     val repairF      = ctx.findOptionOrDefault(optRepair)
+    val analysisF    = ctx.findOption(optVerify).isDefined && ctx.findOption(optTermination).isDefined
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
     val evalF        = ctx.findOption(SharedOptions.optEval)
@@ -181,6 +182,7 @@ object Main {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
+        else if (analysisF) Pipeline.both(FunctionClosure andThen AnalysisPhase, TerminationPhase)
         else if (terminationF) TerminationPhase
         else if (xlangF) XLangAnalysisPhase
         else if (evalF.isDefined) EvaluationPhase
@@ -245,6 +247,10 @@ object Main {
 
       // Run pipeline
       pipeline.run(ctx)(args.toList) match {
+        case (vReport: verification.VerificationReport, tReport: termination.TerminationReport) =>
+          ctx.reporter.info(vReport.summaryString)
+          ctx.reporter.info(tReport.summaryString)
+        
         case report: verification.VerificationReport =>
           ctx.reporter.info(report.summaryString)
 

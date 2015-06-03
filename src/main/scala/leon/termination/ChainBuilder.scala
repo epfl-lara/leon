@@ -113,12 +113,12 @@ final case class Chain(relations: List[Relation]) {
   lazy val inlined: Seq[Expr] = inlining.map(_._2)
 }
 
-trait ChainBuilder extends RelationBuilder { self: TerminationChecker with Strengthener with RelationComparator =>
+trait ChainBuilder extends RelationBuilder { self: Strengthener with RelationComparator =>
 
   protected type ChainSignature = (FunDef, Set[RelationSignature])
 
   protected def funDefChainSignature(funDef: FunDef): ChainSignature = {
-    funDef -> (self.program.callGraph.transitiveCallees(funDef) + funDef).map(funDefRelationSignature)
+    funDef -> (checker.program.callGraph.transitiveCallees(funDef) + funDef).map(funDefRelationSignature)
   }
 
   private val chainCache : MutableMap[FunDef, (Set[FunDef], Set[Chain], ChainSignature)] = MutableMap.empty
@@ -131,9 +131,9 @@ trait ChainBuilder extends RelationBuilder { self: TerminationChecker with Stren
       def decreasing(relations: List[Relation]): Boolean = {
         val constraints = relations.map(relation => relationConstraints.getOrElse(relation, {
           val Relation(funDef, path, FunctionInvocation(_, args), _) = relation
-          val (e1, e2) = (tupleWrap(funDef.params.map(_.toVariable)), tupleWrap(args))
-          val constraint = if (solver.definitiveALL(implies(andJoin(path), self.softDecreasing(e1, e2)))) {
-            if (solver.definitiveALL(implies(andJoin(path), self.sizeDecreasing(e1, e2)))) {
+          val args0 = funDef.params.map(_.toVariable)
+          val constraint = if (solver.definitiveALL(implies(andJoin(path), self.softDecreasing(args0, args)))) {
+            if (solver.definitiveALL(implies(andJoin(path), self.sizeDecreasing(args0, args)))) {
               StrongDecreasing
             } else {
               WeakDecreasing
@@ -153,7 +153,7 @@ trait ChainBuilder extends RelationBuilder { self: TerminationChecker with Stren
         val Relation(_, _, FunctionInvocation(tfd, _), _) :: _ = chain
         val fd = tfd.fd
 
-        if (!self.program.callGraph.transitivelyCalls(fd, funDef)) {
+        if (!checker.program.callGraph.transitivelyCalls(fd, funDef)) {
           Set.empty[FunDef] -> Set.empty[Chain]
         } else if (fd == funDef) {
           Set.empty[FunDef] -> Set(Chain(chain.reverse))

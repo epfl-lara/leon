@@ -15,7 +15,29 @@ import scala.collection.mutable.{Map => MutableMap}
 trait StructuralSize {
 
   private val sizeCache : MutableMap[TypeTree, FunDef] = MutableMap.empty
+  
+  // function absBigInt(x: BigInt): BigInt = if (x >= 0) x else -x
+  val typedAbsBigIntFun = makeAbsFun(IntegerType, "absBigInt", e => UMinus(e), InfiniteIntegerLiteral(0))
 
+  // function absInt(x: Int): Int = if (x >= 0) x else -x
+  val typedAbsIntFun = makeAbsFun(Int32Type, "absInt", e => BVUMinus(e), IntLiteral(0))
+
+  def makeAbsFun(tp: TypeTree, name: String, uminus: Expr => Expr, zero: Expr): TypedFunDef = {
+    val x = FreshIdentifier("x", tp, alwaysShowUniqueID = true)
+    val absFun = new FunDef(
+      FreshIdentifier(name, alwaysShowUniqueID = true),
+      Seq(), // no type params 
+      tp, // return type
+      Seq(ValDef(x)),
+      DefType.MethodDef
+    )
+    absFun.body = Some(IfExpr(
+        GreaterEquals(Variable(x), zero),
+        Variable(x),
+        uminus(Variable(x))))
+    TypedFunDef(absFun, Seq()) // Seq() because no generic type params
+  }
+  
   def size(expr: Expr) : Expr = {
     def funDef(ct: ClassType, cases: ClassType => Seq[MatchCase]): FunDef = {
       // we want to reuse generic size functions for sub-types
@@ -66,7 +88,27 @@ trait StructuralSize {
       case TupleType(argTypes) => argTypes.zipWithIndex.map({
         case (_, index) => size(tupleSelect(expr, index + 1, true))
       }).foldLeft[Expr](InfiniteIntegerLiteral(0))(Plus)
+      case IntegerType =>
+        FunctionInvocation(typedAbsBigIntFun, Seq(expr)) 
       case _ => InfiniteIntegerLiteral(0)
+    }
+  }
+
+  def lexicographicDecreasing(s1: Seq[Expr], s2: Seq[Expr], strict: Boolean, sizeOfOneExpr: Expr => Expr): Expr = {
+    // Note: The Equal and GreaterThan ASTs work for both BigInt and Bitvector
+    
+    val sameSizeExprs = for ((arg1, arg2) <- (s1 zip s2)) yield Equals(sizeOfOneExpr(arg1), sizeOfOneExpr(arg2))
+    
+    val greaterBecauseGreaterAtFirstDifferentPos =
+      orJoin(for (firstDifferent <- 0 until scala.math.min(s1.length, s2.length)) yield and(
+          andJoin(sameSizeExprs.take(firstDifferent)),
+          GreaterThan(sizeOfOneExpr(s1(firstDifferent)), sizeOfOneExpr(s2(firstDifferent)))
+      ))
+      
+    if (s1.length > s2.length || (s1.length == s2.length && !strict)) {
+      or(andJoin(sameSizeExprs), greaterBecauseGreaterAtFirstDifferentPos)
+    } else {
+      greaterBecauseGreaterAtFirstDifferentPos
     }
   }
 
