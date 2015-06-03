@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 import ExecutionContext.Implicits.global
 
-class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, solvers: Seq[SolverFactory[S]])
+class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, val solvers: Seq[SolverFactory[S]])
         extends Solver with Interruptible {
 
   val name = "Pfolio"
