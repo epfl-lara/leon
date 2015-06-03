@@ -625,11 +625,11 @@ class PrettyPrinter(opts: PrinterOptions,
   def precedence(ex: Expr): Int = ex match {
     case (pa: PrettyPrintable) => pa.printPrecedence
     case (_: ElementOfSet) => 0
-    case (_: Or | BinaryMethodCall(_, "||", _)) => 1
+    case (_: Modulo) => 1
+    case (_: Or | BinaryMethodCall(_, "||", _)) => 2
     case (_: And | BinaryMethodCall(_, "&&", _)) => 3
     case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
     case (_: Equals | _: Not) => 5
-    case (_: Modulo) => 6
     case (_: Plus | _: BVPlus | _: Minus | _: BVMinus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 7
     case (_: Times | _: BVTimes | _: Division | _: BVDivision | _: Remainder | _: BVRemainder | BinaryMethodCall(_, "*" | "/", _)) => 8
     case _ => 9
