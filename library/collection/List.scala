@@ -126,19 +126,22 @@ sealed abstract class List[T] {
     )
   }
 
-  private def chunk0(s: BigInt, l: List[T], acc: List[T], res: List[List[T]], s0: BigInt): List[List[T]] = l match {
-    case Nil() =>
-      if (acc.size > 0) {
-        res :+ acc
-      } else {
-        res
-      }
-    case Cons(h, t) =>
-      if (s0 == BigInt(0)) {
-        chunk0(s, l, Nil(), res :+ acc, s)
-      } else {
-        chunk0(s, t, acc :+ h, res, s0-1)
-      }
+  private def chunk0(s: BigInt, l: List[T], acc: List[T], res: List[List[T]], s0: BigInt): List[List[T]] = {
+    require(s > 0 && s0 >= 0)
+    l match {
+      case Nil() =>
+        if (acc.size > 0) {
+          res :+ acc
+        } else {
+          res
+        }
+      case Cons(h, t) =>
+        if (s0 == BigInt(0)) {
+          chunk0(s, t, Cons(h, Nil()), res :+ acc, s-1)
+        } else {
+          chunk0(s, t, acc :+ h, res, s0-1)
+        }
+    }
   }
 
   def chunks(s: BigInt): List[List[T]] = {
@@ -296,57 +299,75 @@ sealed abstract class List[T] {
     }
   }
 
-  def insertAt(pos: BigInt, l: List[T]): List[T] = (this match {
-    case Nil() => l
-    case Cons(h, t) =>
-      if (pos < 0) {
-        insertAt(size + pos, l)
-      } else if (pos == BigInt(0)) {
-        l ++ this
-      } else {
-        Cons(h, t.insertAt(pos - 1, l))
+  private def insertAtImpl(pos: BigInt, l: List[T]): List[T] = {
+    require(0 <= pos && pos <= size)
+    if(pos == BigInt(0)) {
+      l ++ this
+    } else {
+      this match {
+        case Cons(h, t) =>
+          Cons(h, t.insertAtImpl(pos-1, l))
+        case Nil() =>
+          l
       }
-  }) ensuring { res =>
+    }
+  } ensuring { res =>
     res.size == this.size + l.size &&
     res.content == this.content ++ l.content
   }
 
-  def insertAt(pos: BigInt, e: T): List[T] = (this match {
-    case Nil() => Cons[T](e, Nil())
-    case Cons(h, t) =>
-      if (pos < 0) {
-        insertAt(size + pos, e)
-      } else if (pos == BigInt(0)) {
-        Cons(e, this)
-      } else {
-        Cons(h, t.insertAt(pos - 1, e))
-      }
-  }) ensuring { res =>
+  def insertAt(pos: BigInt, l: List[T]): List[T] = {
+    require(-pos <= size && pos <= size)
+    if(pos < 0) {
+      insertAtImpl(size + pos, l)
+    } else {
+      insertAtImpl(pos, l)
+    }
+  } ensuring { res =>
+    res.size == this.size + l.size &&
+    res.content == this.content ++ l.content
+  }
+
+  def insertAt(pos: BigInt, e: T): List[T] = {
+    require(-pos <= size && pos <= size)
+    insertAt(pos, Cons[T](e, Nil()))
+  } ensuring { res =>
     res.size == this.size + 1 &&
     res.content == this.content ++ Set(e)
   }
 
-  def replaceAt(pos: BigInt, l: List[T]): List[T] = (this match {
-    case Nil() => l
-    case Cons(h, t) =>
-      if (pos < 0) {
-        replaceAt(size + pos, l)
-      } else if (pos == BigInt(0)) {
-        l ++ this.drop(l.size)
-      } else {
-        Cons(h, t.replaceAt(pos - 1, l))
+  private def replaceAtImpl(pos: BigInt, l: List[T]): List[T] = {
+    require(0 <= pos && pos <= size)
+    if (pos == BigInt(0)) {
+      l ++ this.drop(l.size)
+    } else {
+      this match {
+        case Cons(h, t) =>
+          Cons(h, t.replaceAtImpl(pos-1, l))
+        case Nil() =>
+          l
       }
-  }) ensuring { res =>
+    }
+  } ensuring { res =>
+    res.content.subsetOf(l.content ++ this.content)
+  }
+
+  def replaceAt(pos: BigInt, l: List[T]): List[T] = {
+    require(-pos <= size && pos <= size)
+    if(pos < 0) {
+      replaceAtImpl(size + pos, l)
+    } else {
+      replaceAtImpl(pos, l)
+    }
+  } ensuring { res =>
     res.content.subsetOf(l.content ++ this.content)
   }
 
   def rotate(s: BigInt): List[T] = {
     if (isEmpty) {
       Nil[T]()
-    } else if (s < 0) {
-      rotate(size+s)
     } else {
-      drop(s) ++ take(s)
+      drop(s mod size) ++ take(s mod size)
     }
   } ensuring { res =>
     res.size == this.size
