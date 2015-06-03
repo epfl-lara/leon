@@ -16,7 +16,7 @@ class PureScalaVerificationRegression extends VerificationRegression {
   val pipeBack = AnalysisPhase
   val optionVariants: List[List[String]] = {
     val isZ3Available = try {
-      Z3Interpreter.buildDefault
+      Z3Interpreter.buildDefault.free()
       true
     } catch {
       case e: java.io.IOException =>
@@ -24,7 +24,7 @@ class PureScalaVerificationRegression extends VerificationRegression {
     }
 
     val isCVC4Available = try {
-      CVC4Interpreter.buildDefault
+      CVC4Interpreter.buildDefault.free()
       true
     } catch {
       case e: java.io.IOException =>

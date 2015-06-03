@@ -18,7 +18,7 @@ class NewSolversRegression extends VerificationRegression {
   val optionVariants: List[List[String]] = {
 
     val isCVC4Available = try {
-      CVC4Interpreter.buildDefault
+      CVC4Interpreter.buildDefault.free()
       true
     } catch {
       case e: java.io.IOException =>
