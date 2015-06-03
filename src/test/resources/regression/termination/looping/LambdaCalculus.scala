@@ -22,16 +22,16 @@ object LambdaCalculus {
   }
   
   /* Termination checker (LoopProcessor) says:
-  ✗ Non-terminating for call: eval(App(Abs(0, App(Var(0), Var(0))), Abs(0, App(Var(0), Var(0)))))
+  ✗ Non-terminating for call: looping_eval(App(Abs(0, App(Var(0), Var(0))), Abs(0, App(Var(0), Var(0)))))
   i.e.
   (λx. x x)(λx. x x)
   This is the well-known "omega".
   */
-  // big step call-by-value evaluation
-  def eval(t: Term): Option[Term] = (t match {
-    case App(t1, t2) => eval(t1) match {
-      case Some(Abs(x, body)) => eval(t2) match {
-        case Some(v2) => eval(subst(x, v2, body))
+  // big step call-by-value looping_evaluation
+  def looping_eval(t: Term): Option[Term] = (t match {
+    case App(t1, t2) => looping_eval(t1) match {
+      case Some(Abs(x, body)) => looping_eval(t2) match {
+        case Some(v2) => looping_eval(subst(x, v2, body))
         case None() => None()
       }
       case _ => None() // stuck
