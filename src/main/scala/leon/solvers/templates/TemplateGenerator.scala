@@ -14,7 +14,8 @@ import purescala.Constructors._
 
 import evaluators._
 
-class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
+class TemplateGenerator[T](val encoder: TemplateEncoder[T],
+                           val assumePreHolds: Boolean) {
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
   private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
 
@@ -89,7 +90,11 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T]) {
 
         val postHolds : Expr =
           if(tfd.hasPrecondition) {
-            Implies(prec.get, newPost)
+            if (assumePreHolds) {
+              And(prec.get, newPost)
+            } else {
+              Implies(prec.get, newPost)
+            }
           } else {
             newPost
           }

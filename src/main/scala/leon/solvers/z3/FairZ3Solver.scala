@@ -32,6 +32,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   val useCodeGen        = context.findOptionOrDefault(optUseCodeGen)
   val evalGroundApps    = context.findOptionOrDefault(optEvalGround)
   val unrollUnsatCores  = context.findOptionOrDefault(optUnrollCores)
+  val assumePreHolds    = context.findOptionOrDefault(optAssumePre)
 
   protected val errors     = new IncrementalBijection[Unit, Boolean]()
   protected def hasError   = errors.getB(()) contains true
@@ -142,7 +143,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     def mkAnd(es: Z3AST*) = z3.mkAnd(es : _*)
     def mkEquals(l: Z3AST, r: Z3AST) = z3.mkEq(l, r)
     def mkImplies(l: Z3AST, r: Z3AST) = z3.mkImplies(l, r)
-  })
+  }, assumePreHolds)
 
 
   initZ3()
