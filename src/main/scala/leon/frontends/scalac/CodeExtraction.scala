@@ -154,13 +154,15 @@ trait CodeExtraction extends ASTExtractors {
     case class DefContext(
         tparams: Map[Symbol, TypeParameter] = Map(),
         vars: Map[Symbol, () => LeonExpr] = Map(),
-        mutableVars: Map[Symbol, () => LeonExpr] = Map()
+        mutableVars: Map[Symbol, () => LeonExpr] = Map(),
+        isExtern: Boolean = false
       ) {
 
       def union(that: DefContext) = {
         copy(this.tparams ++ that.tparams,
              this.vars ++ that.vars,
-             this.mutableVars ++ that.mutableVars)
+             this.mutableVars ++ that.mutableVars,
+             this.isExtern || that.isExtern)
       }
 
       def isVariable(s: Symbol) = (vars contains s) || (mutableVars contains s)
@@ -742,6 +744,7 @@ trait CodeExtraction extends ASTExtractors {
           case t @ ExLazyAccessorFunction(sym, _, body) =>
             val fd = defsToDefs(sym)
             val tparamsMap = ctparamsMap
+
             if(body != EmptyTree) {
               extractFunBody(fd, Seq(), body)(DefContext(tparamsMap.toMap))
             }          
@@ -750,6 +753,7 @@ trait CodeExtraction extends ASTExtractors {
           case t @ ExFieldDef(sym, _, body) => // if !sym.isSynthetic && !sym.isAccessor =>
             val fd = defsToDefs(sym)
             val tparamsMap = ctparamsMap
+
             if(body != EmptyTree) {
               extractFunBody(fd, Seq(), body)(DefContext(tparamsMap.toMap))
             }
@@ -869,7 +873,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
 
-    private def extractFunBody(funDef: FunDef, params: Seq[ValDef], body0 : Tree)(implicit dctx: DefContext): FunDef = {
+    private def extractFunBody(funDef: FunDef, params: Seq[ValDef], body0 : Tree)(dctx: DefContext): FunDef = {
       currentFunDef = funDef
       
       // Find defining function for params with default value
@@ -881,7 +885,8 @@ trait CodeExtraction extends ASTExtractors {
         s.symbol -> (() => Variable(vd.id))
       }
 
-      val fctx = dctx.withNewVars(newVars)
+      val fctx = dctx.withNewVars(newVars).copy(isExtern = funDef.annotations("extern"))
+
 
       // If this is a lazy field definition, drop the assignment/ accessing
       val body = 
@@ -1032,6 +1037,19 @@ trait CodeExtraction extends ASTExtractors {
       }
     }
 
+    private def extractTreeOrNoTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
+      try {
+        extractTree(tr)
+      } catch {
+        case e: ImpureCodeEncounteredException =>
+          if (dctx.isExtern) {
+            NoTree(extractType(tr)).setPos(tr.pos)
+          } else {
+            throw e
+          }
+      }
+    }
+
     private def extractTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
       val (current, tmpRest) = tr match {
         case Block(Block(e :: es1, l1) :: es2, l2) =>
@@ -1052,7 +1070,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExEnsuredExpression(body, contract) =>
           val post = extractTree(contract)
 
-          val b = extractTree(body)
+          val b = extractTreeOrNoTree(body)
 
           val closure = post.getType match {
             case BooleanType =>
@@ -1067,13 +1085,13 @@ trait CodeExtraction extends ASTExtractors {
           val resId = FreshIdentifier("holds", BooleanType).setPos(current.pos).setOwner(currentFunDef)
           val post = Lambda(Seq(LeonValDef(resId)), Variable(resId)).setPos(current.pos)
 
-          val b = extractTree(body)
+          val b = extractTreeOrNoTree(body)
 
           Ensuring(b, post)
 
         case ExAssertExpression(contract, oerr) =>
           val const = extractTree(contract)
-          val b     = rest.map(extractTree).getOrElse(UnitLiteral())
+          val b     = rest.map(extractTreeOrNoTree).getOrElse(UnitLiteral())
 
           rest = None
 
@@ -1082,7 +1100,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExRequiredExpression(contract) =>
           val pre = extractTree(contract)
 
-          val b = rest.map(extractTree).getOrElse(UnitLiteral())
+          val b = rest.map(extractTreeOrNoTree).getOrElse(UnitLiteral())
 
           rest = None
 

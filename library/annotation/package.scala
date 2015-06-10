@@ -11,5 +11,7 @@ package object annotation {
   class induct     extends StaticAnnotation
   @ignore
   class ignore     extends StaticAnnotation
+  @ignore
+  class extern     extends StaticAnnotation
 }
 
