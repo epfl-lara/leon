@@ -30,6 +30,12 @@ package object lang {
     }
   }
 
+  @ignore def forall[A](p: A => Boolean): Boolean = sys.error("Can't execute quantified proposition")
+  @ignore def forall[A,B](p: (A,B) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
+  @ignore def forall[A,B,C](p: (A,B,C) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
+  @ignore def forall[A,B,C,D](p: (A,B,C,D) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
+  @ignore def forall[A,B,C,D,E](p: (A,B,C,D,E) => Boolean): Boolean = sys.error("Can't execute quantified proposition")
+
   @ignore
   object InvariantFunction {
     def invariant(x: Boolean): Unit = ()
