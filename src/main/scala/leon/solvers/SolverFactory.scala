@@ -37,6 +37,7 @@ object SolverFactory {
     "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
     "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
     "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
+    "ground"         -> "Only solves ground terms by evaluating them",
     "enum"           -> "Enumeration-based counter-example-finder"
   )
   
@@ -80,6 +81,9 @@ object SolverFactory {
 
       case "enum"   =>
         SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
+
+      case "ground" =>
+        SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
 
       case "smt-z3" =>
         SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
