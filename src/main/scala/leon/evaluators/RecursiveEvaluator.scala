@@ -211,7 +211,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val rv = e(re)
 
       (lv,rv) match {
-        case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1.toSet == el2.toSet)
+        case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _),FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
         case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
         case _ => BooleanLiteral(lv == rv)
@@ -428,7 +428,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       case (l,r) => throw EvalError(typeErrorMsg(r, SetType(l.getType)))
     }
     case SubsetOf(s1,s2) => (e(s1), e(s2)) match {
-      case (f@FiniteSet(els1, _),FiniteSet(els2, _)) => BooleanLiteral(els1.toSet.subsetOf(els2.toSet))
+      case (f@FiniteSet(els1, _),FiniteSet(els2, _)) => BooleanLiteral(els1.subsetOf(els2))
       case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
     }
     case SetCardinality(s) =>
@@ -440,10 +440,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case f @ FiniteSet(els, base) => 
       finiteSet(els.map(e), base)
-    case i @ IntLiteral(_) => i
-    case i @ InfiniteIntegerLiteral(_) => i
-    case b @ BooleanLiteral(_) => b
-    case u @ UnitLiteral() => u
+
     case l @ Lambda(_, _) =>
       val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
       replaceFromIDs(mapping, l)
@@ -506,7 +503,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case gv: GenericValue =>
       gv
 
-  
     case p : Passes => 
       e(p.asConstraint)
 
@@ -574,7 +570,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           throw RuntimeError("MatchError: "+rscrut+" did not match any of the cases")
       }
 
-    case l : CharLiteral => l
+    case l : Literal[_] => l
 
     case other =>
       context.reporter.error(other.getPos, "Error: don't know how to handle " + other + " in Evaluator ("+other.getClass+").")
