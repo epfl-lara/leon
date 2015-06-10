@@ -103,7 +103,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   protected val library = program.library
 
-  protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.globalId)
+  protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.id)
 
   protected def freshSym(id: Identifier): SSymbol = freshSym(id.name)
   protected def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
