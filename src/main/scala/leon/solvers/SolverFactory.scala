@@ -37,7 +37,7 @@ object SolverFactory {
     "smt-cvc4-proof" -> "CVC4 through SMT-LIB, in-solver inductive reasoning, for proofs only",
     "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
     "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
-    "ground"         -> "Only solves ground terms by evaluating them",
+    "ground"         -> "Only solves ground verification conditions by evaluating them",
     "enum"           -> "Enumeration-based counter-example-finder"
   )
   

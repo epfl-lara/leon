@@ -161,6 +161,10 @@ These options are available by all Leon components:
   * ``unrollz3``
     
     Native Z3, but inductive reasoning happens within Leon (similarly to ``smt-z3``).
+
+  * ``ground``
+
+    Only solves ground verification conditions (without variables) by evaluating them.
   
 * ``--strict``
 
