@@ -666,6 +666,22 @@ object ExprOps {
     rec(expr, Map.empty)
   }
 
+  /*
+   * Lifts lets to top level, without pushing any used variable out of scope.
+   * Assumes no match expressions (i.e. matchToIfThenElse has been called on e)
+   */
+  def liftLets(e: Expr): Expr = {
+
+    type C = Seq[(Identifier, Expr)]
+
+    def lift(e: Expr, defs: C) = e match {
+      case Let(i, ex, b) => (b, (i, ex) +: defs)
+      case _ => (e, defs)
+    }
+    val (bd, defs) = genericTransform[C](noTransformer, lift, _.flatten)(Seq())(e)
+
+    defs.foldRight(bd){ case ((id, e), body) => let(id, e, body) }
+  }
 
   /**
    * Generates substitutions necessary to transform scrutinee to equivalent
@@ -1082,6 +1098,7 @@ object ExprOps {
   }
 
   private def noCombiner(subCs: Seq[Unit]) = ()
+  private def noTransformer[C](e: Expr, c: C) = (e, c)
 
   def simpleTransform(pre: Expr => Expr, post: Expr => Expr)(expr: Expr) = {
     val newPre  = (e: Expr, c: Unit) => (pre(e), ())

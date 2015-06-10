@@ -3,12 +3,14 @@
 package leon
 package solvers.smtlib
 
+import leon.purescala.ExprOps.CollectorWithPaths
 import purescala._
 import Expressions._
+import ExprOps._
 import Definitions._
-import Constructors.{application, implies}
+import Constructors._
 import DefOps.typedTransitiveCallees
-import verification.VC
+import leon.verification.{VCKinds, VC}
 import smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
 import smtlib.parser.Terms.{Exists => SMTExists, ForAll => SMTForall, _ }
 import smtlib.theories.Core.Equals
@@ -123,13 +125,49 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
   }
 
+  // Generates inductive hypotheses for
+  protected def generateInductiveHyp: Expr = {
+    def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
+      CollectorWithPaths(f).traverse(expr)
+    }
+
+    //println("Current is" + currentFunDef.get)
+
+    val calls = /*collectWithPC {
+      case f : FunctionInvocation => f
+    }*/functionCallsOf(currentFunDef.get.body.get) //FIXME too many .get
+
+    //println(calls mkString "\n")
+
+    val inductiveHyps = for {
+      fi@FunctionInvocation(tfd, args) <- calls.toSeq
+    } yield {
+      val post = tfd.postcondition map {
+        post => application(replaceFromIDs(tfd.params.map{ _.id}.zip(args).toMap, post), Seq(fi))
+      } getOrElse BooleanLiteral(true)
+      val pre = tfd.precondition getOrElse BooleanLiteral(true)
+      /*implies(pc, */ and(pre, post) //)
+    }
+
+    andJoin(inductiveHyps)
+  }
+
+  protected def withInductiveHyp(vc: VC): Expr = {
+    if (vc.kind == VCKinds.Postcondition) {
+      // We want to check if the negation of the vc is sat under inductive hyp.
+      // So we need to see if (indHyp /\ !vc) is satisfiable
+      liftLets(matchToIfThenElse(and(generateInductiveHyp, not(vc.condition))))
+    } else {
+      not(vc.condition)
+    }
+  }
+
   // We need to know the function context.
   // The reason is we do not want to assume postconditions of functions referring to 
   // the current function, as this may make the proof unsound
   override def assertVC(vc: VC) = {
     currentFunDef = Some(vc.fd)
-    //println("Setting fundef to " + currentFunDef.get.id.uniqueName)
-    super.assertVC(vc)
+    assertCnstr(withInductiveHyp(vc))
   }
 
 }
