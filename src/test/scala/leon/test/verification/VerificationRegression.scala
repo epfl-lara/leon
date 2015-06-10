@@ -81,9 +81,11 @@ trait VerificationRegression extends LeonTestSuite {
   override def run(testName: Option[String], args: Args): Status = {
     forEachFileIn("valid") { output =>
       val Output(report, reporter) = output
-      for ((vc, vr) <- report.vrs if (!vr.isValid)) {
-        val status = if (vr.isInvalid) "invalid" else "inconclusive"
-        fail(s"The following verification condition was $status: $vc @${vc.getPos}")
+      for ((vc, vr) <- report.vrs if (vr.isInvalid)) {
+        fail(s"The following verification condition was invalid: $vc @${vc.getPos}")
+      }
+      for ((vc, vr) <- report.vrs if (vr.isInconclusive)) {
+        fail(s"The following verification condition was inconclusive: $vc @${vc.getPos}")
       }
       reporter.terminateIfError()
     }
