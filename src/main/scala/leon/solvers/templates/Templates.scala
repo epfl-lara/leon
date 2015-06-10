@@ -11,7 +11,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Definitions._
 
-case class App[T](caller: T, tpe: TypeTree, args: Seq[T]) {
+case class App[T](caller: T, tpe: FunctionType, args: Seq[T]) {
   override def toString = {
     "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
   }
@@ -26,7 +26,7 @@ object Instantiation {
   def empty[T] = (Seq.empty[T], Map.empty[T, Set[TemplateCallInfo[T]]], Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]])
 
   implicit class InstantiationWrapper[T](i: Instantiation[T]) {
-    def merge(that: Instantiation[T]): Instantiation[T] = {
+    def ++(that: Instantiation[T]): Instantiation[T] = {
       val (thisClauses, thisBlockers, thisApps) = i
       val (thatClauses, thatBlockers, thatApps) = that
 
@@ -81,17 +81,19 @@ trait Template[T] { self =>
       substituter(b) -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
     }
 
-    val lambdaInstantiation = lambdas.foldLeft(Instantiation.empty[T]) {
-      case (acc, (idT, lambda)) =>
-        val newIdT = substituter(idT)
-        val newTemplate = lambda.substitute(substMap)
-        val instantiation = lambdaManager.instantiateLambda(newIdT, newTemplate)
-        acc merge instantiation
+    var instantiation: Instantiation[T] = (newClauses, newBlockers, Map.empty)
+
+    for ((idT, lambda) <- lambdas) {
+      val newIdT = substituter(idT)
+      val newTemplate = lambda.substitute(substMap)
+      instantiation ++= lambdaManager.instantiateLambda(newIdT, newTemplate)
     }
 
-    val appInstantiation = lambdaManager.instantiateApps(newApplications)
+    for ((b,apps) <- newApplications; app <- apps) {
+      instantiation ++= lambdaManager.instantiateApp(b, app)
+    }
 
-    (newClauses, newBlockers, Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]]) merge lambdaInstantiation merge appInstantiation
+    instantiation
   }
 
   override def toString : String = "Instantiated template"
@@ -132,7 +134,7 @@ object Template {
         val App(c, tpe, prevArgs) = applicationTemplate(caller)
         App(c, tpe, prevArgs ++ args.map(encodeExpr))
       case Application(c, args) =>
-        App(encodeExpr(c), c.getType, args.map(encodeExpr))
+        App(encodeExpr(c), c.getType.asInstanceOf[FunctionType], args.map(encodeExpr))
       case _ => scala.sys.error("Should never happen!")
     }
 
@@ -151,7 +153,7 @@ object Template {
     lambdas: Map[T, LambdaTemplate[T]],
     substMap: Map[Identifier, T] = Map.empty[Identifier, T],
     optCall: Option[TypedFunDef] = None,
-    optApp: Option[(T, TypeTree)] = None
+    optApp: Option[(T, FunctionType)] = None
   ) : (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[T, Set[App[T]]], () => String) = {
 
     val idToTrId : Map[Identifier, T] = {
@@ -258,7 +260,6 @@ object FunctionTemplate {
       funString
     )
   }
-
 }
 
 class FunctionTemplate[T] private(
@@ -344,7 +345,7 @@ object LambdaTemplate {
   ) : LambdaTemplate[T] = {
 
     val id = ids._2
-    val tpe = ids._1.getType
+    val tpe = ids._1.getType.asInstanceOf[FunctionType]
     val (clauses, blockers, applications, templateString) =
       Template.encode(encoder, pathVar, arguments, condVars, exprVars, guardedExprs, lambdas,
         substMap = baseSubstMap + ids, optApp = Some(id -> tpe))
@@ -390,7 +391,7 @@ class LambdaTemplate[T] private (
   private[templates] val structuralKey: Lambda,
   stringRepr: () => String) extends Template[T] {
 
-  val tpe = id.getType
+  val tpe = id.getType.asInstanceOf[FunctionType]
 
   def substitute(substMap: Map[T,T]): LambdaTemplate[T] = {
     val substituter : T => T = encoder.substitute(substMap)
