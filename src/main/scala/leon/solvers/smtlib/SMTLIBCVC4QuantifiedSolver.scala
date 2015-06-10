@@ -9,7 +9,7 @@ import ExprOps._
 import Definitions._
 import Constructors._
 import DefOps.typedTransitiveCallees
-import leon.verification.{VCKinds, VC}
+import leon.verification.VC
 import smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
 import smtlib.parser.Terms.{Exists => SMTExists, ForAll => SMTForall, _ }
 import smtlib.theories.Core.Equals
@@ -119,30 +119,26 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
   }
 
-  private def withInductiveHyp(vc: VC): Expr = {
-    if (vc.kind == VCKinds.Postcondition) {
+  private def withInductiveHyp(cond: Expr): Expr = {
 
-      val inductiveHyps = for {
-        fi@FunctionInvocation(tfd, args) <- functionCallsOf(vc.condition).toSeq
-      } yield {
-        val formalToRealArgs = tfd.params.map{ _.id}.zip(args).toMap
-        val post = tfd.postcondition map { post =>
-          application(
-            replaceFromIDs(formalToRealArgs, post),
-            Seq(fi)
-          )
-        } getOrElse BooleanLiteral(true)
-        val pre = tfd.precondition getOrElse BooleanLiteral(true)
-        and(pre, post)
-      }
-
-      // We want to check if the negation of the vc is sat under inductive hyp.
-      // So we need to see if (indHyp /\ !vc) is satisfiable
-      liftLets(matchToIfThenElse(and(andJoin(inductiveHyps), not(vc.condition))))
-
-    } else {
-      not(vc.condition)
+    val inductiveHyps = for {
+      fi@FunctionInvocation(tfd, args) <- functionCallsOf(cond).toSeq
+    } yield {
+      val formalToRealArgs = tfd.params.map{ _.id}.zip(args).toMap
+      val post = tfd.postcondition map { post =>
+        application(
+          replaceFromIDs(formalToRealArgs, post),
+          Seq(fi)
+        )
+      } getOrElse BooleanLiteral(true)
+      val pre = tfd.precondition getOrElse BooleanLiteral(true)
+      and(pre, post)
     }
+
+    // We want to check if the negation of the vc is sat under inductive hyp.
+    // So we need to see if (indHyp /\ !vc) is satisfiable
+    liftLets(matchToIfThenElse(and(andJoin(inductiveHyps), not(cond))))
+
   }
 
   // We need to know the function context.
@@ -150,7 +146,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
   // the current function, as this may make the proof unsound
   override def assertVC(vc: VC) = {
     currentFunDef = Some(vc.fd)
-    assertCnstr(withInductiveHyp(vc))
+    assertCnstr(withInductiveHyp(vc.condition))
   }
 
 }
