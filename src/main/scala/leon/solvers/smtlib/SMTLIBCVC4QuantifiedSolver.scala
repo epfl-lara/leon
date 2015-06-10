@@ -3,7 +3,6 @@
 package leon
 package solvers.smtlib
 
-import leon.purescala.ExprOps.CollectorWithPaths
 import purescala._
 import Expressions._
 import ExprOps._
@@ -40,9 +39,9 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
     // define-funs-rec does not accept parameterless functions, so we have to treat them differently:
     // we declare-fun each one and assert it is equal to its body
-    val (withParams, withoutParams) = funs.toSeq partition( _.params.nonEmpty)
+    val (withParams, withoutParams) = funs.toSeq filterNot functions.containsA partition(_.params.nonEmpty)
 
-    val parameterlessAssertions = withoutParams filterNot functions.containsA flatMap { tfd =>
+    val parameterlessAssertions = withoutParams flatMap { tfd =>
       val s = super.declareFunction(tfd)
 
       try {
@@ -64,9 +63,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       }
     }
 
-    val notSeen = withParams filterNot functions.containsA
-
-    val smtFunDecls = notSeen map { tfd =>
+    val smtFunDecls = withParams map { tfd =>
       val id = if (tfd.tps.isEmpty) {
         tfd.id
       } else {
@@ -88,24 +85,21 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
           (p.id, id2sym(p.id): Term)
         }.toMap)
       } catch {
-        case i: IllegalArgumentException =>
+        case _: IllegalArgumentException =>
           addError()
           toSMT(Error(tfd.body.get.getType, ""))(Map())
       }
     }
 
     if (smtFunDecls.nonEmpty) {
-      //println("smtFuns: ")
-      //println(smtFunDecls map { _.name.name} mkString ", ")
-      //println(s"current: ${currentFunDef.get.id}")
       sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
       // Assert contracts for defined functions
       for {
-        // Exclude contracts of functions that refer to current to avoid unsoundness
-        tfd <- notSeen if !refersToCurrent(tfd.fd)
+        // If we encounter a function that does not refer to the current function,
+        // it is sound to assume its contracts for all inputs
+        tfd <- withParams if !refersToCurrent(tfd.fd)
         post <- tfd.postcondition
       } {
-        //currentFunDef foreach { f => println(s"${tfd.id.uniqueName} does not refer to ${f.id.uniqueName}") }
         val term = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
           application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
@@ -125,38 +119,27 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
   }
 
-  // Generates inductive hypotheses for
-  protected def generateInductiveHyp: Expr = {
-    def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
-      CollectorWithPaths(f).traverse(expr)
-    }
-
-    //println("Current is" + currentFunDef.get)
-
-    val calls = /*collectWithPC {
-      case f : FunctionInvocation => f
-    }*/functionCallsOf(currentFunDef.get.body.get) //FIXME too many .get
-
-    //println(calls mkString "\n")
-
-    val inductiveHyps = for {
-      fi@FunctionInvocation(tfd, args) <- calls.toSeq
-    } yield {
-      val post = tfd.postcondition map {
-        post => application(replaceFromIDs(tfd.params.map{ _.id}.zip(args).toMap, post), Seq(fi))
-      } getOrElse BooleanLiteral(true)
-      val pre = tfd.precondition getOrElse BooleanLiteral(true)
-      /*implies(pc, */ and(pre, post) //)
-    }
-
-    andJoin(inductiveHyps)
-  }
-
-  protected def withInductiveHyp(vc: VC): Expr = {
+  private def withInductiveHyp(vc: VC): Expr = {
     if (vc.kind == VCKinds.Postcondition) {
+
+      val inductiveHyps = for {
+        fi@FunctionInvocation(tfd, args) <- functionCallsOf(vc.condition).toSeq
+      } yield {
+        val formalToRealArgs = tfd.params.map{ _.id}.zip(args).toMap
+        val post = tfd.postcondition map { post =>
+          application(
+            replaceFromIDs(formalToRealArgs, post),
+            Seq(fi)
+          )
+        } getOrElse BooleanLiteral(true)
+        val pre = tfd.precondition getOrElse BooleanLiteral(true)
+        and(pre, post)
+      }
+
       // We want to check if the negation of the vc is sat under inductive hyp.
       // So we need to see if (indHyp /\ !vc) is satisfiable
-      liftLets(matchToIfThenElse(and(generateInductiveHyp, not(vc.condition))))
+      liftLets(matchToIfThenElse(and(andJoin(inductiveHyps), not(vc.condition))))
+
     } else {
       not(vc.condition)
     }
