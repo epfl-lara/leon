@@ -22,7 +22,7 @@ object SharedOptions extends LeonComponent {
     val usageRhs = "f1,f2,..."
   }
 
-  val optEval = LeonStringOptionDef("eval", "Evaluate ground functions", "default", "--eval[=code|default]")
+  val optEval = LeonStringOptionDef("eval", "Evaluate ground functions", "default", "[code|default]")
 
   val optSelectedSolvers = new LeonOptionDef[Set[String]] {
     val name = "solvers"

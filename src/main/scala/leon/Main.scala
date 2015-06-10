@@ -51,19 +51,20 @@ object Main {
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
 
   def displayHelp(reporter: Reporter, error: Boolean) = {
-    reporter.info(MainComponent.description)
+
+    reporter.title(MainComponent.description)
     for (opt <- MainComponent.definedOptions.toSeq.sortBy(_.name)) {
       reporter.info(opt.helpString)
     }
     reporter.info("")
 
-    reporter.info("Additional top-level options")
+    reporter.title("Additional top-level options")
     for (opt <- SharedOptions.definedOptions.toSeq.sortBy(_.name)) {
       reporter.info(opt.helpString)
     }
     reporter.info("")
       
-    reporter.info("Additional options, by component:")
+    reporter.title("Additional options, by component:")
 
     for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
@@ -77,7 +78,7 @@ object Main {
   }
 
   def displayVersion(reporter: Reporter) = {
-    reporter.info("Leon verification and synthesis tool (http://leon.epfl.ch/)")
+    reporter.title("Leon verification and synthesis tool (http://leon.epfl.ch/)")
     reporter.info("")
   }
 
