@@ -721,6 +721,9 @@ trait CodeExtraction extends ASTExtractors {
         val ctparamsMap = ctparams zip cd.tparams.map(_.tp)
 
         for (d <- tmpl.body) d match {
+          case t if isIgnored(t.symbol) =>
+            //ignore
+
           case ExFunctionDef(sym, tparams, params, _, body) =>
             val fd = defsToDefs(sym)
 
