@@ -12,21 +12,32 @@ import Instantiation._
 
 trait QuantificationManager[T] { self : LambdaManager[T] =>
 
-  lazy val startId = FreshIdentifier("q", BooleanType)
-  lazy val start = encoder.encodeId(startId)
-
   private class QuantificationScope(
-    val quantifiedApps: List[(T, App[T])],
-    val quantifiedID: Map[Identifier, T],
+    val quantifiedApps: List[App[T]],
+    val quantifiers: Map[Identifier, T],
     val condVars: Map[Identifier, T],
     val exprVars: Map[Identifier, T],
     val clauses: Seq[T],
     val blockers: Map[T, Set[TemplateCallInfo[T]]],
     val applications: Map[T, Set[App[T]]],
-    val lambdas: Map[T, LambdaTemplate[T]]
+    val lambdas: Map[T, LambdaTemplate[T]],
+    val res: Set[T]
   ) {
-    def this() = this(Nil, Map.empty, Map.empty, Map.empty, Seq.empty, Map.empty, Map.empty, Map.empty)
-    lazy val quantified: Set[T] = quantifiedID.values.toSet
+    def this() = this(Nil, Map.empty, Map.empty, Map.empty, Seq.empty, Map.empty, Map.empty, Map.empty, Set.empty)
+    def this(scope: QuantificationScope) = this(
+      scope.quantifiedApps,
+      scope.quantifiers,
+      scope.condVars,
+      scope.exprVars,
+      scope.clauses,
+      scope.blockers,
+      scope.applications,
+      scope.lambdas,
+      scope.res
+    )
+
+    lazy val quantified: Set[T] = quantifiers.values.toSet
+    def free(tpe: FunctionType, idT: T): Boolean = res(idT) || freeLambdas(tpe)(idT)
   }
 
   private var scopes: List[QuantificationScope] = List(new QuantificationScope)
@@ -36,16 +47,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     self.push()
 
     val currentScope = scope
-    scopes = new QuantificationScope(
-      currentScope.quantifiedApps,
-      currentScope.quantifiedID,
-      currentScope.condVars,
-      currentScope.exprVars,
-      currentScope.clauses,
-      currentScope.blockers,
-      currentScope.applications,
-      currentScope.lambdas
-    ) :: scopes.tail
+    scopes = new QuantificationScope(currentScope) :: scopes.tail
   }
 
   override def pop(lvl: Int): Unit = {
@@ -53,16 +55,36 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     scopes = scopes.drop(lvl)
   }
 
-  def registerQuantified(start: T, condVars: Map[Identifier, T], exprVars: Map[Identifier, T], clauses: Seq[T], blockers: Map[T, Set[TemplateCallInfo[T]]], apps: Set[(T, App[T])], quantified: Set[T]): Unit = {
+  def registerQuantified(
+    startVar: Identifier,
+    quantifierVars: Seq[Identifier],
+    condVars: Map[Identifier, T],
+    exprVars: Map[Identifier, T],
+    guardedExprs: Map[Identifier, Seq[Expr]],
+    lambdas: Map[T, LambdaTemplate[T]],
+    subst: Map[Identifier, T],
+    res: Option[T]
+  ): Unit = {
+    val currentScope = scope
+    def free(tpe: FunctionType, idT: T): Boolean = currentScope.free(tpe, idT) || res.exists(_ == idT)
 
-    val bindingCalls: Set[App[T]] = apps.collect {
-      case (b, app @ App(caller, tpe, args)) if args exists quantified => app
+    val quantifiers: Seq[(Identifier, T)] = quantifierVars.map(id => id -> encoder.encodeId(id))
+    val quantified: Set[T] = quantifiers.map(_._2).toSet
+    val pathVar = startVar -> encoder.encodeId(startVar)
+    val (clauses, blockers, apps, _) = Template.encode(encoder, pathVar, quantifiers, condVars, exprVars, guardedExprs, lambdas, subst)
+
+    val bindingApps: Set[App[T]] = {
+      def rec(templates: Map[T, LambdaTemplate[T]]): Set[App[T]] = templates.flatMap {
+        case (_, template) => template.applications.flatMap(_._2).toSet ++ rec(template.lambdas)
+      }.toSet
+
+      val allApps = apps.flatMap(_._2).toSet
+      for (app @ App(caller, tpe, args) <- (allApps ++ rec(lambdas)) if args exists quantified) yield app
     }
 
-    // TODO: postcondition res ??
-    val argumentBindings: Set[(Option[T], FunctionType, Int, T)] = bindingCalls.flatMap {
+    val argumentBindings: Set[(Option[T], FunctionType, Int, T)] = bindingApps.flatMap {
       case App(caller, tpe, args) => args.zipWithIndex.collect {
-        case (qid, idx) if quantified(qid) => (if (freeLambdas(tpe)(caller)) Some(caller) else None, tpe, idx, qid)
+        case (qid, idx) if quantified(qid) => (if (free(tpe, caller)) Some(caller) else None, tpe, idx, qid)
       }
     }
 
@@ -103,12 +125,48 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
         case (mappings, (_, pairs)) => pairs.toList.flatMap(p => mappings.map(mapping => mapping + p))
       }
 
-    val expandedClauses = mappings.flatMap { mapping =>
-      val substituter = encoder.substitute(mapping)
-      clauses map substituter
+    val (allClauses, allBlockers, allApps) = {
+      var allClauses  : Seq[T]                           = Seq.empty
+      var allBlockers : Map[T, Set[TemplateCallInfo[T]]] = Map.empty.withDefaultValue(Set.empty)
+      var allApps     : Map[T, Set[App[T]]]              = Map.empty.withDefaultValue(Set.empty)
+
+      for (mapping <- mappings) {
+        val substituter = encoder.substitute(mapping)
+        allClauses ++= clauses.map(substituter)
+
+        blockers.foreach { case (b, fis) =>
+          val bp = substituter(b)
+          val fisp = fis.map(fi => fi.copy(args = fi.args.map(substituter)))
+          allBlockers += bp -> (allBlockers(bp) ++ fisp)
+        }
+
+        apps.foreach { case (b, fas) =>
+          val bp = substituter(b)
+          val fasp = fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
+          allApps += bp -> (allApps(bp) ++ fasp)
+        }
+      }
+
+      (allClauses, allBlockers, allApps)
     }
 
-    
+    val quantifiedApps: Set[(T, App[T])] = for {
+      (b, bApps) <- allApps.toSet
+      app @ App(caller, tpe, args) <- bApps
+      if args exists quantified
+    } yield (b, app)
+
+    scopes = new QuantificationScope(
+      currentScope.quantifiedApps ++ quantifiedApps,
+      currentScope.quantifiers ++ quantifiers,
+      currentScope.condVars ++ condVars,
+      currentScope.exprVars ++ exprVars,
+      currentScope.clauses ++ allClauses,
+      currentScope.blockers merge allBlockers,
+      currentScope.applications merge allApps,
+      currentScope.lambdas ++ lambdas,
+      currentScope.res ++ res
+    ) :: scopes.tail
   }
 
   override def instantiateApp(blocker: T, app: App[T]): Instantiation[T] = {
@@ -120,24 +178,24 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     // applications previously encountered. Also make sure the current `app` is in the mapping
     // as other instantiations have been performed previously when the associated applications
     // were first encountered.
-    val appMappings: List[List[((T, App[T]), (T, App[T]))]] = quantifiedApps
+    val appMappings: List[List[(App[T], App[T])]] = quantifiedApps
       // 1. select an application in the quantified proposition for which the current app can
       //    be bound when generating the new constraints
-      .filter { case (qb, qapp) =>
-        qapp.caller == caller || (qapp.tpe == tpe && !freeLambdas(qapp.tpe)(qapp.caller))
-      }
+      .filter(qapp => qapp.caller == caller || (qapp.tpe == tpe && !free(qapp.tpe, qapp.caller)))
       // 2. build the instantiation mapping associated to the chosen current application binding
       .flatMap { bindingApp => quantifiedApps
         // 2.1. select all potential matches for each quantified application
-        .map { case qapp @ (qb, App(qcaller, qtpe, qargs)) =>
+        .map { case qapp @ App(qcaller, qtpe, qargs) =>
           if (qapp == bindingApp) {
-            bindingApp -> Set(blocker -> app)
+            bindingApp -> Set(app)
           } else {
-            val instances = self.applications(qtpe).filter(p => qcaller == p._2.caller || !freeLambdas(qtpe)(p._2.caller))
+            val instances = self.applications(qtpe).collect {
+              case (_, app @ App(caller, _, _)) if qcaller == caller || !free(qtpe, caller) => app
+            }
 
             // concrete applications can appear multiple times in the constraint, and this is also the case
             // for the current application for which we are generating the constraints
-            val withApp = if (qcaller == caller || !freeLambdas(tpe)(caller)) instances + (blocker -> app) else instances
+            val withApp = if (qcaller == caller || !free(tpe, caller)) instances + app else instances
 
             // add quantified application to instances for constraints that depend on free variables
             // this also make sure that constraints that don't depend on all variables will also be instantiated
@@ -148,7 +206,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
         }
         // 2.2. based on the possible bindings for each quantified application, build a set of
         //      instantiation mappings that can be used to instantiate all necessary constraints
-        .foldLeft[List[List[((T, App[T]), (T, App[T]))]]] (List(Nil)) {
+        .foldLeft[List[List[(App[T], App[T])]]] (List(Nil)) {
           case (mappings, (qapp, instances)) =>
             instances.toList.flatMap(app => mappings.map(mapping => mapping :+ (app -> qapp)))
         }
@@ -161,8 +219,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
       var subst: Map[T, T] = Map.empty
 
       for {
-        ((qb, App(qcaller, _, qargs)), (b, App(caller, _, args))) <- mapping
-        _ = constraints ++= Seq(qb, b)
+        (App(qcaller, _, qargs), App(caller, _, args)) <- mapping
         _ = if (qcaller != caller) constraints :+= encoder.mkEquals(qcaller, caller)
         (qarg, arg) <- (qargs zip args)
       } if (subst.isDefinedAt(qarg) || !quantified(qarg)) {
@@ -172,7 +229,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
       }
 
       // make sure we freshen quantified variables that haven't been bound by concrete calls
-      subst ++= quantifiedID.collect {
+      subst ++= quantifiers.collect {
         case (id, idT) if !subst.isDefinedAt(idT) => idT -> encoder.encodeId(id)
       }
 

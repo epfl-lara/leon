@@ -25,16 +25,18 @@ object Instantiation {
 
   def empty[T] = (Seq.empty[T], Map.empty[T, Set[TemplateCallInfo[T]]], Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]])
 
+  implicit class MapWrapper[A,B](map: Map[A,Set[B]]) {
+    def merge(that: Map[A,Set[B]]): Map[A,Set[B]] = (map.keys ++ that.keys).map { k =>
+      k -> (map.getOrElse(k, Set.empty) ++ that.getOrElse(k, Set.empty))
+    }.toMap
+  }
+
   implicit class InstantiationWrapper[T](i: Instantiation[T]) {
     def ++(that: Instantiation[T]): Instantiation[T] = {
       val (thisClauses, thisBlockers, thisApps) = i
       val (thatClauses, thatBlockers, thatApps) = that
 
-      (
-        thisClauses ++ thatClauses,
-        (thisBlockers.keys ++ thatBlockers.keys).map(k => k -> (thisBlockers.getOrElse(k, Set.empty) ++ thatBlockers.getOrElse(k, Set.empty))).toMap,
-        (thisApps.keys ++ thatApps.keys).map(k => k -> (thisApps.getOrElse(k, Set.empty) ++ thatApps.getOrElse(k, Set.empty))).toMap
-      )
+      (thisClauses ++ thatClauses, thisBlockers merge thatBlockers, thisApps merge thatApps)
     }
   }
 }
