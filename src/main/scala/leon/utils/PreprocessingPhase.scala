@@ -23,7 +23,8 @@ object PreprocessingPhase extends TransformationPhase {
       ConvertHoles                  andThen
       CompleteAbstractDefinitions   andThen
       CheckADTFieldsTypes           andThen
-      InjectAsserts
+      InjectAsserts                 andThen
+      InliningPhase
 
 
     phases.run(ctx)(p)

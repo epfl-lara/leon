@@ -13,7 +13,6 @@ import Definitions.{
   ModuleDef   => LeonModuleDef,
   ValDef      => LeonValDef,
   Import      => LeonImport,
-  Annotation  => LeonAnnotation,
   _
 }
 
@@ -44,18 +43,6 @@ trait CodeExtraction extends ASTExtractors {
   import scala.collection.immutable.Set
 
   val reporter = self.ctx.reporter
-
-  def annotationsOf(s: Symbol): Set[String] = {
-    val actualSymbol = s.accessedOrSelf
-
-    (for {
-      a <- actualSymbol.annotations ++ actualSymbol.owner.annotations
-      name = a.atp.safeToString.replaceAll("\\.package\\.", ".")
-      if (name startsWith "leon.annotation.")
-    } yield {
-      name.split("\\.", 3)(2)
-    }).toSet
-  }
 
   implicit def scalaPosToLeonPos(p: global.Position): LeonPosition = {
     if (p == NoPosition) {
@@ -655,7 +642,11 @@ trait CodeExtraction extends ASTExtractors {
 
       fd.setPos(sym.pos)
 
-      fd.addFlag(annotationsOf(sym).toSeq.map(LeonAnnotation) : _*)
+      fd.addFlags(annotationsOf(sym).map(FunctionFlag.fromName))
+
+      if (sym.isImplicit) {
+        fd.addFlag(IsInlined)
+      }
 
       defsToDefs += sym -> fd
 
@@ -675,7 +666,7 @@ trait CodeExtraction extends ASTExtractors {
       fd.setPos(sym.pos)
       fd.addFlag(IsField(isLazy))
 
-      fd.addFlag(annotationsOf(sym).toSeq.map(LeonAnnotation) : _*)
+      fd.addFlags(annotationsOf(sym).map(FunctionFlag.fromName))
 
       defsToDefs += sym -> fd
 
@@ -1068,7 +1059,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
 
-          fd.addFlag(annotationsOf(d.symbol).toSeq.map(LeonAnnotation) : _*)
+          fd.addFlags(annotationsOf(d.symbol).map(FunctionFlag.fromName))
 
           val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap)
 

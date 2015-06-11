@@ -472,6 +472,9 @@ object ExprOps {
       case TupleSelect(LetTuple(ids, v, b), ts) =>
         Some(letTuple(ids, v, tupleSelect(b, ts, true)))
 
+      case CaseClassSelector(cct, cc: CaseClass, id) =>
+        Some(CaseClassSelector(cct, cc, id))
+
       case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
         Some(thenn)
 

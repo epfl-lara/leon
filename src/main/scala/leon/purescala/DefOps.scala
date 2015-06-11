@@ -347,6 +347,20 @@ object DefOps {
     res
   }
 
+  // @Note: This function does not remove functions in classdefs
+  def removeDefs(p: Program, dds: Set[Definition]): Program = {
+    p.copy(units = for (u <- p.units if !dds(u)) yield {
+      u.copy(
+        defs = for (d <- u.defs if !dds(d)) yield d match {
+          case md: ModuleDef =>
+            md.copy(defs = md.defs.filterNot(dds))
+
+          case cd => cd 
+        }
+      )
+    })
+  }
+
   /**
    * Returns a call graph starting from the given sources, taking into account
    * instantiations of function type parameters,

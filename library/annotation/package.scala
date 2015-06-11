@@ -13,5 +13,7 @@ package object annotation {
   class ignore     extends StaticAnnotation
   @ignore
   class extern     extends StaticAnnotation
+  @ignore
+  class inline     extends StaticAnnotation
 }
 

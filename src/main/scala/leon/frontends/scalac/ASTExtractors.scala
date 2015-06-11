@@ -20,6 +20,17 @@ trait ASTExtractors {
     rootMirror.getClassByName(newTermName(str))
   }
 
+  def annotationsOf(s: Symbol): Set[String] = {
+    val actualSymbol = s.accessedOrSelf
+
+    (for {
+      a <- actualSymbol.annotations ++ actualSymbol.owner.annotations
+      name = a.atp.safeToString.replaceAll("\\.package\\.", ".")
+      if (name startsWith "leon.annotation.")
+    } yield {
+      name.split("\\.", 3)(2)
+    }).toSet
+  }
 
   protected lazy val tuple2Sym          = classFromName("scala.Tuple2")
   protected lazy val tuple3Sym          = classFromName("scala.Tuple3")
@@ -295,9 +306,17 @@ trait ASTExtractors {
       }
     }
 
+    private def isCaseClass(cd: ClassDef): Boolean = {
+      cd.symbol.isCase && !cd.symbol.isAbstractClass && cd.impl.body.size >= 8
+    }
+
+    private def isImplicitClass(cd: ClassDef): Boolean = {
+      cd.symbol.isImplicit
+    }
+
     object ExCaseClass {
       def unapply(cd: ClassDef): Option[(String,Symbol,Seq[(Symbol,ValDef)], Template)] = cd match {
-        case ClassDef(_, name, tparams, impl) if cd.symbol.isCase && !cd.symbol.isAbstractClass && impl.body.size >= 8 => {
+        case ClassDef(_, name, tparams, impl) if isCaseClass(cd) || isImplicitClass(cd) => {
           val constructor: DefDef = impl.children.find {
             case ExConstructorDef() => true
             case _ => false
@@ -361,10 +380,19 @@ trait ASTExtractors {
         * and regardless of its visibility.
         */
       def unapply(dd: DefDef): Option[(Symbol, Seq[Symbol], Seq[ValDef], Type, Tree)] = dd match {
-        case DefDef(_, name, tparams, vparamss, tpt, rhs) if(
-           name != nme.CONSTRUCTOR && !dd.symbol.isSynthetic && !dd.symbol.isAccessor
-        ) =>
-          Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
+        case DefDef(_, name, tparams, vparamss, tpt, rhs) if name != nme.CONSTRUCTOR && !dd.symbol.isAccessor =>
+          if (dd.symbol.isSynthetic && dd.symbol.isImplicit && dd.symbol.isMethod) {
+            // Check that the class it was generated from is not ignored
+            if (annotationsOf(tpt.symbol)("ignore")) {
+              None
+            } else {
+              Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
+            }
+          } else if (!dd.symbol.isSynthetic) {
+            Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))
+          } else {
+            None
+          }
         case _ => None
       }
     }

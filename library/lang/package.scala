@@ -6,14 +6,27 @@ import leon.annotation._
 import scala.language.implicitConversions
 
 package object lang {
-  @ignore
+
   implicit class BooleanDecorations(val underlying: Boolean) {
+    @inline
     def holds : Boolean = {
-      assert(underlying)
       underlying
+    } ensuring {
+      _ == true
     }
+
+    @inline
     def ==> (that: Boolean): Boolean = {
       !underlying || that
+    }
+  }
+
+  implicit class SpecsDecorations[A](val underlying: A) {
+    @inline
+    def computes(target: A) = {
+      underlying
+    } ensuring {
+      res => res == target
     }
   }
 

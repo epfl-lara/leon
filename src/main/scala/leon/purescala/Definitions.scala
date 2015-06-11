@@ -303,7 +303,15 @@ object Definitions {
   }
 
   // A class that represents flags that annotate a FunDef with different attributes
-  class FunctionFlag
+  sealed abstract class FunctionFlag
+
+  object FunctionFlag {
+    def fromName(name: String): FunctionFlag = name match {
+      case "inline" => IsInlined
+      case _ => Annotation(name)
+    }
+  }
+
   // Whether this FunDef was originally a (lazy) field
   case class IsField(isLazy: Boolean) extends FunctionFlag
   // Compiler annotations given in the source code as @annot
@@ -317,6 +325,8 @@ object Definitions {
   case object IsAbstract extends FunctionFlag
   // Currently, the only synthetic functions are those that calculate default values of parameters
   case object IsSynthetic extends FunctionFlag
+  // Is inlined
+  case object IsInlined extends FunctionFlag
 
   /** Functions
     *  This class represents methods or fields of objects. By "fields" we mean
@@ -376,20 +386,22 @@ object Definitions {
     
     def copyContentFrom(from : FunDef) {
       this.fullBody  = from.fullBody 
-      this.addFlag(from.flags.toSeq : _*)
+      this.addFlags(from.flags)
     }
 
     /* Flags */
 
-    private var flags_ : Set[FunctionFlag] = Set()
-    
-    def addFlag(flags: FunctionFlag*): FunDef = {
+    private[this] var flags_ : Set[FunctionFlag] = Set()
+
+    def addFlags(flags: Set[FunctionFlag]): FunDef = {
       this.flags_ ++= flags
       this
     }
-    
+
+    def addFlag(flag: FunctionFlag): FunDef = addFlags(Set(flag))
+
     def flags = flags_
-    
+
     def annotations: Set[String] = flags_ collect { case Annotation(s) => s }
     def canBeLazyField    = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
     def canBeStrictField  = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
