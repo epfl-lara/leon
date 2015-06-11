@@ -342,7 +342,7 @@ sealed abstract class List[T] {
 
   def rotate(s: BigInt): List[T] = {
     if (isEmpty) {
-      Nil()
+      Nil[T]()
     } else if (s < 0) {
       rotate(size+s)
     } else {

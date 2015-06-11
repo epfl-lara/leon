@@ -896,7 +896,7 @@ trait CodeExtraction extends ASTExtractors {
         }} else body0
 
       val finalBody = try {
-        flattenBlocks(extractTree(body)(fctx)) match {
+        flattenBlocks(extractTreeOrNoTree(body)(fctx)) match {
           case e if e.getType.isInstanceOf[ArrayType] =>
             getOwner(e) match {
               case Some(Some(fd)) if fd == funDef =>
