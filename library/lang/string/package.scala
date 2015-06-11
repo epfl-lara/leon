@@ -3,11 +3,22 @@
 package leon.lang
 
 import leon.annotation._
+import leon.collection._
 import scala.language.implicitConversions
+
+import scala.collection.immutable.{List => ScalaList}
 
 package object string {
   @ignore
   implicit def strToStr(s: java.lang.String): leon.lang.string.String = {
-    String(leon.collection.Nil())
+    String(listToList(s.toList))
+  }
+
+  @ignore
+  def listToList[A](s: ScalaList[A]): List[A] = s match {
+    case h :: t =>
+      Cons(h, listToList(t))
+    case _ =>
+      Nil[A]()
   }
 }
