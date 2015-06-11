@@ -23,7 +23,6 @@ class UnrollingSolverTests extends LeonTestSuite {
   fDef.postcondition = Some(Lambda(Seq(ValDef(fres)), GreaterThan(Variable(fres), InfiniteIntegerLiteral(0))))
 
   private val program = Program(
-    FreshIdentifier("Minimal"),
     List(UnitDef(
       FreshIdentifier("Minimal"),
       List(ModuleDef(FreshIdentifier("Minimal"), Seq(fDef), false))

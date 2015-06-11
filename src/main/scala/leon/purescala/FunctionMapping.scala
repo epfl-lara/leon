@@ -33,24 +33,26 @@ abstract class FunctionMapping extends TransformationPhase {
     val newP = 
       program.copy(units = for (u <- program.units) yield {
         u.copy(
-          modules = for (m <- u.modules) yield {
-            m.copy(defs = for (df <- m.defs) yield {
-              df match {
-                case f : FunDef =>
-                  val newF = functionToFunction.get(f).map{_.to}.getOrElse(f)
-                  newF.fullBody = replaceCalls(f.fullBody)
-                  newF
-                case c : ClassDef =>
-                  // val oldMethods = c.methods
-                  // c.clearMethods()
-                  // for (m <- oldMethods) {
-                  //  c.registerMethod(functionToFunction.get(m).map{_.to}.getOrElse(m))
-                  // }
-                  c
-                case d =>
-                  d
-              }
-            })
+          defs = u.defs map {
+            case m: ModuleDef =>
+              m.copy(defs = for (df <- m.defs) yield {
+                df match {
+                  case f : FunDef =>
+                    val newF = functionToFunction.get(f).map{_.to}.getOrElse(f)
+                    newF.fullBody = replaceCalls(f.fullBody)
+                    newF
+                  case c : ClassDef =>
+                    // val oldMethods = c.methods
+                    // c.clearMethods()
+                    // for (m <- oldMethods) {
+                    //  c.registerMethod(functionToFunction.get(m).map{_.to}.getOrElse(m))
+                    // }
+                    c
+                  case d =>
+                    d
+                }
+              })
+            case d => d
           },
           imports = u.imports map {
             case SingleImport(fd : FunDef) => 

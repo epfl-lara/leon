@@ -15,6 +15,7 @@ object FunctionClosure extends TransformationPhase {
   val name = "Function Closure"
   val description = "Closing function with its scoping variables"
 
+  // TODO: Rewrite this phase
   /* I know, that's a lot of mutable variables */
   private var pathConstraints: List[Expr] = Nil
   private var enclosingLets: List[(Identifier, Expr)] = Nil
@@ -24,24 +25,25 @@ object FunctionClosure extends TransformationPhase {
 
   def apply(ctx: LeonContext, program: Program): Program = {
 
-    val newUnits = program.units.map { u => u.copy(modules = u.modules map { m =>
-      pathConstraints = Nil
-      enclosingLets  = Nil
-      newFunDefs  = Map()
-      topLevelFuns = Set()
-      parent = null
+    val newUnits = program.units.map { u => u.copy(defs = u.defs map { 
+      case m: ModuleDef =>
+        pathConstraints = Nil
+        enclosingLets  = Nil
+        newFunDefs  = Map()
+        topLevelFuns = Set()
+        parent = null
 
-      val funDefs = m.definedFunctions
-      funDefs.foreach(fd => {
-        parent = fd
-        pathConstraints = fd.precondition.toList
-        fd.body = fd.body.map(b => functionClosure(b, fd.params.map(_.id).toSet, Map(), Map()))
-      })
+        val funDefs = m.definedFunctions
+        funDefs.foreach(fd => {
+          parent = fd
+          pathConstraints = fd.precondition.toList
+          fd.body = fd.body.map(b => functionClosure(b, fd.params.map(_.id).toSet, Map(), Map()))
+        })
 
-      ModuleDef(m.id, m.defs ++ topLevelFuns, m.isStandalone )
+        ModuleDef(m.id, m.defs ++ topLevelFuns, m.isPackageObject )
+      case cd => cd
     })}
-    val res = Program(program.id, newUnits)
-    res
+    Program(newUnits)
   }
 
   private def functionClosure(expr: Expr, bindedVars: Set[Identifier], id2freshId: Map[Identifier, Identifier], fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = expr match {
@@ -61,8 +63,6 @@ object FunctionClosure extends TransformationPhase {
       val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newValDefs, fd.defType).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.addAnnotation(fd.annotations.toSeq:_*) //TODO: this is still some dangerous side effects
-      newFunDef.setOwner(parent)
-      fd       .setOwner(parent)
       newFunDef.orig = Some(fd)
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {

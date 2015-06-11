@@ -20,8 +20,8 @@ trait LeonExtraction extends SubComponent with CodeExtraction {
     this.imports = imports
   }
   
-  def compiledUnits = {
-    new Extraction(units).extractUnits
+  def compiledProgram = {
+    new Extraction(units).extractProgram
   }
 
   def newPhase(prev: scala.tools.nsc.Phase): StdPhase = new Phase(prev)

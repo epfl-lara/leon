@@ -40,7 +40,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   private def mkCall(name : String, args : Expr*)(implicit p : Program) = {
     val fn = s"Program.$name"
 
-    searchByFullName(fn, p) match {
+    p.lookup(fn) match {
       case Some(fd: FunDef) =>
         FunctionInvocation(fd.typed, args.toSeq)
       case _ =>
@@ -49,7 +49,7 @@ class EvaluatorsTests extends leon.test.LeonTestSuite {
   }
 
   private def mkCaseClass(name : String, args : Expr*)(implicit p : Program) = {
-    searchByFullName("Program."+name, p) match {
+    p.lookup("Program."+name) match {
       case Some(ccd: CaseClassDef) =>
         CaseClass(CaseClassType(ccd, Nil), args.toSeq)
       case _ =>

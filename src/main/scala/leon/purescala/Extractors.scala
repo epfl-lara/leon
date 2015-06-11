@@ -8,6 +8,7 @@ import Common._
 import Types._
 import Constructors._
 import ExprOps._
+import Definitions.Program
 
 object Extractors {
 
@@ -179,11 +180,10 @@ object Extractors {
   }
 
   object StringLiteral {
-    def unapply(e: Expr): Option[String] = e match {
+    def unapply(e: Expr)(implicit pgm: Program): Option[String] = e match {
       case CaseClass(cct, args) =>
         for {
-          p <- DefOps.programOf(cct.classDef)
-          libS <- p.library.String
+          libS <- pgm.library.String
           if cct.classDef == libS
           (_, chars) <- isListLiteral(args.head)
           if chars.forall(_.isInstanceOf[CharLiteral])

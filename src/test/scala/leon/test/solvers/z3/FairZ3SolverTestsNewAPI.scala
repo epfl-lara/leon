@@ -51,7 +51,6 @@ class FairZ3SolverTestsNewAPI extends LeonTestSuite {
   fDef.body = Some(Plus(Variable(fx), InfiniteIntegerLiteral(1)))
 
   private val minimalProgram = Program(
-    FreshIdentifier("Minimal"), 
     List(UnitDef(
         FreshIdentifier("Minimal"),
         List(ModuleDef(FreshIdentifier("Minimal"), Seq(fDef), false)

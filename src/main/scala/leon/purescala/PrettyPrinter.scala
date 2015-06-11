@@ -132,19 +132,19 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
   }
   
   def printWithPath(df: Definition)(implicit ctx : PrinterContext) {
-    ctx.scope match {
-      case Some(scope) => 
-        try {
-          val (pack, defPath) = pathAsVisibleFrom(scope, df)
-          val toPrint = pack ++ (defPath collect { case df if !df.isInstanceOf[UnitDef] => df.id})
-          p"${nary(toPrint, ".")}"
-        } catch {
-          // If we did not manage to find the path, just print the id
-          case _ : NoSuchElementException => p"${df.id}"
-        }
-      case None =>
+    //ctx.scope match {
+    //  case Some(scope) => 
+    //    try {
+    //      val (pack, defPath) = pathAsVisibleFrom(scope, df)
+    //      val toPrint = pack ++ (defPath collect { case df if !df.isInstanceOf[UnitDef] => df.id})
+    //      p"${nary(toPrint, ".")}"
+    //    } catch {
+    //      // If we did not manage to find the path, just print the id
+    //      case _ : NoSuchElementException => p"${df.id}"
+    //    }
+    //  case None =>
         p"${df.id}"
-    } 
+    //} 
     
   }
   
@@ -233,30 +233,30 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"""|?($es)"""
         }
       case e @ CaseClass(cct, args) =>
-        isListLiteral(e) match {
-          case Some((tpe, elems)) =>
-            val chars = elems.collect{case CharLiteral(ch) => ch}
-            if (chars.length == elems.length && tpe == CharType) {
-              // String literal
-              val str = chars mkString ""
-              val q = '"'
-              p"$q$str$q"
-            } else {
-              val elemTps = leastUpperBound(elems.map(_.getType))
-              if (elemTps == Some(tpe)) {
-                p"List($elems)"  
-              } else {
-                p"List[$tpe]($elems)"  
-              }
-            }
+        //isListLiteral(e) match {
+        //  case Some((tpe, elems)) =>
+        //    val chars = elems.collect{case CharLiteral(ch) => ch}
+        //    if (chars.length == elems.length && tpe == CharType) {
+        //      // String literal
+        //      val str = chars mkString ""
+        //      val q = '"'
+        //      p"$q$str$q"
+        //    } else {
+        //      val elemTps = leastUpperBound(elems.map(_.getType))
+        //      if (elemTps == Some(tpe)) {
+        //        p"List($elems)"  
+        //      } else {
+        //        p"List[$tpe]($elems)"  
+        //      }
+        //    }
 
-            case None =>
+        //    case None =>
               if (cct.classDef.isCaseObject) {
                 p"$cct"
               } else {
                 p"$cct($args)"
               }
-        }
+        //}
 
 
 
@@ -539,31 +539,32 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
 
       // Definitions
-      case Program(id, units) =>
+      case Program(units) =>
         p"""${nary(units filter {_.isMainUnit}, "\n\n")}"""
+        //p"""${nary(units, "\n\n")}"""
       
-      case UnitDef(id,modules,pack,imports,_) =>
+      case UnitDef(id,pack, imports, defs,_) =>
         if (pack.nonEmpty){
           p"""|package ${pack mkString "."}
               |"""
         }
         p"""|${nary(imports,"\n")}
-            |${nary(modules,"\n\n")}
+            |${nary(defs,"\n\n")}
             |"""
         
       case PackageImport(pack) => 
-        import leon.purescala.DefOps._
-        val newPack = ( for (
-          scope <- ctx.scope;
-          unit <- unitOf(scope);
-          currentPack = unit.pack
-        ) yield {  
-          if (isSuperPackageOf(currentPack,pack)) 
-            pack drop currentPack.length
-          else 
-            pack
-        }).getOrElse(pack)
-        p"import ${nary(newPack,".")}._"
+        //import leon.purescala.DefOps._
+        //val newPack = ( for (
+        //  scope <- ctx.scope;
+        //  unit <- unitOf(scope);
+        //  currentPack = unit.pack
+        //) yield {  
+        //  if (isSuperPackageOf(currentPack,pack)) 
+        //    pack drop currentPack.length
+        //  else 
+        //    pack
+        //}).getOrElse(pack)
+        p"import ${nary(pack,".")}._"
 
       case SingleImport(df) => 
         p"import "; printWithPath(df)
@@ -686,13 +687,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
 
             val fid = tfd.fd.id
 
-            val maybeClassName = fid.name.substring(0, cd.id.name.length)
-
-            val fname = if (maybeClassName == cd.id.name) {
-              fid.name.substring(cd.id.name.length + 1) // +1 to also remove $
-            } else {
-              fid.name
-            }
+            val fname = fid.name
 
             val decoded = scala.reflect.NameTransformer.decode(fname)
 
@@ -793,12 +788,12 @@ abstract class PrettyPrinterFactory {
 
   def apply(tree: Tree, opts: PrinterOptions = PrinterOptions(), scope : Option[Definition] = None): String = {
     val printer = create(opts)
-    val scope_ = (tree, scope) match {
-      // Try to find a scope, if we are given none.
-      case (df : Definition, None) => df.owner
-      case _ => None
-    }
-    val ctx = PrinterContext(tree, None, scope_, opts.baseIndent, printer)
+//    val scope_ = (tree, scope) match {
+//      // Try to find a scope, if we are given none.
+//      case (df : Definition, None) => df.owner
+//      case _ => None
+//    }
+    val ctx = PrinterContext(tree, None, scope, opts.baseIndent, printer)
     printer.pp(tree)(ctx)
     printer.toString
   }

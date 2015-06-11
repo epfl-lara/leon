@@ -14,117 +14,79 @@ import TypeOps.instantiateType
 object MethodLifting extends TransformationPhase {
 
   val name = "Method Lifting"
-  val description = "Translate methods into top-level functions"
+  val description = "Translate methods into functions of the companion object"
 
   def apply(ctx: LeonContext, program: Program): Program = {
+
     // First we create the appropriate functions from methods:
-    var mdToFds  = Map[FunDef, FunDef]()
+    var mdToFds = Map[FunDef, FunDef]()
 
-    for {
-      cd <- program.classHierarchyRoots
-      if cd.methods.nonEmpty
-      fd <- cd.methods
-    } {
-      // We import class type params and freshen them
-      val ctParams = cd.tparams map { _.freshen }
-      val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
+    val newUnits = for (u <- program.units) yield {
+      var fdsOf = Map[String, Set[FunDef]]()
 
-      val id = FreshIdentifier(cd.id.name+"$"+fd.id.name).setPos(fd.id)
-      val recType = classDefToClassType(cd, ctParams.map(_.tp))
-      val retType = instantiateType(fd.returnType, tparamsMap)
-      val fdParams = fd.params map { vd =>
-        val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
-        ValDef(newId).setPos(vd.getPos)
-      }
-      val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
+      // 1) Create one function for each method
+      for { cd <- u.classHierarchyRoots if cd.methods.nonEmpty; fd <- cd.methods } {
+        // We import class type params and freshen them
+        val ctParams = cd.tparams map { _.freshen }
+        val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
 
-      val receiver = FreshIdentifier("$this", recType).setPos(cd.id)
+        val id = fd.id.freshen
+        val recType = classDefToClassType(cd, ctParams.map(_.tp))
+        val retType = instantiateType(fd.returnType, tparamsMap)
+        val fdParams = fd.params map { vd =>
+          val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
+          ValDef(newId).setPos(vd.getPos)
+        }
+        val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
 
-      val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams, fd.defType)
-      nfd.copyContentFrom(fd)
-      nfd.setPos(fd)
-      nfd.fullBody = instantiateType(nfd.fullBody, tparamsMap, paramsMap)
+        val receiver = FreshIdentifier("this", recType).setPos(cd.id)
 
-      mdToFds += fd -> nfd
-    }
+        val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams, fd.defType)
+        nfd.copyContentFrom(fd)
+        nfd.setPos(fd)
+        nfd.fullBody = postMap{
+          case This(ct) if ct.classDef == cd => Some(receiver.toVariable)
+          case _ => None
+        }(instantiateType(nfd.fullBody, tparamsMap, paramsMap))
 
-    def translateMethod(fd: FunDef) = {
-      val (nfd, rec) = mdToFds.get(fd) match {
-        case Some(nfd) =>
-          (nfd, Some(() => Variable(nfd.params.head.id)))
-        case None =>
-          (fd, None)
+        mdToFds += fd -> nfd
+        fdsOf += cd.id.name -> (fdsOf.getOrElse(cd.id.name, Set()) + nfd)
       }
 
-      nfd.fullBody = removeMethodCalls(rec)(nfd.fullBody)
-      nfd
+      // 2) Place functions in existing companions:
+      val defs = u.defs map {
+        case md: ModuleDef if fdsOf contains md.id.name =>
+          val fds = fdsOf(md.id.name)
+          fdsOf -= md.id.name
+          ModuleDef(md.id, md.defs ++ fds, false)
+        case d => d
+      }
+
+      // 3) Create missing companions
+      val newCompanions = for ((name, fds) <- fdsOf) yield {
+        ModuleDef(FreshIdentifier(name), fds.toSeq, false)
+      }
+
+      // 4) Remove methods in classes
+      for (cd <- u.definedClasses) {
+        cd.clearMethods
+      }
+
+      u.copy(defs = defs ++ newCompanions)
     }
 
-    def removeMethodCalls(rec: Option[() => Expr])(e: Expr): Expr = {
-      postMap{
-        case th: This => 
-          rec match {
-            case Some(r) =>
-              Some(r().setPos(th))
-            case None =>
-              ctx.reporter.fatalError("`this` used out of a method context?!?")
-          }
-        case mi @ MethodInvocation(rec, cd, tfd, args) =>
-          rec match {
-            case IsTyped(rec, ct: ClassType) =>
-              Some(FunctionInvocation(mdToFds(tfd.fd).typed(ct.tps ++ tfd.tps), rec +: args).setPos(mi))
-            case _ =>
-              ctx.reporter.fatalError("MethodInvocation on a non-class receiver !?!")
-          }
+    val pgm = Program(newUnits)
+
+    // 5) Replace method calls with function calls
+    for (fd <- pgm.definedFunctions) {
+      fd.fullBody = postMap{
+        case mi @ MethodInvocation(IsTyped(rec, ct: ClassType), cd, tfd, args) =>
+          Some(FunctionInvocation(mdToFds(tfd.fd).typed(ct.tps ++ tfd.tps), rec +: args).setPos(mi))
         case _ => None
-      }(e)
+      }(fd.fullBody)
     }
 
-    val modsToMods = ( for {
-      u <- program.units
-      m <- u.modules
-    } yield (m, {
-      // We remove methods from class definitions and add corresponding functions
-      val newDefs = m.defs.flatMap {
-        case acd: AbstractClassDef if acd.methods.nonEmpty =>
-          acd +: acd.methods.map(translateMethod)
-
-        case ccd: CaseClassDef if ccd.methods.nonEmpty =>
-          ccd +: ccd.methods.map(translateMethod)
-
-        case fd: FunDef =>
-          List(translateMethod(fd))
-
-        case d =>
-          List(d)
-      }
-
-      // finally, we clear methods from classes
-      m.defs.foreach {
-        case cd: ClassDef =>
-          cd.clearMethods()
-        case _ =>
-      }
-      ModuleDef(m.id, newDefs, m.isStandalone )
-    })).toMap
-
-    val newUnits = program.units map { u => u.copy(
-      
-      imports = u.imports flatMap {
-        case s@SingleImport(c : ClassDef) =>
-          // If a class is imported, also add the "methods" of this class
-          s :: ( c.methods map { md => SingleImport(mdToFds(md))})
-        // If importing a ModuleDef, update to new ModuleDef
-        case SingleImport(m : ModuleDef) => List(SingleImport(modsToMods(m)))
-        case WildcardImport(m : ModuleDef) => List(WildcardImport(modsToMods(m)))
-        case other => List(other)
-      },
-
-      modules = u.modules map modsToMods
-
-    )}
-
-    Program(program.id, newUnits)
+    pgm
   }
 
 }

@@ -8,75 +8,77 @@ import ExprOps.{preMap, postMap, functionCallsOf}
 
 object DefOps {
 
-  def packageOf(df: Definition): PackageRef = {
+  def packageOf(df: Definition)(implicit pgm: Program): PackageRef = {
     df match {
       case _ : Program => List()
-      case u : UnitDef => u.pack 
-      case _ => df.owner map packageOf getOrElse List()
+      case u : UnitDef => u.pack
+      case _ => unitOf(df).map(_.pack).getOrElse(List())
     }
   }
 
-  def unitOf(df: Definition): Option[UnitDef] = df match {
+  def unitOf(df: Definition)(implicit pgm: Program): Option[UnitDef] = df match {
     case p : Program => None
     case u : UnitDef => Some(u)
-    case other => other.owner flatMap unitOf
+    case other => pgm.units.find(_.containsDef(df))
   }
 
-  def moduleOf(df: Definition): Option[ModuleDef] = df match {
+  def moduleOf(df: Definition)(implicit pgm: Program): Option[ModuleDef] = df match {
     case p : Program => None
     case m : ModuleDef => Some(m)
-    case other => other.owner flatMap moduleOf
-  }
-
-  def programOf(df: Definition): Option[Program] = {
-    df match {
-      case p : Program => Some(p)
-      case other => other.owner flatMap programOf
+    case other => unitOf(df).flatMap { u =>
+      u.modules.find(_.containsDef(df))
     }
   }
 
-  def pathFromRoot(df: Definition): List[Definition] ={
-    def rec(df : Definition) : List[Definition] = df.owner match {
-      case Some(owner) => df :: rec(owner)
-      case None => List(df)
-    } 
-    rec(df).reverse
+  def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] ={
+    def rec(from: Definition): List[Definition] = {
+      from :: (if (from == df) {
+        Nil
+      } else {
+        from.subDefinitions.find { sd => (sd eq df) || sd.containsDef(df) } match {
+          case Some(sd) =>
+            rec(sd)
+          case None =>
+            Nil
+        }
+      })
+    }
+    rec(pgm)
   }
 
-  def unitsInPackage(p: Program, pack : PackageRef) = p.units filter { _.pack  == pack }
+  def unitsInPackage(p: Program, pack: PackageRef) = p.units filter { _.pack  == pack }
 
-  def isImportedBy(df : Definition, i : Import) : Boolean = 
-    i.importedDefs contains df 
+  //def isImportedBy(df: Definition, i: Import) : Boolean = {
+  //  i.importedDefs contains df
+  //}
 
-  def isImportedBy(df : Definition, is: Seq[Import]) : Boolean =  
-    is exists {isImportedBy(df,_)}
+  //def isImportedBy(df : Definition, is: Seq[Import]) : Boolean = {
+  //  is exists {isImportedBy(df,_)}
+  //}
 
-  def leastCommonAncestor(df1 : Definition, df2 : Definition) : Definition = {
-    (pathFromRoot(df1) zip pathFromRoot(df2))
-    .takeWhile{case (df1,df2) => df1 eq df2}
-    .last._1
+  def leastCommonAncestor(df1: Definition, df2: Definition)(implicit pgm: Program): Definition = {
+    (pathFromRoot(df1) zip pathFromRoot(df2)).takeWhile {
+      case (df1, df2) => df1 eq df2
+    }.last._1
   }
 
 
   /** Returns the set of definitions directly visible from the current definition
    *  Definitions that are shadowed by others are not returned.
    */
-  def visibleDefsFrom(df : Definition) : Set[Definition] = {
+  def visibleDefsFrom(df: Definition)(implicit pgm: Program): Set[Definition] = {
     var toRet = Map[String,Definition]()
     val asList = 
       (pathFromRoot(df).reverse flatMap { _.subDefinitions }) ++ {
-        programOf(df) match {
-          case None => List()
-          case Some(p) => unitsInPackage(p, packageOf(df)) flatMap { _.subDefinitions } 
-        }
+        unitsInPackage(pgm, packageOf(df)) flatMap { _.subDefinitions } 
       } ++
-      programOf(df).toList ++
+      List(pgm) ++
       ( for ( u <- unitOf(df).toSeq;
               imp <- u.imports;
               impDf <- imp.importedDefs
-            ) yield impDf 
+            ) yield impDf
       )
-    for ( 
+    for (
       df <- asList;
       name = df.id.toString
     ) {
@@ -85,30 +87,31 @@ object DefOps {
     toRet.values.toSet
   }
 
-  def visibleFunDefsFrom(df: Definition): Set[FunDef] = {
+  def visibleFunDefsFrom(df: Definition)(implicit pgm: Program): Set[FunDef] = {
     visibleDefsFrom(df).collect {
       case fd: FunDef => fd
     }
   }
 
-  def funDefsFromMain(p: Program): Set[FunDef] = {
-    p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
+  def funDefsFromMain(implicit pgm: Program): Set[FunDef] = {
+    pgm.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
       u.definedFunctions
     }
   }
 
-  def visibleFunDefsFromMain(p: Program): Set[FunDef] = {
+  def visibleFunDefsFromMain(implicit p: Program): Set[FunDef] = {
     p.units.filter(_.isMainUnit).toSet.flatMap{ (u: UnitDef) =>
       visibleFunDefsFrom(u) ++ u.definedFunctions
     }
   }
 
   /** Returns true for strict superpackage */ 
-  def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = 
-    (p2.length > p1.length) && 
+  def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = {
+    (p2.length > p1.length) &&
     ( (p1 zip p2 takeWhile { case (n1,n2) => n1 == n2 }).length == p1.length )
-    
-  def packageAsVisibleFrom(df : Definition, p : PackageRef) = {
+  }
+
+  def packageAsVisibleFrom(df: Definition, p: PackageRef)(implicit pgm: Program) = {
     val visiblePacks = 
       packageOf(df) +: (unitOf(df).toSeq.flatMap(_.imports) collect { case PackageImport(pack) => pack })
     val bestSuper = visiblePacks filter { pack => pack == p || isSuperPackageOf(pack,p)} match {
@@ -118,8 +121,8 @@ object DefOps {
     p drop bestSuper.length
   }
   
-  // This assumes base and target are in the same program
-  def pathAsVisibleFrom(base : Definition, target : Definition) : (PackageRef, List[Definition]) = {
+  /*
+  private def pathAsVisibleFrom(base: Definition, target: Definition)(implicit pgm: Program): (PackageRef, List[Definition]) = {
     val rootPath = pathFromRoot(target)
     val ancestor = leastCommonAncestor(base, target)
     val pth = rootPath dropWhile { _.owner != Some(ancestor) }
@@ -137,20 +140,136 @@ object DefOps {
       
     (pack, finalPath)
   }
+  */
 
-  def fullName(df: Definition, fromProgram: Option[Program] = None): String = 
-    fromProgram orElse programOf(df) match {
-      case None => df.id.name
-      case Some(p) =>
-        val (pr, ds) = pathAsVisibleFrom(p, df)
-
-        (pr ::: ds.flatMap{
-          case _: UnitDef => None
-          case m: ModuleDef if m.isStandalone => None
-          case d => Some(d.id.name)
-        }).mkString(".")
+  private def pathToString(path: List[Definition]): String = {
+    val expandPack = path.flatMap {
+      case p: Program =>
+        Nil
+      case u: UnitDef =>
+        u.pack
+      case m: ModuleDef if m.isPackageObject =>
+        Nil
+      case d =>
+        List(d.id.name)
     }
 
+    expandPack.mkString(".")
+  }
+
+  def fullName(df: Definition)(implicit pgm: Program): String = {
+    pathToString(pathFromRoot(df))
+  }
+
+  private def nameToParts(name: String) = {
+    name.split("\\.").toList map scala.reflect.NameTransformer.encode
+  }
+
+  def searchWithin(name: String, within: Definition): Seq[Definition] = {
+    searchWithin(nameToParts(name), within)
+  }
+
+  def searchWithin(ns: List[String], within: Definition): Seq[Definition] = {
+    (ns, within) match {
+      case (ns, p: Program) =>
+        p.units.flatMap { u =>
+          searchWithin(ns, u)
+        }
+
+      case (ns, u: UnitDef) =>
+        if (ns.startsWith(u.pack)) {
+          val rest = ns.drop(u.pack.size)
+
+          u.defs.flatMap { 
+            case d: ModuleDef if d.isPackageObject =>
+              searchWithin(rest, d)
+
+            case d =>
+              rest match {
+                case n :: ns =>
+                  if (d.id.name == n) {
+                    searchWithin(ns, d)
+                  } else {
+                    Nil
+                  }
+                case Nil =>
+                  List(u)
+              }
+          }
+        } else {
+          Nil
+        }
+
+      case (Nil, d) => List(d)
+      case (n :: ns, d) =>
+        d.subDefinitions.filter(_.id.name == n).flatMap { sd =>
+          searchWithin(ns, sd)
+        }
+    }
+  }
+
+  def searchRelative(name: String, from: Definition)(implicit pgm: Program): Seq[Definition] = {
+    val names = nameToParts(name)
+    val path = pathFromRoot(from)
+
+    searchRelative(names, path.reverse)
+  }
+
+  private case class ImportPath(ls: List[String], wild: Boolean)
+
+  private def resolveImports(imports: List[ImportPath], names: List[String]): List[List[String]] = {
+    def resolveImport(i: ImportPath): Option[List[String]] = {
+      if (!i.wild && names.startsWith(i.ls.last)) {
+        Some(i.ls ++ names.tail)
+      } else if (i.wild) {
+        Some(i.ls ++ names)
+      } else {
+        None
+      }
+    }
+
+    imports.flatMap(resolveImport)
+  }
+
+  private def searchRelative(names: List[String], rpath: List[Definition])(implicit pgm: Program): Seq[Definition] = {
+    (names, rpath) match {
+      case (n :: ns, d :: ds) =>
+        (d match {
+          case p: Program =>
+            searchWithin(names, p)
+
+          case u: UnitDef =>
+              val imports = u.imports.map {
+                case PackageImport(ls) => ImportPath(ls, true)
+                case SingleImport(d) => ImportPath(nameToParts(fullName(d)), false)
+                case WildcardImport(d) => ImportPath(nameToParts(fullName(d)), true)
+              }.toList
+
+              val inModules = d.subDefinitions.filter(_.id.name == n).flatMap { sd =>
+                searchWithin(ns, sd)
+              }
+
+              val namesImported = resolveImports(imports, names)
+              val nameWithPackage = u.pack ++ names
+
+              val allNames = namesImported :+ nameWithPackage
+
+              allNames.foldLeft(inModules) { _ ++ searchRelative(_, ds) }
+
+          case d =>
+            if (n == d.id.name) {
+              searchWithin(ns, d)
+            } else {
+              searchWithin(n :: ns, d)
+            }
+        }) ++ searchRelative(names, ds)
+
+      case _ =>
+        Nil
+    }
+  }
+
+  /*
   def searchByFullName (
     fullName : String,
     p : Program,
@@ -159,7 +278,7 @@ object DefOps {
   ) = searchByFullNameRelative(fullName, p, reliableVisibility,exploreStandalones)
   
   
-  def searchByFullNameRelative(
+  private def searchByFullNameRelative(
     fullName : String,    
     base : Definition,
     reliableVisibility : Boolean = true, // Unset this if imports have not yet been set correctly
@@ -264,6 +383,7 @@ object DefOps {
     }
     
   }
+  */
   
 
   /*
@@ -319,24 +439,19 @@ object DefOps {
 
     val newP = p.copy(units = for (u <- p.units) yield {
       u.copy(
-        modules = for (m <- u.modules) yield {
-          m.copy(defs = for (df <- m.defs) yield {
-            df match {
-              case f : FunDef =>
-                val newF = fdMap(f)
-                newF.fullBody = replaceCalls(newF.fullBody)
-                newF
-              case c : ClassDef =>
-                // val oldMethods = c.methods
-                // c.clearMethods()
-                // for (m <- oldMethods) {
-                //  c.registerMethod(functionToFunction.get(m).map{_.to}.getOrElse(m))
-                // }
-                c
-              case d =>
-                d
-            }
+        defs = u.defs.map {
+          case m : ModuleDef =>
+            m.copy(defs = for (df <- m.defs) yield {
+              df match {
+                case f : FunDef =>
+                  val newF = fdMap(f)
+                  newF.fullBody = replaceCalls(newF.fullBody)
+                  newF
+                case d =>
+                  d
+              }
           })
+          case d => d
         },
         imports = u.imports map {
           case SingleImport(fd : FunDef) => 
@@ -353,18 +468,20 @@ object DefOps {
     var found = false
     val res = p.copy(units = for (u <- p.units) yield {
       u.copy(
-        modules = for (m <- u.modules) yield {
-          val newdefs = for (df <- m.defs) yield {
-            df match {
-              case `after` =>
-                found = true
-                after +: fds.toSeq
-              case d =>
-                Seq(d)
+        defs = u.defs.map {
+          case m: ModuleDef =>
+            val newdefs = for (df <- m.defs) yield {
+              df match {
+                case `after` =>
+                  found = true
+                  after +: fds.toSeq
+                case d =>
+                  Seq(d)
+              }
             }
-          }
 
-          m.copy(defs = newdefs.flatten)
+            m.copy(defs = newdefs.flatten)
+          case d => d
         }
       )
     })

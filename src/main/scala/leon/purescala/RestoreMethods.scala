@@ -20,6 +20,8 @@ object RestoreMethods extends TransformationPhase {
    * New functions are returned, whereas classes are mutated
    */
   def apply(ctx : LeonContext, p : Program) = {
+    p
+        /*
         
     var fd2Md = Map[FunDef, FunDef]()
     var whoseMethods = Map[ClassDef, Seq[FunDef]]()
@@ -57,9 +59,9 @@ object RestoreMethods extends TransformationPhase {
       }
     } 
      
-    /**
+    / **
      * Substitute a function in an expression with the respective new method
-     */
+     * /
     def substituteMethods = preMapOnFunDef ({
       case FunctionInvocation(tfd,args) if fd2Md contains tfd.fd => {
         val md = fd2Md.get(tfd.fd).get // the method we are substituting
@@ -74,9 +76,9 @@ object RestoreMethods extends TransformationPhase {
       case _ => None
     }, true) _
     
-    /**
+    / **
      * Renew that function map by applying subsituteMethods on its values to obtain correct functions
-     */
+     * /
     val fd2MdFinal = fd2Md.mapValues(substituteMethods)
     val oldFuns = fd2MdFinal.map{ _._1 }.toSet
     
@@ -136,7 +138,7 @@ object RestoreMethods extends TransformationPhase {
       }
     )})
       
-    
+  */  
   }
 
 }

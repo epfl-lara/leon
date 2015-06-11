@@ -69,8 +69,13 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
       compiler.leonExtraction.setImports(compiler.saveImports.imports )
 
-      val pgm = Program(FreshIdentifier("__program"), compiler.leonExtraction.compiledUnits)
-      pgm
+      compiler.leonExtraction.compiledProgram match {
+        case Some(pgm) =>
+          pgm
+
+        case None =>
+          ctx.reporter.fatalError("Failed to extract Leon program.")
+      }
     } else {
       ctx.reporter.fatalError("No input program.")
     }

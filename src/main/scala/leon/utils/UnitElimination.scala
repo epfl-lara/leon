@@ -19,32 +19,35 @@ object UnitElimination extends TransformationPhase {
   private var id2FreshId: Map[Identifier, Identifier] = Map()
 
   def apply(ctx: LeonContext, pgm: Program): Program = {
-    val newUnits = pgm.units map { u => u.copy(modules = u.modules.map { m =>
-      fun2FreshFun = Map()
-      val allFuns = m.definedFunctions
-      //first introduce new signatures without Unit parameters
-      allFuns.foreach(fd => {
-        if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
-          val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
-          freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
-          fun2FreshFun += (fd -> freshFunDef)
-        } else {
-          fun2FreshFun += (fd -> fd) //this will make the next step simpler
+    val newUnits = pgm.units map { u => u.copy(defs = u.defs.map { 
+      case m: ModuleDef =>
+        fun2FreshFun = Map()
+        val allFuns = m.definedFunctions
+        //first introduce new signatures without Unit parameters
+        allFuns.foreach(fd => {
+          if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
+            freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
+            fun2FreshFun += (fd -> freshFunDef)
+          } else {
+            fun2FreshFun += (fd -> fd) //this will make the next step simpler
+          }
+        })
+
+        //then apply recursively to the bodies
+        val newFuns = allFuns.collect{ case fd if fd.returnType != UnitType =>
+          val newFd = fun2FreshFun(fd)
+          newFd.fullBody = removeUnit(fd.fullBody)
+          newFd
         }
-      })
 
-      //then apply recursively to the bodies
-      val newFuns = allFuns.collect{ case fd if fd.returnType != UnitType =>
-        val newFd = fun2FreshFun(fd)
-        newFd.fullBody = removeUnit(fd.fullBody)
-        newFd
-      }
-
-      ModuleDef(m.id, m.definedClasses ++ newFuns, m.isStandalone )
+        ModuleDef(m.id, m.definedClasses ++ newFuns, m.isPackageObject )
+      case d =>
+        d
     })}
 
 
-    Program(pgm.id, newUnits)
+    Program(newUnits)
   }
 
   private def simplifyType(tpe: TypeTree): TypeTree = tpe match {

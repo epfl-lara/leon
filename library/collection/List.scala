@@ -493,8 +493,8 @@ sealed abstract class List[T] {
 
 }
 
-@ignore
 object List {
+  @ignore
   def apply[T](elems: T*): List[T] = {
     var l: List[T] = Nil[T]()
     for (e <- elems) {

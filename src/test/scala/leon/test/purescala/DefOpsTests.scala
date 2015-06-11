@@ -66,36 +66,38 @@ private [purescala] object DefOpsHelper extends LeonTestSuite {
 
     """ object InEmpty { def arrayLookup(a : Array[Int], i : Int) = a(i) } """
   )
-  val program = parseStrings(test1)
-  val fooC = searchByFullName("foo.bar.baz.Foo.fooC",program)
+  implicit val program = parseStrings(test1)
+  lazy val fooC = program.lookup("foo.bar.baz.Foo.fooC")
 }
 
 class DefOpsTests extends LeonTestSuite {
     import DefOpsHelper._
     
-    test("Find base definition"){assert(fooC.isDefined)}
+    test("Find base definition"){
+      assert(fooC.isDefined)
+    }
 
     
     test("Least common ancestor"){
-      val x = searchByFullName("foo.bar.baz.x",program)
+      val x = program.lookup("foo.bar.baz.x")
       assert(x.isDefined)
-      assert(leastCommonAncestor(x.get,fooC.get) == program)
-      val fooClass = searchByFullName("foo.bar.baz.Foo.FooC",program)
+      assert(leastCommonAncestor(x.get, fooC.get) == program)
+      val fooClass = program.lookup("foo.bar.baz.Foo.FooC")
       assert (fooClass.isDefined)
       assert(leastCommonAncestor(fooC.get, fooClass.get).id.name == "Foo")
     } 
 
     test("In empty package") { 
       val name = "InEmpty.arrayLookup"
-      val df = searchByFullName(name,program)
+      val df = program.lookup(name)
       assert(df.isDefined)
       assert{fullName(df.get) == name } 
     }
     
     // Search by full name    
    
-    def mustFind(name : String, msg : String) = test(msg) {assert(searchByFullNameRelative(name,fooC.get).isDefined) }
-    def mustFail(name : String, msg : String) = test(msg) {assert(searchByFullNameRelative(name,fooC.get).isEmpty) }
+    def mustFind(name: String, msg: String) = test(msg) {assert(searchRelative(name, fooC.get).nonEmpty) }
+    def mustFail(name: String, msg: String) = test(msg) {assert(searchRelative(name, fooC.get).isEmpty) }
 
     mustFind("fooC", "Find yourself")
     mustFind("FooC", "Find a definition in the same scope 1")

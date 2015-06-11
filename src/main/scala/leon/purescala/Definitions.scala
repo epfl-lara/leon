@@ -16,30 +16,30 @@ object Definitions {
     
     val id: Identifier
     
-    def owner = id.owner
-    def setOwner(owner : Definition) : this.type = { id.owner = Some(owner); this }
-    
     var origOwner : Option[Definition] = None // The definition/scope enclosing this definition
     
     def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
+  
+    def containsDef(df: Definition): Boolean = {
+      subDefinitions.exists { sd =>
+        sd == df || sd.containsDef(df)
+      }
+    }
+
     override def hashCode : Int = id.hashCode
     override def equals(that : Any) : Boolean = that match {
       case t : Definition => t.id == this.id
       case _ => false
     }
-    override def copiedFrom(o : Tree) : this.type = {
-      super.copiedFrom(o)
-      o match {
-        case df : Definition if df.owner.isDefined =>
-          this.setOwner(df.owner.get)
-        case _ =>
-          this
-      }
-      
-    }
 
-    def setSubDefOwners() = for (df <- subDefinitions) df.setOwner(this)
-     
+    def writeScalaFile(filename: String) {
+      import java.io.FileWriter
+      import java.io.BufferedWriter
+      val fstream = new FileWriter(filename)
+      val out = new BufferedWriter(fstream)
+      out.write(ScalaPrinter(this))
+      out.close()
+    }
   }
 
   /** 
@@ -59,14 +59,17 @@ object Definitions {
     // Warning: the variable will not have the same type as the ValDef, but 
     // the Identifier type is enough for all use cases in Leon
     def toVariable : Variable = Variable(id)
-
-    setSubDefOwners()
   }
 
   /** A wrapper for a program. For now a program is simply a single object. The
    * name is meaningless and we just use the package name as id. */
-  case class Program(id: Identifier, units: List[UnitDef]) extends Definition {
+  case class Program(units: List[UnitDef]) extends Definition {
+    val id = FreshIdentifier("program")
+
     origOwner = None
+
+    lazy val library = Library(this)
+
     def subDefinitions = units
     
     def definedFunctions    = units.flatMap(_.definedFunctions)
@@ -74,7 +77,11 @@ object Definitions {
     def classHierarchyRoots = units.flatMap(_.classHierarchyRoots)
     def algebraicDataTypes  = units.flatMap(_.algebraicDataTypes).toMap
     def singleCaseClasses   = units.flatMap(_.singleCaseClasses)
-    def modules             = units.flatMap(_.modules)
+    def modules             = {
+      units.flatMap(_.defs.collect {
+        case md: ModuleDef => md
+      })
+    }
     
     lazy val callGraph      = new CallGraph(this)
 
@@ -85,32 +92,19 @@ object Definitions {
     def duplicate = {
       copy(units = units.map{_.duplicate})
     }
-
-    lazy val library = Library(this)
     
-    def writeScalaFile(filename: String) {
-      import java.io.FileWriter
-      import java.io.BufferedWriter
-      val fstream = new FileWriter(filename)
-      val out = new BufferedWriter(fstream)
-      out.write(ScalaPrinter(this))
-      out.close()
-    }
-    setSubDefOwners()
+    def lookupAll(name: String)  = DefOps.searchWithin(name, this)
+    def lookup(name: String)     = lookupAll(name).headOption
   }
 
   object Program {
-    lazy val empty : Program = Program(
-      FreshIdentifier("empty"),
-      Nil
-    )
+    lazy val empty: Program = Program(Nil)
   }
 
   case class TypeParameterDef(tp: TypeParameter) extends Definition {
     def subDefinitions = Seq()
     def freshen = TypeParameterDef(tp.freshen)
     val id = tp.id
-    setSubDefOwners()
   }
  
   /** A package as a path of names */
@@ -118,18 +112,20 @@ object Definitions {
 
   abstract class Import extends Definition {
     def subDefinitions = Nil
-    
-    def importedDefs = this match {
-      case PackageImport(pack) => {
-        import DefOps._
+
+    def importedDefs(implicit pgm: Program) = this match {
+      case PackageImport(pack) =>
         // Ignore standalone modules, assume there are extra imports for them
-        programOf(this) map { unitsInPackage(_,pack) } getOrElse List()
-      }
-      case SingleImport(imported) => List(imported)
-      case WildcardImport(imported) => imported.subDefinitions
+        DefOps.unitsInPackage(pgm, pack)
+
+      case SingleImport(imported) =>
+        List(imported)
+
+      case WildcardImport(imported) =>
+        imported.subDefinitions
     }
   }
-   
+
   // import pack._
   case class PackageImport(pack : PackageRef) extends Import {
     val id = FreshIdentifier("import " + (pack mkString "."))
@@ -143,47 +139,64 @@ object Definitions {
     val id = FreshIdentifier(s"import ${df.id.toString}._")
   }
   
-    
   case class UnitDef(
     id: Identifier,
-    modules : Seq[ModuleDef],
     pack : PackageRef,
     imports : Seq[Import],
+    defs : Seq[Definition],
     isMainUnit : Boolean // false for libraries/imports
   ) extends Definition {
      
-    def subDefinitions = modules ++ imports
+    def subDefinitions = defs
     
-    def definedFunctions    = modules.flatMap(_.definedFunctions)
-    def definedClasses      = modules.flatMap(_.definedClasses)
-    def classHierarchyRoots = modules.flatMap(_.classHierarchyRoots)
-    def algebraicDataTypes  = modules.flatMap(_.algebraicDataTypes)
-    def singleCaseClasses   = modules.flatMap(_.singleCaseClasses)
+    def definedFunctions = defs.flatMap{
+      case m: ModuleDef => m.definedFunctions
+      case _ => Nil
+    }
+
+    def definedClasses = defs.flatMap {
+      case c: ClassDef => List(c)
+      case m: ModuleDef => m.definedClasses
+      case _ => Nil
+    }
+
+    def classHierarchyRoots = {
+      definedClasses.filter(!_.hasParent)
+    }
+
+    def algebraicDataTypes = {
+      definedClasses.collect {
+        case ccd: CaseClassDef if ccd.hasParent => ccd
+      }.groupBy(_.parent.get.classDef)
+    }
+
+    def singleCaseClasses = {
+      definedClasses.collect {
+        case ccd: CaseClassDef if !ccd.hasParent => ccd
+      }
+    }
 
     def duplicate = {
-      copy(modules = modules map { _.duplicate } )
+      copy(defs = defs map {
+        case cd: ClassDef => cd.duplicate
+        case m: ModuleDef => m.duplicate
+        case d => d
+      })
     }
-    
-    def writeScalaFile(filename: String) {
-      import java.io.FileWriter
-      import java.io.BufferedWriter
-      val fstream = new FileWriter(filename)
-      val out = new BufferedWriter(fstream)
-      out.write(ScalaPrinter(this))
-      out.close()
+
+    def modules = defs.collect {
+      case md: ModuleDef => md
     }
-    
-    setSubDefOwners()
   }
   
   object UnitDef {
     def apply(id: Identifier, modules : Seq[ModuleDef]) : UnitDef = 
-      UnitDef(id,modules, Nil,Nil,true)
+      UnitDef(id,Nil, Nil, modules,true)
   }
   
   /** Objects work as containers for class definitions, functions (def's) and
    * val's. */
-  case class ModuleDef(id: Identifier, defs : Seq[Definition], isStandalone : Boolean) extends Definition {
+  case class ModuleDef(id: Identifier, defs: Seq[Definition], isPackageObject: Boolean) extends Definition {
     
     def subDefinitions = defs
     
@@ -208,9 +221,6 @@ object Definitions {
       case cd: ClassDef => cd.duplicate
       case other => other
     })
-      
-    setSubDefOwners()
-
   }
 
   /** Useful because case classes and classes are somewhat unified in some
@@ -239,7 +249,6 @@ object Definitions {
 
     def registerMethod(fd: FunDef) = {
       _methods = _methods ::: List(fd)
-      fd.setOwner(this)
     }
 
     def clearMethods() {
@@ -296,7 +305,6 @@ object Definitions {
     val isCaseObject = false
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = Nil
-    setSubDefOwners()
   }
 
   /** Case classes/objects. */
@@ -311,7 +319,6 @@ object Definitions {
 
     def setFields(fields: Seq[ValDef]) {
       _fields = fields
-      _fields foreach { _.setOwner(this)}
     }
 
 
@@ -327,7 +334,6 @@ object Definitions {
     }
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
-    setSubDefOwners()
   }
 
  
@@ -364,7 +370,6 @@ object Definitions {
     def fullBody = fullBody_
     def fullBody_= (e : Expr) {
       fullBody_ = e
-      nestedFuns map {_.setOwner(this)}
     }
 
     def body: Option[Expr] = withoutSpec(fullBody)
@@ -439,7 +444,6 @@ object Definitions {
 
     def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
 
-    setSubDefOwners()
     // Deprecated, old API
     @deprecated("Use .body instead", "2.3")
     def implementation : Option[Expr] = body

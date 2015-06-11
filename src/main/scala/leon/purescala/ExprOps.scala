@@ -1955,19 +1955,17 @@ object ExprOps {
     (fds.values.toSet, res2)
   }
 
-  def isListLiteral(e: Expr): Option[(TypeTree, List[Expr])] = e match {
+  def isListLiteral(e: Expr)(implicit pgm: Program): Option[(TypeTree, List[Expr])] = e match {
     case CaseClass(CaseClassType(classDef, Seq(tp)), Nil) =>
       for {
-        p <- programOf(classDef)
-        leonNil <- p.library.Nil
+        leonNil <- pgm.library.Nil
         if classDef == leonNil
       } yield {
         (tp, Nil)
       }
     case CaseClass(CaseClassType(classDef, Seq(tp)), Seq(hd, tl)) =>
       for {
-        p <- programOf(classDef)
-        leonCons <- p.library.Cons
+        leonCons <- pgm.library.Cons
         if classDef == leonCons
         (_, tlElems) <- isListLiteral(tl)
       } yield {

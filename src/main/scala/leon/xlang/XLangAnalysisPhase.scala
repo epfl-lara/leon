@@ -37,11 +37,11 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     }
 
     var subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
-    pgm2.definedFunctions.foreach { fd => fd.owner match {
-      case Some(p : FunDef) =>
-        subFunctionsOf += p -> (subFunctionsOf(p) + fd)
-      case _ =>
-    }}
+    //pgm2.definedFunctions.foreach { fd => fd.owner match {
+    //  case Some(p : FunDef) =>
+    //    subFunctionsOf += p -> (subFunctionsOf(p) + fd)
+    //  case _ =>
+    //}}
 
 
     val newOptions = ctx.options map {
@@ -78,10 +78,11 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     val newResults = for ((vc, ovr) <- vr.results) yield {
       if(functionWasLoop(vc.fd)) {
         val nvc = VC(vc.condition, 
-                     vc.fd.owner match {
-                       case Some(fd: FunDef) => fd
-                       case _ => vc.fd
-                     },
+                     vc.fd,
+                     //vc.fd.owner match {
+                     //  case Some(fd: FunDef) => fd
+                     //  case _ => vc.fd
+                     //},
                      vc.kind.underlying match {
                        case VCKinds.Postcondition => VCXLangKinds.InvariantPost
                        case VCKinds.Precondition => VCXLangKinds.InvariantInd

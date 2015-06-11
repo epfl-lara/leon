@@ -42,10 +42,10 @@ trait VerificationRegression extends LeonTestSuite {
       val ast = extraction.run(ctx)(files)
       val programs = {
         val (user, lib) = ast.units partition { _.isMainUnit }
-        user map { u => Program(u.id.freshen, u :: lib) }
+        user map { u => (u.id, Program(u :: lib)) }
       }
-      for (p <- programs; options <- optionVariants) {
-        test(f"${nextInt()}%3d: ${p.id.name} ${options.mkString(" ")}") {
+      for ((id, p) <- programs; options <- optionVariants) {
+        test(f"${nextInt()}%3d: ${id.name} ${options.mkString(" ")}") {
           val ctx = createLeonContext(options: _*)
           val report = pipeBack.run(ctx)(p)
           block(Output(report, ctx.reporter))
