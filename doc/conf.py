@@ -15,6 +15,8 @@
 import sys
 import os
 
+docauthorlist = u'Régis Blanc, Etienne Kneuss, Manos Koukoutos, Viktor Kuncak, Philippe Suter'
+
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
@@ -49,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Leon'
-copyright = u'2015, Philippe Suter, Etienne Kneuss, Régis Blanc, Manos Koukoutos, Viktor Kuncak'
+copyright = u'2015 (alphabetically) by ' + docauthorlist
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -176,10 +178,10 @@ html_short_title = "Leon Documentation"
 #html_show_sourcelink = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
-#html_show_sphinx = True
+html_show_sphinx = False
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
-#html_show_copyright = True
+html_show_copyright = True
 
 # If true, an OpenSearch description file will be output, and all pages will
 # contain a <link> tag referring to it.  The value of this option must be the
@@ -211,7 +213,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   ('index', 'Leon.tex', u'Leon Documentation',
-   u'Philippe Suter, Etienne Kneuss, Régis Blanc, Manos Koukoutos, Viktor Kuncak', 'manual'),
+   docauthorlist, 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -241,7 +243,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'leon', u'Leon Documentation',
-     [u'Philippe Suter, Etienne Kneuss, Régis Blanc, Manos Koukoutos, Viktor Kuncak'], 1)
+     [docauthorlist], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -255,7 +257,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'Leon', u'Leon Documentation',
-   u'Philippe Suter, Etienne Kneuss, Régis Blanc, Manos Koukoutos, Viktor Kuncak', 'Leon', 'One line description of project.',
+   copyright, 'One line description of project.',
    'Miscellaneous'),
 ]
 
