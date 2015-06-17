@@ -311,11 +311,11 @@ object ExprOps {
   }
 
   def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
-    foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.foldLeft(Set[T]())(_ ++ _) } )(e)
+    foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
   
   def collectPreorder[T](matcher: Expr => Seq[T])(e: Expr): Seq[T] = {
-    foldRight[Seq[T]]({ (e, subs) => matcher(e) ++ subs.foldLeft(Set[T]())(_ ++ _) } )(e)
+    foldRight[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
 
   def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
@@ -349,14 +349,14 @@ object ExprOps {
   def variablesOf(expr: Expr): Set[Identifier] = {
     foldRight[Set[Identifier]]{
       case (e, subs) =>
-        val subvs = subs.foldLeft(Set[Identifier]())(_ ++ _)
+        val subvs = subs.flatten.toSet
 
         e match {
           case Variable(i) => subvs + i
           case LetDef(fd,_) => subvs -- fd.params.map(_.id)
           case Let(i,_,_) => subvs - i
-          case MatchExpr(_, cses) => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
-          case Passes(_, _ , cses)   => subvs -- cses.map(_.pattern.binders).foldLeft(Set[Identifier]())((a, b) => a ++ b)
+          case MatchExpr(_, cses) => subvs -- cses.map(_.pattern.binders).flatten
+          case Passes(_, _ , cses)   => subvs -- cses.map(_.pattern.binders).flatten
           case Lambda(args, body) => subvs -- args.map(_.id)
           case Forall(args, body) => subvs -- args.map(_.id)
           case _ => subvs
@@ -385,25 +385,27 @@ object ExprOps {
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
     foldRight[Set[FunDef]]{ 
       case (LetDef(fd,bd), _) => Set(fd)
-      case (_, subs) => subs.foldLeft(Set[FunDef]())(_ ++ _) 
+      case (_, subs) => subs.flatten.toSet
     }(e)
   }
   
-  def negate(expr: Expr) : Expr = (expr match {
-    case Let(i,b,e) => Let(i,b,negate(e))
-    case Not(e) => e
-    case Equals(e1,e2) => Equals(negate(e1),e2)
-    case Implies(e1,e2) => and(e1, negate(e2))
-    case Or(exs) => and(exs map negate: _*)
-    case And(exs) => or(exs map negate: _*)
-    case LessThan(e1,e2) => GreaterEquals(e1,e2)
-    case LessEquals(e1,e2) => GreaterThan(e1,e2)
-    case GreaterThan(e1,e2) => LessEquals(e1,e2)
-    case GreaterEquals(e1,e2) => LessThan(e1,e2)
-    case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2))
-    case BooleanLiteral(b) => BooleanLiteral(!b)
-    case _ => Not(expr)
-  }).setPos(expr)
+  def negate(expr: Expr) : Expr = {
+    require(expr.getType == BooleanType)
+    (expr match {
+      case Let(i,b,e) => Let(i,b,negate(e))
+      case Not(e) => e
+      case Implies(e1,e2) => and(e1, negate(e2))
+      case Or(exs) => and(exs map negate: _*)
+      case And(exs) => or(exs map negate: _*)
+      case LessThan(e1,e2) => GreaterEquals(e1,e2)
+      case LessEquals(e1,e2) => GreaterThan(e1,e2)
+      case GreaterThan(e1,e2) => LessEquals(e1,e2)
+      case GreaterEquals(e1,e2) => LessThan(e1,e2)
+      case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2))
+      case BooleanLiteral(b) => BooleanLiteral(!b)
+      case _ => Not(expr)
+    }).setPos(expr)
+  }
 
   // rewrites pattern-matching expressions to use fresh variables for the binders
   // ATTENTION: Unused, and untested
@@ -813,7 +815,7 @@ object ExprOps {
       assert(ccd.fields.size == subps.size)
       val pairs = ccd.fields.map(_.id).toList zip subps.toList
       val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
-      val together = subMaps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+      val together = subMaps.flatten.toMap
       b match {
         case Some(id) => Map(id -> in) ++ together
         case None => together
@@ -824,7 +826,7 @@ object ExprOps {
       assert(tpes.size == subps.size)
 
       val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(tupleSelect(in, i+1, subps.size), p)}
-      val map = maps.foldLeft(Map.empty[Identifier,Expr])(_ ++ _)
+      val map = maps.flatten.toMap
       b match {
         case Some(id) => map + (id -> in)
         case None => map
@@ -1238,9 +1240,7 @@ object ExprOps {
     case wp: WildcardPattern =>
       1
     case _ =>
-      p.subPatterns.foldLeft(1 + (if(p.binder.isDefined) 1 else 0)) {
-        case (s, p) => s + patternSize(p)
-      }
+      1 + (if(p.binder.isDefined) 1 else 0) + p.subPatterns.map(patternSize).sum
   }
 
   def formulaSize(e: Expr): Int = e match {
@@ -1248,10 +1248,10 @@ object ExprOps {
       1
 
     case ml: MatchExpr =>
-      ml.cases.foldLeft(formulaSize(ml.scrutinee)) {
-        case (s, MatchCase(p, og, rhs)) =>
-          s + formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
-      }
+      formulaSize(ml.scrutinee) + ml.cases.map {
+        case MatchCase(p, og, rhs) =>
+          formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
+      }.sum
 
     case UnaryOperator(e, builder) =>
       formulaSize(e)+1
