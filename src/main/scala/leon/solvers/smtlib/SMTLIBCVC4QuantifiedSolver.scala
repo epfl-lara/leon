@@ -78,8 +78,8 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       )
     }
 
-    val smtBodies = smtFunDecls map { case FunDec(sym, _, _) =>
-      val tfd = functions.toA(sym)
+    val smtBodies = smtFunDecls map { case f =>
+      val tfd = functions.toA(f.name)
       try {
         toSMT(tfd.body.get)(tfd.params.map { p =>
           (p.id, id2sym(p.id): Term)
@@ -137,7 +137,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
     // We want to check if the negation of the vc is sat under inductive hyp.
     // So we need to see if (indHyp /\ !vc) is satisfiable
-    liftLets(matchToIfThenElse(and(andJoin(inductiveHyps), not(cond))))
+    liftLets(matchToIfThenElse(andJoin(inductiveHyps :+ not(cond))))
 
   }
 
