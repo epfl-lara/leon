@@ -179,8 +179,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"$id"
 
       case Let(b,d,e) =>
-        optB { e match {
-          case _:LetDef | _ : Let | LetPattern(_,_,_) =>
+        optB { d match {
+          case _:LetDef | _ : Let | LetPattern(_,_,_) | _:Assert =>
             p"""|val $b = {
                 |  $d
                 |}
