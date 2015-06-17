@@ -26,8 +26,8 @@ class QuantificationTemplate[T](
   val applications: Map[T, Set[App[T]]],
   val lambdas: Map[T, LambdaTemplate[T]]) {
 
-  def instantiate(blocker: T): Instantiation[T] = {
-    quantificationManager.instantiateQuantification(blocker, this)
+  def instantiate(substMap: Map[T, T]): Instantiation[T] = {
+    quantificationManager.instantiateQuantification(this, substMap)
   }
 }
 
@@ -234,7 +234,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     }
   }
 
-  def instantiateQuantification(blocker: T, template: QuantificationTemplate[T]): Instantiation[T] = {
+  def instantiateQuantification(template: QuantificationTemplate[T], substMap: Map[T, T]): Instantiation[T] = {
 
     val quantification: Quantification = {
       val quantified = template.quantifiers.map(_._2).toSet
@@ -260,9 +260,9 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
         bindingApps
       )
 
-      val tpeCounts   = template.quantifiers.groupBy(_._1.getType).mapValues(_.map(_._2).toSeq)
-      val substMap    = tpeCounts.flatMap { case (tpe, idTs) => idTs zip standardQuantifiers(tpe, idTs.size) }.toMap
-      q.substitute(substMap + (template.start -> blocker))
+      val tpeCounts = template.quantifiers.groupBy(_._1.getType).mapValues(_.map(_._2).toSeq)
+      val qSubst = tpeCounts.flatMap { case (tpe, idTs) => idTs zip standardQuantifiers(tpe, idTs.size) }.toMap
+      q.substitute(substMap ++ qSubst)
     }
 
     val quantifierSubst: Map[T,T] = freshQuantifierSubst
