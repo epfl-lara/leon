@@ -54,6 +54,7 @@ trait Template[T] { self =>
   val clauses : Seq[T]
   val blockers : Map[T, Set[TemplateCallInfo[T]]]
   val applications : Map[T, Set[App[T]]]
+  val quantifications: Seq[QuantificationTemplate[T]]
   val lambdas : Map[T, LambdaTemplate[T]]
 
   private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
@@ -232,6 +233,7 @@ object FunctionTemplate {
     condVars: Map[Identifier, T],
     exprVars: Map[Identifier, T],
     guardedExprs: Map[Identifier, Seq[Expr]],
+    quantifications: Seq[QuantificationTemplate[T]],
     lambdas: Map[T, LambdaTemplate[T]],
     isRealFunDef: Boolean
   ) : FunctionTemplate[T] = {
@@ -257,6 +259,7 @@ object FunctionTemplate {
       clauses,
       blockers,
       applications,
+      quantifications,
       lambdas,
       isRealFunDef,
       funString
@@ -275,6 +278,7 @@ class FunctionTemplate[T] private(
   val clauses: Seq[T],
   val blockers: Map[T, Set[TemplateCallInfo[T]]],
   val applications: Map[T, Set[App[T]]],
+  val quantifications: Seq[QuantificationTemplate[T]],
   val lambdas: Map[T, LambdaTemplate[T]],
   isRealFunDef: Boolean,
   stringRepr: () => String) extends Template[T] {
@@ -392,6 +396,9 @@ class LambdaTemplate[T] private (
   private[templates] val dependencies: Map[Identifier, T],
   private[templates] val structuralKey: Lambda,
   stringRepr: () => String) extends Template[T] {
+
+  // Universal quantification is not allowed inside closure bodies!
+  val quantifications: Seq[QuantificationTemplate[T]] = Seq.empty
 
   val tpe = id.getType.asInstanceOf[FunctionType]
 
