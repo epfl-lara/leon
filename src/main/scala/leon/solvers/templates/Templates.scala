@@ -96,6 +96,10 @@ trait Template[T] { self =>
       instantiation ++= lambdaManager.instantiateApp(b, app)
     }
 
+    for (q <- quantifications) {
+      instantiation ++= q.instantiate(substMap)
+    }
+
     instantiation
   }
 
