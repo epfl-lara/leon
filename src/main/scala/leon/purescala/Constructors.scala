@@ -187,17 +187,9 @@ object Constructors {
     case _                          => Implies(lhs, rhs)
   }
 
-  def finiteSet(els: Set[Expr], tpe: TypeTree) = {
-    FiniteSet(els, tpe)
-  }
-
   def finiteMultiset(els: Seq[Expr], tpe: TypeTree) = {
     if (els.isEmpty) EmptyMultiset(tpe)
     else NonemptyMultiset(els)
-  }
-
-  def finiteMap(els: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) = {
-    FiniteMap(els, keyType, valueType)
   }
 
   def finiteArray(els: Seq[Expr]): Expr = {

@@ -88,15 +88,15 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
       finiteLambda(dflt, mapping :+ (fromSMT(key, tupleTypeWrap(from)) -> fromSMT(elem, to)), from)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
-      finiteSet(elems.map(fromSMT(_, base)).toSet, base)
+      FiniteSet(elems.map(fromSMT(_, base)).toSet, base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("insert")), elems), SetType(base)) =>
       val selems = elems.init.map(fromSMT(_, base))
       val FiniteSet(se, _) = fromSMT(elems.last, tpe)
-      finiteSet(se ++ selems, base)
+      FiniteSet(se ++ selems, base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
-      finiteSet(elems.map(fromSMT(_, tpe) match {
+      FiniteSet(elems.map(fromSMT(_, tpe) match {
         case FiniteSet(elems, _) => elems
       }).flatten.toSet, base)
 

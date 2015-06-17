@@ -13,7 +13,7 @@ object Extractors {
 
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
-      case Not(t) => Some((t,Not(_)))
+      case Not(t) => Some((t,not))
       case UMinus(t) => Some((t,UMinus))
       case BVUMinus(t) => Some((t,BVUMinus))
       case BVNot(t) => Some((t,BVNot))
@@ -45,7 +45,7 @@ object Extractors {
           LetDef(fd, body) 
         }
       ))
-      case Equals(t1,t2) => Some((t1,t2,Equals.apply))
+      case Equals(t1,t2) => Some((t1,t2,Equals))
       case Implies(t1,t2) => Some((t1,t2, implies))
       case Plus(t1,t2) => Some((t1,t2,Plus))
       case Minus(t1,t2) => Some((t1,t2,Minus))
@@ -78,15 +78,15 @@ object Extractors {
       case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
       case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
       case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
-      case mg@MapGet(t1,t2) => Some((t1,t2, (t1, t2) => MapGet(t1, t2).setPos(mg)))
+      case mg@MapGet(t1,t2) => Some((t1,t2, MapGet))
       case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
-      case Let(binders, e, body) => Some((e, body, (e: Expr, b: Expr) => Let(binders, e, b)))
+      case Let(binder, e, body) => Some((e, body, let(binder, _, _)))
       case Require(pre, body) => Some((pre, body, Require))
-      case Ensuring(body, post) => Some((body, post, (b: Expr, p: Expr) => Ensuring(b, p)))
-      case Assert(const, oerr, body) => Some((const, body, (c: Expr, b: Expr) => Assert(c, oerr, b)))
+      case Ensuring(body, post) => Some((body, post, Ensuring))
+      case Assert(const, oerr, body) => Some((const, body, Assert(_, oerr, _)))
       case (ex: BinaryExtractable) => ex.extract
       case _ => None
     }
@@ -102,9 +102,9 @@ object Extractors {
         case Seq(pred) => Choose(pred, None)
         case Seq(pred, impl) => Choose(pred, Some(impl))
       }))
-      case fi @ FunctionInvocation(fd, args) => Some((args, as => FunctionInvocation(fd, as).setPos(fi)))
-      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail).setPos(mi)))
-      case fa @ Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail).setPos(fa))
+      case fi @ FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
+      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
+      case fa @ Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
@@ -136,11 +136,11 @@ object Extractors {
       }
       case NonemptyArray(elems, None) =>
         val all = elems.map(_._2).toSeq
-        Some(( all, finiteArray _ ))
-      case Tuple(args) => Some((args, Tuple))
+        Some(( all, finiteArray))
+      case Tuple(args) => Some((args, tupleWrap))
       case IfExpr(cond, thenn, elze) => Some((
-        Seq(cond, thenn, elze), 
-        (as: Seq[Expr]) => IfExpr(as(0), as(1), as(2))
+        Seq(cond, thenn, elze),
+        { case Seq(c,t,e) => IfExpr(c,t,e) }
       ))
       case MatchExpr(scrut, cases) => Some((
         scrut +: cases.flatMap { 
@@ -166,7 +166,7 @@ object Extractors {
             case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-1), es(i-2)) 
           }
 
-          Passes(in, out, newcases)
+          passes(in, out, newcases)
         }}
       ))
       case (ex: NAryExtractable) => ex.extract
@@ -181,35 +181,19 @@ object Extractors {
   object StringLiteral {
     def unapply(e: Expr): Option[String] = e match {
       case CaseClass(cct, args) =>
-        DefOps.programOf(cct.classDef) flatMap { p => 
-          val lib = p.library
-    
-          if (Some(cct.classDef) == lib.String) {
-            isListLiteral(args.head) match {
-              case Some((_, chars)) =>
-                val str = chars.map {
-                  case CharLiteral(c) => Some(c)
-                  case _              => None
-                }
-    
-                if (str.forall(_.isDefined)) {
-                  Some(str.flatten.mkString)
-                } else {
-                  None
-                }
-              case _ =>
-                None
-    
-            }
-          } else {
-            None
-          }
+        for {
+          p <- DefOps.programOf(cct.classDef)
+          libS <- p.library.String
+          if cct.classDef == libS
+          (_, chars) <- isListLiteral(args.head)
+          if chars.forall(_.isInstanceOf[CharLiteral])
+        } yield {
+          chars.collect{ case CharLiteral(c) => c }.mkString
         }
       case _ =>
         None
     }
   }
-
   
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {

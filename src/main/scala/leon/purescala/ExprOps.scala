@@ -1948,18 +1948,25 @@ object ExprOps {
   }
 
   def isListLiteral(e: Expr): Option[(TypeTree, List[Expr])] = e match {
-    case CaseClass(cct, args) =>
-      programOf(cct.classDef) flatMap { p => 
-        val lib = p.library 
-        if (Some(cct.classDef) == lib.Nil) {
-          Some((cct.tps.head, Nil))
-        } else if (Some(cct.classDef) == lib.Cons) {
-          isListLiteral(args(1)).map { case (_, t) =>
-            (cct.tps.head, args.head :: t)
-          } 
-        } else None
-      } 
-    case _ => None
+    case CaseClass(CaseClassType(classDef, Seq(tp)), Nil) =>
+      for {
+        p <- programOf(classDef)
+        leonNil <- p.library.Nil
+        if classDef == leonNil
+      } yield {
+        (tp, Nil)
+      }
+    case CaseClass(CaseClassType(classDef, Seq(tp)), Seq(hd, tl)) =>
+      for {
+        p <- programOf(classDef)
+        leonCons <- p.library.Cons
+        if classDef == leonCons
+        (_, tlElems) <- isListLiteral(tl)
+      } yield {
+        (tp, hd :: tlElems)
+      }
+    case _ =>
+      None
   }
 
 

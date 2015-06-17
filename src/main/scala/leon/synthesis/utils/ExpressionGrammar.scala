@@ -124,7 +124,7 @@ object ExpressionGrammars {
 
       case st @ SetType(base) =>
         List(
-          Generator(List(base),   { case elems     => finiteSet(elems.toSet, base) }),
+          Generator(List(base),   { case elems     => FiniteSet(elems.toSet, base) }),
           Generator(List(st, st), { case Seq(a, b) => SetUnion(a, b) }),
           Generator(List(st, st), { case Seq(a, b) => SetIntersection(a, b) }),
           Generator(List(st, st), { case Seq(a, b) => SetDifference(a, b) })
@@ -177,8 +177,8 @@ object ExpressionGrammars {
 
       case st @ SetType(base) =>
         List(
-          Generator(List(base),       { case elems => finiteSet(elems.toSet, base) }),
-          Generator(List(base, base), { case elems => finiteSet(elems.toSet, base) })
+          Generator(List(base),       { case elems => FiniteSet(elems.toSet, base) }),
+          Generator(List(base, base), { case elems => FiniteSet(elems.toSet, base) })
         )
       
       case UnitType =>

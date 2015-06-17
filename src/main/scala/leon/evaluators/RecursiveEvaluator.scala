@@ -399,7 +399,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(s1), e(s2)) match {
         case (f@FiniteSet(els1, _),FiniteSet(els2, _)) => 
           val SetType(tpe) = f.getType
-          finiteSet(els1 ++ els2, tpe)
+          FiniteSet(els1 ++ els2, tpe)
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
 
@@ -408,7 +408,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (f @ FiniteSet(els1, _), FiniteSet(els2, _)) => {
           val newElems = els1 intersect els2
           val SetType(tpe) = f.getType
-          finiteSet(newElems, tpe)
+          FiniteSet(newElems, tpe)
         }
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
@@ -418,7 +418,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (f @ FiniteSet(els1, _),FiniteSet(els2, _)) => {
           val SetType(tpe) = f.getType
           val newElems = els1 -- els2
-          finiteSet(newElems, tpe)
+          FiniteSet(newElems, tpe)
         }
         case (le,re) => throw EvalError(typeErrorMsg(le, s1.getType))
       }
@@ -439,7 +439,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       }
 
     case f @ FiniteSet(els, base) => 
-      finiteSet(els.map(e), base)
+      FiniteSet(els.map(e), base)
 
     case l @ Lambda(_, _) =>
       val mapping = variablesOf(l).map(id => id -> e(Variable(id))).toMap
@@ -477,7 +477,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       )
 
     case f @ FiniteMap(ss, kT, vT) => 
-      finiteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct, kT, vT)
+      FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct, kT, vT)
 
     case g @ MapGet(m,k) => (e(m), e(k)) match {
       case (FiniteMap(ss, _, _), e) => ss.find(_._1 == e) match {
@@ -491,7 +491,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         val filtered1 = ss1.filterNot(s1 => ss2.exists(s2 => s2._1 == s1._1))
         val newSs = filtered1 ++ ss2
         val MapType(kT, vT) = u.getType
-        finiteMap(newSs, kT, vT)
+        FiniteMap(newSs, kT, vT)
       }
       case (l, r) => throw EvalError(typeErrorMsg(l, m1.getType))
     }

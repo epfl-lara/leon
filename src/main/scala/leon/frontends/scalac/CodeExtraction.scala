@@ -1410,10 +1410,10 @@ trait CodeExtraction extends ASTExtractors {
             outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
           }
 
-          finiteMap(singletons, extractType(tptFrom), extractType(tptTo))
+          FiniteMap(singletons, extractType(tptFrom), extractType(tptTo))
 
         case ExFiniteSet(tpt, args) =>
-          finiteSet(args.map(extractTree).toSet, extractType(tpt))
+          FiniteSet(args.map(extractTree).toSet, extractType(tpt))
 
         case ExCaseClassConstruction(tpt, args) =>
           extractType(tpt) match {
@@ -1695,7 +1695,7 @@ trait CodeExtraction extends ASTExtractors {
               ElementOfSet(a2, a1)
 
             case (IsTyped(a1, SetType(b1)), "isEmpty", List()) =>
-              Equals(a1, finiteSet(Set(), b1))
+              Equals(a1, FiniteSet(Set(), b1))
 
             // Multiset methods
             case (IsTyped(a1, MultisetType(b1)), "++", List(IsTyped(a2, MultisetType(b2))))  if b1 == b2 =>

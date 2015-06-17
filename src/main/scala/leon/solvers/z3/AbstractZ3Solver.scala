@@ -714,7 +714,7 @@ trait AbstractZ3Solver
                       case (k, _) => None
                     }.toSeq
 
-                    finiteMap(elems, from, to)
+                    FiniteMap(elems, from, to)
                 }
 
 
@@ -732,7 +732,7 @@ trait AbstractZ3Solver
                   case None => throw new IllegalArgumentException
                   case Some(set) =>
                     val elems = set.map(e => rec(e, dt))
-                    finiteSet(elems, dt)
+                    FiniteSet(elems, dt)
                 }
 
               case _ =>

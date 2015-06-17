@@ -159,7 +159,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       }
       require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
 
-      finiteSet(r.elems.keySet, base)
+      FiniteSet(r.elems.keySet, base)
 
     case RawArrayType(from, to) =>
       r
@@ -180,7 +180,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
         case (k, _) => None
       }.toSeq
-      finiteMap(elems, from, to)
+      FiniteMap(elems, from, to)
 
     case _ =>
       unsupported("Unable to extract from raw array for "+tpe)
