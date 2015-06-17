@@ -1849,20 +1849,11 @@ trait CodeExtraction extends ASTExtractors {
       case TypeRef(_, sym, btt :: Nil) if isArrayClassSym(sym) =>
         ArrayType(extractType(btt))
 
-      case TypeRef(_, sym, List(f1,to)) if isFunction1(sym) =>
-        FunctionType(Seq(extractType(f1)), extractType(to))
-
-      case TypeRef(_, sym, List(f1,f2,to)) if isFunction2(sym) =>
-        FunctionType(Seq(extractType(f1),extractType(f2)), extractType(to))
-
-      case TypeRef(_, sym, List(f1,f2,f3,to)) if isFunction3(sym) =>
-        FunctionType(Seq(extractType(f1),extractType(f2),extractType(f3)), extractType(to))
-
-      case TypeRef(_, sym, List(f1,f2,f3,f4,to)) if isFunction4(sym) =>
-        FunctionType(Seq(extractType(f1),extractType(f2),extractType(f3),extractType(f4)), extractType(to))
-
-      case TypeRef(_, sym, List(f1,f2,f3,f4,f5,to)) if isFunction5(sym) =>
-        FunctionType(Seq(extractType(f1),extractType(f2),extractType(f3),extractType(f4),extractType(f5)), extractType(to))
+      // TODO: What about Function0?
+      case TypeRef(_, sym, subs) if subs.size > 1 && isFunction(sym, subs.size - 1) =>
+        val from = subs.init
+        val to   = subs.last
+        FunctionType(from map extractType, extractType(to))
 
       case TypeRef(_, sym, tps) if isByNameSym(sym) =>
         extractType(tps.head)

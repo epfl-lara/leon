@@ -32,13 +32,12 @@ trait ASTExtractors {
   protected lazy val optionClassSym     = classFromName("scala.Option")
   protected lazy val arraySym           = classFromName("scala.Array")
   protected lazy val someClassSym       = classFromName("scala.Some")
-  protected lazy val function1TraitSym  = classFromName("scala.Function1")
-  protected lazy val function2TraitSym  = classFromName("scala.Function2")
-  protected lazy val function3TraitSym  = classFromName("scala.Function3")
-  protected lazy val function4TraitSym  = classFromName("scala.Function4")
-  protected lazy val function5TraitSym  = classFromName("scala.Function5")
   protected lazy val byNameSym          = classFromName("scala.<byname>")
   protected lazy val bigIntSym          = classFromName("scala.math.BigInt")
+  protected def functionTraitSym(i:Int) = {
+    require(1 <= i && i <= 22)
+    classFromName("scala.Function" + i)
+  }
 
   def isTuple2(sym : Symbol) : Boolean = sym == tuple2Sym
   def isTuple3(sym : Symbol) : Boolean = sym == tuple3Sym
@@ -82,11 +81,8 @@ trait ASTExtractors {
     sym == optionClassSym || sym == someClassSym
   }
 
-  def isFunction1(sym : Symbol) : Boolean = sym == function1TraitSym
-  def isFunction2(sym : Symbol) : Boolean = sym == function2TraitSym
-  def isFunction3(sym : Symbol) : Boolean = sym == function3TraitSym
-  def isFunction4(sym : Symbol) : Boolean = sym == function4TraitSym
-  def isFunction5(sym : Symbol) : Boolean = sym == function5TraitSym
+  def isFunction(sym : Symbol, i: Int) : Boolean =
+    1 <= i && i <= 22 && sym == functionTraitSym(i)
 
   protected lazy val multisetTraitSym  = try {
       classFromName("scala.collection.immutable.Multiset")
