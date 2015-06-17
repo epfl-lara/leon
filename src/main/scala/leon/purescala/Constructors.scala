@@ -27,12 +27,6 @@ object Constructors {
 
   def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
 
-  def let(id: Identifier, e: Expr, bd: Expr) = {
-    if (variablesOf(bd) contains id)
-      Let(id, e, bd)
-    else bd
-  }
-
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
     case Nil =>
       body

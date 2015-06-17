@@ -682,7 +682,7 @@ object ExprOps {
     }
     val (bd, defs) = genericTransform[C](noTransformer, lift, _.flatten)(Seq())(e)
 
-    defs.foldRight(bd){ case ((id, e), body) => let(id, e, body) }
+    defs.foldRight(bd){ case ((id, e), body) => Let(id, e, body) }
   }
 
   /**
