@@ -244,6 +244,7 @@ object FunctionTemplate {
     
     val (clauses, blockers, applications, templateString) =
       Template.encode(encoder, pathVar, arguments, condVars, exprVars, guardedExprs, lambdas,
+        substMap = quantifications.map(q => q.qs).toMap,
         optCall = Some(tfd))
 
     val funString : () => String = () => {

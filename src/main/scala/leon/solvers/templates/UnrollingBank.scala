@@ -16,6 +16,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   val reporter = ctx.reporter
 
   private val encoder = templateGenerator.encoder
+  private val manager = templateGenerator.manager
 
   // Keep which function invocation is guarded by which guard,
   // also specify the generation of the blocker.
@@ -90,7 +91,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
   def canUnroll = callInfo.nonEmpty || appInfo.nonEmpty
 
-  def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq
+  def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq ++ manager.blockers
 
   def getBlockersToUnlock: Seq[T] = {
     if (callInfo.isEmpty && appInfo.isEmpty) {

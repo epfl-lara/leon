@@ -52,7 +52,7 @@ object QuantificationTemplate {
 
     val (clauses, blockers, applications, _) =
       Template.encode(encoder, pathVar, quantifiers, condVars, exprVars, guardedExprs, lambdas,
-        substMap = subst + holders + guards)
+        substMap = subst + holders + guards + qs)
 
     new QuantificationTemplate[T](quantificationManager,
       pathVar._2, qs, holders._2, guards._2, quantifiers,
@@ -60,7 +60,7 @@ object QuantificationTemplate {
   }
 }
 
-trait QuantificationManager[T] { self : LambdaManager[T] =>
+class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManager[T](encoder) {
 
   private val stdQuantifiers: MutableMap[TypeTree, Seq[T]] = MutableMap.empty
   private val quantified: MutableSet[T] = MutableSet.empty
@@ -70,7 +70,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     val currentCount = quantifiers.size
 
     if (currentCount >= count) quantifiers.take(count) else {
-      val newQuantifiers = List.range(0, currentCount - count).map(_ => encoder.encodeId(FreshIdentifier("x", tpe)))
+      val newQuantifiers = List.range(0, count - currentCount).map(_ => encoder.encodeId(FreshIdentifier("x", tpe)))
       quantified ++= newQuantifiers
 
       val allQuantifiers = quantifiers ++ newQuantifiers
@@ -85,6 +85,11 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
 
   private val nextHolder: () => T = {
     val id: Identifier = FreshIdentifier("ph", BooleanType)
+    () => encoder.encodeId(id)
+  }
+
+  private val nextQ: () => T = {
+    val id: Identifier = FreshIdentifier("q", BooleanType)
     () => encoder.encodeId(id)
   }
 
@@ -106,6 +111,8 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
   private def instantiatedApps_=(ias: Seq[(T, App[T], Map[T,T])]): Unit = {
     instantiatedAppsStack = ias :: instantiatedAppsStack.tail
   }
+
+  def blockers: Seq[T] = quantifications.map(_.holdVar)
 
   private def known(tpe: FunctionType, idT: T): Boolean = freeLambdas(tpe)(idT) || byID.isDefinedAt(idT)
 
@@ -157,18 +164,18 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
             if (qapp == bindingApp) {
               bindingApp -> Set(blocker -> app)
             } else {
-              val instances = self.applications(qtpe).filter {
-                case (b, app @ App(caller, _, _)) => qcaller == caller || !known(qtpe, caller)
+              val instances: Seq[(T, App[T])] = instantiatedApps.collect {
+                case (b, app @ App(caller, tpe, _), _) if tpe == qtpe && (qcaller == caller || !known(qtpe, caller)) => (b, app)
               }
 
               // concrete applications can appear multiple times in the constraint, and this is also the case
               // for the current application for which we are generating the constraints
-              val withApp = if (qcaller == caller || !known(tpe, caller)) instances + (blocker -> app) else instances
+              val withApp = if (qcaller == caller || !known(tpe, caller)) instances :+ (blocker -> app) else instances
 
               // add quantified application to instances for constraints that depend on free variables
               // this also make sure that constraints that don't depend on all variables will also be instantiated
               // Note: we can use `blocker` here as the blocker since it is guaranteed true in this branch
-              val withAll = withApp + (blocker -> qapp)
+              val withAll = withApp :+ (blocker -> qapp)
 
               qapp -> withAll
             }
@@ -177,7 +184,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
           //      instantiation mappings that can be used to instantiate all necessary constraints
           .foldLeft[List[List[(T, App[T], App[T])]]] (List(Nil)) {
             case (mappings, (qapp, instances)) => instances.toList.flatMap {
-              case (b, app) => mappings.map(mapping => mapping :+ (b, app, qapp))
+              case (b, app) => mappings.map(mapping => mapping :+ (b, qapp, app))
             }
           }
         }
@@ -186,7 +193,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
 
       for (mapping <- appMappings) {
         var constraints: List[T] = Nil
-        var subst: Map[T, T] = quantifierSubst
+        var subst: Map[T, T] = Map.empty
 
         for {
           (b, App(qcaller, _, qargs), App(caller, _, args)) <- mapping
@@ -199,19 +206,23 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
           subst += qarg -> arg
         }
 
+        for ((q,nq) <- quantifierSubst if !subst.isDefinedAt(q)) {
+          subst += q -> nq
+        }
+
         val enabler = if (constraints.size == 1) constraints.head else encoder.mkAnd(constraints : _*)
         val holder = nextHolder()
 
-        val lambdaSubstMap = lambdas.map { case (idT, lambda) => idT -> encoder.encodeId(lambda.id) }
+        val lambdaSubstMap = lambdas map { case (idT, lambda) => idT -> encoder.encodeId(lambda.id) }
         val substMap = subst ++ lambdaSubstMap + (guardVar -> enabler) + (holdVar -> holder)
-        val substituter = encoder.substitute(subst)
+        val substituter = encoder.substitute(substMap)
 
-        val newClauses = enabler +: clauses.map(substituter)
-        val newBlockers = blockers.map { case (b, fis) =>
+        val newClauses = clauses map substituter
+        val newBlockers = blockers map { case (b, fis) =>
           substituter(b) -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
         }
 
-        val newApplications = applications.map { case (b, fas) =>
+        val newApplications = applications map { case (b, fas) =>
           substituter(b) -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
         }
 
@@ -220,11 +231,11 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
         for ((idT, lambda) <- lambdas) {
           val newIdT = substituter(idT)
           val newTemplate = lambda.substitute(substMap)
-          instantiation ++= self.instantiateLambda(newIdT, newTemplate)
+          instantiation ++= QuantificationManager.super.instantiateLambda(newIdT, newTemplate)
         }
 
         for ((b, apps) <- newApplications; app <- apps) {
-          instantiation ++= self.instantiateApp(b, app)
+          instantiation ++= QuantificationManager.super.instantiateApp(b, app)
         }
 
         holdVar = holder
@@ -267,9 +278,23 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
 
     val quantifierSubst: Map[T,T] = freshQuantifierSubst
 
-    var instantiation: Instantiation[T] = (quantification.clauses, quantification.blockers, Map.empty)
-    for (q <- quantifications; (b, apps) <- quantification.applications; app <- apps) {
-      instantiation ++= q.instantiate(b, app, quantifierSubst)
+    var qs: Seq[T] = Seq.empty
+    var instantiation: Instantiation[T] = {
+      val q = nextQ()
+      qs :+= q
+
+      val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
+      val base = quantification.substitute(Map(
+        quantification.guardVar -> trueT,
+        quantification.holdVar  -> trueT,
+        template.qs._2          -> q
+      ))
+
+      var instantiation: Instantiation[T] = (base.clauses, base.blockers, Map.empty)
+      for (q <- quantifications; (b, apps) <- quantification.applications; app <- apps) {
+        instantiation ++= q.instantiate(b, app, quantifierSubst)
+      }
+      instantiation
     }
 
     val qBindings: Bindings = quantification.binders.flatMap {
@@ -285,7 +310,7 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     val typeMap: Map[(FunctionType, Int), Set[T]] = typeBindings.groupBy(p => (p._2, p._3)).mapValues(_.map(_._4))
 
     val pairs: Set[(T, T)] = qBindings.flatMap { case (optIdT, tpe, idx, q) =>
-      val matches = typeMap(tpe -> idx) ++ optIdT.toSeq.flatMap(idT => callerMap(idT -> idx))
+      val matches = typeMap.getOrElse(tpe -> idx, Set.empty) ++ optIdT.toSeq.flatMap(idT => callerMap(idT -> idx))
       matches.map(q2 => q -> q2)
     }
 
@@ -296,13 +321,16 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
 
     val newQuantifications = for (mapping <- mappings) yield {
       val ph = nextHolder()
+      val q = nextQ()
+      qs :+= q
 
       val freshConds = quantification.condVars.map(p => p._1.freshen -> p._2)
       val freshExprs = quantification.exprVars.map(p => p._1.freshen -> p._2)
 
       val substMap: Map[T, T] = mapping ++
         (freshConds ++ freshExprs).map { case (id, idT) => idT -> encoder.encodeId(id) } ++
-        quantification.lambdas.map { case (idT, template) => idT -> encoder.encodeId(template.id) }
+        quantification.lambdas.map { case (idT, template) => idT -> encoder.encodeId(template.id) } +
+        (template.holdVar -> ph) + (template.qs._2 -> q)
 
       val substituter = encoder.substitute(substMap)
 
@@ -324,9 +352,8 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     }
 
     val eqClause = {
-      val holders = newQuantifications.map(_.holdVar)
-      val newHolders = if (holders.size > 1) encoder.mkAnd(holders : _*) else holders.head
-      encoder.mkEquals(template.qs._2, newHolders)
+      val newQs = if (qs.size > 1) encoder.mkAnd(qs : _*) else qs.head
+      encoder.mkImplies(substMap(template.start), encoder.mkEquals(template.qs._2, newQs))
     }
 
     instantiation = (instantiation._1 :+ eqClause, instantiation._2, instantiation._3)
@@ -362,7 +389,8 @@ trait QuantificationManager[T] { self : LambdaManager[T] =>
     }
 
     instantiatedApps :+= (blocker, app, quantifierSubst)
-    instantiation
+
+    instantiation ++ super.instantiateApp(blocker, app)
   }
 
   /*
