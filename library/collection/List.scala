@@ -231,7 +231,7 @@ sealed abstract class List[T] {
 
   def init: List[T] = {
     require(!isEmpty)
-    (this match {
+    ((this : @unchecked) match {
       case Cons(h, Nil()) =>
         Nil[T]()
       case Cons(h, t) =>
@@ -244,7 +244,7 @@ sealed abstract class List[T] {
 
   def last: T = {
     require(!isEmpty)
-    this match {
+    (this : @unchecked) match {
       case Cons(h, Nil()) => h
       case Cons(_, t) => t.last
     }

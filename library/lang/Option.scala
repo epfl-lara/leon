@@ -9,7 +9,7 @@ sealed abstract class Option[T] {
 
   def get : T = {
     require(this.isDefined)
-    this match {
+    (this : @unchecked) match {
       case Some(x) => x
     }
   }

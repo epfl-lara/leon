@@ -1,0 +1,11 @@
+#!/bin/bash --posix
+# Assumes:
+#  - ${SCALA} is on the path
+OUT_CLASSES_DIR="./out-classes"
+SCALA="scala"
+if [[ -d ${OUT_CLASSES_DIR} ]] 
+then
+    scala -cp ${OUT_CLASSES_DIR} $*
+else
+    echo Script is designed to run after scalacleon
+fi

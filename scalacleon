@@ -1,0 +1,16 @@
+#!/bin/bash --posix
+# Assumes:
+#  - Leon home is stored in PATH_TO_LEON
+#  - we have xargs installed
+#  - ${SCALA_COMPILER} is on the path
+PATH_TO_LEON="./"  # assume we run from Leon home directory
+PATH_TO_LEON_LIB="${PATH_TO_LEON}/library/"
+OUT_CLASSES_DIR="./out-classes"
+SCALA_COMPILER="fsc"
+mkdir -p ${OUT_CLASSES_DIR}
+echo ========= Now invoking: ====================================
+echo ${SCALA_COMPILER} $(find ${PATH_TO_LEON_LIB} -name "*.scala" | xargs) $* -d ${OUT_CLASSES_DIR}
+echo ============================================================
+fsc -deprecation $(find ${PATH_TO_LEON_LIB} -name "*.scala" | xargs) $* -d ${OUT_CLASSES_DIR}
+echo ========= Done. ============================================
+echo Class files generated in directory: ${OUT_CLASSES_DIR}
