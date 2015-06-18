@@ -17,7 +17,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
   private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
 
-  private val lambdaManager = new LambdaManager[T](encoder) with QuantificationManager[T]
+  val manager = new QuantificationManager[T](encoder)
 
   def mkTemplate(body: Expr): FunctionTemplate[T] = {
     if (cacheExpr contains body) {
@@ -107,7 +107,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         (bodyConds, bodyExprs, bodyGuarded, bodyLambdas, bodyQuantifications)
     }
 
-    val template = FunctionTemplate(tfd, encoder, lambdaManager,
+    val template = FunctionTemplate(tfd, encoder, manager,
       pathVar, arguments, condVars, exprVars, guardedExprs, quantifications, lambdas, isRealFunDef)
     cache += tfd -> template
     template
@@ -274,7 +274,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
           val ids: (Identifier, T) = lid -> storeLambda(lid)
           val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
-          val template = LambdaTemplate(ids, encoder, lambdaManager, pathVar -> encodedCond(pathVar),
+          val template = LambdaTemplate(ids, encoder, manager, pathVar -> encodedCond(pathVar),
             idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, localSubst, dependencies, l)
           registerLambda(ids._2, template)
 
@@ -296,7 +296,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           val (qConds, qExprs, qGuarded, qTemplates, qQuants) = mkClauses(pathVar, clause, clauseSubst)
           assert(qQuants.isEmpty, "Unhandled nested quantification in "+clause)
 
-          val template = QuantificationTemplate[T](encoder, lambdaManager, pathVar -> encodedCond(pathVar),
+          val template = QuantificationTemplate[T](encoder, manager, pathVar -> encodedCond(pathVar),
             qs, ph, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qGuarded, qTemplates, localSubst)
           registerQuantification(template)
 
