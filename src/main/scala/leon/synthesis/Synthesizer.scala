@@ -6,6 +6,7 @@ package synthesis
 import purescala.Common._
 import purescala.Definitions._
 import purescala.ExprOps._
+import purescala.DefOps._
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.ScalaPrinter
@@ -97,28 +98,19 @@ class Synthesizer(val context : LeonContext,
 
   // Returns the new program and the new functions generated for this
   def solutionToProgram(sol: Solution): (Program, List[FunDef]) = {
+    // We replace the choose with the body of the synthesized solution
 
-    // Create new fundef for the body
-    val ret = tupleTypeWrap(problem.xs.map(_.getType))
-    val res = Variable(FreshIdentifier("res", ret))
+    val solutionExpr = sol.toSimplifiedExpr(context, program)
 
-    val mapPost: Map[Expr, Expr] = problem.xs.zipWithIndex.map{ case (id, i)  =>
-      Variable(id) -> tupleSelect(res, i+1, problem.xs.size)
-    }.toMap
+    val (npr, fdMap) = replaceFunDefs(program)({
+      case fd if fd eq ci.fd =>
+        val nfd = fd.duplicate
+        nfd.fullBody = replace(Map(ci.source -> solutionExpr), nfd.fullBody)
+        Some(nfd)
+      case _ => None
+    })
 
-    val fd = new FunDef(FreshIdentifier(ci.fd.id.name+"_final", alwaysShowUniqueID = true), Nil, ret, problem.as.map(ValDef(_)), DefType.MethodDef)
-    fd.precondition  = Some(and(problem.pc, sol.pre))
-    fd.postcondition = Some(Lambda(Seq(ValDef(res.id)), replace(mapPost, problem.phi)))
-    fd.body          = Some(sol.term)
-
-    val newDefs = fd +: sol.defs.toList
-
-    val newModule = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq, false)
-    val newUnit = UnitDef(FreshIdentifier("synthesis"), Seq(newModule), Nil, Seq(), true)
-
-    val npr = program.copy(units = newUnit :: program.units)
-
-    (npr, newDefs)
+    (npr, fdMap.get(ci.fd).toList)
   }
 
   def shutdown(): Unit = {
