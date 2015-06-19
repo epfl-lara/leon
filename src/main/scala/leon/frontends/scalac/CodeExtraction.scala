@@ -1077,7 +1077,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val closure = post.getType match {
             case BooleanType =>
-              val resId = FreshIdentifier("res", BooleanType).setPos(post).setOwner(currentFunDef)
+              val resId = FreshIdentifier("res", b.getType).setPos(post).setOwner(currentFunDef)
               Lambda(Seq(LeonValDef(resId)), post).setPos(post)
             case _ => post
           }
