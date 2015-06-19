@@ -54,4 +54,6 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
         other
     }
   }
+
+  protected val allowQuantifiedAssersions: Boolean = true
 }

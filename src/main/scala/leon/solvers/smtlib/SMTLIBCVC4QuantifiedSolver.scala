@@ -29,6 +29,8 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
   private val typedFunDefExplorationLimit = 10000
 
+  protected val allowQuantifiedAssersions: Boolean
+
   override def declareFunction(tfd: TypedFunDef): SSymbol = {
     val (funs, exploredAll) = typedTransitiveCallees(Set(tfd), Some(typedFunDefExplorationLimit))
     if (!exploredAll) {
@@ -94,7 +96,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
     if (smtFunDecls.nonEmpty) {
       sendCommand(DefineFunsRec(smtFunDecls, smtBodies))
       // Assert contracts for defined functions
-      for {
+      if (allowQuantifiedAssersions) for {
         // If we encounter a function that does not refer to the current function,
         // it is sound to assume its contracts for all inputs
         tfd <- withParams if !refersToCurrent(tfd.fd)
