@@ -74,7 +74,7 @@ class Synthesizer(val context : LeonContext,
 
     val solverf = SolverFactory.default(context, npr).withTimeout(timeout)
 
-    try { 
+    try {
       val vctx = VerificationContext(context, npr, solverf, context.reporter)
       val vcs = generateVCs(vctx, Some(fds.map(_.id.name)))
       val vcreport = checkVCs(vctx, vcs)
@@ -113,9 +113,10 @@ class Synthesizer(val context : LeonContext,
 
     val newDefs = fd +: sol.defs.toList
 
-    val npr = program.copy(units = program.units map { u =>
-      u.copy(modules = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq, false) +: u.modules )
-    })
+    val newModule = ModuleDef(FreshIdentifier("synthesis"), newDefs.toSeq, false)
+    val newUnit = UnitDef(FreshIdentifier("synthesis"), Seq(newModule), Nil, Seq(), true)
+
+    val npr = program.copy(units = newUnit :: program.units)
 
     (npr, newDefs)
   }
