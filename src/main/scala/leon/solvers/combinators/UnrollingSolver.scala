@@ -152,7 +152,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
       reporter.debug(" - Running search...")
 
       solver.push()
-      solver.assertCnstr(andJoin((assumptions ++ unrollingBank.currentBlockers).toSeq))
+      solver.assertCnstr(andJoin((assumptions ++ unrollingBank.currentBlockers ++ unrollingBank.quantificationAssumptions).toSeq))
       val res = solver.check
 
       reporter.debug(" - Finished search with blocked literals")
@@ -188,7 +188,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
             }
 
             solver.push()
-            solver.assertCnstr(andJoin(assumptions.toSeq))
+            solver.assertCnstr(andJoin(assumptions.toSeq ++ unrollingBank.quantificationAssumptions))
             val res2 = solver.check
 
             res2 match {

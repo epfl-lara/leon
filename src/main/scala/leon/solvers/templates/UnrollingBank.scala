@@ -91,7 +91,9 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
   def canUnroll = callInfo.nonEmpty || appInfo.nonEmpty
 
-  def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq ++ manager.blockers
+  def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq
+
+  def quantificationAssumptions = manager.blockers
 
   def getBlockersToUnlock: Seq[T] = {
     if (callInfo.isEmpty && appInfo.isEmpty) {
