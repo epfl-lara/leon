@@ -78,15 +78,6 @@ class DefOpsTests extends LeonTestSuite {
     }
 
     
-    test("Least common ancestor"){
-      val x = program.lookup("foo.bar.baz.x")
-      assert(x.isDefined)
-      assert(leastCommonAncestor(x.get, fooC.get) == program)
-      val fooClass = program.lookup("foo.bar.baz.Foo.FooC")
-      assert (fooClass.isDefined)
-      assert(leastCommonAncestor(fooC.get, fooClass.get).id.name == "Foo")
-    } 
-
     test("In empty package") { 
       val name = "InEmpty.arrayLookup"
       val df = program.lookup(name)

@@ -16,98 +16,19 @@ import leon.synthesis.Witnesses._
 
 case class PrinterContext(
   current: Tree,
-  parent: Option[Tree],
-  scope : Option[Definition],
+  parents: List[Tree],
   lvl: Int,
   printer: PrettyPrinter
-)
+) {
 
-object PrinterHelpers {
-  implicit class Printable(val f: PrinterContext => Any) extends AnyVal {
-    def print(ctx: PrinterContext) = f(ctx)
-  }
-
-  implicit class PrintingHelper(val sc: StringContext) extends AnyVal {
-
-    def p(args: Any*)(implicit ctx: PrinterContext): Unit = {
-      val printer = ctx.printer
-      val sb      = printer.sb
-
-      val strings     = sc.parts.iterator
-      val expressions = args.iterator
-
-      var extraInd = 0
-      var firstElem = true
-
-      while(strings.hasNext) {
-        val s = strings.next.stripMargin
-
-        // Compute indentation
-        val start = s.lastIndexOf('\n')
-        if(start >= 0 || firstElem) {
-          var i = start+1
-          while(i < s.length && s(i) == ' ') {
-            i += 1
-          }
-          extraInd = (i-start-1)/2
-        }
-
-        firstElem = false
-
-        // Make sure new lines are also indented
-        sb.append(s.replaceAll("\n", "\n"+("  "*ctx.lvl)))
-
-        var nctx = ctx.copy(lvl = ctx.lvl + extraInd)
-
-        if (expressions.hasNext) {
-          val e = expressions.next
-
-          e match {
-            case (t1, t2) =>
-              nary(Seq(t1, t2), " -> ").print(nctx)
-
-            case ts: Seq[Any] =>
-              nary(ts).print(nctx)
-   
-            case t: Tree =>
-              val newScope = nctx.current match { 
-                case d : Definition => Some(d)
-                case _ => nctx.scope 
-              }
-              nctx = nctx.copy(current = t, parent = Some(nctx.current), scope = newScope)
-              printer.pp(t)(nctx)
-
-            case p: Printable =>
-              p.print(nctx)
-
-            case e =>
-              sb.append(e.toString)
-          }
-        }
-      }
-    }
-  }
-
-  def nary(ls: Seq[Any], sep: String = ", "): Printable = {
-    val strs = List("") ::: List.fill(ls.size-1)(sep)
-
-    implicit pctx: PrinterContext =>
-      new StringContext(strs: _*).p(ls: _*)
-  }
-
-  def typed(t: Tree with Typed): Printable = {
-    implicit pctx: PrinterContext =>
-      p"$t : ${t.getType}"
-  }
-
-  def typed(ts: Seq[Tree with Typed]): Printable = {
-    nary(ts.map(typed))
-  }
+  def parent = parents.headOption
 }
 
 /** This pretty-printer uses Unicode for some operators, to make sure we
  * distinguish PureScala from "real" Scala (and also because it's cute). */
-class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffer) {
+class PrettyPrinter(opts: PrinterOptions,
+                    opgm: Option[Program],
+                    val sb: StringBuffer = new StringBuffer) {
 
   override def toString = sb.toString
 
@@ -130,24 +51,18 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       body
     }
   }
-  
-  def printWithPath(df: Definition)(implicit ctx : PrinterContext) {
-    //ctx.scope match {
-    //  case Some(scope) => 
-    //    try {
-    //      val (pack, defPath) = pathAsVisibleFrom(scope, df)
-    //      val toPrint = pack ++ (defPath collect { case df if !df.isInstanceOf[UnitDef] => df.id})
-    //      p"${nary(toPrint, ".")}"
-    //    } catch {
-    //      // If we did not manage to find the path, just print the id
-    //      case _ : NoSuchElementException => p"${df.id}"
-    //    }
-    //  case None =>
+
+  def printWithPath(df: Definition)(implicit ctx: PrinterContext) {
+    (opgm, ctx.parents.collectFirst { case (d: Definition) => d }) match {
+      case (Some(pgm), Some(scope)) =>
+        val name = fullNameFrom(df, scope)(pgm)
+        p"$name"
+
+      case _ =>
         p"${df.id}"
-    //} 
-    
+    }
   }
-  
+
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
     if (opts.printTypes) {
       tree match {
@@ -159,7 +74,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     }
     tree match {
       case id: Identifier =>
-        
         val name = if (opts.printUniqueIds) {
           id.uniqueName
         } else {
@@ -172,9 +86,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         )
         // Replace $opname with operator symbols
         val candidate = scala.reflect.NameTransformer.decode(name)
-        
+
         if (isLegalScalaId(candidate)) p"$candidate" else p"$name"
-        
+
       case Variable(id) =>
         p"$id"
 
@@ -233,33 +147,30 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"""|?($es)"""
         }
       case e @ CaseClass(cct, args) =>
-        //isListLiteral(e) match {
-        //  case Some((tpe, elems)) =>
-        //    val chars = elems.collect{case CharLiteral(ch) => ch}
-        //    if (chars.length == elems.length && tpe == CharType) {
-        //      // String literal
-        //      val str = chars mkString ""
-        //      val q = '"'
-        //      p"$q$str$q"
-        //    } else {
-        //      val elemTps = leastUpperBound(elems.map(_.getType))
-        //      if (elemTps == Some(tpe)) {
-        //        p"List($elems)"  
-        //      } else {
-        //        p"List[$tpe]($elems)"  
-        //      }
-        //    }
+        opgm.flatMap { pgm => isListLiteral(e)(pgm) } match {
+          case Some((tpe, elems)) =>
+            val chars = elems.collect{case CharLiteral(ch) => ch}
+            if (chars.length == elems.length && tpe == CharType) {
+              // String literal
+              val str = chars mkString ""
+              val q = '"'
+              p"$q$str$q"
+            } else {
+              val elemTps = leastUpperBound(elems.map(_.getType))
+              if (elemTps == Some(tpe)) {
+                p"List($elems)"  
+              } else {
+                p"List[$tpe]($elems)"  
+              }
+            }
 
-        //    case None =>
+            case None =>
               if (cct.classDef.isCaseObject) {
                 p"$cct"
               } else {
                 p"$cct($args)"
               }
-        //}
-
-
-
+        }
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" }
@@ -495,11 +406,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case WildcardPattern(Some(id)) => p"$id"
 
       case CaseClassPattern(ob, cct, subps) =>
-        // TODO specialize for strings
         ob.foreach { b => p"$b @ " }
         // Print only the classDef because we don't want type parameters in patterns
         printWithPath(cct.classDef)
-        if (!cct.classDef.isCaseObject) p"($subps)"   
+        if (!cct.classDef.isCaseObject) p"($subps)"
 
       case InstanceOfPattern(ob, cct) =>
         if (cct.classDef.isCaseObject) {
@@ -509,7 +419,6 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
         // It's ok to print the whole type because there are no type parameters for case objects
         p"$cct"
-        
 
       case TuplePattern(ob, subps) =>
         ob.foreach { b => p"$b @ " }
@@ -541,8 +450,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       // Definitions
       case Program(units) =>
         p"""${nary(units filter {_.isMainUnit}, "\n\n")}"""
-        //p"""${nary(units, "\n\n")}"""
-      
+
       case UnitDef(id,pack, imports, defs,_) =>
         if (pack.nonEmpty){
           p"""|package ${pack mkString "."}
@@ -551,28 +459,16 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"""|${nary(imports,"\n")}
             |${nary(defs,"\n\n")}
             |"""
-        
+
       case PackageImport(pack) => 
-        //import leon.purescala.DefOps._
-        //val newPack = ( for (
-        //  scope <- ctx.scope;
-        //  unit <- unitOf(scope);
-        //  currentPack = unit.pack
-        //) yield {  
-        //  if (isSuperPackageOf(currentPack,pack)) 
-        //    pack drop currentPack.length
-        //  else 
-        //    pack
-        //}).getOrElse(pack)
         p"import ${nary(pack,".")}._"
 
       case SingleImport(df) => 
         p"import "; printWithPath(df)
-         
-        
+
       case WildcardImport(df) => 
         p"import "; printWithPath(df); p"._"
-        
+
       case ModuleDef(id, defs, _) =>
         p"""|object $id {
             |  ${nary(defs, "\n\n")}
@@ -771,7 +667,7 @@ trait PrettyPrintable {
   def printRequiresBraces(within: Option[Tree]): Boolean = false
 }
 
-class EquivalencePrettyPrinter(opts: PrinterOptions) extends PrettyPrinter(opts) {
+class EquivalencePrettyPrinter(opts: PrinterOptions, opgm: Option[Program]) extends PrettyPrinter(opts, opgm) {
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
     tree match {
       case id: Identifier =>
@@ -784,31 +680,31 @@ class EquivalencePrettyPrinter(opts: PrinterOptions) extends PrettyPrinter(opts)
 }
 
 abstract class PrettyPrinterFactory {
-  def create(opts: PrinterOptions): PrettyPrinter
+  def create(opts: PrinterOptions, opgm: Option[Program]): PrettyPrinter
 
-  def apply(tree: Tree, opts: PrinterOptions = PrinterOptions(), scope : Option[Definition] = None): String = {
-    val printer = create(opts)
-//    val scope_ = (tree, scope) match {
-//      // Try to find a scope, if we are given none.
-//      case (df : Definition, None) => df.owner
-//      case _ => None
-//    }
-    val ctx = PrinterContext(tree, None, scope, opts.baseIndent, printer)
+  def apply(tree: Tree, opts: PrinterOptions = PrinterOptions(), opgm: Option[Program] = None): String = {
+    val printer = create(opts, opgm)
+    val ctx = PrinterContext(tree, Nil, opts.baseIndent, printer)
     printer.pp(tree)(ctx)
     printer.toString
   }
 
   def apply(tree: Tree, ctx: LeonContext): String = {
     val opts = PrinterOptions.fromContext(ctx)
-    apply(tree, opts)
+    apply(tree, opts, None)
+  }
+
+  def apply(tree: Tree, ctx: LeonContext, pgm: Program): String = {
+    val opts = PrinterOptions.fromContext(ctx)
+    apply(tree, opts, Some(pgm))
   }
 
 }
 
 object PrettyPrinter extends PrettyPrinterFactory {
-  def create(opts: PrinterOptions) = new PrettyPrinter(opts)
+  def create(opts: PrinterOptions, opgm: Option[Program]) = new PrettyPrinter(opts, opgm)
 }
 
 object EquivalencePrettyPrinter extends PrettyPrinterFactory {
-  def create(opts: PrinterOptions) = new EquivalencePrettyPrinter(opts)
+  def create(opts: PrinterOptions, opgm: Option[Program]) = new EquivalencePrettyPrinter(opts, opgm)
 }

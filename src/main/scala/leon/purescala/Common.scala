@@ -6,7 +6,7 @@ package purescala
 import utils._
 import Expressions.Variable
 import Types._
-import Definitions.Definition
+import Definitions.{Program, Definition}
 
 object Common {
 
@@ -17,10 +17,16 @@ object Common {
       this
     }
 
-    override def toString: String = PrettyPrinter(this)
+    override def toString: String = {
+      PrettyPrinter(this)
+    }
 
     def asString(implicit ctx: LeonContext): String = {
       ScalaPrinter(this, ctx)
+    }
+
+    def asString(pgm: Program)(implicit ctx: LeonContext): String = {
+      ScalaPrinter(this, ctx, pgm)
     }
   }
 

@@ -13,6 +13,6 @@ case class PrintTreePhase(title: String) extends UnitPhase[Program] {
 
   def apply(ctx: LeonContext, p: Program) {
     ctx.reporter.info(ASCIIHelpers.title(title))
-    ctx.reporter.info(p.asString(ctx))
+    ctx.reporter.info(p.asString(p)(ctx))
   }
 }

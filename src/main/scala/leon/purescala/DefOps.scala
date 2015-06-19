@@ -48,19 +48,6 @@ object DefOps {
 
   def unitsInPackage(p: Program, pack: PackageRef) = p.units filter { _.pack  == pack }
 
-  //def isImportedBy(df: Definition, i: Import) : Boolean = {
-  //  i.importedDefs contains df
-  //}
-
-  //def isImportedBy(df : Definition, is: Seq[Import]) : Boolean = {
-  //  is exists {isImportedBy(df,_)}
-  //}
-
-  def leastCommonAncestor(df1: Definition, df2: Definition)(implicit pgm: Program): Definition = {
-    (pathFromRoot(df1) zip pathFromRoot(df2)).takeWhile {
-      case (df1, df2) => df1 eq df2
-    }.last._1
-  }
 
 
   /** Returns the set of definitions directly visible from the current definition
@@ -106,6 +93,7 @@ object DefOps {
   }
 
   /** Returns true for strict superpackage */ 
+  /*
   def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = {
     (p2.length > p1.length) &&
     ( (p1 zip p2 takeWhile { case (n1,n2) => n1 == n2 }).length == p1.length )
@@ -120,7 +108,56 @@ object DefOps {
     }
     p drop bestSuper.length
   }
+  */
+
   
+  def fullNameFrom(of: Definition, from: Definition)(implicit pgm: Program): String = {
+    val pathFrom = pathFromRoot(from).dropWhile(_.isInstanceOf[Program])
+
+    val namesFrom = pathToNames(pathFrom)
+    val namesOf   = pathToNames(pathFromRoot(of))
+
+    def stripPrefix(of: List[String], from: List[String]) = {
+      val removePrefix = (of zip from).dropWhile(p => p._1 == p._2).map(_._1)
+      if (removePrefix.size == 0) {
+        List(from.last)
+      } else {
+        removePrefix
+      }
+    }
+
+    var names: Set[List[String]] = Set(namesOf, stripPrefix(namesOf, namesOf))
+
+    pathFrom match {
+      case (u: UnitDef) :: _ =>
+        val imports = u.imports.map {
+          case PackageImport(ls) => (ls, true)
+          case SingleImport(d)   => (nameToParts(fullName(d)), false)
+          case WildcardImport(d) => (nameToParts(fullName(d)), true)
+        }.toList
+
+        def stripImport(of: List[String], imp: List[String], isWild: Boolean): Option[List[String]] = {
+          if (of.startsWith(imp)) {
+            if (isWild) {
+              Some(of.drop(imp.size-1))
+            } else {
+              Some(of.drop(imp.size-2))
+            }
+          } else {
+            None
+          }
+        }
+
+        for ((imp, isWild) <- imports) {
+          names ++= stripImport(namesOf, imp, isWild)
+        }
+
+      case _ =>
+    }
+
+    names.toSeq.minBy(_.size).mkString(".")
+  }
+
   /*
   private def pathAsVisibleFrom(base: Definition, target: Definition)(implicit pgm: Program): (PackageRef, List[Definition]) = {
     val rootPath = pathFromRoot(target)
@@ -142,8 +179,8 @@ object DefOps {
   }
   */
 
-  private def pathToString(path: List[Definition]): String = {
-    val expandPack = path.flatMap {
+  def pathToNames(path: List[Definition]): List[String] = {
+    path.flatMap {
       case p: Program =>
         Nil
       case u: UnitDef =>
@@ -153,8 +190,10 @@ object DefOps {
       case d =>
         List(d.id.name)
     }
+  }
 
-    expandPack.mkString(".")
+  def pathToString(path: List[Definition]): String = {
+    pathToNames(path).mkString(".")
   }
 
   def fullName(df: Definition)(implicit pgm: Program): String = {
@@ -268,123 +307,6 @@ object DefOps {
         Nil
     }
   }
-
-  /*
-  def searchByFullName (
-    fullName : String,
-    p : Program,
-    reliableVisibility : Boolean = true, // Unset this if imports have not yet been set correctly
-    exploreStandalones : Boolean = true  // Unset this if your path already includes standalone object names
-  ) = searchByFullNameRelative(fullName, p, reliableVisibility,exploreStandalones)
-  
-  
-  private def searchByFullNameRelative(
-    fullName : String,    
-    base : Definition,
-    reliableVisibility : Boolean = true, // Unset this if imports have not yet been set correctly
-    exploreStandalones : Boolean = true  // Unset this if your path already includes standalone object names
-  ) : Option[Definition] = {
-  
-    require(programOf(base).isDefined)
-
-    val fullNameList = fullName.split("\\.").toList map scala.reflect.NameTransformer.encode
-    require(fullNameList.nonEmpty)
-    
-    def onCondition[A](cond:Boolean)(body : => Option[A]) : Option[A] = {
-      if (cond) body else None
-    }
-    
-    // Find a definition by full name, starting from an another definition
-    def descendDefs (df : Definition, path : List[String]) : Option[Definition] = { 
-      path match {
-        case Nil => Some(df)
-        case hd :: tl =>
-          // ignore UnitDefs
-          val subs = df match {
-            case p : Program => p.modules
-            case _ => df.subDefinitions
-          }          
-          for (
-            nested <- subs find {_.id.toString == hd}; 
-            df <- descendDefs(nested, tl) 
-          ) yield df
-      }
-    }
-    
-    // First, try to find your way from the visible packages from this def
-    // ignoring package nonsense.
-    // Skip if unreliable visibility.
-    ( for ( 
-      startingPoint <- {
-        onCondition (reliableVisibility) {
-          val visible = visibleDefsFrom(base).toList
-          val defs : List[Definition] = 
-            if(exploreStandalones) 
-              visible ++ visible.collect { case ModuleDef(_, subs, true) => subs}.flatten
-            else visible
-          defs find { _.id.toString == fullNameList.head }
-        }
-      };
-      path = fullNameList.tail;
-      df <- descendDefs(startingPoint,path) 
-    ) yield df ) orElse {
-
-      val program = programOf(base).get
-      val currentPack = packageOf(base)
-      val knownPacks = program.units map { _.pack }
-      // The correct package has the maximum identifiers
-    
-      // First try to find a correct subpackage of this package
-      val subPacks = knownPacks collect { 
-        case p if isSuperPackageOf(currentPack, p) =>
-          p drop currentPack.length
-      }
-      
-      import scala.util.Try
-      val (packagePart, objectPart) = Try {
-        // Find the longest match, then re-attach the current package.
-        val pack = subPacks filter { fullNameList.startsWith(_) } maxBy(_.length)
-        ( currentPack ++ pack, fullNameList drop pack.length )
-      } orElse { Try {
-        // In this case, try to find a package that fits beginning from the root package
-        val pack = knownPacks filter { fullNameList.startsWith(_) } maxBy(_.length)
-        (pack, fullNameList drop pack.length)
-      }} getOrElse {
-        // No package matches
-        (Nil, fullNameList)
-      }
-      
-      if(objectPart.isEmpty) 
-        // Probably just a package path, or an object imported from a Scala library,
-        // so no definition returned
-        None
-      else {     
-        val point = program.modules find { mod => 
-          mod.id.toString == objectPart.head && 
-          packageOf(mod)  == packagePart
-        } orElse {
-          onCondition (exploreStandalones) {
-            // Search in standalone objects
-            program.modules.collect {
-              case ModuleDef(_,subDefs,true) => subDefs 
-            }.flatten.find { df =>
-              df.id.toString == objectPart.head && 
-              packageOf(df)  == packagePart 
-            }
-          }
-        }
-    
-        for (
-          startingPoint <- point;
-          path = objectPart.tail;
-          df <- descendDefs(startingPoint,path) 
-        ) yield df
-      }
-    }
-    
-  }
-  */
-  
 
   /*
    * Apply an expression operation on all expressions contained in a FunDef

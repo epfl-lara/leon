@@ -12,10 +12,12 @@ import Types._
 import Definitions._
 
 /** This pretty-printer only print valid scala syntax */
-class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, sb) {
+class ScalaPrinter(opts: PrinterOptions,
+                   opgm: Option[Program],
+                   sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, opgm, sb) {
 
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
-   
+
     tree match {
       case m: ModuleDef =>
         // Don't print synthetic functions
@@ -71,5 +73,5 @@ class ScalaPrinter(opts: PrinterOptions, sb: StringBuffer = new StringBuffer) ex
 }
 
 object ScalaPrinter extends PrettyPrinterFactory {
-  def create(opts: PrinterOptions) = new ScalaPrinter(opts)
+  def create(opts: PrinterOptions, opgm: Option[Program]) = new ScalaPrinter(opts, opgm)
 }

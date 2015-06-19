@@ -96,8 +96,8 @@ class StablePrintingSuite extends LeonTestSuite {
                         val result = sol.toSimplifiedExpr(ctx, pgm)
 
                         val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, (indent: Int) => {
-                          val p = new ScalaPrinter(PrinterOptions())
-                          p.pp(result)(PrinterContext(result, Some(ci.fd), Some(ci.fd), indent, p))
+                          val p = new ScalaPrinter(PrinterOptions(), Some(pgm))
+                          p.pp(result)(PrinterContext(result, List(ci.fd), indent, p))
                           p.toString
                         })
 

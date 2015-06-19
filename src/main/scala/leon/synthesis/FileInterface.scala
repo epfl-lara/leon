@@ -35,7 +35,7 @@ class FileInterface(reporter: Reporter) {
 
         var newCode = origCode
         for ( (ci, e) <- solutions) {
-          newCode = substitute(newCode, ci.ch, e, ci.fd )
+          newCode = substitute(newCode, ci.ch, e)
         }
 
         val out = new BufferedWriter(new FileWriter(newFile))
@@ -70,10 +70,10 @@ class FileInterface(reporter: Reporter) {
   }
 
 
-  def substitute(str: String, fromTree: Tree, toTree: Tree, scope : Definition): String = {
+  def substitute(str: String, fromTree: Tree, toTree: Tree): String = {
     substitute(str, fromTree, (indent: Int) => {
-      val p = new ScalaPrinter(PrinterOptions())
-      p.pp(toTree)(PrinterContext(toTree, None, Some(scope), indent, p))
+      val p = new ScalaPrinter(PrinterOptions(), None)
+      p.pp(toTree)(PrinterContext(toTree, Nil, indent, p))
       p.toString
     })
   }
