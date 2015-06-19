@@ -83,7 +83,7 @@ object Extractors {
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
-      case Let(binder, e, body) => Some((e, body, Let(binder, _, _)))
+      case Let(binder, e, body) => Some((e, body, let(binder, _, _)))
       case Require(pre, body) => Some((pre, body, Require))
       case Ensuring(body, post) => Some((body, post, Ensuring))
       case Assert(const, oerr, body) => Some((const, body, Assert(_, oerr, _)))
@@ -197,7 +197,7 @@ object Extractors {
   
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
-      case Let(i, e, TopLevelOrs(bs)) => Some(bs map (Let(i,e,_)))
+      case Let(i, e, TopLevelOrs(bs)) => Some(bs map (let(i,e,_)))
       case Or(exprs) =>
         Some(exprs.flatMap(unapply).flatten)
       case e =>
@@ -206,7 +206,7 @@ object Extractors {
   }
   object TopLevelAnds { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {
-      case Let(i, e, TopLevelAnds(bs)) => Some(bs map (Let(i,e,_)))
+      case Let(i, e, TopLevelAnds(bs)) => Some(bs map (let(i,e,_)))
       case And(exprs) =>
         Some(exprs.flatMap(unapply).flatten)
       case e =>
