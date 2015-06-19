@@ -112,7 +112,7 @@ case object WeightedBranchesCostModel extends SizeBasedCostModel("WeightedBranch
        (e, bc)
     }
 
-    def combiner(cs: Seq[BC]) = {
+    def combiner(e: Expr, cs: Seq[BC]) = {
       cs.foldLeft(BC(0,0))((bc1, bc2) => BC(bc1.cost + bc2.cost, 0))
     }
 
