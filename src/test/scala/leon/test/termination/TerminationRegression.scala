@@ -77,12 +77,17 @@ class TerminationRegression extends LeonTestSuite {
   forEachFileIn(loopingFiles) { output =>
     val Output(report, reporter) = output
     val looping = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("looping") }
-    assert(looping.forall(p => p._2.isInstanceOf[LoopsGivenInputs] || p._2.isInstanceOf[CallsNonTerminating]),
-      "Functions " + looping.filter(p => !p._2.isInstanceOf[LoopsGivenInputs] && !p._2.isInstanceOf[CallsNonTerminating]).map(_._1.id) + " should loop")
+    val notLooping = looping.filterNot(p => p._2.isInstanceOf[NonTerminating] || p._2.isInstanceOf[CallsNonTerminating])
+    assert(notLooping.isEmpty, "Functions " + notLooping.map(_._1.id) + " should loop")
+
     val calling = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("calling") }
-    assert(calling.forall(_._2.isInstanceOf[CallsNonTerminating]), "Functions " + calling.filter(!_._2.isInstanceOf[CallsNonTerminating]).map(_._1.id) + " should call non-terminating")
-    val ok = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("ok") }
-    assert(ok.forall(_._2.isGuaranteed), "Functions " + ok.filter(!_._2.isGuaranteed).map(_._1.id) + " should terminate")
+    val notCalling = calling.filterNot(p => p._2.isInstanceOf[CallsNonTerminating])
+    assert(notCalling.isEmpty, "Functions " + notCalling.map(_._1.id) + " should call non-terminating")
+
+    val guar = report.results.filter { case (fd, guarantee) => fd.id.name.startsWith("ok") }
+    val notGuaranteed = guar.filterNot(p => p._2.isGuaranteed)
+    assert(notGuaranteed.isEmpty, "Functions " + notGuaranteed.map(_._1.id) + " should terminate")
+
 //    assert(reporter.errorCount >= looping.size + calling.size)
     assert(reporter.warningCount === 0)
   }
