@@ -9,7 +9,7 @@ trait TimeoutSolver extends Solver with Interruptible {
 
   val ti = new TimeoutFor(this)
 
-  protected var optTimeout: Option[Long] = None
+  var optTimeout: Option[Long] = None
 
   def setTimeout(timeout: Long): this.type = {
     optTimeout = Some(timeout)
