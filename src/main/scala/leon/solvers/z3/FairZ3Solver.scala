@@ -268,7 +268,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
       val timer = context.timers.solvers.z3.check.start()
       solver.push() // FIXME: remove when z3 bug is fixed
-      val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.currentBlockers) :_*)
+      val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.currentBlockers ++ unrollingBank.quantificationAssumptions) :_*)
       solver.pop()  // FIXME: remove when z3 bug is fixed
       timer.stop()
 
@@ -359,7 +359,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
             val timer = context.timers.solvers.z3.check.start()
             solver.push() // FIXME: remove when z3 bug is fixed
-            val res2 = solver.checkAssumptions(assumptionsAsZ3 : _*)
+            val res2 = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.quantificationAssumptions) : _*)
             solver.pop()  // FIXME: remove when z3 bug is fixed
             timer.stop()
 

@@ -12,9 +12,7 @@ import purescala.Types._
 import purescala.Definitions._
 
 case class App[T](caller: T, tpe: FunctionType, args: Seq[T]) {
-  override def toString = {
-    "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
-  }
+  override def toString = "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
 }
 
 object Instantiation {
@@ -45,7 +43,7 @@ import Instantiation.{empty => _, _}
 
 trait Template[T] { self =>
   val encoder : TemplateEncoder[T]
-  val lambdaManager : LambdaManager[T]
+  val manager : QuantificationManager[T]
 
   val start : T
   val args : Seq[T]
@@ -55,6 +53,7 @@ trait Template[T] { self =>
   val blockers : Map[T, Set[TemplateCallInfo[T]]]
   val applications : Map[T, Set[App[T]]]
   val quantifications: Seq[QuantificationTemplate[T]]
+  val matchers: Map[T, Set[Matcher[T]]]
   val lambdas : Map[T, LambdaTemplate[T]]
 
   private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
@@ -71,36 +70,10 @@ trait Template[T] { self =>
     }
 
     val lambdaSubstMap = lambdas.map { case (idT, lambda) => idT -> encoder.encodeId(lambda.id) }
-
     val substMap : Map[T,T] = baseSubstMap ++ lambdaSubstMap + (start -> aVar)
-    val substituter : T => T = encoder.substitute(substMap)
 
-    val newClauses = clauses.map(substituter)
-    val newBlockers = blockers.map { case (b,fis) =>
-      substituter(b) -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
-    }
-
-    val newApplications = applications.map { case (b,fas) =>
-      substituter(b) -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
-    }
-
-    var instantiation: Instantiation[T] = (newClauses, newBlockers, Map.empty)
-
-    for ((idT, lambda) <- lambdas) {
-      val newIdT = substituter(idT)
-      val newTemplate = lambda.substitute(substMap)
-      instantiation ++= lambdaManager.instantiateLambda(newIdT, newTemplate)
-    }
-
-    for ((b,apps) <- newApplications; app <- apps) {
-      instantiation ++= lambdaManager.instantiateApp(b, app)
-    }
-
-    for (q <- quantifications) {
-      instantiation ++= q.instantiate(substMap)
-    }
-
-    instantiation
+    Template.instantiate(encoder, manager,
+      clauses, blockers, applications, quantifications, matchers, lambdas, substMap)
   }
 
   override def toString : String = "Instantiated template"
@@ -150,6 +123,11 @@ object Template {
     (templates, apps)
   }
 
+  private def matchersOf[T](encodeExpr: Expr => T)(expr: Expr): Set[Matcher[T]] = collect[Matcher[T]] {
+    case Application(caller, args) => Set(Matcher(encodeExpr(caller), caller.getType, args.map(encodeExpr)))
+    case _ => Set.empty
+  }(expr)
+
   def encode[T](
     encoder: TemplateEncoder[T],
     pathVar: (Identifier, T),
@@ -161,7 +139,7 @@ object Template {
     substMap: Map[Identifier, T] = Map.empty[Identifier, T],
     optCall: Option[TypedFunDef] = None,
     optApp: Option[(T, FunctionType)] = None
-  ) : (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[T, Set[App[T]]], () => String) = {
+  ) : (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[T, Set[App[T]]], Map[T, Set[Matcher[T]]], () => String) = {
 
     val idToTrId : Map[Identifier, T] = {
       condVars ++ exprVars + pathVar ++ arguments ++ substMap ++
@@ -175,21 +153,27 @@ object Template {
     }).toSeq
 
     val extractInfos : Expr => (Set[TemplateCallInfo[T]], Set[App[T]]) = functionCallInfos(encodeExpr)
+    val extractMatchers: Expr => Set[Matcher[T]] = matchersOf(encodeExpr)
+
     val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
     val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
+    val optIdMatch = optIdApp.map { case App(caller, tpe, args) => Matcher(caller, tpe, args) }
 
-    val (blockers, applications) : (Map[Identifier, Set[TemplateCallInfo[T]]], Map[Identifier, Set[App[T]]]) = {
+    val (blockers, applications, matchers) = {
       var blockers : Map[Identifier, Set[TemplateCallInfo[T]]] = Map.empty
       var applications : Map[Identifier, Set[App[T]]] = Map.empty
+      var matchers : Map[Identifier, Set[Matcher[T]]] = Map.empty
 
       for ((b,es) <- guardedExprs) {
-        var funInfos : Set[TemplateCallInfo[T]] = Set.empty
-        var appInfos : Set[App[T]] = Set.empty
+        var funInfos   : Set[TemplateCallInfo[T]] = Set.empty
+        var appInfos   : Set[App[T]]              = Set.empty
+        var matchInfos : Set[Matcher[T]]          = Set.empty
 
         for (e <- es) {
           val (newFunInfos, newAppInfos) = extractInfos(e)
           funInfos ++= newFunInfos
           appInfos ++= newAppInfos
+          matchInfos ++= extractMatchers(e)
         }
 
         val calls = funInfos -- optIdCall
@@ -197,13 +181,17 @@ object Template {
 
         val apps = appInfos -- optIdApp
         if (apps.nonEmpty) applications += b -> apps
+
+        val matchs = matchInfos -- optIdMatch
+        if (matchs.nonEmpty) matchers += b -> matchs
       }
 
-      (blockers, applications)
+      (blockers, applications, matchers)
     }
 
     val encodedBlockers : Map[T, Set[TemplateCallInfo[T]]] = blockers.map(p => idToTrId(p._1) -> p._2)
     val encodedApps : Map[T, Set[App[T]]] = applications.map(p => idToTrId(p._1) -> p._2)
+    val encodedMatchers : Map[T, Set[Matcher[T]]] = matchers.map(p => idToTrId(p._1) -> p._2)
 
     val stringRepr : () => String = () => {
       " * Activating boolean : " + pathVar._1 + "\n" +
@@ -222,7 +210,51 @@ object Template {
       }.mkString("\n")
     }
 
-    (clauses, encodedBlockers, encodedApps, stringRepr)
+    (clauses, encodedBlockers, encodedApps, encodedMatchers, stringRepr)
+  }
+
+  def instantiate[T](
+    encoder: TemplateEncoder[T],
+    manager: QuantificationManager[T],
+    clauses: Seq[T],
+    blockers: Map[T, Set[TemplateCallInfo[T]]],
+    applications: Map[T, Set[App[T]]],
+    quantifications: Seq[QuantificationTemplate[T]],
+    matchers: Map[T, Set[Matcher[T]]],
+    lambdas: Map[T, LambdaTemplate[T]],
+    substMap: Map[T, T]
+  ): Instantiation[T] = {
+
+    val substituter : T => T = encoder.substitute(substMap)
+
+    val newClauses = clauses.map(substituter)
+    val newBlockers = blockers.map { case (b,fis) =>
+      substituter(b) -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
+    }
+
+    var instantiation: Instantiation[T] = (newClauses, newBlockers, Map.empty)
+
+    for ((idT, lambda) <- lambdas) {
+      val newIdT = substituter(idT)
+      val newTemplate = lambda.substitute(substMap)
+      instantiation ++= manager.instantiateLambda(newIdT, newTemplate)
+    }
+
+    for ((b,apps) <- applications; bp = substituter(b); app <- apps) {
+      val newApp = app.copy(caller = substituter(app.caller), args = app.args.map(substituter))
+      instantiation ++= manager.instantiateApp(bp, newApp)
+    }
+
+    for ((b, matchs) <- matchers; bp = substituter(b); m <- matchs) {
+      val newM = m.copy(caller = substituter(m.caller), args = m.args.map(substituter))
+      instantiation ++= manager.instantiateMatcher(bp, newM)
+    }
+
+    for (q <- quantifications) {
+      instantiation ++= q.instantiate(substMap)
+    }
+
+    instantiation
   }
 }
 
@@ -231,7 +263,7 @@ object FunctionTemplate {
   def apply[T](
     tfd: TypedFunDef,
     encoder: TemplateEncoder[T],
-    lambdaManager: LambdaManager[T],
+    manager: QuantificationManager[T],
     pathVar: (Identifier, T),
     arguments: Seq[(Identifier, T)],
     condVars: Map[Identifier, T],
@@ -242,7 +274,7 @@ object FunctionTemplate {
     isRealFunDef: Boolean
   ) : FunctionTemplate[T] = {
     
-    val (clauses, blockers, applications, templateString) =
+    val (clauses, blockers, applications, matchers, templateString) =
       Template.encode(encoder, pathVar, arguments, condVars, exprVars, guardedExprs, lambdas,
         substMap = quantifications.map(q => q.qs).toMap,
         optCall = Some(tfd))
@@ -256,7 +288,7 @@ object FunctionTemplate {
     new FunctionTemplate[T](
       tfd,
       encoder,
-      lambdaManager,
+      manager,
       pathVar._2,
       arguments.map(_._2),
       condVars,
@@ -265,6 +297,7 @@ object FunctionTemplate {
       blockers,
       applications,
       quantifications,
+      matchers,
       lambdas,
       isRealFunDef,
       funString
@@ -275,7 +308,7 @@ object FunctionTemplate {
 class FunctionTemplate[T] private(
   val tfd: TypedFunDef,
   val encoder: TemplateEncoder[T],
-  val lambdaManager: LambdaManager[T],
+  val manager: QuantificationManager[T],
   val start: T,
   val args: Seq[T],
   val condVars: Map[Identifier, T],
@@ -284,6 +317,7 @@ class FunctionTemplate[T] private(
   val blockers: Map[T, Set[TemplateCallInfo[T]]],
   val applications: Map[T, Set[App[T]]],
   val quantifications: Seq[QuantificationTemplate[T]],
+  val matchers: Map[T, Set[Matcher[T]]],
   val lambdas: Map[T, LambdaTemplate[T]],
   isRealFunDef: Boolean,
   stringRepr: () => String) extends Template[T] {
@@ -292,7 +326,7 @@ class FunctionTemplate[T] private(
   override def toString : String = str
 
   override def instantiate(aVar: T, args: Seq[T]): (Seq[T], Map[T, Set[TemplateCallInfo[T]]], Map[(T, App[T]), Set[TemplateAppInfo[T]]]) = {
-    if (!isRealFunDef) lambdaManager.registerFree(tfd.params.map(_.getType) zip args)
+    if (!isRealFunDef) manager.registerFree(tfd.params.map(_.getType) zip args)
     super.instantiate(aVar, args)
   }
 }
@@ -343,7 +377,7 @@ object LambdaTemplate {
   def apply[T](
     ids: (Identifier, T),
     encoder: TemplateEncoder[T],
-    lambdaManager: LambdaManager[T],
+    manager: QuantificationManager[T],
     pathVar: (Identifier, T),
     arguments: Seq[(Identifier, T)],
     condVars: Map[Identifier, T],
@@ -357,7 +391,7 @@ object LambdaTemplate {
 
     val id = ids._2
     val tpe = ids._1.getType.asInstanceOf[FunctionType]
-    val (clauses, blockers, applications, templateString) =
+    val (clauses, blockers, applications, matchers, templateString) =
       Template.encode(encoder, pathVar, arguments, condVars, exprVars, guardedExprs, lambdas,
         substMap = baseSubstMap + ids, optApp = Some(id -> tpe))
 
@@ -370,7 +404,7 @@ object LambdaTemplate {
     new LambdaTemplate[T](
       ids._1,
       encoder,
-      lambdaManager,
+      manager,
       pathVar._2,
       arguments.map(_._2),
       condVars,
@@ -378,6 +412,7 @@ object LambdaTemplate {
       clauses,
       blockers,
       applications,
+      matchers,
       lambdas,
       keyDeps,
       key,
@@ -389,7 +424,7 @@ object LambdaTemplate {
 class LambdaTemplate[T] private (
   val id: Identifier,
   val encoder: TemplateEncoder[T],
-  val lambdaManager: LambdaManager[T],
+  val manager: QuantificationManager[T],
   val start: T,
   val args: Seq[T],
   val condVars: Map[Identifier, T],
@@ -397,6 +432,7 @@ class LambdaTemplate[T] private (
   val clauses: Seq[T],
   val blockers: Map[T, Set[TemplateCallInfo[T]]],
   val applications: Map[T, Set[App[T]]],
+  val matchers: Map[T, Set[Matcher[T]]],
   val lambdas: Map[T, LambdaTemplate[T]],
   private[templates] val dependencies: Map[Identifier, T],
   private[templates] val structuralKey: Lambda,
@@ -422,6 +458,11 @@ class LambdaTemplate[T] private (
       bp -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
     }
 
+    val newMatchers = matchers.map { case (b, ms) =>
+      val bp = if (b == start) newStart else b
+      bp -> ms.map(m => m.copy(caller = substituter(m.caller), args = m.args.map(substituter)))
+    }
+
     val newLambdas = lambdas.map { case (idT, template) => idT -> template.substitute(substMap) }
 
     val newDependencies = dependencies.map(p => p._1 -> substituter(p._2))
@@ -429,7 +470,7 @@ class LambdaTemplate[T] private (
     new LambdaTemplate[T](
       id,
       encoder,
-      lambdaManager,
+      manager,
       newStart,
       args,
       condVars,
@@ -437,6 +478,7 @@ class LambdaTemplate[T] private (
       newClauses,
       newBlockers,
       newApplications,
+      newMatchers,
       newLambdas,
       newDependencies,
       structuralKey,
