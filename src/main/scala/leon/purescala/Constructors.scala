@@ -114,10 +114,7 @@ object Constructors {
       MatchExpr(scrutinee, filtered)
     else 
       Error(
-        cases match {
-          case Seq(hd, _*) => hd.rhs.getType
-          case Seq() => Untyped
-        },
+        cases.headOption.map{ _.rhs.getType }.getOrElse(Untyped),
         "No case matches the scrutinee"
       )
   } 
@@ -255,6 +252,8 @@ object Constructors {
   def minus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
     case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
     case (_, IntLiteral(0)) => lhs
+    case (InfiniteIntegerLiteral(bi), _) if bi == 0 => UMinus(rhs)
+    case (IntLiteral(0), _) => BVUMinus(rhs)
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Minus(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
   }
