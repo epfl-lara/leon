@@ -70,7 +70,8 @@ trait Template[T] { self =>
     }
 
     val lambdaSubstMap = lambdas.map { case (idT, lambda) => idT -> encoder.encodeId(lambda.id) }
-    val substMap : Map[T,T] = baseSubstMap ++ lambdaSubstMap + (start -> aVar)
+    val quantificationSubstMap = quantifications.map(q => q.qs._2 -> encoder.encodeId(q.qs._1))
+    val substMap : Map[T,T] = baseSubstMap ++ lambdaSubstMap ++ quantificationSubstMap + (start -> aVar)
 
     Template.instantiate(encoder, manager,
       clauses, blockers, applications, quantifications, matchers, lambdas, substMap)
@@ -273,7 +274,7 @@ object FunctionTemplate {
     lambdas: Map[T, LambdaTemplate[T]],
     isRealFunDef: Boolean
   ) : FunctionTemplate[T] = {
-    
+
     val (clauses, blockers, applications, matchers, templateString) =
       Template.encode(encoder, pathVar, arguments, condVars, exprVars, guardedExprs, lambdas,
         substMap = quantifications.map(q => q.qs).toMap,
