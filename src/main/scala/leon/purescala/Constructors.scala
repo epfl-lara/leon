@@ -224,20 +224,6 @@ object Constructors {
     Lambda(args, body)
   }
 
-  def application(fn: Expr, realArgs: Seq[Expr]) = fn match {
-    case Lambda(formalArgs, body) =>
-      val (inline, notInline) = formalArgs.map{_.id}.zip(realArgs).partition {
-        case (form, _) => count{
-          case Variable(`form`) => 1
-          case _ => 0
-        }(body) <= 1
-      }
-      val newBody = replaceFromIDs(inline.toMap, body)
-      val (ids, es) = notInline.unzip
-      letTuple(ids, tupleWrap(es), newBody)
-    case _ => Application(fn, realArgs)
-  }
-
   def equality(a: Expr, b: Expr) = {
     if (a == b && isDeterministic(a)) {
       BooleanLiteral(true)
@@ -245,6 +231,26 @@ object Constructors {
       Equals(a, b)
     }
   }
+
+  def application(fn: Expr, realArgs: Seq[Expr]) = fn match {
+     case Lambda(formalArgs, body) =>
+      var defs: Seq[(Identifier, Expr)] = Seq()
+
+      val subst = formalArgs.zip(realArgs).map {
+        case (ValDef(from, _), to:Variable) =>
+          from -> to
+        case (ValDef(from, _), e) =>
+          val fresh = from.freshen
+          defs :+= (fresh -> e)
+          from -> Variable(fresh)
+      }.toMap
+
+      val (ids, bds) = defs.unzip
+
+      letTuple(ids, tupleWrap(bds), replaceFromIDs(subst, body))
+    case _ =>
+      Application(fn, realArgs)
+   }
 
   def plus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
     case (InfiniteIntegerLiteral(bi), _) if bi == 0 => rhs
