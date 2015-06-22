@@ -5,7 +5,7 @@ import leon.lang._
 import leon.annotation._
 
 object Numerical {
-  def power(base: Int, p: Int): Int = {
+  def power(base: BigInt, p: BigInt): BigInt = {
     require(p >= 0)
     if (p == 0) {
       1
@@ -16,14 +16,14 @@ object Numerical {
     }
   } ensuring {
     res => ((base, p), res) passes {
-      case (_, 0) => 1
-      case (b, 1) => b
-      case (2, 7) => 128
-      case (2, 10) => 1024
+      case (_, BigInt(0)) => 1
+      case (b, BigInt(1)) => b
+      case (BigInt(2), BigInt(7)) => 128
+      case (BigInt(2), BigInt(10)) => 1024
     }
   }
 
-  def gcd(a: Int, b: Int): Int = {
+  def gcd(a: BigInt, b: BigInt): BigInt = {
     require(a > 0 && b > 0);
 
     if (a == b) {
@@ -35,11 +35,11 @@ object Numerical {
     }
   } ensuring {
     res => (a%res == 0) && (b%res == 0) && (((a,b), res) passes {
-      case (468, 24) => 12
+      case (BigInt(468), BigInt(24)) => 12
     })
   }
 
-  def moddiv(a: Int, b: Int): (Int, Int) = {
+  def moddiv(a: BigInt, b: BigInt): (BigInt, BigInt) = {
     require(a >= 0 && b > 0);
     if (b > a) {
       (a, 0)
