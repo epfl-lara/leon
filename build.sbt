@@ -38,7 +38,6 @@ lazy val scriptFile = file(".") / scriptName
 
 clean := {
   clean.value
-
   if(scriptFile.exists && scriptFile.isFile) {
     scriptFile.delete
   }
@@ -48,32 +47,25 @@ lazy val script = taskKey[Unit]("Generate the leon Bash script")
 
 script := {
   val s = streams.value
-
   try {
     val cps = (dependencyClasspath in Compile).value
     val out = (classDirectory      in Compile).value
     val res = (resourceDirectory   in Compile).value
-
     val is64 = System.getProperty("sun.arch.data.model") == "64"
-
     val f = scriptFile
-    // Paths discovery
     if(f.exists) {
       s.log.info("Regenerating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
       f.delete
     } else {
       s.log.info("Generating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
     }
-
     val paths = (res.getAbsolutePath +: out.getAbsolutePath +: cps.map(_.data.absolutePath)).mkString(":")
-
     IO.write(f, s"""|#!/bin/bash --posix
                     |
                     |SCALACLASSPATH="$paths"
                     |
                     |java -Xmx2G -Xms512M -classpath $${SCALACLASSPATH} -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath $${SCALACLASSPATH} leon.Main $$@ 2>&1 | tee -i last.log
                     |""".stripMargin)
-
     f.setExecutable(true)
   } catch {
     case e: Throwable =>
@@ -83,9 +75,7 @@ script := {
 
 sourceGenerators in Compile <+= Def.task {
   val libFiles = ((baseDirectory.value / "library") ** "*.scala").getPaths
-
   val build = (sourceManaged in Compile).value / "leon" / "Build.scala";
-
   IO.write(build, s"""|package leon;
                     |
                     |object Build {
@@ -93,7 +83,6 @@ sourceGenerators in Compile <+= Def.task {
                     |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"")}
                     |  )
                     |}""".stripMargin)
-
   Seq(build)
 }
 
