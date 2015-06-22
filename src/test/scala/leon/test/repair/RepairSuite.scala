@@ -21,7 +21,7 @@ class RepairSuite extends LeonTestSuite {
     "MergeSort2.scala"  -> "merge"
   )
   
-  for (file <- filesInResourceDir("regression/repair/")) {
+  for (file <- filesInResourceDir("regression/repair/", _.endsWith(".scala"))) {
     val path = file.getAbsoluteFile.toString
     val name = file.getName
 
