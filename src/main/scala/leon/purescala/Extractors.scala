@@ -83,7 +83,7 @@ object Extractors {
       case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
       case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
       case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
-      case Let(binder, e, body) => Some((e, body, let(binder, _, _)))
+      case Let(binder, e, body) => Some((e, body, Let(binder, _, _)))
       case Require(pre, body) => Some((pre, body, Require))
       case Ensuring(body, post) => Some((body, post, Ensuring))
       case Assert(const, oerr, body) => Some((const, body, Assert(_, oerr, _)))
