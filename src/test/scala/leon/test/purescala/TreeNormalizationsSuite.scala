@@ -9,7 +9,7 @@ import leon.purescala.Types._
 import leon.purescala.Expressions._
 import leon.purescala.TreeNormalizations._
 
-class TreeNormalizationsTests extends LeonTestSuite with WithLikelyEq {
+class TreeNormalizationsSuite extends LeonTestSuite with WithLikelyEq {
   def i(x: Int) = InfiniteIntegerLiteral(x)
 
   val xId = FreshIdentifier("x", IntegerType)

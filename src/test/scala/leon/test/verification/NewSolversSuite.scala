@@ -10,7 +10,7 @@ import leon.verification.AnalysisPhase
 // This is because we compile all tests from each folder separately.
 
 // This class is currently NOT in LeonAllTests
-class NewSolversRegression extends VerificationRegression {
+class NewSolversSuite extends VerificationSuite {
   
   val testDir = "regression/verification/newsolvers/"
   val pipeFront = xlang.NoXLangFeaturesChecking

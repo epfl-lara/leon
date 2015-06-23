@@ -7,7 +7,7 @@ import test.LeonTestSuite
 import purescala.Definitions.Program
 import java.io.File
 
-class FrontEndsTest extends LeonTestSuite {
+class FrontEndsSuite extends LeonTestSuite {
   // Hard-code output directory, for Eclipse purposes
 
   val pipeFront = frontends.scalac.ExtractionPhase andThen utils.PreprocessingPhase

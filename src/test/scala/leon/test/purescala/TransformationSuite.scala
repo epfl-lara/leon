@@ -13,7 +13,7 @@ import leon.purescala.ExprOps._
 import leon.solvers.z3.UninterpretedZ3Solver
 import leon.solvers._
 
-class TransformationTests extends LeonTestSuite {
+class TransformationSuite extends LeonTestSuite {
 
   val pipeline = ExtractionPhase andThen PreprocessingPhase
  

@@ -9,7 +9,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 
-class EnumerationSolverTests extends LeonTestSuite {
+class EnumerationSolverSuite extends LeonTestSuite {
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {
     val s = sf.getNewSolver()
     s.assertCnstr(e)

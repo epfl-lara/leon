@@ -15,7 +15,7 @@ import org.scalatest.{Reporter => TestReporter, _}
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
 // This is because we compile all tests from each folder separately.
-trait VerificationRegression extends LeonTestSuite {
+trait VerificationSuite extends LeonTestSuite {
 
   val optionVariants: List[List[String]]
   val testDir: String

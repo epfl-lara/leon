@@ -15,7 +15,7 @@ import leon.purescala.Types._
 import leon.purescala.Extractors._
 import leon.purescala.Constructors._
 
-class EvaluatorsTests extends leon.test.LeonTestSuite {
+class EvaluatorSuite extends leon.test.LeonTestSuite {
   private implicit lazy val leonContext = testContext
 
   private val evaluatorConstructors : List[(LeonContext,Program)=>Evaluator] = List(

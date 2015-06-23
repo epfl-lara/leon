@@ -11,7 +11,7 @@ import leon.solvers._
 import leon.solvers.z3._
 import leon.solvers.combinators._
 
-class UnrollingSolverTests extends LeonTestSuite {
+class UnrollingSolverSuite extends LeonTestSuite {
 
   private val fx   : Identifier = FreshIdentifier("x", IntegerType)
   private val fres : Identifier = FreshIdentifier("res", IntegerType)

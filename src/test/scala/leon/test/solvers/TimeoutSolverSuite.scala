@@ -11,7 +11,7 @@ import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 
-class TimeoutSolverTests extends LeonTestSuite {
+class TimeoutSolverSuite extends LeonTestSuite {
   private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with Interruptible{
     val name = "Idiotic"
     val description = "Loops"

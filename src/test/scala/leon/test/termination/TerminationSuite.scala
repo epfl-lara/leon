@@ -9,7 +9,7 @@ import leon.termination._
 
 import java.io.File
 
-class TerminationRegression extends LeonTestSuite {
+class TerminationSuite extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1

@@ -70,7 +70,7 @@ private [purescala] object DefOpsHelper extends LeonTestSuite {
   lazy val fooC = program.lookup("foo.bar.baz.Foo.fooC")
 }
 
-class DefOpsTests extends LeonTestSuite {
+class DefOpsSuite extends LeonTestSuite {
     import DefOpsHelper._
     
     test("Find base definition"){

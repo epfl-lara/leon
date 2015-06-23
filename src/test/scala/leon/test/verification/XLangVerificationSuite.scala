@@ -14,7 +14,7 @@ import _root_.smtlib.interpreters._
 
 import java.io.File
 
-class XLangVerificationRegression extends LeonTestSuite {
+class XLangVerificationSuite extends LeonTestSuite {
   private var counter : Int = 0
   private def nextInt() : Int = {
     counter += 1

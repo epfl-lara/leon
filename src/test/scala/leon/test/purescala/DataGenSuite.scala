@@ -14,7 +14,7 @@ import leon.datagen._
 
 import leon.evaluators._
 
-class DataGen extends LeonTestSuite {
+class DataGenSuite extends LeonTestSuite {
   private def parseString(str : String) : Program = {
     val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen PreprocessingPhase
 

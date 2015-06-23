@@ -9,7 +9,7 @@ import leon.purescala.Constructors._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 
-class TreeTests extends LeonTestSuite {
+class TreeTestsSuite extends LeonTestSuite {
 
   test("And- and Or- simplifications") {
     val x = Variable(FreshIdentifier("x", BooleanType))

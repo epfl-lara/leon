@@ -9,7 +9,7 @@ import _root_.smtlib.interpreters._
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
 // This is because we compile all tests from each folder separately.
-class PureScalaVerificationRegression extends VerificationRegression {
+class PureScalaVerificationSuite extends VerificationSuite {
   
   val testDir = "regression/verification/purescala/"
   val pipeFront = xlang.NoXLangFeaturesChecking

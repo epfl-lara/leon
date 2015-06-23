@@ -8,7 +8,7 @@ import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
 import leon.verification.AnalysisPhase
 
-class LibraryVerificationRegression extends LeonTestSuite {
+class LibraryVerificationSuite extends LeonTestSuite {
   test("Verify the library") {
       val pipeline = ExtractionPhase    andThen
                      PreprocessingPhase andThen

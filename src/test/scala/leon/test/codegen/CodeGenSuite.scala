@@ -17,7 +17,7 @@ import EvaluationResults._
  * - Add the test name and expected result in the result variable.
  *   Make sure the relative order of the tests matches that of code
  */
-class CodeGenTests extends test.LeonTestSuite {
+class CodeGenSuite extends test.LeonTestSuite {
  
   case class TestCase(
     name : String,

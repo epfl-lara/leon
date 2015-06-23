@@ -22,42 +22,42 @@ class LeonAllTests extends Suites(
 )
 
 class LeonFunTests extends Suites(
-  new FrontEndsTest,
+  new FrontEndsSuite,
 
   new RepairSuite,
 
-  new TerminationRegression,
+  new TerminationSuite,
 
   new StablePrintingSuite,
   new SynthesisSuite,
   new SynthesisRegressionSuite,
 
-  new LibraryVerificationRegression,
-  new PureScalaVerificationRegression,
-  new XLangVerificationRegression
+  new LibraryVerificationSuite,
+  new PureScalaVerificationSuite,
+  new XLangVerificationSuite
 )
 
 class LeonUnitTests extends Suites(
-  new CodeGenTests,
+  new CodeGenSuite,
 
-  new ImportsTests,
+  new ImportsSuite,
 
-  new Streams,
+  new StreamsSuite,
 
-  new DefOpsTests,
+  new DefOpsSuite,
   new LikelyEqSuite,
-  new TransformationTests,
-  new TreeNormalizationsTests,
-  new TreeOpsTests,
-  new TreeTests,
+  new TransformationSuite,
+  new TreeNormalizationsSuite,
+  new TreeOpsSuite,
+  new TreeTestsSuite,
 
-  new EnumerationSolverTests,
-  new TimeoutSolverTests,
-  new UnrollingSolverTests,
+  new EnumerationSolverSuite,
+  new TimeoutSolverSuite,
+  new UnrollingSolverSuite,
 
   new AlgebraSuite,
   new LinearEquationsSuite,
 
-  new DefaultEvaluatorTests,
-  new EvaluatorsTests
+  new DefaultEvaluatorSuite,
+  new EvaluatorSuite
 )

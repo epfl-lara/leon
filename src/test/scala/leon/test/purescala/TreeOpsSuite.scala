@@ -8,7 +8,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.ExprOps._
 
-class TreeOpsTests extends LeonTestSuite with WithLikelyEq {
+class TreeOpsSuite extends LeonTestSuite with WithLikelyEq {
   
   test("Path-aware simplifications") {
     // TODO actually testing something here would be better, sorry

@@ -10,7 +10,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.Constructors._
 
-class DefaultEvaluatorTests extends leon.test.LeonTestSuite {
+class DefaultEvaluatorSuite extends leon.test.LeonTestSuite {
   private implicit lazy val leonContext: LeonContext = createLeonContext()
   private val emptyProgram = Program.empty
 
