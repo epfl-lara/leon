@@ -400,13 +400,44 @@ because sets ignore the duplicates, so
 is true. This shows that writing specifications can be subtle, but Leon's
 capabilities can help in the process as well.
 
-**Question:** Write the specification that requires the list
-to be strictly sorted using the `<` relation. Try executing such
+**Question:** Write the specification that requires the output triple
+to be strictly sorted using the `<` relation. Use `choose` to define
+the corresponding `sort3` function.
+Try executing such
 specifications for example inputs. What happens if you execute it
 when two of the elements are equal? Write the `require` clause
-to check this condition. How would you formulate in Leon the statement
+to enforce the precondition that the initial elements are distinct. 
+Formulate in Leon the statement
 that for triples of distinct elements the result of strictly ordering
-them is unique?
+them is unique and try to prove it.
+
+Interactive Exploration of Program Space
+----------------------------------------
+
+For larger programs, the search may take too long to find
+the solution and Leon will time out. In such cases, instead
+of invoking automated search, you can invoke Leon in the
+mode where the user directs each synthesis step to be
+provided. This is a great way to understand the rules that
+Leon currently has available for performing synthesis. 
+
+In the `web interface`, select on the synthesis task for
+`sort2` specification using the `choose` construct and
+select `Explore` instead of the automated `Search`. You can
+then navigate the space of programs interactively. Select
+the `Inequality split` between the two input variables. The
+system will apply this inference rule, and transform the
+program with one choose into a program that performs case
+analysis and then performs `choose` in each branch.  For
+individual branches try to resolve it using the `CEGIS`
+rule, which searches for small expressions and tries to find
+the one that satisfies the specification.  Use `Equivalent
+Inputs` and `Unused Inputs` as needed, since they are
+generally a good idea to apply. Once all subgoals are
+resolves, select `Import Code`.
+
+**Question:** Use interactive exploration to synthesize `sort3` function
+by performing inequality splits in the interactive interface.
 
 Defining Lists and Their Properties
 -----------------------------------
