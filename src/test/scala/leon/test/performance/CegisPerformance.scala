@@ -4,8 +4,6 @@ import leon.synthesis.rules._
 import leon.test._
 import leon.utils._
 import leon.frontends.scalac._
-import leon.purescala.Definitions._
-import org.scalameter.picklers.noPickler._
 
 import org.scalameter.api._
 
