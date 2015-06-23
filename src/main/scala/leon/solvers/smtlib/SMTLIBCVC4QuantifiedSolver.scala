@@ -3,6 +3,7 @@
 package leon
 package solvers.smtlib
 
+import leon.purescala.Common.Identifier
 import purescala._
 import Expressions._
 import ExprOps._
@@ -19,7 +20,7 @@ import smtlib.theories.Core.Equals
 abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program) extends SMTLIBCVC4Solver(context, program) {
 
   override def targetName = "cvc4-quantified"
-  
+
   private var currentFunDef: Option[FunDef] = None
   def refersToCurrent(fd: FunDef) = {
     (currentFunDef contains fd) || (currentFunDef exists {
@@ -149,6 +150,11 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
   override def assertVC(vc: VC) = {
     currentFunDef = Some(vc.fd)
     assertCnstr(withInductiveHyp(vc.condition))
+  }
+
+  override def getModel: Map[Identifier, Expr] = {
+    val filter = currentFunDef.map{ _.params.map{_.id}.toSet }.getOrElse( (_:Identifier) => true )
+    getModel(filter)
   }
 
 }

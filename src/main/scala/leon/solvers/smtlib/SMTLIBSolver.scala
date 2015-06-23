@@ -686,16 +686,15 @@ abstract class SMTLIBSolver(val context: LeonContext,
     }
   }
 
-  override def getModel: Map[Identifier, Expr] = {
-    val syms = variables.bSet.toList
+  protected def getModel(filter: Identifier => Boolean): Map[Identifier, Expr] = {
+    val syms = variables.aSet.filter(filter).toList.map(variables.aToB)
     if (syms.isEmpty) {
       Map()
     } else {
-      val cmd: Command =
-        GetValue(syms.head,
-          syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
-        )
-
+      val cmd: Command = GetValue(
+        syms.head,
+        syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
+      )
 
       sendCommand(cmd) match {
         case GetValueResponseSuccess(valuationPairs) =>
@@ -711,6 +710,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
       }
     }
   }
+
+  override def getModel: Map[Identifier, Expr] = getModel( _ => true)
 
   override def push(): Unit = {
     constructors.push()
