@@ -15,6 +15,7 @@ target
 /setupenv
 /leon-bench
 /.test-history
+/out-classes
 
 # synthesis
 derivation*.dot
