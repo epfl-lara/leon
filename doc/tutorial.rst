@@ -113,7 +113,7 @@ defined the reference implementation
 .. code-block:: scala
 
   def rmax(x: BigInt, y: BigInt) = {
-    if (x <= y) x else y
+    if (x <= y) y else x
   }
 
 and then used as postcondition of `max` simply
@@ -184,6 +184,45 @@ behavior of Leon.
 
 In the sequel we will mostly use `BigInt` types.
 
+Let us now look at synthesis. Suppose we omit
+the implementation of `max`, keeping the specification
+in the ensuring clause but using only a placeholder 
+`???[BigInt]` indicating we are looking for an unknown implementation
+of an integer type.
+
+.. code-block:: scala
+
+  def max(x: BigInt, y: BigInt): BigInt = {
+    ???[BigInt]
+  } ensuring(res => (res == x || res == y) &&  x <= res && y <= res)
+
+Leon can then automatically generate an implementation that satisfies
+this specification, such as 
+
+.. code-block:: scala
+
+  if (y <= x) {
+    x
+  } else {
+    y
+  }
+
+This is remarkable because we have much more freedom in
+writing specifications: we can explain the intention of the
+computation using a conjunction of orthogonal properties,
+and still obtain automatically an efficient implementation.
+
+As a remark, an expression with missing parts in Leon is
+an abbreviation for Leon's `choose` construct. Using `choose`
+we can write the above example as
+
+.. code-block:: scala
+
+  def max(x: BigInt, y: BigInt): BigInt = choose((res:BigInt) => 
+    (res == x || res == y) &&  x <= res && y <= res)
+
+We explain `choose` in more detail through our subsequent examples.
+
 Sorting Two Elements
 --------------------
 
@@ -193,7 +232,7 @@ write.
 
 .. code-block:: scala
 
-  import leon.lang._
+  import leon.lang.Set
   import leon.lang.synthesis._
   object Sort {
     def sort2(x : BigInt, y : BigInt) = choose{(res: (BigInt,BigInt)) =>
