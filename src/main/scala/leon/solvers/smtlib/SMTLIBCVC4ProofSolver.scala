@@ -37,22 +37,8 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
 
   // This solver does not support model extraction
   override def getModel: Map[Identifier, Expr] = {
-    reporter.warning(s"Solver $name does not support model extraction.")
-    Map()
-  }
-
-  // FIXME: mk: This is kind of hiding the problem under the carpet.
-  // We could just return an empty counterexample, but this breaks PortfolioSolver
-  override def check: Option[Boolean] = {
-    super.check match {
-      case Some(true) =>
-        reporter.warning(s"Solver $name found a counterexample, " +
-          "but masking it as unknown because counterexamples are not supported."
-        )
-        None
-      case other =>
-        other
-    }
+    // We don't send the error through reporter because it may be caught by PortfolioSolver
+    throw LeonFatalError(Some(s"Solver $name does not support model extraction."))
   }
 
   protected val allowQuantifiedAssersions: Boolean = true

@@ -61,9 +61,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         None
     }
 
-    // Block until all solvers finished
-    Await.result(Future.fold(fs)(0){ (i, r) => i+1 }, 10.days)
-
+    fs map { Await.ready(_, 10.days) }
     res
   }
 
