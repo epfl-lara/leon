@@ -427,17 +427,27 @@ select `Explore` instead of the automated `Search`. You can
 then navigate the space of programs interactively. Select
 the `Inequality split` between the two input variables. The
 system will apply this inference rule, and transform the
-program with one choose into a program that performs case
+program with one `choose` into a program that performs case
 analysis and then performs `choose` in each branch.  For
-individual branches try to resolve it using the `CEGIS`
-rule, which searches for small expressions and tries to find
-the one that satisfies the specification.  Use `Equivalent
-Inputs` and `Unused Inputs` as needed, since they are
-generally a good idea to apply. Once all subgoals are
-resolves, select `Import Code`.
+individual branches we can try to resolve them using the
+`CEGIS` synthesis rule, which searches for small expressions
+and tries to find the one that satisfies the specification.
+We can use `Equivalent Inputs` and `Unused Inputs` as
+needed, since they are generally a good idea to apply. Once
+all sub-goals are resolved, select `Import Code`. Note
+that you can import any of the intermediate steps in exploration:
+the program with `choose` is valid in Leon, and it can even
+be executed, thanks to run-time constraint solving for the
+cases containing `choose`.
 
-**Question:** Use interactive exploration to synthesize `sort3` function
-by performing inequality splits in the interactive interface.
+**Question:** Use interactive exploration to synthesize
+`sort3` function by performing inequality splits in the
+interactive interface.  Given three variables, you will
+need to perform inequality splits on their pairs until
+the tuple to be returned is known thanks to the tests
+performed in the code. This is a somewhat tedious process,
+but relatively easy, and the result is guaranteed to be
+correct.
 
 Defining Lists and Their Properties
 -----------------------------------
