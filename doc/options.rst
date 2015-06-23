@@ -37,7 +37,7 @@ These options are mutually exclusive. By default, ``--verify`` is chosen.
 
 * ``--termination``
   
-  Runs a simple termination analysis.
+  Runs termination analysis. Can be used along ``--verify``.
 
 * ``--xlang``
   

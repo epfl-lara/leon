@@ -37,16 +37,16 @@ object Main {
    */
   object MainComponent extends LeonComponent {
     val name = "main"
-    val description = "Options that determine the feature of Leon to be used (mutually exclusive). Default: verify"
+    val description = "Options that select the feature of Leon to be used. Default: verify"
 
-    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions with selected evaluator", "default", "[code|default]")
+    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default)", "default", "[code|default]")
     val optXLang       = LeonFlagOptionDef("xlang",       "Verification with support for extra program constructs (imperative,...)", false)
-    val optTermination = LeonFlagOptionDef("termination", "Check program termination",                   false)
-    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                   false)
-    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",    false)
-    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program", false)
-    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                   true )
-    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                           false)
+    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",                   false)
+    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                               false)
+    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                                false)
+    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",                             false)
+    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                               false)
+    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                                       false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
       Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optEval, optVerify)
@@ -92,8 +92,6 @@ object Main {
   def processOptions(args: Seq[String]): LeonContext = {
 
     val initReporter = new DefaultReporter(Set())
-
-    val allOptions: Set[LeonOptionDef[Any]] = this.allOptions
 
     val options = args.filter(_.startsWith("--")).toSet
 
@@ -156,14 +154,14 @@ object Main {
     val repairF      = ctx.findOptionOrDefault(optRepair)
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
-    val evalF        = ctx.findOption(optEval)
+    val evalF        = ctx.findOption(optEval).isDefined
     val analysisF    = verifyF && terminationF
 
     def debugTrees(title: String): LeonPhase[Program, Program] = {
       if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
         PrintTreePhase(title)
       } else {
-        NoopPhase[Program]
+        NoopPhase[Program]()
       }
     }
 
@@ -191,9 +189,8 @@ object Main {
         else if (analysisF) Pipeline.both(FunctionClosure andThen AnalysisPhase, TerminationPhase)
         else if (terminationF) TerminationPhase
         else if (xlangF) XLangAnalysisPhase
-        else if (evalF.isDefined) EvaluationPhase
-        else if (verifyF) FunctionClosure andThen AnalysisPhase
-        else    NoopPhase()
+        else if (evalF) EvaluationPhase
+        else FunctionClosure andThen AnalysisPhase
       }
 
       pipeBegin andThen
