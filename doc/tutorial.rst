@@ -22,16 +22,16 @@ convenient interface) from the command line, see
 Warm-up: Max
 ------------
 
-As a warm-up we define and debug a `max` function in Leon
+As a warm-up illustrating verification, we define and debug a `max` function 
 and specify its properties.  Leon uses Scala constructs
 `require` and `ensuring` to document preconditions and
-postconditions of functions. However, in addition to
+postconditions of functions. Note that, in addition to
 checking these conditions at run-time (which standard Scala
 does), Leon can analyze the specifications statically and
-prove them for all executions, or automatically find
-inputs for which the conditions fail. Moreover, it can
-use specifications for constraint execution, 
-synthesis, and repair. 
+prove them for *all* executions, or, if they are wrong, automatically find
+inputs for which the conditions fail. (Moreover, it can
+execute specifications alone without the code, 
+it can do synthesis, and repair.)
 
 Consider the following definition inside an object `TestMax`.
 
@@ -175,30 +175,12 @@ conditions on input, we use the `require` clause.
     x <= res && y <= res && (res == x || res == y))
 
 This program verifies and indeed works correctly on
-non-negative 32-bit integers as inputs.  Curiously, if we
-instead require `x` and `y` to be non-positive (a seemingly
-symmetrical specification) , the resulting program
+non-negative 32-bit integers as inputs.  
 
-.. code-block:: scala
-
-  def max(x: Int, y: Int): Int = {
-    require(x <= 0 && y <= 0)
-    val d = x - y
-    if (d > 0) x
-    else y
-  } ensuring (res => 
-    x <= res && y <= res && (res == x || res == y))
-
-breaks with the counterexample
-
-.. code-block:: scala
-
-  x -> 0
-  y -> -2147483648
-
-The reason is that there is one more negative `Int` than
-the positive `Int`-s, so the subtraction can still overflow
-in this particular case. 
+**Question:** What if we restrict the inputs to `max` to be
+`a)` non-positive, or `b)` strictly negative? Modify the
+`require` clause for each case accordingly and explain the
+behavior of Leon.
 
 In the sequel we will mostly use `BigInt` types.
 
@@ -378,6 +360,14 @@ because sets ignore the duplicates, so
 
 is true. This shows that writing specifications can be subtle, but Leon's
 capabilities can help in the process as well.
+
+**Question:** Write the specification that requires the list
+to be strictly sorted using the `<` relation. Try executing such
+specifications for example inputs. What happens if you execute it
+when two of the elements are equal? Write the `require` clause
+to check this condition. How would you formulate in Leon the statement
+that for triples of distinct elements the result of strictly ordering
+them is unique?
 
 Defining Lists and Their Properties
 -----------------------------------
