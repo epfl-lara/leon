@@ -3,6 +3,7 @@
 package leon
 package evaluators
 
+import leon.Main.MainComponent
 import purescala.Definitions._
 import purescala.DefOps._
 import purescala.Expressions._
@@ -16,7 +17,7 @@ object EvaluationPhase extends LeonPhase[Program, Unit] {
   def run(ctx: LeonContext)(program: Program): Unit = {
     val evalFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
 
-    val evaluator = ctx.findOptionOrDefault(SharedOptions.optEval)
+    val evaluator = ctx.findOptionOrDefault(MainComponent.optEval)
 
     val reporter = ctx.reporter
 

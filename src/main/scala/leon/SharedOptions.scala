@@ -5,6 +5,12 @@ package leon
 import leon.utils.{DebugSections, DebugSection}
 import OptionParsers._
 
+/*
+ * This object contains options that are shared among different modules of Leon.
+ *
+ * Options that determine the pipeline of Leon are not stored here,
+ * but in MainComponent in Main.scala.
+ */
 object SharedOptions extends LeonComponent {
 
   val name = "sharedOptions"
@@ -22,8 +28,6 @@ object SharedOptions extends LeonComponent {
     val usageRhs = "f1,f2,..."
   }
 
-  val optEval = LeonStringOptionDef("eval", "Evaluate ground functions", "default", "[code|default]")
-
   val optSelectedSolvers = new LeonOptionDef[Set[String]] {
     val name = "solvers"
     val description = "Use solvers s1, s2,...\n" + solvers.SolverFactory.availableSolversPretty
@@ -35,10 +39,13 @@ object SharedOptions extends LeonComponent {
   val optDebug = new LeonOptionDef[Set[DebugSection]] {
     import OptionParsers._
     val name = "debug"
-    val description = (
-      "Enable detailed messages per component.\nAvailable:" +:
-      DebugSections.all.toSeq.map(_.name).sorted
-    ).mkString("\n  ")
+    val description = {
+      val sects = DebugSections.all.toSeq.map(_.name).sorted
+      val (first, second) = sects.splitAt(sects.length/2)
+      "Enable detailed messages per component.\nAvailable:\n" +
+        "  " + first.mkString(", ") + ",\n" +
+        "  " + second.mkString(", ")
+    }
     val default = Set[DebugSection]()
     val usageRhs = "d1,d2,..."
     val debugParser: OptionParser[Set[DebugSection]] = s => {
@@ -66,7 +73,6 @@ object SharedOptions extends LeonComponent {
     optSelectedSolvers,
     optDebug,
     optWatch,
-    optEval,
     optTimeout
   )
 }
