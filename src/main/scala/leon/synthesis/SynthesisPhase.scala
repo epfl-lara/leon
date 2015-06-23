@@ -13,7 +13,7 @@ import graph._
 
 object SynthesisPhase extends LeonPhase[Program, Program] {
   val name        = "Synthesis"
-  val description = "Partial synthesis of \"choose\" constructs"
+  val description = "Partial synthesis of \"choose\" constructs. Also used by repair during the synthesis stage."
 
   val optManual      = LeonStringOptionDef("manual", "Manual search", default = "", "cmd")
   val optCostModel   = LeonStringOptionDef("costmodel", "Use a specific cost model for this search", "FIXME", "cm")

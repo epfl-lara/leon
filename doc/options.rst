@@ -197,6 +197,8 @@ Code extraction
 Synthesis
 *********
 
+These options are also used by repair during the synthesis stage.
+
 * ``--cegis:opttimeout``
 
   Consider a time-out of CE-search as untrusted solution.
