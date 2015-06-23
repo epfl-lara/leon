@@ -52,7 +52,7 @@ object Expressions {
 
   case class Choose(pred: Expr, private var impl_ : Option[Expr] = None) extends Expr {
     val getType = pred.getType match {
-      case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty? 
+      case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty?
         tupleTypeWrap(from)
       case _ =>
         Untyped
@@ -60,9 +60,9 @@ object Expressions {
 
     require(impl_ forall { imp => isSubtypeOf(imp.getType, this.getType)})
 
-    def impl_= (newImpl: Option[Expr]) = { 
+    def impl_= (newImpl: Option[Expr]) = {
       require(
-        newImpl forall {imp => isSubtypeOf(imp.getType,this.getType)}, 
+        newImpl forall {imp => isSubtypeOf(imp.getType,this.getType)},
         newImpl.get +":" + newImpl.get.getType + " vs " + this + ":" + this.getType
       )
       impl_ = newImpl
@@ -96,7 +96,7 @@ object Expressions {
       val fdret = tfd.returnType
       val extraMap: Map[TypeParameterDef, TypeTree] = rec.getType match {
         case ct: ClassType =>
-          (cd.tparams zip ct.tps).toMap  
+          (cd.tparams zip ct.tps).toMap
         case _ =>
           Map()
       }
@@ -129,7 +129,7 @@ object Expressions {
 
 
   /*
-   * If you are not sure about the requirement you should use 
+   * If you are not sure about the requirement you should use
    * the tupleWrap in purescala.Constructors
    */
   case class Tuple (exprs: Seq[Expr]) extends Expr {
@@ -159,12 +159,12 @@ object Expressions {
     require(cases.nonEmpty)
     val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
   }
-  
+
   case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
 
     val getType = BooleanType
-    
+
     def asConstraint = {
       val defaultCase = SimpleCase(WildcardPattern(None), out)
       Equals(out, MatchExpr(in, cases :+ defaultCase))
@@ -194,13 +194,13 @@ object Expressions {
   }
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq()
-  } 
+  }
   case class CaseClassPattern(binder: Option[Identifier], ct: CaseClassType, subPatterns: Seq[Pattern]) extends Pattern
 
   case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
 
   case class LiteralPattern[+T](binder: Option[Identifier], lit : Literal[T]) extends Pattern {
-    val subPatterns = Seq()    
+    val subPatterns = Seq()
   }
 
 
@@ -270,6 +270,16 @@ object Expressions {
     val value = ()
   }
 
+  case class RationalLiteral(numerator: BigInt, denominator: BigInt) extends Literal[(BigInt,BigInt)] {
+    val value = (numerator,denominator)
+    val getType = RationalType
+
+    override def toString =  {
+      if(denominator == 1) numerator.toString
+      else numerator + "/" + denominator
+    }
+  }
+
   case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr {
     val getType = ct
   }
@@ -310,20 +320,20 @@ object Expressions {
 
   /* Arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+    // require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = superNumericType(lhs.getType, rhs.getType)
   }
-  case class Minus(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Minus(lhs: Expr, rhs: Expr) extends Expr {
+    // require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = superNumericType(lhs.getType, rhs.getType)
   }
-  case class UMinus(expr: Expr) extends Expr { 
-    require(expr.getType == IntegerType)
-    val getType = IntegerType
+  case class UMinus(expr: Expr) extends Expr {
+    require(isNumericType(expr.getType))
+    val getType = expr.getType
   }
-  case class Times(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Times(lhs: Expr, rhs: Expr) extends Expr {
+    // require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = superNumericType(lhs.getType, rhs.getType)
   }
   /*
    * Division and Remainder follows Java/Scala semantics. Division corresponds
@@ -335,25 +345,25 @@ object Expressions {
    *
    *    Division(x, y) * y + Remainder(x, y) == x
    */
-  case class Division(lhs: Expr, rhs: Expr) extends Expr { 
+  case class Division(lhs: Expr, rhs: Expr) extends Expr {
+    // require(lhs.getType == IntegerType && rhs.getType == IntegerType)
+    val getType = superNumericType(lhs.getType, rhs.getType)
+  }
+  case class Remainder(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val getType = IntegerType
   }
-  case class Remainder(lhs: Expr, rhs: Expr) extends Expr { 
+  case class Modulo(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val getType = IntegerType
   }
-  case class Modulo(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
-  }
-  case class LessThan(lhs: Expr, rhs: Expr) extends Expr { 
+  case class LessThan(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
   }
-  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr { 
+  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
   }
-  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr { 
+  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
   }
   case class GreaterEquals(lhs: Expr, rhs: Expr) extends Expr {
@@ -365,28 +375,28 @@ object Expressions {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  case class BVUMinus(expr: Expr) extends Expr { 
+  case class BVUMinus(expr: Expr) extends Expr {
     require(expr.getType == Int32Type)
     val getType = Int32Type
   }
-  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
 
-  case class BVNot(expr: Expr) extends Expr { 
+  case class BVNot(expr: Expr) extends Expr {
     val getType = Int32Type
   }
   case class BVAnd(lhs: Expr, rhs: Expr) extends Expr {
@@ -552,7 +562,7 @@ object Expressions {
     val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union 
+  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union
     val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")

@@ -115,10 +115,10 @@ object ExprOps {
    * pre-transformation of the tree, takes a partial function of replacements.
    * Substitutes *before* recursing down the trees.
    *
-   * Supports two modes : 
-   * 
+   * Supports two modes :
+   *
    * - If applyRec is false (default), will only substitute once on each level.
-   * 
+   *
    * e.g.
    *
    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
@@ -126,17 +126,17 @@ object ExprOps {
    * will yield:
    *
    *   Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
-   *   
+   *
    * - If applyRec is true, it will substitute multiple times on each level:
-   * 
+   *
    * e.g.
    *
    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
    *
    * will yield:
    *
-   *   Add(a, f)  
-   *   
+   *   Add(a, f)
+   *
    * WARNING: The latter mode can diverge if f is not well formed
    */
   def preMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
@@ -144,7 +144,7 @@ object ExprOps {
 
     val newV = if (applyRec) {
       // Apply f as long as it returns Some()
-      fixpoint { e : Expr => f(e) getOrElse e } (e) 
+      fixpoint { e : Expr => f(e) getOrElse e } (e)
     } else {
       f(e) getOrElse e
     }
@@ -187,7 +187,7 @@ object ExprOps {
    * post-transformation of the tree, takes a partial function of replacements.
    * Substitutes *after* recursing down the trees.
    *
-   * Supports two modes : 
+   * Supports two modes :
    * - If applyRec is false (default), will only substitute once on each level.
    *
    * e.g.
@@ -197,17 +197,17 @@ object ExprOps {
    * will yield:
    *
    *   Add(a, Minus(e, c))
-   *   
+   *
    * If applyRec is true, it will substitute multiple times on each level:
-   * 
+   *
    * e.g.
    *
    *   Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
    *
    * will yield:
    *
-   *   Add(a, f)  
-   *   
+   *   Add(a, f)
+   *
    * WARNING: The latter mode can diverge if f is not well formed
    */
 
@@ -249,7 +249,7 @@ object ExprOps {
 
     if (applyRec) {
       // Apply f as long as it returns Some()
-      fixpoint { e : Expr => f(e) getOrElse e } (newV) 
+      fixpoint { e : Expr => f(e) getOrElse e } (newV)
     } else {
       f(newV) getOrElse newV
     }
@@ -271,9 +271,9 @@ object ExprOps {
     v2
   }
 
-  
-  
-  
+
+
+
   ///*
   // * Turn a total function returning Option[A] into a partial function
   // * returning A.
@@ -313,7 +313,7 @@ object ExprOps {
   def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
     foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
-  
+
   def collectPreorder[T](matcher: Expr => Seq[T])(e: Expr): Seq[T] = {
     foldRight[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
@@ -380,15 +380,15 @@ object ExprOps {
       case _ => Set()
     }(expr)
   }
-  
+
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
-    foldRight[Set[FunDef]]{ 
+    foldRight[Set[FunDef]]{
       case (LetDef(fd,bd), _) => Set(fd)
       case (_, subs) => subs.flatten.toSet
     }(e)
   }
-  
+
   def negate(expr: Expr) : Expr = {
     require(expr.getType == BooleanType)
     (expr match {
@@ -421,13 +421,13 @@ object ExprOps {
 
     def freshenCase(cse: MatchCase) : MatchCase = {
       val allBinders: Set[Identifier] = cse.pattern.binders
-      val subMap: Map[Identifier,Identifier] = 
+      val subMap: Map[Identifier,Identifier] =
         Map(allBinders.map(i => (i, FreshIdentifier(i.name, i.getType, true))).toSeq : _*)
       val subVarMap: Map[Expr,Expr] = subMap.map(kv => Variable(kv._1) -> Variable(kv._2))
-      
+
       MatchCase(
         rewritePattern(cse.pattern, subMap),
-        cse.optGuard map { replace(subVarMap, _)}, 
+        cse.optGuard map { replace(subVarMap, _)},
         replace(subVarMap,cse.rhs)
       )
     }
@@ -451,7 +451,7 @@ object ExprOps {
   def depth(e: Expr): Int = {
     foldRight[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
   }
-  
+
   def applyAsMatches(p : Passes, f : Expr => Expr) = {
     f(p.asConstraint) match {
       case Equals(newOut, MatchExpr(newIn, newCases)) => {
@@ -503,7 +503,7 @@ object ExprOps {
     import evaluators._
 
     val eval = new DefaultEvaluator(ctx, program)
-    
+
     def rec(e: Expr): Option[Expr] = e match {
       case l: Terminal => None
       case e if isGround(e) => eval.eval(e) match {
@@ -547,7 +547,7 @@ object ExprOps {
       case letTuple @ LetTuple(ids, Tuple(exprs), body) if isDeterministic(body) =>
         var newBody = body
 
-        val (remIds, remExprs) = (ids zip exprs).filter { 
+        val (remIds, remExprs) = (ids zip exprs).filter {
           case (id, value: Terminal) =>
             newBody = replace(Map(Variable(id) -> value), newBody)
             //we replace, so we drop old
@@ -567,7 +567,7 @@ object ExprOps {
               true
             }
         }.unzip
-          
+
         Some(Constructors.letTuple(remIds, tupleWrap(remExprs), newBody))
 
       case l @ LetTuple(ids, tExpr: Terminal, body) if isDeterministic(body) =>
@@ -716,7 +716,7 @@ object ExprOps {
           WildcardPattern(Some(FreshIdentifier(f.id.name, f.getType)))
         })
         rec(in, pt)
-      
+
       case TuplePattern(_, subps) =>
         val TupleType(subts) = in.getType
         val subExprs = (subps zip subts).zipWithIndex map {
@@ -728,7 +728,7 @@ object ExprOps {
           case Tuple(ts) =>
             ts zip subExprs
           case _ =>
-            Seq(in -> tupleWrap(subExprs))    
+            Seq(in -> tupleWrap(subExprs))
         }
 
         subst0 ++ ((subExprs zip subps) flatMap {
@@ -739,13 +739,13 @@ object ExprOps {
         val subExprs = (subps zip cct.fields) map {
           case (p, f) => p.binder.map(_.toVariable).getOrElse(CaseClassSelector(cct, in, f.id))
         }
-        
+
         // Special case to get rid of Cons(a,b) match { case Cons(c,d) => .. }
         val subst0 = in match {
           case CaseClass(`cct`, args) =>
             args zip subExprs
           case _ =>
-            Seq(in -> CaseClass(cct, subExprs))    
+            Seq(in -> CaseClass(cct, subExprs))
         }
 
         subst0 ++ ((subExprs zip subps) flatMap {
@@ -892,7 +892,7 @@ object ExprOps {
       val g = c.optGuard getOrElse BooleanLiteral(true)
       val cond = conditionForPattern(scrut, c.pattern, includeBinders = true)
       val localCond = pcSoFar :+ cond :+ g
-      
+
       // These contain no binders defined in this MatchCase
       val condSafe = conditionForPattern(scrut, c.pattern)
       val gSafe = replaceFromIDs(mapForPattern(scrut, c.pattern),g)
@@ -905,7 +905,7 @@ object ExprOps {
   def passesPathConditions(p : Passes, pathCond: List[Expr]) : Seq[List[Expr]] = {
     matchCasePathConditions(MatchExpr(p.in, p.cases), pathCond)
   }
-  
+
   /*
    * Returns a pattern and a guard, if needed
    */
@@ -916,7 +916,7 @@ object ExprOps {
       case Tuple(subs) => TuplePattern(None, subs map rec)
       case l : Literal[_] => LiteralPattern(None, l)
       case Variable(i) => WildcardPattern(Some(i))
-      case other => 
+      case other =>
         val id = FreshIdentifier("other", other.getType, true)
         guard = and(guard, Equals(Variable(id), other))
         WildcardPattern(Some(id))
@@ -925,9 +925,9 @@ object ExprOps {
   }
 
 
-  /** 
+  /**
     * Takes a pattern and returns an expression that corresponds to it.
-    * Also returns a sequence of (Identifier -> Expr) pairs which 
+    * Also returns a sequence of (Identifier -> Expr) pairs which
     * represent the bindings for intermediate binders (from outermost to innermost)
     */
   def patternToExpression(p : Pattern, expectedType : TypeTree) : (Expr, Seq[(Identifier, Expr)]) = {
@@ -940,7 +940,7 @@ object ExprOps {
         addBinding(b,lit)
         lit
       case InstanceOfPattern(b, ct) => ct match {
-        case act : AbstractClassType => 
+        case act : AbstractClassType =>
           val e = Variable(fresh(act))
           addBinding(b, e)
           e
@@ -953,12 +953,12 @@ object ExprOps {
       }
       case TuplePattern(b, subs) =>
         val TupleType(subTypes) = expectedType
-        val e = Tuple(subs zip subTypes map { 
+        val e = Tuple(subs zip subTypes map {
           case (sub, subType) => rec(sub, subType)
         })
         addBinding(b, e)
         e
-      case CaseClassPattern(b, cct, subs) => 
+      case CaseClassPattern(b, cct, subs) =>
         val subTypes = cct.fields map { _.getType }
         val e = CaseClass(cct, subs zip subTypes map { case (sub,tp) => rec(sub,tp) })
         addBinding(b, e)
@@ -997,6 +997,7 @@ object ExprOps {
     case MapType(fromType, toType)  => FiniteMap(Nil, fromType, toType)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => EmptyArray(tpe)
+    case RationalType               => RationalLiteral(0, 1)
 
     case act @ AbstractClassType(acd, tpe) =>
       val children = acd.knownChildren
@@ -1139,7 +1140,7 @@ object ExprOps {
     def pre(e : Expr) = e match {
 
       case LetDef(fd, expr) if fd.hasPrecondition =>
-       val pre = fd.precondition.get 
+       val pre = fd.precondition.get
 
         solver.solveVALID(pre) match {
           case Some(true)  =>
@@ -1155,7 +1156,7 @@ object ExprOps {
 
         e
 
-      case IfExpr(cond, thenn, elze) => 
+      case IfExpr(cond, thenn, elze) =>
         try {
           solver.solveVALID(cond) match {
             case Some(true)  => thenn
@@ -1167,7 +1168,7 @@ object ExprOps {
           }
         } catch {
           // let's give up when the solver crashes
-          case _ : Exception => e 
+          case _ : Exception => e
         }
 
       case _ => e
@@ -1279,7 +1280,7 @@ object ExprOps {
     preTraversal{
       case Choose(_, None) => return false
       case Hole(_, _) => return false
-      //@EK FIXME: do we need it? 
+      //@EK FIXME: do we need it?
       //case Error(_, _) => return false
       case _ =>
     }(e)
@@ -1295,7 +1296,7 @@ object ExprOps {
 
   /**
    * Substitute (free) variables in an expression with values form a model.
-   * 
+   *
    * Complete with simplest values in case of incomplete model.
    */
   def valuateWithModelIn(expr: Expr, vars: Set[Identifier], model: Map[Identifier, Expr]): Expr = {
@@ -1350,7 +1351,7 @@ object ExprOps {
       //btw, I know those are not the most general rules, but they lead to good optimizations :)
       case Plus(UMinus(Plus(e1, e2)), e3) if e1 == e3 => UMinus(e2)
       case Plus(UMinus(Plus(e1, e2)), e3) if e2 == e3 => UMinus(e1)
-      case Minus(e1, e2) if e1 == e2 => InfiniteIntegerLiteral(0) 
+      case Minus(e1, e2) if e1 == e2 => InfiniteIntegerLiteral(0)
       case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => InfiniteIntegerLiteral(0)
       case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
 
@@ -1382,7 +1383,7 @@ object ExprOps {
 
           val isType = CaseClassInstanceOf(cct, Variable(on))
 
-          val recSelectors = cct.fields.collect { 
+          val recSelectors = cct.fields.collect {
             case vd if vd.getType == on.getType => vd.id
           }
 
@@ -1494,11 +1495,11 @@ object ExprOps {
 
             g && e && h
         }
-        
+
       }
 
       import synthesis.Witnesses.Terminating
-      
+
       val res = (t1, t2) match {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
@@ -1516,7 +1517,7 @@ object ExprOps {
 
         case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
           cs1.size == cs2.size && isHomo(s1, s2) && casesMatch(cs1,cs2)
-          
+
         case (Passes(in1, out1, cs1), Passes(in2, out2, cs2)) =>
           cs1.size == cs2.size && isHomo(in1,in2) && isHomo(out1,out2) && casesMatch(cs1,cs2)
 
@@ -1524,12 +1525,12 @@ object ExprOps {
           // TODO: Check type params
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
-          
+
         case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
           // TODO: Check type params
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
-        
+
         case Same(UnaryOperator(e1, _), UnaryOperator(e2, _)) =>
           isHomo(e1, e2)
 
@@ -1587,7 +1588,7 @@ object ExprOps {
      *
      * TODO: We ignore type parameters here, we might want to make sure it's
      * valid. What's Leon's semantics w.r.t. erasure?
-     */ 
+     */
     def areExaustive(pss: Seq[(TypeTree, Seq[Pattern])]): Boolean = pss.forall { case (tpe, ps) =>
 
       tpe match {
@@ -1644,24 +1645,24 @@ object ExprOps {
             }
           }
 
-        case BooleanType => 
-          // make sure ps contains either 
+        case BooleanType =>
+          // make sure ps contains either
           // - Wildcard or
-          // - both true and false 
+          // - both true and false
           (ps exists { _.isInstanceOf[WildcardPattern] }) || {
             var found = Set[Boolean]()
-            ps foreach { 
+            ps foreach {
               case LiteralPattern(_, BooleanLiteral(b)) => found += b
               case _ => ()
             }
             (found contains true) && (found contains false)
           }
 
-        case UnitType => 
+        case UnitType =>
           // Anything matches ()
           ps.nonEmpty
 
-        case Int32Type => 
+        case Int32Type =>
           // Can't possibly pattern match against all Ints one by one
           ps exists (_.isInstanceOf[WildcardPattern])
 
@@ -1690,9 +1691,9 @@ object ExprOps {
    *   }
    *   bar(b, a)
    * }
-   * 
+   *
    * becomes
-   * 
+   *
    * def foo(a, b) {
    *   if (..) { foo(b, a) } else { .. }
    * }
@@ -1740,7 +1741,7 @@ object ExprOps {
             case (Some(oe), Some(ie)) =>
               val res = FreshIdentifier("res", fdOuter.returnType, true)
               Some(Lambda(Seq(ValDef(res)), and(
-                application(oe, Seq(Variable(res))), 
+                application(oe, Seq(Variable(res))),
                 application(simplePreTransform(pre)(ie), Seq(Variable(res)))
               )))
           }
@@ -1780,7 +1781,7 @@ object ExprOps {
    * Body manipulation
    * ========
    */
-  
+
   def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
     case (Some(newPre), Require(pre, b))              => Require(newPre, b)
     case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(Require(newPre, b), p)
@@ -1824,7 +1825,7 @@ object ExprOps {
   }
 
   def breakDownSpecs(e : Expr) = (preconditionOf(e), withoutSpec(e), postconditionOf(e))
-    
+
   def preTraversalWithParent(f: (Expr, Option[Tree]) => Unit, initParent: Option[Tree] = None)(e: Expr): Unit = {
     val rec = preTraversalWithParent(f, Some(e)) _
 
@@ -1914,7 +1915,7 @@ object ExprOps {
    */
   def liftClosures(e: Expr): (Set[FunDef], Expr) = {
     var fds: Map[FunDef, FunDef] = Map()
-    
+
     import synthesis.Witnesses.Terminating
     val res1 = preMap({
       case LetDef(fd, b) =>
@@ -1932,7 +1933,7 @@ object ExprOps {
         } else {
           None
         }
-        
+
       case Terminating(tfd, args) =>
         if (fds contains tfd.fd) {
           Some(Terminating(fds(tfd.fd).typed(tfd.tps), args))
@@ -1991,7 +1992,7 @@ object ExprOps {
 
   @deprecated("Use exists instead", "Leon 0.2.1")
   def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
-  
+
   /*
    * Transforms complicated Ifs into multiple nested if blocks
    * It will decompose every OR clauses, and it will group AND clauses checking
@@ -2022,7 +2023,7 @@ object ExprOps {
    *      E
    *    }
    *  }
-   * 
+   *
    * This transformation runs immediately before patternMatchReconstruction.
    *
    * Notes: positions are lost.
@@ -2106,7 +2107,7 @@ object ExprOps {
               case _ => "tmp"
             }
 
-            val binder = FreshIdentifier(name, prefix.getType, true) 
+            val binder = FreshIdentifier(name, prefix.getType, true)
 
             // prefix becomes binder
             substMap += prefix -> Variable(binder)
@@ -2129,7 +2130,7 @@ object ExprOps {
           val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
 
           val scrutinee = tupleWrap(scrutinees)
-          val pattern   = tuplePatternWrap(patterns) 
+          val pattern   = tuplePatternWrap(patterns)
 
           // We use searchAndReplace to replace the biggest match first
           // (topdown).
@@ -2193,9 +2194,9 @@ object ExprOps {
                 sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
                 pat
               } else {
-                LiteralPattern(ob,lit) 
+                LiteralPattern(ob,lit)
               }
-                
+
           }
 
           val newCases = resCases.flatMap {

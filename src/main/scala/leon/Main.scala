@@ -22,7 +22,9 @@ object Main {
       termination.TerminationPhase,
       verification.AnalysisPhase,
       repair.RepairPhase,
-      evaluators.EvaluationPhase
+      evaluators.EvaluationPhase,
+      transformations.InstrumentationPhase,
+      invariant.engine.InferInvariantsPhase
     )
   }
 
@@ -35,16 +37,18 @@ object Main {
     val name = "main"
     val description = "Options that determine the feature of Leon to be used (mutually exclusive). Default: verify"
 
-    val optTermination = LeonFlagOptionDef("termination", "Check program termination",                             false)
-    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
-    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
-    val optXLang       = LeonFlagOptionDef("xlang",       "Support for extra program constructs (imperative,...)", false)
-    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
-    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             true )
-    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
+    val optTermination = LeonFlagOptionDef("termination", "Check program termination",                                   false)
+    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                   false)
+    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                    false)
+    val optXLang       = LeonFlagOptionDef("xlang",       "Support for extra program constructs (imperative,...)",       false)
+    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",                 false)
+    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                   true )
+    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                           false)
+    val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds",   false)
+    val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",               false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optVerify)
+      Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optVerify, optInstrument, optInferInv)
 
   }
 
@@ -63,7 +67,7 @@ object Main {
       reporter.info(opt.helpString)
     }
     reporter.info("")
-      
+
     reporter.title("Additional options, by component:")
 
     for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
@@ -143,6 +147,8 @@ object Main {
     import repair.RepairPhase
     import evaluators.EvaluationPhase
     import MainComponent._
+    import invariant.engine.InferInvariantsPhase
+    import transformations.InstrumentationPhase
 
     val helpF        = ctx.findOptionOrDefault(optHelp)
     val noopF        = ctx.findOptionOrDefault(optNoop)
@@ -153,6 +159,8 @@ object Main {
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
     val evalF        = ctx.findOption(SharedOptions.optEval)
+    val inferInvF    = ctx.findOptionOrDefault(optInferInv)
+    val instrumentF  = ctx.findOptionOrDefault(optInstrument)
 
     def debugTrees(title: String): LeonPhase[Program, Program] = {
       if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
@@ -187,6 +195,8 @@ object Main {
         else if (terminationF) TerminationPhase
         else if (xlangF) XLangAnalysisPhase
         else if (evalF.isDefined) EvaluationPhase
+        else if (inferInvF) InstrumentationPhase andThen InferInvariantsPhase
+        else if (instrumentF) InstrumentationPhase
         else if (verifyF) FunctionClosure andThen AnalysisPhase
         else    NoopPhase()
       }
@@ -251,7 +261,7 @@ object Main {
         case (vReport: verification.VerificationReport, tReport: termination.TerminationReport) =>
           ctx.reporter.info(vReport.summaryString)
           ctx.reporter.info(tReport.summaryString)
-        
+
         case report: verification.VerificationReport =>
           ctx.reporter.info(report.summaryString)
 

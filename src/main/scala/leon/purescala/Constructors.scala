@@ -49,16 +49,16 @@ object Constructors {
 
   def tupleWrap(es: Seq[Expr]): Expr = es match {
     case Seq() => UnitLiteral()
-    case Seq(elem) => elem 
+    case Seq(elem) => elem
     case more => Tuple(more)
   }
-  
+
   def tuplePatternWrap(ps: Seq[Pattern]) = ps match {
     case Seq() => LiteralPattern(None, UnitLiteral())
     case Seq(elem) => elem
     case more => TuplePattern(None, more)
   }
-  
+
   def tupleTypeWrap(tps : Seq[TypeTree]) = tps match {
     case Seq() => UnitType
     case Seq(elem) => elem
@@ -67,21 +67,21 @@ object Constructors {
 
   /** Will instantiate the type parameters of the function according to argument types */
   def functionInvocation(fd : FunDef, args : Seq[Expr]) = {
-    
+
     require(fd.params.length == args.length)
-    
+
     val formalType = tupleTypeWrap(fd.params map { _.getType })
     val actualType = tupleTypeWrap(args map { _.getType })
-    
+
     canBeSubtypeOf(actualType, typeParamsOf(formalType).toSeq, formalType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
       case None => sys.error(s"$actualType cannot be a subtype of $formalType!")
     }
 
-   
+
   }
-  
+
   private def filterCases(scrutType : TypeTree, resType: Option[TypeTree], cases: Seq[MatchCase]): Seq[MatchCase] = {
     val casesFiltered = scrutType match {
       case c: CaseClassType =>
@@ -118,14 +118,14 @@ object Constructors {
     val filtered = filterCases(scrutinee.getType, None, cases)
     if (filtered.nonEmpty)
       MatchExpr(scrutinee, filtered)
-    else 
+    else
       Error(
         cases.headOption.map{ _.rhs.getType }.getOrElse(Untyped),
         "No case matches the scrutinee"
       )
-  } 
-    
-   
+  }
+
+
 
   def and(exprs: Expr*): Expr = {
     val flat = exprs.flatMap {
@@ -191,7 +191,7 @@ object Constructors {
 
   def finiteArray(els: Seq[Expr]): Expr = {
     require(els.nonEmpty)
-    finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway 
+    finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway
   }
 
   def finiteArray(els: Seq[Expr], defaultLength: Option[(Expr, Expr)], tpe: TypeTree): Expr = {
@@ -259,6 +259,9 @@ object Constructors {
     case (_, IntLiteral(0)) => lhs
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Plus(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVPlus(lhs, rhs)
+    case (IsTyped(_, RationalType), IsTyped(_, IntegerType)) => Plus(lhs, rhs)
+    case (IsTyped(_, IntegerType), IsTyped(_, RationalType)) => Plus(lhs, rhs)
+    case (IsTyped(_, RationalType), IsTyped(_, RationalType)) => Plus(lhs, rhs)
   }
 
   def minus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
@@ -268,6 +271,9 @@ object Constructors {
     case (IntLiteral(0), _) => BVUMinus(rhs)
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Minus(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
+    case (IsTyped(_, RationalType), IsTyped(_, IntegerType)) => Minus(lhs, rhs)
+    case (IsTyped(_, IntegerType), IsTyped(_, RationalType)) => Minus(lhs, rhs)
+    case (IsTyped(_, RationalType), IsTyped(_, RationalType)) => Minus(lhs, rhs)
   }
 
   def times(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
@@ -281,6 +287,8 @@ object Constructors {
     case (_, IntLiteral(0)) => IntLiteral(0)
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVTimes(lhs, rhs)
+    case (IsTyped(_, RationalType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
+    case (IsTyped(_, IntegerType), IsTyped(_, RationalType)) => Times(lhs, rhs)
+    case (IsTyped(_, RationalType), IsTyped(_, RationalType)) => Times(lhs, rhs)
   }
-
 }
