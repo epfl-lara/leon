@@ -24,7 +24,7 @@ import scala.collection.mutable.{Map => MutableMap}
 trait AbstractZ3Solver
   extends Solver
      with AssumptionSolver
-     with IncrementalSolver 
+     with IncrementalSolver
      with Interruptible {
 
   val context : LeonContext
@@ -258,6 +258,7 @@ trait AbstractZ3Solver
     sorts += Int32Type -> z3.mkBVSort(32)
     sorts += CharType -> z3.mkBVSort(32)
     sorts += IntegerType -> z3.mkIntSort
+    sorts += RationalType -> z3.mkRealSort
     sorts += BooleanType -> z3.mkBoolSort
 
     testers.clear
@@ -271,7 +272,7 @@ trait AbstractZ3Solver
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | IntegerType | CharType =>
+    case Int32Type | BooleanType | IntegerType | CharType | RationalType =>
       sorts.toB(oldtt)
 
     case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | UnitType) =>
@@ -331,7 +332,7 @@ trait AbstractZ3Solver
     }
 
     def rec(ex: Expr): Z3AST = ex match {
-      
+
       // TODO: Leave that as a specialization?
       case LetTuple(ids, e, b) => {
         var ix = 1
@@ -344,7 +345,7 @@ trait AbstractZ3Solver
         z3Vars = z3Vars -- ids
         rb
       }
-      
+
       case p @ Passes(_, _, _) =>
         rec(p.asConstraint)
 
@@ -385,6 +386,7 @@ trait AbstractZ3Solver
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
       case InfiniteIntegerLiteral(v) => z3.mkNumeral(v.toString, typeToSort(IntegerType))
+      case RationalLiteral(num, denom) => z3.mkNumeral(s"${num.toString} / ${denom.toString}", typeToSort(RationalType))
       case CharLiteral(c) => z3.mkInt(c, typeToSort(CharType))
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
@@ -422,21 +424,25 @@ trait AbstractZ3Solver
       case BVAShiftRight(l, r) => z3.mkBVAshr(rec(l), rec(r))
       case BVLShiftRight(l, r) => z3.mkBVLshr(rec(l), rec(r))
       case LessThan(l, r) => l.getType match {
+        case RationalType => z3.mkLT(rec(l), rec(r))
         case IntegerType => z3.mkLT(rec(l), rec(r))
         case Int32Type => z3.mkBVSlt(rec(l), rec(r))
         case CharType => z3.mkBVSlt(rec(l), rec(r))
       }
       case LessEquals(l, r) => l.getType match {
+        case RationalType => z3.mkLE(rec(l), rec(r))
         case IntegerType => z3.mkLE(rec(l), rec(r))
         case Int32Type => z3.mkBVSle(rec(l), rec(r))
         case CharType => z3.mkBVSle(rec(l), rec(r))
       }
       case GreaterThan(l, r) => l.getType match {
+        case RationalType => z3.mkGT(rec(l), rec(r))
         case IntegerType => z3.mkGT(rec(l), rec(r))
         case Int32Type => z3.mkBVSgt(rec(l), rec(r))
         case CharType => z3.mkBVSgt(rec(l), rec(r))
       }
       case GreaterEquals(l, r) => l.getType match {
+        case RationalType => z3.mkGE(rec(l), rec(r))
         case IntegerType => z3.mkGE(rec(l), rec(r))
         case Int32Type => z3.mkBVSge(rec(l), rec(r))
         case CharType => z3.mkBVSge(rec(l), rec(r))
@@ -642,6 +648,10 @@ trait AbstractZ3Solver
               throw new IllegalArgumentException
             }
           }
+        }
+        case Z3NumeralRealAST(num: BigInt, dem: BigInt) => {
+          val rl = RationalLiteral(num, dem)
+          rl
         }
         case Z3AppAST(decl, args) =>
           val argsSize = args.size

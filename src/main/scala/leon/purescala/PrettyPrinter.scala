@@ -68,11 +68,11 @@ object PrinterHelpers {
 
             case ts: Seq[Any] =>
               nary(ts).print(nctx)
-   
+
             case t: Tree =>
-              val newScope = nctx.current match { 
+              val newScope = nctx.current match {
                 case d : Definition => Some(d)
-                case _ => nctx.scope 
+                case _ => nctx.scope
               }
               nctx = nctx.copy(current = t, parent = Some(nctx.current), scope = newScope)
               printer.pp(t)(nctx)
@@ -130,10 +130,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       body
     }
   }
-  
+
   def printWithPath(df: Definition)(implicit ctx : PrinterContext) {
     ctx.scope match {
-      case Some(scope) => 
+      case Some(scope) =>
         try {
           val (pack, defPath) = pathAsVisibleFrom(scope, df)
           val toPrint = pack ++ (defPath collect { case df if !df.isInstanceOf[UnitDef] => df.id})
@@ -144,10 +144,10 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
       case None =>
         p"${df.id}"
-    } 
-    
+    }
+
   }
-  
+
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
     if (opts.printTypes) {
       tree match {
@@ -159,7 +159,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     }
     tree match {
       case id: Identifier =>
-        
+
         val name = if (opts.printUniqueIds) {
           id.uniqueName
         } else {
@@ -172,9 +172,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         )
         // Replace $opname with operator symbols
         val candidate = scala.reflect.NameTransformer.decode(name)
-        
+
         if (isLegalScalaId(candidate)) p"$candidate" else p"$name"
-        
+
       case Variable(id) =>
         p"$id"
 
@@ -244,9 +244,9 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
             } else {
               val elemTps = leastUpperBound(elems.map(_.getType))
               if (elemTps == Some(tpe)) {
-                p"List($elems)"  
+                p"List($elems)"
               } else {
-                p"List[$tpe]($elems)"  
+                p"List[$tpe]($elems)"
               }
             }
 
@@ -277,7 +277,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
       case NoTree(tpe)          => p"???($tpe)"
-      case Choose(pred, oimpl) => 
+      case Choose(pred, oimpl) =>
         oimpl match {
           case Some(e) =>
             p"$e /* choose: $pred */"
@@ -337,7 +337,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"[${tfd.tps}]"
         }
 
-        if (tfd.fd.isRealFunction) { 
+        if (tfd.fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
           val presentArgs = args filter {
             case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
@@ -416,7 +416,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
               val orderedElements = es.toSeq.sortWith((e1, e2) => e1._1 < e2._1).map(el => el._2)
               p"Array($orderedElements)"
             } else if(length < 10) {
-              val elems = (0 until length).map(i => 
+              val elems = (0 until length).map(i =>
                 es.find(el => el._1 == i).map(el => el._2).getOrElse(d.get)
               )
               p"Array($elems)"
@@ -461,8 +461,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
               |}"""
         }
 
-      case LetPattern(p,s,rhs) => 
-        rhs match { 
+      case LetPattern(p,s,rhs) =>
+        rhs match {
           case _:LetDef | _ : Let | LetPattern(_,_,_) =>
             optP {
               p"""|val $p = {
@@ -471,7 +471,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
                   |$rhs"""
             }
 
-          case _ => 
+          case _ =>
             optP {
               p"""|val $p = $s
                   |$rhs"""
@@ -499,7 +499,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         ob.foreach { b => p"$b @ " }
         // Print only the classDef because we don't want type parameters in patterns
         printWithPath(cct.classDef)
-        if (!cct.classDef.isCaseObject) p"($subps)"   
+        if (!cct.classDef.isCaseObject) p"($subps)"
 
       case InstanceOfPattern(ob, cct) =>
         if (cct.classDef.isCaseObject) {
@@ -509,7 +509,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         }
         // It's ok to print the whole type because there are no type parameters for case objects
         p"$cct"
-        
+
 
       case TuplePattern(ob, subps) =>
         ob.foreach { b => p"$b @ " }
@@ -541,7 +541,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
       // Definitions
       case Program(id, units) =>
         p"""${nary(units filter {_.isMainUnit}, "\n\n")}"""
-      
+
       case UnitDef(id,modules,pack,imports,_) =>
         if (pack.nonEmpty){
           p"""|package ${pack mkString "."}
@@ -550,28 +550,28 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
         p"""|${nary(imports,"\n")}
             |${nary(modules,"\n\n")}
             |"""
-        
-      case PackageImport(pack) => 
+
+      case PackageImport(pack) =>
         import leon.purescala.DefOps._
         val newPack = ( for (
           scope <- ctx.scope;
           unit <- unitOf(scope);
           currentPack = unit.pack
-        ) yield {  
-          if (isSuperPackageOf(currentPack,pack)) 
+        ) yield {
+          if (isSuperPackageOf(currentPack,pack))
             pack drop currentPack.length
-          else 
+          else
             pack
         }).getOrElse(pack)
         p"import ${nary(newPack,".")}._"
 
-      case SingleImport(df) => 
+      case SingleImport(df) =>
         p"import "; printWithPath(df)
-         
-        
-      case WildcardImport(df) => 
+
+
+      case WildcardImport(df) =>
         p"import "; printWithPath(df); p"._"
-        
+
       case ModuleDef(id, defs, _) =>
         p"""|object $id {
             |  ${nary(defs, "\n\n")}
@@ -639,8 +639,8 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
           p"""|def ${fd.id}(${fd.params}): ${fd.returnType} = {
               |"""
         }
-          
-        
+
+
         fd.precondition.foreach { case pre =>
           p"""|  require($pre)
               |"""
@@ -732,6 +732,7 @@ class PrettyPrinter(opts: PrinterOptions, val sb: StringBuffer = new StringBuffe
     case (_: Assert, Some(_: Definition)) => true
     case (_, Some(_: Definition)) => false
     case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef )) => false
+    case (_, Some(_: IfExpr)) => false
     case (_, _) => true
   }
 

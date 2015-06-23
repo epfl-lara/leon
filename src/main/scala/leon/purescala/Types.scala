@@ -9,6 +9,7 @@ import Common._
 import Expressions._
 import Definitions._
 import TypeOps._
+import PrinterHelpers._
 
 object Types {
 
@@ -34,10 +35,10 @@ object Types {
 
     // Checks wether the subtypes of this type contain Untyped,
     // and if so sets this to Untyped.
-    // Assumes the subtypes are correctly formed, so it does not descend 
+    // Assumes the subtypes are correctly formed, so it does not descend
     // deep into the TypeTree.
     def unveilUntyped: TypeTree = this match {
-      case NAryType(tps, _) => 
+      case NAryType(tps, _) =>
         if (tps contains Untyped) Untyped else this
     }
   }
@@ -48,6 +49,23 @@ object Types {
   case object CharType extends TypeTree
   case object IntegerType extends TypeTree
 
+  case object RationalType extends TypeTree with PrettyPrintable {
+    def printWith(implicit pctx: PrinterContext) {
+      p"Real"
+    }
+  }
+
+  def isNumericType(t: TypeTree) = t match {
+    case IntegerType | RationalType => true
+    case _ => false
+  }
+
+  def superNumericType(t1: TypeTree, t2: TypeTree) = {
+    require(isNumericType(t1) && isNumericType(t2))
+    if (t1 == RationalType || t2 == RationalType) RationalType
+    else IntegerType
+  }
+
   case class BitVectorType(size: Int) extends TypeTree
   case object Int32Type extends TypeTree
 
@@ -55,8 +73,8 @@ object Types {
     def freshen = TypeParameter(id.freshen)
   }
 
-  /* 
-   * If you are not sure about the requirement, 
+  /*
+   * If you are not sure about the requirement,
    * you should use tupleTypeWrap in purescala.Constructors
    */
   case class TupleType (bases: Seq[TypeTree]) extends TypeTree {
@@ -139,7 +157,7 @@ object Types {
       case t => Some(Nil, _ => t)
     }
   }
-  
+
   def optionToType(tp: Option[TypeTree]) = tp getOrElse Untyped
 
 }
