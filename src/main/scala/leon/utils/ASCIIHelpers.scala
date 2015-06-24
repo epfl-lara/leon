@@ -88,10 +88,14 @@ object ASCIIHelpers {
             }
             val size = (i to i+c.spanning-1).map(colSizes).sum + (c.spanning-1) * 2
 
-            if (c.align == Left) {
-              sb append ("%-"+size+"s").format(c.vString)
+            if (size >= 0) {
+              if (c.align == Left) {
+                sb append ("%-"+size+"s").format(c.vString)
+              } else {
+                sb append ("%"+size+"s").format(c.vString)
+              }
             } else {
-              sb append ("%"+size+"s").format(c.vString)
+              sb append c.vString
             }
 
             i += c.spanning

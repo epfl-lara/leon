@@ -12,9 +12,10 @@ import Witnesses._
 case class ChooseInfo(fd: FunDef,
                       pc: Expr,
                       source: Expr,
-                      ch: Choose) {
+                      ch: Choose,
+                      tests: TestBank) {
 
-  val problem = Problem.fromChoose(ch, pc)
+  val problem = Problem.fromChooseInfo(this)
 }
 
 object ChooseInfo {
@@ -35,7 +36,7 @@ object ChooseInfo {
     val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
-      ChooseInfo(fd, and(path, term), ch, ch)
+      ChooseInfo(fd, and(path, term), ch, ch, TestBank.empty)
     }
   }
 }

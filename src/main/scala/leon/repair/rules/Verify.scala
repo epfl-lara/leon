@@ -16,10 +16,10 @@ import Witnesses._
 
 import graph._
 
-case object GuidedCloser extends NormalizingRule("Guided Closer") {
+case object Verify extends NormalizingRule("Verify") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     hctx.parentNode match {
-      case Some(an: AndNode) if an.ri.rule == GuidedDecomp =>
+      case Some(an: AndNode) if an.ri.rule == Split =>
         // We proceed as usual
       case _ =>
         return Nil

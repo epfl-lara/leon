@@ -7,6 +7,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 import purescala.ExprOps._
+import purescala.Constructors.and
 import rules._
 
 abstract class Rule(val name: String) extends RuleDSL {
@@ -23,6 +24,10 @@ abstract class Rule(val name: String) extends RuleDSL {
 
 abstract class NormalizingRule(name: String) extends Rule(name) {
   override val priority = RulePriorityNormalizing
+}
+
+abstract class PreprocessingRule(name: String) extends Rule(name) {
+  override val priority = RulePriorityPreprocessing
 }
 
 object Rules {
@@ -127,9 +132,10 @@ sealed abstract class RulePriority(val v: Int) extends Ordered[RulePriority] {
   def compare(that: RulePriority) = this.v - that.v
 }
 
-case object RulePriorityNormalizing extends RulePriority(0)
-case object RulePriorityHoles       extends RulePriority(1)
-case object RulePriorityDefault     extends RulePriority(2)
+case object RulePriorityPreprocessing extends RulePriority(5)
+case object RulePriorityNormalizing   extends RulePriority(10)
+case object RulePriorityHoles         extends RulePriority(15)
+case object RulePriorityDefault       extends RulePriority(20)
 
 /**
  * Common utilities used by rules
@@ -167,5 +173,21 @@ trait RuleDSL {
       def apply(hctx: SearchContext) = RuleClosed(sol)
     }
 
+  }
+
+  // pc corresponds to the pc to reach the point where the solution is used. It
+  // will be used if the sub-solution has a non-true pre.
+  def termWrap(f: Expr => Expr, pc: Expr = BooleanLiteral(true)): List[Solution] => Option[Solution] = {
+    (sols: List[Solution]) => sols match {
+      case List(s) =>
+        val pre = if (s.pre == BooleanLiteral(true)) {
+          BooleanLiteral(true)
+        } else {
+          and(pc, s.pre)
+        }
+
+        Some(Solution(pre, s.defs, f(s.term), s.isTrusted))
+      case _ => None
+    }
   }
 }

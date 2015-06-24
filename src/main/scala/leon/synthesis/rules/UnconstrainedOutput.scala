@@ -13,7 +13,7 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 
     if (unconstr.nonEmpty) {
-      val sub = p.copy(xs = p.xs.filterNot(unconstr))
+      val sub = p.copy(xs = p.xs.filterNot(unconstr), tb = p.tbOps.removeOuts(unconstr))
 
       val onSuccess: List[Solution] => Option[Solution] = { 
         case List(s) =>

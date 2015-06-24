@@ -84,7 +84,7 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
 
       var stillPossible = true
 
-      val conds = matchCasePathConditions(me, path)
+      val conds = matchExprCaseConditions(me, path)
 
       val newCases = cases.zip(conds).flatMap { case (cs, cond) =>
        if (stillPossible && sat(and(cond: _*))) {

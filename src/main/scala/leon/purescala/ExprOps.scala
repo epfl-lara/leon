@@ -883,7 +883,7 @@ object ExprOps {
     preMap(rewritePM)(expr)
   }
 
-  def matchCasePathConditions(m: MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = {
+  def matchExprCaseConditions(m: MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = {
     val MatchExpr(scrut, cases) = m
     var pcSoFar = pathCond
     for (c <- cases) yield {
@@ -901,8 +901,24 @@ object ExprOps {
     }
   }
 
+  // Condition to pass this match case, expressed w.r.t scrut only
+  def matchCaseCondition(scrut: Expr, c: MatchCase): Expr = {
+
+    val patternC = conditionForPattern(scrut, c.pattern, includeBinders = false)
+
+    c.optGuard match {
+      case Some(g) =>
+        // guard might refer to binders
+        val map  = mapForPattern(scrut, c.pattern)
+        and(patternC, replaceFromIDs(map, g))
+
+      case None =>
+        patternC
+    }
+  }
+
   def passesPathConditions(p : Passes, pathCond: List[Expr]) : Seq[List[Expr]] = {
-    matchCasePathConditions(MatchExpr(p.in, p.cases), pathCond)
+    matchExprCaseConditions(MatchExpr(p.in, p.cases), pathCond)
   }
   
   /*
