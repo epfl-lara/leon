@@ -55,8 +55,7 @@ class PrettyPrinter(opts: PrinterOptions,
   def printWithPath(df: Definition)(implicit ctx: PrinterContext) {
     (opgm, ctx.parents.collectFirst { case (d: Definition) => d }) match {
       case (Some(pgm), Some(scope)) =>
-        val name = fullNameFrom(df, scope)(pgm)
-        p"$name"
+        sb.append(fullNameFrom(df, scope, opts.printUniqueIds)(pgm))
 
       case _ =>
         p"${df.id}"
@@ -156,12 +155,9 @@ class PrettyPrinter(opts: PrinterOptions,
               val q = '"'
               p"$q$str$q"
             } else {
-              val elemTps = leastUpperBound(elems.map(_.getType))
-              if (elemTps == Some(tpe)) {
-                p"List($elems)"  
-              } else {
-                p"List[$tpe]($elems)"  
-              }
+              val lclass = AbstractClassType(opgm.get.library.List.get, cct.tps)
+
+              p"$lclass($elems)"
             }
 
             case None =>

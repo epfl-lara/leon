@@ -8,7 +8,7 @@ import ExprOps.{preMap, postMap, functionCallsOf}
 
 object DefOps {
 
-  def packageOf(df: Definition)(implicit pgm: Program): PackageRef = {
+  private def packageOf(df: Definition)(implicit pgm: Program): PackageRef = {
     df match {
       case _ : Program => List()
       case u : UnitDef => u.pack
@@ -16,21 +16,13 @@ object DefOps {
     }
   }
 
-  def unitOf(df: Definition)(implicit pgm: Program): Option[UnitDef] = df match {
+  private def unitOf(df: Definition)(implicit pgm: Program): Option[UnitDef] = df match {
     case p : Program => None
     case u : UnitDef => Some(u)
     case other => pgm.units.find(_.containsDef(df))
   }
 
-  def moduleOf(df: Definition)(implicit pgm: Program): Option[ModuleDef] = df match {
-    case p : Program => None
-    case m : ModuleDef => Some(m)
-    case other => unitOf(df).flatMap { u =>
-      u.modules.find(_.containsDef(df))
-    }
-  }
-
-  def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] ={
+  private def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] ={
     def rec(from: Definition): List[Definition] = {
       from :: (if (from == df) {
         Nil
@@ -92,64 +84,45 @@ object DefOps {
     }
   }
 
-  /** Returns true for strict superpackage */ 
-  /*
-  def isSuperPackageOf(p1:PackageRef, p2 : PackageRef) = {
-    (p2.length > p1.length) &&
-    ( (p1 zip p2 takeWhile { case (n1,n2) => n1 == n2 }).length == p1.length )
-  }
 
-  def packageAsVisibleFrom(df: Definition, p: PackageRef)(implicit pgm: Program) = {
-    val visiblePacks = 
-      packageOf(df) +: (unitOf(df).toSeq.flatMap(_.imports) collect { case PackageImport(pack) => pack })
-    val bestSuper = visiblePacks filter { pack => pack == p || isSuperPackageOf(pack,p)} match {
-      case Nil => Nil
-      case other => other maxBy { _.length }
-    }
-    p drop bestSuper.length
-  }
-  */
-
-  
-  def fullNameFrom(of: Definition, from: Definition)(implicit pgm: Program): String = {
+  def fullNameFrom(of: Definition, from: Definition, useUniqueIds: Boolean)(implicit pgm: Program): String = {
     val pathFrom = pathFromRoot(from).dropWhile(_.isInstanceOf[Program])
 
-    val namesFrom = pathToNames(pathFrom)
-    val namesOf   = pathToNames(pathFromRoot(of))
+    val namesFrom = pathToNames(pathFrom, useUniqueIds)
+    val namesOf   = pathToNames(pathFromRoot(of), useUniqueIds)
 
     def stripPrefix(of: List[String], from: List[String]) = {
-      val removePrefix = (of zip from).dropWhile(p => p._1 == p._2).map(_._1)
-      if (removePrefix.size == 0) {
-        List(from.last)
+      val commonPrefix = (of zip from).takeWhile(p => p._1 == p._2)
+
+      val res = of.drop(commonPrefix.size)
+
+      if (res.isEmpty) {
+        List(of.last)
       } else {
-        removePrefix
+        res
       }
     }
 
-    var names: Set[List[String]] = Set(namesOf, stripPrefix(namesOf, namesOf))
+    var names: Set[List[String]] = Set(namesOf, stripPrefix(namesOf, namesFrom))
 
     pathFrom match {
       case (u: UnitDef) :: _ =>
         val imports = u.imports.map {
-          case PackageImport(ls) => (ls, true)
-          case SingleImport(d)   => (nameToParts(fullName(d)), false)
-          case WildcardImport(d) => (nameToParts(fullName(d)), true)
+          case PackageImport(ls) => ls
+          case SingleImport(d)   => nameToParts(fullName(d, useUniqueIds)).init
+          case WildcardImport(d) => nameToParts(fullName(d, useUniqueIds))
         }.toList
 
-        def stripImport(of: List[String], imp: List[String], isWild: Boolean): Option[List[String]] = {
+        def stripImport(of: List[String], imp: List[String]): Option[List[String]] = {
           if (of.startsWith(imp)) {
-            if (isWild) {
-              Some(of.drop(imp.size-1))
-            } else {
-              Some(of.drop(imp.size-2))
-            }
+            Some(stripPrefix(of, imp))
           } else {
             None
           }
         }
 
-        for ((imp, isWild) <- imports) {
-          names ++= stripImport(namesOf, imp, isWild)
+        for (imp <- imports) {
+          names ++= stripImport(namesOf, imp)
         }
 
       case _ =>
@@ -158,28 +131,7 @@ object DefOps {
     names.toSeq.minBy(_.size).mkString(".")
   }
 
-  /*
-  private def pathAsVisibleFrom(base: Definition, target: Definition)(implicit pgm: Program): (PackageRef, List[Definition]) = {
-    val rootPath = pathFromRoot(target)
-    val ancestor = leastCommonAncestor(base, target)
-    val pth = rootPath dropWhile { _.owner != Some(ancestor) }
-    val pathFromAncestor = if (pth.isEmpty) List(target) else pth
-    val index = rootPath lastIndexWhere { isImportedBy(_, unitOf(base).toSeq.flatMap { _.imports }) }
-    val pathFromImport = rootPath drop scala.math.max(index, 0)
-    val finalPath = if (pathFromAncestor.length <= pathFromImport.length) pathFromAncestor else pathFromImport
-    assert(finalPath.nonEmpty)
-    
-    // Package 
-    val pack = if (finalPath.head.isInstanceOf[UnitDef]) {
-      packageAsVisibleFrom(base, packageOf(target))
-    }
-    else Nil
-      
-    (pack, finalPath)
-  }
-  */
-
-  def pathToNames(path: List[Definition]): List[String] = {
+  def pathToNames(path: List[Definition], useUniqueIds: Boolean): List[String] = {
     path.flatMap {
       case p: Program =>
         Nil
@@ -188,16 +140,20 @@ object DefOps {
       case m: ModuleDef if m.isPackageObject =>
         Nil
       case d =>
-        List(d.id.name)
+        if (useUniqueIds) {
+          List(d.id.uniqueName)
+        } else {
+          List(d.id.name)
+        }
     }
   }
 
-  def pathToString(path: List[Definition]): String = {
-    pathToNames(path).mkString(".")
+  def pathToString(path: List[Definition], useUniqueIds: Boolean): String = {
+    pathToNames(path, useUniqueIds).mkString(".")
   }
 
-  def fullName(df: Definition)(implicit pgm: Program): String = {
-    pathToString(pathFromRoot(df))
+  def fullName(df: Definition, useUniqueIds: Boolean = false)(implicit pgm: Program): String = {
+    pathToString(pathFromRoot(df), useUniqueIds)
   }
 
   private def nameToParts(name: String) = {
@@ -308,29 +264,6 @@ object DefOps {
     }
   }
 
-  /*
-   * Apply an expression operation on all expressions contained in a FunDef
-   */
-  def applyOnFunDef(operation : Expr => Expr)(funDef : FunDef): FunDef = {
-    val newFunDef = funDef.duplicate 
-    newFunDef.fullBody = operation(funDef.fullBody)
-    newFunDef
-  }
-    
-  /**
-   * Apply preMap on all expressions contained in a FunDef
-   */
-  def preMapOnFunDef(repl : Expr => Option[Expr], applyRec : Boolean = false )(funDef : FunDef) : FunDef = {
-    applyOnFunDef(preMap(repl, applyRec))(funDef)  
-  }
- 
-  /**
-   * Apply postMap on all expressions contained in a FunDef
-   */
-  def postMapOnFunDef(repl : Expr => Option[Expr], applyRec : Boolean = false )(funDef : FunDef) : FunDef = {
-    applyOnFunDef(postMap(repl, applyRec))(funDef)  
-  }
-
   private def defaultFiMap(fi: FunctionInvocation, nfd: FunDef): Option[Expr] = (fi, nfd) match {
     case (FunctionInvocation(old, args), newfd) if old.fd != newfd =>
       Some(FunctionInvocation(newfd.typed(old.tps), args))
@@ -411,16 +344,6 @@ object DefOps {
       println("addFunDefs could not find anchor function!")
     }
     res
-  }
-
-  def mapFunDefs(e: Expr, fdMap: PartialFunction[FunDef, FunDef]): Expr = {
-    preMap {
-      case FunctionInvocation(tfd, args) =>
-        fdMap.lift.apply(tfd.fd).map {
-          nfd => FunctionInvocation(nfd.typed(tfd.tps), args)
-        }
-      case _ => None
-    }(e)
   }
 
   /**
