@@ -34,7 +34,8 @@ class PreprocessingPhase(private val desugarXLang: Boolean = false) extends Tran
       CompleteAbstractDefinitions            andThen
       CheckADTFieldsTypes                    andThen
       InjectAsserts                          andThen
-      InliningPhase
+      InliningPhase                          andThen
+      CheckForalls
 
     val pipeX = if(desugarXLang) {
       XLangDesugaringPhase andThen
