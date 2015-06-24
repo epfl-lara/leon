@@ -26,7 +26,7 @@ class NewSolversSuite extends VerificationSuite {
     }
 
     if (isCVC4Available)
-      List(List("--solvers=smt-cvc4-cex,smt-cvc4-proof,ground", "--feelinglucky", "--timeout=5"))
+      List(List("--solvers=smt-cvc4-cex,smt-cvc4-proof,ground", "--timeout=5"))
     else Nil
 
   }
