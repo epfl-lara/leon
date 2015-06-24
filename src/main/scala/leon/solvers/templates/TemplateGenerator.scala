@@ -281,26 +281,34 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           Variable(lid)
 
         case f @ Forall(args, body) =>
-          val idQuantifiers : Seq[Identifier] = args.map(_.id)
-          val trQuantifiers : Seq[T] = idQuantifiers.map(encoder.encodeId)
+          val TopLevelAnds(conjuncts) = body
 
-          val q: Identifier = FreshIdentifier("q", BooleanType)
-          val ph: Identifier = FreshIdentifier("ph", BooleanType)
-          val guard: Identifier = FreshIdentifier("guard", BooleanType)
+          val conjunctQs = conjuncts.map { conjunct =>
+            val vars = variablesOf(conjunct)
+            val quantifiers = args.map(_.id).filter(vars).toSet
 
-          val clause = Equals(Variable(q), And(Variable(ph), Implies(Variable(guard), body)))
+            val idQuantifiers : Seq[Identifier] = quantifiers.toSeq
+            val trQuantifiers : Seq[T] = idQuantifiers.map(encoder.encodeId)
 
-          val qs: (Identifier, T) = q -> encoder.encodeId(q)
-          val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
-          val clauseSubst: Map[Identifier, T] = localSubst ++ (idQuantifiers zip trQuantifiers)
-          val (qConds, qExprs, qGuarded, qTemplates, qQuants) = mkClauses(pathVar, clause, clauseSubst)
-          assert(qQuants.isEmpty, "Unhandled nested quantification in "+clause)
+            val q: Identifier = FreshIdentifier("q", BooleanType)
+            val ph: Identifier = FreshIdentifier("ph", BooleanType)
+            val guard: Identifier = FreshIdentifier("guard", BooleanType)
 
-          val template = QuantificationTemplate[T](encoder, manager, pathVar -> encodedCond(pathVar),
-            qs, ph, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qGuarded, qTemplates, localSubst)
-          registerQuantification(template)
+            val clause = Equals(Variable(q), And(Variable(ph), Implies(Variable(guard), conjunct)))
 
-          Variable(q)
+            val qs: (Identifier, T) = q -> encoder.encodeId(q)
+            val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
+            val clauseSubst: Map[Identifier, T] = localSubst ++ (idQuantifiers zip trQuantifiers)
+            val (qConds, qExprs, qGuarded, qTemplates, qQuants) = mkClauses(pathVar, clause, clauseSubst)
+            assert(qQuants.isEmpty, "Unhandled nested quantification in "+clause)
+
+            val template = QuantificationTemplate[T](encoder, manager, pathVar -> encodedCond(pathVar),
+              qs, ph, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qGuarded, qTemplates, localSubst)
+            registerQuantification(template)
+            Variable(q)
+          }
+
+          andJoin(conjunctQs)
 
         case Operator(as, r) => r(as.map(a => rec(pathVar, a)))
       }

@@ -16,6 +16,9 @@ case class Matcher[T](caller: T, tpe: TypeTree, args: Seq[T]) {
   override def toString = "M(" + caller + " : " + tpe + ", " + args.mkString("(",",",")") + ")"
 }
 
+case class IllegalQuantificationException(expr: Expr, msg: String)
+  extends Exception(msg +" @ " + expr)
+
 class QuantificationTemplate[T](
   val quantificationManager: QuantificationManager[T],
   val start: T,
@@ -147,9 +150,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         applications map { case (b, fas) =>
           substituter(b) -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
         },
-        matchers map { case m @ Matcher(caller, _, args) =>
-          m.copy(caller = substituter(caller), args = args.map(substituter))
-        },
+        matchers map (m => m.copy(caller = substituter(m.caller), args = m.args.map(substituter))),
         lambdas map { case (idT, template) => substituter(idT) -> template.substitute(subst) }
       )
     }
@@ -164,7 +165,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val matcherMappings: Set[Set[(T, Matcher[T], Matcher[T])]] = matchers
         // 1. select an application in the quantified proposition for which the current app can
         //    be bound when generating the new constraints
-        .filter(qm => qm.caller == caller || (qm.tpe == tpe && !known(qm.caller)))
+        .filter(_.tpe == tpe)
         // 2. build the instantiation mapping associated to the chosen current application binding
         .flatMap { bindingMatcher => matchers
           // 2.1. select all potential matches for each quantified application
@@ -173,16 +174,12 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
               bindingMatcher -> Set(blocker -> matcher)
             } else {
               val instances: Set[(T, Matcher[T])] = instantiated.filter {
-                case (b, m @ Matcher(caller, tpe, _)) => tpe == qtpe && (qcaller == caller || !known(caller))
+                case (b, m @ Matcher(caller, tpe, _)) => tpe == qtpe
               }
 
               // concrete applications can appear multiple times in the constraint, and this is also the case
               // for the current application for which we are generating the constraints
-              val withCurrent = if (tpe == qtpe && (qcaller == caller || !known(caller))) {
-                instances + (blocker -> matcher)
-              } else instances
-
-              println(qm -> withCurrent)
+              val withCurrent = if (tpe == qtpe) instances + (blocker -> matcher) else instances
 
               qm -> withCurrent
             }
@@ -234,8 +231,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
   def instantiateQuantification(template: QuantificationTemplate[T], substMap: Map[T, T]): Instantiation[T] = {
 
-    val instantiationSubst: Map[T, T] = substMap +
-      (template.guardVar -> encoder.encodeExpr(Map.empty)(BooleanLiteral(true)))
+    val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
+    val instantiationSubst: Map[T, T] = substMap + (template.guardVar -> trueT)
 
     val substituter = encoder.substitute(instantiationSubst)
     val matchers = template.matchers.map { case (b, ms) =>
@@ -288,7 +285,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     val eqClause = {
       val qs = newQuantifications.map(_.qVar)
-      val newQs = if (qs.size > 1) encoder.mkAnd(qs : _*) else qs.head
+      val newQs = if (qs.isEmpty) trueT else if (qs.size == 1) qs.head else encoder.mkAnd(qs : _*)
       encoder.mkImplies(substMap(template.start), encoder.mkEquals(template.holdVar, newQs))
     }
 
