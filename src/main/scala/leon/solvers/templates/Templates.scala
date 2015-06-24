@@ -126,6 +126,8 @@ object Template {
 
   private def matchersOf[T](encodeExpr: Expr => T)(expr: Expr): Set[Matcher[T]] = collect[Matcher[T]] {
     case Application(caller, args) => Set(Matcher(encodeExpr(caller), caller.getType, args.map(encodeExpr)))
+    case ArraySelect(arr, index) => Set(Matcher(encodeExpr(arr), arr.getType, Seq(encodeExpr(index))))
+    case MapGet(map, key) => Set(Matcher(encodeExpr(map), map.getType, Seq(encodeExpr(key))))
     case _ => Set.empty
   }(expr)
 

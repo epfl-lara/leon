@@ -94,6 +94,10 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
   private var knownStack: List[Set[T]] = List(Set.empty)
   private def known(idT: T): Boolean = knownStack.head(idT) || byID.isDefinedAt(idT)
+  private def correspond(qm: Matcher[T], m: Matcher[T]): Boolean = qm.tpe match {
+    case _: FunctionType => qm.tpe == m.tpe && (qm.caller == m.caller || !known(m.caller))
+    case _ => qm.tpe == m.tpe
+  }
 
   override def push(): Unit = {
     quantificationsStack = quantifications :: quantificationsStack
@@ -156,7 +160,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     }
 
     def instantiate(blocker: T, matcher: Matcher[T]): Instantiation[T] = {
-      val Matcher(caller, tpe, args) = matcher
 
       // Build a mapping from applications in the quantified statement to all potential concrete
       // applications previously encountered. Also make sure the current `app` is in the mapping
@@ -165,25 +168,21 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val matcherMappings: Set[Set[(T, Matcher[T], Matcher[T])]] = matchers
         // 1. select an application in the quantified proposition for which the current app can
         //    be bound when generating the new constraints
-        .filter(_.tpe == tpe)
+        .filter(qm => correspond(qm, matcher))
         // 2. build the instantiation mapping associated to the chosen current application binding
         .flatMap { bindingMatcher => matchers
           // 2.1. select all potential matches for each quantified application
-          .map { case qm @ Matcher(qcaller, qtpe, qargs) =>
-            if (qm == bindingMatcher) {
-              bindingMatcher -> Set(blocker -> matcher)
-            } else {
-              val instances: Set[(T, Matcher[T])] = instantiated.filter {
-                case (b, m @ Matcher(caller, tpe, _)) => tpe == qtpe
-              }
+          .map(qm => if (qm == bindingMatcher) {
+            bindingMatcher -> Set(blocker -> matcher)
+          } else {
+            val instances: Set[(T, Matcher[T])] = instantiated.filter { case (b, m) => correspond(qm, m) }
 
-              // concrete applications can appear multiple times in the constraint, and this is also the case
-              // for the current application for which we are generating the constraints
-              val withCurrent = if (tpe == qtpe) instances + (blocker -> matcher) else instances
+            // concrete applications can appear multiple times in the constraint, and this is also the case
+            // for the current application for which we are generating the constraints
+            val withCurrent = if (correspond(qm, matcher)) instances + (blocker -> matcher) else instances
 
-              qm -> withCurrent
-            }
-          }
+            qm -> withCurrent
+          })
           // 2.2. based on the possible bindings for each quantified application, build a set of
           //      instantiation mappings that can be used to instantiate all necessary constraints
           .foldLeft[Set[Set[(T, Matcher[T], Matcher[T])]]] (Set(Set.empty)) {
