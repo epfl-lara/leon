@@ -331,7 +331,7 @@ object DefOps {
     applyOnFunDef(postMap(repl, applyRec))(funDef)  
   }
 
-  private def defaultFiMap(fi: FunctionInvocation, nfd: FunDef): Option[FunctionInvocation] = (fi, nfd) match {
+  private def defaultFiMap(fi: FunctionInvocation, nfd: FunDef): Option[Expr] = (fi, nfd) match {
     case (FunctionInvocation(old, args), newfd) if old.fd != newfd =>
       Some(FunctionInvocation(newfd.typed(old.tps), args))
     case _ =>
@@ -339,7 +339,7 @@ object DefOps {
   }
 
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
-                                 fiMapF: (FunctionInvocation, FunDef) => Option[FunctionInvocation] = defaultFiMap) = {
+                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
 
     var fdMapCache = Map[FunDef, Option[FunDef]]()
     def fdMap(fd: FunDef): FunDef = {

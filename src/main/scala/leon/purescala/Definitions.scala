@@ -356,11 +356,11 @@ object Definitions {
    *  Default type is DefDef (method)
    */
   class FunDef(
-    val id: Identifier, 
-    val tparams: Seq[TypeParameterDef], 
-    val returnType: TypeTree, 
-    val params: Seq[ValDef], 
-    val defType : DefType
+    val id: Identifier,
+    val tparams: Seq[TypeParameterDef],
+    val returnType: TypeTree,
+    val params: Seq[ValDef],
+    val defType: DefType
   ) extends Definition {
     
     // A copy of the original function before Xlang elimination
