@@ -40,6 +40,9 @@ Leon.eml
 Leon.iml
 bin
 
+#scripts
+out-classes
+
 #z3
 .z3-trace
 
