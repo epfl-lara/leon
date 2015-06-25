@@ -12,18 +12,16 @@ import leon.purescala.ExprOps._
 import leon.purescala.TypeOps._
 import leon.xlang.Expressions._
 
-object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef])] {
+object ImperativeCodeElimination extends TransformationPhase {
 
   val name = "Imperative Code Elimination"
   val description = "Transform imperative constructs into purely functional code"
 
   private var varInScope = Set[Identifier]()
   private var parent: FunDef = null //the enclosing fundef
-  private var wasLoop: Set[FunDef] = null //record FunDef that are the transformation of loops
 
-  def run(ctx: LeonContext)(pgm: Program): (Program, Set[FunDef]) = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
     varInScope = Set()
-    wasLoop = Set()
     parent = null
 
     val allFuns = pgm.definedFunctions
@@ -35,7 +33,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
       val (res, scope, _) = toFunction(body)
       fd.body = Some(scope(res))
     }
-    (pgm, wasLoop)
+    pgm
   }
 
   //return a "scope" consisting of purely functional code that defines potentially needed 
@@ -153,7 +151,7 @@ object ImperativeCodeElimination extends LeonPhase[Program, (Program, Set[FunDef
           val whileFunValDefs = whileFunVars.map(ValDef(_))
           val whileFunReturnType = tupleTypeWrap(whileFunVars.map(_.getType))
           val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), Nil, whileFunReturnType, whileFunValDefs).setPos(wh)
-          wasLoop += whileFunDef
+          whileFunDef.addFlag(IsLoop(parent))
           
           val whileFunCond = condScope(condRes)
           val whileFunRecursiveCall = replaceNames(condFun,

@@ -14,6 +14,8 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
   val description = "apply analysis on xlang"
 
   object VCXLangKinds {
+    // TODO: something of this sort should be included
+    // case object InvariantEntry extends VCKind("invariant init",           "inv. init.")
     case object InvariantPost extends VCKind("invariant postcondition", "inv. post.")
     case object InvariantInd  extends VCKind("invariant inductive",     "inv. ind.")
   }
@@ -22,17 +24,11 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
 
     ArrayTransformation(ctx, pgm) // In-place
     EpsilonElimination(ctx, pgm)  // In-place
-    val (pgm1, wasLoop) = ImperativeCodeElimination.run(ctx)(pgm)
+    val pgm1 = ImperativeCodeElimination.run(ctx)(pgm)
     val pgm2 = purescala.FunctionClosure.run(ctx)(pgm1)
 
     if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
       PrintTreePhase("Program after xlang transformations").run(ctx)(pgm2)
-    }
-
-    def functionWasLoop(fd: FunDef): Boolean = fd.flags.collectFirst{ case IsLoop(fd) => fd } match {
-      case Some(nested) => // could have been a LetDef originally
-        wasLoop.contains(nested)
-      case _ => false //meaning, this was a top level function
     }
 
     val subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
@@ -57,10 +53,10 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     }
 
     val vr = AnalysisPhase.run(ctx.copy(options = newOptions))(pgm2)
-    completeVerificationReport(vr, functionWasLoop)
+    completeVerificationReport(vr)
   }
 
-  def completeVerificationReport(vr: VerificationReport, functionWasLoop: FunDef => Boolean): VerificationReport = {
+  def completeVerificationReport(vr: VerificationReport): VerificationReport = {
 
     //this is enough to convert invariant postcondition and inductive conditions. However the initial validity
     //of the invariant (before entering the loop) will still appear as a regular function precondition
@@ -69,24 +65,24 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
     //precondition and a function invocation precondition
 
     val newResults = for ((vc, ovr) <- vr.results) yield {
-      if(functionWasLoop(vc.fd)) {
-        val nvc = VC(vc.condition, 
-                     vc.fd,
-                     //vc.fd.owner match {
-                     //  case Some(fd: FunDef) => fd
-                     //  case _ => vc.fd
-                     //},
-                     vc.kind.underlying match {
-                       case VCKinds.Postcondition => VCXLangKinds.InvariantPost
-                       case VCKinds.Precondition => VCXLangKinds.InvariantInd
-                       case _ => vc.kind
-                     },
-                     vc.tactic).setPos(vc.getPos)
-
-        nvc -> ovr
-      } else {
-        vc -> ovr
+      val (vcKind, fd) = vc.fd.flags.collectFirst { case IsLoop(orig) => orig } match {
+        case None => (vc.kind, vc.fd)
+        case Some(owner) => (vc.kind.underlying match {
+          case VCKinds.Precondition => VCXLangKinds.InvariantInd
+          case VCKinds.Postcondition => VCXLangKinds.InvariantPost
+          case _ => vc.kind
+        }, owner)
       }
+
+      val nvc = VC(
+        vc.condition,
+        fd,
+        vcKind,
+        vc.tactic
+      ).setPos(vc.getPos)
+
+      nvc -> ovr
+
     }
 
     VerificationReport(newResults)
