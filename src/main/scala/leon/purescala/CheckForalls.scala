@@ -60,7 +60,10 @@ object CheckForalls extends UnitPhase[Program] {
             })
           }) ctx.reporter.warning("Matcher arguments must have simple form in " + conjunct)
 
-          if (matchers.map(_._1).toSet.size != 1)
+          if (matchers.filter(_._2.exists {
+            case Variable(id) => quantified(id)
+            case _ => false
+          }).map(_._1).toSet.size != 1)
             ctx.reporter.warning("Quantification conjuncts must contain exactly one matcher in " + conjunct)
 
           preTraversal {

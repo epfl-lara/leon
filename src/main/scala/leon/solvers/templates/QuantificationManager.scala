@@ -1,3 +1,5 @@
+/* Copyright 2009-2015 EPFL, Lausanne */
+
 package leon
 package solvers
 package templates
@@ -201,7 +203,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         for {
           (b, Matcher(qcaller, _, qargs), Matcher(caller, _, args)) <- mapping
           _ = constraints :+= b
-          _ = if (qcaller != caller) constraints :+= encoder.mkEquals(qcaller, caller)
           (qarg, arg) <- (qargs zip args)
         } if (subst.isDefinedAt(qarg)) {
           constraints :+= encoder.mkEquals(subst(qarg), arg)
@@ -229,7 +230,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   def instantiateQuantification(template: QuantificationTemplate[T], substMap: Map[T, T]): Instantiation[T] = {
-
     val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
     val instantiationSubst: Map[T, T] = substMap + (template.guardVar -> trueT)
 
