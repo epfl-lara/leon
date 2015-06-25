@@ -18,7 +18,7 @@ object RestoreMethods extends TransformationPhase {
   // @TODO: This code probably needs fixing, but is mostly unused and completely untested.
   def apply(ctx: LeonContext, p: Program) = {
 
-    val classMethods = p.definedFunctions.groupBy(_.origOwner).collect {
+    val classMethods = p.definedFunctions.groupBy(_.methodOwner).collect {
       case (Some(cd: ClassDef), fds) => cd -> fds
     }
 
@@ -27,9 +27,10 @@ object RestoreMethods extends TransformationPhase {
         id = FreshIdentifier(fd.id.name),
         tparams = fd.tparams.drop(cd.tparams.size),
         params = fd.params.tail, // drop 'this'
-        returnType = fd.returnType,
-        defType = fd.defType
+        returnType = fd.returnType
       ).copiedFrom(fd)
+
+      md.copyContentFrom(fd)
 
       val thisArg  = fd.params.head
       val thisExpr = This(thisArg.getType.asInstanceOf[ClassType])

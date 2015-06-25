@@ -23,7 +23,7 @@ object EpsilonElimination extends UnitPhase[Program] {
       val newBody = postMap{
         case eps@Epsilon(pred, tpe) =>
           val freshName   = FreshIdentifier("epsilon")
-          val newFunDef   = new FunDef(freshName, Nil, tpe, Seq(), DefType.MethodDef)
+          val newFunDef   = new FunDef(freshName, Nil, tpe, Seq())
           val epsilonVar  = EpsilonVariable(eps.getPos, tpe)
           val resId       = FreshIdentifier("res", tpe)
           val postcondition = replace(Map(epsilonVar -> Variable(resId)), pred)

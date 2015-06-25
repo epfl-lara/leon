@@ -17,7 +17,6 @@ object PreprocessingPhase extends TransformationPhase {
   def apply(ctx: LeonContext, p: Program): Program = {
 
     val phases =
-      ScopingPhase                  andThen
       MethodLifting                 andThen
       TypingPhase                   andThen
       ConvertWithOracle             andThen

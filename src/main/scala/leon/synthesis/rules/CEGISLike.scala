@@ -236,19 +236,19 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
       private val bArrayId = FreshIdentifier("bArray", ArrayType(BooleanType), true)
 
-      private var cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true),
-                               Seq(),
-                               p.outType,
-                               p.as.map(id => ValDef(id)),
-                               DefType.MethodDef
-                             )
+      private var cTreeFd = new FunDef(
+        FreshIdentifier("cTree", alwaysShowUniqueID = true),
+        Seq(),
+        p.outType,
+        p.as.map(id => ValDef(id))
+      )
 
-      private var phiFd   = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true),
-                               Seq(),
-                               BooleanType,
-                               p.as.map(id => ValDef(id)),
-                               DefType.MethodDef
-                             )
+      private var phiFd = new FunDef(
+        FreshIdentifier("phiFd", alwaysShowUniqueID = true),
+        Seq(),
+        BooleanType,
+        p.as.map(id => ValDef(id))
+      )
 
       private var programCTree: Program = _
 
@@ -280,11 +280,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val (prog2, fdMap2) = replaceFunDefs(prog1)({
           case fd if affected(fd) =>
             // Add the b array argument to all affected functions
-            val nfd = new FunDef(fd.id.freshen,
-                                 fd.tparams,
-                                 fd.returnType,
-                                 fd.params :+ ValDef(bArrayId),
-                                 fd.defType)
+            val nfd = new FunDef(
+              fd.id.freshen,
+              fd.tparams,
+              fd.returnType,
+              fd.params :+ ValDef(bArrayId)
+            )
             nfd.copyContentFrom(fd)
             nfd.copiedFrom(fd)
 

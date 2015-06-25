@@ -26,8 +26,8 @@ object UnitElimination extends TransformationPhase {
         //first introduce new signatures without Unit parameters
         allFuns.foreach(fd => {
           if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
-            freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType)).setPos(fd)
+            freshFunDef.copyContentFrom(fd)
             fun2FreshFun += (fd -> freshFunDef)
           } else {
             fun2FreshFun += (fd -> fd) //this will make the next step simpler
@@ -97,8 +97,8 @@ object UnitElimination extends TransformationPhase {
           removeUnit(b)
         else {
           val (newFd, rest) = if(fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType), fd.defType).setPos(fd)
-            freshFunDef.addAnnotation(fd.annotations.toSeq:_*)
+            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType)).setPos(fd)
+            freshFunDef.copyContentFrom(fd)
             fun2FreshFun += (fd -> freshFunDef)
             freshFunDef.fullBody = removeUnit(fd.fullBody)
             val restRec = removeUnit(b)

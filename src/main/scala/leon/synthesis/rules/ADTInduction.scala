@@ -79,7 +79,7 @@ case object ADTInduction extends Rule("ADT Induction") {
           case sols =>
             var globalPre = List[Expr]()
 
-            val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn) +: residualArgDefs, DefType.MethodDef)
+            val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, resType, ValDef(inductOn) +: residualArgDefs)
 
             val cases = for ((sol, (problem, pre, cct, ids, calls)) <- sols zip subProblemsInfo) yield {
               globalPre ::= and(pre, sol.pre)

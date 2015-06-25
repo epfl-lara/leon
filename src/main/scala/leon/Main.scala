@@ -11,7 +11,6 @@ object Main {
       frontends.scalac.ExtractionPhase,
       utils.TypingPhase,
       FileOutputPhase,
-      ScopingPhase,
       purescala.RestoreMethods,
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,

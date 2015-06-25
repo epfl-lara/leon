@@ -45,7 +45,7 @@ case object IntInduction extends Rule("Int Induction") {
                              and(LessThan(Variable(inductOn), InfiniteIntegerLiteral(0)),    lt.pre))
               val preOut = subst(inductOn -> Variable(origId), preIn)
 
-              val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, tpe, Seq(ValDef(inductOn)),DefType.MethodDef)
+              val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, tpe, Seq(ValDef(inductOn)))
               val idPost = FreshIdentifier("res", tpe)
 
               newFun.precondition = Some(preIn)

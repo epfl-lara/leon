@@ -15,9 +15,7 @@ object Definitions {
   sealed abstract class Definition extends Tree {
     
     val id: Identifier
-    
-    var origOwner : Option[Definition] = None // The definition/scope enclosing this definition
-    
+
     def subDefinitions : Seq[Definition]      // The enclosed scopes/definitions by this definition
   
     def containsDef(df: Definition): Boolean = {
@@ -65,8 +63,6 @@ object Definitions {
    * name is meaningless and we just use the package name as id. */
   case class Program(units: List[UnitDef]) extends Definition {
     val id = FreshIdentifier("program")
-
-    origOwner = None
 
     lazy val library = Library(this)
 
@@ -326,16 +322,21 @@ object Definitions {
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
   }
 
- 
-  // Definition types (see below)
-  object DefType extends Enumeration {
-    type DefType = Value
-    val MethodDef      = Value("def")
-    val StrictFieldDef = Value("val")
-    val LazyFieldDef   = Value("lazy val")
-  } 
-  import DefType._
-  
+  // A class that represents flags that annotate a FunDef with different attributes
+  class FunctionFlag
+  // Whether this FunDef was originally a (lazy) field
+  case class IsField(isLazy: Boolean) extends FunctionFlag
+  // Compiler annotations provided with @annot
+  case class Annotation(annot: String) extends FunctionFlag
+  // If this class was a method. owner is the original owner of the method
+  case class IsMethod(owner: ClassDef) extends FunctionFlag
+  // If this function represents a loop that was there before XLangElimination
+  // Contains a copy of the original looping function
+  case class IsLoop(orig: FunDef) extends FunctionFlag
+  case object IsPrivate extends FunctionFlag
+  case object IsAbstract extends FunctionFlag
+  case object IsSynthetic extends FunctionFlag
+
   /** Functions
    *  This class represents methods or fields of objects (as specified by the defType field)
    *  that appear ONLY in the class/object's body (not the constructors)
@@ -349,13 +350,9 @@ object Definitions {
     val id: Identifier,
     val tparams: Seq[TypeParameterDef],
     val returnType: TypeTree,
-    val params: Seq[ValDef],
-    val defType: DefType
+    val params: Seq[ValDef]
   ) extends Definition {
-    
-    // A copy of the original function before Xlang elimination
-    var orig : Option[FunDef] = None
-    
+
     private var fullBody_ : Expr = NoTree(returnType)
     def fullBody = fullBody_
     def fullBody_= (e : Expr) {
@@ -382,41 +379,40 @@ object Definitions {
     def subDefinitions = params ++ tparams ++ nestedFuns.toList
 
     def duplicate: FunDef = {
-      val fd = new FunDef(id.freshen, tparams, returnType, params, defType)
+      val fd = new FunDef(id.freshen, tparams, returnType, params)
       fd.copyContentFrom(this)
       fd.copiedFrom(this)
     }
     
     def copyContentFrom(from : FunDef) {
       this.fullBody  = from.fullBody 
-      this.orig    = from.orig
-      this.origOwner = from.origOwner
-      this.addAnnotation(from.annotations.toSeq : _*)
+      this.addFlag(from.flags.toSeq : _*)
     }
 
     def hasBody                     = body.isDefined
     def hasPrecondition : Boolean   = precondition.isDefined
     def hasPostcondition : Boolean  = postcondition.isDefined
 
-    /**
-     * When this functions has been annotated as a (lazy) field 
-     * and has no arguments, it can be printed/compiled as a field 
-     */
-    def canBeLazyField   = defType == LazyFieldDef    && params.isEmpty && tparams.isEmpty
-    def canBeStrictField = defType == StrictFieldDef  && params.isEmpty && tparams.isEmpty
-    def canBeField       = canBeLazyField || canBeStrictField
-    def isRealFunction   = !canBeField
+    private var flags_ : Set[FunctionFlag] = Set()
 
-    def isSynthetic = annotations contains "synthetic"
-    
-    private var annots: Set[String] = Set.empty[String]
-    def addAnnotation(as: String*) : FunDef = {
-      annots = annots ++ as
+    def addFlag(flags: FunctionFlag*) : FunDef = {
+      this.flags_ ++= flags
       this
     }
-    def annotations : Set[String] = annots
+    def flags = flags_
+    def annotations : Set[String] = flags_ collect { case Annotation(s) => s }
 
-    def isPrivate : Boolean = annots.contains("private")
+    /**
+     * When this functions has been annotated as a (lazy) field
+     * and has no arguments, it can be printed/compiled as a field
+     */
+    def canBeLazyField   = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
+    def canBeStrictField = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
+    def canBeField       = canBeLazyField || canBeStrictField
+    def isRealFunction   = !canBeField
+    def isPrivate = flags contains IsPrivate
+    def isSynthetic = flags contains IsSynthetic
+    def methodOwner = flags collectFirst { case IsMethod(cd) => cd }
 
     def typed(tps: Seq[TypeTree]) = {
       assert(tps.size == tparams.size)

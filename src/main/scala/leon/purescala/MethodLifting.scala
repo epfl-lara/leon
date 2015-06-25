@@ -41,9 +41,10 @@ object MethodLifting extends TransformationPhase {
 
         val receiver = FreshIdentifier("this", recType).setPos(cd.id)
 
-        val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams, fd.defType)
+        val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams)
         nfd.copyContentFrom(fd)
         nfd.setPos(fd)
+        nfd.addFlag(IsMethod(cd))
         nfd.fullBody = postMap{
           case This(ct) if ct.classDef == cd => Some(receiver.toVariable)
           case _ => None

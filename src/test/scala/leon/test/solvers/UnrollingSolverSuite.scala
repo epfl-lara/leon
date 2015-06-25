@@ -15,7 +15,7 @@ class UnrollingSolverSuite extends LeonTestSuite {
 
   private val fx   : Identifier = FreshIdentifier("x", IntegerType)
   private val fres : Identifier = FreshIdentifier("res", IntegerType)
-  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, IntegerType, ValDef(fx) :: Nil, DefType.MethodDef)
+  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, IntegerType, ValDef(fx) :: Nil)
   fDef.body = Some(IfExpr(GreaterThan(Variable(fx), InfiniteIntegerLiteral(0)),
     Plus(Variable(fx), FunctionInvocation(fDef.typed, Seq(Minus(Variable(fx), InfiniteIntegerLiteral(1))))),
     InfiniteIntegerLiteral(1)

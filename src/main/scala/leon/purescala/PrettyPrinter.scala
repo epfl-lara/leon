@@ -522,8 +522,11 @@ class PrettyPrinter(opts: PrinterOptions,
               |"""
         }
 
-        if (fd.canBeField) {
-          p"""|${fd.defType} ${fd.id} : ${fd.returnType} = {
+        if (fd.canBeStrictField) {
+          p"""|val ${fd.id} : ${fd.returnType} = {
+              |"""
+        } else if (fd.canBeLazyField) {
+          p"""|lazy val ${fd.id} : ${fd.returnType} = {
               |"""
         } else if (fd.tparams.nonEmpty) {
           p"""|def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): ${fd.returnType} = {
@@ -572,23 +575,20 @@ class PrettyPrinter(opts: PrinterOptions,
 
   object FcallMethodInvocation {
     def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, String, Seq[TypeTree], Seq[Expr])] = {
-        val FunctionInvocation(tfd, args) = fi
-        tfd.fd.origOwner match {
-          case Some(cd: ClassDef) =>
-            val (rec, rargs) = (args.head, args.tail)
+      val FunctionInvocation(tfd, args) = fi
+      tfd.fd.methodOwner.map { cd =>
+        val (rec, rargs) = (args.head, args.tail)
 
-            val fid = tfd.fd.id
+        val fid = tfd.fd.id
 
-            val fname = fid.name
+        val fname = fid.name
 
-            val decoded = scala.reflect.NameTransformer.decode(fname)
+        val decoded = scala.reflect.NameTransformer.decode(fname)
 
-            val realtps = tfd.tps.drop(cd.tparams.size)
+        val realtps = tfd.tps.drop(cd.tparams.size)
 
-            Some((rec, tfd.fd, decoded, realtps, rargs))
-          case _ =>
-            None
-        }
+        (rec, tfd.fd, decoded, realtps, rargs)
+      }
     }
   }
 

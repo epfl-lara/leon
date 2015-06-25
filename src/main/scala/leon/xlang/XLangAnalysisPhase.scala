@@ -29,20 +29,13 @@ object XLangAnalysisPhase extends LeonPhase[Program, VerificationReport] {
       PrintTreePhase("Program after xlang transformations").run(ctx)(pgm2)
     }
 
-
-    def functionWasLoop(fd: FunDef): Boolean = fd.orig match {
+    def functionWasLoop(fd: FunDef): Boolean = fd.flags.collectFirst{ case IsLoop(fd) => fd } match {
       case Some(nested) => // could have been a LetDef originally
         wasLoop.contains(nested)
       case _ => false //meaning, this was a top level function
     }
 
-    var subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
-    //pgm2.definedFunctions.foreach { fd => fd.owner match {
-    //  case Some(p : FunDef) =>
-    //    subFunctionsOf += p -> (subFunctionsOf(p) + fd)
-    //  case _ =>
-    //}}
-
+    val subFunctionsOf = Map[FunDef, Set[FunDef]]().withDefaultValue(Set())
 
     val newOptions = ctx.options map {
       case LeonOption(SharedOptions.optFunctions, fs) => {

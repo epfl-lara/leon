@@ -9,10 +9,11 @@ import scala.language.implicitConversions
 
 import purescala._
 import purescala.Definitions.{
-  ClassDef  => LeonClassDef, 
-  ModuleDef => LeonModuleDef, 
-  ValDef    => LeonValDef, 
-  Import    => LeonImport,
+  ClassDef    => LeonClassDef,
+  ModuleDef   => LeonModuleDef,
+  ValDef      => LeonValDef,
+  Import      => LeonImport,
+  Annotation  => LeonAnnotation,
   _
 }
 
@@ -287,7 +288,7 @@ trait CodeExtraction extends ASTExtractors {
             // Default value functions
             case ExDefaultValueFunction(sym, _, _, _ ,_ , _, _) =>
               val fd = defineFunDef(sym)(DefContext())
-              fd.addAnnotation("synthetic")
+              fd.addFlag(IsSynthetic)
 
               Some(fd)
 
@@ -578,7 +579,7 @@ trait CodeExtraction extends ASTExtractors {
         // Default values for parameters
         case t@ ExDefaultValueFunction(fsym, _, _, _, owner, index, _) =>
           val fd = defineFunDef(fsym)(defCtx)
-          fd.addAnnotation("synthetic")
+          fd.addFlag(IsSynthetic)
 
           isMethod += fsym
           methodToClass += fd -> cd
@@ -644,11 +645,11 @@ trait CodeExtraction extends ASTExtractors {
 
       val name = sym.name.toString
 
-      val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), tparamsDef, returnType, newParams, DefType.MethodDef)
+      val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), tparamsDef, returnType, newParams)
 
       fd.setPos(sym.pos)
 
-      fd.addAnnotation(annotationsOf(sym).toSeq : _*)
+      fd.addFlag(annotationsOf(sym).toSeq.map(LeonAnnotation) : _*)
 
       defsToDefs += sym -> fd
 
@@ -663,13 +664,12 @@ trait CodeExtraction extends ASTExtractors {
 
       val name = sym.name.toString
 
-      val fieldType = if (isLazy) DefType.LazyFieldDef else DefType.StrictFieldDef
-
-      val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), Seq(), returnType, Seq(), fieldType)
+      val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), Seq(), returnType, Seq())
 
       fd.setPos(sym.pos)
+      fd.addFlag(IsField(isLazy))
 
-      fd.addAnnotation(annotationsOf(sym).toSeq : _*)
+      fd.addFlag(annotationsOf(sym).toSeq.map(LeonAnnotation) : _*)
 
       defsToDefs += sym -> fd
 
@@ -768,7 +768,7 @@ trait CodeExtraction extends ASTExtractors {
 
       // If this is a lazy field definition, drop the assignment/ accessing
       val body = 
-        if (funDef.defType == DefType.LazyFieldDef) { body0 match {
+        if (funDef.flags.contains(IsField(true))) { body0 match {
           case Block(List(Assign(_, realBody)),_ ) => realBody
           case _ => outOfSubsetError(body0, "Wrong form of lazy accessor")
         }} else body0
@@ -799,7 +799,7 @@ trait CodeExtraction extends ASTExtractors {
             reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully unavailable to Leon.")
           }
 
-          funDef.addAnnotation("abstract")
+          funDef.addFlag(IsAbstract)
           NoTree(funDef.returnType)
       }
 
@@ -1062,7 +1062,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
 
-          fd.addAnnotation(annotationsOf(d.symbol).toSeq : _*)
+          fd.addFlag(annotationsOf(d.symbol).toSeq.map(LeonAnnotation) : _*)
 
           val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap)
 
