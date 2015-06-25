@@ -70,7 +70,10 @@ object TreeNormalizations {
   //multiply two sums together and distribute in a larger sum
   //do not keep the evaluation order
   def multiply(es1: Seq[Expr], es2: Seq[Expr]): Seq[Expr] = {
-    es1.flatMap(e1 => es2.map(e2 => Times(e1, e2)))
+    for {
+      e1 <- es1
+      e2 <- es2
+    } yield Times(e1,e2)
   }
 
   //expand the expr in a sum of "atoms", each atom being a product of literal and variable

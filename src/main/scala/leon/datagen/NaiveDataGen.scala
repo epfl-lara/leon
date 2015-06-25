@@ -63,14 +63,10 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         val sortedConss = conss sortBy { _.fields.count{ _.getType.isInstanceOf[ClassType]}}
 
         // The stream for leafs...
-        val leafsStream = leafs.toStream.flatMap { cct =>
-          generate(cct)
-        }
+        val leafsStream = leafs.toStream.flatMap(generate)
 
         // ...to which we append the streams for constructors.
-        leafsStream.append(interleave(sortedConss.map { cct =>
-          generate(cct)
-        }))
+        leafsStream.append(interleave(sortedConss.map(generate)))
 
       case cct : CaseClassType =>
         if(cct.fields.isEmpty) {

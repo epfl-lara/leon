@@ -48,14 +48,13 @@ trait CodeExtraction extends ASTExtractors {
   def annotationsOf(s: Symbol): Set[String] = {
     val actualSymbol = s.accessedOrSelf
 
-    (for(a <- actualSymbol.annotations ++ actualSymbol.owner.annotations) yield {
-      val name = a.atp.safeToString.replaceAll("\\.package\\.", ".")
-      if (name startsWith "leon.annotation.") {
-        Some(name.split("\\.", 3)(2))
-      } else {
-        None
-      }
-    }).flatten.toSet
+    (for {
+      a <- actualSymbol.annotations ++ actualSymbol.owner.annotations
+      name = a.atp.safeToString.replaceAll("\\.package\\.", ".")
+      if (name startsWith "leon.annotation.")
+    } yield {
+      name.split("\\.", 3)(2)
+    }).toSet
   }
 
   implicit def scalaPosToLeonPos(p: global.Position): LeonPosition = {

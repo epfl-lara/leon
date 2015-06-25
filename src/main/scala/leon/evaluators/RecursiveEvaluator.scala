@@ -623,19 +623,15 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     caze match {
       case SimpleCase(p, rhs) =>
-        matchesPattern(p, scrut).map( r =>
+        matchesPattern(p, scrut).map(r =>
           (caze, r)
         )
 
       case GuardedCase(p, g, rhs) =>
-        matchesPattern(p, scrut).flatMap( r =>
-          e(g)(rctx.withNewVars(r), gctx) match {
-            case BooleanLiteral(true) =>
-              Some((caze, r))
-            case _ =>
-              None
-          }
-        )
+        for {
+          r <- matchesPattern(p, scrut)
+          BooleanLiteral(true) = e(g)(rctx.withNewVars(r), gctx)
+        } yield (caze, r)
     }
   }
 
