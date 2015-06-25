@@ -51,7 +51,7 @@ object Definitions {
     val getType = tpe getOrElse id.getType
 
     var defaultValue : Option[FunDef] = None
-      
+
     def subDefinitions = Seq()
 
     // Warning: the variable will not have the same type as the ValDef, but 
@@ -329,26 +329,26 @@ object Definitions {
   class FunctionFlag
   // Whether this FunDef was originally a (lazy) field
   case class IsField(isLazy: Boolean) extends FunctionFlag
-  // Compiler annotations provided with @annot
+  // Compiler annotations given in the source code as @annot
   case class Annotation(annot: String) extends FunctionFlag
   // If this class was a method. owner is the original owner of the method
   case class IsMethod(owner: ClassDef) extends FunctionFlag
   // If this function represents a loop that was there before XLangElimination
   // Contains a copy of the original looping function
   case class IsLoop(orig: FunDef) extends FunctionFlag
-  case object IsPrivate extends FunctionFlag
+  // If extraction fails of the function's body fais, it is marked as abstract
   case object IsAbstract extends FunctionFlag
+  // Currently, the only synthetic functions are those that calculate default values of parameters
   case object IsSynthetic extends FunctionFlag
 
   /** Functions
-   *  This class represents methods or fields of objects (as specified by the defType field)
-   *  that appear ONLY in the class/object's body (not the constructors)
-   *  All of these are treated as functions for verification.
-   *  Under circumstances (see canBeField and canBeLazyField methods) 
-   *  they can be differentiated when it comes to code generation/pretty printing.
-   *  
-   *  Default type is DefDef (method)
-   */
+    *  This class represents methods or fields of objects. By "fields" we mean
+    *  fields defined in the body, not the constructor arguments of a case class.
+    *  When it comes to verification, all are treated the same (as functions).
+    *  They are only differentiated when it comes to code generation/ pretty printing.
+    *  By default, the FunDef represents a function/method, unless otherwise specified
+    *  by its flags.
+    */
   class FunDef(
     val id: Identifier,
     val tparams: Seq[TypeParameterDef],
@@ -356,6 +356,8 @@ object Definitions {
     val params: Seq[ValDef]
   ) extends Definition {
 
+    /* Body manipulation */
+    
     private var fullBody_ : Expr = NoTree(returnType)
     def fullBody = fullBody_
     def fullBody_= (e : Expr) {
@@ -377,10 +379,18 @@ object Definitions {
       fullBody = withPostcondition(fullBody, op) 
     }
 
-    def nestedFuns = directlyNestedFunDefs(fullBody)
+    def hasBody                     = body.isDefined
+    def hasPrecondition : Boolean   = precondition.isDefined
+    def hasPostcondition : Boolean  = postcondition.isDefined
+
+    def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
     
+    /* Nested definitions */
+    def nestedFuns = directlyNestedFunDefs(fullBody)
     def subDefinitions = params ++ tparams ++ nestedFuns.toList
 
+    /* Duplication */
+    
     def duplicate: FunDef = {
       val fd = new FunDef(id.freshen, tparams, returnType, params)
       fd.copyContentFrom(this)
@@ -392,54 +402,36 @@ object Definitions {
       this.addFlag(from.flags.toSeq : _*)
     }
 
-    def hasBody                     = body.isDefined
-    def hasPrecondition : Boolean   = precondition.isDefined
-    def hasPostcondition : Boolean  = postcondition.isDefined
+    /* Flags */
 
     private var flags_ : Set[FunctionFlag] = Set()
-
-    def addFlag(flags: FunctionFlag*) : FunDef = {
+    
+    def addFlag(flags: FunctionFlag*): FunDef = {
       this.flags_ ++= flags
       this
     }
+    
     def flags = flags_
-    def annotations : Set[String] = flags_ collect { case Annotation(s) => s }
+    
+    def annotations: Set[String] = flags_ collect { case Annotation(s) => s }
+    def canBeLazyField    = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
+    def canBeStrictField  = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
+    def canBeField        = canBeLazyField || canBeStrictField
+    def isRealFunction    = !canBeField
+    def isSynthetic       = flags contains IsSynthetic
+    def methodOwner       = flags collectFirst { case IsMethod(cd) => cd }
 
-    /**
-     * When this functions has been annotated as a (lazy) field
-     * and has no arguments, it can be printed/compiled as a field
-     */
-    def canBeLazyField   = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
-    def canBeStrictField = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
-    def canBeField       = canBeLazyField || canBeStrictField
-    def isRealFunction   = !canBeField
-    def isPrivate = flags contains IsPrivate
-    def isSynthetic = flags contains IsSynthetic
-    def methodOwner = flags collectFirst { case IsMethod(cd) => cd }
-
+    /* Wrapping in TypedFunDef */
+    
     def typed(tps: Seq[TypeTree]) = {
       assert(tps.size == tparams.size)
       TypedFunDef(this, tps)
     }
 
     def typed = {
-      assert(tparams.isEmpty)
-      TypedFunDef(this, Nil)
-    }
-
-    def typedWithDef = {
       TypedFunDef(this, tparams.map(_.tp))
     }
-
-    def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
-
-    // Deprecated, old API
-    @deprecated("Use .body instead", "2.3")
-    def implementation : Option[Expr] = body
-
-    @deprecated("Use .hasBody instead", "2.3")
-    def hasImplementation : Boolean = hasBody
-
+    
   }
 
 

@@ -41,7 +41,7 @@ object EvaluationPhase extends LeonPhase[Program, Unit] {
 
     for (fd <- toEvaluate) {
       reporter.info(s" - Evaluating ${fd.id}")
-      val call = FunctionInvocation(fd.typedWithDef, Seq())
+      val call = FunctionInvocation(fd.typed, Seq())
       eval.eval(call) match {
         case EvaluationResults.Successful(ex) =>
           reporter.info(s"  => $ex")

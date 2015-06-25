@@ -32,7 +32,7 @@ object ChooseInfo {
   def extractFromFunction(prog: Program, fd: FunDef): Seq[ChooseInfo] = {
 
     val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
-    val term = Terminating(fd.typedWithDef, fd.params.map(_.id.toVariable))
+    val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
       ChooseInfo(fd, and(path, term), ch, ch)
