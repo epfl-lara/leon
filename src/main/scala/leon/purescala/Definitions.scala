@@ -59,8 +59,7 @@ object Definitions {
     def toVariable : Variable = Variable(id)
   }
 
-  /** A wrapper for a program. For now a program is simply a single object. The
-   * name is meaningless and we just use the package name as id. */
+  /** A wrapper for a program. For now a program is simply a single object. */
   case class Program(units: List[UnitDef]) extends Definition {
     val id = FreshIdentifier("program")
 
@@ -481,43 +480,19 @@ object Definitions {
     lazy val returnType: TypeTree = translated(fd.returnType)
 
     private var trCache = Map[Expr, Expr]()
-    private var postCache = Map[Expr, Expr]()
 
-    def fullBody = {
-      val fb = fd.fullBody
-      trCache.getOrElse(fb, {
-        val res = translated(fb)
-        trCache += fb -> res
+    private def cached(e: Expr): Expr = {
+      trCache.getOrElse(e, {
+        val res = translated(e)
+        trCache += e -> res
         res
       })
     }
 
-    def body = fd.body.map { b =>
-      trCache.getOrElse(b, {
-        val res = translated(b)
-        trCache += b -> res
-        res
-      })
-    }
-
-    def precondition = fd.precondition.map { pre =>
-      trCache.getOrElse(pre, {
-        val res = translated(pre)
-        trCache += pre -> res
-        res
-      })
-    }
-
-    def postcondition = fd.postcondition.map {
-      case post if typesMap.nonEmpty =>
-        postCache.getOrElse(post, {
-          val res = instantiateType(post, typesMap, paramsMap)
-          postCache += (post -> res)
-          res
-        })
-
-      case p => p
-    }
+    def fullBody      = cached(fd.fullBody)
+    def body          = fd.body map cached
+    def precondition  = fd.precondition map cached
+    def postcondition = fd.postcondition map cached
 
     def hasImplementation = body.isDefined
     def hasBody           = hasImplementation
