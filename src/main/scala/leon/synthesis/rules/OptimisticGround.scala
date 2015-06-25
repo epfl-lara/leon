@@ -30,14 +30,15 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
 
           while (result.isEmpty && i < maxTries && continue) {
             val phi = andJoin(p.pc +: p.phi +: predicates)
+            val notPhi = andJoin(p.pc +: not(p.phi) +: predicates)
             //println("SOLVING " + phi + " ...")
             solver.solveSAT(phi) match {
               case (Some(true), satModel) =>
 
-                val newPhi = valuateWithModelIn(phi, xss, satModel)
+                val newNotPhi = valuateWithModelIn(notPhi, xss, satModel)
 
-                //println("REFUTING " + Not(newPhi) + "...")
-                solver.solveSAT(Not(newPhi)) match {
+                //println("REFUTING " + Not(newNotPhi) + "...")
+                solver.solveSAT(newNotPhi) match {
                   case (Some(true), invalidModel) =>
                     // Found as such as the xs break, refine predicates
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
