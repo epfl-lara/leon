@@ -8,7 +8,7 @@ import scala.reflect.internal.util._
 import scala.language.implicitConversions
 
 import purescala._
-import purescala.Definitions.{
+import Definitions.{
   ClassDef    => LeonClassDef,
   ModuleDef   => LeonModuleDef,
   ValDef      => LeonValDef,
@@ -17,18 +17,22 @@ import purescala.Definitions.{
   _
 }
 
-import purescala.Expressions.{Expr => LeonExpr, This => LeonThis, _}
-import purescala.Types.{TypeTree => LeonType, _}
-import purescala.Common._
-import purescala.Extractors._
-import purescala.Constructors._
-import purescala.ExprOps._
-import purescala.TypeOps._
-import purescala.DefOps.packageOf
+import Expressions.{Expr => LeonExpr, This => LeonThis, _}
+import Types.{TypeTree => LeonType, _}
+import Common._
+import Extractors._
+import Constructors._
+import ExprOps._
+import TypeOps._
 import xlang.Expressions.{Block => LeonBlock, _}
 import xlang.ExprOps._
 
-import utils.{DefinedPosition, Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition}
+import utils.{
+  DefinedPosition,
+  Position       => LeonPosition,
+  OffsetPosition => LeonOffsetPosition,
+  RangePosition  => LeonRangePosition
+}
 
 trait CodeExtraction extends ASTExtractors {
   self: LeonExtraction =>
@@ -254,23 +258,23 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def createLeonUnit(u: ScalaUnit): UnitDef = {
-      val ScalaUnit(name, pack, imports, defs, isPrintable) = u
+      val ScalaUnit(name, pack, _, defs, isPrintable) = u
 
-      val leonDefs = defs flatMap { t => t match {
+      val leonDefs = defs flatMap {
         case t if isIgnored(t.symbol) =>
           // ignore
           None
 
-        case ExAbstractClass(o2, sym, _) =>
+        case t@ExAbstractClass(o2, sym, _) =>
           Some(getClassDef(sym, t.pos))
 
-        case ExCaseClass(o2, sym, args, _) =>
+        case t@ExCaseClass(o2, sym, args, _) =>
           Some(getClassDef(sym, t.pos))
 
-        case ExObjectDef(n, templ) =>
+        case t@ExObjectDef(n, templ) =>
           // Module
           val id = FreshIdentifier(n)
-          val leonDefs = templ.body.flatMap { t => t match {
+          val leonDefs = templ.body.flatMap {
             case t if isIgnored(t.symbol) =>
               // ignore
               None
@@ -308,7 +312,7 @@ trait CodeExtraction extends ASTExtractors {
             case tree =>
               println(tree)
               outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
-          }}
+          }
 
           Some(LeonModuleDef(id, leonDefs, id.name == "package"))
 
@@ -318,7 +322,7 @@ trait CodeExtraction extends ASTExtractors {
         case tree =>
           println(tree)
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
-      }}
+      }
 
       // we only resolve imports once we have the full program
       UnitDef(FreshIdentifier(name), pack, Nil, leonDefs, isPrintable)
@@ -1786,8 +1790,6 @@ trait CodeExtraction extends ASTExtractors {
       case _ =>
         outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
     }
-
-    private var unknownsToTP        = Map[Symbol, TypeParameter]()
 
     private def getClassType(sym: Symbol, tps: List[LeonType])(implicit dctx: DefContext) = {
       if (seenClasses contains sym) {
