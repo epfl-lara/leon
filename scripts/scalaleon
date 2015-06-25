@@ -1,7 +1,7 @@
 #!/bin/bash --posix
 # Assumes:
 #  - ${SCALA_JVM} is on the path
-OUT_CLASSES_DIR="./out-classes"
+OUT_CLASSES_DIR="../out-classes" # assume we run from scripts directory
 SCALA_RUN="scala"
 if [[ -d ${OUT_CLASSES_DIR} ]] 
 then
