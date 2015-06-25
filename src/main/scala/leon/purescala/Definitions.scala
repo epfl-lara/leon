@@ -108,39 +108,34 @@ object Definitions {
 
   abstract class Import extends Definition {
     def subDefinitions = Nil
-
-    def importedDefs(implicit pgm: Program) = this match {
-      case PackageImport(pack) =>
-        for {
-          u <- DefOps.unitsInPackage(pgm, pack)
-          d <- u.subDefinitions
-          ret <- d match {
-            case m: ModuleDef if m.isPackageObject =>
-              m.subDefinitions
-            case other =>
-              Seq(other)
-          }
-        } yield ret
-
-      case SingleImport(imported) =>
-        List(imported)
-
-      case WildcardImport(imported) =>
-        imported.subDefinitions
-    }
+    def importedDefs(implicit pgm: Program): Seq[Definition]
   }
 
   // import pack._
   case class PackageImport(pack : PackageRef) extends Import {
     val id = FreshIdentifier("import " + (pack mkString "."))
+    def importedDefs(implicit pgm: Program): Seq[Definition] = for {
+      u <- DefOps.unitsInPackage(pgm, pack)
+      d <- u.subDefinitions
+      ret <- d match {
+        case m: ModuleDef if m.isPackageObject =>
+          m.subDefinitions
+        case other =>
+          Seq(other)
+      }
+    } yield ret
   }
   // import pack.(...).df
   case class SingleImport(df : Definition) extends Import {
     val id = FreshIdentifier(s"import ${df.id.toString}")
+    def importedDefs(implicit pgm: Program): Seq[Definition] =
+      List(df)
   }
   // import pack.(...).df._
   case class WildcardImport(df : Definition) extends Import {
     val id = FreshIdentifier(s"import ${df.id.toString}._")
+    def importedDefs(implicit pgm: Program): Seq[Definition] =
+      df.subDefinitions
   }
   
   case class UnitDef(
