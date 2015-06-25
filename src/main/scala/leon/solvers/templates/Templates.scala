@@ -124,12 +124,31 @@ object Template {
     (templates, apps)
   }
 
-  private def matchersOf[T](encodeExpr: Expr => T)(expr: Expr): Set[Matcher[T]] = collect[Matcher[T]] {
-    case Application(caller, args) => Set(Matcher(encodeExpr(caller), caller.getType, args.map(encodeExpr)))
-    case ArraySelect(arr, index) => Set(Matcher(encodeExpr(arr), arr.getType, Seq(encodeExpr(index))))
-    case MapGet(map, key) => Set(Matcher(encodeExpr(map), map.getType, Seq(encodeExpr(key))))
-    case _ => Set.empty
-  }(expr)
+  private def selectMatchInfos[T](encodeExpr: Expr => T)(expr: Expr): Set[Matcher[T]] = {
+    collect[Matcher[T]] {
+      case ArraySelect(arr, index) =>
+        Set(Matcher(encodeExpr(arr), arr.getType, Seq(encodeExpr(index))))
+      case MapGet(map, key) =>
+        Set(Matcher(encodeExpr(map), map.getType, Seq(encodeExpr(key))))
+      case _ => Set.empty
+    }(expr)
+  }
+
+  private def invocationMatcher[T](encodeExpr: Expr => T)(tfd: TypedFunDef, args: Seq[Expr]): Matcher[T] = {
+    assert(tfd.returnType.isInstanceOf[FunctionType], "invocationMatcher() is only defined on function-typed defs")
+
+    def rec(e: Expr, args: Seq[Expr]): Expr = e.getType match {
+      case FunctionType(from, to) =>
+        val (appArgs, outerArgs) = args.splitAt(from.size)
+        rec(Application(e, appArgs), outerArgs)
+      case _ if args.isEmpty => e
+      case _ => scala.sys.error("Should never happen")
+    }
+
+    val (fiArgs, appArgs) = args.splitAt(tfd.params.size)
+    val Application(caller, arguments) = rec(FunctionInvocation(tfd, fiArgs), appArgs)
+    Matcher(encodeExpr(caller), caller.getType, arguments.map(encodeExpr))
+  }
 
   def encode[T](
     encoder: TemplateEncoder[T],
@@ -155,12 +174,14 @@ object Template {
       encodeExpr(Implies(Variable(b), e))
     }).toSeq
 
-    val extractInfos : Expr => (Set[TemplateCallInfo[T]], Set[App[T]]) = functionCallInfos(encodeExpr)
-    val extractMatchers: Expr => Set[Matcher[T]] = matchersOf(encodeExpr)
+    val extractInfos    : Expr => (Set[TemplateCallInfo[T]], Set[App[T]]) = functionCallInfos(encodeExpr)
+    val extractMatchers : Expr => Set[Matcher[T]]                         = selectMatchInfos(encodeExpr)
 
     val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
     val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
-    val optIdMatch = optIdApp.map { case App(caller, tpe, args) => Matcher(caller, tpe, args) }
+
+    val invocMatcher = optCall.filter(_.returnType.isInstanceOf[FunctionType])
+      .map(tfd => invocationMatcher(encodeExpr)(tfd, arguments.map(_._1.toVariable)))
 
     val (blockers, applications, matchers) = {
       var blockers : Map[Identifier, Set[TemplateCallInfo[T]]] = Map.empty
@@ -185,7 +206,14 @@ object Template {
         val apps = appInfos -- optIdApp
         if (apps.nonEmpty) applications += b -> apps
 
-        val matchs = matchInfos -- optIdMatch
+        val matchs = matchInfos ++
+          apps.map(app => Matcher(app.caller, app.tpe, app.args)) ++
+          funInfos.flatMap {
+            case info @ TemplateCallInfo(tfd, args) if Some(info) == optIdCall =>
+              invocMatcher
+            case _ => None
+          }
+
         if (matchs.nonEmpty) matchers += b -> matchs
       }
 
@@ -208,8 +236,11 @@ object Template {
       " * Application-blocks :" + (if (applications.isEmpty) "\n" else {
         "\n   " + applications.map(p => p._1 + " ==> " + p._2).mkString("\n   ") + "\n"
       }) + 
+      " * Matchers           :" + (if (matchers.isEmpty) "\n" else {
+        "\n   " + matchers.map(p => p._1 + " ==> " + p._2).mkString("\n   ") + "\n"
+      }) +
       " * Lambdas            :\n" + lambdas.map { case (_, template) =>
-        " +> " + template.toString.split("\n").mkString("\n    ")
+        " +> " + template.toString.split("\n").mkString("\n    ") + "\n"
       }.mkString("\n")
     }
 
