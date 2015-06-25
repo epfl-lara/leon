@@ -111,8 +111,16 @@ object Definitions {
 
     def importedDefs(implicit pgm: Program) = this match {
       case PackageImport(pack) =>
-        // Ignore standalone modules, assume there are extra imports for them
-        DefOps.unitsInPackage(pgm, pack)
+        for {
+          u <- DefOps.unitsInPackage(pgm, pack)
+          d <- u.subDefinitions
+          ret <- d match {
+            case m: ModuleDef if m.isPackageObject =>
+              m.subDefinitions
+            case other =>
+              Seq(other)
+          }
+        } yield ret
 
       case SingleImport(imported) =>
         List(imported)
