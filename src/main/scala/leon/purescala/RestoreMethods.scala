@@ -6,10 +6,9 @@ package purescala
 import Definitions._
 import Common._
 import Expressions._
-import ExprOps.{replaceFromIDs,functionCallsOf}
+import ExprOps.replaceFromIDs
 import DefOps.replaceFunDefs
 import Types._
-import utils.GraphOps._
 
 object RestoreMethods extends TransformationPhase {
 
@@ -19,9 +18,9 @@ object RestoreMethods extends TransformationPhase {
   // @TODO: This code probably needs fixing, but is mostly unused and completely untested.
   def apply(ctx: LeonContext, p: Program) = {
 
-    val classMethods = (p.definedFunctions.groupBy(_.origOwner).collect {
+    val classMethods = p.definedFunctions.groupBy(_.origOwner).collect {
       case (Some(cd: ClassDef), fds) => cd -> fds
-    }).toMap
+    }
 
     val fdToMd = for( (cd, fds) <- classMethods; fd <- fds) yield {
       val md = new FunDef(

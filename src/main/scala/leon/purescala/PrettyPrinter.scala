@@ -487,7 +487,7 @@ class PrettyPrinter(opts: PrinterOptions,
               |}"""
         }
 
-      case ccd @ CaseClassDef(id, tparams, parent, isObj) =>
+      case ccd @ CaseClassDef(id, tparams, fields, parent, isObj) =>
         if (isObj) {
           p"case object $id"
         } else {
@@ -499,7 +499,7 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
         if (!isObj) {
-          p"(${ccd.fields})"
+          p"($fields)"
         }
 
         parent.foreach{ par =>

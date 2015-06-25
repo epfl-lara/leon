@@ -22,7 +22,7 @@ object DefOps {
     case other => pgm.units.find(_.containsDef(df))
   }
 
-  private def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] ={
+  private def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] = {
     def rec(from: Definition): List[Definition] = {
       from :: (if (from == df) {
         Nil
@@ -234,22 +234,22 @@ object DefOps {
             searchWithin(names, p)
 
           case u: UnitDef =>
-              val imports = u.imports.map {
-                case PackageImport(ls) => ImportPath(ls, true)
-                case SingleImport(d) => ImportPath(nameToParts(fullName(d)), false)
-                case WildcardImport(d) => ImportPath(nameToParts(fullName(d)), true)
-              }.toList
+            val imports = u.imports.map {
+              case PackageImport(ls) => ImportPath(ls, true)
+              case SingleImport(d) => ImportPath(nameToParts(fullName(d)), false)
+              case WildcardImport(d) => ImportPath(nameToParts(fullName(d)), true)
+            }.toList
 
-              val inModules = d.subDefinitions.filter(_.id.name == n).flatMap { sd =>
-                searchWithin(ns, sd)
-              }
+            val inModules = d.subDefinitions.filter(_.id.name == n).flatMap { sd =>
+              searchWithin(ns, sd)
+            }
 
-              val namesImported = resolveImports(imports, names)
-              val nameWithPackage = u.pack ++ names
+            val namesImported = resolveImports(imports, names)
+            val nameWithPackage = u.pack ++ names
 
-              val allNames = namesImported :+ nameWithPackage
+            val allNames = namesImported :+ nameWithPackage
 
-              allNames.foldLeft(inModules) { _ ++ searchRelative(_, ds) }
+            allNames.foldLeft(inModules) { _ ++ searchRelative(_, ds) }
 
           case d =>
             if (n == d.id.name) {
