@@ -1,4 +1,3 @@
-import leon.lang._
 import leon.lang.synthesis._
 import leon.annotation._
 object Max {
@@ -42,7 +41,8 @@ object Max {
     max(x,y) == max(y,x) &&
     max(x,max(y,z)) == max(max(x,y), z) &&
     max(x,y) + z == max(x + z, y + z)
-  } holds
+  } ensuring(_ == true)
+  // holds
 */
 
 /*
@@ -53,5 +53,11 @@ object Max {
     else y
   } ensuring (res =>
     x <= res && y <= res && (res == x || res == y))
+*/
+
+/*
+  def max(x: BigInt, y: BigInt): BigInt = {
+    ???[BigInt]
+  } ensuring(res => (res == x || res == y) &&  x <= res && y <= res)
 */
 }

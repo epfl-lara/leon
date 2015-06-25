@@ -1,17 +1,9 @@
-import leon.lang._
+import leon.lang.Set
 import leon.lang.synthesis._
-import leon.annotation._
 object Sort {
   sealed abstract class List
   case object Nil extends List
   case class Cons(head: BigInt, tail: List) extends List
-
-  def size(l: List): BigInt = (l match {
-      case Nil => 0
-      case Cons(x, rest) => x + size(rest)
-  }) ensuring(res =>  res > 0)
-
-  def s1 = size(Cons(10, Cons(1000, Nil)))
 
   def content(l: List): Set[BigInt] = l match {
     case Nil => Set()
@@ -53,7 +45,6 @@ object Sort {
     }
   } ensuring {(res:List) => 
      isSorted(res) && content(res) == content(l) ++ Set(x)}
-   // size(res) == size(l) + 1
 */
 
   // We can also synthesize the body of sInsert interactively
