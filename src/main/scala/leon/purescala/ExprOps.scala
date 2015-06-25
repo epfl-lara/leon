@@ -9,7 +9,6 @@ import Definitions._
 import Expressions._
 import Extractors._
 import Constructors._
-import DefOps._
 import utils.Simplifiers
 import solvers._
 
@@ -1862,8 +1861,8 @@ object ExprOps {
           Let(i, e, apply(b, args))
         case LetTuple(is, es, b) =>
           letTuple(is, es, apply(b, args))
-        case Lambda(params, body) =>
-          replaceFromIDs((params.map(_.id) zip args).toMap, body)
+        case l@Lambda(params, body) =>
+          l.withSubstitutions(args, body)
         case _ => Application(expr, args)
       }
 

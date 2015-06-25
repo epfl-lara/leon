@@ -28,7 +28,7 @@ class RepairNDEvaluator(ctx: LeonContext, prog: Program, fd : FunDef, cond: Expr
       val evArgs = args.map(a => e(a))
 
       // build a mapping for the function...
-      val frame = rctx.newVars((tfd.params.map(_.id) zip evArgs).toMap)
+      val frame = rctx.newVars(tfd.paramSubst(evArgs))
       
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frame, gctx) match {

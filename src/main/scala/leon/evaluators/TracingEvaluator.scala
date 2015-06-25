@@ -58,7 +58,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
           val evArgs = args.map(a => e(a))
 
           // build a mapping for the function...
-          val frame = new TracingRecContext((tfd.params.map(_.id) zip evArgs).toMap, rctx.tracingFrames-1)
+          val frame = new TracingRecContext(tfd.paramSubst(evArgs), rctx.tracingFrames-1)
 
           if(tfd.hasPrecondition) {
             e(tfd.precondition.get)(frame, gctx) match {

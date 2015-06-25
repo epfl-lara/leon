@@ -9,6 +9,7 @@ import TypeOps._
 import Definitions._
 import Extractors._
 import Constructors._
+import ExprOps.replaceFromIDs
 
 /** AST definitions for Pure Scala. */
 object Expressions {
@@ -112,6 +113,13 @@ object Expressions {
 
   case class Lambda(args: Seq[ValDef], body: Expr) extends Expr {
     val getType = FunctionType(args.map(_.getType), body.getType).unveilUntyped
+    def substitutions(realArgs: Seq[Expr]) = {
+      require(realArgs.size == args.size)
+      (args map { _.id } zip realArgs).toMap
+    }
+    def withSubstitutions(realArgs: Seq[Expr], e: Expr) = {
+      replaceFromIDs(substitutions(realArgs), e)
+    }
   }
 
   case class Forall(args: Seq[ValDef], body: Expr) extends Expr {

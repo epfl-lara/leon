@@ -454,6 +454,22 @@ object Definitions {
 
     def translated(e: Expr): Expr = instantiateType(e, typesMap, paramsMap)
 
+    def paramSubst(realArgs: Seq[Expr]) = {
+      require(realArgs.size == params.size)
+      (params map { _.id } zip realArgs).toMap
+    }
+
+    def withParamSubst(realArgs: Seq[Expr], e: Expr) = {
+      replaceFromIDs(paramSubst(realArgs), e)
+    }
+
+    def applied(realArgs: Seq[Expr]): FunctionInvocation = {
+      FunctionInvocation(this, realArgs)
+    }
+
+    def applied: FunctionInvocation =
+      applied(params map { _.toVariable })
+
     /** 
      *  Params will return ValDefs instantiated with the correct types
      *  For such a ValDef(id,tp) it may hold that (id.getType != tp)  

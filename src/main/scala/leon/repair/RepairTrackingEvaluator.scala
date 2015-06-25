@@ -60,7 +60,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
       val evArgs = args.map(a => e(a))
       
       // build a mapping for the function...
-      val frameBlamingCaller = rctx.newVars((tfd.params.map(_.id) zip evArgs).toMap)
+      val frameBlamingCaller = rctx.newVars(tfd.paramSubst(evArgs))
       
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frameBlamingCaller, gctx) match {

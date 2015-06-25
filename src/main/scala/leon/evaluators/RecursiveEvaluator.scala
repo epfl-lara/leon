@@ -83,9 +83,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case Application(caller, args) =>
       e(caller) match {
-        case Lambda(params, body) =>
+        case l@Lambda(params, body) =>
           val newArgs = args.map(e)
-          val mapping = (params.map(_.id) zip newArgs).toMap
+          val mapping = l.substitutions(newArgs)
           e(body)(rctx.withNewVars(mapping), gctx)
         case f =>
           throw EvalError("Cannot apply non-lambda function " + f)
@@ -142,10 +142,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       }
       gctx.stepsLeft -= 1
 
-      val evArgs = args.map(a => e(a))
+      val evArgs = args map e
 
       // build a mapping for the function...
-      val frame = rctx.newVars((tfd.params.map(_.id) zip evArgs).toMap)
+      val frame = rctx.newVars(tfd.paramSubst(evArgs))
       
       if(tfd.hasPrecondition) {
         e(tfd.precondition.get)(frame, gctx) match {

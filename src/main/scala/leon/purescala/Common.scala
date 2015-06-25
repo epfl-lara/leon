@@ -6,7 +6,7 @@ package purescala
 import utils._
 import Expressions.Variable
 import Types._
-import Definitions.{Program, Definition}
+import Definitions.Program
 
 object Common {
 

@@ -105,7 +105,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       } {
         val term = implies(
           tfd.precondition getOrElse BooleanLiteral(true),
-          application(post, Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable})))
+          application(post, Seq(tfd.applied))
         )
         try {
           sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
