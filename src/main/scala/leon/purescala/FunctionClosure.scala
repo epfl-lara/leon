@@ -58,12 +58,11 @@ object FunctionClosure extends TransformationPhase {
       val extraValDefs: Seq[ValDef] = extraValDefFreshIds.map(ValDef(_))
       val newValDefs: Seq[ValDef] = fd.params ++ extraValDefs
       val newBindedVars: Set[Identifier] = bindedVars ++ fd.params.map(_.id)
-      val newFunId = FreshIdentifier(fd.id.uniqueName) //since we hoist this at the top level, we need to make it a unique name
+      val newFunId = FreshIdentifier(fd.id.name, alwaysShowUniqueID = true) //since we hoist this at the top level, we need to make it a unique name
 
       val newFunDef = new FunDef(newFunId, fd.tparams, fd.returnType, newValDefs).copiedFrom(fd)
       topLevelFuns += newFunDef
       newFunDef.copyContentFrom(fd) //TODO: this still has some dangerous side effects (?)
-      newFunDef.addFlag(IsLoop(fd))
 
       def introduceLets(expr: Expr, fd2FreshFd: Map[FunDef, (FunDef, Seq[Variable])]): Expr = {
         val (newExpr, _) = enclosingLets.foldLeft((expr, Map[Identifier, Identifier]()))((acc, p) => {

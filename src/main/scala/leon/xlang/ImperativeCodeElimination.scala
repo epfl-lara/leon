@@ -17,42 +17,38 @@ object ImperativeCodeElimination extends TransformationPhase {
   val name = "Imperative Code Elimination"
   val description = "Transform imperative constructs into purely functional code"
 
-  private var varInScope = Set[Identifier]()
-  private var parent: FunDef = null //the enclosing fundef
-
   def apply(ctx: LeonContext, pgm: Program): Program = {
-    varInScope = Set()
-    parent = null
-
     val allFuns = pgm.definedFunctions
     for {
       fd <- allFuns
       body <- fd.body
     } {
-      parent = fd
-      val (res, scope, _) = toFunction(body)
+      val (res, scope, _) = toFunction(body)(State(fd, Set()))
       fd.body = Some(scope(res))
     }
     pgm
+  }
+
+  case class State(parent: FunDef, varsInScope: Set[Identifier]) {
+    def withVar(i: Identifier) = copy(varsInScope = varsInScope + i)
   }
 
   //return a "scope" consisting of purely functional code that defines potentially needed 
   //new variables (val, not var) and a mapping for each modified variable (var, not val :) )
   //to their new name defined in the scope. The first returned valued is the value of the expression
   //that should be introduced as such in the returned scope (the val already refers to the new names)
-  private def toFunction(expr: Expr): (Expr, Expr => Expr, Map[Identifier, Identifier]) = {
+  private def toFunction(expr: Expr)(implicit state: State): (Expr, Expr => Expr, Map[Identifier, Identifier]) = {
+    import state._
     val res = expr match {
       case LetVar(id, e, b) => {
         val newId = id.freshen
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
-        varInScope += id
-        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        varInScope -= id
+        val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withVar(id))
         val scope = (body: Expr) => rhsScope(Let(newId, rhsVal, replaceNames(rhsFun + (id -> newId), bodyScope(body))).copiedFrom(expr))
         (bodyRes, scope, (rhsFun + (id -> newId)) ++ bodyFun)
       }
       case Assignment(id, e) => {
-        assert(varInScope.contains(id))
+        assert(varsInScope.contains(id))
         val newId = id.freshen
         val (rhsVal, rhsScope, rhsFun) = toFunction(e)
         val scope = (body: Expr) => rhsScope(Let(newId, rhsVal, body).copiedFrom(expr))
@@ -66,7 +62,7 @@ object ImperativeCodeElimination extends TransformationPhase {
 
         val iteRType = leastUpperBound(tRes.getType, eRes.getType).get
 
-        val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varInScope).toSeq
+        val modifiedVars: Seq[Identifier] = (tFun.keys ++ eFun.keys).toSet.intersect(varsInScope).toSeq
         val resId = FreshIdentifier("res", iteRType)
         val freshIds = modifiedVars.map( { _.freshen })
         val iteType = tupleTypeWrap(resId.getType +: freshIds.map(_.getType))
@@ -102,7 +98,7 @@ object ImperativeCodeElimination extends TransformationPhase {
         val (csesRes, csesScope, csesFun) = csesRhs.map(toFunction).unzip3
         val (scrutRes, scrutScope, scrutFun) = toFunction(scrut)
 
-        val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).intersect(varInScope).toSeq
+        val modifiedVars: Seq[Identifier] = csesFun.toSet.flatMap((m: Map[Identifier, Identifier]) => m.keys).intersect(varsInScope).toSeq
         val resId = FreshIdentifier("res", m.getType)
         val freshIds = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
         val matchType = tupleTypeWrap(resId.getType +: freshIds.map(_.getType))
@@ -141,7 +137,7 @@ object ImperativeCodeElimination extends TransformationPhase {
         val (_, bodyScope, bodyFun) = toFunction(body)
         val condBodyFun = condFun ++ bodyFun
 
-        val modifiedVars: Seq[Identifier] = condBodyFun.keys.toSet.intersect(varInScope).toSeq
+        val modifiedVars: Seq[Identifier] = condBodyFun.keys.toSet.intersect(varsInScope).toSeq
 
         if(modifiedVars.isEmpty)
           (UnitLiteral(), (b: Expr) => b, Map())
@@ -150,7 +146,7 @@ object ImperativeCodeElimination extends TransformationPhase {
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
           val whileFunValDefs = whileFunVars.map(ValDef(_))
           val whileFunReturnType = tupleTypeWrap(whileFunVars.map(_.getType))
-          val whileFunDef = new FunDef(FreshIdentifier(parent.id.name), Nil, whileFunReturnType, whileFunValDefs).setPos(wh)
+          val whileFunDef = new FunDef(parent.id.freshen, Nil, whileFunReturnType, whileFunValDefs).setPos(wh)
           whileFunDef.addFlag(IsLoop(parent))
           
           val whileFunCond = condScope(condRes)

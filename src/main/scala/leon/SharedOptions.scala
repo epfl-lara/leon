@@ -18,6 +18,8 @@ object SharedOptions extends LeonComponent {
 
   val optStrictPhases = LeonFlagOptionDef("strict", "Terminate after each phase if there is an error", true)
 
+  val optXLang = LeonFlagOptionDef("xlang", "Support for extra program constructs (imperative,...)", false)
+
   val optWatch = LeonFlagOptionDef("watch", "Rerun pipeline when file changes", false)
   
   val optFunctions = new LeonOptionDef[Seq[String]] {
@@ -69,6 +71,7 @@ object SharedOptions extends LeonComponent {
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
     optStrictPhases,
+    optXLang,
     optFunctions,
     optSelectedSolvers,
     optDebug,

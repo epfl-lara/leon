@@ -10,17 +10,11 @@ import purescala.ExprOps._
 object ExprOps {
   
   def isXLang(expr: Expr): Boolean = exists {
-    case Block(_, _) | Assignment(_, _) |
-         While(_, _) | Epsilon(_, _) |
-         EpsilonVariable(_, _) |
-         LetVar(_, _, _) | Waypoint(_, _, _) |
-         ArrayUpdate(_, _, _) 
-       => true
-    case _ => false
+    _.isInstanceOf[XLangExpr]
   }(expr)
 
   def containsEpsilon(e: Expr) = exists{
-    case (l: Epsilon) => true
+    case _ : Epsilon => true
     case _ => false
   }(e)
 

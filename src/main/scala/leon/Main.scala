@@ -15,8 +15,9 @@ object Main {
       xlang.ArrayTransformation,
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
-      purescala.FunctionClosure,
+      xlang.FixReportLabels,
       xlang.XLangAnalysisPhase,
+      purescala.FunctionClosure,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase,
@@ -39,16 +40,15 @@ object Main {
     val description = "Options that select the feature of Leon to be used. Default: verify"
 
     val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default)", "default", "[code|default]")
-    val optXLang       = LeonFlagOptionDef("xlang",       "Verification with support for extra program constructs (imperative,...)", false)
-    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",                   false)
-    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                               false)
-    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                                false)
-    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",                             false)
-    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                               false)
-    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                                       false)
+    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify", false)
+    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
+    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
+    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
+    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             false)
+    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optXLang, optNoop, optHelp, optEval, optVerify)
+      Set(optTermination, optRepair, optSynthesis, optNoop, optHelp, optEval, optVerify)
 
   }
 
@@ -140,7 +140,7 @@ object Main {
     import frontends.scalac.ExtractionPhase
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
-    import xlang.XLangAnalysisPhase
+    import xlang.{XLangAnalysisPhase, FixReportLabels}
     import verification.AnalysisPhase
     import repair.RepairPhase
     import evaluators.EvaluationPhase
@@ -149,7 +149,7 @@ object Main {
     val helpF        = ctx.findOptionOrDefault(optHelp)
     val noopF        = ctx.findOptionOrDefault(optNoop)
     val synthesisF   = ctx.findOptionOrDefault(optSynthesis)
-    val xlangF       = ctx.findOptionOrDefault(optXLang)
+    val xlangF       = ctx.findOptionOrDefault(SharedOptions.optXLang)
     val repairF      = ctx.findOptionOrDefault(optRepair)
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
@@ -173,7 +173,9 @@ object Main {
           ExtractionPhase andThen
           debugTrees("Program after extraction") andThen
           PreprocessingPhase andThen
-          debugTrees("Program after pre-processing")
+          debugTrees("Program after pre-processing") andThen
+          XLangAnalysisPhase andThen
+          debugTrees("Program after xlang desugaring")
         else
           ExtractionPhase andThen
           debugTrees("Program after extraction") andThen
@@ -181,15 +183,19 @@ object Main {
           debugTrees("Program after pre-processing") andThen
           xlang.NoXLangFeaturesChecking
 
+      val analysis = if (xlangF) AnalysisPhase andThen FixReportLabels else AnalysisPhase
+
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
-        else if (analysisF) Pipeline.both(FunctionClosure andThen AnalysisPhase, TerminationPhase)
+        else if (analysisF) Pipeline.both(
+          FunctionClosure andThen analysis,
+          TerminationPhase
+        )
         else if (terminationF) TerminationPhase
-        else if (xlangF) XLangAnalysisPhase
         else if (evalF) EvaluationPhase
-        else FunctionClosure andThen AnalysisPhase
+        else FunctionClosure andThen analysis
       }
 
       pipeBegin andThen

@@ -5,8 +5,8 @@ package leon.test.verification
 import leon._
 import leon.test._
 
-import leon.verification.VerificationReport
-import leon.xlang.XLangAnalysisPhase
+import leon.verification.{AnalysisPhase, VerificationReport}
+import leon.xlang.{FixReportLabels, XLangAnalysisPhase}
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
 
@@ -25,7 +25,9 @@ class XLangVerificationSuite extends LeonTestSuite {
   private def mkPipeline : Pipeline[List[String],VerificationReport] =
     ExtractionPhase     andThen
     PreprocessingPhase  andThen
-    XLangAnalysisPhase
+    XLangAnalysisPhase  andThen
+    AnalysisPhase       andThen
+    FixReportLabels
 
   private def mkTest(file : File, leonOptions : Seq[String], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath
@@ -103,7 +105,6 @@ class XLangVerificationSuite extends LeonTestSuite {
            "There should be at least one invalid verification condition.")
     assert(report.totalUnknown === 0,
            "There should not be unknown verification conditions.")
-    assert(reporter.errorCount >= report.totalInvalid)
   }
 
 }

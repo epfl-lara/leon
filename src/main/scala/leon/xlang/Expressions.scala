@@ -13,7 +13,9 @@ import utils._
 object Expressions {
   import purescala.PrinterHelpers._
 
-  case class Block(exprs: Seq[Expr], last: Expr) extends Expr with NAryExtractable with PrettyPrintable {
+  trait XLangExpr extends Expr
+
+  case class Block(exprs: Seq[Expr], last: Expr) extends XLangExpr with NAryExtractable with PrettyPrintable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))
     }
@@ -31,7 +33,7 @@ object Expressions {
     val getType = last.getType
   }
 
-  case class Assignment(varId: Identifier, expr: Expr) extends Expr with UnaryExtractable with PrettyPrintable {
+  case class Assignment(varId: Identifier, expr: Expr) extends XLangExpr with UnaryExtractable with PrettyPrintable {
     val getType = UnitType
 
     def extract: Option[(Expr, (Expr)=>Expr)] = {
@@ -43,7 +45,7 @@ object Expressions {
     }
   }
 
-  case class While(cond: Expr, body: Expr) extends Expr with NAryExtractable with PrettyPrintable {
+  case class While(cond: Expr, body: Expr) extends XLangExpr with NAryExtractable with PrettyPrintable {
     val getType = UnitType
     var invariant: Option[Expr] = None
 
@@ -72,7 +74,7 @@ object Expressions {
     }
   }
 
-  case class Epsilon(pred: Expr, tpe: TypeTree) extends Expr with UnaryExtractable with PrettyPrintable {
+  case class Epsilon(pred: Expr, tpe: TypeTree) extends XLangExpr with UnaryExtractable with PrettyPrintable {
     def extract: Option[(Expr, (Expr)=>Expr)] = {
       Some((pred, (expr: Expr) => Epsilon(expr, this.getType).setPos(this)))
     }
@@ -84,7 +86,7 @@ object Expressions {
     val getType = tpe
   }
 
-  case class EpsilonVariable(pos: Position, tpe: TypeTree) extends Expr with Terminal with PrettyPrintable {
+  case class EpsilonVariable(pos: Position, tpe: TypeTree) extends XLangExpr with Terminal with PrettyPrintable {
 
     def printWith(implicit pctx: PrinterContext) {
       p"x${pos.line}_${pos.col}"
@@ -94,7 +96,7 @@ object Expressions {
   }
 
   //same as let, buf for mutable variable declaration
-  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends Expr with BinaryExtractable with PrettyPrintable {
+  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends XLangExpr with BinaryExtractable with PrettyPrintable {
     val getType = body.getType
 
     def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
@@ -109,7 +111,7 @@ object Expressions {
     }
   }
 
-  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends Expr with UnaryExtractable with PrettyPrintable{
+  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends XLangExpr with UnaryExtractable with PrettyPrintable{
     def extract: Option[(Expr, (Expr)=>Expr)] = {
       Some((expr, (e: Expr) => Waypoint(i, e, tpe)))
     }
@@ -121,7 +123,7 @@ object Expressions {
     val getType = tpe
   }
 
-  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends Expr with NAryExtractable with PrettyPrintable {
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends XLangExpr with NAryExtractable with PrettyPrintable {
     val getType = UnitType
 
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
