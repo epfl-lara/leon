@@ -123,6 +123,10 @@ class PrettyPrinter(opts: PrinterOptions,
         } else {
           p"""|?($es)"""
         }
+
+      case Forall(args, e) =>
+        p"""\u2200${typed(args.map(_.id))}. $e"""
+
       case e @ CaseClass(cct, args) =>
         opgm.flatMap { pgm => isListLiteral(e)(pgm) } match {
           case Some((tpe, elems)) =>

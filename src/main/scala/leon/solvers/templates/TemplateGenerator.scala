@@ -161,7 +161,9 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     def requireDecomposition(e: Expr) = {
       exists{
-        case (_: FunctionInvocation) | (_: Assert) | (_: Ensuring) | (_: Choose) | (_: Application) => true
+        case (_: Choose) | (_: Forall) => true
+        case (_: Assert) | (_: Ensuring) => true
+        case (_: FunctionInvocation) | (_: Application) => true
         case _ => false
       }(e)
     }
