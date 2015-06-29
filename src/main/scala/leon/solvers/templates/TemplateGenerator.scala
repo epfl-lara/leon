@@ -171,7 +171,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           rec(pathVar, body)
 
         case e @ Ensuring(_, _) =>
-          rec(pathVar, e.toAssert) 
+          rec(pathVar, e.toAssert)
 
         case l @ Let(i, e : Lambda, b) =>
           val re = rec(pathVar, e) // guaranteed variable!

@@ -361,6 +361,9 @@ trait AbstractZ3Solver
       }
 
       case Waypoint(_, e, _) => rec(e)
+      case a @ Assert(cond, err, body) =>
+        rec(IfExpr(cond, body, Error(a.getType, err.getOrElse("Assertion failed")).setPos(a.getPos)).setPos(a.getPos))
+
       case e @ Error(tpe, _) => {
         val newAST = z3.mkFreshConst("errorValue", typeToSort(tpe))
         // Might introduce dupplicates (e), but no worries here
