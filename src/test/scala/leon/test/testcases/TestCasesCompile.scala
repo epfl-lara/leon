@@ -3,6 +3,7 @@
 package leon.test.testcases
 
 import leon._
+import org.scalatest.time.SpanSugar._
 import test.LeonTestSuite
 import java.io.File
 import org.scalatest.ParallelTestExecution
@@ -36,7 +37,7 @@ class TestCasesCompile extends LeonTestSuite {
 
   val slashes = resourceDir(baseDir).getAbsolutePath.split("/").toList.size
 
-  test("Compiling testcases") {
+  testWithTimeout("Compiling testcases", 10.minutes) {
     val all = (filesIn(baseDir+"repair/") ++
                filesIn(baseDir+"runtime/") ++
                filesIn(baseDir+"synthesis/") ++

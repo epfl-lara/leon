@@ -8,6 +8,7 @@ import leon.utils._
 
 import scala.io.Source
 import org.scalatest._
+import org.scalatest.time.Span
 import org.scalatest.concurrent._
 import org.scalatest.time.SpanSugar._
 import org.scalatest.exceptions.TestFailedException
@@ -102,13 +103,13 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
     }
   }
 
-  override def test(name: String, tags: Tag*)(body: => Unit) {
-    super.test(name, tags: _*) {
+  def testWithTimeout(name: String, timeout: Span)(body: => Unit) {
+    super.test(name) {
       val id = testIdentifier(name)
 
       val ts = now()
 
-      failAfter(5.minutes) {
+      failAfter(timeout) {
         try {
           body
         } catch {
@@ -131,6 +132,11 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
 
       storeStats(id, stats.withValue(total))
     }
+  }
+
+
+  override def test(name: String, tags: Tag*)(body: => Unit) {
+    testWithTimeout(name, 5.minutes)(body)
   }
 
   protected val all : String=>Boolean = (s : String) => true
