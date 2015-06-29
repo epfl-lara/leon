@@ -38,6 +38,18 @@ object Dices {
     )
   }
 
+  def sumMod(dice1: DiceDist, dice2: DiceDist): DiceDist = {
+    require(isDist(dice1) && isDist(dice2))
+    DiceDist(
+      dice1.p1*dice2.p6 + dice1.p2*dice2.p5 + dice1.p3*dice2.p4 + dice1.p4*dice2.p3 + dice1.p5*dice2.p2 + dice1.p6*dice2.p1, //1
+      dice1.p1*dice2.p1 + dice1.p2*dice2.p6 + dice1.p3*dice2.p5 + dice1.p4*dice2.p4 + dice1.p5*dice2.p3 + dice1.p6*dice2.p2, //2
+      dice1.p1*dice2.p2 + dice1.p2*dice2.p1 + dice1.p3*dice2.p6 + dice1.p4*dice2.p5 + dice1.p5*dice2.p4 + dice1.p6*dice2.p3, //3
+      dice1.p1*dice2.p3 + dice1.p2*dice2.p2 + dice1.p3*dice2.p1 + dice1.p4*dice2.p6 + dice1.p5*dice2.p5 + dice1.p6*dice2.p4, //4
+      dice1.p1*dice2.p4 + dice1.p2*dice2.p3 + dice1.p3*dice2.p2 + dice1.p4*dice2.p1 + dice1.p5*dice2.p6 + dice1.p6*dice2.p5, //5
+      dice1.p1*dice2.p5 + dice1.p2*dice2.p4 + dice1.p3*dice2.p3 + dice1.p4*dice2.p2 + dice1.p5*dice2.p1 + dice1.p6*dice2.p6 //6
+    )
+  }
+
   def uniformSumProperties1(dice1: DiceDist, dice2: DiceDist): Boolean = {
     require(isDist(dice1) && isDist(dice2) && isUniform(dice1) && isUniform(dice2))
     val dist = sum(dice1, dice2)
@@ -59,5 +71,15 @@ object Dices {
     dist.p7 >  dist.p10 && dist.p7 >  dist.p11 && dist.p7 >  dist.p12
   } holds
 
+  def sumModIsUniform1(dice1: DiceDist, dice2: DiceDist): Boolean = {
+    require(isDist(dice1) && isDist(dice2) && isUniform(dice1) && isUniform(dice2))
+    val dist = sumMod(dice1, dice2)
+    isUniform(dist)
+  } holds
 
+  def sumModIsUniform2(dice1: DiceDist, dice2: DiceDist): Boolean = {
+    require(isDist(dice1) && isDist(dice2) && isUniform(dice1))
+    val dist = sumMod(dice1, dice2)
+    isUniform(dist)
+  } holds
 }
