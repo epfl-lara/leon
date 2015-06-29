@@ -39,11 +39,6 @@ These options are mutually exclusive. By default, ``--verify`` is chosen.
   
   Runs termination analysis. Can be used along ``--verify``.
 
-* ``--xlang``
-  
-  Transforms a program written in the :ref:`xlang` language extension into a :ref:`purescala` program,
-  then runs program verification.
-
 * ``--noop``
   
   Runs the program through the extraction and preprocessing phases, then outputs it in the specified
@@ -176,6 +171,11 @@ These options are available by all Leon components:
   Set a timeout for each attempt to prove one verification condition/
   repair one function (in sec.)
     
+* ``--xlang``
+  
+  Support for additional language constructs described in :ref:`xlang`.
+  These constructs are desugared into :ref:`purescala` before other operations.
+
 Additional Options, by Component:
 ---------------------------------
 
