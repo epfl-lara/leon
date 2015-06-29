@@ -217,7 +217,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
         val app = an.ri
         s"(${n.cost.asString}) ${indent(app)}"
       case on: OrNode =>
-        val p = on.p
+        val p = on.p.asString(ctx)
         s"(${n.cost.asString}) ${indent(p)}"
     }
 

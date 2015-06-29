@@ -104,11 +104,13 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
     require(!isExpanded)
     isExpanded = true
 
+    implicit val ctx = hctx.sctx.context
+
     import hctx.sctx.reporter.info
 
     val prefix = f"[${Option(ri.rule).getOrElse("?")}%-20s] "
 
-    info(prefix+ri.problem)
+    info(prefix+ri.problem.asString)
 
     ri.apply(hctx) match {
       case RuleClosed(sols) =>
@@ -123,7 +125,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
           info(prefix+"Failed")
         } else {
           val sol = sols.head
-          info(prefix+"Solved"+(if(sol.isTrusted) "" else " (untrusted)")+" with: "+sol+"...")
+          info(prefix+"Solved"+(if(sol.isTrusted) "" else " (untrusted)")+" with: "+sol.asString+"...")
         }
 
         parents.foreach{ p =>
@@ -136,7 +138,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
       case RuleExpanded(probs) =>
         info(prefix+"Decomposed into:")
         for(p <- probs) {
-          info(prefix+"     - "+p)
+          info(prefix+"     - "+p.asString)
         }
 
         descendents = probs.map(p => new OrNode(cm, Some(this), p))

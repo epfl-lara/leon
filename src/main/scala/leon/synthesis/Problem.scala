@@ -18,6 +18,14 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
   def inType  = tupleTypeWrap(as.map(_.getType))
   def outType = tupleTypeWrap(xs.map(_.getType))
 
+  def asString(implicit ctx: LeonContext): String = {
+    val pcws = and(ws, pc)
+
+    val tbInfo = "/"+tb.valids.size+","+tb.invalids.size+"/"
+
+    "⟦ "+as.map(_.asString).mkString(";")+", "+(if (pcws != BooleanLiteral(true)) pcws.asString+" ≺ " else "")+" ⟨ "+phi.asString+" ⟩ "+xs.map(_.asString).mkString(";")+" ⟧  "+tbInfo
+  }
+
   override def toString = {
     val pcws = and(ws, pc)
 
