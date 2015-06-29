@@ -42,10 +42,10 @@ case object Focus extends Rule("Focus") {
     //  - returns Some(true) if for all tests e evaluates to true
     //  - returns Some(false) if for all tests e evaluates to false
     //  - returns None otherwise
-    def forAllTests(tests: Seq[Example])(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
+    def forAllTestsOf(p: Problem)(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
       var soFar: Option[Boolean] = None
 
-      tests.foreach { ex =>
+      p.tb.invalids.foreach { ex =>
         evaluator.eval(e, (p.as zip ex.ins).toMap ++ env) match {
           case EvaluationResults.Successful(BooleanLiteral(b)) => 
             soFar match {
@@ -74,7 +74,7 @@ case object Focus extends Rule("Focus") {
     }
 
     def focus(p: Problem): Traversable[RuleInstantiation] = {
-      val faTests = forAllTests(p.tb.invalids) _
+      val faTests = forAllTestsOf(p) _
 
       val TopLevelAnds(clauses) = p.ws
 

@@ -136,7 +136,6 @@ case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
       "No tests."
     }
   }
-
 }
 
 object TestBank {
