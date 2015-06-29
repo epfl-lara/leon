@@ -207,11 +207,11 @@ object Definitions {
     }
 
     lazy val algebraicDataTypes : Map[AbstractClassDef, Seq[CaseClassDef]] = defs.collect {
-      case c@CaseClassDef(_, _, _, Some(p), _) => c
+      case c@CaseClassDef(_, _, Some(p), _) => c
     }.groupBy(_.parent.get.classDef)
 
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
-      case c @ CaseClassDef(_, _, _, None, _) => c
+      case c @ CaseClassDef(_, _, None, _) => c
     }
     
     def duplicate = copy(defs = defs map {
@@ -282,6 +282,7 @@ object Definitions {
       case cc : CaseClassDef => {
         val cc2 = cc.copy() 
         cc.methods foreach { m => cc2.registerMethod(m.duplicate) }
+        cc2.setFields(cc.fields map { _.copy() })
         cc2
       }
     }
@@ -307,11 +308,20 @@ object Definitions {
   /** Case classes/objects. */
   case class CaseClassDef(id: Identifier,
                           tparams: Seq[TypeParameterDef],
-                          fields: Seq[ValDef],
                           parent: Option[AbstractClassType],
                           isCaseObject: Boolean) extends ClassDef {
 
+    private var _fields = Seq[ValDef]()
+
+    def fields = _fields
+
+    def setFields(fields: Seq[ValDef]) {
+      _fields = fields
+    }
+
+
     val isAbstract = false
+
 
     def selectorID2Index(id: Identifier) : Int = {
       val index = fields.zipWithIndex.find(_._1.id == id).map(_._2)

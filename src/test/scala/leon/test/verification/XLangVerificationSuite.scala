@@ -66,24 +66,14 @@ class XLangVerificationSuite extends LeonTestSuite {
       _.endsWith(".scala"))
 
     val isZ3Available = try {
-      Z3Interpreter.buildDefault
+      Z3Interpreter.buildDefault.free()
       true
     } catch {
       case e: java.io.IOException =>
         false
     }
 
-    val isCVC4Available = try {
-      CVC4Interpreter.buildDefault
-      // @EK: CVC4 works on most testcases already, but not all and thus cannot be used in regression.
-      true
-    } catch {
-      case e: java.io.IOException =>
-        false
-    }
-
-
-    for(f <- fs) {
+       for(f <- fs) {
       mkTest(f, List(), forError)(block)
       mkTest(f, List("--feelinglucky"), forError)(block)
       if (isZ3Available) {
@@ -100,7 +90,7 @@ class XLangVerificationSuite extends LeonTestSuite {
   }
 
   forEachFileIn("invalid") { output =>
-    val Output(report, reporter) = output
+    val Output(report, _) = output
     assert(report.totalInvalid > 0,
            "There should be at least one invalid verification condition.")
     assert(report.totalUnknown === 0,

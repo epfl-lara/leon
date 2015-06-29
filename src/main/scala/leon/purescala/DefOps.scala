@@ -22,7 +22,7 @@ object DefOps {
     case other => pgm.units.find(_.containsDef(df))
   }
 
-  private def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] = {
+  private def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] ={
     def rec(from: Definition): List[Definition] = {
       from :: (if (from == df) {
         Nil

@@ -527,6 +527,12 @@ trait CodeExtraction extends ASTExtractors {
 
         acd
       } else {
+        val ccd = CaseClassDef(id, tparams, parent, sym.isModuleClass).setPos(sym.pos)
+
+        parent.foreach(_.classDef.registerChildren(ccd))
+
+
+        classesToClasses += sym -> ccd
 
         val fields = args.map { case (symbol, t) =>
           val tpt = t.tpt
@@ -534,11 +540,7 @@ trait CodeExtraction extends ASTExtractors {
           LeonValDef(FreshIdentifier(symbol.name.toString, tpe).setPos(t.pos)).setPos(t.pos)
         }
 
-        val ccd = CaseClassDef(id, tparams, fields, parent, sym.isModuleClass).setPos(sym.pos)
-
-        parent.foreach(_.classDef.registerChildren(ccd))
-
-        classesToClasses += sym -> ccd
+        ccd.setFields(fields)
 
         // Validates type parameters
         parent foreach { pct =>
