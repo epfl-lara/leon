@@ -27,7 +27,7 @@ class ScalaPrinter(opts: PrinterOptions,
         }))
       case Not(Equals(l, r))    => p"$l != $r"
       case Implies(l,r)         => pp(or(not(l), r))
-      case Choose(pred, None) => p"choose($pred)"
+      case Choose(pred)         => p"choose($pred)"
       case s @ FiniteSet(rss, t) => p"Set[$t](${rss.toSeq})"
       case m @ FiniteMap(els, k, v) => p"Map[$k,$v]($els)"
       

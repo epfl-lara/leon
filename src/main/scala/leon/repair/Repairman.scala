@@ -96,32 +96,21 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
   }
 
   def getSynthesizer(tb: TestBank): Synthesizer = {
-    val (np, fdMap) = replaceFunDefs(program)({ fd =>
-      if (fd == this.fd) {
-        Some(fd.duplicate)
-      } else {
-        None
-      }
-    })
 
-    val nfd = fdMap(fd)
+    val origBody = fd.body.get
 
-    val origBody = nfd.body.get
-
-    val spec = nfd.postcondition.getOrElse(
-      Lambda(Seq(ValDef(FreshIdentifier("res", nfd.returnType))), BooleanLiteral(true))
+    val spec = fd.postcondition.getOrElse(
+      Lambda(Seq(ValDef(FreshIdentifier("res", fd.returnType))), BooleanLiteral(true))
     )
 
     val choose = Choose(spec)
-    choose.impl = Some(origBody)
-    nfd.body = Some(choose)
 
-    val term  = Terminating(nfd.typed, nfd.params.map(_.id.toVariable))
+    val term  = Terminating(fd.typed, fd.params.map(_.id.toVariable))
     val guide = Guide(origBody)
-    val pre   = nfd.precondition.getOrElse(BooleanLiteral(true))
+    val pre   = fd.precondition.getOrElse(BooleanLiteral(true))
 
     val ci = ChooseInfo(
-      nfd,
+      fd,
       andJoin(Seq(pre, guide, term)),
       origBody,
       choose,
@@ -143,7 +132,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       )) diff Seq(ADTInduction, TEGIS, IntegerInequalities, IntegerEquation)
     )
 
-    new Synthesizer(ctx, np, ci, soptions)
+    new Synthesizer(ctx, program, ci, soptions)
   }
 
   def getVerificationCExs(fd: FunDef): Seq[Example] = {

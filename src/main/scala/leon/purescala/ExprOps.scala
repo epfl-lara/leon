@@ -1292,7 +1292,7 @@ object ExprOps {
 
   def isDeterministic(e: Expr): Boolean = {
     preTraversal{
-      case Choose(_, None) => return false
+      case Choose(_) => return false
       case Hole(_, _) => return false
       //@EK FIXME: do we need it? 
       //case Error(_, _) => return false
@@ -1518,7 +1518,7 @@ object ExprOps {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
 
-        case (Choose(e1, _), Choose(e2, _)) =>
+        case (Choose(e1), Choose(e2)) =>
           isHomo(e1, e2)
 
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>

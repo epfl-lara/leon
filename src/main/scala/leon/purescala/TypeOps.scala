@@ -279,8 +279,8 @@ object TypeOps {
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
 
-          case c @ Choose(pred, oimpl) =>
-            Choose(rec(idsMap)(pred), oimpl.map(srec)).copiedFrom(c)
+          case c @ Choose(pred) =>
+            Choose(rec(idsMap)(pred)).copiedFrom(c)
 
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>

@@ -184,13 +184,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
       case NoTree(tpe)          => p"???($tpe)"
-      case Choose(pred, oimpl) => 
-        oimpl match {
-          case Some(e) =>
-            p"$e /* choose: $pred */"
-          case None =>
-            p"choose($pred)"
-        }
+      case Choose(pred)         => p"choose($pred)"
       case e @ Error(tpe, err)       => p"""error[$tpe]("$err")"""
       case CaseClassInstanceOf(cct, e)         =>
         if (cct.classDef.isCaseObject) {

@@ -233,7 +233,7 @@ object ImperativeCodeElimination extends TransformationPhase {
         val (bodyRes, bodyScope, bodyFun) = toFunction(b)
         (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
       }
-      case c @ Choose(b, _) => {
+      case c @ Choose(b) => {
         //Recall that Choose cannot mutate variables from the scope
         (c, (b2: Expr) => b2, Map())
       }

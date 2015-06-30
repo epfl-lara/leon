@@ -51,25 +51,13 @@ object Expressions {
     val getType = body.getType
   }
 
-  case class Choose(pred: Expr, private var impl_ : Option[Expr] = None) extends Expr {
+  case class Choose(pred: Expr) extends Expr {
     val getType = pred.getType match {
       case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty? 
         tupleTypeWrap(from)
       case _ =>
         Untyped
     }
-
-    require(impl_ forall { imp => isSubtypeOf(imp.getType, this.getType)})
-
-    def impl_= (newImpl: Option[Expr]) = { 
-      require(
-        newImpl forall {imp => isSubtypeOf(imp.getType,this.getType)}, 
-        newImpl.get +":" + newImpl.get.getType + " vs " + this + ":" + this.getType
-      )
-      impl_ = newImpl
-    }
-
-    def impl = impl_
   }
 
   /* Like vals */

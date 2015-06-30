@@ -506,10 +506,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case p : Passes => 
       e(p.asConstraint)
 
-    case choose @ Choose(_, Some(impl)) =>
-      e(impl)
-
-    case choose @ Choose(_, None) =>
+    case choose: Choose =>
 
       implicit val debugSection = utils.DebugSectionSynthesis
 

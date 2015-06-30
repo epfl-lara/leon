@@ -355,7 +355,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             val nfd = fd.duplicate
 
             nfd.fullBody = postMap {
-              case ch if ch eq hctx.ci.ch =>
+              case src if src eq hctx.ci.source =>
                 Some(outerSolution.term)
 
               case _ => None
@@ -363,6 +363,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
             Some(nfd)
 
+          // We freshen/duplicate every functions, except these two as they are
+          // fresh anyway and we refer to them directly.
           case `cTreeFd` | `phiFd` =>
             None
 
@@ -373,10 +375,10 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
       /**
-       * Since CEGIS works with a copy of the outer program,
-       * it needs to map outer function calls to inner function calls
-       * and vice-versa. 'inner' refers to the CEGIS-specific program,
-       * 'outer' refers to the actual program on which we do synthesis.
+       * Since CEGIS works with a copy of the program, it needs to map outer
+       * function calls to inner function calls and vice-versa. 'inner' refers
+       * to the CEGIS-specific program, 'outer' refers to the actual program on
+       * which we do synthesis.
        */
       private def outerExprToInnerExpr(e: Expr): Expr = {
         replaceFunCalls(e, {fd => origFdMap.getOrElse(fd, fd) })

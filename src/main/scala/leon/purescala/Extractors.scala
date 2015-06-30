@@ -15,6 +15,7 @@ object Extractors {
   object UnaryOperator {
     def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
       case Not(t) => Some((t,not))
+      case Choose(expr) => Some((expr,Choose))
       case UMinus(t) => Some((t,UMinus))
       case BVUMinus(t) => Some((t,BVUMinus))
       case BVNot(t) => Some((t,BVNot))
@@ -99,10 +100,6 @@ object Extractors {
 
   object NAryOperator {
     def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
-      case Choose(pred, impl) => Some((Seq(pred) ++ impl.toSeq, {
-        case Seq(pred) => Choose(pred, None)
-        case Seq(pred, impl) => Choose(pred, Some(impl))
-      }))
       case fi @ FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
       case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
       case fa @ Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail))

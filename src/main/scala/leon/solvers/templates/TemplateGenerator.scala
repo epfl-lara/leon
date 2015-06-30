@@ -244,10 +244,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           }
         }
 
-        case c @ Choose(cond, Some(impl)) =>
-          rec(pathVar, impl)
-
-        case c @ Choose(cond, None) =>
+        case c @ Choose(cond) =>
           val cid = FreshIdentifier("choose", c.getType, true)
           storeExpr(cid)
           storeGuarded(pathVar, application(cond, Seq(Variable(cid))))
