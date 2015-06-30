@@ -32,6 +32,8 @@ class LeonFunTests extends Suites(
   new SynthesisSuite,
   new SynthesisRegressionSuite,
 
+  new InliningSuite,
+
   new LibraryVerificationSuite,
   new PureScalaVerificationSuite,
   new XLangVerificationSuite

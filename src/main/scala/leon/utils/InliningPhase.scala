@@ -11,11 +11,19 @@ import purescala.ExprOps._
 import purescala.DefOps._
 
 object InliningPhase extends TransformationPhase {
-  
+
   val name = "Inline @inline functions"
   val description = "Inline functions marked as @inline and remove their definitions"
-  
+
   def apply(ctx: LeonContext, p: Program): Program = {
+
+    // Detect inlined functions that are recursive
+    val doNotInline = (for (fd <- p.definedFunctions.filter(_.flags(IsInlined)) if p.callGraph.isRecursive(fd)) yield {
+      ctx.reporter.warning("Refusing to inline recursive function '"+fd.id.asString(ctx)+"'!")
+      fd
+    }).toSet
+
+    def doInline(fd: FunDef) = fd.flags(IsInlined) && !doNotInline(fd)
 
     def simplifyImplicitClass(e: Expr) = e match {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
@@ -31,7 +39,7 @@ object InliningPhase extends TransformationPhase {
 
     for (fd <- p.definedFunctions) {
       fd.fullBody = simplify(preMap {
-        case FunctionInvocation(TypedFunDef(fd, tps), args) if fd.flags(IsInlined) =>
+        case FunctionInvocation(TypedFunDef(fd, tps), args) if doInline(fd) =>
           val newBody = replaceFromIDs(fd.params.map(_.id).zip(args).toMap, fd.fullBody)
           Some(instantiateType(newBody, (fd.tparams zip tps).toMap, Map()))
         case _ =>
@@ -39,7 +47,7 @@ object InliningPhase extends TransformationPhase {
       }(fd.fullBody))
     }
 
-    filterFunDefs(p, fd => !fd.flags(IsInlined))
+    filterFunDefs(p, fd => !doInline(fd))
   }
 
 }
