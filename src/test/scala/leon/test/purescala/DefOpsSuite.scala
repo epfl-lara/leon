@@ -13,13 +13,13 @@ private [purescala] object DefOpsHelper extends LeonTestSuite {
   private def parseStrings(strs : List[String]) : Program = {
     val context = createLeonContext()
 
-    val pipeline = 
-      ExtractionPhase andThen 
-      PreprocessingPhase 
-      
+    val pipeline =
+      ExtractionPhase andThen
+      PreprocessingPhase
+
     val inputs = strs map { str => TemporaryInputPhase.run(context)((str, Nil)).head }
     val program = pipeline.run(context)(inputs)
-    
+
     program
   }
 

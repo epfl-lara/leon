@@ -53,13 +53,7 @@ abstract class FunctionMapping extends TransformationPhase {
                 }
               })
             case d => d
-          },
-          imports = u.imports map {
-            case SingleImport(fd : FunDef) => 
-              SingleImport(functionToFunction.get(fd).map{ _.to }.getOrElse(fd))
-            case other => other
-          } 
-            
+          }
         )
       })
     

@@ -384,18 +384,7 @@ trait CodeExtraction extends ASTExtractors {
           case _   => (selectors, false)
         }
 
-        val theDef = searchRelative(thePath.mkString("."), current).find {
-          case _: UnitDef => false
-          case m: LeonModuleDef => !m.isPackageObject
-          case _ => true
-        }
-
-        (isWild, theDef) match {
-          case (true,  Some(df)) => Some(WildcardImport(df))
-          case (false, Some(df)) => Some(SingleImport(df))
-          case (true,  None)     => Some(PackageImport(thePath))
-          case (false, None)     => None // import comes from a Scala library or something... 
-        }
+        Some(LeonImport(thePath, isWild))
       }
     }
 

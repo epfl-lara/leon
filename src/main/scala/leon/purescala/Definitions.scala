@@ -101,11 +101,17 @@ object Definitions {
   /** A package as a path of names */
   type PackageRef = List[String] 
 
-  abstract class Import extends Definition {
-    def subDefinitions = Nil
-    def importedDefs(implicit pgm: Program): Seq[Definition]
+  case class Import(path: List[String], isWild: Boolean) extends Tree {
+    def importedDefs(in: UnitDef)(implicit pgm: Program): Seq[Definition] = {
+      val found = DefOps.searchRelative(path.mkString("."), in)
+      if (isWild) {
+        found.flatMap(_.subDefinitions)
+      } else {
+        found
+      }
+    }
   }
-
+/*
   // import pack._
   case class PackageImport(pack : PackageRef) extends Import {
     val id = FreshIdentifier("import " + (pack mkString "."))
@@ -132,6 +138,7 @@ object Definitions {
     def importedDefs(implicit pgm: Program): Seq[Definition] =
       df.subDefinitions
   }
+  */
   
   case class UnitDef(
     id: Identifier,

@@ -450,14 +450,12 @@ class PrettyPrinter(opts: PrinterOptions,
             |${nary(defs,"\n\n")}
             |"""
 
-      case PackageImport(pack) => 
-        p"import ${nary(pack,".")}._"
-
-      case SingleImport(df) => 
-        p"import "; printWithPath(df)
-
-      case WildcardImport(df) => 
-        p"import "; printWithPath(df); p"._"
+      case Import(path, isWild) => 
+        if (isWild) {
+          p"import ${nary(path,".")}._"
+        } else {
+          p"import ${nary(path,".")}"
+        }
 
       case ModuleDef(id, defs, _) =>
         p"""|object $id {

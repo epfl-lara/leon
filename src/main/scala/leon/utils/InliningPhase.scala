@@ -16,14 +16,6 @@ object InliningPhase extends TransformationPhase {
   val description = "Inline functions marked as @inline and remove their definitions"
   
   def apply(ctx: LeonContext, p: Program): Program = {
-    val toInline = p.definedFunctions.filter(_.flags(IsInlined)).toSet
-
-    val substs = toInline.map { fd =>
-      fd -> { (tps: Seq[TypeTree], s: Seq[Expr]) => 
-        val newBody = replaceFromIDs(fd.params.map(_.id).zip(s).toMap, fd.fullBody)
-        instantiateType(newBody, (fd.tparams zip tps).toMap, Map())
-      }
-    }.toMap
 
     def simplifyImplicitClass(e: Expr) = e match {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
@@ -37,15 +29,17 @@ object InliningPhase extends TransformationPhase {
       fixpoint(postMap(simplifyImplicitClass _))(e)
     }
 
-    val (np, _) = replaceFunDefs(p)({fd => None}, {(fi, fd) => 
-      if (substs contains fd) {
-        Some(simplify(substs(fd)(fi.tfd.tps, fi.args)))
-      } else {
-        None
-      }
-    })
+    for (fd <- p.definedFunctions) {
+      fd.fullBody = simplify(preMap {
+        case FunctionInvocation(TypedFunDef(fd, tps), args) if fd.flags(IsInlined) =>
+          val newBody = replaceFromIDs(fd.params.map(_.id).zip(args).toMap, fd.fullBody)
+          Some(instantiateType(newBody, (fd.tparams zip tps).toMap, Map()))
+        case _ =>
+          None
+      }(fd.fullBody))
+    }
 
-    removeDefs(np, toInline.map { fd => (fd: Definition) })
+    filterFunDefs(p, fd => !fd.flags(IsInlined))
   }
 
 }

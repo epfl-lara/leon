@@ -54,7 +54,7 @@ object DefOps {
       List(pgm) ++
       ( for ( u <- unitOf(df).toSeq;
               imp <- u.imports;
-              impDf <- imp.importedDefs
+              impDf <- imp.importedDefs(u)
             ) yield impDf
       )
     for (
@@ -108,9 +108,8 @@ object DefOps {
     pathFrom match {
       case (u: UnitDef) :: _ =>
         val imports = u.imports.map {
-          case PackageImport(ls) => ls
-          case SingleImport(d)   => nameToParts(fullName(d, useUniqueIds)).init
-          case WildcardImport(d) => nameToParts(fullName(d, useUniqueIds))
+          case Import(path, true) => path
+          case Import(path, false) => path.init
         }.toList
 
         def stripImport(of: List[String], imp: List[String]): Option[List[String]] = {
@@ -210,14 +209,12 @@ object DefOps {
     searchRelative(names, path.reverse)
   }
 
-  private case class ImportPath(ls: List[String], wild: Boolean)
-
-  private def resolveImports(imports: List[ImportPath], names: List[String]): List[List[String]] = {
-    def resolveImport(i: ImportPath): Option[List[String]] = {
-      if (!i.wild && names.startsWith(i.ls.last)) {
-        Some(i.ls ++ names.tail)
-      } else if (i.wild) {
-        Some(i.ls ++ names)
+  private def resolveImports(imports: Seq[Import], names: List[String]): Seq[List[String]] = {
+    def resolveImport(i: Import): Option[List[String]] = {
+      if (!i.isWild && names.startsWith(i.path.last)) {
+        Some(i.path ++ names.tail)
+      } else if (i.isWild) {
+        Some(i.path ++ names)
       } else {
         None
       }
@@ -234,17 +231,11 @@ object DefOps {
             searchWithin(names, p)
 
           case u: UnitDef =>
-            val imports = u.imports.map {
-              case PackageImport(ls) => ImportPath(ls, true)
-              case SingleImport(d) => ImportPath(nameToParts(fullName(d)), false)
-              case WildcardImport(d) => ImportPath(nameToParts(fullName(d)), true)
-            }.toList
-
             val inModules = d.subDefinitions.filter(_.id.name == n).flatMap { sd =>
               searchWithin(ns, sd)
             }
 
-            val namesImported = resolveImports(imports, names)
+            val namesImported = resolveImports(u.imports, names)
             val nameWithPackage = u.pack ++ names
 
             val allNames = namesImported :+ nameWithPackage
@@ -299,11 +290,6 @@ object DefOps {
               }
           })
           case d => d
-        },
-        imports = u.imports map {
-          case SingleImport(fd : FunDef) => 
-            SingleImport(fdMap(fd))
-          case other => other
         }
       )
     })
@@ -347,13 +333,16 @@ object DefOps {
     res
   }
 
-  // @Note: This function does not remove functions in classdefs
-  def removeDefs(p: Program, dds: Set[Definition]): Program = {
-    p.copy(units = for (u <- p.units if !dds(u)) yield {
+  // @Note: This function does not filter functions in classdefs
+  def filterFunDefs(p: Program, fdF: FunDef => Boolean): Program = {
+    p.copy(units = p.units.map { u =>
       u.copy(
-        defs = for (d <- u.defs if !dds(d)) yield d match {
+        defs = u.defs.collect {
           case md: ModuleDef =>
-            md.copy(defs = md.defs.filterNot(dds))
+            md.copy(defs = md.defs.filter {
+              case fd: FunDef => fdF(fd) 
+              case d => true
+            })
 
           case cd => cd 
         }
