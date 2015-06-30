@@ -43,14 +43,11 @@ object RestoreMethods extends TransformationPhase {
     // We inject methods, 
     def processClassDef(cd: ClassDef): ClassDef = {
       if (classMethods contains cd) {
-        val ncd = cd.duplicate
         for (md <- classMethods(cd).map(fdToMd)) {
-          ncd.registerMethod(md)
+          cd.registerMethod(md)
         }
-        ncd
-      } else {
-        cd
       }
+      cd
     }
 
     val np = p.copy(units = p.units.map { u =>

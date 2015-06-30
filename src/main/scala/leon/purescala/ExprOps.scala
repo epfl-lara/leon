@@ -1933,9 +1933,7 @@ object ExprOps {
     import synthesis.Witnesses.Terminating
     val res1 = preMap({
       case LetDef(fd, b) =>
-        val nfd = new FunDef(fd.id.freshen, fd.tparams, fd.returnType, fd.params)
-        nfd.copyContentFrom(fd)
-        nfd.copiedFrom(fd)
+        val nfd = fd.duplicate
 
         fds += fd -> nfd
 

@@ -84,10 +84,6 @@ object Definitions {
       case ccd: CaseClassDef if ccd.id.name == name => ccd
     }.headOption.getOrElse(throw LeonFatalError("Unknown case class '"+name+"'"))
 
-    def duplicate = {
-      copy(units = units.map{_.duplicate})
-    }
-    
     def lookupAll(name: String)  = DefOps.searchWithin(name, this)
     def lookup(name: String)     = lookupAll(name).headOption
   }
@@ -174,14 +170,6 @@ object Definitions {
       }
     }
 
-    def duplicate = {
-      copy(defs = defs map {
-        case cd: ClassDef => cd.duplicate
-        case m: ModuleDef => m.duplicate
-        case d => d
-      })
-    }
-
     def modules = defs.collect {
       case md: ModuleDef => md
     }
@@ -213,12 +201,7 @@ object Definitions {
     lazy val singleCaseClasses : Seq[CaseClassDef] = defs.collect {
       case c @ CaseClassDef(_, _, None, _) => c
     }
-    
-    def duplicate = copy(defs = defs map {
-      case f: FunDef => f.duplicate
-      case cd: ClassDef => cd.duplicate
-      case other => other
-    })
+
   }
 
   /** Useful because case classes and classes are somewhat unified in some
@@ -271,26 +254,11 @@ object Definitions {
 
     val isAbstract: Boolean
     val isCaseObject: Boolean
-    
-    def duplicate = this match {
-      case ab : AbstractClassDef => {
-        val ab2 = ab.copy()
-        ab.knownChildren foreach ab2.registerChildren
-        ab.methods foreach { m => ab2.registerMethod(m.duplicate) }
-        ab2
-      }
-      case cc : CaseClassDef => {
-        val cc2 = cc.copy() 
-        cc.methods foreach { m => cc2.registerMethod(m.duplicate) }
-        cc2.setFields(cc.fields map { _.copy() })
-        cc2
-      }
-    }
-    
+
     lazy val definedFunctions : Seq[FunDef] = methods
     lazy val definedClasses = Seq(this)
     lazy val classHierarchyRoots = if (this.hasParent) Seq(this) else Nil
-    
+
   }
 
   /** Abstract classes. */
