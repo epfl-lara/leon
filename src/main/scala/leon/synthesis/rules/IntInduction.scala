@@ -55,8 +55,8 @@ case object IntInduction extends Rule("Int Induction") {
                 IfExpr(Equals(Variable(inductOn), InfiniteIntegerLiteral(0)),
                   base.toExpr,
                 IfExpr(GreaterThan(Variable(inductOn), InfiniteIntegerLiteral(0)),
-                  letTuple(postXs, FunctionInvocation(newFun.typed, Seq(Minus(Variable(inductOn), InfiniteIntegerLiteral(1)))), gt.toExpr)
-                , letTuple(postXs, FunctionInvocation(newFun.typed, Seq(Plus(Variable(inductOn), InfiniteIntegerLiteral(1)))), lt.toExpr)))
+                  letTuple(postXs, FunctionInvocation(newFun.typed, Seq(Minus(Variable(inductOn), InfiniteIntegerLiteral(1)))), gt.toExpr),
+                  letTuple(postXs, FunctionInvocation(newFun.typed, Seq(Plus(Variable(inductOn), InfiniteIntegerLiteral(1)))), lt.toExpr)))
               )
 
 
