@@ -48,7 +48,7 @@ class Synthesizer(val context : LeonContext,
     (s, sols)
   }
 
-  def validate(results: (Search, Stream[Solution])): (Search, Stream[(Solution, Boolean)]) = {
+  def validate(results: (Search, Stream[Solution]), allowPartial: Boolean): (Search, Stream[(Solution, Boolean)]) = {
     val (s, sols) = results
 
     val result = sols.map {
@@ -58,7 +58,7 @@ class Synthesizer(val context : LeonContext,
         validateSolution(s, sol, 5.seconds)
     }
 
-    (s, if (result.isEmpty) {
+    (s, if (result.isEmpty && allowPartial) {
       List((new PartialSolution(s.g, true).getSolution, false)).toStream
     } else {
       result
@@ -77,7 +77,7 @@ class Synthesizer(val context : LeonContext,
 
     try {
       val vctx = VerificationContext(context, npr, solverf, context.reporter)
-      val vcs = generateVCs(vctx, Some(fds.map(_.id.name)))
+      val vcs = generateVCs(vctx, fds)
       val vcreport = checkVCs(vctx, vcs)
 
       if (vcreport.totalValid == vcreport.totalConditions) {

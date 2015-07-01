@@ -65,10 +65,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
         try {
           reporter.info(ASCIIHelpers.title("3. Synthesizing repair"))
-          val (search, solutions) = synth.validate(synth.synthesize()) match {
-            case (search, sols) =>
-              (search, sols.collect { case (s, true) => s })
-          }
+          val (search, solutions) = synth.validate(synth.synthesize(), allowPartial = false)
 
           if (synth.settings.generateDerivationTrees) {
             val dot = new DotGenerator(search.g)
@@ -80,8 +77,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           } else {
 
             reporter.info(ASCIIHelpers.title("Repair successful:"))
-            for ((sol, i) <- solutions.zipWithIndex) {
-              reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+":"))
+            for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
+              reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
               val expr = sol.toSimplifiedExpr(ctx, synth.program)
               reporter.info(expr.asString(ctx))
             }
@@ -139,7 +136,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     val timeoutMs = verifTimeoutMs.getOrElse(3000L)
     val solverf = SolverFactory.getFromSettings(ctx, program).withTimeout(timeoutMs)
     val vctx = VerificationContext(ctx, program, solverf, reporter)
-    val vcs = AnalysisPhase.generateVCs(vctx, Some(Seq(fd.id.name)))
+    val vcs = AnalysisPhase.generateVCs(vctx, Seq(fd))
 
     try {
       val report = AnalysisPhase.checkVCs(

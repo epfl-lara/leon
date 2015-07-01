@@ -77,7 +77,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     chooses.foreach { ci =>
       val synthesizer = new Synthesizer(ctx, p, ci, options)
-      val (search, solutions) = synthesizer.validate(synthesizer.synthesize())
+      val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), true)
 
       try {
         val fd = ci.fd
