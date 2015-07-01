@@ -4,6 +4,7 @@ package leon
 package synthesis
 package rules
 
+import leon.purescala.Common.Identifier
 import purescala.Expressions._
 import purescala.Constructors._
 
@@ -40,8 +41,14 @@ case object EqualitySplit extends Rule("Eq. Split") {
     candidates.flatMap {
       case List(a1, a2) =>
 
-        val sub1 = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc))
-        val sub2 = p.copy(pc = and(not(Equals(Variable(a1), Variable(a2))), p.pc))
+        val sub1 = p.copy(
+          pc = and(Equals(Variable(a1), Variable(a2)), p.pc),
+          tb = p.tbOps.filterIns( (m: Map[Identifier, Expr]) => m(a1) == m(a2))
+        )
+        val sub2 = p.copy(
+          pc = and(not(Equals(Variable(a1), Variable(a2))), p.pc),
+          tb = p.tbOps.filterIns( (m: Map[Identifier, Expr]) => m(a1) != m(a2))
+        )
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case List(s1, s2) =>

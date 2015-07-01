@@ -61,7 +61,7 @@ case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
   def mapIns(f: Seq[Expr] => List[Seq[Expr]]) = {
     map {
       case InExample(in) =>
-        f(in).map(InExample(_))
+        f(in).map(InExample)
 
       case InOutExample(in, out) =>
         f(in).map(InOutExample(_, out))
@@ -155,17 +155,19 @@ case class ProblemTestBank(p: Problem, tb: TestBank)(implicit hctx: SearchContex
     tb mapIns { in => List(toKeep.map(in)) }
   }
 
-  def filterIns(expr: Expr) = {
+  def filterIns(expr: Expr): TestBank = {
     val ev = new DefaultEvaluator(hctx.sctx.context, hctx.sctx.program)
 
+    filterIns(m => ev.eval(expr, m).result == Some(BooleanLiteral(true)))
+  }
+
+  def filterIns(pred: Map[Identifier, Expr] => Boolean): TestBank = {
     tb mapIns { in =>
       val m = (p.as zip in).toMap
-
-      ev.eval(expr, m) match {
-        case EvaluationResults.Successful(BooleanLiteral(true)) =>
-          List(in)
-        case _ =>
-          Nil
+      if(pred(m)) {
+        List(in)
+      } else {
+        Nil
       }
     }
   }
