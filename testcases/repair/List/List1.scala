@@ -173,9 +173,7 @@ sealed abstract class List[T] {
     case (Cons(h, t), s) =>
       Cons(h, t.pad(s-1, e)) // FIXME should be s
   }} ensuring { res =>
-    ((this,s,e), res) passes {
-      case (Cons(a,Nil()), BigInt(2), x) => Cons(a, Cons(x, Cons(x, Nil())))
-    }
+    (s > 0) ==> (res.size == this.size + s && res.contains(e))
   }
 
   def find(e: T): Option[BigInt] = this match {
