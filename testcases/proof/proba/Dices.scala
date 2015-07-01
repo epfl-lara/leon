@@ -4,7 +4,7 @@ import leon.lang._
 object Dices {
 
   /*
-   * number of outcomes for each number of a dice
+   * number of outcomes for each face of a dice
    */
   case class DiceDist(p1: BigInt, p2: BigInt, p3: BigInt, p4: BigInt, p5: BigInt, p6: BigInt)
 
@@ -38,6 +38,7 @@ object Dices {
     )
   }
 
+  //distribution of the addition modulo 6 of two dices
   def sumMod(dice1: DiceDist, dice2: DiceDist): DiceDist = {
     require(isDist(dice1) && isDist(dice2))
     DiceDist(
@@ -46,7 +47,7 @@ object Dices {
       dice1.p1*dice2.p2 + dice1.p2*dice2.p1 + dice1.p3*dice2.p6 + dice1.p4*dice2.p5 + dice1.p5*dice2.p4 + dice1.p6*dice2.p3, //3
       dice1.p1*dice2.p3 + dice1.p2*dice2.p2 + dice1.p3*dice2.p1 + dice1.p4*dice2.p6 + dice1.p5*dice2.p5 + dice1.p6*dice2.p4, //4
       dice1.p1*dice2.p4 + dice1.p2*dice2.p3 + dice1.p3*dice2.p2 + dice1.p4*dice2.p1 + dice1.p5*dice2.p6 + dice1.p6*dice2.p5, //5
-      dice1.p1*dice2.p5 + dice1.p2*dice2.p4 + dice1.p3*dice2.p3 + dice1.p4*dice2.p2 + dice1.p5*dice2.p1 + dice1.p6*dice2.p6 //6
+      dice1.p1*dice2.p5 + dice1.p2*dice2.p4 + dice1.p3*dice2.p3 + dice1.p4*dice2.p2 + dice1.p5*dice2.p1 + dice1.p6*dice2.p6  //6
     )
   }
 
@@ -65,10 +66,10 @@ object Dices {
     require(isDist(dice1) && isDist(dice2) && isUniform(dice1) && isUniform(dice2))
     val dist = sum(dice1, dice2)
     
-    dist.p7 >  dist.p1  && dist.p7 >  dist.p2  && dist.p7 >  dist.p3  &&
-    dist.p7 >  dist.p4  && dist.p7 >  dist.p5  && dist.p7 >  dist.p6  &&
-    dist.p7 >= dist.p7  && dist.p7 >  dist.p8  && dist.p7 >  dist.p9  &&
-    dist.p7 >  dist.p10 && dist.p7 >  dist.p11 && dist.p7 >  dist.p12
+    dist.p7 >  dist.p1  && dist.p7 > dist.p2  && dist.p7 > dist.p3  &&
+    dist.p7 >  dist.p4  && dist.p7 > dist.p5  && dist.p7 > dist.p6  &&
+    dist.p7 >= dist.p7  && dist.p7 > dist.p8  && dist.p7 > dist.p9  &&
+    dist.p7 >  dist.p10 && dist.p7 > dist.p11 && dist.p7 > dist.p12
   } holds
 
   def sumModIsUniform1(dice1: DiceDist, dice2: DiceDist): Boolean = {
@@ -82,4 +83,5 @@ object Dices {
     val dist = sumMod(dice1, dice2)
     isUniform(dist)
   } holds
+
 }
