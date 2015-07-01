@@ -33,33 +33,32 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     if (ms.isDefined && timeout.isDefined) {
       ctx.reporter.warning("Defining timeout with manual search")
     }
-    SynthesisSettings(
-      manualSearch = ms,
-      functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
-      timeoutMs = timeout map { _ * 1000 },
-      generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
-      cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),
-      cegisUseShrink = ctx.findOption(optCEGISShrink),
-      cegisUseVanuatoo = ctx.findOption(optCEGISVanuatoo),
-      rules = Rules.all ++ (ms map { _ => rules.AsChoose}),
-      costModel = {
-        ctx.findOption(optCostModel) match {
-          case None => CostModels.default
-          case Some(name) => CostModels.all.find(_.name.toLowerCase == name.toLowerCase) match {
-            case Some(model) => model
-            case None =>
-              var errorMsg = "Unknown cost model: " + name + "\n" +
-                "Defined cost models: \n"
+    val costModel = {
+      ctx.findOption(optCostModel) match {
+        case None => CostModels.default
+        case Some(name) => CostModels.all.find(_.name.toLowerCase == name.toLowerCase) getOrElse {
+          var errorMsg = "Unknown cost model: " + name + "\n" +
+            "Defined cost models: \n"
 
-              for (cm <- CostModels.all.toSeq.sortBy(_.name)) {
-                errorMsg += " - " + cm.name + (if (cm == CostModels.default) " (default)" else "") + "\n"
-              }
-
-              ctx.reporter.fatalError(errorMsg)
+          for (cm <- CostModels.all.toSeq.sortBy(_.name)) {
+            errorMsg += " - " + cm.name + (if (cm == CostModels.default) " (default)" else "") + "\n"
           }
 
+          ctx.reporter.fatalError(errorMsg)
         }
       }
+    }
+
+    SynthesisSettings(
+      timeoutMs = timeout map { _ * 1000 },
+      generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
+      costModel = costModel,
+      rules = Rules.all ++ (ms map { _ => rules.AsChoose}),
+      manualSearch = ms,
+      functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
+      cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),
+      cegisUseShrink = ctx.findOption(optCEGISShrink),
+      cegisUseVanuatoo = ctx.findOption(optCEGISVanuatoo)
     )
   }
 
