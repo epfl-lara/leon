@@ -30,6 +30,8 @@ import scala.concurrent.duration._
 class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   val reporter = ctx.reporter
 
+  val storeBenchmarks = true
+
   var program = initProgram
 
   implicit val debugSection = DebugSectionRepair
@@ -40,6 +42,8 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
     to.interruptAfter(repairTimeoutMs) {
       reporter.info(ASCIIHelpers.title("1. Discovering tests for "+fd.id))
+
+      val timer = new Timer().start
 
       val tb = discoverTests()
 
@@ -61,11 +65,38 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
           printer(tb2.asString("Minimal Failing Tests"))
         }
 
+        val timeTests = timer.stop
+        timer.start
+
         val synth = getSynthesizer(tb2)
 
         try {
           reporter.info(ASCIIHelpers.title("3. Synthesizing repair"))
-          val (search, solutions) = synth.validate(synth.synthesize(), allowPartial = false)
+          val (search0, sols0) = synth.synthesize()
+
+          val timeSynth = timer.stop
+          timer.start
+
+          val (search, solutions) = synth.validate((search0, sols0), allowPartial = false)
+
+          val timeVerify = timer.stop
+
+          if (storeBenchmarks) {
+            val be = (BenchmarkEntry.fromContext(ctx) ++ Map(
+              "function"          -> fd.id.name,
+              "time_tests"        -> timeTests,
+              "time_synthesis"    -> timeSynth,
+              "time_verification" -> timeVerify,
+              "success"           -> solutions.nonEmpty,
+              "verified"          -> solutions.forall(_._2)
+            ))
+
+            val bh = new BenchmarksHistory("repairs.dat")
+
+            bh += be
+
+            bh.write
+          }
 
           if (synth.settings.generateDerivationTrees) {
             val dot = new DotGenerator(search.g)

@@ -1,0 +1,123 @@
+<html>
+  <head>
+    <script src="http://code.jquery.com/jquery-1.11.3.min.js"></script>
+    <script src="http://code.highcharts.com/highcharts.js"></script>
+<script>
+  if (window.File && window.FileReader && window.FileList && window.Blob) {
+    // Great success! All the File APIs are supported.
+  } else {
+    alert('The File APIs are not fully supported in this browser.');
+  }
+
+  function initGraph(data) {
+    $('#container').highcharts({
+        title: {
+            text: 'Leon Benchmarks',
+            x: -20 //center
+        },
+
+        xAxis: {
+            type: 'datetime',
+            dateTimeLabelFormats: { // don't display the dummy year
+                month: '%e. %b',
+                year: '%b'
+            },
+            title: {
+                text: 'Date'
+            }
+        },
+        yAxis: {
+            title: {
+                text: 'Time (ms)'
+            },
+            min: 0
+        },
+        tooltip: {
+            headerFormat: '<b>{series.name}</b><br>',
+            pointFormat: '{point.x:%e. %b}: {point.y:.2f} ms'
+        },
+
+        legend: {
+            layout: 'vertical',
+            align: 'right',
+            verticalAlign: 'middle',
+            borderWidth: 0
+        },
+
+        plotOptions: {
+            spline: {
+                marker: {
+                    enabled: true
+                }
+            }
+        },
+
+        series: data
+    });
+  }
+
+  $(function () {
+
+    function processData(data) {
+      var seriesMap = {};
+
+      for (var i = 0, r; r = data[i]; i++) {
+        var parts = r.files.split("/")
+        var name = parts[parts.length-1]+' '+r.function
+
+        var serie = {
+          "name": name,
+          "data": []
+        };
+
+        if (name in seriesMap) {
+          serie = seriesMap[name]
+        }
+
+        serie.data.push([1000 * r.ts, r.time_synthesis])
+
+        seriesMap[name] = serie
+      }
+
+      console.log(seriesMap)
+
+      var res = [];
+
+      for (k in seriesMap) {
+        res.push(seriesMap[k])
+      }
+
+      initGraph(res)
+    }
+
+    function handleFileSelect(evt) {
+      var files = evt.target.files; // FileList object
+
+      graphData = [];
+      // files is a FileList of File objects. List some properties.
+
+      for (var i = 0, f; f = files[i]; i++) {
+        var reader = new FileReader();
+
+        reader.onload = (function(theFile) {
+          return function(e) {
+            var json = JSON.parse(e.target.result);
+            processData(json)
+          };
+        })(f);
+
+        reader.readAsText(f)
+      }
+    }
+
+    document.getElementById('fileLoader').addEventListener('change', handleFileSelect, false);
+  });
+</script>
+  </head>
+  <body>
+    <h1>Leon Benchmarks</h1>
+    <h2>Load Data</h2>
+    <input type="file" id="fileLoader" name="data" />
+    <div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+  </body>
+</html>
