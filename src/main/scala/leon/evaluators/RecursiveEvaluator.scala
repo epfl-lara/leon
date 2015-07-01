@@ -21,8 +21,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   type RC <: RecContext
   type GC <: GlobalContext
 
-  var lastGC: Option[GC] = None
-
   case class EvalError(msg : String) extends Exception
   case class RuntimeError(msg : String) extends Exception
 
@@ -53,9 +51,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
   def eval(ex: Expr, mappings: Map[Identifier, Expr]) = {
     try {
-      lastGC = Some(initGC())
       ctx.timers.evaluators.recursive.runtime.start()
-      EvaluationResults.Successful(e(ex)(initRC(mappings), lastGC.get))
+      EvaluationResults.Successful(e(ex)(initRC(mappings), initGC()))
     } catch {
       case so: StackOverflowError =>
         EvaluationResults.EvaluatorError("Stack overflow")
@@ -627,7 +624,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       case GuardedCase(p, g, rhs) =>
         for {
           r <- matchesPattern(p, scrut)
-          BooleanLiteral(true) = e(g)(rctx.withNewVars(r), gctx)
+          if e(g)(rctx.withNewVars(r), gctx) == BooleanLiteral(true)
         } yield (caze, r)
     }
   }
