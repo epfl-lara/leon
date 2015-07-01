@@ -10,20 +10,20 @@ import leon.collection._
 object Heaps {
  
   sealed abstract class Heap {
-    val rank : Int = this match {
+    val rank : BigInt = this match {
       case Leaf() => 0
       case Node(_, l, r) => 
         1 + max(l.rank, r.rank)
     }
-    def content : Set[Int] = this match {
-      case Leaf() => Set[Int]()
+    def content : Set[BigInt] = this match {
+      case Leaf() => Set[BigInt]()
       case Node(v,l,r) => l.content ++ Set(v) ++ r.content
     }
   }
   case class Leaf() extends Heap
-  case class Node(value:Int, left: Heap, right: Heap) extends Heap
+  case class Node(value:BigInt, left: Heap, right: Heap) extends Heap
 
-  def max(i1 : Int, i2 : Int) = if (i1 >= i2) i1 else i2
+  def max(i1 : BigInt, i2 : BigInt) = if (i1 >= i2) i1 else i2
 
   def hasHeapProperty(h : Heap) : Boolean = h match {
     case Leaf() => true
@@ -46,7 +46,7 @@ object Heaps {
       l.rank >= r.rank 
   }
 
-  def heapSize(t: Heap): Int = { t match {
+  def heapSize(t: Heap): BigInt = { t match {
     case Leaf() => 0
     case Node(v, l, r) => heapSize(l) + 1 + heapSize(r)
   }} ensuring(_ >= 0)
@@ -61,9 +61,9 @@ object Heaps {
       case (_, Leaf()) => h1
       case (Node(v1, l1, r1), Node(v2, l2, r2)) =>
         if(v1 >= v2)
-          Node(v1, l1, merge(r1, h2)) // FIXME forgot to use makeN
+          Node(v1, l1, merge(r1, h2)) // FIXME should use makeN
         else
-          makeN(v2, l2, merge(h1, r2)) // The same
+          Node(v2, l2, merge(h1, r2)) // FIXME here also
     }
   } ensuring { res => 
     hasLeftistProperty(res) && hasHeapProperty(res) &&
@@ -71,7 +71,7 @@ object Heaps {
     h1.content ++ h2.content == res.content 
   }
 
-  private def makeN(value: Int, left: Heap, right: Heap) : Heap = {
+  private def makeN(value: BigInt, left: Heap, right: Heap) : Heap = {
     require(
       hasLeftistProperty(left) && hasLeftistProperty(right)
     )
@@ -79,9 +79,10 @@ object Heaps {
       Node(value, left, right)
     else
       Node(value, right, left)
-  } ensuring { hasLeftistProperty(_) }
+  } ensuring { res =>
+    hasLeftistProperty(res)  }
 
-  def insert(element: Int, heap: Heap) : Heap = {
+  def insert(element: BigInt, heap: Heap) : Heap = {
     require(hasLeftistProperty(heap) && hasHeapProperty(heap))
 
     merge(Node(element, Leaf(), Leaf()), heap)
@@ -92,7 +93,7 @@ object Heaps {
     res.content == heap.content ++ Set(element)
   }
 
-  def findMax(h: Heap) : Option[Int] = {
+  def findMax(h: Heap) : Option[BigInt] = {
     h match {
       case Node(m,_,_) => Some(m)
       case Leaf() => None()

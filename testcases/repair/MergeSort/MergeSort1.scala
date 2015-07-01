@@ -1,25 +1,11 @@
-import leon.lang._
+import leon.collection._
 
 object MergeSort {
 
-  abstract class List {
-    def size : Int = this match {
-      case Nil() => 0
-      case Cons(_, tl) => 1 + tl.size
-    }
-    def content : Set[Int] = this match {
-      case Nil() => Set.empty[Int]
-      case Cons(hd, tl) => tl.content ++ Set(hd)
-    }
-  }
-
-  case class Nil() extends List
-  case class Cons(hd : Int, tl : List) extends List
-
-  def split(l : List) : (List,List) = { l match {
+  def split(l : List[BigInt]) : (List[BigInt],List[BigInt]) = { l match {
     case Cons(a, Cons(b, t)) => 
       val (rec1, rec2) = split(t)
-      (rec1, rec2) //FIXME forgot a and b
+      (rec1, rec2) // FIXME: Forgot a,b
     case other => (other, Nil())
   }} ensuring { res =>
     val (l1, l2) = res
@@ -29,12 +15,12 @@ object MergeSort {
     l1.content ++ l2.content == l.content
   }
 
-  def isSorted(l : List) : Boolean = l match {
+  def isSorted(l : List[BigInt]) : Boolean = l match {
     case Cons(x, t@Cons(y, _)) => x <= y && isSorted(t)
     case _ => true
   }
 
-  def merge(l1 : List, l2 : List) : List = {
+  def merge(l1 : List[BigInt], l2 : List[BigInt]) : List[BigInt] = {
     require(isSorted(l1) && isSorted(l2))
     (l1, l2) match {
       case (Cons(h1, t1), Cons(h2,t2)) => 
@@ -51,7 +37,7 @@ object MergeSort {
     res.content == l1.content ++ l2.content
   }
 
-  def mergeSort(l : List) : List = { l match {
+  def mergeSort(l : List[BigInt]) : List[BigInt] = { l match {
     case Nil() => l
     case Cons(_, Nil()) => l
     case other =>

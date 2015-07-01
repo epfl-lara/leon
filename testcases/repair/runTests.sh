@@ -40,7 +40,7 @@ echo "#           Category,                 File,             function, p.S, fuS
 
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=pad     testcases/repair/List/List1.scala           | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=++      testcases/repair/List/List2.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=ap      testcases/repair/List/List3.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=:+      testcases/repair/List/List3.scala           | tee -a $fullLog
 ./leon --repair --timeout=30                       --functions=drop    testcases/repair/List/List4.scala           | tee -a $fullLog
 ./leon --repair --timeout=30                       --functions=replace testcases/repair/List/List5.scala           | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=count   testcases/repair/List/List6.scala           | tee -a $fullLog

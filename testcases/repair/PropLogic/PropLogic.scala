@@ -9,16 +9,16 @@ object SemanticsPreservation {
   case class Or(lhs : Formula, rhs : Formula) extends Formula
   case class Not(f: Formula) extends Formula
   case class Const(v: Boolean) extends Formula
-  case class Literal(id: Int) extends Formula
+  case class Literal(id: BigBigInt) extends Formula
 
-  def size(f : Formula) : Int = { f match {
+  def size(f : Formula) : BigBigInt = { f match {
     case And(l,r) => 1 + size(l) + size(r)
     case Or(l,r) =>  1 + size(l) + size(r)
     case Not(e) => 1 + size(e)
     case _ => 1
   }} ensuring { _ >= 0 }
 
-  def eval(formula: Formula)(implicit trueVars : Set[Int]): Boolean = formula match {
+  def eval(formula: Formula)(implicit trueVars : Set[BigBigInt]): Boolean = formula match {
     case And(lhs, rhs) => eval(lhs) && eval(rhs)
     case Or(lhs, rhs)  => eval(lhs) || eval(rhs)
     case Not(f) => !eval(f)

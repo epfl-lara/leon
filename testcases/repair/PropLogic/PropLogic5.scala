@@ -1,4 +1,3 @@
-// Fails
 import leon.lang._
 import leon.annotation._
 import leon.collection._
@@ -10,16 +9,16 @@ object SemanticsPreservation {
   case class Or(lhs : Formula, rhs : Formula) extends Formula
   case class Not(f: Formula) extends Formula
   case class Const(v: Boolean) extends Formula
-  case class Literal(id: Int) extends Formula
+  case class Literal(id: BigInt) extends Formula
 
-  def size(f : Formula) : Int = { f match {
+  def size(f : Formula) : BigInt = { f match {
     case And(l,r) => 1 + size(l) + size(r)
     case Or(l,r) =>  1 + size(l) + size(r)
     case Not(e) => 1 + size(e)
     case _ => 1
   }} ensuring { _ >= 0 }
 
-  def eval(formula: Formula)(implicit trueVars : Set[Int]): Boolean = formula match {
+  def eval(formula: Formula)(implicit trueVars : Set[BigInt]): Boolean = formula match {
     case And(lhs, rhs) => eval(lhs) && eval(rhs)
     case Or(lhs, rhs)  => eval(lhs) || eval(rhs)
     case Not(f) => !eval(f)
@@ -29,16 +28,14 @@ object SemanticsPreservation {
 
   def nnf(formula : Formula) : Formula = { formula match {
     case Not(And(lhs,rhs)) => Or(nnf(Not(lhs)), nnf(Not(rhs)))
-    case Not(Or(lhs,rhs)) => And(nnf(Not(lhs)), nnf(Not(rhs)))
+    case Not(Or(lhs,rhs)) => formula//FIXME And(nnf(Not(lhs)), nnf(Not(rhs))) 
     case Not(Const(v)) => Const(!v)
     case Not(Not(e)) => nnf(e)
     case And(lhs, rhs) => And(nnf(lhs), nnf(rhs))
-    case Or(lhs, rhs)  => formula//And(nnf(lhs), nnf(rhs)) // FIXME should be Or
+    case Or(lhs, rhs)  => Or(nnf(lhs), nnf(rhs))
     case other => other 
   }} ensuring { res => 
-    isNNF(res) && ((formula, res) passes {
-      case Or(Not(Const(c)), Not(Literal(l))) => Or(Const(!c), Not(Literal(l)))
-    })
+    isNNF(res)
   }
 
   def isNNF(f : Formula) : Boolean = f match {
@@ -49,4 +46,5 @@ object SemanticsPreservation {
     case _ => true
   }
 
+    
 }

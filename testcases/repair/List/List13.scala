@@ -7,43 +7,43 @@ import leon.lang._
 import leon.collection._
 import leon.annotation._
 
-sealed abstract class List0[T] {
-  def size: Int = (this match {
-    case Nil0() => 0
-    case Cons0(h, t) => 1 + t.size
+sealed abstract class List[T] {
+  def size: BigInt = (this match {
+    case Nil() => 0
+    case Cons(h, t) => 1 + t.size
   }) ensuring (_ >= 0)
 
   def content: Set[T] = this match {
-    case Nil0() => Set()
-    case Cons0(h, t) => Set(h) ++ t.content
+    case Nil() => Set()
+    case Cons(h, t) => Set(h) ++ t.content
   }
 
   def contains(v: T): Boolean = (this match {
-    case Cons0(h, t) if h == v => true
-    case Cons0(_, t) => t.contains(v)
-    case Nil0() => false
+    case Cons(h, t) if h == v => true
+    case Cons(_, t) => t.contains(v)
+    case Nil() => false
   }) ensuring { res => res == (content contains v) }
 
-  def ++(that: List0[T]): List0[T] = (this match {
-    case Nil0() => that
-    case Cons0(x, xs) => Cons0(x, xs ++ that)
+  def ++(that: List[T]): List[T] = (this match {
+    case Nil() => that
+    case Cons(x, xs) => Cons(x, xs ++ that)
   }) ensuring { res => (res.content == this.content ++ that.content) && (res.size == this.size + that.size)}
 
   def head: T = {
-    require(this != Nil0[T]())
+    require(this != Nil[T]())
     this match {
-      case Cons0(h, t) => h
+      case Cons(h, t) => h
     }
   }
 
-  def tail: List0[T] = {
-    require(this != Nil0[T]())
+  def tail: List[T] = {
+    require(this != Nil[T]())
     this match {
-      case Cons0(h, t) => t
+      case Cons(h, t) => t
     }
   }
 
-  def apply(index: Int): T = {
+  def apply(index: BigInt): T = {
     require(0 <= index && index < size)
     if (index == 0) {
       head
@@ -52,138 +52,135 @@ sealed abstract class List0[T] {
     }
   }
 
-  def ::(t:T): List0[T] = Cons0(t, this)
+  def ::(t:T): List[T] = Cons(t, this)
 
-  def :+(t:T): List0[T] = {
+  def :+(t:T): List[T] = {
     this match {
-      case Nil0() => Cons0(t, this)
-      case Cons0(x, xs) => Cons0(x, xs :+ (t))
+      case Nil() => Cons(t, this)
+      case Cons(x, xs) => Cons(x, xs :+ (t))
     }
   } ensuring(res => (res.size == size + 1) && (res.content == content ++ Set(t)))
 
-  def reverse: List0[T] = {
+  def reverse: List[T] = {
     this match {
-      case Nil0() => this
-      case Cons0(x,xs) => xs.reverse :+ x
+      case Nil() => this
+      case Cons(x,xs) => xs.reverse :+ x
     }
   } ensuring (res => (res.size == size) && (res.content == content))
 
-  def take(i: Int): List0[T] = (this, i) match {
-    case (Nil0(), _) => Nil0()
-    case (Cons0(h, t), i) =>
+  def take(i: BigInt): List[T] = (this, i) match {
+    case (Nil(), _) => Nil()
+    case (Cons(h, t), i) =>
       if (i == 0) {
-        Nil0()
+        Nil()
       } else {
-        Cons0(h, t.take(i-1))
+        Cons(h, t.take(i-1))
       }
   }
 
-  def drop(i: Int): List0[T] = { (this, i) match {
-    case (Nil0(), _) => Nil0()
-    case (Cons0(h, t), 0) =>
-      t // FIXME should be this
-    case (Cons0(_, t), i) =>
-      t.drop(i) //FIXME should be i-1
-  }} ensuring { res => ((this, i), res) passes { 
-    case (Cons0(_, Nil0()), 42) => Nil0()
-    case (l@Cons0(_, _), 0) => l
-    case (Cons0(a, Cons0(b, Nil0())), 1) => Cons0(b, Nil0())
-    case (Cons0(a, Cons0(b, Cons0(c, Nil0()))), 2) => Cons0(c, Nil0())
-  }}
+  def drop(i: BigInt): List[T] = (this, i) match {
+    case (Nil(), _) => Nil()
+    case (Cons(h, t), i) =>
+      if (i == 0) {
+        Cons(h, t)
+      } else {
+        t.drop(i) // FIXME Should be -1
+      }
+  }
 
-  def slice(from: Int, to: Int): List0[T] = {
+  def slice(from: BigInt, to: BigInt): List[T] = {
     require(from < to && to < size && from >= 0)
     drop(from).take(to-from)
   }
 
-  def replace(from: T, to: T): List0[T] = this match {
-    case Nil0() => Nil0()
-    case Cons0(h, t) =>
+  def replace(from: T, to: T): List[T] = this match {
+    case Nil() => Nil()
+    case Cons(h, t) =>
       val r = t.replace(from, to)
       if (h == from) {
-        Cons0(to, r)
+        Cons(to, r)
       } else {
-        Cons0(h, r)
+        Cons(h, r)
       }
   }
 
-  private def chunk0(s: Int, l: List0[T], acc: List0[T], res: List0[List0[T]], s0: Int): List0[List0[T]] = l match {
-    case Nil0() =>
+  private def chunk0(s: BigInt, l: List[T], acc: List[T], res: List[List[T]], s0: BigInt): List[List[T]] = l match {
+    case Nil() =>
       if (acc.size > 0) {
         res :+ acc
       } else {
         res
       }
-    case Cons0(h, t) =>
+    case Cons(h, t) =>
       if (s0 == 0) {
-        chunk0(s, l, Nil0(), res :+ acc, s)
+        chunk0(s, l, Nil(), res :+ acc, s)
       } else {
         chunk0(s, t, acc :+ h, res, s0-1)
       }
   }
 
-  def chunks(s: Int): List0[List0[T]] = {
+  def chunks(s: BigInt): List[List[T]] = {
     require(s > 0)
 
-    chunk0(s, this, Nil0(), Nil0(), s)
+    chunk0(s, this, Nil(), Nil(), s)
   }
 
-  def zip[B](that: List0[B]): List0[(T, B)] = (this, that) match {
-    case (Cons0(h1, t1), Cons0(h2, t2)) =>
-      Cons0((h1, h2), t1.zip(t2))
+  def zip[B](that: List[B]): List[(T, B)] = (this, that) match {
+    case (Cons(h1, t1), Cons(h2, t2)) =>
+      Cons((h1, h2), t1.zip(t2))
     case (_) =>
-      Nil0()
+      Nil()
   }
 
-  def -(e: T): List0[T] = this match {
-    case Cons0(h, t) =>
+  def -(e: T): List[T] = this match {
+    case Cons(h, t) =>
       if (e == h) {
         t - e
       } else {
-        Cons0(h, t - e)
+        Cons(h, t - e)
       }
-    case Nil0() =>
-      Nil0()
+    case Nil() =>
+      Nil()
   }
 
-  def --(that: List0[T]): List0[T] = this match {
-    case Cons0(h, t) =>
+  def --(that: List[T]): List[T] = this match {
+    case Cons(h, t) =>
       if (that.contains(h)) {
         t -- that
       } else {
-        Cons0(h, t -- that)
+        Cons(h, t -- that)
       }
-    case Nil0() =>
-      Nil0()
+    case Nil() =>
+      Nil()
   }
 
-  def &(that: List0[T]): List0[T] = this match {
-    case Cons0(h, t) =>
+  def &(that: List[T]): List[T] = this match {
+    case Cons(h, t) =>
       if (that.contains(h)) {
-        Cons0(h, t & that)
+        Cons(h, t & that)
       } else {
         t & that
       }
-    case Nil0() =>
-      Nil0()
+    case Nil() =>
+      Nil()
   }
 
-  def pad(s: Int, e: T): List0[T] = { (this, s) match {
+  def pad(s: BigInt, e: T): List[T] = { (this, s) match {
     case (_, s) if s <= 0 =>
       this
-    case (Nil0(), s) =>
-      Cons0(e, Nil0().pad(s-1, e))
-    case (Cons0(h, t), s) =>
-      Cons0(h, t.pad(s, e))
+    case (Nil(), s) =>
+      Cons(e, Nil().pad(s-1, e))
+    case (Cons(h, t), s) =>
+      Cons(h, t.pad(s, e))
   }} ensuring { res =>
     ((this,s,e), res) passes {
-      case (Cons0(a,Nil0()), 2, x) => Cons0(a, Cons0(x, Cons0(x, Nil0())))
+      case (Cons(a,Nil()), BigInt(2), x) => Cons(a, Cons(x, Cons(x, Nil())))
     }
   }
 
-  def find(e: T): Option[Int] = this match {
-    case Nil0() => None()
-    case Cons0(h, t) =>
+  def find(e: T): Option[BigInt] = this match {
+    case Nil() => None()
+    case Cons(h, t) =>
       if (h == e) {
         Some(0)
       } else {
@@ -194,96 +191,96 @@ sealed abstract class List0[T] {
       }
   }
 
-  def init: List0[T] = (this match {
-    case Cons0(h, Nil0()) =>
-      Nil0[T]()
-    case Cons0(h, t) =>
-      Cons0[T](h, t.init)
-    case Nil0() =>
-      Nil0[T]()
-  }) ensuring ( (r: List0[T]) => ((r.size < this.size) || (this.size == 0)) )
+  def init: List[T] = (this match {
+    case Cons(h, Nil()) =>
+      Nil[T]()
+    case Cons(h, t) =>
+      Cons[T](h, t.init)
+    case Nil() =>
+      Nil[T]()
+  }) ensuring ( (r: List[T]) => ((r.size < this.size) || (this.size == 0)) )
 
   def lastOption: Option[T] = this match {
-    case Cons0(h, t) =>
+    case Cons(h, t) =>
       t.lastOption.orElse(Some(h))
-    case Nil0() =>
+    case Nil() =>
       None()
   }
 
   def firstOption: Option[T] = this match {
-    case Cons0(h, t) =>
+    case Cons(h, t) =>
       Some(h)
-    case Nil0() =>
+    case Nil() =>
       None()
   }
 
-  def unique: List0[T] = this match {
-    case Nil0() => Nil0()
-    case Cons0(h, t) =>
-      Cons0(h, t.unique - h)
+  def unique: List[T] = this match {
+    case Nil() => Nil()
+    case Cons(h, t) =>
+      Cons(h, t.unique - h)
   }
 
-  def splitAt(e: T): List0[List0[T]] =  split(Cons0(e, Nil0()))
+  def splitAt(e: T): List[List[T]] =  split(Cons(e, Nil()))
 
-  def split(seps: List0[T]): List0[List0[T]] = this match {
-    case Cons0(h, t) =>
+  def split(seps: List[T]): List[List[T]] = this match {
+    case Cons(h, t) =>
       if (seps.contains(h)) {
-        Cons0(Nil0(), t.split(seps))
+        Cons(Nil(), t.split(seps))
       } else {
         val r = t.split(seps)
-        Cons0(Cons0(h, r.head), r.tail)
+        Cons(Cons(h, r.head), r.tail)
       }
-    case Nil0() =>
-      Cons0(Nil0(), Nil0())
+    case Nil() =>
+      Cons(Nil(), Nil())
   }
 
-  def count(e: T): Int = this match {
-    case Cons0(h, t) =>
+  def count(e: T): BigInt = this match {
+    case Cons(h, t) =>
       if (h == e) {
         1 + t.count(e)
       } else {
         t.count(e)
       }
-    case Nil0() =>
+    case Nil() =>
       0
   }
 
-  def evenSplit: (List0[T], List0[T]) = {
+  def evenSplit: (List[T], List[T]) = {
     val c = size/2
     (take(c), drop(c))
   }
 
-  def insertAt(pos: Int, l: List0[T]): List0[T] = {
+  def insertAt(pos: BigInt, l: List[T]): List[T] = {
     if(pos < 0) {
       insertAt(size + pos, l)
     } else if(pos == 0) {
       l ++ this
     } else {
       this match {
-        case Cons0(h, t) =>
-          Cons0(h, t.insertAt(pos-1, l))
-        case Nil0() =>
+        case Cons(h, t) =>
+          Cons(h, t.insertAt(pos-1, l))
+        case Nil() =>
           l
       }
     }
   }
 
-  def replaceAt(pos: Int, l: List0[T]): List0[T] = {
+  def replaceAt(pos: BigInt, l: List[T]): List[T] = {
     if(pos < 0) {
       replaceAt(size + pos, l)
     } else if(pos == 0) {
       l ++ this.drop(l.size)
     } else {
       this match {
-        case Cons0(h, t) =>
-          Cons0(h, t.replaceAt(pos-1, l))
-        case Nil0() =>
+        case Cons(h, t) =>
+          Cons(h, t.replaceAt(pos-1, l))
+        case Nil() =>
           l
       }
     }
   }
 
-  def rotate(s: Int): List0[T] = {
+  def rotate(s: BigInt): List[T] = {
     if (s < 0) {
       rotate(size+s)
     } else {
@@ -293,127 +290,127 @@ sealed abstract class List0[T] {
   }
 
   def isEmpty = this match { 
-    case Nil0() => true
+    case Nil() => true
     case _ => false 
   }
 
 }
 
 @ignore
-object List0 {
-  def apply[T](elems: T*): List0[T] = ???
+object List {
+  def apply[T](elems: T*): List[T] = ???
 }
 
 @library
-object List0Ops {
-  def flatten[T](ls: List0[List0[T]]): List0[T] = ls match {
-    case Cons0(h, t) => h ++ flatten(t)
-    case Nil0() => Nil0()
+object ListOps {
+  def flatten[T](ls: List[List[T]]): List[T] = ls match {
+    case Cons(h, t) => h ++ flatten(t)
+    case Nil() => Nil()
   }
 
-  def isSorted(ls: List0[Int]): Boolean = ls match {
-    case Nil0() => true
-    case Cons0(_, Nil0()) => true
-    case Cons0(h1, Cons0(h2, _)) if(h1 > h2) => false
-    case Cons0(_, t) => isSorted(t)
+  def isSorted(ls: List[BigInt]): Boolean = ls match {
+    case Nil() => true
+    case Cons(_, Nil()) => true
+    case Cons(h1, Cons(h2, _)) if(h1 > h2) => false
+    case Cons(_, t) => isSorted(t)
   }
 
-  def sorted(ls: List0[Int]): List0[Int] = ls match {
-    case Cons0(h, t) => insSort(sorted(t), h)
-    case Nil0() => Nil0()
+  def sorted(ls: List[BigInt]): List[BigInt] = ls match {
+    case Cons(h, t) => insSort(sorted(t), h)
+    case Nil() => Nil()
   }
 
-  def insSort(ls: List0[Int], v: Int): List0[Int] = ls match {
-    case Nil0() => Cons0(v, Nil0())
-    case Cons0(h, t) =>
+  def insSort(ls: List[BigInt], v: BigInt): List[BigInt] = ls match {
+    case Nil() => Cons(v, Nil())
+    case Cons(h, t) =>
       if (v <= h) {
-        Cons0(v, t)
+        Cons(v, t)
       } else {
-        Cons0(h, insSort(t, v))
+        Cons(h, insSort(t, v))
       }
   }
 }
 
 
-case class Cons0[T](h: T, t: List0[T]) extends List0[T]
-case class Nil0[T]() extends List0[T]
+case class Cons[T](h: T, t: List[T]) extends List[T]
+case class Nil[T]() extends List[T]
 
 @library
-object List0Specs {
-  def snocIndex[T](l : List0[T], t : T, i : Int) : Boolean = {
+object ListSpecs {
+  def snocIndex[T](l : List[T], t : T, i : BigInt) : Boolean = {
     require(0 <= i && i < l.size + 1)
     // proof:
     (l match {
-      case Nil0() => true
-      case Cons0(x, xs) => if (i > 0) snocIndex[T](xs, t, i-1) else true
+      case Nil() => true
+      case Cons(x, xs) => if (i > 0) snocIndex[T](xs, t, i-1) else true
     }) &&
     // claim:
     ((l :+ t).apply(i) == (if (i < l.size) l(i) else t))
   }.holds
 
-  def reverseIndex[T](l : List0[T], i : Int) : Boolean = {
+  def reverseIndex[T](l : List[T], i : BigInt) : Boolean = {
     require(0 <= i && i < l.size)
     (l match {
-      case Nil0() => true
-      case Cons0(x,xs) => snocIndex(l, x, i) && reverseIndex[T](l,i)
+      case Nil() => true
+      case Cons(x,xs) => snocIndex(l, x, i) && reverseIndex[T](l,i)
     }) &&
     (l.reverse.apply(i) == l.apply(l.size - 1 - i))
   }.holds
 
-  def appendIndex[T](l1 : List0[T], l2 : List0[T], i : Int) : Boolean = {
+  def appendIndex[T](l1 : List[T], l2 : List[T], i : BigInt) : Boolean = {
     require(0 <= i && i < l1.size + l2.size)
     (l1 match {
-      case Nil0() => true
-      case Cons0(x,xs) => if (i==0) true else appendIndex[T](xs,l2,i-1)
+      case Nil() => true
+      case Cons(x,xs) => if (i==0) true else appendIndex[T](xs,l2,i-1)
     }) &&
     ((l1 ++ l2).apply(i) == (if (i < l1.size) l1(i) else l2(i - l1.size)))
   }.holds
 
-  def appendAssoc[T](l1 : List0[T], l2 : List0[T], l3 : List0[T]) : Boolean = {
+  def appendAssoc[T](l1 : List[T], l2 : List[T], l3 : List[T]) : Boolean = {
     (l1 match {
-      case Nil0() => true
-      case Cons0(x,xs) => appendAssoc(xs,l2,l3)
+      case Nil() => true
+      case Cons(x,xs) => appendAssoc(xs,l2,l3)
     }) &&
     (((l1 ++ l2) ++ l3) == (l1 ++ (l2 ++ l3)))
   }.holds
 
-  def snocIsAppend[T](l : List0[T], t : T) : Boolean = {
+  def snocIsAppend[T](l : List[T], t : T) : Boolean = {
     (l match {
-      case Nil0() => true
-      case Cons0(x,xs) =>  snocIsAppend(xs,t)
+      case Nil() => true
+      case Cons(x,xs) =>  snocIsAppend(xs,t)
     }) &&
-    ((l :+ t) == l ++ Cons0[T](t, Nil0()))
+    ((l :+ t) == l ++ Cons[T](t, Nil()))
   }.holds
 
-  def snocAfterAppend[T](l1 : List0[T], l2 : List0[T], t : T) : Boolean = {
+  def snocAfterAppend[T](l1 : List[T], l2 : List[T], t : T) : Boolean = {
     (l1 match {
-      case Nil0() => true
-      case Cons0(x,xs) =>  snocAfterAppend(xs,l2,t)
+      case Nil() => true
+      case Cons(x,xs) =>  snocAfterAppend(xs,l2,t)
     }) &&
     ((l1 ++ l2) :+ t == (l1 ++ (l2 :+ t)))
   }.holds
 
-  def snocReverse[T](l : List0[T], t : T) : Boolean = {
+  def snocReverse[T](l : List[T], t : T) : Boolean = {
     (l match {
-      case Nil0() => true
-      case Cons0(x,xs) => snocReverse(xs,t)
+      case Nil() => true
+      case Cons(x,xs) => snocReverse(xs,t)
     }) &&
-    ((l :+ t).reverse == Cons0(t, l.reverse))
+    ((l :+ t).reverse == Cons(t, l.reverse))
   }.holds
 
-  def reverseReverse[T](l : List0[T]) : Boolean = {
+  def reverseReverse[T](l : List[T]) : Boolean = {
     (l match {
-      case Nil0() => true
-      case Cons0(x,xs) => reverseReverse[T](xs) && snocReverse[T](xs.reverse, x)
+      case Nil() => true
+      case Cons(x,xs) => reverseReverse[T](xs) && snocReverse[T](xs.reverse, x)
     }) &&
     (l.reverse.reverse == l)
   }.holds
 
   //// my hand calculation shows this should work, but it does not seem to be found
-  //def reverseAppend[T](l1 : List0[T], l2 : List0[T]) : Boolean = {
+  //def reverseAppend[T](l1 : List[T], l2 : List[T]) : Boolean = {
   //  (l1 match {
-  //    case Nil0() => true
-  //    case Cons0(x,xs) => {
+  //    case Nil() => true
+  //    case Cons(x,xs) => {
   //      reverseAppend(xs,l2) &&
   //      snocAfterAppend[T](l2.reverse, xs.reverse, x) &&
   //      l1.reverse == (xs.reverse :+ x)

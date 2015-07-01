@@ -13,7 +13,7 @@ object Trees {
   case class Not(e : Expr) extends Expr
   case class Eq(lhs: Expr, rhs: Expr) extends Expr
   case class Ite(cond: Expr, thn: Expr, els: Expr) extends Expr
-  case class IntLiteral(v: Int) extends Expr
+  case class IntLiteral(v: BigInt) extends Expr
   case class BoolLiteral(b : Boolean) extends Expr
 }
 
@@ -74,7 +74,7 @@ object Semantics {
   import Types._
   import TypeChecker._
   
-  def semI(t : Expr) : Int = {
+  def semI(t : Expr) : BigInt = {
     require( typeOf(t) == ( Some(IntType) : Option[Type] ))
     t match {
       case Plus(lhs , rhs) => semI(lhs) + semI(rhs)
@@ -102,10 +102,10 @@ object Semantics {
     }
   }
  
-  def b2i(b : Boolean) = if (b) 1 else 0
+  def b2i(b : Boolean): BigInt = if (b) 1 else 0
 
   @induct
-  def semUntyped( t : Expr) : Int = { t match {
+  def semUntyped( t : Expr) : BigInt = { t match {
     case Plus (lhs, rhs) => semUntyped(lhs) + semUntyped(rhs)
     case Minus(lhs, rhs) => semUntyped(lhs) - semUntyped(rhs)
     case And  (lhs, rhs) => if (semUntyped(lhs)!=0) semUntyped(rhs) else 0
@@ -141,7 +141,7 @@ object Desugar {
   case class Ite(cond : SimpleE, thn : SimpleE, els : SimpleE) extends SimpleE
   case class Eq(lhs : SimpleE, rhs : SimpleE) extends SimpleE
   case class LessThan(lhs : SimpleE, rhs : SimpleE) extends SimpleE
-  case class Literal(i : Int) extends SimpleE
+  case class Literal(i : BigInt) extends SimpleE
 
   @induct
   def desugar(e : Trees.Expr) : SimpleE = { e match {
@@ -160,7 +160,7 @@ object Desugar {
     sem(res) == Semantics.semUntyped(e)
   }
 
-  def sem(e : SimpleE) : Int = e match {
+  def sem(e : SimpleE) : BigInt = e match {
     case Plus (lhs, rhs) => sem(lhs) + sem(rhs)
     case Ite(cond, thn, els) => if (sem(cond) != 0) sem(thn) else sem(els)
     case Neg(arg) => -sem(arg) 
@@ -174,10 +174,10 @@ object Desugar {
 object Evaluator {
   import Trees._
 
-  def bToi(b: Boolean) = if (b) 1 else 0
-  def iTob(i: Int)     = i == 1
+  def bToi(b: Boolean): BigInt = if (b) 1 else 0
+  def iTob(i: BigInt) = i == 1
 
-  def eval(e: Expr): Int = {
+  def eval(e: Expr): BigInt = {
     e match {
       case Plus(lhs, rhs)      => eval(lhs) + eval(rhs)
       case Minus(lhs, rhs)     => eval(lhs) + eval(rhs)

@@ -420,11 +420,11 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             res == BooleanLiteral(true)
 
           case EvaluationResults.RuntimeError(err) =>
-            sctx.reporter.warning("RE testing CE: "+err)
+            sctx.reporter.debug("RE testing CE: "+err)
             false
 
           case EvaluationResults.EvaluatorError(err) =>
-            sctx.reporter.error("Error testing CE: "+err)
+            sctx.reporter.debug("Error testing CE: "+err)
             false
         }
       }

@@ -13,7 +13,7 @@ object Trees {
   case class Not(e : Expr) extends Expr
   case class Eq(lhs: Expr, rhs: Expr) extends Expr
   case class Ite(cond: Expr, thn: Expr, els: Expr) extends Expr
-  case class IntLiteral(v: Int) extends Expr
+  case class IntLiteral(v: BigInt) extends Expr
   case class BoolLiteral(b : Boolean) extends Expr
 }
 
@@ -74,7 +74,7 @@ object Semantics {
   import Types._
   import TypeChecker._
   
-  def semI(t : Expr) : Int = {
+  def semI(t : Expr) : BigInt = {
     require( typeOf(t) == ( Some(IntType) : Option[Type] ))
     t match {
       case Plus(lhs , rhs) => semI(lhs) + semI(rhs)
@@ -102,10 +102,10 @@ object Semantics {
     }
   }
  
-  def b2i(b : Boolean) = if (b) 1 else 0
+  def b2i(b : Boolean): BigInt = if (b) 1 else 0
 
   @induct
-  def semUntyped( t : Expr) : Int = { t match {
+  def semUntyped( t : Expr) : BigInt = { t match {
     case Plus (lhs, rhs) => semUntyped(lhs) + semUntyped(rhs)
     case Minus(lhs, rhs) => semUntyped(lhs) - semUntyped(rhs)
     case And  (lhs, rhs) => if (semUntyped(lhs)!=0) semUntyped(rhs) else 0
@@ -141,7 +141,7 @@ object Desugar {
   case class Ite(cond : SimpleE, thn : SimpleE, els : SimpleE) extends SimpleE
   case class Eq(lhs : SimpleE, rhs : SimpleE) extends SimpleE
   case class LessThan(lhs : SimpleE, rhs : SimpleE) extends SimpleE
-  case class Literal(i : Int) extends SimpleE
+  case class Literal(i : BigInt) extends SimpleE
 
   @induct
   def desugar(e : Trees.Expr) : SimpleE = { e match {
@@ -150,7 +150,7 @@ object Desugar {
     case Trees.LessThan(lhs, rhs) => LessThan(desugar(lhs), desugar(rhs))
     case Trees.And  (lhs, rhs) => Ite(desugar(lhs), desugar(rhs), Literal(0)) 
     case Trees.Or   (lhs, rhs) => Ite(desugar(lhs), Literal(1), desugar(rhs))
-    case Trees.Not(e) => Ite(desugar(e), Literal(1), Literal(1)) // FIXME else should be 0
+    case Trees.Not(e) => Ite(desugar(e), Literal(1), Literal(1)) // FIMXE should be 0
     case Trees.Eq(lhs, rhs) =>
       Eq(desugar(lhs), desugar(rhs))
     case Trees.Ite(cond, thn, els) => Ite(desugar(cond), desugar(thn), desugar(els))
@@ -160,7 +160,7 @@ object Desugar {
     sem(res) == Semantics.semUntyped(e)
   }
 
-  def sem(e : SimpleE) : Int = e match {
+  def sem(e : SimpleE) : BigInt = e match {
     case Plus (lhs, rhs) => sem(lhs) + sem(rhs)
     case Ite(cond, thn, els) => if (sem(cond) != 0) sem(thn) else sem(els)
     case Neg(arg) => -sem(arg) 
@@ -169,4 +169,44 @@ object Desugar {
     case Literal(i) => i
   }
 
+}
+
+object Evaluator {
+  import Trees._
+
+  def bToi(b: Boolean): BigInt = if (b) 1 else 0
+  def iTob(i: BigInt) = i == 1
+
+  def eval(e: Expr): BigInt = {
+    e match {
+      case Plus(lhs, rhs)      => eval(lhs) + eval(rhs)
+      case Minus(lhs, rhs)     => eval(lhs) + eval(rhs)
+      case LessThan(lhs, rhs)  => bToi(eval(lhs) < eval(rhs))
+      case And(lhs, rhs)       => bToi(iTob(eval(lhs)) && iTob(eval(rhs)))
+      case Or(lhs, rhs)        => bToi(iTob(eval(lhs)) || iTob(eval(rhs)))
+      case Not(e)              => bToi(!iTob(eval(e)))
+      case Eq(lhs, rhs)        => bToi(eval(lhs) == eval(rhs))
+      case Ite(cond, thn, els) => if (iTob(eval(cond))) eval(thn) else eval(els)
+      case IntLiteral(v)       => v
+      case BoolLiteral(b)      => bToi(b)
+    }
+  }
+}
+
+object Simplifier {
+  import Trees._
+  import Evaluator._
+
+  @induct
+  def simplify(e: Expr): Expr = {
+    e match {
+      case And(BoolLiteral(false), _)           => BoolLiteral(false)
+      case Or(BoolLiteral(true), _)             => BoolLiteral(true)
+      case Plus(IntLiteral(a), IntLiteral(b))   => IntLiteral(a+b)
+      case Not(Not(Not(a)))                     => Not(a)
+      case e => e
+    }
+  } ensuring {
+    res => eval(res) == eval(e)
+  }
 }
