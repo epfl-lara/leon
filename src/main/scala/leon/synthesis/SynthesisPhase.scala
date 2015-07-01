@@ -29,10 +29,14 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
     val ms = ctx.findOption(optManual)
+    val timeout = ctx.findOption(SharedOptions.optTimeout)
+    if (ms.isDefined && timeout.isDefined) {
+      ctx.reporter.warning("Defining timeout with manual search")
+    }
     SynthesisSettings(
       manualSearch = ms,
       functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
-      timeoutMs = ctx.findOption(SharedOptions.optTimeout) map { _ * 1000 },
+      timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),
       cegisUseShrink = ctx.findOption(optCEGISShrink),
