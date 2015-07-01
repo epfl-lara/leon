@@ -38,19 +38,19 @@ echo "#           Category,                 File,             function, p.S, fuS
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=nnf      testcases/repair/PropLogic/PropLogic4.scala | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=nnf      testcases/repair/PropLogic/PropLogic5.scala | tee -a $fullLog
 
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_pad     testcases/repair/List/List1.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_++      testcases/repair/List/List2.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_ap      testcases/repair/List/List3.scala           | tee -a $fullLog
-#./leon --repair --timeout=30                       --functions=_drop    testcases/repair/List/List4.scala           | tee -a $fullLog
-./leon --repair --timeout=30                       --functions=_replace testcases/repair/List/List5.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_count   testcases/repair/List/List6.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_find    testcases/repair/List/List7.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_find    testcases/repair/List/List8.scala           | tee -a $fullLog
-./leon --repair --timeout=30                       --functions=_find    testcases/repair/List/List9.scala           | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_size    testcases/repair/List/List10.scala          | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=sum      testcases/repair/List/List11.scala          | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_-       testcases/repair/List/List12.scala          | tee -a $fullLog
-./leon --repair --timeout=30 --solvers=fairz3,enum --functions=_drop    testcases/repair/List/List13.scala          | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=pad     testcases/repair/List/List1.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=++      testcases/repair/List/List2.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=ap      testcases/repair/List/List3.scala           | tee -a $fullLog
+./leon --repair --timeout=30                       --functions=drop    testcases/repair/List/List4.scala           | tee -a $fullLog
+./leon --repair --timeout=30                       --functions=replace testcases/repair/List/List5.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=count   testcases/repair/List/List6.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=find    testcases/repair/List/List7.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=find    testcases/repair/List/List8.scala           | tee -a $fullLog
+./leon --repair --timeout=30                       --functions=find    testcases/repair/List/List9.scala           | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=size    testcases/repair/List/List10.scala          | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=sum     testcases/repair/List/List11.scala          | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=-       testcases/repair/List/List12.scala          | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=fairz3,enum --functions=drop    testcases/repair/List/List13.scala          | tee -a $fullLog
 
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=power    testcases/repair/Numerical/Numerical1.scala | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=fairz3,enum --functions=moddiv   testcases/repair/Numerical/Numerical3.scala | tee -a $fullLog
