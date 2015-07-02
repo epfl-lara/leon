@@ -333,12 +333,7 @@ object ExpressionGrammars {
             // We allow only exact call, and/or cegis extensions
             /*Seq(el -> Generator[L, Expr](Nil, { _ => e })) ++*/ cegis(gl)
 
-          case UnaryOperator(sub, builder) =>
-            gens(e, gl, List(sub), { case Seq(s) => builder(s) })
-          case BinaryOperator(sub1, sub2, builder) =>
-            gens(e, gl, List(sub1, sub2), { case Seq(s1, s2) => builder(s1, s2) })
-
-          case NAryOperator(subs, builder) =>
+          case Operator(subs, builder) =>
             gens(e, gl, subs, { case ss => builder(ss) })
         }
 

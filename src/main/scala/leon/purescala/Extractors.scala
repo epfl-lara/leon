@@ -12,108 +12,130 @@ import Definitions.Program
 
 object Extractors {
 
-  object UnaryOperator {
-    def unapply(expr: Expr) : Option[(Expr,(Expr)=>Expr)] = expr match {
-      case Not(t) => Some((t,not))
-      case Choose(expr) => Some((expr,Choose))
-      case UMinus(t) => Some((t,UMinus))
-      case BVUMinus(t) => Some((t,BVUMinus))
-      case BVNot(t) => Some((t,BVNot))
-      case SetCardinality(t) => Some((t,SetCardinality))
-      case MultisetCardinality(t) => Some((t,MultisetCardinality))
-      case MultisetToSet(t) => Some((t,MultisetToSet))
-      case SetMin(s) => Some((s,SetMin))
-      case SetMax(s) => Some((s,SetMax))
-      case CaseClassSelector(cd, e, sel) => Some((e, CaseClassSelector(cd, _, sel)))
-      case CaseClassInstanceOf(cd, e) => Some((e, CaseClassInstanceOf(cd, _)))
-      case TupleSelect(t, i) => Some((t, tupleSelect(_, i, t.getType.asInstanceOf[TupleType].dimension)))
-      case ArrayLength(a) => Some((a, ArrayLength))
-      case Lambda(args, body) => Some((body, Lambda(args, _)))
-      case Forall(args, body) => Some((body, Forall(args, _)))
-      case (ue: UnaryExtractable) => ue.extract
-      case _ => None
-    }
-  }
+  object Operator {
+    def unapply(expr: Expr): Option[(Seq[Expr], (Seq[Expr]) => Expr)] = expr match {
+      /* Unary operators */
+      case Not(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => not(es.head)))
+      case Choose(expr) =>
+        Some((Seq(expr), (es: Seq[Expr]) => Choose(es.head)))
+      case UMinus(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => UMinus(es.head)))
+      case BVUMinus(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => BVUMinus(es.head)))
+      case BVNot(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => BVNot(es.head)))
+      case SetCardinality(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => SetCardinality(es.head)))
+      case CaseClassSelector(cd, e, sel) =>
+        Some((Seq(e), (es: Seq[Expr]) => CaseClassSelector(cd, es.head, sel)))
+      case CaseClassInstanceOf(cd, e) =>
+        Some((Seq(e), (es: Seq[Expr]) => CaseClassInstanceOf(cd, es.head)))
+      case TupleSelect(t, i) =>
+        Some((Seq(t), (es: Seq[Expr]) => TupleSelect(es.head, i)))
+      case ArrayLength(a) =>
+        Some((Seq(a), (es: Seq[Expr]) => ArrayLength(es.head)))
+      case Lambda(args, body) =>
+        Some((Seq(body), (es: Seq[Expr]) => Lambda(args, es.head)))
 
-  trait UnaryExtractable {
-    def extract: Option[(Expr, (Expr)=>Expr)]
-  }
-
-  object BinaryOperator {
-    def unapply(expr: Expr) : Option[(Expr,Expr,(Expr,Expr)=>Expr)] = expr match {
-      case LetDef(fd, body) => Some((fd.fullBody, body, 
-        (fdBd, body) => {
-          fd.fullBody = fdBd
-          LetDef(fd, body) 
+      /* Binary operators */
+      case LetDef(fd, body) => Some((
+        Seq(fd.fullBody, body),
+        (es: Seq[Expr]) => {
+          fd.fullBody = es(0)
+          LetDef(fd, es(1))
         }
       ))
-      case Equals(t1,t2) => Some((t1,t2,Equals))
-      case Implies(t1,t2) => Some((t1,t2, implies))
-      case Plus(t1,t2) => Some((t1,t2,plus))
-      case Minus(t1,t2) => Some((t1,t2,minus))
-      case Times(t1,t2) => Some((t1,t2,times))
-      case Division(t1,t2) => Some((t1,t2,Division))
-      case Remainder(t1,t2) => Some((t1,t2,Remainder))
-      case Modulo(t1,t2) => Some((t1,t2,Modulo))
-      case LessThan(t1,t2) => Some((t1,t2,LessThan))
-      case GreaterThan(t1,t2) => Some((t1,t2,GreaterThan))
-      case LessEquals(t1,t2) => Some((t1,t2,LessEquals))
-      case GreaterEquals(t1,t2) => Some((t1,t2,GreaterEquals))
-      case BVPlus(t1,t2) => Some((t1,t2,plus))
-      case BVMinus(t1,t2) => Some((t1,t2,minus))
-      case BVTimes(t1,t2) => Some((t1,t2,times))
-      case BVDivision(t1,t2) => Some((t1,t2,BVDivision))
-      case BVRemainder(t1,t2) => Some((t1,t2,BVRemainder))
-      case BVAnd(t1,t2) => Some((t1,t2,BVAnd))
-      case BVOr(t1,t2) => Some((t1,t2,BVOr))
-      case BVXOr(t1,t2) => Some((t1,t2,BVXOr))
-      case BVShiftLeft(t1,t2) => Some((t1,t2,BVShiftLeft))
-      case BVAShiftRight(t1,t2) => Some((t1,t2,BVAShiftRight))
-      case BVLShiftRight(t1,t2) => Some((t1,t2,BVLShiftRight))
-      case ElementOfSet(t1,t2) => Some((t1,t2,ElementOfSet))
-      case SubsetOf(t1,t2) => Some((t1,t2,SubsetOf))
-      case SetIntersection(t1,t2) => Some((t1,t2,SetIntersection))
-      case SetUnion(t1,t2) => Some((t1,t2,SetUnion))
-      case SetDifference(t1,t2) => Some((t1,t2,SetDifference))
-      case Multiplicity(t1,t2) => Some((t1,t2,Multiplicity))
-      case MultisetIntersection(t1,t2) => Some((t1,t2,MultisetIntersection))
-      case MultisetUnion(t1,t2) => Some((t1,t2,MultisetUnion))
-      case MultisetPlus(t1,t2) => Some((t1,t2,MultisetPlus))
-      case MultisetDifference(t1,t2) => Some((t1,t2,MultisetDifference))
-      case mg@MapGet(t1,t2) => Some((t1,t2, MapGet))
-      case MapUnion(t1,t2) => Some((t1,t2,MapUnion))
-      case MapDifference(t1,t2) => Some((t1,t2,MapDifference))
-      case MapIsDefinedAt(t1,t2) => Some((t1,t2, MapIsDefinedAt))
-      case ArraySelect(t1, t2) => Some((t1, t2, ArraySelect))
-      case Let(binder, e, body) => Some((e, body, Let(binder, _, _)))
-      case Require(pre, body) => Some((pre, body, Require))
-      case Ensuring(body, post) => Some((body, post, Ensuring))
-      case Assert(const, oerr, body) => Some((const, body, Assert(_, oerr, _)))
-      case (ex: BinaryExtractable) => ex.extract
-      case _ => None
-    }
-  }
+      case Equals(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => equality(es(0), es(1)))
+      case Implies(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => implies(es(0), es(1)))
+      case Plus(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => plus(es(0), es(1)))
+      case Minus(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => minus(es(0), es(1)))
+      case Times(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
+      case Division(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Division(es(0), es(1)))
+      case Remainder(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Remainder(es(0), es(1)))
+      case Modulo(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => Modulo(es(0), es(1)))
+      case LessThan(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => LessThan(es(0), es(1)))
+      case GreaterThan(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => GreaterThan(es(0), es(1)))
+      case LessEquals(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => LessEquals(es(0), es(1)))
+      case GreaterEquals(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => GreaterEquals(es(0), es(1)))
+      case BVPlus(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => plus(es(0), es(1)))
+      case BVMinus(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => minus(es(0), es(1)))
+      case BVTimes(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
+      case BVDivision(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVDivision(es(0), es(1)))
+      case BVRemainder(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVRemainder(es(0), es(1)))
+      case BVAnd(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVAnd(es(0), es(1)))
+      case BVOr(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVOr(es(0), es(1)))
+      case BVXOr(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVXOr(es(0), es(1)))
+      case BVShiftLeft(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVShiftLeft(es(0), es(1)))
+      case BVAShiftRight(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVAShiftRight(es(0), es(1)))
+      case BVLShiftRight(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => BVLShiftRight(es(0), es(1)))
+      case ElementOfSet(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => ElementOfSet(es(0), es(1)))
+      case SubsetOf(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => SubsetOf(es(0), es(1)))
+      case SetIntersection(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => SetIntersection(es(0), es(1)))
+      case SetUnion(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => SetUnion(es(0), es(1)))
+      case SetDifference(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => SetDifference(es(0), es(1)))
+      case mg@MapGet(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => MapGet(es(0), es(1)))
+      case MapUnion(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => MapUnion(es(0), es(1)))
+      case MapDifference(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => MapDifference(es(0), es(1)))
+      case MapIsDefinedAt(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => MapIsDefinedAt(es(0), es(1)))
+      case ArraySelect(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => ArraySelect(es(0), es(1)))
+      case Let(binder, e, body) =>
+        Some(Seq(e, body), (es: Seq[Expr]) => Let(binder, es(0), es(1)))
+      case Require(pre, body) =>
+        Some(Seq(pre, body), (es: Seq[Expr]) => Require(es(0), es(1)))
+      case Ensuring(body, post) =>
+        Some(Seq(body, post), (es: Seq[Expr]) => Ensuring(es(0), es(1)))
+      case Assert(const, oerr, body) =>
+        Some(Seq(const, body), (es: Seq[Expr]) => Assert(es(0), oerr, es(1)))
 
-  trait BinaryExtractable {
-    def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)]
-  }
-
-  object NAryOperator {
-    def unapply(expr: Expr) : Option[(Seq[Expr],(Seq[Expr])=>Expr)] = expr match {
-      case fi @ FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
-      case mi @ MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
-      case fa @ Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail))
+      /* Other operators */
+      case fi@FunctionInvocation(fd, args) => Some((args, FunctionInvocation(fd, _)))
+      case mi@MethodInvocation(rec, cd, tfd, args) => Some((rec +: args, as => MethodInvocation(as.head, cd, tfd, as.tail)))
+      case fa@Application(caller, args) => Some(caller +: args, as => application(as.head, as.tail))
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
       case FiniteSet(els, base) =>
-        Some(( els.toSeq, els => FiniteSet(els.toSet, base) ))
+        Some((els.toSeq, els => FiniteSet(els.toSet, base)))
       case FiniteMap(args, f, t) => {
-        val subArgs = args.flatMap{case (k, v) => Seq(k, v)}
+        val subArgs = args.flatMap { case (k, v) => Seq(k, v) }
         val builder = (as: Seq[Expr]) => {
-          def rec(kvs: Seq[Expr]) : Seq[(Expr, Expr)] = kvs match {
+          def rec(kvs: Seq[Expr]): Seq[(Expr, Expr)] = kvs match {
             case Seq(k, v, t@_*) =>
-              (k,v) +: rec(t)
+              (k, v) +: rec(t)
             case Seq() => Seq()
             case _ => sys.error("odd number of key/value expressions")
           }
@@ -121,59 +143,69 @@ object Extractors {
         }
         Some((subArgs, builder))
       }
-      case NonemptyMultiset(args) => 
-        Some((args, NonemptyMultiset))
-      case ArrayUpdated(t1, t2, t3) => Some((Seq(t1,t2,t3), (as: Seq[Expr]) => 
-        ArrayUpdated(as(0), as(1), as(2))))
-      case NonemptyArray(elems, Some((default, length))) => {
+      case ArrayUpdated(t1, t2, t3) => Some((
+        Seq(t1, t2, t3),
+        (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))
+      ))
+      case NonemptyArray(elems, Some((default, length))) =>
         val all = elems.map(_._2).toSeq :+ default :+ length
-        Some(( all, as => {
+        Some((all, as => {
           val l = as.length
-          nonemptyArray(as.take(l-2), Some( (as(l-2), as(l-1)) ) )
+          nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
         }))
-      }
       case NonemptyArray(elems, None) =>
         val all = elems.map(_._2).toSeq
-        Some(( all, finiteArray))
+        Some((all, finiteArray))
       case Tuple(args) => Some((args, tupleWrap))
       case IfExpr(cond, thenn, elze) => Some((
         Seq(cond, thenn, elze),
-        { case Seq(c,t,e) => IfExpr(c,t,e) }
+        { case Seq(c, t, e) => IfExpr(c, t, e) }
       ))
       case MatchExpr(scrut, cases) => Some((
-        scrut +: cases.flatMap { 
+        scrut +: cases.flatMap {
           case SimpleCase(_, e) => Seq(e)
-          case GuardedCase(_, e1, e2) => Seq(e1, e2) 
-        }, 
+          case GuardedCase(_, e1, e2) => Seq(e1, e2)
+        },
         (es: Seq[Expr]) => {
           var i = 1
           val newcases = for (caze <- cases) yield caze match {
-            case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
-            case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-2), es(i-1)) 
+            case SimpleCase(b, _) => i += 1; SimpleCase(b, es(i - 1))
+            case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 2), es(i - 1))
           }
 
-          matchExpr(es(0), newcases)
+          matchExpr(es.head, newcases)
         }
       ))
       case Passes(in, out, cases) => Some((
-        in +: out +: cases.flatMap { _.expressions },
-        { case Seq(in, out, es@_*) => {
-          var i = 0
-          val newcases = for (caze <- cases) yield caze match {
-            case SimpleCase(b, _) => i+=1; SimpleCase(b, es(i-1)) 
-            case GuardedCase(b, _, _) => i+=2; GuardedCase(b, es(i-1), es(i-2)) 
-          }
+        in +: out +: cases.flatMap {
+          _.expressions
+        }, {
+          case Seq(in, out, es@_*) => {
+            var i = 0
+            val newcases = for (caze <- cases) yield caze match {
+              case SimpleCase(b, _) => i += 1; SimpleCase(b, es(i - 1))
+              case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 1), es(i - 2))
+            }
 
-          passes(in, out, newcases)
-        }}
+            passes(in, out, newcases)
+          }
+        }
       ))
-      case (ex: NAryExtractable) => ex.extract
-      case _ => None
+
+      /* Terminals */
+      case t: Terminal => Some(Seq[Expr](), (_:Seq[Expr]) => t)
+
+      /* Expr's not handled here should implement this trait */
+      case e: Extractable =>
+        e.extract
+
+      case _ =>
+        None
     }
   }
 
-  trait NAryExtractable {
-    def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)]
+  trait Extractable {
+    def extract: Option[(Seq[Expr], Seq[Expr] => Expr)]
   }
 
   object StringLiteral {
@@ -245,14 +277,6 @@ object Extractors {
 
       Some(rec(body))
 
-    }
-  }
-
-  object FiniteMultiset {
-    def unapply(e: Expr): Option[Seq[Expr]] = e match {
-      case EmptyMultiset(_) => Some(Seq())
-      case NonemptyMultiset(els) => Some(els)
-      case _ => None
     }
   }
 

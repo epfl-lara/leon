@@ -65,7 +65,6 @@ object Types {
   }
 
   case class SetType(base: TypeTree) extends TypeTree
-  case class MultisetType(base: TypeTree) extends TypeTree
   case class MapType(from: TypeTree, to: TypeTree) extends TypeTree
   case class FunctionType(from: Seq[TypeTree], to: TypeTree) extends TypeTree
   case class ArrayType(base: TypeTree) extends TypeTree
@@ -133,7 +132,6 @@ object Types {
       case TupleType(ts) => Some((ts, Constructors.tupleTypeWrap _))
       case ArrayType(t) => Some((Seq(t), ts => ArrayType(ts.head)))
       case SetType(t) => Some((Seq(t), ts => SetType(ts.head)))
-      case MultisetType(t) => Some((Seq(t), ts => MultisetType(ts.head)))
       case MapType(from,to) => Some((Seq(from, to), t => MapType(t(0), t(1))))
       case FunctionType(fts, tt) => Some((tt +: fts, ts => FunctionType(ts.tail.toList, ts.head)))
       case t => Some(Nil, _ => t)

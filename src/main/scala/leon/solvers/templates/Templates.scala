@@ -446,14 +446,8 @@ class LambdaTemplate[T] private (
             Seq.empty
           }
 
-        case (NAryOperator(es1, _), NAryOperator(es2, _)) =>
+        case (Operator(es1, _), Operator(es2, _)) =>
           (es1 zip es2).flatMap(p => rec(p._1, p._2))
-
-        case (BinaryOperator(e11, e12, _), BinaryOperator(e21, e22, _)) =>
-          rec(e11, e21) ++ rec(e12, e22)
-
-        case (UnaryOperator(ue1, _), UnaryOperator(ue2, _)) =>
-          rec(ue1, ue2)
 
         case _ => Seq.empty
       }

@@ -103,16 +103,8 @@ class ScopeSimplifier extends Transformer {
 
       FunctionInvocation(newFd.typed(tfd.tps), newArgs)
 
-    case UnaryOperator(e, builder) =>
-      builder(rec(e, scope))
-
-    case BinaryOperator(e1, e2, builder) =>
-      builder(rec(e1, scope), rec(e2, scope))
-
-    case NAryOperator(es, builder) =>
+    case Operator(es, builder) =>
       builder(es.map(rec(_, scope)))
-
-    case t : Terminal => t
 
     case _ =>
       sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")

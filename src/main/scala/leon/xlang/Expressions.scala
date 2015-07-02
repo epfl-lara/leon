@@ -15,7 +15,7 @@ object Expressions {
 
   trait XLangExpr extends Expr
 
-  case class Block(exprs: Seq[Expr], last: Expr) extends XLangExpr with NAryExtractable with PrettyPrintable {
+  case class Block(exprs: Seq[Expr], last: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {
       Some((exprs :+ last, exprs => Block(exprs.init, exprs.last)))
     }
@@ -33,11 +33,11 @@ object Expressions {
     val getType = last.getType
   }
 
-  case class Assignment(varId: Identifier, expr: Expr) extends XLangExpr with UnaryExtractable with PrettyPrintable {
+  case class Assignment(varId: Identifier, expr: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = UnitType
 
-    def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((expr, Assignment(varId, _)))
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some((Seq(expr), (es: Seq[Expr]) => Assignment(varId, es.head)))
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -45,7 +45,7 @@ object Expressions {
     }
   }
 
-  case class While(cond: Expr, body: Expr) extends XLangExpr with NAryExtractable with PrettyPrintable {
+  case class While(cond: Expr, body: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = UnitType
     var invariant: Option[Expr] = None
 
@@ -54,10 +54,10 @@ object Expressions {
     def setInvariant(inv: Option[Expr]) = { invariant = inv; this }
 
     def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
-      Some((Seq(cond, body) ++ invariant, {
+      Some((Seq(cond, body) ++ invariant, { (es:Seq[Expr]) => es match {
         case Seq(e1, e2) => While(e1, e2).setPos(this)
         case Seq(e1, e2, e3) => While(e1, e2).setInvariant(e3).setPos(this)
-      }))
+      }}))
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -74,9 +74,9 @@ object Expressions {
     }
   }
 
-  case class Epsilon(pred: Expr, tpe: TypeTree) extends XLangExpr with UnaryExtractable with PrettyPrintable {
-    def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((pred, (expr: Expr) => Epsilon(expr, this.getType).setPos(this)))
+  case class Epsilon(pred: Expr, tpe: TypeTree) extends XLangExpr with Extractable with PrettyPrintable {
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some((Seq(pred), (es: Seq[Expr]) => Epsilon(es.head, this.getType).setPos(this)))
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -96,11 +96,11 @@ object Expressions {
   }
 
   //same as let, buf for mutable variable declaration
-  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends XLangExpr with BinaryExtractable with PrettyPrintable {
+  case class LetVar(binder: Identifier, value: Expr, body: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = body.getType
 
-    def extract: Option[(Expr, Expr, (Expr, Expr)=>Expr)] = {
-      Some((value, body, (e: Expr, b: Expr) => LetVar(binder, e, b)))
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some( Seq(value, body), (es:Seq[Expr]) => LetVar(binder, es(0), es(1)) )
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -111,9 +111,9 @@ object Expressions {
     }
   }
 
-  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends XLangExpr with UnaryExtractable with PrettyPrintable{
-    def extract: Option[(Expr, (Expr)=>Expr)] = {
-      Some((expr, (e: Expr) => Waypoint(i, e, tpe)))
+  case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends XLangExpr with Extractable with PrettyPrintable{
+    def extract: Option[(Seq[Expr], Seq[Expr]=>Expr)] = {
+      Some((Seq(expr), (es: Seq[Expr]) => Waypoint(i, es.head, tpe)))
     }
 
     def printWith(implicit pctx: PrinterContext) {
@@ -123,7 +123,7 @@ object Expressions {
     val getType = tpe
   }
 
-  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends XLangExpr with NAryExtractable with PrettyPrintable {
+  case class ArrayUpdate(array: Expr, index: Expr, newValue: Expr) extends XLangExpr with Extractable with PrettyPrintable {
     val getType = UnitType
 
     def extract: Option[(Seq[Expr], (Seq[Expr])=>Expr)] = {

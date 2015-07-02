@@ -84,9 +84,6 @@ trait ASTExtractors {
     getResolvedTypeSym(sym) == scalaMapSym
   }
 
-  def isMultisetTraitSym(sym: Symbol) : Boolean = {
-    sym == multisetTraitSym
-  }
 
   def isOptionClassSym(sym : Symbol) : Boolean = {
     sym == optionClassSym || sym == someClassSym
@@ -95,12 +92,6 @@ trait ASTExtractors {
   def isFunction(sym : Symbol, i: Int) : Boolean =
     1 <= i && i <= 22 && sym == functionTraitSym(i)
 
-  protected lazy val multisetTraitSym  = try {
-      classFromName("scala.collection.immutable.Multiset")
-    } catch {
-      case e: Throwable =>
-        null
-    }
 
   def isArrayClassSym(sym: Symbol): Boolean = sym == arraySym
 
@@ -863,22 +854,6 @@ trait ASTExtractors {
       }
     }
 
-    object ExEmptyMultiset {
-      def unapply(tree: TypeApply): Option[Tree] = tree match {
-        case TypeApply(
-          Select(
-            Select(
-              Select(
-                Select(Ident(s), collectionName),
-                immutableName),
-              setName),
-            emptyName),  theTypeTree :: Nil) if (
-            collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Multiset" && emptyName.toString == "empty"
-          ) => Some(theTypeTree)
-        case _ => None
-      }
-    }
-
     object ExLiteralMap {
       def unapply(tree: Apply): Option[(Tree, Tree, Seq[Tree])] = tree match {
         case Apply(TypeApply(ExSelected("scala", "Predef", "Map", "apply"), fromTypeTree :: toTypeTree :: Nil), args) =>
@@ -914,23 +889,6 @@ trait ASTExtractors {
           Some((tptFrom, tptTo, args))
         case Apply(TypeApply(ExSelected("leon", "lang", "Map", "apply"), Seq(tptFrom, tptTo)), args) =>
           Some((tptFrom, tptTo, args))
-        case _ => None
-      }
-    }
-
-    object ExFiniteMultiset {
-      def unapply(tree: Apply): Option[(Tree,List[Tree])] = tree match {
-        case Apply(
-          TypeApply(
-            Select(
-              Select(
-                Select(
-                  Select(Ident(s), collectionName),
-                  immutableName),
-                setName),
-              emptyName),  theTypeTree :: Nil), args) if (
-              collectionName.toString == "collection" && immutableName.toString == "immutable" && setName.toString == "Multiset" && emptyName.toString == "apply"
-            )=> Some(theTypeTree, args)
         case _ => None
       }
     }

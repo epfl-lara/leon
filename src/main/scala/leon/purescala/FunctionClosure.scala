@@ -139,20 +139,10 @@ object FunctionClosure extends TransformationPhase {
       case None => v
       case Some(nid) => Variable(nid)
     }
-    case n @ NAryOperator(args, recons) => {
+    case n @ Operator(args, recons) => {
       val rargs = args.map(a => functionClosure(a, bindedVars, id2freshId, fd2FreshFd))
       recons(rargs).copiedFrom(n)
     }
-    case b @ BinaryOperator(t1,t2,recons) => {
-      val r1 = functionClosure(t1, bindedVars, id2freshId, fd2FreshFd)
-      val r2 = functionClosure(t2, bindedVars, id2freshId, fd2FreshFd)
-      recons(r1,r2).copiedFrom(b)
-    }
-    case u @ UnaryOperator(t,recons) => {
-      val r = functionClosure(t, bindedVars, id2freshId, fd2FreshFd)
-      recons(r).copiedFrom(u)
-    }
-    case t : Terminal => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in FunctionClosure: " + unhandled)
   }
 

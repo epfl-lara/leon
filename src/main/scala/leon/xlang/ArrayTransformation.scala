@@ -44,11 +44,8 @@ object ArrayTransformation extends UnitPhase[Program] {
       Variable(env.getOrElse(i, i))
     }
 
-    case n @ NAryOperator(args, recons) => recons(args.map(transform))
-    case b @ BinaryOperator(a1, a2, recons) => recons(transform(a1), transform(a2))
-    case u @ UnaryOperator(a, recons) => recons(transform(a))
+    case Operator(args, recons) => recons(args.map(transform))
 
-    case (t: Terminal) => t
     case unhandled => scala.sys.error("Non-terminal case should be handled in ArrayTransformation: " + unhandled)
   }).setPos(expr)
 

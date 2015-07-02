@@ -119,17 +119,7 @@ object UnitElimination extends TransformationPhase {
         val elseRec = removeUnit(eExpr)
         IfExpr(removeUnit(cond), thenRec, elseRec)
       }
-      case n @ NAryOperator(args, recons) => {
-        recons(args.map(removeUnit))
-      }
-      case b @ BinaryOperator(a1, a2, recons) => {
-        recons(removeUnit(a1), removeUnit(a2))
-      }
-      case u @ UnaryOperator(a, recons) => {
-        recons(removeUnit(a))
-      }
       case v @ Variable(id) => if(id2FreshId.isDefinedAt(id)) Variable(id2FreshId(id)) else v
-      case (t: Terminal) => t
       case m @ MatchExpr(scrut, cses) => {
         val scrutRec = removeUnit(scrut)
         val csesRec = cses.map{ cse =>
@@ -137,6 +127,11 @@ object UnitElimination extends TransformationPhase {
         }
         matchExpr(scrutRec, csesRec).setPos(m)
       }
+      case Operator(args, recons) => {
+        recons(args.map(removeUnit))
+      }
+      // FIXME: It's dead (code) Jim!
+
       case _ => sys.error("not supported: " + expr)
     }
   }

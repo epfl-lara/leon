@@ -276,10 +276,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
           Variable(lid)
 
-        case n @ NAryOperator(as, r) => r(as.map(a => rec(pathVar, a)))
-        case b @ BinaryOperator(a1, a2, r) => r(rec(pathVar, a1), rec(pathVar, a2))
-        case u @ UnaryOperator(a, r) => r(rec(pathVar, a))
-        case t : Terminal => t
+        case Operator(as, r) => r(as.map(a => rec(pathVar, a)))
+
       }
     }
 

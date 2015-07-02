@@ -110,11 +110,6 @@ object Expressions {
     }
   }
 
-  case class Forall(args: Seq[ValDef], body: Expr) extends Expr {
-    require(body.getType == BooleanType)
-    val getType = BooleanType
-  }
-
   case class This(ct: ClassType) extends Expr with Terminal {
     val getType = ct
   }
@@ -486,82 +481,22 @@ object Expressions {
   /* Special trees */
 
   // Provide an oracle (synthesizable, all-seeing choose)
-  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with UnaryExtractable {
+  case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with Extractable {
     require(oracles.nonEmpty)
 
     val getType = body.getType
 
     def extract = {
-      Some((body, (e: Expr) => WithOracle(oracles, e).setPos(this)))
+      Some((Seq(body), (es: Seq[Expr]) => WithOracle(oracles, es.head).setPos(this)))
     }
   }
 
-  case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with NAryExtractable {
+  case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with Extractable {
     val getType = tpe
 
     def extract = {
       Some((alts, (es: Seq[Expr]) => Hole(tpe, es).setPos(this)))
     }
   }
-
-  /**
-   * DEPRECATED TREES
-   * These trees are not guaranteed to be supported by Leon.
-   **/
-  @deprecated("3.0", "Use NonemptyArray with default value")
-  case class ArrayFill(length: Expr, defaultValue: Expr) extends Expr {
-    val getType = ArrayType(defaultValue.getType).unveilUntyped
-  }
-
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class SetMin(set: Expr) extends Expr {
-    val getType = Int32Type
-  }
-
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class SetMax(set: Expr) extends Expr {
-    val getType = Int32Type
-  }
-
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class EmptyMultiset(baseType: TypeTree) extends Expr with Terminal {
-    val getType = MultisetType(baseType).unveilUntyped
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class NonemptyMultiset(elements: Seq[Expr]) extends Expr {
-    val getType = MultisetType(optionToType(leastUpperBound(elements.toSeq.map(_.getType)))).unveilUntyped
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class Multiplicity(element: Expr, multiset: Expr) extends Expr {
-    val getType = Int32Type
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetCardinality(multiset: Expr) extends Expr {
-    val getType = Int32Type
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetIntersection(multiset1: Expr, multiset2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetUnion(multiset1: Expr, multiset2: Expr) extends Expr  {
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetPlus(multiset1: Expr, multiset2: Expr) extends Expr { // disjoint union 
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetDifference(multiset1: Expr, multiset2: Expr) extends Expr  {
-    val getType = leastUpperBound(Seq(multiset1, multiset2).map(_.getType)).getOrElse(Untyped).unveilUntyped
-  }
-  @deprecated("3.0", "Leon does not guarantee to correctly handle this expression")
-  case class MultisetToSet(multiset: Expr) extends Expr {
-    val getType = multiset.getType match {
-      case MultisetType(base) => SetType(base).unveilUntyped
-      case _ => Untyped
-    }
-  }
-
 
 }

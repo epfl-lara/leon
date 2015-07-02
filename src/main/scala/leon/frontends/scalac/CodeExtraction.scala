@@ -1245,22 +1245,6 @@ trait CodeExtraction extends ASTExtractors {
 
           Lambda(vds, exBody)
 
-        case f @ ExForallExpression(args, body) =>
-          val vds = args map { case (tpt, sym) =>
-            val aTpe = extractType(tpt)
-            val newID = FreshIdentifier(sym.name.toString, aTpe)
-            owners += (newID -> None)
-            LeonValDef(newID)
-          }
-
-          val newVars = (args zip vds) map { case ((_, sym), vd) =>
-            sym -> (() => vd.toVariable)
-          }
-
-          val exBody = extractTree(body)(dctx.withNewVars(newVars))
-
-          Forall(vds, exBody)
-
         case ExFiniteMap(tptFrom, tptTo, args) =>
           val singletons: Seq[(LeonExpr, LeonExpr)] = args.collect {
             case ExTuple(tpes, trees) if trees.size == 2 =>
@@ -1327,14 +1311,6 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(_, rt), IsTyped(_, lt)) =>
               outOfSubsetError(tr, "Invalid comparison: (_: "+rt+") == (_: "+lt+")")
           }
-
-        case ExFiniteMultiset(tt, args) =>
-          val underlying = extractType(tt)
-          finiteMultiset(args.map(extractTree),underlying)
-
-        case ExEmptyMultiset(tt) =>
-          val underlying = extractType(tt)
-          EmptyMultiset(underlying)
 
         case ExArrayFill(baseType, length, defaultValue) =>
           val lengthRec = extractTree(length)
@@ -1558,22 +1534,6 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, SetType(b1)), "isEmpty", List()) =>
               Equals(a1, FiniteSet(Set(), b1))
 
-            // Multiset methods
-            case (IsTyped(a1, MultisetType(b1)), "++", List(IsTyped(a2, MultisetType(b2))))  if b1 == b2 =>
-              MultisetUnion(a1, a2)
-
-            case (IsTyped(a1, MultisetType(b1)), "&", List(IsTyped(a2, MultisetType(b2)))) if b1 == b2 =>
-              MultisetIntersection(a1, a2)
-
-            case (IsTyped(a1, MultisetType(b1)), "--", List(IsTyped(a2, MultisetType(b2)))) if b1 == b2 =>
-              MultisetDifference(a1, a2)
-
-            case (IsTyped(a1, MultisetType(b1)), "+++", List(IsTyped(a2, MultisetType(b2)))) if b1 == b2 =>
-              MultisetPlus(a1, a2)
-
-            case (IsTyped(_, MultisetType(b1)), "toSet", Nil) =>
-              MultisetToSet(rrec)
-
             // Array methods
             case (IsTyped(a1, ArrayType(vt)), "apply", List(a2)) =>
               ArraySelect(a1, a2)
@@ -1688,9 +1648,6 @@ trait CodeExtraction extends ASTExtractors {
 
       case TypeRef(_, sym, btt :: Nil) if isSetSym(sym) =>
         SetType(extractType(btt))
-
-      case TypeRef(_, sym, btt :: Nil) if isMultisetTraitSym(sym) =>
-        MultisetType(extractType(btt))
 
       case TypeRef(_, sym, List(ftt,ttt)) if isMapSym(sym) =>
         MapType(extractType(ftt), extractType(ttt))

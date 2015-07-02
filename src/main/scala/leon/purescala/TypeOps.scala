@@ -321,13 +321,7 @@ object TypeOps {
           case v @ Variable(id) if idsMap contains id =>
             Variable(idsMap(id)).copiedFrom(v)
 
-          case u @ UnaryOperator(e, builder) =>
-            builder(srec(e)).copiedFrom(u)
-
-          case b @ BinaryOperator(e1, e2, builder) =>
-            builder(srec(e1), srec(e2)).copiedFrom(b)
-
-          case n @ NAryOperator(es, builder) =>
+          case n @ Operator(es, builder) =>
             builder(es.map(srec)).copiedFrom(n)
 
           case _ =>

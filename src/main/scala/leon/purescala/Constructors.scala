@@ -184,11 +184,6 @@ object Constructors {
     case _                          => Implies(lhs, rhs)
   }
 
-  def finiteMultiset(els: Seq[Expr], tpe: TypeTree) = {
-    if (els.isEmpty) EmptyMultiset(tpe)
-    else NonemptyMultiset(els)
-  }
-
   def finiteArray(els: Seq[Expr]): Expr = {
     require(els.nonEmpty)
     finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway 

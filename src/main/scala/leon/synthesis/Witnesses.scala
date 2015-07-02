@@ -15,11 +15,11 @@ object Witnesses {
     val getType = BooleanType
   }
   
-  case class Guide(e : Expr) extends Witness with UnaryExtractable {
-    def extract: Option[(Expr, Expr => Expr)] = Some((e, Guide))
+  case class Guide(e : Expr) extends Witness with Extractable {
+    def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some((Seq(e), (es: Seq[Expr]) => Guide(es.head)))
   }
   
-  case class Terminating(tfd: TypedFunDef, args: Seq[Expr]) extends Witness with NAryExtractable {    
+  case class Terminating(tfd: TypedFunDef, args: Seq[Expr]) extends Witness with Extractable {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)] = Some((args, Terminating(tfd, _)))
   }
   

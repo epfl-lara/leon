@@ -258,8 +258,7 @@ object ImperativeCodeElimination extends TransformationPhase {
         toFunction(ifExpr)
       }
 
-      case n @ NAryOperator(Seq(), recons) => (n, (body: Expr) => body, Map())
-      case n @ NAryOperator(args, recons) => {
+      case n @ Operator(args, recons) => {
         val (recArgs, scope, fun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
           val (accArgs, accScope, accFun) = acc
           val (argVal, argScope, argFun) = toFunction(arg)
@@ -268,23 +267,6 @@ object ImperativeCodeElimination extends TransformationPhase {
         })
         (recons(recArgs).copiedFrom(n), scope, fun)
       }
-      case b @ BinaryOperator(a1, a2, recons) => {
-        val (argVal1, argScope1, argFun1) = toFunction(a1)
-        val (argVal2, argScope2, argFun2) = toFunction(a2)
-        val scope = (body: Expr) => {
-          val rhs = argScope2(replaceNames(argFun2, body))
-          val lhs = argScope1(replaceNames(argFun1, rhs))
-          lhs
-        }
-        (recons(argVal1, argVal2).copiedFrom(b), scope, argFun1 ++ argFun2)
-      }
-      case u @ UnaryOperator(a, recons) => {
-        val (argVal, argScope, argFun) = toFunction(a)
-        (recons(argVal).copiedFrom(u), argScope, argFun)
-      }
-
-      case (t: Terminal) => (t, (body: Expr) => body, Map())
-
 
       case _ => sys.error("not supported: " + expr)
     }

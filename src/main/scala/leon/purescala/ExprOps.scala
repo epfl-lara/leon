@@ -7,7 +7,7 @@ import Common._
 import Types._
 import Definitions._
 import Expressions._
-import Extractors._
+import leon.purescala.Extractors._
 import Constructors._
 import utils.Simplifiers
 import solvers._
@@ -34,19 +34,9 @@ object ExprOps {
   def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
     val rec = foldRight(f) _
 
-    e match {
-      case t: Terminal =>
-        f(t, Stream.empty)
+    val Operator(es, _) = e
+    f(e, es.view.map(rec))
 
-      case u @ UnaryOperator(e, builder) =>
-        f(u, List(e).view.map(rec))
-
-      case b @ BinaryOperator(e1, e2, builder) =>
-        f(b, List(e1, e2).view.map(rec))
-
-      case n @ NAryOperator(es, builder) =>
-        f(n, es.view.map(rec))
-    }
   }
 
   /**
@@ -64,19 +54,8 @@ object ExprOps {
   def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = preTraversal(f) _
     f(e)
-
-    e match {
-      case t: Terminal =>
-
-      case u @ UnaryOperator(e, builder) =>
-        List(e).foreach(rec)
-
-      case b @ BinaryOperator(e1, e2, builder) =>
-        List(e1, e2).foreach(rec)
-
-      case n @ NAryOperator(es, builder) =>
-        es.foreach(rec)
-    }
+    val Operator(es, _) = e
+    es.foreach(rec)
   }
 
   /**
@@ -93,20 +72,8 @@ object ExprOps {
    */
   def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = postTraversal(f) _
-
-    e match {
-      case t: Terminal =>
-
-      case u @ UnaryOperator(e, builder) =>
-        List(e).foreach(rec)
-
-      case b @ BinaryOperator(e1, e2, builder) =>
-        List(e1, e2).foreach(rec)
-
-      case n @ NAryOperator(es, builder) =>
-        es.foreach(rec)
-    }
-
+    val Operator(es, _) = e
+    es.foreach(rec)
     f(e)
   }
 
@@ -148,37 +115,13 @@ object ExprOps {
       f(e) getOrElse e
     }
 
-    newV match {
-      case u @ UnaryOperator(e, builder) =>
-        val newE = rec(e)
+    val Operator(es, builder) = newV
+    val newEs = es.map(rec)
 
-        if (newE ne e) {
-          builder(newE).copiedFrom(u)
-        } else {
-          u
-        }
-
-      case b @ BinaryOperator(e1, e2, builder) =>
-        val newE1 = rec(e1)
-        val newE2 = rec(e2)
-
-        if ((newE1 ne e1) || (newE2 ne e2)) {
-          builder(newE1, newE2).copiedFrom(b)
-        } else {
-          b
-        }
-
-      case n @ NAryOperator(es, builder) =>
-        val newEs = es.map(rec)
-
-        if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-          builder(newEs).copiedFrom(n)
-        } else {
-          n
-        }
-
-      case t: Terminal =>
-        t
+    if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
+      builder(newEs).copiedFrom(newV)
+    } else {
+      newV
     }
   }
 
@@ -213,37 +156,15 @@ object ExprOps {
   def postMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
     val rec = postMap(f, applyRec) _
 
-    val newV = e match {
-      case u @ UnaryOperator(e, builder) =>
-        val newE = rec(e)
+    val Operator(es, builder) = e
+    val newV = {
+      val newEs = es.map(rec)
 
-        if (newE ne e) {
-          builder(newE).copiedFrom(u)
-        } else {
-          u
-        }
-
-      case b @ BinaryOperator(e1, e2, builder) =>
-        val newE1 = rec(e1)
-        val newE2 = rec(e2)
-
-        if ((newE1 ne e1) || (newE2 ne e2)) {
-          builder(newE1, newE2).copiedFrom(b)
-        } else {
-          b
-        }
-
-      case n @ NAryOperator(es, builder) =>
-        val newEs = es.map(rec)
-
-        if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
-          builder(newEs).copiedFrom(n)
-        } else {
-          n
-        }
-
-      case t: Terminal =>
-        t
+      if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
+        builder(newEs).copiedFrom(e)
+      } else {
+        e
+      }
     }
 
     if (applyRec) {
@@ -357,7 +278,6 @@ object ExprOps {
           case MatchExpr(_, cses) => subvs -- cses.map(_.pattern.binders).flatten
           case Passes(_, _ , cses)   => subvs -- cses.map(_.pattern.binders).flatten
           case Lambda(args, body) => subvs -- args.map(_.id)
-          case Forall(args, body) => subvs -- args.map(_.id)
           case _ => subvs
         }
     }(expr)
@@ -627,7 +547,7 @@ object ExprOps {
       case i @ IfExpr(t1,t2,t3) => IfExpr(rec(t1, s),rec(t2, s),rec(t3, s))
       case m @ MatchExpr(scrut, cses) => matchExpr(rec(scrut, s), cses.map(inCase(_, s))).setPos(m)
       case p @ Passes(in, out, cses) => Passes(rec(in, s), rec(out,s), cses.map(inCase(_, s))).setPos(p)
-      case n @ NAryOperator(args, recons) => {
+      case n @ Operator(args, recons) => {
         var change = false
         val rargs = args.map(a => {
           val ra = rec(a, s)
@@ -643,22 +563,6 @@ object ExprOps {
         else
           n
       }
-      case b @ BinaryOperator(t1,t2,recons) => {
-        val r1 = rec(t1, s)
-        val r2 = rec(t2, s)
-        if(r1 != t1 || r2 != t2)
-          recons(r1,r2)
-        else
-          b
-      }
-      case u @ UnaryOperator(t,recons) => {
-        val r = rec(t, s)
-        if(r != t)
-          recons(r)
-        else
-          u
-      }
-      case t if t.isInstanceOf[Terminal] => t
       case unhandled => scala.sys.error("Unhandled case in expandLets: " + unhandled)
     }
 
@@ -1057,16 +961,7 @@ object ExprOps {
     def transform(expr: Expr): Option[Expr] = expr match {
       case IfExpr(c, t, e) => None
 
-      case uop@UnaryOperator(IfExpr(c, t, e), op) =>
-        Some(IfExpr(c, op(t).copiedFrom(uop), op(e).copiedFrom(uop)).copiedFrom(uop))
-
-      case bop@BinaryOperator(IfExpr(c, t, e), t2, op) =>
-        Some(IfExpr(c, op(t, t2).copiedFrom(bop), op(e, t2).copiedFrom(bop)).copiedFrom(bop))
-
-      case bop@BinaryOperator(t1, IfExpr(c, t, e), op) =>
-        Some(IfExpr(c, op(t1, t).copiedFrom(bop), op(t1, e).copiedFrom(bop)).copiedFrom(bop))
-
-      case nop@NAryOperator(ts, op) => {
+      case nop@Operator(ts, op) => {
         val iteIndex = ts.indexWhere{ case IfExpr(_, _, _) => true case _ => false }
         if(iteIndex == -1) None else {
           val (beforeIte, startIte) = ts.splitAt(iteIndex)
@@ -1091,32 +986,12 @@ object ExprOps {
     def rec(eIn: Expr, cIn: C): (Expr, C) = {
 
       val (expr, ctx) = pre(eIn, cIn)
+      val Operator(es, builder) = expr
+      val (newExpr, newC) = {
+        val (nes, cs) = es.map{ rec(_, ctx)}.unzip
+        val newE = builder(nes).copiedFrom(expr)
 
-      val (newExpr, newC) = expr match {
-        case t: Terminal =>
-          (expr, ctx)
-
-        case UnaryOperator(e, builder) =>
-          val (e1, c) = rec(e, ctx)
-          val newE = builder(e1).copiedFrom(expr)
-
-          (newE, combiner(newE, Seq(c)))
-
-        case BinaryOperator(e1, e2, builder) =>
-          val (ne1, c1) = rec(e1, ctx)
-          val (ne2, c2) = rec(e2, ctx)
-          val newE = builder(ne1, ne2).copiedFrom(expr)
-
-          (newE, combiner(newE, Seq(c1, c2)))
-
-        case NAryOperator(es, builder) =>
-          val (nes, cs) = es.map{ rec(_, ctx)}.unzip
-          val newE = builder(nes).copiedFrom(expr)
-
-          (newE, combiner(newE, cs))
-
-        case e =>
-          sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
+        (newE, combiner(newE, cs))
       }
 
       post(newExpr, newC)
@@ -1270,22 +1145,13 @@ object ExprOps {
   }
 
   def formulaSize(e: Expr): Int = e match {
-    case t: Terminal =>
-      1
-
     case ml: MatchExpr =>
       formulaSize(ml.scrutinee) + ml.cases.map {
         case MatchCase(p, og, rhs) =>
           formulaSize(rhs) + og.map(formulaSize).getOrElse(0) + patternSize(p)
       }.sum
 
-    case UnaryOperator(e, builder) =>
-      formulaSize(e)+1
-
-    case BinaryOperator(e1, e2, builder) =>
-      formulaSize(e1)+formulaSize(e2)+1
-
-    case NAryOperator(es, _) =>
+    case Operator(es, _) =>
       es.map(formulaSize).sum+1
   }
 
@@ -1547,14 +1413,8 @@ object ExprOps {
           // TODO: Check type params
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
-        
-        case Same(UnaryOperator(e1, _), UnaryOperator(e2, _)) =>
-          isHomo(e1, e2)
 
-        case Same(BinaryOperator(e11, e12, _), BinaryOperator(e21, e22, _)) =>
-          isHomo(e11, e21) && isHomo(e12, e22)
-
-        case Same(NAryOperator(es1, _), NAryOperator(es2, _)) =>
+        case Same(Operator(es1, _), Operator(es2, _)) =>
           if (es1.size == es2.size) {
             (es1 zip es2).forall{ case (e1, e2) => isHomo(e1, e2) }
           } else {
@@ -1848,19 +1708,8 @@ object ExprOps {
 
     f(e, initParent)
 
-    e match {
-      case u @ UnaryOperator(e, builder) =>
-        rec(e)
-
-      case b @ BinaryOperator(e1, e2, builder) =>
-        rec(e1)
-        rec(e2)
-
-      case n @ NAryOperator(es, builder) =>
-        es.foreach(rec)
-
-      case t: Terminal =>
-    }
+    val Operator(es, _) = e
+    es foreach rec
   }
 
   def functionAppsOf(expr: Expr): Set[Application] = {
@@ -1910,10 +1759,7 @@ object ExprOps {
         case l @ Lambda(args, body) =>
           val newBody = rec(body, true)
           extract(Lambda(args, newBody), build)
-        case NAryOperator(es, recons) => recons(es.map(rec(_, build)))
-        case BinaryOperator(e1, e2, recons) => recons(rec(e1, build), rec(e2, build))
-        case UnaryOperator(e, recons) => recons(rec(e, build))
-        case t: Terminal => t
+        case Operator(es, recons) => recons(es.map(rec(_, build)))
       }
 
       rec(lift(expr), true)

@@ -10,7 +10,6 @@ import leon.purescala.Extractors._
 import leon.purescala.PrinterHelpers._
 import leon.purescala.ExprOps.{isListLiteral, simplestValue}
 import leon.purescala.Expressions._
-import leon.purescala.TypeOps.leastUpperBound
 import leon.purescala.Types._
 import leon.synthesis.Witnesses._
 
@@ -277,25 +276,15 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVLShiftRight(l,r)        => optP { p"$l >>> $r" }
       case fs @ FiniteSet(rs, _)     => p"{${rs.toSeq}}"
       case fm @ FiniteMap(rs, _, _)  => p"{$rs}"
-      case FiniteMultiset(rs)        => p"{|$rs|)"
-      case EmptyMultiset(_)          => p"\u2205"
       case Not(ElementOfSet(e,s))    => p"$e \u2209 $s"
       case ElementOfSet(e,s)         => p"$e \u2208 $s"
       case SubsetOf(l,r)             => p"$l \u2286 $r"
       case Not(SubsetOf(l,r))        => p"$l \u2288 $r"
-      case SetMin(s)                 => p"$s.min"
-      case SetMax(s)                 => p"$s.max"
       case SetUnion(l,r)             => p"$l \u222A $r"
-      case MultisetUnion(l,r)        => p"$l \u222A $r"
       case MapUnion(l,r)             => p"$l \u222A $r"
       case SetDifference(l,r)        => p"$l \\ $r"
-      case MultisetDifference(l,r)   => p"$l \\ $r"
       case SetIntersection(l,r)      => p"$l \u2229 $r"
-      case MultisetIntersection(l,r) => p"$l \u2229 $r"
       case SetCardinality(s)         => p"|$s|"
-      case MultisetCardinality(s)    => p"|$s|"
-      case MultisetPlus(l,r)         => p"$l \u228E $r"
-      case MultisetToSet(e)          => p"$e.toSet"
       case MapGet(m,k)               => p"$m($k)"
       case MapIsDefinedAt(m,k)       => p"$m.isDefinedAt($k)"
       case ArrayLength(a)            => p"$a.length"
@@ -428,7 +417,6 @@ class PrettyPrinter(opts: PrinterOptions,
       case ArrayType(bt)         => p"Array[$bt]"
       case SetType(bt)           => p"Set[$bt]"
       case MapType(ft,tt)        => p"Map[$ft, $tt]"
-      case MultisetType(bt)      => p"Multiset[$bt]"
       case TupleType(tpes)       => p"($tpes)"
       case FunctionType(fts, tt) => p"($fts) => $tt"
       case c: ClassType =>
