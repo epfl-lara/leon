@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   val reporter = ctx.reporter
 
-  val storeBenchmarks = true
+  val doBenchmark = ctx.findOptionOrDefault(SharedOptions.optBenchmark)
 
   var program = initProgram
 
@@ -81,7 +81,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
           val timeVerify = timer.stop
 
-          if (storeBenchmarks) {
+          if (doBenchmark) {
             val be = (BenchmarkEntry.fromContext(ctx) ++ Map(
               "function"          -> fd.id.name,
               "time_tests"        -> timeTests,

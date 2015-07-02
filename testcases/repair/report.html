@@ -10,9 +10,9 @@
   }
 
   function initGraph(data) {
-    $('#container').highcharts({
+    $('#overview').highcharts({
         title: {
-            text: 'Leon Benchmarks',
+            text: 'Overview',
             x: -20 //center
         },
 
@@ -34,7 +34,6 @@
         },
         tooltip: {
             headerFormat: '<b>{series.name}</b><br>',
-            pointFormat: '{point.x:%e. %b}: {point.y:,.0f} ms'
         },
 
         legend: {
@@ -56,10 +55,74 @@
     });
   }
 
+  function specificGraph(serie) {
+    var dataTests = [];
+    var dataRepair = [];
+    var dataVerification = [];
+
+    for (var i = 0, r; r = serie.data[i]; i++) {
+      dataTests.push([1000*r.ts, r.time_tests]);
+      dataVerification.push([1000*r.ts, r.time_verification]);
+      dataRepair.push([1000*r.ts, r.time_synthesis]);
+    }
+
+    $('#specific').highcharts({
+        chart: {
+            type: 'area'
+        },
+        title: {
+            text: serie.name
+        },
+        xAxis: {
+            type: 'datetime',
+            dateTimeLabelFormats: { // don't display the dummy year
+                month: '%e. %b',
+                year: '%b'
+            },
+            title: {
+                text: 'Date'
+            }
+        },
+        yAxis: {
+            title: {
+                text: 'Time (ms)'
+            },
+            min: 0
+        },
+        tooltip: {
+            pointFormat: '{point.y:,.0f} ms'
+        },
+        plotOptions: {
+            area: {
+                stacking: 'normal',
+                lineColor: '#666666',
+                lineWidth: 1,
+                marker: {
+                    lineWidth: 1,
+                    lineColor: '#666666'
+                }
+            }
+        },
+        series: [{
+            name: 'Verification',
+            data: dataVerification
+        }, {
+            name: 'Repair',
+            data: dataRepair
+        }, {
+            name: 'Tests',
+            data: dataTests
+        }]
+    });
+  }
+
+  var data      = [];
+  var dataMap   = {}
+
   $(function () {
 
-    function processData(data) {
-      var seriesMap = {};
+    function processData() {
+      dataMap = {};
 
       for (var i = 0, r; r = data[i]; i++) {
         var parts = r.files.split("/")
@@ -70,24 +133,57 @@
           "data": []
         };
 
-        if (name in seriesMap) {
-          serie = seriesMap[name]
+        if (name in dataMap) {
+          serie = dataMap[name]
         }
 
-        serie.data.push([1000 * r.ts, r.time_synthesis+r.time_tests])
+        serie.data.push(r)
 
-        seriesMap[name] = serie
+/*)*/
+
+        dataMap[name] = serie
       }
 
-      console.log(seriesMap)
+    }
 
+    function overviewGraph() {
       var res = [];
 
-      for (k in seriesMap) {
-        res.push(seriesMap[k])
+      for (k in dataMap) {
+        var serie = dataMap[k];
+
+        res.push({
+          "name": serie.name,
+          "data": serie.data.map(function(r) {
+            return {
+              x: 1000 * r.ts,
+              y: r.time_synthesis+r.time_tests,
+              t: r.time_tests,
+              r: r.time_synthesis
+            };
+          })
+        })
       }
 
       initGraph(res)
+    }
+
+    function specificGraphs() {
+      var sel = ['<option value=""> -- Select one -- </option>']
+
+      for (s in dataMap) {
+        var r = dataMap[s]
+        sel.push('<option value="'+s+'">'+r.name+'</option>');
+      }
+
+      $("#graphSelect").html(sel.join(""));
+
+      $("#graphSelect").unbind("change").change(function() {
+        var sel = $(this).find(":selected").val()
+
+        specificGraph(dataMap[sel]);
+      });
+
     }
 
     function handleFileSelect(evt) {
@@ -101,8 +197,12 @@
 
         reader.onload = (function(theFile) {
           return function(e) {
-            var json = JSON.parse(e.target.result);
-            processData(json)
+            data = JSON.parse(e.target.result);
+
+            processData()
+
+            overviewGraph()
+            specificGraphs()
           };
         })(f);
 
@@ -118,6 +218,10 @@
     <h1>Leon Benchmarks</h1>
     <h2>Load Data</h2>
     <input type="file" id="fileLoader" name="data" />
-    <div id="container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    <h2>Overview</h2>
+    <div id="overview" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+    <h2>Details</h2>
+    <select id="graphSelect"></select>
+    <div id="specific" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
   </body>
 </html>

@@ -18,6 +18,8 @@ object SharedOptions extends LeonComponent {
 
   val optStrictPhases = LeonFlagOptionDef("strict", "Terminate after each phase if there is an error", true)
 
+  val optBenchmark    = LeonFlagOptionDef("benchmark", "Dump benchmarking information in a data file", false)
+
   val optXLang = LeonFlagOptionDef("xlang", "Support for extra program constructs (imperative,...)", false)
 
   val optWatch = LeonFlagOptionDef("watch", "Rerun pipeline when file changes", false)
@@ -71,6 +73,7 @@ object SharedOptions extends LeonComponent {
 
   override val definedOptions: Set[LeonOptionDef[Any]] = Set(
     optStrictPhases,
+    optBenchmark,
     optXLang,
     optFunctions,
     optSelectedSolvers,
