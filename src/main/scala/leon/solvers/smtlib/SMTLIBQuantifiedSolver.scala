@@ -27,16 +27,16 @@ trait SMTLIBQuantifiedSolver extends SMTLIBSolver {
     val inductiveHyps = for {
       fi@FunctionInvocation(tfd, args) <- functionCallsOf(cond).toSeq
     } yield {
-        val formalToRealArgs = tfd.params.map{ _.id}.zip(args).toMap
-        val post = tfd.postcondition map { post =>
-          application(
-            replaceFromIDs(formalToRealArgs, post),
-            Seq(fi)
-          )
-        } getOrElse BooleanLiteral(true)
-        val pre = tfd.precondition getOrElse BooleanLiteral(true)
-        and(pre, post)
-      }
+      val formalToRealArgs = tfd.params.map{ _.id}.zip(args).toMap
+      val post = tfd.postcondition map { post =>
+        application(
+          replaceFromIDs(formalToRealArgs, post),
+          Seq(fi)
+        )
+      } getOrElse BooleanLiteral(true)
+      val pre = tfd.precondition getOrElse BooleanLiteral(true)
+      and(pre, post)
+    }
 
     // We want to check if the negation of the vc is sat under inductive hyp.
     // So we need to see if (indHyp /\ !vc) is satisfiable
