@@ -13,11 +13,14 @@ import smtlib.parser.Terms.{ForAll => SMTForall, SSymbol}
  * This solver models function definitions as universally quantified formulas.
  * It is not meant as an underlying solver to UnrollingSolver, and does not handle HOFs.
  */
-class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program) extends SMTLIBZ3Solver(context, program) {
+class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
+  extends SMTLIBZ3Solver(context, program)
+  with SMTLIBQuantifiedSolver
+{
 
-  private val typedFunDefExplorationLimit = 10000
+  protected val allowQuantifiedAssersions: Boolean = true
 
-  override def targetName = "z3-quantified"
+  override def targetName = "z3-q"
 
   override def declareFunction(tfd: TypedFunDef): SSymbol = {
 
@@ -28,10 +31,10 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program) extends S
       )
     }
 
-    val smtFunDecls = funs.toSeq.collect {
-      case tfd if !functions.containsA(tfd) =>
-        super.declareFunction(tfd)
-    }
+    val notSeen = funs.toSeq filterNot functions.containsA
+
+    val smtFunDecls = notSeen map super.declareFunction
+
     smtFunDecls foreach { sym =>
       val tfd = functions.toA(sym)
       val term = quantifiedTerm(
@@ -43,21 +46,28 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program) extends S
         )
       )
       sendCommand(SMTAssert(term))
+    }
 
-      tfd.postcondition foreach { post =>
-        val axiom = implies(
-          tfd.precondition getOrElse BooleanLiteral(true),
-          application(
-            post,
-            Seq(FunctionInvocation(tfd, tfd.params map { _.toVariable }))
-          )
-        )
-        sendCommand(SMTAssert(quantifiedTerm(SMTForall, axiom)))
+    // If we encounter a function that does not refer to the current function,
+    // it is sound to assume its contracts for all inputs
+    if (allowQuantifiedAssersions) for {
+      tfd <- notSeen if !refersToCurrent(tfd.fd)
+      post <- tfd.postcondition
+    } {
+      val term = implies(
+        tfd.precondition getOrElse BooleanLiteral(true),
+        application(post, Seq(tfd.applied))
+      )
+      try {
+        sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
+      } catch {
+        case _ : IllegalArgumentException =>
+          addError()
       }
     }
 
     functions.toB(tfd)
-  }
 
+  }
 
 }

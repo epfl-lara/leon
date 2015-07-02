@@ -25,9 +25,23 @@ class NewSolversSuite extends VerificationSuite {
         false
     }
 
-    if (isCVC4Available)
-      List(List("--solvers=smt-cvc4-cex,smt-cvc4-proof,ground", "--timeout=5"))
-    else Nil
+    val isZ3Available = try {
+      Z3Interpreter.buildDefault.free()
+      true
+    } catch {
+      case e: java.io.IOException =>
+        false
+    }
+
+    (
+      if (isCVC4Available)
+        List(List("--solvers=smt-cvc4-cex,smt-cvc4-proof,ground", "--timeout=5"))
+      else Nil
+    ) ++ (
+      if (isZ3Available)
+        List(List("--solvers=smt-z3-q,ground", "--timeout=10"))
+      else Nil
+    )
 
   }
 }
