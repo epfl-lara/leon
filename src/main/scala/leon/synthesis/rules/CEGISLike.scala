@@ -6,7 +6,6 @@ package rules
 
 import leon.utils.SeqUtils
 import solvers._
-import solvers.z3._
 
 import purescala.Expressions._
 import purescala.Common._
@@ -48,17 +47,17 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
 
     // CEGIS Flags to activate or deactivate features
-    val useOptTimeout         = sctx.settings.cegisUseOptTimeout.getOrElse(true)
-    val useVanuatoo           = sctx.settings.cegisUseVanuatoo.getOrElse(false)
-    val useShrink             = sctx.settings.cegisUseShrink.getOrElse(true)
+    val useOptTimeout    = sctx.settings.cegisUseOptTimeout.getOrElse(true)
+    val useVanuatoo      = sctx.settings.cegisUseVanuatoo.getOrElse(false)
+    val useShrink        = sctx.settings.cegisUseShrink.getOrElse(true)
 
     // Limits the number of programs CEGIS will specifically validate individually
-    val validateUpTo          = 5
+    val validateUpTo     = 5
 
     // Shrink the program when the ratio of passing cases is less than the threshold
-    val shrinkThreshold       = 1.0/2
+    val shrinkThreshold  = 1.0/2
 
-    val interruptManager      = sctx.context.interruptManager
+    val interruptManager = sctx.context.interruptManager
 
     val params = getParams(sctx, p)
 
@@ -68,9 +67,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     class NonDeterministicProgram(val p: Problem, initTermSize: Int = 1) {
 
-      private var termSize = 0;
+      private var termSize = 0
 
-      val grammar = ExpressionGrammars.SizeBoundedGrammar(params.grammar)
+      val grammar = SizeBoundedGrammar(params.grammar)
 
       def rootLabel(tpe: TypeTree) = SizedLabel(params.rootLabel(tpe), termSize)
 
@@ -120,8 +119,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       private var bsOrdered: Seq[Identifier] = Seq()
 
 
-
-
       class CGenerator {
         private var buffers = Map[SizedLabel[T], Stream[Identifier]]()
 
@@ -163,7 +160,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           if (!(cTree contains c)) {
             val cGen = new CGenerator()
 
-            var alts = grammar.getProductions(l)
+            val alts = grammar.getProductions(l)
 
             val cTreeData = for (gen <- alts) yield {
               val b = freshB()
@@ -197,7 +194,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           grammar.printProductions(printer)
         }
 
-        bsOrdered    = bs.toSeq.sortBy(_.id)
+        bsOrdered = bs.toSeq.sortBy(_.id)
 
         setCExpr(computeCExpr())
       }
@@ -208,7 +205,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        * b2 -> Set(c4)
        * b3 -> Set(c4)
        */
-      private var closedBs: Map[Identifier, Set[Identifier]] = Map()
+      private val closedBs: Map[Identifier, Set[Identifier]] = Map()
 
       /**
        * Checks if 'b' is closed (meaning it depends on uninterpreted terms)
@@ -258,7 +255,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                              markedBs: Set[Identifier] = Set()): Unit = {
         println(" -- -- -- -- -- ")
         for ((c, alts) <- cTree) {
-          println
+          println()
           println(f"$c%-4s :=")
           for ((b, builder, cs) <- alts ) {
             val active = if (isBActive(b)) " " else "⨯"
@@ -320,17 +317,19 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
 
 
-      private val cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true),
-                               Seq(),
-                               p.outType,
-                               p.as.map(id => ValDef(id))
-                             )
+      private val cTreeFd = new FunDef(
+        FreshIdentifier("cTree", alwaysShowUniqueID = true),
+        Seq(),
+        p.outType,
+        p.as.map(id => ValDef(id))
+      )
 
-      private val phiFd   = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true),
-                               Seq(),
-                               BooleanType,
-                               p.as.map(id => ValDef(id))
-                             )
+      private val phiFd = new FunDef(
+        FreshIdentifier("phiFd", alwaysShowUniqueID = true),
+        Seq(),
+        BooleanType,
+        p.as.map(id => ValDef(id))
+      )
 
 
       private val (innerProgram, origFdMap) = {
@@ -538,8 +537,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         //println(" --- PhiFD ---")
         //println(phiFd.fullBody.asString(ctx))
 
-        val fixedBs = finiteArray(bsOrdered.map(_.toVariable), None, BooleanType)
-
         val toFind = and(innerPc, cnstr)
         //println(" --- Constraints ---")
         //println(" - "+toFind)
@@ -646,7 +643,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
-        var result: Option[RuleApplication]   = None
+        var result: Option[RuleApplication] = None
         val sctx = hctx.sctx
 
         val ndProgram = new NonDeterministicProgram(p)
@@ -707,7 +704,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
           new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, 20, 3000)
         } else {
-          val evaluator  = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
+          val evaluator = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
           new GrammarDataGen(evaluator, ExpressionGrammars.ValueGrammar).generateFor(p.as, p.pc, 20, 1000)
         }
 
@@ -834,15 +831,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 }
               }
 
-              if (doFilter) {
-                if (nPassing < nInitial * shrinkThreshold && useShrink) {
-                  // We shrink the program to only use the bs mentionned
-                  val bssToKeep = prunedPrograms.foldLeft(Set[Identifier]())(_ ++ _)
-                  //ndProgram.shrinkTo(bssToKeep, unfolding == maxUnfoldings)
-                } else {
-                  wrongPrograms.foreach {
-                    ndProgram.excludeProgram
-                  }
+              if (doFilter && !(nPassing < nInitial * shrinkThreshold && useShrink)) {
+                wrongPrograms.foreach {
+                  ndProgram.excludeProgram
                 }
               }
             }
