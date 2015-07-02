@@ -39,7 +39,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val exSolverTo  = 2000L
     val cexSolverTo = 2000L
 
-    // Track non-deterministic programs up to 50'000 programs, or give up
+    // Track non-deterministic programs up to 10'000 programs, or give up
     val nProgramsLimit = 100000
 
     val sctx = hctx.sctx

@@ -3,12 +3,9 @@
 package leon
 package synthesis
 
-import purescala.Common._
 import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.DefOps._
-import purescala.Expressions._
-import purescala.Constructors._
 import purescala.ScalaPrinter
 import solvers._
 
