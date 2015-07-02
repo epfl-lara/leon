@@ -47,12 +47,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   def initRC(mappings: Map[Identifier, Expr]): RC
   def initGC(): GC
 
+  // Used by leon-web, please do not delete
+  var lastGC: Option[GC] = None
+
   private[this] var clpCache = Map[(Choose, Seq[Expr]), Expr]()
 
   def eval(ex: Expr, mappings: Map[Identifier, Expr]) = {
     try {
+      lastGC = Some(initGC())
       ctx.timers.evaluators.recursive.runtime.start()
-      EvaluationResults.Successful(e(ex)(initRC(mappings), initGC()))
+      EvaluationResults.Successful(e(ex)(initRC(mappings), lastGC.get))
     } catch {
       case so: StackOverflowError =>
         EvaluationResults.EvaluatorError("Stack overflow")
