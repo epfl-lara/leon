@@ -34,7 +34,7 @@
         },
         tooltip: {
             headerFormat: '<b>{series.name}</b><br>',
-            pointFormat: '{point.x:%e. %b}: {point.y:.2f} ms'
+            pointFormat: '{point.x:%e. %b}: {point.y:,.0f} ms'
         },
 
         legend: {
@@ -74,7 +74,7 @@
           serie = seriesMap[name]
         }
 
-        serie.data.push([1000 * r.ts, r.time_synthesis])
+        serie.data.push([1000 * r.ts, r.time_synthesis+r.time_tests])
 
         seriesMap[name] = serie
       }
