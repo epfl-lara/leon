@@ -527,7 +527,7 @@ class PrettyPrinter(opts: PrinterOptions,
             p"  $b"
 
           case None =>
-            p"???"
+            p"  ???"
         }
 
         p"""|
