@@ -39,7 +39,7 @@ object MethodLifting extends TransformationPhase {
         }
         val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
 
-        val receiver = FreshIdentifier("this", recType).setPos(cd.id)
+        val receiver = FreshIdentifier("thiss", recType).setPos(cd.id)
 
         val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams)
         nfd.copyContentFrom(fd)
@@ -70,7 +70,7 @@ object MethodLifting extends TransformationPhase {
 
       // 4) Remove methods in classes
       for (cd <- u.definedClasses) {
-        cd.clearMethods
+        cd.clearMethods()
       }
 
       u.copy(defs = defs ++ newCompanions)

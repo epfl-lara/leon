@@ -86,7 +86,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       e(caller) match {
         case l@Lambda(params, body) =>
           val newArgs = args.map(e)
-          val mapping = l.substitutions(newArgs)
+          val mapping = l.paramSubst(newArgs)
           e(body)(rctx.withNewVars(mapping), gctx)
         case f =>
           throw EvalError("Cannot apply non-lambda function " + f)

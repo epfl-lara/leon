@@ -178,16 +178,15 @@ trait RuleDSL {
   // pc corresponds to the pc to reach the point where the solution is used. It
   // will be used if the sub-solution has a non-true pre.
   def termWrap(f: Expr => Expr, pc: Expr = BooleanLiteral(true)): List[Solution] => Option[Solution] = {
-    (sols: List[Solution]) => sols match {
-      case List(s) =>
-        val pre = if (s.pre == BooleanLiteral(true)) {
-          BooleanLiteral(true)
-        } else {
-          and(pc, s.pre)
-        }
+    case List(s) =>
+      val pre = if (s.pre == BooleanLiteral(true)) {
+        BooleanLiteral(true)
+      } else {
+        and(pc, s.pre)
+      }
 
-        Some(Solution(pre, s.defs, f(s.term), s.isTrusted))
-      case _ => None
-    }
+      Some(Solution(pre, s.defs, f(s.term), s.isTrusted))
+    case _ => None
+
   }
 }

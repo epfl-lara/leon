@@ -94,19 +94,19 @@ object Expressions {
     }
   }
 
-  case class Application(caller: Expr, args: Seq[Expr]) extends Expr {
-    require(caller.getType.isInstanceOf[FunctionType])
-    val getType = caller.getType.asInstanceOf[FunctionType].to
+  case class Application(callee: Expr, args: Seq[Expr]) extends Expr {
+    require(callee.getType.isInstanceOf[FunctionType])
+    val getType = callee.getType.asInstanceOf[FunctionType].to
   }
 
   case class Lambda(args: Seq[ValDef], body: Expr) extends Expr {
     val getType = FunctionType(args.map(_.getType), body.getType).unveilUntyped
-    def substitutions(realArgs: Seq[Expr]) = {
+    def paramSubst(realArgs: Seq[Expr]) = {
       require(realArgs.size == args.size)
       (args map { _.id } zip realArgs).toMap
     }
-    def withSubstitutions(realArgs: Seq[Expr], e: Expr) = {
-      replaceFromIDs(substitutions(realArgs), e)
+    def withParamSubst(realArgs: Seq[Expr], e: Expr) = {
+      replaceFromIDs(paramSubst(realArgs), e)
     }
   }
 
@@ -261,6 +261,7 @@ object Expressions {
     val value = ()
   }
 
+  /* Case classes */
   case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr {
     val getType = ct
   }
