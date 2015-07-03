@@ -4,49 +4,32 @@ package leon.xlang
 
 import leon.UnitPhase
 import leon.LeonContext
-import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
+import leon.purescala.ExprOps.simplePostTransform
+import leon.purescala.Extractors.IsTyped
+import leon.purescala.Types.ArrayType
 import leon.xlang.Expressions._
-import leon.purescala.Extractors._
-import leon.purescala.Types._
 
 object ArrayTransformation extends UnitPhase[Program] {
 
   val name = "Array Transformation"
-  val description = "Add bound checking for array access and remove array update with side effect"
+  val description = "Remove side-effectful array updates"
 
   def apply(ctx: LeonContext, pgm: Program) = {
-    pgm.definedFunctions.foreach(fd => {
-      fd.fullBody = transform(fd.fullBody)(Map())
-    })
+    pgm.definedFunctions.foreach(fd =>
+      fd.fullBody = simplePostTransform {
+        case up@ArrayUpdate(a, i, v) =>
+          val ra@Variable(id) = a
+          Assignment(id, ArrayUpdated(ra, i, v).setPos(up)).setPos(up)
+
+        case l@Let(i, IsTyped(v, ArrayType(_)), b) =>
+          LetVar(i, v, b).setPos(l)
+
+        case e =>
+          e
+      }(fd.fullBody)
+    )
   }
-
-  def transform(expr: Expr)(implicit env: Map[Identifier, Identifier]): Expr = (expr match {
-    case up@ArrayUpdate(a, i, v) => {
-      val ra = transform(a)
-      val ri = transform(i)
-      val rv = transform(v)
-      val Variable(id) = ra
-      Assignment(id, ArrayUpdated(ra, ri, rv).setPos(up))
-    }
-    case Let(i, v, b) => {
-      v.getType match {
-        case ArrayType(_) => {
-          val freshIdentifier = FreshIdentifier("t", i.getType)
-          val newEnv = env + (i -> freshIdentifier)
-          LetVar(freshIdentifier, transform(v)(newEnv), transform(b)(newEnv))
-        }
-        case _ => Let(i, transform(v), transform(b))
-      }
-    }
-    case v@Variable(i) => {
-      Variable(env.getOrElse(i, i))
-    }
-
-    case Operator(args, recons) => recons(args.map(transform))
-
-    case unhandled => scala.sys.error("Non-terminal case should be handled in ArrayTransformation: " + unhandled)
-  }).setPos(expr)
 
 }

@@ -4,13 +4,17 @@ package leon
 package xlang
 
 import leon.purescala.Definitions.IsLoop
-import leon.verification.{VC, VCKinds, VerificationReport}
-import leon.xlang.XLangAnalysisPhase.VCXLangKinds._
+import leon.verification._
 
 object FixReportLabels extends LeonPhase[VerificationReport, VerificationReport]{
 
   override val name: String = "fixReportLabels"
   override val description: String = "Fix verification report labels to reflect the original imperative VCs"
+
+  // TODO: something of this sort should be included
+  // case object InvariantEntry extends VCKind("invariant init",           "inv. init.")
+  case object InvariantPost extends VCKind("invariant postcondition", "inv. post.")
+  case object InvariantInd  extends VCKind("invariant inductive",     "inv. ind.")
 
   def run(ctx: LeonContext)(vr: VerificationReport): VerificationReport = {
     //this is enough to convert invariant postcondition and inductive conditions. However the initial validity

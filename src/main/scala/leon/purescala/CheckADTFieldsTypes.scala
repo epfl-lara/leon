@@ -3,11 +3,8 @@
 package leon
 package purescala
 
-import Common._
 import Definitions._
-import Types._
 import TypeOps._
-import Expressions._
 
 object CheckADTFieldsTypes extends UnitPhase[Program] {
 
@@ -20,7 +17,9 @@ object CheckADTFieldsTypes extends UnitPhase[Program] {
         for(vd <- ccd.fields) {
           val tpe = vd.getType
           if (bestRealType(tpe) != tpe) {
-            ctx.reporter.warning("Definition of "+ccd.id+" has a field of a sub-type ("+vd+"): this type is not supported as-is by solvers and will be up-casted. This may cause issues such as crashes.")
+            ctx.reporter.warning("Definition of "+ccd.id+" has a field of a sub-type ("+vd+"): " +
+              "this type is not supported as-is by solvers and will be up-cast. " +
+              "This may cause issues such as crashes.")
           }
         }
       case _ =>

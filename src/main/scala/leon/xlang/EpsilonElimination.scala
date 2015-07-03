@@ -2,7 +2,7 @@
 
 package leon.xlang
 
-import leon.{UnitPhase, TransformationPhase, LeonContext}
+import leon.{UnitPhase, LeonContext}
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._

@@ -157,9 +157,8 @@ object ExprOps {
     val rec = postMap(f, applyRec) _
 
     val Operator(es, builder) = e
+    val newEs = es.map(rec)
     val newV = {
-      val newEs = es.map(rec)
-
       if ((newEs zip es).exists { case (bef, aft) => aft ne bef }) {
         builder(newEs).copiedFrom(e)
       } else {
