@@ -37,7 +37,7 @@ class StablePrintingSuite extends LeonTestSuite {
 
       val program = pipeline.run(ctx)((content, Nil))
 
-      (program, opts, ChooseInfo.extractFromProgram(program))
+      (program, opts, ChooseInfo.extractFromProgram(ctx, program))
     }
 
     case class Job(content: String, choosesToProcess: Set[Int], rules: List[String]) {

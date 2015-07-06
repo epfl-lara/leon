@@ -43,11 +43,11 @@ case object EqualitySplit extends Rule("Eq. Split") {
 
         val sub1 = p.copy(
           pc = and(Equals(Variable(a1), Variable(a2)), p.pc),
-          tb = p.tbOps.filterIns( (m: Map[Identifier, Expr]) => m(a1) == m(a2))
+          eb = p.qeb.filterIns( (m: Map[Identifier, Expr]) => m(a1) == m(a2))
         )
         val sub2 = p.copy(
           pc = and(not(Equals(Variable(a1), Variable(a2))), p.pc),
-          tb = p.tbOps.filterIns( (m: Map[Identifier, Expr]) => m(a1) != m(a2))
+          eb = p.qeb.filterIns( (m: Map[Identifier, Expr]) => m(a1) != m(a2))
         )
 
         val onSuccess: List[Solution] => Option[Solution] = {

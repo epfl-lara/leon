@@ -74,7 +74,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       filterInclusive(options.functions.map(fdMatcher), Some(excludeByDefault _)) compose ciTofd
     }
 
-    val chooses = ChooseInfo.extractFromProgram(p).filter(fdFilter)
+    val chooses = ChooseInfo.extractFromProgram(ctx, p).filter(fdFilter)
 
     var functions = Set[FunDef]()
 

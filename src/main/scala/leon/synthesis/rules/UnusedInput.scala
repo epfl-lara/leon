@@ -11,7 +11,7 @@ case object UnusedInput extends NormalizingRule("UnusedInput") {
     val unused = p.as.toSet -- variablesOf(p.phi) -- variablesOf(p.pc) -- variablesOf(p.ws)
 
     if (unused.nonEmpty) {
-      val sub = p.copy(as = p.as.filterNot(unused), tb = p.tbOps.removeIns(unused))
+      val sub = p.copy(as = p.as.filterNot(unused), eb = p.qeb.removeIns(unused))
 
       List(decomp(List(sub), forward, s"Unused inputs ${p.as.filter(unused).mkString(", ")}"))
     } else {

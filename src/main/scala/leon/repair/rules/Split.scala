@@ -50,8 +50,8 @@ case object Split extends Rule("Split") {
 
     val alts = guides.collect {
       case g @ IfExpr(c, thn, els) =>
-        val sub1 = p.copy(ws = replace(Map(g -> thn), p.ws), pc = and(c, replace(Map(g -> thn), p.pc)), tb = p.tbOps.filterIns(c))
-        val sub2 = p.copy(ws = replace(Map(g -> els), p.ws), pc = and(Not(c), replace(Map(g -> els), p.pc)), tb = p.tbOps.filterIns(Not(c)))
+        val sub1 = p.copy(ws = replace(Map(g -> thn), p.ws), pc = and(c, replace(Map(g -> thn), p.pc)), eb = p.qeb.filterIns(c))
+        val sub2 = p.copy(ws = replace(Map(g -> els), p.ws), pc = and(Not(c), replace(Map(g -> els), p.pc)), eb = p.qeb.filterIns(Not(c)))
 
         val onSuccess: List[Solution] => Option[Solution] = { 
           case List(s1, s2) =>
@@ -76,10 +76,10 @@ case object Split extends Rule("Split") {
           val vars = map.toSeq.map(_._1)
 
           // Filter tests by the path-condition
-          val tb2 = p.tbOps.filterIns(cond)
+          val eb2 = p.qeb.filterIns(cond)
 
           // Augment test with the additional variables and their valuations
-          val tbF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
+          val ebF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
             val emap = (p.as zip e).toMap
 
             evaluator.eval(tupleWrap(vars.map(map)), emap).result.map { r =>
@@ -87,15 +87,15 @@ case object Split extends Rule("Split") {
             }.toList
           }
 
-          val tb3 = if (vars.nonEmpty) {
-            tb2.mapIns(tbF)
+          val eb3 = if (vars.nonEmpty) {
+            eb2.mapIns(ebF)
           } else {
-            tb2
+            eb2
           }
 
           val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })
 
-          (cond, Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, tb3))
+          (cond, Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, eb3))
         }
 
           val onSuccess = { (sols: List[Solution]) =>

@@ -9,12 +9,13 @@ import purescala.Common._
 import repair._
 import leon.utils.ASCIIHelpers._
 
-case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
-  def examples: Seq[Example] = valids ++ invalids
+
+case class ExampleBank(valids: Seq[Example], invalids: Seq[Example]) {
+  def examples = valids ++ invalids
 
   // Minimize tests of a function so that tests that are invalid because of a
   // recursive call are eliminated
-  def minimizeInvalids(fd: FunDef, ctx: LeonContext, program: Program): TestBank = {
+  def minimizeInvalids(fd: FunDef, ctx: LeonContext, program: Program): ExampleBank = {
     val evaluator = new RepairTrackingEvaluator(ctx, program)
 
     invalids foreach { ts =>
@@ -34,7 +35,7 @@ case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
     }
 
     val newInvalids = failing.keySet map {
-      case (_, args) => 
+      case (_, args) =>
         outInfo.get(args) match {
           case Some(outs) =>
             InOutExample(args, outs)
@@ -44,18 +45,18 @@ case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
         }
     }
 
-    TestBank(valids, newInvalids.toSeq)
+    ExampleBank(valids, newInvalids.toSeq)
   }
 
-  def union(that: TestBank) = {
-    TestBank(
-      (this.valids ++ that.valids).distinct,
-      (this.invalids ++ that.invalids).distinct
+  def union(that: ExampleBank) = {
+    ExampleBank(
+      (this.valids union that.valids).distinct,
+      (this.invalids union that.invalids).distinct
     )
   }
 
   def map(f: Example => List[Example]) = {
-    TestBank(valids.flatMap(f), invalids.flatMap(f))
+    ExampleBank(valids.flatMap(f), invalids.flatMap(f))
   }
 
   def mapIns(f: Seq[Expr] => List[Seq[Expr]]) = {
@@ -124,9 +125,11 @@ case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
           )
         }
       }
+
       if (valids.nonEmpty) {
         testsRows("Valid tests", valids)
       }
+
       if (invalids.nonEmpty) {
         testsRows("Invalid tests", invalids)
       }
@@ -138,32 +141,34 @@ case class TestBank(valids: Seq[Example], invalids: Seq[Example]) {
   }
 }
 
-object TestBank {
-  def empty = TestBank(Nil, Nil)
+object ExampleBank {
+  def empty = ExampleBank(Nil, Nil)
 }
 
-case class ProblemTestBank(p: Problem, tb: TestBank)(implicit hctx: SearchContext) {
+// Same as an ExampleBank, but with identifiers corresponding to values. This
+// allows us to evaluate expressions
+case class QualifiedExampleBank(as: List[Identifier], xs: List[Identifier], eb: ExampleBank)(implicit hctx: SearchContext) {
 
   def removeOuts(toRemove: Set[Identifier]) = {
-    val toKeep = p.xs.zipWithIndex.filterNot(x => toRemove(x._1)).map(_._2)
+    val toKeep = xs.zipWithIndex.filterNot(x => toRemove(x._1)).map(_._2)
 
-    tb mapOuts { out => List(toKeep.map(out)) }
+    eb mapOuts { out => List(toKeep.map(out)) }
   }
 
   def removeIns(toRemove: Set[Identifier]) = {
-    val toKeep = p.as.zipWithIndex.filterNot(a => toRemove(a._1)).map(_._2)
-    tb mapIns { in => List(toKeep.map(in)) }
+    val toKeep = as.zipWithIndex.filterNot(a => toRemove(a._1)).map(_._2)
+    eb mapIns { in => List(toKeep.map(in)) }
   }
 
-  def filterIns(expr: Expr): TestBank = {
+  def filterIns(expr: Expr): ExampleBank = {
     val ev = new DefaultEvaluator(hctx.sctx.context, hctx.sctx.program)
 
     filterIns(m => ev.eval(expr, m).result == Some(BooleanLiteral(true)))
   }
 
-  def filterIns(pred: Map[Identifier, Expr] => Boolean): TestBank = {
-    tb mapIns { in =>
-      val m = (p.as zip in).toMap
+  def filterIns(pred: Map[Identifier, Expr] => Boolean): ExampleBank = {
+    eb mapIns { in =>
+      val m = (as zip in).toMap
       if(pred(m)) {
         List(in)
       } else {
@@ -171,5 +176,4 @@ case class ProblemTestBank(p: Problem, tb: TestBank)(implicit hctx: SearchContex
       }
     }
   }
-
 }

@@ -20,7 +20,7 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
 
   val reporter = ctx.reporter
 
-  def extractTests(fd: FunDef): TestBank = fd.postcondition match {
+  def extractExampleBank(fd: FunDef): ExampleBank = fd.postcondition match {
     case Some(Lambda(Seq(ValDef(id, _)), post)) =>
       // @mk FIXME: make this more general
       val tests = extractTestsOf(post)
@@ -53,13 +53,9 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
       }
 
       val (v, iv) = examples.partition(isValidTest)
-      TestBank(v, iv)
+      ExampleBank(v, iv)
     case None =>
-      TestBank(Nil, Nil)
-  }
-
-  def generateTests(p: Problem): Seq[Example] = {
-    Nil
+      ExampleBank(Nil, Nil)
   }
 
   // Extract examples from the passes found in expression

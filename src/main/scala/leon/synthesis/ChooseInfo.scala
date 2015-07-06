@@ -13,30 +13,38 @@ case class ChooseInfo(fd: FunDef,
                       pc: Expr,
                       source: Expr,
                       ch: Choose,
-                      tests: TestBank) {
+                      eb: ExampleBank) {
 
   val problem = Problem.fromChooseInfo(this)
 }
 
 object ChooseInfo {
-  def extractFromProgram(prog: Program): List[ChooseInfo] = {
+  def extractFromProgram(ctx: LeonContext, prog: Program): List[ChooseInfo] = {
 
     // Look for choose()
     val results = for (f <- prog.definedFunctions if f.body.isDefined;
-                       ci <- extractFromFunction(prog, f)) yield {
+                       ci <- extractFromFunction(ctx, prog, f)) yield {
       ci
     }
 
     results.sortBy(_.source.getPos)
   }
 
-  def extractFromFunction(prog: Program, fd: FunDef): Seq[ChooseInfo] = {
+  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[ChooseInfo] = {
 
     val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
     val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
+    val userEb = new ExamplesFinder(ctx, prog).extractExampleBank(fd)
+
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
-      ChooseInfo(fd, and(path, term), ch, ch, TestBank.empty)
+      val eb = if (path == BooleanLiteral(true)) {
+        userEb
+      } else {
+        ExampleBank.empty
+      }
+
+      ChooseInfo(fd, and(path, term), ch, ch, eb)
     }
   }
 }

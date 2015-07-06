@@ -51,7 +51,7 @@ case object Focus extends PreprocessingRule("Focus") {
     def forAllTests(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Option[Boolean] = {
       var soFar: Option[Boolean] = None
 
-      p.tb.invalids.foreach { ex =>
+      p.eb.invalids.foreach { ex =>
         evaluator.eval(e, (p.as zip ex.ins).toMap ++ env) match {
           case EvaluationResults.Successful(BooleanLiteral(b)) => 
             soFar match {
@@ -107,7 +107,7 @@ case object Focus extends PreprocessingRule("Focus") {
           case Some(true) =>
             val cx = FreshIdentifier("cond", BooleanType)
             // Focus on condition
-            val np = Problem(p.as, ws(c), p.pc, letTuple(p.xs, IfExpr(cx.toVariable, thn, els), p.phi), List(cx), p.tb.stripOuts)
+            val np = Problem(p.as, ws(c), p.pc, letTuple(p.xs, IfExpr(cx.toVariable, thn, els), p.phi), List(cx), p.eb.stripOuts)
 
             Some(decomp(List(np), termWrap(IfExpr(_, thn, els)), s"Focus on if-cond '$c'")(p))
 
@@ -115,11 +115,11 @@ case object Focus extends PreprocessingRule("Focus") {
             // Try to focus on branches
             forAllTests(c, Map(), evaluator) match {
               case Some(true) =>
-                val np = Problem(p.as, ws(thn), and(p.pc, c), p.phi, p.xs, p.tbOps.filterIns(c))
+                val np = Problem(p.as, ws(thn), and(p.pc, c), p.phi, p.xs, p.qeb.filterIns(c))
 
                 Some(decomp(List(np), termWrap(IfExpr(c, _, els), c), s"Focus on if-then")(p))
               case Some(false) =>
-                val np = Problem(p.as, ws(els), and(p.pc, not(c)), p.phi, p.xs, p.tbOps.filterIns(not(c)))
+                val np = Problem(p.as, ws(els), and(p.pc, not(c)), p.phi, p.xs, p.qeb.filterIns(not(c)))
 
                 Some(decomp(List(np), termWrap(IfExpr(c, thn, _), not(c)), s"Focus on if-else")(p))
               case None =>
@@ -147,10 +147,10 @@ case object Focus extends PreprocessingRule("Focus") {
               val vars = map.toSeq.map(_._1)
 
               // Filter tests by the path-condition
-              val tb2 = p.tbOps.filterIns(cond)
+              val eb2 = p.qeb.filterIns(cond)
 
               // Augment test with the additional variables and their valuations
-              val tbF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
+              val ebF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
                 val emap = (p.as zip e).toMap
 
                 evaluator.eval(tupleWrap(vars.map(map)), emap).result.map { r =>
@@ -158,15 +158,15 @@ case object Focus extends PreprocessingRule("Focus") {
                 }.toList
               }
 
-              val tb3 = if (vars.nonEmpty) {
-                tb2.mapIns(tbF)
+              val eb3 = if (vars.nonEmpty) {
+                eb2.mapIns(ebF)
               } else {
-                tb2
+                eb2
               }
 
               val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })
 
-              val np = Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, tb3)
+              val np = Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, eb3)
 
               res = Some(
                 Some(
@@ -188,7 +188,7 @@ case object Focus extends PreprocessingRule("Focus") {
 
 
       case Let(id, value, body) =>
-        val tbF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
+        val ebF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
           val map = (p.as zip e).toMap
 
           evaluator.eval(value, map).result.map { r =>
@@ -196,7 +196,7 @@ case object Focus extends PreprocessingRule("Focus") {
           }.toList
         }
 
-        val np = Problem(p.as :+ id, ws(body), and(p.pc, equality(id.toVariable, value)), p.phi, p.xs, p.tb.mapIns(tbF))
+        val np = Problem(p.as :+ id, ws(body), and(p.pc, equality(id.toVariable, value)), p.phi, p.xs, p.eb.mapIns(ebF))
 
         Some(decomp(List(np), termWrap(Let(id, value, _)), s"Focus on let-body")(p))
 

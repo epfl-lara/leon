@@ -19,7 +19,7 @@ case object Assert extends NormalizingRule("Assert") {
           if (others.isEmpty) {
             Some(solve(Solution(andJoin(exprsA), Set(), tupleWrap(p.xs.map(id => simplestValue(id.getType))))))
           } else {
-            val sub = p.copy(pc = andJoin(p.pc +: exprsA), phi = andJoin(others), tb = p.tbOps.filterIns(andJoin(exprsA)))
+            val sub = p.copy(pc = andJoin(p.pc +: exprsA), phi = andJoin(others), eb = p.qeb.filterIns(andJoin(exprsA)))
 
             Some(decomp(List(sub), {
               case (s @ Solution(pre, defs, term)) :: Nil => Some(Solution(andJoin(exprsA :+ pre), defs, term, s.isTrusted))

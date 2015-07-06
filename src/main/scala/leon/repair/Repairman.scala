@@ -45,30 +45,30 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
 
       val timer = new Timer().start
 
-      val tb = discoverTests()
+      val eb = discoverTests()
 
-      if (tb.invalids.nonEmpty) {
-        reporter.info(f" - Passing: ${tb.valids.size}%3d")
-        reporter.info(f" - Failing: ${tb.invalids.size}%3d")
+      if (eb.invalids.nonEmpty) {
+        reporter.info(f" - Passing: ${eb.valids.size}%3d")
+        reporter.info(f" - Failing: ${eb.invalids.size}%3d")
 
         reporter.ifDebug { printer =>
-          printer(tb.asString("Discovered Tests"))
+          printer(eb.asString("Discovered Tests"))
         }
 
         reporter.info(ASCIIHelpers.title("2. Minimizing tests"))
-        val tb2 = tb.minimizeInvalids(fd, ctx, program)
+        val eb2 = eb.minimizeInvalids(fd, ctx, program)
 
         // We exclude redundant failing tests, and only select the minimal tests
-        reporter.info(f" - Minimal Failing Set Size: ${tb2.invalids.size}%3d")
+        reporter.info(f" - Minimal Failing Set Size: ${eb2.invalids.size}%3d")
 
         reporter.ifDebug { printer =>
-          printer(tb2.asString("Minimal Failing Tests"))
+          printer(eb2.asString("Minimal Failing Tests"))
         }
 
         val timeTests = timer.stop
         timer.start
 
-        val synth = getSynthesizer(tb2)
+        val synth = getSynthesizer(eb2)
 
         try {
           reporter.info(ASCIIHelpers.title("3. Synthesizing repair"))
@@ -123,7 +123,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     }
   }
 
-  def getSynthesizer(tb: TestBank): Synthesizer = {
+  def getSynthesizer(eb: ExampleBank): Synthesizer = {
 
     val origBody = fd.body.get
 
@@ -142,7 +142,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       andJoin(Seq(pre, guide, term)),
       origBody,
       choose,
-      tb
+      eb
     )
 
     // Return synthesizer for this choose
@@ -187,7 +187,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
     }
   }
 
-  def discoverTests(): TestBank = {
+  def discoverTests(): ExampleBank = {
 
     import bonsai.enumerators._
     import utils.ExpressionGrammars.ValueGrammar
@@ -234,15 +234,15 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       case _               => false
     }
 
-    val genTb = TestBank(genPassing, genFailing).stripOuts
+    val genTb = ExampleBank(genPassing, genFailing).stripOuts
 
     // Extract passing/failing from the passes in POST
-    val userTb = new ExamplesFinder(ctx, program).extractTests(fd)
+    val userTb = new ExamplesFinder(ctx, program).extractExampleBank(fd)
 
     val allTb = genTb union userTb
 
     if (allTb.invalids.isEmpty) {
-      TestBank(allTb.valids, getVerificationCExs(fd))
+      ExampleBank(allTb.valids, getVerificationCExs(fd))
     } else {
       allTb
     }

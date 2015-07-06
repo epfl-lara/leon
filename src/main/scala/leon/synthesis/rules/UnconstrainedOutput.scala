@@ -13,9 +13,9 @@ case object UnconstrainedOutput extends NormalizingRule("Unconstr.Output") {
     val unconstr = p.xs.toSet -- variablesOf(p.phi)
 
     if (unconstr.nonEmpty) {
-      val sub = p.copy(xs = p.xs.filterNot(unconstr), tb = p.tbOps.removeOuts(unconstr))
+      val sub = p.copy(xs = p.xs.filterNot(unconstr), eb = p.qeb.removeOuts(unconstr))
 
-      val onSuccess: List[Solution] => Option[Solution] = { 
+      val onSuccess: List[Solution] => Option[Solution] = {
         case List(s) =>
           val term = letTuple(sub.xs, s.term, tupleWrap(p.xs.map(id => if (unconstr(id)) simplestValue(id.getType) else Variable(id))))
 

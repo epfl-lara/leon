@@ -57,11 +57,11 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
       case List(a1, a2) =>
 
         val subLT = p.copy(pc = and(LessThan(Variable(a1), Variable(a2)), p.pc),
-                           tb = p.tbOps.filterIns(LessThan(Variable(a1), Variable(a2))))
+                           eb = p.qeb.filterIns(LessThan(Variable(a1), Variable(a2))))
         val subEQ = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc),
-                           tb = p.tbOps.filterIns(Equals(Variable(a1), Variable(a2))))
+                           eb = p.qeb.filterIns(Equals(Variable(a1), Variable(a2))))
         val subGT = p.copy(pc = and(GreaterThan(Variable(a1), Variable(a2)), p.pc),
-                           tb = p.tbOps.filterIns(GreaterThan(Variable(a1), Variable(a2))))
+                           eb = p.qeb.filterIns(GreaterThan(Variable(a1), Variable(a2))))
 
         val onSuccess: List[Solution] => Option[Solution] = {
           case sols@List(sLT, sEQ, sGT) =>

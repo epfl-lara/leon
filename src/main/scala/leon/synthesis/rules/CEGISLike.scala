@@ -388,7 +388,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       private val innerPhi = outerExprToInnerExpr(p.phi)
 
       private var programCTree: Program = _
-      private var tester: (Seq[Expr], Set[Identifier]) => EvaluationResults.Result = _
+      private var tester: (Example, Set[Identifier]) => EvaluationResults.Result = _
 
       private def setCExpr(cTreeInfo: (Expr, Seq[FunDef])): Unit = {
         val (cTree, newFds) = cTreeInfo
@@ -404,18 +404,19 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val evaluator  = new DefaultEvaluator(sctx.context, programCTree)
 
         tester =
-          { (ins: Seq[Expr], bValues: Set[Identifier]) =>
+          { (ex: Example, bValues: Set[Identifier]) =>
+            // TODO: Test output value as well
             val envMap = bs.map(b => b -> BooleanLiteral(bValues(b))).toMap
 
-            val fi = FunctionInvocation(phiFd.typed, ins)
+            val fi = FunctionInvocation(phiFd.typed, ex.ins)
 
             evaluator.eval(fi, envMap)
           }
       }
 
 
-      def testForProgram(bValues: Set[Identifier])(ins: Seq[Expr]): Boolean = {
-        tester(ins, bValues) match {
+      def testForProgram(bValues: Set[Identifier])(ex: Example): Boolean = {
+        tester(ex, bValues) match {
           case EvaluationResults.Successful(res) =>
             res == BooleanLiteral(true)
 
@@ -649,7 +650,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         sctx.reporter.debug(s"maxUnfoldings=$maxUnfoldings")
 
-        var baseExampleInputs: ArrayBuffer[Seq[Expr]] = new ArrayBuffer[Seq[Expr]]()
+        var baseExampleInputs: ArrayBuffer[Example] = new ArrayBuffer[Example]()
 
         sctx.reporter.ifDebug { printer =>
           ndProgram.grammar.printProductions(printer)
@@ -658,10 +659,10 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         // We populate the list of examples with a predefined one
         sctx.reporter.debug("Acquiring initial list of examples")
 
-        baseExampleInputs ++= p.tb.examples.map(_.ins).toSet
+        baseExampleInputs ++= p.eb.examples
 
         if (p.pc == BooleanLiteral(true)) {
-          baseExampleInputs += p.as.map(a => simplestValue(a.getType))
+          baseExampleInputs += InExample(p.as.map(a => simplestValue(a.getType)))
         } else {
           val solver = sctx.newSolver.setTimeout(exSolverTo)
 
@@ -671,7 +672,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             solver.check match {
               case Some(true) =>
                 val model = solver.getModel
-                baseExampleInputs += p.as.map(a => model.getOrElse(a, simplestValue(a.getType)))
+                baseExampleInputs += InExample(p.as.map(a => model.getOrElse(a, simplestValue(a.getType))))
 
               case Some(false) =>
                 sctx.reporter.debug("Path-condition seems UNSAT")
@@ -688,7 +689,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         sctx.reporter.ifDebug { debug =>
           baseExampleInputs.foreach { in =>
-            debug("  - "+in.map(_.asString).mkString(", "))
+            debug("  - "+in.asString)
           }
         }
 
@@ -703,9 +704,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           new GrammarDataGen(evaluator, ExpressionGrammars.ValueGrammar).generateFor(p.as, p.pc, 20, 1000)
         }
 
-        val cachedInputIterator = new Iterator[Seq[Expr]] {
+        val cachedInputIterator = new Iterator[Example] {
           def next() = {
-            val i = inputIterator.next()
+            val i = InExample(inputIterator.next())
             baseExampleInputs += i
             i
           }
@@ -715,7 +716,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
         }
 
-        val failedTestsStats = new MutableMap[Seq[Expr], Int]().withDefaultValue(0)
+        val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
         def hasInputExamples = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
 
@@ -767,7 +768,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   val e = examples.next()
                   if (!ndProgram.testForProgram(bs)(e)) {
                     failedTestsStats(e) += 1
-                    sctx.reporter.debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.map(_.asString).mkString(", ")}")
+                    sctx.reporter.debug(f" Program: ${ndProgram.getExpr(bs).asString}%-80s failed on: ${e.asString}")
                     wrongPrograms += bs
                     prunedPrograms -= bs
 
@@ -793,8 +794,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             }
             sctx.reporter.debug("#Tests: "+baseExampleInputs.size)
             sctx.reporter.ifDebug{ printer =>
-              for (i <- baseExampleInputs.take(10)) {
-                printer(" - "+i.mkString(", "))
+              for (e <- baseExampleInputs.take(10)) {
+                printer(" - "+e.asString)
               }
               if(baseExampleInputs.size > 10) {
                 printer(" - ...")
@@ -815,7 +816,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     doFilter = false
                     result = Some(RuleClosed(sols))
                   case Right(cexs) =>
-                    baseExampleInputs ++= cexs
+                    baseExampleInputs ++= cexs.map(InExample(_))
 
                     if (nPassing <= validateUpTo) {
                       // All programs failed verification, we filter everything out and unfold
@@ -865,11 +866,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   if (validateWithZ3) {
                     ndProgram.solveForCounterExample(bs) match {
                       case Some(Some(inputsCE)) =>
+                        val ce = InExample(inputsCE)
                         // Found counter example!
-                        baseExampleInputs += inputsCE
+                        baseExampleInputs += ce
 
                         // Retest whether the newly found C-E invalidates all programs
-                        if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(inputsCE))) {
+                        if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(ce))) {
                           skipCESearch = true
                         } else {
                           ndProgram.excludeProgram(bs)

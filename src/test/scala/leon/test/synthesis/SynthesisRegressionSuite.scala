@@ -34,7 +34,7 @@ class SynthesisRegressionSuite extends LeonTestSuite {
 
       program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 
-      chooses = ChooseInfo.extractFromProgram(program)
+      chooses = ChooseInfo.extractFromProgram(ctx, program)
     }
 
     for (ci <- chooses) {

@@ -45,7 +45,7 @@ class CegisPerfTest extends PerformanceTest.OfflineRegressionReport {
     for ((name, ctx, pgm) <- ctxPrograms) {
       measure.method(name) in {
         using(Gen.unit("test")) in { _ =>
-          val cis = ChooseInfo.extractFromProgram(pgm).filterNot(_.fd.annotations("library"))
+          val cis = ChooseInfo.extractFromProgram(ctx, pgm).filterNot(_.fd.annotations("library"))
           for (ci <- cis) {
             val synth = new Synthesizer(ctx, pgm, ci, settings)
             val s = synth.getSearch
