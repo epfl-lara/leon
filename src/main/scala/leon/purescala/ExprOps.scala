@@ -904,22 +904,25 @@ object ExprOps {
     case ArrayType(tpe)             => EmptyArray(tpe)
 
     case act @ AbstractClassType(acd, tpe) =>
-      val children = acd.knownChildren
+      val children = act.knownCCDescendants
 
-      // FIXME: What if deep hierarchies? What if Cons[Option[List[A]]]?
-      def isRecursive(ccd: CaseClassDef): Boolean = {
-        act.fieldsTypes.exists{
+      def isRecursive(cct: CaseClassType): Boolean = {
+        cct.fieldsTypes.exists{
           case AbstractClassType(fieldAcd, _) => acd == fieldAcd
-          case CaseClassType(fieldCcd, _) => ccd == fieldCcd
+          case CaseClassType(fieldCcd, _) => acd == fieldCcd
           case _ => false
         }
       }
 
-      val nonRecChildren = children.collect { case ccd: CaseClassDef if !isRecursive(ccd) => ccd }
+      val nonRecChildren = children.filterNot(isRecursive).sortBy(_.fields.size)
 
-      val orderedChildren = nonRecChildren.sortBy(_.fields.size)
+      nonRecChildren.headOption match {
+        case Some(cct) =>
+          simplestValue(cct)
 
-      simplestValue(orderedChildren.head.typed(tpe))
+        case None =>
+          throw new Exception(act +" does not seem to be well-founded")
+      }
 
     case cct: CaseClassType =>
       CaseClass(cct, cct.fieldsTypes.map(t => simplestValue(t)))
