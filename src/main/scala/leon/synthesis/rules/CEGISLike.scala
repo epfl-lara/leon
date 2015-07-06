@@ -408,9 +408,16 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             // TODO: Test output value as well
             val envMap = bs.map(b => b -> BooleanLiteral(bValues(b))).toMap
 
-            val fi = FunctionInvocation(phiFd.typed, ex.ins)
+            ex match {
+              case InExample(ins) =>
+                val fi = FunctionInvocation(phiFd.typed, ins)
+                evaluator.eval(fi, envMap)
 
-            evaluator.eval(fi, envMap)
+              case InOutExample(ins, outs) =>
+                val fi = FunctionInvocation(cTreeFd.typed, ins)
+                val eq = equality(fi, tupleWrap(outs))
+                evaluator.eval(eq, envMap)
+            }
           }
       }
 
