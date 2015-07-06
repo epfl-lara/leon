@@ -184,12 +184,12 @@ trait AbstractZ3Solver
 
   def declareStructuralSort(t: TypeTree): Z3Sort = {
     //println("///"*40)
-    //println("Declaring for: "+ct)
+    //println("Declaring for: "+t)
 
     adtManager.defineADT(t) match {
       case Left(adts) =>
         declareDatatypes(adts.toSeq)
-        sorts.toB(t)
+        sorts.toB(normalizeType(t))
 
       case Right(conflicts) =>
         conflicts.foreach { declareStructuralSort }
@@ -244,14 +244,12 @@ trait AbstractZ3Solver
   // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
   private def prepareSorts(): Unit = {
 
-    val Seq((us, Seq(unitCons), Seq(unitTester), _)) = z3.mkADTSorts(
-      Seq(
-        (
-          "Unit",
-          Seq("Unit"),
-          Seq(Seq())
-        )
-      )
+    z3.mkADTSorts(
+      Seq((
+        "Unit",
+        Seq("Unit"),
+        Seq(Seq())
+      ))
     )
 
     //TODO: mkBitVectorType
@@ -473,7 +471,16 @@ trait AbstractZ3Solver
         val selector = selectors.toB(cct, c.selectorIndex)
         selector(rec(cc))
 
-      case c @ CaseClassInstanceOf(cct, e) =>
+      case IsInstanceOf(act: AbstractClassType, e) =>
+        act.knownCCDescendents match {
+          case Seq(cct) =>
+            rec(IsInstanceOf(cct, e))
+          case more =>
+            val i = FreshIdentifier("e", act, alwaysShowUniqueID = true)
+            rec(Let(i, e, orJoin(more map(IsInstanceOf(_, Variable(i))))))
+        }
+
+      case IsInstanceOf(cct: CaseClassType, e) =>
         typeToSort(cct) // Making sure the sort is defined
         val tester = testers.toB(cct)
         tester(rec(e))

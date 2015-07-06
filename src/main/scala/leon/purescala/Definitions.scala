@@ -70,7 +70,6 @@ object Definitions {
     def definedFunctions    = units.flatMap(_.definedFunctions)
     def definedClasses      = units.flatMap(_.definedClasses)
     def classHierarchyRoots = units.flatMap(_.classHierarchyRoots)
-    def algebraicDataTypes  = units.flatMap(_.algebraicDataTypes).toMap
     def singleCaseClasses   = units.flatMap(_.singleCaseClasses)
     def modules             = {
       units.flatMap(_.defs.collect {
@@ -111,34 +110,6 @@ object Definitions {
       }
     }
   }
-/*
-  // import pack._
-  case class PackageImport(pack : PackageRef) extends Import {
-    val id = FreshIdentifier("import " + (pack mkString "."))
-    def importedDefs(implicit pgm: Program): Seq[Definition] = for {
-      u <- DefOps.unitsInPackage(pgm, pack)
-      d <- u.subDefinitions
-      ret <- d match {
-        case m: ModuleDef if m.isPackageObject =>
-          m.subDefinitions
-        case other =>
-          Seq(other)
-      }
-    } yield ret
-  }
-  // import pack.(...).df
-  case class SingleImport(df : Definition) extends Import {
-    val id = FreshIdentifier(s"import ${df.id.toString}")
-    def importedDefs(implicit pgm: Program): Seq[Definition] =
-      List(df)
-  }
-  // import pack.(...).df._
-  case class WildcardImport(df : Definition) extends Import {
-    val id = FreshIdentifier(s"import ${df.id.toString}._")
-    def importedDefs(implicit pgm: Program): Seq[Definition] =
-      df.subDefinitions
-  }
-  */
   
   case class UnitDef(
     id: Identifier,
@@ -165,11 +136,7 @@ object Definitions {
       definedClasses.filter(!_.hasParent)
     }
 
-    def algebraicDataTypes = {
-      definedClasses.collect {
-        case ccd: CaseClassDef if ccd.hasParent => ccd
-      }.groupBy(_.parent.get.classDef)
-    }
+    def definedClassesOrdered = classHierarchyRoots flatMap { root => root +: root.knownDescendents }
 
     def singleCaseClasses = {
       definedClasses.collect {
@@ -239,19 +206,27 @@ object Definitions {
       _methods = _methods ::: List(fd)
     }
 
+    def unregisterMethod(id: Identifier) = {
+      _methods = _methods filterNot (_.id == id)
+    }
+
     def clearMethods() {
       _methods = Nil
     }
 
     def methods = _methods
 
+    lazy val ancestors: Seq[ClassDef] = parent.toSeq flatMap { p => p.classDef +: p.classDef.ancestors }
+
+    lazy val root = ancestors.lastOption.getOrElse(this)
+
     def knownChildren: Seq[ClassDef] = _children
 
     def knownDescendents: Seq[ClassDef] = {
-      knownChildren ++ (knownChildren.map {
+      knownChildren ++ knownChildren.flatMap {
         case acd: AbstractClassDef => acd.knownDescendents
         case _ => Nil
-      }.foldLeft(List[ClassDef]())(_ ++ _))
+      }
     }
 
     def knownCCDescendents: Seq[CaseClassDef] = knownDescendents.collect {

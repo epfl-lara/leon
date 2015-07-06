@@ -47,11 +47,12 @@ ADT roots need to be defined as abstract, unless the ADT is defined with only on
 
  abstract class MyType
 
+An abstract class can be extended by other abstract classes.
 
 Case Classes
 ************
 
-This abstract root can be extended by a case-class, defining several fields:
+The abstract root can also be extended by a case-class, defining several fields:
 
 .. code-block:: scala
 
@@ -101,7 +102,7 @@ Leon supports type parameters for classes and functions.
 Methods
 -------
 
-You can currently define methods in ADT roots:
+You can define methods in classes.
 
 .. code-block:: scala
 
@@ -113,6 +114,33 @@ You can currently define methods in ADT roots:
 
  def test(a: List[Int]) = a.contains(42)
 
+It is possible to define abstract methods in abstract classes and implement them in case classes.
+It is also possible to override methods.
+
+.. code-block:: scala
+
+  abstract class A {
+    def x(a: Int): Int
+  }
+
+  abstract class B extends A {
+    def x(a: Int) = {
+      require(a > 0)
+      42
+    } ensuring { _ >= 0 }
+  }
+
+  case class C(c: Int) extends B {
+    override def x(i: Int) = {
+      require(i >= 0)
+      if (i == 0) 0
+      else c + x(i-1)
+    } ensuring ( _ == c * i )
+  }
+
+  case class D() extends B
+
+It is not possible, however, to call methods of a superclass with the ``super`` keyword.
 
 Specifications
 --------------

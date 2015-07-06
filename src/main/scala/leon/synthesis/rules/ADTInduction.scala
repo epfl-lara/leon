@@ -68,7 +68,7 @@ case object ADTInduction extends Rule("ADT Induction") {
           val subPC  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerPC)
           val subWS  = substAll(Map(inductOn -> CaseClass(cct, newIds.map(Variable))), innerWS)
 
-          val subPre = CaseClassInstanceOf(cct, Variable(origId))
+          val subPre = IsInstanceOf(cct, Variable(origId))
 
           val subProblem = Problem(inputs ::: residualArgs, subWS, andJoin(subPC :: postFs), subPhi, p.xs)
 

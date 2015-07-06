@@ -500,15 +500,13 @@ trait CodeExtraction extends ASTExtractors {
         val acd = AbstractClassDef(id, tparams, parent).setPos(sym.pos)
 
         classesToClasses += sym -> acd
+        parent.foreach(_.classDef.registerChildren(acd))
 
         acd
       } else {
         val ccd = CaseClassDef(id, tparams, parent, sym.isModuleClass).setPos(sym.pos)
-
-        parent.foreach(_.classDef.registerChildren(ccd))
-
-
         classesToClasses += sym -> ccd
+        parent.foreach(_.classDef.registerChildren(ccd))
 
         val fields = args.map { case (symbol, t) =>
           val tpt = t.tpt
@@ -538,6 +536,8 @@ trait CodeExtraction extends ASTExtractors {
         ccd
       }
 
+
+
       // We collect the methods and fields 
       for (d <- tmpl.body) d match {
         case EmptyTree =>
@@ -548,10 +548,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // Normal methods
         case t @ ExFunctionDef(fsym, _, _, _, _) =>
-          if (parent.isDefined) {
-            outOfSubsetError(t, "Only hierarchy roots can define methods")
-          }
-          val fd = defineFunDef(fsym)(defCtx)
+          val fd = defineFunDef(fsym, Some(cd))(defCtx)
 
           isMethod += fsym
           methodToClass += fd -> cd
@@ -574,11 +571,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // Lazy fields
         case t @ ExLazyAccessorFunction(fsym, _, _)  =>
-          if (parent.isDefined) {
-            outOfSubsetError(t, "Only hierarchy roots can define lazy fields")
-          }
-
-          val fd = defineFieldFunDef(fsym, true)(defCtx)
+          val fd = defineFieldFunDef(fsym, true, Some(cd))(defCtx)
 
           isMethod += fsym
           methodToClass += fd -> cd
@@ -586,14 +579,10 @@ trait CodeExtraction extends ASTExtractors {
           cd.registerMethod(fd)
 
         // normal fields
-        case t @ ExFieldDef(fsym, _, _) => 
-          if (parent.isDefined) {
-            outOfSubsetError(t, "Only hierarchy roots can define fields") 
-          }
-
+        case t @ ExFieldDef(fsym, _, _) =>
           // we will be using the accessor method of this field everywhere 
           val fsymAsMethod = fsym
-          val fd = defineFieldFunDef(fsymAsMethod, false)(defCtx)
+          val fd = defineFieldFunDef(fsymAsMethod, false, Some(cd))(defCtx)
 
           isMethod += fsymAsMethod
           methodToClass += fd -> cd
@@ -606,9 +595,9 @@ trait CodeExtraction extends ASTExtractors {
       cd
     }
 
-    private var defsToDefs        = Map[Symbol, FunDef]()
+    private var defsToDefs = Map[Symbol, FunDef]()
 
-    private def defineFunDef(sym: Symbol)(implicit dctx: DefContext): FunDef = {
+    private def defineFunDef(sym: Symbol, within: Option[LeonClassDef] = None)(implicit dctx: DefContext): FunDef = {
       // Type params of the function itself
       val tparams = extractTypeParams(sym.typeParams.map(_.tpe))
 
@@ -627,7 +616,19 @@ trait CodeExtraction extends ASTExtractors {
 
       val name = sym.name.toString
 
-      val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), tparamsDef, returnType, newParams)
+      val id = {
+        if (sym.overrideChain.length > 1) {
+          (for {
+            cd <- within
+            p <- cd.parent
+            m <- p.classDef.methods.find(_.id.name == name)
+          } yield m.id).getOrElse(FreshIdentifier(name))
+        } else {
+          FreshIdentifier(name)
+        }
+      }
+
+      val fd = new FunDef(id.setPos(sym.pos), tparamsDef, returnType, newParams)
 
       fd.setPos(sym.pos)
 
@@ -642,7 +643,7 @@ trait CodeExtraction extends ASTExtractors {
       fd
     }
 
-    private def defineFieldFunDef(sym : Symbol, isLazy : Boolean)(implicit dctx : DefContext) : FunDef = {
+    private def defineFieldFunDef(sym : Symbol, isLazy : Boolean, within: Option[LeonClassDef] = None)(implicit dctx : DefContext) : FunDef = {
 
       val nctx = dctx.copy(tparams = dctx.tparams)
 
@@ -650,7 +651,18 @@ trait CodeExtraction extends ASTExtractors {
 
       val name = sym.name.toString
 
-      val fd = new FunDef(FreshIdentifier(name).setPos(sym.pos), Seq(), returnType, Seq())
+      val id =
+        if (sym.overrideChain.length == 1) {
+          FreshIdentifier(name)
+        } else {
+          ( for {
+            cd <- within
+            p <- cd.parent
+            m <- p.classDef.methods.find(_.id.name == name)
+          } yield m.id).getOrElse(FreshIdentifier(name))
+        }
+
+      val fd = new FunDef(id.setPos(sym.pos), Seq(), returnType, Seq())
 
       fd.setPos(sym.pos)
       fd.addFlag(IsField(isLazy))
@@ -1337,25 +1349,22 @@ trait CodeExtraction extends ASTExtractors {
           val ccRec = extractTree(cc)
           val checkType = extractType(tt)
           checkType match {
-            case cct @ CaseClassType(ccd, tps) => {
-              val rootType: LeonClassDef  = if(ccd.parent != None) ccd.parent.get.classDef else ccd
-
+            case ct: ClassType =>
               if(!ccRec.getType.isInstanceOf[ClassType]) {
-                outOfSubsetError(tr, "isInstanceOf can only be used with a case class")
+                outOfSubsetError(tr, "isInstanceOf can only be used with a class")
               } else {
-                val testedExprType = ccRec.getType.asInstanceOf[ClassType].classDef
-                val testedExprRootType: LeonClassDef = if(testedExprType.parent != None) testedExprType.parent.get.classDef else testedExprType
+                val rootType: LeonClassDef  = ct.root.classDef
+                val testedExprType = ccRec.getType.asInstanceOf[ClassType]
+                val testedExprRootType: LeonClassDef = testedExprType.root.classDef
 
                 if(rootType != testedExprRootType) {
-                  outOfSubsetError(tr, "isInstanceOf can only be used with compatible case classes")
+                  outOfSubsetError(tr, "isInstanceOf can only be used with compatible classes")
                 } else {
-                  CaseClassInstanceOf(cct, ccRec)
+                  IsInstanceOf(ct, ccRec)
                 }
               }
-            }
-            case _ => {
-              outOfSubsetError(tr, "isInstanceOf can only be used with a case class")
-            }
+            case _ =>
+              outOfSubsetError(tr, "isInstanceOf can only be used with a class")
           }
         }
 

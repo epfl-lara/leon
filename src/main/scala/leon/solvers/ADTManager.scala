@@ -4,7 +4,6 @@ package leon
 package solvers
 
 import purescala.Types._
-import purescala.TypeOps._
 import purescala.Common._
 
 case class DataType(sym: Identifier, cases: Seq[Constructor]) {
@@ -24,16 +23,15 @@ class ADTManager(ctx: LeonContext) {
   protected def freshId(id: Identifier): Identifier = freshId(id.name)
   protected def freshId(name: String): Identifier = FreshIdentifier(name)
 
-  protected def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct match {
-    case act: AbstractClassType =>
-      (act, act.knownCCDescendents)
-    case cct: CaseClassType =>
-      cct.parent match {
-        case Some(p) =>
-          getHierarchy(p)
-        case None =>
-          (cct, List(cct))
-      }
+  protected def getHierarchy(ct: ClassType): (ClassType, Seq[CaseClassType]) = ct.parent match {
+    case Some(p) =>
+      getHierarchy(p)
+    case None => (ct, ct match {
+      case act: AbstractClassType =>
+        act.knownCCDescendents
+      case cct: CaseClassType =>
+        List(cct)
+    })
   }
 
   protected var defined = Set[TypeTree]()
@@ -85,7 +83,7 @@ class ADTManager(ctx: LeonContext) {
       val (root, sub) = getHierarchy(ct)
 
       if (!(discovered contains root) && !(defined contains root)) {
-        val sym = freshId(ct.id)
+        val sym = freshId(root.id)
 
         val conss = sub.map { case cct =>
           Constructor(freshId(cct.id), cct, cct.fields.map(vd => (freshId(vd.id), vd.getType)))

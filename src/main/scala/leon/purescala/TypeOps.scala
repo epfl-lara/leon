@@ -113,7 +113,7 @@ object TypeOps {
   }
 
   def bestRealType(t: TypeTree) : TypeTree = t match {
-    case (c: CaseClassType) => c.root
+    case (c: ClassType) => c.root
     case NAryType(tps, builder) => builder(tps.map(bestRealType))
   }
 
@@ -272,8 +272,8 @@ object TypeOps {
           case cc @ CaseClassSelector(ct, e, sel) =>
             CaseClassSelector(tpeSub(ct).asInstanceOf[CaseClassType], srec(e), sel).copiedFrom(cc)
 
-          case cc @ CaseClassInstanceOf(ct, e) =>
-            CaseClassInstanceOf(tpeSub(ct).asInstanceOf[CaseClassType], srec(e)).copiedFrom(cc)
+          case cc @ IsInstanceOf(ct, e) =>
+            IsInstanceOf(tpeSub(ct).asInstanceOf[ClassType], srec(e)).copiedFrom(cc)
 
           case l @ Let(id, value, body) =>
             val newId = freshId(id, tpeSub(id.getType))

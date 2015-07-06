@@ -9,6 +9,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
+import purescala.Types.CaseClassType
 
 case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
@@ -16,12 +17,12 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
     def discoverEquivalences(allClauses: Seq[Expr]): Seq[(Expr, Expr)] = {
       val instanceOfs = allClauses.collect {
-        case ccio @ CaseClassInstanceOf(cct, s) => ccio
+        case ccio @ IsInstanceOf(cct, s) => ccio
       }
 
       val clauses = allClauses.filterNot(instanceOfs.toSet)
 
-      val ccSubsts = for (CaseClassInstanceOf(cct, s) <- instanceOfs) yield {
+      val ccSubsts = for (IsInstanceOf(cct: CaseClassType, s) <- instanceOfs) yield {
 
         val fieldsVals = (for (f <- cct.fields) yield {
           val id = f.id

@@ -625,4 +625,46 @@ class EvaluatorSuite extends leon.test.LeonTestSuite {
       checkLambda(e, mkCall("foo4", TWO), { case Lambda(Seq(vd), Plus(Variable(id), TWO)) if vd.id == id => true })
     }
   }
+
+  test("Methods") {
+    val p =
+      """object Program {
+        |  abstract class A
+        |
+        |  abstract class B extends A {
+        |    def foo(i: BigInt) = {
+        |      require(i > 0)
+        |      i + 1
+        |    } ensuring ( _ >= 0 )
+        |  }
+        |
+        |  case class C(x: BigInt) extends B {
+        |    val y = BigInt(42)
+        |    override def foo(i: BigInt) = {
+        |      x + y + (if (i>0) i else -i)
+        |    } ensuring ( _ >= x )
+        |  }
+        |
+        |  case class D() extends A
+        |
+        |  def f1 = {
+        |    val c = C(42)
+        |    (if (c.foo(0) + c.x > 0) c else D()).isInstanceOf[B]
+        |  }
+        |  def f2 = D().isInstanceOf[B]
+        |  def f3 = C(42).isInstanceOf[A]
+        |}
+        |
+        |
+      """.stripMargin
+
+    implicit val prog = parseString(p)
+    val evaluators = prepareEvaluators
+    for(e <- evaluators) {
+      // Some simple math.
+      checkComp(e, mkCall("f1"), BooleanLiteral(true))
+      checkComp(e, mkCall("f2"), BooleanLiteral(false))
+      checkComp(e, mkCall("f3"), BooleanLiteral(true))
+    }
+  }
 }

@@ -102,12 +102,12 @@ object Types {
 
     lazy val fieldsTypes = fields.map(_.getType)
 
-    lazy val root = parent.getOrElse(this)
+    lazy val root: ClassType = parent.map{ _.root }.getOrElse(this)
 
-    lazy val parent = classDef.parent.map {
-      pct => instantiateType(pct, (classDef.tparams zip tps).toMap) match {
+    lazy val parent = classDef.parent.map { pct =>
+      instantiateType(pct, (classDef.tparams zip tps).toMap) match {
         case act: AbstractClassType  => act
-        case t  => throw LeonFatalError("Unexpected translated parent type: "+t)
+        case t => throw LeonFatalError("Unexpected translated parent type: "+t)
       }
     }
 

@@ -266,7 +266,7 @@ object Expressions {
     val getType = ct
   }
 
-  case class CaseClassInstanceOf(classType: CaseClassType, expr: Expr) extends Expr {
+  case class IsInstanceOf(classType: ClassType, expr: Expr) extends Expr {
     val getType = BooleanType
   }
 

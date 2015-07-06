@@ -8,6 +8,7 @@ import purescala.Definitions._
 import purescala.ExprOps._
 import purescala.Expressions._
 import purescala.Types._
+import purescala.TypeOps.isSubtypeOf
 import purescala.Constructors._
 import purescala.Extractors._
 
@@ -221,12 +222,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case CaseClass(cd, args) =>
       CaseClass(cd, args.map(e))
 
-    case CaseClassInstanceOf(cct, expr) =>
+    case IsInstanceOf(ct, expr) =>
       val le = e(expr)
-      BooleanLiteral(le.getType match {
-        case CaseClassType(cd2, _) if cd2 == cct.classDef => true
-        case _ => false
-      })
+      BooleanLiteral(isSubtypeOf(le.getType, ct))
 
     case CaseClassSelector(ct1, expr, sel) =>
       val le = e(expr)

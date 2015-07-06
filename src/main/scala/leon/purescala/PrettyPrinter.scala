@@ -185,7 +185,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case NoTree(tpe)          => p"???($tpe)"
       case Choose(pred)         => p"choose($pred)"
       case e @ Error(tpe, err)       => p"""error[$tpe]("$err")"""
-      case CaseClassInstanceOf(cct, e)         =>
+      case IsInstanceOf(cct, e)         =>
         if (cct.classDef.isCaseObject) {
           p"($e == $cct)"
         } else {

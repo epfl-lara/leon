@@ -692,19 +692,24 @@ object ExprOps {
       pattern match {
         case WildcardPattern(ob) => bind(ob, in)
         case InstanceOfPattern(ob, ct) =>
-          ct match {
-            case _: AbstractClassType =>
-              bind(ob, in)
-
-            case cct: CaseClassType =>
-              and(CaseClassInstanceOf(cct, in), bind(ob, in))
+          if (ct.parent.isEmpty) {
+            bind(ob, in)
+          } else {
+            val ccs = ct match {
+              case act: AbstractClassType =>
+                act.knownCCDescendents
+              case cct: CaseClassType =>
+                Seq(cct)
+            }
+            val oneOf = ccs map { IsInstanceOf(_, in) }
+            and(orJoin(oneOf), bind(ob, in))
           }
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.fields.size == subps.size)
           val pairs = cct.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(CaseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
-          and(CaseClassInstanceOf(cct, in), together)
+          and(IsInstanceOf(cct, in), together)
 
         case TuplePattern(ob, subps) => {
           val TupleType(tpes) = in.getType
@@ -720,11 +725,7 @@ object ExprOps {
   }
 
   def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
-    case WildcardPattern(None) => Map.empty
-    case WildcardPattern(Some(id)) => Map(id -> in)
-    case InstanceOfPattern(None, _) => Map.empty
-    case InstanceOfPattern(Some(id), _) => Map(id -> in)
-    case CaseClassPattern(b, ccd, subps) => {
+    case CaseClassPattern(b, ccd, subps) =>
       assert(ccd.fields.size == subps.size)
       val pairs = ccd.fields.map(_.id).toList zip subps.toList
       val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
@@ -733,8 +734,8 @@ object ExprOps {
         case Some(id) => Map(id -> in) ++ together
         case None => together
       }
-    }
-    case TuplePattern(b, subps) => {
+
+    case TuplePattern(b, subps) =>
       val TupleType(tpes) = in.getType
       assert(tpes.size == subps.size)
 
@@ -744,9 +745,12 @@ object ExprOps {
         case Some(id) => map + (id -> in)
         case None => map
       }
-    }
-    case LiteralPattern(None, lit) => Map()
-    case LiteralPattern(Some(id), lit) => Map(id -> in)
+
+    case other =>
+      other.binder match {
+        case None => Map.empty
+        case Some(b) => Map(b -> in)
+      }
   }
 
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
@@ -1263,7 +1267,7 @@ object ExprOps {
         case ccd: CaseClassDef =>
           val cct = CaseClassType(ccd, tps)
 
-          val isType = CaseClassInstanceOf(cct, Variable(on))
+          val isType = IsInstanceOf(cct, Variable(on))
 
           val recSelectors = cct.fields.collect { 
             case vd if vd.getType == on.getType => vd.id
@@ -1835,261 +1839,5 @@ object ExprOps {
     case _ =>
       None
   }
-
-
-  /**
-   * Deprecated API
-   * ========
-   */
-
-  @deprecated("Use postMap instead", "Leon 0.2.1")
-  def searchAndReplace(f: Expr => Option[Expr])(e: Expr) = postMap(f)(e)
-
-  @deprecated("Use postMap instead", "Leon 0.2.1")
-  def searchAndReplaceDFS(f: Expr => Option[Expr])(e: Expr) = postMap(f)(e)
-
-  @deprecated("Use exists instead", "Leon 0.2.1")
-  def contains(e: Expr, matcher: Expr => Boolean): Boolean = exists(matcher)(e)
-  
-  /*
-   * Transforms complicated Ifs into multiple nested if blocks
-   * It will decompose every OR clauses, and it will group AND clauses checking
-   * isInstanceOf toghether.
-   *
-   *  if (a.isInstanceof[T1] && a.tail.isInstanceof[T2] && a.head == a2 || C) {
-   *     T
-   *  } else {
-   *     E
-   *  }
-   *
-   * Becomes:
-   *
-   *  if (a.isInstanceof[T1] && a.tail.isInstanceof[T2]) {
-   *    if (a.head == a2) {
-   *      T
-   *    } else {
-   *      if(C) {
-   *        T
-   *      } else {
-   *        E
-   *      }
-   *    }
-   *  } else {
-   *    if(C) {
-   *      T
-   *    } else {
-   *      E
-   *    }
-   *  }
-   * 
-   * This transformation runs immediately before patternMatchReconstruction.
-   *
-   * Notes: positions are lost.
-   */
-  @deprecated("Mending an expression after matchToIfThenElse is unsafe", "Leon 0.2.4")
-  def decomposeIfs(e: Expr): Expr = {
-    def pre(e: Expr): Expr = e match {
-      case IfExpr(cond, thenn, elze) =>
-        val TopLevelOrs(orcases) = cond
-
-        if (orcases.exists{ case TopLevelAnds(ands) => ands.exists(_.isInstanceOf[CaseClassInstanceOf]) } ) {
-          if (orcases.tail.nonEmpty) {
-            pre(IfExpr(orcases.head, thenn, IfExpr(orJoin(orcases.tail), thenn, elze)))
-          } else {
-            val TopLevelAnds(andcases) = orcases.head
-
-            val (andis, andnotis) = andcases.partition(_.isInstanceOf[CaseClassInstanceOf])
-
-            if (andis.isEmpty || andnotis.isEmpty) {
-              e
-            } else {
-              IfExpr(and(andis: _*), IfExpr(and(andnotis: _*), thenn, elze), elze)
-            }
-          }
-        } else {
-          e
-        }
-      case _ =>
-        e
-    }
-
-    simplePreTransform(pre)(e)
-  }
-
-  /**
-   * Reconstructs match expressions from if-then-elses.
-   *
-   * Notes: positions are lost.
-   */
-  @deprecated("Mending an expression after matchToIfThenElse is unsafe", "Leon 0.2.4")
-  def patternMatchReconstruction(e: Expr): Expr = {
-    def post(e: Expr): Expr = e match {
-      case IfExpr(cond, thenn, elze) =>
-        val TopLevelAnds(cases) = cond
-
-        if (cases.forall(_.isInstanceOf[CaseClassInstanceOf])) {
-          // matchingOn might initially be: a : T1, a.tail : T2, b: T2
-          def selectorDepth(e: Expr): Int = e match {
-            case cd: CaseClassSelector =>
-              1+selectorDepth(cd.caseClass)
-            case _ =>
-              0
-          }
-
-          var scrutSet = Set[Expr]()
-          var conditions = Map[Expr, CaseClassType]()
-
-          val matchingOn = cases.collect { case cc : CaseClassInstanceOf => cc } sortBy(cc => selectorDepth(cc.expr))
-          for (CaseClassInstanceOf(cct, expr) <- matchingOn) {
-            conditions += expr -> cct
-
-            expr match {
-              case cd: CaseClassSelector =>
-                if (!scrutSet.contains(cd.caseClass)) {
-                  // we found a test looking like "a.foo.isInstanceof[..]"
-                  // without a check on "a".
-                  scrutSet += cd
-                }
-              case e =>
-                scrutSet += e
-            }
-          }
-
-          var substMap = Map[Expr, Expr]()
-
-          def computePatternFor(ct: CaseClassType, prefix: Expr): Pattern = {
-
-            val name = prefix match {
-              case CaseClassSelector(_, _, id) => id.name
-              case Variable(id) => id.name
-              case _ => "tmp"
-            }
-
-            val binder = FreshIdentifier(name, prefix.getType, true) 
-
-            // prefix becomes binder
-            substMap += prefix -> Variable(binder)
-            substMap += CaseClassInstanceOf(ct, prefix) -> BooleanLiteral(true)
-
-            val subconds = for (f <- ct.fields) yield {
-              val fieldSel = CaseClassSelector(ct, prefix, f.id)
-              if (conditions contains fieldSel) {
-                computePatternFor(conditions(fieldSel), fieldSel)
-              } else {
-                val b = FreshIdentifier(f.id.name, f.getType, true)
-                substMap += fieldSel -> Variable(b)
-                WildcardPattern(Some(b))
-              }
-            }
-
-            CaseClassPattern(Some(binder), ct, subconds)
-          }
-
-          val (scrutinees, patterns) = scrutSet.toSeq.map(s => (s, computePatternFor(conditions(s), s))).unzip
-
-          val scrutinee = tupleWrap(scrutinees)
-          val pattern   = tuplePatternWrap(patterns) 
-
-          // We use searchAndReplace to replace the biggest match first
-          // (topdown).
-          // So replaceing using Map(a => b, CC(a) => d) will replace
-          // "CC(a)" by "d" and not by "CC(b)"
-          val newThen = preMap(substMap.lift)(thenn)
-
-          // Remove unused binders
-          val vars = variablesOf(newThen)
-
-          def simplerBinder(oid: Option[Identifier]) = oid.filter(vars(_))
-
-          def simplifyPattern(p: Pattern): Pattern = p match {
-            case CaseClassPattern(ob, cd, subpatterns) =>
-              CaseClassPattern(simplerBinder(ob), cd, subpatterns map simplifyPattern)
-            case WildcardPattern(ob) =>
-              WildcardPattern(simplerBinder(ob))
-            case TuplePattern(ob, patterns) =>
-              TuplePattern(simplerBinder(ob), patterns map simplifyPattern)
-            case LiteralPattern(ob,lit) => LiteralPattern(simplerBinder(ob), lit)
-            case _ =>
-              p
-          }
-
-          val resCases = List(
-            SimpleCase(simplifyPattern(pattern), newThen),
-            SimpleCase(WildcardPattern(None), elze)
-          )
-
-          def mergePattern(to: Pattern, anchor: Identifier, pat: Pattern): Pattern = to match {
-            case CaseClassPattern(ob, cd, subs) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                CaseClassPattern(ob, cd, subs.map(mergePattern(_, anchor, pat)))
-              }
-            case InstanceOfPattern(ob, cd) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                InstanceOfPattern(ob, cd)
-              }
-
-            case WildcardPattern(ob) =>
-              if (ob == Some(anchor)) {
-                pat
-              } else {
-                WildcardPattern(ob)
-              }
-            case TuplePattern(ob,subs) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                TuplePattern(ob, subs)
-              }
-            case LiteralPattern(ob, lit) =>
-              if (ob == Some(anchor)) {
-                sys.error("WOOOT: "+to+" <<= "+pat +" on "+anchor)
-                pat
-              } else {
-                LiteralPattern(ob,lit) 
-              }
-                
-          }
-
-          val newCases = resCases.flatMap {
-            case SimpleCase(wp: WildcardPattern, m@MatchExpr(ex, cases)) if ex == scrutinee =>
-              cases
-
-            case c@SimpleCase(pattern, m@MatchExpr(v@Variable(id), cases)) =>
-              if (pattern.binders(id)) {
-                cases.map { nc =>
-                  SimpleCase(mergePattern(pattern, id, nc.pattern), nc.rhs)
-                }
-              } else {
-                Seq(c)
-              }
-            case c =>
-              Seq(c)
-          }
-
-          var finalMatch = matchExpr(scrutinee, List(newCases.head)).asInstanceOf[MatchExpr]
-
-          for (toAdd <- newCases.tail if !isMatchExhaustive(finalMatch)) {
-            finalMatch = matchExpr(scrutinee, finalMatch.cases :+ toAdd).asInstanceOf[MatchExpr]
-          }
-
-          finalMatch
-
-        } else {
-          e
-        }
-      case _ =>
-        e
-    }
-
-    simplePostTransform(post)(e)
-  }
-
 
 }

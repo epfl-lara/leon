@@ -26,7 +26,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
    * 2) Report warnings in case parts of the tree are not correctly typed
    *    (Untyped).
    * 
-   * 3) Make sure that abstract classes have at least one descendent
+   * 3) Make sure that abstract classes have at least one descendant
    */
   def run(ctx: LeonContext)(pgm: Program): Program = {
     pgm.definedFunctions.foreach(fd => {
@@ -34,7 +34,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
       // Part (1)
       fd.precondition = {
         val argTypesPreconditions = fd.params.flatMap(arg => arg.getType match {
-          case cct : CaseClassType if cct.parent.isDefined => Seq(CaseClassInstanceOf(cct, arg.id.toVariable))
+          case cct : CaseClassType if cct.parent.isDefined => Seq(IsInstanceOf(cct, arg.id.toVariable))
           case (at : ArrayType) => Seq(GreaterEquals(ArrayLength(arg.id.toVariable), IntLiteral(0)))
           case _ => Seq()
         })
@@ -54,11 +54,11 @@ object TypingPhase extends LeonPhase[Program, Program] {
             case Some(p) =>
               Some(Lambda(Seq(ValDef(resId)), and(
                 application(p, Seq(Variable(resId))),
-                CaseClassInstanceOf(cct, Variable(resId))
+                IsInstanceOf(cct, Variable(resId))
               ).setPos(p)).setPos(p))
 
             case None =>
-              Some(Lambda(Seq(ValDef(resId)), CaseClassInstanceOf(cct, Variable(resId))))
+              Some(Lambda(Seq(ValDef(resId)), IsInstanceOf(cct, Variable(resId))))
           }
         }
         case _ => fd.postcondition
@@ -80,7 +80,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
     pgm.definedClasses.foreach {
       case acd: AbstractClassDef =>
         if (acd.knownCCDescendents.isEmpty) {
-          ctx.reporter.error(acd.getPos, "Class "+acd.id.asString(ctx)+" has no concrete descendent!")
+          ctx.reporter.error(acd.getPos, "Class "+acd.id.asString(ctx)+" has no concrete descendant!")
         }
       case _ =>
     }

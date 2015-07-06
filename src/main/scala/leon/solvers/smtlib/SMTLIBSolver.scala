@@ -244,9 +244,11 @@ abstract class SMTLIBSolver(val context: LeonContext,
       (id2sym(sym), cases.map(toDecl))
     }
 
+    if (adts.nonEmpty) {
+      val cmd = DeclareDatatypes(adts)
+      sendCommand(cmd)
+    }
 
-    val cmd = DeclareDatatypes(adts)
-    sendCommand(cmd)
   }
 
   protected def declareStructuralSort(t: TypeTree): Sort = {
@@ -254,7 +256,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     adtManager.defineADT(t) match {
       case Left(adts) =>
         declareDatatypes(adts)
-        sorts.toB(t)
+        sorts.toB(normalizeType(t))
 
       case Right(conflicts) =>
         conflicts.foreach { declareStructuralSort }
@@ -325,10 +327,24 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val selector = selectors.toB((cct, s.selectorIndex))
         FunctionApplication(selector, Seq(toSMT(e)))
 
-      case CaseClassInstanceOf(cct, e) =>
+      case IsInstanceOf(cct, e) =>
         declareSort(cct)
-        val tester = testers.toB(cct)
-        FunctionApplication(tester, Seq(toSMT(e)))
+        val cases = cct match {
+          case act: AbstractClassType =>
+            act.knownCCDescendents
+          case cct: CaseClassType =>
+            Seq(cct)
+        }
+        val oneOf = cases map testers.toB
+        oneOf match {
+          case Seq(tester) =>
+            FunctionApplication(tester, Seq(toSMT(e)))
+          case more =>
+            val es = freshSym("e")
+            SMTLet(VarBinding(es, toSMT(e)), Seq(),
+              Core.Or((oneOf map (FunctionApplication(_, Seq(es:Term)))): _*)
+            )
+        }
 
       case CaseClass(cct, es) =>
         declareSort(cct)
@@ -406,7 +422,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
        */
       case m @ FiniteMap(elems, _, _) =>
         val mt @ MapType(from, to) = m.getType
-        val ms = declareSort(mt)
+        declareSort(mt)
 
         toSMT(RawArrayValue(from, elems.map {
           case (k, v) => k -> CaseClass(library.someType(to), Seq(v))
@@ -414,7 +430,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
 
       case MapGet(m, k) =>
-        val mt @ MapType(from, to) = m.getType
+        val mt @ MapType(_, to) = m.getType
         declareSort(mt)
         // m(k) becomes
         // (Some-value (select m k))
@@ -424,7 +440,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         )
 
       case MapIsDefinedAt(m, k) =>
-        val mt @ MapType(from, to) = m.getType
+        val mt @ MapType(_, to) = m.getType
         declareSort(mt)
         // m.isDefinedAt(k) becomes
         // (is-Some (select m k))
@@ -434,7 +450,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         )
 
       case MapUnion(m1, FiniteMap(elems, _, _)) =>
-        val mt @ MapType(f, t) = m1.getType
+        val MapType(_, t) = m1.getType
 
         elems.foldLeft(toSMT(m1)) { case (m, (k,v)) =>
           ArraysEx.Store(m, toSMT(k), toSMT(CaseClass(library.someType(t), Seq(v))))
