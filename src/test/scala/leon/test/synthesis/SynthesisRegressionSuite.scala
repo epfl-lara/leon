@@ -64,6 +64,10 @@ class SynthesisRegressionSuite extends LeonTestSuite {
     testSynthesis("List", f, 200)
   }
 
+  forEachFileIn("regression/synthesis/Misc/") { f =>
+    testSynthesis("Miscellaneous", f, 1000)
+  }
+
   forEachFileIn("regression/synthesis/Holes/") { f =>
     testSynthesis("Holes", f, 1000)
   }

@@ -64,26 +64,33 @@ object ConvertHoles extends LeonPhase[Program, Program] {
             None
         }(body)
 
-        val asChoose = if (holes.nonEmpty) {
+        if (holes.nonEmpty) {
           val cids: List[Identifier] = holes.map(_.freshen)
-          val pred = post match {
-            case Some(post) =>
-              replaceFromIDs((holes zip cids.map(_.toVariable)).toMap, post)
-            case None =>
+          val hToFresh = (holes zip cids.map(_.toVariable)).toMap
+
+          val spec = post match {
+            case Some(post: Lambda) =>
+              val asLet = letTuple(post.args.map(_.id), withoutHoles, post.body)
+
+              Lambda(cids.map(ValDef(_)), replaceFromIDs(hToFresh, asLet))
+
+            case _ =>
               Lambda(cids.map(ValDef(_)), BooleanLiteral(true))
           }
 
-          letTuple(holes, Choose(pred), withoutHoles)
+          val choose = Choose(spec)
 
+
+          val valuations = letTuple(holes, choose, withoutHoles)
+
+          withPostcondition(withPrecondition(valuations, pre), post)
+
+        } else {
+          e
         }
-        else withoutHoles
 
-        withPostcondition(withPrecondition(asChoose, pre), post)
-      
       case None => e
     }
-
-
   }
 
    

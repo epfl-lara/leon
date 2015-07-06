@@ -68,7 +68,7 @@ object Constructors {
   /** Will instantiate the type parameters of the function according to argument types */
   def functionInvocation(fd : FunDef, args : Seq[Expr]) = {
     
-    require(fd.params.length == args.length)
+    require(fd.params.length == args.length, "Invoking function with incorrect number of arguments")
     
     val formalType = tupleTypeWrap(fd.params map { _.getType })
     val actualType = tupleTypeWrap(args map { _.getType })
@@ -234,6 +234,8 @@ object Constructors {
 
   def application(fn: Expr, realArgs: Seq[Expr]) = fn match {
      case Lambda(formalArgs, body) =>
+      assert(realArgs.size == formalArgs.size, "Invoking lambda with incorrect number of arguments")
+
       var defs: Seq[(Identifier, Expr)] = Seq()
 
       val subst = formalArgs.zip(realArgs).map {

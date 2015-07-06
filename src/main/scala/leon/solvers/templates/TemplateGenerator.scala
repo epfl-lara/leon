@@ -244,11 +244,19 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           }
         }
 
-        case c @ Choose(cond) =>
-          val cid = FreshIdentifier("choose", c.getType, true)
-          storeExpr(cid)
-          storeGuarded(pathVar, application(cond, Seq(Variable(cid))))
-          Variable(cid)
+        case c @ Choose(Lambda(params, cond)) =>
+
+          val cs = params.map(_.id.freshen.toVariable)
+
+          for (c <- cs) {
+            storeExpr(c.id)
+          }
+
+          val freshMap = (params.map(_.id) zip cs).toMap
+
+          storeGuarded(pathVar, replaceFromIDs(freshMap, cond))
+
+          tupleWrap(cs)
 
         case l @ Lambda(args, body) =>
           val idArgs : Seq[Identifier] = lambdaArgs(l)
