@@ -84,4 +84,11 @@ object Dices {
     isUniform(dist)
   } holds
 
+  //sum of two non-uniform dices is potentially uniform (no result)
+  def sumModNonUniform(dice1: DiceDist, dice2: DiceDist): Boolean = {
+    require(isDist(dice1) && isDist(dice2) && !isUniform(dice1) && !isUniform(dice2))
+    val dist = sumMod(dice1, dice2)
+    !isUniform(dist)
+  } holds
+
 }
