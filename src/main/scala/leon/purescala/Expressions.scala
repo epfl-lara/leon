@@ -171,7 +171,7 @@ object Expressions {
     val subPatterns: Seq[Pattern]
     val binder: Option[Identifier]
 
-    private def subBinders = subPatterns.map(_.binders).foldLeft[Set[Identifier]](Set.empty)(_ ++ _)
+    private def subBinders = subPatterns.flatMap(_.binders).toSet
     def binders: Set[Identifier] = subBinders ++ binder.toSet
 
     def withBinder(b : Identifier) = { this match {

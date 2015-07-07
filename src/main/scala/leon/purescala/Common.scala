@@ -36,11 +36,10 @@ object Common {
 
     val getType = tpe
 
-    override def equals(other: Any): Boolean = {
-      if(other == null || !other.isInstanceOf[Identifier])
-        false
-      else
-        other.asInstanceOf[Identifier].globalId == this.globalId
+    override def equals(other: Any): Boolean = other match {
+      case null => false
+      case i: Identifier => i.globalId == this.globalId
+      case _ => false
     }
 
     override def hashCode: Int = globalId

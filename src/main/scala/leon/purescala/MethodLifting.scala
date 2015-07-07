@@ -47,7 +47,7 @@ object MethodLifting extends TransformationPhase {
     case acd: AbstractClassDef =>
       val (r, c) = acd.knownChildren.map(makeCases(_, fdId, breakDown)).unzip
       val recs = r.flatten
-      val complete = c forall (x => x)
+      val complete = !(c contains false)
       if (complete) {
         // Children define all cases completely, we don't need to add anything
         (recs, true)

@@ -203,7 +203,7 @@ object Graphs {
           if (outs(v2)) {
             true
           } else {
-            outs.map(rec).foldLeft(false)( _ || _ )
+            outs.map(rec).contains(true)
           }
         }
       }
