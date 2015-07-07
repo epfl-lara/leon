@@ -28,7 +28,7 @@ object MethodLifting extends TransformationPhase {
         case None =>
           (List(), false)
         case Some(m) =>
-          val ct = classDefToClassType(ccd).asInstanceOf[CaseClassType]
+          val ct = ccd.typed
           val binder = FreshIdentifier(ccd.id.name.toLowerCase, ct, true)
           val fBinders = ct.fields.map{ f => f.id -> f.id.freshen }.toMap
           def subst(e: Expr): Expr = e match {
@@ -57,7 +57,7 @@ object MethodLifting extends TransformationPhase {
       } else {
         // We have something to add
         val m = acd.methods.find( m => m.id == fdId ).get
-        val at = classDefToClassType(acd).asInstanceOf[AbstractClassType]
+        val at = acd.typed
         val binder = FreshIdentifier(acd.id.name.toLowerCase, at, true)
         def subst(e: Expr): Expr = e match {
           case This(`at`) =>
@@ -107,8 +107,8 @@ object MethodLifting extends TransformationPhase {
           Some(and(
             prec,
             IsInstanceOf(
-              classDefToClassType(c,root.tparams.map{ _.tp }),
-              This(classDefToClassType(root))
+              c.typed(root.tparams.map{ _.tp }),
+              This(root.typed)
             )
           ))
         ))
@@ -124,7 +124,7 @@ object MethodLifting extends TransformationPhase {
         val tparamsMap = cd.tparams.zip(ctParams map { _.tp }).toMap
 
         val id = fd.id.freshen
-        val recType = classDefToClassType(cd, ctParams.map(_.tp))
+        val recType = cd.typed(ctParams.map(_.tp))
         val retType = instantiateType(fd.returnType, tparamsMap)
         val fdParams = fd.params map { vd =>
           val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))

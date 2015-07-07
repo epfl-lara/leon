@@ -938,7 +938,7 @@ object ExprOps {
 
       val orderedChildren = nonRecChildren.sortBy(_.fields.size)
 
-      simplestValue(classDefToClassType(orderedChildren.head, tpe))
+      simplestValue(orderedChildren.head.typed(tpe))
 
     case cct: CaseClassType =>
       CaseClass(cct, cct.fieldsTypes.map(t => simplestValue(t)))

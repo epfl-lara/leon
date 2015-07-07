@@ -88,17 +88,14 @@ object Types {
       if (tmap.isEmpty) {
         classDef.fields
       } else {
-        // !! WARNING !!
-        // vd.id.getType will NOT match vd.tpe, but we kind of need this for selectorID2Index...
-        // See with Etienne about changing this!
-        // @mk Fixed this
+        // This is the only case where ValDef overrides the type of its Identifier
         classDef.fields.map(vd => ValDef(vd.id, Some(instantiateType(vd.getType, tmap))))
       }
     }
 
-    def knownDescendents = classDef.knownDescendents.map(classDefToClassType(_, tps))
+    def knownDescendents = classDef.knownDescendents.map( _.typed(tps) )
 
-    def knownCCDescendents = classDef.knownCCDescendents.map(CaseClassType(_, tps))
+    def knownCCDescendents = classDef.knownCCDescendents.map( _.typed(tps) )
 
     lazy val fieldsTypes = fields.map(_.getType)
 
@@ -113,17 +110,7 @@ object Types {
 
   }
   case class AbstractClassType(classDef: AbstractClassDef, tps: Seq[TypeTree]) extends ClassType
-  case class CaseClassType(override val classDef: CaseClassDef, tps: Seq[TypeTree]) extends ClassType
-
-  def classDefToClassType(cd: ClassDef, tps: Seq[TypeTree]): ClassType = cd match {
-    case a: AbstractClassDef => AbstractClassType(a, tps)
-    case c: CaseClassDef => CaseClassType(c, tps)
-  }
-
-  // Using definition types
-  def classDefToClassType(cd: ClassDef): ClassType = {
-    classDefToClassType(cd, cd.tparams.map(_.tp))
-  }
+  case class CaseClassType(classDef: CaseClassDef, tps: Seq[TypeTree]) extends ClassType
 
   object NAryType {
     def unapply(t: TypeTree): Option[(Seq[TypeTree], Seq[TypeTree] => TypeTree)] = t match {

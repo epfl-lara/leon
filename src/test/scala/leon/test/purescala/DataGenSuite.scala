@@ -67,7 +67,7 @@ class DataGenSuite extends LeonTestSuite {
 
     // Make sure we target our own lists
     val module = prog.units.flatMap{_.modules}.find(_.id.name == "Program").get
-    val listType : TypeTree = classDefToClassType(module.classHierarchyRoots.head)
+    val listType : TypeTree = module.classHierarchyRoots.head.typed
     val sizeDef    : FunDef = module.definedFunctions.find(_.id.name == "size").get
     val sortedDef  : FunDef = module.definedFunctions.find(_.id.name == "isSorted").get
     val contentDef : FunDef = module.definedFunctions.find(_.id.name == "content").get

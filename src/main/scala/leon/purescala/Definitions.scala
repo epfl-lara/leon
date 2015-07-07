@@ -79,9 +79,9 @@ object Definitions {
     
     lazy val callGraph      = new CallGraph(this)
 
-    def caseClassDef(name: String) = definedClasses.collect {
+    def caseClassDef(name: String) = definedClasses.collectFirst {
       case ccd: CaseClassDef if ccd.id.name == name => ccd
-    }.headOption.getOrElse(throw LeonFatalError("Unknown case class '"+name+"'"))
+    }.getOrElse(throw LeonFatalError("Unknown case class '"+name+"'"))
 
     def lookupAll(name: String)  = DefOps.searchWithin(name, this)
     def lookup(name: String)     = lookupAll(name).headOption
@@ -241,6 +241,8 @@ object Definitions {
     lazy val definedClasses = Seq(this)
     lazy val classHierarchyRoots = if (this.hasParent) Seq(this) else Nil
 
+    def typed(tps: Seq[TypeTree]): ClassType
+    def typed: ClassType
   }
 
   /** Abstract classes. */
@@ -253,6 +255,9 @@ object Definitions {
     val isCaseObject = false
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = Nil
+
+    def typed(tps: Seq[TypeTree]) = AbstractClassType(this, tps)
+    def typed: AbstractClassType = typed(tparams.map(_.tp))
   }
 
   /** Case classes/objects. */
@@ -282,6 +287,9 @@ object Definitions {
     }
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
+
+    def typed(tps: Seq[TypeTree]): CaseClassType = CaseClassType(this, tps)
+    def typed: CaseClassType = typed(tparams.map(_.tp))
   }
 
   // A class that represents flags that annotate a FunDef with different attributes

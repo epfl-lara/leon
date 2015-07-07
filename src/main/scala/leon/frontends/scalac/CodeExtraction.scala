@@ -396,7 +396,7 @@ trait CodeExtraction extends ASTExtractors {
         case (sym, cl) => sym.fullName.toString == "leon.lang.synthesis.Oracle"
       } match {
         case Some((_, cd)) =>
-          classDefToClassType(cd, List(tpe))
+          cd.typed(List(tpe))
         case None =>
           outOfSubsetError(pos, "Could not find class Oracle")
       }
@@ -1700,7 +1700,7 @@ trait CodeExtraction extends ASTExtractors {
 
       case tt: ThisType =>
         val cd = getClassDef(tt.sym, pos)
-        classDefToClassType(cd, cd.tparams.map(_.tp)) // Typed using own's type parameters
+        cd.typed // Typed using own's type parameters
 
       case SingleType(_, sym) =>
         getClassType(sym.moduleClass, Nil)
@@ -1737,7 +1737,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def getClassType(sym: Symbol, tps: List[LeonType])(implicit dctx: DefContext) = {
       if (seenClasses contains sym) {
-        classDefToClassType(getClassDef(sym, NoPosition), tps)
+        getClassDef(sym, NoPosition).typed(tps)
       } else {
         outOfSubsetError(NoPosition, "Unknown class "+sym.fullName)
       }
