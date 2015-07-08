@@ -403,6 +403,17 @@ class PrettyPrinter(opts: PrinterOptions,
         ob.foreach { b => p"$b @ " }
         p"($subps)"
 
+      case UnapplyPattern(ob, tfd, subps) =>
+        ob.foreach { b => p"$b @ " }
+
+        // @mk: I admit this is pretty ugly
+        val id = for {
+          p <- opgm
+          mod <- p.modules.find( _.definedFunctions contains tfd.fd )
+        } yield mod.id
+
+        p"${id.getOrElse("<unknown object>")}(${nary(subps)})"
+
       case LiteralPattern(ob, lit) =>
         ob foreach { b => p"$b @ " }
         p"$lit"

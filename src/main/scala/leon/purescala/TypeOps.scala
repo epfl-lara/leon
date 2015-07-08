@@ -137,6 +137,15 @@ object TypeOps {
     case (TupleType(args1), TupleType(args2)) =>
       val args = (args1 zip args2).map(p => leastUpperBound(p._1, p._2))
       if (args.forall(_.isDefined)) Some(TupleType(args.map(_.get))) else None
+
+    case (FunctionType(from1, to1), FunctionType(from2, to2)) =>
+      // TODO: make functions contravariant to arg. types
+      if (from1 == from2) {
+        leastUpperBound(to1, to2) map { FunctionType(from1, _) }
+      } else {
+        None
+      }
+
     case (o1, o2) if o1 == o2 => Some(o1)
     case _ => None
   }
@@ -158,6 +167,9 @@ object TypeOps {
     leastUpperBound(t1, t2) == Some(t2)
   }
 
+  def typesCompatible(t1: TypeTree, t2: TypeTree) = {
+    leastUpperBound(t1, t2).isDefined
+  }
 
   def typeCheck(obj: Expr, exps: TypeTree*) {
     val res = exps.exists(e => isSubtypeOf(obj.getType, e))
@@ -207,7 +219,7 @@ object TypeOps {
           val newTpe = tpeSub(e.getType)
          
           def mapsUnion(maps: Seq[Map[Identifier, Identifier]]): Map[Identifier, Identifier] = {
-            maps.foldLeft(Map[Identifier, Identifier]())(_ ++ _)
+            maps.flatten.toMap
           }
 
           def trCase(c: MatchCase) = c match {
@@ -242,6 +254,14 @@ object TypeOps {
               val (newSps, newMaps) = (sps zip newCt.fieldsTypes).map { case (sp, stpe) => trPattern(sp, stpe) }.unzip
 
               (CaseClassPattern(newOb, newCt, newSps), (ob zip newOb).toMap ++ mapsUnion(newMaps))
+
+            case (up@UnapplyPattern(ob, fd, sps), tp) =>
+              val newFd = if ((fd.tps map tpeSub) == fd.tps) fd else fd.fd.typed(fd.tps map tpeSub)
+              val newOb = ob.map(id => freshId(id,tp))
+              val exType = tpeSub(up.someType.tps.head)
+              val exTypes = unwrapTupleType(exType, exType.isInstanceOf[TupleType])
+              val (newSps, newMaps) = (sps zip exTypes).map { case (sp, stpe) => trPattern(sp, stpe) }.unzip
+              (UnapplyPattern(newOb, newFd, newSps), (ob zip newOb).toMap ++ mapsUnion(newMaps))
 
             case (WildcardPattern(ob), expTpe) =>
               val newOb = ob.map(id => freshId(id, expTpe))
@@ -279,9 +299,6 @@ object TypeOps {
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
 
-          case c @ Choose(pred) =>
-            Choose(rec(idsMap)(pred)).copiedFrom(c)
-
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>
               val tpe = tpeSub(arg.getType)
@@ -308,9 +325,6 @@ object TypeOps {
               case other => // FIXME any better ideas?
                 sys.error(s"Tried to substitute $tpar with $other within GenericValue $g")
             }
-          
-          case ens @ Ensuring(body, pred) =>
-            Ensuring(srec(body), rec(idsMap)(pred)).copiedFrom(ens)
 
           case s @ FiniteSet(elems, tpe) =>
             FiniteSet(elems.map(srec), tpeSub(tpe)).copiedFrom(s)

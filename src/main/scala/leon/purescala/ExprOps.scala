@@ -7,7 +7,7 @@ import Common._
 import Types._
 import Definitions._
 import Expressions._
-import leon.purescala.Extractors._
+import Extractors._
 import Constructors._
 import utils.Simplifiers
 import solvers._
@@ -305,12 +305,12 @@ object ExprOps {
   // ATTENTION: Unused, and untested
   def freshenLocals(expr: Expr) : Expr = {
     def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
-      case InstanceOfPattern(Some(b), ctd) => InstanceOfPattern(Some(sm(b)), ctd)
-      case WildcardPattern(Some(b)) => WildcardPattern(Some(sm(b)))
+      case InstanceOfPattern(ob, ctd) => InstanceOfPattern(ob map sm, ctd)
+      case WildcardPattern(ob) => WildcardPattern(ob map sm)
       case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
       case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
-      case LiteralPattern(Some(bind), lit) => LiteralPattern(Some(sm(bind)), lit)
-      case other => other
+      case UnapplyPattern(ob, obj, sps) => UnapplyPattern(ob.map(sm(_)), obj, sps.map(rewritePattern(_, sm)))
+      case LiteralPattern(ob, lit) => LiteralPattern(ob map sm, lit)
     }
 
     def freshenCase(cse: MatchCase) : MatchCase = {
@@ -691,6 +691,13 @@ object ExprOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
 
+        case up@UnapplyPattern(ob, fd, subps) =>
+          def someCase(e: Expr) = {
+            // In the case where unapply returns a Some, it is enough that the subpatterns match
+            andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)
+          }
+          and(up.patternMatch(in, BooleanLiteral(false), someCase).setPos(in), bind(ob, in))
+
         case LiteralPattern(ob,lit) =>
           and(Equals(in,lit), bind(ob,in))
       }
@@ -699,33 +706,35 @@ object ExprOps {
     rec(in, pattern)
   }
 
-  def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = pattern match {
-    case CaseClassPattern(b, ccd, subps) =>
-      assert(ccd.fields.size == subps.size)
-      val pairs = ccd.fields.map(_.id).toList zip subps.toList
-      val subMaps = pairs.map(p => mapForPattern(caseClassSelector(ccd, in, p._1), p._2))
-      val together = subMaps.flatten.toMap
-      b match {
-        case Some(id) => Map(id -> in) ++ together
-        case None => together
-      }
+  def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = {
+    def bindIn(id: Option[Identifier]): Map[Identifier,Expr] = id match {
+      case None => Map()
+      case Some(id) => Map(id -> in)
+    }
+    pattern match {
+      case CaseClassPattern(b, ccd, subps) =>
+        assert(ccd.fields.size == subps.size)
+        val pairs = ccd.fields.map(_.id).toList zip subps.toList
+        val subMaps = pairs.map(p => mapForPattern(caseClassSelector(ccd, in, p._1), p._2))
+        val together = subMaps.flatten.toMap
+        bindIn(b) ++ together
 
-    case TuplePattern(b, subps) =>
-      val TupleType(tpes) = in.getType
-      assert(tpes.size == subps.size)
+      case TuplePattern(b, subps) =>
+        val TupleType(tpes) = in.getType
+        assert(tpes.size == subps.size)
 
-      val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(tupleSelect(in, i+1, subps.size), p)}
-      val map = maps.flatten.toMap
-      b match {
-        case Some(id) => map + (id -> in)
-        case None => map
-      }
+        val maps = subps.zipWithIndex.map{case (p, i) => mapForPattern(tupleSelect(in, i+1, subps.size), p)}
+        val map = maps.flatten.toMap
+        bindIn(b) ++ map
 
-    case other =>
-      other.binder match {
-        case None => Map.empty
-        case Some(b) => Map(b -> in)
-      }
+      case up@UnapplyPattern(b, _, subps) =>
+        bindIn(b) ++ unwrapTuple(up.getUnsafe(in), subps.size).zip(subps).map{
+          case (e, p) => mapForPattern(e, p)
+        }.flatten.toMap
+
+      case other =>
+        bindIn(other.binder)
+    }
   }
 
   /** Rewrites all pattern-matching expressions into if-then-else expressions,
@@ -830,7 +839,7 @@ object ExprOps {
     * Also returns a sequence of (Identifier -> Expr) pairs which 
     * represent the bindings for intermediate binders (from outermost to innermost)
     */
-  def patternToExpression(p : Pattern, expectedType : TypeTree) : (Expr, Seq[(Identifier, Expr)]) = {
+  def patternToExpression(p: Pattern, expectedType: TypeTree): (Expr, Seq[(Identifier, Expr)]) = {
     def fresh(tp : TypeTree) = FreshIdentifier("binder", tp, true)
     var ieMap = Seq[(Identifier, Expr)]()
     def addBinding(b : Option[Identifier], e : Expr) = b foreach { ieMap +:= (_, e) }
@@ -864,10 +873,12 @@ object ExprOps {
         addBinding(b, e)
         e
       case CaseClassPattern(b, cct, subs) => 
-        val subTypes = cct.fields map { _.getType }
-        val e = CaseClass(cct, subs zip subTypes map { case (sub,tp) => rec(sub,tp) })
+        val e = CaseClass(cct, subs zip cct.fieldsTypes map { case (sub,tp) => rec(sub,tp) })
         addBinding(b, e)
         e
+      case up@UnapplyPattern(b, fd, subs) =>
+        // TODO: Support this
+        NoTree(expectedType)
     }
 
     (rec(p, expectedType), ieMap)
@@ -1109,19 +1120,11 @@ object ExprOps {
     }
   }
 
-  private object ChooseMatch extends PartialFunction[Expr, Choose] {
-    override def apply(e: Expr): Choose = e match {
-      case (c: Choose) => c
-    }
-    override def isDefinedAt(e: Expr): Boolean = e match {
-      case (c: Choose) => true
-      case _ => false
-    }
-  }
-
   class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
-    val matcher = ChooseMatch.lift
-    def collect(e: Expr, path: Seq[Expr]) = matcher(e).map(_ -> and(path: _*))
+    def collect(e: Expr, path: Seq[Expr]) = e match {
+      case c: Choose => Some(c -> and(path: _*))
+      case _ => None
+    }
   }
 
   def patternSize(p: Pattern): Int = p match {
@@ -1335,6 +1338,17 @@ object ExprOps {
               (false, Map())
             }
 
+          case (UnapplyPattern(ob1, fd1, subs1), UnapplyPattern(ob2, fd2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && fd1 == fd2 && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
           case (TuplePattern(ob1, subs1), TuplePattern(ob2, subs2)) =>
             val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
 
@@ -1374,9 +1388,6 @@ object ExprOps {
         case (Variable(i1), Variable(i2)) =>
           idHomo(i1, i2)
 
-        case (Choose(e1), Choose(e2)) =>
-          isHomo(e1, e2)
-
         case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
           isHomo(v1, v2) &&
           isHomo(e1, e2)(map + (id1 -> id2))
@@ -1401,14 +1412,11 @@ object ExprOps {
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
 
+        // TODO: Seems a lot is missing, like Literals
+
         case Same(Operator(es1, _), Operator(es2, _)) =>
-          if (es1.size == es2.size) {
-            (es1 zip es2).forall{ case (e1, e2) => isHomo(e1, e2) }
-          } else {
-            false
-          }
-        case Same(t1 : Terminal, t2: Terminal) =>
-          true
+          (es1.size == es2.size) &&
+          (es1 zip es2).forall{ case (e1, e2) => isHomo(e1, e2) }
 
         case _ =>
           false
@@ -1436,6 +1444,8 @@ object ExprOps {
    * }
    *
    * is exaustive.
+   *
+   * WARNING: Unused and unmaintained
    */
   def isMatchExhaustive(m: MatchExpr): Boolean = {
     /**

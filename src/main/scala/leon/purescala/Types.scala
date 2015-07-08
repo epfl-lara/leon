@@ -51,8 +51,21 @@ object Types {
   case class BitVectorType(size: Int) extends TypeTree
   case object Int32Type extends TypeTree
 
-  case class TypeParameter(id: Identifier) extends TypeTree {
-    def freshen = TypeParameter(id.freshen)
+  class TypeParameter private (name: String) extends TypeTree {
+    val id = FreshIdentifier(name, this)
+    def freshen = new TypeParameter(name)
+
+    override def equals(that: Any) = that match {
+      case TypeParameter(id) => this.id == id
+      case _ => false
+    }
+
+    override def hashCode = id.hashCode
+  }
+
+  object TypeParameter {
+    def unapply(tp: TypeParameter): Option[Identifier] = Some(tp.id)
+    def fresh(name: String) = new TypeParameter(name)
   }
 
   /* 

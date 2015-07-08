@@ -143,10 +143,9 @@ class CodeGenSuite extends test.LeonTestSuite {
     object simple2 {
       abstract class Abs
       case class Conc(x : BigInt) extends Abs
-      def test = { 
+      def test = {
         val c = Conc(1)
         c.x
-        
       }
     }
     object eager {
@@ -287,7 +286,7 @@ class CodeGenSuite extends test.LeonTestSuite {
       
       val l = Cons(1, Cons(2, Cons(3, Nil())))
       
-      def test = l.length + Nil().length
+      def test = l.length + Nil[Int]().length
     }
     object ListWithSumMono {
       abstract class List

@@ -62,7 +62,11 @@ abstract class SMTLIBSolver(val context: LeonContext,
       dir.mkdir
     }
 
-    new java.io.FileWriter(s"vcs/$targetName-$file-$n.smt2", false)
+    val fileName = s"vcs/$targetName-$file-$n.smt2"
+
+    reporter.debug(s"Outputting VC into $fileName" )
+
+    new java.io.FileWriter(fileName, false)
   } else None
 
 

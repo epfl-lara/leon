@@ -14,7 +14,24 @@ import ExprOps.replaceFromIDs
 /** Expression definitions for Pure Scala. */
 object Expressions {
 
-  abstract class Expr extends Tree with Typed
+  private def checkParamTypes(real: Seq[Typed], formal: Seq[Typed], result: TypeTree): TypeTree = {
+    if (real zip formal forall { case (real, formal) => isSubtypeOf(real.getType, formal.getType)} ) {
+      result.unveilUntyped
+    } else {
+      //println(real map { r => s"$r: ${r.getType}"} mkString ", " )
+      //println(formal map { r => s"$r: ${r.getType}" } mkString ", " )
+      Untyped
+    }
+  }
+
+  abstract class Expr extends Tree with Typed {
+    def untyped = {
+      //println("@" + this.getPos)
+      //println(this)
+      //println
+      Untyped
+    }
+  }
 
   trait Terminal {
     self: Expr =>
@@ -38,24 +55,37 @@ object Expressions {
 
   // Preconditions
   case class Require(pred: Expr, body: Expr) extends Expr {
-    val getType = body.getType
+    val getType = {
+      if (pred.getType == BooleanType)
+        body.getType
+      else untyped
+    }
   }
 
   // Postconditions
   case class Ensuring(body: Expr, pred: Expr) extends Expr {
     val getType = pred.getType match {
-      case FunctionType(Seq(bodyType), BooleanType) if bodyType == body.getType => bodyType
-      case _ => Untyped
+      case FunctionType(Seq(bodyType), BooleanType) if isSubtypeOf(body.getType, bodyType) =>
+        body.getType
+      case _ =>
+        untyped
     }
     def toAssert: Expr = {
       val res = FreshIdentifier("res", getType, true)
-      Let(res, body, Assert(application(pred, Seq(Variable(res))), Some("Postcondition failed @" + this.getPos), Variable(res)))
+      Let(res, body, Assert(
+        application(pred, Seq(Variable(res))),
+        Some("Postcondition failed @" + this.getPos), Variable(res)
+      ))
     }
   }
 
   // Local assertions
   case class Assert(pred: Expr, error: Option[String], body: Expr) extends Expr {
-    val getType = body.getType
+    val getType = {
+      if (pred.getType == BooleanType)
+        body.getType
+      else untyped
+    }
   }
 
 
@@ -67,7 +97,15 @@ object Expressions {
 
   /* Local val's and def's */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
-    val getType = body.getType
+    val getType = {
+      // We can't demand anything sticter here, because some binders are
+      // typed context-wise
+      if (typesCompatible(value.getType, binder.getType))
+        body.getType
+      else {
+        untyped
+      }
+    }
   }
 
   case class LetDef(fd: FunDef, body: Expr) extends Expr {
@@ -83,15 +121,14 @@ object Expressions {
    */
   case class MethodInvocation(rec: Expr, cd: ClassDef, tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
     val getType = {
-      // We need ot instanciate the type based on the type of the function as well as receiver
+      // We need ot instantiate the type based on the type of the function as well as receiver
       val fdret = tfd.returnType
       val extraMap: Map[TypeParameterDef, TypeTree] = rec.getType match {
         case ct: ClassType =>
-          (cd.tparams zip ct.tps).toMap  
+          (cd.tparams zip ct.tps).toMap
         case _ =>
           Map()
       }
-
       instantiateType(fdret, extraMap)
     }
   }
@@ -103,8 +140,12 @@ object Expressions {
 
   /* HOFs */
   case class Application(callee: Expr, args: Seq[Expr]) extends Expr {
-    require(callee.getType.isInstanceOf[FunctionType])
-    val getType = callee.getType.asInstanceOf[FunctionType].to
+    val getType = callee.getType match {
+      case FunctionType(from, to) =>
+        checkParamTypes(args, from, to)
+      case _ =>
+        untyped
+    }
   }
 
   case class Lambda(args: Seq[ValDef], body: Expr) extends Expr {
@@ -121,16 +162,17 @@ object Expressions {
 
   /* Control flow */
   case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
-    val getType = tfd.returnType
+    require(tfd.params.size == args.size)
+    val getType = checkParamTypes(args, tfd.params, tfd.returnType)
   }
 
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr {
-    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(untyped).unveilUntyped
   }
 
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
-    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(untyped).unveilUntyped
   }
 
   case class MatchCase(pattern : Pattern, optGuard : Option[Expr], rhs: Expr) extends Tree {
@@ -164,12 +206,51 @@ object Expressions {
     val subPatterns = Seq()    
   }
 
+  case class UnapplyPattern(binder: Option[Identifier], unapplyFun: TypedFunDef, subPatterns: Seq[Pattern]) extends Pattern {
+    // Hacky, but ok
+    lazy val optionType = unapplyFun.returnType.asInstanceOf[AbstractClassType]
+    lazy val Seq(noneType, someType) = optionType.knownCCDescendants.sortBy(_.fields.size)
+    lazy val someValue = someType.fields.head
+    // Pattern match unapply(scrut)
+    // In case of None, return noneCase.
+    // In case of Some(v), return someCase(v).
+    def patternMatch(scrut: Expr, noneCase: Expr, someCase: Expr => Expr): Expr = {
+      // We use this hand-coded if-then-else because we don't want to generate
+      // match exhaustiveness checks in the program
+      val binder = FreshIdentifier("unap", optionType, true)
+      Let(
+        binder,
+        FunctionInvocation(unapplyFun, Seq(scrut)),
+        IfExpr(
+          IsInstanceOf(someType, Variable(binder)),
+          someCase(CaseClassSelector(someType, Variable(binder), someValue.id)),
+          noneCase
+        )
+      )
+    }
+    // Inlined .get method
+    def get(scrut: Expr) = patternMatch(
+      scrut,
+      Error(optionType.tps.head, "None.get"),
+      e => e
+    )
+    // Selects Some.v field without type-checking.
+    // Use in a context where scrut.isDefined returns true.
+    def getUnsafe(scrut: Expr) = CaseClassSelector(
+      someType,
+      FunctionInvocation(unapplyFun, Seq(scrut)),
+      someValue.id
+    )
+  }
 
   /* Symbolic IO examples */
   case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
 
-    val getType = BooleanType
+    val getType = leastUpperBound(cases.map(_.rhs.getType)) match {
+      case None => untyped
+      case Some(_) => BooleanType
+    }
 
     def asConstraint = {
       val defaultCase = SimpleCase(WildcardPattern(None), out)
@@ -181,10 +262,6 @@ object Expressions {
   /* Literals */
   sealed abstract class Literal[+T] extends Expr with Terminal {
     val value: T
-  }
-
-  case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
-    val getType = tp
   }
 
   case class CharLiteral(value: Char) extends Literal[Char] {
@@ -208,9 +285,16 @@ object Expressions {
   }
 
 
+  /* Generic values. Represent values of the generic type tp */
+  // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
+  case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
+    val getType = tp
+  }
+
+
   /* Case classes */
   case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr {
-    val getType = ct
+    val getType = checkParamTypes(args, ct.fieldsTypes, ct)
   }
 
   case class IsInstanceOf(classType: ClassType, expr: Expr) extends Expr {
@@ -219,21 +303,37 @@ object Expressions {
 
   case class CaseClassSelector(classType: CaseClassType, caseClass: Expr, selector: Identifier) extends Expr {
     val selectorIndex = classType.classDef.selectorID2Index(selector)
-    val getType = classType.fieldsTypes(selectorIndex)
+    val getType = {
+      // We don't demand equality because we may construct a mistyped field retrieval
+      // (retrieving from a supertype before) passing it to the solver.
+      // E.g. l.head where l:List[A] or even l: Nil[A]. This is ok for the solvers.
+      if (typesCompatible(classType, caseClass.getType)) {
+        classType.fieldsTypes(selectorIndex)
+      } else {
+        untyped
+      }
+    }
   }
 
 
   /* Equality */
   case class Equals(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = BooleanType
+    val getType = {
+      if (typesCompatible(lhs.getType, rhs.getType)) BooleanType
+      else {
+        untyped
+      }
+    }
   }
 
 
   /* Propositional logic */
   case class And(exprs: Seq[Expr]) extends Expr {
-    val getType = BooleanType
-
     require(exprs.size >= 2)
+    val getType = {
+      if (exprs forall (_.getType == BooleanType)) BooleanType
+      else untyped
+    }
   }
 
   object And {
@@ -241,9 +341,11 @@ object Expressions {
   }
 
   case class Or(exprs: Seq[Expr]) extends Expr {
-    val getType = BooleanType
-
     require(exprs.size >= 2)
+    val getType = {
+      if (exprs forall (_.getType == BooleanType)) BooleanType
+      else untyped
+    }
   }
 
   object Or {
@@ -251,30 +353,44 @@ object Expressions {
   }
 
   case class Implies(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = BooleanType
+    val getType = {
+      if(lhs.getType == BooleanType && rhs.getType == BooleanType) BooleanType
+      else untyped
+    }
   }
 
   case class Not(expr: Expr) extends Expr {
-    val getType = BooleanType
+    val getType = {
+      if (expr.getType == BooleanType) BooleanType
+      else untyped
+    }
   }
 
 
   /* Integer arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr {
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+    val getType = {
+      if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
-  case class Minus(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Minus(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = {
+      if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
-  case class UMinus(expr: Expr) extends Expr { 
-    require(expr.getType == IntegerType)
-    val getType = IntegerType
+  case class UMinus(expr: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
-  case class Times(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Times(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = {
+      if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
   /*
    * Division and Remainder follows Java/Scala semantics. Division corresponds
@@ -286,19 +402,25 @@ object Expressions {
    *
    *    Division(x, y) * y + Remainder(x, y) == x
    */
-  case class Division(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Division(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = {
+      if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
-  case class Remainder(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Remainder(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = {
+      if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
-  case class Modulo(lhs: Expr, rhs: Expr) extends Expr { 
-    require(lhs.getType == IntegerType && rhs.getType == IntegerType)
-    val getType = IntegerType
+  case class Modulo(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = {
+      if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
+      else untyped
+    }
   }
-  case class LessThan(lhs: Expr, rhs: Expr) extends Expr { 
+  case class LessThan(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
   }
   case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr { 
@@ -383,7 +505,7 @@ object Expressions {
         ts(index - 1)
 
       case _ =>
-        Untyped
+        untyped
     }
   }
 
@@ -402,15 +524,16 @@ object Expressions {
     val getType  = BooleanType
   }
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(untyped).unveilUntyped
   }
   case class SetUnion(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(untyped).unveilUntyped
   }
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(untyped).unveilUntyped
   }
 
+  // TODO: Add checks for these expressions too
 
   /* Map operations */
   case class FiniteMap(singletons: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) extends Expr {
@@ -418,12 +541,13 @@ object Expressions {
   }
   case class MapGet(map: Expr, key: Expr) extends Expr {
     val getType = map.getType match {
-      case MapType(_, to) => to
-      case _ => Untyped
+      case MapType(from, to) if isSubtypeOf(key.getType, from) =>
+        to
+      case _ => untyped
     }
   }
   case class MapUnion(map1: Expr, map2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(untyped).unveilUntyped
   }
   case class MapDifference(map: Expr, keys: Expr) extends Expr {
     val getType = map.getType
@@ -439,16 +563,16 @@ object Expressions {
       case ArrayType(base) =>
         base
       case _ =>
-        Untyped
+        untyped
     }
   }
 
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
     val getType = array.getType match {
       case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType).getOrElse(Untyped).unveilUntyped
+        leastUpperBound(base, newValue.getType).map(ArrayType).getOrElse(untyped).unveilUntyped
       case _ =>
-        Untyped
+        untyped
     }
   }
 
@@ -470,10 +594,10 @@ object Expressions {
 
   case class Choose(pred: Expr) extends Expr {
     val getType = pred.getType match {
-      case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty?
+      case FunctionType(from, BooleanType) if from.nonEmpty => // @mk why nonEmpty?
         tupleTypeWrap(from)
       case _ =>
-        Untyped
+        untyped
     }
   }
 

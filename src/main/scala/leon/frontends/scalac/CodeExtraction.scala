@@ -741,7 +741,7 @@ trait CodeExtraction extends ASTExtractors {
     private def extractTypeParams(tps: Seq[Type]): Seq[(Symbol, TypeParameter)] = {
       tps.flatMap {
         case TypeRef(_, sym, Nil) =>
-          Some(sym -> TypeParameter(FreshIdentifier(sym.name.toString)))
+          Some(sym -> TypeParameter.fresh(sym.name.toString))
         case t =>
           outOfSubsetError(t.typeSymbol.pos, "Unhandled type for parameter: "+t)
           None
@@ -891,6 +891,28 @@ trait CodeExtraction extends ASTExtractors {
         val chars = s.toCharArray//.asInstanceOf[Seq[Char]]
         def charPat(ch : Char) = LiteralPattern(None, CharLiteral(ch))
         (chars.foldRight(nil)( (ch: Char, p : Pattern) => mkCons( charPat(ch), p)), dctx)
+
+      case up@ExUnapplyPattern(s, args) =>
+        implicit val p: Position = NoPosition
+        val fd = getFunDef(s, up.pos)
+        val (sub, ctx) = args.map (extractPattern(_)).unzip
+        val unapplyMethod = defsToDefs(s)
+        val formalTypes = tupleTypeWrap(
+          unapplyMethod.params.map { _.getType } ++
+          unapplyMethod.returnType.asInstanceOf[ClassType].tps
+        )
+        val realTypes = tupleTypeWrap(Seq(
+          extractType(up.tpe),
+          tupleTypeWrap(args map { tr => extractType(tr.tpe)})
+        ))
+        val newTps = canBeSubtypeOf(realTypes, typeParamsOf(formalTypes).toSeq, formalTypes) match {
+          case Some(tmap) =>
+            fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }
+          case None =>
+            reporter.fatalError("Could not instantiate type of unapply method")
+        }
+
+        (UnapplyPattern(binder, fd.typed(newTps), sub).setPos(up.pos), ctx.foldLeft(dctx)(_ union _))
 
       case _ =>
         outOfSubsetError(p, "Unsupported pattern: "+p.getClass)
@@ -1292,7 +1314,7 @@ trait CodeExtraction extends ASTExtractors {
           val rr = extractTree(r)
 
           (rl, rr) match {
-            case (IsTyped(_, rt), IsTyped(_, lt)) if isSubtypeOf(rt, lt) || isSubtypeOf(lt, rt) =>
+            case (IsTyped(_, rt), IsTyped(_, lt)) if typesCompatible(lt, rt) =>
               Not(Equals(rl, rr))
 
             case (IntLiteral(v), IsTyped(_, IntegerType)) =>
@@ -1311,7 +1333,7 @@ trait CodeExtraction extends ASTExtractors {
           val rr = extractTree(r)
 
           (rl, rr) match {
-            case (IsTyped(_, rt), IsTyped(_, lt)) if isSubtypeOf(rt, lt) || isSubtypeOf(lt, rt) =>
+            case (IsTyped(_, rt), IsTyped(_, lt)) if typesCompatible(lt, rt) =>
               Equals(rl, rr)
 
             case (IntLiteral(v), IsTyped(_, IntegerType)) =>

@@ -223,6 +223,14 @@ trait ASTExtractors {
       }
     }
 
+    object ExUnapplyPattern {
+      def unapply(tree: Tree): Option[(Symbol, Seq[Tree])] = tree match {
+        case UnApply(Apply(s, _), args) =>
+          Some((s.symbol, args))
+        case _ => None
+      }
+    }
+
     object ExBigIntLiteral {
       def unapply(tree: Tree): Option[Tree] = tree  match {
         case Apply(ExSelected("scala", "package", "BigInt", "apply"), n :: Nil) =>

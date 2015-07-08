@@ -320,6 +320,7 @@ object Extractors {
       case CaseClassPattern(b, ct, subs)  => (b, subs,  (b, sp) => CaseClassPattern(b, ct, sp))
       case TuplePattern(b,subs)           => (b, subs,  (b, sp) => TuplePattern(b, sp))
       case LiteralPattern(b, l)           => (b, Seq(), (b, _)  => LiteralPattern(b, l))
+      case UnapplyPattern(b, fd, subs)    => (b, subs,  (b, sp) => UnapplyPattern(b, fd, sp))
     }
   }
 

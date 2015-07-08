@@ -49,7 +49,7 @@ class ADTManager(ctx: LeonContext) {
 
     if (conflicts(t)) {
       // There is no way to solve this, the type we requested is in conflict
-      reporter.warning("Encountered ADT '"+t+"' that can't be defined.")
+      reporter.warning(s"Encountered ADT '$t' that can't be defined.")
       reporter.warning("It appears it has recursive references through non-structural types (such as arrays, maps, or sets).")
       throw new IllegalArgumentException
     } else {

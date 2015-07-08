@@ -215,7 +215,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (lv,rv) match {
         case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _),FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
-        case (BooleanLiteral(b1),BooleanLiteral(b2)) => BooleanLiteral(b1 == b2)
         case _ => BooleanLiteral(lv == rv)
       }
 
@@ -576,7 +575,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {
     import purescala.TypeOps.isSubtypeOf
 
-    def matchesPattern(pat: Pattern, e: Expr): Option[Map[Identifier, Expr]] = (pat, e) match {
+    def matchesPattern(pat: Pattern, expr: Expr): Option[Map[Identifier, Expr]] = (pat, expr) match {
       case (InstanceOfPattern(ob, pct), e) =>
         if (isSubtypeOf(e.getType, pct)) {
           Some(obind(ob, e))
@@ -590,18 +589,34 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         if (pct == ct) {
           val res = (subs zip args).map{ case (s, a) => matchesPattern(s, a) }
           if (res.forall(_.isDefined)) {
-            Some(obind(ob, e) ++ res.flatten.flatten)
+            Some(obind(ob, expr) ++ res.flatten.flatten)
           } else {
             None
           }
         } else {
           None
         }
+      case (up@UnapplyPattern(ob, _, subs), scrut) =>
+        e(FunctionInvocation(up.unapplyFun, Seq(scrut))) match {
+          case CaseClass(CaseClassType(cd, _), Seq()) if cd == program.library.Nil.get =>
+            None
+          case CaseClass(CaseClassType(cd, _), Seq(arg)) if cd == program.library.Cons.get =>
+            val res = subs zip unwrapTuple(arg, up.unapplyFun.returnType.isInstanceOf[TupleType]) map {
+              case (s,a) => matchesPattern(s,a)
+            }
+            if (res.forall(_.isDefined)) {
+              Some(obind(ob, expr) ++ res.flatten.flatten)
+            } else {
+              None
+            }
+          case other =>
+            throw EvalError(typeErrorMsg(other, up.unapplyFun.returnType))
+        }
       case (TuplePattern(ob, subs), Tuple(args)) =>
         if (subs.size == args.size) {
           val res = (subs zip args).map{ case (s, a) => matchesPattern(s, a) }
           if (res.forall(_.isDefined)) {
-            Some(obind(ob, e) ++ res.flatten.flatten)
+            Some(obind(ob, expr) ++ res.flatten.flatten)
           } else {
             None
           }

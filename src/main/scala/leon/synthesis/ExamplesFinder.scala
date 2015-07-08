@@ -141,7 +141,10 @@ class ExamplesFinder(ctx: LeonContext, program: Program) {
       // The pattern as expression (input expression)(may contain free variables)
       val (pattExpr, ieMap) = patternToExpression(cs.pattern, in.getType)
       val freeVars = variablesOf(pattExpr).toSeq
-      if (freeVars.isEmpty) {
+      if (exists(_.isInstanceOf[NoTree])(pattExpr)) {
+        reporter.warning(cs.pattern.getPos, "Unapply patterns are not supported in IO-example extraction")
+        Seq()
+      } else if (freeVars.isEmpty) {
         // The input contains no free vars. Trivially return input-output pair
         Seq((pattExpr, doSubstitute(ieMap,cs.rhs)))
       } else {
