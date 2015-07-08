@@ -100,6 +100,19 @@ object Coins {
     !isUniform(dist)
   } //holds
 
+  def sumNonUniformWithIndependence(dist: CoinsJoinDist): Boolean = {
+    require(isDist(dist) && isIndependent(dist) && !isUniform(firstCoin(dist)) && !isUniform(secondCoin(dist)))
+    val res = sum(dist)
+    !isUniform(res)
+  } holds
+
+  //independence is required
+  def sumNonUniformWithoutIndependence(dist: CoinsJoinDist): Boolean = {
+    require(isDist(dist) && !isUniform(firstCoin(dist)) && !isUniform(secondCoin(dist)))
+    val res = sum(dist)
+    !isUniform(res)
+  } holds
+
 
   def sumIsCommutative(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
     require(isDist(coin1) && isDist(coin2))
