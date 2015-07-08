@@ -613,6 +613,8 @@ object ExprOps {
    *     t -> (a, b2),
    *     b2 -> 42,
    *    )
+   *
+   * WARNING: UNUSED, is not maintained
    */
   def patternSubstitutions(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] ={
     def rec(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] = pattern match {
@@ -621,7 +623,7 @@ object ExprOps {
           WildcardPattern(Some(FreshIdentifier(f.id.name, f.getType)))
         })
         rec(in, pt)
-      
+
       case TuplePattern(_, subps) =>
         val TupleType(subts) = in.getType
         val subExprs = (subps zip subts).zipWithIndex map {
@@ -633,7 +635,7 @@ object ExprOps {
           case Tuple(ts) =>
             ts zip subExprs
           case _ =>
-            Seq(in -> tupleWrap(subExprs))    
+            Seq(in -> tupleWrap(subExprs))
         }
 
         subst0 ++ ((subExprs zip subps) flatMap {
@@ -644,13 +646,13 @@ object ExprOps {
         val subExprs = (subps zip cct.fields) map {
           case (p, f) => p.binder.map(_.toVariable).getOrElse(CaseClassSelector(cct, in, f.id))
         }
-        
+
         // Special case to get rid of Cons(a,b) match { case Cons(c,d) => .. }
         val subst0 = in match {
           case CaseClass(`cct`, args) =>
             args zip subExprs
           case _ =>
-            Seq(in -> CaseClass(cct, subExprs))    
+            Seq(in -> CaseClass(cct, subExprs))
         }
 
         subst0 ++ ((subExprs zip subps) flatMap {
@@ -679,7 +681,7 @@ object ExprOps {
     recBinder(in, pattern).filter{ case (a, b) => a != b }
   }
 
-  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false) : Expr = {
+  def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false): Expr = {
     def bind(ob: Option[Identifier], to: Expr): Expr = {
       if (!includeBinders) {
         BooleanLiteral(true)
@@ -690,20 +692,16 @@ object ExprOps {
 
     def rec(in: Expr, pattern: Pattern): Expr = {
       pattern match {
-        case WildcardPattern(ob) => bind(ob, in)
+        case WildcardPattern(ob) =>
+          bind(ob, in)
+
         case InstanceOfPattern(ob, ct) =>
           if (ct.parent.isEmpty) {
             bind(ob, in)
           } else {
-            val ccs = ct match {
-              case act: AbstractClassType =>
-                act.knownCCDescendents
-              case cct: CaseClassType =>
-                Seq(cct)
-            }
-            val oneOf = ccs map { IsInstanceOf(_, in) }
-            and(orJoin(oneOf), bind(ob, in))
+            and(IsInstanceOf(ct, in), bind(ob, in))
           }
+
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.fields.size == subps.size)
           val pairs = cct.fields.map(_.id).toList zip subps.toList
@@ -711,13 +709,14 @@ object ExprOps {
           val together = and(bind(ob, in) +: subTests :_*)
           and(IsInstanceOf(cct, in), together)
 
-        case TuplePattern(ob, subps) => {
+        case TuplePattern(ob, subps) =>
           val TupleType(tpes) = in.getType
           assert(tpes.size == subps.size)
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
-        }
-        case LiteralPattern(ob,lit) => and(Equals(in,lit), bind(ob,in))
+
+        case LiteralPattern(ob,lit) =>
+          and(Equals(in,lit), bind(ob,in))
       }
     }
 
@@ -860,17 +859,22 @@ object ExprOps {
     var ieMap = Seq[(Identifier, Expr)]()
     def addBinding(b : Option[Identifier], e : Expr) = b foreach { ieMap +:= (_, e) }
     def rec(p : Pattern, expectedType : TypeTree) : Expr = p match {
-      case WildcardPattern(b) => Variable(b getOrElse fresh(expectedType))
+      case WildcardPattern(b) =>
+        Variable(b getOrElse fresh(expectedType))
       case LiteralPattern(b, lit) =>
         addBinding(b,lit)
         lit
       case InstanceOfPattern(b, ct) => ct match {
-        case act : AbstractClassType => 
+        case act: AbstractClassType =>
+          // @mk: This seems dubious, in the sense that it just binds the expression
+          //      of the AbstractClassType to an id instead of going case-wise.
+          //      I think this is sufficient for the use of this function though:
+          //      it is only used to generate examples so it is followed by a type-aware enumerator.
           val e = Variable(fresh(act))
           addBinding(b, e)
           e
 
-        case cct : CaseClassType =>
+        case cct: CaseClassType =>
           val fields = cct.fields map { f => Variable(fresh(f.getType)) }
           val e = CaseClass(cct, fields)
           addBinding(b, e)

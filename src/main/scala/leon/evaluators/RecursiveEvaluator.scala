@@ -577,8 +577,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     import purescala.TypeOps.isSubtypeOf
 
     def matchesPattern(pat: Pattern, e: Expr): Option[Map[Identifier, Expr]] = (pat, e) match {
-      case (InstanceOfPattern(ob, pct), CaseClass(ct, _)) =>
-        if (isSubtypeOf(ct, pct)) {
+      case (InstanceOfPattern(ob, pct), e) =>
+        if (isSubtypeOf(e.getType, pct)) {
           Some(obind(ob, e))
         } else {
           None

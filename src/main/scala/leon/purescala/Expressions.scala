@@ -164,7 +164,7 @@ object Expressions {
 
 
   case class MatchCase(pattern : Pattern, optGuard : Option[Expr], rhs: Expr) extends Tree {
-    def expressions: Seq[Expr] = List(rhs) ++ optGuard
+    def expressions: Seq[Expr] = optGuard.toList :+ rhs
   }
 
   sealed abstract class Pattern extends Tree {
