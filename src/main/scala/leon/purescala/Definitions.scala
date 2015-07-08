@@ -274,16 +274,17 @@ object Definitions {
       _fields = fields
     }
 
-
     val isAbstract = false
 
-
     def selectorID2Index(id: Identifier) : Int = {
-      val index = fields.zipWithIndex.find(_._1.id == id).map(_._2)
+      val index = fields.indexWhere(_.id == id)
 
-      index.getOrElse {
-        scala.sys.error("Could not find '"+id+"' ("+id.uniqueName+") within "+fields.map(_.id.uniqueName).mkString(", "))
-      }
+      if (index < 0) {
+        scala.sys.error(
+          "Could not find '"+id+"' ("+id.uniqueName+") within "+
+          fields.map(_.id.uniqueName).mkString(", ")
+        )
+      } else index
     }
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)

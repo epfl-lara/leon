@@ -74,7 +74,7 @@ case object ADTSplit extends Rule("ADT Split.") {
             val cases = for ((sol, (cct, problem, pattern)) <- sols zip subInfo) yield {
               if (sol.pre != BooleanLiteral(true)) {
                 val substs = (for ((field,arg) <- cct.fields zip problem.as ) yield {
-                  (arg, CaseClassSelector(cct, id.toVariable, field.id))
+                  (arg, caseClassSelector(cct, id.toVariable, field.id))
                 }).toMap
                 globalPre ::= and(IsInstanceOf(cct, Variable(id)), replaceFromIDs(substs, sol.pre))
               } else {

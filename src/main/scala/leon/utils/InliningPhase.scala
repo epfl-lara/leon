@@ -5,10 +5,10 @@ package leon.utils
 import leon._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.Types._
 import purescala.TypeOps._
 import purescala.ExprOps._
 import purescala.DefOps._
+import purescala.Constructors.caseClassSelector
 
 object InliningPhase extends TransformationPhase {
 
@@ -27,14 +27,14 @@ object InliningPhase extends TransformationPhase {
 
     def simplifyImplicitClass(e: Expr) = e match {
       case CaseClassSelector(cct, cc: CaseClass, id) =>
-        Some(CaseClassSelector(cct, cc, id))
+        Some(caseClassSelector(cct, cc, id))
 
       case _ =>
         None
     }
 
     def simplify(e: Expr) = {
-      fixpoint(postMap(simplifyImplicitClass _))(e)
+      fixpoint(postMap(simplifyImplicitClass))(e)
     }
 
     for (fd <- p.definedFunctions) {

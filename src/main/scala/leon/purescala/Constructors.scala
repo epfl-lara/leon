@@ -79,9 +79,17 @@ object Constructors {
       case None => sys.error(s"$actualType cannot be a subtype of $formalType!")
     }
 
-   
   }
-  
+
+  def caseClassSelector(classType: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
+    caseClass match {
+      case CaseClass(ct, fields) if ct.classDef == classType.classDef =>
+        fields(ct.classDef.selectorID2Index(selector))
+      case _ =>
+        CaseClassSelector(classType, caseClass, selector)
+    }
+  }
+
   private def filterCases(scrutType : TypeTree, resType: Option[TypeTree], cases: Seq[MatchCase]): Seq[MatchCase] = {
     val casesFiltered = scrutType match {
       case c: CaseClassType =>

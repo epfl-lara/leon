@@ -1453,7 +1453,7 @@ trait CodeExtraction extends ASTExtractors {
 
               val fieldID = cct.fields.find(_.id.name == name).get.id
 
-              CaseClassSelector(cct, rec, fieldID)
+              caseClassSelector(cct, rec, fieldID)
 
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>

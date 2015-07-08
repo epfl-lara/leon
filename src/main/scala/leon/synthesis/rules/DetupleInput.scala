@@ -23,7 +23,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       case cct @ CaseClassType(ccd, _) if !ccd.isAbstract =>
         val newIds = cct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.getType, true) }
 
-        val map = (ccd.fields zip newIds).map{ case (vd, nid) => nid -> CaseClassSelector(cct, Variable(id), vd.id) }.toMap
+        val map = (ccd.fields zip newIds).map{ case (vd, nid) => nid -> caseClassSelector(cct, Variable(id), vd.id) }.toMap
 
         (newIds.toList, CaseClass(cct, newIds.map(Variable)), map)
 

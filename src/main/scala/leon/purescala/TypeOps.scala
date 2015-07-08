@@ -270,7 +270,7 @@ object TypeOps {
             CaseClass(tpeSub(ct).asInstanceOf[CaseClassType], args.map(srec)).copiedFrom(cc)
 
           case cc @ CaseClassSelector(ct, e, sel) =>
-            CaseClassSelector(tpeSub(ct).asInstanceOf[CaseClassType], srec(e), sel).copiedFrom(cc)
+            caseClassSelector(tpeSub(ct).asInstanceOf[CaseClassType], srec(e), sel).copiedFrom(cc)
 
           case cc @ IsInstanceOf(ct, e) =>
             IsInstanceOf(tpeSub(ct).asInstanceOf[ClassType], srec(e)).copiedFrom(cc)

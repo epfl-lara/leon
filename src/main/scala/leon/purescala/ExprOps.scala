@@ -392,7 +392,7 @@ object ExprOps {
         Some(letTuple(ids, v, tupleSelect(b, ts, true)))
 
       case CaseClassSelector(cct, cc: CaseClass, id) =>
-        Some(CaseClassSelector(cct, cc, id))
+        Some(caseClassSelector(cct, cc, id))
 
       case IfExpr(c, thenn, elze) if (thenn == elze) && isDeterministic(e) =>
         Some(thenn)
@@ -644,7 +644,7 @@ object ExprOps {
 
       case CaseClassPattern(_, cct, subps) =>
         val subExprs = (subps zip cct.fields) map {
-          case (p, f) => p.binder.map(_.toVariable).getOrElse(CaseClassSelector(cct, in, f.id))
+          case (p, f) => p.binder.map(_.toVariable).getOrElse(caseClassSelector(cct, in, f.id))
         }
 
         // Special case to get rid of Cons(a,b) match { case Cons(c,d) => .. }
@@ -705,7 +705,7 @@ object ExprOps {
         case CaseClassPattern(ob, cct, subps) =>
           assert(cct.fields.size == subps.size)
           val pairs = cct.fields.map(_.id).toList zip subps.toList
-          val subTests = pairs.map(p => rec(CaseClassSelector(cct, in, p._1), p._2))
+          val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
           and(IsInstanceOf(cct, in), together)
 
@@ -727,7 +727,7 @@ object ExprOps {
     case CaseClassPattern(b, ccd, subps) =>
       assert(ccd.fields.size == subps.size)
       val pairs = ccd.fields.map(_.id).toList zip subps.toList
-      val subMaps = pairs.map(p => mapForPattern(CaseClassSelector(ccd, in, p._1), p._2))
+      val subMaps = pairs.map(p => mapForPattern(caseClassSelector(ccd, in, p._1), p._2))
       val together = subMaps.flatten.toMap
       b match {
         case Some(id) => Map(id -> in) ++ together
@@ -1283,7 +1283,7 @@ object ExprOps {
             val v = Variable(on)
 
             recSelectors.map{ s =>
-              and(isType, expr, not(replace(Map(v -> CaseClassSelector(cct, v, s)), expr)))
+              and(isType, expr, not(replace(Map(v -> caseClassSelector(cct, v, s)), expr)))
             }
           }
       }.flatten

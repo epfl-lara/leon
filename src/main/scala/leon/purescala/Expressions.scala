@@ -270,34 +270,9 @@ object Expressions {
     val getType = BooleanType
   }
 
-  object CaseClassSelector {
-    def apply(classType: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
-      caseClass match {
-        case CaseClass(ct, fields) =>
-          if (ct.classDef == classType.classDef) {
-            fields(ct.classDef.selectorID2Index(selector))
-          } else {
-            new CaseClassSelector(classType, caseClass, selector)
-          }
-        case _ => new CaseClassSelector(classType, caseClass, selector)
-      }
-    }
-
-    def unapply(ccs: CaseClassSelector): Option[(CaseClassType, Expr, Identifier)] = {
-      Some((ccs.classType, ccs.caseClass, ccs.selector))
-    }
-  }
-
-  class CaseClassSelector(val classType: CaseClassType, val caseClass: Expr, val selector: Identifier) extends Expr {
+  case class CaseClassSelector(classType: CaseClassType, caseClass: Expr, selector: Identifier) extends Expr {
     val selectorIndex = classType.classDef.selectorID2Index(selector)
     val getType = classType.fieldsTypes(selectorIndex)
-
-    override def equals(that: Any): Boolean = (that != null) && (that match {
-      case t: CaseClassSelector => (t.classType, t.caseClass, t.selector) == (classType, caseClass, selector)
-      case _ => false
-    })
-
-    override def hashCode: Int = (classType, caseClass, selector).hashCode + 9
   }
 
   /* Arithmetic */
