@@ -175,17 +175,17 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVUMinus(expr)       => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
-      case InfiniteIntegerLiteral(v)        => p"$v"
+      case InfiniteIntegerLiteral(v) => p"$v"
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
-      case NoTree(tpe)          => p"???($tpe)"
+      case NoTree(tpe)          => p"???[$tpe]"
       case Choose(pred)         => p"choose($pred)"
-      case e @ Error(tpe, err)       => p"""error[$tpe]("$err")"""
-      case IsInstanceOf(cct, e)         =>
+      case e @ Error(tpe, err)  => p"""error[$tpe]("$err")"""
+      case IsInstanceOf(cct, e) =>
         if (cct.classDef.isCaseObject) {
           p"($e == $cct)"
         } else {

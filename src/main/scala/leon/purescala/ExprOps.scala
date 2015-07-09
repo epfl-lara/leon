@@ -33,10 +33,8 @@ object ExprOps {
    */
   def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
     val rec = foldRight(f) _
-
     val Operator(es, _) = e
     f(e, es.view.map(rec))
-
   }
 
   /**
@@ -53,8 +51,8 @@ object ExprOps {
    */
   def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = preTraversal(f) _
-    f(e)
     val Operator(es, _) = e
+    f(e)
     es.foreach(rec)
   }
 
@@ -189,29 +187,7 @@ object ExprOps {
     }
     v2
   }
-
   
-  
-  
-  ///*
-  // * Turn a total function returning Option[A] into a partial function
-  // * returning A.
-  // * Optimize for isDefinedAt -> apply access pattern
-  // */
-  //def unlift[A, B](f: A => Option[B]): PartialFunction[A,B] = new PartialFunction[A, B] {
-  //  var last: Option[(A, Option[B])] = None
-
-  //  def apply(a: A) = last match {
-  //    case Some((a2, res)) if a2 == a => res.get
-  //    case _ => f(a).get
-  //  }
-
-  //  def isDefinedAt(a: A) = {
-  //    val res = f(a)
-  //    last = Some((a, res))
-  //    res.isDefined
-  //  }
-  //}
 
   /**
    * Auxiliary API
@@ -930,6 +906,7 @@ object ExprOps {
     case act @ AbstractClassType(acd, tpe) =>
       val children = acd.knownChildren
 
+      // FIXME: What if deep hierarchies? What if Cons[Option[List[A]]]?
       def isRecursive(ccd: CaseClassDef): Boolean = {
         act.fieldsTypes.exists{
           case AbstractClassType(fieldAcd, _) => acd == fieldAcd
@@ -983,7 +960,7 @@ object ExprOps {
       case _ => None
     }
 
-    fixpoint(postMap(transform))(expr)
+    postMap(transform, applyRec = true)(expr)
   }
 
   def genericTransform[C](pre:  (Expr, C) => (Expr, C),
