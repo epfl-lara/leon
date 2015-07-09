@@ -11,19 +11,23 @@ import Extractors._
 import Constructors._
 import ExprOps.replaceFromIDs
 
-/** AST definitions for Pure Scala. */
+/** Expression definitions for Pure Scala. */
 object Expressions {
 
-  /* EXPRESSIONS */
   abstract class Expr extends Tree with Typed
 
   trait Terminal {
     self: Expr =>
   }
 
+
+  /* Stands for an undefined Expr, similar to ??? or null */
   case class NoTree(tpe: TypeTree) extends Expr with Terminal {
     val getType = tpe
   }
+
+
+  /* Specifications */
 
   /* This describes computational errors (unmatched case, taking min of an
    * empty set, division by zero, etc.). It should always be typed according to
@@ -32,10 +36,12 @@ object Expressions {
     val getType = tpe
   }
 
+  // Preconditions
   case class Require(pred: Expr, body: Expr) extends Expr {
     val getType = body.getType
   }
 
+  // Postconditions
   case class Ensuring(body: Expr, pred: Expr) extends Expr {
     val getType = pred.getType match {
       case FunctionType(Seq(bodyType), BooleanType) if bodyType == body.getType => bodyType
@@ -47,20 +53,19 @@ object Expressions {
     }
   }
 
+  // Local assertions
   case class Assert(pred: Expr, error: Option[String], body: Expr) extends Expr {
     val getType = body.getType
   }
 
-  case class Choose(pred: Expr) extends Expr {
-    val getType = pred.getType match {
-      case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty? 
-        tupleTypeWrap(from)
-      case _ =>
-        Untyped
-    }
+
+  /* Variables */
+  case class Variable(id: Identifier) extends Expr with Terminal {
+    val getType = id.getType
   }
 
-  /* Like vals */
+
+  /* Local val's and def's */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     val getType = body.getType
   }
@@ -69,15 +74,12 @@ object Expressions {
     val getType = body.getType
   }
 
-  case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
-    val getType = tfd.returnType
-  }
 
   /**
    * OO Trees
    *
    * Both MethodInvocation and This get removed by phase MethodLifting. Methods become functions,
-   * This becomes first argument, and MethodInvocation become FunctionInvocation.
+   * This becomes first argument, and MethodInvocation becomes FunctionInvocation.
    */
   case class MethodInvocation(rec: Expr, cd: ClassDef, tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
     val getType = {
@@ -94,6 +96,12 @@ object Expressions {
     }
   }
 
+  case class This(ct: ClassType) extends Expr with Terminal {
+    val getType = ct
+  }
+
+
+  /* HOFs */
   case class Application(callee: Expr, args: Seq[Expr]) extends Expr {
     require(callee.getType.isInstanceOf[FunctionType])
     val getType = callee.getType.asInstanceOf[FunctionType].to
@@ -110,58 +118,20 @@ object Expressions {
     }
   }
 
-  case class This(ct: ClassType) extends Expr with Terminal {
-    val getType = ct
+
+  /* Control flow */
+  case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
+    val getType = tfd.returnType
   }
 
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr {
     val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped).unveilUntyped
   }
 
-
-  /*
-   * If you are not sure about the requirement you should use 
-   * the tupleWrap in purescala.Constructors
-   */
-  case class Tuple (exprs: Seq[Expr]) extends Expr {
-    require(exprs.size >= 2)
-    val getType = TupleType(exprs.map(_.getType)).unveilUntyped
-  }
-
-  /*
-   * Index is 1-based, first element of tuple is 1.
-   * If you are not sure that tuple has a TupleType,
-   * you should use tupleSelect in pureScala.Constructors
-   */
-  case class TupleSelect(tuple: Expr, index: Int) extends Expr {
-    require(index >= 1)
-
-    val getType = tuple.getType match {
-      case TupleType(ts) =>
-        require(index <= ts.size)
-        ts(index - 1)
-
-      case _ =>
-        Untyped
-    }
-  }
-
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
     val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
   }
-  
-  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
-    require(cases.nonEmpty)
-
-    val getType = BooleanType
-    
-    def asConstraint = {
-      val defaultCase = SimpleCase(WildcardPattern(None), out)
-      Equals(out, MatchExpr(in, cases :+ defaultCase))
-    }
-  }
-
 
   case class MatchCase(pattern : Pattern, optGuard : Option[Expr], rhs: Expr) extends Tree {
     def expressions: Seq[Expr] = optGuard.toList :+ rhs
@@ -195,42 +165,18 @@ object Expressions {
   }
 
 
-  /* Propositional logic */
-  case class And(exprs: Seq[Expr]) extends Expr {
+  /* Symbolic IO examples */
+  case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
+    require(cases.nonEmpty)
+
     val getType = BooleanType
 
-    require(exprs.size >= 2)
+    def asConstraint = {
+      val defaultCase = SimpleCase(WildcardPattern(None), out)
+      Equals(out, MatchExpr(in, cases :+ defaultCase))
+    }
   }
 
-  object And {
-    def apply(a: Expr, b: Expr): Expr = And(Seq(a, b))
-  }
-
-  case class Or(exprs: Seq[Expr]) extends Expr {
-    val getType = BooleanType
-
-    require(exprs.size >= 2)
-  }
-
-  object Or {
-    def apply(a: Expr, b: Expr): Expr = Or(Seq(a, b))
-  }
-
-  case class Implies(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = BooleanType
-  }
-
-  case class Not(expr: Expr) extends Expr {
-    val getType = BooleanType
-  }
-
-  case class Equals(lhs: Expr, rhs: Expr) extends Expr {
-    val getType = BooleanType
-  }
-
-  case class Variable(id: Identifier) extends Expr with Terminal {
-    val getType = id.getType
-  }
 
   /* Literals */
   sealed abstract class Literal[+T] extends Expr with Terminal {
@@ -261,6 +207,7 @@ object Expressions {
     val value = ()
   }
 
+
   /* Case classes */
   case class CaseClass(ct: CaseClassType, args: Seq[Expr]) extends Expr {
     val getType = ct
@@ -275,7 +222,44 @@ object Expressions {
     val getType = classType.fieldsTypes(selectorIndex)
   }
 
-  /* Arithmetic */
+
+  /* Equality */
+  case class Equals(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = BooleanType
+  }
+
+
+  /* Propositional logic */
+  case class And(exprs: Seq[Expr]) extends Expr {
+    val getType = BooleanType
+
+    require(exprs.size >= 2)
+  }
+
+  object And {
+    def apply(a: Expr, b: Expr): Expr = And(Seq(a, b))
+  }
+
+  case class Or(exprs: Seq[Expr]) extends Expr {
+    val getType = BooleanType
+
+    require(exprs.size >= 2)
+  }
+
+  object Or {
+    def apply(a: Expr, b: Expr): Expr = Or(Seq(a, b))
+  }
+
+  case class Implies(lhs: Expr, rhs: Expr) extends Expr {
+    val getType = BooleanType
+  }
+
+  case class Not(expr: Expr) extends Expr {
+    val getType = BooleanType
+  }
+
+
+  /* Integer arithmetic */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == IntegerType && rhs.getType == IntegerType)
     val getType = IntegerType
@@ -327,6 +311,7 @@ object Expressions {
     val getType = BooleanType
   }
 
+
   /* Bit-vector arithmetic */
   case class BVPlus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
@@ -352,7 +337,6 @@ object Expressions {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-
   case class BVNot(expr: Expr) extends Expr { 
     val getType = Int32Type
   }
@@ -375,11 +359,39 @@ object Expressions {
     val getType = Int32Type
   }
 
-  /* Set expressions */
+
+  /* Tuple operations */
+
+  // If you are not sure about the requirement you should use
+  // the tupleWrap in purescala.Constructors
+  case class Tuple (exprs: Seq[Expr]) extends Expr {
+    require(exprs.size >= 2)
+    val getType = TupleType(exprs.map(_.getType)).unveilUntyped
+  }
+
+  /*
+   * Index is 1-based, first element of tuple is 1.
+   * If you are not sure that tuple is indeed of a TupleType,
+   * you should use tupleSelect in pureScala.Constructors
+   */
+  case class TupleSelect(tuple: Expr, index: Int) extends Expr {
+    require(index >= 1)
+
+    val getType = tuple.getType match {
+      case TupleType(ts) =>
+        require(index <= ts.size)
+        ts(index - 1)
+
+      case _ =>
+        Untyped
+    }
+  }
+
+
+  /* Set operations */
   case class FiniteSet(elements: Set[Expr], base: TypeTree) extends Expr {
     val getType = SetType(base).unveilUntyped
   }
-
   case class ElementOfSet(element: Expr, set: Expr) extends Expr {
     val getType = BooleanType
   }
@@ -389,7 +401,6 @@ object Expressions {
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
     val getType  = BooleanType
   }
-
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
     val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
@@ -400,11 +411,11 @@ object Expressions {
     val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
 
-  /* Map operations. */
+
+  /* Map operations */
   case class FiniteMap(singletons: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) extends Expr {
     val getType = MapType(keyType, valueType).unveilUntyped
   }
-
   case class MapGet(map: Expr, key: Expr) extends Expr {
     val getType = map.getType match {
       case MapType(_, to) => to
@@ -454,7 +465,17 @@ object Expressions {
     val getType = ArrayType(tpe).unveilUntyped
   }
 
-  /* Special trees */
+
+  /* Special trees for synthesis */
+
+  case class Choose(pred: Expr) extends Expr {
+    val getType = pred.getType match {
+      case FunctionType(from, to) if from.nonEmpty => // @mk why nonEmpty?
+        tupleTypeWrap(from)
+      case _ =>
+        Untyped
+    }
+  }
 
   // Provide an oracle (synthesizable, all-seeing choose)
   case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with Extractable {
