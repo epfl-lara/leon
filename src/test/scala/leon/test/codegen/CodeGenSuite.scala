@@ -121,7 +121,9 @@ class CodeGenSuite extends test.LeonTestSuite {
     // This one loops!    
     ("lazyLoops" ,        Error(Untyped, "Looping") ),
     ("Lazier" ,           IntLiteral(1 + 2 + 3) ),
-    ("SetToList",         BooleanLiteral(true) )
+    ("SetToList",         BooleanLiteral(true) ),
+    ("Overrides1",        Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))) ),
+    ("Overrides2",        Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))) )
   )
 
 
@@ -361,6 +363,28 @@ class CodeGenSuite extends test.LeonTestSuite {
         val s2 = setToList(s).content
         s == s2
       }
+    }
+    object Overrides1 {
+      abstract class A {
+        def x = true
+      }
+      case class B() extends A {
+        override def x = false
+      }
+      case class C() extends A
+
+      def test = (B().x, C().x)
+    }
+    object Overrides2 {
+      abstract class A {
+        val x = true
+      }
+      case class B() extends A {
+        override val x = false
+      }
+      case class C() extends A
+
+      def test = (B().x, C().x)
     }
   """
 
