@@ -215,7 +215,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def collectClassSymbols(defs: List[Tree]) {
       // We collect all defined classes
-      for (t <- defs) t match {
+      for (t <- defs if !t.isEmpty) t match {
         case t if isIgnored(t.symbol) =>
           // ignore
 
@@ -226,7 +226,7 @@ trait CodeExtraction extends ASTExtractors {
           seenClasses += sym -> ((args, tmpl))
 
         case ExObjectDef(n, templ) =>
-          for (t <- templ.body) t match {
+          for (t <- templ.body if !t.isEmpty) t match {
             case t if isIgnored(t.symbol) =>
               // ignore
 
@@ -320,28 +320,28 @@ trait CodeExtraction extends ASTExtractors {
           // ignore
 
         case ExAbstractClass(_, sym, tpl) =>
-          for (t <- tpl.body) {
+          for (t <- tpl.body if !t.isEmpty) {
             extractFunOrMethodBody(Some(sym), t)
           }
 
         case ExCaseClass(_, sym, _, tpl) =>
-          for (t <- tpl.body) {
+          for (t <- tpl.body if !t.isEmpty) {
             extractFunOrMethodBody(Some(sym), t)
           }
 
         case ExObjectDef(n, templ) =>
-          for (t <- templ.body) t match {
+          for (t <- templ.body if !t.isEmpty) t match {
             case t if isIgnored(t.symbol) =>
               // ignore
               None
 
             case ExAbstractClass(_, sym, tpl) =>
-              for (t <- tpl.body) {
+              for (t <- tpl.body if !t.isEmpty) {
                 extractFunOrMethodBody(Some(sym), t)
               }
 
             case ExCaseClass(_, sym, _, tpl) =>
-              for (t <- tpl.body) {
+              for (t <- tpl.body if !t.isEmpty) {
                 extractFunOrMethodBody(Some(sym), t)
               }
 
