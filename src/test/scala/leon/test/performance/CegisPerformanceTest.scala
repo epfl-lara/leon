@@ -1,3 +1,7 @@
+/* Copyright 2009-2015 EPFL, Lausanne */
+
+package leon.test.performance
+
 import leon._
 import leon.synthesis._
 import leon.synthesis.rules._
@@ -7,7 +11,7 @@ import leon.frontends.scalac._
 
 import org.scalameter.api._
 
-class CegisPerfTest extends PerformanceTest.OfflineRegressionReport {
+class CegisPerformanceTest extends PerformanceTest.OfflineRegressionReport {
 
   override def persistor = new SerializationPersistor
   override def executor: Executor = LocalExecutor(warmer, aggregator, measurer)
@@ -23,8 +27,10 @@ class CegisPerfTest extends PerformanceTest.OfflineRegressionReport {
     val leonReporter = new TestSilentReporter
 
     val paths = List(f.getPath)
-    val ctx = Main.processOptions(paths).copy(reporter = leonReporter,
-                                                       interruptManager = new InterruptManager(leonReporter))
+    val ctx = Main.processOptions(paths).copy(
+      reporter = leonReporter,
+      interruptManager = new InterruptManager(leonReporter)
+    )
 
     (f.getName.dropRight(6), ctx, extraction.run(ctx)(paths))
   }
