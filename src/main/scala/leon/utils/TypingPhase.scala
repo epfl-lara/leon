@@ -82,7 +82,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
     // Part (3)
     pgm.definedClasses.foreach {
       case acd: AbstractClassDef =>
-        if (acd.knownCCDescendents.isEmpty) {
+        if (acd.knownCCDescendants.isEmpty) {
           ctx.reporter.error(acd.getPos, "Class "+acd.id.asString(ctx)+" has no concrete descendant!")
         }
       case _ =>

@@ -20,7 +20,7 @@ case object ADTSplit extends Rule("ADT Split.") {
     val candidates = p.as.collect {
       case IsTyped(id, act @ AbstractClassType(cd, tpes)) =>
 
-        val optCases = for (dcd <- cd.knownDescendents.sortBy(_.id.name)) yield dcd match {
+        val optCases = for (dcd <- cd.knownDescendants.sortBy(_.id.name)) yield dcd match {
           case ccd : CaseClassDef =>
             val cct = CaseClassType(ccd, tpes)
             val toSat = and(p.pc, IsInstanceOf(cct, Variable(id)))

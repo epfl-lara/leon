@@ -138,7 +138,7 @@ object Definitions {
 
     // Guarantees that a parent always appears before its children
     def classHierarchies = classHierarchyRoots map { root =>
-      root +: root.knownDescendents
+      root +: root.knownDescendants
     }
 
     def singleCaseClasses = {
@@ -225,14 +225,14 @@ object Definitions {
 
     def knownChildren: Seq[ClassDef] = _children
 
-    def knownDescendents: Seq[ClassDef] = {
+    def knownDescendants: Seq[ClassDef] = {
       knownChildren ++ knownChildren.flatMap {
-        case acd: AbstractClassDef => acd.knownDescendents
+        case acd: AbstractClassDef => acd.knownDescendants
         case _ => Nil
       }
     }
 
-    def knownCCDescendents: Seq[CaseClassDef] = knownDescendents.collect {
+    def knownCCDescendants: Seq[CaseClassDef] = knownDescendants.collect {
       case ccd: CaseClassDef =>
         ccd
     }

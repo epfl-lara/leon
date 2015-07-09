@@ -1244,7 +1244,7 @@ object ExprOps {
   def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd, tps)) =>
 
-      val toCheck = cd.knownDescendents.collect {
+      val toCheck = cd.knownDescendants.collect {
         case ccd: CaseClassDef =>
           val cct = CaseClassType(ccd, tps)
 
@@ -1465,7 +1465,7 @@ object ExprOps {
 
           def typesOf(tpe: TypeTree): Set[CaseClassDef] = tpe match {
             case AbstractClassType(ctp, _) =>
-              ctp.knownDescendents.collect { case c: CaseClassDef => c }.toSet
+              ctp.knownDescendants.collect { case c: CaseClassDef => c }.toSet
 
             case CaseClassType(ctd, _) =>
               Set(ctd)

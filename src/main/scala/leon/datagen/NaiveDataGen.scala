@@ -55,7 +55,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
         // We prioritize base cases among the children.
         // Otherwise we run the risk of infinite recursion when
         // generating lists.
-        val ccChildren = act.knownCCDescendents
+        val ccChildren = act.knownCCDescendants
 
         val (leafs,conss) = ccChildren.partition(_.fields.isEmpty)
         

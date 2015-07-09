@@ -331,7 +331,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         declareSort(cct)
         val cases = cct match {
           case act: AbstractClassType =>
-            act.knownCCDescendents
+            act.knownCCDescendants
           case cct: CaseClassType =>
             Seq(cct)
         }

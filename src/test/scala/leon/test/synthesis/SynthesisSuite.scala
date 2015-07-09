@@ -39,7 +39,7 @@ class SynthesisSuite extends LeonTestSuite {
           } else {
             strat match {
               case Decomp(_, sub) =>
-                (an.descendents zip sub).forall {
+                (an.descendants zip sub).forall {
                   case (n, strat) => synthesizeFrom(sctx, n, strat)
                 }
               case _ =>
@@ -50,7 +50,7 @@ class SynthesisSuite extends LeonTestSuite {
 
         case on: OrNode =>
           on.expand(SearchContext(sctx, ci, on, this))
-          val ns = on.descendents.filter {
+          val ns = on.descendants.filter {
             case an: AndNode => matchingDesc(an.ri, strat.ruleName)
             case _ => false
           }

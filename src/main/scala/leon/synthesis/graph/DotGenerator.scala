@@ -117,7 +117,7 @@ class DotGenerator(g: Graph) {
   }
 
   private def collectEdges(from: Node): Set[(Node, Node)] = {
-    from.descendents.flatMap { d =>
+    from.descendants.flatMap { d =>
       Set(from -> d) ++ collectEdges(d)
     }.toSet
   }

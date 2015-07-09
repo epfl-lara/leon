@@ -17,7 +17,7 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
     if (!from.isExpanded) {
       self
     } else {
-      from.descendents.foldLeft(self) {
+      from.descendants.foldLeft(self) {
         case ((c,t), d) =>
           val (sc, st) = getStats(d)
           (c+sc, t+st)
@@ -28,7 +28,7 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
 
 sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
   var parents: List[Node]     = parent.toList
-  var descendents: List[Node] = Nil
+  var descendants: List[Node] = Nil
 
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
@@ -75,7 +75,7 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
 
     case None =>
       val costs = if (isExpanded) {
-        Some(descendents.map { _.cost })
+        Some(descendants.map { _.cost })
       } else {
         None
       }
@@ -141,9 +141,9 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
           info(prefix+"     - "+p.asString)
         }
 
-        descendents = probs.map(p => new OrNode(cm, Some(this), p))
+        descendants = probs.map(p => new OrNode(cm, Some(this), p))
 
-        selected = descendents
+        selected = descendants
 
         updateCost()
     }
@@ -162,7 +162,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
     solveds += desc
 
     // Everything is solved correctly
-    if (solveds.size == descendents.size) {
+    if (solveds.size == descendants.size) {
       isSolved = true
       parents.foreach(_.onSolved(this))
     }
@@ -198,7 +198,7 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
 
     val ris = getInstantiations(hctx)
 
-    descendents = ris.map(ri => new AndNode(cm, Some(this), ri))
+    descendants = ris.map(ri => new AndNode(cm, Some(this), ri))
     selected = List()
 
     updateCost()

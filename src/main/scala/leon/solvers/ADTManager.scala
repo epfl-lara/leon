@@ -28,7 +28,7 @@ class ADTManager(ctx: LeonContext) {
       getHierarchy(p)
     case None => (ct, ct match {
       case act: AbstractClassType =>
-        act.knownCCDescendents
+        act.knownCCDescendants
       case cct: CaseClassType =>
         List(cct)
     })

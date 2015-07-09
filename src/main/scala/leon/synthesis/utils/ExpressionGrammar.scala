@@ -117,7 +117,7 @@ object ExpressionGrammars {
         )
 
       case act: AbstractClassType =>
-        act.knownCCDescendents.map { cct =>
+        act.knownCCDescendants.map { cct =>
           Generator[TypeTree, Expr](cct.fields.map(_.getType), { case rs => CaseClass(cct, rs)} )
         }
 
@@ -181,7 +181,7 @@ object ExpressionGrammars {
         )
 
       case act: AbstractClassType =>
-        act.knownCCDescendents.map { cct =>
+        act.knownCCDescendants.map { cct =>
           Generator[TypeTree, Expr](cct.fields.map(_.getType), { case rs => CaseClass(cct, rs)} )
         }
 
@@ -313,7 +313,7 @@ object ExpressionGrammars {
         def ccVariations(gl: L, cc: CaseClass): Seq[(L, Gen)] = {
           val CaseClass(cct, args) = cc
 
-          val neighbors = cct.root.knownCCDescendents diff Seq(cct)
+          val neighbors = cct.root.knownCCDescendants diff Seq(cct)
 
           for (scct <- neighbors if scct.fieldsTypes == cct.fieldsTypes) yield {
             gl -> Generator[L, Expr](Nil, { _ => CaseClass(scct, args) })
@@ -466,7 +466,7 @@ object ExpressionGrammars {
     def computeProductions(l: Label[T]): Seq[Gen] = g.computeProductions(l).flatMap {
       case g: Generator[Label[T], Expr] =>
         if (l.depth == Some(bound) && g.subTrees.nonEmpty) {
-          None  
+          None
         } else if (l.depth.exists(_ > bound)) {
           None
         } else {

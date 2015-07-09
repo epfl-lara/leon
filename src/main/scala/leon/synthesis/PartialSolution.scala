@@ -30,7 +30,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
           solveWith(on.parent, sol)
 
         case Some(an: AndNode) =>
-          val ssols = for (d <- an.descendents) yield {
+          val ssols = for (d <- an.descendants) yield {
             if (d == n) {
               sol
             } else {
@@ -66,7 +66,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
         }
 
         if (n.isExpanded) {
-          val descs = on.descendents.filterNot(_.isDeadEnd)
+          val descs = on.descendants.filterNot(_.isDeadEnd)
           if (descs.isEmpty) {
             completeProblem(on.p)
           } else {
@@ -86,7 +86,7 @@ class PartialSolution(g: Graph, includeUntrusted: Boolean = false) {
         }
 
         if (n.isExpanded) {
-          an.ri.onSuccess(n.descendents.map(getSolutionFor)) match {
+          an.ri.onSuccess(n.descendants.map(getSolutionFor)) match {
             case Some(sol) =>
               sol
 

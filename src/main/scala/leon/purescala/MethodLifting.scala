@@ -139,7 +139,7 @@ object MethodLifting extends TransformationPhase {
         nfd.setPos(fd)
         nfd.addFlag(IsMethod(cd))
 
-        if (cd.knownDescendents.forall( _.methods.forall(_.id != fd.id))) {
+        if (cd.knownDescendants.forall( _.methods.forall(_.id != fd.id))) {
           val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
           // Don't need to compose methods
           nfd.fullBody = postMap {
@@ -153,16 +153,16 @@ object MethodLifting extends TransformationPhase {
 
           /* (Type) parameter substitutions that look at all subclasses */
           val paramsMap = (for {
-            c <- cd.knownDescendents :+ cd
+            c <- cd.knownDescendants :+ cd
             m <- c.methods if m.id == fd.id
             (from,to) <- m.params zip fdParams
           } yield (from.id, to.id)).toMap
           val classParamsMap = (for {
-            c <- cd.knownDescendents :+ cd
+            c <- cd.knownDescendants :+ cd
             (from, to) <- c.tparams zip ctParams
           } yield (from, to.tp)).toMap
           val methodParamsMap = (for {
-            c <- cd.knownDescendents :+ cd
+            c <- cd.knownDescendants :+ cd
             m <- c.methods if m.id == fd.id
             (from,to) <- m.tparams zip fd.tparams
           } yield (from, to.tp)).toMap

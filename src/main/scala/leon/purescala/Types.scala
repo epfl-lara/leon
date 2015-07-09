@@ -93,9 +93,9 @@ object Types {
       }
     }
 
-    def knownDescendents = classDef.knownDescendents.map( _.typed(tps) )
+    def knownDescendants = classDef.knownDescendants.map( _.typed(tps) )
 
-    def knownCCDescendents = classDef.knownCCDescendents.map( _.typed(tps) )
+    def knownCCDescendants = classDef.knownCCDescendants.map( _.typed(tps) )
 
     lazy val fieldsTypes = fields.map(_.getType)
 

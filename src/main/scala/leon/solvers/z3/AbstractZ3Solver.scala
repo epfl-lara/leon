@@ -468,7 +468,7 @@ trait AbstractZ3Solver
         selector(rec(cc))
 
       case IsInstanceOf(act: AbstractClassType, e) =>
-        act.knownCCDescendents match {
+        act.knownCCDescendants match {
           case Seq(cct) =>
             rec(IsInstanceOf(cct, e))
           case more =>

@@ -134,7 +134,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     case act: AbstractClassType =>
       constructors.getOrElse(act, {
-        val cs = act.knownCCDescendents.map {
+        val cs = act.knownCCDescendants.map {
           cct => getConstructorFor(cct, act)
         }.toList
 

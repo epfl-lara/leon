@@ -33,7 +33,7 @@ case object ADTInduction extends Rule("ADT Induction") {
         ct.fields.exists(_.getType == origId.getType)
       }
 
-      val isRecursive = ct.knownCCDescendents.exists(isAlternativeRecursive)
+      val isRecursive = ct.knownCCDescendants.exists(isAlternativeRecursive)
 
       // Map for getting a formula in the context of within the recursive function
       val substMap = residualMap + (origId -> Variable(inductOn))
@@ -44,7 +44,7 @@ case object ADTInduction extends Rule("ADT Induction") {
         val innerPC  = substAll(substMap, p.pc)
         val innerWS  = substAll(substMap, p.ws)
 
-        val subProblemsInfo = for (cct <- ct.knownCCDescendents) yield {
+        val subProblemsInfo = for (cct <- ct.knownCCDescendants) yield {
           var recCalls = Map[List[Identifier], List[Expr]]()
           var postFs   = List[Expr]()
 

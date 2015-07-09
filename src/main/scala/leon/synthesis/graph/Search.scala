@@ -53,8 +53,8 @@ abstract class Search(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: C
     case Nil =>
       Some(n)
     case x :: xs =>
-      if (n.isExpanded && n.descendents.size > x) {
-        traversePathFrom(n.descendents(x), xs)
+      if (n.isExpanded && n.descendants.size > x) {
+        traversePathFrom(n.descendants(x), xs)
       } else {
         None
       }
@@ -92,11 +92,11 @@ class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: Cost
     } else if (!n.isDeadEnd) {
       n match {
         case an: AndNode =>
-          an.descendents.foreach(findIn)
+          an.descendants.foreach(findIn)
 
         case on: OrNode =>
-          if (on.descendents.nonEmpty) {
-            findIn(on.descendents.minBy(_.cost))
+          if (on.descendants.nonEmpty) {
+            findIn(on.descendants.minBy(_.cost))
           }
       }
     }
@@ -233,7 +233,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
       if (cd.isEmpty) {
         println(title(pathToString(cd)+" \u2510 "+displayNode(n)))
 
-        for ((sn, i) <- n.descendents.zipWithIndex) {
+        for ((sn, i) <- n.descendants.zipWithIndex) {
           val sp = cd ::: List(i)
 
           if (sn.isSolved) {
@@ -247,7 +247,7 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
           }
         }
       } else {
-        displayPath(n.descendents(cd.head), cd.tail)
+        displayPath(n.descendants(cd.head), cd.tail)
       }
     }
 
