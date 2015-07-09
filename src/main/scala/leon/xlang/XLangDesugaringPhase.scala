@@ -6,7 +6,7 @@ package xlang
 import purescala.Definitions.Program
 import purescala.FunctionClosure
 
-object XLangAnalysisPhase extends TransformationPhase {
+object XLangDesugaringPhase extends TransformationPhase {
 
   val name = "xlang desugaring"
   val description = "Desugar xlang features into PureScala"

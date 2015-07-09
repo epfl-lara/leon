@@ -16,7 +16,7 @@ object Main {
       xlang.EpsilonElimination,
       xlang.ImperativeCodeElimination,
       xlang.FixReportLabels,
-      xlang.XLangAnalysisPhase,
+      xlang.XLangDesugaringPhase,
       purescala.FunctionClosure,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
@@ -140,7 +140,7 @@ object Main {
     import frontends.scalac.ExtractionPhase
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
-    import xlang.{XLangAnalysisPhase, FixReportLabels}
+    import xlang.{XLangDesugaringPhase, FixReportLabels}
     import verification.AnalysisPhase
     import repair.RepairPhase
     import evaluators.EvaluationPhase
@@ -174,7 +174,7 @@ object Main {
           debugTrees("Program after extraction") andThen
           PreprocessingPhase andThen
           debugTrees("Program after pre-processing") andThen
-          XLangAnalysisPhase andThen
+          XLangDesugaringPhase andThen
           debugTrees("Program after xlang desugaring")
         else
           ExtractionPhase andThen
