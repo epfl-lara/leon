@@ -34,9 +34,12 @@ object TypingPhase extends LeonPhase[Program, Program] {
       // Part (1)
       fd.precondition = {
         val argTypesPreconditions = fd.params.flatMap(arg => arg.getType match {
-          case cct : CaseClassType if cct.parent.isDefined => Seq(IsInstanceOf(cct, arg.id.toVariable))
-          case (at : ArrayType) => Seq(GreaterEquals(ArrayLength(arg.id.toVariable), IntLiteral(0)))
-          case _ => Seq()
+          case cct: ClassType if cct.parent.isDefined =>
+            Seq(IsInstanceOf(cct, arg.id.toVariable))
+          case at: ArrayType =>
+            Seq(GreaterEquals(ArrayLength(arg.id.toVariable), IntLiteral(0)))
+          case _ =>
+            Seq()
         })
         argTypesPreconditions match {
           case Nil => fd.precondition
@@ -48,17 +51,17 @@ object TypingPhase extends LeonPhase[Program, Program] {
       }
 
       fd.postcondition = fd.returnType match {
-        case cct : CaseClassType if cct.parent.isDefined => {
-          val resId = FreshIdentifier("res", cct)
+        case ct: ClassType if ct.parent.isDefined => {
+          val resId = FreshIdentifier("res", ct)
           fd.postcondition match {
             case Some(p) =>
               Some(Lambda(Seq(ValDef(resId)), and(
                 application(p, Seq(Variable(resId))),
-                IsInstanceOf(cct, Variable(resId))
+                IsInstanceOf(ct, Variable(resId))
               ).setPos(p)).setPos(p))
 
             case None =>
-              Some(Lambda(Seq(ValDef(resId)), IsInstanceOf(cct, Variable(resId))))
+              Some(Lambda(Seq(ValDef(resId)), IsInstanceOf(ct, Variable(resId))))
           }
         }
         case _ => fd.postcondition

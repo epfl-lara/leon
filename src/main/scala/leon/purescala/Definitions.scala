@@ -136,7 +136,10 @@ object Definitions {
       definedClasses.filter(!_.hasParent)
     }
 
-    def definedClassesOrdered = classHierarchyRoots flatMap { root => root +: root.knownDescendents }
+    // Guarantees that a parent always appears before its children
+    def classHierarchies = classHierarchyRoots map { root =>
+      root +: root.knownDescendents
+    }
 
     def singleCaseClasses = {
       definedClasses.collect {
@@ -196,7 +199,7 @@ object Definitions {
 
     private var _children: List[ClassDef] = Nil
 
-    def registerChildren(chd: ClassDef) = {
+    def registerChild(chd: ClassDef) = {
       _children = (chd :: _children).sortBy(_.id.name)
     }
 
@@ -239,7 +242,6 @@ object Definitions {
 
     lazy val definedFunctions : Seq[FunDef] = methods
     lazy val definedClasses = Seq(this)
-    lazy val classHierarchyRoots = if (this.hasParent) Seq(this) else Nil
 
     def typed(tps: Seq[TypeTree]): ClassType
     def typed: ClassType
@@ -256,7 +258,10 @@ object Definitions {
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = Nil
 
-    def typed(tps: Seq[TypeTree]) = AbstractClassType(this, tps)
+    def typed(tps: Seq[TypeTree]) = {
+      require(tps.length == tparams.length)
+      AbstractClassType(this, tps)
+    }
     def typed: AbstractClassType = typed(tparams.map(_.tp))
   }
 
@@ -289,7 +294,10 @@ object Definitions {
     
     lazy val singleCaseClasses : Seq[CaseClassDef] = if (hasParent) Nil else Seq(this)
 
-    def typed(tps: Seq[TypeTree]): CaseClassType = CaseClassType(this, tps)
+    def typed(tps: Seq[TypeTree]): CaseClassType = {
+      require(tps.length == tparams.length)
+      CaseClassType(this, tps)
+    }
     def typed: CaseClassType = typed(tparams.map(_.tp))
   }
 

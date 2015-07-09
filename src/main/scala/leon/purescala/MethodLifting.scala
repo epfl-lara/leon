@@ -83,7 +83,8 @@ object MethodLifting extends TransformationPhase {
 
       // Lift methods to the root class
       for {
-        c <- u.definedClassesOrdered
+        ch <- u.classHierarchies
+        c  <- ch
         if c.parent.isDefined
         fd <- c.methods
         if c.ancestors.forall(!_.methods.map{_.id}.contains(fd.id))

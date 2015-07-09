@@ -313,7 +313,7 @@ object ExpressionGrammars {
         def ccVariations(gl: L, cc: CaseClass): Seq[(L, Gen)] = {
           val CaseClass(cct, args) = cc
 
-          val neighbors = cct.parent.map(_.knownCCDescendents).getOrElse(Seq()).filter(_ != cct)
+          val neighbors = cct.root.knownCCDescendents diff Seq(cct)
 
           for (scct <- neighbors if scct.fieldsTypes == cct.fieldsTypes) yield {
             gl -> Generator[L, Expr](Nil, { _ => CaseClass(scct, args) })

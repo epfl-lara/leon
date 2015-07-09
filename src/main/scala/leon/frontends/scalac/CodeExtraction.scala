@@ -500,13 +500,13 @@ trait CodeExtraction extends ASTExtractors {
         val acd = AbstractClassDef(id, tparams, parent).setPos(sym.pos)
 
         classesToClasses += sym -> acd
-        parent.foreach(_.classDef.registerChildren(acd))
+        parent.foreach(_.classDef.registerChild(acd))
 
         acd
       } else {
         val ccd = CaseClassDef(id, tparams, parent, sym.isModuleClass).setPos(sym.pos)
         classesToClasses += sym -> ccd
-        parent.foreach(_.classDef.registerChildren(ccd))
+        parent.foreach(_.classDef.registerChild(ccd))
 
         val fields = args.map { case (symbol, t) =>
           val tpt = t.tpt

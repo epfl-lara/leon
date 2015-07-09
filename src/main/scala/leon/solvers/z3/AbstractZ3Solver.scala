@@ -174,11 +174,7 @@ trait AbstractZ3Solver
   }
 
   def rootType(ct: TypeTree): TypeTree = ct match {
-    case ct: ClassType =>
-      ct.parent match {
-        case Some(p) => rootType(p)
-        case None => ct
-      }
+    case ct: ClassType => ct.root
     case t => t
   }
 

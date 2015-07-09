@@ -124,9 +124,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
   /* Helper functions */
 
   protected def normalizeType(t: TypeTree): TypeTree = t match {
-    case ct: ClassType if ct.parent.isDefined => ct.parent.get
+    case ct: ClassType => ct.root
     case tt: TupleType => tupleTypeWrap(tt.bases.map(normalizeType))
-    case _ =>   t
+    case _ => t
   }
 
   protected def quantifiedTerm(
