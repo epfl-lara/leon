@@ -44,4 +44,24 @@ object RationalProps {
     (p*(q + r)) ~ (p*q + p*r)
   } holds
 
+  def reciprocalIsCorrect(p: Rational): Boolean = {
+    require(p.isRational && p.nonZero)
+    (p * p.reciprocal) ~ Rational(1)
+  } holds
+
+  def additiveInverseIsCorrect(p: Rational): Boolean = {
+    require(p.isRational)
+    (p + (-p)) ~ Rational(0)
+  } holds
+
+  //should not hold because q could be 0
+  def divByZero(p: Rational, q: Rational): Boolean = {
+    require(p.isRational && q.isRational)
+    ((p / q) * q) ~ p
+  } holds
+
+  def divByNonZero(p: Rational, q: Rational): Boolean = {
+    require(p.isRational && q.isRational && q.nonZero)
+    ((p / q) * q) ~ p
+  } holds
 }

@@ -17,14 +17,24 @@ case class Rational(numerator: BigInt, denominator: BigInt) {
     Rational(this.numerator*that.denominator - that.numerator*this.denominator, this.denominator*that.denominator)
   }
 
+  def unary_- : Rational = {
+    require(this.isRational)
+    Rational(-this.numerator, this.denominator)
+  }
+
   def *(that: Rational): Rational = {
     require(this.isRational && that.isRational)
     Rational(this.numerator*that.numerator, this.denominator*that.denominator)
   }
 
   def /(that: Rational): Rational = {
-    require(this.isRational && that.isRational)
+    require(this.isRational && that.isRational && that.nonZero)
     Rational(this.numerator*that.denominator, this.denominator*that.numerator)
+  }
+
+  def reciprocal: Rational = {
+    require(this.isRational && this.nonZero)
+    Rational(this.denominator, this.numerator)
   }
 
 
