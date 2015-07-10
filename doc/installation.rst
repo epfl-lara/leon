@@ -66,6 +66,19 @@ all the appropriate settings:
 You will now need to either port the bash script to Windows, or to run it
 under Cygwin.
 
+**Known issues**
+
+*Missing jars*
+
+If running leon produces errors because it could not find some cafebabe*.jar or vanuatoo*.jar, it is probably because symlinks have not been resolved. If your architecture is x64, do the following:
+
+1. Copy unmanaged/common/cafebabe*.jar to unmanaged/64/
+2. Copy unmanaged/common/vanuatoo*.jar to unmanaged/64/
+
+*Error: Could not find or load main class scala.tools.nsc.MainGenericRunner*
+
+The ``./leon`` script file might have some issues. For example, make sure the paths of the line `SCALACLASSPATH` are semi-colon-separated, and not-colon separated (if that's the case, replace all occurences of ``:C:`` by ``;C:``)
+
 .. _smt-solvers:
 
 SMT Solvers
