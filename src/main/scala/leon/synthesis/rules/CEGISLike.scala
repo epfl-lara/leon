@@ -701,11 +701,13 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         /**
          * We generate tests for discarding potential programs
          */
+        val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
+
         val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
-          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, 20, 3000)
+          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000)
         } else {
           val evaluator = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
-          new GrammarDataGen(evaluator, ExpressionGrammars.ValueGrammar).generateFor(p.as, p.pc, 20, 1000)
+          new GrammarDataGen(evaluator, ExpressionGrammars.ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
         }
 
         val cachedInputIterator = new Iterator[Example] {
