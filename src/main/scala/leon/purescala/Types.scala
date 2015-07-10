@@ -47,6 +47,7 @@ object Types {
   case object UnitType extends TypeTree
   case object CharType extends TypeTree
   case object IntegerType extends TypeTree
+  case object RealType extends TypeTree
 
   case class BitVectorType(size: Int) extends TypeTree
   case object Int32Type extends TypeTree

@@ -274,6 +274,9 @@ object Expressions {
   case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] {
     val getType = IntegerType
   }
+  case class RealLiteral(value: (BigInt, BigInt)) extends Literal[(BigInt, BigInt)] {
+    val getType = RealType
+  }
 
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] {
     val getType = BooleanType
@@ -479,6 +482,29 @@ object Expressions {
   }
   case class BVLShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
+  }
+
+
+  /* Integer arithmetic */
+  case class RealPlus(lhs: Expr, rhs: Expr) extends Expr {
+    require(lhs.getType == RealType && rhs.getType == RealType)
+    val getType = RealType
+  }
+  case class RealMinus(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == RealType && rhs.getType == RealType)
+    val getType = RealType
+  }
+  case class RealUMinus(expr: Expr) extends Expr { 
+    require(expr.getType == RealType)
+    val getType = RealType
+  }
+  case class RealTimes(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == RealType && rhs.getType == RealType)
+    val getType = RealType
+  }
+  case class RealDivision(lhs: Expr, rhs: Expr) extends Expr { 
+    require(lhs.getType == RealType && rhs.getType == RealType)
+    val getType = RealType
   }
 
 

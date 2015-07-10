@@ -1213,6 +1213,9 @@ trait CodeExtraction extends ASTExtractors {
           }
         }
 
+        case ExRealLiteral(n: Literal, d: Literal) =>
+          RealLiteral((BigInt(n.value.stringValue), BigInt(d.value.stringValue)))
+
         case ExInt32Literal(v) =>
           IntLiteral(v)
 
@@ -1503,6 +1506,24 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, IntegerType), "<", List(IsTyped(a2, IntegerType))) =>
               LessThan(a1, a2)
             case (IsTyped(a1, IntegerType), "<=", List(IsTyped(a2, IntegerType))) =>
+              LessEquals(a1, a2)
+
+            //Real methods
+            case (IsTyped(a1, RealType), "+", List(IsTyped(a2, RealType))) =>
+              RealPlus(a1, a2)
+            case (IsTyped(a1, RealType), "-", List(IsTyped(a2, RealType))) =>
+              RealMinus(a1, a2)
+            case (IsTyped(a1, RealType), "*", List(IsTyped(a2, RealType))) =>
+              RealTimes(a1, a2)
+            case (IsTyped(a1, RealType), "/", List(IsTyped(a2, RealType))) =>
+              RealDivision(a1, a2)
+            case (IsTyped(a1, RealType), ">", List(IsTyped(a2, RealType))) =>
+              GreaterThan(a1, a2)
+            case (IsTyped(a1, RealType), ">=", List(IsTyped(a2, RealType))) =>
+              GreaterEquals(a1, a2)
+            case (IsTyped(a1, RealType), "<", List(IsTyped(a2, RealType))) =>
+              LessThan(a1, a2)
+            case (IsTyped(a1, RealType), "<=", List(IsTyped(a2, RealType))) =>
               LessEquals(a1, a2)
 
             // Int methods

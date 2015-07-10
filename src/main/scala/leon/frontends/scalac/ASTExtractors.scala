@@ -40,6 +40,7 @@ trait ASTExtractors {
   protected lazy val scalaSetSym        = classFromName("scala.collection.immutable.Set")
   protected lazy val setSym             = classFromName("leon.lang.Set")
   protected lazy val mapSym             = classFromName("leon.lang.Map")
+  protected lazy val realSym            = classFromName("leon.lang.Real")
   protected lazy val optionClassSym     = classFromName("scala.Option")
   protected lazy val arraySym           = classFromName("scala.Array")
   protected lazy val someClassSym       = classFromName("scala.Some")
@@ -70,6 +71,10 @@ trait ASTExtractors {
 
   def isSetSym(sym: Symbol) : Boolean = {
     getResolvedTypeSym(sym) == setSym
+  }
+
+  def isRealSym(sym: Symbol) : Boolean = {
+    getResolvedTypeSym(sym) == realSym
   }
 
   def isScalaSetSym(sym: Symbol) : Boolean = {
@@ -237,6 +242,15 @@ trait ASTExtractors {
           Some(n)
         case Apply(ExSelected("leon", "lang", "package", "BigInt", "apply"), n :: Nil) =>
           Some(n)
+        case _ =>
+          None
+      }
+    }
+
+    object ExRealLiteral {
+      def unapply(tree: Tree): Option[(Tree, Tree)] = tree  match {
+        case Apply(ExSelected("leon", "lang", "Real", "apply"), n :: d :: Nil) =>
+          Some((n, d))
         case _ =>
           None
       }
