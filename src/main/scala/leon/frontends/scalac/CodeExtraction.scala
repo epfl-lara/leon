@@ -1229,12 +1229,18 @@ trait CodeExtraction extends ASTExtractors {
           // TODO: refine type here?
           extractTree(e)
 
-        case ex @ ExIdentifier(sym, tpt) if dctx.isVariable(sym) =>
+        case ex @ ExIdentifier(sym, tpt) if dctx.isVariable(sym) || defsToDefs.contains(sym) =>
           dctx.vars.get(sym).orElse(dctx.mutableVars.get(sym)) match {
             case Some(builder) =>
               builder().setPos(ex.pos)
             case None =>
-              outOfSubsetError(tr, "Unidentified variable "+sym+" "+sym.id+".")
+              // Maybe it is a function
+              defsToDefs.get(sym) match {
+                case Some(fd) =>
+                  FunctionInvocation(fd.typed, Seq()).setPos(sym.pos)
+                case None =>
+                  outOfSubsetError(tr, "Unidentified variable " + sym + " " + sym.id + ".")
+              }
           }
 
         case hole @ ExHoleExpression(tpt, exprs) =>
