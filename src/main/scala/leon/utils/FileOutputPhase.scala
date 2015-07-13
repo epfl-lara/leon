@@ -32,7 +32,7 @@ object FileOutputPhase extends UnitPhase[Program] {
 
     for (u <- p.units if u.isMainUnit) {
       val outputFile = s"$outputFolder${File.separator}${u.id.toString}.scala"
-      try { u.writeScalaFile(outputFile) }
+      try { u.writeScalaFile(outputFile, Some(p)) }
       catch {
         case _ : java.io.IOException => ctx.reporter.fatalError("Could not write on " + outputFile)
       }

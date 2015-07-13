@@ -102,7 +102,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     for (fd <- functions) {
       ctx.reporter.info(ASCIIHelpers.title(fd.id.name))
-      ctx.reporter.info(ScalaPrinter(fd))
+      ctx.reporter.info(ScalaPrinter(fd, opgm = Some(p)))
       ctx.reporter.info("")
     }
 

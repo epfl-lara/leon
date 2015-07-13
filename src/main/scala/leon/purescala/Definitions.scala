@@ -30,12 +30,12 @@ object Definitions {
       case _ => false
     }
 
-    def writeScalaFile(filename: String) {
+    def writeScalaFile(filename: String, opgm: Option[Program] = None) {
       import java.io.FileWriter
       import java.io.BufferedWriter
       val fstream = new FileWriter(filename)
       val out = new BufferedWriter(fstream)
-      out.write(ScalaPrinter(this))
+      out.write(ScalaPrinter(this, opgm = opgm))
       out.close()
     }
   }

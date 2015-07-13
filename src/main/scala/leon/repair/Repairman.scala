@@ -111,7 +111,7 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
             for ( ((sol, isTrusted), i) <- solutions.zipWithIndex) {
               reporter.info(ASCIIHelpers.subTitle("Solution "+(i+1)+ (if(isTrusted) "" else " (untrusted)" ) + ":"))
               val expr = sol.toSimplifiedExpr(ctx, synth.program)
-              reporter.info(expr.asString(ctx))
+              reporter.info(expr.asString(program)(ctx))
             }
           }
         } finally {

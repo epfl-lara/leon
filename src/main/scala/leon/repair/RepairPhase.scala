@@ -6,13 +6,13 @@ package repair
 import purescala.Definitions._
 import purescala.DefOps._
 
-object RepairPhase extends LeonPhase[Program, Program] {
+object RepairPhase extends UnitPhase[Program]() {
   val name = "Repair"
   val description = "Repairing"
 
   implicit val debugSection = utils.DebugSectionRepair
 
-  def run(ctx: LeonContext)(program: Program): Program = {
+  def apply(ctx: LeonContext, program: Program) = {
     val repairFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
     val verifTimeoutMs: Option[Long] = ctx.findOption(SharedOptions.optTimeout) map { _ * 1000 }
 
@@ -33,6 +33,5 @@ object RepairPhase extends LeonPhase[Program, Program] {
       rep.repair()
     }
 
-    program
   }
 }

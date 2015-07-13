@@ -22,24 +22,24 @@ class ScalaPrinter(opts: PrinterOptions,
       case m: ModuleDef =>
         // Don't print synthetic functions
         super.pp(m.copy(defs = m.defs.filter {
-          case f:FunDef if f.isSynthetic => false
+          case f: FunDef if f.isSynthetic => false
           case _ => true
         }))
-      case Not(Equals(l, r))    => p"$l != $r"
-      case Implies(l,r)         => pp(or(not(l), r))
-      case Choose(pred)         => p"choose($pred)"
-      case s @ FiniteSet(rss, t) => p"Set[$t](${rss.toSeq})"
-      case m @ FiniteMap(els, k, v) => p"Map[$k,$v]($els)"
+      case Not(Equals(l, r))         => p"$l != $r"
+      case Implies(l,r)              => p"$l ==> $r"
+      case Choose(pred)              => p"choose($pred)"
+      case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
+      case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
       
-      case ElementOfSet(e,s)    => p"$s.contains(e)"
-      case SetUnion(l,r)        => p"$l ++ $r"
-      case MapUnion(l,r)        => p"$l ++ $r"
-      case SetDifference(l,r)   => p"$l -- $r"
-      case SetIntersection(l,r) => p"$l & $r"
-      case SetCardinality(s)    => p"$s.size"
-      case InfiniteIntegerLiteral(v)        => p"BigInt($v)"
+      case ElementOfSet(e,s)         => p"$s.contains(e)"
+      case SetUnion(l,r)             => p"$l ++ $r"
+      case MapUnion(l,r)             => p"$l ++ $r"
+      case SetDifference(l,r)        => p"$l -- $r"
+      case SetIntersection(l,r)      => p"$l & $r"
+      case SetCardinality(s)         => p"$s.size"
+      case InfiniteIntegerLiteral(v) => p"BigInt($v)"
 
-      case a@FiniteArray(elems, oDef, size) => {
+      case a@FiniteArray(elems, oDef, size) =>
         import ExprOps._
         val ArrayType(underlying) = a.getType
         val default = oDef.getOrElse(simplestValue(underlying))
@@ -63,9 +63,8 @@ class ScalaPrinter(opts: PrinterOptions,
 
           }
         }
-      }
 
-      case Not(expr)            => p"!$expr"
+      case Not(expr) => p"!$expr"
       case _ =>
         super.pp(tree)
     }

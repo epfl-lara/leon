@@ -41,16 +41,6 @@ class PrettyPrinter(opts: PrinterOptions,
     }
   }
 
-  protected def optB(body: => Any)(implicit ctx: PrinterContext) = {
-    if (requiresBraces(ctx.current, ctx.parent)) {
-      sb.append("{")
-      body
-      sb.append("}")
-    } else {
-      body
-    }
-  }
-
   def printWithPath(df: Definition)(implicit ctx: PrinterContext) {
     (opgm, ctx.parents.collectFirst { case (d: Definition) => d }) match {
       case (Some(pgm), Some(scope)) =>
@@ -91,21 +81,19 @@ class PrettyPrinter(opts: PrinterOptions,
         p"$id"
 
       case Let(b,d,e) =>
-        optB { d match {
-          case _:LetDef | _ : Let | LetPattern(_,_,_) | _:Assert =>
-            p"""|val $b = {
-                |  $d
-                |}
-                |$e"""
-          case _ =>
-            p"""|val $b = $d;
-                |$e"""
-        }}
-      case LetDef(fd,body) =>
-        optB {
-          p"""|$fd
-              |$body"""
+        if (isSimpleExpr(d)) {
+          p"""|val $b = $d
+              |$e"""
+        } else {
+          p"""|val $b = {
+              |  $d
+              |}
+              |$e"""
         }
+
+      case LetDef(fd,body) =>
+        p"""|$fd
+            |$body"""
 
       case Require(pre, body) =>
         p"""|require($pre)
@@ -514,39 +502,22 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
         if (fd.canBeStrictField) {
-          p"""|val ${fd.id} : ${fd.returnType} = {
-              |"""
+          p"val ${fd.id} : "
         } else if (fd.canBeLazyField) {
-          p"""|lazy val ${fd.id} : ${fd.returnType} = {
-              |"""
+          p"lazy val ${fd.id} : "
         } else if (fd.tparams.nonEmpty) {
-          p"""|def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): ${fd.returnType} = {
-              |"""
+          p"def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): "
         } else {
-          p"""|def ${fd.id}(${fd.params}): ${fd.returnType} = {
-              |"""
-        }
-          
-        
-        fd.precondition.foreach { case pre =>
-          p"""|  require($pre)
-              |"""
+          p"def ${fd.id}(${fd.params}): "
         }
 
-        fd.body match {
-          case Some(b) =>
-            p"  $b"
+        p"${fd.returnType} = "
 
-          case None =>
-            p"  ???"
-        }
-
-        p"""|
-            |}"""
-
-        fd.postcondition.foreach { post =>
-          p"""| ensuring {
-              |  $post
+        if (isSimpleExpr(fd.fullBody)) {
+          p"${fd.fullBody}"
+        } else {
+          p"""|{
+              |  ${fd.fullBody}
               |}"""
         }
 
@@ -601,16 +572,9 @@ class PrettyPrinter(opts: PrinterOptions,
     }
   }
 
-  def requiresBraces(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
-    case (pa: PrettyPrintable, _) => pa.printRequiresBraces(within)
-    case (_, None) => false
-    case (_: LetDef, Some(_: FunDef)) => true
-    case (_: Require, Some(_: Ensuring)) => false
-    case (_: Require, _) => true
-    case (_: Assert, Some(_: Definition)) => true
-    case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef )) => false
-    case (_, _) => true
+  def isSimpleExpr(e: Expr): Boolean = e match {
+    case _: LetDef | _: Let | LetPattern(_, _, _) | _: Assert => false
+    case _ => true
   }
 
   def precedence(ex: Expr): Int = ex match {
@@ -658,7 +622,7 @@ class EquivalencePrettyPrinter(opts: PrinterOptions, opgm: Option[Program]) exte
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
     tree match {
       case id: Identifier =>
-        p"""${id.name}"""
+        p"${id.name}"
 
       case _ =>
         super.pp(tree)
