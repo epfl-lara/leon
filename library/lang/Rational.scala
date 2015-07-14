@@ -4,6 +4,8 @@ package leon.lang
 
 import leon.annotation._
 
+import scala.language.implicitConversions
+
 @library
 case class Rational(numerator: BigInt, denominator: BigInt) {
 
