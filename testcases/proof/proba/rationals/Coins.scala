@@ -3,63 +3,46 @@ import leon.lang._
 
 object Coins {
 
-  case class CoinDist(pHead: Real) {
-    def pTail: Real = {
-      require(pHead >= Real(0) && pHead <= Real(1))
-      Real(1) - pHead
-    } ensuring(res => res >= Real(0) && res <= Real(1))
+  case class CoinDist(pHead: Rational) {
+    def pTail: Rational = Rational(1) - pHead
   }
 
   def isDist(dist: CoinDist): Boolean = 
-    dist.pHead >= Real(0) && dist.pHead <= Real(1)
+    dist.pHead.isRational && dist.pHead >= Rational(0) && dist.pHead <= Rational(1)
 
 
-  case class CoinsJoinDist(hh: Real, ht: Real, th: Real, tt: Real)
+  case class CoinsJoinDist(hh: Rational, ht: Rational, th: Rational, tt: Rational)
 
   def isDist(dist: CoinsJoinDist): Boolean =
-    dist.hh >= Real(0) && dist.hh <= Real(1) &&
-    dist.ht >= Real(0) && dist.ht <= Real(1) &&
-    dist.th >= Real(0) && dist.th <= Real(1) &&
-    dist.tt >= Real(0) && dist.tt <= Real(1) &&
-    (dist.hh + dist.ht + dist.th + dist.tt) == Real(1)
+    dist.hh.isRational && dist.hh >= Rational(0) && dist.hh <= Rational(1) &&
+    dist.ht.isRational && dist.ht >= Rational(0) && dist.ht <= Rational(1) &&
+    dist.th.isRational && dist.th >= Rational(0) && dist.th <= Rational(1) &&
+    dist.tt.isRational && dist.tt >= Rational(0) && dist.tt <= Rational(1) &&
+    (dist.hh + dist.ht + dist.th + dist.tt) ~ Rational(1)
 
 
   def isUniform(dist: CoinDist): Boolean = {
     require(isDist(dist))
-    dist.pHead == Real(1, 2)
+    dist.pHead ~ Rational(1, 2)
   }
 
 
-  def join(c1: CoinDist, c2: CoinDist): CoinsJoinDist = {
-    //require(isDist(c1) && isDist(c2))
-    require(
-      c1.pHead >= Real(0) && c1.pHead <= Real(1) &&
-      c2.pHead >= Real(0) && c2.pHead <= Real(1)
-    )
-
+  def join(c1: CoinDist, c2: CoinDist): CoinsJoinDist =
     CoinsJoinDist(
       c1.pHead*c2.pHead,
-      c1.pHead*(Real(1)-c2.pHead),
-      (Real(1)-c1.pHead)*c2.pHead,
-      (Real(1)-c1.pHead)*(Real(1)-c2.pHead)
-    )
-  } ensuring(res =>
-      res.hh >= Real(0) && res.hh <= Real(1) &&
-      res.ht >= Real(0) && res.ht <= Real(1) &&
-      res.th >= Real(0) && res.th <= Real(1) &&
-      res.tt >= Real(0) && res.tt <= Real(1) &&
-      (res.hh + res.ht + res.th + res.tt) == Real(1)
-    )
+      c1.pHead*c2.pTail,
+      c1.pTail*c2.pHead,
+      c1.pTail*c2.pTail)
 
   def firstCoin(dist: CoinsJoinDist): CoinDist = {
     require(isDist(dist))
     CoinDist(dist.hh + dist.ht)
-  } ensuring(res => isDist(res) && res.pTail == (dist.th + dist.tt))
+  } ensuring(res => res.pTail ~ (dist.th + dist.tt))
 
   def secondCoin(dist: CoinsJoinDist): CoinDist = {
     require(isDist(dist))
     CoinDist(dist.hh + dist.th)
-  } ensuring(res => isDist(res) && res.pTail == (dist.ht + dist.tt))
+  } ensuring(res => res.pTail ~ (dist.ht + dist.tt))
 
   def isIndependent(dist: CoinsJoinDist): Boolean = {
     require(isDist(dist))
@@ -69,10 +52,10 @@ object Coins {
   def isEquivalent(dist1: CoinsJoinDist, dist2: CoinsJoinDist): Boolean = {
     require(isDist(dist1) && isDist(dist2))
 
-    (dist1.hh == dist2.hh) &&
-    (dist1.ht == dist2.ht) &&
-    (dist1.th == dist2.th) &&
-    (dist1.tt == dist2.tt)
+    (dist1.hh ~ dist2.hh) &&
+    (dist1.ht ~ dist2.ht) &&
+    (dist1.th ~ dist2.th) &&
+    (dist1.tt ~ dist2.tt)
   }
 
 
@@ -119,12 +102,12 @@ object Coins {
   def sum(coin1: CoinDist, coin2: CoinDist): CoinDist = {
     require(isDist(coin1) && isDist(coin2))
     CoinDist(coin1.pHead*coin2.pHead + coin1.pTail*coin2.pTail)
-  } ensuring(res => res.pTail == (coin1.pHead*coin2.pTail + coin1.pTail*coin2.pHead))
+  } ensuring(res => res.pTail ~ (coin1.pHead*coin2.pTail + coin1.pTail*coin2.pHead))
 
   def sum(dist: CoinsJoinDist): CoinDist = {
     require(isDist(dist))
     CoinDist(dist.hh + dist.tt)
-  } ensuring(res => res.pTail == (dist.ht + dist.th))
+  } ensuring(res => res.pTail ~ (dist.ht + dist.th))
 
 
 
