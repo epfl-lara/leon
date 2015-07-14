@@ -66,4 +66,24 @@ object RationalProps {
     require(p.isRational && q.isRational && q.nonZero)
     ((p / q) * q) ~ p
   } holds
+  
+
+  /*
+   * properties of equivalence
+   */
+
+  def equivalentIsReflexive(p: Rational): Boolean = {
+    require(p.isRational)
+    p ~ p
+  } holds
+
+  def equivalentIsSymmetric(p: Rational, q: Rational): Boolean = {
+    require(p.isRational && q.isRational && p ~ q)
+    q ~ p
+  } holds
+
+  def equivalentIsTransitive(p: Rational, q: Rational, r: Rational): Boolean = {
+    require(p.isRational && q.isRational && r.isRational && p ~ q && q ~ r)
+    p ~ r
+  } holds
 }
