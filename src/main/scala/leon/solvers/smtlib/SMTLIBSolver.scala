@@ -198,6 +198,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       tpe match {
         case BooleanType => Core.BoolSort()
         case IntegerType => Ints.IntSort()
+        case RealType => Reals.RealSort()
         case Int32Type => FixedSizeBitVectors.BitVectorSort(32)
         case CharType => FixedSizeBitVectors.BitVectorSort(32)
 
@@ -310,6 +311,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
       case InfiniteIntegerLiteral(i) => if (i >= 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
       case IntLiteral(i) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
+      case RealLiteral(d) => if (d >= 0) Reals.DecimalLit(d) else Reals.Neg(Reals.DecimalLit(-d))
       case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v) => Core.BoolConst(v)
       case Let(b,d,e) =>
@@ -507,21 +509,25 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case LessThan(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
         case IntegerType => Ints.LessThan(toSMT(a), toSMT(b))
+        case RealType => Reals.LessThan(toSMT(a), toSMT(b))
         case CharType => FixedSizeBitVectors.SLessThan(toSMT(a), toSMT(b))
       }
       case LessEquals(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
         case IntegerType => Ints.LessEquals(toSMT(a), toSMT(b))
+        case RealType => Reals.LessEquals(toSMT(a), toSMT(b))
         case CharType => FixedSizeBitVectors.SLessEquals(toSMT(a), toSMT(b))
       }
       case GreaterThan(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
         case IntegerType => Ints.GreaterThan(toSMT(a), toSMT(b))
+        case RealType => Reals.GreaterThan(toSMT(a), toSMT(b))
         case CharType => FixedSizeBitVectors.SGreaterThan(toSMT(a), toSMT(b))
       }
       case GreaterEquals(a,b) => a.getType match {
         case Int32Type => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
         case IntegerType => Ints.GreaterEquals(toSMT(a), toSMT(b))
+        case RealType => Reals.GreaterEquals(toSMT(a), toSMT(b))
         case CharType => FixedSizeBitVectors.SGreaterEquals(toSMT(a), toSMT(b))
       }
       case BVPlus(a,b) => FixedSizeBitVectors.Add(toSMT(a), toSMT(b))
@@ -535,6 +541,12 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case BVShiftLeft(a,b) => FixedSizeBitVectors.ShiftLeft(toSMT(a), toSMT(b))
       case BVAShiftRight(a,b) => FixedSizeBitVectors.AShiftRight(toSMT(a), toSMT(b))
       case BVLShiftRight(a,b) => FixedSizeBitVectors.LShiftRight(toSMT(a), toSMT(b))
+
+      case RealPlus(a,b) => Reals.Add(toSMT(a), toSMT(b))
+      case RealMinus(a,b) => Reals.Sub(toSMT(a), toSMT(b))
+      case RealTimes(a,b) => Reals.Mul(toSMT(a), toSMT(b))
+      case RealDivision(a,b) => Reals.Div(toSMT(a), toSMT(b))
+
       case And(sub) => Core.And(sub.map(toSMT): _*)
       case Or(sub) => Core.Or(sub.map(toSMT): _*)
       case IfExpr(cond, thenn, elze) => Core.ITE(toSMT(cond), toSMT(thenn), toSMT(elze))
@@ -569,6 +581,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
     case (SNumeral(n), IntegerType) =>
       InfiniteIntegerLiteral(n)
+
+    case (SDecimal(d), RealType) =>
+      RealLiteral(d)
 
     case (Core.True(), BooleanType)  => BooleanLiteral(true)
     case (Core.False(), BooleanType)  => BooleanLiteral(false)
@@ -640,9 +655,15 @@ abstract class SMTLIBSolver(val context: LeonContext,
     case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => {
       app match {
         case "-" =>
-          args match {
-            case List(a) => UMinus(fromSMT(a, IntegerType))
-            case List(a, b) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+          (args, tpe) match {
+            case (List(a), IntegerType) => UMinus(fromSMT(a, IntegerType))
+            case (List(a, b), IntegerType) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+            case (List(a), RealType) => RealUMinus(fromSMT(a, RealType))
+            case (List(a, b), RealType) => RealMinus(fromSMT(a, RealType), fromSMT(b, RealType))
+          }
+        case "/" =>
+          (args, tpe) match {
+            case (List(a, b), RealType) => RealDivision(fromSMT(a, RealType), fromSMT(b, RealType))
           }
 
         case _ =>

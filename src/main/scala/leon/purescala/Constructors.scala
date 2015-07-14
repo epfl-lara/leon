@@ -262,8 +262,11 @@ object Constructors {
     case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
     case (IntLiteral(0), _) => rhs
     case (_, IntLiteral(0)) => lhs
+    case (RealLiteral(d), _) if d == 0 => rhs
+    case (_, RealLiteral(d)) if d == 0 => lhs
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Plus(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVPlus(lhs, rhs)
+    case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealPlus(lhs, rhs)
   }
 
   def minus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
@@ -273,6 +276,7 @@ object Constructors {
     case (IntLiteral(0), _) => BVUMinus(rhs)
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Minus(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
+    case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealMinus(lhs, rhs)
   }
 
   def times(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
@@ -286,6 +290,7 @@ object Constructors {
     case (_, IntLiteral(0)) => IntLiteral(0)
     case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVTimes(lhs, rhs)
+    case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealTimes(lhs, rhs)
   }
 
 }

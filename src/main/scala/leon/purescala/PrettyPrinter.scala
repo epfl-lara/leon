@@ -161,9 +161,11 @@ class PrettyPrinter(opts: PrinterOptions,
       case Implies(l,r)         => optP { p"$l ==> $r" }
       case UMinus(expr)         => p"-$expr"
       case BVUMinus(expr)       => p"-$expr"
+      case RealUMinus(expr)     => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"
+      case RealLiteral(d)       => p"$d"
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
@@ -262,6 +264,10 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVShiftLeft(l,r)          => optP { p"$l << $r" }
       case BVAShiftRight(l,r)        => optP { p"$l >> $r" }
       case BVLShiftRight(l,r)        => optP { p"$l >>> $r" }
+      case RealPlus(l,r)             => optP { p"$l + $r" }
+      case RealMinus(l,r)            => optP { p"$l - $r" }
+      case RealTimes(l,r)            => optP { p"$l * $r" }
+      case RealDivision(l,r)         => optP { p"$l / $r" }
       case fs @ FiniteSet(rs, _)     => p"{${rs.toSeq}}"
       case fm @ FiniteMap(rs, _, _)  => p"{$rs}"
       case Not(ElementOfSet(e,s))    => p"$e \u2209 $s"
@@ -411,6 +417,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case UnitType              => p"Unit"
       case Int32Type             => p"Int"
       case IntegerType           => p"BigInt"
+      case RealType              => p"Real"
       case CharType              => p"Char"
       case BooleanType           => p"Boolean"
       case ArrayType(bt)         => p"Array[$bt]"

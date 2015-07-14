@@ -255,6 +255,14 @@ trait ASTExtractors {
           None
       }
     }
+    object ExRealIntLiteral {
+      def unapply(tree: Tree): Option[Tree] = tree  match {
+        case Apply(ExSelected("leon", "lang", "Real", "apply"), n :: Nil) =>
+          Some(n)
+        case _ =>
+          None
+      }
+    }
 
 
     object ExIntToBigInt {

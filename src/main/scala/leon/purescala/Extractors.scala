@@ -23,6 +23,8 @@ object Extractors {
         Some((Seq(t), (es: Seq[Expr]) => UMinus(es.head)))
       case BVUMinus(t) =>
         Some((Seq(t), (es: Seq[Expr]) => BVUMinus(es.head)))
+      case RealUMinus(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => RealUMinus(es.head)))
       case BVNot(t) =>
         Some((Seq(t), (es: Seq[Expr]) => BVNot(es.head)))
       case SetCardinality(t) =>
@@ -92,6 +94,14 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => BVAShiftRight(es(0), es(1)))
       case BVLShiftRight(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => BVLShiftRight(es(0), es(1)))
+      case RealPlus(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => plus(es(0), es(1)))
+      case RealMinus(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => minus(es(0), es(1)))
+      case RealTimes(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
+      case RealDivision(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => RealDivision(es(0), es(1)))
       case ElementOfSet(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => ElementOfSet(es(0), es(1)))
       case SubsetOf(t1, t2) =>

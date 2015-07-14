@@ -274,7 +274,7 @@ object Expressions {
   case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] {
     val getType = IntegerType
   }
-  case class RealLiteral(value: (BigInt, BigInt)) extends Literal[(BigInt, BigInt)] {
+  case class RealLiteral(value: BigDecimal) extends Literal[BigDecimal] {
     val getType = RealType
   }
 

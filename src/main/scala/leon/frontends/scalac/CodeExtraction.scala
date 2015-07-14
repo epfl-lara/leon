@@ -1213,8 +1213,23 @@ trait CodeExtraction extends ASTExtractors {
           }
         }
 
-        case ExRealLiteral(n: Literal, d: Literal) =>
-          RealLiteral((BigInt(n.value.stringValue), BigInt(d.value.stringValue)))
+        case ExRealLiteral(n, d) =>
+          val rn = extractTree(n)
+          val rd = extractTree(d)
+          (rn, rd) match {
+            case (InfiniteIntegerLiteral(n), InfiniteIntegerLiteral(d)) =>
+              RealLiteral(BigDecimal(n) / BigDecimal(d))
+            case _ =>
+              outOfSubsetError(tr, "Real not build from literals")
+          }
+        case ExRealIntLiteral(n) =>
+          val rn = extractTree(n)
+          rn match {
+            case InfiniteIntegerLiteral(n) =>
+              RealLiteral(BigDecimal(n))
+            case _ =>
+              outOfSubsetError(tr, "Real not build from literals")
+          }
 
         case ExInt32Literal(v) =>
           IntLiteral(v)
@@ -1697,6 +1712,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case TypeRef(_, sym, _) if isBigIntSym(sym) =>
         IntegerType
+
+      case TypeRef(_, sym, _) if isRealSym(sym) =>
+        RealType
 
       case TypeRef(_, sym, btt :: Nil) if isScalaSetSym(sym) =>
         outOfSubsetError(pos, "Scala's Set API is no longer extracted. Make sure you import leon.lang.Set that defines supported Set operations.")
