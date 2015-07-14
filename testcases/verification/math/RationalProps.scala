@@ -2,6 +2,8 @@ import leon.lang._
 import leon.collection._
 import leon._
 
+import scala.language.postfixOps
+
 object RationalProps {
 
   def squarePos(r: Rational): Rational = {
