@@ -138,11 +138,8 @@ object Constructors {
           case _ => true
         })
 
-      case _: TupleType | Int32Type | IntegerType | BooleanType | UnitType | _: AbstractClassType =>
+      case _ =>
         cases
-
-      case t =>
-        scala.sys.error("Constructing match expression on non-supported type: "+t)
     }
 
     resType match {
