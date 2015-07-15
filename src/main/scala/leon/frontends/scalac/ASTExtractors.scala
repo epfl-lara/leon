@@ -206,15 +206,16 @@ trait ASTExtractors {
                   Apply(
                     TypeApply(
                       ExSelected("leon", "lang", "package", "Passes"), 
-                      _ :: _ :: Nil
-                    ), 
-                    ExpressionExtractors.ExTuple(_, Seq(in,out)) :: Nil
+                      List(_, _)
+                    ),
+                    List(ExpressionExtractors.ExTuple(_, Seq(in,out)))
                   ), 
                   ExNamed("passes")
                 ),
-                (Function(
-                  (_ @ ValDef(_, _, _, EmptyTree)) :: Nil, 
-                  ExpressionExtractors.ExPatternMatching(_,tests))) :: Nil
+                List(Function(
+                  List(ValDef(_, _, _, EmptyTree)),
+                  ExpressionExtractors.ExPatternMatching(_,tests)
+                ))
               )
           => Some((in, out, tests))
         case _ => None
