@@ -119,12 +119,12 @@ object Coins {
   def sum(coin1: CoinDist, coin2: CoinDist): CoinDist = {
     require(isDist(coin1) && isDist(coin2))
     CoinDist(coin1.pHead*coin2.pHead + coin1.pTail*coin2.pTail)
-  } ensuring(res => res.pTail == (coin1.pHead*coin2.pTail + coin1.pTail*coin2.pHead))
+  } ensuring(res => isDist(res) && res.pTail == (coin1.pHead*coin2.pTail + coin1.pTail*coin2.pHead))
 
   def sum(dist: CoinsJoinDist): CoinDist = {
     require(isDist(dist))
     CoinDist(dist.hh + dist.tt)
-  } ensuring(res => res.pTail == (dist.ht + dist.th))
+  } ensuring(res => isDist(res) && res.pTail == (dist.ht + dist.th))
 
 
 
@@ -133,73 +133,73 @@ object Coins {
    *          properties of sum operation            *
    ***************************************************/
 
-  //def sumIsUniform1(coin1: CoinDist, coin2: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2) && isUniform(coin1) && isUniform(coin2))
-  //  val dist = sum(coin1, coin2)
-  //  isUniform(dist)
-  //} holds
+  def sumIsUniform1(coin1: CoinDist, coin2: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2) && isUniform(coin1) && isUniform(coin2))
+    val dist = sum(coin1, coin2)
+    isUniform(dist)
+  } holds
 
-  //def sumIsUniform2(coin1: CoinDist, coin2: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2) && isUniform(coin1))
-  //  val dist = sum(coin1, coin2)
-  //  isUniform(dist)
-  //} holds
+  def sumIsUniform2(coin1: CoinDist, coin2: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2) && isUniform(coin1))
+    val dist = sum(coin1, coin2)
+    isUniform(dist)
+  } holds
 
-  //def sumUniform3(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2) && isDist(coin3) && isUniform(coin1))
-  //  val dist = sum(sum(coin1, coin2), coin3)
-  //  isUniform(dist)
-  //} holds
+  def sumUniform3(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2) && isDist(coin3) && isUniform(coin1))
+    val dist = sum(sum(coin1, coin2), coin3)
+    isUniform(dist)
+  } holds
 
-  //def sumUniformWithIndependence(dist: CoinsJoinDist): Boolean = {
-  //  require(isDist(dist) && isIndependent(dist) && (isUniform(firstCoin(dist)) || isUniform(secondCoin(dist))))
-  //  val res = sum(dist)
-  //  isUniform(res)
-  //} holds
+  def sumUniformWithIndependence(dist: CoinsJoinDist): Boolean = {
+    require(isDist(dist) && isIndependent(dist) && (isUniform(firstCoin(dist)) || isUniform(secondCoin(dist))))
+    val res = sum(dist)
+    isUniform(res)
+  } holds
 
-  ////should find counterexample, indepenence is required
-  //def sumUniformWithoutIndependence(dist: CoinsJoinDist): Boolean = {
-  //  require(isDist(dist) && (isUniform(firstCoin(dist)) || isUniform(secondCoin(dist))))
-  //  val res = sum(dist)
-  //  isUniform(res)
-  //} holds
+  //should find counterexample, indepenence is required
+  def sumUniformWithoutIndependence(dist: CoinsJoinDist): Boolean = {
+    require(isDist(dist) && (isUniform(firstCoin(dist)) || isUniform(secondCoin(dist))))
+    val res = sum(dist)
+    isUniform(res)
+  } holds
 
 
   ////sum of two non-uniform dices is potentially uniform (no result)
-  //def sumNonUniform1(coin1: CoinDist, coin2: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2) && !isUniform(coin1) && !isUniform(coin2))
-  //  val dist = sum(coin1, coin2)
-  //  !isUniform(dist)
-  //} holds
+  def sumNonUniform1(coin1: CoinDist, coin2: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2) && !isUniform(coin1) && !isUniform(coin2))
+    val dist = sum(coin1, coin2)
+    !isUniform(dist)
+  } holds
 
-  //def sumNonUniform2(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2) && isDist(coin3) && !isUniform(coin1) && !isUniform(coin2) && !isUniform(coin3))
-  //  val dist = sum(sum(coin1, coin2), coin3)
-  //  !isUniform(dist)
-  //} //holds
+  def sumNonUniform2(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2) && isDist(coin3) && !isUniform(coin1) && !isUniform(coin2) && !isUniform(coin3))
+    val dist = sum(sum(coin1, coin2), coin3)
+    !isUniform(dist)
+  } holds
 
-  //def sumNonUniformWithIndependence(dist: CoinsJoinDist): Boolean = {
-  //  require(isDist(dist) && isIndependent(dist) && !isUniform(firstCoin(dist)) && !isUniform(secondCoin(dist)))
-  //  val res = sum(dist)
-  //  !isUniform(res)
-  //} holds
+  def sumNonUniformWithIndependence(dist: CoinsJoinDist): Boolean = {
+    require(isDist(dist) && isIndependent(dist) && !isUniform(firstCoin(dist)) && !isUniform(secondCoin(dist)))
+    val res = sum(dist)
+    !isUniform(res)
+  } holds
 
-  ////independence is required
-  //def sumNonUniformWithoutIndependence(dist: CoinsJoinDist): Boolean = {
-  //  require(isDist(dist) && !isUniform(firstCoin(dist)) && !isUniform(secondCoin(dist)))
-  //  val res = sum(dist)
-  //  !isUniform(res)
-  //} holds
+  //independence is required
+  def sumNonUniformWithoutIndependence(dist: CoinsJoinDist): Boolean = {
+    require(isDist(dist) && !isUniform(firstCoin(dist)) && !isUniform(secondCoin(dist)))
+    val res = sum(dist)
+    !isUniform(res)
+  } holds
 
 
-  //def sumIsCommutative(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2))
-  //  sum(coin1, coin2) == sum(coin2, coin1)
-  //} holds
+  def sumIsCommutative(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2))
+    sum(coin1, coin2) == sum(coin2, coin1)
+  } holds
 
-  //def sumIsAssociative(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
-  //  require(isDist(coin1) && isDist(coin2) && isDist(coin3))
-  //  sum(sum(coin1, coin2), coin3) == sum(coin1, sum(coin2, coin3))
-  //} //holds
+  def sumIsAssociative(coin1: CoinDist, coin2: CoinDist, coin3: CoinDist): Boolean = {
+    require(isDist(coin1) && isDist(coin2) && isDist(coin3))
+    sum(sum(coin1, coin2), coin3) == sum(coin1, sum(coin2, coin3))
+  } holds
 
 }
