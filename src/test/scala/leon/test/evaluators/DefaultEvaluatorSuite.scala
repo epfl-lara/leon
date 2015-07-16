@@ -31,6 +31,9 @@ class DefaultEvaluatorSuite extends leon.test.LeonTestSuite {
     expectSuccessful(defaultEvaluator.eval(UnitLiteral()), UnitLiteral())
     expectSuccessful(defaultEvaluator.eval(InfiniteIntegerLiteral(0)), InfiniteIntegerLiteral(0))
     expectSuccessful(defaultEvaluator.eval(InfiniteIntegerLiteral(42)), InfiniteIntegerLiteral(42))
+    expectSuccessful(defaultEvaluator.eval(RealLiteral(0)), RealLiteral(0))
+    expectSuccessful(defaultEvaluator.eval(RealLiteral(42)), RealLiteral(42))
+    expectSuccessful(defaultEvaluator.eval(RealLiteral(13.255)), RealLiteral(13.255))
   }
 
   test("eval of simple bit vector arithmetic expressions") {
@@ -182,6 +185,25 @@ class DefaultEvaluatorSuite extends leon.test.LeonTestSuite {
     expectSuccessful(
       defaultEvaluator.eval(Not(BooleanLiteral(true))),
       BooleanLiteral(false))
+  }
+
+  test("eval of simple arithmetic expressions over real") {
+    expectSuccessful(
+      defaultEvaluator.eval(RealPlus(RealLiteral(3), RealLiteral(5))), 
+      RealLiteral(8))
+    expectSuccessful(
+      defaultEvaluator.eval(RealMinus(RealLiteral(7), RealLiteral(2))), 
+      RealLiteral(5))
+    expectSuccessful(
+      defaultEvaluator.eval(RealUMinus(RealLiteral(7))),
+      RealLiteral(-7))
+    expectSuccessful(
+      defaultEvaluator.eval(RealTimes(RealLiteral(2), RealLiteral(3))), 
+      RealLiteral(6))
+
+    expectSuccessful(
+      defaultEvaluator.eval(RealPlus(RealLiteral(2.5), RealLiteral(3.5))), 
+      RealLiteral(6))
   }
 
 

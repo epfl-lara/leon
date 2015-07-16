@@ -160,7 +160,7 @@ class EvaluatorSuite extends leon.test.LeonTestSuite {
 
   private val T = BooleanLiteral(true)
   private val F = BooleanLiteral(false)
-  import purescala.Expressions.{IntLiteral => IL, InfiniteIntegerLiteral => BIL}
+  import purescala.Expressions.{IntLiteral => IL, InfiniteIntegerLiteral => BIL, RealLiteral => RL}
 
   test("Arithmetic") {
     val p = """|object Program {
@@ -248,6 +248,39 @@ class EvaluatorSuite extends leon.test.LeonTestSuite {
       checkError(e, mkCall("div", BIL(42), BIL(0))) 
       checkError(e, mkCall("rem", BIL(42), BIL(0)))
       checkError(e, mkCall("mod", BIL(42), BIL(0)))
+    }
+  }
+
+  test("Real Arithmetic") {
+    val p = """|import leon.lang._
+               |object Program {
+               |  def plus(x : Real, y : Real) : Real = x + y
+               |  def max(x : Real, y : Real) : Real = if(x >= y) x else y
+               |  def square(i : Real) : Real = { val j = i; j * i }
+               |  def abs(i : Real) : Real = if(i < Real(0)) -i else i
+               |  def intSqrt(n : Real) : Real = intSqrt0(abs(n), Real(0))
+               |  def intSqrt0(n : Real, c : Real) : Real = {
+               |    val s = square(c+Real(1))
+               |    if(s > n) c else intSqrt0(n, c+Real(1))
+               |  }
+               |  def div(x : Real, y : Real) : Real = (x / y)
+               |}
+               |""".stripMargin
+
+    implicit val prog = parseString(p)
+    val evaluators = prepareEvaluators
+
+    for(e <- evaluators) {
+      // Some simple math.
+      checkComp(e, mkCall("plus", RL(60), UMinus(RL(18))), RL(42))
+      checkComp(e, mkCall("max", RL(4), RL(42)), RL(42))
+      checkComp(e, mkCall("max", RL(42), UMinus(RL(42))), RL(42))
+      checkComp(e, mkCall("intSqrt", UMinus(RL(1800))), RL(42))
+      checkComp(e, mkCall("div", RL(7), RL(7)), RL(1))
+      checkComp(e, mkCall("div", RL(5), RL(2)), RL(2.5))
+
+      // Things that should crash.
+      checkError(e, mkCall("div", RL(42), RL(0))) 
     }
   }
 

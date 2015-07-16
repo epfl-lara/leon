@@ -244,6 +244,18 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case (le,re) => throw EvalError(typeErrorMsg(le, IntegerType))
       }
 
+    case RealPlus(l,r) =>
+      (e(l), e(r)) match {
+        case (RealLiteral(i1), RealLiteral(i2)) => RealLiteral(i1 + i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
+      }
+
+    case RealMinus(l,r) =>
+      (e(l), e(r)) match {
+        case (RealLiteral(i1), RealLiteral(i2)) => RealLiteral(i1 - i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
+      }
+
     case BVPlus(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
@@ -267,6 +279,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case IntLiteral(i) => IntLiteral(-i)
         case re => throw EvalError(typeErrorMsg(re, Int32Type))
       }
+
+    case RealUMinus(ex) =>
+      e(ex) match {
+        case RealLiteral(i) => RealLiteral(-i)
+        case re => throw EvalError(typeErrorMsg(re, RealType))
+      }
+
 
     case BVNot(ex) =>
       e(ex) match {
@@ -324,6 +343,20 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           if(i2 != 0) IntLiteral(i1 % i2) else throw RuntimeError("Remainder of division by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
+
+    case RealTimes(l,r) =>
+      (e(l), e(r)) match {
+        case (RealLiteral(i1), RealLiteral(i2)) => RealLiteral(i1 * i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
+      }
+
+    case RealDivision(l,r) =>
+      (e(l), e(r)) match {
+        case (RealLiteral(i1), RealLiteral(i2)) =>
+          if(i2 != 0) RealLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+        case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
+      }
+
 
     case BVAnd(l,r) =>
       (e(l), e(r)) match {
