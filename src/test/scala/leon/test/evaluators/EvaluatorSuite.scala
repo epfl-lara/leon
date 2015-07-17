@@ -272,10 +272,10 @@ class EvaluatorSuite extends leon.test.LeonTestSuite {
 
     for(e <- evaluators) {
       // Some simple math.
-      checkComp(e, mkCall("plus", RL(60), UMinus(RL(18))), RL(42))
+      checkComp(e, mkCall("plus", RL(60), RealUMinus(RL(18))), RL(42))
       checkComp(e, mkCall("max", RL(4), RL(42)), RL(42))
-      checkComp(e, mkCall("max", RL(42), UMinus(RL(42))), RL(42))
-      checkComp(e, mkCall("intSqrt", UMinus(RL(1800))), RL(42))
+      checkComp(e, mkCall("max", RL(42), RealUMinus(RL(42))), RL(42))
+      checkComp(e, mkCall("intSqrt", RealUMinus(RL(1800))), RL(42))
       checkComp(e, mkCall("div", RL(7), RL(7)), RL(1))
       checkComp(e, mkCall("div", RL(5), RL(2)), RL(2.5))
 

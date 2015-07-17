@@ -398,6 +398,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 < i2)
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 < i2)
+        case (RealLiteral(r1), RealLiteral(r2)) => BooleanLiteral(r1 < r2)
         case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 < c2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
@@ -406,6 +407,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 > i2)
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 > i2)
+        case (RealLiteral(r1), RealLiteral(r2)) => BooleanLiteral(r1 > r2)
         case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 > c2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
@@ -414,6 +416,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 <= i2)
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 <= i2)
+        case (RealLiteral(r1), RealLiteral(r2)) => BooleanLiteral(r1 <= r2)
         case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 <= c2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }
@@ -422,6 +425,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => BooleanLiteral(i1 >= i2)
         case (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => BooleanLiteral(i1 >= i2)
+        case (RealLiteral(r1), RealLiteral(r2)) => BooleanLiteral(r1 >= r2)
         case (CharLiteral(c1), CharLiteral(c2)) => BooleanLiteral(c1 >= c2)
         case (le,re) => throw EvalError(typeErrorMsg(le, Int32Type))
       }

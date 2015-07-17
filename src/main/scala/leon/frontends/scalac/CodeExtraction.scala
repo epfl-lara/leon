@@ -1330,6 +1330,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExNot(e)              => Not(extractTree(e))
         case ExUMinus(e)           => UMinus(extractTree(e))
+        case ExRealUMinus(e)       => RealUMinus(extractTree(e))
         case ExBVUMinus(e)         => BVUMinus(extractTree(e))
         case ExBVNot(e)            => BVNot(extractTree(e))
 

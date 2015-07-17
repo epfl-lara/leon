@@ -106,6 +106,8 @@ trait ASTExtractors {
   }
 
   def hasBigIntType(t : Tree) = isBigIntSym(t.tpe.typeSymbol)
+
+  def hasRealType(t : Tree) = isRealSym(t.tpe.typeSymbol)
     
   
   object ExtractorHelpers {
@@ -845,6 +847,13 @@ trait ASTExtractors {
     object ExUMinus {
       def unapply(tree: Select): Option[Tree] = tree match {
         case Select(t, n) if n == nme.UNARY_- && hasBigIntType(t) => Some(t)
+        case _ => None
+      }
+    }
+
+    object ExRealUMinus {
+      def unapply(tree: Select): Option[Tree] = tree match {
+        case Select(t, n) if n == nme.UNARY_- && hasRealType(t) => Some(t)
         case _ => None
       }
     }

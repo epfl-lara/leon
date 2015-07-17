@@ -124,6 +124,49 @@ class DefaultEvaluatorSuite extends leon.test.LeonTestSuite {
       InfiniteIntegerLiteral(1))
   }
 
+  test("eval of simple arithmetic comparisons over integers") {
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterEquals(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7))), BooleanLiteral(false)
+    )
+
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterThan(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7))), BooleanLiteral(false)
+    )
+
+    expectSuccessful(
+      defaultEvaluator.eval(LessEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessEquals(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7))), BooleanLiteral(true)
+    )
+
+    expectSuccessful(
+      defaultEvaluator.eval(LessThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessThan(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7))), BooleanLiteral(true)
+    )
+  }
+
+
   test("Eval of division and remainder semantics for bit vectors") {
     expectSuccessful(
       defaultEvaluator.eval(BVDivision(IntLiteral(10), IntLiteral(3))), 
@@ -206,6 +249,47 @@ class DefaultEvaluatorSuite extends leon.test.LeonTestSuite {
       RealLiteral(6))
   }
 
+  test("eval of simple arithmetic comparisons over real") {
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterEquals(RealLiteral(7), RealLiteral(4))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterEquals(RealLiteral(7), RealLiteral(7))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterEquals(RealLiteral(4), RealLiteral(7))), BooleanLiteral(false)
+    )
+
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterThan(RealLiteral(7), RealLiteral(4))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterThan(RealLiteral(7), RealLiteral(7))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(GreaterThan(RealLiteral(4), RealLiteral(7))), BooleanLiteral(false)
+    )
+
+    expectSuccessful(
+      defaultEvaluator.eval(LessEquals(RealLiteral(7), RealLiteral(4))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessEquals(RealLiteral(7), RealLiteral(7))), BooleanLiteral(true)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessEquals(RealLiteral(4), RealLiteral(7))), BooleanLiteral(true)
+    )
+
+    expectSuccessful(
+      defaultEvaluator.eval(LessThan(RealLiteral(7), RealLiteral(4))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessThan(RealLiteral(7), RealLiteral(7))), BooleanLiteral(false)
+    )
+    expectSuccessful(
+      defaultEvaluator.eval(LessThan(RealLiteral(4), RealLiteral(7))), BooleanLiteral(true)
+    )
+  }
 
   test("eval simple variable") {
     val id = FreshIdentifier("id", Int32Type)
