@@ -252,6 +252,7 @@ trait AbstractZ3Solver
     sorts += Int32Type -> z3.mkBVSort(32)
     sorts += CharType -> z3.mkBVSort(32)
     sorts += IntegerType -> z3.mkIntSort
+    sorts += RealType -> z3.mkRealSort
     sorts += BooleanType -> z3.mkBoolSort
 
     testers.clear
@@ -265,7 +266,7 @@ trait AbstractZ3Solver
 
   // assumes prepareSorts has been called....
   protected[leon] def typeToSort(oldtt: TypeTree): Z3Sort = normalizeType(oldtt) match {
-    case Int32Type | BooleanType | IntegerType | CharType =>
+    case Int32Type | BooleanType | IntegerType | RealType | CharType =>
       sorts.toB(oldtt)
 
     case tpe @ (_: ClassType  | _: ArrayType | _: TupleType | UnitType) =>
@@ -382,6 +383,7 @@ trait AbstractZ3Solver
       case Not(e) => z3.mkNot(rec(e))
       case IntLiteral(v) => z3.mkInt(v, typeToSort(Int32Type))
       case InfiniteIntegerLiteral(v) => z3.mkNumeral(v.toString, typeToSort(IntegerType))
+      case RealLiteral(v) => z3.mkNumeral(v.toString, typeToSort(RealType))
       case CharLiteral(c) => z3.mkInt(c, typeToSort(CharType))
       case BooleanLiteral(v) => if (v) z3.mkTrue() else z3.mkFalse()
       case Equals(l, r) => z3.mkEq(rec( l ), rec( r ) )
@@ -405,6 +407,13 @@ trait AbstractZ3Solver
         z3.mkMod(rec(l), rec(r))
       }
       case UMinus(e) => z3.mkUnaryMinus(rec(e))
+
+      case RealPlus(l, r) => z3.mkAdd(rec(l), rec(r))
+      case RealMinus(l, r) => z3.mkSub(rec(l), rec(r))
+      case RealTimes(l, r) => z3.mkMul(rec(l), rec(r))
+      case RealDivision(l, r) => z3.mkDiv(rec(l), rec(r))
+      case RealUMinus(e) => z3.mkUnaryMinus(rec(e))
+
       case BVPlus(l, r) => z3.mkBVAdd(rec(l), rec(r))
       case BVMinus(l, r) => z3.mkBVSub(rec(l), rec(r))
       case BVTimes(l, r) => z3.mkBVMul(rec(l), rec(r))
@@ -420,21 +429,25 @@ trait AbstractZ3Solver
       case BVLShiftRight(l, r) => z3.mkBVLshr(rec(l), rec(r))
       case LessThan(l, r) => l.getType match {
         case IntegerType => z3.mkLT(rec(l), rec(r))
+        case RealType => z3.mkLT(rec(l), rec(r))
         case Int32Type => z3.mkBVSlt(rec(l), rec(r))
         case CharType => z3.mkBVSlt(rec(l), rec(r))
       }
       case LessEquals(l, r) => l.getType match {
         case IntegerType => z3.mkLE(rec(l), rec(r))
+        case RealType => z3.mkLE(rec(l), rec(r))
         case Int32Type => z3.mkBVSle(rec(l), rec(r))
         case CharType => z3.mkBVSle(rec(l), rec(r))
       }
       case GreaterThan(l, r) => l.getType match {
         case IntegerType => z3.mkGT(rec(l), rec(r))
+        case RealType => z3.mkGT(rec(l), rec(r))
         case Int32Type => z3.mkBVSgt(rec(l), rec(r))
         case CharType => z3.mkBVSgt(rec(l), rec(r))
       }
       case GreaterEquals(l, r) => l.getType match {
         case IntegerType => z3.mkGE(rec(l), rec(r))
+        case RealType => z3.mkGE(rec(l), rec(r))
         case Int32Type => z3.mkBVSge(rec(l), rec(r))
         case CharType => z3.mkBVSge(rec(l), rec(r))
       }
@@ -648,6 +661,9 @@ trait AbstractZ3Solver
               throw new IllegalArgumentException
             }
           }
+        }
+        case Z3NumeralRealAST(num: BigInt, den: BigInt) => {
+          RealLiteral(BigDecimal(num) / BigDecimal(den))
         }
         case Z3AppAST(decl, args) =>
           val argsSize = args.size

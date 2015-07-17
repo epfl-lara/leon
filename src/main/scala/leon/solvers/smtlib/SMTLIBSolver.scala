@@ -585,6 +585,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
     case (SDecimal(d), RealType) =>
       RealLiteral(d)
 
+    case (SNumeral(n), RealType) =>
+      RealLiteral(BigDecimal(n))
+
     case (Core.True(), BooleanType)  => BooleanLiteral(true)
     case (Core.False(), BooleanType)  => BooleanLiteral(false)
 
