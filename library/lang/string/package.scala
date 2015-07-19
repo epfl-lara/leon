@@ -16,7 +16,7 @@ package object string {
 
   @ignore
   def listToList[A](s: ScalaList[A]): List[A] = s match {
-    case h :: t =>
+    case scala.::(h, t) =>
       Cons(h, listToList(t))
     case _ =>
       Nil[A]()
