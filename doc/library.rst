@@ -227,13 +227,13 @@ The object ``ListOps`` offers this additional operations:
 |                                                        | formed by the elements of these Lists.            |
 +--------------------------------------------------------+---------------------------------------------------+
 | ``isSorted(ls: List[BigInt]): Boolean``                | Returns whether this list of mathematical integers|
-|                                                        | is sorted in accending order.                     |
+|                                                        | is sorted in ascending order.                     |
 +--------------------------------------------------------+---------------------------------------------------+
 | ``sorted(ls: List[BigInt]): List[BigInt]``             | Sorts this list of mathematical integers          |
-|                                                        | is sorted in accending order.                     |
+|                                                        | is sorted in ascending order.                     |
 +--------------------------------------------------------+---------------------------------------------------+
 | ``insSort(ls: List[BigInt], v: BigInt): List[BigInt]`` | Sorts this list of mathematical integers          |
-|                                                        | is sorted in accending order using insertion sort.|
+|                                                        | is sorted in ascending order using insertion sort.|
 +--------------------------------------------------------+---------------------------------------------------+
 
 Theorems on Lists

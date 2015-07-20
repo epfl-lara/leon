@@ -205,7 +205,7 @@ These options are also used by repair during the synthesis stage.
 
 * ``--cegis:shrink``
 
-  Shrink non-det programs when tests pruning works well.
+  Shrink non-deterministic programs when tests pruning works well.
 
 * ``--cegis:vanuatoo``
  

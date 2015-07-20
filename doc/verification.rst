@@ -28,7 +28,7 @@ For each function, Leon attempts to verify its contract, if there is one. A
 function meets its contract if for any input parameter that passes the
 precondition, the postcondition holds after executing the function.
 Preconditions and postconditions are annotations given by the user --- they are
-the secifications and hence cannot be infered by a tool and must be provided.
+the specifications and hence cannot be inferred by a tool and must be provided.
 
 In addition to user-provided contracts, Leon will also generate a few safety
 verification conditions of its own. It will check that all of the array

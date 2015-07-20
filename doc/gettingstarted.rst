@@ -97,7 +97,7 @@ be used directly from the shell, see
 may wish to consult :ref:`cmdlineoptions` options.
 
 Some benchmarks may contain Scala code that is ignored by verifier, but contributes
-to running the benchmark. To start a Leon program with scala, just compile it together
+to running the benchmark. To start a Leon program with Scala, just compile it together
 with Leon libraries inside the `library/` directory of Leon distribution. The scripts
 `scalacleon` and `scalaleon` attempt to automate this for simple cases and need to be
 invoked from the Leon installation directory.

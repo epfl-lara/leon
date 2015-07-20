@@ -99,7 +99,7 @@ Fault Localization
 ******************
 
 In the next step, Leon will try to localize the problem to the smallest
-possible subexression of the function body. The idea is to run the failing
+possible subexpression of the function body. The idea is to run the failing
 test cases through the function and isolate the paths followed by some erroneous 
 executions. In ``moddiv``, Leon will successfully identify the expression ``(1, 0)``
 as the source of the error. Repair will work even in the presence of more than one

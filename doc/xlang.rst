@@ -10,10 +10,9 @@ These extensions are kept as an optional feature, that needs to be explicitly
 enabled from the command line with the option ``--xlang``. If you do not specify
 the option, Leon will reject any program making use of an XLang feature.
 
-Technically, these extensions are implemented using a translation to :ref:`Pure
-Scala <purescala>`. This means They are not implemented in the back-end
-solving system of Leon, but parsed in the the front-end and eliminated early
-during the Leon pipelining process.
+On the technical side, these extensions do not have specific treatment in the
+back-end of Leon. Instead, they are desugared into :ref:`Pure Scala <purescala>`
+constructs during a preprocessing phase in the Leon front-end.
 
 Imperative Code
 ---------------
@@ -94,9 +93,9 @@ as ``valid``.
 Leon internally handle loops as a function with a postcondition. For the end-user it
 means that Leon is only going to rely on the postcondition of the loop to prove properties
 of code relying on loops. Usually that invariant is too weak to prove anything remotely
-useful and you will need to anotate the loop with a stronger invariant.
+useful and you will need to annotate the loop with a stronger invariant.
 
-You can anotate a loop with an invariant as follows:
+You can annotate a loop with an invariant as follows:
 
 .. code-block:: scala
 

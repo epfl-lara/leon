@@ -5,7 +5,7 @@ Installing Leon
 
 Leon requires quite a few dependencies, and you will need to make sure
 everything is correctly set up before being able to build it. Leon is probably
-much easier to build on Unix-like plattforms. Not to say it is impossible to
+much easier to build on Unix-like platforms. Not to say it is impossible to
 build on Windows. But some scripts used to run and test the system are shell
 script and you will need to manually port them to Windows if you wish to use
 Windows.
@@ -33,7 +33,7 @@ Get the sources of Leon by cloning the official Leon repository:
  $ sbt clean compile
  // takes about 3 minutes
  
-We now use ``sbt script`` to create a ``leon`` bash script that runs leon with
+We now use ``sbt script`` to create a ``leon`` bash script that runs Leon with
 all the appropriate settings:
 
 .. code-block:: bash
@@ -97,8 +97,8 @@ In any case, we recommend that you install both solvers separately and have
 their binaries available in the ``$PATH``.
 
 Since the default solver uses the native Z3 API, you will have to explicitly
-specify another solver if this native layer is not available to you. Check also the
-the ``--solvers`` in :ref:`cmdlineoptions` .
+specify another solver if this native layer is not available to you. Check also 
+the ``--solvers`` option in :ref:`cmdlineoptions` .
 
 Building Documentation
 ----------------------
