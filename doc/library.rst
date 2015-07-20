@@ -143,7 +143,7 @@ Leon Lists support a rich and strongly specified API.
 +---------------------------------------------------+---------------------------------------------------+
 | ``lastOption: Option[T]``                         | Optionally return the last element of this List.  |
 +---------------------------------------------------+---------------------------------------------------+
-| ``firstOption: Option[T]``                        | Optionally return the first element of this List. |
+| ``headOption: Option[T]``                         | Optionally return the first element of this List. |
 +---------------------------------------------------+---------------------------------------------------+
 | ``unique: List[T]``                               | Return this List without duplicates.              |
 +---------------------------------------------------+---------------------------------------------------+

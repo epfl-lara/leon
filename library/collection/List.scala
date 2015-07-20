@@ -35,17 +35,6 @@ sealed abstract class List[T] {
     (that != Nil[T]() || res == this)
   }
 
-  def headOption: Option[T] = this match {
-    case Nil() => None[T]()
-    case Cons(h, _) => Some(h)
-  }
-
-  val tailOption: Option[List[T]] = this match {
-    case Nil() => None[List[T]]()
-    case Cons(_, t) => Some(t)
-  }
-
-
   def head: T = {
     require(this != Nil[T]())
     val Cons(h, _) = this
@@ -268,7 +257,7 @@ sealed abstract class List[T] {
       None[T]()
   }} ensuring { _.isDefined != this.isEmpty }
 
-  def firstOption: Option[T] = { this match {
+  def headOption: Option[T] = { this match {
     case Cons(h, t) =>
       Some(h)
     case Nil() =>
@@ -550,6 +539,7 @@ case class Nil[T]() extends List[T]
 
 // 'Cons' Extractor
 object :: {
+  @library
   def unapply[A](l: List[A]): Option[(A, List[A])] = l match {
     case Nil() => None()
     case Cons(x, xs) => Some((x, xs))
