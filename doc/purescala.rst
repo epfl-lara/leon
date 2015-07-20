@@ -219,6 +219,11 @@ Values
 
  val (x, y) = ...
 
+ val Cons(h, _) = ...
+
+.. note::
+ The latter two cases are actually syntactic sugar for pattern matching with one case.
+
 
 Inner Functions
 ***************
