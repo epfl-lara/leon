@@ -12,7 +12,7 @@ the option, Leon will reject any program making use of an XLang feature.
 
 Technically, these extensions are implemented using a translation to :ref:`Pure
 Scala <purescala>`. This means They are not implemented in the back-end
-solving system of Leon, but parsed in the the front-end and eliminate early
+solving system of Leon, but parsed in the the front-end and eliminated early
 during the Leon pipelining process.
 
 Imperative Code
