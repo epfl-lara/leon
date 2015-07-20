@@ -77,7 +77,7 @@ Program Synthesis
 -----------------
 
 As seen with verification, specifications provide an alternative and more
-descriptive way of caracterizing the behavior of a function. 
+descriptive way of characterizing the behavior of a function.
 Leon defines ways to use specifications instead of an actual implementation
 within your programs:
 
