@@ -33,10 +33,11 @@ abstract class TransformerWithPC extends Transformer {
         val patternExprPos = conditionForPattern(rs, c.pattern, includeBinders = true)
         val patternExprNeg = conditionForPattern(rs, c.pattern, includeBinders = false)
         val map = mapForPattern(rs, c.pattern)
-        val guard = replaceFromIDs(map, c.optGuard.getOrElse(BooleanLiteral(true)))
+        val guardOrTrue = c.optGuard.getOrElse(BooleanLiteral(true))
+        val guardMapped = replaceFromIDs(map, guardOrTrue)
 
-        val subPath = register(patternExprPos, soFar)
-        soFar = register(not(and(patternExprNeg, guard)), soFar)
+        val subPath = register(and(patternExprPos, guardOrTrue), soFar)
+        soFar = register(not(and(patternExprNeg, guardMapped)), soFar)
         
         MatchCase(c.pattern, c.optGuard, rec(c.rhs,subPath)).copiedFrom(c)
 
