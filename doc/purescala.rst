@@ -283,6 +283,41 @@ BigInt
 .. note::
  BigInt are mathematical integers (arbitrary size, no overflows).
 
+Real
+####
+
+``Real`` represents the mathematical real numbers (different from floating points). It is an
+extension to Scala which is meant to write programs closer to their true semantics.
+
+.. code-block:: scala
+
+ val a: Real = Real(2)
+ val b: Real = Real(3, 5) // 3/5
+
+ -a
+ a + b
+ a - b
+ a * b
+ a / b
+ a < b
+ a > b
+ a <= b
+ a >= b
+ a == b
+
+.. note::
+  Real have infinite precision, which means their properties differ from ``Double``.
+  For example, the following holds:
+
+  .. code-block:: scala
+
+    def associativity(x: Real, y: Real, z: Real): Boolean = {
+      (x + y) + z == x + (y + z)
+    } holds
+
+  While it does not hold with floating point arithmetic.
+
+
 Set
 ###
 
