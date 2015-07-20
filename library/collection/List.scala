@@ -40,6 +40,12 @@ sealed abstract class List[T] {
     case Cons(h, _) => Some(h)
   }
 
+  val tailOption: Option[List[T]] = this match {
+    case Nil() => None[List[T]]()
+    case Cons(_, t) => Some(t)
+  }
+
+
   def head: T = {
     require(this != Nil[T]())
     val Cons(h, _) = this
