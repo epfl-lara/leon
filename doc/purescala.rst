@@ -145,7 +145,7 @@ It is not possible, however, to call methods of a superclass with the ``super`` 
 Specifications
 --------------
 
-Leon supports two kinds of specifications to functions and methods:
+Leon supports three kinds of specifications to functions and methods:
 
 Preconditions
 *************
@@ -170,6 +170,20 @@ Postconditions constraint the resulting value, and is expressed using `ensuring`
    a + 1
  } ensuring { res => res > a }
 
+Body Assertsions
+****************
+
+Assertions constrain intermediate expressions within the body of a function.
+
+.. code-block:: scala
+
+ def foo(a: Int): Int = {
+   val b = -a
+   assert(a >= 0 || b >= 0, "This will fail for -2^31")
+   a + 1
+ }
+
+The error description (last argument of ``assert``) is optional.
 
 Expressions
 -----------
@@ -248,8 +262,8 @@ TupleX
 .. code-block:: scala
 
  val x = (1,2,3)
- val x = 1 -> 2 // alternative Scala syntax for Tuple2
- x._1 // 1
+ val y = 1 -> 2 // alternative Scala syntax for Tuple2
+ x._1 // == 1
 
 Boolean
 #######
@@ -260,6 +274,7 @@ Boolean
   a || b
   a == b
   !a
+  a ==> b // Leon syntax for boolean implication
 
 Int
 ###
