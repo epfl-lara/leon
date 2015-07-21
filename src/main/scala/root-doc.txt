@@ -1,0 +1,37 @@
+This is the documentation for the Leon system
+
+==Structure==
+
+Leon is organized similarly to a compiler with a concept of [[leon.Pipeline]]
+and [[leon.LeonPhase]]. The main phases of Leon are implemented in subpackages, with
+an overview of the role of each of them below.
+
+The definition of the Pure Scala AST is in [[leon.purescala]]. Most of the other packages
+are articulated around the definitions of these ASTs. The [[leon.xlang]] provides extensions
+to the Pure Scala AST, but most of the other packages will ignore these extensions and
+assume a Pure Scala only AST.
+
+  - [[leon.codegen]] provides bytecode generator for Leon programs. Enable the conversion of a [[leon.purescala.Definitions.Program]] to JVM bytecode.
+
+  - [[leon.datagen]] provides a generator of expressions (trees), based on vanuatoo.
+
+  - [[leon.evaluators]] implements different evaluators for Leon programs in Pure Scala. 
+
+  - [[leon.frontends]] provides the different front-ends to Leon. Currently it only implements a scalac integration, but it could potentially support other language.
+
+  - [[leon.purescala]] defines the core AST for Pure Scala. Also provides useful tree manipulation methods.
+
+  - [[leon.repair]] implements the Repair module of Leon.
+
+  - [[leon.solvers]] provides an interface and implementations to solvers for Pure Scala expressions. The solvers are typically wrappers around SMT solvers, with some additional algorithms to handle recursive function invocations.
+
+  - [[leon.synthesis]] implements the Synthesis module of Leon.
+
+  - [[leon.termination]] implements the termination checker of Leon.
+
+  - [[leon.utils]]
+
+  - [[leon.verification]] implements the verification module of Leon.
+
+  - [[leon.xlang]] provides extensions to Pure Scala. In particular, it introduces some expressions to represent imperative programs. Also provides the code to map such programs to Pure Scala equivalent ones.
+

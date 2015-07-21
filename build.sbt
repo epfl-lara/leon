@@ -12,6 +12,8 @@ scalacOptions ++= Seq(
   "-feature"
 )
 
+scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value+"/src/main/scala/root-doc.txt")
+
 javacOptions += "-Xlint:unchecked"
 
 if(System.getProperty("sun.arch.data.model") == "64") {
