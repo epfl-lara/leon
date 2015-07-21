@@ -9,7 +9,7 @@ import Definitions._
 import Expressions._
 import Extractors._
 import Constructors._
-import utils.Simplifiers
+import utils._
 import solvers._
 
 /** Provides functions to manipulate [[purescala.Expressions]].
@@ -188,19 +188,6 @@ object ExprOps {
     }
 
   }
-
-  def fixpoint[T](f: T => T, limit: Int = -1)(e: T): T = {
-    var v1 = e
-    var v2 = f(v1)
-    var lim = limit
-    while(v2 != v1 && lim != 0) {
-      v1 = v2
-      lim -= 1
-      v2 = f(v2)
-    }
-    v2
-  }
-
 
   /*
    * =============

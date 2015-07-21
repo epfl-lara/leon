@@ -32,7 +32,7 @@ object GraphOps {
         graph.getOrElse(v, Set())
       }))
     }
-    leon.purescala.ExprOps.fixpoint(step, -1)(graph)
+    fixpoint(step, -1)(graph)
   }
   
   def sources[A](graph : Map[A,Set[A]]) = {
