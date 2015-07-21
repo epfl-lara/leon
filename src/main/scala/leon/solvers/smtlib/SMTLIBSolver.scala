@@ -66,7 +66,12 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
     reporter.debug(s"Outputting VC into $fileName" )
 
-    new java.io.FileWriter(fileName, false)
+    val fw = new java.io.FileWriter(fileName, false)
+
+    fw.write("; Solver : "+name+"\n")
+    fw.write("; Options: "+interpreterOps(context).mkString(" ")+"\n")
+
+    fw
   } else None
 
 
