@@ -23,6 +23,9 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
 
   protected var modelMap = Map[Identifier, Expr]()
   protected var solversInsts: Seq[S] = solvers.map(_.getNewSolver())
+  protected var resultSolver: Option[Solver] = None
+
+  override def getResultSolver = resultSolver
 
   def assertCnstr(expression: Expr): Unit = {
     solversInsts.foreach(_.assertCnstr(expression))
@@ -54,7 +57,10 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
     val res = Await.result(result, 10.days) match {
       case Some((s, r, m)) =>
         modelMap = m
-        context.reporter.debug("Solved with "+s.name)
+        resultSolver = s.getResultSolver
+        resultSolver.foreach { solv =>
+          context.reporter.debug("Solved with "+solv)
+        }
         solversInsts.foreach(_.interrupt())
         r
       case None =>

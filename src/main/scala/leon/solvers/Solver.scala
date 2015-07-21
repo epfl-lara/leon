@@ -21,6 +21,7 @@ trait Solver {
 
   def check: Option[Boolean]
   def getModel: Map[Identifier, Expr]
+  def getResultSolver: Option[Solver] = Some(this)
 
   def free()
 
