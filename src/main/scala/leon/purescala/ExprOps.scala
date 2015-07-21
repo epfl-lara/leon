@@ -12,9 +12,14 @@ import Constructors._
 import utils.Simplifiers
 import solvers._
 
+/** Provides functions to manipulate [[purescala.Expressions]].
+  *
+  * This object provides generic operations on Leon expressions, which
+  * are used throughout the system.
+  */
 object ExprOps {
 
-  /**
+  /* ========
    * Core API
    * ========
    *
@@ -24,31 +29,36 @@ object ExprOps {
 
 
   /**
-   * Do a right tree fold
-   *
-   * f takes the current node, as well as the seq of results form the subtrees.
-   *
-   * Usages of views makes the computation lazy. (which is useful for
-   * contains-like operations)
-   */
+    * Do a right tree fold
+    *
+    * @param f a function that takes the current node and the seq 
+    *        of results form the subtrees.
+    * @param e the Expr on which to apply the fold.
+    * @return The expression after applying ``f`` on all subtrees.
+    */
   def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
     val rec = foldRight(f) _
     val Operator(es, _) = e
+
+    //Usages of views makes the computation lazy. (which is useful for
+    //contains-like operations)
     f(e, es.view.map(rec))
   }
 
-  /**
-   * pre-traversal of the tree, calls f() on every node *before* visiting
-   * children.
-   *
-   * e.g.
-   *
-   *   Add(a, Minus(b, c))
-   *
-   * will yield, in order:
-   *
-   *   f(Add(a, Minus(b, c))), f(a), f(Minus(b, c)), f(b), f(c)
-   */
+  /** pre-traversal of the tree.
+    *
+    * invokes the input function on every node *before* visiting
+    * children.
+    *
+    * e.g.
+    * {{{
+    *   Add(a, Minus(b, c))
+    * }}}
+    * will yield, in order:
+    * {{{
+    *   f(Add(a, Minus(b, c))), f(a), f(Minus(b, c)), f(b), f(c)
+    * }}}
+    */
   def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = preTraversal(f) _
     val Operator(es, _) = e
@@ -56,18 +66,20 @@ object ExprOps {
     es.foreach(rec)
   }
 
-  /**
-   * post-traversal of the tree, calls f() on every node *after* visiting
-   * children.
-   *
-   * e.g.
-   *
-   *   Add(a, Minus(b, c))
-   *
-   * will yield, in order:
-   *
-   *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
-   */
+  /** post-traversal of the tree.
+    *
+    * Invokes the input function on every node *after* visiting
+    * children.
+    *
+    * e.g.
+    * {{{
+    *   Add(a, Minus(b, c))
+    * }}}
+    * will yield, in order:
+    * {{{
+    *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
+    * }}}
+    */
   def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = postTraversal(f) _
     val Operator(es, _) = e
@@ -75,34 +87,37 @@ object ExprOps {
     f(e)
   }
 
-  /**
-   * pre-transformation of the tree, takes a partial function of replacements.
-   * Substitutes *before* recursing down the trees.
-   *
-   * Supports two modes : 
-   * 
-   * - If applyRec is false (default), will only substitute once on each level.
-   * 
-   * e.g.
-   *
-   *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-   *
-   * will yield:
-   *
-   *   Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
-   *   
-   * - If applyRec is true, it will substitute multiple times on each level:
-   * 
-   * e.g.
-   *
-   *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-   *
-   * will yield:
-   *
-   *   Add(a, f)  
-   *   
-   * WARNING: The latter mode can diverge if f is not well formed
-   */
+  /** pre-transformation of the tree.
+    *
+    * takes a partial function of replacements and substitute
+    * *before* recursing down the trees.
+    *
+    * Supports two modes : 
+    * 
+    *   - If applyRec is false (default), will only substitute once on each level.
+    * 
+    *   e.g.
+    *   {{{
+    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+    *   }}}
+    *   will yield:
+    *   {{{
+    *     Add(a, d)   // And not Add(a, f) because it only substitute once for each level.
+    *   }}}
+    *     
+    *   - If applyRec is true, it will substitute multiple times on each level:
+    * 
+    *   e.g.
+    *   {{{
+    *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+    *   }}}
+    *   will yield:
+    *   {{{
+    *   Add(a, f)  
+    *   }}}
+    *   
+    * @note The mode with applyRec true can diverge if f is not well formed
+    */
   def preMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
     val rec = preMap(f, applyRec) _
 
@@ -123,34 +138,35 @@ object ExprOps {
     }
   }
 
-  /**
-   * post-transformation of the tree, takes a partial function of replacements.
-   * Substitutes *after* recursing down the trees.
-   *
-   * Supports two modes : 
-   * - If applyRec is false (default), will only substitute once on each level.
-   *
-   * e.g.
-   *
-   *   Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
-   *
-   * will yield:
-   *
-   *   Add(a, Minus(e, c))
-   *   
-   * If applyRec is true, it will substitute multiple times on each level:
-   * 
-   * e.g.
-   *
-   *   Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
-   *
-   * will yield:
-   *
-   *   Add(a, f)  
-   *   
-   * WARNING: The latter mode can diverge if f is not well formed
-   */
-
+  /** post-transformation of the tree.
+    *
+    * takes a partial function of replacements.
+    * Substitutes *after* recursing down the trees.
+    *
+    * Supports two modes : 
+    *
+    *   - If applyRec is false (default), will only substitute once on each level.
+    *   e.g.
+    *   {{{
+    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+    *   }}}
+    *   will yield:
+    *   {{{
+    *     Add(a, Minus(e, c))
+    *   }}}
+    *   
+    *   - If applyRec is true, it will substitute multiple times on each level:
+    *   e.g.
+    *   {{{
+    *     Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
+    *   }}}
+    *   will yield:
+    *   {{{
+    *     Add(a, f)  
+    *   }}}
+    *
+    * @note The mode with applyRec true can diverge if f is not well formed
+    */
   def postMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
     val rec = postMap(f, applyRec) _
 
@@ -173,9 +189,6 @@ object ExprOps {
 
   }
 
-  /*
-   * Apply 'f' on 'e' as long as until it stays the same (value equality)
-   */
   def fixpoint[T](f: T => T, limit: Int = -1)(e: T): T = {
     var v1 = e
     var v2 = f(v1)
@@ -187,20 +200,17 @@ object ExprOps {
     }
     v2
   }
-  
 
-  /**
+
+  /*
+   * =============
    * Auxiliary API
    * =============
    *
    * Convenient methods using the Core API.
    */
 
-
-  /**
-   * Returns true if matcher(se) == true where se is any sub-expression of e
-   */
-
+  /** check if the predicate holds in some sub-expression */
   def exists(matcher: Expr => Boolean)(e: Expr): Boolean = {
     foldRight[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
   }
@@ -217,6 +227,7 @@ object ExprOps {
     collect[Expr] { e => if (matcher(e)) Set(e) else Set() }(e)
   }
 
+  /** Count how many times the predicate holds in sub-expressions */
   def count(matcher: Expr => Int)(e: Expr): Int = {
     foldRight[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
   }
@@ -265,9 +276,7 @@ object ExprOps {
     }(expr)
   }
 
-  /**
-   * Returns all Function calls found in an expression
-   */
+  /** Returns all Function calls found in an expression */
   def functionCallsOf(expr: Expr): Set[FunctionInvocation] = {
     collect[FunctionInvocation] {
       case f: FunctionInvocation => Set(f)
@@ -413,13 +422,14 @@ object ExprOps {
     preMap(rec)
   }
 
-  /**
-   * Simplifies let expressions:
-   *  - removes lets when expression never occurs
-   *  - simplifies when expressions occurs exactly once
-   *  - expands when expression is just a variable.
-   * Note that the code is simple but far from optimal (many traversals...)
-   */
+  /** Simplifies let expressions
+    *
+    *  - removes lets when expression never occurs
+    *  - simplifies when expressions occurs exactly once
+    *  - expands when expression is just a variable.
+    *
+    * @note the code is simple but far from optimal (many traversals...)
+    */
   def simplifyLets(expr: Expr) : Expr = {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
@@ -514,7 +524,7 @@ object ExprOps {
     postMap(simplerLet)(expr)
   }
 
-  /* Fully expands all let expressions. */
+  /** Fully expands all let expressions. */
   def expandLets(expr: Expr) : Expr = {
     def rec(ex: Expr, s: Map[Identifier,Expr]) : Expr = ex match {
       case v @ Variable(id) if s.isDefinedAt(id) => rec(s(id), s)
@@ -549,10 +559,11 @@ object ExprOps {
     rec(expr, Map.empty)
   }
 
-  /*
-   * Lifts lets to top level, without pushing any used variable out of scope.
-   * Assumes no match expressions (i.e. matchToIfThenElse has been called on e)
-   */
+  /** Lifts lets to top level.
+    *
+    * Does not push any used variable out of scope.
+    * Assumes no match expressions (i.e. matchToIfThenElse has been called on e)
+    */
   def liftLets(e: Expr): Expr = {
 
     type C = Seq[(Identifier, Expr)]
@@ -574,24 +585,25 @@ object ExprOps {
     defs.foldRight(bd){ case ((id, e), body) => Let(id, e, body) }
   }
 
-  /**
-   * Generates substitutions necessary to transform scrutinee to equivalent
-   * specialized cases
-   *
-   *    e match {
-   *     case CaseClass((a, 42), c) => expr
-   *    }
-   *
-   *  will return, for the first pattern:
-   *
-   *    Map(
-   *     e -> CaseClass(t, c),
-   *     t -> (a, b2),
-   *     b2 -> 42,
-   *    )
-   *
-   * WARNING: UNUSED, is not maintained
-   */
+  /** Generates substitutions necessary to transform scrutinee to equivalent
+    * specialized cases
+    *
+    * {{{
+    *    e match {
+    *     case CaseClass((a, 42), c) => expr
+    *    }
+    * }}}
+    * will return, for the first pattern:
+    * {{{
+    *    Map(
+    *     e -> CaseClass(t, c),
+    *     t -> (a, b2),
+    *     b2 -> 42,
+    *    )
+    * }}}
+    *
+    * @note UNUSED, is not maintained
+    */
   def patternSubstitutions(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] ={
     def rec(in: Expr, pattern: Pattern): Seq[(Expr, Expr)] = pattern match {
       case InstanceOfPattern(ob, cct: CaseClassType) =>
@@ -737,9 +749,10 @@ object ExprOps {
     }
   }
 
-  /** Rewrites all pattern-matching expressions into if-then-else expressions,
-   * with additional error conditions. Does not introduce additional variables.
-   */
+  /** Rewrites all pattern-matching expressions into if-then-else expressions
+    *
+    * Introduce additional error conditions. Does not introduce additional variables.
+    */
   def matchToIfThenElse(expr: Expr): Expr = {
 
     def rewritePM(e: Expr): Option[Expr] = e match {
@@ -886,9 +899,7 @@ object ExprOps {
   }
 
 
-  /**
-   * Rewrites all map accesses with additional error conditions.
-   */
+  /** Rewrites all map accesses with additional error conditions. */
   def mapGetWithChecks(expr: Expr): Expr = {
     postMap({
       case mg @ MapGet(m,k) =>
@@ -900,9 +911,7 @@ object ExprOps {
     })(expr)
   }
 
-  /**
-   * Returns simplest value of a given type
-   */
+  /** Returns simplest value of a given type */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type                  => IntLiteral(0)
     case IntegerType                => InfiniteIntegerLiteral(0)
@@ -948,13 +957,14 @@ object ExprOps {
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 
-  /**
-   * Guarentees that all IfExpr will be at the top level and as soon as you
-   * encounter a non-IfExpr, then no more IfExpr can be found in the
-   * sub-expressions
-   *
-   * Assumes no match expressions
-   */
+  /** hoists all IfExpr at top level.
+    *
+    * Guarentees that all IfExpr will be at the top level and as soon as you
+    * encounter a non-IfExpr, then no more IfExpr can be found in the
+    * sub-expressions
+    *
+    * Assumes no match expressions
+    */
   def hoistIte(expr: Expr): Expr = {
     def transform(expr: Expr): Option[Expr] = expr match {
       case IfExpr(c, t, e) => None
@@ -1020,10 +1030,7 @@ object ExprOps {
     genericTransform[Unit]((e,c) => (e, None), newPost, noCombiner)(())(expr)._1
   }
 
-  /**
-   * Simplify If expressions when the branch is predetermined by the path
-   * condition
-   */
+  /** Simplify If expressions when the branch is predetermined by the path condition */
   def simplifyTautologies(sf: SolverFactory[Solver])(expr : Expr) : Expr = {
     val solver = SimpleSolverAPI(sf)
 
@@ -1160,31 +1167,27 @@ object ExprOps {
     true
   }
 
-  /**
-   * Returns the value for an identifier given a model.
-   */
+  /** Returns the value for an identifier given a model. */
   def valuateWithModel(model: Map[Identifier, Expr])(id: Identifier): Expr = {
     model.getOrElse(id, simplestValue(id.getType))
   }
 
-  /**
-   * Substitute (free) variables in an expression with values form a model.
-   * 
-   * Complete with simplest values in case of incomplete model.
-   */
+  /** Substitute (free) variables in an expression with values form a model.
+    * 
+    * Complete with simplest values in case of incomplete model.
+    */
   def valuateWithModelIn(expr: Expr, vars: Set[Identifier], model: Map[Identifier, Expr]): Expr = {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
 
-  /**
-   * Simple, local simplification on arithmetic
-   *
-   * You should not assume anything smarter than some constant folding and
-   * simple cancelation. To avoid infinite cycle we only apply simplification
-   * that reduce the size of the tree. The only guarentee from this function is
-   * to not augment the size of the expression and to be sound.
-   */
+  /** Simple, local simplification on arithmetic
+    *
+    * You should not assume anything smarter than some constant folding and
+    * simple cancelation. To avoid infinite cycle we only apply simplification
+    * that reduce the size of the tree. The only guarentee from this function is
+    * to not augment the size of the expression and to be sound.
+    */
   def simplifyArithmetic(expr: Expr): Expr = {
     def simplify0(expr: Expr): Expr = (expr match {
       case Plus(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2)) => InfiniteIntegerLiteral(i1 + i2)
@@ -1240,13 +1243,12 @@ object ExprOps {
     fix(simplePostTransform(simplify0))(expr)
   }
 
-  /**
-   * Checks whether a predicate is inductive on a certain identfier.
-   *
-   * isInductive(foo(a, b), a) where a: List will check whether
-   *    foo(Nil, b) and
-   *    foo(Cons(h,t), b) => foo(t, b)
-   */
+  /** Checks whether a predicate is inductive on a certain identfier.
+    *
+    * isInductive(foo(a, b), a) where a: List will check whether
+    *    foo(Nil, b) and
+    *    foo(Cons(h,t), b) => foo(t, b)
+    */
   def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd, tps)) =>
 
@@ -1288,11 +1290,10 @@ object ExprOps {
       false
   }
 
-  /**
-   * Checks whether two trees are homomoprhic modulo an identifier map.
-   *
-   * Used for transformation tests.
-   */
+  /** Checks whether two trees are homomoprhic modulo an identifier map.
+    *
+    * Used for transformation tests.
+    */
   def isHomomorphic(t1: Expr, t2: Expr)(implicit map: Map[Identifier, Identifier]): Boolean = {
     object Same {
       def unapply(tt: (Expr, Expr)): Option[(Expr, Expr)] = {
@@ -1428,27 +1429,28 @@ object ExprOps {
     isHomo(t1,t2)
   }
 
-  /**
-   * Checks whether the match cases cover all possible inputs
-   * Used when reconstructing pattern matching from ITE.
-   *
-   * e.g. The following:
-   *
-   * list match {
-   *   case Cons(_, Cons(_, a)) =>
-   *
-   *   case Cons(_, Nil) =>
-   *
-   *   case Nil =>
-   *
-   * }
-   *
-   * is exaustive.
-   *
-   * WARNING: Unused and unmaintained
-   */
+  /** Checks whether the match cases cover all possible inputs.
+    *
+    * Used when reconstructing pattern matching from ITE.
+    *
+    * e.g. The following:
+    * {{{
+    * list match {
+    *   case Cons(_, Cons(_, a)) =>
+    *
+    *   case Cons(_, Nil) =>
+    *
+    *   case Nil =>
+    *
+    * }
+    * }}}
+    * is exaustive.
+    *
+    * @note Unused and unmaintained
+    */
   def isMatchExhaustive(m: MatchExpr): Boolean = {
-    /**
+
+    /*
      * Takes the matrix of the cases per position/types:
      * e.g.
      * e match {   // Where e: (T1, T2, T3)
@@ -1555,23 +1557,25 @@ object ExprOps {
     areExaustive(Seq((m.scrutinee.getType, patterns)))
   }
 
-  /**
-   * Flattens a function that contains a LetDef with a direct call to it
-   * Used for merging synthesis results.
-   *
-   * def foo(a, b) {
-   *   def bar(c, d) {
-   *      if (..) { bar(c, d) } else { .. }
-   *   }
-   *   bar(b, a)
-   * }
-   * 
-   * becomes
-   * 
-   * def foo(a, b) {
-   *   if (..) { foo(b, a) } else { .. }
-   * }
-   **/
+  /** Flattens a function that contains a LetDef with a direct call to it
+    *
+    * Used for merging synthesis results.
+    *
+    * {{{
+    * def foo(a, b) {
+    *   def bar(c, d) {
+    *      if (..) { bar(c, d) } else { .. }
+    *   }
+    *   bar(b, a)
+    * }
+    * }}}
+    * becomes
+    * {{{ 
+    * def foo(a, b) {
+    *   if (..) { foo(b, a) } else { .. }
+    * }
+    * }}}
+    */
   def flattenFunctions(fdOuter: FunDef, ctx: LeonContext, p: Program): FunDef = {
     fdOuter.body match {
       case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
@@ -1651,9 +1655,9 @@ object ExprOps {
     simplifyArithmetic(expr0)
   }
 
-  /**
+  /* =================
    * Body manipulation
-   * ========
+   * =================
    */
   
   def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
@@ -1769,10 +1773,11 @@ object ExprOps {
     )
   }
 
-  /**
-   * Used to lift closures introduced by synthesis. Closures already define all
-   * the necessary information as arguments, no need to close them.
-   */
+  /** lift closures introduced by synthesis.
+    *
+    * Closures already define all
+    * the necessary information as arguments, no need to close them.
+    */
   def liftClosures(e: Expr): (Set[FunDef], Expr) = {
     var fds: Map[FunDef, FunDef] = Map()
     

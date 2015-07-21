@@ -11,7 +11,7 @@ import TypeOps._
 import Common._
 import Types._
 
-/** Provides constructors for [[purescala.Expressions].
+/** Provides constructors for [[purescala.Expressions]].
   *
   * The constructors implement some logic to simplify the tree and
   * potentially use a different expression node if one is more suited.
