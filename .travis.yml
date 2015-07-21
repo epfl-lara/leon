@@ -5,6 +5,8 @@ scala:
 jdk:
     - oraclejdk7
 
+sudo: false
+
 branches:
     only:
         - master
