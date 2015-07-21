@@ -11,7 +11,22 @@ import Extractors._
 import Constructors._
 import ExprOps.replaceFromIDs
 
-/** Expression definitions for Pure Scala. */
+/** Expression definitions for Pure Scala. 
+  *
+  * If you are looking for things * such as function or class definitions, 
+  * please have a look to [[purescala.Definitions]].
+  *
+  * Every expression in Leon inherits from [[Expr]]. The AST definitions are simple
+  * case classes, with no behaviour. In particular, they do not perform smart
+  * rewriting. What you build is what you get. For example,
+  * {{{
+  * And(BooleanLiteral(true), Variable(id)) != Variable(id)
+  * }}}
+  * because the ``And`` constructor will simply build a tree without checking for
+  * optimization opportunities. Unless you need exact control on the structure
+  * of the trees, you should use constructors in [[purescala.Constructors]], that
+  * simplify the trees they produce.
+  */
 object Expressions {
 
   private def checkParamTypes(real: Seq[Typed], formal: Seq[Typed], result: TypeTree): TypeTree = {
