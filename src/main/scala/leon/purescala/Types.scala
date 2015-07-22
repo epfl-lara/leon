@@ -32,7 +32,7 @@ object Types {
   abstract class TypeTree extends Tree with Typed {
     val getType = this
 
-    // Checks wether the subtypes of this type contain Untyped,
+    // Checks whether the subtypes of this type contain Untyped,
     // and if so sets this to Untyped.
     // Assumes the subtypes are correctly formed, so it does not descend 
     // deep into the TypeTree.
@@ -49,8 +49,8 @@ object Types {
   case object IntegerType extends TypeTree
   case object RealType extends TypeTree
 
-  case class BitVectorType(size: Int) extends TypeTree
-  case object Int32Type extends TypeTree
+  abstract class BitVectorType(val size: Int) extends TypeTree
+  case object Int32Type extends BitVectorType(32)
 
   class TypeParameter private (name: String) extends TypeTree {
     val id = FreshIdentifier(name, this)
@@ -74,7 +74,7 @@ object Types {
    * you should use tupleTypeWrap in purescala.Constructors
    */
   case class TupleType (bases: Seq[TypeTree]) extends TypeTree {
-    lazy val dimension: Int = bases.length
+    val dimension: Int = bases.length
     require(dimension >= 2)
   }
 

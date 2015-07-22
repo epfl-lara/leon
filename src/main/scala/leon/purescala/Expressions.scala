@@ -149,7 +149,7 @@ object Expressions {
     }
   }
 
-  /** $encodingof `def ... = ...; ...` (lazy evaluation)
+  /** $encodingof `def ... = ...; ...` (local function definition)
     * 
     * @param id The function definition.
     * @param body The body of the expression after the function
@@ -190,9 +190,9 @@ object Expressions {
   }
 
 
-  /* HOFs (Higher-order Formulas) */
+  /* HOFs (Higher-order Functions) */
   
-  /** $encodingof `callee.apply(args...)`
+  /** $encodingof `callee(args...)`
     *
     * If you are not sure about the requirement you should use
     * [[purescala.Constructors#application purescala's constructor application]]
@@ -290,7 +290,7 @@ object Expressions {
     val subPatterns = Seq()    
   }
 
-  /** Any pattern having an `unapply` function */
+  /** A custom pattern defined through an object's `unapply` function */
   case class UnapplyPattern(binder: Option[Identifier], unapplyFun: TypedFunDef, subPatterns: Seq[Pattern]) extends Pattern {
     // Hacky, but ok
     lazy val optionType = unapplyFun.returnType.asInstanceOf[AbstractClassType]
@@ -377,14 +377,14 @@ object Expressions {
   }
 
 
-  /* Generic values. Represent values of the generic type tp */
+  /** Generic values. Represent values of the generic type `tp` */
   // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
   case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
     val getType = tp
   }
 
 
-  /** $encodingof `case class ...(...)`
+  /** $encodingof `CaseClass(args...)`
     * @param ct The case class name and inherited attributes
     * @param args The arguments of the case class
     */
@@ -397,7 +397,7 @@ object Expressions {
     val getType = BooleanType
   }
 
-  /** $encodingof `value.selector` where value is a case class 
+  /** $encodingof `value.selector` where value is of a case class type
     *
     * If you are not sure about the requirement you should use
     * [[purescala.Constructors#caseClassSelector purescala's constructor caseClassSelector]]
@@ -417,11 +417,7 @@ object Expressions {
   }
 
 
-  /** $encodingof `... == ...`
-    *
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#equality purescala's constructor equality]]
-    */
+  /** $encodingof `... == ...` */
   case class Equals(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (typesCompatible(lhs.getType, rhs.getType)) BooleanType
@@ -467,11 +463,7 @@ object Expressions {
     def apply(a: Expr, b: Expr): Expr = Or(Seq(a, b))
   }
 
-  /** Implication.
-    * 
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#implies purescala's constructor implies]]
-    */
+  /** Locical Implication */
   case class Implies(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if(lhs.getType == BooleanType && rhs.getType == BooleanType) BooleanType
@@ -479,11 +471,7 @@ object Expressions {
     }
   }
 
-  /** $encodingof `!...`
-    *  
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#not purescala's constructor not]]
-    */
+  /** $encodingof `!...` */
   case class Not(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == BooleanType) BooleanType
@@ -494,40 +482,28 @@ object Expressions {
 
   /* Integer arithmetic */
 
-  /** $encodingof `... +  ...`
-    *  
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#plus purescala's constructor plus]]
-    */
+  /** $encodingof `... +  ...` for BigInts */
   case class Plus(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
       else untyped
     }
   }
-  /** $encodingof `... -  ...`
-    *  
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#matchExpr purescala's constructor matchExpr]]
-    */
+  /** $encodingof `... -  ...` */
   case class Minus(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
       else untyped
     }
   }
-  /** $encodingof `- ...`*/
+  /** $encodingof `- ... for BigInts`*/
   case class UMinus(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == IntegerType) IntegerType
       else untyped
     }
   }
-  /** $encodingof `... *  ...`
-    *  
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#times purescala's constructor times]]
-    */
+  /** $encodingof `... * ...` */
   case class Times(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
