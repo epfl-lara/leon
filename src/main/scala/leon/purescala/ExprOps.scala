@@ -14,8 +14,21 @@ import solvers._
 
 /** Provides functions to manipulate [[purescala.Expressions]].
   *
-  * This object provides generic operations on Leon expressions, which
-  * are used throughout the system.
+  * This object provides a few generic operations on Leon expressions, 
+  * as well as some common operations.
+  *
+  * The generic operations enable to apply an operation on a whole tree
+  * expression. You can look at:
+  * - [[ExprOps.foldRight]]
+  * - [[ExprOps.preTraversal]]
+  * - [[ExprOps.postTraversal]]
+  * - [[ExprOps.preMap]]
+  * - [[ExprOps.postMap]]
+  *
+  * These operations usually take a higher order function that gets apply to the
+  * expression tree in some strategy. They provide an expressive way to build complex
+  * operation on Leon expressions.
+  *
   */
 object ExprOps {
 
@@ -31,10 +44,14 @@ object ExprOps {
   /**
     * Do a right tree fold
     *
+    * A right tree fold applies the input function to the subnodes first (from left
+    * to right), and combine the results along with the current node value.
+    *
     * @param f a function that takes the current node and the seq 
     *        of results form the subtrees.
     * @param e the Expr on which to apply the fold.
     * @return The expression after applying ``f`` on all subtrees.
+    * @note the computation is lazy, hence you should rely on side-effects of `f`
     */
   def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
     val rec = foldRight(f) _

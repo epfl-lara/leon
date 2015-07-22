@@ -1,15 +1,55 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.test.purescala
+package leon
+package purescala
 
-import leon.test._
-import leon.purescala.Common._
-import leon.purescala.Expressions._
-import leon.purescala.Types._
-import leon.purescala.ExprOps._
+import Common._
+import Expressions._
+import Types._
+import ExprOps._
 
-class TreeOpsSuite extends LeonTestSuite with WithLikelyEq {
+class ExprOpsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuilder {
   
+
+  private def foldConcatNames(e: Expr, subNames: Seq[String]): String = e match {
+    case Variable(id) => subNames.mkString + id.name
+    case _ => subNames.mkString
+  }
+  private def foldCountVariables(e: Expr, subCounts: Seq[Int]): Int = e match {
+    case Variable(_) => subCounts.sum + 1
+    case _ => subCounts.sum
+  }
+
+  test("foldRight works on single variable expression") {
+    assert(foldRight(foldConcatNames)(x) === x.id.name)
+    assert(foldRight(foldConcatNames)(y) === y.id.name)
+    assert(foldRight(foldCountVariables)(x) === 1)
+    assert(foldRight(foldCountVariables)(y) === 1)
+  }
+
+  test("foldRight works on simple expressions without nested structure") {
+    assert(foldRight(foldConcatNames)(And(p, q)) === (p.id.name + q.id.name))
+    assert(foldRight(foldConcatNames)(And(q, p)) === (q.id.name + p.id.name))
+    assert(foldRight(foldConcatNames)(And(Seq(p, p, p, q, r))) ===
+           (p.id.name + p.id.name + p.id.name + q.id.name + r.id.name))
+    assert(foldRight(foldConcatNames)(Or(Seq(p, p, p, q, r))) ===
+           (p.id.name + p.id.name + p.id.name + q.id.name + r.id.name))
+    assert(foldRight(foldConcatNames)(Plus(x, y)) === (x.id.name + y.id.name))
+
+    assert(foldRight(foldCountVariables)(And(p, q)) === 2)
+    assert(foldRight(foldCountVariables)(And(q, p)) === 2)
+    assert(foldRight(foldCountVariables)(And(p, p)) === 2)
+    assert(foldRight(foldCountVariables)(And(Seq(p, p, p, q, r))) === 5)
+    assert(foldRight(foldCountVariables)(Or(Seq(p, p, p, q, r))) === 5)
+  }
+
+  test("foldRight works on simple structure of nested expressions") {
+    assert(foldRight(foldConcatNames)(And(And(p, q), r)) === (p.id.name + q.id.name + r.id.name))
+    assert(foldRight(foldConcatNames)(And(p, Or(q, r))) === (p.id.name + q.id.name + r.id.name))
+  }
+
+
+
   test("Path-aware simplifications") {
     // TODO actually testing something here would be better, sorry
     // PS
@@ -34,18 +74,7 @@ class TreeOpsSuite extends LeonTestSuite with WithLikelyEq {
   }
 
 
-  def i(x: Int) = InfiniteIntegerLiteral(x)
-
-  val xId = FreshIdentifier("x", IntegerType)
-  val x = Variable(xId)
-  val yId = FreshIdentifier("y", IntegerType)
-  val y = Variable(yId)
   val xs = Set(xId, yId)
-
-  val aId = FreshIdentifier("a", IntegerType)
-  val a = Variable(aId)
-  val bId = FreshIdentifier("b", IntegerType)
-  val b = Variable(bId)
   val as = Set(aId, bId)
 
   def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier]) {

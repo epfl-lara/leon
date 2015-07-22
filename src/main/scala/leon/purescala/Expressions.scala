@@ -493,6 +493,7 @@ object Expressions {
 
 
   /* Integer arithmetic */
+
   /** $encodingof `... +  ...`
     *  
     * If you are not sure about the requirement you should use
