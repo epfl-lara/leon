@@ -1647,6 +1647,16 @@ object ExprOps {
    * =================
    */
   
+  /** Replaces the precondition of an existing [[Expressions.Expr]] with a new one.
+    *  
+    * If no precondition is provided, removes any existing precondition.
+    * Else, wraps the expression with a [[Expressions.Require]] clause referring to the new precondition.
+    *  
+    * @param expr The current expression
+    * @param pred An optional precondition. Setting it to None removes any precondition.
+    * @see [[Expressions.Ensuring]]
+    * @see [[Expressions.Require]]
+    */
   def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
     case (Some(newPre), Require(pre, b))              => Require(newPre, b)
     case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(Require(newPre, b), p)
@@ -1657,6 +1667,16 @@ object ExprOps {
     case (None, b)                                    => b
   }
 
+  /** Replaces the postcondition of an existing [[Expressions.Expr]] with a new one.
+    *  
+    * If no postcondition is provided, removes any existing postcondition.
+    * Else, wraps the expression with a [[Expressions.Ensuring]] clause referring to the new postcondition.
+    *  
+    * @param expr The current expression
+    * @param pred An optional postcondition. Setting it to None removes any postcondition.
+    * @see [[Expressions.Ensuring]]
+    * @see [[Expressions.Require]]
+    */
   def withPostcondition(expr: Expr, oie: Option[Expr]) = (oie, expr) match {
     case (Some(npost), Ensuring(b, post)) => Ensuring(b, npost)
     case (Some(npost), b)                 => Ensuring(b, npost)
@@ -1664,6 +1684,14 @@ object ExprOps {
     case (None, b)                        => b
   }
 
+  /** Adds a body to a specification
+    *  
+    * @param expr The specification expression [[Expressions.Ensuring]] or [[Expressions.Require]]. If none of these, the argument is discarded.
+    * @param body An option of [[Expressions.Expr]] possibly containing an expression body.
+    * @return The post/pre condition with the body. If no body is provided, returns [[Expressions.NoTree]]
+    * @see [[Expressions.Ensuring]]
+    * @see [[Expressions.Require]]
+    */
   def withBody(expr: Expr, body: Option[Expr]) = expr match {
     case Require(pre, _)                 => Require(pre, body.getOrElse(NoTree(expr.getType)))
     case Ensuring(Require(pre, _), post) => Ensuring(Require(pre, body.getOrElse(NoTree(expr.getType))), post)
@@ -1671,6 +1699,15 @@ object ExprOps {
     case _                               => body.getOrElse(NoTree(expr.getType))
   }
 
+  /** Extracts the body without its specification
+    * 
+    * [[Expressions.Expr]] trees contain its specifications as part of certain nodes.
+    * This function helps extracting only the body part of an expression
+    * 
+    * @return An option type with the resulting expression if not [[Expressions.NoTree]]
+    * @see [[Expressions.Ensuring]]
+    * @see [[Expressions.Require]]
+    */
   def withoutSpec(expr: Expr) = expr match {
     case Require(pre, b)                 => Option(b).filterNot(_.isInstanceOf[NoTree])
     case Ensuring(Require(pre, b), post) => Option(b).filterNot(_.isInstanceOf[NoTree])
@@ -1678,17 +1715,20 @@ object ExprOps {
     case b                               => Option(b).filterNot(_.isInstanceOf[NoTree])
   }
 
+  /** Returns the precondition of an expression wrapped in Option */
   def preconditionOf(expr: Expr) = expr match {
     case Require(pre, _)              => Some(pre)
     case Ensuring(Require(pre, _), _) => Some(pre)
     case b                            => None
   }
 
+  /** Returns the postcondition of an expression wrapped in Option */
   def postconditionOf(expr: Expr) = expr match {
     case Ensuring(_, post) => Some(post)
     case _                 => None
   }
 
+  /** Returns a tuple of precondition, the raw body and the postcondition of an expression */
   def breakDownSpecs(e : Expr) = (preconditionOf(e), withoutSpec(e), postconditionOf(e))
     
   def preTraversalWithParent(f: (Expr, Option[Tree]) => Unit, initParent: Option[Tree] = None)(e: Expr): Unit = {
