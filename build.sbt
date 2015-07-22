@@ -110,9 +110,15 @@ sourcesInBase in Compile := false
 
 lazy val PerfTest = config("perf") extend(Test)
 
+lazy val UnitTest = config("unit-test") extend(Test)
+
 scalaSource in PerfTest := baseDirectory.value / "src/test/scala/"
 
+scalaSource in UnitTest := baseDirectory.value / "src/unit-test/scala/"
+
 parallelExecution in PerfTest := false
+
+parallelExecution in UnitTest := true
 
 testOptions in (PerfTest, test) := Seq(Tests.Filter(s => s.endsWith("PerfTest")))
 
@@ -124,6 +130,8 @@ lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "6b74
 
 lazy val root = (project in file(".")).
   configs(PerfTest).
+  configs(UnitTest).
   dependsOn(bonsai, scalaSmtLib).
-  settings(inConfig(PerfTest)(Defaults.testSettings): _*)
+  settings(inConfig(PerfTest)(Defaults.testSettings): _*).
+  settings(inConfig(UnitTest)(Defaults.testSettings): _*)
 
