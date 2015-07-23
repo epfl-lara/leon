@@ -10,6 +10,14 @@ object Tree {
   case object Left extends Dir
   case object Right extends Dir
 
+  def nil[A]: List[A] = Nil[A]
+  def cons[A](x: A, lst: List[A]): List[A] = Cons[A](x,lst)
+  def some[A](x: A): Option[A] = Some[A](x)
+  def none[A]: Option[A] = None[A]
+
+  case class Path(p: List[Dir])
+  def pnil = Path(nil)
+
   def inside(t: Tree, subtree: Tree): Boolean = {
     if (t==subtree) true
     else {
@@ -20,25 +28,21 @@ object Tree {
     }
   }
   
-  def lookup(t: Tree, path : List[Dir]): Option[Tree] = {
-    (t,path) match {
-      case (_,Nil()) => Some[Tree](t)
-      case (Empty,_) => None[Tree]()
-      case (Node(left,_,_),  Cons(Left,rest)) => lookup(left,rest)
-      case (Node(_,_,right), Cons(Right,rest)) => lookup(right,rest)
+  def lookup(t: Tree, path : Path): Option[Tree] = {
+    (t,path.p) match {
+      case (_,Nil()) => some(t)
+      case (Empty,_) => none
+      case (Node(left,_,_),  Cons(Left,rest)) => lookup(left,Path(rest))
+      case (Node(_,_,right), Cons(Right,rest)) => lookup(right,Path(rest))
     }
   }
 
-  def nil[A]: List[A] = Nil[A]
-  def cons[A](x: A, lst: List[A]): List[A] = Cons[A](x,lst)
-  def some[A](x: A): Option[A] = Some[A](x)
-
   // Function find1 has a counterexample.
-  def find1(t: Tree, subtree: Tree): Option[List[Dir]] = ({
-    if (t==subtree) some(nil[Dir])
+  def find1(t: Tree, subtree: Tree): Option[Path] = ({
+    if (t==subtree) some(pnil)
     else {
       t match {
-        case Empty => None[List[Dir]]
+        case Empty => none
         case Node(left,_,right) => {
           find1(left,subtree) match {
             case None() => find1(right,subtree)
@@ -47,40 +51,63 @@ object Tree {
         }
       }
     }
-  }: Option[List[Dir]]).ensuring((res:Option[List[Dir]]) => (res match {
+  }: Option[Path]).ensuring(res => (res match {
     case None() => !inside(t, subtree)
     case Some(path) => lookup(t, path)==Some(subtree)
   }))
 
   // Function find is correct
-  def find(t: Tree, subtree: Tree): Option[List[Dir]] = ({
-    if (t==subtree) some(nil[Dir])
+  def find(t: Tree, subtree: Tree): Option[Path] = ({
+    if (t==subtree) some(pnil)
     else {
       t match {
-        case Empty => None[List[Dir]]
+        case Empty => none
         case Node(left,_,right) => {
           find(left,subtree) match {
             case None() => { find(right,subtree) match {
               case None() => None()
-              case Some(path) => Some(cons(Right,path))
+              case Some(Path(p)) => Some(Path(cons(Right,p)))
             }}
-            case Some(path) => Some(cons(Left, path))
+            case Some(Path(p)) => Some(Path(cons(Left, p)))
           }
         }
       }
     }
-  }: Option[List[Dir]]).ensuring((res:Option[List[Dir]]) => (res match {
+  }: Option[Path]).ensuring(res => (res match {
     case None() => !inside(t, subtree)
     case Some(path) => lookup(t, path)==Some(subtree)
   }))
 
-  def replace(t: Tree, path: List[Dir], newT: Tree): Tree = {
-    require(lookup(t, path) != None[Tree]())
-    (t,path) match {
+  def replace(t: Tree, path: Path, newT: Tree): Tree = {
+    require(lookup(t, path) != none[Tree])
+    (t,path.p) match {
       case (_,Nil()) => newT
-      case (Node(left,v,right), Cons(Left, rest)) => Node(replace(left,rest, newT), v, right)
-      case (Node(left,v,right), Cons(Right,rest)) => Node(left, v, replace(right, rest, newT))
+      case (Node(left,v,right), Cons(Left, rest)) => Node(replace(left,Path(rest), newT), v, right)
+      case (Node(left,v,right), Cons(Right,rest)) => Node(left, v, replace(right, Path(rest), newT))
     }
-  } ensuring(res => lookup(res, path)==Some(newT))
+  } ensuring(res => lookup(res, path)==some(newT))
 
+  case class Flat(trees: List[(Path, Tree)])
+  def fnil = Flat(nil)
+
+  def subtrees(t: Tree): Flat = {
+    t match {
+      case Empty => fnil
+      case Node(left,v,right) => 
+        Flat(addLeft(subtrees(left)).trees ++ ((pnil,t) :: addRight(subtrees(right)).trees))
+    }
+  }
+
+  def addLeft(f: Flat): Flat = {
+    f.trees match {
+      case Nil() => fnil
+      case (p,t) :: trees1 => Flat((Path(Left::p.p),t) :: addLeft(Flat(trees1)).trees)
+    }
+  }
+  def addRight(f: Flat): Flat = {
+    f.trees match {
+      case Nil() => fnil
+      case (p,t) :: trees1 => Flat((Path(Right::p.p),t) :: addRight(Flat(trees1)).trees)
+    }
+  }
 }
