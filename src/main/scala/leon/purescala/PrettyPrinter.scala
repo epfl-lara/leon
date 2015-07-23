@@ -3,6 +3,7 @@
 package leon
 package purescala
 
+import leon.utils._
 import leon.purescala.Common._
 import leon.purescala.DefOps._
 import leon.purescala.Definitions._
@@ -538,6 +539,24 @@ class PrettyPrinter(opts: PrinterOptions,
           p" : ${t.getType} ⟩"
 
         case _ =>
+      }
+    }
+    if (opts.printPositions) {
+      tree.getPos match {
+        case op: OffsetPosition =>
+          p"@($op)"
+        case rp: RangePosition =>
+          if (rp.lineFrom == rp.lineTo) {
+            if (rp.colFrom == rp.colTo) {
+              p"@(${rp.lineFrom}:${rp.colFrom})"
+            } else {
+              p"@(${rp.lineFrom}:${rp.colFrom}-${rp.colTo})"
+            }
+          } else {
+            p"@(${rp.focusBegin}-${rp.focusEnd})"
+          }
+        case _ =>
+          p"@(?)"
       }
     }
   }
