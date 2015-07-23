@@ -17,17 +17,18 @@ import solvers._
   * This object provides a few generic operations on Leon expressions, 
   * as well as some common operations.
   *
-  * The generic operations enable to apply an operation on a whole tree
+  * The generic operations lets you apply operations on a whole tree
   * expression. You can look at:
-  * - [[ExprOps.foldRight]]
-  * - [[ExprOps.preTraversal]]
-  * - [[ExprOps.postTraversal]]
-  * - [[ExprOps.preMap]]
-  * - [[ExprOps.postMap]]
+  *   - [[ExprOps.foldRight foldRight]]
+  *   - [[ExprOps.preTraversal preTraversal]]
+  *   - [[ExprOps.postTraversal postTraversal]]
+  *   - [[ExprOps.preMap preMap]]
+  *   - [[ExprOps.postMap postMap]]
+  *   - [[ExprOps.genericTransform genericTransform]]
   *
   * These operations usually take a higher order function that gets apply to the
   * expression tree in some strategy. They provide an expressive way to build complex
-  * operation on Leon expressions.
+  * operations on Leon expressions.
   *
   */
 object ExprOps {
@@ -211,6 +212,47 @@ object ExprOps {
     }
 
   }
+
+
+  /** Applies functions and combines results in a generic way
+    *
+    * Start with an initial value, and apply functions to nodes before
+    * and after the recursion in the children. Combine the results of
+    * all children and apply a final function on the resulting node.
+    *
+    * @param pre a function applied on a node before doing a recursion in the children
+    * @param post a function applied to the node built from the recursive application to
+                  all children
+    * @param combiner a function to combine the resulting values from all children with 
+                      the current node
+    * @param init the initial value
+    * @param expr the expression on which to apply the transform
+    *
+    * @see [[simpleTransform]]
+    * @see [[simplePreTransform]]
+    * @see [[simplePostTransform]]
+    */
+  def genericTransform[C](pre:  (Expr, C) => (Expr, C),
+                          post: (Expr, C) => (Expr, C),
+                          combiner: (Expr, Seq[C]) => C)(init: C)(expr: Expr) = {
+
+    def rec(eIn: Expr, cIn: C): (Expr, C) = {
+
+      val (expr, ctx) = pre(eIn, cIn)
+      val Operator(es, builder) = expr
+      val (newExpr, newC) = {
+        val (nes, cs) = es.map{ rec(_, ctx)}.unzip
+        val newE = builder(nes).copiedFrom(expr)
+
+        (newE, combiner(newE, cs))
+      }
+
+      post(newExpr, newC)
+    }
+
+    rec(expr, init)
+  }
+
 
   /*
    * =============
@@ -995,27 +1037,6 @@ object ExprOps {
     }
 
     postMap(transform, applyRec = true)(expr)
-  }
-
-  def genericTransform[C](pre:  (Expr, C) => (Expr, C),
-                          post: (Expr, C) => (Expr, C),
-                          combiner: (Expr, Seq[C]) => C)(init: C)(expr: Expr) = {
-
-    def rec(eIn: Expr, cIn: C): (Expr, C) = {
-
-      val (expr, ctx) = pre(eIn, cIn)
-      val Operator(es, builder) = expr
-      val (newExpr, newC) = {
-        val (nes, cs) = es.map{ rec(_, ctx)}.unzip
-        val newE = builder(nes).copiedFrom(expr)
-
-        (newE, combiner(newE, cs))
-      }
-
-      post(newExpr, newC)
-    }
-
-    rec(expr, init)
   }
 
   private def noCombiner(e: Expr, subCs: Seq[Unit]) = ()
