@@ -9,8 +9,8 @@ import leon.annotation._
 
 sealed abstract class List[T] {
   def size: BigInt = (this match {
-    case Nil() => 0
-    case Cons(h, t) => 3 + t.size //FIXME
+    case Nil() => BigInt(0)
+    case Cons(h, t) => BigInt(3) + t.size //FIXME
   }) ensuring { (this, _) passes {
     case Cons(_, Nil()) => 1
     case Nil() => 0
@@ -143,7 +143,7 @@ sealed abstract class List[T] {
         Cons(h, t - e)
       }
     case Nil() =>
-      Nil()
+      Nil[T]()
   }
 
   def --(that: List[T]): List[T] = this match {
@@ -154,7 +154,7 @@ sealed abstract class List[T] {
         Cons(h, t -- that)
       }
     case Nil() =>
-      Nil()
+      Nil[T]()
   }
 
   def &(that: List[T]): List[T] = this match {
@@ -165,7 +165,7 @@ sealed abstract class List[T] {
         t & that
       }
     case Nil() =>
-      Nil()
+      Nil[T]()
   }
 
   def pad(s: BigInt, e: T): List[T] = { (this, s) match {

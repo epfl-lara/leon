@@ -55,7 +55,7 @@ object Addresses {
   def max(x:BigInt,y:BigInt) = if (x <= y) x else y
 
   def collectA(x:BigInt,l:List) : (BigInt,BigInt,List) = (l match {
-    case Nil() => (0,0,Nil())
+    case Nil() => (BigInt(0),BigInt(0),Nil())
     case Cons(a,b,c,l1) if (a==x) => {
       val (b2,c2,l2) = collectA(x,l1)
       (max(b,b2),max(c,c2),l2)

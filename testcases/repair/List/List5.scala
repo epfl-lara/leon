@@ -9,8 +9,8 @@ import leon.annotation._
 
 sealed abstract class List[T] {
   def size: BigInt = (this match {
-    case Nil() => 0
-    case Cons(h, t) => 1 + t.size
+    case Nil() => BigInt(0)
+    case Cons(h, t) => BigInt(1) + t.size
   }) ensuring (_ >= 0)
 
   def content: Set[T] = this match {
@@ -94,7 +94,7 @@ sealed abstract class List[T] {
   }
 
   def replace(from: T, to: T): List[T] = { this match {
-    case Nil() => Nil()
+    case Nil() => Nil[T]()
     case Cons(h, t) =>
       val r = t.replace(from, to)
       //if (h == from) { FIXME

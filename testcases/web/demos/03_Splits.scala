@@ -8,7 +8,7 @@ object List {
   case object Nil extends List
 
   def size(l: List) : BigInt = (l match {
-      case Nil => 0
+      case Nil => BigInt(0)
       case Cons(_, t) => 1 + size(t)
   }) ensuring(res => res >= 0)
 

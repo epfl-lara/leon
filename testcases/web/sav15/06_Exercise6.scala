@@ -26,7 +26,7 @@ object BinaryTree {
 
     def size: BigInt = {
       this match {
-        case Empty => 0
+        case Empty => BigInt(0)
         case Node(l, _, r) => l.size + r.size + 1
       }
     } ensuring { _ >= 0 }
@@ -68,7 +68,7 @@ object BinaryTree {
 
     def toList: List[BigInt] = {
       require(isBT)
-      Nil() // TODO
+      Nil[BigInt]() // TODO
     } ensuring {
       res => res.content == this.content && isSorted(res)
     }

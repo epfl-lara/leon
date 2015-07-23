@@ -9,7 +9,7 @@ object Numerals {
 
   def value(n: Num): BigInt = {
     n match {
-      case Z => 0
+      case Z => BigInt(0)
       case S(p) => 1 + value(p)
     }
   } ensuring (_ >= 0)

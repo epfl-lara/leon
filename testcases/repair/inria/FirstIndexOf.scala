@@ -6,15 +6,15 @@ import leon.lang.synthesis._
 object FirstIndexOf {
   def firstIndexOf(l: List[Int], v: Int): BigInt = {
     l match {
-      case Cons(h, t) if v == h => 0
+      case Cons(h, t) if v == h => BigInt(0)
       case Cons(h, t) =>
         if (firstIndexOf(t, v) >= 0) {
           firstIndexOf(t, v)+1
         } else {
-          -1
+          BigInt(-1)
         }
       case Nil() =>
-        -1
+        BigInt(-1)
     }
   } ensuring {
     (res: BigInt) => (if (l.content contains v) {

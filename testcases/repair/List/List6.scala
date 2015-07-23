@@ -9,8 +9,8 @@ import leon.annotation._
 
 sealed abstract class List[T] {
   def size: BigInt = (this match {
-    case Nil() => 0
-    case Cons(h, t) => 1 + t.size
+    case Nil() => BigInt(0)
+    case Cons(h, t) => BigInt(1) + t.size
   }) ensuring (_ >= 0)
 
   def content: Set[T] = this match {
@@ -242,7 +242,7 @@ sealed abstract class List[T] {
         t.count(e)
       }
     case Nil() =>
-      0
+      BigInt(0)
   }} ensuring {((this, e), _) passes {
      case (Cons(a, Cons(b, Cons(a1, Cons(b2, Nil())))), a2) if a == a1 && a == a2 && b != a2 && b2 != a2 => 2
      case (Cons(a, Cons(b, Nil())), c) if a != c && b != c => 0

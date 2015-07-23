@@ -47,7 +47,7 @@ object HeapSort {
   }
 
   def heapSize(t: Heap): BigInt = { t match {
-    case Leaf() => 0
+    case Leaf() => BigInt(0)
     case Node(v, l, r) => heapSize(l) + 1 + heapSize(r)
   }} ensuring(_ >= 0)
 

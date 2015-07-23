@@ -9,8 +9,8 @@ import leon.annotation._
 
 sealed abstract class List[T] {
   def size: BigInt = (this match {
-    case Nil() => 0
-    case Cons(h, t) => 1 + t.size
+    case Nil() => BigInt(0)
+    case Cons(h, t) => BigInt(1) + t.size
   }) ensuring (_ >= 0)
 
   def content: Set[T] = this match {
@@ -331,8 +331,8 @@ object ListOps {
   }
 
   def sum(l: List[BigInt]): BigInt = { l match {
-    case Nil() => 0
-    case Cons(x, xs) => 1 + sum(xs) // FIXME 
+    case Nil() => BigInt(0)
+    case Cons(x, xs) => BigInt(1) + sum(xs) // FIXME 
   }} ensuring { (l, _) passes {
     case Cons(a, Nil()) => a
     case Cons(a, Cons(b, Nil())) => a + b

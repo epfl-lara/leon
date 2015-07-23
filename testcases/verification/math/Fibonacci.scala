@@ -18,7 +18,7 @@ object Fibonacci {
   def f(n : BigInt) : BigInt = {
     require(n >= 0)
     if(n <= 0)
-      1
+      BigInt(1)
     else
       f(n-1) + g(n-1)
   }
@@ -26,7 +26,7 @@ object Fibonacci {
   def g(n : BigInt) : BigInt = {
     require(n >= 0)
     if(n <= 0)
-      1
+      BigInt(1)
     else
       f(n-1) 
   } ensuring(_ == fib(n + 1))

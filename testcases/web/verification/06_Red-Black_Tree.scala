@@ -20,7 +20,7 @@ object RedBlackTree {
   }
 
   def size(t: Tree) : BigInt = t match {
-    case Empty => 0
+    case Empty => BigInt(0)
     case Node(_, l, v, r) => size(l) + 1 + size(r)
   }
 

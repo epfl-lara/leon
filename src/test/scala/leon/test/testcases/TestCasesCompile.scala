@@ -13,7 +13,7 @@ class TestCasesCompile extends LeonTestSuite {
 
   val pipeline = frontends.scalac.ExtractionPhase andThen utils.PreprocessingPhase
 
-  def testFrontend(f: File, strip: Int) = {
+  def testFrontend(f: File, strip: Int): Boolean = {
     val name = f.getAbsolutePath.split("/").toList.drop(strip).mkString("/")
 
     val ctx = createLeonContext()
@@ -21,9 +21,11 @@ class TestCasesCompile extends LeonTestSuite {
     try {
       pipeline.run(ctx)(List(f.getAbsolutePath))
       info(name)
+      true
     } catch {
       case _: LeonFatalError =>
-        fail("Failed to compile "+name)
+        info(Console.YELLOW+" Failed to compile "+name)
+        false
     }
   }
 
@@ -46,8 +48,16 @@ class TestCasesCompile extends LeonTestSuite {
 
     info("Compiling "+all.size+" testcases...")
 
+    var nFailed = new java.util.concurrent.atomic.AtomicInteger(0)
     all.par.foreach { f =>
-      testFrontend(f, slashes)
+      if (!testFrontend(f, slashes)) {
+        nFailed.incrementAndGet()
+      }
+    }
+
+    val nFailedInt = nFailed.get()
+    if (nFailedInt > 0) {
+      fail(s"$nFailedInt test(s) failed to compile")
     }
   }
 }

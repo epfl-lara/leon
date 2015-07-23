@@ -14,12 +14,12 @@ object ListOperations {
     case class IP(fst: BigInt, snd: BigInt) extends IntPair
 
     def size(l: List) : BigInt = (l match {
-        case Nil => 0
+        case Nil => BigInt(0)
         case Cons(_, t) => 1 + size(t)
     }) ensuring(res => res >= 0)
 
     def iplSize(l: IntPairList) : BigInt = (l match {
-      case IPNil => 0
+      case IPNil => BigInt(0)
       case IPCons(_, xs) => 1 + iplSize(xs)
     }) ensuring(_ >= 0)
 

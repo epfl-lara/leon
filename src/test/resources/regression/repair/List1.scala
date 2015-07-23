@@ -9,8 +9,8 @@ import leon.collection._
 
 sealed abstract class List0[T] {
   def size: BigInt = (this match {
-    case Nil0() => 0
-    case Cons0(h, t) => 1 + t.size
+    case Nil0() => BigInt(0)
+    case Cons0(h, t) => BigInt(1) + t.size
   }) ensuring (_ >= 0)
 
   def content: Set[T] = this match {

@@ -33,7 +33,7 @@ object ListOps1 {
           case Some(b) => Cons(b, collect(f, t))
           case None()  => collect(f, t) 
         }
-          case Nil() => Nil()
+          case Nil() => Nil[B]()
     }
   } ensuring { 
     res => res.size <= l.size
@@ -43,7 +43,7 @@ object ListOps1 {
     l match {
       case Cons(h, t) =>
         f(h).orElse(collectFirst(f, t))
-      case Nil() => None()
+      case Nil() => None[B]()
     }
   } ensuring { 
     res => !l.isEmpty || res.isEmpty
@@ -64,7 +64,7 @@ object ListOps1 {
     l match {
       case Cons(h, t) if  f(h) => dropWhile(f, t)
       case Cons(h, t) if !f(h) => l
-      case Nil() => Nil()
+      case Nil() => Nil[A]()
     }
   } ensuring { 
     res => 
@@ -103,7 +103,7 @@ object ListOps1 {
   def mapWitness[A,B](f: A => B, l: List[A], w: A): List[B] = {
     l match {
       case Cons(h, t) => f(h) :: mapWitness(f, t, w)
-      case Nil() => Nil()
+      case Nil() => Nil[B]()
     }
   } ensuring {
     res => if (l.content contains w) res.content contains f(w) else true

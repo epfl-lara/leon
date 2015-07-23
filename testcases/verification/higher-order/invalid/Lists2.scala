@@ -35,7 +35,7 @@ object Lists2 {
         val (tres, sres) = bubble(t1)
         (Cons(h1, tres), sres)
       case Nil() =>
-        (Nil(), false)
+        (Nil[A](), false)
     }
   } ensuring { _ match {
     /*res =>

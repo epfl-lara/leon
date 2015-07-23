@@ -7,7 +7,7 @@ object SearchLinkedList {
   case object Nil extends List
 
   def size(list : List) : BigInt = (list match {
-    case Nil => 0
+    case Nil => BigInt(0)
     case Cons(_, xs) => 1 + size(xs)
   }) ensuring(_ >= 0)
 
@@ -17,8 +17,8 @@ object SearchLinkedList {
   })
 
   def firstZero(list : List) : BigInt = (list match {
-    case Nil => 0
-    case Cons(x, xs) => if (x == 0) 0 else firstZero(xs) + 1
+    case Nil => BigInt(0)
+    case Cons(x, xs) => if (x == 0) BigInt(0) else firstZero(xs) + 1
   }) ensuring (res =>
     res >= 0 && (if (contains(list, 0)) {
       firstZeroAtPos(list, res)

@@ -6,7 +6,7 @@ object ListWithSize {
       def size: BigInt = {
         this match {
           case Cons(h, t) => 1 + t.size
-          case Nil() => 0
+          case Nil() => BigInt(0)
         }
       } // TODO: Add appropriate post-condition
 
@@ -24,7 +24,7 @@ object ListWithSize {
       def zip[U](that: List[U]): List[(T, U)] = {
         // TODO: Add appropriate pre-condition
         this match {
-          case Nil() => Nil()
+          case Nil() => Nil[(T,U)]()
           case Cons(h1, t1) => that match {
             case Cons(h2, t2) => Cons((h1, h2), t1.zip(t2))
           }
@@ -70,7 +70,7 @@ object ListWithSize {
     }.holds
 
     def drunk[T](l: List[T]): List[T] = (l match {
-      case Nil() => Nil()
+      case Nil() => Nil[T]()
       case Cons(x,l1) => Cons(x,Cons(x,drunk(l1)))
     }) ensuring {
       res => true // TODO: find postcondition

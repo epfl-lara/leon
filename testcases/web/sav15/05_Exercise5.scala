@@ -5,7 +5,7 @@ object SearchList {
   sealed abstract class List[T] {
     def size: BigInt = {
       this match {
-        case Nil() => 0
+        case Nil() => BigInt(0)
         case Cons(h, t) => 1 + t.size
       }
     } ensuring { _ >= 0 }
@@ -19,8 +19,8 @@ object SearchList {
 
     def firstPosOf(v: T): BigInt = {
       this match {
-        case Nil() => -1
-        case Cons(h, t) if h == v => 0
+        case Nil() => BigInt(-1)
+        case Cons(h, t) if h == v => BigInt(0)
         case Cons(h, t) =>
           val p = t.firstPosOf(v)
           if (p >= 0) {
@@ -37,8 +37,8 @@ object SearchList {
     def take(n: BigInt): List[T] = {
       require(n >= 0)
       this match {
-        case Nil() => Nil()
-        case Cons(h, t) if n == 0 => Nil()
+        case Nil() => Nil[T]()
+        case Cons(h, t) if n == 0 => Nil[T]()
         case Cons(h, t) => Cons(h, t.take(n - 1))
       }
     } ensuring {

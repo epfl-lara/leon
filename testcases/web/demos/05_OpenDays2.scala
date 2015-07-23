@@ -40,7 +40,7 @@ object EpflOpenDays {
   sealed abstract class Liste {
     def somme: BigInt = {
       this match {
-        case Vide           => 0
+        case Vide           => BigInt(0)
         case Elem(p, reste) => p.valeur + reste.somme
       }
     } ensuring { _ >= 0 }

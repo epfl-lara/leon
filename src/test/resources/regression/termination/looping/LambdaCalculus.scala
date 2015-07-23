@@ -32,9 +32,9 @@ object LambdaCalculus {
     case App(t1, t2) => looping_eval(t1) match {
       case Some(Abs(x, body)) => looping_eval(t2) match {
         case Some(v2) => looping_eval(subst(x, v2, body))
-        case None() => None()
+        case None() => None[Term]()
       }
-      case _ => None() // stuck
+      case _ => None[Term]() // stuck
     }
     case _ => Some(t) // Abs or Var, already a value
   }) ensuring { res => res match {

@@ -11,7 +11,7 @@ object InsertionSort {
   case object None extends OptInt
 
   def size(l : List) : BigInt = (l match {
-    case Nil => 0
+    case Nil => BigInt(0)
     case Cons(_, xs) => 1 + size(xs)
   }) ensuring(_ >= 0)
 

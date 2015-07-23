@@ -103,10 +103,10 @@ sealed abstract class List[T] {
   } ensuring (res => (res.size == size) && (res.content == content))
 
   def take(i: BigInt): List[T] = { (this, i) match {
-    case (Nil(), _) => Nil()
+    case (Nil(), _) => Nil[T]()
     case (Cons(h, t), i) =>
       if (i <= BigInt(0)) {
-        Nil()
+        Nil[T]()
       } else {
         Cons(h, t.take(i-1))
       }
@@ -117,7 +117,7 @@ sealed abstract class List[T] {
   )}
 
   def drop(i: BigInt): List[T] = { (this, i) match {
-    case (Nil(), _) => Nil()
+    case (Nil(), _) => Nil[T]()
     case (Cons(h, t), i) =>
       if (i <= BigInt(0)) {
         Cons(h, t)
@@ -136,7 +136,7 @@ sealed abstract class List[T] {
   }
 
   def replace(from: T, to: T): List[T] = { this match {
-    case Nil() => Nil()
+    case Nil() => Nil[T]()
     case Cons(h, t) =>
       val r = t.replace(from, to)
       if (h == from) {
@@ -177,7 +177,7 @@ sealed abstract class List[T] {
     case (Cons(h1, t1), Cons(h2, t2)) =>
       Cons((h1, h2), t1.zip(t2))
     case (_) =>
-      Nil()
+      Nil[(T, B)]()
   }} ensuring { _.size == (
     if (this.size <= that.size) this.size else that.size
   )}
@@ -190,7 +190,7 @@ sealed abstract class List[T] {
         Cons(h, t - e)
       }
     case Nil() =>
-      Nil()
+      Nil[T]()
   }} ensuring { _.content == this.content -- Set(e) }
 
   def --(that: List[T]): List[T] = { this match {
@@ -201,7 +201,7 @@ sealed abstract class List[T] {
         Cons(h, t -- that)
       }
     case Nil() =>
-      Nil()
+      Nil[T]()
   }} ensuring { _.content == this.content -- that.content }
 
   def &(that: List[T]): List[T] = { this match {
@@ -212,7 +212,7 @@ sealed abstract class List[T] {
         t & that
       }
     case Nil() =>
-      Nil()
+      Nil[T]()
   }} ensuring { _.content == (this.content & that.content) }
 
   def pad(s: BigInt, e: T): List[T] = (this, s) match {
@@ -225,13 +225,13 @@ sealed abstract class List[T] {
   }
 
   def find(e: T): Option[BigInt] = { this match {
-    case Nil() => None()
+    case Nil() => None[BigInt]()
     case Cons(h, t) =>
       if (h == e) {
-        Some(0)
+        Some[BigInt](0)
       } else {
         t.find(e) match {
-          case None()  => None()
+          case None()  => None[BigInt]()
           case Some(i) => Some(i+1)
         }
       }
@@ -350,7 +350,7 @@ sealed abstract class List[T] {
 
   // Higher-order API
   def map[R](f: T => R): List[R] = { this match {
-    case Nil() => Nil()
+    case Nil() => Nil[R]()
     case Cons(h, t) => f(h) :: t.map(f)
   }} ensuring { _.size == this.size}
 
@@ -365,12 +365,12 @@ sealed abstract class List[T] {
   }
 
   def scanLeft[R](z: R)(f: (R,T) => R): List[R] = this match {
-    case Nil() => z :: Nil()
+    case Nil() => z :: Nil[R]()
     case Cons(h,t) => z :: t.scanLeft(f(z,h))(f)
   }
 
   def scanRight[R](f: (T,R) => R)(z: R): List[R] = { this match {
-    case Nil() => z :: Nil()
+    case Nil() => z :: Nil[R]()
     case Cons(h, t) =>
       val rest@Cons(h1,_) = t.scanRight(f)(z)
       f(h, h1) :: rest
@@ -380,7 +380,7 @@ sealed abstract class List[T] {
     ListOps.flatten(this map f)
 
   def filter(p: T => Boolean): List[T] = { this match {
-    case Nil() => Nil()
+    case Nil() => Nil[T]()
     case Cons(h, t) if p(h) => Cons(h, t.filter(p))
     case Cons(_, t) => t.filter(p)
   }} ensuring { res => res.size <= this.size && res.forall(p) }
@@ -396,7 +396,7 @@ sealed abstract class List[T] {
   def exists(p: T => Boolean) = !forall(!p(_))
 
   def find(p: T => Boolean): Option[T] = { this match {
-    case Nil() => None()
+    case Nil() => None[T]()
     case Cons(h, t) if p(h) => Some(h)
     case Cons(_, t) => t.find(p)
   }} ensuring { _.isDefined == exists(p) }
@@ -426,7 +426,7 @@ object List {
 object ListOps {
   def flatten[T](ls: List[List[T]]): List[T] = ls match {
     case Cons(h, t) => h ++ flatten(t)
-    case Nil() => Nil()
+    case Nil() => Nil[T]()
   }
 
   def isSorted(ls: List[BigInt]): Boolean = ls match {

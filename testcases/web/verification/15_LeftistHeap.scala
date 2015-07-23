@@ -8,7 +8,7 @@ object HeapSort {
 
   def rightHeight(h: Heap): BigInt = {
     h match {
-      case Leaf() => 0
+      case Leaf() => BigInt(0)
       case Node(_, _, _, r) => rightHeight(r) + 1
     }
   } ensuring (_ >= 0)
@@ -40,7 +40,7 @@ object HeapSort {
 
   def heapSize(t: Heap): BigInt = {
     (t match {
-      case Leaf() => 0
+      case Leaf() => BigInt(0)
       case Node(_, v, l, r) => heapSize(l) + 1 + heapSize(r)
     })
   } ensuring (_ >= 0)
@@ -117,7 +117,7 @@ object HeapSort {
   def heapElements(t: Heap): List[BigInt] = {
     require(hasLeftistProperty(t))
     t match {
-      case Leaf() => Nil()
+      case Leaf() => Nil[BigInt]()
       case Node(_, v, l, r) =>
         v :: append(heapElements(l), heapElements(r))
     }

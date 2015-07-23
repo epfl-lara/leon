@@ -108,9 +108,9 @@ object Semantics {
   def semUntyped( t : Expr) : BigInt = { t match {
     case Plus (lhs, rhs) => semUntyped(lhs) + semUntyped(rhs)
     case Minus(lhs, rhs) => semUntyped(lhs) - semUntyped(rhs)
-    case And  (lhs, rhs) => if (semUntyped(lhs)!=0) semUntyped(rhs) else 0
+    case And  (lhs, rhs) => if (semUntyped(lhs)!=0) semUntyped(rhs) else BigInt(0)
     case Or(lhs, rhs ) =>
-      if (semUntyped(lhs) == 0) semUntyped(rhs) else 1
+      if (semUntyped(lhs) == 0) semUntyped(rhs) else BigInt(1)
     case Not(e) =>
       b2i(semUntyped(e) == 0)
     case LessThan(lhs, rhs) => 

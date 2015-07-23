@@ -10,8 +10,8 @@ object Insert {
   case object Nil extends List
 
   def size(l: List) : BigInt = (l match {
-      case Nil => 0
-      case Cons(_, t) => 1 + size(t)
+    case Nil => BigInt(0)
+    case Cons(_, t) => BigInt(1) + size(t)
   }) ensuring(res => res >= 0)
 
   def content(l: List): Set[BigInt] = l match {

@@ -18,12 +18,12 @@ object SumAndMax {
   }
 
   def sum(list : List) : BigInt = list match {
-    case Nil => 0
+    case Nil => BigInt(0)
     case Cons(x, xs) => x + sum(xs)
   }
 
   def size(list : List) : BigInt = (list match {
-    case Nil => 0
+    case Nil => BigInt(0)
     case Cons(_, xs) => 1 + size(xs)
   }) ensuring(_ >= 0)
 

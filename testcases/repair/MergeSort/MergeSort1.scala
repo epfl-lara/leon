@@ -6,7 +6,7 @@ object MergeSort {
     case Cons(a, Cons(b, t)) => 
       val (rec1, rec2) = split(t)
       (rec1, rec2) // FIXME: Forgot a,b
-    case other => (other, Nil())
+    case other => (other, Nil[BigInt]())
   }} ensuring { res =>
     val (l1, l2) = res
     l1.size >= l2.size &&

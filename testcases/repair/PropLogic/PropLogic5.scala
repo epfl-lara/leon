@@ -15,7 +15,7 @@ object SemanticsPreservation {
     case And(l,r) => 1 + size(l) + size(r)
     case Or(l,r) =>  1 + size(l) + size(r)
     case Not(e) => 1 + size(e)
-    case _ => 1
+    case _ => BigInt(1)
   }} ensuring { _ >= 0 }
 
   def eval(formula: Formula)(implicit trueVars : Set[BigInt]): Boolean = formula match {

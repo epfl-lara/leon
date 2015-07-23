@@ -8,7 +8,7 @@ object TwoSizeFunctions {
 
   def size1(l: List) : BigInt = (l match {
     case Cons(_, xs) => size1(xs) + 1
-    case Nil() => 0
+    case Nil() => BigInt(0)
   }) ensuring(_ >= 0)
 
   def size2(l: List) : BigInt = size2acc(l, 0)
