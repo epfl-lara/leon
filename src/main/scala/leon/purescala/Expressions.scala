@@ -1,7 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon
-package purescala
+package leon.purescala
 
 import Common._
 import Types._
@@ -276,6 +275,7 @@ object Expressions {
   case class InstanceOfPattern(binder: Option[Identifier], ct: ClassType) extends Pattern { // c: Class
     val subPatterns = Seq()
   }
+  /** Pattern encoding `case binder @ _ => ` with optional identifier `binder` */
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq()
   } 
@@ -328,10 +328,14 @@ object Expressions {
     )
   }
 
-  /** Symbolic IO examples as a match/case
+  /** Symbolic I/O examples as a match/case.
+    * $encodingof `out == in match { cases }`
     *  
     * If you are not sure about the requirement you should use
     * [[purescala.Constructors#passes purescala's constructor passes]]
+    * 
+    * @param in 
+    * @param out
     */
   case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
@@ -341,6 +345,7 @@ object Expressions {
       case Some(_) => BooleanType
     }
 
+    /** Transforms the set of I/O examples to a constraint equality. */
     def asConstraint = {
       val defaultCase = SimpleCase(WildcardPattern(None), out)
       Equals(out, MatchExpr(in, cases :+ defaultCase))
@@ -352,25 +357,27 @@ object Expressions {
   sealed abstract class Literal[+T] extends Expr with Terminal {
     val value: T
   }
-
+  /** $encodingof a char literal */
   case class CharLiteral(value: Char) extends Literal[Char] {
     val getType = CharType
   }
-
+  /** $encodingof an integer literal */
   case class IntLiteral(value: Int) extends Literal[Int] {
     val getType = Int32Type
   }
+  /** $encodingof a big integer literal */
   case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] {
     val getType = IntegerType
   }
+  /** $encodingof a real literal */
   case class RealLiteral(value: BigDecimal) extends Literal[BigDecimal] {
     val getType = RealType
   }
-
+  /** $encodingof a boolean literal '''true''' or '''false''' */
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] {
     val getType = BooleanType
   }
-
+  /** $encodingof a unit literal `()` */
   case class UnitLiteral() extends Literal[Unit] {
     val getType = UnitType
     val value = ()
@@ -378,8 +385,8 @@ object Expressions {
 
 
   /** Generic values. Represent values of the generic type `tp` */
-  // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
   case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
+  // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
     val getType = tp
   }
 
@@ -463,7 +470,11 @@ object Expressions {
     def apply(a: Expr, b: Expr): Expr = Or(Seq(a, b))
   }
 
-  /** Locical Implication */
+  /** $encodingof `... ==> ...` (logical implication)
+    * 
+    * If you are not sure about the requirement you should use
+    * [[purescala.Constructors#implies purescala's constructor implies]]
+    */
   case class Implies(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if(lhs.getType == BooleanType && rhs.getType == BooleanType) BooleanType
@@ -660,6 +671,8 @@ object Expressions {
     * 
     * If you are not sure about the requirement you should use
     * [[purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
+    * 
+    * @param exprs The expressions in the tuple
     */
   case class Tuple (exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
@@ -771,7 +784,10 @@ object Expressions {
     val getType = Int32Type
   }
 
-  /** $encodingof `array.nonempty` */
+  /** $encodingof Array(...) with predetermined elements
+    * @param elems The map from the position to the elements.  
+    * @param defaultLength An optional pair where the first element is the default value and the second is the size of the array.
+    */
   case class NonemptyArray(elems: Map[Int, Expr], defaultLength: Option[(Expr, Expr)]) extends Expr {
     private val elements = elems.values.toList ++ defaultLength.map{_._1}
     val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType}))).unveilUntyped

@@ -42,16 +42,15 @@ object ExprOps {
    */
 
 
-  /**
-    * Do a right tree fold
+  /** Does a right tree fold
     *
     * A right tree fold applies the input function to the subnodes first (from left
     * to right), and combine the results along with the current node value.
     *
     * @param f a function that takes the current node and the seq 
     *        of results form the subtrees.
-    * @param e the Expr on which to apply the fold.
-    * @return The expression after applying ``f`` on all subtrees.
+    * @param e The Expr on which to apply the fold.
+    * @return The expression after applying `f` on all subtrees.
     * @note the computation is lazy, hence you should rely on side-effects of `f`
     */
   def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
@@ -63,9 +62,9 @@ object ExprOps {
     f(e, es.view.map(rec))
   }
 
-  /** pre-traversal of the tree.
+  /** Pre-traversal of the tree.
     *
-    * invokes the input function on every node *before* visiting
+    * Invokes the input function on every node '''before''' visiting
     * children. Traverse children from left to right subtrees.
     *
     * e.g.
@@ -87,9 +86,9 @@ object ExprOps {
     es.foreach(rec)
   }
 
-  /** post-traversal of the tree.
+  /** Post-traversal of the tree.
     *
-    * Invokes the input function on every node *after* visiting
+    * Invokes the input function on every node '''after''' visiting
     * children.
     *
     * e.g.
@@ -111,10 +110,10 @@ object ExprOps {
     f(e)
   }
 
-  /** pre-transformation of the tree.
+  /** Pre-transformation of the tree.
     *
-    * takes a partial function of replacements and substitute
-    * *before* recursing down the trees.
+    * Takes a partial function of replacements and substitute
+    * '''before''' recursing down the trees.
     *
     * Supports two modes : 
     * 
@@ -162,10 +161,10 @@ object ExprOps {
     }
   }
 
-  /** post-transformation of the tree.
+  /** Post-transformation of the tree.
     *
-    * takes a partial function of replacements.
-    * Substitutes *after* recursing down the trees.
+    * Takes a partial function of replacements.
+    * Substitutes '''after''' recursing down the trees.
     *
     * Supports two modes : 
     *
@@ -189,7 +188,7 @@ object ExprOps {
     *     Add(a, f)  
     *   }}}
     *
-    * @note The mode with applyRec true can diverge if f is not well formed
+    * @note The mode with applyRec true can diverge if f is not well formed (i.e. not convergent)
     */
   def postMap(f: Expr => Option[Expr], applyRec : Boolean = false)(e: Expr): Expr = {
     val rec = postMap(f, applyRec) _
@@ -262,11 +261,12 @@ object ExprOps {
    * Convenient methods using the Core API.
    */
 
-  /** check if the predicate holds in some sub-expression */
+  /** Checks if the predicate holds in some sub-expression */
   def exists(matcher: Expr => Boolean)(e: Expr): Boolean = {
     foldRight[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
   }
 
+  /** Collects a set of objects from all sub-expressions */
   def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
     foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
@@ -275,19 +275,22 @@ object ExprOps {
     foldRight[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
 
+  /** Returns a set of all sub-expressions matching the predicate */
   def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
     collect[Expr] { e => if (matcher(e)) Set(e) else Set() }(e)
   }
 
-  /** Count how many times the predicate holds in sub-expressions */
+  /** Counts how many times the predicate holds in sub-expressions */
   def count(matcher: Expr => Int)(e: Expr): Int = {
     foldRight[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
   }
 
+  /** Replaces bottom-up sub-expressions by looking up for them in a map */
   def replace(substs: Map[Expr,Expr], expr: Expr) : Expr = {
     postMap(substs.lift)(expr)
   }
 
+  /** Replaces bottom-up sub-expressions by looking up for them in the provided order */
   def replaceSeq(substs: Seq[(Expr, Expr)], expr: Expr): Expr = {
     var res = expr
     for (s <- substs) {
@@ -296,7 +299,7 @@ object ExprOps {
     res
   }
 
-
+  /** Replaces bottom-up sub-identifiers by looking up for them in a map */
   def replaceFromIDs(substs: Map[Identifier, Expr], expr: Expr) : Expr = {
     postMap({
       case Variable(i) => substs.get(i)
@@ -304,6 +307,7 @@ object ExprOps {
     })(expr)
   }
 
+  /** Returns the set of identifiers in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
     foldRight[Set[Identifier]]{
       case (e, subs) =>
@@ -321,6 +325,7 @@ object ExprOps {
     }(expr)
   }
 
+  /** Returns true if the expression contains a function call */
   def containsFunctionCalls(expr: Expr): Boolean = {
     exists{
       case _: FunctionInvocation => true
@@ -328,7 +333,7 @@ object ExprOps {
     }(expr)
   }
 
-  /** Returns all Function calls found in an expression */
+  /** Returns all Function calls found in the expression */
   def functionCallsOf(expr: Expr): Set[FunctionInvocation] = {
     collect[FunctionInvocation] {
       case f: FunctionInvocation => Set(f)
@@ -344,6 +349,7 @@ object ExprOps {
     }(e)
   }
   
+  /** Computes the negation of a boolean formula in Negation Normal Form. */
   def negate(expr: Expr) : Expr = {
     require(expr.getType == BooleanType)
     (expr match {
@@ -362,8 +368,9 @@ object ExprOps {
     }).setPos(expr)
   }
 
-  // rewrites pattern-matching expressions to use fresh variables for the binders
-  // ATTENTION: Unused, and untested
+  /** ATTENTION: Unused, and untested
+    * rewrites pattern-matching expressions to use fresh variables for the binders
+    */
   def freshenLocals(expr: Expr) : Expr = {
     def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
       case InstanceOfPattern(ob, ctd) => InstanceOfPattern(ob map sm, ctd)
@@ -403,10 +410,12 @@ object ExprOps {
     }(expr)
   }
 
+  /** Computes the depth of the expression's tree */
   def depth(e: Expr): Int = {
     foldRight[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
   }
   
+  /** Applies the function to the I/O constraint and simplifies the resulting constraint */
   def applyAsMatches(p : Passes, f : Expr => Expr) = {
     f(p.asConstraint) match {
       case Equals(newOut, MatchExpr(newIn, newCases)) => {
@@ -420,6 +429,7 @@ object ExprOps {
     }
   }
 
+  /** Normalizes the expression expr */
   def normalizeExpression(expr: Expr) : Expr = {
     def rec(e: Expr): Option[Expr] = e match {
       case TupleSelect(Let(id, v, b), ts) =>
@@ -453,10 +463,16 @@ object ExprOps {
     fixpoint(postMap(rec))(expr)
   }
 
+  /** Returns '''true''' if the formula is Ground,
+    * which means that it does not contain any variable ([[purescala.ExprOps#variablesOf]] e is empty)
+    * and [[purescala.ExprOps#isDeterministic isDeterministic]]
+    */
   def isGround(e: Expr): Boolean = {
     variablesOf(e).isEmpty && isDeterministic(e)
   }
 
+  /** Returns a function which can simplify all ground expressions which appear in a program context.
+    */
   def evalGround(ctx: LeonContext, program: Program): Expr => Expr = {
     import evaluators._
 
@@ -721,6 +737,23 @@ object ExprOps {
     recBinder(in, pattern).filter{ case (a, b) => a != b }
   }
 
+  /** Recursively transforms a pattern on a boolean formula expressing the conditions for the input expression, possibly including name binders
+    *
+    * For example, the following pattern on the input `i`
+    * {{{
+    * case m @ MyCaseClass(t: B, (_, 7)) =>
+    * }}}
+    * will yield the following condition before simplification (to give some flavour)
+    * 
+    * {{{and(IsInstanceOf(MyCaseClass, i), and(Equals(m, i), InstanceOfClass(B, i.t), equals(i.k.arity, 2), equals(i.k._2, 7))) }}}
+    * 
+    * Pretty-printed, this would be:
+    * {{{
+    * i.instanceOf[MyCaseClass] && m == i && i.t.instanceOf[B] && i.k.instanceOf[Tuple2] && i.k._2 == 7
+    * }}}
+    * 
+    * @see [[purescala.Expressions.Pattern]]
+    */
   def conditionForPattern(in: Expr, pattern: Pattern, includeBinders: Boolean = false): Expr = {
     def bind(ob: Option[Identifier], to: Expr): Expr = {
       if (!includeBinders) {
@@ -770,6 +803,7 @@ object ExprOps {
     rec(in, pattern)
   }
 
+  /** Converts the pattern applied to an input to a map between identifiers and expressions */
   def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = {
     def bindIn(id: Option[Identifier]): Map[Identifier,Expr] = id match {
       case None => Map()
@@ -802,8 +836,7 @@ object ExprOps {
   }
 
   /** Rewrites all pattern-matching expressions into if-then-else expressions
-    *
-    * Introduce additional error conditions. Does not introduce additional variables.
+    * Introduces additional error conditions. Does not introduce additional variables.
     */
   def matchToIfThenElse(expr: Expr): Expr = {
 
@@ -842,6 +875,13 @@ object ExprOps {
     preMap(rewritePM)(expr)
   }
 
+  /** For each case in the [[purescala.Expressions.MatchExpr MatchExpr]], concatenates the path condition with the newly induced conditions.
+   *  
+   *  Each case holds the conditions on other previous cases as negative.
+   *  
+    * @see [[purescala.ExprOps#conditionForPattern conditionForPattern]]
+    * @see [[purescala.ExprOps#mapForPattern mapForPattern]]
+    */
   def matchExprCaseConditions(m: MatchExpr, pathCond: List[Expr]) : Seq[List[Expr]] = {
     val MatchExpr(scrut, cases) = m
     var pcSoFar = pathCond
@@ -860,7 +900,7 @@ object ExprOps {
     }
   }
 
-  // Condition to pass this match case, expressed w.r.t scrut only
+  /** Condition to pass this match case, expressed w.r.t scrut only */
   def matchCaseCondition(scrut: Expr, c: MatchCase): Expr = {
 
     val patternC = conditionForPattern(scrut, c.pattern, includeBinders = false)
@@ -876,12 +916,16 @@ object ExprOps {
     }
   }
 
+  /** Returns the path conditions for each of the case passes.
+    *
+    * Each case holds the conditions on other previous cases as negative.
+    */
   def passesPathConditions(p : Passes, pathCond: List[Expr]) : Seq[List[Expr]] = {
     matchExprCaseConditions(MatchExpr(p.in, p.cases), pathCond)
   }
   
-  /*
-   * Returns a pattern and a guard, if needed
+  /**
+   * Returns a pattern from an expression, and a guard if any.
    */
   def expressionToPattern(e : Expr) : (Pattern, Expr) = {
     var guard : Expr = BooleanLiteral(true)
@@ -898,10 +942,9 @@ object ExprOps {
     (rec(e), guard)
   }
 
-
   /** 
     * Takes a pattern and returns an expression that corresponds to it.
-    * Also returns a sequence of (Identifier -> Expr) pairs which 
+    * Also returns a sequence of `Identifier -> Expr` pairs which 
     * represent the bindings for intermediate binders (from outermost to innermost)
     */
   def patternToExpression(p: Pattern, expectedType: TypeTree): (Expr, Seq[(Identifier, Expr)]) = {
@@ -1009,9 +1052,9 @@ object ExprOps {
     case _ => throw new Exception("I can't choose simplest value for type " + tpe)
   }
 
-  /** hoists all IfExpr at top level.
+  /** Hoists all IfExpr at top level.
     *
-    * Guarentees that all IfExpr will be at the top level and as soon as you
+    * Guarantees that all IfExpr will be at the top level and as soon as you
     * encounter a non-IfExpr, then no more IfExpr can be found in the
     * sub-expressions
     *
@@ -1183,10 +1226,12 @@ object ExprOps {
       es.map(formulaSize).sum+1
   }
 
+  /** Return a list of all [[purescala.Expressions.Choose Choose]] construct inside the expression */
   def collectChooses(e: Expr): List[Choose] = {
     new ChooseCollectorWithPaths().traverse(e).map(_._1).toList
   }
 
+  /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/
   def isDeterministic(e: Expr): Boolean = {
     preTraversal{
       case Choose(_) => return false

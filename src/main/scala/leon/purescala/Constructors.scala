@@ -15,12 +15,16 @@ import Types._
   *
   * The constructors implement some logic to simplify the tree and
   * potentially use a different expression node if one is more suited.
-  */
+  * @define encodingof Encoding of
+  *  */
 object Constructors {
 
-  // If isTuple, the whole expression is returned. This is to avoid a situation
-  // like tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x, which is not expected.
-  // Instead, tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> Tuple(x,y).
+  /** If `isTuple`, the whole expression is returned. This is to avoid a situation like  
+    * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x`, which is not expected.
+    * Instead,
+    * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> Tuple(x,y)`.
+    * @see [[purescala.Expressions.TupleSelect]]
+    */
   def tupleSelect(t: Expr, index: Int, isTuple: Boolean): Expr = t match {
     case Tuple(es) if isTuple => es(index-1)
     case _ if t.getType.isInstanceOf[TupleType] && isTuple =>
@@ -30,14 +34,24 @@ object Constructors {
       sys.error(s"Calling tupleSelect on non-tuple $t")
   }
 
+  /** Simplifies the construct `TupleSelect(expr, index, originalSize > 1)`
+    * @param originalSize The arity of the tuple. If less or equal to 1, the whole expression is returned.
+    * @see [[purescala.Expressions.TupleSelect]]
+    */
   def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
 
+  /** $encodingof ``val id = e; bd`, and returns `bd` if the identifier is not bound in `bd`.
+    * @see [[purescala.Expressions.Let]]
+    */
   def let(id: Identifier, e: Expr, bd: Expr) = {
     if (variablesOf(bd) contains id)
       Let(id, e, bd)
     else bd
   }
 
+  /** $encodingof ``val (id1, id2, ...) = e; bd`, and returns `bd` if the identifiers are not bound in `bd`.
+    * @see [[purescala.Expressions.Let]]
+    */
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {
     case Nil =>
       body
@@ -52,25 +66,40 @@ object Constructors {
       Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)
   }
 
+  /** Wraps the sequence of expressions as a tuple. If the sequence contains a single expression, it is returned instead.
+    * @see [[purescala.Expressions.Tuple]]
+    */
   def tupleWrap(es: Seq[Expr]): Expr = es match {
     case Seq() => UnitLiteral()
     case Seq(elem) => elem 
     case more => Tuple(more)
   }
   
+  /** Wraps the sequence of patterns as a tuple. If the sequence contains a single pattern, it is returned instead.
+    * If the sequence is empty, [[purescala.Expressions.LiteralPattern `LiteralPattern`]]`(None, `[[purescala.Expressions.UnitLiteral `UnitLiteral`]]`())` is returned.
+    * @see [[purescala.Expressions.TuplePattern]]
+    * @see [[purescala.Expressions.LiteralPattern]]
+    */
   def tuplePatternWrap(ps: Seq[Pattern]) = ps match {
     case Seq() => LiteralPattern(None, UnitLiteral())
     case Seq(elem) => elem
     case more => TuplePattern(None, more)
   }
   
+  /** Wraps the sequence of types as a tuple. If the sequence contains a single type, it is returned instead.
+    * If the sequence is empty, the [[purescala.Types.UnitType UnitType]] is returned. 
+    * @see [[purescala.Types.TupleType]]
+    */
   def tupleTypeWrap(tps : Seq[TypeTree]) = tps match {
     case Seq() => UnitType
     case Seq(elem) => elem
     case more => TupleType(more)
   }
 
-  /** Will instantiate the type parameters of the function according to argument types */
+  /** Instantiates the type parameters of the function according to argument types
+    * @return A [[purescala.Expressions.FunctionInvocation FunctionInvocation]] if it type checks, else throws an error.
+    * @see [[purescala.Expressions.FunctionInvocation]]
+    */
   def functionInvocation(fd : FunDef, args : Seq[Expr]) = {
     
     require(fd.params.length == args.length, "Invoking function with incorrect number of arguments")
@@ -83,9 +112,11 @@ object Constructors {
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
       case None => sys.error(s"$actualType cannot be a subtype of $formalType!")
     }
-
   }
 
+  /** Simplifies the provided case class selector.
+    * @see [[purescala.Expressions.CaseClassSelector]]
+    */
   def caseClassSelector(classType: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
     caseClass match {
       case CaseClass(ct, fields) if ct.classDef == classType.classDef =>
@@ -95,6 +126,10 @@ object Constructors {
     }
   }
 
+  /** $encoding of `case ... if ... => ... ` but simplified if possible, based on types of the encompassing [[purescala.Expressions.CaseClassPattern MatchExpr]].
+    * @see [[purescala.Expressions.CaseClassPattern MatchExpr]]
+    * @see [[purescala.Expressions.CaseClassPattern CaseClassPattern]]
+    */
   private def filterCases(scrutType : TypeTree, resType: Option[TypeTree], cases: Seq[MatchCase]): Seq[MatchCase] = {
     val casesFiltered = scrutType match {
       case c: CaseClassType =>
@@ -118,6 +153,9 @@ object Constructors {
     }
   }
 
+  /** $encodingof the I/O example specification, simplified to '''true''' if the cases are trivially true.
+    * @see [[purescala.Expressions.Passes Passes]]
+    */
   def passes(in : Expr, out : Expr, cases : Seq[MatchCase]): Expr = {
     val resultingCases = filterCases(in.getType, Some(out.getType), cases)
     if (resultingCases.nonEmpty) {
@@ -126,7 +164,9 @@ object Constructors {
       BooleanLiteral(true)
     }
   }
-
+  /** $encodingof `... match { ... }` but simplified if possible. Throws an error if no case can match the scrutined expression.
+    * @see [[purescala.Expressions.MatchExpr MatchExpr]]
+    */
   def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : Expr ={
     val filtered = filterCases(scrutinee.getType, None, cases)
     if (filtered.nonEmpty)
@@ -137,9 +177,10 @@ object Constructors {
         "No case matches the scrutinee"
       )
   } 
-    
-   
-
+  
+  /** $encodingof `&&`-expressions with arbitrary number of operands, and simplified.
+    * @see [[purescala.Expressions.And And]]
+    */
   def and(exprs: Expr*): Expr = {
     val flat = exprs.flatMap {
       case And(es) => es
@@ -159,8 +200,14 @@ object Constructors {
     }
   }
 
+  /** $encodingof `&&`-expressions with arbitrary number of operands as a sequence, and simplified.
+    * @see [[purescala.Expressions.And And]]
+    */
   def andJoin(es: Seq[Expr]) = and(es :_*)
 
+  /** $encodingof `||`-expressions with arbitrary number of operands, and simplified.
+    * @see [[purescala.Expressions.Or Or]]
+    */
   def or(exprs: Expr*): Expr = {
     val flat = exprs.flatMap {
       case Or(es) => es
@@ -180,14 +227,23 @@ object Constructors {
     }
   }
 
+  /** $encodingof `||`-expressions with arbitrary number of operands as a sequence, and simplified.
+    * @see [[purescala.Expressions.Or Or]]
+    */
   def orJoin(es: Seq[Expr]) = or(es :_*)
 
+  /** $encodingof simplified `!`-expressions .
+    * @see [[purescala.Expressions.Not Not]]
+    */
   def not(e: Expr): Expr = e match {
     case Not(e)            => e
     case BooleanLiteral(v) => BooleanLiteral(!v)
     case _                 => Not(e)
   }
 
+  /** $encodingof simplified `... ==> ...` (implication)
+    * @see [[purescala.Expressions.Implies Implies]]
+    */
   def implies(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
     case (BooleanLiteral(false), _) => BooleanLiteral(true)
     case (_, BooleanLiteral(true))  => BooleanLiteral(true)
@@ -197,32 +253,42 @@ object Constructors {
     case _                          => Implies(lhs, rhs)
   }
 
+  /** $encodingof Simplified `Array(...)` (array length defined at compile-time)
+    * @see [[purescala.Expressions.NonemptyArray NonemptyArray]]
+    */
   def finiteArray(els: Seq[Expr]): Expr = {
     require(els.nonEmpty)
     finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway 
   }
-
+  /** $encodingof Simplified `Array[...](...)` (array length and default element defined at run-time) with type information
+    * @see [[purescala.Constructors#finiteArray(els:Map* finiteArray]]
+    */
   def finiteArray(els: Seq[Expr], defaultLength: Option[(Expr, Expr)], tpe: TypeTree): Expr = {
     finiteArray(els.zipWithIndex.map{ _.swap }.toMap, defaultLength, tpe)
   }
-
+  /** $encodingof Simplified `Array[...](...)` (array length and default element defined at run-time) with type information
+    * @see [[purescala.Expressions.EmptyArray EmptyArray]]
+    */
   def finiteArray(els: Map[Int, Expr], defaultLength: Option[(Expr, Expr)], tpe: TypeTree): Expr = {
     if (els.isEmpty && defaultLength.isEmpty) EmptyArray(tpe)
     else NonemptyArray(els, defaultLength)
   }
-
+  /** $encodingof simplified `Array(...)` (array length and default element defined at run-time).
+    * @see [[purescala.Expressions.NonemptyArray NonemptyArray]]
+    */
   def nonemptyArray(els: Seq[Expr], defaultLength: Option[(Expr, Expr)]): Expr = {
     NonemptyArray(els.zipWithIndex.map{ _.swap }.toMap, defaultLength)
   }
 
-  /*
-   * Take a mapping from keys to values and a default expression and return a lambda of the form
-   * (x1, ..., xn) =>
-   *   if      ( key1 == (x1, ..., xn) ) value1
-   *   else if ( key2 == (x1, ..., xn) ) value2
-   *   ...
-   *   else    default
-   */
+  /** Takes a mapping from keys to values and a default expression and return a lambda of the form
+    * {{{
+    * (x1, ..., xn) =>
+    *   if      ( key1 == (x1, ..., xn) ) value1
+    *   else if ( key2 == (x1, ..., xn) ) value2
+    *   ...
+    *   else    default
+    * }}}
+    */
   def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
     val args = inputTypes map { tpe => ValDef(FreshIdentifier("x", tpe, true)) }
     val argsExpr = tupleWrap(args map { _.toVariable })
@@ -231,7 +297,9 @@ object Constructors {
     }
     Lambda(args, body)
   }
-
+  /** $encodingof simplified `... == ...` (equality).
+    * @see [[purescala.Expressions.Equals Equals]]
+    */
   def equality(a: Expr, b: Expr) = {
     if (a == b && isDeterministic(a)) {
       BooleanLiteral(true)
@@ -240,6 +308,10 @@ object Constructors {
     }
   }
 
+  /** $encodingof simplified `fn(realArgs)` (function application).
+    * @see [[purescala.Expressions.Lambda Lambda]]
+    * @see [[purescala.Expressions.Application Application]]
+    */
   def application(fn: Expr, realArgs: Seq[Expr]) = fn match {
      case Lambda(formalArgs, body) =>
       assert(realArgs.size == formalArgs.size, "Invoking lambda with incorrect number of arguments")
@@ -262,6 +334,11 @@ object Constructors {
       Application(fn, realArgs)
    }
 
+  /** $encodingof simplified `... + ...` (plus).
+    * @see [[purescala.Expressions.Plus Plus]]
+    * @see [[purescala.Expressions.BVPlus BVPlus]]
+    * @see [[purescala.Expressions.RealPlus RealPlus]]
+    */
   def plus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
     case (InfiniteIntegerLiteral(bi), _) if bi == 0 => rhs
     case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
@@ -274,6 +351,11 @@ object Constructors {
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealPlus(lhs, rhs)
   }
 
+  /** $encodingof simplified `... - ...` (minus).
+    * @see [[purescala.Expressions.Minus Minus]]
+    * @see [[purescala.Expressions.BVMinus BVMinus]]
+    * @see [[purescala.Expressions.RealMinus RealMinus]]
+    */
   def minus(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
     case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
     case (_, IntLiteral(0)) => lhs
@@ -284,6 +366,11 @@ object Constructors {
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealMinus(lhs, rhs)
   }
 
+  /** $encodingof simplified `... * ...` (times).
+    * @see [[purescala.Expressions.Times Times]]
+    * @see [[purescala.Expressions.BVTimes BVTimes]]
+    * @see [[purescala.Expressions.RealTimes RealTimes]]
+    */
   def times(lhs: Expr, rhs: Expr): Expr = (lhs, rhs) match {
     case (InfiniteIntegerLiteral(bi), _) if bi == 1 => rhs
     case (_, InfiniteIntegerLiteral(bi)) if bi == 1 => lhs
