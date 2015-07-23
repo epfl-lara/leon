@@ -8,10 +8,10 @@ package object utils {
     * Apply the input function on an expression as long as until 
     * it stays the same (value equality) or until a set limit.
     *
-    * @param f
-    * @param limit
-    * @param e
-    * @return
+    * @param f the function for which we search a fixpoint
+    * @param limit the maximum number of iteration. Use a negative number for infinity
+    * @param e the starting expression on which to apply
+    * @return the first value x = f(f(f(...f(e)))) such that `f(x) == x`
     */
   def fixpoint[T](f: T => T, limit: Int = -1)(e: T): T = {
     var v1 = e
