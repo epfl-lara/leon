@@ -48,14 +48,109 @@ class ExprOpsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuild
     assert(foldRight(foldConcatNames)(And(p, Or(q, r))) === (p.id.name + q.id.name + r.id.name))
   }
 
-
-
-  test("Path-aware simplifications") {
-    // TODO actually testing something here would be better, sorry
-    // PS
-
-    assert(true)
+  private class LocalCounter {
+    private var c = 0
+    def inc() = c += 1
+    def get = c
   }
+
+  test("preTraversal works on a single node") {
+    val c = new LocalCounter
+    preTraversal(e => c.inc())(x)
+    assert(c.get === 1)
+    preTraversal(e => c.inc())(y)
+    assert(c.get === 2)
+
+    var names: List[String] = List()
+    preTraversal({
+      case Variable(id) => names ::= id.name
+      case _ => ()
+    })(x)
+    assert(names === List(x.id.name))
+  }
+
+  test("preTraversal correctly applies on every nodes on a simple expression") {
+    val c1 = new LocalCounter
+    preTraversal(e => c1.inc())(And(Seq(p, q, r)))
+    assert(c1.get === 4)
+    val c2 = new LocalCounter
+    preTraversal(e => c2.inc())(Or(p, q))
+    assert(c2.get === 3)
+    preTraversal(e => c2.inc())(Plus(x, y))
+    assert(c2.get === 6)
+  }
+
+  test("preTraversal visits children from left to right") {
+    var names: List[String] = List()
+    preTraversal({
+      case Variable(id) => names ::= id.name
+      case _ => ()
+    })(And(List(p, q, r)))
+    assert(names === List(r.id.name, q.id.name, p.id.name))
+  }
+
+  test("preTraversal works on nexted expressions") {
+    val c = new LocalCounter
+    preTraversal(e => c.inc())(And(p, And(q, r)))
+    assert(c.get === 5)
+  }
+
+  test("preTraversal traverses in pre-order") {
+    var nodes: List[Expr] = List()
+    val node = And(List(p, q, r))
+    preTraversal(e => nodes ::= e)(node)
+    assert(nodes === List(r, q, p, node))
+  }
+
+
+  test("postTraversal works on a single node") {
+    val c = new LocalCounter
+    postTraversal(e => c.inc())(x)
+    assert(c.get === 1)
+    postTraversal(e => c.inc())(y)
+    assert(c.get === 2)
+
+    var names: List[String] = List()
+    postTraversal({
+      case Variable(id) => names ::= id.name
+      case _ => ()
+    })(x)
+    assert(names === List(x.id.name))
+  }
+
+  test("postTraversal correctly applies on every nodes on a simple expression") {
+    val c1 = new LocalCounter
+    postTraversal(e => c1.inc())(And(Seq(p, q, r)))
+    assert(c1.get === 4)
+    val c2 = new LocalCounter
+    postTraversal(e => c2.inc())(Or(p, q))
+    assert(c2.get === 3)
+    postTraversal(e => c2.inc())(Plus(x, y))
+    assert(c2.get === 6)
+  }
+
+  test("postTraversal visits children from left to right") {
+    var names: List[String] = List()
+    postTraversal({
+      case Variable(id) => names ::= id.name
+      case _ => ()
+    })(And(List(p, q, r)))
+    assert(names === List(r.id.name, q.id.name, p.id.name))
+  }
+
+  test("postTraversal works on nexted expressions") {
+    val c = new LocalCounter
+    postTraversal(e => c.inc())(And(p, And(q, r)))
+    assert(c.get === 5)
+  }
+
+  test("postTraversal traverses in pre-order") {
+    var nodes: List[Expr] = List()
+    val node = And(List(p, q, r))
+    postTraversal(e => nodes ::= e)(node)
+    assert(nodes === List(node, r, q, p))
+  }
+
 
   /**
    * If the formula consist of some top level AND, find a top level

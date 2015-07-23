@@ -65,7 +65,7 @@ object ExprOps {
   /** pre-traversal of the tree.
     *
     * invokes the input function on every node *before* visiting
-    * children.
+    * children. Traverse children from left to right subtrees.
     *
     * e.g.
     * {{{
@@ -73,8 +73,11 @@ object ExprOps {
     * }}}
     * will yield, in order:
     * {{{
-    *   f(Add(a, Minus(b, c))), f(a), f(Minus(b, c)), f(b), f(c)
+    *   f(Add(a, Minus(b, c))); f(a); f(Minus(b, c)); f(b); f(c)
     * }}}
+    *
+    * @param f a function to apply on each node of the expression
+    * @param e the expression to traverse
     */
   def preTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = preTraversal(f) _
@@ -96,6 +99,9 @@ object ExprOps {
     * {{{
     *   f(a), f(b), f(c), f(Minus(b, c)), f(Add(a, Minus(b, c)))
     * }}}
+    *
+    * @param f a function to apply on each node of the expression
+    * @param e the expression to traverse
     */
   def postTraversal(f: Expr => Unit)(e: Expr): Unit = {
     val rec = postTraversal(f) _
