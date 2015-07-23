@@ -76,9 +76,17 @@ object Common {
   }
 
   object FreshIdentifier {
+    /** Builds a fresh identifier
+      * @param name The name of the identifier
+      * @param tpe The type of the identifier
+      * @param alwaysShowUniqueID If the unique ID should always be shown */
     def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = 
       new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe: TypeTree, alwaysShowUniqueID)
 
+    /** Builds a fresh identifier, whose ID is always shown
+      * @param name The name of the identifier
+      * @param forceId The forced ID of the identifier
+      * @param tpe The type of the identifier */
     def apply(name: String, forceId: Int, tpe: TypeTree): Identifier = 
       new Identifier(name, UniqueCounter.nextGlobal, forceId, tpe, true)
 

@@ -9,7 +9,7 @@ import purescala.Common._
 import repair._
 import leon.utils.ASCIIHelpers._
 
-
+/** Sets of valid and invalid examples */
 case class ExampleBank(valids: Seq[Example], invalids: Seq[Example]) {
   def examples = valids ++ invalids
 

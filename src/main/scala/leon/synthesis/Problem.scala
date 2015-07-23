@@ -11,8 +11,15 @@ import leon.purescala.Constructors._
 import leon.purescala.Extractors._
 import Witnesses._
 
-// Defines a synthesis triple of the form:
-// ⟦ as ⟨ ws && pc | phi ⟩ xs ⟧
+/** Defines a synthesis triple of the form:
+  * ⟦ as ⟨ ws && pc | phi ⟩ xs ⟧
+  * 
+  * @param as The list of input identifiers so far
+  * @param ws The axioms and other already proven theorems
+  * @param pc The path condition so far
+  * @param phi The formula on `as` and `xs` to satisfy
+  * @param xs The list of output identifiers for which we want to compute a function
+  */
 case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier], eb: ExampleBank = ExampleBank.empty) {
 
   def inType  = tupleTypeWrap(as.map(_.getType))

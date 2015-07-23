@@ -10,15 +10,26 @@ import purescala.Types._
 import purescala.ExprOps._
 import purescala.Constructors._
 
+/** Rule for detupling input variables, to be able to use their sub-expressions. For example, the input variable:
+  * {{{d: Cons(head: Int, tail: List)}}}
+  * will create the following input variables
+  * {{{head42: Int, tail57: List}}}
+  * Recomposition is available.
+  */
 case object DetupleInput extends NormalizingRule("Detuple In") {
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    /** Returns true if this identifier is a tuple or a case class */
     def isDecomposable(id: Identifier) = id.getType match {
       case CaseClassType(t, _) if !t.isAbstract => true
       case TupleType(ts) => true
       case _ => false
     }
 
+    /* Decomposes a decomposable input identifier (eg of type Tuple or case class)
+     * into a list of fresh typed identifiers, the tuple of these new identifiers,
+     * and the mapping of those identifiers to their respective expressions.
+     */
     def decompose(id: Identifier): (List[Identifier], Expr, Map[Identifier, Expr]) = id.getType match {
       case cct @ CaseClassType(ccd, _) if !ccd.isAbstract =>
         val newIds = cct.fields.map{ vd => FreshIdentifier(vd.id.name, vd.getType, true) }

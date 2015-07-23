@@ -11,20 +11,23 @@ package leon.synthesis
  */
 
 object Algebra {
-
+  /** Returns the remainder of the euclidian division between x an y (always positive) */
   def remainder(x: Int, y: Int) = ((x % y) + y.abs) % y.abs
 
+  /** Returns the quotient of the euclidian division between a and b.*/
   def divide(a: Int, b: Int): (Int, Int) = {
     val r = remainder(a, b)
     ((a - r)/b, r)
   }
 
+  /** Returns the remainder of the euclidian division between the big integers x an y (always positive) */
   def remainder(x: BigInt, y: BigInt) = ((x % y) + y.abs) % y.abs
+  /** Returns the quotient of the euclidian division between the big integers x an y */
   def divide(a: BigInt, b: BigInt): (BigInt, BigInt) = {
     val r = remainder(a, b)
     ((a - r)/b, r)
   }
-
+  /** Returns the gcd of two integers */
   def gcd(a: Int, b: Int): Int = {
     val (na, nb) = (a.abs, b.abs)
     def gcd0(a: Int, b: Int): Int = {
@@ -34,6 +37,7 @@ object Algebra {
     if(na > nb) gcd0(na, nb) else gcd0(nb, na)
   }
 
+  /** Returns the gcd of three or more integers */
   def gcd(a1: Int, a2: Int, a3: Int, as: Int*): Int = {
     var tmp = gcd(a1, a2)
     tmp = gcd(tmp, a3)
@@ -45,6 +49,7 @@ object Algebra {
     tmp
   }
 
+  /** Returns the gcd of a non-empty sequence of integers */
   def gcd(as: Seq[Int]): Int = {
     require(as.length >= 1)
     if(as.length == 1)
@@ -60,6 +65,7 @@ object Algebra {
     }
   }
 
+  /** Returns the gcd of two big integers */
   def gcd(a: BigInt, b: BigInt): BigInt = {
     val (na, nb) = (a.abs, b.abs)
     def gcd0(a: BigInt, b: BigInt): BigInt = {
@@ -69,6 +75,7 @@ object Algebra {
     if(na > nb) gcd0(na, nb) else gcd0(nb, na)
   }
 
+  /** Returns the gcd of three or more big integers  */
   def gcd(a1: BigInt, a2: BigInt, a3: BigInt, as: BigInt*): BigInt = {
     var tmp = gcd(a1, a2)
     tmp = gcd(tmp, a3)
@@ -80,6 +87,7 @@ object Algebra {
     tmp
   }
 
+  /** Returns the gcd of a non-empty sequence of big integers */
   def gcd(as: Seq[BigInt]): BigInt = {
     require(as.length >= 1)
     if(as.length == 1)
@@ -95,11 +103,13 @@ object Algebra {
     }
   }
 
+  /** Returns the lcm of two integers */
   def lcm(a: Int, b: Int): Int = {
     val (na, nb) = (a.abs, b.abs)
     na*nb/gcd(a, b)
   }
 
+  /** Returns the lcm of three or more integers */
   def lcm(a1: Int, a2: Int, a3: Int, as: Int*): Int = {
     var tmp = lcm(a1, a2)
     tmp = lcm(tmp, a3)
@@ -111,6 +121,7 @@ object Algebra {
     tmp
   }
 
+  /** Returns the lcm of a sequence of integers */
   def lcm(as: Seq[Int]): Int = {
     require(as.length >= 1)
     if(as.length == 1)
@@ -126,11 +137,13 @@ object Algebra {
     }
   }
 
+  /** Returns the lcm of two big integers */
   def lcm(a: BigInt, b: BigInt): BigInt = {
     val (na, nb) = (a.abs, b.abs)
     na*nb/gcd(a, b)
   }
 
+  /** Returns the lcm of three or more big integers */
   def lcm(a1: BigInt, a2: BigInt, a3: BigInt, as: BigInt*): BigInt = {
     var tmp = lcm(a1, a2)
     tmp = lcm(tmp, a3)
@@ -142,6 +155,7 @@ object Algebra {
     tmp
   }
 
+  /** Returns the lcm of a sequence of big integers */
   def lcm(as: Seq[BigInt]): BigInt = {
     require(as.length >= 1)
     if(as.length == 1)

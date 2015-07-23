@@ -10,6 +10,7 @@ import purescala.ExprOps._
 import purescala.Constructors.and
 import rules._
 
+/** A Rule can be applied on a synthesis problem */
 abstract class Rule(val name: String) extends RuleDSL {
   def instantiateOn(implicit hctx: SearchContext, problem: Problem): Traversable[RuleInstantiation]
 
@@ -30,7 +31,9 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
   override val priority = RulePriorityPreprocessing
 }
 
+/** Contains the list of all available rules for synthesis */
 object Rules {
+  /** Returns the list of all available rules for synthesis */
   def all = List[Rule](
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
@@ -142,12 +145,14 @@ case object RulePriorityDefault       extends RulePriority(20)
  */
 trait RuleDSL {
   this: Rule =>
-
+  /** Replaces all first elements of `what` by their second element in the expression `ìn`*/
   def subst(what: (Identifier, Expr), in: Expr): Expr = replaceFromIDs(Map(what), in)
+  /** Replaces all keys of `what` by their key in the expression `ìn`*/
   def substAll(what: Map[Identifier, Expr], in: Expr): Expr = replaceFromIDs(what, in)
 
   val forward: List[Solution] => Option[Solution] = { ss => ss.headOption }
   
+  /** Returns a function that transforms the precondition and term of the first Solution of a list using `f`.  */
   def forwardMap(f : Expr => Expr) : List[Solution] => Option[Solution] = { 
     _.headOption map { s =>
       Solution(f(s.pre), s.defs, f(s.term), s.isTrusted)
