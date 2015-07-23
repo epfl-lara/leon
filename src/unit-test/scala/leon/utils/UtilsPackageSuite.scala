@@ -3,7 +3,7 @@
 package leon
 package utils
 
-class ExprOpsSuite extends LeonTestSuite {
+class UtilsPackageSuite extends LeonTestSuite {
 
   test("fixpoint computes correct fixpoint of function that increments up to a max") {
     def f(x: Int): Int = if(x < 10) x + 1 else 10
