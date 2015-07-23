@@ -1245,12 +1245,7 @@ object ExprOps {
       case e => e
     }).copiedFrom(expr)
 
-    def fix[A](f: (A) => A)(a: A): A = {
-      val na = f(a)
-      if(a == na) a else fix(f)(na)
-    }
-
-    fix(simplePostTransform(simplify0))(expr)
+    fixpoint(simplePostTransform(simplify0))(expr)
   }
 
   /** Checks whether a predicate is inductive on a certain identfier.
