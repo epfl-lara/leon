@@ -12,6 +12,24 @@ object TreeNormalizations {
 
   /* TODO: we should add CNF and DNF at least */
 
+
+  def nnf(expr: Expr): Expr = {
+
+    def rec(expr: Expr): Expr = expr match {
+      case Not(Not(e)) => e
+      case Not(And(es)) => Or(es map Not)
+      case Not(Or(es)) => And(es map Not)
+      case Not(Implies(l, r)) => And(List(l, Not(r)))
+      case Not(BooleanLiteral(b)) => BooleanLiteral(!b)
+      case Not(ArrayForall(arr, from, to, body)) => ArrayExists(arr, from, to, Not(body))
+      case Not(ArrayExists(arr, from, to, body)) => ArrayForall(arr, from, to, Not(body))
+    }
+
+
+    simplePreTransform(rec)(expr)
+  }
+
+
   case class NonLinearExpressionException(msg: String) extends Exception
 
   //assume the function is an arithmetic expression, not a relation
