@@ -1634,6 +1634,9 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, at: ArrayType), "updated", List(k, v)) =>
               ArrayUpdated(a1, k, v)
 
+            case (IsTyped(a1, at: ArrayType), "clone", Nil) =>
+              a1
+
 
             // Map methods
             case (IsTyped(a1, MapType(_, vt)), "apply", List(a2)) =>

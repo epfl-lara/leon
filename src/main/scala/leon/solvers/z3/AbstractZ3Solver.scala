@@ -637,7 +637,7 @@ trait AbstractZ3Solver extends Solver {
                       case _ => reporter.fatalError("Translation from Z3 to Array failed")
                     }
 
-                    finiteArray(entries, Some(s, default), to)
+                    finiteArray(entries, Some(default, s), to)
                   case _ =>
                     reporter.fatalError("Translation from Z3 to Array failed")
                 }

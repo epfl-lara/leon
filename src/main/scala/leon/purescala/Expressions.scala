@@ -95,6 +95,8 @@ object Expressions {
     * @param pred The predicate to satisfy. It should be a function whose argument's type can handle the type of the body
     */
   case class Ensuring(body: Expr, pred: Expr) extends Expr {
+    require(pred.isInstanceOf[Lambda])
+
     val getType = pred.getType match {
       case FunctionType(Seq(bodyType), BooleanType) if isSubtypeOf(body.getType, bodyType) =>
         body.getType
@@ -833,8 +835,8 @@ object Expressions {
     *                      with a default value (as genereted with `Array.fill` in Scala).
     */
   case class NonemptyArray(elems: Map[Int, Expr], defaultLength: Option[(Expr, Expr)]) extends Expr {
-    private val elements = elems.values.toList ++ defaultLength.map{_._1}
-    val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType}))).unveilUntyped
+    private val elements = elems.values.toList ++ defaultLength.map(_._1)
+    val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType }))).unveilUntyped
   }
 
   /** $encodingof `Array[tpe]()` */
