@@ -1036,6 +1036,5 @@ trait ASTExtractors {
         case _ => None
       }
     }
-
   }
 }

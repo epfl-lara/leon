@@ -170,9 +170,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     def rec(pathVar: Identifier, expr: Expr): Expr = {
       expr match {
-        case a @ Assert(cond, _, body) =>
-          storeGuarded(pathVar, rec(pathVar, cond))
-          rec(pathVar, body)
+        case a @ Assert(cond, err, body) =>
+          rec(pathVar, IfExpr(cond, body, Error(body.getType, err getOrElse "assertion failed")))
 
         case e @ Ensuring(_, _) =>
           rec(pathVar, e.toAssert)
@@ -272,7 +271,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
           val clauseSubst: Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
           val (lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, lambdaQuants) = mkClauses(pathVar, clause, clauseSubst)
-          assert(lambdaQuants.isEmpty, "Unhandled quantification in lambdas in " + clause)
+          assert(lambdaQuants.isEmpty, "Unhandled quantification in lambdas in " + l)
 
           val ids: (Identifier, T) = lid -> storeLambda(lid)
           val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
@@ -292,11 +291,12 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
             val idQuantifiers : Seq[Identifier] = quantifiers.toSeq
             val trQuantifiers : Seq[T] = idQuantifiers.map(encoder.encodeId)
 
-            val q: Identifier = FreshIdentifier("q", BooleanType)
-            val ph: Identifier = FreshIdentifier("ph", BooleanType)
-            val guard: Identifier = FreshIdentifier("guard", BooleanType)
+            val q: Identifier = FreshIdentifier("q", BooleanType, true)
+            val q2: Identifier = FreshIdentifier("qo", BooleanType, true)
+            val inst: Identifier = FreshIdentifier("inst", BooleanType, true)
+            val guard: Identifier = FreshIdentifier("guard", BooleanType, true)
 
-            val clause = Equals(Variable(q), And(Variable(ph), Implies(Variable(guard), conjunct)))
+            val clause = Equals(Variable(inst), Implies(Variable(guard), conjunct))
 
             val qs: (Identifier, T) = q -> encoder.encodeId(q)
             val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
@@ -304,8 +304,11 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
             val (qConds, qExprs, qGuarded, qTemplates, qQuants) = mkClauses(pathVar, clause, clauseSubst)
             assert(qQuants.isEmpty, "Unhandled nested quantification in "+clause)
 
+            val binder = Equals(Variable(q), And(Variable(q2), Variable(inst)))
+            val allQGuarded = qGuarded + (pathVar -> (binder +: qGuarded.getOrElse(pathVar, Seq.empty)))
+
             val template = QuantificationTemplate[T](encoder, manager, pathVar -> encodedCond(pathVar),
-              qs, ph, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qGuarded, qTemplates, localSubst)
+              qs, q2, inst, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, allQGuarded, qTemplates, localSubst)
             registerQuantification(template)
             Variable(q)
           }

@@ -93,7 +93,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
   def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq
 
-  def quantificationAssumptions = manager.blockers
+  def quantificationAssumptions = manager.assumptions
 
   def getBlockersToUnlock: Seq[T] = {
     if (callInfo.isEmpty && appInfo.isEmpty) {
@@ -265,7 +265,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
           defBlockers += info -> defBlocker
 
           val template = templateGenerator.mkTemplate(tfd)
-          reporter.debug(template)
+          //reporter.debug(template)
 
           val (newExprs, callBlocks, appBlocks) = template.instantiate(defBlocker, args)
           val blockExprs = freshAppBlocks(appBlocks.keys)

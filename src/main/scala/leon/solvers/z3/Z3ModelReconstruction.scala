@@ -38,6 +38,8 @@ trait Z3ModelReconstruction {
   def modelToMap(model: Z3Model, ids: Iterable[Identifier]) : Map[Identifier,Expr] = {
     var asMap = Map.empty[Identifier,Expr]
 
+    println(model)
+
     def completeID(id : Identifier) : Unit = {
       asMap = asMap + (id -> simplestValue(id.getType))
       reporter.debug("Completing variable '" + id + "' to simplest value")
