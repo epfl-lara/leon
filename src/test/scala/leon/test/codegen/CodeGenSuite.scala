@@ -272,7 +272,7 @@ class CodeGenSuite extends test.LeonTestSuite {
       case class Conc() extends Ab { }
       def test = { val willNotLoop = Conc(); 42 }
     }
-    object list {
+    object ListWithSize {
       abstract class List[T] {
          val length : Int = this match {
           case Nil() => 0

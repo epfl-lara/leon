@@ -102,9 +102,11 @@ testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework")
 
 parallelExecution in Test := false
 
-testOptions in (Test, test) := Seq(Tests.Filter(s => s.endsWith("LeonAllTests")), Tests.Argument(TestFrameworks.ScalaCheck, "-oDF"))
+parallelExecution in (Test, testOnly) := false
 
-testOptions in (Test, testOnly) := Seq(Tests.Argument(TestFrameworks.ScalaCheck, "-oDF"))
+testOptions in (Test, test) := Seq(Tests.Filter(s => s.endsWith("LeonAllTests")), Tests.Argument(TestFrameworks.ScalaTest, "-oDF"))
+
+testOptions in (Test, testOnly) := Seq(Tests.Argument(TestFrameworks.ScalaTest, "-oDF"))
 
 sourcesInBase in Compile := false
 
