@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.lang.synthesis._
 import leon.collection._
 import leon.annotation._
 object Tree { 
@@ -15,7 +16,7 @@ object Tree {
   def some[A](x: A): Option[A] = Some[A](x)
   def none[A]: Option[A] = None[A]
 
-  case class Path(p: List[Dir])
+  case class Path(p: List[Dir]) extends AnyVal
   def pnil = Path(nil)
 
   def inside(t: Tree, subtree: Tree): Boolean = {
@@ -35,6 +36,10 @@ object Tree {
       case (Node(left,_,_),  Cons(Left,rest)) => lookup(left,Path(rest))
       case (Node(_,_,right), Cons(Right,rest)) => lookup(right,Path(rest))
     }
+  }
+
+  def valid(t: Tree, path: Path): Boolean = {
+    lookup(t, path) != none[Tree]
   }
 
   // Function find1 has a counterexample.
@@ -79,7 +84,7 @@ object Tree {
   }))
 
   def replace(t: Tree, path: Path, newT: Tree): Tree = {
-    require(lookup(t, path) != none[Tree])
+    require(valid(t,path))
     (t,path.p) match {
       case (_,Nil()) => newT
       case (Node(left,v,right), Cons(Left, rest)) => Node(replace(left,Path(rest), newT), v, right)
@@ -87,8 +92,38 @@ object Tree {
     }
   } ensuring(res => lookup(res, path)==some(newT))
 
-  case class Flat(trees: List[(Path, Tree)])
-  def fnil = Flat(nil)
+  /* This has a counterexample, e.g. 
+   path  -> Path(Cons[Dir](Left, Cons[Dir](Left, Nil[Dir]())))
+   path1 -> Path(Nil[Dir]())
+   t     -> Empty
+   */
+  def replaceKeepsLemmaInvalid1(t: Tree, path: Path, newT: Tree, path1: Path): Boolean = {
+    require(path != path1)
+    lookup(replace(t, path, newT), path1)==lookup(t, path1)
+  }
+
+  def prefix(p1: Path, p2: Path): Boolean = {
+    (p1.p, p2.p) match {
+      case (Nil(),_) => true
+      case (h1 :: r1, h2 :: r2) => {
+        (h1==h2) && prefix(Path(r1), Path(r2))
+      }
+    }
+  }
+
+  def replaceKeepsLemmaInvalid2(t: Tree, path: Path, newT: Tree, path1: Path): Boolean = {
+    require(!prefix(path1, path))
+    lookup(replace(t, path, newT), path1)==lookup(t, path1)
+  }
+
+  def replaceKeepsLemma(t: Tree, path: Path, newT: Tree, path1: Path): Boolean = {
+    require(valid(t, path) && !prefix(path1, path))
+    lookup(replace(t, path, newT), path1)==lookup(t, path1)
+  }
+
+  case class Flat(trees: List[(Path, Tree)]) extends AnyVal
+
+  def fnil = Flat(nil[(Path,Tree)])
 
   def subtrees(t: Tree): Flat = {
     t match {
@@ -97,7 +132,6 @@ object Tree {
         Flat(addLeft(subtrees(left)).trees ++ ((pnil,t) :: addRight(subtrees(right)).trees))
     }
   }
-
   def addLeft(f: Flat): Flat = {
     f.trees match {
       case Nil() => fnil
@@ -110,4 +144,16 @@ object Tree {
       case (p,t) :: trees1 => Flat((Path(Right::p.p),t) :: addRight(Flat(trees1)).trees)
     }
   }
+
+  def unflat(f: Flat) : Option[Tree] = {
+    ???[Option[Tree]]
+  } ensuring(res => res match {
+    case None() => true
+    case Some(t) => equiv(subtrees(t), f)
+  })
+
+  def equiv(f1: Flat, f2: Flat): Boolean = {
+    f1.trees.content == f2.trees.content
+  }
+
 }

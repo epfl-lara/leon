@@ -9,7 +9,7 @@ import scala.annotation.implicitNotFound
 
 package object synthesis {
   @ignore
-  private def noImpl = throw new RuntimeException("Implementation not supported")
+  private def noImpl = throw new RuntimeException("Synthesis construct implementation not supported")
 
   @ignore
   def choose[A](predicate: A => Boolean): A = noImpl
