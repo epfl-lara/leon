@@ -64,12 +64,12 @@ object Common {
     private var globalId = -1
     private var nameIds = Map[String, Int]().withDefaultValue(-1)
 
-    def next(name: String): Int = {
+    def next(name: String): Int = synchronized {
       nameIds += name -> (1+nameIds(name))
       nameIds(name)
     }
-    
-    def nextGlobal = {
+
+    def nextGlobal = synchronized {
       globalId += 1
       globalId
     }
