@@ -235,11 +235,7 @@ object Constructors {
   /** $encodingof simplified `!`-expressions .
     * @see [[purescala.Expressions.Not Not]]
     */
-  def not(e: Expr): Expr = e match {
-    case Not(e)            => e
-    case BooleanLiteral(v) => BooleanLiteral(!v)
-    case _                 => Not(e)
-  }
+  def not(e: Expr): Expr = negate(e)
 
   /** $encodingof simplified `... ==> ...` (implication)
     * @see [[purescala.Expressions.Implies Implies]]

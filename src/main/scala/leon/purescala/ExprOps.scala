@@ -349,9 +349,9 @@ object ExprOps {
     }(e)
   }
   
-  /** Computes the negation of a boolean formula in Negation Normal Form. */
+  /** Computes the negation of a boolean formula, with some simplifications. */
   def negate(expr: Expr) : Expr = {
-    require(expr.getType == BooleanType)
+    //require(expr.getType == BooleanType)
     (expr match {
       case Let(i,b,e) => Let(i,b,negate(e))
       case Not(e) => e
@@ -362,9 +362,9 @@ object ExprOps {
       case LessEquals(e1,e2) => GreaterThan(e1,e2)
       case GreaterThan(e1,e2) => LessEquals(e1,e2)
       case GreaterEquals(e1,e2) => LessThan(e1,e2)
-      case i @ IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2))
+      case IfExpr(c,e1,e2) => IfExpr(c, negate(e1), negate(e2))
       case BooleanLiteral(b) => BooleanLiteral(!b)
-      case _ => Not(expr)
+      case e => Not(e)
     }).setPos(expr)
   }
 

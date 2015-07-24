@@ -169,9 +169,6 @@ class ExprOpsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuild
   }
 
 
-  val xs = Set(xId, yId)
-  val as = Set(aId, bId)
-
   def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier]) {
     assert( //this outer assert should not be needed because of the nested one
       LikelyEq(e1, e2, vs, BooleanLiteral(true), (e1, e2) => {assert(e1 === e2); true})
@@ -179,37 +176,37 @@ class ExprOpsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuild
   }
 
   test("simplifyArithmetic") {
-    val e1 = Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
+    val e1 = Plus(i(3), i(2))
     checkSameExpr(e1, simplifyArithmetic(e1), Set())
-    val e2 = Plus(x, Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
-    checkSameExpr(e2, simplifyArithmetic(e2), Set(xId))
+    val e2 = Plus(a, Plus(i(3), i(2)))
+    checkSameExpr(e2, simplifyArithmetic(e2), Set(aId))
 
-    val e3 = Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
+    val e3 = Minus(i(3), i(2))
     checkSameExpr(e3, simplifyArithmetic(e3), Set())
-    val e4 = Plus(x, Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
-    checkSameExpr(e4, simplifyArithmetic(e4), Set(xId))
-    val e5 = Plus(x, Minus(x, InfiniteIntegerLiteral(2)))
-    checkSameExpr(e5, simplifyArithmetic(e5), Set(xId))
+    val e4 = Plus(a, Minus(i(3), i(2)))
+    checkSameExpr(e4, simplifyArithmetic(e4), Set(aId))
+    val e5 = Plus(a, Minus(a, i(2)))
+    checkSameExpr(e5, simplifyArithmetic(e5), Set(aId))
 
-    val e6 = Times(InfiniteIntegerLiteral(9), Plus(Division(x, InfiniteIntegerLiteral(3)), Division(x, InfiniteIntegerLiteral(6))))
-    checkSameExpr(e6, simplifyArithmetic(e6), Set(xId))
+    val e6 = Times(i(9), Plus(Division(a, i(3)), Division(a, i(6))))
+    checkSameExpr(e6, simplifyArithmetic(e6), Set(aId))
   }
 
   test("expandAndSimplifyArithmetic") {
-    val e1 = Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
+    val e1 = Plus(i(3), i(2))
     checkSameExpr(e1, expandAndSimplifyArithmetic(e1), Set())
-    val e2 = Plus(x, Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
-    checkSameExpr(e2, expandAndSimplifyArithmetic(e2), Set(xId))
+    val e2 = Plus(a, Plus(i(3), i(2)))
+    checkSameExpr(e2, expandAndSimplifyArithmetic(e2), Set(aId))
 
-    val e3 = Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2))
+    val e3 = Minus(i(3), i(2))
     checkSameExpr(e3, expandAndSimplifyArithmetic(e3), Set())
-    val e4 = Plus(x, Minus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(2)))
-    checkSameExpr(e4, expandAndSimplifyArithmetic(e4), Set(xId))
-    val e5 = Plus(x, Minus(x, InfiniteIntegerLiteral(2)))
-    checkSameExpr(e5, expandAndSimplifyArithmetic(e5), Set(xId))
+    val e4 = Plus(a, Minus(i(3), i(2)))
+    checkSameExpr(e4, expandAndSimplifyArithmetic(e4), Set(aId))
+    val e5 = Plus(a, Minus(a, i(2)))
+    checkSameExpr(e5, expandAndSimplifyArithmetic(e5), Set(aId))
 
-    val e6 = Times(InfiniteIntegerLiteral(9), Plus(Division(x, InfiniteIntegerLiteral(3)), Division(x, InfiniteIntegerLiteral(6))))
-    checkSameExpr(e6, expandAndSimplifyArithmetic(e6), Set(xId))
+    val e6 = Times(i(9), Plus(Division(a, i(3)), Division(a, i(6))))
+    checkSameExpr(e6, expandAndSimplifyArithmetic(e6), Set(aId))
   }
 
   test("extractEquals") {
@@ -241,7 +238,7 @@ class ExprOpsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuild
   }
 
   test("pre and post traversal") {
-    val expr = Plus(InfiniteIntegerLiteral(1), Minus(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3)))
+    val expr = Plus(i(1), Minus(i(2), i(3)))
     var res = ""
     def f(e: Expr): Unit = e match {
       case InfiniteIntegerLiteral(i) => res += i
@@ -258,19 +255,35 @@ class ExprOpsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuild
   }
 
   test("pre- and postMap") {
-    val expr = Plus(InfiniteIntegerLiteral(1), Minus(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3)))
+    val expr = Plus(i(1), Minus(i(2), i(3)))
     def op(e : Expr ) = e match {
-      case Minus(InfiniteIntegerLiteral(two), e2) if two == BigInt(2) => Some(InfiniteIntegerLiteral(2))
-      case InfiniteIntegerLiteral(one) if one == BigInt(1) => Some(InfiniteIntegerLiteral(2))
-      case InfiniteIntegerLiteral(two) if two == BigInt(2) => Some(InfiniteIntegerLiteral(42))
+      case Minus(InfiniteIntegerLiteral(two), e2) if two == BigInt(2) => Some(i(2))
+      case InfiniteIntegerLiteral(one) if one == BigInt(1) => Some(i(2))
+      case InfiniteIntegerLiteral(two) if two == BigInt(2) => Some(i(42))
       case _ => None
     }
     
-    assert( preMap(op, false)(expr) == Plus(InfiniteIntegerLiteral(2),  InfiniteIntegerLiteral(2))  )
-    assert( preMap(op, true )(expr) == Plus(InfiniteIntegerLiteral(42), InfiniteIntegerLiteral(42)) )
-    assert( postMap(op, false)(expr) == Plus(InfiniteIntegerLiteral(2),  Minus(InfiniteIntegerLiteral(42), InfiniteIntegerLiteral(3))) )
-    assert( postMap(op, true)(expr)  == Plus(InfiniteIntegerLiteral(42), Minus(InfiniteIntegerLiteral(42), InfiniteIntegerLiteral(3))) )
+    assert( preMap(op, false)(expr) == Plus(i(2),  i(2))  )
+    assert( preMap(op, true )(expr) == Plus(i(42), i(42)) )
+    assert( postMap(op, false)(expr) == Plus(i(2),  Minus(i(42), i(3))) )
+    assert( postMap(op, true)(expr)  == Plus(i(42), Minus(i(42), i(3))) )
     
+  }
+
+
+  test("negate of literal returns the correct literal") {
+    assert(negate(BooleanLiteral(true)) === BooleanLiteral(false))
+    assert(negate(BooleanLiteral(false)) === BooleanLiteral(true))
+  }
+
+  test("negate of a variable simply wraps it with a Not node") {
+    assert(negate(p) === Not(p))
+    assert(negate(q) === Not(q))
+  }
+
+  test("negate of a negated variable simply returns the variable") {
+    assert(negate(Not(p)) === p)
+    assert(negate(Not(q)) === q)
   }
   
 }
