@@ -114,12 +114,13 @@ object Tree {
   def replaceKeepsLemmaInvalid2(t: Tree, path: Path, newT: Tree, path1: Path): Boolean = {
     require(!prefix(path1, path))
     lookup(replace(t, path, newT), path1)==lookup(t, path1)
-  }
+  }.holds
 
+  //@induct
   def replaceKeepsLemma(t: Tree, path: Path, newT: Tree, path1: Path): Boolean = {
-    require(valid(t, path) && !prefix(path1, path))
+    require(valid(t, path) && !prefix(path, path1))
     lookup(replace(t, path, newT), path1)==lookup(t, path1)
-  }
+  }.holds
 
   case class Flat(trees: List[(Path, Tree)]) extends AnyVal
 
@@ -146,6 +147,7 @@ object Tree {
   }
 
   def unflat(f: Flat) : Option[Tree] = {
+    // TO IMPLEMENT
     ???[Option[Tree]]
   } ensuring(res => res match {
     case None() => true
@@ -156,4 +158,22 @@ object Tree {
     f1.trees.content == f2.trees.content
   }
 
+/*
+  def unsomep(po: Option[Path]): Path = {
+    require()
+  }
+
+  def diff(t1: Tree, t2: Tree): Option[Path] = {
+    (t1, t2) match {
+      case (Empty, Empty) => none
+      case (Empty,Node(_,_,_)) => some(pnil)
+      case (Node(_,_,_),Empty) => some(pnil)
+      case (Node(l1,v1,r1),Node(l2,v2,r2)) => {
+        if (v1 != v2) some(pnil)
+        else if (l1==l2) Path(cons(Right,diff(r1,r2).p))
+        else if (r1==r2) Path(cons(Left, diff(l1,l2).p))
+      }
+    }
+  }
+ */
 }
