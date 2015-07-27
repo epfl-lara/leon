@@ -68,6 +68,12 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
 
   val solver = underlying
 
+  private var allClauses: List[Expr] = List()
+
+  private def assertAll(): Unit = {
+    solver.assertCnstr(purescala.ArrayQuantifiersInstantiation.instantiate(andJoin(allClauses)))
+  }
+
   def assertCnstr(expression: Expr) {
     frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
 
@@ -81,8 +87,11 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
     val newClauses = unrollingBank.getClauses(expression, bindings)
 
     for (cl <- newClauses) {
-      solver.assertCnstr(cl)
+      allClauses ::= cl
     }
+
+    solver.push()
+    assertAll()
   }
 
   def push() {
@@ -225,8 +234,9 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
             val newClauses = unrollingBank.unrollBehind(toRelease)
 
             for(ncl <- newClauses) {
-              solver.assertCnstr(ncl)
+              allClauses ::= ncl
             }
+            assertAll()
 
             reporter.debug(" - finished unrolling")
           }

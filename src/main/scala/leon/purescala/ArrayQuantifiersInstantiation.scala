@@ -7,6 +7,7 @@ import Common._
 import Definitions._
 import Expressions._
 import Extractors._
+import Types._
 import ExprOps._
 import Constructors._
 import TreeNormalizations._
@@ -20,6 +21,14 @@ object ArrayQuantifiersInstantiation extends TransformationPhase {
     program
   }
 
+  
+  //class Instantiator {
+
+  //  private var currentIndexSet: Set[Expr] = Set()
+  //  private var 
+
+
+  //}
 
   def instantiate(expr: Expr): Expr = {
     val nnfForm = nnf(expr)
@@ -27,8 +36,17 @@ object ArrayQuantifiersInstantiation extends TransformationPhase {
     //TODO
     val noUpdated = nnfForm
 
-    //TODO remove existential quantification
-    val noExistential = noUpdated
+    val noExistential = simplePostTransform(e => e match {
+      case ArrayExists(arr, from, to, Lambda(Seq(el), body)) => {
+        val freshId = FreshIdentifier("j", Int32Type)
+        val j = freshId.toVariable
+        and(
+          LessEquals(from, j), LessThan(j, to),
+          replace(Map(el.id.toVariable -> ArraySelect(arr, j)), body)
+        )
+      }
+      case e => e
+    })(noUpdated)
 
     val indexSet = 
       collect[Expr](e => e match {
