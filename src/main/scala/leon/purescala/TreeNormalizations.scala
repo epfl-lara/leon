@@ -32,8 +32,10 @@ object TreeNormalizations {
       case Not(Or(es)) => And(es map Not)
       case Not(Implies(l, r)) => And(List(l, Not(r)))
       case Not(BooleanLiteral(b)) => BooleanLiteral(!b)
-      case Not(ArrayForall(arr, from, to, body)) => ArrayExists(arr, from, to, Not(body))
-      case Not(ArrayExists(arr, from, to, body)) => ArrayForall(arr, from, to, Not(body))
+      case Not(ArrayForall(arr, from, to, Lambda(args, body))) => 
+        ArrayExists(arr, from, to, Lambda(args, Not(body)))
+      case Not(ArrayExists(arr, from, to, Lambda(args, body))) => 
+        ArrayForall(arr, from, to, Lambda(args, Not(body)))
       case expr => expr
     }
 
