@@ -1,29 +1,80 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.test.purescala
-
-import leon.test._
+package leon
+package purescala
 
 import leon.purescala.Common._
 import leon.purescala.Types._
 import leon.purescala.Expressions._
 import leon.purescala.TreeNormalizations._
 
-class TreeNormalizationsSuite extends LeonTestSuite with WithLikelyEq {
-  def i(x: Int) = InfiniteIntegerLiteral(x)
+class TreeNormalizationsSuite extends LeonTestSuite with WithLikelyEq with ExpressionsBuilder {
 
-  val xId = FreshIdentifier("x", IntegerType)
-  val x = Variable(xId)
-  val yId = FreshIdentifier("y", IntegerType)
-  val y = Variable(yId)
   val xs = Set(xId, yId)
-
-  val aId = FreshIdentifier("a", IntegerType)
-  val a = Variable(aId)
-  val bId = FreshIdentifier("b", IntegerType)
-  val b = Variable(bId)
   val as = Set(aId, bId)
   
+
+  test("Single variable isNnf") {
+    assert(isNnf(x))
+    assert(isNnf(p))
+  }
+  test("Simple not of a variable isNnf") {
+    assert(isNnf(Not(p)))
+  }
+  test("Not of a boolean literal is not nnf") {
+    assert(!isNnf(Not(BooleanLiteral(true))))
+  }
+  test("Simple combination of literals is nnf") {
+    assert(isNnf(And(Not(p), q)))
+    assert(isNnf(Or(Not(p), q)))
+  }
+  test("Top level not is not nnf") {
+    assert(!isNnf(Not(And(Not(p), q))))
+    assert(!isNnf(Not(Or(Not(p), q))))
+  }
+  test("Nested structure with only not on leafs is nnf") {
+    assert(isNnf(Implies(And(Not(p), q), Or(p, q))))
+  }
+  test("Nested structure with intermediate Not is not nnf") {
+    assert(!isNnf(Implies(Not(And(Not(p), q)), Or(p, q))))
+  }
+
+
+
+  test("nnf of single variable is itself") {
+    assert(nnf(x) === x)
+    assert(nnf(p) === p)
+  }
+
+  test("nnf of negation of and/or works correctly") {
+    val expr1 = Not(And(p, q))
+    val res1 = nnf(expr1)
+    assert(isNnf(res1))
+    assert(res1.isInstanceOf[Or])
+    assert(res1.asInstanceOf[Or].exprs.toSet === Set(Not(p), Not(q)))
+
+    val expr2 = Not(Or(p, q))
+    val res2 = nnf(expr2)
+    assert(isNnf(res2))
+    assert(res2.isInstanceOf[And])
+    assert(res2.asInstanceOf[And].exprs.toSet === Set(Not(p), Not(q)))
+  }
+
+  test("nnf of negation of and/or correctly propagate Not in sub-expressions") {
+    val expr1 = Not(And(Not(p), q))
+    val res1 = nnf(expr1)
+    assert(isNnf(res1))
+    assert(res1.isInstanceOf[Or])
+    assert(res1.asInstanceOf[Or].exprs.toSet === Set(p, Not(q)))
+
+    val expr2 = Not(Or(p, Not(q)))
+    val res2 = nnf(expr2)
+    assert(isNnf(res2))
+    assert(res2.isInstanceOf[And])
+    assert(res2.asInstanceOf[And].exprs.toSet === Set(Not(p), q))
+  }
+
+
 
   def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier]) {
     assert( //this outer assert should not be needed because of the nested one

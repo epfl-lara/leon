@@ -13,6 +13,17 @@ object TreeNormalizations {
   /* TODO: we should add CNF and DNF at least */
 
 
+  def isNnf(expr: Expr): Boolean = {
+
+    def badExpression(expr: Expr): Boolean = expr match {
+      case Not(Variable(_)) => false
+      case Not(_) => true
+      case _ => false
+    }
+
+    !exists(badExpression)(expr)
+  }
+
   def nnf(expr: Expr): Expr = {
 
     def rec(expr: Expr): Expr = expr match {
@@ -23,6 +34,7 @@ object TreeNormalizations {
       case Not(BooleanLiteral(b)) => BooleanLiteral(!b)
       case Not(ArrayForall(arr, from, to, body)) => ArrayExists(arr, from, to, Not(body))
       case Not(ArrayExists(arr, from, to, body)) => ArrayForall(arr, from, to, Not(body))
+      case expr => expr
     }
 
 
