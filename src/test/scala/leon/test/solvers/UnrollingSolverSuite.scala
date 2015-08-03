@@ -3,6 +3,7 @@
 package leon.test.solvers
 
 import leon.test._
+import leon.LeonContext
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.Common._
@@ -11,42 +12,43 @@ import leon.solvers._
 import leon.solvers.z3._
 import leon.solvers.combinators._
 
-class UnrollingSolverSuite extends LeonTestSuite {
+class UnrollingSolverSuite extends LeonSolverSuite {
 
-  private val fx   : Identifier = FreshIdentifier("x", IntegerType)
-  private val fres : Identifier = FreshIdentifier("res", IntegerType)
-  private val fDef : FunDef = new FunDef(FreshIdentifier("f"), Nil, IntegerType, ValDef(fx) :: Nil)
-  fDef.body = Some(IfExpr(GreaterThan(Variable(fx), InfiniteIntegerLiteral(0)),
-    Plus(Variable(fx), FunctionInvocation(fDef.typed, Seq(Minus(Variable(fx), InfiniteIntegerLiteral(1))))),
-    InfiniteIntegerLiteral(1)
-  ))
-  fDef.postcondition = Some(Lambda(Seq(ValDef(fres)), GreaterThan(Variable(fres), InfiniteIntegerLiteral(0))))
-
-  private val program = Program(
-    List(UnitDef(
-      FreshIdentifier("Minimal"),
-      List(ModuleDef(FreshIdentifier("Minimal"), Seq(fDef), false))
-    ))
+  val sources = List(
+    """|import leon.lang._
+       |
+       |object Minimal {
+       |  def f(x: BigInt): BigInt = {
+       |    if (x > 0) {
+       |      x + f(x-1)
+       |    } else {
+       |      BigInt(1)
+       |    }
+       |  } ensuring { _ > 0 }
+       |}""".stripMargin
   )
 
-  private def check(expr: Expr, expected: Option[Boolean], msg: String) : Unit = {
-    test(msg) {
-      val sf = SolverFactory(() => new UnrollingSolver(testContext, program, new UninterpretedZ3Solver(testContext, program)))
-      val solver = sf.getNewSolver()
-
-      try { 
-        solver.assertCnstr(expr)
-        assert(solver.check == expected)
-      } finally { 
-        solver.free()
-        sf.shutdown()
-      }
-    }
+  def getSolver(implicit ctx: LeonContext, pgm: Program) = {
+    new UnrollingSolver(ctx, pgm, new UninterpretedZ3Solver(ctx, pgm))
   }
 
-  check(BooleanLiteral(true), Some(true), "'true' should always be valid")
-  check(BooleanLiteral(false), Some(false), "'false' should never be valid")
+  test("'true' should be valid") { implicit fix =>
+    valid(BooleanLiteral(true))
+  }
 
-  check(Not(GreaterThan(FunctionInvocation(fDef.typed, Seq(Variable(FreshIdentifier("toto", IntegerType)))), InfiniteIntegerLiteral(0))),
-    Some(false), "unrolling should enable recursive definition verification")
+  test("'false' should be invalid") { implicit fix =>
+    invalid(BooleanLiteral(false))
+  }
+
+  test("unrolling should enable recursive definition verification") { implicit fix =>
+    val pgm = fix._2
+    val fd = pgm.lookup("Minimal.f").collect {
+      case fd: FunDef => fd
+    }.get
+
+    def f(e: Expr) = FunctionInvocation(fd.typed, Seq(e))
+    val x = FreshIdentifier("x", IntegerType).toVariable
+
+    valid(GreaterThan(f(x), InfiniteIntegerLiteral(0)))
+  }
 }

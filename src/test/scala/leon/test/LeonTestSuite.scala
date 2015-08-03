@@ -3,180 +3,48 @@
 package leon.test
 
 import leon._
+import leon.purescala.Definitions.Program
 import leon.LeonContext
 import leon.utils._
+import leon.frontends.scalac.ExtractionPhase
 
-import scala.io.Source
 import org.scalatest._
-import org.scalatest.time.Span
-import org.scalatest.concurrent._
-import org.scalatest.time.SpanSugar._
 import org.scalatest.exceptions.TestFailedException
 
-import java.io.File
+trait LeonTestSuite extends fixture.FunSuite {
+  type FixtureParam = LeonContext
 
-trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
-  // Hard-code resource directory, for Eclipse purposes
-  val resourceDirHard = "src/test/resources/"
-
-  def now() = {
-    System.currentTimeMillis
-  }
-
-  case class Statistics(values: List[Long]) {
-    val n      = values.size
-    val avg    = values.sum.toDouble/n
-    val stddev = Math.sqrt(values.map(v => Math.pow(v.toDouble - avg, 2)).sum/n)
-
-    def accountsFor(ms: Long) = {
-      if (n < 5) {
-        true
-      } else {
-        val msd = ms.toDouble
-        msd < avg + 3*stddev + 20
-      }
-    }
-
-    def withValue(v: Long) = this.copy(v :: values)
-  }
-
-
-  def createLeonContext(opts: String*): LeonContext = {
+  override def withFixture(test: OneArgTest): Outcome = {
     val reporter = new TestSilentReporter
+    val opts     = List[String]()
 
-    Main.processOptions(opts.toList).copy(reporter = reporter, interruptManager = new InterruptManager(reporter))
-  }
+    val ctx      = Main.processOptions(opts).copy(reporter = reporter)
 
-  var testContext: LeonContext = null
-
-  override def beforeEach() = {
-    testContext = createLeonContext()
-    super.beforeEach()
-  }
-
-  def testIdentifier(name: String): String = {
-    def sanitize(s: String) = s.replaceAll("[^0-9a-zA-Z-]", "")
-
-    sanitize(this.getClass.getName)+"/"+sanitize(name)
-  }
-
-  def bookKeepingFile(id: String) = {
-    import java.io.File
-
-    val f = new File(System.getProperty("user.dir")+"/.test-history/"+id+".log")
-
-    f.getParentFile.mkdirs()
-
-    f
-  }
-
-  def getStats(id: String): Statistics = {
-    val f = bookKeepingFile(id)
-
-    if (f.canRead) {
-      Statistics(Source.fromFile(f).getLines().flatMap{ line =>
-        val l = line.trim
-        if (l.length > 0) {
-          Some(line.toLong)
-        } else {
-          None
-        }
-      }.toList)
-    } else {
-      Statistics(Nil)
+    try {
+      test(ctx)
+    } catch {
+      case fe: LeonFatalError =>
+        reporter.lastErrors ++= fe.msg
+        Failed(new TestFailedException(reporter.lastErrors.mkString("\n"), fe, 5))
     }
   }
 
-  def storeStats(id: String, stats: Statistics) {
-    import java.io.FileWriter
-
-    val f = bookKeepingFile(id)
-
-    val fw = new FileWriter(f, true)
-    fw.write(stats.values.head+"\n")
-    fw.close()
+  def parseString(str: String)(implicit ctx: LeonContext): Program = {
+    parseStrings(List(str))(ctx)
   }
 
-  override implicit val defaultInterruptor = new Interruptor {
-    def apply(t: Thread) {
-      testContext.interruptManager.interrupt()
-    }
+  def parseStrings(strs: List[String])(implicit ctx: LeonContext): Program = {
+    val pipeline = TemporaryInputPhase andThen
+                   ExtractionPhase andThen
+                   PreprocessingPhase
+
+    val errorsBefore = ctx.reporter.errorCount
+
+    val program = pipeline.run(ctx)((strs, Nil))
+
+    assert(ctx.reporter.errorCount === errorsBefore)
+
+    program
   }
 
-  def testWithTimeout(name: String, timeout: Span)(body: => Unit) {
-    super.test(name) {
-      val id = testIdentifier(name)
-
-      val ts = now()
-
-      failAfter(timeout) {
-        try {
-          body
-        } catch {
-          case fe: LeonFatalError =>
-            testContext.reporter match {
-              case sr: TestSilentReporter =>
-                sr.lastErrors ++= fe.msg
-                throw new TestFailedException(sr.lastErrors.mkString("\n"), fe, 5)
-            }
-        }
-      }
-
-      val total = now()-ts
-
-      val stats = getStats(id)
-
-      if (!stats.accountsFor(total)) {
-        info(Console.YELLOW+"[warning] Test took too long to run: "+total+"ms (avg: "+stats.avg+", stddev: "+stats.stddev+")")
-      }
-
-      storeStats(id, stats.withValue(total))
-    }
-  }
-
-
-  override def test(name: String, tags: Tag*)(body: => Unit) {
-    testWithTimeout(name, 5.minutes)(body)
-  }
-
-  protected val all : String=>Boolean = (s : String) => true
-
- 
-  def resourceDir(dir : String) : File = {
-
-    val d = this.getClass.getClassLoader.getResource(dir)
-
-    if(d == null || d.getProtocol != "file") {
-      // We are in Eclipse. The only way we are saved is by hard-coding the path
-      new File(resourceDirHard + dir)
-    }
-    else {
-      new File(d.toURI)
-    }
-  }
-
-
-  
-  
-  def scanFilesIn(f: File, filter: String=>Boolean = all, recursive: Boolean = false): Iterable[File] = {
-    Option(f.listFiles()).getOrElse(Array()).flatMap{f =>
-      if (f.isDirectory && recursive) {
-        scanFilesIn(f, filter, recursive)   
-      } else {
-        List(f) 
-      }
-    }.filter(f => filter(f.getPath))
-  }
-
-  def filesInResourceDir(dir : String, filter : String=>Boolean = all, recursive: Boolean = false) : Iterable[File] = {
-
-    val d = this.getClass.getClassLoader.getResource(dir)
-
-    val asFile = if(d == null || d.getProtocol != "file") {
-      // We are in Eclipse. The only way we are saved is by hard-coding the path
-      new File(resourceDirHard + dir)
-    } else new File(d.toURI)
-
-    scanFilesIn(asFile, filter, recursive)
-  }
 }

@@ -7,7 +7,7 @@ import leon.purescala.Common._
 import leon.utils.StreamUtils._
 
 class StreamsSuite extends LeonTestSuite {
-  test("Cartesian Product 1") {
+  test("Cartesian Product 1") { ctx =>
     val s1 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
@@ -25,7 +25,7 @@ class StreamsSuite extends LeonTestSuite {
 
   }
 
-  test("Cartesian Product 2") {
+  test("Cartesian Product 2") { ctx =>
     val s1 = FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
              FreshIdentifier("B", alwaysShowUniqueID = true) #::
@@ -45,7 +45,7 @@ class StreamsSuite extends LeonTestSuite {
   }
 
 
-  test("Cartesian Product 3") {
+  test("Cartesian Product 3") { ctx =>
     val s1 = 1 #::
              2 #::
              3 #::
