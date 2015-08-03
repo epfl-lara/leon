@@ -28,4 +28,13 @@ env:
         - TEST_COMMAND="regression:test"
 
 script:
-    - sbt "$TEST_COMMAND"
+    - sbt ++$TRAVIS_SCALA_VERSION "$TEST_COMMAND"
+
+    # Tricks to avoid unnecessary cache updates
+    - find $HOME/.sbt -name "*.lock" | xargs rm
+    - find $HOME/.ivy2 -name "ivydata-*.properties" | xargs rm
+
+cache:
+    directories:
+        - $HOME/.ivy2/cache
+        - $HOME/.sbt/boot/
