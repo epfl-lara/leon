@@ -11,8 +11,8 @@ import leon.purescala.Types._
 
 class TreeTestsSuite extends LeonTestSuite {
 
-  test("And- and Or- simplifications") {
-    val x = Variable(FreshIdentifier("x", BooleanType))
+  test("And- and Or- simplifications") { ctx =>
+    val x = FreshIdentifier("x", BooleanType).toVariable
     val t = BooleanLiteral(true)
     val f = BooleanLiteral(false)
 

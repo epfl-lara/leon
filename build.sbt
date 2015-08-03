@@ -31,7 +31,6 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.6",
   "org.scalatest" %% "scalatest" % "2.2.0" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
-  "com.storm-enroute" %% "scalameter" % "0.7-SNAPSHOT" % "test",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
 
@@ -90,39 +89,54 @@ sourceGenerators in Compile <+= Def.task {
 }
 
 
+sourcesInBase in Compile := false
+
 Keys.fork in run := true
 
+// Unit Tests
 Keys.fork in Test := true
 
 logBuffered in Test := false
 
 javaOptions in Test ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
 
-testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework")
+parallelExecution in Test := true
 
-parallelExecution in Test := false
+testOptions in Test := Seq(Tests.Argument("-oDF"))
 
-parallelExecution in (Test, testOnly) := false
 
-testOptions in (Test, test) := Seq(Tests.Filter(s => s.endsWith("LeonAllTests")), Tests.Argument(TestFrameworks.ScalaTest, "-oDF"))
 
-testOptions in (Test, testOnly) := Seq(Tests.Argument(TestFrameworks.ScalaTest, "-oDF"))
+// Regression Tests
+lazy val IntegrTest = config("integration") extend(Test)
 
-sourcesInBase in Compile := false
+Keys.fork in IntegrTest := true
 
-lazy val PerfTest = config("perf") extend(Test)
+logBuffered in IntegrTest := false
 
-lazy val UnitTest = config("unit-test") extend(Test)
+javaOptions in IntegrTest ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
 
-scalaSource in PerfTest := baseDirectory.value / "src/test/scala/"
+parallelExecution in IntegrTest := false
 
-scalaSource in UnitTest := baseDirectory.value / "src/unit-test/scala/"
+testOptions in IntegrTest := Seq(Tests.Argument("-oDF"))
 
-parallelExecution in PerfTest := false
 
-parallelExecution in UnitTest := true
 
-testOptions in (PerfTest, test) := Seq(Tests.Filter(s => s.endsWith("PerfTest")))
+// RegressionTest Tests
+lazy val RegressionTest = config("regression") extend(Test)
+
+Keys.fork in RegressionTest := true
+
+logBuffered in RegressionTest := false
+
+javaOptions in RegressionTest  ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
+
+parallelExecution in RegressionTest := false
+
+testOptions in RegressionTest  := Seq(Tests.Argument("-oDF"))
+
+
+
+
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
@@ -131,9 +145,10 @@ lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "0fec
 lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "6b74fb332416d470e0be7bf6e94ebc18fd300c2f")
 
 lazy val root = (project in file(".")).
-  configs(PerfTest).
-  configs(UnitTest).
+  configs(RegressionTest).
+  configs(IntegrTest).
   dependsOn(bonsai, scalaSmtLib).
-  settings(inConfig(PerfTest)(Defaults.testSettings): _*).
-  settings(inConfig(UnitTest)(Defaults.testSettings): _*)
+  settings(inConfig(RegressionTest)(Defaults.testSettings): _*).
+  settings(inConfig(IntegrTest)(Defaults.testSettings): _*)
+
 

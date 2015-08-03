@@ -11,7 +11,7 @@ import leon.frontends.scalac.ExtractionPhase
 import org.scalatest._
 import org.scalatest.exceptions.TestFailedException
 
-trait LeonTestSuite extends fixture.FunSuite {
+trait LeonTestSuiteMeh extends fixture.FunSuite {
   type FixtureParam = LeonContext
 
   override def withFixture(test: OneArgTest): Outcome = {

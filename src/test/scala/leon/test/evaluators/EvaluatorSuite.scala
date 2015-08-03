@@ -1,703 +1,309 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.test.evaluators
+package leon.test.allEvaluators
 
 import leon._
-import leon.evaluators._ 
+import leon.test._
+import leon.evaluators._
 
 import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
 import leon.frontends.scalac.ExtractionPhase
 
+import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.DefOps._
 import leon.purescala.Types._
 import leon.purescala.Extractors._
 import leon.purescala.Constructors._
+import leon.codegen._
 
-class EvaluatorSuite extends leon.test.LeonTestSuite {
-  private implicit lazy val leonContext = testContext
+class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
 
-  private val evaluatorConstructors : List[(LeonContext,Program)=>Evaluator] = List(
-    new DefaultEvaluator(_,_),
-    new CodeGenEvaluator(_,_)
-  )
+  implicit val pgm = Program.empty
 
-  private def prepareEvaluators(implicit ctx : LeonContext, prog : Program) : List[Evaluator] = evaluatorConstructors.map(c => c(leonContext, prog))
-
-  private def parseString(str : String) : Program = {
-    val pipeline = TemporaryInputPhase andThen ExtractionPhase andThen PreprocessingPhase
-
-    val errorsBefore   = leonContext.reporter.errorCount
-
-    val program = pipeline.run(leonContext)((str, Nil))
-
-    assert(leonContext.reporter.errorCount   === errorsBefore)
-
-    program
+  def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
+    List(
+      new DefaultEvaluator(ctx, pgm)
+    )
   }
 
-  private def mkCall(name : String, args : Expr*)(implicit p : Program) = {
-    val fn = s"Program.$name"
+  def codegenEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
+    List(
+      new CodeGenEvaluator(ctx, pgm)
+    )
+  }
 
-    p.lookup(fn) match {
-      case Some(fd: FunDef) =>
-        FunctionInvocation(fd.typed, args.toSeq)
-      case _ =>
-        throw new AssertionError(s"No function named '$fn' defined in program.")
+  def allEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
+    normalEvaluators ++ codegenEvaluators
+  }
+
+
+  test("Literals") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, BooleanLiteral(true))         === BooleanLiteral(true)
+      eval(e, BooleanLiteral(false))        === BooleanLiteral(false)
+      eval(e, IntLiteral(0))                === IntLiteral(0)
+      eval(e, IntLiteral(42))               === IntLiteral(42)
+      eval(e, UnitLiteral())                === UnitLiteral()
+      eval(e, InfiniteIntegerLiteral(0))    === InfiniteIntegerLiteral(0)
+      eval(e, InfiniteIntegerLiteral(42))   === InfiniteIntegerLiteral(42)
+      eval(e, RealLiteral(0))               === RealLiteral(0)
+      eval(e, RealLiteral(42))              === RealLiteral(42)
+      eval(e, RealLiteral(13.255))          === RealLiteral(13.255)
     }
   }
 
-  private def mkCaseClass(name : String, args : Expr*)(implicit p : Program) = {
-    p.lookup("Program."+name) match {
-      case Some(ccd: CaseClassDef) =>
-        CaseClass(CaseClassType(ccd, Nil), args.toSeq)
-      case _ =>
-        throw new AssertionError(s"No case class named '$name' defined in program.")
+  test("BitVector Arithmetic") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, BVPlus(IntLiteral(3), IntLiteral(5)))  === IntLiteral(8)
+      eval(e, BVPlus(IntLiteral(0), IntLiteral(5)))  === IntLiteral(5)
+      eval(e, BVTimes(IntLiteral(3), IntLiteral(3))) === IntLiteral(9)
     }
   }
 
-  private def checkCompSuccess(evaluator : Evaluator, in : Expr) : Expr = {
-    import EvaluationResults._
+  test("eval bitwise operations") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, BVAnd(IntLiteral(3), IntLiteral(1))) === IntLiteral(1)
+      eval(e, BVAnd(IntLiteral(3), IntLiteral(3))) === IntLiteral(3)
+      eval(e, BVAnd(IntLiteral(5), IntLiteral(3))) === IntLiteral(1)
+      eval(e, BVAnd(IntLiteral(5), IntLiteral(4))) === IntLiteral(4)
+      eval(e, BVAnd(IntLiteral(5), IntLiteral(2))) === IntLiteral(0)
 
-    evaluator.eval(in) match {
-      case RuntimeError(msg) =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have succeeded, but it failed ($msg).")
+      eval(e, BVOr(IntLiteral(3), IntLiteral(1))) === IntLiteral(3)
+      eval(e, BVOr(IntLiteral(3), IntLiteral(3))) === IntLiteral(3)
+      eval(e, BVOr(IntLiteral(5), IntLiteral(3))) === IntLiteral(7)
+      eval(e, BVOr(IntLiteral(5), IntLiteral(4))) === IntLiteral(5)
+      eval(e, BVOr(IntLiteral(5), IntLiteral(2))) === IntLiteral(7)
 
-      case EvaluatorError(msg) =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have succeeded, but the evaluator had an internal error ($msg).")
+      eval(e, BVXOr(IntLiteral(3), IntLiteral(1))) === IntLiteral(2)
+      eval(e, BVXOr(IntLiteral(3), IntLiteral(3))) === IntLiteral(0)
 
-      case Successful(result) =>
-        result
+      eval(e, BVNot(IntLiteral(1))) === IntLiteral(-2)
+
+      eval(e, BVShiftLeft(IntLiteral(3), IntLiteral(1))) === IntLiteral(6)
+      eval(e, BVShiftLeft(IntLiteral(4), IntLiteral(2))) === IntLiteral(16)
+
+      eval(e, BVLShiftRight(IntLiteral(8), IntLiteral(1))) === IntLiteral(4)
+      eval(e, BVAShiftRight(IntLiteral(8), IntLiteral(1))) === IntLiteral(4)
     }
   }
 
-  private def checkComp(evaluator : Evaluator, in : Expr, out : Expr) {
-    val result = checkCompSuccess(evaluator, in)
-    if(result != out)
-      throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced '$out' but produced '$result' instead.")
-  }
-
-  private def checkSetComp(evaluator : Evaluator, in : Expr, out : Set[Int]) {
-    val result = checkCompSuccess(evaluator, in)
-
-    def asIntSet(e : Expr) : Option[Set[Int]] = e match {
-      case FiniteSet(es, _) =>
-        val ois = es.map {
-          case IntLiteral(v) => Some(v)
-          case _ => None
-        }
-        if(ois.forall(_.isDefined))
-          Some(ois.map(_.get))
-        else
-          None
-      case _ => None
-    }
-
-    asIntSet(result) match {
-      case Some(s) if s == out =>
-        ;
-
-      case _ =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced a set '$out', but it produced '$result' instead.")
+  test("Arithmetic") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, Plus(InfiniteIntegerLiteral(3), InfiniteIntegerLiteral(5)))  === InfiniteIntegerLiteral(8)
+      eval(e, Minus(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(2))) === InfiniteIntegerLiteral(5)
+      eval(e, UMinus(InfiniteIntegerLiteral(7)))                           === InfiniteIntegerLiteral(-7)
+      eval(e, Times(InfiniteIntegerLiteral(2), InfiniteIntegerLiteral(3))) === InfiniteIntegerLiteral(6)
     }
   }
 
-  private def checkMapComp(evaluator : Evaluator, in : Expr, out : Map[Int,Int]) {
-    val result = checkCompSuccess(evaluator, in)
+  test("BigInt Modulo and Remainder") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, Division(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3)))   === InfiniteIntegerLiteral(3)
+      eval(e, Remainder(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3)))  === InfiniteIntegerLiteral(1)
+      eval(e, Modulo(InfiniteIntegerLiteral(10), InfiniteIntegerLiteral(3)))     === InfiniteIntegerLiteral(1)
 
-    def asIntMap(e : Expr) : Option[Map[Int,Int]] = e match {
-      case FiniteMap(ss, _, _) =>
-        val oips : Seq[Option[(Int,Int)]] = ss.map {
-          case (IntLiteral(f), IntLiteral(t)) => Some(f -> t)
-          case _ => None
-        }
-        if(oips.forall(_.isDefined))
-          Some(oips.map(_.get).toMap)
-        else
-          None
-      case _ => None
-    }
+      eval(e, Division(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3)))   === InfiniteIntegerLiteral(0)
+      eval(e, Remainder(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3)))  === InfiniteIntegerLiteral(-1)
 
-    asIntMap(result) match {
-      case Some(s) if s == out =>
-        ;
+      eval(e, Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(3)))     === InfiniteIntegerLiteral(2)
 
-      case _ =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should produced a map '$out', but it produced '$result' instead.")
+      eval(e, Division(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3)))  === InfiniteIntegerLiteral(0)
+      eval(e, Remainder(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3))) === InfiniteIntegerLiteral(-1)
+      eval(e, Modulo(InfiniteIntegerLiteral(-1), InfiniteIntegerLiteral(-3)))    === InfiniteIntegerLiteral(2)
+
+      eval(e, Division(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3)))   === InfiniteIntegerLiteral(0)
+      eval(e, Remainder(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3)))  === InfiniteIntegerLiteral(1)
+      eval(e, Modulo(InfiniteIntegerLiteral(1), InfiniteIntegerLiteral(-3)))     === InfiniteIntegerLiteral(1)
     }
   }
 
-  private def checkError(evaluator : Evaluator, in : Expr) {
-    import EvaluationResults._
+  test("Int Comparisons") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, GreaterEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4)))  === BooleanLiteral(true)
+      eval(e, GreaterEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7)))  === BooleanLiteral(true)
+      eval(e, GreaterEquals(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7)))  === BooleanLiteral(false)
 
-    evaluator.eval(in) match {
-      case EvaluatorError(msg) =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have failed, but it produced an internal error ($msg).")
+      eval(e, GreaterThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4)))    === BooleanLiteral(true)
+      eval(e, GreaterThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7)))    === BooleanLiteral(false)
+      eval(e, GreaterThan(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7)))    === BooleanLiteral(false)
 
-      case Successful(result) =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have failed, but it produced the result '$result' instead.")
+      eval(e, LessEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4)))     === BooleanLiteral(false)
+      eval(e, LessEquals(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7)))     === BooleanLiteral(true)
+      eval(e, LessEquals(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7)))     === BooleanLiteral(true)
 
-      case RuntimeError(_) =>
-        // that's the desired outcome
+      eval(e, LessThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(4)))       === BooleanLiteral(false)
+      eval(e, LessThan(InfiniteIntegerLiteral(7), InfiniteIntegerLiteral(7)))       === BooleanLiteral(false)
+      eval(e, LessThan(InfiniteIntegerLiteral(4), InfiniteIntegerLiteral(7)))       === BooleanLiteral(true)
     }
   }
 
-  private def checkEvaluatorError(evaluator : Evaluator, in : Expr) {
-    import EvaluationResults._
 
-    evaluator.eval(in) match {
-      case RuntimeError(msg) =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced an internal error, but it failed instead ($msg).")
+  test("Int Modulo and Remainder") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, BVDivision(IntLiteral(10), IntLiteral(3)))    === IntLiteral(3)
+      eval(e, BVRemainder(IntLiteral(10), IntLiteral(3)))   === IntLiteral(1)
 
-      case Successful(result) =>
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' should have produced an internal error, but it produced the result '$result' instead.")
+      eval(e, BVDivision(IntLiteral(-1), IntLiteral(3)))    === IntLiteral(0)
+      eval(e, BVRemainder(IntLiteral(-1), IntLiteral(3)))   === IntLiteral(-1)
 
-      case EvaluatorError(_) =>
-        // that's the desired outcome
+      eval(e, BVDivision(IntLiteral(-1), IntLiteral(-3)))   === IntLiteral(0)
+      eval(e, BVRemainder(IntLiteral(-1), IntLiteral(-3)))  === IntLiteral(-1)
+
+      eval(e, BVDivision(IntLiteral(1), IntLiteral(-3)))    === IntLiteral(0)
+      eval(e, BVRemainder(IntLiteral(1), IntLiteral(-3)))   === IntLiteral(1)
     }
   }
 
-  private val T = BooleanLiteral(true)
-  private val F = BooleanLiteral(false)
-  import purescala.Expressions.{IntLiteral => IL, InfiniteIntegerLiteral => BIL, RealLiteral => RL}
-
-  test("Arithmetic") {
-    val p = """|object Program {
-               |  def plus(x : Int, y : Int) : Int = x + y
-               |  def max(x : Int, y : Int) : Int = if(x >= y) x else y
-               |  def square(i : Int) : Int = { val j = i; j * i }
-               |  def abs(i : Int) : Int = if(i < 0) -i else i
-               |  def intSqrt(n : Int) : Int = intSqrt0(abs(n), 0)
-               |  def intSqrt0(n : Int, c : Int) : Int = {
-               |    val s = square(c+1)
-               |    if(s > n) c else intSqrt0(n, c+1)
-               |  }
-               |  def div(x : Int, y : Int) : Int = (x / y)
-               |  def rem(x : Int, y : Int) : Int = (x % y)
-               |}
-               |""".stripMargin
-
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    for(e <- evaluators) {
-      // Some simple math.
-      checkComp(e, mkCall("plus", IL(60), BVUMinus(IL(18))), IL(42))
-      checkComp(e, mkCall("max", IL(4), IL(42)), IL(42))
-      checkComp(e, mkCall("max", IL(42), BVUMinus(IL(42))), IL(42))
-      checkComp(e, mkCall("intSqrt", BVUMinus(IL(1800))), IL(42))
-      checkComp(e, mkCall("div", IL(7), IL(5)), IL(1))
-      checkComp(e, mkCall("div", IL(7), IL(-5)), IL(-1))
-      checkComp(e, mkCall("div", IL(-7), IL(5)), IL(-1))
-      checkComp(e, mkCall("div", IL(-7), IL(-5)), IL(1))
-      checkComp(e, mkCall("rem", IL(7), IL(5)), IL(2))
-      checkComp(e, mkCall("rem", IL(7), IL(-5)), IL(2))
-      checkComp(e, mkCall("rem", IL(-7), IL(5)), IL(-2))
-      checkComp(e, mkCall("rem", IL(-7), IL(-5)), IL(-2))
-      checkComp(e, mkCall("rem", IL(-1), IL(5)), IL(-1))
-
-      // Things that should crash.
-      checkError(e, mkCall("div", IL(42), IL(0))) 
-      checkError(e, mkCall("rem", IL(42), IL(0)))
+  test("Boolean Operations") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, And(BooleanLiteral(true), BooleanLiteral(true)))      === BooleanLiteral(true)
+      eval(e, And(BooleanLiteral(true), BooleanLiteral(false)))     === BooleanLiteral(false)
+      eval(e, And(BooleanLiteral(false), BooleanLiteral(false)))    === BooleanLiteral(false)
+      eval(e, And(BooleanLiteral(false), BooleanLiteral(true)))     === BooleanLiteral(false)
+      eval(e, Or(BooleanLiteral(true), BooleanLiteral(true)))       === BooleanLiteral(true)
+      eval(e, Or(BooleanLiteral(true), BooleanLiteral(false)))      === BooleanLiteral(true)
+      eval(e, Or(BooleanLiteral(false), BooleanLiteral(false)))     === BooleanLiteral(false)
+      eval(e, Or(BooleanLiteral(false), BooleanLiteral(true)))      === BooleanLiteral(true)
+      eval(e, Not(BooleanLiteral(false)))                           === BooleanLiteral(true)
+      eval(e, Not(BooleanLiteral(true)))                            === BooleanLiteral(false)
     }
   }
 
-  test("BigInt Arithmetic") {
-    val p = """|object Program {
-               |  def plus(x : BigInt, y : BigInt) : BigInt = x + y
-               |  def max(x : BigInt, y : BigInt) : BigInt = if(x >= y) x else y
-               |  def square(i : BigInt) : BigInt = { val j = i; j * i }
-               |  def abs(i : BigInt) : BigInt = if(i < 0) -i else i
-               |  def intSqrt(n : BigInt) : BigInt = intSqrt0(abs(n), 0)
-               |  def intSqrt0(n : BigInt, c : BigInt) : BigInt = {
-               |    val s = square(c+1)
-               |    if(s > n) c else intSqrt0(n, c+1)
-               |  }
-               |  def div(x : BigInt, y : BigInt) : BigInt = (x / y)
-               |  def rem(x : BigInt, y : BigInt) : BigInt = (x % y)
-               |  def mod(x : BigInt, y : BigInt) : BigInt = (x mod y)
-               |}
-               |""".stripMargin
-
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    for(e <- evaluators) {
-      // Some simple math.
-      checkComp(e, mkCall("plus", BIL(60), UMinus(BIL(18))), BIL(42))
-      checkComp(e, mkCall("max", BIL(4), BIL(42)), BIL(42))
-      checkComp(e, mkCall("max", BIL(42), UMinus(BIL(42))), BIL(42))
-      checkComp(e, mkCall("intSqrt", UMinus(BIL(1800))), BIL(42))
-      checkComp(e, mkCall("div", BIL(7), BIL(5)), BIL(1))
-      checkComp(e, mkCall("div", BIL(7), BIL(-5)), BIL(-1))
-      checkComp(e, mkCall("div", BIL(-7), BIL(5)), BIL(-1))
-      checkComp(e, mkCall("div", BIL(-7), BIL(-5)), BIL(1))
-      checkComp(e, mkCall("rem", BIL(7), BIL(5)), BIL(2))
-      checkComp(e, mkCall("rem", BIL(7), BIL(-5)), BIL(2))
-      checkComp(e, mkCall("rem", BIL(-7), BIL(5)), BIL(-2))
-      checkComp(e, mkCall("rem", BIL(-7), BIL(-5)), BIL(-2))
-      checkComp(e, mkCall("rem", BIL(-1), BIL(5)), BIL(-1))
-      checkComp(e, mkCall("mod", BIL(7), BIL(5)), BIL(2))
-      checkComp(e, mkCall("mod", BIL(7), BIL(-5)), BIL(2))
-      checkComp(e, mkCall("mod", BIL(-7), BIL(5)), BIL(3))
-      checkComp(e, mkCall("mod", BIL(-7), BIL(-5)), BIL(3))
-      checkComp(e, mkCall("mod", BIL(-1), BIL(5)), BIL(4))
-
-      // Things that should crash.
-      checkError(e, mkCall("div", BIL(42), BIL(0))) 
-      checkError(e, mkCall("rem", BIL(42), BIL(0)))
-      checkError(e, mkCall("mod", BIL(42), BIL(0)))
+  test("Real Arightmetic") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, RealPlus(RealLiteral(3), RealLiteral(5)))     === RealLiteral(8)
+      eval(e, RealMinus(RealLiteral(7), RealLiteral(2)))    === RealLiteral(5)
+      eval(e, RealUMinus(RealLiteral(7)))                   === RealLiteral(-7)
+      eval(e, RealTimes(RealLiteral(2), RealLiteral(3)))    === RealLiteral(6)
+      eval(e, RealPlus(RealLiteral(2.5), RealLiteral(3.5))) === RealLiteral(6)
     }
   }
 
-  test("Real Arithmetic") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  def plus(x : Real, y : Real) : Real = x + y
-               |  def max(x : Real, y : Real) : Real = if(x >= y) x else y
-               |  def square(i : Real) : Real = { val j = i; j * i }
-               |  def abs(i : Real) : Real = if(i < Real(0)) -i else i
-               |  def intSqrt(n : Real) : Real = intSqrt0(abs(n), Real(0))
-               |  def intSqrt0(n : Real, c : Real) : Real = {
-               |    val s = square(c+Real(1))
-               |    if(s > n) c else intSqrt0(n, c+Real(1))
-               |  }
-               |  def div(x : Real, y : Real) : Real = (x / y)
-               |}
-               |""".stripMargin
+  test("Real Comparisons") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, GreaterEquals(RealLiteral(7), RealLiteral(4))) === BooleanLiteral(true)
+      eval(e, GreaterEquals(RealLiteral(7), RealLiteral(7))) === BooleanLiteral(true)
+      eval(e, GreaterEquals(RealLiteral(4), RealLiteral(7))) === BooleanLiteral(false)
 
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
+      eval(e, GreaterThan(RealLiteral(7), RealLiteral(4)))  === BooleanLiteral(true)
+      eval(e, GreaterThan(RealLiteral(7), RealLiteral(7)))  === BooleanLiteral(false)
+      eval(e, GreaterThan(RealLiteral(4), RealLiteral(7)))  === BooleanLiteral(false)
 
-    for(e <- evaluators) {
-      // Some simple math.
-      checkComp(e, mkCall("plus", RL(60), RealUMinus(RL(18))), RL(42))
-      checkComp(e, mkCall("max", RL(4), RL(42)), RL(42))
-      checkComp(e, mkCall("max", RL(42), RealUMinus(RL(42))), RL(42))
-      checkComp(e, mkCall("intSqrt", RealUMinus(RL(1800))), RL(42))
-      checkComp(e, mkCall("div", RL(7), RL(7)), RL(1))
-      checkComp(e, mkCall("div", RL(5), RL(2)), RL(2.5))
+      eval(e, LessEquals(RealLiteral(7), RealLiteral(4)))   === BooleanLiteral(false)
+      eval(e, LessEquals(RealLiteral(7), RealLiteral(7)))   === BooleanLiteral(true)
+      eval(e, LessEquals(RealLiteral(4), RealLiteral(7)))   === BooleanLiteral(true)
 
-      // Things that should crash.
-      checkError(e, mkCall("div", RL(42), RL(0))) 
+      eval(e, LessThan(RealLiteral(7), RealLiteral(4)))     === BooleanLiteral(false)
+      eval(e, LessThan(RealLiteral(7), RealLiteral(7)))     === BooleanLiteral(false)
+      eval(e, LessThan(RealLiteral(4), RealLiteral(7)))     === BooleanLiteral(true)
     }
   }
 
-  test("Booleans") {
-    val p = """|object Program {
-               |def and1(x : Boolean, y : Boolean) : Boolean = x && y
-               |def or1(x : Boolean, y : Boolean)  : Boolean = x || y
-               |def and2(x : Boolean, y : Boolean) : Boolean = !(!x || !y)
-               |def or2(x : Boolean, y : Boolean)  : Boolean = !(!x && !y)
-               |def safe(n : Int) : Boolean = (n != 0 && (1/n == n))
-               |def mkTrue() : Boolean = true
-               |def mkFalse() : Boolean = false
-               |}""".stripMargin
+  test("Simple Variable") { implicit fix =>
+    for(e <- allEvaluators) {
+      val id = FreshIdentifier("id", Int32Type)
 
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    for(e <- evaluators) {
-      checkComp(e, mkCall("and1", F, F), F)
-      checkComp(e, mkCall("and1", F, T), F)
-      checkComp(e, mkCall("and1", T, F), F)
-      checkComp(e, mkCall("and1", T, T), T)
-      checkComp(e, mkCall("and2", F, F), F)
-      checkComp(e, mkCall("and2", F, T), F)
-      checkComp(e, mkCall("and2", T, F), F)
-      checkComp(e, mkCall("and2", T, T), T)
-      checkComp(e, mkCall("or1", F, F), F)
-      checkComp(e, mkCall("or1", F, T), T)
-      checkComp(e, mkCall("or1", T, F), T)
-      checkComp(e, mkCall("or1", T, T), T)
-      checkComp(e, mkCall("or2", F, F), F)
-      checkComp(e, mkCall("or2", F, T), T)
-      checkComp(e, mkCall("or2", T, F), T)
-      checkComp(e, mkCall("or2", T, T), T)
-
-      checkComp(e, mkCall("safe", IL(1)), T)
-      checkComp(e, mkCall("safe", IL(2)), F)
-
-      // This one needs short-circuit.
-      checkComp(e, mkCall("safe", IL(0)), F)
-
-      // We use mkTrue/mkFalse to avoid automatic simplifications.
-      checkComp(e, Equals(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
-      checkComp(e, Equals(mkCall("mkTrue"),  mkCall("mkFalse")), F)
-      checkComp(e, Equals(mkCall("mkFalse"), mkCall("mkTrue")),  F)
-      checkComp(e, Equals(mkCall("mkFalse"), mkCall("mkFalse")), T)
-
-      checkComp(e, Implies(mkCall("mkTrue"),  mkCall("mkTrue")),  T)
-      checkComp(e, Implies(mkCall("mkTrue"),  mkCall("mkFalse")), F)
-      checkComp(e, Implies(mkCall("mkFalse"), mkCall("mkTrue")),  T)
-      checkComp(e, Implies(mkCall("mkFalse"), mkCall("mkFalse")), T)
+      eval(e, Variable(id), Map(id -> IntLiteral(23))) === IntLiteral(23)
     }
   }
 
-  test("Case classes") {
-    val p = """|object Program {
-               |  sealed abstract class List
-               |  case class Nil() extends List
-               |  case class Cons(head : Int, tail : List) extends List
-               |
-               |  case class MySingleton(i : Int)
-               |
-               |  def size(l : List) : Int = l match {
-               |    case Nil() => 0
-               |    case Cons(_, xs) => 1 + size(xs)
-               |  }
-               |
-               |  def compare(l1 : List, l2 : List) : Boolean = (l1 == l2)
-               |
-               |  def head(l : List) : Int = l match {
-               |    case Cons(h, _) => h
-               |  }
-               |
-               |  def wrap(i : Int) : MySingleton = MySingleton(i)
-               |}""".stripMargin
+  test("Undefined Variable") { implicit fix =>
+    for(e <- allEvaluators) {
+      val id = FreshIdentifier("id", Int32Type)
+      val foo = FreshIdentifier("foo", Int32Type)
 
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    val nil = mkCaseClass("Nil")
-    val cons12a = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
-    val cons12b = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
-    val sing1 = mkCaseClass("MySingleton", IL(1))
-
-    for(e <- evaluators) {
-      checkComp(e, mkCall("size", nil), IL(0))
-      checkComp(e, mkCall("size", cons12a), IL(2))
-      checkComp(e, mkCall("compare", nil, cons12a), F)
-      checkComp(e, mkCall("compare", cons12a, cons12b), T)
-      checkComp(e, mkCall("head", cons12a), IL(1))
-
-      checkComp(e, Equals(mkCall("wrap", IL(1)), sing1), T)
-
-      // Match error
-      checkError(e, mkCall("head", nil))
+      eval(e, Variable(id), Map(foo -> IntLiteral(23))).failed
     }
   }
 
-  test("Sets") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  sealed abstract class List
-               |  case class Nil() extends List
-               |  case class Cons(head : Int, tail : List) extends List
-               |
-               |  def content(l : List) : Set[Int] = l match {
-               |    case Nil() => Set.empty[Int]
-               |    case Cons(x, xs) => Set(x) ++ content(xs)
-               |  }
-               |
-               |  def finite() : Set[Int] = Set(1, 2, 3)
-               |  def build(x : Int, y : Int, z : Int) : Set[Int] = Set(x, y, z)
-               |  def union(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 ++ s2
-               |  def inter(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 & s2
-               |  def diff(s1 : Set[Int], s2 : Set[Int]) : Set[Int] = s1 -- s2
-               |}""".stripMargin
-
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    val nil = mkCaseClass("Nil")
-    val cons12 = mkCaseClass("Cons", IL(1), mkCaseClass("Cons", IL(2), mkCaseClass("Nil")))
-
-    val s123 = FiniteSet(Set(IL(1), IL(2), IL(3)), Int32Type)
-    val s246 = FiniteSet(Set(IL(2), IL(4), IL(6)), Int32Type)
-
-    for(e <- evaluators) {
-      checkSetComp(e, mkCall("finite"), Set(1, 2, 3))
-      checkSetComp(e, mkCall("content", nil), Set.empty)
-      checkSetComp(e, mkCall("content", cons12), Set(1,2))
-      checkSetComp(e, mkCall("build", IL(1), IL(2), IL(3)), Set(1,2,3))
-      checkSetComp(e, mkCall("build", IL(1), IL(2), IL(2)), Set(1,2))
-      checkSetComp(e, mkCall("union", s123, s246), Set(1,2,3,4,6))
-      checkSetComp(e, mkCall("union", s246, s123), Set(1,2,3,4,6))
-      checkComp(e, Equals(mkCall("union", s123, s246), mkCall("union", s246, s123)), T)
-      checkSetComp(e, mkCall("inter", s123, s246), Set(2))
-      checkSetComp(e, mkCall("inter", s246, s123), Set(2))
-      checkComp(e, Equals(mkCall("inter", s123, s246), mkCall("inter", s246, s123)), T)
-      checkSetComp(e, mkCall("diff", s123, s246), Set(1,3))
-      checkSetComp(e, mkCall("diff", s246, s123), Set(4,6))
-      checkComp(e, Equals(mkCall("diff", s123, s246), mkCall("diff", s246, s123)), F)
+  test("Let") { implicit fix =>
+    for(e <- normalEvaluators) {
+      val id = FreshIdentifier("id")
+      eval(e, Let(id, IntLiteral(42), Variable(id))) === IntLiteral(42)
     }
   }
 
-  test("Maps") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  sealed abstract class PList
-               |  case class PNil() extends PList
-               |  case class PCons(headfst : Int, headsnd : Int, tail : PList) extends PList
-               |
-               |  def toMap(pl : PList) : Map[Int,Int] = pl match {
-               |    case PNil() => Map.empty[Int,Int]
-               |    case PCons(f,s,xs) => toMap(xs).updated(f, s)
-               |  }
-               |
-               |  def finite0() : Map[Int,Int] = Map[Int, Int]()
-               |  def finite1() : Map[Int,Int] = Map(1 -> 2)
-               |  def finite2() : Map[Int,Int] = Map(2 -> 3, 1 -> 2)
-               |  def finite3() : Map[Int,Int] = finite1().updated(2, 3)
-               |}""".stripMargin
 
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
+  def eqArray(a1: Expr, a2: Expr) = (a1, a2) match {
+    case (FiniteArray(es1, d1, IntLiteral(l1)), FiniteArray(es2, d2, IntLiteral(l2))) =>
+      assert(l1 === l2)
+      for (i <- 0 until l1) {
+        val v1 = es1.get(i).orElse(d1)
+        val v2 = es2.get(i).orElse(d2)
+        assert(v1 === v2)
+      }
+    case (e, _) =>
+      fail("Expected array, got "+e)
+  }
 
-    val cons1223 = mkCaseClass("PCons", IL(1), IL(2), mkCaseClass("PCons", IL(2), IL(3), mkCaseClass("PNil")))
+  test("Array Operations") { implicit fix =>
+    for (e <- allEvaluators) {
+      eqArray(eval(e, finiteArray(Map[Int,Expr](), Some(IntLiteral(12), IntLiteral(7)), Int32Type)).res,
+                      finiteArray(Map[Int,Expr](), Some(IntLiteral(12), IntLiteral(7)), Int32Type))
 
-    for(e <- evaluators) {
-      checkMapComp(e, mkCall("finite0"), Map.empty)
-      checkMapComp(e, mkCall("finite1"), Map(1 -> 2))
-      checkMapComp(e, mkCall("finite2"), Map(1 -> 2, 2 -> 3))
-      checkComp(e, Equals(mkCall("finite1"), mkCall("finite2")), F)
-      checkComp(e, Equals(mkCall("finite2"), mkCall("finite3")), T)
-      checkMapComp(e, mkCall("toMap", cons1223), Map(1 -> 2, 2 -> 3))
-      checkComp(e, MapIsDefinedAt(mkCall("finite2"), IL(2)), T)
-      checkComp(e, MapIsDefinedAt(mkCall("finite2"), IL(3)), F)
+      eval(e, ArrayLength(finiteArray(Map[Int,Expr](), Some(IntLiteral(12), IntLiteral(7)), Int32Type))) ===
+                      IntLiteral(7)
+
+      eval(e, ArraySelect(finiteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))), IntLiteral(1))) ===
+                      IntLiteral(4)
+
+      eqArray(eval(e, ArrayUpdated( finiteArray(Seq(IntLiteral(2), IntLiteral(4), IntLiteral(7))), IntLiteral(1), IntLiteral(42))).res,
+                      finiteArray(Seq(IntLiteral(2), IntLiteral(42), IntLiteral(7))))
+
     }
   }
 
-  test("Arrays") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  def boolArrayRead(bools : Array[Boolean], index : Int) : Boolean = bools(index)
-               |
-               |  def intArrayRead(ints : Array[Int], index : Int) : Int = ints(index)
-               |
-               |  def intArrayUpdate(ints : Array[Int], index : Int, value: Int) : Int = {
-               |    val na = ints.updated(index, value)
-               |    na(index)
-               |  }
-               |}
-               |""".stripMargin
-
-    implicit val progs = parseString(p)
-    val evaluators = prepareEvaluators
-    
-    val ba = finiteArray(Seq(T, F))
-    val ia = finiteArray(Seq(IL(41), IL(42), IL(43)))
-
-    for(e <- evaluators) {
-      checkComp(e, mkCall("boolArrayRead", ba, IL(0)), T)
-      checkComp(e, mkCall("boolArrayRead", ba, IL(1)), F)
-      checkComp(e, mkCall("intArrayRead", ia, IL(0)), IL(41))
-      checkComp(e, mkCall("intArrayRead", ia, IL(1)), IL(42))
-      checkComp(e, ArrayLength(ia), IL(3))
-
-      checkComp(e, mkCall("intArrayUpdate", ia, IL(0), IL(13)), IL(13))
-      checkComp(e, mkCall("intArrayUpdate", ia, IL(1), IL(17)), IL(17))
-
-      checkError(e, mkCall("boolArrayRead", ba, IL(2)))
+  test("Array with variable length") { implicit fix =>
+    // This does not work with CodegenEvaluator
+    for (e <- normalEvaluators) {
+      val len = FreshIdentifier("len", Int32Type)
+      eval(e, ArrayLength(finiteArray(Map[Int, Expr](), Some(IntLiteral(12), Variable(len)), Int32Type)), Map(len -> IntLiteral(27))) ===
+        IntLiteral(27)
     }
   }
 
-  test("Sets and maps of structures") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  case class MyPair(x : Int, y : Boolean)
-               |
-               |  def buildPairCC(x : Int, y : Boolean) : MyPair = MyPair(x,y)
-               |  def mkSingletonCC(p : MyPair) : Set[MyPair] = Set(p)
-               |  def containsCC(s : Set[MyPair], p : MyPair) : Boolean = s.contains(p)
-               |
-               |  def buildPairT(x : Int, y : Boolean) : (Int,Boolean) = (x,y)
-               |  def mkSingletonT(p : (Int,Boolean)) : Set[(Int,Boolean)] = Set(p)
-               |  def containsT(s : Set[(Int,Boolean)], p : (Int,Boolean)) : Boolean = s.contains(p)
-               |}""".stripMargin
-
-    implicit val progs = parseString(p)
-    val evaluators = prepareEvaluators
-
-    for(e <- evaluators) {
-      checkComp(e, mkCall("containsCC", mkCall("mkSingletonCC", mkCall("buildPairCC", IL(42), T)), mkCall("buildPairCC", IL(42), T)), T)
-      checkComp(e, mkCall("containsT", mkCall("mkSingletonT", mkCall("buildPairT", IL(42), T)), mkCall("buildPairT", IL(42), T)), T)
+  test("Array Default Value") { implicit fix  =>
+    for (e <- allEvaluators) {
+      val id = FreshIdentifier("id", Int32Type)
+      eqArray(eval(e, finiteArray(Map[Int, Expr](), Some(Variable(id), IntLiteral(7)), Int32Type), Map(id -> IntLiteral(27))).res, 
+                      finiteArray(Map[Int, Expr](), Some(IntLiteral(27), IntLiteral(7)), Int32Type))
     }
   }
 
-  test("Executing Chooses") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  import leon.lang._
-               |  import leon.lang.synthesis._
-               |
-               |  def c(i : Int) : Int = choose { (j : Int) => j > i && j < i + 2 }
-               |}
-               |""".stripMargin
+  abstract class EvalDSL {
+    def res: Expr
+    def ===(res: Expr): Unit
+    def failed: Unit = {}
+    def success: Expr = res
+  }
 
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
+  case class Success(expr: Expr, env: Map[Identifier, Expr], evaluator: Evaluator, res: Expr) extends EvalDSL {
+    override def failed = {
+      fail(s"Evaluation of '$expr' with '$evaluator' (and env $env) should have failed")
+    }
 
-    for(e <- evaluators) {
-      checkComp(e, mkCall("c", IL(42)), IL(43))
+    def ===(exp: Expr) = {
+      assert(res === exp)
     }
   }
 
-  test("Infinite Recursion") {
-    import leon.codegen._
-
-    val p = """|import leon.lang._
-               |object Program {
-               |  import leon.lang._
-               |
-               |  def c(i : Int) : Int = c(i-1)
-               |}
-               |""".stripMargin
-
-    implicit val prog = parseString(p)
-
-    val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams.default.copy(maxFunctionInvocations = 32))
-    checkEvaluatorError(e, mkCall("c", IL(42)))
-  }
-
-  test("Wrong Contracts") {
-    import leon.codegen._
-
-    val p = """|import leon.lang._
-               |object Program {
-               |  import leon.lang._
-               |
-               |  def c(i : Int) : Int = {
-               |    require(i > 0);
-               |    c(i-1)
-               |  }
-               |}
-               |""".stripMargin
-
-    implicit val prog = parseString(p)
-
-    val e = new CodeGenEvaluator(leonContext, prog, CodeGenParams.default)
-    checkError(e, mkCall("c", IL(-42)))
-  }
-
-  test("Pattern Matching") {
-    val p = """|import leon.lang._
-               |object Program {
-               |  abstract class List;
-               |  case class Cons(h: Int, t: List) extends List;
-               |  case object Nil extends List;
-               |
-               |  def f1: Int = (Cons(1, Nil): List) match {
-               |    case Cons(h, t) => h
-               |    case Nil => 0
-               |  }
-               |
-               |  def f2: Int = (Cons(1, Nil): List) match {
-               |    case Cons(h, _) => h
-               |    case Nil => 0
-               |  }
-               |
-               |  def f3: Int = (Nil: List) match {
-               |    case _ => 1
-               |  }
-               |
-               |  def f4: Int = (Cons(1, Cons(2, Nil)): List) match {
-               |    case a: Cons => 1
-               |    case _ => 0
-               |  }
-               |
-               |  def f5: Int = ((Cons(1, Nil), Nil): (List, List)) match {
-               |    case (a: Cons, _) => 1
-               |    case _ => 0
-               |  }
-               |
-               |  def f6: Int = (Cons(2, Nil): List) match {
-               |    case Cons(h, t) if h > 0 => 1
-               |    case _ => 0
-               |  }
-               |}""".stripMargin
-
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    for(e <- evaluators) {
-      // Some simple math.
-      checkComp(e, mkCall("f1"), IL(1))
-      checkComp(e, mkCall("f2"), IL(1))
-      checkComp(e, mkCall("f3"), IL(1))
-      checkComp(e, mkCall("f4"), IL(1))
-      checkComp(e, mkCall("f5"), IL(1))
-      checkComp(e, mkCall("f6"), IL(1))
-    }
-  }
-
-  test("Lambda functions") {
-    val p = """import leon.lang._
-              |object Program {
-              |  val foo1 = (x: BigInt) => x
-              |  val foo2 = {
-              |    val a = BigInt(1)
-              |    (x: BigInt) => a + x
-              |  }
-              |  val foo3 = {
-              |    val f1 = (x: BigInt) => x + 1
-              |    val f2 = (x: BigInt) => x + 2
-              |    (x: BigInt, y: BigInt) => f1(x) + f2(y)
-              |  }
-              |  def foo4(x: BigInt) = (i: BigInt) => i + x
-              |}""".stripMargin
-
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-
-    def checkLambda(evaluator: Evaluator, in: Expr, out: PartialFunction[Expr, Boolean]) {
-      val result = checkCompSuccess(evaluator, in)
-      if (!out.isDefinedAt(result) || !out(result))
-        throw new AssertionError(s"Evaluation of '$in' with evaluator '${evaluator.name}' produced invalid '$result'.")
+  case class Failed(expr: Expr, env: Map[Identifier, Expr], evaluator: Evaluator, err: String) extends EvalDSL {
+    override def success = {
+      fail(s"Evaluation of '$expr' with '$evaluator' (and env $env) should have succeeded but failed with $err")
     }
 
-    val ONE = BIL(1)
-    val TWO = BIL(2)
+    def res = success
 
-    for(e <- evaluators) {
-      checkLambda(e, mkCall("foo1"), { case Lambda(Seq(vd), Variable(id)) if vd.id == id => true })
-      checkLambda(e, mkCall("foo2"), { case Lambda(Seq(vd), Plus(ONE, Variable(id))) if vd.id == id => true })
-      checkLambda(e, mkCall("foo3"), { case Lambda(Seq(vx, vy), Plus(Plus(Variable(x), ONE), Plus(Variable(y), TWO))) if vx.id == x && vy.id == y => true })
-      checkLambda(e, mkCall("foo4", TWO), { case Lambda(Seq(vd), Plus(Variable(id), TWO)) if vd.id == id => true })
-    }
+    def ===(res: Expr) = success
   }
 
-  test("Methods") {
-    val p =
-      """object Program {
-        |  abstract class A
-        |
-        |  abstract class B extends A {
-        |    def foo(i: BigInt) = {
-        |      require(i > 0)
-        |      i + 1
-        |    } ensuring ( _ >= 0 )
-        |  }
-        |
-        |  case class C(x: BigInt) extends B {
-        |    val y = BigInt(42)
-        |    override def foo(i: BigInt) = {
-        |      x + y + (if (i>0) i else -i)
-        |    } ensuring ( _ >= x )
-        |  }
-        |
-        |  case class D() extends A
-        |
-        |  def f1 = {
-        |    val c = C(42)
-        |    (if (c.foo(0) + c.x > 0) c else D()).isInstanceOf[B]
-        |  }
-        |  def f2 = D().isInstanceOf[B]
-        |  def f3 = C(42).isInstanceOf[A]
-        |}
-        |
-        |
-      """.stripMargin
-
-    implicit val prog = parseString(p)
-    val evaluators = prepareEvaluators
-    for(e <- evaluators) {
-      // Some simple math.
-      checkComp(e, mkCall("f1"), BooleanLiteral(true))
-      checkComp(e, mkCall("f2"), BooleanLiteral(false))
-      checkComp(e, mkCall("f3"), BooleanLiteral(true))
+  def eval(e: Evaluator, toEval: Expr, env: Map[Identifier, Expr] = Map()): EvalDSL = {
+    e.eval(toEval, env) match {
+      case EvaluationResults.Successful(res)     => Success(toEval, env, e, res)
+      case EvaluationResults.RuntimeError(err)   => Failed(toEval, env, e, err)
+      case EvaluationResults.EvaluatorError(err) => Failed(toEval, env, e, err)
     }
   }
 }

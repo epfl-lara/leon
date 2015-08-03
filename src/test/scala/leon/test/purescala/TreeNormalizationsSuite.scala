@@ -4,81 +4,65 @@ package leon.test.purescala
 
 import leon.test._
 
+import leon.LeonContext
 import leon.purescala.Common._
 import leon.purescala.Types._
 import leon.purescala.Expressions._
 import leon.purescala.TreeNormalizations._
 
-class TreeNormalizationsSuite extends LeonTestSuite with WithLikelyEq {
-  def i(x: Int) = InfiniteIntegerLiteral(x)
-
-  val xId = FreshIdentifier("x", IntegerType)
-  val x = Variable(xId)
-  val yId = FreshIdentifier("y", IntegerType)
-  val y = Variable(yId)
-  val xs = Set(xId, yId)
-
-  val aId = FreshIdentifier("a", IntegerType)
-  val a = Variable(aId)
-  val bId = FreshIdentifier("b", IntegerType)
-  val b = Variable(bId)
-  val as = Set(aId, bId)
-  
-
-  def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier]) {
-    assert( //this outer assert should not be needed because of the nested one
-      LikelyEq(e1, e2, vs, BooleanLiteral(true), (e1, e2) => {assert(e1 === e2); true})
-    )
-  }
+class TreeNormalizationsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.ExpressionsDSL {
 
   def toSum(es: Seq[Expr]) = es.reduceLeft(Plus)
   def coefToSum(es: Array[Expr], vs: Array[Expr]) = es.zip(Array[Expr](InfiniteIntegerLiteral(1)) ++ vs).foldLeft[Expr](InfiniteIntegerLiteral(0))((acc, p) => Plus(acc, Times(p._1, p._2)))
   
-  test("checkSameExpr") {
-    checkSameExpr(Plus(x, y), Plus(y, x), xs)
-    checkSameExpr(Plus(x, x), Times(x, i(2)), xs)
-    checkSameExpr(Plus(x, Plus(x, x)), Times(x, i(3)), xs)
+  test("checkSameExpr") { ctx =>
+    checkLikelyEq(ctx)(Plus(x, y), Plus(y, x))
+    checkLikelyEq(ctx)(Plus(x, x), Times(x, bi(2)))
+    checkLikelyEq(ctx)(Plus(x, Plus(x, x)), Times(x, bi(3)))
   }
 
-  test("multiply") {
-    val lhs = Seq(x, i(2))
-    val rhs = Seq(y, i(1))
-    checkSameExpr(Times(toSum(lhs), toSum(rhs)), toSum(multiply(lhs, rhs)), xs)
-    checkSameExpr(Times(toSum(rhs), toSum(lhs)), toSum(multiply(rhs, lhs)), xs)
+  test("multiply") { ctx =>
+    val lhs = Seq(x, bi(2))
+    val rhs = Seq(y, bi(1))
+    checkLikelyEq(ctx)(Times(toSum(lhs), toSum(rhs)), toSum(multiply(lhs, rhs)))
+    checkLikelyEq(ctx)(Times(toSum(rhs), toSum(lhs)), toSum(multiply(rhs, lhs)))
 
-    val lhs2 = Seq(x, y, i(2))
-    val rhs2 = Seq(y, i(1), Times(i(2), x))
-    checkSameExpr(Times(toSum(lhs2), toSum(rhs2)), toSum(multiply(lhs2, rhs2)), xs)
+    val lhs2 = Seq(x, y, bi(2))
+    val rhs2 = Seq(y, bi(1), Times(bi(2), x))
+    checkLikelyEq(ctx)(Times(toSum(lhs2), toSum(rhs2)), toSum(multiply(lhs2, rhs2)))
   }
 
-  test("expandedForm") {
-    val e1 = Times(Plus(x, i(2)), Plus(y, i(1)))
-    checkSameExpr(toSum(expandedForm(e1)), e1, xs)
+  test("expandedForm") { ctx =>
+    val e1 = Times(Plus(x, bi(2)), Plus(y, bi(1)))
+    checkLikelyEq(ctx)(toSum(expandedForm(e1)), e1)
 
-    val e2 = Times(Plus(x, Times(i(2), y)), Plus(Plus(x, y), i(1)))
-    checkSameExpr(toSum(expandedForm(e2)), e2, xs)
+    val e2 = Times(Plus(x, Times(bi(2), y)), Plus(Plus(x, y), bi(1)))
+    checkLikelyEq(ctx)(toSum(expandedForm(e2)), e2)
 
-    val e3 = Minus(Plus(x, Times(i(2), y)), Plus(Plus(x, y), i(1)))
-    checkSameExpr(toSum(expandedForm(e3)), e3, xs)
+    val e3 = Minus(Plus(x, Times(bi(2), y)), Plus(Plus(x, y), bi(1)))
+    checkLikelyEq(ctx)(toSum(expandedForm(e3)), e3)
 
-    val e4 = UMinus(Plus(x, Times(i(2), y)))
-    checkSameExpr(toSum(expandedForm(e4)), e4, xs)
+    val e4 = UMinus(Plus(x, Times(bi(2), y)))
+    checkLikelyEq(ctx)(toSum(expandedForm(e4)), e4)
   }
 
-  test("linearArithmeticForm") {
-    val xsOrder = Array(xId, yId)
+  test("linearArithmeticForm") { ctx =>
+    val xsOrder = Array(x.id, y.id)
 
-    val e1 = Plus(Times(Plus(x, i(2)), i(3)), Times(i(4), y))
-    checkSameExpr(coefToSum(linearArithmeticForm(e1, xsOrder), Array(x, y)), e1, xs)
+    val aa = FreshIdentifier("aa", IntegerType).toVariable
+    val bb = FreshIdentifier("bb", IntegerType).toVariable
 
-    val e2 = Plus(Times(Plus(x, i(2)), i(3)), Plus(Plus(a, Times(i(5), b)), Times(i(4), y)))
-    checkSameExpr(coefToSum(linearArithmeticForm(e2, xsOrder), Array(x, y)), e2, xs ++ as)
+    val e1 = Plus(Times(Plus(x, bi(2)), bi(3)), Times(bi(4), y))
+    checkLikelyEq(ctx)(coefToSum(linearArithmeticForm(e1, xsOrder), Array(x, y)), e1)
 
-    val e3 = Minus(Plus(x, i(3)), Plus(y, i(2)))
-    checkSameExpr(coefToSum(linearArithmeticForm(e3, xsOrder), Array(x, y)), e3, xs)
+    val e2 = Plus(Times(Plus(x, bi(2)), bi(3)), Plus(Plus(aa, Times(bi(5), bb)), Times(bi(4), y)))
+    checkLikelyEq(ctx)(coefToSum(linearArithmeticForm(e2, xsOrder), Array(x, y)), e2)
 
-    val e4 = Plus(Plus(i(0), i(2)), Times(i(-1), i(3)))
-    assert(linearArithmeticForm(e4, Array()) === Array(i(-1)))
+    val e3 = Minus(Plus(x, bi(3)), Plus(y, bi(2)))
+    checkLikelyEq(ctx)(coefToSum(linearArithmeticForm(e3, xsOrder), Array(x, y)), e3)
+
+    val e4 = Plus(Plus(bi(0), bi(2)), Times(bi(-1), bi(3)))
+    assert(linearArithmeticForm(e4, Array()) === Array(bi(-1)))
 
   }
 }
