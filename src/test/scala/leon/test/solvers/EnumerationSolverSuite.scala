@@ -8,37 +8,22 @@ import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
+import leon.LeonContext
 
-class EnumerationSolverSuite extends LeonTestSuite {
-  private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {
-    val s = sf.getNewSolver()
-    s.assertCnstr(e)
-    s.check
+class EnumerationSolverSuite extends LeonSolverSuite {
+  def getSolver(implicit ctx: LeonContext, pgm: Program) = {
+    new EnumerationSolver(ctx, pgm)
   }
 
-  private def getSolver = {
-    SolverFactory(() => new EnumerationSolver(testContext, Program.empty))
+  val sources = Nil
+
+  test("EnumerationSolver 1 (true)") { implicit fix =>
+    sat(BooleanLiteral(true))
   }
 
-  test("EnumerationSolver 1 (true)") {
-    val sf = getSolver
-    assert(check(sf, BooleanLiteral(true)) === Some(true))
-    sf.shutdown()
-  }
+  test("EnumerationSolver 2 (x == 1)") { implicit fix =>
+    val x = FreshIdentifier("x", IntegerType).toVariable
 
-  test("EnumerationSolver 2 (x == 1)") {
-    val sf = getSolver
-    val x = Variable(FreshIdentifier("x", Int32Type))
-    val o = IntLiteral(1)
-    assert(check(sf, Equals(x, o)) === Some(true))
-    sf.shutdown()
-  }
-
-  test("EnumerationSolver 3 (Limited range for ints)") {
-    val sf = getSolver
-    val x = Variable(FreshIdentifier("x", Int32Type))
-    val o = IntLiteral(42)
-    assert(check(sf, Equals(x, o)) === None)
-    sf.shutdown()
+    sat(Equals(x, InfiniteIntegerLiteral(0)))
   }
 }

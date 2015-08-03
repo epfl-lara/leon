@@ -7,7 +7,7 @@ import leon.synthesis.Algebra._
 
 class AlgebraSuite extends LeonTestSuite {
 
-  test("remainder") {
+  test("remainder") { ctx =>
     assert(remainder(1,1) === 0)
     assert(remainder(2,2) === 0)
     assert(remainder(2,1) === 0)
@@ -36,7 +36,7 @@ class AlgebraSuite extends LeonTestSuite {
     assert(remainder(-25,5) === 0)
   }
 
-  test("divide") {
+  test("divide") { ctx =>
     assert(divide(1,1) === (1, 0))
     assert(divide(2,2) === (1, 0))
     assert(divide(2,1) === (2, 0))
@@ -65,7 +65,7 @@ class AlgebraSuite extends LeonTestSuite {
     assert(divide(-25,5) === (-5, 0))
   }
 
-  test("binary gcd") {
+  test("binary gcd") { ctx =>
     assert(gcd(1,1) === 1)
     assert(gcd(1,3) === 1)
     assert(gcd(3,1) === 1)
@@ -90,7 +90,7 @@ class AlgebraSuite extends LeonTestSuite {
     assert(gcd(-4,-8) === 4)
   }
 
-  test("n-ary gcd") {
+  test("n-ary gcd") { ctx =>
     assert(gcd(1,1,1) === 1)
     assert(gcd(1,3,5) === 1)
     assert(gcd(3,1,2) === 1)
@@ -118,7 +118,7 @@ class AlgebraSuite extends LeonTestSuite {
     assert(gcd(-2,-4,-8,-11,-16,-4) === 1)
   }
 
-  test("seq gcd") {
+  test("seq gcd") { ctx =>
     assert(gcd(Seq(1)) === 1)
     assert(gcd(Seq(4)) === 4)
     assert(gcd(Seq(7)) === 7)
@@ -151,7 +151,7 @@ class AlgebraSuite extends LeonTestSuite {
     assert(gcd(Seq(-2,-4,-8,-11,-16,-4)) === 1)
   }
 
-  test("binary lcm") {
+  test("binary lcm") { ctx =>
     assert(lcm(1,3) === 3)
     assert(lcm(1,1) === 1)
     assert(lcm(0,1) === 0)
@@ -160,12 +160,12 @@ class AlgebraSuite extends LeonTestSuite {
     assert(lcm(4,6) === 12)
     assert(lcm(8,6) === 24)
   }
-  test("n-ary lcm") {
+  test("n-ary lcm") { ctx =>
     assert(lcm(1,2,3) === 6)
     assert(lcm(1,2,3,4) === 12)
     assert(lcm(5,2,3,4) === 60)
   }
-  test("seq lcm") {
+  test("seq lcm") { ctx =>
     assert(lcm(Seq(1,2,3)) === 6)
     assert(lcm(Seq(1,2,3,4)) === 12)
     assert(lcm(Seq(5,2,3,4)) === 60)
@@ -176,7 +176,7 @@ class AlgebraSuite extends LeonTestSuite {
     assert(x*a + y*b === gcd(a, b))
   }
 
-  test("extendedEuclid") {
+  test("extendedEuclid") { ctx =>
     checkExtendedEuclid(1, 1)
     checkExtendedEuclid(3, 1)
     checkExtendedEuclid(1, 2)

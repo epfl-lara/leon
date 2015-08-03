@@ -20,7 +20,7 @@ class TimeoutSolverSuite extends LeonTestSuite {
 
     override def check: Option[Boolean] = {
       while(!interrupted) {
-        Thread.sleep(100)
+        Thread.sleep(50L)
       }
       None
     }
@@ -40,8 +40,8 @@ class TimeoutSolverSuite extends LeonTestSuite {
     def getModel = ???
   }
 
-  private def getTOSolver : SolverFactory[Solver] = {
-    SolverFactory(() => (new IdioticSolver(testContext, Program.empty) with TimeoutSolver).setTimeout(1000L))
+  private def getTOSolver(ctx: LeonContext): SolverFactory[Solver] = {
+    SolverFactory(() => (new IdioticSolver(ctx, Program.empty) with TimeoutSolver).setTimeout(200L))
   }
 
   private def check(sf: SolverFactory[Solver], e: Expr): Option[Boolean] = {
@@ -50,8 +50,8 @@ class TimeoutSolverSuite extends LeonTestSuite {
     s.check
   }
 
-  test("TimeoutSolver 1") {
-    val sf = getTOSolver
+  test("TimeoutSolver 1") { ctx =>
+    val sf = getTOSolver(ctx)
     assert(check(sf, BooleanLiteral(true)) === None)
     assert(check(sf, BooleanLiteral(false)) === None)
 
@@ -61,8 +61,8 @@ class TimeoutSolverSuite extends LeonTestSuite {
     sf.shutdown()
   }
 
-  test("TimeoutSolver 2") {
-    val sf = getTOSolver
+  test("TimeoutSolver 2") { ctx =>
+    val sf = getTOSolver(ctx)
     val x = Variable(FreshIdentifier("x", IntegerType))
     val o = InfiniteIntegerLiteral(1)
     assert(check(sf, Equals(Plus(x, o), Plus(o, x))) === None)

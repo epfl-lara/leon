@@ -3,45 +3,26 @@
 package leon.test.synthesis
 import leon.test._
 
+import leon.LeonContext
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.ExprOps._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.test.purescala.WithLikelyEq
 import leon.evaluators._
 
 import leon.synthesis.LinearEquations._
 
-class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
+class LinearEquationsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.ExpressionsDSL {
 
-  def i(x: Int) = InfiniteIntegerLiteral(x)
-
-  val xId = FreshIdentifier("x", IntegerType)
-  val x = Variable(xId)
-  val yId = FreshIdentifier("y", IntegerType)
-  val y = Variable(yId)
-  val zId = FreshIdentifier("z", IntegerType)
-  val z = Variable(zId)
-
-  val aId = FreshIdentifier("a", IntegerType)
-  val a = Variable(aId)
-  val bId = FreshIdentifier("b", IntegerType)
-  val b = Variable(bId)
-
-  def toSum(es: Seq[Expr]) = es.reduceLeft(Plus)
-  
-  def checkSameExpr(e1: Expr, e2: Expr, vs: Set[Identifier], prec: Expr, defaultMap: Map[Identifier, Expr] = Map()) {
-    assert( //this outer assert should not be needed because of the nested one
-      LikelyEq(e1, e2, vs, prec, (e1, e2) => {assert(e1 === e2); true}, defaultMap)
-    )
-  }
-
+  val aa = FreshIdentifier("aa", IntegerType).toVariable
+  val bb = FreshIdentifier("bb", IntegerType).toVariable
 
   //use some random values to check that any vector in the basis is a valid solution to
   //the equation
   def checkVectorSpace(basis: Array[Array[Int]], equation: Array[Int]): Unit = 
     checkVectorSpace(basis.map(_.map(i => BigInt(i))), equation.map(i => BigInt(i)))
+
   def checkVectorSpace(basis: Array[Array[BigInt]], equation: Array[BigInt]): Unit = {
     require(basis.length == basis(0).length + 1 && basis.length == equation.length)
     val n = basis(0).length
@@ -70,6 +51,10 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
     }
   }
 
+  def checkSameExpr(e1: Expr, e2: Expr, pre: Expr, vs: Map[Identifier, Expr] = Map())(implicit ctx: LeonContext): Unit = {
+    checkLikelyEq(ctx)(e1, e2, Some(pre), vs)
+  }
+
   //val that the sol vector with the term in the equation
   def eval(sol: Array[BigInt], equation: Array[BigInt]): BigInt = {
     require(sol.length == equation.length)
@@ -96,74 +81,74 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
     v1.zip(v2).map(p => p._1 + p._2)
   }
 
-  test("checkVectorSpace") {
+  test("checkVectorSpace") { implicit ctx =>
     checkVectorSpace(Array(Array(1), Array(2)), Array(-2, 1))
     checkVectorSpace(Array(Array(4, 0), Array(-3, 2), Array(0, -1)), Array(3, 4, 8))
   }
 
   
-  test("particularSolution basecase") {
+  test("particularSolution basecase") { implicit ctx =>
     def toExpr(es: Array[Expr]): Expr = {
-      val vars: Array[Expr] = Array[Expr](i(1)) ++ Array[Expr](x, y)
-      es.zip(vars).foldLeft[Expr](i(0))( (acc: Expr, p: (Expr, Expr)) => Plus(acc, Times(p._1, p._2)) )
+      val vars: Array[Expr] = Array[Expr](bi(1)) ++ Array[Expr](x, y)
+      es.zip(vars).foldLeft[Expr](bi(0))( (acc: Expr, p: (Expr, Expr)) => Plus(acc, Times(p._1, p._2)) )
     }
 
-    val t1: Expr = Plus(a, b)
-    val c1: Expr = i(4)
-    val d1: Expr = i(22)
+    val t1: Expr = Plus(aa, bb)
+    val c1: Expr = bi(4)
+    val d1: Expr = bi(22)
     val e1: Array[Expr] = Array(t1, c1, d1)
-    val (pre1, (w1, w2)) = particularSolution(Set(aId, bId), t1, c1, d1)
-    checkSameExpr(toExpr(e1), i(0), Set(aId, bId), pre1, Map(xId -> w1, yId -> w2))
+    val (pre1, (w1, w2)) = particularSolution(Set(aa.id, bb.id), t1, c1, d1)
+    checkSameExpr(toExpr(e1), bi(0), pre1, Map(x.id -> w1, y.id -> w2))
 
-    val t2: Expr = i(-1)
-    val c2: Expr = i(1)
-    val d2: Expr = i(-1)
+    val t2: Expr = bi(-1)
+    val c2: Expr = bi(1)
+    val d2: Expr = bi(-1)
     val e2: Array[Expr] = Array(t2, c2, d2)
     val (pre2, (w3, w4)) = particularSolution(Set(), t2, c2, d2)
-    checkSameExpr(toExpr(e2), i(0), Set(), pre2, Map(xId -> w3, yId -> w4))
+    checkSameExpr(toExpr(e2), bi(0), pre2, Map(x.id -> w3, y.id -> w4))
   }
 
-  test("particularSolution preprocess") {
+  test("particularSolution preprocess") { implicit ctx =>
     def toExpr(es: Array[Expr], vs: Array[Expr]): Expr = {
-      val vars: Array[Expr] = Array[Expr](i(1)) ++ vs
-      es.zip(vars).foldLeft[Expr](i(0))( (acc: Expr, p: (Expr, Expr)) => Plus(acc, Times(p._1, p._2)) )
+      val vars: Array[Expr] = Array[Expr](bi(1)) ++ vs
+      es.zip(vars).foldLeft[Expr](bi(0))( (acc: Expr, p: (Expr, Expr)) => Plus(acc, Times(p._1, p._2)) )
     }
 
-    val t1: Expr = Plus(a, b)
-    val c1: Expr = i(4)
-    val d1: Expr = i(22)
+    val t1: Expr = Plus(aa, bb)
+    val c1: Expr = bi(4)
+    val d1: Expr = bi(22)
     val e1: Array[Expr] = Array(t1, c1, d1)
-    val (pre1, s1) = particularSolution(Set(aId, bId), e1.toList)
-    checkSameExpr(toExpr(e1, Array(x, y)), i(0), Set(aId, bId), pre1, Array(xId, yId).zip(s1).toMap)
+    val (pre1, s1) = particularSolution(Set(aa.id, bb.id), e1.toList)
+    checkSameExpr(toExpr(e1, Array(x, y)), bi(0), pre1, Array(x.id, y.id).zip(s1).toMap)
 
-    val t2: Expr = Plus(a, b)
-    val c2: Expr = i(4)
-    val d2: Expr = i(22)
-    val f2: Expr = i(10)
+    val t2: Expr = Plus(aa, bb)
+    val c2: Expr = bi(4)
+    val d2: Expr = bi(22)
+    val f2: Expr = bi(10)
     val e2: Array[Expr] = Array(t2, c2, d2, f2)
-    val (pre2, s2) = particularSolution(Set(aId, bId), e2.toList)
-    checkSameExpr(toExpr(e2, Array(x, y, z)), i(0), Set(aId, bId), pre2, Array(xId, yId, zId).zip(s2).toMap)
+    val (pre2, s2) = particularSolution(Set(aa.id, bb.id), e2.toList)
+    checkSameExpr(toExpr(e2, Array(x, y, z)), bi(0), pre2, Array(x.id, y.id, z.id).zip(s2).toMap)
 
-    val t3: Expr = Plus(a, Times(i(2), b))
-    val c3: Expr = i(6)
-    val d3: Expr = i(24)
-    val f3: Expr = i(9)
+    val t3: Expr = Plus(aa, Times(bi(2), bb))
+    val c3: Expr = bi(6)
+    val d3: Expr = bi(24)
+    val f3: Expr = bi(9)
     val e3: Array[Expr] = Array(t3, c3, d3, f3)
-    val (pre3, s3) = particularSolution(Set(aId, bId), e3.toList)
-    checkSameExpr(toExpr(e3, Array(x, y, z)), i(0), Set(aId, bId), pre3, Array(xId, yId, zId).zip(s3).toMap)
+    val (pre3, s3) = particularSolution(Set(aa.id, bb.id), e3.toList)
+    checkSameExpr(toExpr(e3, Array(x, y, z)), bi(0), pre3, Array(x.id, y.id, z.id).zip(s3).toMap)
 
-    val t4: Expr = Plus(a, b)
-    val c4: Expr = i(4)
+    val t4: Expr = Plus(aa, bb)
+    val c4: Expr = bi(4)
     val e4: Array[Expr] = Array(t4, c4)
-    val (pre4, s4) = particularSolution(Set(aId, bId), e4.toList)
-    checkSameExpr(toExpr(e4, Array(x)), i(0), Set(aId, bId), pre4, Array(xId).zip(s4).toMap)
+    val (pre4, s4) = particularSolution(Set(aa.id, bb.id), e4.toList)
+    checkSameExpr(toExpr(e4, Array(x)), bi(0), pre4, Array(x.id).zip(s4).toMap)
   }
 
 
-  test("linearSet") {
+  test("linearSet") { implicit ctx =>
     val as = Set[Identifier]()
 
-    val evaluator = new DefaultEvaluator(testContext, Program.empty)
+    val evaluator = new DefaultEvaluator(ctx, Program.empty)
 
     val eq1 = Array[BigInt](3, 4, 8)
     val basis1 = linearSet(evaluator, as, eq1)
@@ -216,43 +201,43 @@ class LinearEquationsSuite extends LeonTestSuite with WithLikelyEq {
   }
 
   //TODO: automatic check result
-  test("elimVariable") {
-    val as = Set[Identifier](aId, bId)
+  test("elimVariable") { implicit ctx =>
+    val as = Set[Identifier](aa.id, bb.id)
 
-    val evaluator = new DefaultEvaluator(testContext, Program.empty)
+    val evaluator = new DefaultEvaluator(ctx, Program.empty)
 
     def check(t: Expr, c: List[Expr], prec: Expr, witnesses: List[Expr], freshVars: List[Identifier]) {
       enumerate(freshVars.size, (vals: Array[Int]) => {
-        val mapping: Map[Expr, Expr] = freshVars.zip(vals.toList).map(t => (Variable(t._1), i(t._2))).toMap
-        val cWithVars: Expr = c.zip(witnesses).foldLeft[Expr](i(0)){ case (acc, (coef, wit)) => Plus(acc, Times(coef, replace(mapping, wit))) }
-        checkSameExpr(Plus(t, cWithVars), i(0), as, prec)
+        val mapping: Map[Expr, Expr] = freshVars.zip(vals.toList).map(t => (Variable(t._1), bi(t._2))).toMap
+        val cWithVars: Expr = c.zip(witnesses).foldLeft[Expr](bi(0)){ case (acc, (coef, wit)) => Plus(acc, Times(coef, replace(mapping, wit))) }
+        checkSameExpr(Plus(t, cWithVars), bi(0), prec)
       })
     }
 
-    val t1 = Minus(Times(i(2), a), b)
-    val c1 = List(i(3), i(4), i(8))
+    val t1 = Minus(Times(bi(2), aa), bb)
+    val c1 = List(bi(3), bi(4), bi(8))
     val (pre1, wit1, f1) = elimVariable(evaluator, as, t1::c1)
     check(t1, c1, pre1, wit1, f1)
 
-    val t2 = Plus(Plus(i(0), i(2)), Times(i(-1), i(3)))
-    val c2 = List(i(1), i(-1))
+    val t2 = Plus(Plus(bi(0), bi(2)), Times(bi(-1), bi(3)))
+    val c2 = List(bi(1), bi(-1))
     val (pre2, wit2, f2) = elimVariable(evaluator, Set(), t2::c2)
     check(t2, c2, pre2, wit2, f2)
 
 
-    val t3 = Minus(Times(i(2), a), i(3))
-    val c3 = List(i(2))
-    val (pre3, wit3, f3) = elimVariable(evaluator, Set(aId), t3::c3)
+    val t3 = Minus(Times(bi(2), aa), bi(3))
+    val c3 = List(bi(2))
+    val (pre3, wit3, f3) = elimVariable(evaluator, Set(aa.id), t3::c3)
     check(t3, c3, pre3, wit3, f3)
 
-    val t4 = Times(i(2), a)
-    val c4 = List(i(2), i(4))
-    val (pre4, wit4, f4) = elimVariable(evaluator, Set(aId), t4::c4)
+    val t4 = Times(bi(2), aa)
+    val c4 = List(bi(2), bi(4))
+    val (pre4, wit4, f4) = elimVariable(evaluator, Set(aa.id), t4::c4)
     check(t4, c4, pre4, wit4, f4)
 
-    val t5 = Minus(a, b)
-    val c5 = List(i(-60), i(-3600))
-    val (pre5, wit5, f5) = elimVariable(evaluator, Set(aId, bId), t5::c5)
+    val t5 = Minus(aa, bb)
+    val c5 = List(bi(-60), bi(-3600))
+    val (pre5, wit5, f5) = elimVariable(evaluator, Set(aa.id, bb.id), t5::c5)
     check(t5, c5, pre5, wit5, f5)
 
   }

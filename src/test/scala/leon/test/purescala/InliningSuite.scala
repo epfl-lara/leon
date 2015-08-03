@@ -2,62 +2,47 @@
 
 package leon.test.purescala
 
-import leon._
-import purescala.Definitions._
-import purescala.DefOps._
-import purescala.Expressions._
-import frontends.scalac._
-import utils._
-import leon.test.LeonTestSuite
+import leon.test._
+import leon.purescala.Expressions._
 
-class InliningSuite extends LeonTestSuite {
-  private def parseProgram(str: String): (Program, LeonContext) = {
-    val context = createLeonContext()
+class InliningSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL {
+  val sources = List(
+    """|
+       |import leon.lang._
+       |import leon.annotation._
+       |
+       |object InlineGood {
+       |
+       |  @inline
+       |  def foo(a: BigInt) = true
+       |
+       |  def bar(a: BigInt) = foo(a)
+       |
+       |} """.stripMargin,
 
-    val pipeline =
-      TemporaryInputPhase andThen
-      ExtractionPhase andThen
-      PreprocessingPhase
+    """ |import leon.lang._
+       |import leon.annotation._
+       |
+       |object InlineBad {
+       |
+       |  @inline
+       |  def foo(a: BigInt): BigInt = if (a > 42) foo(a-1) else 0
+       |
+       |  def bar(a: BigInt) = foo(a)
+       |
+       |}""".stripMargin
+  )
 
-    val program = pipeline.run(context)((str, Nil))
 
-    (program, context)
+  test("Simple Inlining") { implicit fix =>
+    assert(funDef("InlineGood.bar").fullBody == BooleanLiteral(true), "Function not inlined?")
   }
 
-  test("Simple Inlining") {
-    val (pgm, ctx) = parseProgram(
-      """|
-         |import leon.lang._
-         |import leon.annotation._
-         |
-         |object InlineGood {
-         |
-         |  @inline
-         |  def foo(a: BigInt) = true
-         |
-         |  def bar(a: BigInt) = foo(a)
-         |
-         |} """.stripMargin)
-
-    val bar = pgm.lookup("InlineGood.bar").collect { case fd: FunDef => fd }.get
-
-    assert(bar.fullBody == BooleanLiteral(true), "Function not inlined?")
-  }
-
-  test("Recursive Inlining") {
-    val (pgm, ctx) = parseProgram(
-      """ |import leon.lang._
-         |import leon.annotation._
-         |
-         |object InlineBad {
-         |
-         |  @inline
-         |  def foo(a: BigInt): BigInt = if (a > 42) foo(a-1) else 0
-         |
-         |  def bar(a: BigInt) = foo(a)
-         |
-         |}""".stripMargin)
-
-     assert(ctx.reporter.warningCount > 0, "Warning received for the invalid inline")
+  test("Recursive Inlining") { implicit ctx =>
+    funDef("InlineBad.bar").fullBody match {
+      case FunctionInvocation(tfd, args) if tfd.id.name == "foo" => // OK, not inlined
+      case b =>
+        fail(s"Resultig body should be a call to 'foo', got '$b'")
+    }
   }
 }
