@@ -1,7 +1,8 @@
 language: scala
 
 scala:
-    - 2.11.2
+    - 2.11.7
+
 jdk:
     - oraclejdk7
 
@@ -13,15 +14,18 @@ branches:
 
 notifications:
     email:
-        - ekneuss@gmail.com
-        - philippe.suter@gmail.com
-        - regwblanc@gmail.com
-    irc: "chat.freenode.net#epfl-lara"
+        - leon-dev@googlegroups.com
 
 before_script:
     - sbt compile
     - sbt script
     - source travis/fetchCVC4.sh
 
+env:
+    matrix:
+        - TEST_COMMAND="test"
+        - TEST_COMMAND="integration:test"
+        - TEST_COMMAND="regression:test"
+
 script:
-    - sbt test
+    - sbt "$TEST_COMMAND"
