@@ -37,7 +37,7 @@ class TestCasesCompile extends LeonTestSuite {
 
   val slashes = resourceDir(baseDir).getAbsolutePath.split("/").toList.size
 
-  testWithTimeout("Compiling testcases", 10.minutes) {
+  testWithTimeout("Compiling testcases", 20.minutes) {
     val all = (filesIn(baseDir+"repair/") ++
                filesIn(baseDir+"runtime/") ++
                filesIn(baseDir+"synthesis/") ++
@@ -47,7 +47,7 @@ class TestCasesCompile extends LeonTestSuite {
     info("Compiling "+all.size+" testcases...")
 
     var nFailed = new java.util.concurrent.atomic.AtomicInteger(0)
-    all.par.foreach { f =>
+    all.foreach { f =>
       if (!testFrontend(f, slashes)) {
         nFailed.incrementAndGet()
       }
