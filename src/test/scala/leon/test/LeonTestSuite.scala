@@ -28,23 +28,4 @@ trait LeonTestSuite extends fixture.FunSuite {
         Failed(new TestFailedException(reporter.lastErrors.mkString("\n"), fe, 5))
     }
   }
-
-  def parseString(str: String)(implicit ctx: LeonContext): Program = {
-    parseStrings(List(str))(ctx)
-  }
-
-  def parseStrings(strs: List[String])(implicit ctx: LeonContext): Program = {
-    val pipeline = TemporaryInputPhase andThen
-                   ExtractionPhase andThen
-                   PreprocessingPhase
-
-    val errorsBefore = ctx.reporter.errorCount
-
-    val program = pipeline.run(ctx)((strs, Nil))
-
-    assert(ctx.reporter.errorCount === errorsBefore)
-
-    program
-  }
-
 }
