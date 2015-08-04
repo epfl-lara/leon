@@ -21,7 +21,7 @@ class SimpleAssumptionSolverAPI(sf: SolverFactory[AssumptionSolver]) extends Sim
           (None, Map(), Set())
       }
     } finally {
-      s.free()
+      sf.reclaim(s)
     }
   }
 }

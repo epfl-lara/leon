@@ -112,7 +112,6 @@ class Synthesizer(val context : LeonContext,
 
   def shutdown(): Unit = {
     sctx.solverFactory.shutdown()
-    sctx.fastSolverFactory.shutdown()
   }
 }
 

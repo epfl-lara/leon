@@ -10,13 +10,15 @@ import purescala.Constructors._
 
 import solvers._
 
+import scala.concurrent.duration._
+
 case object OptimisticGround extends Rule("Optimistic Ground") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     if (p.as.nonEmpty && p.xs.nonEmpty) {
       val res = new RuleInstantiation(this.name) {
         def apply(hctx: SearchContext) = {
 
-          val solver = SimpleSolverAPI(hctx.sctx.fastSolverFactory) // Optimistic ground is given a simple solver (uninterpreted)
+          val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(50.millis))
 
           val xss = p.xs.toSet
           val ass = p.as.toSet

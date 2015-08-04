@@ -5,6 +5,8 @@ package solvers
 
 import utils._
 
+import scala.concurrent.duration._
+
 trait TimeoutSolver extends Solver with Interruptible {
 
   val ti = new TimeoutFor(this)
@@ -13,6 +15,11 @@ trait TimeoutSolver extends Solver with Interruptible {
 
   def setTimeout(timeout: Long): this.type = {
     optTimeout = Some(timeout)
+    this
+  }
+
+  def setTimeout(timeout: Duration): this.type = {
+    optTimeout = Some(timeout.toMillis)
     this
   }
 

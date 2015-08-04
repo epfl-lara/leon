@@ -38,34 +38,34 @@ case object Verify extends NormalizingRule("Verify") {
 
       val vc = simp(and(p.pc, letTuple(p.xs, e, not(p.phi))))
 
-      val solver = hctx.sctx.newSolver.setTimeout(2000L)
+      val solverf = hctx.sctx.solverFactory
+      val solver  = solverf.getNewSolver.setTimeout(2000L)
+      try {
+        solver.assertCnstr(vc)
 
-      solver.assertCnstr(vc)
-      val osol = solver.check match {
-        case Some(false) =>
-          Some(Solution(BooleanLiteral(true), Set(), e, true))
+        solver.check match {
+          case Some(false) =>
+            Some(solve(Solution(BooleanLiteral(true), Set(), e, true)))
 
-        case None =>
-          hctx.reporter.ifDebug { printer =>
-            printer(vc)
-            printer("== Unknown ==")
+          case None =>
+            hctx.reporter.ifDebug { printer =>
+              printer(vc)
+              printer("== Unknown ==")
+            }
+            //None
+            //Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
+            None
+
+          case _ =>
+            hctx.reporter.ifDebug { printer =>
+              printer(vc)
+              printer("== Invalid! ==")
+            }
+            None
           }
-          //None
-          //Some(Solution(BooleanLiteral(true), Set(), wrappedE, false))
-          None
-
-        case _ =>
-          hctx.reporter.ifDebug { printer =>
-            printer(vc)
-            printer("== Invalid! ==")
-          }
-          None
-      }
-
-      solver.free
-
-      osol.map { solve }
-
+        } finally {
+          solverf.reclaim(solver)
+        }
     }
 
     alts

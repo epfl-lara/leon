@@ -26,6 +26,10 @@ class DNFSolver(val context: LeonContext,
     theConstraint = Some(expression)
   }
 
+  def reset() = {
+    throw new CantResetException(this)
+  }
+
   def check : Option[Boolean] = theConstraint.map { expr =>
 
     val simpleSolver = SimpleSolverAPI(underlyings)

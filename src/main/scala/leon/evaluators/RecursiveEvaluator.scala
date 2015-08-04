@@ -587,7 +587,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
               throw RuntimeError("Timeout exceeded")
           }
         } finally {
-          solver.free()
+          solverf.reclaim(solver)
           solverf.shutdown()
         }
       })

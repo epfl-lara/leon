@@ -502,7 +502,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 }
             }
           } finally {
-            solver.free()
+            solverf.reclaim(solver)
             solverf.shutdown()
             cTreeFd.fullBody = origImpl
           }
@@ -598,7 +598,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               Some(None)
           }
         } finally {
-          solver.free()
+          solverf.reclaim(solver)
           solverf.shutdown()
         }
       }
@@ -631,13 +631,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               None
           }
         } finally {
-          solver.free()
+          solverf.reclaim(solver)
           solverf.shutdown()
         }
-      }
-
-      def free(): Unit = {
-
       }
     }
 
@@ -668,7 +664,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         if (p.pc == BooleanLiteral(true)) {
           baseExampleInputs += InExample(p.as.map(a => simplestValue(a.getType)))
         } else {
-          val solver = sctx.newSolver.setTimeout(exSolverTo)
+          val solverf = sctx.solverFactory
+          val solver  = solverf.getNewSolver.setTimeout(exSolverTo)
 
           solver.assertCnstr(p.pc)
 
@@ -687,7 +684,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                 return RuleFailed() // This is not necessary though, but probably wanted
             }
           } finally {
-            solver.free()
+            solverf.reclaim(solver)
           }
         }
 
@@ -913,8 +910,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
             e.printStackTrace()
             RuleFailed()
-        } finally {
-          ndProgram.free()
         }
       }
     })

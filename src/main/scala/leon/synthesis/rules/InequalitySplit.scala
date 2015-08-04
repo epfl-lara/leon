@@ -10,9 +10,11 @@ import purescala.Constructors._
 
 import solvers._
 
+import scala.concurrent.duration._
+
 case object InequalitySplit extends Rule("Ineq. Split.") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(hctx.sctx.fastSolverFactory)
+    val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(50.millis))
 
     val argsPairs = p.as.filter(_.getType == IntegerType).combinations(2) ++
                     p.as.filter(_.getType == Int32Type).combinations(2)

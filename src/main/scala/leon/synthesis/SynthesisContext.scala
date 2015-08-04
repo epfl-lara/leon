@@ -4,7 +4,7 @@ package leon
 package synthesis
 
 import solvers._
-import solvers.z3._
+import solvers.combinators._
 import purescala.Definitions.{Program, FunDef}
 
 /**
@@ -22,16 +22,6 @@ case class SynthesisContext(
   val rules = settings.rules
 
   val solverFactory = SolverFactory.getFromSettings(context, program)
-
-  def newSolver = {
-    solverFactory.getNewSolver()
-  }
-
-  val fastSolverFactory = SolverFactory.uninterpreted(context, program)
-
-  def newFastSolver = {
-    fastSolverFactory.getNewSolver()
-  }
 }
 
 object SynthesisContext {

@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 
 import ExecutionContext.Implicits.global
 
-class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, val solvers: Seq[SolverFactory[S]])
+class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, val solvers: Seq[S])
         extends Solver with Interruptible {
 
   val name = "Pfolio"
@@ -22,17 +22,16 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   var constraints = List[Expr]()
 
   protected var modelMap = Map[Identifier, Expr]()
-  protected var solversInsts: Seq[S] = solvers.map(_.getNewSolver())
   protected var resultSolver: Option[Solver] = None
 
   override def getResultSolver = resultSolver
 
   def assertCnstr(expression: Expr): Unit = {
-    solversInsts.foreach(_.assertCnstr(expression))
+    solvers.foreach(_.assertCnstr(expression))
   }
 
   override def assertVC(vc: VC): Unit = {
-    solversInsts.foreach(_.assertVC(vc))
+    solvers.foreach(_.assertVC(vc))
   }
 
   def check: Option[Boolean] = {
@@ -40,7 +39,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
 
     context.reporter.debug("Running portfolio check")
     // solving
-    val fs = solversInsts.map { s =>
+    val fs = solvers.map { s =>
       Future {
         val result = s.check
         val model: Map[Identifier, Expr] = if (result == Some(true)) {
@@ -61,7 +60,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         resultSolver.foreach { solv =>
           context.reporter.debug("Solved with "+solv)
         }
-        solversInsts.foreach(_.interrupt())
+        solvers.foreach(_.interrupt())
         r
       case None =>
         None
@@ -72,8 +71,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   }
 
   def free() = {
-    solversInsts.foreach(_.free)
-    solversInsts = Nil
+    solvers.foreach(_.free)
     modelMap = Map()
     constraints = Nil
   }
@@ -83,10 +81,16 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   }
 
   def interrupt(): Unit = {
-    solversInsts.foreach(_.interrupt())
+    solvers.foreach(_.interrupt())
   }
 
   def recoverInterrupt(): Unit = {
-    solversInsts.foreach(_.recoverInterrupt())
+    solvers.foreach(_.recoverInterrupt())
+  }
+
+  def reset() = {
+    solvers.foreach(_.reset)
+    modelMap = Map()
+    constraints = Nil
   }
 }

@@ -33,13 +33,20 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   }
 
   def push() = {
-    freeVars = Nil :: freeVars
+    freeVars    = Nil :: freeVars
     constraints = Nil :: constraints
   }
 
   def pop(lvl: Int) = {
-    freeVars = freeVars.drop(lvl)
+    freeVars    = freeVars.drop(lvl)
     constraints = constraints.drop(lvl)
+  }
+
+  def reset() = {
+    freeVars    = List(Nil)
+    constraints = List(Nil)
+    interrupted = false
+    datagen     = None
   }
 
   private var modelMap = Map[Identifier, Expr]()

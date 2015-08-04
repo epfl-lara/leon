@@ -5,12 +5,13 @@ package solvers
 
 import scala.reflect.runtime.universe._
 
-class TimeoutSolverFactory[+S <: TimeoutSolver : TypeTag](sf: SolverFactory[S], to: Long) extends SolverFactory[S] {
+class TimeoutSolverFactory[+S <: TimeoutSolver : TypeTag](val sf: SolverFactory[S], to: Long) extends SolverFactory[S] {
   override def getNewSolver() = sf.getNewSolver().setTimeout(to)
 
-  override val name = "SFact("+typeOf[S].toString+") with t.o"
+  override val name = sf.name+" with t.o"
 
-  override def init()     = sf.init()
+  override def reclaim(s: Solver) = sf.reclaim(s)
+
   override def shutdown() = sf.shutdown()
 }
 

@@ -31,7 +31,7 @@ import _root_.smtlib.{Interpreter => SMTInterpreter}
 
 abstract class SMTLIBSolver(val context: LeonContext,
                             val program: Program)
-  extends IncrementalSolver with Interruptible {
+  extends IncrementalSolver with ResettableSolver with Interruptible {
 
 
   /* Solver name */
@@ -686,14 +686,14 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
 
   /* Send a command to the solver */
-  def sendCommand(cmd: Command): CommandResponse = {
+  def sendCommand(cmd: Command, rawOut: Boolean = false): CommandResponse = {
     out foreach { o =>
       SMTPrinter.printCommand(cmd, o)
       o.write("\n")
       o.flush()
     }
     interpreter.eval(cmd) match {
-      case err@ErrorResponse(msg) if !hasError && !interrupted =>
+      case err@ErrorResponse(msg) if !hasError && !interrupted && !rawOut =>
         reporter.warning(s"Unexpected error from $name solver: $msg")
         // Store that there was an error. Now all following check()
         // invocations will return None
@@ -722,6 +722,15 @@ abstract class SMTLIBSolver(val context: LeonContext,
         // Store that there was an error. Now all following check()
         // invocations will return None
         addError()
+    }
+  }
+
+  override def reset() = {
+    sendCommand(Reset(), rawOut = true) match {
+      case ErrorResponse(msg) =>
+        reporter.warning(s"Failed to reset $name: $msg")
+        throw new CantResetException(this)
+      case _ =>
     }
   }
 

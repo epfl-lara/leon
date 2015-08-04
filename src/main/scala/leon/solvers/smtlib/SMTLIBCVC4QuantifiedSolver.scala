@@ -107,7 +107,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       }
     }
 
-    parameterlessAssertions foreach sendCommand
+    parameterlessAssertions.foreach(a => sendCommand(a))
 
     functions.toB(tfd)
   }

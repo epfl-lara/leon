@@ -25,6 +25,8 @@ trait Solver {
 
   def free()
 
+  def reset()
+
   implicit val debugSection = DebugSectionSolver
 
   private[solvers] def debugS(msg: String) = {

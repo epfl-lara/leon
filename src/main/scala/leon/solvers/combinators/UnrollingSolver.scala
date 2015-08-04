@@ -29,12 +29,12 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
     }
   }
 
-  private var lastCheckResult : (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
+  protected var lastCheckResult : (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
 
-  private var varsInVC         = List[Set[Identifier]](Set())
-  private var frameExpressions = List[List[Expr]](Nil)
+  protected var varsInVC         = List[Set[Identifier]](Set())
+  protected var frameExpressions = List[List[Expr]](Nil)
 
-  private var interrupted : Boolean = false
+  protected var interrupted : Boolean = false
 
   val reporter = context.reporter
 
@@ -248,6 +248,14 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
       case _ =>
         Map()
     }
+  }
+
+  override def reset() = {
+    underlying.reset()
+    lastCheckResult  = (false, None, None)
+    varsInVC         = List(Set())
+    frameExpressions = List(Nil)
+    interrupted      = false
   }
 
   override def interrupt(): Unit = {

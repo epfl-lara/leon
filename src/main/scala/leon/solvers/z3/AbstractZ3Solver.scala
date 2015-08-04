@@ -810,4 +810,8 @@ trait AbstractZ3Solver
     z3.mkFreshConst(id.uniqueName, typeToSort(id.getType))
   }
 
+  def reset() = {
+    throw new CantResetException(this)
+  }
+
 }

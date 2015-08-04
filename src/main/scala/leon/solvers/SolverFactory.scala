@@ -14,12 +14,13 @@ import _root_.smtlib.interpreters._
 abstract class SolverFactory[+S <: Solver : TypeTag] {
   def getNewSolver(): S
 
-  def init(): Unit = {}
   def shutdown(): Unit = {}
 
-  val name = typeOf[S].toString.split("\\.").last.replaceAll("Solver", "")+"*"
+  def reclaim(s: Solver) {
+    s.free()
+  }
 
-  init()
+  val name = typeOf[S].toString.split("\\.").last.replaceAll("Solver", "")+"*"
 }
 
 object SolverFactory {
@@ -118,7 +119,7 @@ object SolverFactory {
     } else if (selectedSolvers.size == 1) {
       selectedSolvers.head
     } else {
-      SolverFactory( () => new PortfolioSolver(ctx, selectedSolvers.toSeq) with TimeoutSolver)
+      new PortfolioSolverFactory(ctx, selectedSolvers.toSeq)
     }
 
   }

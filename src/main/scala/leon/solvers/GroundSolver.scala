@@ -51,6 +51,10 @@ class GroundSolver(val context: LeonContext, val program: Program) extends Solve
 
   def free(): Unit = assertions = Nil
 
+  def reset() = {
+    assertions = Nil
+  }
+
   def interrupt(): Unit = {}
 
   def recoverInterrupt(): Unit = {}

@@ -13,7 +13,7 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
       s.assertCnstr(Not(expression))
       s.check.map(r => !r)
     } finally {
-      s.free()
+      sf.reclaim(s)
     }
   }
 
@@ -30,7 +30,7 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
           (None, Map())
       }
     } finally {
-      s.free()
+      sf.reclaim(s)
     }
   }
 }

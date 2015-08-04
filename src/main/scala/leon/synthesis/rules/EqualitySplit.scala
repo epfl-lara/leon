@@ -10,9 +10,11 @@ import purescala.Constructors._
 
 import solvers._
 
+import scala.concurrent.duration._
+
 case object EqualitySplit extends Rule("Eq. Split") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(hctx.sctx.fastSolverFactory)
+    val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(50.millis))
 
     val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
       case List(a1, a2) =>
