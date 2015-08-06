@@ -50,9 +50,12 @@ opportunity.
 
 ## Testing
 
-Leon tests are separated in unit-tests and integration tests. ```sbt test```
-should run unit-tests only, integration tests are no longer expected to be
-routinely tested by developers when pushing new code (see below).
+Leon tests are currently separated in three layers:
+- unit tests
+- integration tests
+- regression tests
+
+```sbt test``` runs only unit tests.
 
 
 ### Unit Tests
@@ -75,7 +78,10 @@ tests.
 
 ### Integration Tests
 
-Integration tests check that Leon works as expected as a whole, by running it on an entire file and checking its results. These tests are slow and should only be used by travis-ci to validate builds.
+Integration tests rely on one or more components of Leon. For instance, a test might rely on extraction to build a complex ```Program```, which is then used to test DefOps operations. Even though these tests are not self-contained, their dependencies can be assumed correct. This allows us to test parts/features that cannot easily be isolated: functions on large programs, solvers, code-gen evaluators.
 
-**Important:** If/When an integration test fails, the code fix must be accompanied with unit-tests that would have caught the bug. This is a on-demand path to transition from integration tests to unit-tests.
+### Regression Tests
 
+Regression tests are meant to ensure that Leon behaves consistently as a whole on a large set of source files. Entire features of leon are tested by typically running a full pipeline on several file inputs. These tests are slow and are used by travis-ci to validate builds.
+
+**Important:** If/When an regression test fails, the code fix must be accompanied with unit or integration tests that would have caught the issue. This is a on-demand path to transition from essentially only regression tests to smaller, focused tests.
