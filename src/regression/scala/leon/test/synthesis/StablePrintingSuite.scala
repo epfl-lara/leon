@@ -79,8 +79,8 @@ class StablePrintingSuite extends LeonTestSuite {
         if (j.rules.size < depth) {
           for ((ci, i) <- chooses.zipWithIndex if j.choosesToProcess(i) || j.choosesToProcess.isEmpty) {
             val synthesizer = new Synthesizer(ctx, pgm, ci, opts)
-            val sctx = SynthesisContext.fromSynthesizer(synthesizer)
-            try { 
+            val sctx = synthesizer.sctx
+            try {
               val search = synthesizer.getSearch
               val hctx = SearchContext(sctx, ci, search.g.root, search)
               val problem = ci.problem

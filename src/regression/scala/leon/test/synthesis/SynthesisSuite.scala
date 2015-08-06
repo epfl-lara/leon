@@ -104,6 +104,8 @@ class SynthesisSuite extends LeonTestSuite {
 
             val sols = search.search(sctx)
 
+            sctx.solverFactory.shutdown()
+
             if(sols.isEmpty) {
               fail("No solution")
             }
