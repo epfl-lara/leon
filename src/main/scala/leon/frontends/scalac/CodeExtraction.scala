@@ -632,7 +632,7 @@ trait CodeExtraction extends ASTExtractors {
 
       fd.setPos(sym.pos)
 
-      fd.addFlags(annotationsOf(sym).map(FunctionFlag.fromName))
+      fd.addFlags(annotationsOf(sym).map { case (name, args) => FunctionFlag.fromName(name, args) }.toSet)
 
       if (sym.isImplicit) {
         fd.addFlag(IsInlined)
@@ -667,7 +667,7 @@ trait CodeExtraction extends ASTExtractors {
       fd.setPos(sym.pos)
       fd.addFlag(IsField(isLazy))
 
-      fd.addFlags(annotationsOf(sym).map(FunctionFlag.fromName))
+      fd.addFlags(annotationsOf(sym).map { case (name, args) => FunctionFlag.fromName(name, args) }.toSet)
 
       defsToDefs += sym -> fd
 
@@ -1082,7 +1082,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val tparamsMap = (tparams zip fd.tparams.map(_.tp)).toMap
 
-          fd.addFlags(annotationsOf(d.symbol).map(FunctionFlag.fromName))
+          fd.addFlags(annotationsOf(d.symbol).map { case (name, args) => FunctionFlag.fromName(name, args) }.toSet)
 
           val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap)
 

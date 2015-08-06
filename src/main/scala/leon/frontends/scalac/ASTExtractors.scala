@@ -20,7 +20,7 @@ trait ASTExtractors {
     rootMirror.getClassByName(newTermName(str))
   }
 
-  def annotationsOf(s: Symbol): Set[String] = {
+  def annotationsOf(s: Symbol): Map[String, Seq[Option[Any]]] = {
     val actualSymbol = s.accessedOrSelf
 
     (for {
@@ -28,8 +28,12 @@ trait ASTExtractors {
       name = a.atp.safeToString.replaceAll("\\.package\\.", ".")
       if (name startsWith "leon.annotation.")
     } yield {
-      name.split("\\.", 3)(2)
-    }).toSet
+      val args = a.args.map {
+        case Literal(x) => Some(x.value)
+        case _ => None
+      }
+      (name.split("\\.", 3)(2), args)
+    }).toMap
   }
 
   protected lazy val tuple2Sym          = classFromName("scala.Tuple2")
@@ -406,7 +410,7 @@ trait ASTExtractors {
         case DefDef(_, name, tparams, vparamss, tpt, rhs) if name != nme.CONSTRUCTOR && !dd.symbol.isAccessor =>
           if (dd.symbol.isSynthetic && dd.symbol.isImplicit && dd.symbol.isMethod) {
             // Check that the class it was generated from is not ignored
-            if (annotationsOf(tpt.symbol)("ignore")) {
+            if (annotationsOf(tpt.symbol).isDefinedAt("ignore")) {
               None
             } else {
               Some((dd.symbol, tparams.map(_.symbol), vparamss.flatten, tpt.tpe, rhs))

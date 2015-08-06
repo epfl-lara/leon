@@ -305,16 +305,16 @@ object Definitions {
   sealed abstract class FunctionFlag
 
   object FunctionFlag {
-    def fromName(name: String): FunctionFlag = name match {
+    def fromName(name: String, args: Seq[Option[Any]]): FunctionFlag = name match {
       case "inline" => IsInlined
-      case _ => Annotation(name)
+      case _ => Annotation(name, args)
     }
   }
 
   // Whether this FunDef was originally a (lazy) field
   case class IsField(isLazy: Boolean) extends FunctionFlag
   // Compiler annotations given in the source code as @annot
-  case class Annotation(annot: String) extends FunctionFlag
+  case class Annotation(annot: String, args: Seq[Option[Any]]) extends FunctionFlag
   // If this class was a method. owner is the original owner of the method
   case class IsMethod(owner: ClassDef) extends FunctionFlag
   // If this function represents a loop that was there before XLangElimination
@@ -401,7 +401,8 @@ object Definitions {
 
     def flags = flags_
 
-    def annotations: Set[String] = flags_ collect { case Annotation(s) => s }
+    def annotations: Set[String] = extAnnotations.keySet
+    def extAnnotations: Map[String, Seq[Option[Any]]] = flags_.collect { case Annotation(s, args) => s -> args }.toMap
     def canBeLazyField    = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
     def canBeStrictField  = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
     def canBeField        = canBeLazyField || canBeStrictField
