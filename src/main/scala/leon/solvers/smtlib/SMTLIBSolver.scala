@@ -31,7 +31,7 @@ import _root_.smtlib.{Interpreter => SMTInterpreter}
 
 abstract class SMTLIBSolver(val context: LeonContext,
                             val program: Program)
-  extends IncrementalSolver with ResettableSolver with Interruptible {
+  extends IncrementalSolver with Interruptible {
 
 
   /* Solver name */
@@ -783,9 +783,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
     sendCommand(Push(1))
   }
 
-  override def pop(lvl: Int = 1): Unit = {
-    assert(lvl == 1, "Current implementation only supports lvl = 1")
-
+  override def pop(): Unit = {
     constructors.pop()
     selectors.pop()
     testers.pop()

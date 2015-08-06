@@ -11,9 +11,10 @@ import purescala.Expressions.{BooleanLiteral, Expr}
 import purescala.ExprOps.isGround
 import purescala.Constructors.andJoin
 import utils.Interruptible
+import utils.IncrementalSeq
 
 // This solver only "solves" ground terms by evaluating them
-class GroundSolver(val context: LeonContext, val program: Program) extends Solver with Interruptible {
+class GroundSolver(val context: LeonContext, val program: Program) extends IncrementalSolver with Interruptible {
 
   context.interruptManager.registerForInterrupts(this)
 
@@ -22,15 +23,17 @@ class GroundSolver(val context: LeonContext, val program: Program) extends Solve
 
   def name: String = "ground"
 
-  private var assertions: List[Expr] = Nil
+  private val assertions = new IncrementalSeq[Expr]()
 
   // Ground terms will always have the empty model
   def getModel: Map[Identifier, Expr] = Map()
 
-  def assertCnstr(expression: Expr): Unit = assertions ::= expression
+  def assertCnstr(expression: Expr): Unit = {
+    assertions += expression
+  }
 
   def check: Option[Boolean] = {
-    val expr = andJoin(assertions)
+    val expr = andJoin(assertions.toSeq)
 
     if (isGround(expr)) {
       evaluator.eval(expr) match {
@@ -49,10 +52,20 @@ class GroundSolver(val context: LeonContext, val program: Program) extends Solve
     }
   }
 
-  def free(): Unit = assertions = Nil
+  def free(): Unit = {
+    assertions.clear()
+  }
+
+  def push() = {
+    assertions.push()
+  }
+
+  def pop() = {
+    assertions.pop()
+  }
 
   def reset() = {
-    assertions = Nil
+    assertions.reset()
   }
 
   def interrupt(): Unit = {}

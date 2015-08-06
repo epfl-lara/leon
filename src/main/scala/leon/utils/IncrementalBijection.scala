@@ -2,15 +2,9 @@
 
 package leon.utils
 
-class IncrementalBijection[A,B] extends Bijection[A,B] {
+class IncrementalBijection[A,B] extends Bijection[A,B] with IncrementalState {
   private var a2bStack = List[Map[A,B]]()
   private var b2aStack = List[Map[B,A]]()
-
-  override def clear() : Unit = {
-    super.clear()
-    a2bStack = Nil
-    b2aStack = Nil
-  }
 
   private def recursiveGet[T,U](stack: List[Map[T,U]], t: T): Option[U] = stack match {
     case t2u :: xs => t2u.get(t) orElse recursiveGet(xs, t)
@@ -41,6 +35,12 @@ class IncrementalBijection[A,B] extends Bijection[A,B] {
   override def aSet = a2b.keySet ++ a2bStack.flatMap(_.keySet)
   override def bSet = b2a.keySet ++ b2aStack.flatMap(_.keySet)
 
+  def reset() : Unit = {
+    super.clear()
+    a2bStack = Nil
+    b2aStack = Nil
+  }
+
   def push(): Unit = {
     a2bStack = a2b :: a2bStack
     b2aStack = b2a :: b2aStack
@@ -54,5 +54,5 @@ class IncrementalBijection[A,B] extends Bijection[A,B] {
     a2bStack = a2bStack.tail
     b2aStack = b2aStack.tail
   }
-  
+
 }

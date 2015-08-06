@@ -6,6 +6,7 @@ package solvers.z3
 import z3.scala._
 
 import leon.solvers._
+import utils.IncrementalSet
 
 import purescala.Common._
 import purescala.Definitions._
@@ -42,13 +43,16 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
 
   def push() {
     solver.push()
+    freeVariables.push()
   }
 
-  def pop(lvl: Int = 1) {
-    solver.pop(lvl)
+  def pop() {
+    solver.pop(1)
+    freeVariables.pop()
   }
 
-  private var freeVariables = Set[Identifier]()
+  private val freeVariables = new IncrementalSet[Identifier]()
+
   def assertCnstr(expression: Expr) {
     freeVariables ++= variablesOf(expression)
     solver.assertCnstr(toZ3Formula(expression))
@@ -62,7 +66,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   }
 
   def getModel = {
-    modelToMap(solver.getModel(), freeVariables)
+    modelToMap(solver.getModel(), freeVariables.toSet)
   }
 
   def getUnsatCore = {

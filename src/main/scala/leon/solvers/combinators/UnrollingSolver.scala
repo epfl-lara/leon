@@ -9,6 +9,7 @@ import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
+import utils._
 
 import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre}
 import templates._
@@ -31,8 +32,8 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
 
   protected var lastCheckResult : (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
 
-  protected var varsInVC         = List[Set[Identifier]](Set())
-  protected var frameExpressions = List[List[Expr]](Nil)
+  private val freeVars    = new IncrementalSet[Identifier]()
+  private val constraints = new IncrementalSeq[Expr]()
 
   protected var interrupted : Boolean = false
 
@@ -69,14 +70,15 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   val solver = underlying
 
   def assertCnstr(expression: Expr) {
-    frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
+    constraints += expression
 
     val freeIds = variablesOf(expression)
-    varsInVC = (varsInVC.head ++ freeIds) :: varsInVC.tail
 
-    val freeVars = freeIds.map(_.toVariable: Expr)
+    freeVars ++= freeIds
 
-    val bindings = freeVars.zip(freeVars).toMap
+    val newVars = freeIds.map(_.toVariable: Expr)
+
+    val bindings = newVars.zip(newVars).toMap
 
     val newClauses = unrollingBank.getClauses(expression, bindings)
 
@@ -88,15 +90,15 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   def push() {
     unrollingBank.push()
     solver.push()
-    varsInVC = Set[Identifier]() :: varsInVC
-    frameExpressions = Nil :: frameExpressions
+    freeVars.push()
+    constraints.push()
   }
 
-  def pop(lvl: Int = 1) {
-    unrollingBank.pop(lvl)
-    solver.pop(lvl)
-    varsInVC = varsInVC.drop(lvl)
-    frameExpressions = frameExpressions.drop(lvl)
+  def pop() {
+    unrollingBank.pop()
+    solver.pop()
+    freeVars.pop()
+    constraints.pop()
   }
 
   def check: Option[Boolean] = {
@@ -112,8 +114,8 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   def isValidModel(model: Map[Identifier, Expr], silenceErrors: Boolean = false): Boolean = {
     import EvaluationResults._
 
-    val expr = andJoin(frameExpressions.flatten)
-    val allVars = varsInVC.flatten.toSet
+    val expr = andJoin(constraints.toSeq)
+    val allVars = freeVars.toSet
 
     val fullModel = allVars.map(v => v -> model.getOrElse(v, simplestValue(v.getType))).toMap
 
@@ -241,7 +243,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   }
 
   def getModel: Map[Identifier,Expr] = {
-    val allVars = varsInVC.flatten.toSet
+    val allVars = freeVars.toSet
     lastCheckResult match {
       case (true, Some(true), Some(m)) =>
         m.filterKeys(allVars)
@@ -253,8 +255,8 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
   override def reset() = {
     underlying.reset()
     lastCheckResult  = (false, None, None)
-    varsInVC         = List(Set())
-    frameExpressions = List(Nil)
+    freeVars.reset()
+    constraints.reset()
     interrupted      = false
   }
 

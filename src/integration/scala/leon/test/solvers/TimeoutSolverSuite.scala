@@ -37,6 +37,8 @@ class TimeoutSolverSuite extends LeonTestSuite {
 
     def free() {}
 
+    def reset() {}
+
     def getModel = ???
   }
 

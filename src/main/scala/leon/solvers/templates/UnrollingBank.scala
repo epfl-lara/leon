@@ -7,67 +7,66 @@ package templates
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
+import utils._
 
-class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[T]) {
+class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[T]) extends IncrementalState {
   implicit val debugSection = utils.DebugSectionSolver
 
   private val encoder = templateGenerator.encoder
 
   // Keep which function invocation is guarded by which guard,
   // also specify the generation of the blocker.
-  private var callInfoStack = List[Map[T, (Int, Int, T, Set[TemplateCallInfo[T]])]](Map())
-  private def callInfo = callInfoStack.head
-  private def callInfo_= (v: Map[T, (Int, Int, T, Set[TemplateCallInfo[T]])]) = {
-    callInfoStack = v :: callInfoStack.tail
-  }
+  private val callInfos = new IncrementalMap[T, (Int, Int, T, Set[TemplateCallInfo[T]])]()
+  private def callInfo  = callInfos.toMap
 
   // Function instantiations have their own defblocker
-  private var defBlockersStack = List[Map[TemplateCallInfo[T], T]](Map.empty)
-  private def defBlockers = defBlockersStack.head
-  private def defBlockers_= (v: Map[TemplateCallInfo[T], T]) : Unit = {
-    defBlockersStack = v :: defBlockersStack.tail
-  }
+  private val defBlockerss = new IncrementalMap[TemplateCallInfo[T], T]()
+  private def defBlockers  = defBlockerss.toMap
 
-  private var appInfoStack = List[Map[(T, App[T]), (Int, Int, T, T, Set[TemplateAppInfo[T]])]](Map())
-  private def appInfo = appInfoStack.head
-  private def appInfo_= (v: Map[(T, App[T]), (Int, Int, T, T, Set[TemplateAppInfo[T]])]) : Unit = {
-    appInfoStack = v :: appInfoStack.tail
-  }
+  private val appInfos = new IncrementalMap[(T, App[T]), (Int, Int, T, T, Set[TemplateAppInfo[T]])]()
+  private def appInfo  = appInfos.toMap
 
-  private var appBlockersStack = List[Map[(T, App[T]), T]](Map.empty)
-  private def appBlockers = appBlockersStack.head
-  private def appBlockers_= (v: Map[(T, App[T]), T]) : Unit = {
-    appBlockersStack = v :: appBlockersStack.tail
-  }
+  private val appBlockerss = new IncrementalMap[(T, App[T]), T]()
+  private def appBlockers  = appBlockerss.toMap
 
-  private var blockerToAppStack = List[Map[T, (T, App[T])]](Map.empty)
-  private def blockerToApp = blockerToAppStack.head
-  private def blockerToApp_= (v: Map[T, (T, App[T])]) : Unit = {
-    blockerToAppStack = v :: blockerToAppStack.tail
-  }
+  private val blockerToApps = new IncrementalMap[T, (T, App[T])]()
+  private def blockerToApp  = blockerToApps.toMap
 
-  private var functionVarsStack = List[Map[TypeTree, Set[T]]](Map.empty.withDefaultValue(Set.empty))
-  private def functionVars = functionVarsStack.head
-  private def functionVars_= (v: Map[TypeTree, Set[T]]) : Unit = {
-    functionVarsStack = v :: functionVarsStack.tail
-  }
+  private val functionVarss =  new IncrementalMap[TypeTree, Set[T]]()
+  private def functionVars  = functionVarss.toMap
 
   def push() {
-    appInfoStack = appInfo :: appInfoStack
-    callInfoStack = callInfo :: callInfoStack
-    defBlockersStack = defBlockers :: defBlockersStack
-    blockerToAppStack = blockerToApp :: blockerToAppStack
-    functionVarsStack = functionVars :: functionVarsStack
-    appBlockersStack = appBlockers :: appBlockersStack
+    callInfos.push()
+    defBlockerss.push()
+    appInfos.push()
+    appBlockerss.push()
+    blockerToApps.push()
+    functionVarss.push()
   }
 
-  def pop(lvl: Int) {
-    appInfoStack = appInfoStack.drop(lvl)
-    callInfoStack = callInfoStack.drop(lvl)
-    defBlockersStack = defBlockersStack.drop(lvl)
-    blockerToAppStack = blockerToAppStack.drop(lvl)
-    functionVarsStack = functionVarsStack.drop(lvl)
-    appBlockersStack = appBlockersStack.drop(lvl)
+  def pop() {
+    callInfos.pop()
+    defBlockerss.pop()
+    appInfos.pop()
+    appBlockerss.pop()
+    blockerToApps.pop()
+    functionVarss.pop()
+  }
+
+  def clear() {
+    callInfos.clear()
+    defBlockerss.clear()
+    appInfos.clear()
+    appBlockerss.clear()
+    functionVarss.clear()
+  }
+
+  def reset() {
+    callInfos.reset()
+    defBlockerss.reset()
+    appInfos.reset()
+    appBlockerss.reset()
+    functionVarss.reset()
   }
 
   def dumpBlockers() = {
@@ -140,7 +139,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     apps.filter(!appBlockers.isDefinedAt(_)).toSeq.map { case app @ (blocker, App(caller, tpe, _)) =>
 
       val firstB = encoder.encodeId(FreshIdentifier("b_lambda", BooleanType, true))
-      val freeEq = functionVars(tpe).toSeq.map(t => encoder.mkEquals(t, caller))
+      val freeEq = functionVars.getOrElse(tpe, Set()).toSeq.map(t => encoder.mkEquals(t, caller))
       val clause = encoder.mkImplies(encoder.mkNot(encoder.mkOr((freeEq :+ firstB) : _*)), encoder.mkNot(blocker))
 
       appBlockers += app -> firstB
@@ -170,7 +169,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     val trArgs = template.tfd.params.map(vd => bindings(Variable(vd.id)))
 
     for (vd <- template.tfd.params if vd.getType.isInstanceOf[FunctionType]) {
-      functionVars += vd.getType -> (functionVars(vd.getType) + bindings(vd.toVariable))
+      functionVars += vd.getType -> (functionVars.getOrElse(vd.getType, Set()) + bindings(vd.toVariable))
     }
 
     // ...now this template defines clauses that are all guarded
@@ -232,13 +231,13 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
 
     var newClauses : Seq[T] = Seq.empty
 
-    val callInfos = ids.flatMap(id => callInfo.get(id).map(id -> _))
-    callInfo = callInfo -- ids
+    val newCallInfos = ids.flatMap(id => callInfo.get(id).map(id -> _))
+    callInfo --= ids
 
     val apps = ids.flatMap(id => blockerToApp.get(id))
     val appInfos = apps.map(app => app -> appInfo(app))
-    blockerToApp = blockerToApp -- ids
-    appInfo = appInfo -- apps
+    blockerToApp --= ids
+    appInfo --= apps
 
     for ((app, (_, _, _, _, infos)) <- appInfos if infos.nonEmpty) {
       val extension = extendAppBlock(app, infos)
@@ -246,7 +245,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
       newClauses :+= extension
     }
 
-    for ((id, (gen, _, _, infos)) <- callInfos; info @ TemplateCallInfo(tfd, args) <- infos) {
+    for ((id, (gen, _, _, infos)) <- newCallInfos; info @ TemplateCallInfo(tfd, args) <- infos) {
       var newCls = Seq[T]()
 
       val defBlocker = defBlockers.get(info) match {

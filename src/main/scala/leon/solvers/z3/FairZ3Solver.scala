@@ -4,7 +4,7 @@ package leon
 package solvers
 package z3
 
-import utils.IncrementalBijection
+import utils._
 import _root_.z3.scala._
 
 import purescala.Common._
@@ -150,9 +150,9 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   val solver = z3.mkSolver()
 
-  private var varsInVC = List[Set[Identifier]](Set())
+  private val freeVars    = new IncrementalSet[Identifier]()
+  private var constraints = new IncrementalSeq[Expr]()
 
-  private var frameExpressions = List[List[Expr]](Nil)
 
   val unrollingBank = new UnrollingBank(reporter, templateGenerator)
 
@@ -160,19 +160,16 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
     errors.push()
     solver.push()
     unrollingBank.push()
-    varsInVC = Set[Identifier]() :: varsInVC
-    frameExpressions = Nil :: frameExpressions
+    freeVars.push()
+    constraints.push()
   }
 
-  def pop(lvl: Int = 1) {
-    for (i <- 1 until lvl) {
-      errors.pop()
-    }
-
-    solver.pop(lvl)
-    unrollingBank.pop(lvl)
-    varsInVC = varsInVC.drop(lvl)
-    frameExpressions = frameExpressions.drop(lvl)
+  def pop() {
+    errors.pop()
+    solver.pop(1)
+    unrollingBank.pop()
+    freeVars.pop()
+    constraints.pop()
   }
 
   override def check: Option[Boolean] = {
@@ -198,17 +195,17 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
   def assertCnstr(expression: Expr) {
     try {
-      val freeVars = variablesOf(expression)
-      varsInVC = (varsInVC.head ++ freeVars) :: varsInVC.tail
+      val newFreeVars = variablesOf(expression)
+      freeVars ++= newFreeVars
 
       // We make sure all free variables are registered as variables
-      freeVars.foreach { v =>
+      freeVars.toSet.foreach { v =>
         variables.cachedB(Variable(v)) {
           templateGenerator.encoder.encodeId(v)
         }
       }
 
-      frameExpressions = (expression :: frameExpressions.head) :: frameExpressions.tail
+      constraints += expression
 
       val newClauses = unrollingBank.getClauses(expression, variables.aToB)
 
@@ -232,7 +229,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   def fairCheck(assumptions: Set[Expr]): Option[Boolean] = {
     foundDefinitiveAnswer = false
 
-    def entireFormula  = andJoin(assumptions.toSeq ++ frameExpressions.flatten)
+    def entireFormula  = andJoin(assumptions.toSeq ++ constraints.toSeq)
 
     def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty, core: Set[Expr] = Set.empty) : Unit = {
       foundDefinitiveAnswer = true
@@ -272,7 +269,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
 
       reporter.debug(" - Finished search with blocked literals")
 
-      lazy val allVars = varsInVC.flatten.toSet
+      lazy val allVars = freeVars.toSet
 
       res match {
         case None =>

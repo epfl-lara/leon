@@ -21,30 +21,27 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
 
   private var interrupted = false
 
-  var freeVars    = List[List[Identifier]](Nil)
-  var constraints = List[List[Expr]](Nil)
+  val freeVars    = new IncrementalSet[Identifier]()
+  val constraints = new IncrementalSeq[Expr]()
 
   def assertCnstr(expression: Expr): Unit = {
-    constraints = (constraints.head :+ expression) :: constraints.tail
-
-    val newFreeVars = (variablesOf(expression) -- freeVars.flatten).toList
-
-    freeVars = (freeVars.head ::: newFreeVars) :: freeVars.tail
+    constraints += expression
+    freeVars ++= variablesOf(expression)
   }
 
   def push() = {
-    freeVars    = Nil :: freeVars
-    constraints = Nil :: constraints
+    freeVars.push()
+    constraints.push()
   }
 
-  def pop(lvl: Int) = {
-    freeVars    = freeVars.drop(lvl)
-    constraints = constraints.drop(lvl)
+  def pop() = {
+    freeVars.pop()
+    constraints.pop()
   }
 
   def reset() = {
-    freeVars    = List(Nil)
-    constraints = List(Nil)
+    freeVars.clear()
+    constraints.clear()
     interrupted = false
     datagen     = None
   }
@@ -59,8 +56,8 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
         None
       } else {
         modelMap = Map()
-        val allFreeVars = freeVars.reverse.flatten
-        val allConstraints = constraints.reverse.flatten
+        val allFreeVars = freeVars.toSet.toSeq.sortBy(_.name)
+        val allConstraints = constraints.toSeq
 
         val it = datagen.get.generateFor(allFreeVars, andJoin(allConstraints), 1, maxTried)
 
@@ -86,7 +83,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
   }
 
   def free() = {
-    constraints = Nil
+    constraints.clear()
   }
 
   def interrupt(): Unit = {
