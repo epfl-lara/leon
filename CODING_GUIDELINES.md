@@ -55,7 +55,7 @@ Leon tests are currently separated in three layers:
 - integration tests
 - regression tests
 
-```sbt test``` runs only unit tests.
+```sbt test``` runs only unit tests. Please do not push changes without testing them with ```sbt test integration:test```.
 
 
 ### Unit Tests
