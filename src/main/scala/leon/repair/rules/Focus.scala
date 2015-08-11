@@ -109,7 +109,7 @@ case object Focus extends PreprocessingRule("Focus") {
             // Focus on condition
             val np = Problem(p.as, ws(c), p.pc, letTuple(p.xs, IfExpr(cx.toVariable, thn, els), p.phi), List(cx), p.eb.stripOuts)
 
-            Some(decomp(List(np), termWrap(IfExpr(_, thn, els)), s"Focus on if-cond '$c'")(p))
+            Some(decomp(List(np), termWrap(IfExpr(_, thn, els)), s"Focus on if-cond '${c.asString}'")(p))
 
           case _ =>
             // Try to focus on branches
@@ -173,7 +173,7 @@ case object Focus extends PreprocessingRule("Focus") {
                   decomp(List(np), termWrap(x => MatchExpr(scrut, cases.map {
                       case `c` => c.copy(rhs = x)
                       case c2  => c2
-                    }), cond), s"Focus on match-case '${c.pattern}'")(p)
+                    }), cond), s"Focus on match-case '${c.pattern.asString}'")(p)
                 )
               )
 

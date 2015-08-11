@@ -20,8 +20,6 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
     "⟨ "+pre.asString+" | "+defs.map(_.asString).mkString(" ")+" "+term.asString+" ⟩" 
   }
 
-  override def toString = "⟨ "+pre+" | "+defs.mkString(" ")+" "+term+" ⟩" 
-
   def guardedTerm = {
     if (pre == BooleanLiteral(true)) {
       term

@@ -50,9 +50,9 @@ abstract class ExpressionGrammar[T <% Typed] {
   }
  
 
-  final def printProductions(printer: String => Unit) {
+  final def printProductions(printer: String => Unit)(implicit ctx: LeonContext) {
     for ((t, gs) <- cache; g <- gs) {
-      val subs = g.subTrees.map { t => FreshIdentifier(Console.BOLD+t.toString+Console.RESET, t.getType).toVariable}
+      val subs = g.subTrees.map { t => FreshIdentifier(Console.BOLD+t.asString+Console.RESET, t.getType).toVariable}
       val gen = g.builder(subs)
 
       printer(f"${Console.BOLD}$t%30s${Console.RESET} ::= $gen")
@@ -210,7 +210,7 @@ object ExpressionGrammars {
   case class Label[T](t: TypeTree, l: T, depth: Option[Int] = None) extends Typed {
     val getType = t
 
-    override def toString = t.toString+"#"+l+depth.map(d => "@"+d).getOrElse("")
+    override def asString(implicit ctx: LeonContext) = t.asString+"#"+l+depth.map(d => "@"+d).getOrElse("")
   }
 
   case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
@@ -356,7 +356,7 @@ object ExpressionGrammars {
       val res = rec(e, gl)
 
       //for ((t, g) <- res) {
-      //  val subs = g.subTrees.map { t => FreshIdentifier(t.toString, t.getType).toVariable}
+      //  val subs = g.subTrees.map { t => FreshIdentifier(t.asString, t.getType).toVariable}
       //  val gen = g.builder(subs)
 
       //  println(f"$t%30s ::= "+gen)
@@ -435,7 +435,7 @@ object ExpressionGrammars {
   case class SizedLabel[T <% Typed](underlying: T, size: Int) extends Typed {
     val getType = underlying.getType
 
-    override def toString = underlying.toString+"|"+size+"|"
+    override def asString(implicit ctx: LeonContext) = underlying.asString+"|"+size+"|"
   }
 
   case class SizeBoundedGrammar[T <% Typed](g: ExpressionGrammar[T]) extends ExpressionGrammar[SizedLabel[T]] {

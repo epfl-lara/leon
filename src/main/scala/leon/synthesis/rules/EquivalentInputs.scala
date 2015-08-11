@@ -84,7 +84,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
         _:Expr
       )
       
-      val substString = substs.map { case (f, t) => f+" -> "+t }
+      val substString = substs.map { case (f, t) => f.asString+" -> "+t.asString }
 
       List(decomp(List(sub), forwardMap(subst), "Equivalent Inputs ("+substString.mkString(", ")+")"))
     } else {

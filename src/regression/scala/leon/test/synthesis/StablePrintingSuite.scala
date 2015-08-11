@@ -84,7 +84,7 @@ class StablePrintingSuite extends LeonTestSuite {
               val search = synthesizer.getSearch
               val hctx = SearchContext(sctx, ci, search.g.root, search)
               val problem = ci.problem
-              info(j.info("synthesis "+problem))
+              info(j.info("synthesis "+problem.asString(sctx.context)))
               val apps = sctx.rules flatMap { _.instantiateOn(hctx, problem)}
 
               for (a <- apps) {
@@ -101,7 +101,7 @@ class StablePrintingSuite extends LeonTestSuite {
                           p.toString
                         })
 
-                        workList push Job(newContent, (i to i+sub.size).toSet, a.toString :: j.rules)
+                        workList push Job(newContent, (i to i+sub.size).toSet, a.asString(ctx) :: j.rules)
                       case None =>
                     }
                 }

@@ -30,6 +30,8 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
   var parents: List[Node]     = parent.toList
   var descendants: List[Node] = Nil
 
+  def asString(implicit ctx: LeonContext): String
+
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
   def expand(hctx: SearchContext)
@@ -98,7 +100,7 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
 class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) extends Node(cm, parent) {
   val p = ri.problem
 
-  override def toString = "\u2227 "+ri
+  override def asString(implicit ctx: LeonContext) = "\u2227 "+ri.asString
 
   def expand(hctx: SearchContext): Unit = {
     require(!isExpanded)
@@ -172,7 +174,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
 
 class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(cm, parent) {
 
-  override def toString = "\u2228 "+p
+  override def asString(implicit ctx: LeonContext) = "\u2228 "+p.asString
 
   def getInstantiations(hctx: SearchContext): List[RuleInstantiation] = {
     val rules = hctx.sctx.rules
@@ -181,7 +183,7 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
 
     for ((_, rs) <- rulesPrio) {
       val results = rs.flatMap{ r =>
-        hctx.context.timers.synthesis.instantiations.get(r.toString).timed {
+        hctx.context.timers.synthesis.instantiations.get(r.asString(hctx.sctx.context)).timed {
           r.instantiateOn(hctx, p)
         }
       }.toList

@@ -17,9 +17,7 @@ object Common {
       this
     }
 
-    override def toString: String = {
-      PrettyPrinter(this)
-    }
+    // @EK: toString is considered harmful for non-internal things. Use asString(ctx) instead.
 
     def asString(implicit ctx: LeonContext): String = {
       ScalaPrinter(this, ctx)
@@ -58,6 +56,15 @@ object Common {
 
     def freshen: Identifier = FreshIdentifier(name, tpe, alwaysShowUniqueID).copiedFrom(this)
 
+  }
+
+  implicit object IdentifierOrdering extends Ordering[Identifier] {
+    def compare(a: Identifier, b: Identifier) = {
+      val ord = implicitly[Ordering[Tuple3[String, Int, Int]]]
+
+      ord.compare((a.name, a.id, a.globalId),
+                  (b.name, b.id, b.globalId))
+    }
   }
 
   private object UniqueCounter {

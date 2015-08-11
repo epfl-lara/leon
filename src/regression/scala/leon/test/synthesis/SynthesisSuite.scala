@@ -76,7 +76,7 @@ class SynthesisSuite extends LeonTestSuite {
     def matchingDesc(app: RuleInstantiation, n: String): Boolean = {
       import java.util.regex.Pattern
       val pattern = Pattern.quote(n).replace("*", "\\E.*\\Q")
-      app.toString.matches(pattern)
+      app.asString(ctx).matches(pattern)
     }
 
   }

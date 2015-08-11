@@ -20,7 +20,9 @@ abstract class Rule(val name: String) extends RuleDSL {
 
   implicit val thisRule = this
 
-  override def toString = name
+  implicit def hctxToCtx(implicit hctx: SearchContext): LeonContext = hctx.sctx.context
+
+  def asString(implicit ctx: LeonContext) = name
 }
 
 abstract class NormalizingRule(name: String) extends Rule(name) {
@@ -75,7 +77,7 @@ abstract class RuleInstantiation(val description: String,
 
   def apply(hctx: SearchContext): RuleApplication
 
-  override def toString = description
+  def asString(implicit ctx: LeonContext) = description
 }
 
 /**

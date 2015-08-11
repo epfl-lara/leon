@@ -163,8 +163,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
       if (r.default != BooleanLiteral(false)) {
-        reporter.warning("Co-finite sets are not supported.")
-        throw new IllegalArgumentException
+        unsupported("Co-finite sets are not supported.")
       }
       require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
 
@@ -180,8 +179,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       // We expect a RawArrayValue with keys in from and values in Option[to],
       // with default value == None
       if (r.default.getType != library.noneType(to)) {
-        reporter.warning("Co-finite maps are not supported. (Default was "+r.default+")")
-        throw new IllegalArgumentException
+        unsupported("Co-finite maps are not supported.")
       }
       require(r.keyTpe == from, s"Type error in solver model, expected $from, found ${r.keyTpe}")
 
@@ -195,7 +193,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
       unsupported("Unable to extract from raw array for "+tpe)
   }
 
-  protected def unsupported(str: Any) = reporter.fatalError(s"Unsupported in smt-$targetName: $str")
+  protected def unsupported(str: String) = {
+    reporter.warning(s"Unsupported in smt-$targetName: $str")
+    throw new IllegalArgumentException(str)
+  }
 
   protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
@@ -563,8 +564,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
           )
         }
       case o =>
-        reporter.warning(s"Unsupported Tree in smt-$targetName: $o")
-        throw new IllegalArgumentException
+        unsupported(s"Tree ${o.asString}")
     }
   }
 
@@ -604,7 +604,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         case cct: CaseClassType =>
           CaseClass(cct, Nil)
         case t =>
-          unsupported("woot? for a single constructor for non-case-object: "+t)
+          unsupported("woot? for a single constructor for non-case-object: "+t.asString)
       }
 
     case (SimpleSymbol(s), tpe) if lets contains s =>

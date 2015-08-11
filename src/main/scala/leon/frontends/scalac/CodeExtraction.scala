@@ -1349,7 +1349,7 @@ trait CodeExtraction extends ASTExtractors {
               Not(Equals(rl, InfiniteIntegerLiteral(v)))
 
             case (IsTyped(_, rt), IsTyped(_, lt)) =>
-              outOfSubsetError(tr, "Invalid comparison: (_: "+rt+") != (_: "+lt+")")
+              outOfSubsetError(tr, "Invalid comparison: (_: "+rt.asString+") != (_: "+lt.asString+")")
           }
         }
 

@@ -38,7 +38,9 @@ trait WithLikelyEq {
       val r1 = evaluator.eval(e1)
       val r2 = evaluator.eval(e2)
 
-      assert(r1 === r2, s"'$e1' != '$e2' ('$r1' != '$r2')")
+      if (r1 != r2) {
+        fail(s"'${e1.asString(ctx)}' != '${e2.asString(ctx)}' ('$r1' != '$r2')")
+      }
     } else {
 
       val allValues = freeVars.map(id => values.get(id).map(Seq(_)).getOrElse(typesValues(id.getType)))
@@ -57,7 +59,9 @@ trait WithLikelyEq {
           val r1 = evaluator.eval(e1, m)
           val r2 = evaluator.eval(e2, m)
 
-          assert(r1 === r2, s"'$e1' != '$e2' with '$m' ('$r1' != '$r2')")
+          if (r1 != r2) {
+            fail(s"'${e1.asString(ctx)}' != '${e2.asString(ctx)}' with '$m' ('$r1' != '$r2')")
+          }
         }
       }
     }

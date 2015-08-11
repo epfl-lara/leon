@@ -87,7 +87,7 @@ case object ADTSplit extends Rule("ADT Split.") {
             Some(Solution(orJoin(globalPre), sols.flatMap(_.defs).toSet, matchExpr(Variable(id), cases), sols.forall(_.isTrusted)))
         }
 
-        decomp(subInfo.map(_._2).toList, onSuccess, s"ADT Split on '$id'")
+        decomp(subInfo.map(_._2).toList, onSuccess, s"ADT Split on '${id.asString}'")
     }
   }
 }

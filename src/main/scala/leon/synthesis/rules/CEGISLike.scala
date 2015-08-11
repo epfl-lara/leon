@@ -43,7 +43,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val nProgramsLimit = 100000
 
     val sctx = hctx.sctx
-    implicit val ctx  = sctx.context
+    val ctx  = sctx.context
 
 
     // CEGIS Flags to activate or deactivate features
@@ -125,7 +125,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         private var slots = Map[SizedLabel[T], Int]().withDefaultValue(0)
 
         private def streamOf(t: SizedLabel[T]): Stream[Identifier] = {
-          FreshIdentifier(t.toString, t.getType, true) #:: streamOf(t)
+          FreshIdentifier(t.asString, t.getType, true) #:: streamOf(t)
         }
 
         def rewind(): Unit = {
@@ -285,7 +285,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         // Define all C-def
         for ((c, alts) <- cTree) yield {
-          cToFd += c -> new FunDef(FreshIdentifier(c.toString, alwaysShowUniqueID = true),
+          cToFd += c -> new FunDef(FreshIdentifier(c.asString, alwaysShowUniqueID = true),
                                    Seq(),
                                    c.getType,
                                    p.as.map(id => ValDef(id)))
@@ -641,6 +641,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       def apply(hctx: SearchContext): RuleApplication = {
         var result: Option[RuleApplication] = None
         val sctx = hctx.sctx
+        implicit val ctx = sctx.context
 
         val ndProgram = new NonDeterministicProgram(p)
         ndProgram.init()

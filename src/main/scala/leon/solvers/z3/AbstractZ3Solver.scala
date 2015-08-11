@@ -82,7 +82,7 @@ trait AbstractZ3Solver
 
   def genericValueToDecl(gv: GenericValue): Z3FuncDecl = {
     generics.cachedB(gv) {
-      z3.mkFreshFuncDecl(gv.tp.toString+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
+      z3.mkFreshFuncDecl(gv.tp.id.uniqueName+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
     }
   }
 

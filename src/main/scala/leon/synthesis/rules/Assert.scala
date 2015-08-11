@@ -24,7 +24,7 @@ case object Assert extends NormalizingRule("Assert") {
             Some(decomp(List(sub), {
               case (s @ Solution(pre, defs, term)) :: Nil => Some(Solution(andJoin(exprsA :+ pre), defs, term, s.isTrusted))
               case _ => None
-            }, "Assert "+andJoin(exprsA)))
+            }, "Assert "+andJoin(exprsA).asString))
           }
         } else {
           None

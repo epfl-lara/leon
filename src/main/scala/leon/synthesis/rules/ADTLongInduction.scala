@@ -162,7 +162,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
             }
         }
 
-        Some(decomp(subProblemsInfo.map(_._1), onSuccess, s"ADT Long Induction on '$origId'"))
+        Some(decomp(subProblemsInfo.map(_._1), onSuccess, s"ADT Long Induction on '${origId.asString}'"))
       } else {
         None
       }

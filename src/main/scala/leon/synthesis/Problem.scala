@@ -33,14 +33,6 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
     "⟦ "+as.map(_.asString).mkString(";")+", "+(if (pcws != BooleanLiteral(true)) pcws.asString+" ≺ " else "")+" ⟨ "+phi.asString+" ⟩ "+xs.map(_.asString).mkString(";")+" ⟧  "+ebInfo
   }
 
-  override def toString = {
-    val pcws = and(ws, pc)
-
-    val ebInfo = "/"+eb.valids.size+","+eb.invalids.size+"/"
-
-    "⟦ "+as.mkString(";")+", "+(if (pcws != BooleanLiteral(true)) pcws+" ≺ " else "")+" ⟨ "+phi+" ⟩ "+xs.mkString(";")+" ⟧  "+ebInfo
-  }
-
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
   def qeb(implicit sctx: SearchContext) = QualifiedExampleBank(this.as, this.xs, eb)
 }

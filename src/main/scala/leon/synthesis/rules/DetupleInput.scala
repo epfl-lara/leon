@@ -72,7 +72,6 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       }
 
       val newAs = subAs.flatten
-      //sctx.reporter.warning("newOuts: " + newOuts.toString)
 
       // Recompose CaseClasses and Tuples.
       // E.g. Cons(l.head, l.tail) ~~> l
@@ -83,7 +82,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
             case (CaseClassSelector(ct, e, id), field) if field.id == id => (ct, e)
             case _ => return e
           }.unzip
-          
+
           if (cts.distinct.size == 1 && es.distinct.size == 1) {
             es.head
           } else {

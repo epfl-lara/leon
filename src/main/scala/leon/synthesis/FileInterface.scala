@@ -15,7 +15,7 @@ import leon.utils.RangePosition
 import java.io.File
 class FileInterface(reporter: Reporter) {
 
-  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr]) {
+  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr])(implicit ctx: LeonContext) {
     import java.io.{File, BufferedWriter, FileWriter}
     val FileExt = """^(.+)\.([^.]+)$""".r
 
@@ -70,9 +70,10 @@ class FileInterface(reporter: Reporter) {
   }
 
 
-  def substitute(str: String, fromTree: Tree, toTree: Tree): String = {
+  def substitute(str: String, fromTree: Tree, toTree: Tree)(implicit ctx: LeonContext): String = {
     substitute(str, fromTree, (indent: Int) => {
-      val p = new ScalaPrinter(PrinterOptions(), None)
+      val opts = PrinterOptions.fromContext(ctx)
+      val p = new ScalaPrinter(opts, None)
       p.pp(toTree)(PrinterContext(toTree, Nil, indent, p))
       p.toString
     })

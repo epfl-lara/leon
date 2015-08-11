@@ -19,6 +19,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   val name = "evaluator"
   val description = "Recursive interpreter for PureScala expressions"
 
+  private implicit val ctx0 = ctx
+
   type RC <: RecContext
   type GC <: GlobalContext
 
@@ -80,7 +82,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(v) =>
           v
         case None =>
-          throw EvalError("No value for identifier " + id.asString(ctx) + " in mapping.")
+          throw EvalError("No value for identifier " + id.asString + " in mapping.")
       }
 
     case Application(caller, args) =>
@@ -90,7 +92,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           val mapping = l.paramSubst(newArgs)
           e(body)(rctx.withNewVars(mapping), gctx)
         case f =>
-          throw EvalError("Cannot apply non-lambda function " + f)
+          throw EvalError("Cannot apply non-lambda function " + f.asString)
       }
 
     case Tuple(ts) =>
@@ -153,7 +155,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         e(tfd.precondition.get)(frame, gctx) match {
           case BooleanLiteral(true) =>
           case BooleanLiteral(false) =>
-            throw RuntimeError("Precondition violation for " + tfd.id.name + " reached in evaluation.: " + tfd.precondition.get)
+            throw RuntimeError("Precondition violation for " + tfd.id.asString + " reached in evaluation.: " + tfd.precondition.get.asString)
           case other =>
             throw RuntimeError(typeErrorMsg(other, BooleanType))
         }
@@ -170,7 +172,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(post) => 
           e(application(post, Seq(callResult)))(frame, gctx) match {
             case BooleanLiteral(true) =>
-            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.name + " reached in evaluation.")
+            case BooleanLiteral(false) => throw RuntimeError("Postcondition violation for " + tfd.id.asString + " reached in evaluation.")
             case other => throw EvalError(typeErrorMsg(other, BooleanType))
           }
         case None =>
@@ -517,7 +519,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case g @ MapGet(m,k) => (e(m), e(k)) match {
       case (FiniteMap(ss, _, _), e) => ss.find(_._1 == e) match {
         case Some((_, v0)) => v0
-        case None => throw RuntimeError("Key not found: " + e)
+        case None => throw RuntimeError("Key not found: " + e.asString)
       }
       case (l,r) => throw EvalError(typeErrorMsg(l, MapType(r.getType, g.getType)))
     }
@@ -577,7 +579,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
               val total = System.currentTimeMillis-tStart
 
               ctx.reporter.debug("Synthesis took "+total+"ms")
-              ctx.reporter.debug("Finished synthesis with "+leonRes.asString(ctx))
+              ctx.reporter.debug("Finished synthesis with "+leonRes.asString)
 
               clpCache += (choose, ins) -> leonRes
               leonRes
@@ -599,14 +601,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)
         case _ =>
-          throw RuntimeError("MatchError: "+rscrut+" did not match any of the cases")
+          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases")
       }
 
     case l : Literal[_] => l
 
     case other =>
-      context.reporter.error(other.getPos, "Error: don't know how to handle " + other + " in Evaluator ("+other.getClass+").")
-      throw EvalError("Unhandled case in Evaluator : " + other) 
+      context.reporter.error(other.getPos, "Error: don't know how to handle " + other.asString + " in Evaluator ("+other.getClass+").")
+      throw EvalError("Unhandled case in Evaluator : " + other.asString)
   }
 
   def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {
@@ -683,6 +685,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     }
   }
 
-  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected $expected, found $tree."
+  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString}."
 
 }

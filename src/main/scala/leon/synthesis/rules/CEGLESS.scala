@@ -13,8 +13,9 @@ import Witnesses._
 
 case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
-
     val TopLevelAnds(clauses) = p.ws
+
+    val ctx = sctx.context
 
     val guides = clauses.collect {
       case Guide(e) => e
@@ -23,9 +24,9 @@ case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
     val inputs = p.as.map(_.toVariable)
 
     sctx.reporter.ifDebug { printer =>
-      printer("Guides available:")
+    printer("Guides available:")
       for (g <- guides) {
-        printer(" - "+g)
+        printer(" - "+g.asString(ctx))
       }
     }
 

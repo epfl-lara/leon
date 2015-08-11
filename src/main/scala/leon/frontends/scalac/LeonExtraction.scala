@@ -12,7 +12,7 @@ trait LeonExtraction extends SubComponent with CodeExtraction {
 
   var units: List[CompilationUnit] = Nil
   
-  val ctx: LeonContext
+  implicit val ctx: LeonContext
 
   var imports : Map[RefTree,List[Import]] = Map()
   

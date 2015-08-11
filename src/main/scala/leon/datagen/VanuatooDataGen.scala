@@ -66,7 +66,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
             (1 to size).map(i => sub).toList,
             at,
             s => finiteArray(s, None, sub),
-            at.toString+"@"+size
+            at.asString(ctx)+"@"+size
           )
         }
         constructors += at -> cs
@@ -80,7 +80,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
             (1 to size).map(i => sub).toList,
             st,
             s => FiniteSet(s.toSet, sub),
-            st.toString+"@"+size
+            st.asString(ctx)+"@"+size
           )
         }
         constructors += st -> cs
@@ -89,7 +89,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     
     case tt @ TupleType(parts) =>
       constructors.getOrElse(tt, {
-        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => tupleWrap(s), tt.toString))
+        val cs = List(Constructor[Expr, TypeTree](parts, tt, s => tupleWrap(s), tt.asString(ctx)))
         constructors += tt -> cs
         cs
       })
@@ -99,7 +99,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
           val subs   = (1 to size).flatMap(i => List(from, to)).toList
 
-          Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toSeq, from, to), mt.toString+"@"+size)
+          Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toSeq, from, to), mt.asString(ctx)+"@"+size)
         }
         constructors += mt -> cs
         cs
@@ -117,7 +117,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
               IfExpr(Equals(argsTuple, tupleWrap(t.init)), t.last, elze)
             }
             Lambda(args.map(id => ValDef(id)), body)
-          }, ft.toString + "@" + size)
+          }, ft.asString(ctx) + "@" + size)
         }
         constructors += ft -> cs
         cs

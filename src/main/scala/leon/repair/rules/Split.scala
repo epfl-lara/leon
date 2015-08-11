@@ -60,7 +60,7 @@ case object Split extends Rule("Split") {
             None
         }
 
-        Some(decomp(List(sub1, sub2), onSuccess, s"Guided If-Split on '$c'"))
+        Some(decomp(List(sub1, sub2), onSuccess, s"Guided If-Split on '${c.asString}'"))
 
       case m @ MatchExpr(scrut, cases) =>
 
@@ -112,7 +112,7 @@ case object Split extends Rule("Split") {
           }
 
           Some(
-            decomp(infos.map(_._2).toList, onSuccess, s"Split match on '$scrut'")
+            decomp(infos.map(_._2).toList, onSuccess, s"Split match on '${scrut.asString}'")
           )
 
       case e =>

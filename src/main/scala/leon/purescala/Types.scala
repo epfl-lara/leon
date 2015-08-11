@@ -15,6 +15,8 @@ object Types {
   trait Typed {
     val getType: TypeTree
     def isTyped : Boolean = getType != Untyped
+
+    def asString(implicit ctx: LeonContext): String
   }
 
   class TypeErrorException(msg: String) extends Exception(msg)

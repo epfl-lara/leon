@@ -21,7 +21,7 @@ abstract class Search(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: C
     ctx.timers.synthesis.step.timed {
       n match {
         case an: AndNode =>
-          ctx.timers.synthesis.applications.get(an.ri.toString).timed {
+          ctx.timers.synthesis.applications.get(an.ri.asString(sctx.context)).timed {
             an.expand(SearchContext(sctx, ci, an, this))
           }
 
@@ -214,15 +214,15 @@ class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel
 
     def displayNode(n: Node): String = n match {
       case an: AndNode =>
-        val app = an.ri
+        val app = an.ri.asString(ctx)
         s"(${n.cost.asString}) ${indent(app)}"
       case on: OrNode =>
         val p = on.p.asString(ctx)
         s"(${n.cost.asString}) ${indent(p)}"
     }
 
-    def indent(a: Any): String = {
-      a.toString.replaceAll("\n", "\n"+(" "*12))
+    def indent(a: String): String = {
+      a.replaceAll("\n", "\n"+(" "*12))
     }
 
     def pathToString(cd: List[Int]): String = {
