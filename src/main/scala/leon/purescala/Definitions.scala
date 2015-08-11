@@ -224,6 +224,14 @@ object Definitions {
 
     def methods = _methods
 
+    private var _annotations: Map[String, Seq[Option[Any]]] = Map.empty
+
+    def setAnnotations(annotations: Map[String, Seq[Option[Any]]]) {
+      _annotations = annotations
+    }
+
+    def annotations = _annotations
+
     lazy val ancestors: Seq[ClassDef] = parent.toSeq flatMap { p => p.classDef +: p.classDef.ancestors }
 
     lazy val root = ancestors.lastOption.getOrElse(this)
