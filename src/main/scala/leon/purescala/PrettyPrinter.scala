@@ -609,7 +609,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case (_: Modulo) => 1
     case (_: Or | BinaryMethodCall(_, "||", _)) => 2
     case (_: And | BinaryMethodCall(_, "&&", _)) => 3
-    case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan) => 4
+    case (_: GreaterThan | _: GreaterEquals  | _: LessEquals | _: LessThan | _: Implies) => 4
     case (_: Equals | _: Not) => 5
     case (_: Plus | _: BVPlus | _: Minus | _: BVMinus | _: SetUnion| _: SetDifference | BinaryMethodCall(_, "+" | "-", _)) => 7
     case (_: Times | _: BVTimes | _: Division | _: BVDivision | _: Remainder | _: BVRemainder | BinaryMethodCall(_, "*" | "/", _)) => 8

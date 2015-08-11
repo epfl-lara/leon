@@ -25,17 +25,16 @@ class ScalaPrinter(opts: PrinterOptions,
           case f: FunDef if f.isSynthetic => false
           case _ => true
         }))
-      case Not(Equals(l, r))         => p"$l != $r"
-      case Implies(l,r)              => p"$l ==> $r"
+      case Not(Equals(l, r))         => optP { p"$l != $r" }
       case Choose(pred)              => p"choose($pred)"
       case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
       case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
       
       case ElementOfSet(e,s)         => p"$s.contains(e)"
-      case SetUnion(l,r)             => p"$l ++ $r"
-      case MapUnion(l,r)             => p"$l ++ $r"
-      case SetDifference(l,r)        => p"$l -- $r"
-      case SetIntersection(l,r)      => p"$l & $r"
+      case SetUnion(l,r)             => optP { p"$l ++ $r" }
+      case MapUnion(l,r)             => optP { p"$l ++ $r" }
+      case SetDifference(l,r)        => optP { p"$l -- $r" }
+      case SetIntersection(l,r)      => optP { p"$l & $r" }
       case SetCardinality(s)         => p"$s.size"
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
 
