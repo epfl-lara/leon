@@ -32,14 +32,14 @@ class RepairSuite extends LeonTestSuite {
       interruptManager = new InterruptManager(reporter),
       options = Seq(
         LeonOption(SharedOptions.optFunctions)(Seq(fileToFun(name))),
-        LeonOption(SharedOptions.optTimeout)(10L)
+        LeonOption(SharedOptions.optTimeout)(20L)
       )
     )
 
     test(name) {
       pipeline.run(ctx)(List(path))
       if(reporter.errorCount > 0) {
-        fail("Errors during repair!")
+        fail("Errors during repair:\n"+reporter.lastErrors.mkString("\n"))
       }
     }
   }

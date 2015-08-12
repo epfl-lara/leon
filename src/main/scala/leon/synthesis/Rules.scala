@@ -173,9 +173,9 @@ trait RuleDSL {
   }
 
   def solve(sol: Solution)
-           (implicit problem: Problem): RuleInstantiation = {
+           (implicit problem: Problem, ctx: LeonContext): RuleInstantiation = {
 
-    new RuleInstantiation(s"Solve: $sol",
+    new RuleInstantiation(s"Solve: ${sol.asString}",
                           SolutionBuilderCloser(Some(sol))) {
       def apply(hctx: SearchContext) = RuleClosed(sol)
     }

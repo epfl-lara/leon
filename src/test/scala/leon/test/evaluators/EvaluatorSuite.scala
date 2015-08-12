@@ -225,7 +225,6 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
     }
   }
 
-
   def eqArray(a1: Expr, a2: Expr) = (a1, a2) match {
     case (FiniteArray(es1, d1, IntLiteral(l1)), FiniteArray(es2, d2, IntLiteral(l2))) =>
       assert(l1 === l2)

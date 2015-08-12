@@ -191,6 +191,21 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDS
       |  }
       |  def f2 = D().isInstanceOf[B]
       |  def f3 = C(42).isInstanceOf[A]
+      |}""".stripMargin,
+
+    """object Casts1 {
+      |  abstract class Foo
+      |  case class Bar1(v: BigInt) extends Foo
+      |  case class Bar2(v: BigInt) extends Foo
+      |  case class Bar3(v: BigInt) extends Foo
+      |
+      |  def test(a: Foo): BigInt = {
+      |    if (a.isInstanceOf[Bar1]) {
+      |      a.asInstanceOf[Bar1].v
+      |    } else {
+      |      a.asInstanceOf[Bar2].v
+      |    }
+      |  }
       |}""".stripMargin
   )
 
@@ -360,6 +375,20 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDS
       eval(e, fcall("Methods.f1")()) === T
       eval(e, fcall("Methods.f2")()) === F
       eval(e, fcall("Methods.f3")()) === T
+    }
+  }
+
+  test("Casts1") { implicit fix =>
+    def bar1(es: Expr*) = cc("Casts1.Bar1")(es: _*)
+    def bar2(es: Expr*) = cc("Casts1.Bar2")(es: _*)
+    def bar3(es: Expr*) = cc("Casts1.Bar3")(es: _*)
+
+    val b42 = bi(42)
+
+    for(e <- allEvaluators) {
+      eval(e, fcall("Casts1.test")(bar1(b42))) === b42
+      eval(e, fcall("Casts1.test")(bar2(b42))) === b42
+      eval(e, fcall("Casts1.test")(bar3(b42))).failed
     }
   }
 

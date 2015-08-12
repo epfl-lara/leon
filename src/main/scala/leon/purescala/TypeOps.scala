@@ -295,6 +295,9 @@ object TypeOps {
           case cc @ IsInstanceOf(ct, e) =>
             IsInstanceOf(tpeSub(ct).asInstanceOf[ClassType], srec(e)).copiedFrom(cc)
 
+          case cc @ AsInstanceOf(e, ct) =>
+            AsInstanceOf(srec(e), tpeSub(ct).asInstanceOf[ClassType]).copiedFrom(cc)
+
           case l @ Let(id, value, body) =>
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)

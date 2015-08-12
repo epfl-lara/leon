@@ -890,6 +890,13 @@ trait ASTExtractors {
       }
     }
 
+    object ExAsInstanceOf {
+      def unapply(tree: TypeApply) : Option[(Tree, Tree)] = tree match {
+        case TypeApply(Select(t, isInstanceOfName), typeTree :: Nil) if isInstanceOfName.toString == "asInstanceOf" => Some((t, typeTree))
+        case _ => None
+      }
+    }
+
     object ExIsInstanceOf {
       def unapply(tree: TypeApply) : Option[(Tree, Tree)] = tree match {
         case TypeApply(Select(t, isInstanceOfName), typeTree :: Nil) if isInstanceOfName.toString == "isInstanceOf" => Some((typeTree, t))

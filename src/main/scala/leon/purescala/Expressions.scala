@@ -404,6 +404,15 @@ object Expressions {
     val getType = BooleanType
   }
 
+  /**
+   * $encodingof `.asInstanceOf[...]` 
+   * Introduced by matchToIfThenElse to transform match-cases to type-correct
+   * if bodies.
+   */
+  case class AsInstanceOf(expr: Expr, tpe: ClassType) extends Expr {
+    val getType = tpe
+  }
+
   /** $encodingof `value.selector` where value is of a case class type
     *
     * If you are not sure about the requirement you should use

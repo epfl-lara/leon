@@ -339,6 +339,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
         val selector = selectors.toB((cct, s.selectorIndex))
         FunctionApplication(selector, Seq(toSMT(e)))
 
+      case AsInstanceOf(expr, cct) =>
+        toSMT(expr)
+
       case IsInstanceOf(cct, e) =>
         declareSort(cct)
         val cases = cct match {

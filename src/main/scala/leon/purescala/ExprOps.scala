@@ -805,17 +805,17 @@ object ExprOps {
 
   /** Converts the pattern applied to an input to a map between identifiers and expressions */
   def mapForPattern(in: Expr, pattern: Pattern) : Map[Identifier,Expr] = {
-    def bindIn(id: Option[Identifier]): Map[Identifier,Expr] = id match {
+    def bindIn(id: Option[Identifier], cast: Option[ClassType] = None): Map[Identifier,Expr] = id match {
       case None => Map()
-      case Some(id) => Map(id -> in)
+      case Some(id) => Map(id -> cast.map(asInstOf(in, _)).getOrElse(in))
     }
     pattern match {
-      case CaseClassPattern(b, ccd, subps) =>
-        assert(ccd.fields.size == subps.size)
-        val pairs = ccd.fields.map(_.id).toList zip subps.toList
-        val subMaps = pairs.map(p => mapForPattern(caseClassSelector(ccd, in, p._1), p._2))
+      case CaseClassPattern(b, cct, subps) =>
+        assert(cct.fields.size == subps.size)
+        val pairs = cct.fields.map(_.id).toList zip subps.toList
+        val subMaps = pairs.map(p => mapForPattern(caseClassSelector(cct, asInstOf(in, cct), p._1), p._2))
         val together = subMaps.flatten.toMap
-        bindIn(b) ++ together
+        bindIn(b, Some(cct)) ++ together
 
       case TuplePattern(b, subps) =>
         val TupleType(tpes) = in.getType

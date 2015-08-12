@@ -381,4 +381,13 @@ object Constructors {
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealTimes(lhs, rhs)
   }
 
+  /** $encodingof expr.asInstanceOf[tpe], returns `expr` it it already is of type `tpe`.  */
+  def asInstOf(expr: Expr, tpe: ClassType) = {
+    if (isSubtypeOf(expr.getType, tpe)) {
+      expr
+    } else {
+      AsInstanceOf(expr, tpe)
+    }
+  }
+
 }

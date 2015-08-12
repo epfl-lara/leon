@@ -20,7 +20,7 @@ import evaluators._
 
 import termination._
 
-class FairZ3Solver(val context : LeonContext, val program: Program)
+class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
      with Z3ModelReconstruction
      with FairZ3Component {
@@ -154,7 +154,7 @@ class FairZ3Solver(val context : LeonContext, val program: Program)
   private var constraints = new IncrementalSeq[Expr]()
 
 
-  val unrollingBank = new UnrollingBank(reporter, templateGenerator)
+  val unrollingBank = new UnrollingBank(context, templateGenerator)
 
   def push() {
     errors.push()

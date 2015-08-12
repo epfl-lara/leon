@@ -65,7 +65,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: In
     def mkImplies(l: Expr, r: Expr) = implies(l, r)
   }, assumePreHolds)
 
-  val unrollingBank = new UnrollingBank(reporter, templateGenerator)
+  val unrollingBank = new UnrollingBank(context, templateGenerator)
 
   val solver = underlying
 

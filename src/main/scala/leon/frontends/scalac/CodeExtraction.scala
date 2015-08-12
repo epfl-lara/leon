@@ -1392,7 +1392,17 @@ trait CodeExtraction extends ASTExtractors {
               outOfSubsetError(tr, "Both branches of ifthenelse have incompatible types ("+r2.getType.asString(ctx)+" and "+r3.getType.asString(ctx)+")")
           }
 
-        case ExIsInstanceOf(tt, cc) => {
+        case ExAsInstanceOf(expr, tt) =>
+          val eRec = extractTree(expr)
+          val checkType = extractType(tt)
+          checkType match {
+            case ct: ClassType =>
+              AsInstanceOf(eRec, ct)
+            case _ =>
+              outOfSubsetError(tr, "asInstanceOf can only cast to class types")
+          }
+
+        case ExIsInstanceOf(tt, cc) =>
           val ccRec = extractTree(cc)
           val checkType = extractType(tt)
           checkType match {
@@ -1413,7 +1423,6 @@ trait CodeExtraction extends ASTExtractors {
             case _ =>
               outOfSubsetError(tr, "isInstanceOf can only be used with a class")
           }
-        }
 
         case pm @ ExPatternMatching(sel, cses) =>
           val rs = extractTree(sel)

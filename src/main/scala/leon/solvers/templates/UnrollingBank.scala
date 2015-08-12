@@ -9,8 +9,10 @@ import purescala.Expressions._
 import purescala.Types._
 import utils._
 
-class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[T]) extends IncrementalState {
+class UnrollingBank[T](ctx: LeonContext, templateGenerator: TemplateGenerator[T]) extends IncrementalState {
   implicit val debugSection = utils.DebugSectionSolver
+  implicit val ctx0 = ctx
+  val reporter = ctx.reporter
 
   private val encoder = templateGenerator.encoder
 
@@ -190,7 +192,7 @@ class UnrollingBank[T](reporter: Reporter, templateGenerator: TemplateGenerator[
     // ...so we must force it to true!
     val clauses = template.start +: (newClauses ++ blockClauses)
 
-    reporter.debug("Generating clauses for: " + expr)
+    reporter.debug("Generating clauses for: " + expr.asString)
     for (cls <- clauses) {
       reporter.debug("  . " + cls)
     }

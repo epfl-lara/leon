@@ -480,6 +480,9 @@ trait AbstractZ3Solver
         val selector = selectors.toB(cct, c.selectorIndex)
         selector(rec(cc))
 
+      case AsInstanceOf(expr, ct) =>
+        rec(expr)
+
       case IsInstanceOf(act: AbstractClassType, e) =>
         act.knownCCDescendants match {
           case Seq(cct) =>

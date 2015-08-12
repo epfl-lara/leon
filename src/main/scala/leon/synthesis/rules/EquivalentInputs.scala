@@ -29,6 +29,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
           clauses.find {
             case Equals(e, CaseClassSelector(`cct`, `s`, `id`)) => true
+            case Equals(e, CaseClassSelector(`cct`, AsInstanceOf(`s`, `cct`), `id`)) => true
             case _ => false
           } match {
             case Some(Equals(e, _)) =>
@@ -39,7 +40,6 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
         }).flatten
 
-        
         if (fieldsVals.size == cct.fields.size) {
           Some((s, CaseClass(cct, fieldsVals)))
         } else {
