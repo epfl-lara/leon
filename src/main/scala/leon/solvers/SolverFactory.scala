@@ -47,7 +47,7 @@ object SolverFactory {
       case (name, desc) =>  f"\n  $name%-14s : $desc"
     }.mkString("")
 
-  def getFromSettings(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+  def getFromSettings(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     val names = ctx.findOptionOrDefault(SharedOptions.optSelectedSolvers)
 
     if (((names contains "fairz3") || (names contains "unrollz3")) && !hasNativeZ3) {
