@@ -142,7 +142,7 @@ object SolverFactory {
   }
 
   // Full featured solver used by default
-  def default(ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
+  def default(implicit ctx: LeonContext, program: Program): SolverFactory[TimeoutSolver] = {
     getFromName(ctx, program)("fairz3")
   }
 

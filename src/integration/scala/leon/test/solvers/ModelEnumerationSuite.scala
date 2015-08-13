@@ -38,7 +38,8 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with helpers.Express
   )
 
   def getModelEnum(implicit ctx: LeonContext, pgm: Program) = {
-    new ModelEnumerator(ctx, pgm, SolverFactory.getFromSettings)
+    val sf = SolverFactory.default.asInstanceOf[SolverFactory[IncrementalSolver]]
+    new ModelEnumerator(ctx, pgm, sf)
   }
 
   test("Simple model enumeration 1") { implicit fix =>
@@ -143,6 +144,55 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with helpers.Express
       // 1 model of each caracteristic (which is a boolean, so only two possibilities)
       val models4 = me.enumVarying(Seq(l), cnstr, car, 2).take(10).toList
       assert(models4.size === 4, "We can enumerate only 4 lists of varying size==0 (2 each)")
+
+    } finally {
+      me.shutdown()
+    }
+  }
+
+  test("Maximizing size") { implicit fix =>
+    val tpe = classDef("List1.List").typed
+    val l   = FreshIdentifier("l", tpe)
+
+    val cnstr = LessThan(fcall("List1.size")(l.toVariable), bi(5))
+
+    val car   = fcall("List1.size")(l.toVariable)
+
+    val evaluator = new DefaultEvaluator(fix._1, fix._2)
+    val me = getModelEnum
+
+    try {
+      val models1 = me.enumMaximizing(Seq(l), cnstr, car).take(5).toList
+
+      assert(models1.size < 5, "It took less than 5 models to reach max")
+      assert(evaluator.eval(car, models1.last).result === Some(bi(4)), "Max should be 4")
+
+      val models2 = me.enumMaximizing(Seq(l), BooleanLiteral(true), car).take(4).toList
+
+      assert(models2.size == 4, "Unbounded search yields models")
+      // in 4 steps, it should reach lists of size > 10
+      assert(evaluator.eval(GreaterThan(car, bi(10)), models2.last).result === Some(T), "Progression should be efficient")
+    } finally {
+      me.shutdown()
+    }
+  }
+
+  test("Minimizing size") { implicit fix =>
+    val tpe = classDef("List1.List").typed
+    val l   = FreshIdentifier("l", tpe)
+
+    val cnstr = LessThan(fcall("List1.size")(l.toVariable), bi(5))
+
+    val car   = fcall("List1.size")(l.toVariable)
+
+    val evaluator = new DefaultEvaluator(fix._1, fix._2)
+    val me = getModelEnum
+
+    try {
+      val models1 = me.enumMinimizing(Seq(l), cnstr, car).take(5).toList
+
+      assert(models1.size < 5, "It took less than 5 models to reach min")
+      assert(evaluator.eval(car, models1.last).result === Some(bi(0)), "Min should be 0")
 
     } finally {
       me.shutdown()
