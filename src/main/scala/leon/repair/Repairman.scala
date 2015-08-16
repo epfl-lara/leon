@@ -152,8 +152,6 @@ class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeout
       functionsToIgnore = so0.functionsToIgnore + fd,
       costModel = RepairCostModel(so0.costModel),
       rules = (so0.rules ++ Seq(
-        Split,
-        Verify,
         Focus,
         CEGLESS
         //TEGLESS

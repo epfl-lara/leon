@@ -72,6 +72,15 @@ case object Focus extends PreprocessingRule("Focus") {
       soFar
     }
 
+    def existsFailing(e: Expr, env: Map[Identifier, Expr], evaluator: Evaluator): Boolean = {
+      p.eb.invalids.exists { ex =>
+        evaluator.eval(e, (p.as zip ex.ins).toMap ++ env).result match {
+          case Some(BooleanLiteral(b)) => b
+          case _ => true
+        }
+      }
+    }
+
     val fdSpec = {
       val id = FreshIdentifier("res", fd.returnType)
       Let(id, fd.body.get,
@@ -102,7 +111,7 @@ case object Focus extends PreprocessingRule("Focus") {
     }
 
     guides.flatMap {
-      case IfExpr(c, thn, els) =>
+      case g @ IfExpr(c, thn, els) =>
         testCondition(c) match {
           case Some(true) =>
             val cx = FreshIdentifier("cond", BooleanType)
@@ -123,68 +132,116 @@ case object Focus extends PreprocessingRule("Focus") {
 
                 Some(decomp(List(np), termWrap(IfExpr(c, thn, _), not(c)), s"Focus on if-else")(p))
               case None =>
-                // We cannot focus any further
-                None
+                // We split
+                val sub1 = p.copy(ws = ws(thn), pc = and(c,      replace(Map(g -> thn), p.pc)), eb = p.qeb.filterIns(c))
+                val sub2 = p.copy(ws = ws(els), pc = and(Not(c), replace(Map(g -> els), p.pc)), eb = p.qeb.filterIns(Not(c)))
+
+                val onSuccess: List[Solution] => Option[Solution] = { 
+                  case List(s1, s2) =>
+                    Some(Solution(or(s1.pre, s2.pre), s1.defs++s2.defs, IfExpr(c, s1.term, s2.term)))
+                  case _ =>
+                    None
+                }
+
+                Some(decomp(List(sub1, sub2), onSuccess, s"Focus on both branches of '${c.asString}'"))
             }
         }
 
       case MatchExpr(scrut, cases) =>
-        var res: Option[Traversable[RuleInstantiation]] = None
-
         var pcSoFar: Seq[Expr] = Nil
 
-        for (c <- cases if res.isEmpty) {
+        // Generate subproblems for each match-case that fails at least one test.
+        var casesInfos = for (c <- cases) yield {
           val map  = mapForPattern(scrut, c.pattern)
 
           val thisCond = matchCaseCondition(scrut, c)
           val cond = andJoin(pcSoFar :+ thisCond)
           pcSoFar = pcSoFar :+ not(thisCond)
 
-          // thisCond here is safe, because we focus we now that all tests have been false so far
-          forAllTests(thisCond, map, evaluator) match {
-            case Some(true) =>
+          val subP = if (existsFailing(cond, map, evaluator)) {
+            val vars = map.toSeq.map(_._1)
 
-              val vars = map.toSeq.map(_._1)
+            // Filter tests by the path-condition
+            val eb2 = p.qeb.filterIns(cond)
 
-              // Filter tests by the path-condition
-              val eb2 = p.qeb.filterIns(cond)
+            // Augment test with the additional variables and their valuations
+            val ebF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
+              val emap = (p.as zip e).toMap
 
-              // Augment test with the additional variables and their valuations
-              val ebF: (Seq[Expr] => List[Seq[Expr]]) = { (e: Seq[Expr]) =>
-                val emap = (p.as zip e).toMap
+              evaluator.eval(tupleWrap(vars.map(map)), emap).result.map { r =>
+                e ++ unwrapTuple(r, vars.size)
+              }.toList
+            }
 
-                evaluator.eval(tupleWrap(vars.map(map)), emap).result.map { r =>
-                  e ++ unwrapTuple(r, vars.size)
-                }.toList
-              }
+            val eb3 = if (vars.nonEmpty) {
+              eb2.mapIns(ebF)
+            } else {
+              eb2
+            }
 
-              val eb3 = if (vars.nonEmpty) {
-                eb2.mapIns(ebF)
-              } else {
-                eb2
-              }
+            val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })
 
-              val newPc = andJoin(cond +: vars.map { id => equality(id.toVariable, map(id)) })
-
-              val np = Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, eb3)
-
-              res = Some(
-                Some(
-                  decomp(List(np), termWrap(x => MatchExpr(scrut, cases.map {
-                      case `c` => c.copy(rhs = x)
-                      case c2  => c2
-                    }), cond), s"Focus on match-case '${c.pattern.asString}'")(p)
-                )
-              )
-
-            case Some(false) =>
-              // continue until next case
-            case None =>
-              res = Some(Nil)
+            Some(Problem(p.as ++ vars, ws(c.rhs), and(p.pc, newPc), p.phi, p.xs, eb3))
+          } else {
+            None
           }
+
+          c -> (subP, cond)
         }
 
-        res.getOrElse(Nil)
+        // Check if the match might be missing a case? (we check if one test
+        // goes to no defined cases)
+        val elsePc = andJoin(pcSoFar)
+
+        if (existsFailing(elsePc, Map(), evaluator)) {
+          val newCase    = MatchCase(WildcardPattern(None), None, NoTree(scrut.getType))
+
+          val eb = p.qeb.filterIns(elsePc)
+
+          val newProblem = Problem(p.as, andJoin(wss), and(p.pc, elsePc), p.phi, p.xs, eb)
+
+          casesInfos :+= (newCase -> (Some(newProblem), elsePc))
+        }
+
+        // Is there at least one subproblem?
+        if (casesInfos.exists(_._2._1.isDefined)) {
+          val infosP = casesInfos.collect {
+            case (c, (Some(p), pc)) => (c, (p, pc))
+          }
+
+          val nps = infosP.map(_._2._1).toList
+
+          val appName = s"Focus on match-cases ${infosP.map(i => "'"+i._1.pattern.asString+"'").mkString(", ")}"
+
+          val onSuccess: List[Solution] => Option[Solution] = { 
+            case ss =>
+              val matchSols = (infosP zip ss).map { case ((c, (pc)), s) => (c, (pc, s)) }
+
+              val pres = matchSols.map {
+                case (_, (pc, s)) =>
+                  if(s.pre == BooleanLiteral(true)) {
+                    BooleanLiteral(true)
+                  } else {
+                    and(p.pc, s.pre)
+                  }
+              }
+
+              val solsMap = matchSols.toMap
+
+              val expr = MatchExpr(scrut, casesInfos.map { case (c, _) => solsMap.get(c) match {
+                case Some((pc, s)) =>
+                  c.copy(rhs = s.term)
+                case None =>
+                  c
+              }})
+
+              Some(Solution(orJoin(pres), ss.map(_.defs).reduceLeft(_ ++ _), expr))
+          }
+
+          Some(decomp(nps, onSuccess, appName)(p))
+        } else {
+          None
+        }
 
 
       case Let(id, value, body) =>
