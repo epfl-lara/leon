@@ -176,4 +176,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
       }
     }
   }
+
+  def mapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]) = {
+    eb map {
+      case InExample(in) =>
+        f(as zip in).map(InExample)
+
+      case InOutExample(in, out) =>
+        f(as zip in).map(InOutExample(_, out))
+    }
+  }
 }

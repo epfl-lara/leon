@@ -60,7 +60,17 @@ case object ADTSplit extends Rule("ADT Split.") {
            val subPhi = subst(id -> CaseClass(cct, args.map(Variable)), p.phi)
            val subPC  = subst(id -> CaseClass(cct, args.map(Variable)), p.pc)
            val subWS  = subst(id -> CaseClass(cct, args.map(Variable)), p.ws)
-           val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs)
+
+           val eb2 = p.qeb.mapIns { inInfo =>
+              inInfo.toMap.apply(id) match {
+                case CaseClass(`cct`, vs) =>
+                  List(vs ++ inInfo.filter(_._1 != id).map(_._2))
+                case _ =>
+                  Nil
+              }
+           }
+
+           val subProblem = Problem(args ::: oas, subWS, subPC, subPhi, p.xs, eb2)
            val subPattern = CaseClassPattern(None, cct, args.map(id => WildcardPattern(Some(id))))
 
            (cct, subProblem, subPattern)
