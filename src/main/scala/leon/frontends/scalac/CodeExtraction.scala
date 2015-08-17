@@ -794,7 +794,7 @@ trait CodeExtraction extends ASTExtractors {
           if (ctx.findOptionOrDefault(ExtractionPhase.optStrictCompilation)) {
             reporter.error(funDef.getPos, "Function "+funDef.id.name+" could not be extracted. The function likely uses features not supported by Leon.")
           } else {
-            reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully unavailable to Leon.")
+            reporter.warning(funDef.getPos, "Function "+funDef.id.name+" is not fully available to Leon.")
           }
 
           funDef.addFlag(IsAbstract)
@@ -845,7 +845,7 @@ trait CodeExtraction extends ASTExtractors {
       case Ident(nme.WILDCARD) =>
         (WildcardPattern(binder).setPos(p.pos), dctx)
 
-      case s @ Select(_, b) if s.tpe.typeSymbol.isCase  =>
+      case s @ Select(_, b) if s.tpe.typeSymbol.isCase =>
         // case Obj =>
         extractType(s) match {
           case ct: CaseClassType =>
@@ -1203,7 +1203,7 @@ trait CodeExtraction extends ASTExtractors {
 
         case ExBigIntLiteral(n) => outOfSubsetError(tr, "Non-literal BigInt constructor")
 
-        case ExIntToBigInt(tree) => {
+        case ExIntToBigInt(tree) =>
           val rec = extractTree(tree)
           rec match {
             case IntLiteral(n) =>
@@ -1211,7 +1211,6 @@ trait CodeExtraction extends ASTExtractors {
             case _ => 
               outOfSubsetError(tr, "Conversion from Int to BigInt")
           }
-        }
 
         case ExRealLiteral(n, d) =>
           val rn = extractTree(n)
@@ -1243,7 +1242,7 @@ trait CodeExtraction extends ASTExtractors {
         case ExLocally(body) =>
           extractTree(body)
 
-        case ExTyped(e,tpt) =>
+        case ExTyped(e, _) =>
           // TODO: refine type here?
           extractTree(e)
 
@@ -1328,13 +1327,13 @@ trait CodeExtraction extends ASTExtractors {
 
           }
 
-        case ExNot(e)              => Not(extractTree(e))
-        case ExUMinus(e)           => UMinus(extractTree(e))
-        case ExRealUMinus(e)       => RealUMinus(extractTree(e))
-        case ExBVUMinus(e)         => BVUMinus(extractTree(e))
-        case ExBVNot(e)            => BVNot(extractTree(e))
+        case ExNot(e)        => Not(extractTree(e))
+        case ExUMinus(e)     => UMinus(extractTree(e))
+        case ExRealUMinus(e) => RealUMinus(extractTree(e))
+        case ExBVUMinus(e)   => BVUMinus(extractTree(e))
+        case ExBVNot(e)      => BVNot(extractTree(e))
 
-        case ExNotEquals(l, r) => {
+        case ExNotEquals(l, r) =>
           val rl = extractTree(l)
           val rr = extractTree(r)
 
@@ -1351,7 +1350,6 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(_, rt), IsTyped(_, lt)) =>
               outOfSubsetError(tr, "Invalid comparison: (_: "+rt.asString+") != (_: "+lt.asString+")")
           }
-        }
 
         case ExEquals(l, r) =>
           val rl = extractTree(l)
@@ -1825,10 +1823,7 @@ trait CodeExtraction extends ASTExtractors {
       case LetVar(_, _, rest) => getReturnedExpr(rest)
       case LeonBlock(_, rest) => getReturnedExpr(rest)
       case IfExpr(_, thenn, elze) => getReturnedExpr(thenn) ++ getReturnedExpr(elze)
-      case MatchExpr(_, cses) => cses.flatMap{
-        case SimpleCase(_, rhs) => getReturnedExpr(rhs)
-        case GuardedCase(_, _, rhs) => getReturnedExpr(rhs)
-      }
+      case MatchExpr(_, cses) => cses.flatMap{ cse => getReturnedExpr(cse.rhs) }
       case _ => Seq(expr)
     }
 
