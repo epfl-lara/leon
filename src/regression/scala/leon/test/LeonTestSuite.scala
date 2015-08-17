@@ -94,7 +94,7 @@ trait LeonTestSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
       } else {
         List(f) 
       }
-    }.filter(f => filter(f.getPath))
+    }.filter(f => filter(f.getPath)).toSeq.sortBy(_.getPath)
   }
 
   def filesInResourceDir(dir : String, filter : String=>Boolean = all, recursive: Boolean = false) : Iterable[File] = {
