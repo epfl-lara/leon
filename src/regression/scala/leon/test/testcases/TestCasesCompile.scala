@@ -11,22 +11,6 @@ import org.scalatest.ParallelTestExecution
 class TestCasesCompile extends LeonTestSuite {
   val pipeline = frontends.scalac.ExtractionPhase andThen utils.PreprocessingPhase
 
-  def testFrontend(f: File, strip: Int): Boolean = {
-    val name = f.getAbsolutePath.split("/").toList.drop(strip).mkString("/")
-
-    val ctx = createLeonContext()
-
-    try {
-      pipeline.run(ctx)(List(f.getAbsolutePath))
-      info(name)
-      true
-    } catch {
-      case _: LeonFatalError =>
-        info(Console.YELLOW+" Failed to compile "+name)
-        false
-    }
-  }
-
   private def filesIn(path : String): Seq[File] = {
     val fs = filesInResourceDir(path, _.endsWith(".scala"), recursive=true)
 
@@ -37,25 +21,25 @@ class TestCasesCompile extends LeonTestSuite {
 
   val slashes = resourceDir(baseDir).getAbsolutePath.split("/").toList.size
 
-  testWithTimeout("Compiling testcases", 20.minutes) {
-    val all = (filesIn(baseDir+"repair/") ++
-               filesIn(baseDir+"runtime/") ++
-               filesIn(baseDir+"synthesis/") ++
-               filesIn(baseDir+"verification/") ++
-               filesIn(baseDir+"web/")).sortBy(_.getAbsolutePath)
+  val allTests = (filesIn(baseDir+"repair/") ++
+                 filesIn(baseDir+"runtime/") ++
+                 filesIn(baseDir+"synthesis/") ++
+                 filesIn(baseDir+"verification/") ++
+                 filesIn(baseDir+"web/")).sortBy(_.getAbsolutePath)
 
-    info("Compiling "+all.size+" testcases...")
+  allTests.foreach { f =>
+    val name = f.getAbsolutePath.split("/").toList.drop(slashes).mkString("/")
 
-    var nFailed = new java.util.concurrent.atomic.AtomicInteger(0)
-    all.foreach { f =>
-      if (!testFrontend(f, slashes)) {
-        nFailed.incrementAndGet()
+    test("Compiling "+name) {
+
+      val ctx = createLeonContext()
+
+      try {
+        pipeline.run(ctx)(List(f.getAbsolutePath))
+      } catch {
+        case _: LeonFatalError =>
+          fail(" Failed to compile "+name)
       }
-    }
-
-    val nFailedInt = nFailed.get()
-    if (nFailedInt > 0) {
-      fail(s"$nFailedInt test(s) failed to compile")
     }
   }
 }
