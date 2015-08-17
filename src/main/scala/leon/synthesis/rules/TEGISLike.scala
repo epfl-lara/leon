@@ -31,6 +31,8 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
       def apply(hctx: SearchContext): RuleApplication = {
         val sctx = hctx.sctx
 
+        implicit val ctx = sctx.context
+
         val params = getParams(sctx, p)
         val grammar = params.grammar
 

@@ -14,9 +14,11 @@ import evaluators._
 import utils.ExpressionGrammars.ValueGrammar
 import bonsai.enumerators._
 
-class ExamplesFinder(ctx: LeonContext, program: Program) {
+class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
   lazy val evaluator = new DefaultEvaluator(ctx, program)
+
+  implicit val ctx = ctx0
 
   val reporter = ctx.reporter
 

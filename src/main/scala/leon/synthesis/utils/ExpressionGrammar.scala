@@ -29,7 +29,7 @@ abstract class ExpressionGrammar[T <% Typed] {
 
   private[this] val cache = new MutableMap[T, Seq[Gen]]()
 
-  def getProductions(t: T): Seq[Gen] = {
+  def getProductions(t: T)(implicit ctx: LeonContext): Seq[Gen] = {
     cache.getOrElse(t, {
       val res = computeProductions(t)
       cache += t -> res
@@ -37,25 +37,25 @@ abstract class ExpressionGrammar[T <% Typed] {
     })
   }
 
-  def computeProductions(t: T): Seq[Gen]
+  def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Gen]
 
   def filter(f: Gen => Boolean) = {
     new ExpressionGrammar[T] {
-      def computeProductions(t: T) = ExpressionGrammar.this.computeProductions(t).filter(f)
+      def computeProductions(t: T)(implicit ctx: LeonContext) = ExpressionGrammar.this.computeProductions(t).filter(f)
     }
   }
 
   final def ||(that: ExpressionGrammar[T]): ExpressionGrammar[T] = {
     ExpressionGrammars.Or(Seq(this, that))
   }
- 
+
 
   final def printProductions(printer: String => Unit)(implicit ctx: LeonContext) {
     for ((t, gs) <- cache; g <- gs) {
       val subs = g.subTrees.map { t => FreshIdentifier(Console.BOLD+t.asString+Console.RESET, t.getType).toVariable}
       val gen = g.builder(subs)
 
-      printer(f"${Console.BOLD}$t%30s${Console.RESET} ::= $gen")
+      printer(f"${Console.BOLD}${t.asString}%30s${Console.RESET} ::= $gen")
     }
   }
 }
@@ -68,16 +68,16 @@ object ExpressionGrammars {
       case g => Seq(g)
     }
 
-    def computeProductions(t: T): Seq[Gen] =
+    def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Gen] =
       subGrammars.flatMap(_.getProductions(t))
   }
 
   case class Empty[T <% Typed]() extends ExpressionGrammar[T] {
-    def computeProductions(t: T): Seq[Gen] = Nil
+    def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Gen] = Nil
   }
 
   case object BaseGrammar extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree): Seq[Gen] = t match {
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {
       case BooleanType =>
         List(
           Generator(Nil, { _ => BooleanLiteral(true) }),
@@ -138,7 +138,7 @@ object ExpressionGrammars {
   }
 
   case class EqualityGrammar(types: Set[TypeTree]) extends ExpressionGrammar[TypeTree] {
-    override def computeProductions(t: TypeTree): Seq[Gen] = t match {
+    override def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {
       case BooleanType =>
         types.toList map { tp =>
           Generator[TypeTree, Expr](List(tp, tp), { case Seq(a, b) => equality(a, b) })
@@ -149,7 +149,7 @@ object ExpressionGrammars {
   }
 
   case object ValueGrammar extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree): Seq[Gen] = t match {
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {
       case BooleanType =>
         List(
           Generator(Nil, { _ => BooleanLiteral(true) }),
@@ -200,7 +200,7 @@ object ExpressionGrammars {
   }
 
   case class OneOf(inputs: Seq[Expr]) extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree): Seq[Gen] = {
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = {
       inputs.collect {
         case i if isSubtypeOf(i.getType, t) => Generator[TypeTree, Expr](Nil, { _ => i })
       }
@@ -216,7 +216,7 @@ object ExpressionGrammars {
   case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
 
     val excludeFCalls = sctx.settings.functionsToIgnore
-    
+
     val normalGrammar = BoundedGrammar(EmbeddedGrammar(
         BaseGrammar ||
         EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ terminals.map { _.getType }) ||
@@ -226,7 +226,7 @@ object ExpressionGrammars {
       { (t: TypeTree)      => Label(t, "B", None)},
       { (l: Label[String]) => l.getType }
     ), 1)
-    
+
     type L = Label[String]
 
     val getNext: () => Int = {
@@ -237,16 +237,24 @@ object ExpressionGrammars {
       }
     }
 
-    lazy val allSimilar = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
+    private[this] var similarCache: Option[Map[L, Seq[Gen]]] = None
 
-    def computeProductions(t: L): Seq[Gen] = {
+    def computeProductions(t: L)(implicit ctx: LeonContext): Seq[Gen] = {
       t match {
         case Label(_, "B", _) => normalGrammar.computeProductions(t)
-        case _                => allSimilar.getOrElse(t, Nil)
+        case _                =>
+
+          val allSimilar = similarCache.getOrElse {
+            val res = computeSimilar(e).groupBy(_._1).mapValues(_.map(_._2))
+            similarCache = Some(res)
+            res
+          }
+
+          allSimilar.getOrElse(t, Nil)
       }
     }
 
-    def computeSimilar(e : Expr) : Seq[(L, Gen)] = {
+    def computeSimilar(e : Expr)(implicit ctx: LeonContext): Seq[(L, Gen)] = {
 
       def getLabel(t: TypeTree) = {
         val tpe = bestRealType(t)
@@ -366,9 +374,10 @@ object ExpressionGrammars {
   }
 
   case class FunctionCalls(prog: Program, currentFunction: FunDef, types: Seq[TypeTree], exclude: Set[FunDef]) extends ExpressionGrammar[TypeTree] {
-   def computeProductions(t: TypeTree): Seq[Gen] = {
+   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
+       println("Trying "+fd.asString)
        // Prevents recursive calls
        val cfd = currentFunction
 
@@ -378,6 +387,7 @@ object ExpressionGrammars {
 
        if (!isRecursiveCall && isDet) {
          val free = fd.tparams.map(_.tp)
+
          canBeSubtypeOf(fd.returnType, free, t, rhsFixed = true) match {
            case Some(tpsMap) =>
              val tfd = fd.typed(free.map(tp => tpsMap.getOrElse(tp, tp)))
@@ -439,7 +449,7 @@ object ExpressionGrammars {
   }
 
   case class SizeBoundedGrammar[T <% Typed](g: ExpressionGrammar[T]) extends ExpressionGrammar[SizedLabel[T]] {
-    def computeProductions(sl: SizedLabel[T]): Seq[Gen] = {
+    def computeProductions(sl: SizedLabel[T])(implicit ctx: LeonContext): Seq[Gen] = {
       if (sl.size <= 0) {
         Nil
       } else if (sl.size == 1) {
@@ -463,7 +473,7 @@ object ExpressionGrammars {
   }
 
   case class BoundedGrammar[T](g: ExpressionGrammar[Label[T]], bound: Int) extends ExpressionGrammar[Label[T]] {
-    def computeProductions(l: Label[T]): Seq[Gen] = g.computeProductions(l).flatMap {
+    def computeProductions(l: Label[T])(implicit ctx: LeonContext): Seq[Gen] = g.computeProductions(l).flatMap {
       case g: Generator[Label[T], Expr] =>
         if (l.depth == Some(bound) && g.subTrees.nonEmpty) {
           None
@@ -477,14 +487,14 @@ object ExpressionGrammars {
   }
 
   case class EmbeddedGrammar[Ti <% Typed, To <% Typed](g: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
-    def computeProductions(t: To): Seq[Gen] = g.computeProductions(oToi(t)).map {
+    def computeProductions(t: To)(implicit ctx: LeonContext): Seq[Gen] = g.computeProductions(oToi(t)).map {
       case g : Generator[Ti, Expr] =>
         Generator(g.subTrees.map(iToo), g.builder)
     }
   }
 
   case class SafeRecCalls(prog: Program, ws: Expr, pc: Expr) extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree): Seq[Gen] = {
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = {
       val calls = terminatingCalls(prog, t, ws, pc)
 
       calls.map {

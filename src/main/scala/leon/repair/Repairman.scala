@@ -27,7 +27,9 @@ import leon.utils.ASCIIHelpers.title
 
 import scala.concurrent.duration._
 
-class Repairman(ctx: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
+class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
+  implicit val ctx = ctx0
+
   val reporter = ctx.reporter
 
   val doBenchmark = ctx.findOptionOrDefault(SharedOptions.optBenchmark)

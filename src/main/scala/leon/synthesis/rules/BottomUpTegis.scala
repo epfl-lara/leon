@@ -41,6 +41,8 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
         def apply(hctx: SearchContext): RuleApplication = {
           val sctx = hctx.sctx
 
+          implicit val ctx = sctx.context
+
           val evalParams            = CodeGenParams.default.copy(maxFunctionInvocations = 2000)
           //val evaluator             = new CodeGenEvaluator(sctx.context, sctx.program, evalParams)
           //val evaluator             = new DefaultEvaluator(sctx.context, sctx.program)
