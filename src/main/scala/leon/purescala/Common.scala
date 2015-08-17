@@ -11,7 +11,7 @@ import Definitions.Program
 object Common {
 
 
-  abstract class Tree extends Positioned with Serializable {
+  abstract class Tree extends Positioned with Serializable with Printable {
     def copiedFrom(o: Tree): this.type = {
       setPos(o)
       this

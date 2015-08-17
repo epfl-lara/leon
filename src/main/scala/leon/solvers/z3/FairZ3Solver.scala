@@ -7,6 +7,7 @@ package z3
 import utils._
 import _root_.z3.scala._
 
+import purescala.Printable
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
@@ -120,6 +121,10 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     } else {
       (false, Map.empty)
     }
+  }
+
+  implicit val z3Printable = (z3: Z3AST) => new Printable {
+    def asString(implicit ctx: LeonContext) = z3.toString
   }
 
   val templateGenerator = new TemplateGenerator(new TemplateEncoder[Z3AST] {

@@ -12,11 +12,9 @@ import TypeOps._
 
 object Types {
 
-  trait Typed {
+  trait Typed extends Printable {
     val getType: TypeTree
     def isTyped : Boolean = getType != Untyped
-
-    def asString(implicit ctx: LeonContext): String
   }
 
   class TypeErrorException(msg: String) extends Exception(msg)

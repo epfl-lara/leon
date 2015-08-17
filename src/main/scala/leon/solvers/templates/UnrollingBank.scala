@@ -4,12 +4,13 @@ package leon
 package solvers
 package templates
 
+import purescala.Printable
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 import utils._
 
-class UnrollingBank[T](ctx: LeonContext, templateGenerator: TemplateGenerator[T]) extends IncrementalState {
+class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: TemplateGenerator[T]) extends IncrementalState {
   implicit val debugSection = utils.DebugSectionSolver
   implicit val ctx0 = ctx
   val reporter = ctx.reporter
@@ -194,7 +195,7 @@ class UnrollingBank[T](ctx: LeonContext, templateGenerator: TemplateGenerator[T]
 
     reporter.debug("Generating clauses for: " + expr.asString)
     for (cls <- clauses) {
-      reporter.debug("  . " + cls)
+      reporter.debug("  . " + cls.asString(ctx))
     }
 
     clauses

@@ -494,6 +494,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case BVUMinus(u) => FixedSizeBitVectors.Neg(toSMT(u))
       case BVNot(u) => FixedSizeBitVectors.Not(toSMT(u))
       case Assert(a,_, b) => toSMT(IfExpr(a, b, Error(b.getType, "assertion failed")))
+
       case Equals(a,b) => Core.Equals(toSMT(a), toSMT(b))
       case Implies(a,b) => Core.Implies(toSMT(a), toSMT(b))
       case Plus(a,b) => Ints.Add(toSMT(a), toSMT(b))
