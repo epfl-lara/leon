@@ -13,7 +13,7 @@ case class ChooseInfo(fd: FunDef,
                       pc: Expr,
                       source: Expr,
                       ch: Choose,
-                      eb: ExampleBank) {
+                      eb: ExamplesBank) {
 
   val problem = Problem.fromChooseInfo(this)
 }
@@ -35,16 +35,24 @@ object ChooseInfo {
     val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
     val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
-    val userEb = new ExamplesFinder(ctx, prog).extractExampleBank(fd)
+    val eFinder = new ExamplesFinder(ctx, prog)
+
+    // We are synthesizing, so all examples are valid ones
+    val functionEb = eFinder.extractFromFunDef(fd, partition = false)
 
     for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
-      val eb = if (path == BooleanLiteral(true)) {
-        userEb
+      val outerEb = if (path == BooleanLiteral(true)) {
+        functionEb
       } else {
-        ExampleBank.empty
+        ExamplesBank.empty
       }
 
-      ChooseInfo(fd, and(path, term), ch, ch, eb)
+      val ci = ChooseInfo(fd, and(path, term), ch, ch, outerEb)
+
+      val pcEb = eFinder.generateForPC(ci.problem.as, path, 20)
+      val chooseEb = eFinder.extractFromProblem(ci.problem)
+
+      ci.copy(eb = (outerEb union chooseEb) union pcEb)
     }
   }
 }

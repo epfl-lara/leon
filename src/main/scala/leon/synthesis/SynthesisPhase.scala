@@ -62,7 +62,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     )
   }
 
-  def run(ctx: LeonContext)(p: Program): Program = {
+  def run(ctx: LeonContext)(program: Program): Program = {
     val options = processOptions(ctx)
 
     def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
@@ -74,16 +74,17 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       filterInclusive(options.functions.map(fdMatcher), Some(excludeByDefault _)) compose ciTofd
     }
 
-    val chooses = ChooseInfo.extractFromProgram(ctx, p).filter(fdFilter)
+    val chooses = ChooseInfo.extractFromProgram(ctx, program).filter(fdFilter)
 
     var functions = Set[FunDef]()
 
     chooses.foreach { ci =>
-      val synthesizer = new Synthesizer(ctx, p, ci, options)
+      val fd = ci.fd
+
+      val synthesizer = new Synthesizer(ctx, program, ci, options)
       val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), true)
 
       try {
-        val fd = ci.fd
 
         if (options.generateDerivationTrees) {
           val dot = new DotGenerator(search.g)
@@ -92,7 +93,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
         val (sol, _) = solutions.head
 
-        val expr = sol.toSimplifiedExpr(ctx, p)
+        val expr = sol.toSimplifiedExpr(ctx, program)
         fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
         functions += fd
       } finally {
@@ -102,11 +103,11 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     for (fd <- functions) {
       ctx.reporter.info(ASCIIHelpers.title(fd.id.name))
-      ctx.reporter.info(ScalaPrinter(fd, opgm = Some(p)))
+      ctx.reporter.info(ScalaPrinter(fd, opgm = Some(program)))
       ctx.reporter.info("")
     }
 
-    p
+    program
   }
 
 

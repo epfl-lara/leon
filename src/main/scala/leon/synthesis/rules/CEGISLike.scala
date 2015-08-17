@@ -790,7 +790,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             sctx.reporter.debug("#Programs passing tests: "+nPassing)
             sctx.reporter.ifDebug{ printer =>
               for (p <- prunedPrograms.take(10)) {
-                printer(" - "+ndProgram.getExpr(p))
+                printer(" - "+ndProgram.getExpr(p).asString)
               }
               if(nPassing > 10) {
                 printer(" - ...")

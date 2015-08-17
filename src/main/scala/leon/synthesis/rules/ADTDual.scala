@@ -25,7 +25,7 @@ case object ADTDual extends NormalizingRule("ADTDual") {
     }.unzip
 
     if (toRemove.nonEmpty) {
-      val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq), eb = ExampleBank.empty)
+      val sub = p.copy(phi = andJoin((exprs.toSet -- toRemove ++ toAdd.flatten).toSeq), eb = ExamplesBank.empty)
 
       Some(decomp(List(sub), forward, "ADTDual"))
     } else {

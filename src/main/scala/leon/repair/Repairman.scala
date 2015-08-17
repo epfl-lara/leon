@@ -125,7 +125,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     }
   }
 
-  def getSynthesizer(eb: ExampleBank): Synthesizer = {
+  def getSynthesizer(eb: ExamplesBank): Synthesizer = {
 
     val origBody = fd.body.get
 
@@ -187,7 +187,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     }
   }
 
-  def discoverTests(): ExampleBank = {
+  def discoverTests(): ExamplesBank = {
 
     import bonsai.enumerators._
     import utils.ExpressionGrammars.ValueGrammar
@@ -234,15 +234,15 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       case _               => false
     }
 
-    val genTb = ExampleBank(genPassing, genFailing).stripOuts
+    val genTb = ExamplesBank(genPassing, genFailing).stripOuts
 
     // Extract passing/failing from the passes in POST
-    val userTb = new ExamplesFinder(ctx, program).extractExampleBank(fd)
+    val userTb = new ExamplesFinder(ctx, program).extractFromFunDef(fd, partition = true)
 
     val allTb = genTb union userTb
 
     if (allTb.invalids.isEmpty) {
-      ExampleBank(allTb.valids, getVerificationCExs(fd))
+      ExamplesBank(allTb.valids, getVerificationCExs(fd))
     } else {
       allTb
     }

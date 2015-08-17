@@ -13,6 +13,7 @@ import purescala.Extractors._
 import evaluators._
 import utils.ExpressionGrammars.ValueGrammar
 import bonsai.enumerators._
+import codegen._
 
 class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
@@ -22,7 +23,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
   val reporter = ctx.reporter
 
-  def extractExampleBank(fd: FunDef): ExampleBank = fd.postcondition match {
+  def extractFromFunDef(fd: FunDef, partition: Boolean): ExamplesBank = fd.postcondition match {
     case Some(Lambda(Seq(ValDef(id, _)), post)) =>
       // @mk FIXME: make this more general
       val tests = extractTestsOf(post)
@@ -54,14 +55,18 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
         }
       }
 
-      val (v, iv) = examples.partition(isValidTest)
-      ExampleBank(v, iv)
+      if (partition) {
+        val (v, iv) = examples.partition(isValidTest)
+        ExamplesBank(v, iv)
+      } else {
+        ExamplesBank(examples, Nil)
+      }
     case None =>
-      ExampleBank(Nil, Nil)
+      ExamplesBank(Nil, Nil)
   }
 
   // Extract examples from the passes found in expression
-  def extractTests(p: Problem): Seq[Example] = {
+  def extractFromProblem(p: Problem): ExamplesBank = {
     val testClusters = extractTestsOf(and(p.pc, p.phi))
 
     // Finally, we keep complete tests covering all as++xs
@@ -93,7 +98,36 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
       }
     }
 
-    examples.filter(isValidExample)
+    ExamplesBank(examples.filter(isValidExample), Seq())
+  }
+
+  def generateForPC(ids: List[Identifier], pc: Expr, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
+
+    val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
+    val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
+
+    val inputs = enum.iterator(tupleTypeWrap(ids map { _.getType})).map(unwrapTuple(_, ids.size))
+
+    val filtering: Seq[Expr] => Boolean = pc match {
+      case BooleanLiteral(true) =>
+        _ => true
+      case pc =>
+        evaluator.compile(pc, ids) match {
+          case Some(evalFun) =>
+            { (e: Seq[Expr]) => evalFun(e).result == Some(BooleanLiteral(true)) }
+          case None =>
+            { _ => false }
+        }
+    }
+
+    val generatedTests = inputs
+      .take(maxEnumerated)
+      .filter(filtering)
+      .take(maxValid)
+      .map(InExample(_))
+      .toList
+
+    ExamplesBank(generatedTests, Nil)
   }
 
   private def extractTestsOf(e: Expr): Set[Map[Identifier, Expr]] = {

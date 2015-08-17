@@ -53,7 +53,7 @@ abstract class ExpressionGrammar[T <% Typed] {
   final def printProductions(printer: String => Unit)(implicit ctx: LeonContext) {
     for ((t, gs) <- cache; g <- gs) {
       val subs = g.subTrees.map { t => FreshIdentifier(Console.BOLD+t.asString+Console.RESET, t.getType).toVariable}
-      val gen = g.builder(subs)
+      val gen = g.builder(subs).asString
 
       printer(f"${Console.BOLD}${t.asString}%30s${Console.RESET} ::= $gen")
     }

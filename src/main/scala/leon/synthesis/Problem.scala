@@ -20,7 +20,7 @@ import Witnesses._
   * @param phi The formula on `as` and `xs` to satisfy
   * @param xs The list of output identifiers for which we want to compute a function
   */
-case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier], eb: ExampleBank = ExampleBank.empty) {
+case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List[Identifier], eb: ExamplesBank = ExamplesBank.empty) {
 
   def inType  = tupleTypeWrap(as.map(_.getType))
   def outType = tupleTypeWrap(xs.map(_.getType))
@@ -34,11 +34,11 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
   }
 
   // Qualified example bank, allows us to perform operations (e.g. filter) with expressions
-  def qeb(implicit sctx: SearchContext) = QualifiedExampleBank(this.as, this.xs, eb)
+  def qeb(implicit sctx: SearchContext) = QualifiedExamplesBank(this.as, this.xs, eb)
 }
 
 object Problem {
-  def fromChoose(ch: Choose, pc: Expr = BooleanLiteral(true), eb: ExampleBank = ExampleBank.empty): Problem = {
+  def fromChoose(ch: Choose, pc: Expr = BooleanLiteral(true), eb: ExamplesBank = ExamplesBank.empty): Problem = {
     val xs = {
       val tps = ch.pred.getType.asInstanceOf[FunctionType].from
       tps map (FreshIdentifier("x", _, true))
