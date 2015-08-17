@@ -377,7 +377,6 @@ object ExpressionGrammars {
    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = {
 
      def getCandidates(fd: FunDef): Seq[TypedFunDef] = {
-       println("Trying "+fd.asString)
        // Prevents recursive calls
        val cfd = currentFunction
 
