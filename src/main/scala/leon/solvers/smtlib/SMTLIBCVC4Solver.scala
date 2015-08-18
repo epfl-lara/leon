@@ -14,7 +14,7 @@ import Extractors._
 import Constructors._
 import Types._
 
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, ForAll => SMTForall, _}
+import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Forall => SMTForall, _}
 import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
 import _root_.smtlib.theories._

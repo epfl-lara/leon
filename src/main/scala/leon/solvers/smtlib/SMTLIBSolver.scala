@@ -18,7 +18,7 @@ import _root_.smtlib.common._
 import _root_.smtlib.printer.{RecursivePrinter => SMTPrinter}
 import _root_.smtlib.parser.Commands.{Constructor => SMTConstructor, FunDef => _, Assert => SMTAssert, _}
 import _root_.smtlib.parser.Terms.{
-  ForAll => SMTForall,
+  Forall => SMTForall,
   Exists => SMTExists,
   Identifier => SMTIdentifier,
   Let => SMTLet,

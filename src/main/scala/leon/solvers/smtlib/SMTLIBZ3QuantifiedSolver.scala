@@ -9,7 +9,7 @@ import Definitions._
 import Expressions._
 import Constructors._
 import smtlib.parser.Commands.{Assert => SMTAssert}
-import smtlib.parser.Terms.{ForAll => SMTForall, SSymbol}
+import smtlib.parser.Terms.{Forall => SMTForall, SSymbol}
 
 /**
  * This solver models function definitions as universally quantified formulas.

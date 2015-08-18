@@ -9,7 +9,7 @@ import Definitions._
 import Constructors._
 import DefOps.typedTransitiveCallees
 import smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
-import smtlib.parser.Terms.{Exists => SMTExists, ForAll => SMTForall, _ }
+import smtlib.parser.Terms.{Exists => SMTExists, Forall => SMTForall, _ }
 import smtlib.theories.Core.Equals
 
 // This solver utilizes the define-funs-rec command of SMTLIB-2.5 to define mutually recursive functions.

@@ -142,7 +142,7 @@ def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${versi
 
 lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "0fec9f97f4220fa94b1f3f305f2e8b76a3cd1539")
 
-lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "6b74fb332416d470e0be7bf6e94ebc18fd300c2f")
+lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "cee5129e483515d7011134df669b450b92e6f871")
 
 lazy val root = (project in file(".")).
   configs(RegressionTest).
