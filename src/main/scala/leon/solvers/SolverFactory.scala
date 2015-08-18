@@ -67,55 +67,55 @@ object SolverFactory {
         ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
       }
     } else {
-      getFromName(ctx, program)(names.toSeq : _*)
+      getFromNames(ctx, program)(names.toSeq : _*)
     }
   }
 
-  private def getFromName(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
+  private def showSolvers(ctx: LeonContext) = {
+    ctx.reporter.error(availableSolversPretty)
+    ctx.reporter.fatalError("Aborting Leon...")
+  }
 
-    def getSolver(name: String): SolverFactory[TimeoutSolver] = name match {
-      case "fairz3" =>
-        SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
+  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[IncrementalSolver with TimeoutSolver] = name match {
+    case "fairz3" =>
+      SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
 
-      case "unrollz3" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
+    case "unrollz3" =>
+      SolverFactory(() => new UnrollingSolver(ctx, program, new UninterpretedZ3Solver(ctx, program)) with TimeoutSolver)
 
-      case "enum"   =>
-        SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
+    case "enum"   =>
+      SolverFactory(() => new EnumerationSolver(ctx, program) with TimeoutSolver)
 
-      case "ground" =>
-        SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
+    case "ground" =>
+      SolverFactory(() => new GroundSolver(ctx, program) with TimeoutSolver)
 
-      case "smt-z3" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
+    case "smt-z3" =>
+      SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBZ3Solver(ctx, program)) with TimeoutSolver)
 
-      case "smt-z3-q" =>
-        SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
+    case "smt-z3-q" =>
+      SolverFactory(() => new SMTLIBZ3QuantifiedSolver(ctx, program) with TimeoutSolver)
 
-      case "smt-cvc4" =>
-        SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
+    case "smt-cvc4" =>
+      SolverFactory(() => new UnrollingSolver(ctx, program, new SMTLIBCVC4Solver(ctx, program)) with TimeoutSolver)
 
-      case "smt-cvc4-proof" =>
-        SolverFactory(() => new SMTLIBCVC4ProofSolver(ctx, program) with TimeoutSolver)
+    case "smt-cvc4-proof" =>
+      SolverFactory(() => new SMTLIBCVC4ProofSolver(ctx, program) with TimeoutSolver)
 
-      case "smt-cvc4-cex" =>
-        SolverFactory(() => new SMTLIBCVC4CounterExampleSolver(ctx, program) with TimeoutSolver)
+    case "smt-cvc4-cex" =>
+      SolverFactory(() => new SMTLIBCVC4CounterExampleSolver(ctx, program) with TimeoutSolver)
 
-      case _ =>
-        ctx.reporter.error(s"Unknown solver $name")
-        showSolvers()
-    }
+    case _ =>
+      ctx.reporter.error(s"Unknown solver $name")
+      showSolvers(ctx)
+  }
 
-    def showSolvers() = {
-      ctx.reporter.error(availableSolversPretty)
-      ctx.reporter.fatalError("Aborting Leon...")
-    }
+  def getFromNames(ctx: LeonContext, program: Program)(names: String*): SolverFactory[TimeoutSolver] = {
 
-    val selectedSolvers = names.map(getSolver)
+    val selectedSolvers = names.map(getFromName(ctx, program))
 
     if (selectedSolvers.isEmpty) {
       ctx.reporter.error(s"No solver selected.")
-      showSolvers()
+      showSolvers(ctx)
     } else if (selectedSolvers.size == 1) {
       selectedSolvers.head
     } else {
