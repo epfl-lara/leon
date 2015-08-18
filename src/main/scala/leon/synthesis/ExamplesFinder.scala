@@ -14,6 +14,9 @@ import evaluators._
 import grammars._
 import bonsai.enumerators._
 import codegen._
+import datagen._
+import solvers._
+import solvers.z3._
 
 class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
@@ -104,30 +107,14 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
   def generateForPC(ids: List[Identifier], pc: Expr, maxValid: Int = 400, maxEnumerated: Int = 1000): ExamplesBank = {
 
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
-    val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
+    val datagen   = new GrammarDataGen(evaluator, ValueGrammar)
+    val solverDataGen = new SolverDataGen(ctx, program, (ctx, pgm) => SolverFactory(() => new FairZ3Solver(ctx, pgm)))
 
-    val inputs = enum.iterator(tupleTypeWrap(ids map { _.getType})).map(unwrapTuple(_, ids.size))
+    val generatedExamples = datagen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample(_))
 
-    val filtering: Seq[Expr] => Boolean = pc match {
-      case BooleanLiteral(true) =>
-        _ => true
-      case pc =>
-        evaluator.compile(pc, ids) match {
-          case Some(evalFun) =>
-            { (e: Seq[Expr]) => evalFun(e).result == Some(BooleanLiteral(true)) }
-          case None =>
-            { _ => false }
-        }
-    }
+    val solverExamples    = solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample(_))
 
-    val generatedTests = inputs
-      .take(maxEnumerated)
-      .filter(filtering)
-      .take(maxValid)
-      .map(InExample(_))
-      .toList
-
-    ExamplesBank(generatedTests, Nil)
+    ExamplesBank(generatedExamples.toSeq ++ solverExamples.toSeq, Nil)
   }
 
   private def extractTestsOf(e: Expr): Set[Map[Identifier, Expr]] = {

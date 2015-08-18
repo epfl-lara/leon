@@ -88,14 +88,14 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
     }
   }
 
-  def asString(title: String): String = {
+  def asString(title: String)(implicit ctx: LeonContext): String = {
     var tt = new Table(title)
 
     if (examples.nonEmpty) {
 
       val ow = examples.map {
         case InOutExample(_, out) => out.size
-        case _ => 0
+        case _ => 1
       }.max
 
       val iw = examples.map(_.ins.size).max
@@ -115,13 +115,13 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
         for (t <- ts) {
           val os = t match {
             case InOutExample(_, outs) =>
-              outs.map(Cell(_))
+              outs.map(o => Cell(o.asString))
             case _ =>
               Seq(Cell("?", ow))
           }
 
           tt += Row(
-            t.ins.map(Cell(_)) ++ Seq(Cell("->")) ++ os
+            t.ins.map(i => Cell(i.asString)) ++ Seq(Cell("->")) ++ os
           )
         }
       }

@@ -65,27 +65,25 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   def run(ctx: LeonContext)(program: Program): Program = {
     val options = processOptions(ctx)
 
-    def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
+    def excludeByDefault(fd: FunDef): Boolean = { fd.annotations contains "library" }
 
     val fdFilter = {
       import OptionsHelpers._
-      val ciTofd = { (ci: ChooseInfo) => ci.fd }
-
-      filterInclusive(options.functions.map(fdMatcher(program)), Some(excludeByDefault _)) compose ciTofd
+      filterInclusive(options.functions.map(fdMatcher(program)), Some(excludeByDefault _))
     }
 
-    val chooses = ChooseInfo.extractFromProgram(ctx, program).filter(fdFilter)
+    val chooses = program.definedFunctions.filter(fdFilter).flatMap(ChooseInfo.extractFromFunction(ctx, program, _))
 
     var functions = Set[FunDef]()
 
-    chooses.foreach { ci =>
+    chooses.toSeq.sortBy(_.fd.id).foreach { ci =>
       val fd = ci.fd
 
       val synthesizer = new Synthesizer(ctx, program, ci, options)
+
       val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), true)
 
       try {
-
         if (options.generateDerivationTrees) {
           val dot = new DotGenerator(search.g)
           dot.writeFile("derivation"+DotGenerator.nextId()+".dot")

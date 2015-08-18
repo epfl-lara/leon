@@ -24,6 +24,8 @@ class Synthesizer(val context : LeonContext,
 
   lazy val sctx = SynthesisContext.fromSynthesizer(this)
 
+  implicit val debugSection = leon.utils.DebugSectionSynthesis
+
   def getSearch: Search = {
     if (settings.manualSearch.isDefined) {
       new ManualSearch(context, ci, problem, settings.costModel, settings.manualSearch)
@@ -33,6 +35,11 @@ class Synthesizer(val context : LeonContext,
   }
 
   def synthesize(): (Search, Stream[Solution]) = {
+
+    reporter.ifDebug { printer => 
+      printer(problem.eb.asString("Tests available for synthesis")(context))
+    }
+
     val s = getSearch
 
     val t = context.timers.synthesis.search.start()

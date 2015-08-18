@@ -29,9 +29,8 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
     enumVarying0(ids, satisfying, Some(measure), nPerMeasure)
   }
 
-  private[this] def enumVarying0(ids: Seq[Identifier], satisfying: Expr, measure: Option[Expr], nPerMeasure: Int = 1): Iterator[Map[Identifier, Expr]] = {
+  private[this] def enumVarying0(ids: Seq[Identifier], satisfying: Expr, measure: Option[Expr], nPerMeasure: Int = 1): FreeableIterator[Map[Identifier, Expr]] = {
     val s = sf.getNewSolver
-    reclaimPool ::= s
 
     s.assertCnstr(satisfying)
 
@@ -46,35 +45,40 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
 
     var perMeasureRem = Map[Expr, Int]().withDefaultValue(nPerMeasure)
 
-    new Iterator[Map[Identifier, Expr]] {
-      def hasNext = {
-        s.check == Some(true)
-      }
+    new FreeableIterator[Map[Identifier, Expr]] {
+      def computeNext() = {
+        s.check match {
+          case Some(true) =>
+            val model = s.getModel
+            val idsModel = (ids.map { id =>
+              id -> model.getOrElse(id, simplestValue(id.getType))
+            }).toMap
 
-      def next() = {
-        val sm = s.getModel
-        val model = ids.map { id =>
-          id -> sm.getOrElse(id, simplestValue(id.getType))
-        }.toMap
+            // Vary the model
+            s.assertCnstr(not(andJoin(idsModel.toSeq.sortBy(_._1).map { case (k, v) => equality(k.toVariable, v) })))
 
+            measure match {
+              case Some(ms) =>
+                val mValue = evaluator.eval(ms, idsModel).result.get
 
-        // Vary the model
-        s.assertCnstr(not(andJoin(model.toSeq.sortBy(_._1).map { case (k,v) => equality(k.toVariable, v) })))
+                perMeasureRem += (mValue -> (perMeasureRem(mValue) - 1))
 
-        measure match {
-          case Some(ms) =>
-            val mValue = evaluator.eval(ms, model).result.get
+                if (perMeasureRem(mValue) <= 0) {
+                  s.assertCnstr(not(equality(m.toVariable, mValue)))
+                }
 
-            perMeasureRem += (mValue -> (perMeasureRem(mValue) - 1))
-
-            if (perMeasureRem(mValue) <= 0) {
-              s.assertCnstr(not(equality(m.toVariable, mValue)))
+              case None =>
             }
 
-          case None =>
-        }
+            Some(idsModel)
 
-        model
+          case _ =>
+            None
+        }
+      }
+
+      def free() {
+        sf.reclaim(s)
       }
     }
   }
@@ -91,7 +95,7 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
   case object Up   extends SearchDirection
   case object Down extends SearchDirection
 
-  private[this] def enumOptimizing(ids: Seq[Identifier], satisfying: Expr, measure: Expr, dir: SearchDirection): Iterator[Map[Identifier, Expr]] = {
+  private[this] def enumOptimizing(ids: Seq[Identifier], satisfying: Expr, measure: Expr, dir: SearchDirection): FreeableIterator[Map[Identifier, Expr]] = {
     assert(measure.getType == IntegerType)
 
     val s = sf.getNewSolver
@@ -126,73 +130,77 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
       case _ => None
     }
 
-    def getNext(): Stream[Map[Identifier, Expr]] = {
-      if (rangeEmpty()) {
-        Stream.empty
-      } else {
-        // Assert a new pivot point
-        val thisTry = getPivot()
-        thisTry.foreach { t =>
-          s.push()
-          dir match {
-            case Up =>
-              s.assertCnstr(GreaterThan(mId.toVariable, InfiniteIntegerLiteral(t)))
-            case Down =>
-              s.assertCnstr(LessThan(mId.toVariable, InfiniteIntegerLiteral(t)))
+    new FreeableIterator[Map[Identifier, Expr]] {
+      def computeNext(): Option[Map[Identifier, Expr]] = {
+        if (rangeEmpty()) {
+          None
+        } else {
+          // Assert a new pivot point
+          val thisTry = getPivot().map { t =>
+            s.push()
+            dir match {
+              case Up =>
+                s.assertCnstr(GreaterThan(mId.toVariable, InfiniteIntegerLiteral(t)))
+              case Down =>
+                s.assertCnstr(LessThan(mId.toVariable, InfiniteIntegerLiteral(t)))
+            }
+            t
           }
-          t
-        }
 
-        s.check match {
-          case Some(true) =>
-            val sm = s.getModel
-            val m = ids.map { id =>
-              id -> sm.getOrElse(id, simplestValue(id.getType))
-            }.toMap
+          s.check match {
+            case Some(true) =>
+              val sm = s.getModel
+              val m = (ids.map { id =>
+                id -> sm.getOrElse(id, simplestValue(id.getType))
+              }).toMap
 
-            evaluator.eval(measure, m).result match {
-              case Some(InfiniteIntegerLiteral(measureVal)) =>
-                // Positive result
-                dir match {
-                  case Up   => lb = Some(measureVal)
-                  case Down => ub = Some(measureVal)
-                }
+              evaluator.eval(measure, m).result match {
+                case Some(InfiniteIntegerLiteral(measureVal)) =>
+                  // Positive result
+                  dir match {
+                    case Up   => lb = Some(measureVal)
+                    case Down => ub = Some(measureVal)
+                  }
 
-                Stream.cons(m, getNext())
+                  Some(m)
 
-              case _ =>
-                ctx.reporter.warning("Evaluator failed to evaluate measure!")
-                Stream.empty
-            }
+                case _ =>
+                  ctx.reporter.warning("Evaluator failed to evaluate measure!")
+                  None
+              }
 
 
-          case Some(false) =>
-            // Negative result
-            thisTry match {
-              case Some(t) =>
-                s.pop()
+            case Some(false) =>
+              // Negative result
+              thisTry match {
+                case Some(t) =>
+                  s.pop()
 
-                dir match {
-                  case Up   => ub = Some(t)
-                  case Down => lb = Some(t)
-                }
-                getNext()
+                  dir match {
+                    case Up   => ub = Some(t)
+                    case Down => lb = Some(t)
+                  }
+                  computeNext()
 
-              case None =>
-                Stream.empty
-            }
+                case None =>
+                  None
+              }
 
-          case None =>
-            Stream.empty
+            case None =>
+              None
+          }
         }
       }
-    }
 
-    getNext().iterator
+      def free() {
+        sf.reclaim(s)
+      }
+    }
   }
 
 
   def shutdown() = {
+    println("Terminating!")
     reclaimPool.foreach(sf.reclaim)
   }
 

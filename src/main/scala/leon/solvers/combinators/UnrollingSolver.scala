@@ -17,7 +17,6 @@ import utils.Interruptible
 import evaluators._
 
 class UnrollingSolver(val context: LeonContext, program: Program, underlying: Solver) extends Solver with NaiveAssumptionSolver {
-
   val feelingLucky   = context.findOptionOrDefault(optFeelingLucky)
   val useCodeGen     = context.findOptionOrDefault(optUseCodeGen)
   val assumePreHolds = context.findOptionOrDefault(optAssumePre)
