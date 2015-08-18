@@ -51,7 +51,7 @@ object ExprOps {
     *        of results form the subtrees.
     * @param e The Expr on which to apply the fold.
     * @return The expression after applying `f` on all subtrees.
-    * @note the computation is lazy, hence you should rely on side-effects of `f`
+    * @note the computation is lazy, hence you should not rely on side-effects of `f`
     */
   def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
     val rec = foldRight(f) _
@@ -277,7 +277,7 @@ object ExprOps {
 
   /** Returns a set of all sub-expressions matching the predicate */
   def filter(matcher: Expr => Boolean)(e: Expr): Set[Expr] = {
-    collect[Expr] { e => if (matcher(e)) Set(e) else Set() }(e)
+    collect[Expr] { e => Set(e) filter matcher }(e)
   }
 
   /** Counts how many times the predicate holds in sub-expressions */
@@ -314,12 +314,12 @@ object ExprOps {
         val subvs = subs.flatten.toSet
 
         e match {
-          case Variable(i) => subvs + i
+          case Variable(i)  => subvs + i
           case LetDef(fd,_) => subvs -- fd.params.map(_.id)
-          case Let(i,_,_) => subvs - i
-          case MatchExpr(_, cses) => subvs -- cses.map(_.pattern.binders).flatten
-          case Passes(_, _ , cses)   => subvs -- cses.map(_.pattern.binders).flatten
-          case Lambda(args, body) => subvs -- args.map(_.id)
+          case Let(i,_,_)   => subvs - i
+          case MatchExpr(_, cses)  => subvs -- cses.flatMap(_.pattern.binders)
+          case Passes(_, _ , cses) => subvs -- cses.flatMap(_.pattern.binders)
+          case Lambda(args, _)  => subvs -- args.map(_.id)
           case _ => subvs
         }
     }(expr)
@@ -393,7 +393,6 @@ object ExprOps {
         replace(subVarMap,cse.rhs)
       )
     }
-
 
     postMap{
       case m @ MatchExpr(s, cses) =>
@@ -1036,7 +1035,7 @@ object ExprOps {
           simplestValue(cct)
 
         case None =>
-          throw new Exception(act +" does not seem to be well-founded")
+          throw LeonFatalError(act +" does not seem to be well-founded")
       }
 
     case cct: CaseClassType =>
@@ -1049,7 +1048,7 @@ object ExprOps {
       val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true)))
       Lambda(args, simplestValue(to))
 
-    case _ => throw new Exception("I can't choose simplest value for type " + tpe)
+    case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
 
   /** Hoists all IfExpr at top level.
@@ -1757,7 +1756,7 @@ object ExprOps {
     * Else, wraps the expression with a [[Expressions.Ensuring]] clause referring to the new postcondition.
     *  
     * @param expr The current expression
-    * @param pred An optional postcondition. Setting it to None removes any postcondition.
+    * @param oie An optional postcondition. Setting it to None removes any postcondition.
     * @see [[Expressions.Ensuring]]
     * @see [[Expressions.Require]]
     */

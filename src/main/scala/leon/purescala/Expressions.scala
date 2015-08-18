@@ -12,7 +12,7 @@ import ExprOps.replaceFromIDs
 
 /** Expression definitions for Pure Scala. 
   *
-  * If you are looking for things * such as function or class definitions, 
+  * If you are looking for things such as function or class definitions,
   * please have a look to [[purescala.Definitions]].
   *
   * Every expression in Leon inherits from [[Expr]]. The AST definitions are simple
@@ -42,14 +42,7 @@ object Expressions {
     }
   }
 
-  abstract class Expr extends Tree with Typed {
-    def untyped = {
-      //println("@" + this.getPos)
-      //println(this)
-      //println
-      Untyped
-    }
-  }
+  abstract class Expr extends Tree with Typed
 
   trait Terminal {
     self: Expr =>
@@ -64,9 +57,14 @@ object Expressions {
 
   /* Specifications */
 
-  /** This describes computational errors (unmatched case, taking min of an
-    * empty set, division by zero, etc.). It should always be typed according to
-    * the expected type. */
+  /** Computational errors (unmatched case, taking min of an empty set,
+    * division by zero, etc.). Corresponds to the ``error[T](description)``
+    * Leon library function.
+    * It should always be typed according to the expected type.
+    *
+    * @param tpe The type of this expression
+    * @param description The description of the error
+    */
   case class Error(tpe: TypeTree, description: String) extends Expr with Terminal {
     val getType = tpe
   }
@@ -80,20 +78,21 @@ object Expressions {
     val getType = {
       if (pred.getType == BooleanType)
         body.getType
-      else untyped
+      else Untyped
     }
   }
 
   /** Postcondition of an [[Expressions.Expr]]. Corresponds to the Leon keyword *ensuring*
     * 
     * @param body The body of the expression. It can contain at most one [[Expressions.Require]] sub-expression.
-    * @param pred The predicate to satisfy. It should be a function whose argument's type can handle the type of the body */
+    * @param pred The predicate to satisfy. It should be a function whose argument's type can handle the type of the body
+    */
   case class Ensuring(body: Expr, pred: Expr) extends Expr {
     val getType = pred.getType match {
       case FunctionType(Seq(bodyType), BooleanType) if isSubtypeOf(body.getType, bodyType) =>
         body.getType
       case _ =>
-        untyped
+        Untyped
     }
     /** Converts this ensuring clause to the body followed by an assert statement */
     def toAssert: Expr = {
@@ -115,13 +114,14 @@ object Expressions {
     val getType = {
       if (pred.getType == BooleanType)
         body.getType
-      else untyped
+      else Untyped
     }
   }
 
 
   /** Variable
-    * @param id The identifier of this variable  */
+    * @param id The identifier of this variable
+    */
   case class Variable(id: Identifier) extends Expr with Terminal {
     val getType = id.getType
   }
@@ -134,7 +134,7 @@ object Expressions {
     * 
     * @param binder The identifier used in body, defined just after '''val'''
     * @param value The value assigned to the identifier, after the '''=''' sign
-    * @param body The expression following the ``val ... = ... ;` construct 
+    * @param body The expression following the ``val ... = ... ;`` construct
     */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     val getType = {
@@ -143,7 +143,7 @@ object Expressions {
       if (typesCompatible(value.getType, binder.getType))
         body.getType
       else {
-        untyped
+        Untyped
       }
     }
   }
@@ -158,11 +158,13 @@ object Expressions {
   }
 
 
-  // OO Trees
+  /* OO Trees */
+
   /** $encodingof `(...).method(args)` (method invocation)
     *
-    * Both [[Expressions.MethodInvocation]] and [[Expressions.This]] get removed by phase [[MethodLifting]]. Methods become functions,
-    * [[Expressions.This]] becomes first argument, and [[Expressions.MethodInvocation]] becomes [[Expressions.FunctionInvocation]].
+    * Both [[Expressions.MethodInvocation]] and [[Expressions.This]] get removed by phase [[MethodLifting]].
+    * Methods become functions, [[Expressions.This]] becomes first argument,
+    * and [[Expressions.MethodInvocation]] becomes [[Expressions.FunctionInvocation]].
     * 
     * @param rec The expression evaluating to an object
     * @param cd The class definition typing `rec`
@@ -183,25 +185,25 @@ object Expressions {
     }
   }
 
-  /** The '''this''' keyword */
+  /** $encodingof the '''this''' keyword
+    * Both [[Expressions.MethodInvocation]] and [[Expressions.This]] get removed by phase [[MethodLifting]].
+    * Methods become functions, [[Expressions.This]] becomes first argument,
+    * and [[Expressions.MethodInvocation]] becomes [[Expressions.FunctionInvocation]].
+    */
   case class This(ct: ClassType) extends Expr with Terminal {
     val getType = ct
   }
 
 
-  /* HOFs (Higher-order Functions) */
+  /* Higher-order Functions */
   
-  /** $encodingof `callee(args...)`
-    *
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#application purescala's constructor application]]
-    */
+  /** $encodingof `callee(args...)` */
   case class Application(callee: Expr, args: Seq[Expr]) extends Expr {
     val getType = callee.getType match {
       case FunctionType(from, to) =>
         checkParamTypes(args, from, to)
       case _ =>
-        untyped
+        Untyped
     }
   }
 
@@ -219,6 +221,7 @@ object Expressions {
 
 
   /* Control flow */
+
   /** $encodingof  `function(...)` (function invocation) */
   case class FunctionInvocation(tfd: TypedFunDef, args: Seq[Expr]) extends Expr {
     require(tfd.params.size == args.size)
@@ -227,12 +230,12 @@ object Expressions {
 
   /** $encodingof `if(...) ... else ...` */
   case class IfExpr(cond: Expr, thenn: Expr, elze: Expr) extends Expr {
-    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(untyped).unveilUntyped
+    val getType = leastUpperBound(thenn.getType, elze.getType).getOrElse(Untyped).unveilUntyped
   }
 
   /** $encodingof `... match { ... }`
     * 
-    * If you are not sure about the requirement you should use
+    * If `cases` might be empty you should use
     * [[purescala.Constructors#matchExpr purescala's constructor matchExpr]]
     * 
     * @param scrutinee Expression to the left of the '''match''' keyword
@@ -240,7 +243,7 @@ object Expressions {
     */
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
-    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(untyped).unveilUntyped
+    val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
   }
 
   /** $encodingof `case ... [if ...] => ... `
@@ -341,7 +344,7 @@ object Expressions {
     require(cases.nonEmpty)
 
     val getType = leastUpperBound(cases.map(_.rhs.getType)) match {
-      case None => untyped
+      case None => Untyped
       case Some(_) => BooleanType
     }
 
@@ -427,7 +430,7 @@ object Expressions {
       if (typesCompatible(classType, caseClass.getType)) {
         classType.fieldsTypes(selectorIndex)
       } else {
-        untyped
+        Untyped
       }
     }
   }
@@ -438,7 +441,7 @@ object Expressions {
     val getType = {
       if (typesCompatible(lhs.getType, rhs.getType)) BooleanType
       else {
-        untyped
+        Untyped
       }
     }
   }
@@ -454,7 +457,7 @@ object Expressions {
     require(exprs.size >= 2)
     val getType = {
       if (exprs forall (_.getType == BooleanType)) BooleanType
-      else untyped
+      else Untyped
     }
   }
 
@@ -471,7 +474,7 @@ object Expressions {
     require(exprs.size >= 2)
     val getType = {
       if (exprs forall (_.getType == BooleanType)) BooleanType
-      else untyped
+      else Untyped
     }
   }
 
@@ -487,7 +490,7 @@ object Expressions {
   case class Implies(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if(lhs.getType == BooleanType && rhs.getType == BooleanType) BooleanType
-      else untyped
+      else Untyped
     }
   }
 
@@ -495,7 +498,7 @@ object Expressions {
   case class Not(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == BooleanType) BooleanType
-      else untyped
+      else Untyped
     }
   }
 
@@ -506,28 +509,28 @@ object Expressions {
   case class Plus(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `... -  ...` */
   case class Minus(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `- ... for BigInts`*/
   case class UMinus(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `... * ...` */
   case class Times(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `... /  ...`
@@ -544,7 +547,7 @@ object Expressions {
   case class Division(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `... %  ...` (can return negative numbers)
@@ -554,7 +557,7 @@ object Expressions {
   case class Remainder(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `... mod  ...` (cannot return negative numbers)
@@ -564,7 +567,7 @@ object Expressions {
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
       if (lhs.getType == IntegerType && rhs.getType == IntegerType) IntegerType
-      else untyped
+      else Untyped
     }
   }
   /** $encodingof `... < ...`*/
@@ -703,7 +706,7 @@ object Expressions {
         ts(index - 1)
 
       case _ =>
-        untyped
+        Untyped
     }
   }
 
@@ -727,15 +730,15 @@ object Expressions {
   }
   /** $encodingof `set.intersect(set2)` */
   case class SetIntersection(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   /** $encodingof `set ++ set2` */
   case class SetUnion(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   /** $encodingof `set -- set2` */
   case class SetDifference(set1: Expr, set2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(set1, set2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
 
   // TODO: Add checks for these expressions too
@@ -750,12 +753,12 @@ object Expressions {
     val getType = map.getType match {
       case MapType(from, to) if isSubtypeOf(key.getType, from) =>
         to
-      case _ => untyped
+      case _ => Untyped
     }
   }
   /** $encodingof `map ++ map2` */
   case class MapUnion(map1: Expr, map2: Expr) extends Expr {
-    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(untyped).unveilUntyped
+    val getType = leastUpperBound(Seq(map1, map2).map(_.getType)).getOrElse(Untyped).unveilUntyped
   }
   /** $encodingof `map -- map2` */
   case class MapDifference(map: Expr, keys: Expr) extends Expr {
@@ -774,7 +777,7 @@ object Expressions {
       case ArrayType(base) =>
         base
       case _ =>
-        untyped
+        Untyped
     }
   }
 
@@ -782,9 +785,9 @@ object Expressions {
   case class ArrayUpdated(array: Expr, index: Expr, newValue: Expr) extends Expr {
     val getType = array.getType match {
       case ArrayType(base) =>
-        leastUpperBound(base, newValue.getType).map(ArrayType).getOrElse(untyped).unveilUntyped
+        leastUpperBound(base, newValue.getType).map(ArrayType).getOrElse(Untyped).unveilUntyped
       case _ =>
-        untyped
+        Untyped
     }
   }
 
@@ -815,7 +818,7 @@ object Expressions {
       case FunctionType(from, BooleanType) if from.nonEmpty => // @mk why nonEmpty?
         tupleTypeWrap(from)
       case _ =>
-        untyped
+        Untyped
     }
   }
 
