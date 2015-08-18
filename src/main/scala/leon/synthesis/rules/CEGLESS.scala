@@ -8,7 +8,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Extractors._
 import utils._
-import utils.ExpressionGrammars._
+import grammars._
 import Witnesses._
 
 case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {

@@ -6,6 +6,7 @@ package rules
 
 import leon.utils.SeqUtils
 import solvers._
+import grammars._
 
 import purescala.Expressions._
 import purescala.Common._
@@ -22,8 +23,6 @@ import datagen._
 import codegen.CodeGenParams
 
 import utils._
-import utils.ExpressionGrammars.{SizeBoundedGrammar, SizedLabel}
-import bonsai.Generator
 
 abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
@@ -79,8 +78,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
       def countAlternatives(l: SizedLabel[T]): Int = {
         if (!(nAltsCache contains l)) {
-          val count = grammar.getProductions(l).map {
-            case Generator(subTrees, _) => subTrees.map(countAlternatives).product
+          val count = grammar.getProductions(l).map { gen =>
+            gen.subTrees.map(countAlternatives).product
           }.sum
           nAltsCache += l -> count
         }
@@ -705,7 +704,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000)
         } else {
           val evaluator = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
-          new GrammarDataGen(evaluator, ExpressionGrammars.ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
+          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
         }
 
         val cachedInputIterator = new Iterator[Example] {

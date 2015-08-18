@@ -14,7 +14,6 @@ import purescala.Extractors.unwrapTuple
 import purescala.ScalaPrinter
 import evaluators._
 import solvers._
-import solvers.z3._
 import utils._
 import codegen._
 import verification._
@@ -24,6 +23,7 @@ import synthesis.Witnesses._
 import rules._
 import graph.DotGenerator
 import leon.utils.ASCIIHelpers.title
+import grammars._
 
 import scala.concurrent.duration._
 
@@ -190,7 +190,6 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
   def discoverTests(): ExamplesBank = {
 
     import bonsai.enumerators._
-    import utils.ExpressionGrammars.ValueGrammar
 
     val maxEnumerated = 1000
     val maxValid      = 400

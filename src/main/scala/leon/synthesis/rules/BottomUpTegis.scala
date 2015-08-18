@@ -12,13 +12,14 @@ import evaluators._
 import codegen.CodeGenParams
 
 import utils._
+import grammars._
 
 import bonsai._
 import bonsai.enumerators._
 
 case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {
-    ExpressionGrammars.default(sctx, p)
+    Grammars.default(sctx, p)
   }
 
   def getRootLabel(tpe: TypeTree): TypeTree = tpe

@@ -13,6 +13,8 @@ import codegen.CodeGenParams
 
 import utils._
 
+import grammars._
+
 import bonsai.enumerators._
 
 abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {

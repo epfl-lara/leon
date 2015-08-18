@@ -11,12 +11,12 @@ import purescala.Extractors._
 import evaluators._
 import bonsai.enumerators._
 
-import synthesis.utils._
+import grammars._
 
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
   * e.g. by passing trees representing variables for the "bounds". */
-class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] = ExpressionGrammars.ValueGrammar) extends DataGenerator {
+class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] = ValueGrammar) extends DataGenerator {
   implicit val ctx = evaluator.context
 
   def generate(tpe: TypeTree): Iterator[Expr] = {

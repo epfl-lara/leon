@@ -7,8 +7,8 @@ package rules
 import purescala.Types._
 import purescala.Extractors._
 import utils._
-import utils.ExpressionGrammars._
 import Witnesses._
+import grammars._
 
 case object TEGLESS extends TEGISLike[Label[String]]("TEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {

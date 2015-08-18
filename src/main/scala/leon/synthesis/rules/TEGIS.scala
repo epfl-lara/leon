@@ -5,12 +5,13 @@ package synthesis
 package rules
 
 import purescala.Types._
+import grammars._
 import utils._
 
 case object TEGIS extends TEGISLike[TypeTree]("TEGIS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     TegisParams(
-      grammar = ExpressionGrammars.default(sctx, p),
+      grammar = Grammars.default(sctx, p),
       rootLabel = {(tpe: TypeTree) => tpe }
     )
   }
