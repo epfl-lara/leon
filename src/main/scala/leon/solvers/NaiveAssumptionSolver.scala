@@ -6,8 +6,8 @@ package solvers
 import purescala.Expressions._
 import purescala.Constructors._
 
-trait NaiveAssumptionSolver extends AssumptionSolver {
-  self: IncrementalSolver =>
+trait NaiveAssumptionSolver {
+  self: Solver =>
 
   var lastBs = Set[Expr]()
   def checkAssumptions(bs: Set[Expr]): Option[Boolean] = {

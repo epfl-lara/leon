@@ -12,7 +12,7 @@ import leon.purescala.Expressions._
 
 class SolverPoolSuite extends LeonTestSuite {
 
-  private class DummySolver(val context : LeonContext, val program: Program) extends Solver {
+  private class DummySolver(val context : LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
     val name = "Dummy"
     val description = "dummy"
 
@@ -21,6 +21,10 @@ class SolverPoolSuite extends LeonTestSuite {
     def free() {}
     def reset() {}
     def getModel = ???
+    def push() {}
+    def pop() {}
+    def interrupt() {}
+    def recoverInterrupt() {}
   }
 
   def sfactory(implicit ctx: LeonContext): SolverFactory[Solver] = {

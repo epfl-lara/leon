@@ -4,10 +4,11 @@ package leon
 package solvers
 
 import utils._
+import purescala.Expressions.Expr
 
 import scala.concurrent.duration._
 
-trait TimeoutSolver extends Solver with Interruptible {
+trait TimeoutSolver extends Solver {
 
   val ti = new TimeoutFor(this)
 
@@ -31,6 +32,17 @@ trait TimeoutSolver extends Solver with Interruptible {
         }
       case None =>
         super.check
+    }
+  }
+
+  abstract override def checkAssumptions(assumptions: Set[Expr]): Option[Boolean] = {
+    optTimeout match {
+      case Some(to) =>
+        ti.interruptAfter(to) {
+          super.checkAssumptions(assumptions)
+        }
+      case None =>
+        super.checkAssumptions(assumptions)
     }
   }
 

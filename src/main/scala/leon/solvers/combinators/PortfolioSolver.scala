@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 import ExecutionContext.Implicits.global
 
 class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, val solvers: Seq[S])
-        extends Solver with Interruptible {
+        extends Solver with NaiveAssumptionSolver {
 
   val name = "Pfolio"
 
@@ -53,7 +53,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
 
     val result = Future.find(fs)(_._2.isDefined)
 
-    val res = Await.result(result, 10.days) match {
+    val res = Await.result(result, Duration.Inf) match {
       case Some((s, r, m)) =>
         modelMap = m
         resultSolver = s.getResultSolver
@@ -66,8 +66,16 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         None
     }
 
-    fs map { Await.ready(_, 10.days) }
+    fs map { Await.ready(_, Duration.Inf) }
     res
+  }
+
+  def push(): Unit = {
+    solvers.foreach(_.push())
+  }
+
+  def pop(): Unit = {
+    solvers.foreach(_.pop())
   }
 
   def free() = {

@@ -41,7 +41,7 @@ object SolverFactory {
     "ground"         -> "Only solves ground verification conditions by evaluating them",
     "enum"           -> "Enumeration-based counter-example-finder"
   )
-  
+
   val availableSolversPretty = "Available: " +
     solvers.SolverFactory.definedSolvers.toSeq.sortBy(_._1).map {
       case (name, desc) =>  f"\n  $name%-14s : $desc"
@@ -76,7 +76,7 @@ object SolverFactory {
     ctx.reporter.fatalError("Aborting Leon...")
   }
 
-  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[IncrementalSolver with TimeoutSolver] = name match {
+  def getFromName(ctx: LeonContext, program: Program)(name: String): SolverFactory[TimeoutSolver] = name match {
     case "fairz3" =>
       SolverFactory(() => new FairZ3Solver(ctx, program) with TimeoutSolver)
 

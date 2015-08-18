@@ -30,9 +30,7 @@ import _root_.smtlib.{Interpreter => SMTInterpreter}
 
 
 abstract class SMTLIBSolver(val context: LeonContext,
-                            val program: Program)
-  extends IncrementalSolver with Interruptible {
-
+                            val program: Program) extends Solver with NaiveAssumptionSolver {
 
   /* Solver name */
   def targetName: String
@@ -42,7 +40,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected val reporter = context.reporter
 
   /* Interface with Interpreter */
-
   def interpreterOps(ctx: LeonContext): Seq[String]
 
   def getNewInterpreter(ctx: LeonContext): SMTInterpreter
@@ -51,7 +48,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
 
   /* Printing VCs */
-
   protected lazy val out: Option[java.io.FileWriter] = if (reporter.isDebugEnabled) Some {
     val file = context.files.headOption.map(_.getName).getOrElse("NA")
     val n    = VCNumbers.getNext(targetName+file)
@@ -62,9 +58,9 @@ abstract class SMTLIBSolver(val context: LeonContext,
       dir.mkdir
     }
 
-    val fileName = s"vcs/$targetName-$file-$n.smt2"
+    val fileName = s"smt-sessions/$targetName-$file-$n.smt2"
 
-    reporter.debug(s"Outputting VC into $fileName" )
+    reporter.debug(s"Outputting smt session into $fileName" )
 
     val fw = new java.io.FileWriter(fileName, false)
 

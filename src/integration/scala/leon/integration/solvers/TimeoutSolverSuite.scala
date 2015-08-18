@@ -12,7 +12,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 
 class TimeoutSolverSuite extends LeonTestSuite {
-  private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with Interruptible{
+  private class IdioticSolver(val context : LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
     val name = "Idiotic"
     val description = "Loops"
 
@@ -34,6 +34,9 @@ class TimeoutSolverSuite extends LeonTestSuite {
     }
 
     def assertCnstr(e: Expr) = {}
+
+    def push() {}
+    def pop() {}
 
     def free() {}
 

@@ -3,12 +3,12 @@
 package leon
 package solvers
 
-import utils.DebugSectionSolver
+import utils.{DebugSectionSolver, Interruptible}
 import purescala.Expressions._
 import purescala.Common.Identifier
 import verification.VC
 
-trait Solver {
+trait Solver extends Interruptible {
   def name: String
   val context: LeonContext
 
@@ -26,6 +26,12 @@ trait Solver {
   def free()
 
   def reset()
+
+  def push(): Unit
+  def pop(): Unit
+
+  def checkAssumptions(assumptions: Set[Expr]): Option[Boolean]
+  def getUnsatCore: Set[Expr]
 
   implicit val debugSection = DebugSectionSolver
 

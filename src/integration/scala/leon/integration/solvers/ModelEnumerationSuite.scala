@@ -7,6 +7,7 @@ import leon.integration.helpers.ExpressionsDSL
 import leon.test._
 import leon._
 import leon.solvers._
+import leon.utils._
 import leon.purescala.Definitions._
 import leon.purescala.Common._
 import leon.evaluators._
@@ -40,7 +41,7 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
   )
 
   def getModelEnum(implicit ctx: LeonContext, pgm: Program) = {
-    val sf = SolverFactory.default.asInstanceOf[SolverFactory[IncrementalSolver]]
+    val sf = SolverFactory.default
     new ModelEnumerator(ctx, pgm, sf)
   }
 

@@ -1,5 +1,5 @@
 package leon
-package solvers
+package utils
 
 import purescala.Definitions._
 import purescala.Common._
@@ -8,14 +8,14 @@ import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.Types._
 import evaluators._
+import solvers._
 
-
-class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[IncrementalSolver]) {
+class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver]) {
   private[this] var reclaimPool = List[Solver]()
   private[this] val evaluator = new DefaultEvaluator(ctx, pgm)
 
-  def enumSimple(ids: Seq[Identifier], cnstr: Expr): Iterator[Map[Identifier, Expr]] = {
-    enumVarying0(ids, cnstr, None, -1)
+  def enumSimple(ids: Seq[Identifier], satisfying: Expr): Iterator[Map[Identifier, Expr]] = {
+    enumVarying0(ids, satisfying, None, -1)
   }
 
   /**
@@ -25,26 +25,26 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Incremen
    * Note: there is no guarantee that the models enumerated consecutively share the
    * same `caracteristic`.
    */
-  def enumVarying(ids: Seq[Identifier], cnstr: Expr, caracteristic: Expr, nPerCaracteristic: Int = 1) = {
-    enumVarying0(ids, cnstr, Some(caracteristic), nPerCaracteristic)
+  def enumVarying(ids: Seq[Identifier], satisfying: Expr, measure: Expr, nPerMeasure: Int = 1) = {
+    enumVarying0(ids, satisfying, Some(measure), nPerMeasure)
   }
 
-  private[this] def enumVarying0(ids: Seq[Identifier], cnstr: Expr, caracteristic: Option[Expr], nPerCaracteristic: Int = 1): Iterator[Map[Identifier, Expr]] = {
+  private[this] def enumVarying0(ids: Seq[Identifier], satisfying: Expr, measure: Option[Expr], nPerMeasure: Int = 1): Iterator[Map[Identifier, Expr]] = {
     val s = sf.getNewSolver
     reclaimPool ::= s
 
-    s.assertCnstr(cnstr)
+    s.assertCnstr(satisfying)
 
-    val c = caracteristic match {
-      case Some(car) =>
-        val c = FreshIdentifier("car", car.getType)
-        s.assertCnstr(Equals(c.toVariable, car))
-        c
+    val m = measure match {
+      case Some(ms) =>
+        val m = FreshIdentifier("measure", ms.getType)
+        s.assertCnstr(Equals(m.toVariable, ms))
+        m
       case None =>
         FreshIdentifier("noop", BooleanType)
     }
 
-    var perCarRemaining = Map[Expr, Int]()
+    var perMeasureRem = Map[Expr, Int]().withDefaultValue(nPerMeasure)
 
     new Iterator[Map[Identifier, Expr]] {
       def hasNext = {
@@ -53,27 +53,28 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Incremen
 
       def next = {
         val sm = s.getModel
-        val m = (ids.map { id =>
+        val model = (ids.map { id =>
           id -> sm.getOrElse(id, simplestValue(id.getType))
         }).toMap
 
 
         // Vary the model
-        s.assertCnstr(not(andJoin(m.toSeq.sortBy(_._1).map { case (k,v) => equality(k.toVariable, v) })))
+        s.assertCnstr(not(andJoin(model.toSeq.sortBy(_._1).map { case (k,v) => equality(k.toVariable, v) })))
 
-        caracteristic match {
-          case Some(car) =>
-            val cValue = evaluator.eval(car, m).result.get
+        measure match {
+          case Some(ms) =>
+            val mValue = evaluator.eval(ms, model).result.get
 
-            perCarRemaining += (cValue -> (perCarRemaining.getOrElse(cValue, nPerCaracteristic) - 1))
-            if (perCarRemaining(cValue) == 0) {
-              s.assertCnstr(not(equality(c.toVariable, cValue)))
+            perMeasureRem += (mValue -> (perMeasureRem(mValue) - 1))
+
+            if (perMeasureRem(mValue) <= 0) {
+              s.assertCnstr(not(equality(m.toVariable, mValue)))
             }
 
           case None =>
         }
 
-        m
+        model
       }
     }
   }
@@ -90,13 +91,13 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Incremen
   case object Up   extends SearchDirection
   case object Down extends SearchDirection
 
-  private[this] def enumOptimizing(ids: Seq[Identifier], cnstr: Expr, measure: Expr, dir: SearchDirection): Iterator[Map[Identifier, Expr]] = {
+  private[this] def enumOptimizing(ids: Seq[Identifier], satisfying: Expr, measure: Expr, dir: SearchDirection): Iterator[Map[Identifier, Expr]] = {
     assert(measure.getType == IntegerType)
 
     val s = sf.getNewSolver
     reclaimPool ::= s
 
-    s.assertCnstr(cnstr)
+    s.assertCnstr(satisfying)
 
     val mId = FreshIdentifier("measure", measure.getType)
     s.assertCnstr(Equals(mId.toVariable, measure))

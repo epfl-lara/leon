@@ -8,7 +8,7 @@ import utils.Interruptible
 import scala.collection.mutable.Queue
 import scala.reflect.runtime.universe._
 
-class PortfolioSolverFactory[S <: Solver with Interruptible](ctx: LeonContext, sfs: Seq[SolverFactory[S]])(implicit tag: TypeTag[S]) extends SolverFactory[PortfolioSolver[S] with TimeoutSolver] {
+class PortfolioSolverFactory[S <: Solver](ctx: LeonContext, sfs: Seq[SolverFactory[S]])(implicit tag: TypeTag[S]) extends SolverFactory[PortfolioSolver[S] with TimeoutSolver] {
 
   def getNewSolver(): PortfolioSolver[S] with TimeoutSolver = {
     new PortfolioSolver[S](ctx, sfs.map(_.getNewSolver())) with TimeoutSolver

@@ -21,11 +21,7 @@ import scala.collection.mutable.{Map => MutableMap}
 
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
-trait AbstractZ3Solver
-  extends Solver
-     with AssumptionSolver
-     with IncrementalSolver 
-     with Interruptible {
+trait AbstractZ3Solver extends Solver {
 
   val context : LeonContext
   val program : Program

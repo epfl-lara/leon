@@ -12,7 +12,7 @@ import purescala.ExprOps._
 
 import datagen._
 
-class EnumerationSolver(val context: LeonContext, val program: Program) extends Solver with Interruptible with IncrementalSolver with NaiveAssumptionSolver {
+class EnumerationSolver(val context: LeonContext, val program: Program) extends Solver with NaiveAssumptionSolver {
   def name = "Enum"
 
   val maxTried = 10000

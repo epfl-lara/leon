@@ -33,16 +33,27 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
       sf.reclaim(s)
     }
   }
+
+  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
+    val s = sf.getNewSolver()
+    try {
+      s.assertCnstr(expression)
+      s.checkAssumptions(assumptions) match {
+        case Some(true) =>
+          (Some(true), s.getModel, Set())
+        case Some(false) =>
+          (Some(false), Map(), s.getUnsatCore)
+        case None =>
+          (None, Map(), Set())
+      }
+    } finally {
+      sf.reclaim(s)
+    }
+  }
 }
 
 object SimpleSolverAPI {
   def apply(sf: SolverFactory[Solver]) = {
     new SimpleSolverAPI(sf)
-  }
-
-  // Wrapping an AssumptionSolver will automatically provide an extended
-  // interface
-  def apply(sf: SolverFactory[AssumptionSolver]) = {
-    new SimpleAssumptionSolverAPI(sf)
   }
 }

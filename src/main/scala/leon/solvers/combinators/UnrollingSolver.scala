@@ -16,7 +16,7 @@ import templates._
 import utils.Interruptible
 import evaluators._
 
-class UnrollingSolver(val context: LeonContext, program: Program, underlying: IncrementalSolver with Interruptible) extends Solver with Interruptible {
+class UnrollingSolver(val context: LeonContext, program: Program, underlying: Solver) extends Solver with NaiveAssumptionSolver {
 
   val feelingLucky   = context.findOptionOrDefault(optFeelingLucky)
   val useCodeGen     = context.findOptionOrDefault(optUseCodeGen)
