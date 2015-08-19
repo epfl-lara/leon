@@ -4,6 +4,9 @@ package leon
 
 import OptionParsers._
 
+import purescala.Definitions.Program
+import purescala.DefOps.fullName
+
 abstract class LeonOptionDef[+A] {
   val name: String
   val description: String
@@ -109,8 +112,7 @@ object OptionsHelpers {
     val regexPatterns = patterns map { s =>
       import java.util.regex.Pattern
 
-      val p0 = scala.reflect.NameTransformer.encode(s)
-      val p = p0.replaceAll("\\$","\\\\\\$").replaceAll("\\.", "\\\\.").replaceAll("_", ".+")
+      val p = "(.+\\.)?"+s.replaceAll("\\.", "\\\\.").replaceAll("_", ".+")
       Pattern.compile(p)
     }
 
@@ -119,8 +121,8 @@ object OptionsHelpers {
 
   import purescala.Definitions.FunDef
 
-  def fdMatcher(patterns: Traversable[String]): FunDef => Boolean = {
-    { (fd: FunDef) => fd.id.name } andThen matcher(patterns)
+  def fdMatcher(pgm: Program)(patterns: Traversable[String]): FunDef => Boolean = {
+    { (fd: FunDef) => fullName(fd)(pgm) } andThen matcher(patterns)
   }
 
   def filterInclusive[T](included: Option[T => Boolean], excluded: Option[T => Boolean]): T => Boolean = {

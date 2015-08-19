@@ -24,7 +24,7 @@ object EvaluationPhase extends LeonPhase[Program, Unit] {
     val fdFilter = {
       import OptionsHelpers._
 
-      filterInclusive(evalFuns.map(fdMatcher), None)
+      filterInclusive(evalFuns.map(fdMatcher(program)), None)
     }
 
     val toEvaluate = funDefsFromMain(program).toList.filter(_.params.size == 0).filter(fdFilter).sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)

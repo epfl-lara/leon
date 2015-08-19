@@ -21,7 +21,7 @@ object RepairPhase extends UnitPhase[Program]() {
     val fdFilter = {
       import OptionsHelpers._
 
-      filterInclusive(repairFuns.map(fdMatcher), None)
+      filterInclusive(repairFuns.map(fdMatcher(program)), None)
     }
 
     val toRepair = funDefsFromMain(program).toList.filter(fdFilter).filter{ _.hasPostcondition }.sortWith((fd1, fd2) => fd1.getPos < fd2.getPos)

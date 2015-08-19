@@ -420,7 +420,9 @@ object Definitions {
     def typed = {
       TypedFunDef(this, tparams.map(_.tp))
     }
-    
+
+    def qualifiedName(implicit pgm: Program) = DefOps.qualifiedName(this, false)
+
   }
 
 

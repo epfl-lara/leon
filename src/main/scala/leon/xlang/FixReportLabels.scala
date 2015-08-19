@@ -44,7 +44,7 @@ object FixReportLabels extends LeonPhase[VerificationReport, VerificationReport]
 
     }
 
-    VerificationReport(newResults)
+    VerificationReport(vr.program, newResults)
 
   }
 

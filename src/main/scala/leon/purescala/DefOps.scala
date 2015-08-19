@@ -155,6 +155,10 @@ object DefOps {
     pathToString(pathFromRoot(df), useUniqueIds)
   }
 
+  def qualifiedName(fd: FunDef, useUniqueIds: Boolean = false)(implicit pgm: Program): String = {
+    pathToString(pathFromRoot(fd).takeRight(2), useUniqueIds)
+  }
+
   private def nameToParts(name: String) = {
     name.split("\\.").toList map scala.reflect.NameTransformer.encode
   }

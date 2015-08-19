@@ -88,6 +88,12 @@ These options are available by all Leon components:
   Only consider functions f1, f2, ... . This applies to all functionalities 
   where Leon manipulates the input in a per-function basis.
 
+  Leon will match against suffixes of qualified names. For instance:
+  ``--functions=List.size`` will match the method
+  ``leon.collection.List.size`` while  ``--functions=size`` will match all ``size``
+  methods and functions. This option supports ``_`` as wildcard: ``--functions=List._`` will
+  match all ``List`` methods.
+
 * ``--solvers=s1,s2,...`` 
   
   Use solvers s1, s2,... . If more than one solver is chosen, all chosen 
