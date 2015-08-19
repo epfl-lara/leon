@@ -80,10 +80,13 @@ object ConvertHoles extends LeonPhase[Program, Program] {
 
           val choose = Choose(spec)
 
+          val newBody = if (holes.size == 1) {
+            replaceFromIDs(Map(holes.head -> choose), withoutHoles)
+          } else {
+            letTuple(holes, choose, withoutHoles)
+          }
 
-          val valuations = letTuple(holes, choose, withoutHoles)
-
-          withPostcondition(withPrecondition(valuations, pre), post)
+          withPostcondition(withPrecondition(newBody, pre), post)
 
         } else {
           e
@@ -93,7 +96,7 @@ object ConvertHoles extends LeonPhase[Program, Program] {
     }
   }
 
-   
+
   def run(ctx: LeonContext)(pgm: Program): Program = {
     pgm.definedFunctions.foreach(fd => fd.fullBody = convertHoles(fd.fullBody,ctx) )
     pgm
