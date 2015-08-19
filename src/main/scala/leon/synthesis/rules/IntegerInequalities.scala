@@ -33,7 +33,7 @@ case object IntegerInequalities extends Rule("Integer Inequalities") {
 
     val ineqVars = lhsSides.foldLeft(Set[Identifier]())((acc, lhs) => acc ++ variablesOf(lhs))
     val nonIneqVars = exprNotUsed.foldLeft(Set[Identifier]())((acc, x) => acc ++ variablesOf(x))
-    val candidateVars = ineqVars.intersect(problem.xs.toSet).filterNot(nonIneqVars.contains)
+    val candidateVars = ineqVars.intersect(problem.xs.toSet).diff(nonIneqVars)
 
     val processedVars: Set[(Identifier, Int)] = candidateVars.flatMap(v => {
       try {

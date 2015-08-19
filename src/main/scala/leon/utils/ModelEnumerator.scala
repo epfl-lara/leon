@@ -51,11 +51,11 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
         s.check == Some(true)
       }
 
-      def next = {
+      def next() = {
         val sm = s.getModel
-        val model = (ids.map { id =>
+        val model = ids.map { id =>
           id -> sm.getOrElse(id, simplestValue(id.getType))
-        }).toMap
+        }.toMap
 
 
         // Vary the model
@@ -131,7 +131,8 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
         Stream.empty
       } else {
         // Assert a new pivot point
-        val thisTry = getPivot().map { t =>
+        val thisTry = getPivot()
+        thisTry.foreach { t =>
           s.push()
           dir match {
             case Up =>
@@ -145,9 +146,9 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
         s.check match {
           case Some(true) =>
             val sm = s.getModel
-            val m = (ids.map { id =>
+            val m = ids.map { id =>
               id -> sm.getOrElse(id, simplestValue(id.getType))
-            }).toMap
+            }.toMap
 
             evaluator.eval(measure, m).result match {
               case Some(InfiniteIntegerLiteral(measureVal)) =>

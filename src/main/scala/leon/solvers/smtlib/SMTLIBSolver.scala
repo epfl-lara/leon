@@ -354,7 +354,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
           case more =>
             val es = freshSym("e")
             SMTLet(VarBinding(es, toSMT(e)), Seq(),
-              Core.Or((oneOf map (FunctionApplication(_, Seq(es:Term)))): _*)
+              Core.Or(oneOf.map(FunctionApplication(_, Seq(es:Term))): _*)
             )
         }
 
