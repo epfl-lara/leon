@@ -16,8 +16,8 @@ package object lang {
     }
 
     @inline
-    def ==> (that: Boolean): Boolean = {
-      !underlying || that
+    def ==>(that: => Boolean): Boolean = {
+      if (underlying) that else true
     }
   }
 
@@ -40,11 +40,11 @@ package object lang {
 
   @ignore
   def error[T](reason: java.lang.String): T = sys.error(reason)
- 
+
   @ignore
   implicit class Passes[A,B](io : (A,B)) {
     val (in, out) = io
-    def passes(tests : A => B ) : Boolean = 
+    def passes(tests : A => B ) : Boolean =
       try { tests(in) == out } catch { case _ : MatchError => true }
   }
 
