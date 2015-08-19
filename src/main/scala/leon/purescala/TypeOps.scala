@@ -24,9 +24,9 @@ object TypeOps {
 
   def canBeSubtypeOf(
     tpe: TypeTree,
-    freeParams: Seq[TypeParameter], 
+    freeParams: Seq[TypeParameter],
     stpe: TypeTree,
-    lhsFixed: Boolean = false, 
+    lhsFixed: Boolean = false,
     rhsFixed: Boolean = false
   ): Option[Map[TypeParameter, TypeTree]] = {
 
@@ -55,23 +55,14 @@ object TypeOps {
       }
     } else {
       (tpe, stpe) match {
-        case (t, tp1: TypeParameter) =>
-          if ((freeParams contains tp1) && (!rhsFixed) && !(typeParamsOf(t) contains tp1)) {
-            Some(Map(tp1 -> t))
-          } else if (tp1 == t) {
-            Some(Map())
-          } else {
-            None
-          }
+        case (t1, t2) if t1 == t2 =>
+          Some(Map())
 
-        case (tp1: TypeParameter, t) =>
-          if ((freeParams contains tp1) && (!lhsFixed) && !(typeParamsOf(t) contains tp1)) {
-            Some(Map(tp1 -> t))
-          } else if (tp1 == t) {
-            Some(Map())
-          } else {
-            None
-          }
+        case (t, tp1: TypeParameter) if (freeParams contains tp1) && (!rhsFixed) && !(typeParamsOf(t) contains tp1) =>
+          Some(Map(tp1 -> t))
+
+        case (tp1: TypeParameter, t) if (freeParams contains tp1) && (!lhsFixed) && !(typeParamsOf(t) contains tp1) =>
+          Some(Map(tp1 -> t))
 
         case (ct1: ClassType, ct2: ClassType) =>
           val rt1 = ct1.root
@@ -103,11 +94,7 @@ object TypeOps {
           }
 
         case (t1, t2) =>
-          if (t1 == t2) {
-            Some(Map())
-          } else {
-            None
-          }
+          None
       }
     }
   }
