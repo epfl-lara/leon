@@ -28,7 +28,7 @@ object ASCIIHelpers {
 
             val cols = constraints.getOrElse(k, 1)
 
-            val size = c.vString.length
+            val size = c.printableWidth
 
             constraints += k -> (cols max size)
 
@@ -86,13 +86,14 @@ object ASCIIHelpers {
             if (i > 0) {
               sb append "  "
             }
+
             val size = (i to i+c.spanning-1).map(colSizes).sum + (c.spanning-1) * 2
 
             if (size >= 0) {
               if (c.align == Left) {
-                sb append ("%-"+size+"s").format(c.vString)
+                sb append ("%-"+(size+c.invisibleWidth)+"s").format(c.vString)
               } else {
-                sb append ("%"+size+"s").format(c.vString)
+                sb append ("%"+(size+c.invisibleWidth)+"s").format(c.vString)
               }
             } else {
               sb append c.vString
@@ -122,7 +123,13 @@ object ASCIIHelpers {
 
 
   case class Cell(v: Any, spanning: Int = 1, align: Alignment = Left) {
+    require(spanning >= 1)
+
     lazy val vString = v.toString
+    
+    lazy val printableWidth = trimNonPrintable(vString).length
+    lazy val fullWidth      = vString.length
+    lazy val invisibleWidth = fullWidth-printableWidth
   }
 
   def title(str: String, width: Int = 80): String = {
@@ -135,8 +142,13 @@ object ASCIIHelpers {
 
   def line(str: String, sep: String, width: Int = 80): String = {
     val middle = " "+str+" "
-    val remSize = width - middle.length
+    val middlePrintable = trimNonPrintable(middle)
+
+    val remSize = width - middlePrintable.length
     sep*math.floor(remSize/2).toInt+middle+sep*math.ceil(remSize/2).toInt
   }
 
+  def trimNonPrintable(str: String): String = {
+    str.replaceAll("\u001b\\[[0-9;]*m", "")
+  }
 }
