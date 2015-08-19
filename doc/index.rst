@@ -19,6 +19,7 @@ Contents:
    library
    xlang
    verification
+   neon
    limitations
    synthesis
    repair
