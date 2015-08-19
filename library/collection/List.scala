@@ -503,6 +503,12 @@ object List {
     }
     l.reverse
   }
+
+  def fill[T](n: BigInt)(x: T) : List[T] = {
+    if (n <= 0) Nil[T]
+    else Cons[T](x, fill[T](n-1)(x))
+  } ensuring(res => (res.content == (if (n <= BigInt(0)) Set.empty[T] else Set(x))) &&
+                    res.size == (if (n <= BigInt(0)) BigInt(0) else n))
 }
 
 @library
