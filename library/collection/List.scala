@@ -504,6 +504,7 @@ object List {
     l.reverse
   }
 
+  @library
   def fill[T](n: BigInt)(x: T) : List[T] = {
     if (n <= 0) Nil[T]
     else Cons[T](x, fill[T](n-1)(x))
