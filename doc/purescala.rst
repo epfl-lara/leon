@@ -34,6 +34,7 @@ Pure Scala supports two kinds of top-level declarations:
       case class Identifier(id: BigInt)
    }
 
+.. _adts:
 
 Algebraic Data Types
 --------------------
