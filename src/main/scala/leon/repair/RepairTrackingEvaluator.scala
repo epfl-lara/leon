@@ -21,7 +21,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   type GC = GlobalContext
   
   def initRC(mappings: Map[Identifier, Expr]) = CollectingRecContext(mappings, None)
-  def initGC = new GlobalContext()
+  def initGC() = new GlobalContext()
   
   type FI = (FunDef, Seq[Expr])
   

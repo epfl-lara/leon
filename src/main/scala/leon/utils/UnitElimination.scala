@@ -26,7 +26,12 @@ object UnitElimination extends TransformationPhase {
         //first introduce new signatures without Unit parameters
         allFuns.foreach(fd => {
           if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType)).setPos(fd)
+            val freshFunDef = new FunDef(
+              FreshIdentifier(fd.id.name),
+              fd.tparams,
+              fd.returnType,
+              fd.params.filterNot(vd => vd.getType == UnitType)
+            ).setPos(fd)
             freshFunDef.copyContentFrom(fd)
             fun2FreshFun += (fd -> freshFunDef)
           } else {
@@ -59,23 +64,24 @@ object UnitElimination extends TransformationPhase {
   private def removeUnit(expr: Expr): Expr = {
     assert(expr.getType != UnitType)
     expr match {
-      case fi@FunctionInvocation(tfd, args) => {
+      case fi@FunctionInvocation(tfd, args) =>
         val newArgs = args.filterNot(arg => arg.getType == UnitType)
         FunctionInvocation(fun2FreshFun(tfd.fd).typed(tfd.tps), newArgs).setPos(fi)
-      }
-      case t@Tuple(args) => {
-        val TupleType(tpes) = t.getType
-        val (newTpes, newArgs) = tpes.zip(args).filterNot{ case (UnitType, _) => true case _ => false }.unzip
+
+      case IsTyped(Tuple(args), TupleType(tpes)) =>
+        val newArgs = tpes.zip(args).collect {
+          case (tp, arg) if tp != UnitType => arg
+        }
         tupleWrap(newArgs.map(removeUnit)) // @mk: FIXME this may actually return a Unit, is that cool?
-      }
-      case ts@TupleSelect(t, index) => {
+
+      case ts@TupleSelect(t, index) =>
         val TupleType(tpes) = t.getType
         val simpleTypes = tpes map simplifyType
         val newArity = tpes.count(_ != UnitType)
         val newIndex = simpleTypes.take(index).count(_ != UnitType)
         tupleSelect(removeUnit(t), newIndex, newArity)
-      }
-      case Let(id, e, b) => {
+
+      case Let(id, e, b) =>
         if(id.getType == UnitType)
           removeUnit(b)
         else {
@@ -91,13 +97,18 @@ object UnitElimination extends TransformationPhase {
             case _ => Let(id, removeUnit(e), removeUnit(b))
           }
         }
-      }
-      case LetDef(fd, b) => {
+
+      case LetDef(fd, b) =>
         if(fd.returnType == UnitType) 
           removeUnit(b)
         else {
           val (newFd, rest) = if(fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.returnType, fd.params.filterNot(vd => vd.getType == UnitType)).setPos(fd)
+            val freshFunDef = new FunDef(
+              FreshIdentifier(fd.id.name),
+              fd.tparams,
+              fd.returnType,
+              fd.params.filterNot(vd => vd.getType == UnitType)
+            ).setPos(fd)
             freshFunDef.copyContentFrom(fd)
             fun2FreshFun += (fd -> freshFunDef)
             freshFunDef.fullBody = removeUnit(fd.fullBody)
@@ -113,24 +124,26 @@ object UnitElimination extends TransformationPhase {
           }
           LetDef(newFd, rest)
         }
-      }
-      case ite@IfExpr(cond, tExpr, eExpr) => {
+
+      case ite@IfExpr(cond, tExpr, eExpr) =>
         val thenRec = removeUnit(tExpr)
         val elseRec = removeUnit(eExpr)
         IfExpr(removeUnit(cond), thenRec, elseRec)
-      }
-      case v @ Variable(id) => if(id2FreshId.isDefinedAt(id)) Variable(id2FreshId(id)) else v
-      case m @ MatchExpr(scrut, cses) => {
+
+      case v @ Variable(id) =>
+        if(id2FreshId.isDefinedAt(id))
+          Variable(id2FreshId(id))
+        else v
+
+      case m @ MatchExpr(scrut, cses) =>
         val scrutRec = removeUnit(scrut)
         val csesRec = cses.map{ cse =>
           MatchCase(cse.pattern, cse.optGuard map removeUnit, removeUnit(cse.rhs))
         }
         matchExpr(scrutRec, csesRec).setPos(m)
-      }
-      case Operator(args, recons) => {
+
+      case Operator(args, recons) =>
         recons(args.map(removeUnit))
-      }
-      // FIXME: It's dead (code) Jim!
 
       case _ => sys.error("not supported: " + expr)
     }

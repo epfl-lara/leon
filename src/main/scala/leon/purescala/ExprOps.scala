@@ -825,9 +825,9 @@ object ExprOps {
         bindIn(b) ++ map
 
       case up@UnapplyPattern(b, _, subps) =>
-        bindIn(b) ++ unwrapTuple(up.getUnsafe(in), subps.size).zip(subps).map{
+        bindIn(b) ++ unwrapTuple(up.getUnsafe(in), subps.size).zip(subps).flatMap {
           case (e, p) => mapForPattern(e, p)
-        }.flatten.toMap
+        }.toMap
 
       case other =>
         bindIn(other.binder)

@@ -41,5 +41,5 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
     throw LeonFatalError(Some(s"Solver $name does not support model extraction."))
   }
 
-  protected val allowQuantifiedAssersions: Boolean = true
+  protected val allowQuantifiedAssertions: Boolean = true
 }

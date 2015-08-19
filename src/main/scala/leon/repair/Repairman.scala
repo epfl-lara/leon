@@ -11,7 +11,6 @@ import purescala.Types._
 import purescala.DefOps._
 import purescala.Constructors._
 import purescala.Extractors.unwrapTuple
-import purescala.ScalaPrinter
 import evaluators._
 import solvers._
 import utils._
@@ -22,10 +21,7 @@ import synthesis.rules._
 import synthesis.Witnesses._
 import rules._
 import graph.DotGenerator
-import leon.utils.ASCIIHelpers.title
 import grammars._
-
-import scala.concurrent.duration._
 
 class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
   implicit val ctx = ctx0
@@ -84,14 +80,14 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
           val timeVerify = timer.stop
 
           if (doBenchmark) {
-            val be = (BenchmarkEntry.fromContext(ctx) ++ Map(
+            val be = BenchmarkEntry.fromContext(ctx) ++ Map(
               "function"          -> fd.id.name,
               "time_tests"        -> timeTests,
               "time_synthesis"    -> timeSynth,
               "time_verification" -> timeVerify,
               "success"           -> solutions.nonEmpty,
               "verified"          -> solutions.forall(_._2)
-            ))
+            )
 
             val bh = new BenchmarksHistory("repairs.dat")
 

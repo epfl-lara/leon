@@ -18,7 +18,7 @@ trait SMTLIBQuantifiedSolver extends SMTLIBSolver {
     })
   }
 
-  protected val allowQuantifiedAssersions: Boolean
+  protected val allowQuantifiedAssertions: Boolean
 
   protected val typedFunDefExplorationLimit = 10000
 

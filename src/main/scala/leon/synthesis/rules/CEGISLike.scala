@@ -22,8 +22,6 @@ import evaluators._
 import datagen._
 import codegen.CodeGenParams
 
-import utils._
-
 abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
   case class CegisParams(
@@ -721,7 +719,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
-        def hasInputExamples = baseExampleInputs.size > 0 || cachedInputIterator.hasNext
+        def hasInputExamples = baseExampleInputs.nonEmpty || cachedInputIterator.hasNext
 
         var n = 1
         def allInputExamples() = {
@@ -819,7 +817,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     doFilter = false
                     result = Some(RuleClosed(sols))
                   case Right(cexs) =>
-                    baseExampleInputs ++= cexs.map(InExample(_))
+                    baseExampleInputs ++= cexs.map(InExample)
 
                     if (nPassing <= validateUpTo) {
                       // All programs failed verification, we filter everything out and unfold

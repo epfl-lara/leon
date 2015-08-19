@@ -363,7 +363,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case RealDivision(l,r) =>
       (e(l), e(r)) match {
         case (RealLiteral(i1), RealLiteral(i2)) =>
-          if(i2 != 0) RealLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
+          if (i2 != 0) RealLiteral(i1 / i2) else throw RuntimeError("Division by 0.")
         case (le,re) => throw EvalError(typeErrorMsg(le, RealType))
       }
 

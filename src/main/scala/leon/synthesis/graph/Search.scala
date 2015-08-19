@@ -107,7 +107,7 @@ class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: Cost
   def findNodeToExpandFrom(from: Node): Option[Node] = {
     counter += 1
     ctx.timers.synthesis.search.find.timed {
-      if (!bound.isDefined || counter <= bound.get) {
+      if (bound.isEmpty || counter <= bound.get) {
         if (expansionBuffer.isEmpty) {
           findIn(from)
         }

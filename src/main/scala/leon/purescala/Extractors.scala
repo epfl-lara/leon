@@ -160,13 +160,13 @@ object Extractors {
         (as: Seq[Expr]) => ArrayUpdated(as(0), as(1), as(2))
       ))
       case NonemptyArray(elems, Some((default, length))) =>
-        val all = elems.map(_._2).toSeq :+ default :+ length
+        val all = elems.values.toSeq :+ default :+ length
         Some((all, as => {
           val l = as.length
           nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
         }))
       case NonemptyArray(elems, None) =>
-        val all = elems.map(_._2).toSeq
+        val all = elems.values.toSeq
         Some((all, finiteArray))
       case Tuple(args) => Some((args, tupleWrap))
       case IfExpr(cond, thenn, elze) => Some((

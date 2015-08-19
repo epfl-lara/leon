@@ -40,7 +40,7 @@ object Constructors {
     */
   def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
 
-  /** $encodingof ``val id = e; bd`, and returns `bd` if the identifier is not bound in `bd`.
+  /** $encodingof ``val id = e; bd``, and returns `bd` if the identifier is not bound in `bd`.
     * @see [[purescala.Expressions.Let]]
     */
   def let(id: Identifier, e: Expr, bd: Expr) = {
@@ -49,7 +49,7 @@ object Constructors {
     else bd
   }
 
-  /** $encodingof ``val (id1, id2, ...) = e; bd`, and returns `bd` if the identifiers are not bound in `bd`.
+  /** $encodingof ``val (id1, id2, ...) = e; bd``, and returns `bd` if the identifiers are not bound in `bd`.
     * @see [[purescala.Expressions.Let]]
     */
   def letTuple(binders: Seq[Identifier], value: Expr, body: Expr) = binders match {

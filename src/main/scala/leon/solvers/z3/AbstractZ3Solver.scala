@@ -81,52 +81,7 @@ trait AbstractZ3Solver extends Solver {
       z3.mkFreshFuncDecl(gv.tp.id.uniqueName+"#"+gv.id+"!val", Seq(), typeToSort(gv.tp))
     }
   }
-
-  class Bijection[A, B] {
-    var leonToZ3 = Map[A, B]()
-    var z3ToLeon = Map[B, A]()
-
-    def +=(a: A, b: B): Unit = {
-      leonToZ3 += a -> b
-      z3ToLeon += b -> a
-    }
-
-    def +=(t: (A,B)): Unit = {
-      this += (t._1, t._2)
-    }
-
-
-    def clear(): Unit = {
-      z3ToLeon = Map()
-      leonToZ3 = Map()
-    }
-
-    def getZ3(a: A): Option[B] = leonToZ3.get(a)
-    def getLeon(b: B): Option[A] = z3ToLeon.get(b)
-
-    def toZ3(a: A): B = getZ3(a).get
-    def toLeon(b: B): A = getLeon(b).get
-
-    def toZ3OrCompute(a: A)(c: => B) = {
-      getZ3(a).getOrElse {
-        val res = c
-        this += a -> res
-        res
-      }
-    }
-
-    def toLeonOrCompute(b: B)(c: => A) = {
-      getLeon(b).getOrElse {
-        val res = c
-        this += res -> b
-        res
-      }
-    }
-
-    def containsLeon(a: A): Boolean = leonToZ3 contains a
-    def containsZ3(b: B): Boolean = z3ToLeon contains b
-  }
-
+  
   // ADT Manager
   protected val adtManager = new ADTManager(context)
 

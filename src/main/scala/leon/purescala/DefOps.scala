@@ -4,7 +4,7 @@ package leon.purescala
 
 import Definitions._
 import Expressions._
-import ExprOps.{preMap, postMap, functionCallsOf}
+import ExprOps.{preMap, functionCallsOf}
 
 object DefOps {
 

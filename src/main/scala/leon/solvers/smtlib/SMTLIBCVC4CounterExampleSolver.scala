@@ -20,5 +20,5 @@ class SMTLIBCVC4CounterExampleSolver(context: LeonContext, program: Program) ext
     ) ++ userDefinedOps(ctx)
   }
 
-  val allowQuantifiedAssersions: Boolean = false
+  protected val allowQuantifiedAssertions: Boolean = false
 }

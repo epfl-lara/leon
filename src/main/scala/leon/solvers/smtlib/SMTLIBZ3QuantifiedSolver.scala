@@ -20,7 +20,7 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
   with SMTLIBQuantifiedSolver
 {
 
-  protected val allowQuantifiedAssersions: Boolean = true
+  protected val allowQuantifiedAssertions: Boolean = true
 
   override def targetName = "z3-q"
 
@@ -52,7 +52,7 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
 
     // If we encounter a function that does not refer to the current function,
     // it is sound to assume its contracts for all inputs
-    if (allowQuantifiedAssersions) for {
+    if (allowQuantifiedAssertions) for {
       tfd <- notSeen if !refersToCurrent(tfd.fd)
       post <- tfd.postcondition
     } {

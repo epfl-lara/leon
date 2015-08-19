@@ -40,9 +40,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected val reporter = context.reporter
 
   /* Interface with Interpreter */
-  def interpreterOps(ctx: LeonContext): Seq[String]
 
-  def getNewInterpreter(ctx: LeonContext): SMTInterpreter
+  protected def interpreterOps(ctx: LeonContext): Seq[String]
+
+  protected def getNewInterpreter(ctx: LeonContext): SMTInterpreter
 
   protected val interpreter = getNewInterpreter(context)
 
@@ -73,7 +74,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   /* Interruptible interface */
 
-  protected var interrupted = false
+  private var interrupted = false
 
   context.interruptManager.registerForInterrupts(this)
 
