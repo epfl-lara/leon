@@ -3,7 +3,6 @@
 package leon
 package purescala
 
-import Constructors._
 import Extractors._
 import PrinterHelpers._
 import Common._
@@ -27,15 +26,18 @@ class ScalaPrinter(opts: PrinterOptions,
         }))
       case Not(Equals(l, r))         => optP { p"$l != $r" }
       case Choose(pred)              => p"choose($pred)"
+
       case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
-      case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
-      
       case ElementOfSet(e,s)         => p"$s.contains(e)"
       case SetUnion(l,r)             => optP { p"$l ++ $r" }
-      case MapUnion(l,r)             => optP { p"$l ++ $r" }
       case SetDifference(l,r)        => optP { p"$l -- $r" }
       case SetIntersection(l,r)      => optP { p"$l & $r" }
       case SetCardinality(s)         => p"$s.size"
+      case SubsetOf(subset,superset) => p"$subset.subsetOf($superset)"
+
+      case MapUnion(l,r)             => optP { p"$l ++ $r" }
+      case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
+
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
 
       case a@FiniteArray(elems, oDef, size) =>
