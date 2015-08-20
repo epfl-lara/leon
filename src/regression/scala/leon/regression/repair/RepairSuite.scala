@@ -17,12 +17,13 @@ class RepairSuite extends regression.LeonTestSuite {
   val fileToFun = Map(
     "Compiler1.scala"   -> "desugar",
     "Heap4.scala"       -> "merge",
-    "List1.scala"       -> "_pad",
+    "ListEasy.scala"    -> "pad",
+    //"List1.scala"       -> "pad",
     "Numerical1.scala"  -> "power",
     "MergeSort2.scala"  -> "merge"
   )
   
-  for (file <- filesInResourceDir("regression/repair/", _.endsWith(".scala"))) {
+  for (file <- filesInResourceDir("regression/repair/", _.endsWith(".scala")) if fileToFun contains file.getName) {
     val path = file.getAbsoluteFile.toString
     val name = file.getName
 
