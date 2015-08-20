@@ -84,8 +84,6 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program)
       val sf = sff(ctx, pgm1)
       val modelEnum = new ModelEnumerator(ctx, pgm1, sf)
 
-      println("Generating for "+ins.map(_.getType.asString)+", satisfying "+satisfying.asString)
-
       val enum = modelEnum.enumVarying(ins, satisfying, sizeOf, 5)
 
       try {

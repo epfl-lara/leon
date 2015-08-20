@@ -50,9 +50,23 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
 
   def union(that: ExamplesBank) = {
     ExamplesBank(
-      (this.valids union that.valids).distinct,
-      (this.invalids union that.invalids).distinct
+      distinctIns((this.valids union that.valids)),
+      distinctIns((this.invalids union that.invalids))
     )
+  }
+
+  private def distinctIns(s: Seq[Example]): Seq[Example] = {
+    val insOuts = (s.collect {
+      case InOutExample(ins, outs) => ins -> outs
+    }).toMap
+
+    s.map(_.ins).distinct.map {
+      case ins =>
+        insOuts.get(ins) match {
+          case Some(outs) => InOutExample(ins, outs)
+          case _ => InExample(ins)
+        }
+    }
   }
 
   def map(f: Example => List[Example]) = {
