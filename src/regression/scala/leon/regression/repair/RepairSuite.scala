@@ -18,7 +18,7 @@ class RepairSuite extends regression.LeonTestSuite {
     "Compiler1.scala"   -> "desugar",
     "Heap4.scala"       -> "merge",
     "ListEasy.scala"    -> "pad",
-    //"List1.scala"       -> "pad",
+    "List1.scala"       -> "pad",
     "Numerical1.scala"  -> "power",
     "MergeSort2.scala"  -> "merge"
   )

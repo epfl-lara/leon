@@ -723,7 +723,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         var n = 1
         def allInputExamples() = {
-          if (n % 1000 == 0) {
+          if (n == 10 || n == 50 || n % 500 == 0) {
             baseExampleInputs = baseExampleInputs.sortBy(e => -failedTestsStats(e))
           }
           n += 1
