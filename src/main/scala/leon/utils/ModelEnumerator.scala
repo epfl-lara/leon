@@ -11,10 +11,9 @@ import evaluators._
 import solvers._
 
 class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver]) {
-  private[this] var reclaimPool = List[Solver]()
   private[this] val evaluator = new DefaultEvaluator(ctx, pgm)
 
-  def enumSimple(ids: Seq[Identifier], satisfying: Expr): Iterator[Map[Identifier, Expr]] = {
+  def enumSimple(ids: Seq[Identifier], satisfying: Expr): FreeableIterator[Map[Identifier, Expr]] = {
     enumVarying0(ids, satisfying, None, -1)
   }
 
@@ -95,11 +94,10 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
   case object Up   extends SearchDirection
   case object Down extends SearchDirection
 
-  private[this] def enumOptimizing(ids: Seq[Identifier], satisfying: Expr, measure: Expr, dir: SearchDirection): Iterator[Map[Identifier, Expr]] = {
+  private[this] def enumOptimizing(ids: Seq[Identifier], satisfying: Expr, measure: Expr, dir: SearchDirection): FreeableIterator[Map[Identifier, Expr]] = {
     assert(measure.getType == IntegerType)
 
     val s = sf.getNewSolver
-    reclaimPool ::= s
 
     s.assertCnstr(satisfying)
 
@@ -197,11 +195,4 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
       }
     }
   }
-
-
-  def shutdown() = {
-    println("Terminating!")
-    reclaimPool.foreach(sf.reclaim)
-  }
-
 }
