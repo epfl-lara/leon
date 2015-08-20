@@ -6,6 +6,8 @@ import leon.test._
 import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
+import leon.purescala.TypeOps._
+import leon.purescala.Definitions._
 import leon.purescala.ExprOps._
 
 class ExprOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.ExpressionsDSL {
@@ -261,5 +263,20 @@ class ExprOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     assert( postMap(op, false)(expr) == Plus(bi(2),  Minus(bi(42), bi(3))) )
     assert( postMap(op, true)(expr)  == Plus(bi(42), Minus(bi(42), bi(3))) )
     
+  }
+
+  test("simplestValue") { ctx =>
+    val types = Seq(BooleanType,
+                    Int32Type,
+                    IntegerType,
+                    SetType(BooleanType),
+                    TupleType(Seq(BooleanType, BooleanType)),
+                    MapType(Int32Type, BooleanType))
+
+    for (t <- types) {
+      val v = simplestValue(t)
+      assert(isSubtypeOf(v.getType, t), "SimplestValue of "+t+": "+v+":"+v.getType)
+    }
+
   }
 }
