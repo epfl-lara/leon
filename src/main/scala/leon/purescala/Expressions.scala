@@ -13,7 +13,7 @@ import ExprOps.replaceFromIDs
 /** Expression definitions for Pure Scala. 
   *
   * If you are looking for things such as function or class definitions,
-  * please have a look to [[purescala.Definitions]].
+  * please have a look in [[purescala.Definitions]].
   *
   * Every expression in Leon inherits from [[Expr]]. The AST definitions are simple
   * case classes, with no behaviour. In particular, they do not perform smart
@@ -150,7 +150,7 @@ object Expressions {
 
   /** $encodingof `def ... = ...; ...` (local function definition)
     * 
-    * @param id The function definition.
+    * @param fd The function definition.
     * @param body The body of the expression after the function
     */
   case class LetDef(fd: FunDef, body: Expr) extends Expr {
@@ -332,9 +332,9 @@ object Expressions {
   }
 
   /** Symbolic I/O examples as a match/case.
-    * $encodingof `out == in match { cases }`
+    * $encodingof `out == (in match { cases; case _ => out })`
     *  
-    * If you are not sure about the requirement you should use
+    * If you are not sure if the cases are nonempty, you should use
     * [[purescala.Constructors#passes purescala's constructor passes]]
     * 
     * @param in 
@@ -364,15 +364,15 @@ object Expressions {
   case class CharLiteral(value: Char) extends Literal[Char] {
     val getType = CharType
   }
-  /** $encodingof an integer literal */
+  /** $encodingof a 32-bit integer literal */
   case class IntLiteral(value: Int) extends Literal[Int] {
     val getType = Int32Type
   }
-  /** $encodingof a big integer literal */
+  /** $encodingof an infinite precision integer literal */
   case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] {
     val getType = IntegerType
   }
-  /** $encodingof a real literal */
+  /** $encodingof a real number literal */
   case class RealLiteral(value: BigDecimal) extends Literal[BigDecimal] {
     val getType = RealType
   }
@@ -387,7 +387,9 @@ object Expressions {
   }
 
 
-  /** Generic values. Represent values of the generic type `tp` */
+  /** Generic values. Represent values of the generic type `tp`.
+    * This is useful e.g. to present counterexamples of generic types.
+    */
   case class GenericValue(tp: TypeParameter, id: Int) extends Expr with Terminal {
   // TODO: Is it valid that GenericValue(tp, 0) != GenericValue(tp, 1)?
     val getType = tp
@@ -681,7 +683,8 @@ object Expressions {
 
   /** $encodingof `(..., ....)` (tuple)
     * 
-    * If you are not sure about the requirement you should use
+    * Tuples should always contain at least 2 elements.
+    * If you are not sure about this requirement, you should use
     * [[purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
     * 
     * @param exprs The expressions in the tuple
