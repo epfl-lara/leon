@@ -86,7 +86,10 @@ class SynthesisSuite extends regression.LeonTestSuite {
       test(f"Synthesizing ${nextInt()}%3d: [$title]") {
         val ctx = testContext.copy(options = opts ++ testContext.options)
 
-        val pipeline = leon.utils.TemporaryInputPhase andThen leon.frontends.scalac.ExtractionPhase andThen PreprocessingPhase andThen SynthesisProblemExtractionPhase
+        val pipeline = leon.utils.TemporaryInputPhase andThen
+                       leon.frontends.scalac.ExtractionPhase andThen
+                       PreprocessingPhase andThen
+                       SynthesisProblemExtractionPhase
 
         val (program, results) = pipeline.run(ctx)((List(content), Nil))
 

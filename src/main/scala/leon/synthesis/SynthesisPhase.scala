@@ -65,14 +65,8 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
   def run(ctx: LeonContext)(program: Program): Program = {
     val options = processOptions(ctx)
 
-    def excludeByDefault(fd: FunDef): Boolean = { fd.annotations contains "library" }
 
-    val fdFilter = {
-      import OptionsHelpers._
-      filterInclusive(options.functions.map(fdMatcher(program)), Some(excludeByDefault _))
-    }
-
-    val chooses = program.definedFunctions.filter(fdFilter).flatMap(ChooseInfo.extractFromFunction(ctx, program, _))
+    val chooses = ChooseInfo.extractFromProgram(ctx, program)
 
     var functions = Set[FunDef]()
 

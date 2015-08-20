@@ -20,9 +20,19 @@ case class ChooseInfo(fd: FunDef,
 
 object ChooseInfo {
   def extractFromProgram(ctx: LeonContext, prog: Program): List[ChooseInfo] = {
+    val functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet }
+
+    def excludeByDefault(fd: FunDef): Boolean = {
+      fd.annotations contains "library"
+    }
+
+    val fdFilter = {
+      import OptionsHelpers._
+      filterInclusive(functions.map(fdMatcher(prog)), Some(excludeByDefault _))
+    }
 
     // Look for choose()
-    val results = for (f <- prog.definedFunctions if f.body.isDefined;
+    val results = for (f <- prog.definedFunctions if f.body.isDefined && fdFilter(f);
                        ci <- extractFromFunction(ctx, prog, f)) yield {
       ci
     }
