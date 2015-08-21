@@ -93,49 +93,28 @@ sourcesInBase in Compile := false
 
 Keys.fork in run := true
 
+lazy val testSettings = Seq(
+    Keys.fork := true,
+    logBuffered := false,
+    javaOptions ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
+)
+
 // Unit Tests
-Keys.fork in Test := true
+testOptions in Test := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.unit."))
 
-logBuffered in Test := false
-
-javaOptions in Test ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
-
-parallelExecution in Test := true
-
-testOptions in Test := Seq(Tests.Argument("-oDF"))
-
-
-
-// Regression Tests
+// Integration Tests
 lazy val IntegrTest = config("integration") extend(Test)
 
-Keys.fork in IntegrTest := true
-
-logBuffered in IntegrTest := false
-
-javaOptions in IntegrTest ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
-
-parallelExecution in IntegrTest := false
-
-testOptions in IntegrTest := Seq(Tests.Argument("-oDF"))
+testOptions in IntegrTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.integration."))
 
 
 
 // RegressionTest Tests
 lazy val RegressionTest = config("regression") extend(Test)
 
-Keys.fork in RegressionTest := true
-
-logBuffered in RegressionTest := false
-
-javaOptions in RegressionTest  ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
+testOptions in RegressionTest  := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.regression."))
 
 parallelExecution in RegressionTest := false
-
-testOptions in RegressionTest  := Seq(Tests.Argument("-oDF"))
-
-
-
 
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
@@ -148,7 +127,7 @@ lazy val root = (project in file(".")).
   configs(RegressionTest).
   configs(IntegrTest).
   dependsOn(bonsai, scalaSmtLib).
-  settings(inConfig(RegressionTest)(Defaults.testSettings): _*).
-  settings(inConfig(IntegrTest)(Defaults.testSettings): _*)
+  settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
+  settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*)
 
 
