@@ -1,6 +1,6 @@
 /* Copyright 2009-2014 EPFL, Lausanne */
 
-package leon.test.verification
+package leon.regression.verification
 
 import _root_.smtlib.interpreters._
 import leon._
