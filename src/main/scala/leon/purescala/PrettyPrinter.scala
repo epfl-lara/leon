@@ -12,7 +12,6 @@ import leon.purescala.PrinterHelpers._
 import leon.purescala.ExprOps.{isListLiteral, simplestValue}
 import leon.purescala.Expressions._
 import leon.purescala.Types._
-import leon.synthesis.Witnesses._
 
 case class PrinterContext(
   current: Tree,
@@ -157,7 +156,7 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
-      case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" }
+      case Or(exprs)            => optP { p"${nary(exprs, " || ")}" }
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
       case UMinus(expr)         => p"-$expr"
@@ -332,12 +331,6 @@ class PrettyPrinter(opts: PrinterOptions,
               |} else $ie"""
         }
 
-      case Terminating(tfd, args) =>
-        p"↓ ${tfd.id}($args)"
-
-      case Guide(e) =>
-        p"⊙ {$e}"
-
       case IfExpr(c, t, e) =>
         optP {
           p"""|if ($c) {
@@ -348,20 +341,14 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case LetPattern(p,s,rhs) => 
-        rhs match { 
-          case _:LetDef | _ : Let | LetPattern(_,_,_) =>
-            optP {
-              p"""|val $p = {
-                  |  $s
-                  |}
-                  |$rhs"""
-            }
-
-          case _ => 
-            optP {
-              p"""|val $p = $s
-                  |$rhs"""
-            }
+        if (isSimpleExpr(s)) {
+          p"""|val $p = $s
+              |$rhs"""
+        } else {
+          p"""|val $p = {
+              |  $s
+              |}
+              |$rhs"""
         }
 
       case MatchExpr(s, csc) =>

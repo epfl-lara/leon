@@ -5,7 +5,6 @@ package purescala
 
 import purescala.Common._
 import purescala.Types._
-import purescala.Definitions._
 
 object PrinterHelpers {
   implicit class Printable(val f: PrinterContext => Any) extends AnyVal {
@@ -42,7 +41,7 @@ object PrinterHelpers {
         // Make sure new lines are also indented
         sb.append(s.replaceAll("\n", "\n"+("  "*ctx.lvl)))
 
-        var nctx = ctx.copy(lvl = ctx.lvl + extraInd)
+        val nctx = ctx.copy(lvl = ctx.lvl + extraInd)
 
         if (expressions.hasNext) {
           val e = expressions.next
