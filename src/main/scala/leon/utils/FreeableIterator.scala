@@ -4,7 +4,7 @@ package utils
 abstract class FreeableIterator[T] extends Iterator[T] {
   private[this] var nextElem: Option[T] = None
 
-  def hasNext() = {
+  def hasNext = {
     nextElem = computeNext()
     nextElem.nonEmpty
   }

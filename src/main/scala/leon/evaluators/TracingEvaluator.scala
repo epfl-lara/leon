@@ -14,7 +14,7 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
 
   def initRC(mappings: Map[Identifier, Expr]) = TracingRecContext(mappings, 2)
 
-  def initGC = new TracingGlobalContext(Nil)
+  def initGC() = new TracingGlobalContext(Nil)
 
   class TracingGlobalContext(var values: List[(Tree, Expr)]) extends GlobalContext
 

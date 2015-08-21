@@ -172,7 +172,7 @@ object Graphs {
         } else {
           seen += v
           val ins = inEdges(v).map(_.v1)
-          ins ++ ins.map(rec).flatten
+          ins ++ ins.flatMap(rec)
         }
       }
       rec(v)
@@ -186,7 +186,7 @@ object Graphs {
         } else {
           seen += v
           val outs = outEdges(v).map(_.v2)
-          outs ++ outs.map(rec).flatten
+          outs ++ outs.flatMap(rec)
         }
       }
       rec(v)
@@ -203,7 +203,7 @@ object Graphs {
           if (outs(v2)) {
             true
           } else {
-            outs.map(rec).contains(true)
+            outs.exists(rec)
           }
         }
       }

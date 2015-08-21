@@ -93,7 +93,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
             bh += be
 
-            bh.write
+            bh.write()
           }
 
           if (synth.settings.generateDerivationTrees) {

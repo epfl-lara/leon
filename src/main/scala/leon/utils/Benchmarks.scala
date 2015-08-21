@@ -6,7 +6,7 @@ package utils
 import java.io.{File, PrintWriter}
 import scala.io.Source
 
-import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.module.scala.experimental.ScalaObjectMapper
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
@@ -38,7 +38,7 @@ class BenchmarksHistory(file: File) {
     try {
       pw.write(json)
     } finally {
-      pw.close
+      pw.close()
     }
   }
 

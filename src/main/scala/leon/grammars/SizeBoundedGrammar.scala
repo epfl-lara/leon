@@ -4,9 +4,6 @@ package leon
 package grammars
 
 import purescala.Types._
-import purescala.Expressions._
-import purescala.TypeOps._
-
 import leon.utils.SeqUtils.sumTo
 
 case class SizedLabel[T <% Typed](underlying: T, size: Int) extends Typed {

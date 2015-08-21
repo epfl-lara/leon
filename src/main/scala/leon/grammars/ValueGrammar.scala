@@ -5,8 +5,6 @@ package grammars
 
 import purescala.Types._
 import purescala.Expressions._
-import purescala.Constructors._
-
 
 case object ValueGrammar extends ExpressionGrammar[TypeTree] {
   def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {

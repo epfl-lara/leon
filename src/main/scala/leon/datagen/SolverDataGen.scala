@@ -8,12 +8,7 @@ import purescala.Types._
 import purescala.Definitions._
 import purescala.Common._
 import purescala.Constructors._
-import purescala.Extractors._
-import evaluators._
 import solvers._
-import solvers.combinators._
-import solvers.smtlib._
-import solvers.z3._
 import utils._
 
 
@@ -68,7 +63,7 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program)
             sizeFor(tupleSelect(of, i+1, tps.size))
           }
 
-          exprs.foldLeft(InfiniteIntegerLiteral(1): Expr)(plus _)
+          exprs.foldLeft(InfiniteIntegerLiteral(1): Expr)(plus)
 
         case _ =>
           InfiniteIntegerLiteral(1)

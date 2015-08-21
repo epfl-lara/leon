@@ -5,25 +5,17 @@ package repair
 package rules
 
 import synthesis._
-
-import leon.utils.Simplifiers
-
-import purescala.ScalaPrinter
-
 import evaluators._
 
 import purescala.Expressions._
-import purescala.Definitions._
 import purescala.Common._
 import purescala.Types._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Extractors._
 
 import Witnesses._
 
-import solvers._
 import graph.AndNode
 
 case object Focus extends PreprocessingRule("Focus") {

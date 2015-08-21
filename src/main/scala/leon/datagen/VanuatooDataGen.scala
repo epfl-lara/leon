@@ -280,19 +280,17 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     // Split conjunctions
     val TopLevelAnds(ands) = satisfying
 
-    val runners = ands.map(a => compile(a, ins) match {
+    val runners = ands.flatMap(a => compile(a, ins) match {
       case Some(runner) => Some(runner)
       case None =>
-        ctx.reporter.error("Could not compile predicate "+a)
+        ctx.reporter.error("Could not compile predicate " + a)
         None
-    }).flatten
+    })
 
 
     val gen = new StubGenerator[Expr, TypeTree]((ints.values ++ bigInts.values ++ booleans.values).toSeq,
                                                 Some(getConstructors _),
                                                 treatEmptyStubsAsChildless = true)
-
-    var found = Set[Seq[Expr]]()
 
     /**
      * Gather at most <n> isomoprhic models  before skipping them
@@ -315,7 +313,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           theNext = computeNext()
         }
 
-        theNext != None
+        theNext.isDefined
       }
 
       def next() = {

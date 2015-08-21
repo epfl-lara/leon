@@ -51,7 +51,6 @@ class SimpleReporter(val settings: Settings, reporter: leon.Reporter) extends Ab
       case NoPosition =>
         printMessage(msg, LeonNoPosition, severity)
       case _ =>
-        val buf = new StringBuilder(msg)
         val lpos = LeonOffsetPosition(pos.line, pos.column, pos.point, pos.source.file.file)
         printMessage(msg, lpos, severity)
     }

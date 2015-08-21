@@ -575,7 +575,7 @@ trait ASTExtractors {
         case a @ Apply(
               TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "withOracle"), types),
               Function(vds, body) :: Nil) =>
-            Some(((types zip vds.map(_.symbol)), body))
+            Some((types zip vds.map(_.symbol), body))
         case _ => None
       }
     }
@@ -592,7 +592,7 @@ trait ASTExtractors {
         case a @ Apply(
             TypeApply(s @ ExSymbol("leon", "lang", "forall"), types),
             Function(vds, predicateBody) :: Nil) =>
-          Some(((types zip vds.map(_.symbol)), predicateBody))
+          Some((types zip vds.map(_.symbol), predicateBody))
         case _ => None
       }
     }

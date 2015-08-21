@@ -49,9 +49,9 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
         s.check match {
           case Some(true) =>
             val model = s.getModel
-            val idsModel = (ids.map { id =>
+            val idsModel = ids.map { id =>
               id -> model.getOrElse(id, simplestValue(id.getType))
-            }).toMap
+            }.toMap
 
             // Vary the model
             s.assertCnstr(not(andJoin(idsModel.toSeq.sortBy(_._1).map { case (k, v) => equality(k.toVariable, v) })))
@@ -148,9 +148,9 @@ class ModelEnumerator(ctx: LeonContext, pgm: Program, sf: SolverFactory[Solver])
           s.check match {
             case Some(true) =>
               val sm = s.getModel
-              val m = (ids.map { id =>
+              val m = ids.map { id =>
                 id -> sm.getOrElse(id, simplestValue(id.getType))
-              }).toMap
+              }.toMap
 
               evaluator.eval(measure, m).result match {
                 case Some(InfiniteIntegerLiteral(measureVal)) =>
