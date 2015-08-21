@@ -2,8 +2,10 @@
 package leon.proof
 
 import leon.lang._
+import leon.annotation._
 
 /** Internal helper classes and methods for the 'proof' package. */
+@library
 object Internal {
 
   /*** Helper classes for relational reasoning ***/

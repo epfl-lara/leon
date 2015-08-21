@@ -9,6 +9,7 @@ import leon.proof.Internal._
 
 package object proof {
 
+  @library
   case class ProofOps(prop: Boolean) {
     def because(proof: Boolean): Boolean = proof && prop
     def neverHolds: Boolean = {
@@ -17,13 +18,17 @@ package object proof {
     }
   }
 
+  @library
   implicit def boolean2ProofOps(prop: Boolean): ProofOps = ProofOps(prop)
 
+  @library
   def trivial: Boolean = true
 
+  @library
   def by(proof: Boolean)(prop: Boolean): Boolean =
     proof && prop
 
+  @library
   def check(prop: Boolean): Boolean = {
     require(prop)
     prop
@@ -39,6 +44,7 @@ package object proof {
    *           x
    *         }.qed
    */
+  @library
   case class RelReasoning[A](x: A, prop: Boolean) {
 
     def ^^[B](r: (A, B) => Boolean): WithRel[A, B] = WithRel(x, r, prop)
@@ -52,6 +58,7 @@ package object proof {
     def qed: Boolean = prop
   }
 
+  @library
   implicit def any2RelReasoning[A](x: A): RelReasoning[A] =
     RelReasoning(x, true)
 
