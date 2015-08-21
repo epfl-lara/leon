@@ -112,8 +112,25 @@ object OptionsHelpers {
     val regexPatterns = patterns map { s =>
       import java.util.regex.Pattern
 
-      val p = "(.+\\.)?"+s.replaceAll("\\.", "\\\\.").replaceAll("_", ".+")
-      Pattern.compile(p)
+      // We encode the user query, reverting the encoding for . as those are
+      // not encoded in our fullnames
+      val encoded = scala.reflect.NameTransformer.encode(s).replaceAll("\\$u002E", ".")
+
+      // wildcards become ".*", rest is quoted.
+      var p = encoded.split("_").toList.map(Pattern.quote).mkString(".*")
+
+      // We account for _ at begining and end
+      if (encoded.endsWith("_")) {
+        p += ".*"
+      }
+
+      if (encoded.startsWith("_")) {
+        p = ".*"+p
+      }
+
+      // Finally, we match qualified suffixes (e.g. searching for 'size' will
+      // match 'List.size' but not 'thesize')
+      Pattern.compile("(.+\\.)?"+p)
     }
 
     { (name: String) => regexPatterns.exists(p => p.matcher(name).matches()) }
