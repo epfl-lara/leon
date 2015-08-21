@@ -8,7 +8,7 @@ object ASCIIHelpers {
     def ++(rs: Iterable[TableRow]): Table = copy(rows = rows ++ rs)
 
 
-    def computeColumnSizes = {
+    private def computeColumnSizes = {
       // First check constraints
       var constraints = Map[(Int, Int), Int]()
 
@@ -120,7 +120,6 @@ object ASCIIHelpers {
   sealed abstract class Alignment
   case object Left extends Alignment
   case object Right extends Alignment
-
 
   case class Cell(v: Any, spanning: Int = 1, align: Alignment = Left) {
     require(spanning >= 1)

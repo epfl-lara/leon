@@ -22,9 +22,9 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
       evaluator.eval(functionInvocation(fd, ts.ins))
     }
 
-    val outInfo = (invalids.collect {
+    val outInfo = invalids.collect {
       case InOutExample(ins, outs) => ins -> outs
-    }).toMap
+    }.toMap
 
     val callGraph = evaluator.fullCallGraph
 
@@ -50,15 +50,15 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
 
   def union(that: ExamplesBank) = {
     ExamplesBank(
-      distinctIns((this.valids union that.valids)),
-      distinctIns((this.invalids union that.invalids))
+      distinctIns(this.valids union that.valids),
+      distinctIns(this.invalids union that.invalids)
     )
   }
 
   private def distinctIns(s: Seq[Example]): Seq[Example] = {
-    val insOuts = (s.collect {
+    val insOuts = s.collect {
       case InOutExample(ins, outs) => ins -> outs
-    }).toMap
+    }.toMap
 
     s.map(_.ins).distinct.map {
       case ins =>
