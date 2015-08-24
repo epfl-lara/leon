@@ -260,7 +260,7 @@ trait AbstractZ3Solver extends Solver {
 
     case other =>
       sorts.cachedB(other) {
-        reporter.warning(other.getPos, "Resorting to uninterpreted type for : " + other)
+        reporter.warning(other.getPos, "Resorting to uninterpreted type for : " + other.asString)
         val symbol = z3.mkIntSymbol(FreshIdentifier("unint").globalId)
         z3.mkUninterpretedSort(symbol)
       }
@@ -546,7 +546,7 @@ trait AbstractZ3Solver extends Solver {
         z3.mkApp(genericValueToDecl(gv))
 
       case _ => {
-        reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex)
+        reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex.asString)
         throw new IllegalArgumentException
       }
     }
@@ -558,7 +558,7 @@ trait AbstractZ3Solver extends Solver {
     case rav: RawArrayValue =>
       fromRawArray(rav, tpe)
     case _ =>
-      scala.sys.error("Unable to extract from raw array for "+r)
+      scala.sys.error("Unable to extract from raw array for "+r.asString)
   }
 
   protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
@@ -570,7 +570,7 @@ trait AbstractZ3Solver extends Solver {
 
 
     case _ =>
-      scala.sys.error("Unable to extract from raw array for "+tpe)
+      scala.sys.error("Unable to extract from raw array for "+tpe.asString)
   }
 
   protected[leon] def fromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree): Expr = {
@@ -588,7 +588,7 @@ trait AbstractZ3Solver extends Solver {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ =>
-                    reporter.warning("Unexpected target type for BV value: " + tpe)
+                    reporter.warning("Unexpected target type for BV value: " + tpe.asString)
                     throw new IllegalArgumentException
                 }
               case None => {
@@ -607,7 +607,7 @@ trait AbstractZ3Solver extends Solver {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ =>
-                    reporter.warning("Unexpected target type for BV value: " + tpe)
+                    reporter.warning("Unexpected target type for BV value: " + tpe.asString)
                     throw new IllegalArgumentException
                 }
             case None => {
@@ -680,10 +680,10 @@ trait AbstractZ3Solver extends Solver {
                     // We expect a RawArrayValue with keys in from and values in Option[to],
                     // with default value == None
                     if (r.default.getType != library.noneType(to)) {
-                      reporter.warning("Co-finite maps are not supported. (Default was "+r.default+")")
+                      reporter.warning("Co-finite maps are not supported. (Default was "+r.default.asString+")")
                       throw new IllegalArgumentException
                     }
-                    require(r.keyTpe == from, s"Type error in solver model, expected $from, found ${r.keyTpe}")
+                    require(r.keyTpe == from, s"Type error in solver model, expected ${from.asString}, found ${r.keyTpe.asString}")
 
                     val elems = r.elems.flatMap {
                       case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
@@ -737,7 +737,7 @@ trait AbstractZ3Solver extends Solver {
             //      case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
                     reporter.warning("Don't know what to do with this declKind : " + other)
-                    reporter.warning("Expected type: " + tpe)
+                    reporter.warning("Expected type: " + tpe.asString)
                     reporter.warning("Tree: " + t)
                     reporter.warning("The arguments are : " + args)
                     throw new IllegalArgumentException
