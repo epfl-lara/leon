@@ -171,7 +171,7 @@ object ExprOps {
     *   - If applyRec is false (default), will only substitute once on each level.
     *   e.g.
     *   {{{
-    *     Add(a, Minus(b, c)) with replacements: Minus(b,c) -> d, b -> e, d -> f
+    *     Add(a, Minus(b, c)) with replacements: Minus(e,c) -> d, b -> e, d -> f
     *   }}}
     *   will yield:
     *   {{{
