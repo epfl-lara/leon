@@ -82,6 +82,7 @@ case class Rational(numerator: BigInt, denominator: BigInt) {
   }
 }
 
+@library
 object Rational {
 
   implicit def bigIntToRat(n: BigInt): Rational = Rational(n, 1)
