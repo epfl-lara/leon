@@ -16,6 +16,8 @@ sealed abstract class List[T] {
     case Cons(h, t) => 1 + t.size
   }) ensuring (_ >= 0)
 
+  def length = size
+
   def content: Set[T] = this match {
     case Nil() => Set()
     case Cons(h, t) => Set(h) ++ t.content
