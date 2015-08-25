@@ -15,7 +15,7 @@
 import sys
 import os
 
-docauthorlist = u'Marco Antognini, Régis Blanc, Samuel Gruetter, Etienne Kneuss, Manos Koukoutos, Viktor Kuncak, Sandro Stucki, Philippe Suter'
+docauthorlist = u'M. Antognini, R. Blanc, S. Gruetter, E. Kneuss, M. Koukoutos, V. Kuncak, S. Stucki, P. Suter'
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -152,7 +152,7 @@ html_short_title = "Leon Documentation"
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
-#html_last_updated_fmt = '%b %d, %Y'
+html_last_updated_fmt = '%b %d, %Y'
 
 # If true, SmartyPants will be used to convert quotes and dashes to
 # typographically correct entities.
