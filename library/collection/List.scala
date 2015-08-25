@@ -22,8 +22,7 @@ sealed abstract class List[T] {
   }
 
   def contains(v: T): Boolean = (this match {
-    case Cons(h, t) if h == v => true
-    case Cons(_, t) => t.contains(v)
+    case Cons(h, t) => h == v || t.contains(v)
     case Nil() => false
   }) ensuring { _ == (content contains v) }
 
