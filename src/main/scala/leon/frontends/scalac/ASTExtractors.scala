@@ -438,15 +438,21 @@ trait ASTExtractors {
        
     object ExFieldDef {
       /** Matches a definition of a strict field inside a class constructor */
-      def unapply(vd : ValDef) : Option[(Symbol, Type, Tree)] = {
+      def unapply(vd: SymTree) : Option[(Symbol, Type, Tree)] = {
         val sym = vd.symbol
         vd match {
+          // Implemented fields
           case ValDef(mods, name, tpt, rhs) if (
             !sym.isCaseAccessor && !sym.isParamAccessor && 
             !sym.isLazy && !sym.isSynthetic && !sym.isAccessor 
           ) =>        
             // Since scalac uses the accessor symbol all over the place, we pass that instead:
             Some( (sym.getterIn(sym.owner),tpt.tpe,rhs) )
+          // Unimplemented fields
+          case DefDef(_, name, _, _, tpt, _) if (
+            sym.isStable && sym.isAccessor && sym.name != nme.CONSTRUCTOR
+          ) =>
+            Some( (sym, tpt.tpe, EmptyTree))
           case _ => None
         }
       }

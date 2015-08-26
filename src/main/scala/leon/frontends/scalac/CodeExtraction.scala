@@ -450,10 +450,10 @@ trait CodeExtraction extends ASTExtractors {
      * and registers $fd as the default value function for this parameter.  
      */
     private def registerDefaultMethod(
-        defs : List[Tree],
-        matcher : PartialFunction[Tree,Symbol],
-        index : Int,
-        fd : FunDef
+      defs : List[Tree],
+      matcher : PartialFunction[Tree,Symbol],
+      index : Int,
+      fd : FunDef
     )  {
       // Search tmpl to find the function that includes this parameter
       val paramOwner = defs.collectFirst(matcher).get
@@ -467,6 +467,9 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     def extractClassDef(sym: Symbol, args: Seq[(Symbol, ValDef)], tmpl: Template): LeonClassDef = {
+
+      //println(s"Extracting $sym")
+
       val id = FreshIdentifier(sym.name.toString).setPos(sym.pos)
 
       val tparamsMap = sym.tpe match {
@@ -536,7 +539,7 @@ trait CodeExtraction extends ASTExtractors {
         ccd
       }
 
-
+      //println(s"Body of $sym")
 
       // We collect the methods and fields 
       for (d <- tmpl.body) d match {
@@ -580,6 +583,7 @@ trait CodeExtraction extends ASTExtractors {
 
         // normal fields
         case t @ ExFieldDef(fsym, _, _) =>
+          //println(fsym + "matched as ExFieldDef")
           // we will be using the accessor method of this field everywhere 
           val fsymAsMethod = fsym
           val fd = defineFieldFunDef(fsymAsMethod, false, Some(cd))(defCtx)
@@ -589,7 +593,8 @@ trait CodeExtraction extends ASTExtractors {
 
           cd.registerMethod(fd)
 
-        case _ =>
+        case other =>
+
       }
 
       cd
@@ -1482,7 +1487,6 @@ trait CodeExtraction extends ASTExtractors {
 
           //println(s"symbol $sym with id ${sym.id}")
           //println(s"isMethod($sym) == ${isMethod(sym)}")
-          
           
           (rrec, sym.name.decoded, rargs) match {
             case (null, _, args) =>
