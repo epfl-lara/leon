@@ -290,11 +290,16 @@ trait CodeExtraction extends ASTExtractors {
             case ExFieldDef(sym, _, _) =>
               Some(defineFieldFunDef(sym, false)(DefContext()))
 
-            case ExCaseClassSyntheticJunk() => None
-            case ExConstructorDef() => None
-            case ExLazyFieldDef() => None
-            case ExFieldAccessorFunction() => None
-            case d if (d.symbol.isImplicit && d.symbol.isSynthetic) => None
+            // All these are expected, but useless
+            case ExCaseClassSyntheticJunk()
+               | ExConstructorDef()
+               | ExLazyFieldDef()
+               | ExFieldAccessorFunction() =>
+              None
+            case d if (d.symbol.isImplicit && d.symbol.isSynthetic) =>
+              None
+
+            // Everything else is unexpected
             case tree =>
               println(tree)
               outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");
@@ -302,9 +307,11 @@ trait CodeExtraction extends ASTExtractors {
 
           Some(LeonModuleDef(id, leonDefs, id.name == "package"))
 
-        case ExCaseClassSyntheticJunk() => None
-        case ExConstructorDef() => None
+        // Expected, but useless
+        case ExCaseClassSyntheticJunk() | ExConstructorDef() => None
         case d if (d.symbol.isImplicit && d.symbol.isSynthetic) => None
+
+        // Unexpected
         case tree =>
           println(tree)
           outOfSubsetError(tree, "Don't know what to do with this. Not purescala?");

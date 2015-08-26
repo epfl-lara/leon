@@ -445,12 +445,13 @@ trait ASTExtractors {
           case ValDef(mods, name, tpt, rhs) if (
             !sym.isCaseAccessor && !sym.isParamAccessor && 
             !sym.isLazy && !sym.isSynthetic && !sym.isAccessor 
-          ) =>        
+          ) =>
             // Since scalac uses the accessor symbol all over the place, we pass that instead:
             Some( (sym.getterIn(sym.owner),tpt.tpe,rhs) )
           // Unimplemented fields
-          case DefDef(_, name, _, _, tpt, _) if (
-            sym.isStable && sym.isAccessor && sym.name != nme.CONSTRUCTOR
+          case df@DefDef(_, name, _, _, tpt, _) if (
+            sym.isStable && sym.isAccessor && sym.name != nme.CONSTRUCTOR &&
+            sym.accessed == NoSymbol // This is to exclude fields with implementation
           ) =>
             Some( (sym, tpt.tpe, EmptyTree))
           case _ => None
