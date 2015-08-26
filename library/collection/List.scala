@@ -570,13 +570,19 @@ object ListSpecs {
     })
   }.holds
 
+  @induct
+  def consIndex[T](h: T, t: List[T], i: BigInt): Boolean = {
+    require(0 <= i && i < t.size + 1)
+    (h :: t).apply(i) == (if (i == 0) h else t.apply(i - 1))
+  }.holds
+
   def reverseIndex[T](l: List[T], i: BigInt): Boolean = {
     require(0 <= i && i < l.size)
-    (l match {
-      case Nil() => true
-      case Cons(x,xs) => snocIndex(l, x, i) && reverseIndex[T](l,i)
-    }) &&
-    (l.reverse.apply(i) == l.apply(l.size - 1 - i))
+    (l.reverse.apply(i) == l.apply(l.size - 1 - i)) because
+      (l match {
+        case Nil() => true
+        case Cons(x,xs) => snocIndex(xs.reverse, x, i) && (if (i < xs.size) consIndex(x, xs, l.size - 1 - i) && reverseIndex[T](xs, i) else true)
+      })
   }.holds
 
   def snocLast[T](l: List[T], x: T): Boolean = {
