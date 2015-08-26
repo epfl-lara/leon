@@ -380,6 +380,8 @@ sealed abstract class List[T] {
     case _ => false
   }
 
+  def nonEmpty = !isEmpty
+
   // Higher-order API
   def map[R](f: T => R): List[R] = { this match {
     case Nil() => Nil[R]()
@@ -493,7 +495,27 @@ sealed abstract class List[T] {
     _ == this.filter(p).size
   }
 
+  def indexWhere(p: T => Boolean): BigInt = { this match {
+    case Nil() => BigInt(-1)
+    case Cons(h, _) if p(h) => BigInt(0)
+    case Cons(_, t) => 
+      val rec = t.indexWhere(p)
+      if (rec >= 0) rec + BigInt(1)
+      else BigInt(-1)
+  }} ensuring { 
+    _ >= BigInt(0) == (this exists p)
+  }
+
+
+  // Translation to other collections
+  def toSet: Set[T] = foldLeft(Set[T]()){ 
+    case (current, next) => current ++ Set(next)
+  }
+
 }
+
+case class Cons[T](h: T, t: List[T]) extends List[T]
+case class Nil[T]() extends List[T]
 
 object List {
   @ignore
@@ -544,10 +566,11 @@ object ListOps {
         }
     }
   } ensuring { isSorted _ }
-}
 
-case class Cons[T](h: T, t: List[T]) extends List[T]
-case class Nil[T]() extends List[T]
+  def toMap[K, V](l: List[(K, V)]): Map[K, V] = l.foldLeft(Map[K, V]()){
+    case (current, (k, v)) => current ++ Map(k -> v)
+  }
+}
 
 // 'Cons' Extractor
 object :: {

@@ -3,6 +3,7 @@
 package leon.lang
 
 import leon.annotation._
+import leon.collection._
 
 @library
 sealed abstract class Option[T] {
@@ -19,11 +20,11 @@ sealed abstract class Option[T] {
     case None()  => default
   }
 
-  def orElse(or: Option[T]) = {this match {
+  def orElse(or: Option[T]) = { this match {
     case Some(v) => this
     case None() => or
   }} ensuring {
-    res => (this.isDefined || or.isDefined) == res.isDefined
+    _.isDefined == this.isDefined || or.isDefined
   }
 
   def isEmpty = this match {
@@ -61,6 +62,16 @@ sealed abstract class Option[T] {
 
   def exists(p: T => Boolean) = !forall(!p(_))
 
+  // Transformation to other collections
+  def toList: List[T] = this match {
+    case None() => Nil[T]()
+    case Some(x) => List(x)
+  }
+  
+  def toSet: Set[T] = this match {
+    case None() => Set[T]()
+    case Some(x) => Set(x)
+  }
 }
 
 case class Some[T](v: T) extends Option[T]
