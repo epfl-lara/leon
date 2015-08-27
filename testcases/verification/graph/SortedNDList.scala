@@ -10,7 +10,7 @@ object SortedNDList {
    * values must be unique and non-negative.
    */
   abstract class SortedNDList
-  case class ListNode(val node : Int, val dist : Int, var next : SortedNDList) extends SortedNDList
+  case class ListNode(node: Int, dist: Int, next: SortedNDList) extends SortedNDList
   case class ListEnd() extends SortedNDList
   
   /** List invariant (see description above) */
