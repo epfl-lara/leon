@@ -4,14 +4,14 @@ package leon
 package purescala
 
 import leon.utils._
-import leon.purescala.Common._
-import leon.purescala.DefOps._
-import leon.purescala.Definitions._
-import leon.purescala.Extractors._
-import leon.purescala.PrinterHelpers._
-import leon.purescala.ExprOps.{isListLiteral, simplestValue}
-import leon.purescala.Expressions._
-import leon.purescala.Types._
+import Common._
+import DefOps._
+import Definitions._
+import Extractors._
+import PrinterHelpers._
+import ExprOps.{isListLiteral, simplestValue}
+import Expressions._
+import Types._
 
 case class PrinterContext(
   current: Tree,
@@ -52,6 +52,15 @@ class PrettyPrinter(opts: PrinterOptions,
   }
 
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
+
+    if (requiresBraces(tree, ctx.parent)) {
+      val ctx1: PrinterContext = ctx.copy(parents = Nil)
+      p"""|{
+          |  $tree
+          |}"""(ctx1)
+      return
+    }
+
     if (opts.printTypes) {
       tree match {
         case t: Expr =>
@@ -81,15 +90,8 @@ class PrettyPrinter(opts: PrinterOptions,
         p"$id"
 
       case Let(b,d,e) =>
-        if (isSimpleExpr(d)) {
           p"""|val $b = $d
               |$e"""
-        } else {
-          p"""|val $b = {
-              |  $d
-              |}
-              |$e"""
-        }
 
       case LetDef(fd,body) =>
         p"""|$fd
@@ -108,9 +110,7 @@ class PrettyPrinter(opts: PrinterOptions,
             |$body"""
 
       case Ensuring(body, post) =>
-        p"""|{
-            |  $body
-            |} ensuring {
+        p"""|$body ensuring {
             |  $post
             |}"""
 
@@ -340,17 +340,12 @@ class PrettyPrinter(opts: PrinterOptions,
               |}"""
         }
 
-      /*case LetPattern(p,s,rhs) =>
-        if (isSimpleExpr(s)) {
-          p"""|val $p = $s
-              |$rhs"""
-        } else {
-          p"""|val $p = {
-              |  $s
-              |}
-              |$rhs"""
-        }
+      /*
+      case LetPattern(p,s,rhs) =>
+        p"""|val $p = $s
+            |$rhs"""
       */
+
       case MatchExpr(s, csc) =>
         optP {
           p"""|$s match {
@@ -509,13 +504,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
         p"${fd.returnType} = "
 
-        if (isSimpleExpr(fd.fullBody)) {
-          p"${fd.fullBody}"
-        } else {
-          p"""|{
-              |  ${fd.fullBody}
-              |}"""
-        }
+        p"${fd.fullBody}"
 
       case (tree: PrettyPrintable) => tree.printWith(ctx)
 
@@ -547,6 +536,7 @@ class PrettyPrinter(opts: PrinterOptions,
           p"@(?)"
       }
     }
+
   }
 
   object FcallMethodInvocation {
@@ -587,8 +577,29 @@ class PrettyPrinter(opts: PrinterOptions,
   }
 
   def isSimpleExpr(e: Expr): Boolean = e match {
-    case _: LetDef | _: Let | LetPattern(_, _, _) | _: Assert => false
+    case _: LetDef | _: Let | LetPattern(_, _, _) | _: Assert | _: Require => false
     case _ => true
+  }
+
+  def noBracesSub(e: Expr) = e match {
+    case Assert(_, _, bd) => Some(bd)
+    case Let(_, _, bd) => Some(bd)
+    case LetDef(_, bd) => Some(bd)
+    case Require(_, bd) => Some(bd)
+    case _ => None
+  }
+
+  def requiresBraces(ex: Tree, within: Option[Tree]) = (ex, within) match {
+    case (e: Expr, _) if isSimpleExpr(e) =>
+      false
+    case (_,       None) =>
+      false
+    case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e =>
+      false
+    case (e: Expr, Some(_)) =>
+      true
+    case _ =>
+      false
   }
 
   def precedence(ex: Expr): Int = ex match {
