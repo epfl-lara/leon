@@ -54,7 +54,12 @@ object PrinterHelpers {
               nary(ts).print(nctx)
 
             case t: Tree =>
-              val nctx2 = nctx.copy(parents = nctx.current :: nctx.parents, current = t)
+              val parents = if (nctx.current == t) {
+                nctx.parents
+              } else {
+                nctx.current :: nctx.parents
+              }
+              val nctx2 = nctx.copy(parents = parents, current = t)
               printer.pp(t)(nctx2)
 
             case p: Printable =>
