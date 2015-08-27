@@ -25,12 +25,12 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"""|{
-          |  ${nary(exprs :+ last, "\n")}
-          |}"""
+      p"${nary(exprs :+ last, "\n")}"
     }
 
     val getType = last.getType
+
+    override def isSimpleExpr = false
   }
 
   case class Assignment(varId: Identifier, expr: Expr) extends XLangExpr with Extractable with PrettyPrintable {
@@ -104,11 +104,11 @@ object Expressions {
     }
 
     def printWith(implicit pctx: PrinterContext) {
-      p"""|locally {
-          |  var $binder = $value
-          |  $body
-          |}"""
+      p"""|var $binder = $value
+          |$body"""
     }
+
+    override def isSimpleExpr = false
   }
 
   case class Waypoint(i: Int, expr: Expr, tpe: TypeTree) extends XLangExpr with Extractable with PrettyPrintable{

@@ -41,7 +41,7 @@ class PrettyPrinter(opts: PrinterOptions,
     }
   }
 
-  def printWithPath(df: Definition)(implicit ctx: PrinterContext) {
+  protected def printWithPath(df: Definition)(implicit ctx: PrinterContext) {
     (opgm, ctx.parents.collectFirst { case (d: Definition) => d }) match {
       case (Some(pgm), Some(scope)) =>
         sb.append(fullNameFrom(df, scope, opts.printUniqueIds)(pgm))
@@ -135,7 +135,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case e @ CaseClass(cct, args) =>
         opgm.flatMap { pgm => isListLiteral(e)(pgm) } match {
           case Some((tpe, elems)) =>
-            val chars = elems.collect{case CharLiteral(ch) => ch}
+            val chars = elems.collect{ case CharLiteral(ch) => ch }
             if (chars.length == elems.length && tpe == CharType) {
               // String literal
               val str = chars mkString ""
@@ -147,12 +147,12 @@ class PrettyPrinter(opts: PrinterOptions,
               p"$lclass($elems)"
             }
 
-            case None =>
-              if (cct.classDef.isCaseObject) {
-                p"$cct"
-              } else {
-                p"$cct($args)"
-              }
+          case None =>
+            if (cct.classDef.isCaseObject) {
+              p"$cct"
+            } else {
+              p"$cct($args)"
+            }
         }
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
@@ -502,9 +502,7 @@ class PrettyPrinter(opts: PrinterOptions,
           p"def ${fd.id}(${fd.params}): "
         }
 
-        p"${fd.returnType} = "
-
-        p"${fd.fullBody}"
+        p"${fd.returnType} = ${fd.fullBody}"
 
       case (tree: PrettyPrintable) => tree.printWith(ctx)
 
@@ -539,7 +537,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
   }
 
-  object FcallMethodInvocation {
+  protected object FcallMethodInvocation {
     def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, String, Seq[TypeTree], Seq[Expr])] = {
       val FunctionInvocation(tfd, args) = fi
       tfd.fd.methodOwner.map { cd =>
@@ -558,7 +556,7 @@ class PrettyPrinter(opts: PrinterOptions,
     }
   }
 
-  object BinaryMethodCall {
+  protected object BinaryMethodCall {
     val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/")
 
     def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
@@ -576,12 +574,13 @@ class PrettyPrinter(opts: PrinterOptions,
     }
   }
 
-  def isSimpleExpr(e: Expr): Boolean = e match {
+  protected def isSimpleExpr(e: Expr): Boolean = e match {
     case _: LetDef | _: Let | LetPattern(_, _, _) | _: Assert | _: Require => false
+    case p: PrettyPrintable => p.isSimpleExpr
     case _ => true
   }
 
-  def noBracesSub(e: Expr) = e match {
+  protected def noBracesSub(e: Expr) = e match {
     case Assert(_, _, bd) => Some(bd)
     case Let(_, _, bd) => Some(bd)
     case LetDef(_, bd) => Some(bd)
@@ -589,10 +588,10 @@ class PrettyPrinter(opts: PrinterOptions,
     case _ => None
   }
 
-  def requiresBraces(ex: Tree, within: Option[Tree]) = (ex, within) match {
+  protected def requiresBraces(ex: Tree, within: Option[Tree]) = (ex, within) match {
     case (e: Expr, _) if isSimpleExpr(e) =>
       false
-    case (_,       None) =>
+    case (_, None) =>
       false
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e =>
       false
@@ -602,7 +601,7 @@ class PrettyPrinter(opts: PrinterOptions,
       false
   }
 
-  def precedence(ex: Expr): Int = ex match {
+  protected def precedence(ex: Expr): Int = ex match {
     case (pa: PrettyPrintable) => pa.printPrecedence
     case (_: ElementOfSet) => 0
     case (_: Modulo) => 1
@@ -615,7 +614,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case _ => 9
   }
 
-  def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
+  protected def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
     case (_, Some(_: Ensuring)) => false
@@ -640,7 +639,7 @@ trait PrettyPrintable {
 
   def printPrecedence: Int = 1000
   def printRequiresParentheses(within: Option[Tree]): Boolean = false
-  def printRequiresBraces(within: Option[Tree]): Boolean = false
+  def isSimpleExpr: Boolean = false
 }
 
 class EquivalencePrettyPrinter(opts: PrinterOptions, opgm: Option[Program]) extends PrettyPrinter(opts, opgm) {
