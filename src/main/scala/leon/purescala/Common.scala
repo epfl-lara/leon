@@ -88,7 +88,7 @@ object Common {
       * @param tpe The type of the identifier
       * @param alwaysShowUniqueID If the unique ID should always be shown */
     def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = 
-      new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe: TypeTree, alwaysShowUniqueID)
+      new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe, alwaysShowUniqueID)
 
     /** Builds a fresh identifier, whose ID is always shown
       * @param name The name of the identifier
