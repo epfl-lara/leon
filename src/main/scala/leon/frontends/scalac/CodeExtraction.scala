@@ -518,10 +518,10 @@ trait CodeExtraction extends ASTExtractors {
         classesToClasses += sym -> ccd
         parent.foreach(_.classDef.registerChild(ccd))
 
-        val fields = args.map { case (symbol, t) =>
-          val tpt = t.tpt
-          val tpe = leonType(tpt.tpe)(defCtx, sym.pos)
-          LeonValDef(FreshIdentifier(symbol.name.toString, tpe).setPos(t.pos)).setPos(t.pos)
+        val fields = args.map { case (fsym, t) =>
+          val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
+          val id = overridenOrFresh(fsym, Some(ccd), tpe)
+          LeonValDef(id.setPos(t.pos), Some(tpe)).setPos(t.pos)
         }
 
         ccd.setFields(fields)
@@ -607,6 +607,20 @@ trait CodeExtraction extends ASTExtractors {
       cd
     }
 
+    // Returns the parent's method Identifier if sym overrides a symbol, otherwise a fresh Identifier
+    private def overridenOrFresh(sym: Symbol, within: Option[LeonClassDef], tpe: LeonType = Untyped) = {
+      val name = sym.name.toString
+      if (sym.overrideChain.length > 1) {
+        (for {
+          cd <- within
+          p <- cd.parent
+          m <- p.classDef.methods.find(_.id.name == name)
+        } yield m.id).getOrElse(FreshIdentifier(name, tpe))
+      } else {
+        FreshIdentifier(name, tpe)
+      }
+    }
+
     private var defsToDefs = Map[Symbol, FunDef]()
 
     private def defineFunDef(sym: Symbol, within: Option[LeonClassDef] = None)(implicit dctx: DefContext): FunDef = {
@@ -626,19 +640,7 @@ trait CodeExtraction extends ASTExtractors {
 
       val returnType = leonType(sym.info.finalResultType)(nctx, sym.pos)
 
-      val name = sym.name.toString
-
-      val id = {
-        if (sym.overrideChain.length > 1) {
-          (for {
-            cd <- within
-            p <- cd.parent
-            m <- p.classDef.methods.find(_.id.name == name)
-          } yield m.id).getOrElse(FreshIdentifier(name))
-        } else {
-          FreshIdentifier(name)
-        }
-      }
+      val id = overridenOrFresh(sym, within)
 
       val fd = new FunDef(id.setPos(sym.pos), tparamsDef, returnType, newParams)
 
@@ -661,19 +663,7 @@ trait CodeExtraction extends ASTExtractors {
 
       val returnType = leonType(sym.info.finalResultType)(nctx, sym.pos)
 
-      val name = sym.name.toString
-
-      val id =
-        if (sym.overrideChain.length == 1) {
-          FreshIdentifier(name)
-        } else {
-          ( for {
-            cd <- within
-            p <- cd.parent
-            m <- p.classDef.methods.find(_.id.name == name)
-          } yield m.id).getOrElse(FreshIdentifier(name))
-        }
-
+      val id = overridenOrFresh(sym, within)
       val fd = new FunDef(id.setPos(sym.pos), Seq(), returnType, Seq())
 
       fd.setPos(sym.pos)
@@ -861,7 +851,7 @@ trait CodeExtraction extends ASTExtractors {
         // case Obj =>
         extractType(s) match {
           case ct: CaseClassType =>
-            assert(ct.classDef.fields.size == 0)
+            assert(ct.classDef.fields.isEmpty)
             (CaseClassPattern(binder, ct, Seq()).setPos(p.pos), dctx)
           case _ =>
             outOfSubsetError(s, "Invalid type "+s.tpe+" for .isInstanceOf")
@@ -1494,7 +1484,7 @@ trait CodeExtraction extends ASTExtractors {
 
           //println(s"symbol $sym with id ${sym.id}")
           //println(s"isMethod($sym) == ${isMethod(sym)}")
-          
+
           (rrec, sym.name.decoded, rargs) match {
             case (null, _, args) =>
               val fd = getFunDef(sym, c.pos)

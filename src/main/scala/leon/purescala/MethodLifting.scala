@@ -24,25 +24,45 @@ object MethodLifting extends TransformationPhase {
   // A Seq of MatchCases is returned, along with a boolean that signifies if the matching is complete.
   private def makeCases(cd: ClassDef, fdId: Identifier, breakDown: Expr => Expr): (Seq[MatchCase], Boolean) = cd match {
     case ccd: CaseClassDef =>
-      ccd.methods.find( _.id == fdId) match {
-        case None =>
-          (List(), false)
-        case Some(m) =>
-          val ct = ccd.typed
-          val binder = FreshIdentifier(ccd.id.name.toLowerCase, ct, true)
-          val fBinders = ct.fields.map{ f => f.id -> f.id.freshen }.toMap
-          def subst(e: Expr): Expr = e match {
-            case CaseClassSelector(`ct`, This(`ct`), i) =>
-              Variable(fBinders(i)).setPos(e)
-            case This(`ct`) =>
-              Variable(binder).setPos(e)
-            case e =>
-              e
-          }
-          val newE = simplePreTransform(subst)(breakDown(m.fullBody))
-          val subPatts = ct.fields map (f => WildcardPattern(Some(fBinders(f.id))))
-          val cse = SimpleCase(CaseClassPattern(Some(binder), ct, subPatts), newE).setPos(newE)
-          (List(cse), true)
+
+      // Common for both cases
+      val ct = ccd.typed
+      val binder = FreshIdentifier(ccd.id.name.toLowerCase, ct, true)
+      val fBinders = ct.fields.map{ f => f.id -> f.id.freshen }.toMap
+      def subst(e: Expr): Expr = e match {
+        case CaseClassSelector(`ct`, This(`ct`), i) =>
+          Variable(fBinders(i)).setPos(e)
+        case This(`ct`) =>
+          Variable(binder).setPos(e)
+        case e =>
+          e
+      }
+
+      ccd.methods.find( _.id == fdId).map { m =>
+
+        // Ancestor's method is a method in the case class
+        val subPatts = ct.fields map (f => WildcardPattern(Some(fBinders(f.id))))
+        val patt = CaseClassPattern(Some(binder), ct, subPatts)
+        val newE = simplePreTransform(subst)(breakDown(m.fullBody))
+        val cse = SimpleCase(patt, newE).setPos(newE)
+        (List(cse), true)
+
+      } orElse ccd.fields.find( _.id == fdId).map { f =>
+
+        // Ancestor's method is a case class argument in the case class
+        val subPatts = ct.fields map (fld =>
+          if (fld.id == f.id)
+            WildcardPattern(Some(fBinders(f.id)))
+          else
+            WildcardPattern(None)
+        )
+        val patt = CaseClassPattern(Some(binder), ct, subPatts)
+        val newE = breakDown(Variable(fBinders(f.id)))
+        val cse = SimpleCase(patt, newE).setPos(newE)
+        (List(cse), true)
+
+      } getOrElse {
+        (List(), false)
       }
     case acd: AbstractClassDef =>
       val (r, c) = acd.knownChildren.map(makeCases(_, fdId, breakDown)).unzip
@@ -139,7 +159,7 @@ object MethodLifting extends TransformationPhase {
         nfd.setPos(fd)
         nfd.addFlag(IsMethod(cd))
 
-        if (cd.knownDescendants.forall( _.methods.forall(_.id != fd.id))) {
+        if (cd.knownDescendants.forall( cd => (cd.methods ++ cd.fields).forall(_.id != fd.id))) {
           val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
           // Don't need to compose methods
           nfd.fullBody = postMap {

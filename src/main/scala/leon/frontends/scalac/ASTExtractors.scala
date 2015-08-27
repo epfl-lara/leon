@@ -350,7 +350,24 @@ trait ASTExtractors {
             case _ => false
           }.get.asInstanceOf[DefDef]
 
-          val args = constructor.vparamss.flatten.map(vd => ( vd.symbol, vd))
+          val valDefs = constructor.vparamss.flatten
+
+          //impl.children foreach println
+
+          val symbols = impl.children.collect {
+            case df: DefDef if df.symbol.isStable && df.symbol.isAccessor &&
+                df.symbol.isParamAccessor =>
+              df.symbol
+          }
+
+          //if (symbols.size != valDefs.size) {
+          //  println(" >>>>> " + cd.name)
+          //  symbols foreach println
+          //  valDefs foreach println
+          //}
+
+          val args = symbols zip valDefs
+
           Some((name.toString, cd.symbol, args, impl))
         }
         case _ => None
