@@ -27,3 +27,10 @@ case class LeonContext(
   def findOptionOrDefault[A](optDef: LeonOptionDef[A]): A =
     findOption(optDef).getOrElse(optDef.default)
 }
+
+object LeonContext {
+  def empty = {
+    val reporter = new DefaultReporter(Set())
+    LeonContext(reporter, new InterruptManager(reporter))
+  }
+}
