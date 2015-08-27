@@ -9,9 +9,8 @@ import Expressions._
 import Extractors._
 import ExprOps._
 import Types._
-import Constructors.and
+import Constructors._
 import TypeOps.instantiateType
-import Constructors.application
 
 object MethodLifting extends TransformationPhase {
 
@@ -89,7 +88,6 @@ object MethodLifting extends TransformationPhase {
         val cse = SimpleCase(InstanceOfPattern(Some(binder), at), newE).setPos(newE)
         (recs :+ cse, true)
       }
-
   }
 
 
