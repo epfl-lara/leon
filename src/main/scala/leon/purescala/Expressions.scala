@@ -36,6 +36,7 @@ object Expressions {
     if (real zip formal forall { case (real, formal) => isSubtypeOf(real.getType, formal.getType)} ) {
       result.unveilUntyped
     } else {
+      //println(s"Failed to type as $result")
       //println(real map { r => s"$r: ${r.getType}"} mkString ", " )
       //println(formal map { r => s"$r: ${r.getType}" } mkString ", " )
       Untyped
