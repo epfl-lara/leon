@@ -340,7 +340,7 @@ class PrettyPrinter(opts: PrinterOptions,
               |}"""
         }
 
-      case LetPattern(p,s,rhs) => 
+      /*case LetPattern(p,s,rhs) =>
         if (isSimpleExpr(s)) {
           p"""|val $p = $s
               |$rhs"""
@@ -350,7 +350,7 @@ class PrettyPrinter(opts: PrinterOptions,
               |}
               |$rhs"""
         }
-
+      */
       case MatchExpr(s, csc) =>
         optP {
           p"""|$s match {
