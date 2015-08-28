@@ -40,11 +40,13 @@ object Definitions {
     }
   }
 
-  /** 
-   *  A ValDef declares a new identifier to be of a certain type.
-   *  The optional tpe, if present, overrides the type of the underlying Identifier id
-   *  This is useful to instantiate argument types of polymorphic functions
-   */
+  /** A ValDef represents a parameter of a [[purescala.Definitions.FunDef function]] or
+    * a [[purescala.Definitions.CaseClassDef case class]].
+    *
+    *  The optional [[tpe]], if present, overrides the type of the underlying Identifier [[id]].
+    *  This is useful to instantiate argument types of polymorphic classes. To be consistent,
+    *  never use the type of [[id]] directly; use [[ValDef#getType]] instead.
+    */
   case class ValDef(id: Identifier, tpe: Option[TypeTree] = None) extends Definition with Typed {
     self: Serializable =>
 
@@ -54,8 +56,11 @@ object Definitions {
 
     def subDefinitions = Seq()
 
-    // Warning: the variable will not have the same type as the ValDef, but 
-    // the Identifier type is enough for all use cases in Leon
+    /** Transform this [[ValDef]] into a [[Expressions.Variable Variable]]
+      *
+      * Warning: the variable will not have the same type as this ValDef, but currently
+      * the Identifier type is enough for all uses in Leon.
+      */
     def toVariable : Variable = Variable(id)
   }
 
@@ -327,13 +332,18 @@ object Definitions {
   // Is inlined
   case object IsInlined extends FunctionFlag
 
-  /** Functions
-    *  This class represents methods or fields of objects. By "fields" we mean
-    *  fields defined in the body, not the constructor arguments of a case class.
+  /** Function/method definition.
+    *
+    *  This class represents methods or fields of objects or classes. By "fields" we mean
+    *  fields defined in the body of a class/object, not the constructor arguments of a case class
+    *  (those are accessible through [[leon.purescala.Definitions.ClassDef.fields]]).
+    *
     *  When it comes to verification, all are treated the same (as functions).
     *  They are only differentiated when it comes to code generation/ pretty printing.
-    *  By default, the FunDef represents a function/method, unless otherwise specified
-    *  by its flags.
+    *  By default, the FunDef represents a function/method as opposed to a field,
+    *  unless otherwise specified by its flags.
+    *
+    *  Bear in mind that [[id]] will not be consistently typed.
     */
   class FunDef(
     val id: Identifier,

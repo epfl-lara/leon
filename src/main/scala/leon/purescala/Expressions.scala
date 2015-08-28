@@ -27,8 +27,8 @@ import ExprOps.replaceFromIDs
   * simplify the trees they produce.
   * 
   * @define encodingof Encoding of
-  * @define note_bitvector (32-bit vector)
-  * @define note_real (Real)
+  * @define noteBitvector (32-bit vector)
+  * @define noteReal (Real)
   */
 object Expressions {
 
@@ -43,14 +43,20 @@ object Expressions {
     }
   }
 
+  /** Represents an expression in Leon. */
   abstract class Expr extends Tree with Typed
 
+  /** Trait which gets mixed-in to expressions without subexpressions */
   trait Terminal {
     self: Expr =>
   }
 
 
-  /** Stands for an undefined Expr, similar to ??? or null */
+  /** Stands for an undefined Expr, similar to `???` or `null`
+    *
+    * During code generation, it gets compiled to `null`, or the 0 of the
+    * respective type for value types.
+    */
   case class NoTree(tpe: TypeTree) extends Expr with Terminal {
     val getType = tpe
   }
@@ -129,13 +135,11 @@ object Expressions {
 
 
   /** $encodingof `val ... = ...; ...`
-    * 
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#let purescala's constructor let]] or [[purescala.Constructors#letTuple purescala's constructor letTuple]]
-    * 
+    *
     * @param binder The identifier used in body, defined just after '''val'''
     * @param value The value assigned to the identifier, after the '''=''' sign
     * @param body The expression following the ``val ... = ... ;`` construct
+    * @see [[purescala.Constructors#let purescala's constructor let]]
     */
   case class Let(binder: Identifier, value: Expr, body: Expr) extends Expr {
     val getType = {
@@ -198,7 +202,7 @@ object Expressions {
 
   /* Higher-order Functions */
   
-  /** $encodingof `callee(args...)` */
+  /** $encodingof `callee(args...)`, where [[callee]] is an expression of a function type (not a method) */
   case class Application(callee: Expr, args: Seq[Expr]) extends Expr {
     val getType = callee.getType match {
       case FunctionType(from, to) =>
@@ -236,7 +240,7 @@ object Expressions {
 
   /** $encodingof `... match { ... }`
     * 
-    * If `cases` might be empty you should use
+    * '''cases''' should be nonempty. If you are not sure about this, you should use
     * [[purescala.Constructors#matchExpr purescala's constructor matchExpr]]
     * 
     * @param scrutinee Expression to the left of the '''match''' keyword
@@ -247,7 +251,7 @@ object Expressions {
     val getType = leastUpperBound(cases.map(_.rhs.getType)).getOrElse(Untyped).unveilUntyped
   }
 
-  /** $encodingof `case ... [if ...] => ... `
+  /** $encodingof `case pattern [if optGuard] => rhs`
     * 
     * @param pattern The pattern just to the right of the '''case''' keyword
     * @param optGuard An optional if-condition just to the left of the `=>`
@@ -275,21 +279,33 @@ object Expressions {
     }}.copiedFrom(this)
   }
 
-  /** Pattern encoding `case a: ct` making sure an identifier is of the given type */
-  case class InstanceOfPattern(binder: Option[Identifier], ct: ClassType) extends Pattern { // c: Class
+  /** Pattern encoding `case binder: ct`
+    *
+    * If [[binder]] is empty, consider a wildcard `_` in its place.
+    */
+  case class InstanceOfPattern(binder: Option[Identifier], ct: ClassType) extends Pattern {
     val subPatterns = Seq()
   }
-  /** Pattern encoding `case binder @ _ => ` with optional identifier `binder` */
+  /** Pattern encoding `case _ => `, or `case binder => ` if identifier [[binder]] is present */
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq()
   } 
-  /** Pattern encoding `case CaseClass(...) =>` */
+  /** Pattern encoding `case binder @ ct(subPatterns...) =>`
+    *
+    * If [[binder]] is empty, consider a wildcard `_` in its place.
+    */
   case class CaseClassPattern(binder: Option[Identifier], ct: CaseClassType, subPatterns: Seq[Pattern]) extends Pattern
 
-  /** Pattern encoding tuple pattern `case (...) =>` */
+  /** Pattern encoding tuple pattern `case binder @ (subPatterns...) =>`
+    *
+    * If [[binder]] is empty, consider a wildcard `_` in its place.
+    */
   case class TuplePattern(binder: Option[Identifier], subPatterns: Seq[Pattern]) extends Pattern
 
-  /** Pattern encoding like `case 0 => ...` or `case "Foo" => ...` */
+  /** Pattern encoding like `case binder @ 0 => ...` or `case binder @ "Foo" => ...`
+    *
+    * If [[binder]] is empty, consider a wildcard `_` in its place.
+    */
   case class LiteralPattern[+T](binder: Option[Identifier], lit : Literal[T]) extends Pattern {
     val subPatterns = Seq()    
   }
@@ -335,11 +351,12 @@ object Expressions {
   /** Symbolic I/O examples as a match/case.
     * $encodingof `out == (in match { cases; case _ => out })`
     *  
-    * If you are not sure if the cases are nonempty, you should use
+    * [[cases]] should be nonempty. If you are not sure about this, you should use
     * [[purescala.Constructors#passes purescala's constructor passes]]
     * 
     * @param in 
     * @param out
+    * @param cases
     */
   case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
@@ -361,7 +378,7 @@ object Expressions {
   sealed abstract class Literal[+T] extends Expr with Terminal {
     val value: T
   }
-  /** $encodingof a char literal */
+  /** $encodingof a character literal */
   case class CharLiteral(value: Char) extends Literal[Char] {
     val getType = CharType
   }
@@ -381,7 +398,7 @@ object Expressions {
   case class BooleanLiteral(value: Boolean) extends Literal[Boolean] {
     val getType = BooleanType
   }
-  /** $encodingof a unit literal `()` */
+  /** $encodingof the unit literal `()` */
   case class UnitLiteral() extends Literal[Unit] {
     val getType = UnitType
     val value = ()
@@ -397,7 +414,8 @@ object Expressions {
   }
 
 
-  /** $encodingof `CaseClass(args...)`
+  /** $encodingof `ct(args...)`
+    *
     * @param ct The case class name and inherited attributes
     * @param args The arguments of the case class
     */
@@ -410,11 +428,11 @@ object Expressions {
     val getType = BooleanType
   }
 
-  /**
-   * $encodingof `.asInstanceOf[...]` 
-   * Introduced by matchToIfThenElse to transform match-cases to type-correct
-   * if bodies.
-   */
+  /** $encodingof `expr.asInstanceOf[tpe]`
+    *
+    * Introduced by matchToIfThenElse to transform match-cases to type-correct
+    * if bodies.
+    */
   case class AsInstanceOf(expr: Expr, tpe: ClassType) extends Expr {
     val getType = tpe
   }
@@ -453,8 +471,9 @@ object Expressions {
   /* Propositional logic */
   /** $encodingof `... && ...`
     *
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#and purescala's constructor and]] or [[purescala.Constructors#andJoin purescala's constructor andJoin]]
+    * [[exprs]] must contain at least two elements; if you are not sure about this,
+    * you should use [[purescala.Constructors#and purescala's constructor and]]
+    * or [[purescala.Constructors#andJoin purescala's constructor andJoin]]
     */
   case class And(exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
@@ -470,8 +489,9 @@ object Expressions {
 
   /** $encodingof `... || ...`
     *  
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#or purescala's constructor or]] or [[purescala.Constructors#orJoin purescala's constructor orJoin]]
+    * [[exprs]] must contain at least two elements; if you are not sure about this,
+    * you should use [[purescala.Constructors#or purescala's constructor or]] or
+    * [[purescala.Constructors#orJoin purescala's constructor orJoin]]
     */
   case class Or(exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
@@ -485,10 +505,12 @@ object Expressions {
     def apply(a: Expr, b: Expr): Expr = Or(Seq(a, b))
   }
 
-  /** $encodingof `... ==> ...` (logical implication)
-    * 
-    * If you are not sure about the requirement you should use
-    * [[purescala.Constructors#implies purescala's constructor implies]]
+  /** $encodingof `... ==> ...` (logical implication).
+    *
+    * This is not a standard Scala operator, but it results from an implicit
+    * conversion in the Leon library.
+    *
+    * @see [[leon.purescala.Constructors.implies]]
     */
   case class Implies(lhs: Expr, rhs: Expr) extends Expr {
     val getType = {
@@ -497,7 +519,10 @@ object Expressions {
     }
   }
 
-  /** $encodingof `!...` */
+  /** $encodingof `!...`
+    *
+    * @see [[leon.purescala.Constructors.not]]
+    */
   case class Not(expr: Expr) extends Expr {
     val getType = {
       if (expr.getType == BooleanType) BooleanType
@@ -592,88 +617,88 @@ object Expressions {
 
 
   /* Bit-vector arithmetic */
-  /** $encodingof `... + ...` $note_bitvector*/
+  /** $encodingof `... + ...` $noteBitvector*/
   case class BVPlus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  /** $encodingof `... - ...` $note_bitvector*/
+  /** $encodingof `... - ...` $noteBitvector*/
   case class BVMinus(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  /** $encodingof `- ...` $note_bitvector*/
+  /** $encodingof `- ...` $noteBitvector*/
   case class BVUMinus(expr: Expr) extends Expr { 
     require(expr.getType == Int32Type)
     val getType = Int32Type
   }
-  /** $encodingof `... * ...` $note_bitvector*/
+  /** $encodingof `... * ...` $noteBitvector*/
   case class BVTimes(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  /** $encodingof `... / ...` $note_bitvector*/
+  /** $encodingof `... / ...` $noteBitvector*/
   case class BVDivision(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  /** $encodingof `... % ...` $note_bitvector*/
+  /** $encodingof `... % ...` $noteBitvector*/
   case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
-  /** $encodingof `! ...` $note_bitvector*/
+  /** $encodingof `! ...` $noteBitvector */
   case class BVNot(expr: Expr) extends Expr { 
     val getType = Int32Type
   }
-  /** $encodingof `... & ...` $note_bitvector*/
+  /** $encodingof `... & ...` $noteBitvector */
   case class BVAnd(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... | ...` $note_bitvector*/
+  /** $encodingof `... | ...` $noteBitvector */
   case class BVOr(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... ^ ...` $note_bitvector*/
+  /** $encodingof `... ^ ...` $noteBitvector */
   case class BVXOr(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... << ...` $note_bitvector*/
+  /** $encodingof `... << ...` $noteBitvector */
   case class BVShiftLeft(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... >>> ...` $note_bitvector (logical shift)*/
+  /** $encodingof `... >>> ...` $noteBitvector (logical shift) */
   case class BVAShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... >> ...` $note_bitvector (arighmetic shift, sign-preserving)*/
+  /** $encodingof `... >> ...` $noteBitvector (arithmetic shift, sign-preserving) */
   case class BVLShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
 
 
   /* Real arithmetic */
-  /** $encodingof `... + ...` $note_real */
+  /** $encodingof `... + ...` $noteReal */
   case class RealPlus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
   }
-  /** $encodingof `... - ...` $note_real */
+  /** $encodingof `... - ...` $noteReal */
   case class RealMinus(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
   }
-  /** $encodingof `- ...` $note_real */
+  /** $encodingof `- ...` $noteReal */
   case class RealUMinus(expr: Expr) extends Expr { 
     require(expr.getType == RealType)
     val getType = RealType
   }
-  /** $encodingof `... * ...` $note_real */
+  /** $encodingof `... * ...` $noteReal */
   case class RealTimes(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
   }
-  /** $encodingof `... / ...` $note_real */
+  /** $encodingof `... / ...` $noteReal */
   case class RealDivision(lhs: Expr, rhs: Expr) extends Expr { 
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
@@ -684,7 +709,7 @@ object Expressions {
 
   /** $encodingof `(..., ....)` (tuple)
     * 
-    * Tuples should always contain at least 2 elements.
+    * [[exprs]] should always contain at least 2 elements.
     * If you are not sure about this requirement, you should use
     * [[purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
     * 
@@ -698,7 +723,7 @@ object Expressions {
   /** $encodingof `(tuple)._i`
     * 
     * Index is 1-based, first element of tuple is 1.
-    * If you are not sure that tuple is indeed of a TupleType,
+    * If you are not sure that [[tuple]] is indeed of a TupleType,
     * you should use [[purescala.Constructors$.tupleSelect(t:leon\.purescala\.Expressions\.Expr,index:Int,isTuple:Boolean):leon\.purescala\.Expressions\.Expr* purescala's constructor tupleSelect]]
     */
   case class TupleSelect(tuple: Expr, index: Int) extends Expr {
@@ -716,11 +741,12 @@ object Expressions {
 
 
   /* Set operations */
-  /** $encodingof `Set(elements)` */
+
+  /** $encodingof `Set[base](elements)` */
   case class FiniteSet(elements: Set[Expr], base: TypeTree) extends Expr {
     val getType = SetType(base).unveilUntyped
   }
-  /** $encodingof `set.contains(elements)` or `set(elements)` */
+  /** $encodingof `set.contains(element)` or `set(element)` */
   case class ElementOfSet(element: Expr, set: Expr) extends Expr {
     val getType = BooleanType
   }
@@ -748,7 +774,7 @@ object Expressions {
   // TODO: Add checks for these expressions too
 
   /* Map operations */
-  /** $encodingof `Map(key -> value, key2 -> value2 ...)` */
+  /** $encodingof `Map[keyType, valueType](key1 -> value1, key2 -> value2 ...)` */
   case class FiniteMap(singletons: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) extends Expr {
     val getType = MapType(keyType, valueType).unveilUntyped
   }
@@ -800,23 +826,28 @@ object Expressions {
     val getType = Int32Type
   }
 
-  /** $encodingof Array(...) with predetermined elements
+  /** $encodingof Array(elems...) with predetermined elements
     * @param elems The map from the position to the elements.  
-    * @param defaultLength An optional pair where the first element is the default value and the second is the size of the array.
+    * @param defaultLength An optional pair where the first element is the default value
+    *                      and the second is the size of the array. Set this for big arrays
+    *                      with a default value (as genereted with `Array.fill` in Scala).
     */
   case class NonemptyArray(elems: Map[Int, Expr], defaultLength: Option[(Expr, Expr)]) extends Expr {
     private val elements = elems.values.toList ++ defaultLength.map{_._1}
     val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType}))).unveilUntyped
   }
 
-  /** $encodingof `Array()` with a given type */
+  /** $encodingof `Array[tpe]()` */
   case class EmptyArray(tpe: TypeTree) extends Expr with Terminal {
     val getType = ArrayType(tpe).unveilUntyped
   }
 
 
   /* Special trees for synthesis */
-  /** $encodingof `choose(pred)` where pred should be a [[Types.FunctionType]] */
+  /** $encodingof `choose(pred)`, the non-deterministic choice in Leon.
+    *
+    * @note [[pred]] should be a of a [[Types.FunctionType]].
+    */
   case class Choose(pred: Expr) extends Expr {
     val getType = pred.getType match {
       case FunctionType(from, BooleanType) if from.nonEmpty => // @mk why nonEmpty?
@@ -826,7 +857,7 @@ object Expressions {
     }
   }
 
-  // Provide an oracle (synthesizable, all-seeing choose)
+  /** Provide an oracle (synthesizable, all-seeing choose) */
   case class WithOracle(oracles: List[Identifier], body: Expr) extends Expr with Extractable {
     require(oracles.nonEmpty)
 
@@ -837,7 +868,11 @@ object Expressions {
     }
   }
 
-  /** $encodingof `???[tpe]` */
+  /** $encodingof a synthesizable hole in a program. Represented by `???[tpe]`
+    * in Leon source code.
+    *
+    * A [[Hole]] gets transformed into a [[Choose]] construct during [[leon.synthesis.ConvertHoles the ConvertHoles phase]].
+    */
   case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with Extractable {
     val getType = tpe
 

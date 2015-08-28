@@ -640,7 +640,15 @@ trait CodeExtraction extends ASTExtractors {
 
       val returnType = leonType(sym.info.finalResultType)(nctx, sym.pos)
 
-      val id = overridenOrFresh(sym, within)
+      // @mk: We type the identifiers of methods during code extraction because
+      // a possible implementing/overriding field will use this same Identifier
+      val idType = {
+        val argTypes = newParams map { _.getType }
+        if (argTypes.nonEmpty) FunctionType(argTypes, returnType)
+        else returnType
+      }
+
+      val id = overridenOrFresh(sym, within, idType)
 
       val fd = new FunDef(id.setPos(sym.pos), tparamsDef, returnType, newParams)
 
@@ -663,7 +671,9 @@ trait CodeExtraction extends ASTExtractors {
 
       val returnType = leonType(sym.info.finalResultType)(nctx, sym.pos)
 
-      val id = overridenOrFresh(sym, within)
+      // @mk: We type the identifiers of methods during code extraction because
+      // a possible implementing/overriding field will use this same Identifier
+      val id = overridenOrFresh(sym, within, returnType)
       val fd = new FunDef(id.setPos(sym.pos), Seq(), returnType, Seq())
 
       fd.setPos(sym.pos)
