@@ -661,14 +661,12 @@ object Robot {
          hsts: List[HeatSensorTransition],
          tts: List[TransmitterTransition]): List[RobotTransition] = {
 
-    ets.flatMap { et =>
-      nsts.flatMap { nst =>
-        hsts.flatMap { hst =>
-          tts.map { tt =>
-            RobotTransition(et, nst, hst, tt)
-          }
-        }
-      }
-    }
+    for {
+      et  <- ets
+      nst <- nsts
+      hst <- hsts
+      tt  <- tts
+    } yield RobotTransition(et, nst, hst, tt)
+
   }
 }

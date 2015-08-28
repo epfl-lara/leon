@@ -846,6 +846,7 @@ object Expressions {
   /* Special trees for synthesis */
   /** $encodingof `choose(pred)`, the non-deterministic choice in Leon.
     *
+    * The semantics of this expression is some value
     * @note [[pred]] should be a of a [[Types.FunctionType]].
     */
   case class Choose(pred: Expr) extends Expr {

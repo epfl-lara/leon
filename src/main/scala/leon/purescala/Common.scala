@@ -28,7 +28,11 @@ object Common {
     }
   }
 
-  // the type is left blank (Untyped) for Identifiers that are not variables
+  /** Represents a unique symbol in Leon.
+    *
+    * The name is stored in the decoded (source code) form rather than encoded (JVM) form.
+    * The type may be left blank (Untyped) for Identifiers that are not variables.
+    */
   class Identifier private[Common](val name: String, val globalId: Int, val id: Int, val tpe: TypeTree, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
     self : Serializable =>
 
@@ -83,19 +87,24 @@ object Common {
   }
 
   object FreshIdentifier {
+
+    // Replace $opcode inside a string with the symbolic operator name
+    private def decode(s: String) =
+      scala.reflect.NameTransformer.decode(s)
+
     /** Builds a fresh identifier
       * @param name The name of the identifier
       * @param tpe The type of the identifier
       * @param alwaysShowUniqueID If the unique ID should always be shown */
     def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = 
-      new Identifier(name, UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe, alwaysShowUniqueID)
+      new Identifier(decode(name), UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe, alwaysShowUniqueID)
 
     /** Builds a fresh identifier, whose ID is always shown
       * @param name The name of the identifier
       * @param forceId The forced ID of the identifier
       * @param tpe The type of the identifier */
     def apply(name: String, forceId: Int, tpe: TypeTree): Identifier = 
-      new Identifier(name, UniqueCounter.nextGlobal, forceId, tpe, true)
+      new Identifier(decode(name), UniqueCounter.nextGlobal, forceId, tpe, true)
 
   }
 

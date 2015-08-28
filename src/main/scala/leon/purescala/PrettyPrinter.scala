@@ -76,15 +76,7 @@ class PrettyPrinter(opts: PrinterOptions,
         } else {
           id.toString
         }
-        val alphaNumDollar = "[\\w\\$]"
-        // FIXME this does not account for class names with operator symbols
-        def isLegalScalaId(id : String) = id.matches(
-          s"$alphaNumDollar+|[$alphaNumDollar+_]?[!@#%^&*+-\\|~/?><:]+"
-        )
-        // Replace $opname with operator symbols
-        val candidate = scala.reflect.NameTransformer.decode(name)
-
-        if (isLegalScalaId(candidate)) p"$candidate" else p"$name"
+        p"$name"
 
       case Variable(id) =>
         p"$id"
@@ -487,10 +479,7 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case fd: FunDef =>
-        for(a <- fd.annotations) {
-          p"""|@$a
-              |"""
-        }
+        p"${nary(fd.annotations.toSeq, "\n")}"
 
         if (fd.canBeStrictField) {
           p"val ${fd.id} : "
