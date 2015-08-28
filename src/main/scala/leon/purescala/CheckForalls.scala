@@ -60,34 +60,44 @@ object CheckForalls extends UnitPhase[Program] {
             })
           }) ctx.reporter.warning("Matcher arguments must have simple form in " + conjunct)
 
-          if (matchers.filter(_._2.exists {
-            case Variable(id) => quantified(id)
-            case _ => false
-          }).map(_._1).toSet.size != 1)
-            ctx.reporter.warning("Quantification conjuncts must contain exactly one matcher in " + conjunct)
+          val id2Quant = matchers.foldLeft(Map.empty[Identifier, Set[Identifier]]) {
+            case (acc, (m, args)) => acc + (m -> (acc.getOrElse(m, Set.empty) ++ args.flatMap {
+              case Variable(id) if quantified(id) => Set(id)
+              case _ => Set.empty[Identifier]
+            }))
+          }
 
-          preTraversal {
-            case Matcher(_, _) => // OK
-            case LessThan(_: Variable, _: Variable) => // OK
-            case LessEquals(_: Variable, _: Variable) => // OK
-            case GreaterThan(_: Variable, _: Variable) => // OK
-            case GreaterEquals(_: Variable, _: Variable) => // OK
-            case And(_) => // OK
-            case Or(_) => // OK
-            case Implies(_, _) => // OK
-            case BinaryOperator(Matcher(_, _), _, _) => // OK
-            case BinaryOperator(_, Matcher(_, _), _) => // OK
-            case BinaryOperator(e1, _, _) if (variablesOf(e1) & quantified).isEmpty => // OK
-            case BinaryOperator(_, e2, _) if (variablesOf(e2) & quantified).isEmpty => // OK
-            case FunctionInvocation(_, args) if {
-              val argVars = args.flatMap(variablesOf).toSet
-              (argVars & quantified).size <= 1 && (argVars & free).isEmpty
-            } => // OK
-            case UnaryOperator(_, _) => // OK
-            case BinaryOperator(e1, e2, _) if ((variablesOf(e1) ++ variablesOf(e2)) & quantified).isEmpty => // OK
-            case NAryOperator(es, _) if (es.flatMap(variablesOf).toSet & quantified).isEmpty => // OK
-            case _: Terminal => // OK
-            case e => ctx.reporter.warning("Invalid operation " + e + " on quantified variables")
+          if (id2Quant.filter(_._2.nonEmpty).groupBy(_._2).size != 1)
+            ctx.reporter.warning("Multiple matchers must provide bijective matching in " + conjunct)
+
+          foldRight[Set[Identifier]] { case (m, children) =>
+            val q = children.toSet.flatten
+
+            m match {
+              case Matcher(_, args) =>
+                q -- args.flatMap {
+                  case Variable(id) if quantified(id) => Set(id)
+                  case _ => Set.empty[Identifier]
+                }
+              case LessThan(_: Variable, _: Variable) => q
+              case LessEquals(_: Variable, _: Variable) => q
+              case GreaterThan(_: Variable, _: Variable) => q
+              case GreaterEquals(_: Variable, _: Variable) => q
+              case And(_) => q
+              case Or(_) => q
+              case Implies(_, _) => q
+              case Operator(es, _) =>
+                val vars = es.flatMap {
+                  case Variable(id) => Set(id)
+                  case _ => Set.empty[Identifier]
+                }.toSet
+
+                if (!(q.isEmpty || (q.size == 1 && (vars & free).isEmpty)))
+                  ctx.reporter.warning("Invalid operation " + m + " on quantified variables")
+                q -- vars
+              case Variable(id) if quantified(id) => Set(id)
+              case _ => q
+            }
           } (conjunct)
         }
       }

@@ -47,11 +47,13 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
     val lambdaBody : Option[Expr] = newBody.map(b => simplifyHOFunctions(b))
 
-    val invocation : Expr = FunctionInvocation(tfd, tfd.params.map(_.toVariable))
+    val funDefArgs: Seq[Identifier] = tfd.params.map(_.id)
+    val lambdaArguments: Seq[Identifier] = lambdaBody.map(lambdaArgs).toSeq.flatten
+    val invocation : Expr = FunctionInvocation(tfd, funDefArgs.map(_.toVariable))
 
     val invocationEqualsBody : Option[Expr] = lambdaBody match {
       case Some(body) if isRealFunDef =>
-        val b : Expr = appliedEquals(invocation, body)
+        val b : Expr = And(Equals(invocation, body), liftedEquals(invocation, body, lambdaArguments))
 
         Some(if(prec.isDefined) {
           Implies(prec.get, b)
@@ -66,8 +68,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     val start : Identifier = FreshIdentifier("start", BooleanType, true)
     val pathVar : (Identifier, T) = start -> encoder.encodeId(start)
 
-    val funDefArgs : Seq[Identifier] = tfd.params.map(_.id)
-    val allArguments = funDefArgs ++ lambdaBody.map(lambdaArgs).toSeq.flatten
+    val allArguments : Seq[Identifier] = funDefArgs ++ lambdaArguments
     val arguments : Seq[(Identifier, T)] = allArguments.map(id => id -> encoder.encodeId(id))
 
     val substMap : Map[Identifier, T] = arguments.toMap + pathVar
@@ -115,13 +116,24 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
   private def lambdaArgs(expr: Expr): Seq[Identifier] = expr match {
     case Lambda(args, body) => args.map(_.id) ++ lambdaArgs(body)
+    case IsTyped(_, _: FunctionType) => sys.error("Only applicable on lambda chains")
     case _ => Seq.empty
   }
 
-  private def appliedEquals(invocation: Expr, body: Expr): Expr = body match {
-    case Lambda(args, lambdaBody) =>
-      appliedEquals(application(invocation, args.map(_.toVariable)), lambdaBody)
-    case _ => Equals(invocation, body)
+  private def liftedEquals(invocation: Expr, body: Expr, args: Seq[Identifier], inlineFirst: Boolean = false): Expr = {
+    def rec(i: Expr, b: Expr, args: Seq[Identifier], inline: Boolean): Seq[Expr] = i.getType match {
+      case FunctionType(from, to) =>
+        val (currArgs, nextArgs) = args.splitAt(from.size)
+        val arguments = currArgs.map(_.toVariable)
+        val apply = if (inline) application _ else Application
+        val (appliedInv, appliedBody) = (apply(i, arguments), apply(b, arguments))
+        Equals(appliedInv, appliedBody) +: rec(appliedInv, appliedBody, nextArgs, false)
+      case _ =>
+        assert(args.isEmpty, "liftedEquals should consume all provided arguments")
+        Seq.empty
+    }
+
+    andJoin(rec(invocation, body, args, inlineFirst))
   }
 
   def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]):
@@ -263,10 +275,10 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
         case l @ Lambda(args, body) =>
           val idArgs : Seq[Identifier] = lambdaArgs(l)
-          val trArgs : Seq[T] = idArgs.map(encoder.encodeId)
+          val trArgs : Seq[T] = idArgs.map(id => substMap.getOrElse(id, encoder.encodeId(id)))
 
           val lid = FreshIdentifier("lambda", l.getType, true)
-          val clause = appliedEquals(Variable(lid), l)
+          val clause = liftedEquals(Variable(lid), l, idArgs, inlineFirst = true)
 
           val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
           val clauseSubst: Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
