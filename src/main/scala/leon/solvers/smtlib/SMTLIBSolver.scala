@@ -62,7 +62,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
     reporter.debug(s"Outputting smt session into $fileName" )
 
-    val fw = new java.io.FileWriter(fileName, false)
+    val javaFile = new java.io.File(fileName)
+    javaFile.getParentFile.mkdirs()
+
+    val fw = new java.io.FileWriter(javaFile, false)
 
     fw.write("; Solver : "+name+"\n")
     fw.write("; Options: "+interpreterOps(context).mkString(" ")+"\n")

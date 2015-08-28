@@ -41,6 +41,8 @@ object Extractors {
         Some((Seq(a), (es: Seq[Expr]) => ArrayLength(es.head)))
       case Lambda(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Lambda(args, es.head)))
+      case Forall(args, body) =>
+        Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
 
       /* Binary operators */
       case LetDef(fd, body) => Some((

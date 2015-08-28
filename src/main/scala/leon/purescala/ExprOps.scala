@@ -319,7 +319,8 @@ object ExprOps {
           case Let(i,_,_)   => subvs - i
           case MatchExpr(_, cses)  => subvs -- cses.flatMap(_.pattern.binders)
           case Passes(_, _ , cses) => subvs -- cses.flatMap(_.pattern.binders)
-          case Lambda(args, _)  => subvs -- args.map(_.id)
+          case Lambda(args, _) => subvs -- args.map(_.id)
+          case Forall(args, _) => subvs -- args.map(_.id)
           case _ => subvs
         }
     }(expr)
