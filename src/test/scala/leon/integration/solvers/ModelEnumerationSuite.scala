@@ -53,14 +53,10 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
     val me = getModelEnum
     val enum = me.enumSimple(Seq(l), cnstr)
 
-    try {
-      val models = enum.take(5).toList
+    val models = enum.take(5).toList
 
-      assert(models.size === 5, "We can enumerate at least 5 lists of size 3+")
-      assert(models.toSet.size === 5, "Models are distinct")
-    } finally {
-      enum.free()
-    }
+    assert(models.size === 5, "We can enumerate at least 5 lists of size 3+")
+    assert(models.toSet.size === 5, "Models are distinct")
   }
 
   test("Simple model enumeration 2") { implicit fix =>
@@ -72,10 +68,8 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
     val me = getModelEnum
 
     val enum = me.enumSimple(Seq(l), cnstr)
-    val models = enum.take(5).toList
-    enum.free()
 
-    assert(models.size === 1, "We can only enumerate one list of size 0")
+    assert(enum.take(5).toList.size === 1, "We can only enumerate one list of size 0")
   }
 
   test("Varying model enumeration 1") { implicit fix =>
@@ -93,17 +87,13 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
 
     // 1 model of each size
     val enum1 = me.enumVarying(Seq(l), cnstr, car)
-    val models1 = enum1.toList
-    enum1.free()
 
-    assert(models1.size === 2, "We can enumerate 2 lists of varying size 0 < .. < 3")
+    assert(enum1.toList.size === 2, "We can enumerate 2 lists of varying size 0 < .. < 3")
 
     // 3 models of each size
     val enum2 = me.enumVarying(Seq(l), cnstr, car, 3)
-    val models2 = enum2.toList
-    enum2.free()
 
-    assert(models2.size === 6, "We can enumerate 6 lists of varying size 0 < .. < 3 with 3 per size")
+    assert(enum2.toList.size === 6, "We can enumerate 6 lists of varying size 0 < .. < 3 with 3 per size")
 
 
     val car2   = fcall("List1.sum")(l.toVariable)
@@ -111,7 +101,6 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
     // 1 model of each sum
     val enum3 = me.enumVarying(Seq(l), cnstr, car2)
     val models3 = enum3.take(4).toList
-    enum3.free()
 
     assert(models3.size === 4, "We can enumerate >=4 lists of varying sum, with 0 < .. < 3")
 
@@ -122,7 +111,6 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
     // 2 model of each sum
     val enum4 = me.enumVarying(Seq(l), cnstr, car2, 2)
     val models4 = enum4.take(4).toList
-    enum4.free()
 
     assert(models4.size === 4, "We can enumerate >=4 lists of varying sum, with 0 < .. < 3")
 
@@ -147,7 +135,6 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
     // 1 model of each caracteristic (which is a boolean, so only two possibilities)
     val enum3 = me.enumVarying(Seq(l), cnstr, car)
     val models3 = enum3.take(10).toList
-    enum3.free()
 
     assert(models3.size === 2, "We can enumerate only 2 lists of varying size==0")
 
@@ -155,7 +142,7 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
     // 1 model of each caracteristic (which is a boolean, so only two possibilities)
     val enum4 = me.enumVarying(Seq(l), cnstr, car, 2)
     val models4 = enum4.take(10).toList
-    enum4.free()
+
     assert(models4.size === 4, "We can enumerate only 4 lists of varying size==0 (2 each)")
   }
 
@@ -172,14 +159,12 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
 
     val enum1 = me.enumMaximizing(Seq(l), cnstr, car)
     val models1 = enum1.take(5).toList
-    enum1.free()
 
     assert(models1.size < 5, "It took less than 5 models to reach max")
     assert(evaluator.eval(car, models1.last).result === Some(bi(4)), "Max should be 4")
 
     val enum2 = me.enumMaximizing(Seq(l), BooleanLiteral(true), car)
     val models2 = enum2.take(4).toList
-    enum2.free()
 
     assert(models2.size == 4, "Unbounded search yields models")
     // in 4 steps, it should reach lists of size > 10
@@ -199,7 +184,6 @@ class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL 
 
     val enum1 = me.enumMinimizing(Seq(l), cnstr, car)
     val models1 = enum1.take(5).toList
-    enum1.free()
 
     assert(models1.size < 5, "It took less than 5 models to reach min")
     assert(evaluator.eval(car, models1.last).result === Some(bi(0)), "Min should be 0")

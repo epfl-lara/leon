@@ -15,13 +15,13 @@ import utils._
 class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program) => SolverFactory[Solver])) extends DataGenerator {
   implicit val ctx0 = ctx
 
-  def generate(tpe: TypeTree): Iterator[Expr] = {
+  def generate(tpe: TypeTree): FreeableIterator[Expr] = {
     generateFor(Seq(FreshIdentifier("tmp", tpe)), BooleanLiteral(true), 20, 20).map(_.head)
   }
 
-  def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
+  def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): FreeableIterator[Seq[Expr]] = {
     if (ins.isEmpty) {
-      Iterator.empty
+      FreeableIterator.empty
     } else {
 
       var fds = Map[ClassDef, FunDef]()
@@ -81,11 +81,7 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program)
 
       val enum = modelEnum.enumVarying(ins, satisfying, sizeOf, 5)
 
-      try {
-        enum.take(maxValid).map(model => ins.map(model)).toList.iterator
-      } finally {
-        enum.free()
-      }
+      enum.take(maxValid).map(model => ins.map(model))
     }
   }
 

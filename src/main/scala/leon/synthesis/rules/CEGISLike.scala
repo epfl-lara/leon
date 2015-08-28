@@ -20,6 +20,7 @@ import scala.collection.mutable.{HashMap=>MutableMap, ArrayBuffer}
 
 import evaluators._
 import datagen._
+import leon.utils._
 import codegen.CodeGenParams
 
 abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
@@ -698,36 +699,37 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
          */
         val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
 
-        val inputIterator: Iterator[Seq[Expr]] = if (useVanuatoo) {
-          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000)
+        /*
+        val inputGenerator: FreeableIterator[Example] = {
+          val sff = {
+            (ctx: LeonContext, pgm: Program) =>
+              SolverFactory.default(ctx, pgm).withTimeout(exSolverTo)
+          }
+          new SolverDataGen(sctx.context, sctx.program, sff).generateFor(p.as, p.pc, nTests, nTests).map {
+            InExample(_)
+          }
+        } */
+
+        val inputGenerator: Iterator[Example] = if (useVanuatoo) {
+          new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000).map(InExample)
         } else {
           val evaluator = new DualEvaluator(sctx.context, sctx.program, CodeGenParams.default)
-          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000)
+          new GrammarDataGen(evaluator, ValueGrammar).generateFor(p.as, p.pc, nTests, 1000).map(InExample)
         }
 
-        val cachedInputIterator = new Iterator[Example] {
-          def next() = {
-            val i = InExample(inputIterator.next())
-            baseExampleInputs += i
-            i
-          }
-
-          def hasNext = {
-            inputIterator.hasNext
-          }
-        }
+        val gi = new GrowableIterable[Example](baseExampleInputs, inputGenerator)
 
         val failedTestsStats = new MutableMap[Example, Int]().withDefaultValue(0)
 
-        def hasInputExamples = baseExampleInputs.nonEmpty || cachedInputIterator.hasNext
+        def hasInputExamples = gi.nonEmpty
 
         var n = 1
         def allInputExamples() = {
           if (n == 10 || n == 50 || n % 500 == 0) {
-            baseExampleInputs = baseExampleInputs.sortBy(e => -failedTestsStats(e))
+            gi.sortBufferBy(e => -failedTestsStats(e))
           }
           n += 1
-          baseExampleInputs.iterator ++ cachedInputIterator
+          gi.iterator
         }
 
         try {

@@ -114,7 +114,7 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
 
     val solverExamples    = solverDataGen.generateFor(ids, pc, maxValid, maxEnumerated).map(InExample(_))
 
-    ExamplesBank(generatedExamples.toSeq ++ solverExamples.toSeq, Nil)
+    ExamplesBank(generatedExamples.toSeq ++ solverExamples.toList, Nil)
   }
 
   private def extractTestsOf(e: Expr): Set[Map[Identifier, Expr]] = {
