@@ -5,19 +5,12 @@ package synthesis
 package rules
 
 import purescala.Expressions._
-import purescala.Definitions._
 import purescala.Types._
 import purescala.Constructors._
 
-import solvers._
 import datagen._
-
 import evaluators._
 import codegen.CodeGenParams
-
-import utils._
-import leon.utils._
-
 import grammars._
 
 import scala.collection.mutable.{HashMap => MutableMap}
@@ -32,16 +25,11 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
     reorderInterval: Int = 50
   )
 
-  private class Counter(private var v: Int = 0) {
-    def inc() = v += 1
-    def value() = v
-  }
-
   def getParams(sctx: SynthesisContext, p: Problem): TegisParams
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
-    return Nil;
+    return Nil
 
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
@@ -78,7 +66,7 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
           gi.iterator
         }
 
-        var tests = p.eb.valids.map(_.ins).distinct.map(t => (t, new Counter(0)))
+        var tests = p.eb.valids.map(_.ins).distinct
 
         if (gi.nonEmpty) {
 

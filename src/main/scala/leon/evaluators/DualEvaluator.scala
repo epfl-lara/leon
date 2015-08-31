@@ -116,9 +116,9 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
       case RawObject(obj, _) if returnJVMRef =>
         e
       case RawObject(obj, _) if !returnJVMRef =>
-        unit.jvmToExpr(obj, e.getType)
+        unit.jvmToValue(obj, e.getType)
       case e              if returnJVMRef =>
-        RawObject(unit.exprToJVM(e)(monitor), e.getType)
+        RawObject(unit.valueToJVM(e)(monitor), e.getType)
       case e              if !returnJVMRef =>
         e
     }

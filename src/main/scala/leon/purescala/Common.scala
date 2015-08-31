@@ -78,40 +78,31 @@ object Common {
     }
   }
 
-  private object UniqueCounter {
-    private var globalId = -1
-    private var nameIds = Map[String, Int]().withDefaultValue(-1)
-
-    def next(name: String): Int = synchronized {
-      nameIds += name -> (1+nameIds(name))
-      nameIds(name)
-    }
-
-    def nextGlobal = synchronized {
-      globalId += 1
-      globalId
-    }
-  }
-
   object FreshIdentifier {
+
+    private val uniqueCounter = new UniqueCounter[String]()
 
     // Replace $opcode inside a string with the symbolic operator name
     private def decode(s: String) =
       scala.reflect.NameTransformer.decode(s)
 
     /** Builds a fresh identifier
+      *
       * @param name The name of the identifier
       * @param tpe The type of the identifier
-      * @param alwaysShowUniqueID If the unique ID should always be shown */
+      * @param alwaysShowUniqueID If the unique ID should always be shown
+      */
     def apply(name: String, tpe: TypeTree = Untyped, alwaysShowUniqueID: Boolean = false) : Identifier = 
-      new Identifier(decode(name), UniqueCounter.nextGlobal, UniqueCounter.next(name), tpe, alwaysShowUniqueID)
+      new Identifier(decode(name), uniqueCounter.nextGlobal, uniqueCounter.next(name), tpe, alwaysShowUniqueID)
 
     /** Builds a fresh identifier, whose ID is always shown
+      *
       * @param name The name of the identifier
       * @param forceId The forced ID of the identifier
-      * @param tpe The type of the identifier */
+      * @param tpe The type of the identifier
+      */
     def apply(name: String, forceId: Int, tpe: TypeTree): Identifier = 
-      new Identifier(decode(name), UniqueCounter.nextGlobal, forceId, tpe, true)
+      new Identifier(decode(name), uniqueCounter.nextGlobal, forceId, tpe, alwaysShowUniqueID =  true)
 
   }
 

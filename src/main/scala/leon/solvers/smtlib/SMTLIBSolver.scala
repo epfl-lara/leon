@@ -50,7 +50,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
   /* Printing VCs */
   protected lazy val out: Option[java.io.FileWriter] = if (reporter.isDebugEnabled) Some {
     val file = context.files.headOption.map(_.getName).getOrElse("NA")
-    val n    = VCNumbers.getNext(targetName+file)
+    val n    = VCNumbers.next(targetName+file)
 
     val dir = new java.io.File("smt-sessions")
 
@@ -794,11 +794,4 @@ abstract class SMTLIBSolver(val context: LeonContext,
 }
 
 // Unique numbers
-protected object VCNumbers {
-  private var nexts = Map[String, Int]().withDefaultValue(0)
-  def getNext(id: String) = {
-    val n = nexts(id)+1
-    nexts += id -> n
-    n
-  }
-}
+private [smtlib] object VCNumbers extends UniqueCounter[String]
