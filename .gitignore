@@ -25,7 +25,8 @@ last.log
 *.last
 *.table
 *.log
-vcs/
+smt-sessions/
+leon.out/
 
 #eclipse
 .cache
@@ -38,7 +39,6 @@ vcs/
 .idea
 Leon.eml
 Leon.iml
-bin
 
 #scripts
 out-classes
@@ -46,4 +46,5 @@ out-classes
 #z3
 .z3-trace
 
+#travis
 travis/builds
