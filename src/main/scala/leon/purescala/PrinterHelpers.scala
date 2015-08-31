@@ -74,8 +74,9 @@ object PrinterHelpers {
     }
   }
 
-  def nary(ls: Seq[Any], sep: String = ", "): Printable = {
-    val strs = List("") ::: List.fill(ls.size-1)(sep)
+  def nary(ls: Seq[Any], sep: String = ", ", init: String = "", closing: String = ""): Printable = {
+    val (i, c) = if(ls.isEmpty) ("", "") else (init, closing)
+    val strs = i +: List.fill(ls.size-1)(sep) :+ c
 
     implicit pctx: PrinterContext =>
       new StringContext(strs: _*).p(ls: _*)

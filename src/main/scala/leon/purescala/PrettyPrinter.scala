@@ -41,7 +41,7 @@ class PrettyPrinter(opts: PrinterOptions,
     }
   }
 
-  protected def printWithPath(df: Definition)(implicit ctx: PrinterContext) {
+  protected def printNameWithPath(df: Definition)(implicit ctx: PrinterContext) {
     (opgm, ctx.parents.collectFirst { case (d: Definition) => d }) match {
       case (Some(pgm), Some(scope)) =>
         sb.append(fullNameFrom(df, scope, opts.printUniqueIds)(pgm))
@@ -175,12 +175,7 @@ class PrettyPrinter(opts: PrinterOptions,
         }
       case CaseClassSelector(_, e, id)         => p"$e.$id"
       case MethodInvocation(rec, _, tfd, args) =>
-        p"$rec.${tfd.id}"
-
-        if (tfd.tps.nonEmpty) {
-          p"[${tfd.tps}]"
-        }
-
+        p"$rec.${tfd.id}${nary(tfd.tps, ", ", "[", "]")}"
         // No () for fields
         if (tfd.fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
@@ -197,10 +192,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case FcallMethodInvocation(rec, fd, id, tps, args) =>
 
-        p"$rec.$id"
-        if (tps.nonEmpty) {
-          p"[$tps]"
-        }
+        p"$rec.$id${nary(tps, " ,", "[", "]")}"
 
         if (fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
@@ -213,11 +205,9 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
-        printWithPath(fd)
+        printNameWithPath(fd)
 
-        if (tps.nonEmpty) {
-          p"[$tps]"
-        }
+        p"${nary(tps, " ,", "[", "]")}"
 
         if (fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
@@ -357,7 +347,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case CaseClassPattern(ob, cct, subps) =>
         ob.foreach { b => p"$b @ " }
         // Print only the classDef because we don't want type parameters in patterns
-        printWithPath(cct.classDef)
+        printNameWithPath(cct.classDef)
         if (!cct.classDef.isCaseObject) p"($subps)"
 
       case InstanceOfPattern(ob, cct) =>
@@ -382,7 +372,7 @@ class PrettyPrinter(opts: PrinterOptions,
           mod <- p.modules.find( _.definedFunctions contains tfd.fd )
         } yield mod) match {
           case Some(obj) =>
-            printWithPath(obj)
+            printNameWithPath(obj)
           case None =>
             p"<unknown object>"
         }
@@ -407,10 +397,8 @@ class PrettyPrinter(opts: PrinterOptions,
       case TupleType(tpes)       => p"($tpes)"
       case FunctionType(fts, tt) => p"($fts) => $tt"
       case c: ClassType =>
-        printWithPath(c.classDef)
-        if (c.tps.nonEmpty) {
-          p"[${c.tps}]"
-        }
+        printNameWithPath(c.classDef)
+        p"${nary(c.tps, " ,", "[", "]")}"
 
       // Definitions
       case Program(units) =>
@@ -439,11 +427,7 @@ class PrettyPrinter(opts: PrinterOptions,
             |}"""
 
       case acd @ AbstractClassDef(id, tparams, parent) =>
-        p"abstract class $id"
-
-        if (tparams.nonEmpty) {
-          p"[$tparams]"
-        }
+        p"abstract class $id${nary(tparams, " ,", "[", "]")}"
 
         parent.foreach{ par =>
           p" extends ${par.id}"
@@ -462,21 +446,15 @@ class PrettyPrinter(opts: PrinterOptions,
           p"case class $id"
         }
 
-        if (tparams.nonEmpty) {
-          p"[$tparams]"
-        }
+        p"${nary(tparams, " ,", "[", "]")}"
 
         if (!isObj) {
           p"(${ccd.fields})"
         }
 
-        parent.foreach{ par =>
-          if (par.tps.nonEmpty){
-            // Remember child and parents tparams are simple bijection
-            p" extends ${par.id}[$tparams]"
-          } else {
-            p" extends ${par.id}"
-          }
+        parent.foreach { par =>
+          // Remember child and parents tparams are simple bijection
+          p" extends ${par.id}${nary(tparams, " ,", "[", "]")}"
         }
 
         if (ccd.methods.nonEmpty) {
@@ -492,10 +470,8 @@ class PrettyPrinter(opts: PrinterOptions,
           p"val ${fd.id} : "
         } else if (fd.canBeLazyField) {
           p"lazy val ${fd.id} : "
-        } else if (fd.tparams.nonEmpty) {
-          p"def ${fd.id}[${nary(fd.tparams, ",")}](${fd.params}): "
         } else {
-          p"def ${fd.id}(${fd.params}): "
+          p"def ${fd.id}${nary(fd.tparams, ",", "[", "]")}(${fd.params}): "
         }
 
         p"${fd.returnType} = ${fd.fullBody}"
@@ -586,8 +562,6 @@ class PrettyPrinter(opts: PrinterOptions,
 
   protected def requiresBraces(ex: Tree, within: Option[Tree]) = (ex, within) match {
     case (e: Expr, _) if isSimpleExpr(e) =>
-      false
-    case (_, None) =>
       false
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e =>
       false
