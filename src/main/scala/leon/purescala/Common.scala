@@ -33,8 +33,15 @@ object Common {
     * The name is stored in the decoded (source code) form rather than encoded (JVM) form.
     * The type may be left blank (Untyped) for Identifiers that are not variables.
     */
-  class Identifier private[Common](val name: String, val globalId: Int, val id: Int, val tpe: TypeTree, alwaysShowUniqueID: Boolean = false) extends Tree with Typed {
-    self : Serializable =>
+  class Identifier private[Common](
+    val name: String,
+    private[Common] val globalId: Int,
+    private[Common] val id: Int,
+    private val tpe: TypeTree,
+    private val alwaysShowUniqueID: Boolean = false
+  ) extends Tree with Typed with Ordered[Identifier] {
+
+    self: Serializable =>
 
     val getType = tpe
 
@@ -47,27 +54,27 @@ object Common {
     override def hashCode: Int = globalId
 
     override def toString: String = {
-      if(alwaysShowUniqueID) {
-        name + (if(id > 0) id else "")
+      if (alwaysShowUniqueID) {
+        name + (if (id > 0) id else "")
       } else {
         name
       }
     }
 
-    def uniqueName : String = name + id
+    def uniqueNameDelimited(delim: String) = name + delim + id
 
-    def toVariable : Variable = Variable(this)
+    def uniqueName: String = uniqueNameDelimited("")
+
+    def toVariable: Variable = Variable(this)
 
     def freshen: Identifier = FreshIdentifier(name, tpe, alwaysShowUniqueID).copiedFrom(this)
 
-  }
-
-  implicit object IdentifierOrdering extends Ordering[Identifier] {
-    def compare(a: Identifier, b: Identifier) = {
-      val ord = implicitly[Ordering[Tuple3[String, Int, Int]]]
-
-      ord.compare((a.name, a.id, a.globalId),
-                  (b.name, b.id, b.globalId))
+    override def compare(that: Identifier): Int = {
+      val ord = implicitly[Ordering[(String, Int, Int)]]
+      ord.compare(
+        (this.name, this.id, this.globalId),
+        (that.name, that.id, that.globalId)
+      )
     }
   }
 

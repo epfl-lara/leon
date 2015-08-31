@@ -32,7 +32,7 @@ trait WithLikelyEq {
   def checkLikelyEq(ctx: LeonContext, pgm: Program = Program.empty)(e1: Expr, e2: Expr, pre: Option[Expr] = None, values: Map[Identifier, Expr] = Map()): Unit = {
     val evaluator = new DefaultEvaluator(ctx, pgm)
 
-    val freeVars = (variablesOf(e1) ++ variablesOf(e2)).toSeq.sortBy(_.globalId)
+    val freeVars = (variablesOf(e1) ++ variablesOf(e2)).toSeq.sorted
 
     if (freeVars.isEmpty) {
       val r1 = evaluator.eval(e1)

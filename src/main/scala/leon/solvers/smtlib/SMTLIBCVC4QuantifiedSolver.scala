@@ -3,6 +3,7 @@
 package leon
 package solvers.smtlib
 
+import leon.solvers.SolverUnsupportedError
 import purescala._
 import Expressions._
 import Definitions._
@@ -51,7 +52,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
 
         Seq(bodyAssert) ++ specAssert
       } catch {
-        case _ : IllegalArgumentException =>
+        case _ : SolverUnsupportedError =>
           addError()
           Seq()
       }
@@ -79,7 +80,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
           (p.id, id2sym(p.id): Term)
         }.toMap)
       } catch {
-        case _: IllegalArgumentException =>
+        case _: SolverUnsupportedError =>
           addError()
           toSMT(Error(tfd.body.get.getType, ""))(Map())
       }
@@ -101,7 +102,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
         try {
           sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
         } catch {
-          case _ : IllegalArgumentException =>
+          case _ : SolverUnsupportedError =>
             addError()
         }
       }

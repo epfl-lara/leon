@@ -36,7 +36,7 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
 
     ctx.timers.evaluators.codegen.compilation.start()
     try {
-      val ce = unit.compileExpression(expression, argorder)
+      val ce = unit.compileExpression(expression, argorder)(ctx)
 
       Some((args : Seq[Expr]) => {
         try {

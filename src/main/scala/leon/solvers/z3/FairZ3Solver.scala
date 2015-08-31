@@ -218,7 +218,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
         solver.assertCnstr(cl)
       }
     } catch {
-      case _: IllegalArgumentException =>
+      case _: SolverUnsupportedError =>
         addError()
     }
   }

@@ -96,9 +96,9 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
       FiniteSet(se ++ selems, base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
-      FiniteSet(elems.map(fromSMT(_, tpe) match {
+      FiniteSet(elems.flatMap(fromSMT(_, tpe) match {
         case FiniteSet(elems, _) => elems
-      }).flatten.toSet, base)
+      }).toSet, base)
 
     // FIXME (nicolas)
     // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__

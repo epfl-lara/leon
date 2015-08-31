@@ -79,7 +79,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
         // Need to recover value form function model
         fromRawArray(extractRawArray(letDefs(k), tpe), tpe)
       } else {
-        unsupported(" as-array on non-function or unknown symbol "+k)
+        throw LeonFatalError("Array on non-function or unknown symbol "+k)
       }
 
     case (FunctionApplication(
@@ -141,7 +141,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
         case ArrayType(base) => (Int32Type, base)
         case FunctionType(args, ret) => (tupleTypeWrap(args), ret)
         case RawArrayType(from, to) => (from, to)
-        case _ => unsupported("Unsupported type for (un)packing into raw arrays: "+tpe +" (got kinds "+akind+" -> "+rkind+")")
+        case _ => unsupported(tpe, "Unsupported type for (un)packing into raw arrays (got kinds "+akind+" -> "+rkind+")")
       }
 
       def extractCases(e: Term): (Map[Expr, Expr], Expr) = e match {
@@ -157,7 +157,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
       RawArrayValue(argTpe, cases, default)
 
     case _ =>
-      unsupported("Unable to extract "+s)
+      throw LeonFatalError("Unable to extract "+s)
   }
 
   // EK: We use get-model instead in order to extract models for arrays

@@ -3,6 +3,7 @@
 package leon
 package solvers.smtlib
 
+import leon.solvers.SolverUnsupportedError
 import purescala._
 import DefOps._
 import Definitions._
@@ -63,7 +64,7 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
       try {
         sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
       } catch {
-        case _ : IllegalArgumentException =>
+        case _ : SolverUnsupportedError =>
           addError()
       }
     }

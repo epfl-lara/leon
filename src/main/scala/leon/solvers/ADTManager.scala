@@ -49,9 +49,11 @@ class ADTManager(ctx: LeonContext) {
 
     if (conflicts(t)) {
       // There is no way to solve this, the type we requested is in conflict
-      reporter.warning(s"Encountered ADT '$t' that can't be defined.")
-      reporter.warning("It appears it has recursive references through non-structural types (such as arrays, maps, or sets).")
-      throw new IllegalArgumentException
+      val str = "Encountered ADT that can't be defined.\n" +
+        "It appears it has recursive references through non-structural types (such as arrays, maps, or sets)."
+      val err = new Unsupported(t, str)(ctx)
+      reporter.warning(err.getMessage)
+      throw err
     } else {
       // We might be able to define some despite conflicts
       if (conflicts.isEmpty) {

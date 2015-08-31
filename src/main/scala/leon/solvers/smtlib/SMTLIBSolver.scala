@@ -28,7 +28,6 @@ import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import _root_.smtlib.theories._
 import _root_.smtlib.{Interpreter => SMTInterpreter}
 
-
 abstract class SMTLIBSolver(val context: LeonContext,
                             val program: Program) extends Solver with NaiveAssumptionSolver {
 
@@ -109,7 +108,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
   protected val library = program.library
 
-  protected def id2sym(id: Identifier): SSymbol = SSymbol(id.name+"!"+id.id)
+  protected def id2sym(id: Identifier): SSymbol = SSymbol(id.uniqueNameDelimited("!"))
 
   protected def freshSym(id: Identifier): SSymbol = freshSym(id.name)
   protected def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
@@ -160,7 +159,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
     case SetType(base) =>
       if (r.default != BooleanLiteral(false)) {
-        unsupported("Co-finite sets are not supported.")
+        unsupported(r, "Solver returned a co-finite set which is not supported.")
       }
       require(r.keyTpe == base, s"Type error in solver model, expected $base, found ${r.keyTpe}")
 
@@ -176,7 +175,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       // We expect a RawArrayValue with keys in from and values in Option[to],
       // with default value == None
       if (r.default.getType != library.noneType(to)) {
-        unsupported("Co-finite maps are not supported.")
+        unsupported(r, "Solver returned a co-finite map which is not supported.")
       }
       require(r.keyTpe == from, s"Type error in solver model, expected $from, found ${r.keyTpe}")
 
@@ -186,13 +185,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
       }.toSeq
       FiniteMap(elems, from, to)
 
-    case _ =>
-      unsupported("Unable to extract from raw array for "+tpe)
-  }
-
-  protected def unsupported(str: String) = {
-    reporter.warning(s"Unsupported in smt-$targetName: $str")
-    throw new IllegalArgumentException(str)
+    case other =>
+      unsupported(other, "Unable to extract from raw array for "+tpe)
   }
 
   protected def declareSort(t: TypeTree): Sort = {
@@ -223,8 +217,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
         case _: ClassType | _: TupleType | _: ArrayType | UnitType =>
           declareStructuralSort(tpe)
 
-        case _ =>
-          unsupported("Sort "+t)
+        case other =>
+          unsupported(other, s"Could not transform $other into an SMT sort")
       }
     }
   }
@@ -565,7 +559,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
           )
         }
       case o =>
-        unsupported(s"Tree ${o.asString}")
+        unsupported(o, "")
     }
   }
 
@@ -605,7 +599,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
         case cct: CaseClassType =>
           CaseClass(cct, Nil)
         case t =>
-          unsupported("woot? for a single constructor for non-case-object: "+t.asString)
+          unsupported(t, "woot? for a single constructor for non-case-object")
       }
 
     case (SimpleSymbol(s), tpe) if lets contains s =>
@@ -613,7 +607,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
     case (SimpleSymbol(s), _) =>
       variables.getA(s).map(_.toVariable).getOrElse {
-        unsupported("Unknown symbol: "+s)
+        reporter.fatalError("Unknown symbol: "+s)
       }
 
     case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
@@ -649,7 +643,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
           }
 
         case t =>
-          unsupported("Woot? structural type that is non-structural: "+t)
+          unsupported(t, "Woot? structural type that is non-structural")
       }
 
     // EK: Since we have no type information, we cannot do type-directed
@@ -676,13 +670,13 @@ abstract class SMTLIBSolver(val context: LeonContext,
           }
 
         case _ =>
-          unsupported("Function "+app+" not handled in fromSMT: "+s)
+          reporter.fatalError("Function "+app+" not handled in fromSMT: "+s)
       }
     }
     case (QualifiedIdentifier(id, sort), tpe) =>
-      unsupported("Unhandled case in fromSMT: " + id +": "+sort +" ("+tpe+")")
+      reporter.fatalError("Unhandled case in fromSMT: " + id +": "+sort +" ("+tpe+")")
     case _ =>
-      unsupported("Unhandled case in fromSMT: " + (s, tpe))
+      reporter.fatalError("Unhandled case in fromSMT: " + (s, tpe))
   }
 
 
@@ -719,7 +713,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       val term = toSMT(expr)(Map())
       sendCommand(SMTAssert(term))
     } catch {
-      case i : IllegalArgumentException =>
+      case _ : SolverUnsupportedError =>
         // Store that there was an error. Now all following check()
         // invocations will return None
         addError()

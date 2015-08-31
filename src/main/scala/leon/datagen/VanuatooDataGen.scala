@@ -236,7 +236,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
       val newExpr = replaceFromIDs(map, expression)
 
-      val ce = unit.compileExpression(newExpr, Seq(tid))
+      val ce = unit.compileExpression(newExpr, Seq(tid))(ctx)
 
       Some((args : Expr) => {
         try {

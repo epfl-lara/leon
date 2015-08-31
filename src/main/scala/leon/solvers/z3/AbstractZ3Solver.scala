@@ -259,11 +259,7 @@ trait AbstractZ3Solver extends Solver {
       }
 
     case other =>
-      sorts.cachedB(other) {
-        reporter.warning(other.getPos, "Resorting to uninterpreted type for : " + other.asString)
-        val symbol = z3.mkIntSymbol(FreshIdentifier("unint").globalId)
-        z3.mkUninterpretedSort(symbol)
-      }
+      throw SolverUnsupportedError(other, this)
   }
 
   protected[leon] def toZ3Formula(expr: Expr, initialMap: Map[Identifier, Z3AST] = Map.empty): Z3AST = {
@@ -545,10 +541,8 @@ trait AbstractZ3Solver extends Solver {
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))
 
-      case _ => {
-        reporter.warning(ex.getPos, "Can't handle this in translation to Z3: " + ex.asString)
-        throw new IllegalArgumentException
-      }
+      case other =>
+        unsupported(other)
     }
 
     rec(expr)
@@ -587,13 +581,11 @@ trait AbstractZ3Solver extends Solver {
                 tpe match {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
-                  case _ =>
-                    reporter.warning("Unexpected target type for BV value: " + tpe.asString)
-                    throw new IllegalArgumentException
+                  case other =>
+                    unsupported(other, "Unexpected target type for BV value")
                 }
               case None => {
-                reporter.warning("Z3NumeralIntAST with None: " + t)
-                throw new IllegalArgumentException
+                throw LeonFatalError(s"Could not translate hexadecimal Z3 numeral $t")
               }
             }
           } else {
@@ -607,12 +599,10 @@ trait AbstractZ3Solver extends Solver {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ =>
-                    reporter.warning("Unexpected target type for BV value: " + tpe.asString)
-                    throw new IllegalArgumentException
+                    reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
                 }
             case None => {
-              reporter.warning("Z3NumeralIntAST with None: " + t)
-              throw new IllegalArgumentException
+              reporter.fatalError(s"Could not translate Z3NumeralIntAST numeral $t")
             }
           }
         }
@@ -648,12 +638,12 @@ trait AbstractZ3Solver extends Solver {
                   case (s : IntLiteral, RawArrayValue(_, elems, default)) =>
                     val entries = elems.map {
                       case (IntLiteral(i), v) => i -> v
-                      case _ => throw new IllegalArgumentException
+                      case _ => reporter.fatalError("Translation from Z3 to Array failed")
                     }
 
                     finiteArray(entries, Some(s, default), to)
                   case _ =>
-                    throw new IllegalArgumentException
+                    reporter.fatalError("Translation from Z3 to Array failed")
                 }
             }
           } else {
@@ -667,7 +657,7 @@ trait AbstractZ3Solver extends Solver {
                     }
 
                     RawArrayValue(from, entries, default)
-                  case None => throw new IllegalArgumentException
+                  case None => reporter.fatalError("Translation from Z3 to Array failed")
                 }
 
               case tp: TypeParameter =>
@@ -680,8 +670,7 @@ trait AbstractZ3Solver extends Solver {
                     // We expect a RawArrayValue with keys in from and values in Option[to],
                     // with default value == None
                     if (r.default.getType != library.noneType(to)) {
-                      reporter.warning("Co-finite maps are not supported. (Default was "+r.default.asString+")")
-                      throw new IllegalArgumentException
+                      unsupported(r, "Solver returned a co-finite set which is not supported.")
                     }
                     require(r.keyTpe == from, s"Type error in solver model, expected ${from.asString}, found ${r.keyTpe.asString}")
 
@@ -696,7 +685,7 @@ trait AbstractZ3Solver extends Solver {
 
               case FunctionType(fts, tt) =>
                 model.getArrayValue(t) match {
-                  case None => throw new IllegalArgumentException
+                  case None => reporter.fatalError("Translation from Z3 to function value failed")
                   case Some((map, elseZ3Value)) =>
                     val leonElseValue = rec(elseZ3Value, tt)
                     val leonMap = map.toSeq.map(p => rec(p._1, tupleTypeWrap(fts)) -> rec(p._2, tt))
@@ -705,7 +694,7 @@ trait AbstractZ3Solver extends Solver {
 
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
-                  case None => throw new IllegalArgumentException
+                  case None => reporter.fatalError("Translation from Z3 to set failed")
                   case Some(set) =>
                     val elems = set.map(e => rec(e, dt))
                     FiniteSet(elems, dt)
@@ -736,17 +725,17 @@ trait AbstractZ3Solver extends Solver {
             //      case OpIDiv =>    Division(rargs(0), rargs(1))
             //      case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
-                    reporter.warning("Don't know what to do with this declKind : " + other)
-                    reporter.warning("Expected type: " + tpe.asString)
-                    reporter.warning("Tree: " + t)
-                    reporter.warning("The arguments are : " + args)
-                    throw new IllegalArgumentException
+                    reporter.fatalError(
+                      s"""|Don't know what to do with this declKind: $other
+                          |Expected type: ${tpe.asString}
+                          |Tree: $t
+                          |The arguments are: $args""".stripMargin
+                    )
                 }
             }
           }
         case _ =>
-          reporter.warning("Can't handle "+t)
-          throw new IllegalArgumentException
+          reporter.fatalError(s"Don't know what to do with this Z3 tree: $t")
       }
     }
     rec(tree, tpe)
@@ -756,7 +745,7 @@ trait AbstractZ3Solver extends Solver {
     try {
       Some(fromZ3Formula(model, tree, tpe))
     } catch {
-      case e: IllegalArgumentException => None
+      case e: Unsupported => None
     }
   }
 

@@ -192,7 +192,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           grammar.printProductions(printer)
         }
 
-        bsOrdered = bs.toSeq.sortBy(_.id)
+        bsOrdered = bs.toSeq.sorted
 
         setCExpr(computeCExpr())
       }
@@ -545,7 +545,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           for ((c, alts) <- cTree) {
             val activeBs = alts.map(_._1).filter(isBActive)
 
-            val either = for (a1 <- activeBs; a2 <- activeBs if a1.globalId < a2.globalId) yield {
+            val ord = implicitly[Ordering[Identifier]]
+            val either = for (a1 <- activeBs; a2 <- activeBs if a1 < a2) yield {
               Or(Not(a1.toVariable), Not(a2.toVariable))
             }
 
