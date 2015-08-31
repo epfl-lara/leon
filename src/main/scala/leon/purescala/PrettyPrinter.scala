@@ -53,11 +53,10 @@ class PrettyPrinter(opts: PrinterOptions,
 
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
 
-    if (requiresBraces(tree, ctx.parent)) {
-      val ctx1: PrinterContext = ctx.copy(parents = Nil)
+    if (requiresBraces(tree, ctx.parent) && !ctx.parent.contains(tree)) {
       p"""|{
           |  $tree
-          |}"""(ctx1)
+          |}"""
       return
     }
 
@@ -213,14 +212,14 @@ class PrettyPrinter(opts: PrinterOptions,
           p"($presentArgs)"
         }
 
-      case FunctionInvocation(tfd, args) =>
-        p"${tfd.id}"
+      case FunctionInvocation(TypedFunDef(fd, tps), args) =>
+        printWithPath(fd)
 
-        if (tfd.tps.nonEmpty) {
-          p"[${tfd.tps}]"
+        if (tps.nonEmpty) {
+          p"[$tps]"
         }
 
-        if (tfd.fd.isRealFunction) { 
+        if (fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
           val presentArgs = args filter {
             case MethodInvocation(_, _, tfd, _) if tfd.fd.isSynthetic => false
@@ -377,12 +376,17 @@ class PrettyPrinter(opts: PrinterOptions,
         ob.foreach { b => p"$b @ " }
 
         // @mk: I admit this is pretty ugly
-        val id = for {
+        (for {
           p <- opgm
           mod <- p.modules.find( _.definedFunctions contains tfd.fd )
-        } yield mod.id
-
-        p"${id.getOrElse("<unknown object>")}(${nary(subps)})"
+        } yield mod) match {
+          case Some(obj) =>
+            printWithPath(obj)
+          case None =>
+            p"<unkown object>"
+        }
+        
+        p"(${nary(subps)})"
 
       case LiteralPattern(ob, lit) =>
         ob foreach { b => p"$b @ " }

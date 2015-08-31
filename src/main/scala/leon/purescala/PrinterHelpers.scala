@@ -54,7 +54,8 @@ object PrinterHelpers {
               nary(ts).print(nctx)
 
             case t: Tree =>
-              val parents = if (nctx.current == t) {
+              // Don't add same tree twice in parents
+              val parents = if (nctx.parents.headOption contains nctx.current) {
                 nctx.parents
               } else {
                 nctx.current :: nctx.parents
