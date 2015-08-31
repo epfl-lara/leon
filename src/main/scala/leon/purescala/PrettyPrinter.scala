@@ -304,15 +304,16 @@ class PrettyPrinter(opts: PrinterOptions,
         }
       }
 
-      case Not(expr)                 => p"\u00AC$expr"
-      case vd@ValDef(id, _)          => vd.defaultValue match {
-        case Some(fd) => p"$id : ${vd.getType} = ${fd.body.get}"
-        case None => p"$id : ${vd.getType}"
-      }
-      case This(_)                   => p"this"
-      case (tfd: TypedFunDef)        => p"typed def ${tfd.id}[${tfd.tps}]"
-      case TypeParameterDef(tp)      => p"$tp"
-      case TypeParameter(id)         => p"$id"
+      case Not(expr) => p"\u00AC$expr"
+
+      case vd@ValDef(id, _) =>
+        p"$id : ${vd.getType}"
+        vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
+
+      case This(_)              => p"this"
+      case (tfd: TypedFunDef)   => p"typed def ${tfd.id}[${tfd.tps}]"
+      case TypeParameterDef(tp) => p"$tp"
+      case TypeParameter(id)    => p"$id"
 
 
       case IfExpr(c, t, ie : IfExpr) =>
@@ -383,9 +384,9 @@ class PrettyPrinter(opts: PrinterOptions,
           case Some(obj) =>
             printWithPath(obj)
           case None =>
-            p"<unkown object>"
+            p"<unknown object>"
         }
-        
+
         p"(${nary(subps)})"
 
       case LiteralPattern(ob, lit) =>
@@ -421,6 +422,7 @@ class PrettyPrinter(opts: PrinterOptions,
               |"""
         }
         p"""|${nary(imports,"\n")}
+            |
             |${nary(defs,"\n\n")}
             |"""
 
@@ -470,7 +472,8 @@ class PrettyPrinter(opts: PrinterOptions,
 
         parent.foreach{ par =>
           if (par.tps.nonEmpty){
-            p" extends ${par.id}[${par.tps}]"
+            // Remember child and parents tparams are simple bijection
+            p" extends ${par.id}[$tparams]"
           } else {
             p" extends ${par.id}"
           }
