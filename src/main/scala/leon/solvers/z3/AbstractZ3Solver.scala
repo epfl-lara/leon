@@ -23,7 +23,6 @@ import scala.collection.mutable.{Map => MutableMap}
 // with a Z3 instance"
 trait AbstractZ3Solver extends Solver {
 
-  val context : LeonContext
   val program : Program
 
   val library = program.library
@@ -59,7 +58,7 @@ trait AbstractZ3Solver extends Solver {
   override def interrupt() {
     interrupted = true
     if(z3 ne null) {
-      z3.interrupt
+      z3.interrupt()
     }
   }
 
@@ -206,9 +205,9 @@ trait AbstractZ3Solver extends Solver {
     sorts += RealType -> z3.mkRealSort
     sorts += BooleanType -> z3.mkBoolSort
 
-    testers.clear
-    constructors.clear
-    selectors.clear
+    testers.clear()
+    constructors.clear()
+    selectors.clear()
   }
 
   def normalizeType(t: TypeTree): TypeTree = {
@@ -276,12 +275,10 @@ trait AbstractZ3Solver extends Solver {
       
       // TODO: Leave that as a specialization?
       case LetTuple(ids, e, b) => {
-        var ix = 1
-        z3Vars = z3Vars ++ ids.map((id) => {
-          val entry = id -> rec(tupleSelect(e, ix, ids.size))
-          ix += 1
+        z3Vars = z3Vars ++ ids.zipWithIndex.map { case (id, ix) =>
+          val entry = id -> rec(tupleSelect(e, ix + 1, ids.size))
           entry
-        })
+        }
         val rb = rec(b)
         z3Vars = z3Vars -- ids
         rb
@@ -292,7 +289,6 @@ trait AbstractZ3Solver extends Solver {
 
       case me @ MatchExpr(s, cs) =>
         rec(matchToIfThenElse(me))
-
 
       case Let(i, e, b) => {
         val re = rec(e)
@@ -506,14 +502,14 @@ trait AbstractZ3Solver extends Solver {
        * ===== Map operations =====
        */
       case m @ FiniteMap(elems, from, to) =>
-        val mt @ MapType(f, t) = normalizeType(m.getType)
+        val MapType(_, t) = normalizeType(m.getType)
 
         rec(RawArrayValue(from, elems.map{
           case (k, v) => (k, CaseClass(library.someType(t), Seq(v)))
         }.toMap, CaseClass(library.noneType(t), Seq())))
 
       case MapGet(m, k) =>
-        val mt @ MapType(f, t) = normalizeType(m.getType)
+        val mt @ MapType(_, t) = normalizeType(m.getType)
         typeToSort(mt)
 
         val el = z3.mkSelect(rec(m), rec(k))
@@ -522,7 +518,7 @@ trait AbstractZ3Solver extends Solver {
         selectors.toB(library.someType(t), 0)(el)
 
       case MapIsDefinedAt(m, k) =>
-        val mt @ MapType(f, t) = normalizeType(m.getType)
+        val mt @ MapType(_, t) = normalizeType(m.getType)
         typeToSort(mt)
 
         val el = z3.mkSelect(rec(m), rec(k))
@@ -530,7 +526,7 @@ trait AbstractZ3Solver extends Solver {
         testers.toB(library.someType(t))(el)
 
       case MapUnion(m1, FiniteMap(elems, _, _)) =>
-        val mt @ MapType(f, t) = normalizeType(m1.getType)
+        val mt @ MapType(_, t) = normalizeType(m1.getType)
         typeToSort(mt)
 
         elems.foldLeft(rec(m1)) { case (m, (k,v)) =>

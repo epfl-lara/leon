@@ -12,7 +12,7 @@ class ScopeSimplifier extends Transformer {
   case class Scope(inScope: Set[Identifier] = Set(), oldToNew: Map[Identifier, Identifier] = Map(), funDefs: Map[FunDef, FunDef] = Map()) {
 
     def register(oldNew: (Identifier, Identifier)): Scope = {
-      val (oldId, newId) = oldNew
+      val newId = oldNew._2
       copy(inScope = inScope + newId, oldToNew = oldToNew + oldNew)
     }
 

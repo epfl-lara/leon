@@ -319,9 +319,6 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
         // distinction is made inside.
         case Some(false) =>
 
-          //@mk this seems to be dead code
-          val z3Core = solver.getUnsatCore()
-
           def coreElemToBlocker(c: Z3AST): (Z3AST, Boolean) = {
             z3.getASTKind(c) match {
               case Z3AppAST(decl, args) =>

@@ -8,10 +8,8 @@ import purescala._
 import Common._
 import Definitions.Program
 import Expressions._
-import Extractors._
 import Types._
 import Constructors._
-import ExprOps.simplestValue
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
@@ -101,7 +99,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
      * ===== Set operations =====
      */
     case fs @ FiniteSet(elems, base) =>
-      val ss = declareSort(fs.getType)
+      declareSort(fs.getType)
 
       toSMT(RawArrayValue(base, elems.map {
         case k => k -> BooleanLiteral(true)
