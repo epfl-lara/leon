@@ -160,7 +160,7 @@ object DefOps {
   }
 
   private def nameToParts(name: String) = {
-    name.split("\\.").toList map scala.reflect.NameTransformer.encode
+    name.split("\\.").toList
   }
 
   def searchWithin(name: String, within: Definition): Seq[Definition] = {

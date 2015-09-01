@@ -4,7 +4,7 @@ package leon
 
 import OptionParsers._
 
-import purescala.Definitions.Program
+import purescala.Definitions._
 import purescala.DefOps.fullName
 
 abstract class LeonOptionDef[+A] {
@@ -112,19 +112,15 @@ object OptionsHelpers {
     val regexPatterns = patterns map { s =>
       import java.util.regex.Pattern
 
-      // We encode the user query, reverting the encoding for . as those are
-      // not encoded in our fullnames
-      val encoded = scala.reflect.NameTransformer.encode(s).replaceAll("\\$u002E", ".")
-
       // wildcards become ".*", rest is quoted.
-      var p = encoded.split("_").toList.map(Pattern.quote).mkString(".*")
+      var p = s.split("_").toList.map(Pattern.quote).mkString(".*")
 
       // We account for _ at begining and end
-      if (encoded.endsWith("_")) {
+      if (s.endsWith("_")) {
         p += ".*"
       }
 
-      if (encoded.startsWith("_")) {
+      if (s.startsWith("_")) {
         p = ".*"+p
       }
 
@@ -135,8 +131,6 @@ object OptionsHelpers {
 
     { (name: String) => regexPatterns.exists(p => p.matcher(name).matches()) }
   }
-
-  import purescala.Definitions.FunDef
 
   def fdMatcher(pgm: Program)(patterns: Traversable[String]): FunDef => Boolean = {
     { (fd: FunDef) => fullName(fd)(pgm) } andThen matcher(patterns)
