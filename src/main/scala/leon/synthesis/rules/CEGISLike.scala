@@ -517,10 +517,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         excludedPrograms += bvs
       }
 
-      def unfold(finalUnfolding: Boolean): Boolean = {
+      def unfold() = {
         termSize += 1
         updateCTree()
-        true
       }
 
       /**
@@ -545,7 +544,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           for ((c, alts) <- cTree) {
             val activeBs = alts.map(_._1).filter(isBActive)
 
-            val ord = implicitly[Ordering[Identifier]]
             val either = for (a1 <- activeBs; a2 <- activeBs if a1 < a2) yield {
               Or(Not(a1.toVariable), Not(a2.toVariable))
             }
@@ -738,11 +736,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             var skipCESearch = false
 
             // Unfold formula
-            val unfoldSuccess = ndProgram.unfold(unfolding == maxUnfoldings)
-
-            if (!unfoldSuccess) {
-              unfolding = maxUnfoldings
-            }
+            ndProgram.unfold()
 
             // Compute all programs that have not been excluded yet
             var prunedPrograms: Set[Set[Identifier]] = ndProgram.allPrograms().toSet
