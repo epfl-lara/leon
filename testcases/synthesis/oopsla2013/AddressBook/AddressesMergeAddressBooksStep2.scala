@@ -43,9 +43,9 @@ object Addresses {
   
   def size(ab: AddressBook): Int = size(ab.business) + size(ab.pers)
   	  
-  	  def addToPers(ab: AddressBook, adr: Address) = AddressBook(ab.business, Cons(adr, ab.pers))
-  	  
-  	  def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
+	def addToPers(ab: AddressBook, adr: Address) = AddressBook(ab.business, Cons(adr, ab.pers))
+ 	  
+  def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
   	    		 
   def isEmpty(ab: AddressBook) = size(ab) == 0
   
@@ -55,11 +55,10 @@ object Addresses {
   
   def makeAddressBook(l: List): AddressBook = (l match {
     case Nil => AddressBook(Nil, Nil)
-    case Cons(a, l1) => {
+    case Cons(a, l1) => 
       val res = makeAddressBook(l1)
       if (a.priv) AddressBook(res.business, Cons(a, res.pers))
       else AddressBook(Cons(a, res.business), res.pers)
-    }
   }) ensuring {
     (res: AddressBook) =>
 		  size(res) == size(l) && addressBookInvariant(res)
@@ -74,8 +73,7 @@ object Addresses {
 
   def mergeAddressBooks(ab1: AddressBook, ab2: AddressBook) = { 
     require(addressBookInvariant(ab1) && addressBookInvariant(ab2))
-		choose {
-    (res: AddressBook) =>
+		choose { (res: AddressBook) =>
 		  (size(res) == size(ab1) + size(ab2)) && addressBookInvariant(res)
   	}
   }

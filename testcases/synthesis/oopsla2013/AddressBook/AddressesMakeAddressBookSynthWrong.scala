@@ -97,17 +97,18 @@ object Addresses {
   def makeAddressBook(l: List): AddressBook = {
     l match {
       case Nil => AddressBook(Nil,l)
-      case Cons(h,t) => {
-	if (allPrivate(t)) 
-	  AddressBook(Nil, Cons(Address(h.info, allPrivate(t)), t))
-	else
-	  AddressBook(Cons(Address(h.info, isEmpty(makeAddressBook(t))), 
-			   makeAddressBook(t).business), 
-		      makeAddressBook(t).pers)
-      }
+      case Cons(h,t) =>
+        if (allPrivate(t)) 
+          AddressBook(Nil, Cons(Address(h.info, allPrivate(t)), t))
+        else
+          AddressBook(
+            Cons( Address(h.info, isEmpty(makeAddressBook(t))),  makeAddressBook(t).business),
+            makeAddressBook(t).pers
+          )
     }
   } ensuring ((res: AddressBook) =>
-    sizeA(res) == size(l) && addressBookInvariant(res))
+    sizeA(res) == size(l) && addressBookInvariant(res)
+  )
 
 }
 

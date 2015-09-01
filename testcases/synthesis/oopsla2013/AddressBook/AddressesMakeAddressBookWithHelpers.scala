@@ -95,11 +95,11 @@ object Addresses {
 //		  } else true )
 //  }
   
-  def makeAddressBook(l: List): AddressBook = 
-		choose {
+  def makeAddressBook(l: List): AddressBook = choose {
     (res: AddressBook) =>
 		  size(res) == size(l) &&
-		  allPrivate(res.pers) && allBusiness(res.business) &&
+      allPrivate(res.pers) &&
+      allBusiness(res.business) &&
 		  contentA(res) == content(l)
   }
   

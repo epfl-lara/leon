@@ -43,9 +43,9 @@ object Addresses {
   
   def size(ab: AddressBook): Int = size(ab.business) + size(ab.pers)
   	  
-  	  def addToPers(ab: AddressBook, adr: Address) = AddressBook(ab.business, Cons(adr, ab.pers))
+  def addToPers(ab: AddressBook, adr: Address) = AddressBook(ab.business, Cons(adr, ab.pers))
   	  
-  	  def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
+  def addToBusiness(ab: AddressBook, adr: Address) = AddressBook(Cons(adr, ab.business), ab.pers)
   	    		 
   def isEmpty(ab: AddressBook) = size(ab) == 0
   

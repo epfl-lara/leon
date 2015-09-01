@@ -9,8 +9,8 @@ object SortedList {
 
   // proved with unrolling=0
   def size(l: List) : Int = (l match {
-      case Nil() => 0
-      case Cons(_, t) => 1 + size(t)
+    case Nil() => 0
+    case Cons(_, t) => 1 + size(t)
   }) ensuring(res => res >= 0)
 
   //def sizeSynth(l: List): Int = choose{ (i: Int) => i >= 0 && sizeSynth(Cons(0, l)) == i + 1}

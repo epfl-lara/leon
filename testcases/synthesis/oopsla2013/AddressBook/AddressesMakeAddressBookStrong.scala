@@ -118,12 +118,11 @@ object Addresses {
   }
 */
 
-  def makeAddressBook(l: List): AddressBook = 
-		choose {
+  def makeAddressBook(l: List): AddressBook = choose {
     (res: AddressBook) =>
-		  sizeA(res) == size(l) && 
-                  addressBookInvariant(res) &&
-                  contentA(res) == content(l)
+      sizeA(res) == size(l) && 
+      addressBookInvariant(res) &&
+      contentA(res) == content(l)
   }
-  
+
 }

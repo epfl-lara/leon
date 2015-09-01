@@ -94,8 +94,7 @@ object Addresses {
 //		  } else true )
 //  }
   
-  def makeAddressBook(l: List): AddressBook = 
-		choose {
+  def makeAddressBook(l: List): AddressBook = choose {
     (res: AddressBook) =>
 		  sizeA(res) == size(l) && addressBookInvariant(res)
   }

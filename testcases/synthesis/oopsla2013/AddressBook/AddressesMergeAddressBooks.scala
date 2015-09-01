@@ -69,8 +69,7 @@ object Addresses {
   
   def mergeAddressBooks(ab1: AddressBook, ab2: AddressBook) = { 
     require(addressBookInvariant(ab1) && addressBookInvariant(ab2))
-		choose {
-    (res: AddressBook) =>
+		choose { (res: AddressBook) =>
 		  (sizeA(res) == sizeA(ab1) + sizeA(ab2)) && addressBookInvariant(res)
   	}
   }
