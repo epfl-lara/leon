@@ -11,16 +11,19 @@ import purescala.Types._
 import purescala.DefOps._
 import purescala.Constructors._
 import purescala.Extractors.unwrapTuple
+
 import evaluators._
 import solvers._
 import utils._
 import codegen._
 import verification._
+
 import synthesis._
 import synthesis.rules._
 import synthesis.Witnesses._
+import synthesis.graph.{dotGenIds, DotGenerator}
+
 import rules._
-import graph.DotGenerator
 import grammars._
 
 class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeoutMs: Option[Long], repairTimeoutMs: Option[Long]) {
@@ -98,7 +101,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
           if (synth.settings.generateDerivationTrees) {
             val dot = new DotGenerator(search.g)
-            dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+            dot.writeFile("derivation"+ dotGenIds.nextGlobal + ".dot")
           }
 
           if (solutions.isEmpty) {

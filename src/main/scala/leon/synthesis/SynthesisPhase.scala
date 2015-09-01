@@ -80,7 +80,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       try {
         if (options.generateDerivationTrees) {
           val dot = new DotGenerator(search.g)
-          dot.writeFile("derivation"+DotGenerator.nextId()+".dot")
+          dot.writeFile("derivation"+dotGenIds.nextGlobal+".dot")
         }
 
         val (sol, _) = solutions.head

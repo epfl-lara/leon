@@ -2,14 +2,17 @@
 
 package leon.synthesis.graph
 
+import leon.utils.UniqueCounter
+
 import java.io.{File, FileWriter, BufferedWriter}
 
 class DotGenerator(g: Graph) {
 
-  private[this] var _nextID = 0
+  private val idCounter = new UniqueCounter[Unit]
+  idCounter.nextGlobal // Start with 1
+
   def freshName(prefix: String) = {
-    _nextID += 1
-    prefix+_nextID
+    prefix + idCounter.nextGlobal
   }
 
   def writeFile(f: File): Unit = {
@@ -123,10 +126,4 @@ class DotGenerator(g: Graph) {
   }
 }
 
-object DotGenerator {
-  private[this] var _nextID = 0
-  def nextId() = {
-    _nextID += 1
-    _nextID
-  }
-}
+object dotGenIds extends UniqueCounter[Unit]
