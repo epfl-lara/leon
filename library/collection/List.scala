@@ -266,6 +266,14 @@ sealed abstract class List[T] {
       None[T]()
   }} ensuring { _.isDefined != this.isEmpty }
 
+  def tailOption: Option[List[T]] = { this match {
+    case Cons(h, t) =>
+      Some(t)
+    case Nil() =>
+      None[List[T]]()
+  }} ensuring { _.isDefined != this.isEmpty }
+
+
   def unique: List[T] = this match {
     case Nil() => Nil()
     case Cons(h, t) =>
