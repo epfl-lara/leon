@@ -8,11 +8,19 @@ import ExprOps._
 import Extractors._
 import Constructors._
 
+/** Traverses/ transforms expressions with path condition awareness.
+  *
+  * Path condition representation is left generic (type [[C]])
+  */
 abstract class TransformerWithPC extends Transformer {
+
+  /** The type of the path condition */
   type C
 
+  /** The initial path condition */
   protected val initC: C
 
+  /** Register a new expression to a path condition */
   protected def register(cond: Expr, path: C): C
 
   protected def rec(e: Expr, path: C): Expr = e match {
@@ -20,7 +28,18 @@ abstract class TransformerWithPC extends Transformer {
       val se = rec(v, path)
       val sb = rec(b, register(Equals(Variable(i), se), path))
       Let(i, se, sb).copiedFrom(e)
-      
+
+    case Require(pred, body) =>
+      val sp = rec(pred, path)
+      val sb = rec(body, register(sp, path))
+      Require(sp, sb).copiedFrom(e)
+
+    //@mk: Discuss if we should include asserted predicates in the pc
+    //case Assert(pred, err, body) =>
+    //  val sp = rec(pred, path)
+    //  val sb = rec(body, register(sp, path))
+    //  Assert(sp, err, sb).copiedFrom(e)
+
     case p:Passes =>
       applyAsMatches(p,rec(_,path))
 

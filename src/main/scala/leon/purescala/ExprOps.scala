@@ -1228,7 +1228,7 @@ object ExprOps {
 
   trait CollectorWithPaths[T] extends TransformerWithPC with Traverser[Seq[T]] {
     type C = Seq[Expr]
-    val initC : C = Nil
+    protected val initC : C = Nil
     def register(e: Expr, path: C) = path :+ e
 
     private var results: Seq[T] = Nil
@@ -1245,12 +1245,7 @@ object ExprOps {
       }
     }
 
-    def traverse(funDef: FunDef): Seq[T] = {
-      val precTs = funDef.precondition.toSeq.flatMap(traverse)
-      val bodyTs = funDef.body.toSeq.flatMap(traverse(_, funDef.precondition.toSeq))
-      val postTs = funDef.postcondition.toSeq.flatMap(traverse)
-      precTs ++ bodyTs ++ postTs
-    }
+    def traverse(funDef: FunDef): Seq[T] = traverse(funDef.fullBody)
 
     def traverse(e: Expr): Seq[T] = traverse(e, initC)
 
