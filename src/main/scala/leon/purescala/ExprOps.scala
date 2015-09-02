@@ -1270,6 +1270,10 @@ object ExprOps {
     }
   }
 
+  def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
+    CollectorWithPaths(f).traverse(expr)
+  }
+
   def patternSize(p: Pattern): Int = p match {
     case wp: WildcardPattern =>
       1
@@ -2046,5 +2050,47 @@ object ExprOps {
     case _ =>
       None
   }
+
+
+  /** Collects correctness conditions from within an expression
+    * (taking into account the path condition).
+    *
+    * Collection of preconditions of function invocations
+    * can be disabled (mainly for [[leon.verification.Tactic]]).
+    *
+    * @param e The expression to traverse
+    * @param collectFIs Whether we also want to collect preconditions for function invocations
+    * @return A sequence of pairs (expression, condition)
+    */
+  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = true): Seq[(Expr, Expr)] = {
+    val conds = collectWithPC {
+
+      case m @ MatchExpr(scrut, cases) =>
+        (m, orJoin(cases map (matchCaseCondition(scrut, _))))
+
+      case e @ Error(_, _) =>
+        (e, BooleanLiteral(false))
+
+      case a @ Assert(cond, _, _) =>
+        (a, cond)
+
+      case e @ Ensuring(body, post) =>
+        (e, application(post, Seq(body)))
+
+      case r @ Require(pred, e) =>
+        (r, pred)
+
+      case fi @ FunctionInvocation(tfd, args) if tfd.hasPrecondition && collectFIs =>
+        (fi, tfd.withParamSubst(args, tfd.precondition.get))
+    }(e)
+
+    conds map {
+      case ((e, cond), path) =>
+        (e, implies(path, cond))
+    }
+  }
+
+
+
 
 }

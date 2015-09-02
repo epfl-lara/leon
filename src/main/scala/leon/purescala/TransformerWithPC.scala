@@ -16,11 +16,11 @@ abstract class TransformerWithPC extends Transformer {
   protected def register(cond: Expr, path: C): C
 
   protected def rec(e: Expr, path: C): Expr = e match {
-    case Let(i, e, b) =>
-      val se = rec(e, path)
+    case Let(i, v, b) =>
+      val se = rec(v, path)
       val sb = rec(b, register(Equals(Variable(i), se), path))
       Let(i, se, sb).copiedFrom(e)
-
+      
     case p:Passes =>
       applyAsMatches(p,rec(_,path))
 
@@ -70,8 +70,6 @@ abstract class TransformerWithPC extends Transformer {
 
     case o @ Operator(es, builder) =>
       builder(es.map(rec(_, path))).copiedFrom(o)
-
-    case t : Terminal => t
 
     case _ =>
       sys.error("Expression "+e+" ["+e.getClass+"] is not extractable")
