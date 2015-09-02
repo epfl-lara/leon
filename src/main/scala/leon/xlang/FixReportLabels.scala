@@ -36,8 +36,7 @@ object FixReportLabels extends LeonPhase[VerificationReport, VerificationReport]
       val nvc = VC(
         vc.condition,
         fd,
-        vcKind,
-        vc.tactic
+        vcKind
       ).setPos(vc.getPos)
 
       nvc -> ovr
