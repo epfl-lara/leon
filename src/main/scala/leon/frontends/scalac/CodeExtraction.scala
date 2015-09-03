@@ -511,14 +511,12 @@ trait CodeExtraction extends ASTExtractors {
 
         classesToClasses += sym -> acd
         parent.foreach(_.classDef.registerChild(acd))
-        acd.setAnnotations(annotationsOf(sym))
-
-        acd
+        acd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
       } else {
         val ccd = CaseClassDef(id, tparams, parent, sym.isModuleClass).setPos(sym.pos)
         classesToClasses += sym -> ccd
         parent.foreach(_.classDef.registerChild(ccd))
-        ccd.setAnnotations(annotationsOf(sym))
+        ccd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
 
         val fields = args.map { case (fsym, t) =>
           val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
