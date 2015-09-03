@@ -12,8 +12,6 @@ import purescala.Types._
 import purescala.Definitions._
 import purescala.Constructors._
 
-import evaluators._
-
 class TemplateGenerator[T](val encoder: TemplateEncoder[T],
                            val assumePreHolds: Boolean) {
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
@@ -140,7 +138,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
     def storeGuarded(guardVar : Identifier, expr : Expr) : Unit = {
-      assert(expr.getType == BooleanType)
+      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty))
 
       val prev = guardedExprs.getOrElse(guardVar, Nil)
 

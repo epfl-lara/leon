@@ -42,7 +42,7 @@ class PrettyPrinter(opts: PrinterOptions,
   }
 
   protected def printNameWithPath(df: Definition)(implicit ctx: PrinterContext) {
-    (opgm, ctx.parents.collectFirst { case (d: Definition) => d }) match {
+    (opgm, ctx.parents.collectFirst { case (d: Definition) if !d.isInstanceOf[ValDef] => d }) match {
       case (Some(pgm), Some(scope)) =>
         sb.append(fullNameFrom(df, scope, opts.printUniqueIds)(pgm))
 
@@ -192,7 +192,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case FcallMethodInvocation(rec, fd, id, tps, args) =>
 
-        p"$rec.$id${nary(tps, " ,", "[", "]")}"
+        p"$rec.$id${nary(tps, ", ", "[", "]")}"
 
         if (fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
@@ -207,7 +207,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
         printNameWithPath(fd)
 
-        p"${nary(tps, " ,", "[", "]")}"
+        p"${nary(tps, ", ", "[", "]")}"
 
         if (fd.isRealFunction) {
           // The non-present arguments are synthetic function invocations
@@ -398,11 +398,11 @@ class PrettyPrinter(opts: PrinterOptions,
       case FunctionType(fts, tt) => p"($fts) => $tt"
       case c: ClassType =>
         printNameWithPath(c.classDef)
-        p"${nary(c.tps, " ,", "[", "]")}"
+        p"${nary(c.tps, ", ", "[", "]")}"
 
       // Definitions
       case Program(units) =>
-        p"""${nary(units filter {_.isMainUnit}, "\n\n")}"""
+        p"""${nary(units, "\n\n")}"""
 
       case UnitDef(id,pack, imports, defs,_) =>
         if (pack.nonEmpty){
@@ -427,7 +427,7 @@ class PrettyPrinter(opts: PrinterOptions,
             |}"""
 
       case acd @ AbstractClassDef(id, tparams, parent) =>
-        p"abstract class $id${nary(tparams, " ,", "[", "]")}"
+        p"abstract class $id${nary(tparams, ", ", "[", "]")}"
 
         parent.foreach{ par =>
           p" extends ${par.id}"
@@ -446,7 +446,7 @@ class PrettyPrinter(opts: PrinterOptions,
           p"case class $id"
         }
 
-        p"${nary(tparams, " ,", "[", "]")}"
+        p"${nary(tparams, ", ", "[", "]")}"
 
         if (!isObj) {
           p"(${ccd.fields})"
@@ -454,7 +454,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
         parent.foreach { par =>
           // Remember child and parents tparams are simple bijection
-          p" extends ${par.id}${nary(tparams, " ,", "[", "]")}"
+          p" extends ${par.id}${nary(tparams, ", ", "[", "]")}"
         }
 
         if (ccd.methods.nonEmpty) {
@@ -464,14 +464,17 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case fd: FunDef =>
-        p"${nary(fd.annotations.toSeq, "\n")}"
+        for (an <- fd.annotations) {
+          p"""|@$an
+              |"""
+        }
 
         if (fd.canBeStrictField) {
           p"val ${fd.id} : "
         } else if (fd.canBeLazyField) {
           p"lazy val ${fd.id} : "
         } else {
-          p"def ${fd.id}${nary(fd.tparams, ",", "[", "]")}(${fd.params}): "
+          p"def ${fd.id}${nary(fd.tparams, ", ", "[", "]")}(${fd.params}): "
         }
 
         p"${fd.returnType} = ${fd.fullBody}"
@@ -519,11 +522,9 @@ class PrettyPrinter(opts: PrinterOptions,
 
         val fname = fid.name
 
-        val decoded = scala.reflect.NameTransformer.decode(fname)
-
         val realtps = tfd.tps.drop(cd.tparams.size)
 
-        (rec, tfd.fd, decoded, realtps, rargs)
+        (rec, tfd.fd, fname, realtps, rargs)
       }
     }
   }
@@ -552,23 +553,20 @@ class PrettyPrinter(opts: PrinterOptions,
     case _ => true
   }
 
-  protected def noBracesSub(e: Expr) = e match {
-    case Assert(_, _, bd) => Some(bd)
-    case Let(_, _, bd) => Some(bd)
-    case LetDef(_, bd) => Some(bd)
-    case Require(_, bd) => Some(bd)
-    case _ => None
+  protected def noBracesSub(e: Expr): Seq[Expr] = e match {
+    case Assert(_, _, bd) => Seq(bd)
+    case Let(_, _, bd) => Seq(bd)
+    case LetDef(_, bd) => Seq(bd)
+    case Require(_, bd) => Seq(bd)
+    case _ => Seq()
   }
 
   protected def requiresBraces(ex: Tree, within: Option[Tree]) = (ex, within) match {
-    case (e: Expr, _) if isSimpleExpr(e) =>
-      false
-    case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e =>
-      false
-    case (e: Expr, Some(_)) =>
-      true
-    case _ =>
-      false
+    case (e: Expr, _) if isSimpleExpr(e) => false
+    case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e => false
+    case (_: Expr, Some(_: MatchCase)) => false
+    case (e: Expr, Some(_)) => true
+    case _ => false
   }
 
   protected def precedence(ex: Expr): Int = ex match {
@@ -587,11 +585,12 @@ class PrettyPrinter(opts: PrinterOptions,
   protected def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
+    case (me: MatchExpr, Some(_ :Ensuring)) => true
     case (_, Some(_: Ensuring)) => false
     case (_, Some(_: Assert)) => false
     case (_, Some(_: Require)) => false
     case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass)) => false
+    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false
