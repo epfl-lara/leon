@@ -26,10 +26,10 @@ object ConvertHoles extends TransformationPhase {
    *
    * def foo(a: T) {
    *   require(..a..)
-   *   val h = choose { (h) => {
-   *     val res = expr(a, ???)
+   *   val h = choose ( h' =>
+   *     val res = expr(a, h')
    *     post(res)
-   *   }
+   *   )
    *   expr(a, h)
    * } ensuring { res =>
    *   post(res)

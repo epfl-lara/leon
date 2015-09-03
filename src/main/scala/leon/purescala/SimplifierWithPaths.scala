@@ -10,10 +10,8 @@ import Extractors._
 import Constructors._
 import solvers._
 
-class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
+class SimplifierWithPaths(sf: SolverFactory[Solver], override val initC: List[Expr] = Nil) extends TransformerWithPC {
   type C = List[Expr]
-
-  val initC = Nil
 
   val solver = SimpleSolverAPI(sf)
 
@@ -97,10 +95,10 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
             case SimpleCase(p, rhs) =>
               SimpleCase(p, rec(rhs, cond))
             case GuardedCase(p, g, rhs) =>
-              // FIXME: This is quite a dirty hack. We just know matchCasePathConditions 
+              // @mk: This is quite a dirty hack. We just know matchCasePathConditions
               // returns the current guard as the last element.
               // We don't include it in the path condition when we recurse into itself.
-              val condWithoutGuard = try { cond.init } catch { case _ : UnsupportedOperationException => List() }
+              val condWithoutGuard = cond.dropRight(1)
               val newGuard = rec(g, condWithoutGuard)
               if (valid(newGuard))
                 SimpleCase(p, rec(rhs,cond))
@@ -134,6 +132,9 @@ class SimplifierWithPaths(sf: SolverFactory[Solver]) extends TransformerWithPC {
       } else {
         BooleanLiteral(true).copiedFrom(e)
       }
+
+    case a @ Assert(pred, _, body) if impliedBy(pred, path) =>
+      body.copiedFrom(a)
 
     case b if b.getType == BooleanType && impliedBy(b, path) =>
       BooleanLiteral(true).copiedFrom(b)

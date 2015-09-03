@@ -1210,8 +1210,8 @@ object ExprOps {
     simplePreTransform(pre)(expr)
   }
 
-  def simplifyPaths(sf: SolverFactory[Solver]): Expr => Expr = {
-    new SimplifierWithPaths(sf).transform
+  def simplifyPaths(sf: SolverFactory[Solver], initC: List[Expr] = Nil): Expr => Expr = {
+    new SimplifierWithPaths(sf, initC).transform
   }
 
   trait Traverser[T] {
@@ -2047,13 +2047,13 @@ object ExprOps {
   }
 
 
-  /** Collects correctness conditions from within an expression
-    * (taking into account the path condition).
+  /** Collects from within an expression all conditions under which the evaluation of the expression
+    * will not fail (e.g. by violating a function precondition or evaluating to an error).
     *
-    * Collection of preconditions of function invocations
-    * can be disabled (mainly for [[leon.verification.Tactic]]).
+    * Collection of preconditions of function invocations can be disabled
+    * (mainly for [[leon.verification.Tactic]]).
     *
-    * @param e The expression to traverse
+    * @param e The expression for which correctness conditions are calculated.
     * @param collectFIs Whether we also want to collect preconditions for function invocations
     * @return A sequence of pairs (expression, condition)
     */
@@ -2086,6 +2086,59 @@ object ExprOps {
   }
 
 
+  def simpleCorrectnessCond(e: Expr, path: List[Expr], sf: SolverFactory[Solver]): Expr = {
+    simplifyPaths(sf, path)(
+      andJoin( collectCorrectnessConditions(e) map { _._2 } )
+    )
+  }
+
 
 
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
