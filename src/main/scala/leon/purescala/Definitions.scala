@@ -186,6 +186,40 @@ object Definitions {
 
   }
 
+  // A class that represents flags that annotate a FunDef with different attributes
+  sealed trait FunctionFlag
+
+  object FunctionFlag {
+    def fromName(name: String, args: Seq[Option[Any]]): FunctionFlag = name match {
+      case "inline" => IsInlined
+      case _ => Annotation(name, args)
+    }
+  }
+
+  // A class that represents flags that annotate a ClassDef with different attributes
+  sealed trait ClassFlag
+
+  object ClassFlag {
+    def fromName(name: String, args: Seq[Option[Any]]): ClassFlag = Annotation(name, args)
+  }
+
+  // Whether this FunDef was originally a (lazy) field
+  case class IsField(isLazy: Boolean) extends FunctionFlag
+  // Compiler annotations given in the source code as @annot
+  case class Annotation(annot: String, args: Seq[Option[Any]]) extends FunctionFlag with ClassFlag
+  // If this class was a method. owner is the original owner of the method
+  case class IsMethod(owner: ClassDef) extends FunctionFlag
+  // If this function represents a loop that was there before XLangElimination
+  // Contains a copy of the original looping function
+  case class IsLoop(orig: FunDef) extends FunctionFlag
+  // If extraction fails of the function's body fais, it is marked as abstract
+  case object IsAbstract extends FunctionFlag
+  // Currently, the only synthetic functions are those that calculate default values of parameters
+  case object IsSynthetic extends FunctionFlag
+  // Is inlined
+  case object IsInlined extends FunctionFlag
+
+
   /** Useful because case classes and classes are somewhat unified in some
    * patterns (of pattern-matching, that is) */
   sealed trait ClassDef extends Definition {
@@ -224,13 +258,19 @@ object Definitions {
 
     def methods = _methods
 
-    private var _annotations: Map[String, Seq[Option[Any]]] = Map.empty
+    private var _flags: Set[ClassFlag] = Set()
 
-    def setAnnotations(annotations: Map[String, Seq[Option[Any]]]) {
-      _annotations = annotations
+    def addFlags(flags: Set[ClassFlag]): this.type = {
+      this._flags ++= flags
+      this
     }
 
-    def annotations = _annotations
+    def addFlag(flag: ClassFlag): this.type = addFlags(Set(flag))
+
+    def flags = _flags
+
+    def annotations: Set[String] = extAnnotations.keySet
+    def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
 
     lazy val ancestors: Seq[ClassDef] = parent.toSeq flatMap { p => p.classDef +: p.classDef.ancestors }
 
@@ -314,32 +354,6 @@ object Definitions {
     def typed: CaseClassType = typed(tparams.map(_.tp))
   }
 
-  // A class that represents flags that annotate a FunDef with different attributes
-  sealed abstract class FunctionFlag
-
-  object FunctionFlag {
-    def fromName(name: String, args: Seq[Option[Any]]): FunctionFlag = name match {
-      case "inline" => IsInlined
-      case _ => Annotation(name, args)
-    }
-  }
-
-  // Whether this FunDef was originally a (lazy) field
-  case class IsField(isLazy: Boolean) extends FunctionFlag
-  // Compiler annotations given in the source code as @annot
-  case class Annotation(annot: String, args: Seq[Option[Any]]) extends FunctionFlag
-  // If this class was a method. owner is the original owner of the method
-  case class IsMethod(owner: ClassDef) extends FunctionFlag
-  // If this function represents a loop that was there before XLangElimination
-  // Contains a copy of the original looping function
-  case class IsLoop(orig: FunDef) extends FunctionFlag
-  // If extraction fails of the function's body fais, it is marked as abstract
-  case object IsAbstract extends FunctionFlag
-  // Currently, the only synthetic functions are those that calculate default values of parameters
-  case object IsSynthetic extends FunctionFlag
-  // Is inlined
-  case object IsInlined extends FunctionFlag
-
   /** Function/method definition.
     *
     *  This class represents methods or fields of objects or classes. By "fields" we mean
@@ -408,19 +422,19 @@ object Definitions {
 
     /* Flags */
 
-    private[this] var flags_ : Set[FunctionFlag] = Set()
+    private[this] var _flags: Set[FunctionFlag] = Set()
 
     def addFlags(flags: Set[FunctionFlag]): FunDef = {
-      this.flags_ ++= flags
+      this._flags ++= flags
       this
     }
 
     def addFlag(flag: FunctionFlag): FunDef = addFlags(Set(flag))
 
-    def flags = flags_
+    def flags = _flags
 
     def annotations: Set[String] = extAnnotations.keySet
-    def extAnnotations: Map[String, Seq[Option[Any]]] = flags_.collect { case Annotation(s, args) => s -> args }.toMap
+    def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
     def canBeLazyField    = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
     def canBeStrictField  = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
     def canBeField        = canBeLazyField || canBeStrictField
