@@ -524,7 +524,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case f @ FiniteMap(ss, kT, vT) => 
       FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct, kT, vT)
 
-    case g @ MapGet(m,k) => (e(m), e(k)) match {
+    case g @ MapApply(m,k) => (e(m), e(k)) match {
       case (FiniteMap(ss, _, _), e) => ss.find(_._1 == e) match {
         case Some((_, v0)) => v0
         case None => throw RuntimeError("Key not found: " + e.asString)

@@ -1639,19 +1639,19 @@ trait CodeExtraction extends ASTExtractors {
 
             // Map methods
             case (IsTyped(a1, MapType(_, vt)), "apply", List(a2)) =>
-              MapGet(a1, a2)
+              MapApply(a1, a2)
 
             case (IsTyped(a1, MapType(_, vt)), "get", List(a2)) =>
               val someClass = CaseClassType(libraryCaseClass(sym.pos, "leon.lang.Some"), Seq(vt))
               val noneClass = CaseClassType(libraryCaseClass(sym.pos, "leon.lang.None"), Seq(vt))
 
               IfExpr(MapIsDefinedAt(a1, a2).setPos(current.pos),
-                CaseClass(someClass, Seq(MapGet(a1, a2).setPos(current.pos))).setPos(current.pos),
+                CaseClass(someClass, Seq(MapApply(a1, a2).setPos(current.pos))).setPos(current.pos),
                 CaseClass(noneClass, Seq()).setPos(current.pos))
 
             case (IsTyped(a1, MapType(_, vt)), "getOrElse", List(a2, a3)) =>
               IfExpr(MapIsDefinedAt(a1, a2).setPos(current.pos),
-                MapGet(a1, a2).setPos(current.pos),
+                MapApply(a1, a2).setPos(current.pos),
                 a3)
 
             case (IsTyped(a1, mt: MapType), "isDefinedAt", List(a2)) =>

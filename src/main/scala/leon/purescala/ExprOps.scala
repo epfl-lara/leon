@@ -996,7 +996,7 @@ object ExprOps {
   /** Rewrites all map accesses with additional error conditions. */
   def mapGetWithChecks(expr: Expr): Expr = {
     postMap({
-      case mg @ MapGet(m,k) =>
+      case mg @ MapApply(m,k) =>
         val ida = MapIsDefinedAt(m, k)
         Some(IfExpr(ida, mg, Error(mg.getType, "Key not found for map access").copiedFrom(mg)).copiedFrom(mg))
 

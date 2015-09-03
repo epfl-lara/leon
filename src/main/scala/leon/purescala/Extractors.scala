@@ -114,8 +114,8 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetUnion(es(0), es(1)))
       case SetDifference(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => SetDifference(es(0), es(1)))
-      case mg@MapGet(t1, t2) =>
-        Some(Seq(t1, t2), (es: Seq[Expr]) => MapGet(es(0), es(1)))
+      case mg@MapApply(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => MapApply(es(0), es(1)))
       case MapUnion(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => MapUnion(es(0), es(1)))
       case MapDifference(t1, t2) =>

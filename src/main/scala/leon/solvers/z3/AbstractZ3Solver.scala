@@ -508,7 +508,7 @@ trait AbstractZ3Solver extends Solver {
           case (k, v) => (k, CaseClass(library.someType(t), Seq(v)))
         }.toMap, CaseClass(library.noneType(t), Seq())))
 
-      case MapGet(m, k) =>
+      case MapApply(m, k) =>
         val mt @ MapType(_, t) = normalizeType(m.getType)
         typeToSort(mt)
 

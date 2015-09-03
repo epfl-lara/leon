@@ -778,8 +778,8 @@ object Expressions {
   case class FiniteMap(singletons: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) extends Expr {
     val getType = MapType(keyType, valueType).unveilUntyped
   }
-  /** $encodingof `map.get(key)` */
-  case class MapGet(map: Expr, key: Expr) extends Expr {
+  /** $encodingof `map.apply(key)` (or `map(key)`)*/
+  case class MapApply(map: Expr, key: Expr) extends Expr {
     val getType = map.getType match {
       case MapType(from, to) if isSubtypeOf(key.getType, from) =>
         to

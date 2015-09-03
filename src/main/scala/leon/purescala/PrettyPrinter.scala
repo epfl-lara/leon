@@ -261,7 +261,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case SetDifference(l,r)        => p"$l \\ $r"
       case SetIntersection(l,r)      => p"$l \u2229 $r"
       case SetCardinality(s)         => p"|$s|"
-      case MapGet(m,k)               => p"$m($k)"
+      case MapApply(m,k)               => p"$m($k)"
       case MapIsDefinedAt(m,k)       => p"$m.isDefinedAt($k)"
       case ArrayLength(a)            => p"$a.length"
       case ArraySelect(a, i)         => p"$a($i)"
