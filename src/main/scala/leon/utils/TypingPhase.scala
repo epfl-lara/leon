@@ -61,7 +61,11 @@ object TypingPhase extends LeonPhase[Program, Program] {
               ).setPos(p)).setPos(p))
 
             case None =>
-              Some(Lambda(Seq(ValDef(resId)), IsInstanceOf(ct, Variable(resId))))
+              val pos = fd.body.map{ _.getPos } match {
+                case Some(df: DefinedPosition) => df.focusEnd
+                case _ => NoPosition
+              }
+              Some(Lambda(Seq(ValDef(resId)), IsInstanceOf(ct, Variable(resId))).setPos(pos))
           }
         }
         case _ => fd.postcondition
