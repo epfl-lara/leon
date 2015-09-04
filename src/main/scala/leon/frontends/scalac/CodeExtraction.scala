@@ -526,24 +526,24 @@ trait CodeExtraction extends ASTExtractors {
 
         ccd.setFields(fields)
 
-        // Validates type parameters
-        parent foreach { pct =>
-          if(pct.classDef.tparams.size == tparams.size) {
-            val pcd = pct.classDef
-            val ptps = pcd.tparams.map(_.tp)
-
-            val targetType = AbstractClassType(pcd, ptps)
-            val fromChild = CaseClassType(ccd, ptps).parent.get
-
-            if (fromChild != targetType) {
-              outOfSubsetError(sym.pos, "Child type should form a simple bijection with parent class type (e.g. C[T1,T2] extends P[T1,T2])")
-            }
-          } else {
-            outOfSubsetError(sym.pos, "Child classes should have the same number of type parameters as their parent")
-          }
-        }
-
         ccd
+      }
+
+      // Validates type parameters
+      parent foreach { pct =>
+        if(pct.classDef.tparams.size == tparams.size) {
+          val pcd = pct.classDef
+          val ptps = pcd.tparams.map(_.tp)
+
+          val targetType = AbstractClassType(pcd, ptps)
+          val fromChild = cd.typed(ptps).parent.get
+
+          if (fromChild != targetType) {
+            outOfSubsetError(sym.pos, "Child type should form a simple bijection with parent class type (e.g. C[T1,T2] extends P[T1,T2])")
+          }
+        } else {
+          outOfSubsetError(sym.pos, "Child classes should have the same number of type parameters as their parent")
+        }
       }
 
       //println(s"Body of $sym")
