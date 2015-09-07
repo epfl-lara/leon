@@ -1,5 +1,7 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
+//This is a stupid change!
+
 package leon
 
 abstract class Pipeline[-F, +T] {
