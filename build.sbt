@@ -16,6 +16,10 @@ scalacOptions in (Compile, doc) ++= Seq("-doc-root-content", baseDirectory.value
 
 javacOptions += "-Xlint:unchecked"
 
+site.settings
+
+site.sphinxSupport()
+
 if(System.getProperty("sun.arch.data.model") == "64") {
   unmanagedBase <<= baseDirectory { base => base / "unmanaged" / "64" }
 } else {
