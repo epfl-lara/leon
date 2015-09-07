@@ -399,7 +399,7 @@ trait SMTLIBTarget {
         }.toMap, CaseClass(library.noneType(to), Seq())))
 
 
-      case MapGet(m, k) =>
+      case MapApply(m, k) =>
         val mt @ MapType(_, to) = m.getType
         declareSort(mt)
         // m(k) becomes
