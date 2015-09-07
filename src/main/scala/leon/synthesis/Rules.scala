@@ -41,7 +41,7 @@ object Rules {
     Unification.OccursCheck, // probably useless
     Disunification.Decomp,
     ADTDual,
-    OnePoint,
+    //OnePoint,
     Ground,
     CaseSplit,
     IfSplit,

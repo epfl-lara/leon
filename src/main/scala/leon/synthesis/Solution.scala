@@ -65,6 +65,10 @@ object Solution {
     new Solution(simplify(pre), defs, simplify(term), isTrusted)
   }
 
+  def term(term: Expr, isTrusted: Boolean = true) = {
+    new Solution(BooleanLiteral(true), Set(), simplify(term), isTrusted)
+  }
+
   def unapply(s: Solution): Option[(Expr, Set[FunDef], Expr)] = if (s eq null) None else Some((s.pre, s.defs, s.term))
 
   def choose(p: Problem): Solution = {

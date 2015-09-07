@@ -3,12 +3,12 @@
 package leon
 package solvers.smtlib
 
-import leon.purescala.Common.Identifier
-import leon.purescala.Definitions.Program
-import leon.purescala.Expressions.Expr
-import leon.solvers.SolverUnsupportedError
-import smtlib.parser.Commands.{Assert => SMTAssert}
-import smtlib.parser.Terms.{Exists => SMTExists}
+import purescala.Common.Identifier
+import purescala.Definitions.Program
+import purescala.Expressions.Expr
+
+import _root_.smtlib.parser.Commands.{Assert => SMTAssert}
+import _root_.smtlib.parser.Terms.{Exists => SMTExists}
 
 class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTLIBCVC4QuantifiedSolver(context, program) {
 
@@ -30,9 +30,9 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
 
   // For this solver, we prefer the variables of assert() commands to be exist. quantified instead of free
   override def assertCnstr(e: Expr) = try {
-    sendCommand(SMTAssert(quantifiedTerm(SMTExists, e)(Map())))
+    emit(SMTAssert(quantifiedTerm(SMTExists, e)(Map())))
   } catch {
-    case _ : SolverUnsupportedError =>
+    case _ : SMTLIBUnsupportedError =>
       addError()
   }
 
