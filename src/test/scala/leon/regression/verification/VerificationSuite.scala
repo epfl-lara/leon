@@ -19,17 +19,18 @@ trait VerificationSuite extends LeonRegressionSuite {
   val optionVariants: List[List[String]]
   val testDir: String
 
-  private var counter : Int = 0
-  private def nextInt() : Int = {
+  private var counter: Int = 0
+  private def nextInt(): Int = {
     counter += 1
     counter
   }
-  private[verification] case class Output(report : VerificationReport, reporter : Reporter)
+
+  private[verification] case class Output(report: VerificationReport, reporter: Reporter)
  
   val pipeFront: Pipeline[Program, Program]
   val pipeBack : Pipeline[Program, VerificationReport]
 
-  private def mkTest(files: List[String], cat: String)(block: Output=>Unit) = {
+  private def mkTest(files: List[String], cat: String, forError: Boolean)(block: Output => Unit) = {
     val extraction =
       ExtractionPhase andThen
       PreprocessingPhase andThen
@@ -46,15 +47,22 @@ trait VerificationSuite extends LeonRegressionSuite {
       for ((id, p) <- programs; options <- optionVariants) {
         test(f"${nextInt()}%3d: ${id.name} ${options.mkString(" ")}") {
           val ctx = createLeonContext(options: _*)
-          val report = pipeBack.run(ctx)(p)
-          block(Output(report, ctx.reporter))
+          if (forError) {
+            intercept[LeonFatalError] {
+              pipeBack.run(ctx)(p)
+            }
+          }
+          else {
+            val report = pipeBack.run(ctx)(p)
+            block(Output(report, ctx.reporter))
+          }
         }
       }
     } catch {
       case _: LeonFatalError =>
         ctx.reporter match {
           case sr: TestSilentReporter =>
-            println("Unnexpected Fatal error:")
+            println("Unexpected fatal error:")
             for (e <- sr.lastErrors) {
               println(" "+e)
             }
@@ -64,8 +72,8 @@ trait VerificationSuite extends LeonRegressionSuite {
     }
   }
 
-  private[verification] def forEachFileIn(cat : String)(block : Output=>Unit) {
-    val fs = filesInResourceDir( testDir + cat, _.endsWith(".scala")).toList
+  private[verification] def forEachFileIn(cat: String, forError: Boolean)(block: Output => Unit) {
+    val fs = filesInResourceDir(testDir + cat, _.endsWith(".scala")).toList
 
     fs foreach { file => 
       assert(file.exists && file.isFile && file.canRead,
@@ -74,29 +82,41 @@ trait VerificationSuite extends LeonRegressionSuite {
 
     val files = fs map { _.getPath }
 
-    mkTest(files, cat)(block)
+    mkTest(files, cat, forError)(block)
   }
 
   override def run(testName: Option[String], args: Args): Status = {
-    forEachFileIn("valid") { output =>
+    forEachFileIn("valid", false) { output =>
       val Output(report, reporter) = output
-      for ((vc, vr) <- report.vrs if (vr.isInvalid)) {
+      for ((vc, vr) <- report.vrs if vr.isInvalid) {
         fail(s"The following verification condition was invalid: $vc @${vc.getPos}")
       }
-      for ((vc, vr) <- report.vrs if (vr.isInconclusive)) {
+      for ((vc, vr) <- report.vrs if vr.isInconclusive) {
         fail(s"The following verification condition was inconclusive: $vc @${vc.getPos}")
       }
       reporter.terminateIfError()
     }
 
-    forEachFileIn("invalid") { output =>
-      val Output(report, reporter) = output
+    forEachFileIn("invalid", false) { output =>
+      val Output(report, _) = output
       assert(report.totalUnknown === 0,
         "There should not be unknown verification conditions.")
       assert(report.totalInvalid > 0,
         "There should be at least one invalid verification condition.")
-
     }
+
+    forEachFileIn("unknown", false) { output =>
+      val Output(report, reporter) = output
+      for ((vc, vr) <- report.vrs if vr.isInvalid) {
+        fail(s"The following verification condition was invalid: $vc @${vc.getPos}")
+      }
+      assert(report.totalUnknown > 0,
+        "There should be at least one unknown verification conditions.")
+
+      reporter.terminateIfError()
+    }
+
+    forEachFileIn("error", true) { _ => () }
 
     super.run(testName, args)
   }
