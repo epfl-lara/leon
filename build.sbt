@@ -120,10 +120,21 @@ testOptions in IntegrTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWi
 
 
 
-// RegressionTest Tests
+// Regression Tests
 lazy val RegressionTest = config("regression") extend(Test)
 
-testOptions in RegressionTest  := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.regression."))
+testOptions in RegressionTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.regression."))
+
+
+
+// Isabelle Tests
+lazy val IsabelleTest = config("isabelle") extend(Test)
+
+testOptions in IsabelleTest := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.isabelle."))
+
+parallelExecution in IsabelleTest := false
+
+fork in IsabelleTest := true
 
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
@@ -133,9 +144,9 @@ lazy val bonsai      = ghProject("git://github.com/colder/bonsai.git",     "0fec
 lazy val scalaSmtLib = ghProject("git://github.com/regb/scala-smtlib.git", "8aa4a5588653ce4986e3721115a62cc386714cc2")
 
 lazy val root = (project in file(".")).
-  configs(RegressionTest).
-  configs(IntegrTest).
+  configs(RegressionTest, IsabelleTest, IntegrTest).
   dependsOn(bonsai, scalaSmtLib).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
+  settings(inConfig(IsabelleTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(Test)(Defaults.testTasks ++ testSettings): _*)
