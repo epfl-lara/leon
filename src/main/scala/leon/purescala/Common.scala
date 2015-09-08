@@ -26,6 +26,8 @@ object Common {
     def asString(pgm: Program)(implicit ctx: LeonContext): String = {
       ScalaPrinter(this, ctx, pgm)
     }
+
+    override def toString = asString(LeonContext.printNames)
   }
 
   /** Represents a unique symbol in Leon.

@@ -33,4 +33,10 @@ object LeonContext {
     val reporter = new DefaultReporter(Set())
     LeonContext(reporter, new InterruptManager(reporter))
   }
+
+  def printNames = {
+    empty.copy(options =
+      Seq(LeonOption[Set[DebugSection]](SharedOptions.optDebug)(Set(DebugSectionTrees)))
+    )
+  }
 }
