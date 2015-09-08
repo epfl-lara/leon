@@ -13,7 +13,7 @@ Windows.
 
 **Requirements:**
 
-* `1.7  Java Development Kit <http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html>`_ *(Java 8 is not officially supported)* 
+* `1.7  Java Development Kit <http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html>`_
 
 * SBT 0.13.X (Available from http://www.scala-sbt.org/)
 
