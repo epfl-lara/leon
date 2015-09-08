@@ -40,8 +40,8 @@ object InliningPhase extends TransformationPhase {
     for (fd <- p.definedFunctions) {
       fd.fullBody = simplify(preMap {
         case FunctionInvocation(TypedFunDef(fd, tps), args) if doInline(fd) =>
-          val newBody = replaceFromIDs(fd.params.map(_.id).zip(args).toMap, fd.fullBody)
-          Some(instantiateType(newBody, (fd.tparams zip tps).toMap, Map()))
+          val newBody = instantiateType(fd.fullBody, (fd.tparams zip tps).toMap, Map())
+          Some(replaceFromIDs(fd.params.map(_.id).zip(args).toMap, newBody))
         case _ =>
           None
       }(fd.fullBody))

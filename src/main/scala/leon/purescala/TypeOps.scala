@@ -260,7 +260,7 @@ object TypeOps {
               (LiteralPattern(newOb,lit), (ob zip newOb).toMap)
 
             case _ =>
-              sys.error("woot!?")
+              sys.error(s"woot!? $p:$expType")
           }
 
           (srec(e), cases.map(trCase))//.copiedFrom(m)
