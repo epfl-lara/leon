@@ -37,7 +37,7 @@ object Common {
     */
   class Identifier private[Common](
     val name: String,
-    private[Common] val globalId: Int,
+    val globalId: Int,
     private[Common] val id: Int,
     private val tpe: TypeTree,
     private val alwaysShowUniqueID: Boolean = false

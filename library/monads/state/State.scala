@@ -47,6 +47,7 @@ case class State[S, A](runState: S => (A, S)) {
   def >:: (s: S) = eval(s)
 
   /** Helpers */
+  @isabelle.noBody
   def forever[B]: State[S, B] = this >> forever
 
   def apply(s: S) = runState(s)
@@ -94,7 +95,7 @@ object State {
   def mapM[A, B, S](f: A => State[S, B], l: List[A]): State[S, List[B]] = {
     l match {
       case Nil() => unit(Nil[B]())
-      case x :: xs => for {
+      case Cons(x, xs) => for {
         mx <- f(x)
         mxs <- mapM(f,xs)
       } yield mx :: mxs
@@ -104,7 +105,7 @@ object State {
   def mapM_ [A, B, S] (f: A => State[S, B], l: List[A]): State[S, Unit] = {
     l match {
       case Nil() => unit(())
-      case x :: xs => for {
+      case Cons(x, xs) => for {
         mx <- f(x)
         mxs <- mapM_ (f, xs)
       } yield ()
@@ -123,7 +124,7 @@ object State {
   def filterM[S, A](f: A => State[S, Boolean], l: List[A]): State[S, List[A]] = {
     l match {
       case Nil() => unit(Nil[A]())
-      case x :: xs => for {
+      case Cons(x, xs) => for {
         flg <- f(x)
         rest <- filterM(f, xs)
       } yield (if (flg) x :: rest else rest)
@@ -134,7 +135,7 @@ object State {
   def foldLeftM[S, A, B](f: (B, A) => State[S, B], z: B, l: List[A]): State[S, B] = {
     l match {
       case Nil() => unit(z)
-      case x :: xs =>
+      case Cons(x, xs) =>
         f(z, x) >>= ( z0 => foldLeftM(f,z0,xs) )
     }
   }
@@ -143,7 +144,7 @@ object State {
   def foldLeftM_ [S, A](f: A => State[S, Unit], l: List[A]): State[S, Unit] = {
     l match {
       case Nil() => unit(())
-      case x :: xs =>
+      case Cons(x, xs) =>
         f(x) >> foldLeftM_ (f, xs)
     }
   }

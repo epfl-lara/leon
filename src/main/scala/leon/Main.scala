@@ -22,13 +22,15 @@ object Main {
       termination.TerminationPhase,
       verification.AnalysisPhase,
       repair.RepairPhase,
-      evaluators.EvaluationPhase
+      evaluators.EvaluationPhase,
+      solvers.isabelle.AdaptationPhase,
+      solvers.isabelle.IsabellePhase
     )
   }
 
   // Add whatever you need here.
   lazy val allComponents : Set[LeonComponent] = allPhases.toSet ++ Set(
-    solvers.z3.FairZ3Component, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component
+    solvers.z3.FairZ3Component, MainComponent, SharedOptions, solvers.smtlib.SMTLIBCVC4Component, solvers.isabelle.Component
   )
 
   /*
@@ -43,12 +45,13 @@ object Main {
     val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify", false)
     val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
     val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
+    val optIsabelle    = LeonFlagOptionDef("isabelle",    "Run Isabelle verification",                             false)
     val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             false)
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optNoop, optHelp, optEval, optVerify)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify)
 
   }
 
@@ -144,6 +147,7 @@ object Main {
     import verification.AnalysisPhase
     import repair.RepairPhase
     import evaluators.EvaluationPhase
+    import solvers.isabelle.IsabellePhase
     import MainComponent._
 
     val helpF        = ctx.findOptionOrDefault(optHelp)
@@ -151,6 +155,7 @@ object Main {
     val synthesisF   = ctx.findOptionOrDefault(optSynthesis)
     val xlangF       = ctx.findOptionOrDefault(SharedOptions.optXLang)
     val repairF      = ctx.findOptionOrDefault(optRepair)
+    val isabelleF    = ctx.findOptionOrDefault(optIsabelle)
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
     val evalF        = ctx.findOption(optEval).isDefined
@@ -172,6 +177,7 @@ object Main {
         else if (repairF) RepairPhase
         else if (analysisF) Pipeline.both(analysis, TerminationPhase)
         else if (terminationF) TerminationPhase
+        else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
         else analysis
       }

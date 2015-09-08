@@ -18,7 +18,7 @@ abstract class LeonOptionDef[+A] {
     else s"--$name=$usageRhs"
   }
   def helpString = {
-    f"$usageDesc%-26s" + description.replaceAll("\n", "\n" + " " * 26)
+    f"$usageDesc%-28s" + description.replaceAll("\n", "\n" + " " * 28)
   }
 
   private def parseValue(s: String)(implicit reporter: Reporter): A = {

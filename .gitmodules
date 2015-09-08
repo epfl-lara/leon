@@ -1,0 +1,3 @@
+[submodule "unmanaged/isabelle/protocol"]
+	path = unmanaged/isabelle/protocol
+	url = https://github.com/larsrh/libisabelle-protocol.git

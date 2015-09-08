@@ -3,12 +3,12 @@
 package leon
 package utils
 
-import leon.xlang.XLangDesugaringPhase
-import purescala.Definitions.Program
-
 import leon.purescala._
-import synthesis.{ConvertWithOracle, ConvertHoles}
-import verification.InjectAsserts
+import leon.purescala.Definitions.Program
+import leon.solvers.isabelle.AdaptationPhase
+import leon.synthesis.{ConvertWithOracle, ConvertHoles}
+import leon.verification.InjectAsserts
+import leon.xlang.XLangDesugaringPhase
 
 class PreprocessingPhase(private val desugarXLang: Boolean = false) extends TransformationPhase {
 
@@ -45,8 +45,9 @@ class PreprocessingPhase(private val desugarXLang: Boolean = false) extends Tran
 
     val phases =
       pipeBegin andThen
-      pipeX     andThen
+      pipeX andThen
       new FunctionClosure andThen
+      AdaptationPhase andThen
       debugTrees("Program after pre-processing")
 
     phases.run(ctx)(p)

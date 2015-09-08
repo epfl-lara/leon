@@ -3,12 +3,13 @@ import leon.annotation._
 
 object Map {
   @library
+  @isabelle.function(term = "Map.empty")
   def empty[A,B] = Map[A,B]()
 
-   @ignore
-   def apply[A,B](elems: (A,B)*) = {
-     new Map[A,B](scala.collection.immutable.Map[A,B](elems : _*))
-   }
+  @ignore
+  def apply[A,B](elems: (A,B)*) = {
+    new Map[A,B](scala.collection.immutable.Map[A,B](elems : _*))
+  }
 }
 
 @ignore

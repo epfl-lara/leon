@@ -35,6 +35,9 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.6",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
+  "info.hupel" %% "libisabelle" % "0.1",
+  "info.hupel" %% "libisabelle-setup" % "0.1",
+  "info.hupel" %% "pide-2015" % "0.1",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
 
@@ -66,11 +69,13 @@ script := {
       s.log.info("Generating '"+f.getName+"' script ("+(if(is64) "64b" else "32b")+")...")
     }
     val paths = (res.getAbsolutePath +: out.getAbsolutePath +: cps.map(_.data.absolutePath)).mkString(System.getProperty("path.separator"))
+    val base = baseDirectory.value.getAbsolutePath
     IO.write(f, s"""|#!/bin/bash --posix
                     |
                     |SCALACLASSPATH="$paths"
+                    |BASEDIRECTORY="$base"
                     |
-                    |java -Xmx2G -Xms512M -Xss64M -classpath $${SCALACLASSPATH} -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath $${SCALACLASSPATH} leon.Main $$@ 2>&1 | tee -i last.log
+                    |java -Xmx2G -Xms512M -Xss64M -classpath "$${SCALACLASSPATH}" -Dleon.base="$${BASEDIRECTORY}" -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath "$${SCALACLASSPATH}" leon.Main $$@ 2>&1 | tee -i last.log
                     |""".stripMargin)
     f.setExecutable(true)
   } catch {
@@ -83,12 +88,12 @@ sourceGenerators in Compile <+= Def.task {
   val libFiles = ((baseDirectory.value / "library") ** "*.scala").getPaths
   val build = (sourceManaged in Compile).value / "leon" / "Build.scala";
   IO.write(build, s"""|package leon;
-                    |
-                    |object Build {
-                    |  val libFiles = List(
-                    |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"")}
-                    |  )
-                    |}""".stripMargin)
+                      |
+                      |object Build {
+                      |  val libFiles = List(
+                      |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"")}
+                      |  )
+                      |}""".stripMargin)
   Seq(build)
 }
 
@@ -134,5 +139,3 @@ lazy val root = (project in file(".")).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
   settings(inConfig(Test)(Defaults.testTasks ++ testSettings): _*)
-
-

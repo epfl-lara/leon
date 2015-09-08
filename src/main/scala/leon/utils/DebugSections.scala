@@ -22,6 +22,7 @@ case object DebugSectionRepair       extends DebugSection("repair",       1 << 1
 case object DebugSectionLeon         extends DebugSection("leon",         1 << 11)
 case object DebugSectionXLang        extends DebugSection("xlang",        1 << 12)
 case object DebugSectionTypes        extends DebugSection("types",        1 << 13)
+case object DebugSectionIsabelle     extends DebugSection("isabelle",     1 << 14)
 
 object DebugSections {
   val all = Set[DebugSection](
@@ -38,6 +39,7 @@ object DebugSections {
     DebugSectionRepair,
     DebugSectionLeon,
     DebugSectionXLang,
-    DebugSectionTypes
+    DebugSectionTypes,
+    DebugSectionIsabelle
   )
 }

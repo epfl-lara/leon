@@ -39,7 +39,8 @@ object SolverFactory {
     "smt-cvc4-cex"   -> "CVC4 through SMT-LIB, in-solver finite-model-finding, for counter-examples only",
     "unrollz3"       -> "Native Z3 with leon-templates for unfolding",
     "ground"         -> "Only solves ground verification conditions by evaluating them",
-    "enum"           -> "Enumeration-based counter-example-finder"
+    "enum"           -> "Enumeration-based counter-example-finder",
+    "isabelle"       -> "Isabelle2015 through libisabelle with various automated tactics"
   )
 
   val availableSolversPretty = "Available: " +
@@ -103,6 +104,9 @@ object SolverFactory {
 
     case "smt-cvc4-cex" =>
       SolverFactory(() => new SMTLIBCVC4CounterExampleSolver(ctx, program) with TimeoutSolver)
+
+    case "isabelle" =>
+      new isabelle.IsabelleSolverFactory(ctx, program)
 
     case _ =>
       ctx.reporter.error(s"Unknown solver $name")

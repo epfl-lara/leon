@@ -48,3 +48,6 @@ out-classes
 
 #travis
 travis/builds
+
+# Isabelle
+contrib

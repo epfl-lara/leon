@@ -9,8 +9,10 @@ import leon.math._
 import leon.proof._
 
 @library
+@isabelle.typ(name = "List.list")
 sealed abstract class List[T] {
 
+  @isabelle.function(term = "Int.int o List.length")
   def size: BigInt = (this match {
     case Nil() => BigInt(0)
     case Cons(h, t) => 1 + t.size
@@ -18,16 +20,19 @@ sealed abstract class List[T] {
 
   def length = size
 
+  @isabelle.function(term = "List.list.set")
   def content: Set[T] = this match {
     case Nil() => Set()
     case Cons(h, t) => Set(h) ++ t.content
   }
 
+  @isabelle.function(term = "List.member")
   def contains(v: T): Boolean = (this match {
     case Cons(h, t) => h == v || t.contains(v)
     case Nil() => false
   }) ensuring { _ == (content contains v) }
 
+  @isabelle.function(term = "List.append")
   def ++(that: List[T]): List[T] = (this match {
     case Nil() => that
     case Cons(x, xs) => Cons(x, xs ++ that)
@@ -49,6 +54,7 @@ sealed abstract class List[T] {
     t
   }
 
+  @isabelle.fullBody
   def apply(index: BigInt): T = {
     require(0 <= index && index < size)
     if (index == BigInt(0)) {
@@ -58,8 +64,10 @@ sealed abstract class List[T] {
     }
   }
 
+  @isabelle.function(term = "%xs x. x # xs")
   def ::(t:T): List[T] = Cons(t, this)
 
+  @isabelle.function(term = "%xs x. xs @ [x]")
   def :+(t:T): List[T] = {
     this match {
       case Nil() => Cons(t, this)
@@ -67,6 +75,7 @@ sealed abstract class List[T] {
     }
   } ensuring(res => (res.size == size + 1) && (res.content == content ++ Set(t)))
 
+  @isabelle.function(term = "List.rev")
   def reverse: List[T] = {
     this match {
       case Nil() => this
@@ -152,6 +161,7 @@ sealed abstract class List[T] {
     chunk0(s, this, Nil(), Nil(), s)
   }
 
+  @isabelle.function(term = "List.zip")
   def zip[B](that: List[B]): List[(T, B)] = { (this, that) match {
     case (Cons(h1, t1), Cons(h2, t2)) =>
       Cons((h1, h2), t1.zip(t2))
@@ -161,6 +171,7 @@ sealed abstract class List[T] {
     if (this.size <= that.size) this.size else that.size
   )}
 
+  @isabelle.function(term = "%xs x. removeAll x xs")
   def -(e: T): List[T] = { this match {
     case Cons(h, t) =>
       if (e == h) {
@@ -383,6 +394,7 @@ sealed abstract class List[T] {
     res.size == this.size
   }
 
+  @isabelle.function(term = "List.null")
   def isEmpty = this match {
     case Nil() => true
     case _ => false
@@ -391,16 +403,19 @@ sealed abstract class List[T] {
   def nonEmpty = !isEmpty
 
   // Higher-order API
+  @isabelle.function(term = "%xs f. List.list.map f xs")
   def map[R](f: T => R): List[R] = { this match {
     case Nil() => Nil[R]()
     case Cons(h, t) => f(h) :: t.map(f)
   }} ensuring { _.size == this.size }
 
+  @isabelle.function(term = "%bs a f. List.foldl f a bs")
   def foldLeft[R](z: R)(f: (R,T) => R): R = this match {
     case Nil() => z
     case Cons(h,t) => t.foldLeft(f(z,h))(f)
   }
 
+  @isabelle.function(term = "%as b f. List.foldr f as b")
   def foldRight[R](z: R)(f: (T,R) => R): R = this match {
     case Nil() => z
     case Cons(h, t) => f(h, t.foldRight(z)(f))
@@ -418,6 +433,7 @@ sealed abstract class List[T] {
       f(h, h1) :: rest
   }} ensuring { !_.isEmpty }
 
+  @isabelle.function(term = "List.bind")
   def flatMap[R](f: T => List[R]): List[R] =
     ListOps.flatten(this map f)
 
@@ -452,17 +468,19 @@ sealed abstract class List[T] {
   // In case we implement for-comprehensions
   def withFilter(p: T => Boolean) = filter(p)
 
+  @isabelle.function(term = "%xs P. List.list_all P xs")
   def forall(p: T => Boolean): Boolean = this match {
     case Nil() => true
     case Cons(h, t) => p(h) && t.forall(p)
   }
 
+  @isabelle.function(term = "%xs P. List.list_ex P xs")
   def exists(p: T => Boolean) = !forall(!p(_))
 
+  @isabelle.function(term = "%xs P. List.find P xs")
   def find(p: T => Boolean): Option[T] = { this match {
     case Nil() => None[T]()
-    case Cons(h, t) if p(h) => Some(h)
-    case Cons(_, t) => t.find(p)
+    case Cons(h, t) => if (p(h)) Some(h) else t.find(p)
   }} ensuring { res => res match {
     case Some(r) => (content contains r) && p(r)
     case None() => true
@@ -522,7 +540,10 @@ sealed abstract class List[T] {
 
 }
 
+@isabelle.constructor(name = "List.list.Cons")
 case class Cons[T](h: T, t: List[T]) extends List[T]
+
+@isabelle.constructor(name = "List.list.Nil")
 case class Nil[T]() extends List[T]
 
 object List {
@@ -545,6 +566,7 @@ object List {
 
 @library
 object ListOps {
+  @isabelle.function(term = "List.concat")
   def flatten[T](ls: List[List[T]]): List[T] = ls match {
     case Cons(h, t) => h ++ flatten(t)
     case Nil() => Nil()
@@ -604,6 +626,7 @@ object ListSpecs {
   }.holds
 
   @induct
+  @isabelle.lemma(about = "leon.collection.List.apply")
   def consIndex[T](h: T, t: List[T], i: BigInt): Boolean = {
     require(0 <= i && i < t.size + 1)
     (h :: t).apply(i) == (if (i == 0) h else t.apply(i - 1))
