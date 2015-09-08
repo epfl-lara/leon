@@ -383,8 +383,18 @@ object Constructors {
     if (isSubtypeOf(expr.getType, tpe)) {
       expr
     } else {
+      //println(s"$expr:${expr.getType} is not a subtype of $tpe")
       AsInstanceOf(expr, tpe)
     }
+  }
+
+  def isInstOf(expr: Expr, tpe: ClassType) = {
+    if (isSubtypeOf(expr.getType, tpe)) {
+      BooleanLiteral(true)
+    } else {
+      IsInstanceOf(expr, tpe)
+    }
+
   }
 
 }

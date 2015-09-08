@@ -771,7 +771,7 @@ object ExprOps {
           if (ct.parent.isEmpty) {
             bind(ob, in)
           } else {
-            and(IsInstanceOf(ct, in), bind(ob, in))
+            and(IsInstanceOf(in, ct), bind(ob, in))
           }
 
         case CaseClassPattern(ob, cct, subps) =>
@@ -779,7 +779,7 @@ object ExprOps {
           val pairs = cct.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
-          and(IsInstanceOf(cct, in), together)
+          and(IsInstanceOf(in, cct), together)
 
         case TuplePattern(ob, subps) =>
           val TupleType(tpes) = in.getType
@@ -1326,7 +1326,7 @@ object ExprOps {
         case ccd: CaseClassDef =>
           val cct = CaseClassType(ccd, tps)
 
-          val isType = IsInstanceOf(cct, Variable(on))
+          val isType = IsInstanceOf(Variable(on), cct)
 
           val recSelectors = cct.fields.collect { 
             case vd if vd.getType == on.getType => vd.id

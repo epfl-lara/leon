@@ -82,7 +82,7 @@ case object ADTLongInduction extends Rule("ADT Long Induction") {
 
                 val newMap = trMap.mapValues(v => substAll(Map(id -> CaseClass(cct, subIds.map(Variable))), v))
 
-                InductCase(newIds, newCalls, newPattern, and(pc, IsInstanceOf(cct, Variable(id))), newMap)
+                InductCase(newIds, newCalls, newPattern, and(pc, IsInstanceOf(Variable(id), cct)), newMap)
               }
             }).flatten
           } else {

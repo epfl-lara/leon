@@ -1427,7 +1427,7 @@ trait CodeExtraction extends ASTExtractors {
                 if(rootType != testedExprRootType) {
                   outOfSubsetError(tr, "isInstanceOf can only be used with compatible classes")
                 } else {
-                  IsInstanceOf(ct, ccRec)
+                  IsInstanceOf(ccRec, ct)
                 }
               }
             case _ =>

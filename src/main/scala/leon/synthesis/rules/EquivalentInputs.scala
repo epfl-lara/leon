@@ -22,7 +22,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
       val clauses = allClauses.filterNot(instanceOfs.toSet)
 
-      val ccSubsts = for (IsInstanceOf(cct: CaseClassType, s) <- instanceOfs) yield {
+      val ccSubsts = for (IsInstanceOf(s, cct: CaseClassType) <- instanceOfs) yield {
 
         val fieldsVals = (for (f <- cct.fields) yield {
           val id = f.id

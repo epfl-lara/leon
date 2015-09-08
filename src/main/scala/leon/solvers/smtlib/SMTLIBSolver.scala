@@ -333,7 +333,7 @@ abstract class SMTLIBSolver(val context: LeonContext,
       case AsInstanceOf(expr, cct) =>
         toSMT(expr)
 
-      case IsInstanceOf(cct, e) =>
+      case IsInstanceOf(e, cct) =>
         declareSort(cct)
         val cases = cct match {
           case act: AbstractClassType =>

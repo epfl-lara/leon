@@ -273,14 +273,17 @@ object TypeOps {
           case mi @ MethodInvocation(r, cd, TypedFunDef(fd, tps), args) =>
             MethodInvocation(srec(r), cd, TypedFunDef(fd, tps.map(tpeSub)), args.map(srec)).copiedFrom(mi)
 
+          case th @ This(ct) =>
+            This(tpeSub(ct).asInstanceOf[ClassType]).copiedFrom(th)
+
           case cc @ CaseClass(ct, args) =>
             CaseClass(tpeSub(ct).asInstanceOf[CaseClassType], args.map(srec)).copiedFrom(cc)
 
           case cc @ CaseClassSelector(ct, e, sel) =>
             caseClassSelector(tpeSub(ct).asInstanceOf[CaseClassType], srec(e), sel).copiedFrom(cc)
 
-          case cc @ IsInstanceOf(ct, e) =>
-            IsInstanceOf(tpeSub(ct).asInstanceOf[ClassType], srec(e)).copiedFrom(cc)
+          case cc @ IsInstanceOf(e, ct) =>
+            IsInstanceOf(srec(e), tpeSub(ct).asInstanceOf[ClassType]).copiedFrom(cc)
 
           case cc @ AsInstanceOf(e, ct) =>
             AsInstanceOf(srec(e), tpeSub(ct).asInstanceOf[ClassType]).copiedFrom(cc)

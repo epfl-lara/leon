@@ -18,7 +18,6 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
 
     val tp2   = TypeParameter.fresh("A")
     val tp3   = TypeParameter.fresh("B")
-    val tp4   = TypeParameter.fresh("C")
 
     val listD = AbstractClassDef(FreshIdentifier("List"), Seq(tpD), None)
     val listT = listD.typed
@@ -58,6 +57,8 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     assert(canBeSubtypeOf(tp,           Seq(tp2), tp2, rhsFixed = true).isEmpty,    "T </: A with A free but lhs is fixed")
 
     assert(canBeSubtypeOf(listT,        Seq(tp),  listD.typed(Seq(tp2)), rhsFixed = true).isDefined,    "List[T] <: List[A] with T free and rhs fixed")
+
+    assert(isSubtypeOf(listD.typed, listD.typed), "List[T] <: List[T]")
   }
 
 }

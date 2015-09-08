@@ -231,7 +231,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         throw RuntimeError("Cast error: cannot cast "+le.asString+" to "+ct.asString) 
       }
 
-    case IsInstanceOf(ct, expr) =>
+    case IsInstanceOf(expr, ct) =>
       val le = e(expr)
       BooleanLiteral(isSubtypeOf(le.getType, ct))
 

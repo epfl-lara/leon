@@ -426,16 +426,16 @@ trait AbstractZ3Solver extends Solver {
       case AsInstanceOf(expr, ct) =>
         rec(expr)
 
-      case IsInstanceOf(act: AbstractClassType, e) =>
+      case IsInstanceOf(e, act: AbstractClassType) =>
         act.knownCCDescendants match {
           case Seq(cct) =>
-            rec(IsInstanceOf(cct, e))
+            rec(IsInstanceOf(e, cct))
           case more =>
             val i = FreshIdentifier("e", act, alwaysShowUniqueID = true)
-            rec(Let(i, e, orJoin(more map(IsInstanceOf(_, Variable(i))))))
+            rec(Let(i, e, orJoin(more map(IsInstanceOf(Variable(i), _)))))
         }
 
-      case IsInstanceOf(cct: CaseClassType, e) =>
+      case IsInstanceOf(e, cct: CaseClassType) =>
         typeToSort(cct) // Making sure the sort is defined
         val tester = testers.toB(cct)
         tester(rec(e))

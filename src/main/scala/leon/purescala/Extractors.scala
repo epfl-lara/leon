@@ -31,8 +31,8 @@ object Extractors {
         Some((Seq(t), (es: Seq[Expr]) => SetCardinality(es.head)))
       case CaseClassSelector(cd, e, sel) =>
         Some((Seq(e), (es: Seq[Expr]) => caseClassSelector(cd, es.head, sel)))
-      case IsInstanceOf(ct, e) =>
-        Some((Seq(e), (es: Seq[Expr]) => IsInstanceOf(ct, es.head)))
+      case IsInstanceOf(e, ct) =>
+        Some((Seq(e), (es: Seq[Expr]) => IsInstanceOf(es.head, ct)))
       case AsInstanceOf(e, ct) =>
         Some((Seq(e), (es: Seq[Expr]) => asInstOf(es.head, ct)))
       case TupleSelect(t, i) =>

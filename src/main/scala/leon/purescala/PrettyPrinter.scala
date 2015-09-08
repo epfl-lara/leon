@@ -167,7 +167,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case Choose(pred)         => p"choose($pred)"
       case e @ Error(tpe, err)  => p"""error[$tpe]("$err")"""
       case AsInstanceOf(e, ct)  => p"""$e.asInstanceOf[$ct]"""
-      case IsInstanceOf(cct, e) =>
+      case IsInstanceOf(e, cct) =>
         if (cct.classDef.isCaseObject) {
           p"($e == $cct)"
         } else {

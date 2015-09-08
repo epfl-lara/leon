@@ -327,7 +327,7 @@ object Expressions {
         binder,
         FunctionInvocation(unapplyFun, Seq(scrut)),
         IfExpr(
-          IsInstanceOf(someType, Variable(binder)),
+          IsInstanceOf(Variable(binder), someType),
           someCase(CaseClassSelector(someType, Variable(binder), someValue.id)),
           noneCase
         )
@@ -424,7 +424,7 @@ object Expressions {
   }
 
   /** $encodingof `.isInstanceOf[...]` */
-  case class IsInstanceOf(classType: ClassType, expr: Expr) extends Expr {
+  case class IsInstanceOf(expr: Expr, classType: ClassType) extends Expr {
     val getType = BooleanType
   }
 

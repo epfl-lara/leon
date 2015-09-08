@@ -79,8 +79,8 @@ object MethodLifting extends TransformationPhase {
         val at = acd.typed
         val binder = FreshIdentifier(acd.id.name.toLowerCase, at, true)
         def subst(e: Expr): Expr = e match {
-          case This(`at`) =>
-            Variable(binder)
+          case This(ct) =>
+            asInstOf(Variable(binder), ct)
           case e =>
             e
         }
@@ -125,9 +125,9 @@ object MethodLifting extends TransformationPhase {
           newFd.fullBody,
           Some(and(
             prec,
-            IsInstanceOf(
-              c.typed(root.tparams.map{ _.tp }),
-              This(root.typed)
+            isInstOf(
+              This(root.typed),
+              c.typed(root.tparams.map{ _.tp })
             )
           ))
         ))
@@ -158,14 +158,18 @@ object MethodLifting extends TransformationPhase {
         nfd.addFlag(IsMethod(cd))
 
         if (cd.knownDescendants.forall( cd => (cd.methods ++ cd.fields).forall(_.id != fd.id))) {
-          val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
           // Don't need to compose methods
-          nfd.fullBody = postMap {
-            case th@This(ct) if ct.classDef == cd =>
-              Some(receiver.toVariable.setPos(th))
+          val paramsMap = fd.params.zip(fdParams).map{case (x,y) => (x.id, y.id)}.toMap
+          def thisToReceiver(e: Expr): Option[Expr] = e match {
+            case th@This(ct) =>
+              Some(asInstOf(receiver.toVariable, ct).setPos(th))
             case _ =>
               None
-          }(instantiateType(nfd.fullBody, tparamsMap, paramsMap))
+          }
+
+          val insTp: Expr => Expr = instantiateType(_, tparamsMap, paramsMap)
+
+          nfd.fullBody = insTp( postMap(thisToReceiver)(insTp(nfd.fullBody)) )
         } else {
           // We need to compose methods of subclasses
 
