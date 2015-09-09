@@ -402,7 +402,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       // Definitions
       case Program(units) =>
-        p"""${nary(units, "\n\n")}"""
+        p"""${nary(units filter { _.isMainUnit }, "\n\n")}"""
 
       case UnitDef(id,pack, imports, defs,_) =>
         if (pack.nonEmpty){

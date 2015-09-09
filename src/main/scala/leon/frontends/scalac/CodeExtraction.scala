@@ -498,7 +498,7 @@ trait CodeExtraction extends ASTExtractors {
               Some(AbstractClassType(acd, newTps))
 
             case cd =>
-              outOfSubsetError(sym.pos, "Class "+id+" cannot extend "+cd.id)
+              outOfSubsetError(sym.pos, s"Class $id cannot extend ${cd.id}")
               None
           }
 
@@ -506,28 +506,15 @@ trait CodeExtraction extends ASTExtractors {
           None
       }
 
-      val cd = if (sym.isAbstractClass) {
-        val acd = AbstractClassDef(id, tparams, parent).setPos(sym.pos)
-
-        classesToClasses += sym -> acd
-        parent.foreach(_.classDef.registerChild(acd))
-        acd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
-      } else {
-        val ccd = CaseClassDef(id, tparams, parent, sym.isModuleClass).setPos(sym.pos)
-        classesToClasses += sym -> ccd
-        parent.foreach(_.classDef.registerChild(ccd))
-        ccd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
-
-        val fields = args.map { case (fsym, t) =>
-          val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
-          val id = overridenOrFresh(fsym, Some(ccd), tpe)
-          LeonValDef(id.setPos(t.pos), Some(tpe)).setPos(t.pos)
-        }
-
-        ccd.setFields(fields)
-
-        ccd
-      }
+      val cd = ( if (sym.isAbstractClass) {
+        AbstractClassDef(id, tparams, parent)
+      } else  {
+        CaseClassDef(id, tparams, parent, sym.isModuleClass)
+      }).setPos(sym.pos)
+      classesToClasses += sym -> cd
+      //println(s"Registering $sym")
+      parent.foreach(_.classDef.registerChild(cd))
+      cd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
 
       // Validates type parameters
       parent foreach { pct =>
@@ -558,19 +545,19 @@ trait CodeExtraction extends ASTExtractors {
 
         // Normal methods
         case t @ ExFunctionDef(fsym, _, _, _, _) =>
+          isMethod += fsym
           val fd = defineFunDef(fsym, Some(cd))(defCtx)
 
-          isMethod += fsym
+
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
 
         // Default values for parameters
         case t@ ExDefaultValueFunction(fsym, _, _, _, owner, index, _) =>
+          isMethod += fsym
           val fd = defineFunDef(fsym)(defCtx)
           fd.addFlag(IsSynthetic)
-
-          isMethod += fsym
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
@@ -581,9 +568,8 @@ trait CodeExtraction extends ASTExtractors {
 
         // Lazy fields
         case t @ ExLazyAccessorFunction(fsym, _, _)  =>
-          val fd = defineFieldFunDef(fsym, true, Some(cd))(defCtx)
-
           isMethod += fsym
+          val fd = defineFieldFunDef(fsym, true, Some(cd))(defCtx)
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
@@ -591,17 +577,28 @@ trait CodeExtraction extends ASTExtractors {
         // normal fields
         case t @ ExFieldDef(fsym, _, _) =>
           //println(fsym + "matched as ExFieldDef")
-          // we will be using the accessor method of this field everywhere 
-          val fsymAsMethod = fsym
-          val fd = defineFieldFunDef(fsymAsMethod, false, Some(cd))(defCtx)
-
-          isMethod += fsymAsMethod
+          // we will be using the accessor method of this field everywhere
+          isMethod += fsym
+          val fd = defineFieldFunDef(fsym, false, Some(cd))(defCtx)
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
 
         case other =>
 
+      }
+
+      cd match {
+        case ccd: CaseClassDef =>
+
+          val fields = args.map { case (fsym, t) =>
+            val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
+            val id = overridenOrFresh(fsym, Some(ccd), tpe)
+            LeonValDef(id.setPos(t.pos), Some(tpe)).setPos(t.pos)
+          }
+          //println(s"Fields of $sym")
+          ccd.setFields(fields)
+        case _ =>
       }
 
       cd
