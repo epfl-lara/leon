@@ -187,7 +187,12 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
           variables.getA(s) match {
             case Some(id) =>
               // EK: this is a little hack, we pass models for array functions as let-defs
-              model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+              try {
+                model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+              } catch {
+                case _ : Unsupported =>
+
+              }
             case _ => // function, should be handled elsewhere
           }
         }
