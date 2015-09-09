@@ -72,5 +72,15 @@ object Lambda {
   
   def env1 : Env = Env(Map[Id,Expr](id2 -> Var(id2)))
   def r1 = CBV(env1, App(exprId, Var(id2)))
+
+  def substOk(in: Expr, v: Id, by: Expr, env: Env): Boolean = {
+    val vRes= CBV(env, Var(v))
+    val byRes= CBV(env, by)
+    val inRes= CBV(env, in)
+    if (vRes==byRes && vRes.isInstanceOf[Ok] && inRes.isInstanceOf[Ok]) {
+      inRes==CBV(env, subst(in, v, by))
+    } else true
+  }.holds
+
 }
 
