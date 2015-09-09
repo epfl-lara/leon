@@ -29,7 +29,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.6",
-  "org.scalatest" %% "scalatest" % "2.2.0" % "test",
+  "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
@@ -94,9 +94,11 @@ sourcesInBase in Compile := false
 Keys.fork in run := true
 
 lazy val testSettings = Seq(
-    Keys.fork := true,
-    logBuffered := false,
-    javaOptions ++= Seq("-Xss16M", "-Xmx4G", "-XX:MaxPermSize=128M")
+    //Keys.fork := true,
+    logBuffered := true,
+    parallelExecution := true,
+    //testForkedParallel := true,
+    javaOptions ++= Seq("-Xss16M", "-Xmx4G")
 )
 
 // Unit Tests
@@ -114,8 +116,6 @@ lazy val RegressionTest = config("regression") extend(Test)
 
 testOptions in RegressionTest  := Seq(Tests.Argument("-oDF"), Tests.Filter(_ startsWith "leon.regression."))
 
-parallelExecution in RegressionTest := false
-
 
 def ghProject(repo: String, version: String) = RootProject(uri(s"${repo}#${version}"))
 
@@ -128,6 +128,7 @@ lazy val root = (project in file(".")).
   configs(IntegrTest).
   dependsOn(bonsai, scalaSmtLib).
   settings(inConfig(RegressionTest)(Defaults.testTasks ++ testSettings): _*).
-  settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*)
+  settings(inConfig(IntegrTest)(Defaults.testTasks ++ testSettings): _*).
+  settings(inConfig(Test)(Defaults.testTasks ++ testSettings): _*)
 
 
