@@ -26,12 +26,7 @@ import TypeOps._
 import xlang.Expressions.{Block => LeonBlock, _}
 import xlang.ExprOps._
 
-import utils.{
-  DefinedPosition,
-  Position       => LeonPosition,
-  OffsetPosition => LeonOffsetPosition,
-  RangePosition  => LeonRangePosition
-}
+import leon.utils.{Position => LeonPosition, OffsetPosition => LeonOffsetPosition, RangePosition => LeonRangePosition, Bijection, DefinedPosition}
 
 trait CodeExtraction extends ASTExtractors {
   self: LeonExtraction =>
@@ -183,7 +178,7 @@ trait CodeExtraction extends ASTExtractors {
             ScalaUnit(name, pack, imps, lst, !isLibrary(u))
 
           case _ =>
-            outOfSubsetError(u.body, "Unnexpected Unit body")
+            outOfSubsetError(u.body, "Unexpected Unit body")
         }}
 
         // Phase 1, we discover and define objects/classes/types
@@ -506,15 +501,33 @@ trait CodeExtraction extends ASTExtractors {
           None
       }
 
-      val cd = ( if (sym.isAbstractClass) {
+      // Extract class
+      val cd = if (sym.isAbstractClass) {
         AbstractClassDef(id, tparams, parent)
       } else  {
         CaseClassDef(id, tparams, parent, sym.isModuleClass)
-      }).setPos(sym.pos)
-      classesToClasses += sym -> cd
+      }
+      cd.setPos(sym.pos)
       //println(s"Registering $sym")
-      parent.foreach(_.classDef.registerChild(cd))
+      classesToClasses += sym -> cd
       cd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
+
+      // Register parent
+      parent.foreach(_.classDef.registerChild(cd))
+
+      // Extract case class fields
+      cd match {
+        case ccd: CaseClassDef =>
+
+          val fields = args.map { case (fsym, t) =>
+            val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
+            val id = cachedWithOverrides(fsym, Some(ccd), tpe)
+            LeonValDef(id.setPos(t.pos), Some(tpe)).setPos(t.pos)
+          }
+          //println(s"Fields of $sym")
+          ccd.setFields(fields)
+        case _ =>
+      }
 
       // Validates type parameters
       parent foreach { pct =>
@@ -588,33 +601,21 @@ trait CodeExtraction extends ASTExtractors {
 
       }
 
-      cd match {
-        case ccd: CaseClassDef =>
-
-          val fields = args.map { case (fsym, t) =>
-            val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
-            val id = overridenOrFresh(fsym, Some(ccd), tpe)
-            LeonValDef(id.setPos(t.pos), Some(tpe)).setPos(t.pos)
-          }
-          //println(s"Fields of $sym")
-          ccd.setFields(fields)
-        case _ =>
-      }
+      //println(s"End body $sym")
 
       cd
     }
 
     // Returns the parent's method Identifier if sym overrides a symbol, otherwise a fresh Identifier
-    private def overridenOrFresh(sym: Symbol, within: Option[LeonClassDef], tpe: LeonType = Untyped) = {
-      val name = sym.name.toString
-      if (sym.overrideChain.length > 1) {
-        (for {
-          cd <- within
-          p <- cd.parent
-          m <- p.classDef.methods.find(_.id.name == name)
-        } yield m.id).getOrElse(FreshIdentifier(name, tpe))
-      } else {
-        FreshIdentifier(name, tpe)
+
+    private val funOrFieldSymsToIds = new Bijection[Symbol, Identifier]
+
+    private def cachedWithOverrides(sym: Symbol, within: Option[LeonClassDef], tpe: LeonType = Untyped) = {
+
+      val topOfHierarchy = sym.overrideChain.last
+
+      funOrFieldSymsToIds.cachedB(topOfHierarchy){
+        FreshIdentifier(sym.name.toString, tpe)
       }
     }
 
@@ -645,7 +646,7 @@ trait CodeExtraction extends ASTExtractors {
         else returnType
       }
 
-      val id = overridenOrFresh(sym, within, idType)
+      val id = cachedWithOverrides(sym, within, idType)
 
       val fd = new FunDef(id.setPos(sym.pos), tparamsDef, returnType, newParams)
 
@@ -670,7 +671,7 @@ trait CodeExtraction extends ASTExtractors {
 
       // @mk: We type the identifiers of methods during code extraction because
       // a possible implementing/overriding field will use this same Identifier
-      val id = overridenOrFresh(sym, within, returnType)
+      val id = cachedWithOverrides(sym, within, returnType)
       val fd = new FunDef(id.setPos(sym.pos), Seq(), returnType, Seq())
 
       fd.setPos(sym.pos)
