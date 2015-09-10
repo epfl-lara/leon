@@ -1,4 +1,4 @@
-Leon 3.0 [![Build Status](http://laraquad4.epfl.ch:9000/epfl-lara/leon/status/master)](http://laraquad4.epfl.ch:9000/epfl-lara/leon/builds)
+Leon 3.0 [![Build Status](http://laraquad4.epfl.ch:9000/epfl-lara/leon/status/master)](http://laraquad4.epfl.ch:9000/epfl-lara/leon)
 ==========
 
 Getting Started
