@@ -394,7 +394,12 @@ object Constructors {
     } else {
       IsInstanceOf(expr, tpe)
     }
+  }
 
+  def req(pred: Expr, body: Expr) = pred match {
+    case BooleanLiteral(true)  => body
+    case BooleanLiteral(false) => Error(body.getType, "Precondition failed")
+    case _ => Require(pred, body)
   }
 
 }

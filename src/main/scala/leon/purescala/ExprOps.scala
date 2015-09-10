@@ -1741,10 +1741,10 @@ object ExprOps {
     * @see [[Expressions.Require]]
     */
   def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
-    case (Some(newPre), Require(pre, b))              => Require(newPre, b)
+    case (Some(newPre), Require(pre, b))              => req(newPre, b)
     case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(Require(newPre, b), p)
     case (Some(newPre), Ensuring(b, p))               => Ensuring(Require(newPre, b), p)
-    case (Some(newPre), b)                            => Require(newPre, b)
+    case (Some(newPre), b)                            => req(newPre, b)
     case (None, Require(pre, b))                      => b
     case (None, Ensuring(Require(pre, b), p))         => Ensuring(b, p)
     case (None, b)                                    => b
