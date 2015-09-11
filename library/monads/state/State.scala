@@ -4,6 +4,7 @@ import leon.collection._
 import leon.lang._
 import leon.annotation._
 
+@library
 case class State[S, A](runState: S => (A, S)) {
 
   /** Basic monadic methods */
@@ -52,6 +53,7 @@ case class State[S, A](runState: S => (A, S)) {
 
 }
 
+@library
 object State {
 
   @inline
@@ -148,7 +150,7 @@ object State {
 
 }
 
-
+@library
 object MonadStateLaws {
   import State._
 
@@ -215,6 +217,7 @@ object MonadStateLaws {
 
 }
 
+@library
 object ExampleCounter {
 
   import State._
@@ -222,6 +225,7 @@ object ExampleCounter {
   def counter(init: BigInt) = {
 
     @inline
+    @library
     def tick = modify[BigInt](_ + 1)
 
     init >:: (for {
@@ -232,10 +236,9 @@ object ExampleCounter {
     } yield r)
 
   } ensuring( _ == init + 3 )
-
-
 }
 
+@library
 object ExampleTicTacToe {
 
   import State._
@@ -310,6 +313,7 @@ object ExampleTicTacToe {
   //}.holds
 }
 
+@library
 object ExampleFreshen {
 
   import State._
@@ -360,7 +364,7 @@ object ExampleFreshen {
 
 }
 
-
+@library
 object ExampleStackEval {
 
   import State._
