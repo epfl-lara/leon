@@ -4,7 +4,7 @@ package leon.test
 
 import leon._
 import leon.purescala.Definitions.Program
-import leon.LeonContext
+import leon.purescala.FunctionClosure
 import leon.utils._
 import leon.frontends.scalac.ExtractionPhase
 
@@ -23,7 +23,8 @@ trait LeonTestSuiteWithProgram extends fixture.FunSuite {
   val pipeline =
     TemporaryInputPhase andThen
     ExtractionPhase andThen
-    PreprocessingPhase
+    PreprocessingPhase andThen
+    new FunctionClosure
 
   val sources: List[String]
 
