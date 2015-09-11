@@ -38,13 +38,13 @@ object InliningPhase extends TransformationPhase {
     }
 
     for (fd <- p.definedFunctions) {
-      fd.fullBody = simplify(preMap {
+      fd.fullBody = simplify(preMap ({
         case FunctionInvocation(TypedFunDef(fd, tps), args) if doInline(fd) =>
           val newBody = instantiateType(fd.fullBody, (fd.tparams zip tps).toMap, Map())
           Some(replaceFromIDs(fd.params.map(_.id).zip(args).toMap, newBody))
         case _ =>
           None
-      }(fd.fullBody))
+      }, applyRec = true)(fd.fullBody))
     }
 
     filterFunDefs(p, fd => !doInline(fd))
