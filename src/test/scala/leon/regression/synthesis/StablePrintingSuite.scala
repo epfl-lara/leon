@@ -32,8 +32,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
       val opts = SynthesisSettings()
       val pipeline = leon.utils.TemporaryInputPhase andThen 
                      frontends.scalac.ExtractionPhase andThen
-                     leon.utils.PreprocessingPhase andThen
-                     (new purescala.FunctionClosure)
+                     new leon.utils.PreprocessingPhase
 
       val program = pipeline.run(ctx)((List(content), Nil))
 

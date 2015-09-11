@@ -88,7 +88,7 @@ class SynthesisSuite extends LeonRegressionSuite {
 
         val pipeline = leon.utils.TemporaryInputPhase andThen
                        leon.frontends.scalac.ExtractionPhase andThen
-                       PreprocessingPhase andThen
+                       new PreprocessingPhase andThen
                        SynthesisProblemExtractionPhase
 
         val (program, results) = pipeline.run(ctx)((List(content), Nil))

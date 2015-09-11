@@ -9,7 +9,7 @@ import java.io.File
 import org.scalatest.ParallelTestExecution
 
 class TestCasesCompile extends LeonRegressionSuite {
-  val pipeline = frontends.scalac.ExtractionPhase andThen utils.PreprocessingPhase
+  val pipeline = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase(desugarXLang = true)
 
   private def filesIn(path : String): Seq[File] = {
     val fs = filesInResourceDir(path, _.endsWith(".scala"), recursive=true)

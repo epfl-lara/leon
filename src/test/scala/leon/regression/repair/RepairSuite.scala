@@ -10,7 +10,7 @@ import leon.repair._
 
 class RepairSuite extends LeonRegressionSuite {
   val pipeline = ExtractionPhase andThen 
-    PreprocessingPhase andThen
+    new PreprocessingPhase andThen
     RepairPhase
     
   val fileToFun = Map(

@@ -31,7 +31,7 @@ class SynthesisRegressionSuite extends LeonRegressionSuite {
 
       opts = SynthesisSettings(searchBound = Some(bound))
 
-      val pipeline = leon.frontends.scalac.ExtractionPhase andThen leon.utils.PreprocessingPhase
+      val pipeline = leon.frontends.scalac.ExtractionPhase andThen new leon.utils.PreprocessingPhase
 
       program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
 

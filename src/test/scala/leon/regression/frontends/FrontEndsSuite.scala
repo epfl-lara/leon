@@ -10,7 +10,7 @@ import java.io.File
 class FrontEndsSuite extends LeonRegressionSuite {
   // Hard-code output directory, for Eclipse purposes
 
-  val pipeFront = frontends.scalac.ExtractionPhase andThen utils.PreprocessingPhase
+  val pipeFront = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase
 
   def testFrontend(f: File, pipeBack: Pipeline[Program, Program], forError: Boolean) = {
     val pipeline = pipeFront andThen pipeBack

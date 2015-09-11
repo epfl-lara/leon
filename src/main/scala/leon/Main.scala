@@ -140,7 +140,7 @@ object Main {
     import frontends.scalac.ExtractionPhase
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
-    import xlang.{XLangDesugaringPhase, FixReportLabels}
+    import xlang.FixReportLabels
     import verification.AnalysisPhase
     import repair.RepairPhase
     import evaluators.EvaluationPhase
@@ -156,32 +156,13 @@ object Main {
     val evalF        = ctx.findOption(optEval).isDefined
     val analysisF    = verifyF && terminationF
 
-    def debugTrees(title: String): LeonPhase[Program, Program] = {
-      if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
-        PrintTreePhase(title)
-      } else {
-        NoopPhase[Program]()
-      }
-    }
-
     if (helpF) {
       displayVersion(ctx.reporter)
       displayHelp(ctx.reporter, error = false)
     } else {
       val pipeBegin: Pipeline[List[String], Program] =
-        if (xlangF)
-          ExtractionPhase andThen
-          debugTrees("Program after extraction") andThen
-          PreprocessingPhase andThen
-          debugTrees("Program after pre-processing") andThen
-          XLangDesugaringPhase andThen
-          debugTrees("Program after xlang desugaring")
-        else
-          ExtractionPhase andThen
-          debugTrees("Program after extraction") andThen
-          PreprocessingPhase andThen
-          debugTrees("Program after pre-processing") andThen
-          xlang.NoXLangFeaturesChecking
+        ExtractionPhase andThen
+        new PreprocessingPhase(xlangF)
 
       val analysis = if (xlangF) AnalysisPhase andThen FixReportLabels else AnalysisPhase
 
@@ -189,13 +170,10 @@ object Main {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
-        else if (analysisF) Pipeline.both(
-          (new FunctionClosure) andThen analysis,
-          TerminationPhase
-        )
+        else if (analysisF) Pipeline.both(analysis, TerminationPhase)
         else if (terminationF) TerminationPhase
         else if (evalF) EvaluationPhase
-        else (new FunctionClosure) andThen analysis
+        else analysis
       }
 
       pipeBegin andThen

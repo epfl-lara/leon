@@ -4,7 +4,6 @@ package leon
 package xlang
 
 import purescala.Definitions.Program
-import purescala.FunctionClosure
 
 object XLangDesugaringPhase extends TransformationPhase {
 
@@ -15,8 +14,7 @@ object XLangDesugaringPhase extends TransformationPhase {
     val phases =
       ArrayTransformation andThen
       EpsilonElimination andThen
-      ImperativeCodeElimination andThen
-      (new FunctionClosure)
+      ImperativeCodeElimination
     phases.run(ctx)(pgm)
   }
 

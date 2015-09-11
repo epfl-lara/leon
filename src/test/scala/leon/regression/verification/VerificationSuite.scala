@@ -33,7 +33,7 @@ trait VerificationSuite extends LeonRegressionSuite {
   private def mkTest(files: List[String], cat: String, forError: Boolean)(block: Output => Unit) = {
     val extraction =
       ExtractionPhase andThen
-      PreprocessingPhase andThen
+      new PreprocessingPhase andThen // Warning: If XLang at some point inherits this, we need to fix this line
       pipeFront
 
     val ctx = createLeonContext(files:_*)
