@@ -513,18 +513,16 @@ class PrettyPrinter(opts: PrinterOptions,
   }
 
   protected object FcallMethodInvocation {
-    def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, String, Seq[TypeTree], Seq[Expr])] = {
+    def unapply(fi: FunctionInvocation): Option[(Expr, FunDef, Identifier, Seq[TypeTree], Seq[Expr])] = {
       val FunctionInvocation(tfd, args) = fi
       tfd.fd.methodOwner.map { cd =>
         val (rec, rargs) = (args.head, args.tail)
 
         val fid = tfd.fd.id
 
-        val fname = fid.name
-
         val realtps = tfd.tps.drop(cd.tparams.size)
 
-        (rec, tfd.fd, fname, realtps, rargs)
+        (rec, tfd.fd, fid, realtps, rargs)
       }
     }
   }
@@ -533,8 +531,8 @@ class PrettyPrinter(opts: PrinterOptions,
     val makeBinary = Set("+", "-", "*", "::", "++", "--", "&&", "||", "/")
 
     def unapply(fi: FunctionInvocation): Option[(Expr, String, Expr)] = fi match {
-      case FcallMethodInvocation(rec, _, name, Nil, List(a)) =>
-
+      case FcallMethodInvocation(rec, _, id, Nil, List(a)) =>
+        val name = id.name
         if (makeBinary contains name) {
           if(name == "::")
             Some((a, name, rec))
