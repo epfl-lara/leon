@@ -135,12 +135,12 @@ object State {
     l match {
       case Nil() => unit(z)
       case x :: xs =>
-        f(z, x) >>= ( z0 =>  foldLeftM(f, z0,xs) )
+        f(z, x) >>= ( z0 => foldLeftM(f,z0,xs) )
     }
   }
 
   //(b -> a -> m b) -> b -> t a -> m ()
-  def foldLeftM_ [S, A, B](f: A => State[S, Unit], l: List[A]): State[S, Unit] = {
+  def foldLeftM_ [S, A](f: A => State[S, Unit], l: List[A]): State[S, Unit] = {
     l match {
       case Nil() => unit(())
       case x :: xs =>
