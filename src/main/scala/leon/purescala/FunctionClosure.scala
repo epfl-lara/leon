@@ -10,7 +10,7 @@ import Extractors._
 import ExprOps._
 import Constructors._
 
-object FunctionClosure extends TransformationPhase {
+class FunctionClosure extends TransformationPhase {
 
   val name = "Function Closure"
   val description = "Closing function with its scoping variables"
@@ -175,5 +175,4 @@ object FunctionClosure extends TransformationPhase {
     } while(newVars != Set())
     (filteredConstraints, allVars)
   }
-
 }

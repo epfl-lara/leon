@@ -16,7 +16,7 @@ object XLangDesugaringPhase extends TransformationPhase {
       ArrayTransformation andThen
       EpsilonElimination andThen
       ImperativeCodeElimination andThen
-      FunctionClosure
+      (new FunctionClosure)
     phases.run(ctx)(pgm)
   }
 

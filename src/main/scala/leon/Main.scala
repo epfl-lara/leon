@@ -17,7 +17,7 @@ object Main {
       xlang.ImperativeCodeElimination,
       xlang.FixReportLabels,
       xlang.XLangDesugaringPhase,
-      purescala.FunctionClosure,
+      new purescala.FunctionClosure,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase,
@@ -190,12 +190,12 @@ object Main {
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
         else if (analysisF) Pipeline.both(
-          FunctionClosure andThen analysis,
+          (new FunctionClosure) andThen analysis,
           TerminationPhase
         )
         else if (terminationF) TerminationPhase
         else if (evalF) EvaluationPhase
-        else FunctionClosure andThen analysis
+        else (new FunctionClosure) andThen analysis
       }
 
       pipeBegin andThen
