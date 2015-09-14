@@ -74,23 +74,23 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
     (debugMask & section.mask) == section.mask
   }
 
-  def ifDebug(body: (Any => Unit) => Any)(implicit section: DebugSection) = {
+  def ifDebug(pos: Position, body: (Any => Unit) => Any)(implicit section: DebugSection) = {
     if (isDebugEnabled) {
-      body( { (msg: Any) => emit(account(Message(DEBUG(section), NoPosition, msg))) } )
+      body( { (msg: Any) => emit(account(Message(DEBUG(section), pos, msg))) } )
     }
   }
 
-  def whenDebug(section: DebugSection)(body: (Any => Unit) => Any) {
+  def whenDebug(pos: Position, section: DebugSection)(body: (Any => Unit) => Any) {
     if (isDebugEnabled(section)) {
-      body( { (msg: Any) => emit(account(Message(DEBUG(section), NoPosition, msg))) } )
+      body( { (msg: Any) => emit(account(Message(DEBUG(section), pos, msg))) } )
     }
   }
 
 
   def debug(pos: Position, msg: => Any)(implicit section: DebugSection): Unit = {
-    ifDebug{ debug =>
+    ifDebug(pos, debug =>
       debug(msg)
-    }(section)
+    )(section)
   }
 
 
@@ -103,6 +103,10 @@ abstract class Reporter(val debugSections: Set[DebugSection]) {
   final def internalError(msg: Any) : Nothing = internalError(NoPosition, msg)
   final def internalAssertion(cond : Boolean, msg: Any) : Unit = internalAssertion(cond,NoPosition, msg)
   final def debug(msg: => Any)(implicit section: DebugSection): Unit = debug(NoPosition, msg)
+  final def ifDebug(body: (Any => Unit) => Any)(implicit section: DebugSection): Unit =
+    ifDebug(NoPosition, body)
+  final def whenDebug(section: DebugSection)(body: (Any => Unit) => Any): Unit =
+    whenDebug(NoPosition, section)(body)
 }
 
 class DefaultReporter(debugSections: Set[DebugSection]) extends Reporter(debugSections) {
@@ -130,8 +134,6 @@ class DefaultReporter(debugSections: Set[DebugSection]) extends Reporter(debugSe
   }
 
   def emit(msg: Message) = {
-    val posString = if (msg.position != NoPosition) { msg.position+": " } else { "" }
-
     println(reline(severityToPrefix(msg.severity), smartPos(msg.position) + msg.msg.toString))
     printLineContent(msg.position)
   }
