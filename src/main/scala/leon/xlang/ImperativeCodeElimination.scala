@@ -188,7 +188,16 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         val (scope, fun) = exprs.foldRight((body: Expr) => body, Map[Identifier, Identifier]())((e, acc) => {
           val (accScope, accFun) = acc
           val (_, rScope, rFun) = toFunction(e)
-          val scope = (body: Expr) => rScope(replaceNames(rFun, accScope(body)))
+          val scope = (body: Expr) => {
+            val withoutPrec = rScope(replaceNames(rFun, accScope(body)))
+            e match {
+              case FunctionInvocation(tfd, args) if tfd.hasPrecondition =>
+                Assert(tfd.withParamSubst(args, tfd.precondition.get), Some("Precondition failed"), withoutPrec)
+              case _ =>
+                withoutPrec
+            }
+
+          }
           (scope, rFun ++ accFun)
         })
         val (lastRes, lastScope, lastFun) = toFunction(expr)
@@ -221,17 +230,6 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       case c @ Choose(b) =>
         //Recall that Choose cannot mutate variables from the scope
         (c, (b2: Expr) => b2, Map())
-
-      case i @ FunctionInvocation(fd, args) =>
-        //function invocation can have side effects so we should keep them as local
-        //val names.
-        val scope = 
-          (body: Expr) => Let(
-            FreshIdentifier("tmp", fd.returnType),
-            i,
-            body
-          )
-        (i, scope, Map())
 
       case And(args) =>
         val ifExpr = args.reduceRight((el, acc) => IfExpr(el, acc, BooleanLiteral(false)))
