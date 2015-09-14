@@ -70,7 +70,7 @@ script := {
                     |
                     |SCALACLASSPATH="$paths"
                     |
-                    |java -Xmx2G -Xms512M -classpath $${SCALACLASSPATH} -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath $${SCALACLASSPATH} leon.Main $$@ 2>&1 | tee -i last.log
+                    |java -Xmx2G -Xms512M -Xss64M -classpath $${SCALACLASSPATH} -Dscala.usejavacp=false scala.tools.nsc.MainGenericRunner -classpath $${SCALACLASSPATH} leon.Main $$@ 2>&1 | tee -i last.log
                     |""".stripMargin)
     f.setExecutable(true)
   } catch {
@@ -100,9 +100,9 @@ Keys.fork in run := true
 lazy val testSettings = Seq(
     //Keys.fork := true,
     logBuffered := true,
-    parallelExecution := true,
+    parallelExecution := true
     //testForkedParallel := true,
-    javaOptions ++= Seq("-Xss16M", "-Xmx4G")
+    //javaOptions ++= Seq("-Xss64M", "-Xmx4G")
 )
 
 // Unit Tests
