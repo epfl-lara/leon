@@ -18,8 +18,8 @@ class TerminationSuite extends LeonRegressionSuite {
   private case class Output(report : TerminationReport, reporter : Reporter)
 
   private def mkPipeline : Pipeline[List[String],TerminationReport] =
-    leon.frontends.scalac.ExtractionPhase                   andThen
-    new leon.utils.PreprocessingPhase(desugarXLang = true)  andThen
+    leon.frontends.scalac.ExtractionPhase andThen
+    new leon.utils.PreprocessingPhase     andThen
     leon.termination.TerminationPhase
 
   private def mkTest(file : File, leonOptions: Seq[LeonOption[Any]], forError: Boolean)(block: Output=>Unit) = {
