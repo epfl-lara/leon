@@ -14,10 +14,10 @@ object Component extends LeonComponent {
   val description = "Isabelle solver"
 
   val leonBase =
-    Paths.get(Option(System.getProperty("leon.base")).getOrElse(".")).toRealPath()
+    Paths.get(Option(System.getProperty("leon.base")).getOrElse(".")).toAbsolutePath()
 
   val isabelleBase =
-    leonBase.resolve("contrib").toRealPath()
+    leonBase.resolve("contrib").toAbsolutePath()
 
   val optBase = LeonStringOptionDef(
     name = "isabelle:base",
