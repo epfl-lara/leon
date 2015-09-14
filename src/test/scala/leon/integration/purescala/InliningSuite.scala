@@ -20,7 +20,7 @@ class InliningSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL
        |
        |} """.stripMargin,
 
-    """ |import leon.lang._
+    """|import leon.lang._
        |import leon.annotation._
        |
        |object InlineBad {
@@ -29,6 +29,21 @@ class InliningSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL
        |  def foo(a: BigInt): BigInt = if (a > 42) foo(a-1) else 0
        |
        |  def bar(a: BigInt) = foo(a)
+       |
+       |}""".stripMargin,
+
+    """|import leon.lang._
+       |import leon.annotation._
+       |
+       |object InlineGood2 {
+       |
+       |  @inline
+       |  def foo(a: BigInt) = true
+       |
+       |  @inline
+       |  def bar(a: BigInt) = foo(a)
+       |
+       |  def baz(a: BigInt) = bar(a)
        |
        |}""".stripMargin
   )
@@ -45,4 +60,9 @@ class InliningSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL
         fail(s"Resultig body should be a call to 'foo', got '$b'")
     }
   }
+
+  test("Double Inlining") { implicit fix =>
+    assert(funDef("InlineGood2.baz").fullBody == BooleanLiteral(true), "Inlined function invocation not inlined in turn?")
+  }
+
 }
