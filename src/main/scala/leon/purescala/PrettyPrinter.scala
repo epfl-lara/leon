@@ -556,6 +556,8 @@ class PrettyPrinter(opts: PrinterOptions,
     case Let(_, _, bd) => Seq(bd)
     case LetDef(_, bd) => Seq(bd)
     case Require(_, bd) => Seq(bd)
+    case IfExpr(_, t, e) => Seq(t, e) // If always has braces anyway
+    case Ensuring(_, pred) => Seq(pred)
     case _ => Seq()
   }
 
