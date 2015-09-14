@@ -4,7 +4,12 @@ package leon
 package frontends.scalac
 
 import scala.tools.nsc._
-import utils.{Position => LeonPosition, RangePosition => LeonRangePosition, OffsetPosition => LeonOffsetPosition}
+import leon.utils.{
+  Position => LeonPosition,
+  RangePosition => LeonRangePosition,
+  OffsetPosition => LeonOffsetPosition,
+  DebugSectionTrees
+}
 
 trait SaveImports extends SubComponent {
   import global._
@@ -14,7 +19,8 @@ trait SaveImports extends SubComponent {
   val ctx: LeonContext
 
   var imports : Map[RefTree,List[Import]] = Map()
-  
+
+  implicit val debugSection = DebugSectionTrees
   
   // FIXME : Copy pasting code is bad.
   def scalaPosToLeonPos(p: global.Position): LeonPosition = {
@@ -47,9 +53,9 @@ trait SaveImports extends SubComponent {
           for (tree <- lst if !tree.isInstanceOf[Import] ) {
             tree.foreach {
               case imp : Import => 
-                ctx.reporter.warning(
+                ctx.reporter.debug(
                   scalaPosToLeonPos(imp.pos),
-                  "Imports will not be preserved in the AST unless they are at top-level"
+                  "Note: Imports will not be preserved in the AST unless they are at top-level"
                 )
               case _ => 
             }
