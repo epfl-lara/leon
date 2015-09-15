@@ -273,23 +273,6 @@ object Constructors {
     NonemptyArray(els.zipWithIndex.map{ _.swap }.toMap, defaultLength)
   }
 
-  /** Takes a mapping from keys to values and a default expression and return a lambda of the form
-    * {{{
-    * (x1, ..., xn) =>
-    *   if      ( key1 == (x1, ..., xn) ) value1
-    *   else if ( key2 == (x1, ..., xn) ) value2
-    *   ...
-    *   else    default
-    * }}}
-    */
-  def finiteLambda(default: Expr, els: Seq[(Expr, Expr)], inputTypes: Seq[TypeTree]): Lambda = {
-    val args = inputTypes map { tpe => ValDef(FreshIdentifier("x", tpe, true)) }
-    val argsExpr = tupleWrap(args map { _.toVariable })
-    val body = els.foldRight(default) { case ((key, value), default) =>
-      IfExpr(Equals(argsExpr, key), value, default)
-    }
-    Lambda(args, body)
-  }
   /** $encodingof simplified `... == ...` (equality).
     * @see [[purescala.Expressions.Equals Equals]]
     */

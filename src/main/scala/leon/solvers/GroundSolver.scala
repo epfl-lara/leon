@@ -26,7 +26,7 @@ class GroundSolver(val context: LeonContext, val program: Program) extends Solve
   private val assertions = new IncrementalSeq[Expr]()
 
   // Ground terms will always have the empty model
-  def getModel: Map[Identifier, Expr] = Map()
+  def getModel: Model = Model.empty
 
   def assertCnstr(expression: Expr): Unit = {
     assertions += expression

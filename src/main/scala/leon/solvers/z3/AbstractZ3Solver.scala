@@ -544,25 +544,6 @@ trait AbstractZ3Solver extends Solver {
     rec(expr)
   }
 
-  protected def fromRawArray(r: Expr, tpe: TypeTree): Expr = r match {
-    case rav: RawArrayValue =>
-      fromRawArray(rav, tpe)
-    case _ =>
-      scala.sys.error("Unable to extract from raw array for "+r.asString)
-  }
-
-  protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
-    case RawArrayType(from, to) =>
-      r
-
-    case ft @ FunctionType(from, to) =>
-      finiteLambda(r.default, r.elems.toSeq, from)
-
-
-    case _ =>
-      scala.sys.error("Unable to extract from raw array for "+tpe.asString)
-  }
-
   protected[leon] def fromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree): Expr = {
 
     def rec(t: Z3AST, tpe: TypeTree): Expr = {
@@ -678,15 +659,8 @@ trait AbstractZ3Solver extends Solver {
                     FiniteMap(elems, from, to)
                 }
 
-
               case FunctionType(fts, tt) =>
-                model.getArrayValue(t) match {
-                  case None => reporter.fatalError("Translation from Z3 to function value failed")
-                  case Some((map, elseZ3Value)) =>
-                    val leonElseValue = rec(elseZ3Value, tt)
-                    val leonMap = map.toSeq.map(p => rec(p._1, tupleTypeWrap(fts)) -> rec(p._2, tt))
-                    finiteLambda(leonElseValue, leonMap, fts)
-                }
+                rec(t, RawArrayType(tupleTypeWrap(fts), tt))
 
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {

@@ -6,6 +6,7 @@ package evaluators
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
+import purescala.Quantification._
 import purescala.Types._
 
 import codegen._
@@ -17,7 +18,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
   implicit val debugSection = utils.DebugSectionEvaluation
 
   def initRC(mappings: Map[Identifier, Expr]) = DefaultRecContext(mappings)
-  def initGC = new GlobalContext()
+  def initGC(model: solvers.Model) = new GlobalContext(model)
 
   var monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
 
@@ -125,9 +126,9 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
   }
 
 
-  override def eval(ex: Expr, mappings: Map[Identifier, Expr]) = {
+  override def eval(ex: Expr, model: solvers.Model) = {
     monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
-    super.eval(ex, mappings)
+    super.eval(ex, model)
   }
 
 }

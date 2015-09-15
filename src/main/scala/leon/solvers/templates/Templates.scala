@@ -5,11 +5,12 @@ package solvers
 package templates
 
 import purescala.Common._
+import purescala.Definitions._
 import purescala.Expressions._
+import purescala.Quantification._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
-import purescala.Definitions._
 
 case class App[T](caller: T, tpe: FunctionType, args: Seq[T]) {
   override def toString = "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
@@ -122,15 +123,6 @@ object Template {
     }
   }
 
-  private object MatchExtractor {
-    def unapply(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
-      case ApplicationExtractor(caller, args) => Some(caller -> args)
-      case ArraySelect(arr, index) => Some(arr -> Seq(index))
-      case MapGet(map, key) => Some(map -> Seq(key))
-      case _ => None
-    }
-  }
-
   private def invocationMatcher[T](encodeExpr: Expr => T)(tfd: TypedFunDef, args: Seq[Expr]): Matcher[T] = {
     assert(tfd.returnType.isInstanceOf[FunctionType], "invocationMatcher() is only defined on function-typed defs")
 
@@ -174,7 +166,7 @@ object Template {
     val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
     val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
 
-    val invocMatcher = optCall.filter(_.returnType.isInstanceOf[FunctionType])
+    lazy val invocMatcher = optCall.filter(_.returnType.isInstanceOf[FunctionType])
       .map(tfd => invocationMatcher(encodeExpr)(tfd, arguments.map(_._1.toVariable)))
 
     val (blockers, applications, matchers) = {
@@ -204,7 +196,7 @@ object Template {
             val result = res.flatten.toMap
 
             result ++ (expr match {
-              case MatchExtractor(c, args) =>
+              case QuantificationMatcher(c, args) =>
                 // Note that we rely here on the fact that foldRight visits the matcher's arguments first,
                 // so any Matcher in arguments will belong to the `result` map
                 val encodedArgs = args.map(arg => result.get(arg) match {
@@ -382,47 +374,6 @@ class FunctionTemplate[T] private(
 
 object LambdaTemplate {
 
-  private var typedIds : Map[TypeTree, List[Identifier]] = Map.empty.withDefaultValue(List.empty)
-
-  private def structuralKey[T](lambda: Lambda, dependencies: Map[Identifier, T]): (Lambda, Map[Identifier,T]) = {
-
-    def closureIds(expr: Expr): Seq[Identifier] = {
-      val allVars : Seq[Identifier] = foldRight[Seq[Identifier]] {
-        (expr, idSeqs) => idSeqs.foldLeft(expr match {
-          case Variable(id) => Seq(id)
-          case _ => Seq.empty[Identifier]
-        })((acc, seq) => acc ++ seq)
-      } (expr)
-
-      val vars = variablesOf(expr)
-      allVars.filter(vars(_)).distinct
-    }
-
-    val grouped : Map[TypeTree, Seq[Identifier]] = (lambda.args.map(_.id) ++ closureIds(lambda)).groupBy(_.getType)
-    val subst : Map[Identifier, Identifier] = grouped.foldLeft(Map.empty[Identifier,Identifier]) { case (subst, (tpe, ids)) =>
-      val currentVars = typedIds(tpe)
-
-      val freshCount = ids.size - currentVars.size
-      val typedVars = if (freshCount > 0) {
-        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", tpe, true))
-        typedIds += tpe -> allIds
-        allIds
-      } else {
-        currentVars
-      }
-
-      subst ++ (ids zip typedVars)
-    }
-
-    val newArgs = lambda.args.map(vd => ValDef(subst(vd.id), vd.tpe))
-    val newBody = replaceFromIDs(subst.mapValues(_.toVariable), lambda.body)
-    val structuralLambda = Lambda(newArgs, newBody)
-
-    val newDeps = dependencies.map { case (id, idT) => subst(id) -> idT }
-
-    structuralLambda -> newDeps
-  }
-
   def apply[T](
     ids: (Identifier, T),
     encoder: TemplateEncoder[T],
@@ -448,7 +399,9 @@ object LambdaTemplate {
       "Template for lambda " + ids._1 + ": " + lambda + " is :\n" + templateString()
     }
 
-    val (key, keyDeps) = structuralKey(lambda, dependencies)
+    val (structuralLambda, structSubst) = normalizeStructure(lambda)
+    val keyDeps = dependencies.map { case (id, idT) => structSubst(id) -> idT }
+    val key = structuralLambda.asInstanceOf[Lambda]
 
     new LambdaTemplate[T](
       ids._1,

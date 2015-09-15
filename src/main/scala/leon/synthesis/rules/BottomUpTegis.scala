@@ -8,6 +8,7 @@ import purescala.Expressions._
 import purescala.Common._
 import purescala.Types._
 import purescala.Constructors._
+import purescala.Quantification._
 import evaluators._
 import codegen.CodeGenParams
 
@@ -85,7 +86,7 @@ abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
 
                 { (vecs: Vector[Vector[Expr]]) =>
                   val res = (0 to nTests-1).toVector.flatMap { i =>
-                    val inputs = vecs.map(_(i))
+                    val inputs = new solvers.Model((args zip vecs.map(_(i))).toMap)
                     ev(inputs) match {
                       case EvaluationResults.Successful(out) => Some(out)
                       case _ =>

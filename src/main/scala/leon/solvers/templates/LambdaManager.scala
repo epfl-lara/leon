@@ -9,51 +9,23 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 
+import utils._
 import Instantiation._
 
-class LambdaManager[T](protected val encoder: TemplateEncoder[T]) {
+class LambdaManager[T](protected val encoder: TemplateEncoder[T]) extends IncrementalState {
 
-  protected type IdMap = Map[T, LambdaTemplate[T]]
-  protected def byID : IdMap = byIDStack.head
-  private var byIDStack : List[IdMap] = List(Map.empty)
-  private def byID_=(map: IdMap) : Unit = {
-    byIDStack = map :: byIDStack.tail
-  }
+  protected val byID         = new IncrementalMap[T, LambdaTemplate[T]]
+  protected val byType       = new IncrementalMap[FunctionType, Set[(T, LambdaTemplate[T])]].withDefaultValue(Set.empty)
+  protected val applications = new IncrementalMap[FunctionType, Set[(T, App[T])]].withDefaultValue(Set.empty)
+  protected val freeLambdas  = new IncrementalMap[FunctionType, Set[T]].withDefaultValue(Set.empty)
 
-  protected type TypeMap = Map[FunctionType, Set[(T, LambdaTemplate[T])]]
-  protected def byType : TypeMap = byTypeStack.head
-  private var byTypeStack : List[TypeMap] = List(Map.empty.withDefaultValue(Set.empty))
-  private def byType_=(map: TypeMap) : Unit = {
-    byTypeStack = map :: byTypeStack.tail
-  }
+  protected def incrementals: List[IncrementalState] =
+    List(byID, byType, applications, freeLambdas)
 
-  protected type ApplicationMap = Map[FunctionType, Set[(T, App[T])]]
-  protected def applications : ApplicationMap = applicationsStack.head
-  private var applicationsStack : List[ApplicationMap] = List(Map.empty.withDefaultValue(Set.empty))
-  private def applications_=(map: ApplicationMap) : Unit = {
-    applicationsStack = map :: applicationsStack.tail
-  }
-
-  protected type FreeMap = Map[FunctionType, Set[T]]
-  protected def freeLambdas : FreeMap = freeLambdasStack.head
-  private var freeLambdasStack : List[FreeMap] = List(Map.empty.withDefaultValue(Set.empty))
-  private def freeLambdas_=(map: FreeMap) : Unit = {
-    freeLambdasStack = map :: freeLambdasStack.tail
-  }
-
-  def push(): Unit = {
-    byIDStack = byID :: byIDStack
-    byTypeStack = byType :: byTypeStack
-    applicationsStack = applications :: applicationsStack
-    freeLambdasStack = freeLambdas :: freeLambdasStack
-  }
-
-  def pop(lvl: Int): Unit = {
-    byIDStack = byIDStack.drop(lvl)
-    byTypeStack = byTypeStack.drop(lvl)
-    applicationsStack = applicationsStack.drop(lvl)
-    freeLambdasStack = freeLambdasStack.drop(lvl)
-  }
+  def clear(): Unit = incrementals.foreach(_.clear())
+  def reset(): Unit = incrementals.foreach(_.reset())
+  def push(): Unit = incrementals.foreach(_.push())
+  def pop(): Unit = incrementals.foreach(_.pop())
 
   def registerFree(lambdas: Seq[(TypeTree, T)]): Unit = {
     for ((tpe, idT) <- lambdas) tpe match {

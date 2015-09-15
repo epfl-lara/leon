@@ -6,11 +6,12 @@ package evaluators
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
+import purescala.Quantification._
 
 import codegen.CompilationUnit
 import codegen.CodeGenParams
 
-class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) {
+class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) {
   val name = "codegen-eval"
   val description = "Evaluator for PureScala expressions based on compilation to JVM"
 
@@ -19,28 +20,29 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
     this(ctx, new CompilationUnit(ctx, prog, params))
   }
 
-  def eval(expression : Expr, mapping : Map[Identifier,Expr]) : EvaluationResult = {
-    val toPairs = mapping.toSeq
+  def eval(expression: Expr, model: solvers.Model) : EvaluationResult = {
+    val toPairs = model.toSeq
     compile(expression, toPairs.map(_._1)).map { e => 
-
       ctx.timers.evaluators.codegen.runtime.start()
-      val res = e(toPairs.map(_._2))
+      val res = e(model)
       ctx.timers.evaluators.codegen.runtime.stop()
       res
     }.getOrElse(EvaluationResults.EvaluatorError("Couldn't compile expression."))
   }
 
-  override def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Seq[Expr]=>EvaluationResult] = {
+  override def compile(expression: Expr, args: Seq[Identifier]) : Option[solvers.Model=>EvaluationResult] = {
     import leon.codegen.runtime.LeonCodeGenRuntimeException
     import leon.codegen.runtime.LeonCodeGenEvaluationException
 
     ctx.timers.evaluators.codegen.compilation.start()
     try {
-      val ce = unit.compileExpression(expression, argorder)(ctx)
+      val ce = unit.compileExpression(expression, args)(ctx)
 
-      Some((args : Seq[Expr]) => {
-        try {
-          EvaluationResults.Successful(ce.eval(args))
+      Some((model: solvers.Model) => {
+        if (args.exists(arg => !model.isDefinedAt(arg))) {
+          EvaluationResults.EvaluatorError("Model undefined for free arguments")
+        } else try {
+          EvaluationResults.Successful(ce.eval(model))
         } catch {
           case e : ArithmeticException =>
             EvaluationResults.RuntimeError(e.getMessage)
@@ -65,6 +67,7 @@ class CodeGenEvaluator(ctx : LeonContext, val unit : CompilationUnit) extends Ev
     } catch {
       case t: Throwable =>
         ctx.reporter.warning(expression.getPos, "Error while compiling expression: "+t.getMessage)
+        t.printStackTrace()
         None
     } finally {
       ctx.timers.evaluators.codegen.compilation.stop()

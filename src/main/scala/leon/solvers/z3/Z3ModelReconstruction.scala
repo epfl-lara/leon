@@ -6,6 +6,7 @@ package solvers.z3
 import z3.scala._
 import purescala.Common._
 import purescala.Expressions._
+import purescala.Constructors._
 import purescala.ExprOps._
 import purescala.Types._
 
@@ -18,7 +19,7 @@ trait Z3ModelReconstruction {
 
   def modelValue(model: Z3Model, id: Identifier, tpe: TypeTree = null) : Option[Expr] = {
     val expectedType = if(tpe == null) id.getType else tpe
-    
+
     variables.getB(id.toVariable).flatMap { z3ID =>
       expectedType match {
         case BooleanType => model.evalAs[Boolean](z3ID).map(BooleanLiteral)
@@ -43,7 +44,7 @@ trait Z3ModelReconstruction {
       reporter.debug("Completing variable '" + id + "' to simplest value")
     }
 
-    for(id <- ids) {
+    for (id <- ids) {
       modelValue(model, id) match {
         case None if AUTOCOMPLETEMODELS => completeID(id)
         case None => ;
@@ -51,6 +52,7 @@ trait Z3ModelReconstruction {
         case Some(ex) => asMap = asMap + (id -> ex)
       }
     }
+
     asMap
   }
 

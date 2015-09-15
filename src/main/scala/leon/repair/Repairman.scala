@@ -9,6 +9,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.DefOps._
+import purescala.Quantification._
 import purescala.Constructors._
 import purescala.Extractors.unwrapTuple
 
@@ -202,10 +203,11 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       case None =>
         _ => true
       case Some(pre) =>
-        evaluator.compile(pre, fd.params map { _.id }) match {
+        val argIds = fd.params.map(_.id)
+        evaluator.compile(pre, argIds) match {
           case Some(evalFun) =>
             val sat = EvaluationResults.Successful(BooleanLiteral(true));
-            { (e: Seq[Expr]) => evalFun(e) == sat }
+            { (es: Seq[Expr]) => evalFun(new solvers.Model((argIds zip es).toMap)) == sat }
           case None =>
             { _ => false }
         }

@@ -224,7 +224,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
   type InstrumentedResult = (EvaluationResults.Result, Option[vanuatoo.Pattern[Expr, TypeTree]])
 
-  def compile(expression : Expr, argorder : Seq[Identifier]) : Option[Expr=>InstrumentedResult] = {
+  def compile(expression: Expr, argorder: Seq[Identifier]) : Option[Expr=>InstrumentedResult] = {
     import leon.codegen.runtime.LeonCodeGenRuntimeException
     import leon.codegen.runtime.LeonCodeGenEvaluationException
 
@@ -241,7 +241,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       Some((args : Expr) => {
         try {
           val monitor = new LeonCodeGenRuntimeMonitor(unit.params.maxFunctionInvocations)
-          val jvmArgs = ce.argsToJVM(Seq(args), monitor )
+          val jvmArgs = ce.argsToJVM(Seq(args), monitor)
 
           val result  = ce.evalFromJVM(jvmArgs, monitor)
 

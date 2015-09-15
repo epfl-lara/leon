@@ -66,7 +66,7 @@ class UninterpretedZ3Solver(val context : LeonContext, val program: Program)
   }
 
   def getModel = {
-    modelToMap(solver.getModel(), freeVariables.toSet)
+    new Model(modelToMap(solver.getModel(), freeVariables.toSet))
   }
 
   def getUnsatCore = {

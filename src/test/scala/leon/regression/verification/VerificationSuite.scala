@@ -45,7 +45,8 @@ trait VerificationSuite extends LeonRegressionSuite {
         user map { u => (u.id, Program(u :: lib)) }
       }
       for ((id, p) <- programs; options <- optionVariants) {
-        test(f"${nextInt()}%3d: ${id.name} ${options.mkString(" ")}") {
+        val index = nextInt()
+        test(f"$index%3d: ${id.name} ${options.mkString(" ")}") {
           val ctx = createLeonContext(options: _*)
           if (forError) {
             intercept[LeonFatalError] {

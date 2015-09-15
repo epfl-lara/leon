@@ -4,8 +4,10 @@ package leon
 package solvers
 package templates
 
+import leon.utils._
 import purescala.Common._
 import purescala.Extractors._
+import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
@@ -88,47 +90,29 @@ object QuantificationTemplate {
 
 class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManager[T](encoder) {
 
-  private val nextQ: () => T = {
-    val id: Identifier = FreshIdentifier("q", BooleanType, true)
-    () => encoder.encodeId(id)
+  private val quantifications = new IncrementalSeq[Quantification]
+  private val instantiated    = new IncrementalSet[(T, Matcher[T])]
+  private val known           = new IncrementalSet[T]
+
+  private def correspond(qm: Matcher[T], m: Matcher[T]): Boolean = correspond(qm, m.caller, m.tpe)
+  private def correspond(qm: Matcher[T], caller: T, tpe: TypeTree): Boolean = qm.tpe match {
+    case _: FunctionType => qm.tpe == tpe && (qm.caller == caller || !known(caller))
+    case _ => qm.tpe == tpe
   }
 
-  private var quantificationsStack: List[Seq[Quantification]] = List(Seq.empty)
-  private def quantifications: Seq[Quantification] = quantificationsStack.head
-  private def quantifications_=(qs: Seq[Quantification]): Unit = {
-    quantificationsStack = qs :: quantificationsStack.tail
-  }
+  override protected def incrementals: List[IncrementalState] =
+    List(quantifications, instantiated, known) ++ super.incrementals
 
-  private var instantiatedStack: List[Set[(T, Matcher[T])]] = List(Set.empty)
-  private def instantiated: Set[(T, Matcher[T])] = instantiatedStack.head
-  private def instantiated_=(ias: Set[(T, Matcher[T])]): Unit = {
-    instantiatedStack = ias :: instantiatedStack.tail
-  }
+  def assumptions: Seq[T] = quantifications.map(_.currentQ2Var).toSeq
 
-  private var knownStack: List[Set[T]] = List(Set.empty)
-  private def known(idT: T): Boolean = knownStack.head(idT) || byID.isDefinedAt(idT)
-  private def correspond(qm: Matcher[T], m: Matcher[T]): Boolean = qm.tpe match {
-    case _: FunctionType => qm.tpe == m.tpe && (qm.caller == m.caller || !known(m.caller))
-    case _ => qm.tpe == m.tpe
-  }
+  def instantiations: Seq[(T, Matcher[T])] = instantiated.toSeq
 
-  override def push(): Unit = {
-    quantificationsStack = quantifications :: quantificationsStack
-    instantiatedStack = instantiated :: instantiatedStack
-    knownStack = knownStack.head :: knownStack
-  }
-
-  override def pop(lvl: Int): Unit = {
-    quantificationsStack = quantificationsStack.drop(lvl)
-    instantiatedStack = instantiatedStack.drop(lvl)
-    knownStack = knownStack.drop(lvl)
-  }
-
-  def assumptions: Seq[T] = quantifications.map(_.currentQ2Var)
+  def instantiations(caller: T, tpe: TypeTree): Seq[(T, Matcher[T])] =
+    instantiated.toSeq.filter { case (b,m) => correspond(m, caller, tpe) }
 
   override def registerFree(ids: Seq[(TypeTree, T)]): Unit = {
     super.registerFree(ids)
-    knownStack = (knownStack.head ++ ids.map(_._2)) :: knownStack.tail
+    known ++= ids.map(_._2)
   }
 
   private class Quantification (
@@ -167,7 +151,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
             .map(qm => if (qm == bindingMatcher) {
               bindingMatcher -> Set(blocker -> matcher)
             } else {
-              val instances: Set[(T, Matcher[T])] = instantiated.filter { case (b, m) => correspond(qm, m) }
+              val instances: Set[(T, Matcher[T])] = instantiated.filter { case (b, m) => correspond(qm, m) }.toSet
 
               // concrete applications can appear multiple times in the constraint, and this is also the case
               // for the current application for which we are generating the constraints
@@ -303,23 +287,16 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       template.matchers merge rec(template.lambdas)
     }
 
-    val quantifiedMatchers = for {
+    val quantifiedMatchers = (for {
       (_, ms) <- allMatchers
       m @ Matcher(_, _, args, _) <- ms
       if args exists (_.left.exists(quantified))
-    } yield m
+    } yield m).toSet
 
-    val matchQuorums: Seq[Set[Matcher[T]]] = quantifiedMatchers.toSet.subsets.filter { ms =>
-      var doubled: Boolean = false
-      var qs: Set[T] = Set.empty
-      for (m @ Matcher(_, _, args, _) <- ms) {
-        val qargs = (args collect { case Left(a) if quantified(a) => a }).toSet
-        if ((qs & qargs).nonEmpty) doubled = true
-        qs ++= qargs
-      }
-
-      !doubled && (qs == quantified)
-    }.toList
+    val matchQuorums: Seq[Set[Matcher[T]]] = purescala.Quantification.extractQuorums(
+      quantifiedMatchers, quantified,
+      (m: Matcher[T]) => m.args.collect { case Right(m) if quantifiedMatchers(m) => m }.toSet,
+      (m: Matcher[T]) => m.args.collect { case Left(a) if quantified(a) => a }.toSet)
 
     var instantiation = Instantiation.empty[T]
 
@@ -387,7 +364,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         instantiation ++= quantification.instantiate(b, m)
       }
 
-      quantifications :+= quantification
+      quantifications += quantification
       quantification.qs._2
     }
 

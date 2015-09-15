@@ -26,7 +26,7 @@ import solvers._
   *   - [[ExprOps.postMap postMap]]
   *   - [[ExprOps.genericTransform genericTransform]]
   *
-  * These operations usually take a higher order function that gets apply to the
+  * These operations usually take a higher order function that gets applied to the
   * expression tree in some strategy. They provide an expressive way to build complex
   * operations on Leon expressions.
   *
@@ -317,8 +317,8 @@ object ExprOps {
           case Variable(i)  => subvs + i
           case LetDef(fd,_) => subvs -- fd.params.map(_.id)
           case Let(i,_,_)   => subvs - i
-          case MatchExpr(_, cses)  => subvs -- cses.flatMap(_.pattern.binders)
-          case Passes(_, _ , cses) => subvs -- cses.flatMap(_.pattern.binders)
+          case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
+          case Passes(_, _, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Lambda(args, _) => subvs -- args.map(_.id)
           case Forall(args, _) => subvs -- args.map(_.id)
           case _ => subvs
@@ -369,19 +369,23 @@ object ExprOps {
     }).setPos(expr)
   }
 
+  def replacePatternBinders(pat: Pattern, subst: Map[Identifier, Identifier]): Pattern = {
+    def rec(p: Pattern): Pattern = p match {
+      case InstanceOfPattern(ob, ctd) => InstanceOfPattern(ob map subst, ctd)
+      case WildcardPattern(ob) => WildcardPattern(ob map subst)
+      case TuplePattern(ob, sps) => TuplePattern(ob map subst, sps map rec)
+      case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob map subst, ccd, sps map rec)
+      case UnapplyPattern(ob, obj, sps) => UnapplyPattern(ob map subst, obj, sps map rec)
+      case LiteralPattern(ob, lit) => LiteralPattern(ob map subst, lit)
+    }
+
+    rec(pat)
+  }
+
   /** ATTENTION: Unused, and untested
     * rewrites pattern-matching expressions to use fresh variables for the binders
     */
   def freshenLocals(expr: Expr) : Expr = {
-    def rewritePattern(p: Pattern, sm: Map[Identifier,Identifier]) : Pattern = p match {
-      case InstanceOfPattern(ob, ctd) => InstanceOfPattern(ob map sm, ctd)
-      case WildcardPattern(ob) => WildcardPattern(ob map sm)
-      case TuplePattern(ob, sps) => TuplePattern(ob.map(sm(_)), sps.map(rewritePattern(_, sm)))
-      case CaseClassPattern(ob, ccd, sps) => CaseClassPattern(ob.map(sm(_)), ccd, sps.map(rewritePattern(_, sm)))
-      case UnapplyPattern(ob, obj, sps) => UnapplyPattern(ob.map(sm(_)), obj, sps.map(rewritePattern(_, sm)))
-      case LiteralPattern(ob, lit) => LiteralPattern(ob map sm, lit)
-    }
-
     def freshenCase(cse: MatchCase) : MatchCase = {
       val allBinders: Set[Identifier] = cse.pattern.binders
       val subMap: Map[Identifier,Identifier] = 
@@ -389,7 +393,7 @@ object ExprOps {
       val subVarMap: Map[Expr,Expr] = subMap.map(kv => Variable(kv._1) -> Variable(kv._2))
       
       MatchCase(
-        rewritePattern(cse.pattern, subMap),
+        replacePatternBinders(cse.pattern, subMap),
         cse.optGuard map { replace(subVarMap, _)}, 
         replace(subVarMap,cse.rhs)
       )
@@ -461,6 +465,63 @@ object ExprOps {
     }
 
     fixpoint(postMap(rec))(expr)
+  }
+
+  private val typedIds: scala.collection.mutable.Map[TypeTree, List[Identifier]] =
+    scala.collection.mutable.Map.empty.withDefaultValue(List.empty)
+
+  /** Normalizes identifiers in an expression to enable some notion of structural
+    * equality between expressions on which usual equality doesn't make sense
+    * (i.e. closures).
+    *
+    * This function relies on the static map `typedIds` to ensure identical
+    * structures and must therefore be synchronized.
+    */
+  def normalizeStructure(expr: Expr): (Expr, Map[Identifier, Identifier]) = synchronized {
+    val allVars : Seq[Identifier] = foldRight[Seq[Identifier]] {
+      (expr, idSeqs) => idSeqs.foldLeft(expr match {
+        case Lambda(args, _) => args.map(_.id)
+        case Forall(args, _) => args.map(_.id)
+        case LetDef(fd, _) => fd.params.map(_.id)
+        case Let(i, _, _) => Seq(i)
+        case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
+        case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
+        case Variable(id) => Seq(id)
+        case _ => Seq.empty[Identifier]
+      })((acc, seq) => acc ++ seq)
+    } (expr).distinct
+
+    val grouped : Map[TypeTree, Seq[Identifier]] = allVars.groupBy(_.getType)
+    val subst = grouped.foldLeft(Map.empty[Identifier, Identifier]) { case (subst, (tpe, ids)) =>
+      val currentVars = typedIds(tpe)
+      
+      val freshCount = ids.size - currentVars.size
+      val typedVars = if (freshCount > 0) {
+        val allIds = currentVars ++ List.range(0, freshCount).map(_ => FreshIdentifier("x", tpe, true))
+        typedIds += tpe -> allIds
+        allIds
+      } else {
+        currentVars
+      }
+
+      subst ++ (ids zip typedVars)
+    }
+
+    val normalized = postMap {
+      case Lambda(args, body) => Some(Lambda(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
+      case Forall(args, body) => Some(Forall(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
+      case Let(i, e, b)       => Some(Let(subst(i), e, b))
+      case MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
+        cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
+      }))
+      case Passes(in, out, cses) => Some(Passes(in, out, cses.map { cse =>
+        cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
+      }))
+      case Variable(id) => Some(Variable(subst(id)))
+      case _ => None
+    } (expr)
+
+    (normalized, subst)
   }
 
   /** Returns '''true''' if the formula is Ground,
@@ -1244,7 +1305,7 @@ object ExprOps {
   }
 
   /** Returns the value for an identifier given a model. */
-  def valuateWithModel(model: Map[Identifier, Expr])(id: Identifier): Expr = {
+  def valuateWithModel(model: Model)(id: Identifier): Expr = {
     model.getOrElse(id, simplestValue(id.getType))
   }
 
@@ -1252,7 +1313,7 @@ object ExprOps {
     * 
     * Complete with simplest values in case of incomplete model.
     */
-  def valuateWithModelIn(expr: Expr, vars: Set[Identifier], model: Map[Identifier, Expr]): Expr = {
+  def valuateWithModelIn(expr: Expr, vars: Set[Identifier], model: Model): Expr = {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }

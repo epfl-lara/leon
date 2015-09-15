@@ -6,9 +6,11 @@ package combinators
 
 import purescala.Common._
 import purescala.Definitions._
+import purescala.Quantification._
 import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
+import purescala.Types._
 import utils._
 
 import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre}
@@ -16,20 +18,17 @@ import templates._
 import utils.Interruptible
 import evaluators._
 
-class UnrollingSolver(val context: LeonContext, program: Program, underlying: Solver) extends Solver with NaiveAssumptionSolver {
+class UnrollingSolver(val context: LeonContext, val program: Program, underlying: Solver)
+  extends Solver
+     with NaiveAssumptionSolver
+     with EvaluatingSolver
+     with QuantificationSolver {
+
   val feelingLucky   = context.findOptionOrDefault(optFeelingLucky)
   val useCodeGen     = context.findOptionOrDefault(optUseCodeGen)
   val assumePreHolds = context.findOptionOrDefault(optAssumePre)
 
-  private val evaluator : Evaluator = {
-    if(useCodeGen) {
-      new CodeGenEvaluator(context, program)
-    } else {
-      new DefaultEvaluator(context, program)
-    }
-  }
-
-  protected var lastCheckResult : (Boolean, Option[Boolean], Option[Map[Identifier,Expr]]) = (false, None, None)
+  protected var lastCheckResult : (Boolean, Option[Boolean], Option[HenkinModel]) = (false, None, None)
 
   private val freeVars    = new IncrementalSet[Identifier]()
   private val constraints = new IncrementalSeq[Expr]()
@@ -106,17 +105,61 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
 
   def hasFoundAnswer = lastCheckResult._1
 
-  def foundAnswer(res: Option[Boolean], model: Option[Map[Identifier, Expr]] = None) = {
+  private def extractModel(model: Model): HenkinModel = {
+    val allVars = freeVars.toSet
+
+    def extract(b: Expr, m: Matcher[Expr]): Set[Seq[Expr]] = {
+      val QuantificationTypeMatcher(fromTypes, _) = m.tpe
+      val optEnabler = evaluator.eval(b).result
+      val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg)).result)
+      if (optEnabler == Some(BooleanLiteral(true)) && optArgs.forall(_.isDefined)) {
+        Set(optArgs.map(_.get))
+      } else {
+        Set.empty
+      }
+    }
+
+    val funDomains = allVars.flatMap(id => id.getType match {
+      case ft @ FunctionType(fromTypes, _) =>
+        Some(id -> templateGenerator.manager.instantiations(Variable(id), ft).flatMap {
+          case (b, m) => extract(b, m)
+        })
+      case _ => None
+    }).toMap.mapValues(_.toSet)
+
+    val asDMap = model.map(p => funDomains.get(p._1) match {
+      case Some(domain) =>
+        val mapping = domain.toSeq.map { es =>
+          val ev: Expr = p._2 match {
+            case RawArrayValue(_, mapping, dflt) =>
+              mapping.collectFirst {
+                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
+              } getOrElse dflt
+            case _ => scala.sys.error("Unexpected function encoding " + p._2)
+          }
+          es -> ev
+        }
+
+        p._1 -> PartialLambda(mapping, p._1.getType.asInstanceOf[FunctionType])
+      case None => p
+    }).toMap
+
+    val typeGrouped = templateGenerator.manager.instantiations.groupBy(_._2.tpe)
+    val typeDomains = typeGrouped.mapValues(_.flatMap { case (b, m) => extract(b, m) }.toSet)
+
+    val domains = new HenkinDomains(typeDomains)
+    new HenkinModel(asDMap, domains)
+  }
+
+  def foundAnswer(res: Option[Boolean], model: Option[HenkinModel] = None) = {
     lastCheckResult = (true, res, model)
   }
 
-  def isValidModel(model: Map[Identifier, Expr], silenceErrors: Boolean = false): Boolean = {
+  def isValidModel(model: HenkinModel, silenceErrors: Boolean = false): Boolean = {
     import EvaluationResults._
 
     val expr = andJoin(constraints.toSeq)
-    val allVars = freeVars.toSet
-
-    val fullModel = allVars.map(v => v -> model.getOrElse(v, simplestValue(v.getType))).toMap
+    val fullModel = model fill freeVars.toSet
 
     evaluator.eval(expr, fullModel) match {
       case Successful(BooleanLiteral(true)) =>
@@ -152,7 +195,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
       reporter.debug(" - Running search...")
 
       solver.push()
-      solver.assertCnstr(andJoin((assumptions ++ unrollingBank.currentBlockers ++ unrollingBank.quantificationAssumptions).toSeq))
+      solver.assertCnstr(andJoin((assumptions ++ unrollingBank.satisfactionAssumptions).toSeq))
       val res = solver.check
 
       reporter.debug(" - Finished search with blocked literals")
@@ -167,7 +210,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
           foundAnswer(None)
 
         case Some(true) => // SAT
-          val model = solver.getModel
+          val model = extractModel(solver.getModel)
           solver.pop()
           foundAnswer(Some(true), Some(model))
 
@@ -188,7 +231,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
             }
 
             solver.push()
-            solver.assertCnstr(andJoin(assumptions.toSeq ++ unrollingBank.quantificationAssumptions))
+            solver.assertCnstr(andJoin(assumptions.toSeq ++ unrollingBank.refutationAssumptions))
             val res2 = solver.check
 
             res2 match {
@@ -198,7 +241,7 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
 
               case Some(true) =>
                 if (feelingLucky && !interrupted) {
-                  val model = solver.getModel
+                  val model = extractModel(solver.getModel)
 
                   // we might have been lucky :D
                   if (isValidModel(model, silenceErrors = true)) {
@@ -241,13 +284,12 @@ class UnrollingSolver(val context: LeonContext, program: Program, underlying: So
     }
   }
 
-  def getModel: Map[Identifier,Expr] = {
-    val allVars = freeVars.toSet
+  def getModel: HenkinModel = {
     lastCheckResult match {
       case (true, Some(true), Some(m)) =>
-        m.filterKeys(allVars)
+        m.filter(freeVars.toSet)
       case _ =>
-        Map()
+        HenkinModel.empty
     }
   }
 

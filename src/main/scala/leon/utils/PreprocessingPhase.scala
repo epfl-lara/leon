@@ -5,6 +5,7 @@ package utils
 
 import leon.purescala._
 import leon.purescala.Definitions.Program
+import leon.purescala.Quantification.CheckForalls
 import leon.solvers.isabelle.AdaptationPhase
 import leon.synthesis.{ConvertWithOracle, ConvertHoles}
 import leon.verification.InjectAsserts
