@@ -8,6 +8,7 @@ import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.Definitions._
+import leon.purescala.Quantification._
 import leon.LeonContext
 import leon.evaluators.RecursiveEvaluator
 
@@ -21,7 +22,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   type GC = GlobalContext
   
   def initRC(mappings: Map[Identifier, Expr]) = CollectingRecContext(mappings, None)
-  def initGC() = new GlobalContext()
+  def initGC(model: leon.solvers.Model) = new GlobalContext(model)
   
   type FI = (FunDef, Seq[Expr])
   

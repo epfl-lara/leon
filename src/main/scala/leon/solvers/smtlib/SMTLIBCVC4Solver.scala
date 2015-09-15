@@ -76,16 +76,16 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), ft @ FunctionType(from,to)) =>
-      finiteLambda(fromSMT(elem, to), Seq.empty, from)
+    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), FunctionType(from,to)) =>
+      RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
 
     case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
       val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
       RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), ft @ FunctionType(from,to)) =>
-      val FiniteLambda(dflt, mapping) = fromSMT(arr, tpe)
-      finiteLambda(dflt, mapping :+ (fromSMT(key, tupleTypeWrap(from)) -> fromSMT(elem, to)), from)
+    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), FunctionType(from,to)) =>
+      val RawArrayValue(k, elems, base) = fromSMT(arr, tpe)
+      RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, to)), base)
 
     case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
       FiniteSet(elems.map(fromSMT(_, base)).toSet, base)
@@ -103,8 +103,8 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     // FIXME (nicolas)
     // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__
     // one I've witnessed up to now. Don't know why this is happening...
-    case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), ft @ FunctionType(from, to)) =>
-      finiteLambda(fromSMT(elem, to), Seq.empty, from)
+    case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), FunctionType(from, to)) =>
+      RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
 
     case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), RawArrayType(k, v)) =>
       RawArrayValue(k, Map(), fromSMT(elem, v))

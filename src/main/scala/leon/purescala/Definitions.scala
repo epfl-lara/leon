@@ -71,7 +71,7 @@ object Definitions {
     lazy val library = Library(this)
 
     def subDefinitions = units
-    
+
     def definedFunctions    = units.flatMap(_.definedFunctions)
     def definedClasses      = units.flatMap(_.definedClasses)
     def classHierarchyRoots = units.flatMap(_.classHierarchyRoots)
@@ -81,7 +81,7 @@ object Definitions {
         case md: ModuleDef => md
       })
     }
-    
+
     lazy val callGraph      = new CallGraph(this)
 
     def caseClassDef(name: String) = definedClasses.collectFirst {

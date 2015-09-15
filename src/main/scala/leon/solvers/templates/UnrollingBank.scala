@@ -18,90 +18,84 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   private val encoder = templateGenerator.encoder
   private val manager = templateGenerator.manager
 
+  // Function instantiations have their own defblocker
+  private val defBlockers   = new IncrementalMap[TemplateCallInfo[T], T]()
+
   // Keep which function invocation is guarded by which guard,
   // also specify the generation of the blocker.
-  private val callInfos = new IncrementalMap[T, (Int, Int, T, Set[TemplateCallInfo[T]])]()
-  private def callInfo  = callInfos.toMap
-
-  // Function instantiations have their own defblocker
-  private val defBlockerss = new IncrementalMap[TemplateCallInfo[T], T]()
-  private def defBlockers  = defBlockerss.toMap
-
-  private val appInfos = new IncrementalMap[(T, App[T]), (Int, Int, T, T, Set[TemplateAppInfo[T]])]()
-  private def appInfo  = appInfos.toMap
-
-  private val appBlockerss = new IncrementalMap[(T, App[T]), T]()
-  private def appBlockers  = appBlockerss.toMap
-
+  private val callInfos     = new IncrementalMap[T, (Int, Int, T, Set[TemplateCallInfo[T]])]()
+  private val appInfos      = new IncrementalMap[(T, App[T]), (Int, Int, T, T, Set[TemplateAppInfo[T]])]()
+  private val appBlockers   = new IncrementalMap[(T, App[T]), T]()
   private val blockerToApps = new IncrementalMap[T, (T, App[T])]()
-  private def blockerToApp  = blockerToApps.toMap
-
-  private val functionVarss =  new IncrementalMap[TypeTree, Set[T]]()
-  private def functionVars  = functionVarss.toMap
+  private val functionVars  = new IncrementalMap[TypeTree, Set[T]]()
 
   def push() {
     callInfos.push()
-    defBlockerss.push()
+    defBlockers.push()
     appInfos.push()
-    appBlockerss.push()
+    appBlockers.push()
     blockerToApps.push()
-    functionVarss.push()
+    functionVars.push()
   }
 
   def pop() {
     callInfos.pop()
-    defBlockerss.pop()
+    defBlockers.pop()
     appInfos.pop()
-    appBlockerss.pop()
+    appBlockers.pop()
     blockerToApps.pop()
-    functionVarss.pop()
+    functionVars.pop()
   }
 
   def clear() {
     callInfos.clear()
-    defBlockerss.clear()
+    defBlockers.clear()
     appInfos.clear()
-    appBlockerss.clear()
-    functionVarss.clear()
+    appBlockers.clear()
+    blockerToApps.clear()
+    functionVars.clear()
   }
 
   def reset() {
     callInfos.reset()
-    defBlockerss.reset()
+    defBlockers.reset()
     appInfos.reset()
-    appBlockerss.reset()
-    functionVarss.reset()
+    appBlockers.reset()
+    blockerToApps.clear()
+    functionVars.reset()
   }
 
   def dumpBlockers() = {
-    val generations = (callInfo.map(_._2._1).toSet ++ appInfo.map(_._2._1).toSet).toSeq.sorted
+    val generations = (callInfos.map(_._2._1).toSet ++ appInfos.map(_._2._1).toSet).toSeq.sorted
 
     generations.foreach { generation =>
       reporter.debug("--- " + generation)
 
-      for ((b, (gen, origGen, ast, fis)) <- callInfo if gen == generation) {
+      for ((b, (gen, origGen, ast, fis)) <- callInfos if gen == generation) {
         reporter.debug(f".     $b%15s ~> "+fis.mkString(", "))
       }
 
-      for ((app, (gen, origGen, b, notB, infos)) <- appInfo if gen == generation) {
+      for ((app, (gen, origGen, b, notB, infos)) <- appInfos if gen == generation) {
         reporter.debug(f".     $b%15s ~> "+infos.mkString(", "))
       }
     }
   }
 
-  def canUnroll = callInfo.nonEmpty || appInfo.nonEmpty
+  def satisfactionAssumptions = currentBlockers ++ manager.assumptions
 
-  def currentBlockers = callInfo.map(_._2._3).toSeq ++ appInfo.map(_._2._4).toSeq
+  def refutationAssumptions = manager.assumptions
 
-  def quantificationAssumptions = manager.assumptions
+  def canUnroll = callInfos.nonEmpty || appInfos.nonEmpty
+
+  def currentBlockers = callInfos.map(_._2._3).toSeq ++ appInfos.map(_._2._4).toSeq
 
   def getBlockersToUnlock: Seq[T] = {
-    if (callInfo.isEmpty && appInfo.isEmpty) {
+    if (callInfos.isEmpty && appInfos.isEmpty) {
       Seq.empty
     } else {
-      val minGeneration = (callInfo.values.map(_._1) ++ appInfo.values.map(_._1)).min
-      val callBlocks = callInfo.filter(_._2._1 == minGeneration).toSeq.map(_._1) 
-      val appBlocks = appInfo.values.filter(_._1 == minGeneration).toSeq.map(_._3)
+      val minGeneration = (callInfos.values.map(_._1) ++ appInfos.values.map(_._1)).min
+      val callBlocks = callInfos.filter(_._2._1 == minGeneration).toSeq.map(_._1) 
+      val appBlocks = appInfos.values.filter(_._1 == minGeneration).toSeq.map(_._3)
       callBlocks ++ appBlocks
     }
   }
@@ -109,7 +103,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   private def registerCallBlocker(gen: Int, id: T, fis: Set[TemplateCallInfo[T]]) {
     val notId = encoder.mkNot(id)
 
-    callInfo.get(id) match {
+    callInfos.get(id) match {
       case Some((exGen, origGen, _, exFis)) =>
         // PS: when recycling `b`s, this assertion becomes dangerous.
         // It's better to simply take the max of the generations.
@@ -117,17 +111,17 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
         val minGen = gen min exGen
 
-        callInfo += id -> (minGen, origGen, notId, fis++exFis)
+        callInfos += id -> (minGen, origGen, notId, fis++exFis)
       case None =>
-        callInfo += id -> (gen, gen, notId, fis)
+        callInfos += id -> (gen, gen, notId, fis)
     }
   }
 
   private def registerAppBlocker(gen: Int, app: (T, App[T]), info: Set[TemplateAppInfo[T]]) : Unit = {
-    appInfo.get(app) match {
+    appInfos.get(app) match {
       case Some((exGen, origGen, b, notB, exInfo)) =>
         val minGen = gen min exGen
-        appInfo += app -> (minGen, origGen, b, notB, exInfo ++ info)
+        appInfos += app -> (minGen, origGen, b, notB, exInfo ++ info)
 
       case None =>
         val b = appBlockers.get(app) match {
@@ -136,8 +130,8 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
         }
 
         val notB = encoder.mkNot(b)
-        appInfo += app -> (gen, gen, b, notB, info)
-        blockerToApp += b -> app
+        appInfos += app -> (gen, gen, b, notB, info)
+        blockerToApps += b -> app
     }
   }
 
@@ -154,7 +148,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   }
 
   private def extendAppBlock(app: (T, App[T]), infos: Set[TemplateAppInfo[T]]) : T = {
-    assert(!appInfo.isDefinedAt(app), "appInfo -= app must have been called to ensure blocker freshness")
+    assert(!appInfos.isDefinedAt(app), "appInfo -= app must have been called to ensure blocker freshness")
     assert(appBlockers.isDefinedAt(app), "freshAppBlocks must have been called on app before it can be unlocked")
     assert(infos.nonEmpty, "No point in extending blockers if no templates have been unrolled!")
 
@@ -207,45 +201,45 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def nextGeneration(gen: Int) = gen + 3
 
   def decreaseAllGenerations() = {
-    for ((block, (gen, origGen, ast, infos)) <- callInfo) {
+    for ((block, (gen, origGen, ast, infos)) <- callInfos) {
       // We also decrease the original generation here
-      callInfo += block -> (math.max(1,gen-1), math.max(1,origGen-1), ast, infos)
+      callInfos += block -> (math.max(1,gen-1), math.max(1,origGen-1), ast, infos)
     }
 
-    for ((app, (gen, origGen, b, notB, infos)) <- appInfo) {
-      appInfo += app -> (math.max(1,gen-1), math.max(1,origGen-1), b, notB, infos)
+    for ((app, (gen, origGen, b, notB, infos)) <- appInfos) {
+      appInfos += app -> (math.max(1,gen-1), math.max(1,origGen-1), b, notB, infos)
     }
   }
 
   def promoteBlocker(b: T) = {
-    if (callInfo contains b) {
-      val (_, origGen, ast, fis) = callInfo(b)
+    if (callInfos contains b) {
+      val (_, origGen, ast, fis) = callInfos(b)
       
-      callInfo += b -> (1, origGen, ast, fis)
+      callInfos += b -> (1, origGen, ast, fis)
     }
 
-    if (blockerToApp contains b) {
-      val app = blockerToApp(b)
-      val (_, origGen, _, notB, infos) = appInfo(app)
+    if (blockerToApps contains b) {
+      val app = blockerToApps(b)
+      val (_, origGen, _, notB, infos) = appInfos(app)
 
-      appInfo += app -> (1, origGen, b, notB, infos)
+      appInfos += app -> (1, origGen, b, notB, infos)
     }
   }
 
   def unrollBehind(ids: Seq[T]): Seq[T] = {
-    assert(ids.forall(id => (callInfo contains id) || (blockerToApp contains id)))
+    assert(ids.forall(id => (callInfos contains id) || (blockerToApps contains id)))
 
     var newClauses : Seq[T] = Seq.empty
 
-    val newCallInfos = ids.flatMap(id => callInfo.get(id).map(id -> _))
-    callInfo --= ids
+    val newCallInfos = ids.flatMap(id => callInfos.get(id).map(id -> _))
+    callInfos --= ids
 
-    val apps = ids.flatMap(id => blockerToApp.get(id))
-    val appInfos = apps.map(app => app -> appInfo(app))
-    blockerToApp --= ids
-    appInfo --= apps
+    val apps = ids.flatMap(id => blockerToApps.get(id))
+    val thisAppInfos = apps.map(app => app -> appInfos(app))
+    blockerToApps --= ids
+    appInfos --= apps
 
-    for ((app, (_, _, _, _, infos)) <- appInfos if infos.nonEmpty) {
+    for ((app, (_, _, _, _, infos)) <- thisAppInfos if infos.nonEmpty) {
       val extension = extendAppBlock(app, infos)
       reporter.debug(" -> extending lambda blocker: " + extension)
       newClauses :+= extension
@@ -296,7 +290,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       newClauses ++= newCls
     }
 
-    for ((app @ (b, _), (gen, _, _, _, infos)) <- appInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
+    for ((app @ (b, _), (gen, _, _, _, infos)) <- thisAppInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
       var newCls = Seq.empty[T]
 
       val nb = encoder.encodeId(FreshIdentifier("b", BooleanType, true))

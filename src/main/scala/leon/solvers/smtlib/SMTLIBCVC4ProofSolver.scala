@@ -37,7 +37,7 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
   }
 
   // This solver does not support model extraction
-  override def getModel: Map[Identifier, Expr] = {
+  override def getModel: solvers.Model = {
     // We don't send the error through reporter because it may be caught by PortfolioSolver
     throw LeonFatalError(Some(s"Solver $name does not support model extraction."))
   }

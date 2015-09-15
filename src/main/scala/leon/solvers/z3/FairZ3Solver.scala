@@ -12,6 +12,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Constructors._
+import purescala.Quantification._
 import purescala.ExprOps._
 import purescala.Types._
 
@@ -24,7 +25,8 @@ import termination._
 class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
      with Z3ModelReconstruction
-     with FairZ3Component {
+     with FairZ3Component
+     with EvaluatingSolver {
 
   enclosing =>
 
@@ -38,15 +40,6 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   protected val errors     = new IncrementalBijection[Unit, Boolean]()
   protected def hasError   = errors.getB(()) contains true
   protected def addError() = errors += () -> true
-
-  private val evaluator: Evaluator =
-    if(useCodeGen) {
-      // TODO If somehow we could not recompile each time we create a solver,
-      // that would be good?
-      new CodeGenEvaluator(context, program)
-    } else {
-      new DefaultEvaluator(context, program)
-    }
 
   protected[z3] def getEvaluator : Evaluator = evaluator
 
@@ -62,8 +55,57 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   )}
   toggleWarningMessages(true)
 
+  private def extractModel(model: Z3Model, ids: Set[Identifier]): HenkinModel = {
+    val asMap = modelToMap(model, ids)
 
-  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, Map[Identifier,Expr]) = {
+    def extract(b: Z3AST, m: Matcher[Z3AST]): Set[Seq[Expr]] = {
+      val QuantificationTypeMatcher(fromTypes, _) = m.tpe
+      val optEnabler = model.evalAs[Boolean](b)
+      val optArgs = (m.args zip fromTypes).map {
+        p => softFromZ3Formula(model, model.eval(Matcher.argValue(p._1), true).get, p._2)
+      }
+
+      if (optEnabler == Some(true) && optArgs.forall(_.isDefined)) {
+        Set(optArgs.map(_.get))
+      } else {
+        Set.empty
+      }
+    }
+
+    val funDomains = ids.flatMap(id => id.getType match {
+      case ft @ FunctionType(fromTypes, _) => variables.getB(id.toVariable) match {
+        case Some(z3ID) => Some(id -> templateGenerator.manager.instantiations(z3ID, ft).flatMap {
+          case (b, m) => extract(b, m)
+        })
+        case _ => None
+      }
+      case _ => None
+    }).toMap.mapValues(_.toSet)
+
+    val asDMap = asMap.map(p => funDomains.get(p._1) match {
+      case Some(domain) =>
+        val mapping = domain.toSeq.map { es =>
+          val ev: Expr = p._2 match {
+            case RawArrayValue(_, mapping, dflt) =>
+              mapping.collectFirst {
+                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
+              } getOrElse dflt
+            case _ => scala.sys.error("Unexpected function encoding " + p._2)
+          }
+          es -> ev
+        }
+        p._1 -> PartialLambda(mapping, p._1.getType.asInstanceOf[FunctionType])
+      case None => p
+    })
+
+    val typeGrouped = templateGenerator.manager.instantiations.groupBy(_._2.tpe)
+    val typeDomains = typeGrouped.mapValues(_.flatMap { case (b, m) => extract(b, m) }.toSet)
+
+    val domain = new HenkinDomains(typeDomains)
+    new HenkinModel(asDMap, domain)
+  }
+
+  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, HenkinModel) = {
     if(!interrupted) {
 
       val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
@@ -92,22 +134,23 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
         } else Seq()
       }).toMap
 
-      val asMap = modelToMap(model, variables) ++ functionsAsMap ++ constantFunctionsAsMap
-      val evalResult = evaluator.eval(formula, asMap)
+      val leonModel = extractModel(model, variables)
+      val fullModel = leonModel ++ (functionsAsMap ++ constantFunctionsAsMap)
+      val evalResult = evaluator.eval(formula, fullModel)
 
       evalResult match {
         case EvaluationResults.Successful(BooleanLiteral(true)) =>
           reporter.debug("- Model validated.")
-          (true, asMap)
+          (true, fullModel)
 
         case EvaluationResults.Successful(res) =>
           assert(res == BooleanLiteral(false), "Checking model returned non-boolean")
           reporter.debug("- Invalid model.")
-          (false, asMap)
+          (false, fullModel)
 
         case EvaluationResults.RuntimeError(msg) =>
           reporter.debug("- Model leads to runtime error.")
-          (false, asMap)
+          (false, fullModel)
 
         case EvaluationResults.EvaluatorError(msg) => 
           if (silenceErrors) {
@@ -115,11 +158,11 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
           } else {
             reporter.warning("Something went wrong. While evaluating the model, we got this : " + msg)
           }
-          (false, asMap)
+          (false, fullModel)
 
       }
     } else {
-      (false, Map.empty)
+      (false, HenkinModel.empty)
     }
   }
 
@@ -156,7 +199,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   val solver = z3.mkSolver()
 
   private val freeVars    = new IncrementalSet[Identifier]()
-  private var constraints = new IncrementalSeq[Expr]()
+  private val constraints = new IncrementalSeq[Expr]()
 
 
   val unrollingBank = new UnrollingBank(context, templateGenerator)
@@ -195,7 +238,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
   var foundDefinitiveAnswer = false
   var definitiveAnswer : Option[Boolean] = None
-  var definitiveModel  : Map[Identifier,Expr] = Map.empty
+  var definitiveModel  : HenkinModel = HenkinModel.empty
   var definitiveCore   : Set[Expr] = Set.empty
 
   def assertCnstr(expression: Expr) {
@@ -204,7 +247,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
       freeVars ++= newFreeVars
 
       // We make sure all free variables are registered as variables
-      freeVars.toSet.foreach { v =>
+      freeVars.foreach { v =>
         variables.cachedB(Variable(v)) {
           templateGenerator.encoder.encodeId(v)
         }
@@ -236,7 +279,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
     def entireFormula  = andJoin(assumptions.toSeq ++ constraints.toSeq)
 
-    def foundAnswer(answer : Option[Boolean], model : Map[Identifier,Expr] = Map.empty, core: Set[Expr] = Set.empty) : Unit = {
+    def foundAnswer(answer: Option[Boolean], model: HenkinModel = HenkinModel.empty, core: Set[Expr] = Set.empty) : Unit = {
       foundDefinitiveAnswer = true
       definitiveAnswer = answer
       definitiveModel  = model
@@ -268,13 +311,13 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
       val timer = context.timers.solvers.z3.check.start()
       solver.push() // FIXME: remove when z3 bug is fixed
-      val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.currentBlockers ++ unrollingBank.quantificationAssumptions) :_*)
+      val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.satisfactionAssumptions) :_*)
       solver.pop()  // FIXME: remove when z3 bug is fixed
       timer.stop()
 
       reporter.debug(" - Finished search with blocked literals")
 
-      lazy val allVars = freeVars.toSet
+      lazy val allVars: Set[Identifier] = freeVars.toSet
 
       res match {
         case None =>
@@ -300,7 +343,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
               foundAnswer(None, model)
             }
           } else {
-            val model = modelToMap(z3model, allVars)
+            val model = extractModel(z3model, allVars)
 
             //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
             //reporter.debug("- Found a model:")
@@ -359,7 +402,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
             val timer = context.timers.solvers.z3.check.start()
             solver.push() // FIXME: remove when z3 bug is fixed
-            val res2 = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.quantificationAssumptions) : _*)
+            val res2 = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.refutationAssumptions) : _*)
             solver.pop()  // FIXME: remove when z3 bug is fixed
             timer.stop()
 

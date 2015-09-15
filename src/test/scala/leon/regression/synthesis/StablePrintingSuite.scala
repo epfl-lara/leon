@@ -71,6 +71,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
             for (e <- reporter.lastErrors) {
               info(e)
             }
+            println(e)
             info(e.getMessage)
             fail("Compilation failed")
         }

@@ -28,8 +28,9 @@ import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 import _root_.smtlib.theories._
 import _root_.smtlib.{Interpreter => SMTInterpreter}
 
-abstract class SMTLIBSolver(val context: LeonContext,
-                            val program: Program) extends Solver with NaiveAssumptionSolver {
+abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
+  extends Solver
+     with NaiveAssumptionSolver {
 
   /* Solver name */
   def targetName: String
@@ -45,7 +46,6 @@ abstract class SMTLIBSolver(val context: LeonContext,
   protected def getNewInterpreter(ctx: LeonContext): SMTInterpreter
 
   protected val interpreter = getNewInterpreter(context)
-
 
   /* Printing VCs */
   protected lazy val out: Option[java.io.FileWriter] = if (reporter.isDebugEnabled) Some {
@@ -171,8 +171,8 @@ abstract class SMTLIBSolver(val context: LeonContext,
     case RawArrayType(from, to) =>
       r
 
-    case ft @ FunctionType(from, to) =>
-      finiteLambda(r.default, r.elems.toSeq, from)
+    case FunctionType(from, to) =>
+      r
 
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],
@@ -742,10 +742,10 @@ abstract class SMTLIBSolver(val context: LeonContext,
     }
   }
 
-  protected def getModel(filter: Identifier => Boolean): Map[Identifier, Expr] = {
+  protected def getModel(filter: Identifier => Boolean): Model = {
     val syms = variables.aSet.filter(filter).toList.map(variables.aToB)
     if (syms.isEmpty) {
-      Map()
+      Model.empty
     } else {
       val cmd: Command = GetValue(
         syms.head,
@@ -754,20 +754,20 @@ abstract class SMTLIBSolver(val context: LeonContext,
 
       sendCommand(cmd) match {
         case GetValueResponseSuccess(valuationPairs) =>
-
-          valuationPairs.collect {
+          new Model(valuationPairs.collect {
             case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
               val id = variables.toA(sym)
 
               (id, fromSMT(value, id.getType)(Map(), Map()))
-          }.toMap
+          }.toMap)
+
         case _ =>
-          Map() //FIXME improve this
+          Model.empty //FIXME improve this
       }
     }
   }
 
-  override def getModel: Map[Identifier, Expr] = getModel( _ => true)
+  override def getModel: Model = getModel( _ => true)
 
   override def push(): Unit = {
     constructors.push()

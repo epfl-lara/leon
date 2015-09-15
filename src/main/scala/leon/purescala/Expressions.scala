@@ -226,6 +226,10 @@ object Expressions {
     }
   }
 
+  case class PartialLambda(mapping: Seq[(Seq[Expr], Expr)], tpe: FunctionType) extends Expr {
+    val getType = tpe
+  }
+
   /* Universal Quantification */
 
   case class Forall(args: Seq[ValDef], body: Expr) extends Expr {

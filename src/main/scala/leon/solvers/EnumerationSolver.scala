@@ -46,7 +46,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
     datagen     = None
   }
 
-  private var modelMap = Map[Identifier, Expr]()
+  private var model = Model.empty
 
   def check: Option[Boolean] = {
     val timer = context.timers.solvers.enum.check.start()
@@ -55,15 +55,15 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
       if (interrupted) {
         None
       } else {
-        modelMap = Map()
-        val allFreeVars = freeVars.toSet.toSeq.sortBy(_.name)
+        model = Model.empty
+        val allFreeVars = freeVars.toSeq.sortBy(_.name)
         val allConstraints = constraints.toSeq
 
         val it = datagen.get.generateFor(allFreeVars, andJoin(allConstraints), 1, maxTried)
 
         if (it.hasNext) {
-          val model = it.next
-          modelMap = (allFreeVars zip model).toMap
+          val varModels = it.next
+          model = new Model((allFreeVars zip varModels).toMap)
           Some(true)
         } else {
           None
@@ -78,8 +78,8 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
     res
   }
 
-  def getModel: Map[Identifier, Expr] = {
-    modelMap
+  def getModel: Model = {
+    model
   }
 
   def free() = {

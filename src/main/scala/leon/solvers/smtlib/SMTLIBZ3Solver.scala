@@ -159,7 +159,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
   }
 
   // EK: We use get-model instead in order to extract models for arrays
-  override def getModel: Map[Identifier, Expr] = {
+  override def getModel: Model = {
 
     val cmd = GetModel()
 
@@ -199,8 +199,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
       case _ =>
     }
 
-
-    model
+    new Model(model)
   }
 
   object ArrayMap {

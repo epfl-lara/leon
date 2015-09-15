@@ -12,19 +12,19 @@ abstract class RewritingSolver[+S <: Solver, T](underlying: S) {
 
   /** The type T is used to encode any meta information useful, for instance, to reconstruct
     * models. */
-  def rewriteCnstr(expression : Expr) : (Expr,T)
+  def rewriteCnstr(expression: Expr) : (Expr,T)
 
-  def reconstructModel(model : Map[Identifier,Expr], meta : T) : Map[Identifier,Expr]
+  def reconstructModel(model: Model, meta: T) : Model
 
   private var storedMeta : List[T] = Nil
 
-  def assertCnstr(expression : Expr) {
+  def assertCnstr(expression: Expr) {
     val (rewritten, meta) = rewriteCnstr(expression)
     storedMeta = meta :: storedMeta
     underlying.assertCnstr(rewritten)
   }
 
-  def getModel : Map[Identifier,Expr] = {
+  def getModel: Model = {
     storedMeta match {
       case Nil    => underlying.getModel
       case m :: _ => reconstructModel(underlying.getModel, m)

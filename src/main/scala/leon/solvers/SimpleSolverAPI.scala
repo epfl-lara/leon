@@ -17,7 +17,7 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
     }
   }
 
-  def solveSAT(expression: Expr): (Option[Boolean], Map[Identifier, Expr]) = {
+  def solveSAT(expression: Expr): (Option[Boolean], Model) = {
     val s = sf.getNewSolver()
     try {
       s.assertCnstr(expression)
@@ -25,16 +25,16 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
         case Some(true) =>
           (Some(true), s.getModel)
         case Some(false) =>
-          (Some(false), Map())
+          (Some(false), Model.empty)
         case None =>
-          (None, Map())
+          (None, Model.empty)
       }
     } finally {
       sf.reclaim(s)
     }
   }
 
-  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Map[Identifier, Expr], Set[Expr]) = {
+  def solveSATWithCores(expression: Expr, assumptions: Set[Expr]): (Option[Boolean], Model, Set[Expr]) = {
     val s = sf.getNewSolver()
     try {
       s.assertCnstr(expression)
@@ -42,9 +42,9 @@ class SimpleSolverAPI(sf: SolverFactory[Solver]) {
         case Some(true) =>
           (Some(true), s.getModel, Set())
         case Some(false) =>
-          (Some(false), Map(), s.getUnsatCore)
+          (Some(false), Model.empty, s.getUnsatCore)
         case None =>
-          (None, Map(), Set())
+          (None, Model.empty, Set())
       }
     } finally {
       sf.reclaim(s)

@@ -7,6 +7,7 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Definitions._
+import purescala.Quantification._
 import utils.StreamUtils._
 
 import evaluators._
@@ -87,7 +88,7 @@ class NaiveDataGen(ctx: LeonContext, p: Program, evaluator: Evaluator, _bounds :
       evaluator.compile(satisfying, ins).map { evalFun =>
         val sat = EvaluationResults.Successful(BooleanLiteral(true))
 
-        { (e: Seq[Expr]) => evalFun(e) == sat }
+        { (e: Seq[Expr]) => evalFun(new solvers.Model((ins zip e).toMap)) == sat }
       } getOrElse {
         { (e: Seq[Expr]) => false }
       }

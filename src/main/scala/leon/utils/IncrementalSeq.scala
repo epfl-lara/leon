@@ -3,9 +3,15 @@
 package leon.utils
 
 import scala.collection.mutable.Stack
+import scala.collection.mutable.Builder
 import scala.collection.mutable.ArrayBuffer
+import scala.collection.{Iterable, IterableLike}
 
-class IncrementalSeq[A] extends IncrementalState {
+class IncrementalSeq[A] extends IncrementalState
+                        with Iterable[A]
+                        with IterableLike[A, Seq[A]]
+                        with Builder[A, IncrementalSeq[A]] {
+
   private[this] val stack = new Stack[ArrayBuffer[A]]()
 
   def clear() : Unit = {
@@ -25,11 +31,11 @@ class IncrementalSeq[A] extends IncrementalState {
     stack.pop()
   }
 
-  def +=(e: A): Unit = {
-    stack.head += e
-  }
+  def iterator = stack.flatten.iterator
+  def +=(e: A) = { stack.head += e; this }
 
-  def toSeq = stack.toSeq.flatten
+  override def newBuilder = new scala.collection.mutable.ArrayBuffer()
+  def result = this
 
   push()
 }

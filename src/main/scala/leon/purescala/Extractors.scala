@@ -41,6 +41,20 @@ object Extractors {
         Some((Seq(a), (es: Seq[Expr]) => ArrayLength(es.head)))
       case Lambda(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Lambda(args, es.head)))
+      case PartialLambda(mapping, tpe) =>
+        val sze = tpe.from.size + 1
+        val subArgs = mapping.flatMap { case (args, v) => args :+ v }
+        val builder = (as: Seq[Expr]) => {
+          def rec(kvs: Seq[Expr]): Seq[(Seq[Expr], Expr)] = kvs match {
+            case seq if seq.size >= sze =>
+              val ((args :+ res), rest) = seq.splitAt(sze)
+              (args -> res) +: rec(rest)
+            case Seq() => Seq.empty
+            case _ => sys.error("unexpected number of key/value expressions")
+          }
+          PartialLambda(rec(as), tpe)
+        }
+        Some((subArgs, builder))
       case Forall(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
 
@@ -259,39 +273,6 @@ object Extractors {
 
   object IsTyped {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
-  }
-
-  /*
-   * Extract a default expression and key-value pairs from a lambda constructed with
-   * Constructors.finiteLambda
-   */
-  object FiniteLambda {
-    def unapply(lambda: Lambda): Option[(Expr, Seq[(Expr, Expr)])] = {
-      val inSize = lambda.getType.asInstanceOf[FunctionType].from.size
-      val Lambda(args, body) = lambda
-      def step(e: Expr): (Option[(Expr, Expr)], Expr) = e match {
-        case IfExpr(Equals(argsExpr, key), value, default) if {
-          val formal = args.map{ _.id }
-          val real = unwrapTuple(argsExpr, inSize).collect{ case Variable(id) => id}
-          formal == real
-        } =>
-          (Some((key, value)), default)
-        case other =>
-          (None, other)
-      }
-
-      def rec(e: Expr): (Expr, Seq[(Expr, Expr)]) = {
-        step(e) match {
-          case (None, default) => (default, Seq())
-          case (Some(pair), default) =>
-            val (defaultRest, pairs) = rec(default)
-            (defaultRest, pair +: pairs)
-        }
-      }
-
-      Some(rec(body))
-
-    }
   }
 
   object FiniteArray {

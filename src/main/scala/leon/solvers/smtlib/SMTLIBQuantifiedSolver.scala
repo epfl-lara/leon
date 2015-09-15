@@ -54,7 +54,7 @@ trait SMTLIBQuantifiedSolver extends SMTLIBSolver {
 
   // Normally, UnrollingSolver tracks the input variable, but this one
   // is invoked alone so we have to filter them here
-  override def getModel: Map[Identifier, Expr] = {
+  override def getModel: leon.solvers.Model = {
     val filter = currentFunDef.map{ _.params.map{_.id}.toSet }.getOrElse( (_:Identifier) => true )
     getModel(filter)
   }
