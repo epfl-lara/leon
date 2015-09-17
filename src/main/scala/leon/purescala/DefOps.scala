@@ -91,18 +91,21 @@ object DefOps {
     val namesFrom = pathToNames(pathFrom, useUniqueIds)
     val namesOf   = pathToNames(pathFromRoot(of), useUniqueIds)
 
-    def stripPrefix(of: List[String], from: List[String]) = {
-      val commonPrefix = (of zip from).takeWhile(p => p._1 == p._2)
+    def stripPrefix(off: List[String], from: List[String]) = {
+      val commonPrefix = (off zip from).takeWhile(p => p._1 == p._2)
 
-      val res = of.drop(commonPrefix.size)
+      val res = off.drop(commonPrefix.size)
 
       if (res.isEmpty) {
-        List(of.last)
+        if (off.isEmpty) List()
+        else List(off.last)
       } else {
         res
       }
     }
 
+    val sp = stripPrefix(namesOf, namesFrom)
+    if (sp.isEmpty) return "**** " + of.id.uniqueName
     var names: Set[List[String]] = Set(namesOf, stripPrefix(namesOf, namesFrom))
 
     pathFrom match {
