@@ -40,9 +40,9 @@ object Main {
    */
   object MainComponent extends LeonComponent {
     val name = "main"
-    val description = "Options that select the feature of Leon to be used. Default: verify"
+    val description = "Selection of Leon functionality. Default: verify"
 
-    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default)", "default", "[code|default]")
+    val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[code|default]")
     val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify", false)
     val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
     val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
@@ -67,7 +67,7 @@ object Main {
     }
     reporter.info("")
 
-    reporter.title("Additional top-level options")
+    reporter.title("Additional global options")
     for (opt <- SharedOptions.definedOptions.toSeq.sortBy(_.name)) {
       reporter.info(opt.helpString)
     }
