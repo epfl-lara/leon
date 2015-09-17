@@ -47,7 +47,7 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target with SMTLIBQuantifiedT
 
         val specAssert = tfd.postcondition map { post =>
           val term = implies(
-            tfd.precondition getOrElse BooleanLiteral(true),
+            tfd.precOrTrue,
             application(post, Seq(FunctionInvocation(tfd, Seq())))
           )
           SMTAssert(toSMT(term)(Map()))
@@ -99,7 +99,7 @@ trait SMTLIBCVC4QuantifiedTarget extends SMTLIBCVC4Target with SMTLIBQuantifiedT
         post <- tfd.postcondition
       } {
         val term = implies(
-          tfd.precondition getOrElse BooleanLiteral(true),
+          tfd.precOrTrue,
           application(post, Seq(tfd.applied))
         )
         try {

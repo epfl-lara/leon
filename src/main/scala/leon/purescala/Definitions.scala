@@ -391,6 +391,7 @@ object Definitions {
     def precondition_=(oe: Option[Expr]) = {
       fullBody = withPrecondition(fullBody, oe) 
     }
+    def precOrTrue = precondition getOrElse BooleanLiteral(true)
 
     def postcondition = postconditionOf(fullBody)
     def postcondition_=(op: Option[Expr]) = {
@@ -532,6 +533,7 @@ object Definitions {
     def fullBody      = cached(fd.fullBody)
     def body          = fd.body map cached
     def precondition  = fd.precondition map cached
+    def precOrTrue    = cached(fd.precOrTrue)
     def postcondition = fd.postcondition map cached
 
     def hasImplementation = body.isDefined

@@ -42,7 +42,7 @@ object ChooseInfo {
 
   def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[ChooseInfo] = {
 
-    val actualBody = and(fd.precondition.getOrElse(BooleanLiteral(true)), fd.body.get)
+    val actualBody = and(fd.precOrTrue, fd.body.get)
     val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
     val eFinder = new ExamplesFinder(ctx, prog)

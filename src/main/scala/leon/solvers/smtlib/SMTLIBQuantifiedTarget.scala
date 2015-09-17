@@ -40,8 +40,8 @@ trait SMTLIBQuantifiedTarget extends SMTLIBTarget {
           Seq(fi)
         )
       } getOrElse BooleanLiteral(true)
-      val pre = tfd.precondition getOrElse BooleanLiteral(true)
-      and(pre, post)
+
+      and(tfd.precOrTrue, post)
     }
 
     // We want to check if the negation of the vc is sat under inductive hyp.

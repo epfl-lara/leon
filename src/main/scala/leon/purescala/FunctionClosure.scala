@@ -82,7 +82,7 @@ class FunctionClosure extends TransformationPhase {
       }
       newFunDef.postcondition = freshPostcondition
       
-      pathConstraints = fd.precondition.getOrElse(BooleanLiteral(true)) :: pathConstraints
+      pathConstraints = fd.precOrTrue :: pathConstraints
       val freshBody = fd.body.map(body => introduceLets(body, fd2FreshFd + (fd -> ((newFunDef, extraValDefOldIds.map(_.toVariable))))))
       newFunDef.body = freshBody
       pathConstraints = pathConstraints.tail

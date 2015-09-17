@@ -59,7 +59,7 @@ trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target with SMTLIBQuantifiedTarge
       post <- tfd.postcondition
     } {
       val term = implies(
-        tfd.precondition getOrElse BooleanLiteral(true),
+        tfd.precOrTrue,
         application(post, Seq(tfd.applied))
       )
       try {

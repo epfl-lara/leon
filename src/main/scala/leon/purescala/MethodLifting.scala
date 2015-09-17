@@ -175,7 +175,7 @@ object MethodLifting extends TransformationPhase {
           // Add precondition if the method was defined in a subclass
           val pre = and(
             classPre(fd),
-            nfd.precondition.getOrElse(BooleanLiteral(true))
+            nfd.precOrTrue
           )
           nfd.fullBody = withPrecondition(nfd.fullBody, Some(pre))
         
