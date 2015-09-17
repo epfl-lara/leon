@@ -26,7 +26,18 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
         |  def aMatch(a: Foo) = a match {
         |    case b1 @ Bar4(b2: Bar3) => b2
         |  }
-        |}""".stripMargin
+        |}""".stripMargin,
+      """object Nested {
+        |  def foo = {
+        |    def bar = {
+        |      def baz = 42
+        |      baz
+        |    }
+        |    def zoo = 42
+        |  }
+        |}
+        |
+      """.stripMargin
   )
 
   test("mapForPattern introduces casts"){ implicit fix =>
@@ -79,5 +90,12 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
     val expr = Let(id, cc, id.toVariable)
 
     assert(asInstOf(expr, cct) === AsInstanceOf(expr, cct))
+  }
+
+  test("directlyNestedFunDefs") { implicit fix =>
+    val foo = funDef("Nested.foo")
+    val nested = directlyNestedFunDefs(foo.fullBody)
+    nested.exists { _.id.name == "bar"} &&
+    nested.exists { _.id.name == "zoo"}
   }
 }

@@ -344,8 +344,8 @@ object ExprOps {
 
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
-    foldRight[Set[FunDef]]{
-      case (LetDef(fd,bd), _) => Set(fd)
+    foldRight[Set[FunDef]]{ 
+      case (LetDef(fd,_), Seq(fromFd, fromBd)) => fromBd + fd
       case (_, subs) => subs.flatten.toSet
     }(e)
   }
@@ -2095,50 +2095,3 @@ object ExprOps {
 
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
