@@ -408,7 +408,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       // Definitions
       case Program(units) =>
-        p"""${nary(units filter { opts.printUniqueIds || _.isMainUnit }, "\n\n")}"""
+        p"""${nary(units filter { /*opts.printUniqueIds ||*/ _.isMainUnit }, "\n\n")}"""
 
       case UnitDef(id,pack, imports, defs,_) =>
         if (pack.nonEmpty){
