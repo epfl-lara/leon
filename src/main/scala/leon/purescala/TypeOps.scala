@@ -319,6 +319,9 @@ object TypeOps {
           case Error(tpe, desc) =>
             Error(tpeSub(tpe), desc).copiedFrom(e)
           
+          case Hole(tpe, alts) =>
+            Hole(tpeSub(tpe), alts.map(srec)).copiedFrom(e)
+
           case g @ GenericValue(tpar, id) =>
             tpeSub(tpar) match {
               case newTpar : TypeParameter => 

@@ -61,4 +61,19 @@ class TypeOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     assert(isSubtypeOf(listD.typed, listD.typed), "List[T] <: List[T]")
   }
 
+  test("instantiateType Hole") { ctx =>
+    val tp1 = TypeParameter.fresh("a")
+    val tp2 = TypeParameter.fresh("b")
+
+    val tpd = TypeParameterDef(tp1)
+
+    val e1 = Hole(tp1, Nil)
+    val e2 = instantiateType(e1, Map(tpd -> tp2), Map())
+
+    e2 match {
+      case Hole(tp, _) => assert(tp == tp2, "Type should have been substituted")
+      case _ => fail("Incorrect expr shape, should be a Hole")
+    }
+  }
+
 }
