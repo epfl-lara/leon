@@ -67,6 +67,7 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
     } catch {
       case t: Throwable =>
         ctx.reporter.warning(expression.getPos, "Error while compiling expression: "+t.getMessage)
+        t.printStackTrace()
         None
     } finally {
       ctx.timers.evaluators.codegen.compilation.stop()
