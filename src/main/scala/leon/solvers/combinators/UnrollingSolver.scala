@@ -111,9 +111,13 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
     def extract(b: Expr, m: Matcher[Expr]): Set[Seq[Expr]] = {
       val QuantificationTypeMatcher(fromTypes, _) = m.tpe
       val optEnabler = evaluator.eval(b).result
-      val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg)).result)
-      if (optEnabler == Some(BooleanLiteral(true)) && optArgs.forall(_.isDefined)) {
-        Set(optArgs.map(_.get))
+      if (optEnabler == Some(BooleanLiteral(true))) {
+        val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg)).result)
+        if (optArgs.forall(_.isDefined)) {
+          Set(optArgs.map(_.get))
+        } else {
+          Set.empty
+        }
       } else {
         Set.empty
       }

@@ -19,8 +19,6 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
 
   val name = "Pfolio"
 
-  var constraints = List[Expr]()
-
   protected var model = Model.empty
   protected var resultSolver: Option[Solver] = None
 
@@ -51,6 +49,8 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
       }
     }
 
+    fs.foreach(_ onFailure { case ex: Throwable => ex.printStackTrace() })
+
     val result = Future.find(fs)(_._2.isDefined)
 
     val res = Await.result(result, Duration.Inf) match {
@@ -63,10 +63,12 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         solvers.foreach(_.interrupt())
         r
       case None =>
+        context.reporter.debug("No solver succeeded")
+        fs.foreach(f => println(f.value))
         None
     }
 
-    fs map { Await.ready(_, Duration.Inf) }
+    fs foreach { Await.ready(_, Duration.Inf) }
     res
   }
 
@@ -81,7 +83,6 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   def free() = {
     solvers.foreach(_.free)
     model = Model.empty
-    constraints = Nil
   }
 
   def getModel: Model = {
@@ -99,6 +100,5 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   def reset() = {
     solvers.foreach(_.reset)
     model = Model.empty
-    constraints = Nil
   }
 }
