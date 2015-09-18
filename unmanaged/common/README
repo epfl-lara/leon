@@ -1,7 +1,0 @@
-Just because a file is in here doesn't mean sbt is kind enough to use it.
-
-You will need to symlink to it from unmanaged/32 and unmanaged/64.
-
-Thanks for reading, here is a christmas tree to reward you.
-
-<+= <<= <==
