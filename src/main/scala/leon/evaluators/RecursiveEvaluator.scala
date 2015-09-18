@@ -715,7 +715,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         } else {
           None
         }
-      case (up@UnapplyPattern(ob, _, subs), scrut) =>
+      case (up @ UnapplyPattern(ob, _, subs), scrut) =>
         e(FunctionInvocation(up.unapplyFun, Seq(scrut))) match {
           case CaseClass(CaseClassType(cd, _), Seq()) if cd == program.library.Nil.get =>
             None
