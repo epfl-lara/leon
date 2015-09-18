@@ -26,8 +26,8 @@ class RepairSuite extends LeonRegressionSuite {
     val path = file.getAbsoluteFile.toString
     val name = file.getName
 
-    //val reporter = new TestSilentReporter
-    val reporter = new DefaultReporter(Set(utils.DebugSectionRepair))
+    val reporter = new TestSilentReporter
+    //val reporter = new DefaultReporter(Set(utils.DebugSectionRepair))
 
     val ctx = LeonContext(
       reporter = reporter,
