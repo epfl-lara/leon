@@ -81,7 +81,7 @@ object Quantification {
       case Application(e, args) => Some(e -> args)
       case ArraySelect(arr, index) => Some(arr -> Seq(index))
       case MapApply(map, key) => Some(map -> Seq(key))
-      // case ElementOfSet(set, elem) => Some(set -> Seq(elem))
+      case ElementOfSet(elem, set) => Some(set -> Seq(elem))
       case _ => None
     }
   }
