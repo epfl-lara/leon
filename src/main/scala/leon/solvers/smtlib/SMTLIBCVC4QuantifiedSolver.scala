@@ -40,7 +40,9 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
       val s = super.declareFunction(tfd)
 
       try {
-        val bodyAssert = SMTAssert(Equals(s: Term, toSMT(tfd.body.get)(Map())))
+        val bodyAssert = tfd.body map { bd =>
+          SMTAssert(Equals(s: Term, toSMT(bd)(Map())))
+        }
 
         val specAssert = tfd.postcondition map { post =>
           val term = implies(
@@ -50,7 +52,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
           SMTAssert(toSMT(term)(Map()))
         }
 
-        Seq(bodyAssert) ++ specAssert
+        bodyAssert ++ specAssert
       } catch {
         case _ : SolverUnsupportedError =>
           addError()
