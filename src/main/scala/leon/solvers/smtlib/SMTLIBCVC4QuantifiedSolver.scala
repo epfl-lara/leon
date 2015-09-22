@@ -100,7 +100,7 @@ abstract class SMTLIBCVC4QuantifiedSolver(context: LeonContext, program: Program
           application(post, Seq(tfd.applied))
         )
         try {
-          sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
+          sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)(Map())))
         } catch {
           case _ : SolverUnsupportedError =>
             addError()

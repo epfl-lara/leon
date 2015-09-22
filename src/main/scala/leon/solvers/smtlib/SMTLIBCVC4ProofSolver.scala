@@ -30,7 +30,7 @@ class SMTLIBCVC4ProofSolver(context: LeonContext, program: Program) extends SMTL
 
   // For this solver, we prefer the variables of assert() commands to be exist. quantified instead of free
   override def assertCnstr(e: Expr) = try {
-    sendCommand(SMTAssert(quantifiedTerm(SMTExists, e)))
+    sendCommand(SMTAssert(quantifiedTerm(SMTExists, e)(Map())))
   } catch {
     case _ : SolverUnsupportedError =>
       addError()

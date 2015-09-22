@@ -47,7 +47,7 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
           FunctionInvocation(tfd, tfd.params.map {_.toVariable}),
           tfd.body.get
         )
-      )
+      )(Map())
       sendCommand(SMTAssert(term))
     }
 
@@ -62,7 +62,7 @@ class SMTLIBZ3QuantifiedSolver(context: LeonContext, program: Program)
         application(post, Seq(tfd.applied))
       )
       try {
-        sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)))
+        sendCommand(SMTAssert(quantifiedTerm(SMTForall, term)(Map())))
       } catch {
         case _ : SolverUnsupportedError =>
           addError()

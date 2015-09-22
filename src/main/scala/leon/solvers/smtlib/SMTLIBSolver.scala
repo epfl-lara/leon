@@ -141,8 +141,10 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
     quantifier: (SortedVar, Seq[SortedVar], Term) => Term,
     vars: Seq[Identifier],
     body: Expr
-  ) : Term = {
-    if (vars.isEmpty) toSMT(body)(Map())
+  )(
+    implicit bindings: Map[Identifier, Term]
+  ): Term = {
+    if (vars.isEmpty) toSMT(body)
     else {
       val sortedVars = vars map { id =>
         SortedVar(id2sym(id), declareSort(id.getType))
@@ -150,13 +152,15 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
       quantifier(
         sortedVars.head,
         sortedVars.tail,
-        toSMT(body)(vars.map{ id => id -> (id2sym(id): Term)}.toMap)
+        toSMT(body)(bindings ++ vars.map{ id => id -> (id2sym(id): Term)})
       )
     }
   }
 
   // Returns a quantified term where all free variables in the body have been quantified
-  protected def quantifiedTerm(quantifier: (SortedVar, Seq[SortedVar], Term) => Term, body: Expr): Term =
+  protected def quantifiedTerm(quantifier: (SortedVar, Seq[SortedVar], Term) => Term, body: Expr)(
+    implicit bindings: Map[Identifier, Term]
+  ): Term =
     quantifiedTerm(quantifier, variablesOf(body).toSeq, body)
 
   protected def fromRawArray(r: RawArrayValue, tpe: TypeTree): Expr = tpe match {
