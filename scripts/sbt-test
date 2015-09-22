@@ -1,2 +1,2 @@
 sbt test integration:test regression:test 2>&1 | tee regression.log
-
+less -r regression.log
