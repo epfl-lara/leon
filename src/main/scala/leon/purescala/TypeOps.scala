@@ -300,6 +300,14 @@ object TypeOps {
             val mapping = args.map(_.id) zip newArgs.map(_.id)
             Lambda(newArgs, rec(idsMap ++ mapping)(body)).copiedFrom(l)
 
+          case f @ Forall(args, body) =>
+            val newArgs = args.map { arg =>
+              val tpe = tpeSub(arg.getType)
+              ValDef(freshId(arg.id, tpe))
+            }
+            val mapping = args.map(_.id) zip newArgs.map(_.id)
+            Forall(newArgs, rec(idsMap ++ mapping)(body)).copiedFrom(f)
+
           case p @ Passes(in, out, cases) =>
             val (newIn, newCases) = onMatchLike(in, cases)
             passes(newIn, srec(out), newCases).copiedFrom(p)
