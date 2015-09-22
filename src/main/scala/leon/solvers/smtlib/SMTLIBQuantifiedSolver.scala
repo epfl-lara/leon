@@ -6,8 +6,9 @@ import leon.purescala.Common.Identifier
 import leon.purescala.Constructors._
 import leon.purescala.Definitions.FunDef
 import leon.purescala.ExprOps._
-import leon.purescala.Expressions.{BooleanLiteral, FunctionInvocation, Expr}
+import leon.purescala.Expressions._
 import leon.verification.VC
+import smtlib.parser.Terms.{ Term, Forall => SMTForall, _ }
 
 trait SMTLIBQuantifiedSolver extends SMTLIBSolver {
 
@@ -42,6 +43,13 @@ trait SMTLIBQuantifiedSolver extends SMTLIBSolver {
     // So we need to see if (indHyp /\ !vc) is satisfiable
     liftLets(matchToIfThenElse(andJoin(inductiveHyps :+ not(cond))))
 
+  }
+
+  override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
+    case Forall(vs, bd) =>
+      quantifiedTerm(SMTForall, vs map { _.id }, bd)
+    case _ =>
+      super.toSMT(e)(bindings)
   }
 
   // We need to know the function context.

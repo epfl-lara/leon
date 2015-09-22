@@ -31,11 +31,11 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
 
   def getNewInterpreter(ctx: LeonContext) = new Z3Interpreter("z3", interpreterOps(ctx).toArray)
 
-  val extSym = SSymbol("_")
+  protected val extSym = SSymbol("_")
 
-  var setSort: Option[SSymbol] = None
+  protected var setSort: Option[SSymbol] = None
 
-  override def declareSort(t: TypeTree): Sort = {
+  override protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
       tpe match {
@@ -48,7 +48,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     }
   }
 
-  def declareSetSort(of: TypeTree): Sort = {
+  protected def declareSetSort(of: TypeTree): Sort = {
     setSort match {
       case None =>
         val s = SSymbol("Set")
@@ -66,7 +66,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     Sort(SMTIdentifier(setSort.get), Seq(declareSort(of)))
   }
 
-  override def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
+  override protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
     case (SimpleSymbol(s), tp: TypeParameter) =>
       val n = s.name.split("!").toList.last
       GenericValue(tp, n.toInt)
@@ -93,7 +93,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
       super.fromSMT(s, tpe)
   }
 
-  override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
+  override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
 
     /**
      * ===== Set operations =====
@@ -131,7 +131,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
       super.toSMT(e)
   }
 
-  def extractRawArray(s: DefineFun, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): RawArrayValue = s match {
+  protected def extractRawArray(s: DefineFun, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): RawArrayValue = s match {
     case DefineFun(SMTFunDef(a, Seq(SortedVar(arg, akind)), rkind, body)) =>
       val (argTpe, retTpe) = tpe match {
         case SetType(base) => (base, BooleanType)
@@ -202,7 +202,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     new Model(model)
   }
 
-  object ArrayMap {
+  protected object ArrayMap {
     def apply(op: SSymbol, arrs: Term*) = {
       FunctionApplication(
         QualifiedIdentifier(SMTIdentifier(SSymbol("map"), List(op))),
@@ -211,7 +211,7 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
     }
   }
 
-  object ArrayConst {
+  protected object ArrayConst {
     def apply(sort: Sort, default: Term) = {
       FunctionApplication(
         QualifiedIdentifier(SMTIdentifier(SSymbol("const")), Some(sort)),

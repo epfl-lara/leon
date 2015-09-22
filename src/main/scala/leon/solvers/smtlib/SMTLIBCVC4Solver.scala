@@ -46,7 +46,7 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     new CVC4Interpreter("cvc4", opts.toArray)
   }
 
-  override def declareSort(t: TypeTree): Sort = {
+  override protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
       tpe match {
@@ -65,7 +65,7 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     }
   }
 
-  override def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
+  override protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
     case (SimpleSymbol(s), tp: TypeParameter) =>
       val n = s.name.split("_").toList.last
       GenericValue(tp, n.toInt)
@@ -113,7 +113,7 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
       super.fromSMT(s, tpe)
   }
 
-  override def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
+  override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {
     /**
      * ===== Set operations =====
      */
