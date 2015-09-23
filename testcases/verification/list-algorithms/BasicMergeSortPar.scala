@@ -22,12 +22,13 @@ object MergeSortPar {
   } ensuring { res => res.content == xs.content ++ ys.content &&
                       res.size == xs.size + ys.size }
 
-  def msort[T](less: (T, T) => Boolean)(l: List[T]): List[T] = {
+  def msort[T](less: (T, T) => Boolean)(l: List[T], len : BigInt): List[T] = {
+    require(len == l.length)
     if (l.size <= 1) l
     else {
-      val c = l.length/2
+      val c = len/2
       val (first, second) = l.splitAtIndex(c) // evenSplit
-      val (s1, s2) = parallel(msort(less)(first), msort(less)(second))
+      val (s1, s2) = parallel(msort(less)(first, c), msort(less)(second, len - c))
       merge(less)(s1, s2)
     }
   } ensuring { res => res.content == l.content && 
