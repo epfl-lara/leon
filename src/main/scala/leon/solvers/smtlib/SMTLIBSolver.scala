@@ -111,7 +111,9 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
 
   protected val library = program.library
 
-  protected def id2sym(id: Identifier): SSymbol = SSymbol(id.uniqueNameDelimited("!"))
+  protected def id2sym(id: Identifier): SSymbol = {
+    SSymbol(id.uniqueNameDelimited("!").replace("|", "$pipe").replace("\\", "$backslash"))
+  }
 
   protected def freshSym(id: Identifier): SSymbol = freshSym(id.name)
   protected def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
