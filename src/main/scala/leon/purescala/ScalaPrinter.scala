@@ -28,7 +28,7 @@ class ScalaPrinter(opts: PrinterOptions,
       case Choose(pred)              => p"choose($pred)"
 
       case s @ FiniteSet(rss, t)     => p"Set[$t](${rss.toSeq})"
-      case ElementOfSet(e,s)         => p"$s.contains(e)"
+      case ElementOfSet(e,s)         => p"$s.contains($e)"
       case SetUnion(l,r)             => optP { p"$l ++ $r" }
       case SetDifference(l,r)        => optP { p"$l -- $r" }
       case SetIntersection(l,r)      => optP { p"$l & $r" }
@@ -66,6 +66,10 @@ class ScalaPrinter(opts: PrinterOptions,
         }
 
       case Not(expr) => p"!$expr"
+      case Forall(args, bd) =>
+        p"""|forall(($args) =>
+            |  $bd
+            |)"""
       case _ =>
         super.pp(tree)
     }
