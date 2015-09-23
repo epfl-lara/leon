@@ -26,7 +26,8 @@ public class LeonCodeGenRuntimeHenkinMonitor extends LeonCodeGenRuntimeMonitor {
       }
     }
 
-    domain.addAll(domains.get(type));
+    List<Tuple> tpeDomain = domains.get(type);
+    if (tpeDomain != null) domain.addAll(tpeDomain);
 
     return domain;
   }
