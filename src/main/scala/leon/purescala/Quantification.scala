@@ -103,63 +103,54 @@ object Quantification {
 
     def apply(ctx: LeonContext, program: Program) = {
       program.definedFunctions.foreach { fd =>
-        if (fd.body.exists(b => exists {
-          case f: Forall => true
-          case _ => false
-        } (b))) ctx.reporter.warning("Universal quantification in function bodies is not supported in " + fd)
-
-        val foralls = (fd.precondition.toSeq ++ fd.postcondition.toSeq).flatMap { prec =>
-          collect[Forall] {
-            case f: Forall => Set(f)
-            case _ => Set.empty
-          } (prec)
-        }
+        val foralls = collect[Forall] {
+          case f: Forall => Set(f)
+          case _ => Set.empty
+        } (fd.fullBody)
 
         val free = fd.params.map(_.id).toSet ++ (fd.postcondition match {
           case Some(Lambda(args, _)) => args.map(_.id)
           case _ => Seq.empty
         })
 
-        object Matcher {
-          def unapply(e: Expr): Option[(Identifier, Seq[Expr])] = e match {
-            case QuantificationMatcher(Variable(id), args) if free(id) => Some(id -> args)
-            case _ => None
-          }
-        }
-
         for (Forall(args, TopLevelAnds(conjuncts)) <- foralls) {
           val quantified = args.map(_.id).toSet
 
           for (conjunct <- conjuncts) {
-            val matchers = collect[(Identifier, Seq[Expr])] {
-              case Matcher(id, args) => Set(id -> args)
+            val matchers = collect[(Expr, Seq[Expr])] {
+              case QuantificationMatcher(e, args) => Set(e -> args)
               case _ => Set.empty
             } (conjunct)
 
-            if (matchers.exists { case (id, args) =>
+            if (matchers.isEmpty)
+              ctx.reporter.warning("E-matching isn't possible without matchers!")
+
+            if (matchers.exists { case (_, args) =>
               args.exists(arg => arg match {
-                case Matcher(_, _) => false
+                case QuantificationMatcher(_, _) => false
                 case Variable(id) => false
                 case _ if (variablesOf(arg) & quantified).nonEmpty => true
                 case _ => false
               })
             }) ctx.reporter.warning("Matcher arguments must have simple form in " + conjunct)
 
-            val id2Quant = matchers.foldLeft(Map.empty[Identifier, Set[Identifier]]) {
+            val freeMatchers = matchers.collect { case (Variable(id), args) if free(id) => id -> args }
+
+            val id2Quant = freeMatchers.foldLeft(Map.empty[Identifier, Set[Identifier]]) {
               case (acc, (m, args)) => acc + (m -> (acc.getOrElse(m, Set.empty) ++ args.flatMap {
                 case Variable(id) if quantified(id) => Set(id)
                 case _ => Set.empty[Identifier]
               }))
             }
 
-            if (id2Quant.filter(_._2.nonEmpty).groupBy(_._2).size != 1)
+            if (id2Quant.filter(_._2.nonEmpty).groupBy(_._2).size >= 1)
               ctx.reporter.warning("Multiple matchers must provide bijective matching in " + conjunct)
 
             foldRight[Set[Identifier]] { case (m, children) =>
               val q = children.toSet.flatten
 
               m match {
-                case Matcher(_, args) =>
+                case QuantificationMatcher(_, args) =>
                   q -- args.flatMap {
                     case Variable(id) if quantified(id) => Set(id)
                     case _ => Set.empty[Identifier]
