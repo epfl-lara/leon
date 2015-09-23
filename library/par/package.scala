@@ -9,6 +9,7 @@ import leon.lang.synthesis.choose
 package object par {
 
   // @library
+  @inline
   def parallel[A,B](x: => A, y: => B) : (A,B) = {
     (x,y)
   }

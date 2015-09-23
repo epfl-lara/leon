@@ -18,7 +18,8 @@ object MergeSort {
   def msort[T](less: (T, T) => Boolean)(l: List[T]): List[T] = {
     if (l.size <= 1) l
     else {
-      val (first, second) = l.evenSplit
+      val c = l.length/2
+      val (first, second) = l.splitAtIndex(c) // evenSplit
       merge(less)(msort(less)(first), msort(less)(second))
     }
   } ensuring { res => res.content == l.content && res.size == l.size }
