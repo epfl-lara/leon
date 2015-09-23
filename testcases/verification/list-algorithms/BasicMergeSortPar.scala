@@ -1,3 +1,9 @@
+/* Basic parallel Merge sort that: 
+   * shows use of 'par' construct
+   * uses a higher-order comparison function
+   * relies on a strong spec for a list library function splitAtIndex
+   Warning: spec does not check sortedness or multiplicity.
+*/
 import leon.lang._
 import leon.collection._
 import leon.par._
