@@ -14,10 +14,11 @@ package object par {
     (x,y)
   }
 
+  @library
   case class Task[A](c: A) {
     def join: A = c
   }
 
-  // @library
+  @library
   def task[A](c: A) = Task(c)
 }
