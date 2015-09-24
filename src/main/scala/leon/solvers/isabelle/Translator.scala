@@ -44,15 +44,15 @@ final class Translator(context: LeonContext, program: Program, types: Types, sys
   }
 
   def term(expr: Expr, bounds: List[Identifier], consts: (FunDef, Typ) => Term): Future[Term] = {
-    def mkAbs(params: List[Identifier], body: Expr, bounds: List[Identifier]): Future[Term] = params match {
+    def mkAbs(params: List[Identifier], body: Expr, bounds: List[Identifier], wrap: Term => Term = identity): Future[Term] = params match {
       case Nil => term(body, bounds, consts)
       case p :: ps =>
         for {
-          rec <- mkAbs(ps, body, p :: bounds)
+          rec <- mkAbs(ps, body, p :: bounds, wrap)
           typ <- types.typ(p.getType)
         }
         yield
-          Abs(p.mangledName /* name hint, no logical content */, typ, rec)
+          wrap(Abs(p.mangledName /* name hint, no logical content */, typ, rec))
     }
 
     def nary(const: Term, xs: Expr*) =
@@ -179,6 +179,9 @@ final class Translator(context: LeonContext, program: Program, types: Types, sys
 
       case Lambda(args, expr) =>
         mkAbs(args.map(_.id).toList, expr, bounds)
+
+      case Forall(args, expr) =>
+        mkAbs(args.map(_.id).toList, expr, bounds, wrap = mkApp(Const("HOL.All", Typ.dummyT), _))
 
       case CaseClass(typ, exprs) =>
         lookupConstructor(typ).map(_.term).flatMap { nary(_, exprs: _*) }
