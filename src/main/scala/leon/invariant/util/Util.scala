@@ -105,11 +105,48 @@ object Util {
   def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])): Program = {
     prog.copy(units = prog.units.collect {
       case unit if (!unit.defs.isEmpty) => unit.copy(defs = unit.defs.collect {
-        case module : ModuleDef  if (!module.defs.isEmpty) =>
+        case module: ModuleDef if (!module.defs.isEmpty) =>
           module.copy(defs = mapdefs(module.defs))
         case other => other
       })
     })
+  }
+
+  def appendDefsToModules(p: Program, defs: Map[ModuleDef, Traversable[Definition]]): Program = {
+    val res = p.copy(units = for (u <- p.units) yield {
+      u.copy(
+        defs = u.defs.map {
+          case m: ModuleDef if defs.contains(m) =>
+            m.copy(defs = m.defs ++ defs(m))
+          case other => other
+        })
+    })
+    res
+  }
+
+  def addDefs(p: Program, defs: Traversable[Definition], after: Definition): Program = {
+    var found = false
+    val res = p.copy(units = for (u <- p.units) yield {
+      u.copy(
+        defs = u.defs.map {
+          case m: ModuleDef =>
+            val newdefs = for (df <- m.defs) yield {
+              df match {
+                case `after` =>
+                  found = true
+                  after +: defs.toSeq
+                case d =>
+                  Seq(d)
+              }
+            }
+            m.copy(defs = newdefs.flatten)
+          case other => other
+        })
+    })
+    if (!found) {
+      println("addDefs could not find anchor definition!")
+    }
+    res
   }
 
   def createTemplateFun(plainTemp: Expr): FunctionInvocation = {
@@ -547,6 +584,48 @@ object Util {
       case _ => false
     }
   }
+
+  def matchToITE(ine: Expr) = {
+    val liftedExpr = simplePostTransform {
+      case me @ MatchExpr(scrut, cases) => scrut match {
+        case t: Terminal => me
+        case _ => {
+          val freshid = FreshIdentifier("m", scrut.getType, true)
+          Let(freshid, scrut, MatchExpr(freshid.toVariable, cases))
+        }
+      }
+      case e => e
+    }(ine)
+    purescala.ExprOps.matchToIfThenElse(liftedExpr)
+  }
+
+  def precOrTrue(fd: FunDef): Expr = fd.precondition match {
+    case Some(pre) => pre
+    case None => BooleanLiteral(true)
+  }
+
+  /*
+   * Apply an expression operation on all expressions contained in a FunDef
+   */
+  def applyOnFunDef(operation: Expr => Expr)(funDef: FunDef): FunDef = {
+    val newFunDef = funDef.duplicate
+    newFunDef.fullBody = operation(funDef.fullBody)
+    newFunDef
+  }
+
+  /**
+   * Apply preMap on all expressions contained in a FunDef
+   */
+  def preMapOnFunDef(repl: Expr => Option[Expr], applyRec: Boolean = false)(funDef: FunDef): FunDef = {
+    applyOnFunDef(preMap(repl, applyRec))(funDef)
+  }
+
+  /**
+   * Apply postMap on all expressions contained in a FunDef
+   */
+  def postMapOnFunDef(repl: Expr => Option[Expr], applyRec: Boolean = false)(funDef: FunDef): FunDef = {
+    applyOnFunDef(postMap(repl, applyRec))(funDef)
+  }
 }
 
 /**
@@ -713,5 +792,236 @@ class CounterMap[T] extends scala.collection.mutable.HashMap[T, Int] {
     if (this.contains(v))
       this(v) += 1
     else this += (v -> 1)
+  }
+}
+
+/**
+ * A class that looks for structural equality of expressions
+ * by ignoring the variable names.
+ * Useful for factoring common parts of two expressions into functions.
+ */
+class ExprStructure(val e: Expr) {
+  def structurallyEqual(e1: Expr, e2: Expr): Boolean = {
+    (e1, e2) match {
+      case (t1: Terminal, t2: Terminal) =>
+        // we need to specially handle type parameters as they are not considered equal by default
+        (t1.getType, t2.getType) match {
+          case (ct1: ClassType, ct2: ClassType) =>
+            if (ct1.classDef == ct2.classDef && ct1.tps.size == ct2.tps.size) {
+              (ct1.tps zip ct2.tps).forall {
+                case (TypeParameter(_), TypeParameter(_)) =>
+                  true
+                case (a, b) =>
+                  println(s"Checking Type arguments: $a, $b")
+                  a == b
+              }
+            } else false
+          case (ty1, ty2) => ty1 == ty2
+        }
+      case (Operator(args1, op1), Operator(args2, op2)) =>
+        (op1 == op2) && (args1.size == args2.size) && (args1 zip args2).forall {
+          case (a1, a2) => structurallyEqual(a1, a2)
+        }
+      case _ =>
+        false
+    }
+  }
+
+  override def equals(other: Any) = {
+    other match {
+      case other: ExprStructure =>
+        structurallyEqual(e, other.e)
+      case _ =>
+        false
+    }
+  }
+
+  override def hashCode = {
+    var opndcount = 0 // operand count
+    var opcount = 0 // operator count
+    postTraversal {
+      case t: Terminal => opndcount += 1
+      case _ => opcount += 1
+    }(e)
+    (opndcount << 16) ^ opcount
+  }
+}
+
+object TypeUtil {
+  def getTypeParameters(t: TypeTree): Seq[TypeParameter] = {
+    t match {
+      case tp @ TypeParameter(_) => Seq(tp)
+      case NAryType(tps, _) =>
+        (tps flatMap getTypeParameters).distinct
+    }
+  }
+
+  def typeNameWOParams(t: TypeTree): String = t match {
+    case ct: ClassType => ct.id.name
+    case TupleType(ts) => ts.map(typeNameWOParams).mkString("(", ",", ")")
+    case ArrayType(t) => s"Array[${typeNameWOParams(t)}]"
+    case SetType(t) => s"Set[${typeNameWOParams(t)}]"
+    case MapType(from, to) => s"Map[${typeNameWOParams(from)}, ${typeNameWOParams(to)}]"
+    case FunctionType(fts, tt) =>
+      val ftstr = fts.map(typeNameWOParams).mkString("(", ",", ")")
+      s"$ftstr => ${typeNameWOParams(tt)}"
+    case t => t.toString
+  }
+
+  def instantiateTypeParameters(tpMap: Map[TypeParameter, TypeTree])(t: TypeTree): TypeTree = {
+    t match {
+      case tp: TypeParameter => tpMap.getOrElse(tp, tp)
+      case NAryType(subtypes, tcons) =>
+        tcons(subtypes map instantiateTypeParameters(tpMap) _)
+    }
+  }
+
+  /**
+   * `gamma` is the initial type environment which has
+   * type bindings for free variables of `ine`.
+   * It is not necessary that gamma should match the types of the
+   * identifiers of the free variables.
+   * Set and Maps are not supported yet
+   */
+  def inferTypesOfLocals(ine: Expr, initGamma: Map[Identifier, TypeTree]): Expr = {
+    var idmap = Map[Identifier, Identifier]()
+    var gamma = initGamma
+
+    /**
+     * Note this method has side-effects
+     */
+    def makeIdOfType(oldId: Identifier, tpe: TypeTree): Identifier = {
+      if (oldId.getType != tpe) {
+        val freshid = FreshIdentifier(oldId.name, tpe, true)
+        idmap += (oldId -> freshid)
+        gamma += (oldId -> tpe)
+        freshid
+      } else oldId
+    }
+
+    def rec(e: Expr): (TypeTree, Expr) = {
+      val res = e match {
+        case Let(id, value, body) =>
+          val (valType, nval) = rec(value)
+          val nid = makeIdOfType(id, valType)
+          val (btype, nbody) = rec(body)
+          (btype, Let(nid, nval, nbody))
+
+        case Ensuring(body, Lambda(Seq(resdef @ ValDef(resid, _)), postBody)) =>
+          val (btype, nbody) = rec(body)
+          val nres = makeIdOfType(resid, btype)
+          (btype, Ensuring(nbody, Lambda(Seq(ValDef(nres)), rec(postBody)._2)))
+
+        case MatchExpr(scr, mcases) =>
+          val (scrtype, nscr) = rec(scr)
+          val ncases = mcases.map {
+            case MatchCase(pat, optGuard, rhs) =>
+              // resetting the type of patterns in the matches
+              def mapPattern(p: Pattern, expType: TypeTree): (Pattern, TypeTree) = {
+                p match {
+                  case InstanceOfPattern(bopt, ict) =>
+                    // choose the subtype of the `expType` that
+                    // has the same constructor as `ict`
+                    val ntype = subcast(ict, expType.asInstanceOf[ClassType])
+                    if (!ntype.isDefined)
+                      throw new IllegalStateException(s"Cannot find subtype of $expType with name: ${ict.classDef.id.toString}")
+                    val nbopt = bopt.map(makeIdOfType(_, ntype.get))
+                    (InstanceOfPattern(nbopt, ntype.get), ntype.get)
+
+                  case CaseClassPattern(bopt, ict, subpats) =>
+                    val ntype = subcast(ict, expType.asInstanceOf[ClassType])
+                    if (!ntype.isDefined)
+                      throw new IllegalStateException(s"Cannot find subtype of $expType with name: ${ict.classDef.id.toString}")
+                    val cct = ntype.get.asInstanceOf[CaseClassType]
+                    val nbopt = bopt.map(makeIdOfType(_, cct))
+                    val npats = (subpats zip cct.fieldsTypes).map {
+                      case (p, t) =>
+                        //println(s"Subpat: $p expected type: $t")
+                        mapPattern(p, t)._1
+                    }
+                    (CaseClassPattern(nbopt, cct, npats), cct)
+
+                  case TuplePattern(bopt, subpats) =>
+                    val TupleType(subts) = scrtype
+                    val patnTypes = (subpats zip subts).map {
+                      case (p, t) => mapPattern(p, t)
+                    }
+                    val npats = patnTypes.map(_._1)
+                    val ntype = TupleType(patnTypes.map(_._2))
+                    val nbopt = bopt.map(makeIdOfType(_, ntype))
+                    (TuplePattern(nbopt, npats), ntype)
+
+                  case WildcardPattern(bopt) =>
+                    val nbopt = bopt.map(makeIdOfType(_, expType))
+                    (WildcardPattern(nbopt), expType)
+
+                  case LiteralPattern(bopt, lit) =>
+                    val ntype = lit.getType
+                    val nbopt = bopt.map(makeIdOfType(_, ntype))
+                    (LiteralPattern(nbopt, lit), ntype)
+                  case _ =>
+                    throw new IllegalStateException("Not supported yet!")
+                }
+              }
+              val npattern = mapPattern(pat, scrtype)._1
+              val nguard = optGuard.map(rec(_)._2)
+              val nrhs = rec(rhs)._2
+              //println(s"New rhs: $nrhs inferred type: ${nrhs.getType}")
+              MatchCase(npattern, nguard, nrhs)
+          }
+          val nmatch = MatchExpr(nscr, ncases)
+          (nmatch.getType, nmatch)
+
+        case cs @ CaseClassSelector(cltype, clExpr, fld) =>
+          val (ncltype: CaseClassType, nclExpr) = rec(clExpr)
+          (ncltype, CaseClassSelector(ncltype, nclExpr, fld))
+
+        case AsInstanceOf(clexpr, cltype) =>
+          val (ncltype: ClassType, nexpr) = rec(clexpr)
+          subcast(cltype, ncltype) match {
+            case Some(ntype) => (ntype, AsInstanceOf(nexpr, ntype))
+            case _ =>
+              //println(s"asInstanceOf type of $clExpr is: $cltype inferred type of $nclExpr : $ct")
+              throw new IllegalStateException(s"$nexpr : $ncltype cannot be cast to case class type: $cltype")
+          }
+
+        case v @ Variable(id) =>
+          if (gamma.contains(id)) {
+            if (idmap.contains(id))
+              (gamma(id), idmap(id).toVariable)
+            else {
+              (gamma(id), v)
+            }
+          } else (id.getType, v)
+
+        // need to handle tuple select specially
+        case TupleSelect(tup, i) =>
+          val nop = TupleSelect(rec(tup)._2, i)
+          (nop.getType, nop)
+        case Operator(args, op) =>
+          val nop = op(args.map(arg => rec(arg)._2))
+          (nop.getType, nop)
+        case t: Terminal =>
+          (t.getType, t)
+      }
+      //println(s"Inferred type of $e : ${res._1} new expression: ${res._2}")
+      if (res._1 == Untyped) {
+        throw new IllegalStateException(s"Cannot infer type for expression: $e")
+      }
+      res
+    }
+
+    def subcast(oldType: ClassType, newType: ClassType): Option[ClassType] = {
+      newType match {
+        case AbstractClassType(absClass, tps) if absClass.knownCCDescendants.contains(oldType.classDef) =>
+          //here oldType.classDef <: absClass
+          Some(CaseClassType(oldType.classDef.asInstanceOf[CaseClassDef], tps))
+        case cct: CaseClassType =>
+          Some(cct)
+        case _ =>
+          None
+      }
+    }
+    rec(ine)._2
   }
 }

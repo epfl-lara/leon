@@ -27,7 +27,9 @@ object Main {
       solvers.isabelle.AdaptationPhase,
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
-      invariant.engine.InferInvariantsPhase)
+      invariant.engine.InferInvariantsPhase,
+      transformations.LazinessEliminationPhase
+    )
   }
 
   // Add whatever you need here.
@@ -53,9 +55,10 @@ object Main {
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
     val optInstrument = LeonFlagOptionDef("instrument", "Instrument the code for inferring time/depth/stack bounds", false)
     val optInferInv = LeonFlagOptionDef("inferInv", "Infer invariants from (instrumented) the code", false)
+    val optLazyEval   	= LeonFlagOptionDef("lazy",    "Handles programs that may use the lazy construct",   false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv)
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -153,7 +156,8 @@ object Main {
     import solvers.isabelle.IsabellePhase
     import MainComponent._
     import invariant.engine.InferInvariantsPhase
-    import transformations.InstrumentationPhase
+    import transformations._
+
 
     val helpF        = ctx.findOptionOrDefault(optHelp)
     val noopF        = ctx.findOptionOrDefault(optNoop)
@@ -166,6 +170,7 @@ object Main {
     val evalF        = ctx.findOption(optEval).isDefined
     val inferInvF = ctx.findOptionOrDefault(optInferInv)
     val instrumentF = ctx.findOptionOrDefault(optInstrument)
+    val lazyevalF    = ctx.findOptionOrDefault(optLazyEval)
     val analysisF    = verifyF && terminationF
 
     if (helpF) {
@@ -189,6 +194,7 @@ object Main {
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
+        else if (lazyevalF) LazinessEliminationPhase
         else analysis
       }
 

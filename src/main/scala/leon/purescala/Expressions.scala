@@ -475,6 +475,7 @@ object Expressions {
     val getType = {
       if (typesCompatible(lhs.getType, rhs.getType)) BooleanType
       else {
+        //println(s"Incompatible argument types: arguments: ($lhs, $rhs) types: ${lhs.getType}, ${rhs.getType}")
         Untyped
       }
     }

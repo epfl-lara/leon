@@ -25,6 +25,7 @@ object FunctionUtils {
     lazy val isCommutative = fd.annotations.contains("commutative")
     lazy val isDistributive = fd.annotations.contains("distributive")
     lazy val compose = fd.annotations.contains("compose")
+    lazy val isLibrary = fd.annotations.contains("library")
 
     //the template function
     lazy val tmplFunctionName = "tmpl"

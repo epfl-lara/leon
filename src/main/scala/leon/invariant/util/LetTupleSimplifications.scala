@@ -31,10 +31,9 @@ object LetTupleSimplification {
 
   def letSanityChecks(ine: Expr) = {
     simplePostTransform(_ match {
-      case letExpr @ Let(binderId, letValue, body)
-      	if (binderId.getType != letValue.getType) =>
-          throw new IllegalStateException("Binder and value type mismatch: "+
-              s"(${binderId.getType},${letValue.getType})")
+      case letExpr @ Let(binderId, letValue, body) if (binderId.getType != letValue.getType) =>
+        throw new IllegalStateException("Binder and value type mismatch: " +
+          s"(${binderId.getType},${letValue.getType})")
       case e => e
     })(ine)
   }
@@ -266,11 +265,12 @@ object LetTupleSimplification {
     // by pulling them out
     def pullLetToTop(e: Expr): Expr = {
       val transe = e match {
-        //note: do not pull let's out of ensuring or requires
+        case Lambda(args, body) =>
+          Lambda(args, pullLetToTop(body))
         case Ensuring(body, pred) =>
-          Ensuring(pullLetToTop(body), pred)
+          Ensuring(pullLetToTop(body), pullLetToTop(pred))
         case Require(pre, body) =>
-          Require(pre, pullLetToTop(body))
+          Require(pullLetToTop(pre), pullLetToTop(body))
 
         case letExpr @ Let(binder, letValue, body) =>
           // transform the 'letValue' with the current map
@@ -293,9 +293,16 @@ object LetTupleSimplification {
           replaceLetBody(pullLetToTop(e1), te1 =>
             replaceLetBody(pullLetToTop(e2), te2 => op(Seq(te1, te2))))
 
-        //don't pull things out of if-then-else and match (don't know why this is a problem)
+        //don't pull lets out of if-then-else branches and match cases
         case IfExpr(c, th, elze) =>
-          IfExpr(pullLetToTop(c), pullLetToTop(th), pullLetToTop(elze))
+          replaceLetBody(pullLetToTop(c), IfExpr(_, pullLetToTop(th), pullLetToTop(elze)))
+
+        case MatchExpr(scr, cases) =>
+          val newcases = cases.map {
+            case MatchCase(pat, guard, rhs) =>
+              MatchCase(pat, guard map pullLetToTop, pullLetToTop(rhs))
+          }
+          replaceLetBody(pullLetToTop(scr), MatchExpr(_, newcases))
 
         case Operator(Seq(), op) =>
           op(Seq())
@@ -324,7 +331,8 @@ object LetTupleSimplification {
       }
       transe
     }
-    val res = pullLetToTop(matchToIfThenElse(ine))
+    //val res = pullLetToTop(matchToIfThenElse(ine))
+    val res = pullLetToTop(ine)
     // println("After Pulling lets to top : \n" + ScalaPrinter.apply(res))
     res
   }
@@ -348,7 +356,7 @@ object LetTupleSimplification {
           } else if (occurrences == 1) {
             Some(replace(Map(Variable(i) -> e), b))
           } else {
-        	 //TODO: we can also remove zero occurrences and compress the tuples
+            //TODO: we can also remove zero occurrences and compress the tuples
             // this may be necessary when instrumentations are combined.
             letExpr match {
               case letExpr @ Let(binder, lval @ Tuple(subes), b) =>
@@ -359,24 +367,26 @@ object LetTupleSimplification {
                   }(b)
                   res
                 }
+                val binderVar = binder.toVariable
                 val repmap: Map[Expr, Expr] = subes.zipWithIndex.collect {
-                  case (sube, i) if occurrences(i + 1) == 1 =>
-                    (TupleSelect(binder.toVariable, i + 1) -> sube)
+                  case (sube, i) if occurrences(i + 1) == 1 => // sube is used only once ?
+                    (TupleSelect(binderVar, i + 1) -> sube)
+                  case (v @ Variable(_), i) => // sube is a variable ?
+                    (TupleSelect(binderVar, i + 1) -> v)
+                  case (ts @ TupleSelect(Variable(_), _), i) => // sube is a tuple select of a variable ?
+                    (TupleSelect(binderVar, i + 1) -> ts)
                 }.toMap
                 Some(Let(binder, lval, replace(repmap, b)))
               //note: here, we cannot remove the let,
               //if it is not used it will be removed in the next iteration
-
               case _ => None
             }
           }
         }
-
         case _ => None
       }
       res
     }
-
     val transforms = removeLetsFromLetValues _ andThen fixpoint(postMap(simplerLet)) _ andThen simplifyArithmetic
     transforms(ine)
   }
@@ -413,8 +423,7 @@ object LetTupleSimplification {
       // Reconstruct the expressin tree with the non-constants and the result of constant evaluation above
       if (allConstantsOpped != identity) {
         allNonConstants.foldLeft(InfiniteIntegerLiteral(allConstantsOpped): Expr)((acc: Expr, currExpr) => makeTree(acc, currExpr))
-      }
-      else {
+      } else {
         if (allNonConstants.size == 0) InfiniteIntegerLiteral(identity)
         else {
           allNonConstants.tail.foldLeft(allNonConstants.head)((acc: Expr, currExpr) => makeTree(acc, currExpr))
@@ -430,7 +439,7 @@ object LetTupleSimplification {
         case Plus(e1, e2) => {
           getAllSummands(e1, false) ++ getAllSummands(e2, false)
         }
-        case _ => if (isTopLevel) Seq[Expr]()  else Seq[Expr](e)
+        case _ => if (isTopLevel) Seq[Expr]() else Seq[Expr](e)
       }
     }
 
