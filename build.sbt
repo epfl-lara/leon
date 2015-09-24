@@ -35,9 +35,9 @@ libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.6",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
-  "info.hupel" %% "libisabelle" % "0.1",
-  "info.hupel" %% "libisabelle-setup" % "0.1",
-  "info.hupel" %% "pide-2015" % "0.1",
+  "info.hupel" %% "libisabelle" % "0.1.1",
+  "info.hupel" %% "libisabelle-setup" % "0.1.1",
+  "info.hupel" %% "pide-2015" % "0.1.1",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
 
