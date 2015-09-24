@@ -454,8 +454,11 @@ object Definitions {
       TypedFunDef(this, tparams.map(_.tp))
     }
 
-    def qualifiedName(implicit pgm: Program) = DefOps.qualifiedName(this, false)
+    /* Auxilliary methods */
 
+    def qualifiedName(implicit pgm: Program) = DefOps.qualifiedName(this, false)
+    
+    def paramIds = params map { _.id }
   }
 
 
