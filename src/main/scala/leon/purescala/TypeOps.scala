@@ -9,6 +9,7 @@ import Common._
 import Expressions._
 import Extractors._
 import Constructors._
+import ExprOps.preMap
 
 object TypeOps {
   def typeDepth(t: TypeTree): Int = t match {
@@ -166,17 +167,38 @@ object TypeOps {
     }
   }
 
+  // Helpers for instantiateType
+  private def typeParamSubst(map: Map[TypeParameter, TypeTree])(tpe: TypeTree): TypeTree = tpe match {
+    case (tp: TypeParameter) => map.getOrElse(tp, tp)
+    case NAryType(tps, builder) => builder(tps.map(typeParamSubst(map)))
+  }
+
+  private def freshId(id: Identifier, newTpe: TypeTree) = {
+    if (id.getType != newTpe) {
+      FreshIdentifier(id.name, newTpe).copiedFrom(id)
+    } else {
+      id
+    }
+  }
+  
+  def instantiateType(id: Identifier, tps: Map[TypeParameterDef, TypeTree]): Identifier = {
+    freshId(id, typeParamSubst(tps map { case (tpd, tp) => tpd.tp -> tp })(id.getType))
+  }
+
+  def instantiateType(vd: ValDef, tps: Map[TypeParameterDef, TypeTree]): ValDef = {
+    val ValDef(id, forcedType) = vd
+    ValDef(
+      freshId(id, instantiateType(id.getType, tps)),
+      forcedType map ((tp: TypeTree) => instantiateType(tp, tps))
+    )
+  }
+
   def instantiateType(tpe: TypeTree, tps: Map[TypeParameterDef, TypeTree]): TypeTree = {
     if (tps.isEmpty) {
       tpe
     } else {
       typeParamSubst(tps.map { case (tpd, tp) => tpd.tp -> tp })(tpe)
     }
-  }
-
-  private def typeParamSubst(map: Map[TypeParameter, TypeTree])(tpe: TypeTree): TypeTree = tpe match {
-    case (tp: TypeParameter) => map.getOrElse(tp, tp)
-    case NAryType(tps, builder) => builder(tps.map(typeParamSubst(map)))
   }
 
   def instantiateType(e: Expr, tps: Map[TypeParameterDef, TypeTree], ids: Map[Identifier, Identifier]): Expr = {
@@ -190,13 +212,6 @@ object TypeOps {
       }
 
       def rec(idsMap: Map[Identifier, Identifier])(e: Expr): Expr = {
-        def freshId(id: Identifier, newTpe: TypeTree) = {
-          if (id.getType != newTpe) {
-            FreshIdentifier(id.name, newTpe).copiedFrom(id)
-          } else {
-            id
-          }
-        }
 
         // Simple rec without affecting map
         val srec = rec(idsMap) _
@@ -292,6 +307,29 @@ object TypeOps {
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
 
+          case l @ LetDef(fd, bd) =>
+            val id = fd.id.freshen
+            val tparams = fd.tparams map { p => 
+              TypeParameterDef(tpeSub(p.tp).asInstanceOf[TypeParameter])
+            }
+            val returnType = tpeSub(fd.returnType)
+            val params = fd.params map (instantiateType(_, tps))
+            val newFd = new FunDef(id, tparams, returnType, params).copiedFrom(fd)
+            newFd.copyContentFrom(fd)
+
+            val subCalls = preMap {
+              case fi @ FunctionInvocation(tfd, args) if tfd.fd == fd =>
+                Some(FunctionInvocation(newFd.typed(tfd.tps), args).copiedFrom(fi))
+              case _ => 
+                None
+            } _
+            val fullBody = rec(idsMap ++ fd.paramIds.zip(newFd.paramIds))(subCalls(fd.fullBody))
+            newFd.fullBody = fullBody
+
+            val newBd = srec(subCalls(bd)).copiedFrom(bd)
+
+            LetDef(newFd, newBd).copiedFrom(l)
+
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>
               val tpe = tpeSub(arg.getType)
@@ -327,7 +365,7 @@ object TypeOps {
               case newTpar : TypeParameter => 
                 GenericValue(newTpar, id).copiedFrom(g)
               case other => // FIXME any better ideas?
-                sys.error(s"Tried to substitute $tpar with $other within GenericValue $g")
+                throw LeonFatalError(Some(s"Tried to substitute $tpar with $other within GenericValue $g"))
             }
 
           case s @ FiniteSet(elems, tpe) =>
