@@ -1839,8 +1839,8 @@ object ExprOps {
     */
   def withPrecondition(expr: Expr, pred: Option[Expr]): Expr = (pred, expr) match {
     case (Some(newPre), Require(pre, b))              => req(newPre, b)
-    case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(Require(newPre, b), p)
-    case (Some(newPre), Ensuring(b, p))               => Ensuring(Require(newPre, b), p)
+    case (Some(newPre), Ensuring(Require(pre, b), p)) => Ensuring(req(newPre, b), p)
+    case (Some(newPre), Ensuring(b, p))               => Ensuring(req(newPre, b), p)
     case (Some(newPre), b)                            => req(newPre, b)
     case (None, Require(pre, b))                      => b
     case (None, Ensuring(Require(pre, b), p))         => Ensuring(b, p)
