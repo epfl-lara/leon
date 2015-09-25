@@ -1,6 +1,7 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
 import leon.monads.state._
+import leon.collection._
 
 object StackEvaluator {
 
