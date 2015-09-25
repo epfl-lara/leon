@@ -53,7 +53,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
       timeoutMs = timeout map { _ * 1000 },
       generateDerivationTrees = ctx.findOptionOrDefault(optDerivTrees),
       costModel = costModel,
-      rules = Rules.all ++ (if(ms.isDefined) Seq(rules.AsChoose, rules.Sygus) else Seq()),
+      rules = Rules.all ++ (if(ms.isDefined) Seq(rules.AsChoose, rules.SygusCVC4) else Seq()),
       manualSearch = ms,
       functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
       cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),

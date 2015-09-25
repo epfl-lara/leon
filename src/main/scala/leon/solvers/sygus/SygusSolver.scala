@@ -37,23 +37,12 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
   }
 
   def checkSynth(): Option[Expr] = {
-    val out = p.xs.head
-    val c   = FreshIdentifier("c")
-    val fd  = new FunDef(c, Seq(), out.getType, p.as.map(a => ValDef(a)))
-
-    val bindings = p.as.map(a => a -> (symbolToQualifiedId(id2sym(a)): Term)).toMap
-
-    val constraintId = QualifiedIdentifier(SMTIdentifier(SSymbol("constraint")))
 
     emit(SList(SSymbol("set-logic"), SSymbol("ALL_SUPPORTED")))
 
-    val fsym = id2sym(fd.id)
+    val constraintId = QualifiedIdentifier(SMTIdentifier(SSymbol("constraint")))
 
-    functions += fd.typed -> fsym
-
-    // declare function to synthesize
-    emit(SList(SSymbol("synth-fun"), id2sym(fd.id), SList(fd.params.map(vd => SList(id2sym(vd.id), toSMT(vd.getType))) :_*), toSMT(out.getType)))
-
+    val bindings = p.as.map(a => a -> (symbolToQualifiedId(id2sym(a)): Term)).toMap
 
     // declare inputs
     for (a <- p.as) {
@@ -61,7 +50,23 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
       variables += a -> id2sym(a)
     }
 
-    val synthPhi = replaceFromIDs(Map(out -> FunctionInvocation(fd.typed, p.as.map(_.toVariable))), p.phi)
+    // declare outputs
+    val xToFd = for (x <- p.xs) yield {
+      val fd = new FunDef(x.freshen, Seq(), x.getType, p.as.map(a => ValDef(a)))
+
+      val fsym = id2sym(fd.id)
+
+      functions += fd.typed -> fsym
+
+      // declare function to synthesize
+      emit(SList(SSymbol("synth-fun"), id2sym(fd.id), SList(fd.params.map(vd => SList(id2sym(vd.id), toSMT(vd.getType))) :_*), toSMT(fd.returnType)))
+
+      x -> fd
+    }
+
+    val xToFdCall = xToFd.toMap.mapValues(fd => FunctionInvocation(fd.typed, p.as.map(_.toVariable)))
+
+    val synthPhi = replaceFromIDs(xToFdCall, p.phi)
 
     val TopLevelAnds(clauses) = synthPhi
 
@@ -69,7 +74,7 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
       emit(FunctionApplication(constraintId, Seq(toSMT(c)(bindings))))
     }
 
-    emit(SList(SSymbol("check-synth"))) // check-synth emits: success; unsat; fdef
+    emit(SList(SSymbol("check-synth"))) // check-synth emits: success; unsat; fdef*
 
     // We currently cannot predict the amount of success we will get, so we read as many as possible
     var lastRes = interpreter.parser.parseSExpr
@@ -79,14 +84,24 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
 
     lastRes match {
       case SSymbol("unsat") =>
-        interpreter.parser.parseCommand match {
-          case DefineFun(SMTFunDef(name, params, retSort, body)) =>
-            val res = fromSMT(body, sorts.toA(retSort))(Map(), Map())
-            Some(res)
-          case r =>
-            reporter.warning("Unnexpected result from cvc4-sygus: "+r)
-            None
+
+        val solutions = (for (x <- p.xs) yield {
+          interpreter.parser.parseCommand match {
+            case DefineFun(SMTFunDef(name, params, retSort, body)) =>
+              val res = fromSMT(body, sorts.toA(retSort))(Map(), Map())
+              Some(res)
+            case r =>
+              reporter.warning("Unnexpected result from cvc4-sygus: "+r)
+              None
+          }
+        }).flatten
+
+        if (solutions.size == p.xs.size) {
+          Some(tupleWrap(solutions))
+        } else {
+          None
         }
+
       case SSymbol("unknown") =>
         None
 
