@@ -70,6 +70,8 @@ class ScalaPrinter(opts: PrinterOptions,
         p"""|forall(($args) =>
             |  $bd
             |)"""
+      case NoTree(tpe) =>
+        p"(_ : $tpe)"
       case _ =>
         super.pp(tree)
     }

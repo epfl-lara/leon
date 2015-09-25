@@ -169,7 +169,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
-      case NoTree(tpe)          => p"???[$tpe]"
+      case NoTree(tpe)          => p"<empty tree>[$tpe]"
       case Choose(pred)         => p"choose($pred)"
       case e @ Error(tpe, err)  => p"""error[$tpe]("$err")"""
       case AsInstanceOf(e, ct)  => p"""$e.asInstanceOf[$ct]"""
