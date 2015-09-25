@@ -69,13 +69,20 @@ class CallGraph(p: Program) {
     transitiveClosure()
   }
 
+  private def collectCallsInPats(fd: FunDef)(p: Pattern): Set[(FunDef, FunDef)] =
+    (p match {
+      case u: UnapplyPattern => Set((fd, u.unapplyFun.fd))
+      case _ => Set()
+    }) ++ p.subPatterns.flatMap(collectCallsInPats(fd))
+
   private def collectCalls(fd: FunDef)(e: Expr): Set[(FunDef, FunDef)] = e match {
     case f @ FunctionInvocation(f2, _) => Set((fd, f2.fd))
+    case MatchExpr(_, cases) => cases.toSet.flatMap((mc: MatchCase) => collectCallsInPats(fd)(mc.pattern))
     case _ => Set()
   }
 
   private def scanForCalls(fd: FunDef) {
-    for( (from, to) <- collect(collectCalls(fd)(_))(fd.fullBody) ) {
+    for( (from, to) <- collect(collectCalls(fd))(fd.fullBody) ) {
       _calls   += (from -> to)
       _callees += (from -> (_callees.getOrElse(from, Set()) + to))
       _callers += (to   -> (_callers.getOrElse(to, Set()) + from))
