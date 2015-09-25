@@ -22,7 +22,7 @@ case object SygusCVC4 extends Rule("SygusCVC4") {
 
         s.checkSynth() match {
           case Some(expr) =>
-            RuleClosed(Solution.term(expr))
+            RuleClosed(Solution.term(expr, isTrusted = false))
           case None =>
             RuleFailed()
         }

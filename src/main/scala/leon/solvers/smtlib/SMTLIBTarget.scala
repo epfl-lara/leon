@@ -624,193 +624,173 @@ trait SMTLIBTarget extends Interruptible {
   /* Translate an SMTLIB term back to a Leon Expr */
 
   protected def fromSMT(pair: (Term, TypeTree))(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
-    fromSMT(pair._1, pair._2)
+    fromSMT(pair._1, Some(pair._2))
   }
 
-  protected def fromUntypedSMT(t: Term)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = t match {
-    case SimpleSymbol(s) if constructors.containsB(s) =>
-      constructors.toA(s) match {
-        case cct: CaseClassType =>
-          CaseClass(cct, Nil)
-        case t =>
-          unsupported(t, "woot? for a single constructor for non-case-object")
-      }
-
-    case SimpleSymbol(s) if lets contains s =>
-      fromUntypedSMT(lets(s))
-
-    case SimpleSymbol(s) =>
-      variables.getA(s).map(_.toVariable).getOrElse {
-        reporter.fatalError("Unknown symbol: "+s)
-      }
-    case _ =>
-      reporter.fatalError("Unhandled case in fromUntypedSMT: " + t)
-
+  protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
+    fromSMT(s, Some(tpe))
   }
 
-  protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
-    case (_, UnitType) =>
-      UnitLiteral()
+  protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
+                       (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
 
-    case (FixedSizeBitVectors.BitVectorConstant(n, b), CharType) if b == BigInt(32) =>
-      CharLiteral(n.toInt.toChar)
+    // Use as much information as there is, if there is an expected type, great, but it might not always be there
+    (t, otpe) match {
+      case (_, Some(UnitType)) =>
+        UnitLiteral()
 
-    case (SHexadecimal(h), CharType) =>
-      CharLiteral(h.toInt.toChar)
+      case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(CharType)) if b == BigInt(32) =>
+        CharLiteral(n.toInt.toChar)
 
-    case (SNumeral(n), IntegerType) =>
-      InfiniteIntegerLiteral(n)
+      case (FixedSizeBitVectors.BitVectorConstant(n, b), Some(Int32Type)) if b == BigInt(32) =>
+        IntLiteral(n.toInt)
 
-    case (SDecimal(d), RealType) =>
-      RealLiteral(d)
+      case (SHexadecimal(h), Some(CharType)) =>
+        CharLiteral(h.toInt.toChar)
 
-    case (SNumeral(n), RealType) =>
-      RealLiteral(BigDecimal(n))
+      case (SHexadecimal(hexa), Some(Int32Type)) =>
+        IntLiteral(hexa.toInt)
 
-    case (Core.True(), BooleanType)  => BooleanLiteral(true)
-    case (Core.False(), BooleanType)  => BooleanLiteral(false)
+      case (SDecimal(d), Some(RealType)) =>
+        RealLiteral(d)
 
-    case (FixedSizeBitVectors.BitVectorConstant(n, b), Int32Type) if b == BigInt(32) => IntLiteral(n.toInt)
-    case (SHexadecimal(hexa), Int32Type) => IntLiteral(hexa.toInt)
+      case (SNumeral(n), Some(RealType)) =>
+        RealLiteral(BigDecimal(n))
 
-    case (SimpleSymbol(s), _: ClassType) if constructors.containsB(s) =>
-      constructors.toA(s) match {
-        case cct: CaseClassType =>
-          CaseClass(cct, Nil)
-        case t =>
-          unsupported(t, "woot? for a single constructor for non-case-object")
-      }
+      case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
+        IfExpr(
+          fromSMT(cond, Some(BooleanType)),
+          fromSMT(thenn, t),
+          fromSMT(elze, t)
+        )
 
-    case (SimpleSymbol(s), tpe) if lets contains s =>
-      fromSMT(lets(s), tpe)
+      // Best-effort case
+      case (SNumeral(n), _) =>
+        InfiniteIntegerLiteral(n)
 
-    case (SimpleSymbol(s), _) =>
-      variables.getA(s).map(_.toVariable).getOrElse {
-        reporter.fatalError("Unknown symbol: "+s)
-      }
+      // EK: Since we have no type information, we cannot do type-directed
+      // extraction of defs, instead, we expand them in smt-world
+      case (SMTLet(binding, bindings, body), tpe) =>
+        val defsMap: Map[SSymbol, Term] = (binding +: bindings).map {
+          case VarBinding(s, value) => (s, value)
+        }.toMap
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
-      IfExpr(
-        fromSMT(cond, BooleanType),
-        fromSMT(thenn, t),
-        fromSMT(elze, t)
-      )
+        fromSMT(body, tpe)(lets ++ defsMap, letDefs)
+        case (SimpleSymbol(s), _) if constructors.containsB(s) =>
+          constructors.toA(s) match {
+            case cct: CaseClassType =>
+              CaseClass(cct, Nil)
+            case t =>
+              unsupported(t, "woot? for a single constructor for non-case-object")
+          }
 
-    case (FunctionApplication(SimpleSymbol(s), args), tpe) if constructors.containsB(s) =>
-      constructors.toA(s) match {
-        case cct: CaseClassType =>
-          val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
-          CaseClass(cct, rargs)
-        case tt: TupleType =>
-          val rargs = args.zip(tt.bases).map(fromSMT)
-          tupleWrap(rargs)
+      case (FunctionApplication(SimpleSymbol(s), List(e)), _) if testers.containsB(s) =>
+        testers.toA(s) match {
+          case cct: CaseClassType =>
+            IsInstanceOf(fromSMT(e, cct), cct)
+        }
 
-        case ArrayType(baseType) =>
-          val IntLiteral(size)                 = fromSMT(args(0), Int32Type)
-          val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
+      case (FunctionApplication(SimpleSymbol(s), List(e)), _) if selectors.containsB(s) =>
+        selectors.toA(s) match {
+          case (cct: CaseClassType, i) =>
+            CaseClassSelector(cct, fromSMT(e, cct), cct.fields(i).id)
+        }
 
-          if(size > 10) {
-            val definedElements = elems.collect {
-              case (IntLiteral(i), value) => (i, value)
+      case (FunctionApplication(SimpleSymbol(s), args), _) if constructors.containsB(s) =>
+        constructors.toA(s) match {
+          case cct: CaseClassType =>
+            val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
+            CaseClass(cct, rargs)
+          case tt: TupleType =>
+            val rargs = args.zip(tt.bases).map(fromSMT)
+            tupleWrap(rargs)
+
+          case ArrayType(baseType) =>
+            val IntLiteral(size)                 = fromSMT(args(0), Int32Type)
+            val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
+
+            if(size > 10) {
+              val definedElements = elems.collect {
+                case (IntLiteral(i), value) => (i, value)
+              }
+              finiteArray(definedElements, Some(default, IntLiteral(size)), baseType)
+
+            } else {
+              val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
+
+              finiteArray(entries, None, baseType)
             }
-            finiteArray(definedElements, Some(default, IntLiteral(size)), baseType)
 
-          } else {
-            val entries = for (i <- 0 to size-1) yield elems.getOrElse(IntLiteral(i), default)
+          case t =>
+            unsupported(t, "Woot? structural type that is non-structural")
+        }
 
-            finiteArray(entries, None, baseType)
-          }
+      case (FunctionApplication(SimpleSymbol(s @ SSymbol(app)), args), _) =>
+        (app, args) match {
+          case (">=", List(a, b)) =>
+            GreaterEquals(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-        case t =>
-          unsupported(t, "Woot? structural type that is non-structural")
-      }
+          case ("<=", List(a, b)) =>
+            LessEquals(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-    // EK: Since we have no type information, we cannot do type-directed
-    // extraction of defs, instead, we expand them in smt-world
-    case (SMTLet(binding, bindings, body), tpe) =>
-      val defsMap: Map[SSymbol, Term] = (binding +: bindings).map {
-        case VarBinding(s, value) => (s, value)
-      }.toMap
+          case (">", List(a, b)) =>
+            GreaterThan(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-      fromSMT(body, tpe)(lets ++ defsMap, letDefs)
+          case (">", List(a, b)) =>
+            LessThan(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol(app)), args), tpe) => {
-      app match {
-        case ">=" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => GreaterEquals(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-          }
+          case ("+", args) =>
+            args.map(fromSMT(_, IntegerType)).reduceLeft(plus _)
 
-        case "<=" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => LessEquals(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-          }
+          case ("-", List(a)) =>
+            UMinus(fromSMT(a, IntegerType))
 
-        case ">" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => GreaterThan(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-          }
+          case ("-", List(a, b)) =>
+            Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-        case "<" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => LessThan(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-          }
+          case ("*", args) =>
+            args.map(fromSMT(_, IntegerType)).reduceLeft(times _)
 
-        case "+" =>
-          (args, tpe) match {
-            case (List(a, b), IntegerType) => Plus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-            case (List(a, b), RealType) => RealPlus(fromSMT(a, RealType), fromSMT(b, RealType))
-          }
+          case ("/", List(a, b)) =>
+            Division(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-        case "not" =>
-          (args, tpe) match {
-            case (List(a), BooleanType) => Not(fromSMT(a, BooleanType))
-          }
+          case ("div", List(a, b)) =>
+            Division(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
-        case "or" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => Or(fromSMT(a, BooleanType), fromSMT(b, BooleanType))
-          }
+          case ("not", List(a)) =>
+            Not(fromSMT(a, BooleanType))
 
-        case "and" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => And(fromSMT(a, BooleanType), fromSMT(b, BooleanType))
-          }
+          case ("or", args) =>
+            orJoin(args.map(fromSMT(_, BooleanType)))
 
-        case "=" =>
-          (args, tpe) match {
-            case (List(a, b), BooleanType) => 
-              val ra = fromUntypedSMT(a)
-              Equals(ra, fromSMT(b, ra.getType))
-          }
+          case ("and", args) =>
+            andJoin(args.map(fromSMT(_, BooleanType)))
 
-        case "*" =>
-          (args, tpe) match {
-            case (List(a, b), IntegerType) => Times(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-            case (List(a, b), RealType) => RealTimes(fromSMT(a, RealType), fromSMT(b, RealType))
-          }
+          case ("=", List(a, b)) =>
+            val ra = fromSMT(a, None)
+            Equals(ra, fromSMT(b, ra.getType))
 
-        case "-" =>
-          (args, tpe) match {
-            case (List(a), IntegerType) => UMinus(fromSMT(a, IntegerType))
-            case (List(a, b), IntegerType) => Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
-            case (List(a), RealType) => RealUMinus(fromSMT(a, RealType))
-            case (List(a, b), RealType) => RealMinus(fromSMT(a, RealType), fromSMT(b, RealType))
-          }
-        case "/" =>
-          (args, tpe) match {
-            case (List(a, b), RealType) => RealDivision(fromSMT(a, RealType), fromSMT(b, RealType))
-          }
+          case _ =>
+            reporter.fatalError("Function "+app+" not handled in fromSMT: "+s)
+        }
 
-        case _ =>
-          reporter.fatalError("Function "+app+" not handled in fromSMT: "+s)
-      }
+      case (SimpleSymbol(s), otpe) if lets contains s =>
+        fromSMT(lets(s), otpe)
+
+      case (SimpleSymbol(s), otpe) =>
+        variables.getA(s).map(_.toVariable).getOrElse {
+          reporter.fatalError("Unknown symbol: "+s)
+        }
+
+      case (Core.True(), Some(BooleanType))  => BooleanLiteral(true)
+      case (Core.False(), Some(BooleanType)) => BooleanLiteral(false)
+
+      case _ =>
+        reporter.fatalError("Unhandled case in fromSMT: " + t+" (_ :"+otpe+")")
+
     }
-    case (QualifiedIdentifier(id, sort), tpe) =>
-      reporter.fatalError("Unhandled case in fromSMT: " + id +": "+sort +" ("+tpe+")")
-    case _ =>
-      reporter.fatalError("Unhandled case in fromSMT: " + (s, tpe))
   }
+
 
 }
 

@@ -25,6 +25,7 @@ import _root_.smtlib.common._
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => _, _}
+import _root_.smtlib.parser.Parser.UnexpectedEOFException
 
 abstract class SygusSolver(val context: LeonContext, val program: Program, val p: Problem) extends SMTLIBTarget {
   implicit val ctx = context
@@ -68,45 +69,48 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
 
     val synthPhi = replaceFromIDs(xToFdCall, p.phi)
 
-    val TopLevelAnds(clauses) = synthPhi
+    val constraint = implies(p.pc, synthPhi)
 
-    for(c <- clauses) {
-      emit(FunctionApplication(constraintId, Seq(toSMT(c)(bindings))))
-    }
+    emit(FunctionApplication(constraintId, Seq(toSMT(constraint)(bindings))))
 
     emit(SList(SSymbol("check-synth"))) // check-synth emits: success; unsat; fdef*
 
     // We currently cannot predict the amount of success we will get, so we read as many as possible
-    var lastRes = interpreter.parser.parseSExpr
-    while(lastRes == SSymbol("success")) {
-      lastRes = interpreter.parser.parseSExpr
-    }
+    try { 
+      var lastRes = interpreter.parser.parseSExpr
+      while(lastRes == SSymbol("success")) {
+        lastRes = interpreter.parser.parseSExpr
+      }
 
-    lastRes match {
-      case SSymbol("unsat") =>
+      lastRes match {
+        case SSymbol("unsat") =>
 
-        val solutions = (for (x <- p.xs) yield {
-          interpreter.parser.parseCommand match {
-            case DefineFun(SMTFunDef(name, params, retSort, body)) =>
-              val res = fromSMT(body, sorts.toA(retSort))(Map(), Map())
-              Some(res)
-            case r =>
-              reporter.warning("Unnexpected result from cvc4-sygus: "+r)
-              None
+          val solutions = (for (x <- p.xs) yield {
+            interpreter.parser.parseCommand match {
+              case DefineFun(SMTFunDef(name, params, retSort, body)) =>
+                val res = fromSMT(body, sorts.toA(retSort))(Map(), Map())
+                Some(res)
+              case r =>
+                reporter.warning("Unnexpected result from cvc4-sygus: "+r)
+                None
+            }
+          }).flatten
+
+          if (solutions.size == p.xs.size) {
+            Some(tupleWrap(solutions))
+          } else {
+            None
           }
-        }).flatten
 
-        if (solutions.size == p.xs.size) {
-          Some(tupleWrap(solutions))
-        } else {
+        case SSymbol("unknown") =>
           None
-        }
 
-      case SSymbol("unknown") =>
-        None
-
-      case r =>
-        reporter.warning("Unnexpected result from cvc4-sygus: "+r+" expected unsat")
+        case r =>
+          reporter.warning("Unnexpected result from cvc4-sygus: "+r+" expected unsat")
+          None
+      }
+    } catch { 
+      case _: UnexpectedEOFException =>
         None
     }
   }
