@@ -1,6 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 import leon.collection._
-object Nested1 {
+object Nested15 {
 
   def foo[A](i: List[A]): BigInt = {
     val n = i
@@ -11,8 +11,7 @@ object Nested1 {
       rec3(l.head).size + j + n.size + i.size
     }
     rec2(List(true, true, false), 2)
-  } ensuring(i.size + 7 == _)
+  } ensuring(_ == i.size + 9) // Should be 2* size
 
 }
 
-// vim: set ts=4 sw=4 et:

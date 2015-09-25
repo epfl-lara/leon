@@ -1,6 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-object Array9 {
+object Array3 {
 
   def foo(i: Int): Array[Int] = {
     require(i > 0)

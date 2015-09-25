@@ -1,6 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-object Array8 {
+object Array2 {
 
   def foo(a: Array[Int]): Array[Int] = {
     require(a.length >= 2)

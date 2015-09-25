@@ -2,10 +2,11 @@
 
 import leon.lang._
 
-object Array4 {
+object Array6 {
 
   def foo(a: Array[Int]): Int = {
+    require(a.length > 2)
     a(2)
-  }
+  } ensuring(_ == 0)
 
 }
