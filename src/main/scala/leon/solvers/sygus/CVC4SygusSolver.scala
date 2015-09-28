@@ -20,6 +20,7 @@ class CVC4SygusSolver(ctx: LeonContext, pgm: Program, p: Problem) extends SygusS
     Seq(
       "-q",
       "--cegqi-si",
+      "--cbqi-sym-lia",
       "--macros-quant",
       "--lang", "sygus",
       "--print-success"
