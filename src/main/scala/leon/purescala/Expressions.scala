@@ -846,6 +846,7 @@ object Expressions {
     *                      with a default value (as genereted with `Array.fill` in Scala).
     */
   case class NonemptyArray(elems: Map[Int, Expr], defaultLength: Option[(Expr, Expr)]) extends Expr {
+    require(elems.nonEmpty || (defaultLength.nonEmpty && defaultLength.get._2 != IntLiteral(0)))
     private val elements = elems.values.toList ++ defaultLength.map(_._1)
     val getType = ArrayType(optionToType(leastUpperBound(elements map { _.getType }))).unveilUntyped
   }

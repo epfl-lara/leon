@@ -4,15 +4,9 @@ package leon.integration.evaluators
 
 import leon.test._
 import leon.evaluators._
-
-import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
-import leon.purescala.DefOps._
 import leon.purescala.Types._
-import leon.purescala.Extractors._
-import leon.purescala.Constructors._
-
 import leon.codegen._
 
 class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram {
@@ -274,38 +268,55 @@ class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram {
 
       def test = (B().x, C().x)
     }
+    object Arrays1 {
+      def test = {
+        val x = 1
+        val y = 42
+        val a = Array.fill(y)(x)
+        a(0) + a(41)
+      }
+    }
+
+    object Arrays2 {
+      def test = {
+        val x = 1
+        val a = Array(x, x+1, x+2, x+3)
+        a(0) + a(1) + a(2) + a(3)
+      }
+    }
   """)
 
   val results = Seq(
-    ("simple",            IntLiteral(1)),
-    ("simple2",           InfiniteIntegerLiteral(1)),
-    ("eager",             IntLiteral(43)),
-    ("thiss",             IntLiteral(42) ),
-    ("oldStuff",          IntLiteral(1)),
-    ("methSimple",        IntLiteral(10)),
-    ("methSimple2",       InfiniteIntegerLiteral(42)),
-    ("methSimple3",       InfiniteIntegerLiteral(10)),
-    ("methSimple4",       InfiniteIntegerLiteral(BigInt("4000000000"))),
-    ("bigint1",           InfiniteIntegerLiteral(BigInt(7))),
-    ("bigint2",           BooleanLiteral(true)),
-    ("bigint3",           InfiniteIntegerLiteral(BigInt(17))),
-    ("bigint4",           InfiniteIntegerLiteral(BigInt(12))),
-    ("bigint5",           InfiniteIntegerLiteral(BigInt(-7))),
-    ("methods",           IntLiteral(15)),
-    ("lazyFields",        IntLiteral(1 + 5 + 1 + 6 + 2) ),
-    ("modules",           IntLiteral(1 + 2 + 0) ),
-    ("lazyISLazy" ,       IntLiteral(42) ),
-    ("ListWithSize" ,     IntLiteral(3) ),
-    ("ListWithSumMono" ,  IntLiteral(1 + 2 + 3) ),
-    ("poly" ,             IntLiteral(42) ),
-    ("ListHead" ,         IntLiteral(1)),
-    ("ListWithSum" ,      IntLiteral(1 + 2 + 3) ), 
-    // This one loops!    
-    ("lazyLoops" ,        Error(Untyped, "Looping") ),
-    ("Lazier" ,           IntLiteral(1 + 2 + 3) ),
-    ("SetToList",         BooleanLiteral(true) ),
-    ("Overrides1",        Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))) ),
-    ("Overrides2",        Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))) )
+    "simple"          -> IntLiteral(1),
+    "simple2"         -> InfiniteIntegerLiteral(1),
+    "eager"           -> IntLiteral(43),
+    "thiss"           -> IntLiteral(42) ,
+    "oldStuff"        -> IntLiteral(1),
+    "methSimple"      -> IntLiteral(10),
+    "methSimple2"     -> InfiniteIntegerLiteral(42),
+    "methSimple3"     -> InfiniteIntegerLiteral(10),
+    "methSimple4"     -> InfiniteIntegerLiteral(BigInt("4000000000")),
+    "bigint1"         -> InfiniteIntegerLiteral(BigInt(7)),
+    "bigint2"         -> BooleanLiteral(true),
+    "bigint3"         -> InfiniteIntegerLiteral(BigInt(17)),
+    "bigint4"         -> InfiniteIntegerLiteral(BigInt(12)),
+    "bigint5"         -> InfiniteIntegerLiteral(BigInt(-7)),
+    "methods"         -> IntLiteral(15),
+    "lazyFields"      -> IntLiteral(1 + 5 + 1 + 6 + 2),
+    "modules"         -> IntLiteral(1 + 2 + 0),
+    "lazyISLazy"      -> IntLiteral(42),
+    "ListWithSize"    -> IntLiteral(3),
+    "ListWithSumMono" -> IntLiteral(1 + 2 + 3),
+    "poly"            -> IntLiteral(42),
+    "ListHead"        -> IntLiteral(1),
+    "ListWithSum"     -> IntLiteral(1 + 2 + 3),
+    "lazyLoops"       -> Error(Untyped, "Looping"),// This one loops!
+    "Lazier"          -> IntLiteral(1 + 2 + 3),
+    "SetToList"       -> BooleanLiteral(true),
+    "Overrides1"      -> Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))),
+    "Overrides2"      -> Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))),
+    "Arrays1"         -> IntLiteral(2),
+    "Arrays2"         -> IntLiteral(6)
   )
 
   for {

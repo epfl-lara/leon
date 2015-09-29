@@ -263,7 +263,7 @@ object Constructors {
     * @see [[purescala.Expressions.EmptyArray EmptyArray]]
     */
   def finiteArray(els: Map[Int, Expr], defaultLength: Option[(Expr, Expr)], tpe: TypeTree): Expr = {
-    if (els.isEmpty && defaultLength.isEmpty) EmptyArray(tpe)
+    if (els.isEmpty && (defaultLength.isEmpty || defaultLength.get._2 == IntLiteral(0))) EmptyArray(tpe)
     else NonemptyArray(els, defaultLength)
   }
   /** $encodingof simplified `Array(...)` (array length and default element defined at run-time).

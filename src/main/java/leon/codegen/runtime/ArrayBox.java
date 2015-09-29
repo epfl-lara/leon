@@ -4,8 +4,6 @@ package leon.codegen.runtime;
 
 import java.util.Arrays;
 
-/** If someone wants to make it an efficient implementation of immutable
- *  sets, go ahead. */
 public final class ArrayBox {
   private final Object[]  obj1;
   private final int[]     obj2;

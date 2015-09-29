@@ -15,7 +15,7 @@ abstract class Evaluator(val context: LeonContext, val program: Program) extends
 
   type EvaluationResult = EvaluationResults.Result
 
-  /** Evaluates an expression, using `mapping` as a valuation function for the free variables. */
+  /** Evaluates an expression, using [[Model.mapping]] as a valuation function for the free variables. */
   def eval(expr: Expr, model: Model) : EvaluationResult
 
   /** Evaluates an expression given a simple model (assumes expr is quantifier-free).

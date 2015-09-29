@@ -611,7 +611,12 @@ trait AbstractZ3Solver extends Solver {
                 val map  = rec(args(1), RawArrayType(Int32Type, to))
 
                 (size, map) match {
+
                   case (s : IntLiteral, RawArrayValue(_, elems, default)) =>
+
+                    if (s.value < 0)
+                      unsupported(s, s"Z3 returned array of negative size")
+
                     val entries = elems.map {
                       case (IntLiteral(i), v) => i -> v
                       case _ => reporter.fatalError("Translation from Z3 to Array failed")
