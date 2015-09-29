@@ -15,5 +15,8 @@ package object annotation {
   class extern     extends StaticAnnotation
   @ignore
   class inline     extends StaticAnnotation
+  @ignore
+  class monotonic  extends StaticAnnotation
+  @ignore
+  class compose    extends StaticAnnotation
 }
-

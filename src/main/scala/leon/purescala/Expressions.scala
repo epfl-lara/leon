@@ -10,7 +10,7 @@ import Extractors._
 import Constructors._
 import ExprOps.replaceFromIDs
 
-/** Expression definitions for Pure Scala. 
+/** Expression definitions for Pure Scala.
   *
   * If you are looking for things such as function or class definitions,
   * please have a look in [[purescala.Definitions]].
@@ -25,7 +25,7 @@ import ExprOps.replaceFromIDs
   * optimization opportunities. Unless you need exact control on the structure
   * of the trees, you should use constructors in [[purescala.Constructors]], that
   * simplify the trees they produce.
-  * 
+  *
   * @define encodingof Encoding of
   * @define noteBitvector (32-bit vector)
   * @define noteReal (Real)
@@ -77,7 +77,7 @@ object Expressions {
   }
 
   /** Precondition of an [[Expressions.Expr]]. Corresponds to the Leon keyword *require*
-    *  
+    *
     * @param pred The precondition formula inside ``require(...)``
     * @param body The body following the ``require(...)``
     */
@@ -90,7 +90,7 @@ object Expressions {
   }
 
   /** Postcondition of an [[Expressions.Expr]]. Corresponds to the Leon keyword *ensuring*
-    * 
+    *
     * @param body The body of the expression. It can contain at most one [[Expressions.Require]] sub-expression.
     * @param pred The predicate to satisfy. It should be a function whose argument's type can handle the type of the body
     */
@@ -114,7 +114,7 @@ object Expressions {
   }
 
   /** Local assertions with customizable error message
-    * 
+    *
     * @param pred The predicate, first argument of `assert(..., ...)`
     * @param error An optional error string to display if the assert fails. Second argument of `assert(..., ...)`
     * @param body The expression following `assert(..., ...)`
@@ -156,7 +156,7 @@ object Expressions {
   }
 
   /** $encodingof `def ... = ...; ...` (local function definition)
-    * 
+    *
     * @param fd The function definition.
     * @param body The body of the expression after the function
     */
@@ -172,7 +172,7 @@ object Expressions {
     * Both [[Expressions.MethodInvocation]] and [[Expressions.This]] get removed by phase [[MethodLifting]].
     * Methods become functions, [[Expressions.This]] becomes first argument,
     * and [[Expressions.MethodInvocation]] becomes [[Expressions.FunctionInvocation]].
-    * 
+    *
     * @param rec The expression evaluating to an object
     * @param cd The class definition typing `rec`
     * @param tfd The typed function definition of the method
@@ -203,7 +203,7 @@ object Expressions {
 
 
   /* Higher-order Functions */
-  
+
   /** $encodingof `callee(args...)`, where [[callee]] is an expression of a function type (not a method) */
   case class Application(callee: Expr, args: Seq[Expr]) extends Expr {
     val getType = callee.getType match {
@@ -251,12 +251,12 @@ object Expressions {
   }
 
   /** $encodingof `... match { ... }`
-    * 
+    *
     * '''cases''' should be nonempty. If you are not sure about this, you should use
     * [[purescala.Constructors#matchExpr purescala's constructor matchExpr]]
-    * 
+    *
     * @param scrutinee Expression to the left of the '''match''' keyword
-    * @param cases A sequence of cases to match `scrutinee` against 
+    * @param cases A sequence of cases to match `scrutinee` against
     */
   case class MatchExpr(scrutinee: Expr, cases: Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)
@@ -264,7 +264,7 @@ object Expressions {
   }
 
   /** $encodingof `case pattern [if optGuard] => rhs`
-    * 
+    *
     * @param pattern The pattern just to the right of the '''case''' keyword
     * @param optGuard An optional if-condition just to the left of the `=>`
     * @param rhs The expression to the right of `=>`
@@ -275,7 +275,7 @@ object Expressions {
   }
 
   /** $encodingof a pattern after a '''case''' keyword.
-    * 
+    *
     * @see [[Expressions.MatchCase]]
     */
   sealed abstract class Pattern extends Tree {
@@ -301,7 +301,7 @@ object Expressions {
   /** Pattern encoding `case _ => `, or `case binder => ` if identifier [[binder]] is present */
   case class WildcardPattern(binder: Option[Identifier]) extends Pattern { // c @ _
     val subPatterns = Seq()
-  } 
+  }
   /** Pattern encoding `case binder @ ct(subPatterns...) =>`
     *
     * If [[binder]] is empty, consider a wildcard `_` in its place.
@@ -319,7 +319,7 @@ object Expressions {
     * If [[binder]] is empty, consider a wildcard `_` in its place.
     */
   case class LiteralPattern[+T](binder: Option[Identifier], lit : Literal[T]) extends Pattern {
-    val subPatterns = Seq()    
+    val subPatterns = Seq()
   }
 
   /** A custom pattern defined through an object's `unapply` function */
@@ -362,11 +362,11 @@ object Expressions {
 
   /** Symbolic I/O examples as a match/case.
     * $encodingof `out == (in match { cases; case _ => out })`
-    *  
+    *
     * [[cases]] should be nonempty. If you are not sure about this, you should use
     * [[purescala.Constructors#passes purescala's constructor passes]]
-    * 
-    * @param in 
+    *
+    * @param in
     * @param out
     * @param cases
     */
@@ -402,8 +402,9 @@ object Expressions {
   case class InfiniteIntegerLiteral(value: BigInt) extends Literal[BigInt] {
     val getType = IntegerType
   }
-  /** $encodingof a real number literal */
-  case class RealLiteral(value: BigDecimal) extends Literal[BigDecimal] {
+  /** $encodingof a fraction literal */
+  case class FractionalLiteral(numerator: BigInt, denominator: BigInt) extends Literal[(BigInt, BigInt)] {
+    val value = (numerator, denominator)
     val getType = RealType
   }
   /** $encodingof a boolean literal '''true''' or '''false''' */
@@ -500,7 +501,7 @@ object Expressions {
   }
 
   /** $encodingof `... || ...`
-    *  
+    *
     * [[exprs]] must contain at least two elements; if you are not sure about this,
     * you should use [[purescala.Constructors#or purescala's constructor or]] or
     * [[purescala.Constructors#orJoin purescala's constructor orJoin]]
@@ -574,7 +575,7 @@ object Expressions {
     }
   }
   /** $encodingof `... /  ...`
-    * 
+    *
     * Division and Remainder follows Java/Scala semantics. Division corresponds
     * to / operator on BigInt and Remainder corresponds to %. Note that in
     * Java/Scala % is called remainder and the "mod" operator (Modulo in Leon) is also
@@ -591,7 +592,7 @@ object Expressions {
     }
   }
   /** $encodingof `... %  ...` (can return negative numbers)
-    *  
+    *
     * @see [[Expressions.Division]]
     */
   case class Remainder(lhs: Expr, rhs: Expr) extends Expr {
@@ -601,7 +602,7 @@ object Expressions {
     }
   }
   /** $encodingof `... mod  ...` (cannot return negative numbers)
-    *  
+    *
     * @see [[Expressions.Division]]
     */
   case class Modulo(lhs: Expr, rhs: Expr) extends Expr {
@@ -615,11 +616,11 @@ object Expressions {
     val getType = BooleanType
   }
   /** $encodingof `... > ...`*/
-  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr { 
+  case class GreaterThan(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
   }
   /** $encodingof `... <= ...`*/
-  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr { 
+  case class LessEquals(lhs: Expr, rhs: Expr) extends Expr {
     val getType = BooleanType
   }
   /** $encodingof `... >= ...`*/
@@ -635,32 +636,32 @@ object Expressions {
     val getType = Int32Type
   }
   /** $encodingof `... - ...` $noteBitvector*/
-  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVMinus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
   /** $encodingof `- ...` $noteBitvector*/
-  case class BVUMinus(expr: Expr) extends Expr { 
+  case class BVUMinus(expr: Expr) extends Expr {
     require(expr.getType == Int32Type)
     val getType = Int32Type
   }
   /** $encodingof `... * ...` $noteBitvector*/
-  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVTimes(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
   /** $encodingof `... / ...` $noteBitvector*/
-  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVDivision(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
   /** $encodingof `... % ...` $noteBitvector*/
-  case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr { 
+  case class BVRemainder(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == Int32Type && rhs.getType == Int32Type)
     val getType = Int32Type
   }
   /** $encodingof `! ...` $noteBitvector */
-  case class BVNot(expr: Expr) extends Expr { 
+  case class BVNot(expr: Expr) extends Expr {
     val getType = Int32Type
   }
   /** $encodingof `... & ...` $noteBitvector */
@@ -696,22 +697,22 @@ object Expressions {
     val getType = RealType
   }
   /** $encodingof `... - ...` $noteReal */
-  case class RealMinus(lhs: Expr, rhs: Expr) extends Expr { 
+  case class RealMinus(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
   }
   /** $encodingof `- ...` $noteReal */
-  case class RealUMinus(expr: Expr) extends Expr { 
+  case class RealUMinus(expr: Expr) extends Expr {
     require(expr.getType == RealType)
     val getType = RealType
   }
   /** $encodingof `... * ...` $noteReal */
-  case class RealTimes(lhs: Expr, rhs: Expr) extends Expr { 
+  case class RealTimes(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
   }
   /** $encodingof `... / ...` $noteReal */
-  case class RealDivision(lhs: Expr, rhs: Expr) extends Expr { 
+  case class RealDivision(lhs: Expr, rhs: Expr) extends Expr {
     require(lhs.getType == RealType && rhs.getType == RealType)
     val getType = RealType
   }
@@ -720,11 +721,11 @@ object Expressions {
   /* Tuple operations */
 
   /** $encodingof `(..., ....)` (tuple)
-    * 
+    *
     * [[exprs]] should always contain at least 2 elements.
     * If you are not sure about this requirement, you should use
     * [[purescala.Constructors#tupleWrap purescala's constructor tupleWrap]]
-    * 
+    *
     * @param exprs The expressions in the tuple
     */
   case class Tuple (exprs: Seq[Expr]) extends Expr {
@@ -733,7 +734,7 @@ object Expressions {
   }
 
   /** $encodingof `(tuple)._i`
-    * 
+    *
     * Index is 1-based, first element of tuple is 1.
     * If you are not sure that [[tuple]] is indeed of a TupleType,
     * you should use [[purescala.Constructors$.tupleSelect(t:leon\.purescala\.Expressions\.Expr,index:Int,isTuple:Boolean):leon\.purescala\.Expressions\.Expr* purescala's constructor tupleSelect]]
@@ -839,7 +840,7 @@ object Expressions {
   }
 
   /** $encodingof Array(elems...) with predetermined elements
-    * @param elems The map from the position to the elements.  
+    * @param elems The map from the position to the elements.
     * @param defaultLength An optional pair where the first element is the default value
     *                      and the second is the size of the array. Set this for big arrays
     *                      with a default value (as genereted with `Array.fill` in Scala).

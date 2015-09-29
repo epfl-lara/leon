@@ -16,7 +16,7 @@ trait ExpressionsDSL {
   def bi(x: Int)    = InfiniteIntegerLiteral(x)
   def b(x: Boolean) = BooleanLiteral(x)
   def i(x: Int)     = IntLiteral(x)
-  def r(x: Double)  = RealLiteral(BigDecimal(x))
+  def r(n: BigInt, d: BigInt)  = FractionalLiteral(n, d)
 
   val a = FreshIdentifier("a", Int32Type).toVariable
   val b = FreshIdentifier("b", Int32Type).toVariable

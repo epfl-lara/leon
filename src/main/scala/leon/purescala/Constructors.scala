@@ -19,7 +19,7 @@ import Types._
   *  */
 object Constructors {
 
-  /** If `isTuple`, the whole expression is returned. This is to avoid a situation like  
+  /** If `isTuple`, the whole expression is returned. This is to avoid a situation like
     * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x`, which is not expected.
     * Instead,
     * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> Tuple(x,y)`.
@@ -71,10 +71,10 @@ object Constructors {
     */
   def tupleWrap(es: Seq[Expr]): Expr = es match {
     case Seq() => UnitLiteral()
-    case Seq(elem) => elem 
+    case Seq(elem) => elem
     case more => Tuple(more)
   }
-  
+
   /** Wraps the sequence of patterns as a tuple. If the sequence contains a single pattern, it is returned instead.
     * If the sequence is empty, [[purescala.Expressions.LiteralPattern `LiteralPattern`]]`(None, `[[purescala.Expressions.UnitLiteral `UnitLiteral`]]`())` is returned.
     * @see [[purescala.Expressions.TuplePattern]]
@@ -85,9 +85,9 @@ object Constructors {
     case Seq(elem) => elem
     case more => TuplePattern(None, more)
   }
-  
+
   /** Wraps the sequence of types as a tuple. If the sequence contains a single type, it is returned instead.
-    * If the sequence is empty, the [[purescala.Types.UnitType UnitType]] is returned. 
+    * If the sequence is empty, the [[purescala.Types.UnitType UnitType]] is returned.
     * @see [[purescala.Types.TupleType]]
     */
   def tupleTypeWrap(tps : Seq[TypeTree]) = tps match {
@@ -101,12 +101,12 @@ object Constructors {
     * @see [[purescala.Expressions.FunctionInvocation]]
     */
   def functionInvocation(fd : FunDef, args : Seq[Expr]) = {
-    
+
     require(fd.params.length == args.length, "Invoking function with incorrect number of arguments")
-    
+
     val formalType = tupleTypeWrap(fd.params map { _.getType })
     val actualType = tupleTypeWrap(args map { _.getType })
-    
+
     canBeSubtypeOf(actualType, typeParamsOf(formalType).toSeq, formalType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
@@ -168,13 +168,13 @@ object Constructors {
     val filtered = filterCases(scrutinee.getType, None, cases)
     if (filtered.nonEmpty)
       MatchExpr(scrutinee, filtered)
-    else 
+    else
       Error(
         cases.headOption.map{ _.rhs.getType }.getOrElse(Untyped),
         "No case matches the scrutinee"
       )
-  } 
-  
+  }
+
   /** $encodingof `&&`-expressions with arbitrary number of operands, and simplified.
     * @see [[purescala.Expressions.And And]]
     */
@@ -251,7 +251,7 @@ object Constructors {
     */
   def finiteArray(els: Seq[Expr]): Expr = {
     require(els.nonEmpty)
-    finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway 
+    finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway
   }
   /** $encodingof Simplified `Array[...](...)` (array length and default element defined at run-time) with type information
     * @see [[purescala.Constructors#finiteArray(els:Map* finiteArray]]
@@ -320,11 +320,11 @@ object Constructors {
     case (_, InfiniteIntegerLiteral(bi)) if bi == 0 => lhs
     case (IntLiteral(0), _) => rhs
     case (_, IntLiteral(0)) => lhs
-    case (RealLiteral(d), _) if d == 0 => rhs
-    case (_, RealLiteral(d)) if d == 0 => lhs
-    case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Plus(lhs, rhs)
+    case (FractionalLiteral(n, d), _) if n == 0 => rhs
+    case (_, FractionalLiteral(n, d)) if n == 0 => lhs
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVPlus(lhs, rhs)
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealPlus(lhs, rhs)
+    case _ => Plus(lhs, rhs)
   }
 
   /** $encodingof simplified `... - ...` (minus).
@@ -337,9 +337,9 @@ object Constructors {
     case (_, IntLiteral(0)) => lhs
     case (InfiniteIntegerLiteral(bi), _) if bi == 0 => UMinus(rhs)
     case (IntLiteral(0), _) => BVUMinus(rhs)
-    case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Minus(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVMinus(lhs, rhs)
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealMinus(lhs, rhs)
+    case _ => Minus(lhs, rhs)
   }
 
   /** $encodingof simplified `... * ...` (times).
@@ -356,9 +356,9 @@ object Constructors {
     case (_, IntLiteral(1)) => lhs
     case (IntLiteral(0), _) => IntLiteral(0)
     case (_, IntLiteral(0)) => IntLiteral(0)
-    case (IsTyped(_, IntegerType), IsTyped(_, IntegerType)) => Times(lhs, rhs)
     case (IsTyped(_, Int32Type), IsTyped(_, Int32Type)) => BVTimes(lhs, rhs)
     case (IsTyped(_, RealType), IsTyped(_, RealType)) => RealTimes(lhs, rhs)
+    case _ => Times(lhs, rhs)
   }
 
   /** $encodingof expr.asInstanceOf[tpe], returns `expr` it it already is of type `tpe`.  */
@@ -366,7 +366,6 @@ object Constructors {
     if (isSubtypeOf(expr.getType, tpe)) {
       expr
     } else {
-      //println(s"$expr:${expr.getType} is not a subtype of $tpe")
       AsInstanceOf(expr, tpe)
     }
   }

@@ -24,8 +24,9 @@ object Main {
       repair.RepairPhase,
       evaluators.EvaluationPhase,
       solvers.isabelle.AdaptationPhase,
-      solvers.isabelle.IsabellePhase
-    )
+      solvers.isabelle.IsabellePhase,
+      transformations.InstrumentationPhase,
+      invariant.engine.InferInvariantsPhase)
   }
 
   // Add whatever you need here.
@@ -49,10 +50,11 @@ object Main {
     val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
     val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             false)
     val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
+    val optInstrument = LeonFlagOptionDef("instrument", "Instrument the code for inferring time/depth/stack bounds", false)
+    val optInferInv = LeonFlagOptionDef("inferInv", "Infer invariants from (instrumented) the code", false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
-      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify)
-
+      Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv)
   }
 
   lazy val allOptions: Set[LeonOptionDef[Any]] = allComponents.flatMap(_.definedOptions)
@@ -70,8 +72,8 @@ object Main {
       reporter.info(opt.helpString)
     }
     reporter.info("")
-      
-    reporter.title("Additional options, by component:")
+
+    reporter.info("Additional options, by component:")
 
     for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
@@ -149,6 +151,8 @@ object Main {
     import evaluators.EvaluationPhase
     import solvers.isabelle.IsabellePhase
     import MainComponent._
+    import invariant.engine.InferInvariantsPhase
+    import transformations.InstrumentationPhase
 
     val helpF        = ctx.findOptionOrDefault(optHelp)
     val noopF        = ctx.findOptionOrDefault(optNoop)
@@ -159,6 +163,8 @@ object Main {
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
     val evalF        = ctx.findOption(optEval).isDefined
+    val inferInvF = ctx.findOptionOrDefault(optInferInv)
+    val instrumentF = ctx.findOptionOrDefault(optInstrument)
     val analysisF    = verifyF && terminationF
 
     if (helpF) {
@@ -179,7 +185,10 @@ object Main {
         else if (terminationF) TerminationPhase
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
+        else if (inferInvF) InstrumentationPhase andThen InferInvariantsPhase
+        else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else analysis
+
       }
 
       pipeBegin andThen
@@ -242,7 +251,7 @@ object Main {
         case (vReport: verification.VerificationReport, tReport: termination.TerminationReport) =>
           ctx.reporter.info(vReport.summaryString)
           ctx.reporter.info(tReport.summaryString)
-        
+
         case report: verification.VerificationReport =>
           ctx.reporter.info(report.summaryString)
 

@@ -363,7 +363,7 @@ trait SMTLIBTarget extends Interruptible {
 
       case InfiniteIntegerLiteral(i) => if (i >= 0) Ints.NumeralLit(i) else Ints.Neg(Ints.NumeralLit(-i))
       case IntLiteral(i) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(i))
-      case RealLiteral(d) => if (d >= 0) Reals.DecimalLit(d) else Reals.Neg(Reals.DecimalLit(-d))
+      case FractionalLiteral(n, d) => Reals.Div(Reals.NumeralLit(n), Reals.NumeralLit(d))
       case CharLiteral(c) => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v) => Core.BoolConst(v)
       case Let(b,d,e) =>
@@ -642,10 +642,14 @@ trait SMTLIBTarget extends Interruptible {
         IntLiteral(hexa.toInt)
 
       case (SDecimal(d), Some(RealType)) =>
-        RealLiteral(d)
+        // converting bigdecimal to a fraction
+        val scale = d.scale
+        val num = BigInt(d.bigDecimal.scaleByPowerOfTen(scale).toBigInteger())
+        val denom = BigInt(new java.math.BigDecimal(1).scaleByPowerOfTen(-scale).toBigInteger())
+        FractionalLiteral(num, denom)
 
       case (SNumeral(n), Some(RealType)) =>
-        RealLiteral(BigDecimal(n))
+        FractionalLiteral(n, 1)
 
       case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
         IfExpr(
