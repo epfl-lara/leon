@@ -38,7 +38,17 @@ class XLangVerificationSuite extends LeonRegressionSuite {
       fullName
     }
 
-    test(f"${nextInt()}%3d: $displayName ${leonOptions.mkString(" ")}") {
+    val ignored = List(
+      "regression/verification/xlang/valid/Nested15.scala"
+    )
+
+    val t = if (ignored.exists(displayName endsWith _)) {
+      ignore _
+    } else {
+      test _
+    }
+
+    t(f"${nextInt()}%3d: $displayName ${leonOptions.mkString(" ")}", Nil) {
       assert(file.exists && file.isFile && file.canRead,
              s"Benchmark $displayName is not a readable file")
 
