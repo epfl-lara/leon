@@ -38,9 +38,7 @@ class XLangVerificationSuite extends LeonRegressionSuite {
       fullName
     }
 
-    val ignored = List(
-      "regression/verification/xlang/valid/Nested15.scala"
-    )
+    val ignored = List()
 
     val t = if (ignored.exists(displayName endsWith _)) {
       ignore _

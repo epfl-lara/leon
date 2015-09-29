@@ -19,6 +19,8 @@ trait VerificationSuite extends LeonRegressionSuite {
   val optionVariants: List[List[String]]
   val testDir: String
 
+  val ignored: Seq[String] = Seq()
+
   private var counter: Int = 0
   private def nextInt(): Int = {
     counter += 1
@@ -42,11 +44,19 @@ trait VerificationSuite extends LeonRegressionSuite {
       val (ctx2, ast) = extraction.run(ctx, files)
       val programs = {
         val (user, lib) = ast.units partition { _.isMainUnit }
-        user map { u => (u.id, Program(u :: lib)) }
+        user map ( u => Program(u :: lib) )
       }
-      for ((id, p) <- programs; options <- optionVariants) {
+      for ( p <- programs; options <- optionVariants) {
+
+        val displayName = s"$cat/${p.units.head.id.name}.scala"
+
         val index = nextInt()
-        test(f"$index%3d: ${id.name} ${options.mkString(" ")}") {
+        val ts = if (ignored exists (_.endsWith(displayName)))
+          ignore _
+        else
+          test _
+
+        ts(f"$index%3d: $displayName ${options.mkString(" ")}", Seq()) {
           val ctx = createLeonContext(options: _*)
           if (forError) {
             intercept[LeonFatalError] {
