@@ -306,8 +306,40 @@ object ExprOps {
     })(expr)
   }
 
+  def preTransformWithBinders(f: (Expr, Set[Identifier]) => Expr, initBinders: Set[Identifier] = Set())(e: Expr) = {
+    import xlang.Expressions.LetVar
+    def rec(binders: Set[Identifier], e: Expr): Expr = (f(e, binders) match {
+      case LetDef(fd, bd) =>
+        fd.fullBody = rec(binders ++ fd.paramIds, fd.fullBody)
+        LetDef(fd, rec(binders, bd))
+      case Let(i, v, b) =>
+        Let(i, rec(binders + i, v), rec(binders + i, b))
+      case LetVar(i, v, b) =>
+        LetVar(i, rec(binders + i, v), rec(binders + i, b))
+      case MatchExpr(scrut, cses) =>
+        MatchExpr(rec(binders, scrut), cses map { case MatchCase(pat, og, rhs) =>
+          val newBs = binders ++ pat.binders
+          MatchCase(pat, og map (rec(newBs, _)), rec(newBs, rhs))
+        })
+      case Passes(in, out, cses) =>
+        Passes(rec(binders, in), rec(binders, out), cses map { case MatchCase(pat, og, rhs) =>
+          val newBs = binders ++ pat.binders
+          MatchCase(pat, og map (rec(newBs, _)), rec(newBs, rhs))
+        })
+      case Lambda(args, bd) =>
+        Lambda(args, rec(binders ++ args.map(_.id), bd))
+      case Forall(args, bd) =>
+        Forall(args, rec(binders ++ args.map(_.id), bd))
+      case Operator(subs, builder) =>
+        builder(subs map (rec(binders, _)))
+    }).copiedFrom(e)
+
+    rec(initBinders, e)
+  }
+
   /** Returns the set of identifiers in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
+    import leon.xlang.Expressions.LetVar
     fold[Set[Identifier]] {
       case (e, subs) =>
         val subvs = subs.flatten.toSet
@@ -315,6 +347,7 @@ object ExprOps {
           case Variable(i) => subvs + i
           case LetDef(fd, _) => subvs -- fd.params.map(_.id)
           case Let(i, _, _) => subvs - i
+          case LetVar(i, _, _) => subvs - i
           case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Passes(_, _, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Lambda(args, _) => subvs -- args.map(_.id)

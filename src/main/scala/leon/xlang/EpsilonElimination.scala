@@ -16,24 +16,24 @@ object EpsilonElimination extends UnitPhase[Program] {
 
   def apply(ctx: LeonContext, pgm: Program) = {
 
-    for {
-      fd <- pgm.definedFunctions
-      body <- fd.body
-    } {
-      val newBody = postMap{
-        case eps@Epsilon(pred, tpe) =>
-          val freshName   = FreshIdentifier("epsilon")
-          val newFunDef   = new FunDef(freshName, Nil, tpe, Seq())
-          val epsilonVar  = EpsilonVariable(eps.getPos, tpe)
-          val resId       = FreshIdentifier("res", tpe)
-          val postcondition = replace(Map(epsilonVar -> Variable(resId)), pred)
+    for (fd <- pgm.definedFunctions) {
+      fd.fullBody = preTransformWithBinders({
+        case (eps@Epsilon(pred, tpe), binders) =>
+          val freshName = FreshIdentifier("epsilon")
+          val bSeq = binders.toSeq
+          val freshParams = bSeq.map { _.freshen }
+          val newFunDef = new FunDef(freshName, Nil, tpe, freshParams map (ValDef(_)))
+          val epsilonVar = EpsilonVariable(eps.getPos, tpe)
+          val resId = FreshIdentifier("res", tpe)
+          val eMap: Map[Expr, Expr] = bSeq.zip(freshParams).map {
+            case (from, to) => (Variable(from), Variable(to))
+          }.toMap ++ Seq((epsilonVar, Variable(resId)))
+          val postcondition = replace(eMap, pred)
           newFunDef.postcondition = Some(Lambda(Seq(ValDef(resId)), postcondition))
-          Some(LetDef(newFunDef, FunctionInvocation(newFunDef.typed, Seq())))
+          LetDef(newFunDef, FunctionInvocation(newFunDef.typed, bSeq map Variable))
 
-        case _ =>
-          None
-      }(body)
-      fd.body = Some(newBody)
+        case (other, _) => other
+      }, fd.paramIds.toSet)(fd.fullBody)
     }
   }
 
