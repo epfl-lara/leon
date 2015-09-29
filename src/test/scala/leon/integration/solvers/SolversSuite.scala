@@ -67,20 +67,24 @@ class SolversSuite extends LeonTestSuiteWithProgram {
           not(Equals(v, simplestValue(v.getType)))
       }))
 
-      solver.assertCnstr(cnstr)
+      try {
+        solver.assertCnstr(cnstr)
 
-      solver.check match {
-        case Some(true) =>
-          val model = solver.getModel
-          for (v <- vs) {
-            if (model.isDefinedAt(v.id)) {
-              assert(model(v.id).getType === v.getType, "Extracting value of type "+v.getType)
-            } else {
-              fail("Model does not contain "+v.id+" of type "+v.getType)
+        solver.check match {
+          case Some(true) =>
+            val model = solver.getModel
+            for (v <- vs) {
+              if (model.isDefinedAt(v.id)) {
+                assert(model(v.id).getType === v.getType, "Extracting value of type "+v.getType)
+              } else {
+                fail("Model does not contain "+v.id+" of type "+v.getType)
+              }
             }
-          }
-        case _ =>
-          fail("Constraint "+cnstr.asString+" is unsat!?")
+          case _ =>
+            fail("Constraint "+cnstr.asString+" is unsat!?")
+        }
+      } finally {
+        solver.free
       }
 
     }
