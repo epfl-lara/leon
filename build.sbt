@@ -1,4 +1,4 @@
-name := "Orb2015"
+name := "Leon"
 
 version := "3.0"
 
