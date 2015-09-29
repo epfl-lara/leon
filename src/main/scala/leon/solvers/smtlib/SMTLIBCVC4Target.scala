@@ -36,61 +36,82 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     }
   }
 
-  override protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
-    // EK: This hack is necessary for sygus which does not strictly follow smt-lib for negative literals
-    case (SimpleSymbol(SSymbol(v)), IntegerType) if v.startsWith("-") =>
-      try {
-        InfiniteIntegerLiteral(v.toInt)
-      } catch {
-        case t: Throwable =>
-          super.fromSMT(s, tpe)
-      }
+  override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
+                                (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
+    (t, otpe) match {
+      // EK: This hack is necessary for sygus which does not strictly follow smt-lib for negative literals
+      case (SimpleSymbol(SSymbol(v)), Some(IntegerType)) if v.startsWith("-") =>
+        try {
+          InfiniteIntegerLiteral(v.toInt)
+        } catch {
+          case _: Throwable =>
+            super.fromSMT(t, otpe)
+        }
 
-    case (SimpleSymbol(s), tp: TypeParameter) =>
-      val n = s.name.split("_").toList.last
-      GenericValue(tp, n.toInt)
+      case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
+        val n = s.name.split("_").toList.last
+        GenericValue(tp, n.toInt)
 
-    case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), SetType(base)) =>
-      FiniteSet(Set(), base)
+      case (QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset"), Seq()), _), Some(SetType(base))) =>
+        FiniteSet(Set(), base)
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), RawArrayType(k,v)) =>
-      RawArrayValue(k, Map(), fromSMT(elem, v))
+      case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), Some(tpe)) =>
+        tpe match {
+          case RawArrayType(k, v) =>
+            RawArrayValue(k, Map(), fromSMT(elem, v))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), FunctionType(from,to)) =>
-      RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
+          case FunctionType(from, to) =>
+            RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), RawArrayType(k,v)) =>
-      val RawArrayValue(_, elems, base) = fromSMT(arr, tpe)
-      RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
+          case MapType(k, v) =>
+            FiniteMap(Nil, k, v)
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), FunctionType(from,to)) =>
-      val RawArrayValue(k, elems, base) = fromSMT(arr, tpe)
-      RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, to)), base)
+        }
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), SetType(base)) =>
-      FiniteSet(elems.map(fromSMT(_, base)).toSet, base)
+      case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), Some(tpe)) =>
+        tpe match {
+          case RawArrayType(k, v) =>
+            RawArrayValue(k, Map(), fromSMT(elem, v))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("insert")), elems), SetType(base)) =>
-      val selems = elems.init.map(fromSMT(_, base))
-      val FiniteSet(se, _) = fromSMT(elems.last, tpe)
-      FiniteSet(se ++ selems, base)
+          case FunctionType(from, to) =>
+            RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
 
-    case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), SetType(base)) =>
-      FiniteSet(elems.flatMap(fromSMT(_, tpe) match {
-        case FiniteSet(elems, _) => elems
-      }).toSet, base)
+          case MapType(k, v) =>
+            FiniteMap(Nil, k, v)
 
-    case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), RawArrayType(k, v)) =>
-      RawArrayValue(k, Map(), fromSMT(elem, v))
+        }
 
-    // FIXME (nicolas)
-    // some versions of CVC4 seem to generate array constants with "as const" notation instead of the __array_store_all__
-    // one I've witnessed up to now. Don't know why this is happening...
-    case (FunctionApplication(QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), _), Seq(elem)), FunctionType(from, to)) =>
-      RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
+      case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), Some(tpe)) =>
+        tpe match {
+          case RawArrayType(_, v) =>
+            val RawArrayValue(k, elems, base) = fromSMT(arr, otpe)
+            RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
 
-    case _ =>
-      super.fromSMT(s, tpe)
+          case FunctionType(_, v) =>
+            val RawArrayValue(k, elems, base) = fromSMT(arr, otpe)
+            RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
+
+          case MapType(k, v) =>
+            val FiniteMap(elems, k, v) = fromSMT(arr, otpe)
+            FiniteMap(elems :+ (fromSMT(key, k) -> fromSMT(elem, v)), k, v)
+        }
+
+      case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), Some(SetType(base))) =>
+        FiniteSet(elems.map(fromSMT(_, base)).toSet, base)
+
+      case (FunctionApplication(SimpleSymbol(SSymbol("insert")), elems), Some(SetType(base))) =>
+        val selems = elems.init.map(fromSMT(_, base))
+        val FiniteSet(se, _) = fromSMT(elems.last, otpe)
+        FiniteSet(se ++ selems, base)
+
+      case (FunctionApplication(SimpleSymbol(SSymbol("union")), elems), Some(SetType(base))) =>
+        FiniteSet(elems.flatMap(fromSMT(_, otpe) match {
+          case FiniteSet(elems, _) => elems
+        }).toSet, base)
+
+      case _ =>
+        super.fromSMT(t, otpe)
+    }
   }
 
   override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]) = e match {

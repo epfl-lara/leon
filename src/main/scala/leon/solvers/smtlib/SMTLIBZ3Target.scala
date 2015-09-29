@@ -72,31 +72,34 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     Sort(SMTIdentifier(setSort.get), Seq(declareSort(of)))
   }
 
-  override protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = (s, tpe) match {
-    case (SimpleSymbol(s), tp: TypeParameter) =>
-      val n = s.name.split("!").toList.last
-      GenericValue(tp, n.toInt)
+  override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
+                                (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
+    (t, otpe) match {
+      case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
+        val n = s.name.split("!").toList.last
+        GenericValue(tp, n.toInt)
 
 
-    case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), tpe) =>
-      if (letDefs contains k) {
-        // Need to recover value form function model
-        fromRawArray(extractRawArray(letDefs(k), tpe), tpe)
-      } else {
-        throw LeonFatalError("Array on non-function or unknown symbol "+k)
-      }
+      case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), Some(tpe)) =>
+        if (letDefs contains k) {
+          // Need to recover value form function model
+          fromRawArray(extractRawArray(letDefs(k), tpe), tpe)
+        } else {
+          throw LeonFatalError("Array on non-function or unknown symbol "+k)
+        }
 
-    case (FunctionApplication(
-      QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), Some(ArraysEx.ArraySort(k, v))),
-      Seq(defV)
-    ), tpe) =>
-      val ktpe = sorts.fromB(k)
-      val vtpe = sorts.fromB(v)
+      case (FunctionApplication(
+        QualifiedIdentifier(SMTIdentifier(SSymbol("const"), _), Some(ArraysEx.ArraySort(k, v))),
+        Seq(defV)
+      ), Some(tpe)) =>
+        val ktpe = sorts.fromB(k)
+        val vtpe = sorts.fromB(v)
 
-      fromRawArray(RawArrayValue(ktpe, Map(), fromSMT(defV, vtpe)), tpe)
+        fromRawArray(RawArrayValue(ktpe, Map(), fromSMT(defV, vtpe)), tpe)
 
-    case _ =>
-      super.fromSMT(s, tpe)
+      case _ =>
+        super.fromSMT(t, otpe)
+    }
   }
 
   override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {

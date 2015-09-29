@@ -36,6 +36,16 @@ trait AbstractModel[+This <: Model with AbstractModel[This]]
 
   def iterator = mapping.iterator
   def seq = mapping.seq
+
+  def asString(implicit ctx: LeonContext) = {
+    if (mapping.isEmpty) {
+      "Model()"
+    } else {
+      (for ((k,v) <- mapping.toSeq.sortBy(_._1)) yield {
+        f"  ${k.asString}%-20s -> ${v.asString}"
+      }).mkString("Model(\n", ",\n", ")")
+    }
+  }
 }
 
 trait AbstractModelBuilder[+This <: Model with AbstractModel[This]]
@@ -101,6 +111,7 @@ trait Solver extends Interruptible {
     leonContext.reporter.warning(err.getMessage)
     throw err
   }
+
   protected def unsupported(t: Tree, str: String): Nothing = {
     val err = SolverUnsupportedError(t, this, Some(str))
     leonContext.reporter.warning(err.getMessage)

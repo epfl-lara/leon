@@ -44,8 +44,7 @@ trait SMTLIBTarget extends Interruptible {
 
   protected def getNewInterpreter(ctx: LeonContext): ProcessInterpreter
 
-  protected def unsupported(t: Tree, str: String): Nothing;
-
+  protected def unsupported(t: Tree, str: String): Nothing
 
   protected lazy val interpreter = getNewInterpreter(context)
 
@@ -622,15 +621,6 @@ trait SMTLIBTarget extends Interruptible {
   }
 
   /* Translate an SMTLIB term back to a Leon Expr */
-
-  protected def fromSMT(pair: (Term, TypeTree))(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
-    fromSMT(pair._1, Some(pair._2))
-  }
-
-  protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
-    fromSMT(s, Some(tpe))
-  }
-
   protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
                        (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
 
@@ -740,22 +730,22 @@ trait SMTLIBTarget extends Interruptible {
             LessThan(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
 
           case ("+", args) =>
-            args.map(fromSMT(_, IntegerType)).reduceLeft(plus _)
+            args.map(fromSMT(_, otpe)).reduceLeft(plus _)
 
           case ("-", List(a)) =>
-            UMinus(fromSMT(a, IntegerType))
+            UMinus(fromSMT(a, otpe))
 
           case ("-", List(a, b)) =>
-            Minus(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+            Minus(fromSMT(a, otpe), fromSMT(b, otpe))
 
           case ("*", args) =>
-            args.map(fromSMT(_, IntegerType)).reduceLeft(times _)
+            args.map(fromSMT(_, otpe)).reduceLeft(times _)
 
           case ("/", List(a, b)) =>
-            Division(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+            Division(fromSMT(a, otpe), fromSMT(b, otpe))
 
           case ("div", List(a, b)) =>
-            Division(fromSMT(a, IntegerType), fromSMT(b, IntegerType))
+            Division(fromSMT(a, otpe), fromSMT(b, otpe))
 
           case ("not", List(a)) =>
             Not(fromSMT(a, BooleanType))
@@ -774,24 +764,30 @@ trait SMTLIBTarget extends Interruptible {
             reporter.fatalError("Function "+app+" not handled in fromSMT: "+s)
         }
 
+      case (Core.True(), Some(BooleanType))  => BooleanLiteral(true)
+      case (Core.False(), Some(BooleanType)) => BooleanLiteral(false)
+
       case (SimpleSymbol(s), otpe) if lets contains s =>
         fromSMT(lets(s), otpe)
 
       case (SimpleSymbol(s), otpe) =>
         variables.getA(s).map(_.toVariable).getOrElse {
-          reporter.fatalError("Unknown symbol: "+s)
+          throw new Exception()
         }
 
-      case (Core.True(), Some(BooleanType))  => BooleanLiteral(true)
-      case (Core.False(), Some(BooleanType)) => BooleanLiteral(false)
-
       case _ =>
-        reporter.fatalError("Unhandled case in fromSMT: " + t+" (_ :"+otpe+")")
+        reporter.fatalError(s"Unhandled case in fromSMT: $t : ${otpe.map(_.asString(context)).getOrElse("?")} (${t.getClass})")
 
     }
   }
 
+  final protected def fromSMT(pair: (Term, TypeTree))(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
+    fromSMT(pair._1, Some(pair._2))
+  }
 
+  final protected def fromSMT(s: Term, tpe: TypeTree)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
+    fromSMT(s, Some(tpe))
+  }
 }
 
 // Unique numbers
