@@ -4,7 +4,9 @@ Change Log
 #### v?.?
 
 Among the changes are (see the commits for details):
+* Resource bound inference engine Orb, developed by Ravi is now merged into master
 * Leon can now do program repair, thanks to Etienne and Manos
+* Experimental support for first-order quantifiers inside Leon
 * Isabelle proof assistant can now be used as a solver, thanks to Lars Hupel
 * A DSL for writing equational proofs in Leon, thanks to Sandro Stucki and Marco Antognini
 * Leon now uses the improved SMT-LIB library, thanks to the continuous work of Regis Blanc
