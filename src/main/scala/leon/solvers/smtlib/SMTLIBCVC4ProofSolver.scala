@@ -3,7 +3,6 @@
 package leon
 package solvers.smtlib
 
-import purescala.Common.Identifier
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
 

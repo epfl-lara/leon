@@ -8,10 +8,10 @@ import purescala.Definitions.Program
 import purescala.Common.Identifier
 import purescala.Expressions.Expr
 
-import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
+import _root_.smtlib.parser.Terms.{Identifier => _, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.parser.CommandsResponses.GetModelResponseSuccess
-import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
+import _root_.smtlib.theories.Core.{Equals => _, _}
 
 class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolver(context, program) with SMTLIBZ3Target {
 

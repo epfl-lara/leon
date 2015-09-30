@@ -4,19 +4,13 @@ package leon
 package solvers
 package smtlib
 
-import purescala.Common._
 import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Constructors._
-import purescala.Types._
 import purescala.Definitions._
 import purescala.DefOps.typedTransitiveCallees
 
 import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
 import _root_.smtlib.parser.Terms.{Exists => SMTExists, Forall => SMTForall, _ }
-import _root_.smtlib.theories.Core.{Equals => SMTEquals}
-import _root_.smtlib.parser.Commands._
 
 trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target with SMTLIBQuantifiedTarget {
 

@@ -6,17 +6,14 @@ package smtlib
 
 import purescala.Common._
 import purescala.Expressions._
-import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Types._
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
-import _root_.smtlib.parser.CommandsResponses.GetModelResponseSuccess
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
-
 
 trait SMTLIBZ3Target extends SMTLIBTarget {
 

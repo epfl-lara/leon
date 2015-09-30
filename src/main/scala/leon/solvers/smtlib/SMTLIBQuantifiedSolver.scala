@@ -5,7 +5,6 @@ package solvers
 package smtlib
 
 import purescala.Common.Identifier
-import purescala.Expressions.Expr
 import verification.VC
 
 trait SMTLIBQuantifiedSolver {

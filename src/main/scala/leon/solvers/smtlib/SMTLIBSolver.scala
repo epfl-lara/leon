@@ -4,21 +4,14 @@ package leon
 package solvers
 package smtlib
 
-import utils._
 import purescala.Common._
 import purescala.Expressions._
-import purescala.Extractors._
 import purescala.ExprOps._
-import purescala.Types._
-import purescala.Constructors._
 import purescala.Definitions._
 
-import _root_.smtlib.common._
 import _root_.smtlib.parser.Commands.{Assert => SMTAssert, _}
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
-import _root_.smtlib.theories._
-import _root_.smtlib.interpreters.ProcessInterpreter
 
 abstract class SMTLIBSolver(val context: LeonContext, val program: Program) 
                            extends Solver with SMTLIBTarget with NaiveAssumptionSolver {

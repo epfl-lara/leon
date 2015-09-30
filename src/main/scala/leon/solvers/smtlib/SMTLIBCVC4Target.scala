@@ -6,7 +6,6 @@ package smtlib
 
 import purescala.Common._
 import purescala.Expressions._
-import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Types._
 

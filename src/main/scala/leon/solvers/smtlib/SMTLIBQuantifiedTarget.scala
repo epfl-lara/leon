@@ -8,11 +8,8 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.ExprOps._
-import purescala.DefOps.typedTransitiveCallees
 
-import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => _, _}
-import _root_.smtlib.parser.Terms.{Exists => SMTExists, Forall => SMTForall, _ }
-import _root_.smtlib.theories.Core.Equals
+import _root_.smtlib.parser.Commands.{Assert => _, FunDef => _, _}
 
 trait SMTLIBQuantifiedTarget extends SMTLIBTarget {
 
