@@ -21,14 +21,14 @@ target
 derivation*.dot
 
 # leon
-/last.log
-/*.last
-/*.table
-/*.log
-/smt-sessions/
-/leon.out/
-/repairs.dat
-/tmp
+last.log
+*.last
+*.table
+*.log
+smt-sessions/
+leon.out/
+repairs.dat
+tmp
 
 #eclipse
 .cache
@@ -41,9 +41,10 @@ derivation*.dot
 .idea
 Leon.eml
 Leon.iml
+/.idea_modules
 
 #scripts
-/out-classes
+out-classes
 
 #z3
 .z3-trace
