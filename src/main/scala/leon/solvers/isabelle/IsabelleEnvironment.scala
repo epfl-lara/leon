@@ -58,7 +58,7 @@ object IsabelleEnvironment {
       case _ =>
         context.reporter.info(s"No $version found at $base")
         context.reporter.info(s"Preparing $version environment ...")
-        Setup.installTo(Files.createDirectories(base), version)
+        Setup.installTo(Files.createDirectories(base).toRealPath(), version)
     }
 
     val system = setup.flatMap { setup =>
