@@ -67,7 +67,11 @@ object InstUtil {
     mfd
   }
 
-  def userFunctionName(fd: FunDef) = fd.id.name.split("-")(0)
+  def userFunctionName(fd: FunDef) = {
+    val splits = fd.id.name.split("-")
+    if(!splits.isEmpty) splits(0)
+    else ""
+  }
 
   def getInstMap(fd: FunDef) = {
     val resvar = invariant.util.Util.getResId(fd).get.toVariable // note: every instrumented function has a postcondition

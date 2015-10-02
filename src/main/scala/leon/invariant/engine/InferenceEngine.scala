@@ -72,7 +72,7 @@ class InferenceEngine(ctx: InferenceContext) {
       reporter.info("- Dumping statistics")
       dumpStats(ctx.statsSuffix)
     }
-    new InferenceReport(program, results.map(pair => {
+    new InferenceReport(results.map(pair => {
       val (fd, ic) = pair
       (fd -> List[VC](ic))
     }))(ctx)
@@ -141,7 +141,7 @@ class InferenceEngine(ctx: InferenceContext) {
                 val inv = TemplateInstantiator.getAllInvariants(model.get,
                   Map(origFd -> origFd.getTemplate))
                 // record the inferred invariants
-                val ic = new InferenceCondition(Some(inv(origFd)), fd)
+                val ic = new InferenceCondition(Some(inv(origFd)), origFd)
                 ic.time = if (first) Some(funcTime) else Some(0.0)
                 // update analyzed set
                 analyzedSet += (origFd -> ic)

@@ -150,13 +150,14 @@ object Util {
     })(ine)
   }
 
-  def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program, funToPost: Map[FunDef, Expr] = Map()): Program = {
+  def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program, 
+      funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay : Boolean = true): Program = {
 
     val funMap = Util.functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) if fd.isTheoryOperation =>
         accMap + (fd -> fd)
       case (accMap, fd) => {
-        val freshId = FreshIdentifier(fd.id.name, fd.returnType, true)
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
         val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
         accMap.updated(fd, newfd)
       }

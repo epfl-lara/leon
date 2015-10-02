@@ -17,6 +17,7 @@ import transformations._
 import verification._
 import verification.VCKinds
 import leon.purescala.ScalaPrinter
+import leon.purescala.PrettyPrinter
 
 /**
  * @author ravi
@@ -44,7 +45,7 @@ object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
         optDisableInfer)
 
   //TODO provide options for analyzing only selected functions
-  def run(ctx: LeonContext)(prog: Program): InferenceReport = {
+  def run(ctx: LeonContext)(program: Program): InferenceReport = {
 
     //control printing of statistics
     val dumpStats = true
@@ -67,70 +68,40 @@ object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
     var autoInference = true
 
     for (opt <- ctx.options) (opt.optionDef.name, opt.value) match {
-      case ("wholeprogram", true) => {
-        //do not do a modular analysis
-        modularlyAnalyze = false
-      }
-
-      case ("fullunroll", true) => {
-        //do not do a modular analysis
-        targettedUnroll = false
-      }
-
-      case ("minbounds", true) => {
-        tightBounds = true
-      }
-
-      case ("withmult", true) => {
-        withmult = true
-      }
-
-      case ("usereals", true) => {
-        usereals = true
-      }
-
+      case ("wholeprogram", true) => 
+        modularlyAnalyze = false      
+      case ("fullunroll", true) =>         
+        targettedUnroll = false      
+      case ("minbounds", true) => 
+        tightBounds = true      
+      case ("withmult", true) => 
+        withmult = true      
+      case ("usereals", true) => 
+        usereals = true      
       case ("disableInfer", true) =>
         autoInference = false
-
-      case ("inferTemp", true) => {
-        inferTemp = true
-        var foundStrongest = false
-        //go over all post-conditions and pick the strongest relation
-        prog.definedFunctions.foreach((fd) => {
-          if (!foundStrongest && fd.hasPostcondition) {
-            val cond = fd.postcondition.get
-            simplePostTransform((e) => e match {
-              case Equals(_, _) => {
-                enumerationRelation = Equals.apply _
-                foundStrongest = true
-                e
-              }
-              case _ => e
-            })(cond)
-          }
-        })
-      }
-
-      case ("cegis", true) => {
-        useCegis = true
-      }
-
+      case ("inferTemp", true) => 
+        inferTemp = true              
+      case ("cegis", true) => 
+        useCegis = true      
       case ("timeout", timeOut: Int) =>
         timeout = timeOut
-
-      case ("stats-suffix", suffix: String) => {
-        statsSuff = suffix
-      }
-
+      case ("stats-suffix", suffix: String) => 
+        statsSuff = suffix      
       case _ =>
     }
+    
+    // (a) first run instrumentation phase
+    val instProg = InstrumentationPhase(ctx, program)
 
-    val funToTmpl = prog.definedFunctions.collect {
+    // (b) convert qmarks to tmpl functions 
+    val funToTmpl = instProg.definedFunctions.collect {
       case fd if fd.hasTemplate =>
         fd -> fd.getTemplate
     }.toMap
-    val qMarksRemovedProg = Util.assignTemplateAndCojoinPost(funToTmpl, prog, Map())
+    val qMarksRemovedProg = Util.assignTemplateAndCojoinPost(funToTmpl, instProg, Map())
 
+    // convert nonlinearity to recursive functions
     val newprog = if (usereals) {
       (new IntToRealProgram())(qMarksRemovedProg)
     } else qMarksRemovedProg
@@ -138,13 +109,33 @@ object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
     val finalprog = nlelim(newprog)
 
     val toVerifyPost = validateAndCollectNotValidated(qMarksRemovedProg, ctx, timeout)
+
+    // collect strongest relation for enumeration if defined
+    var foundStrongest = false
+    //go over all post-conditions and pick the strongest relation
+    instProg.definedFunctions.foreach((fd) => {
+      if (!foundStrongest && fd.hasPostcondition) {
+        val cond = fd.postcondition.get
+        simplePostTransform((e) => e match {
+          case Equals(_, _) => {
+            enumerationRelation = Equals.apply _
+            foundStrongest = true
+            e
+          }
+          case _ => e
+        })(cond)
+      }
+    })
+    
     //populate the inference context and invoke inferenceEngine
-    val inferctx = new InferenceContext(finalprog, toVerifyPost, ctx,
+    val inferctx = new InferenceContext(program, finalprog, toVerifyPost, ctx,
       //multiplication operation
       (e1, e2) => FunctionInvocation(TypedFunDef(nlelim.multFun, nlelim.multFun.tparams.map(_.tp)), Seq(e1, e2)),
       enumerationRelation = LessEquals, modularlyAnalyze, targettedUnroll, autoInference,
       dumpStats, tightBounds, withmult, usereals, inferTemp, useCegis, timeout, maxCegisBound, statsSuff)
-    (new InferenceEngine(inferctx)).run()
+    val report = (new InferenceEngine(inferctx)).run()
+    println("Final Program: \n" +PrettyPrinter.apply(report.finalProgramWoInstrumentation))
+    report
   }
 
   def createLeonContext(ctx: LeonContext, opts: String*): LeonContext = {

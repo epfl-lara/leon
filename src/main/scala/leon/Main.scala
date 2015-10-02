@@ -185,10 +185,9 @@ object Main {
         else if (terminationF) TerminationPhase
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
-        else if (inferInvF) InstrumentationPhase andThen InferInvariantsPhase
+        else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else analysis
-
       }
 
       pipeBegin andThen

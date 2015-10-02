@@ -9,6 +9,7 @@ import purescala._
  * @author ravi
  */
 case class InferenceContext(
+  val uninstrumentedProgram : Program, 
   val program : Program,
   val toVerifyPostFor: Set[String],
   val leonContext : LeonContext,
