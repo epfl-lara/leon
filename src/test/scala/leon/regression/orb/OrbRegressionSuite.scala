@@ -24,7 +24,7 @@ class OrbRegressionSuite extends LeonRegressionSuite {
     val beginPipe = leon.frontends.scalac.ExtractionPhase andThen
       new leon.utils.PreprocessingPhase
     val program = beginPipe.run(ctx)(f.getAbsolutePath :: Nil)
-    val processPipe = InstrumentationPhase andThen InferInvariantsPhase
+    val processPipe = InferInvariantsPhase
     val report = processPipe.run(ctx)(program)
     val fails = report.conditions.filterNot(_.invariant.isDefined)
     if (!fails.isEmpty)

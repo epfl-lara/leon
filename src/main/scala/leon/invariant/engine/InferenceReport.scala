@@ -20,13 +20,13 @@ class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
   extends VC(BooleanLiteral(true), funDef, null) {
 
   var time: Option[Double] = None
+  lazy val prettyInv = invariant.map(inv =>
+    simplifyArithmetic(InstUtil.replaceInstruVars(Util.multToTimes(inv), fd)))
 
-  def status: String = invariant match {
+  def status: String = prettyInv match {
     case None => "unknown"
-    case Some(inv) => {
-      val prettyInv = simplifyArithmetic(InstUtil.replaceInstruVars(Util.multToTimes(inv), fd))
-      PrettyPrinter(prettyInv)
-    }
+    case Some(inv) =>
+      PrettyPrinter(inv)
   }
 }
 
@@ -97,14 +97,13 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]])(implicit ctx: InferenceContex
         val uninstFdOpt =
           if (uninstFunName.isEmpty) None
           else Util.functionByName(uninstFunName, ctx.uninstrumentedProgram)
-        if (uninstFdOpt.isDefined) {          
+        if (uninstFdOpt.isDefined) {
           acc + (fd -> uninstFdOpt.get)
-        }
-        else acc
+        } else acc
     }
     val funToPost = conditions.collect {
       case cd if cd.invariant.isDefined && funToUninstFun.contains(cd.fd) =>
-        funToUninstFun(cd.fd) -> cd.invariant.get
+        funToUninstFun(cd.fd) -> cd.prettyInv.get
     }.toMap
     //println("Function to template: " + funToTmpl.map { case (k, v) => s"${k.id.name} --> $v" }.mkString("\n"))
     Util.assignTemplateAndCojoinPost(Map(), ctx.uninstrumentedProgram, funToPost, uniqueIdDisplay = false)

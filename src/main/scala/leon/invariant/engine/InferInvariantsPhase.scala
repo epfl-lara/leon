@@ -134,7 +134,7 @@ object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
       enumerationRelation = LessEquals, modularlyAnalyze, targettedUnroll, autoInference,
       dumpStats, tightBounds, withmult, usereals, inferTemp, useCegis, timeout, maxCegisBound, statsSuff)
     val report = (new InferenceEngine(inferctx)).run()
-    println("Final Program: \n" +PrettyPrinter.apply(report.finalProgramWoInstrumentation))
+    //println("Final Program: \n" +PrettyPrinter.apply(report.finalProgramWoInstrumentation))
     report
   }
 
