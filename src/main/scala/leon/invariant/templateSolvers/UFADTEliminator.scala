@@ -8,7 +8,7 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import java.io._
-import leon.invariant.util.UndirectedGraph
+import leon.invariant.datastructure.UndirectedGraph
 import scala.util.control.Breaks._
 import invariant.util._
 import leon.purescala.TypeOps

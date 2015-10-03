@@ -1,5 +1,5 @@
 package leon
-package invariant.util
+package invariant.datastructure
 
 class DirectedGraph[T] {
 

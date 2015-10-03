@@ -3,6 +3,7 @@
 package leon
 
 import leon.utils._
+import leon.laziness.LazinessEliminationPhase
 
 object Main {
 
@@ -28,7 +29,7 @@ object Main {
       solvers.isabelle.IsabellePhase,
       transformations.InstrumentationPhase,
       invariant.engine.InferInvariantsPhase,
-      transformations.LazinessEliminationPhase
+      laziness.LazinessEliminationPhase
     )
   }
 

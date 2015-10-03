@@ -1,8 +1,9 @@
 package leon
-package invariant.util
+package invariant.datastructure
 
 import scala.collection.mutable.{ Map => MutableMap }
-import scala.collection.mutable.{ Set => MutableSet }
+import scala.annotation.migration
+import scala.collection.mutable.{Map => MutableMap}
 
 class DisjointSets[T] {
   // A map from elements to their parent and rank
