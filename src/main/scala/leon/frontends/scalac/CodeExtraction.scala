@@ -947,7 +947,11 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractTreeOrNoTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
       try {
-        extractTree(tr)
+        val res = extractTree(tr)
+        if (dctx.isExtern) {
+          reporter.warning(res.getPos, "External function could be extracted as Leon tree")
+        }
+        res
       } catch {
         case e: ImpureCodeEncounteredException =>
           if (dctx.isExtern) {

@@ -16,6 +16,7 @@ case class LeonContext(
   interruptManager: InterruptManager,
   options: Seq[LeonOption[Any]] = Seq(),
   files: Seq[File] = Seq(),
+  classDir: Option[File] = None,
   timers: TimerStorage = new TimerStorage
 ) {
 

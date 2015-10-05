@@ -21,13 +21,15 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   val name = "evaluator"
   val description = "Recursive interpreter for PureScala expressions"
 
-  private implicit val ctx0 = ctx
+  private implicit val _ = ctx
 
   type RC <: RecContext
   type GC <: GlobalContext
 
   case class EvalError(msg : String) extends Exception
   case class RuntimeError(msg : String) extends Exception
+
+  val scalaEv = new ScalacEvaluator(this, ctx, prog)
 
   trait RecContext {
     def mappings: Map[Identifier, Expr]
@@ -169,12 +171,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         }
       }
 
-      if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-        throw EvalError("Evaluation of function with unknown implementation.")
-      }
+      val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+        scalaEv.call(tfd, evArgs)
+      } else {
+        if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+          throw EvalError("Evaluation of function with unknown implementation.")
+        }
 
-      val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-      val callResult = e(body)(frame, gctx)
+        val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+        e(body)(frame, gctx)
+      }
 
       tfd.postcondition match  {
         case Some(post) =>

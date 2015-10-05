@@ -38,6 +38,7 @@ libraryDependencies ++= Seq(
   "info.hupel" %% "libisabelle" % "0.1.1",
   "info.hupel" %% "libisabelle-setup" % "0.1.1",
   "info.hupel" %% "pide-2015" % "0.1.1",
+  "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
 

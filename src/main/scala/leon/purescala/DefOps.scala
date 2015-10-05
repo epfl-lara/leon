@@ -22,7 +22,13 @@ object DefOps {
     case other => pgm.units.find(_.containsDef(df))
   }
 
-  private def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] = {
+  def moduleOf(df: Definition)(implicit pgm: Program): Option[ModuleDef] = df match {
+    case p : Program => None
+    case u : UnitDef => None
+    case other => pgm.units.flatMap(_.modules).find { _.containsDef(df) }
+  }
+
+  def pathFromRoot(df: Definition)(implicit pgm: Program): List[Definition] = {
     def rec(from: Definition): List[Definition] = {
       from :: (if (from == df) {
         Nil

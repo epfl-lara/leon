@@ -9,6 +9,7 @@ object Main {
   lazy val allPhases: List[LeonPhase[_, _]] = {
     List(
       frontends.scalac.ExtractionPhase,
+      frontends.scalac.ClassgenPhase,
       utils.TypingPhase,
       FileOutputPhase,
       purescala.RestoreMethods,
@@ -142,7 +143,7 @@ object Main {
     import purescala.Definitions.Program
     import purescala.{FunctionClosure, RestoreMethods}
     import utils.FileOutputPhase
-    import frontends.scalac.ExtractionPhase
+    import frontends.scalac.{ExtractionPhase, ClassgenPhase}
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
     import xlang.FixReportLabels
@@ -172,6 +173,7 @@ object Main {
       displayHelp(ctx.reporter, error = false)
     } else {
       val pipeBegin: Pipeline[List[String], Program] =
+        ClassgenPhase andThen
         ExtractionPhase andThen
         new PreprocessingPhase(xlangF)
 
