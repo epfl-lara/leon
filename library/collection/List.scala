@@ -673,14 +673,13 @@ object ListSpecs {
   def headReverseLast[T](l: List[T]): Boolean = {
     require (!l.isEmpty)
     (l.head == l.reverse.last) because {
-      l match {
-        case Cons(x, xs) => {
-          (x :: xs).head           ==| trivial                 |
-          x                        ==| snocLast(xs.reverse, x) |
-          (xs.reverse :+ x).last   ==| trivial                 |
-          (x :: xs).reverse.last
-        }.qed
-      }
+      val Cons(x, xs) = l;
+      {
+        (x :: xs).head           ==| trivial                 |
+        x                        ==| snocLast(xs.reverse, x) |
+        (xs.reverse :+ x).last   ==| trivial                 |
+        (x :: xs).reverse.last
+      }.qed
     }
   }.holds
 
