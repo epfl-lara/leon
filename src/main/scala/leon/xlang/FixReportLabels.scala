@@ -6,7 +6,7 @@ package xlang
 import leon.purescala.Definitions.IsLoop
 import leon.verification._
 
-object FixReportLabels extends LeonPhase[VerificationReport, VerificationReport]{
+object FixReportLabels extends SimpleLeonPhase[VerificationReport, VerificationReport]{
 
   override val name: String = "fixReportLabels"
   override val description: String = "Fix verification report labels to reflect the original imperative VCs"
@@ -16,7 +16,7 @@ object FixReportLabels extends LeonPhase[VerificationReport, VerificationReport]
   case object InvariantPost extends VCKind("invariant postcondition", "inv. post.")
   case object InvariantInd  extends VCKind("invariant inductive",     "inv. ind.")
 
-  def run(ctx: LeonContext)(vr: VerificationReport): VerificationReport = {
+  def apply(ctx: LeonContext, vr: VerificationReport): VerificationReport = {
     //this is enough to convert invariant postcondition and inductive conditions. However the initial validity
     //of the invariant (before entering the loop) will still appear as a regular function precondition
     //To fix this, we need some information in the VCs about which function the precondtion refers to

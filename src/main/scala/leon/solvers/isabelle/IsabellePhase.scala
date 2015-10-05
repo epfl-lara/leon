@@ -9,7 +9,7 @@ import leon.purescala.Definitions._
 import leon.utils._
 import leon.verification._
 
-object IsabellePhase extends LeonPhase[Program, VerificationReport] {
+object IsabellePhase extends SimpleLeonPhase[Program, VerificationReport] {
 
   object IsabelleVC extends VCKind("Isabelle", "isa")
 
@@ -18,7 +18,7 @@ object IsabellePhase extends LeonPhase[Program, VerificationReport] {
 
   implicit val debugSection = DebugSectionIsabelle
 
-  def run(context: LeonContext)(program: Program): VerificationReport = {
+  def apply(context: LeonContext, program: Program): VerificationReport = {
     val env = IsabelleEnvironment(context, program)
 
     val report = env.map { env =>

@@ -11,7 +11,7 @@ import leon.utils.ASCIIHelpers
 
 import graph._
 
-object SynthesisPhase extends LeonPhase[Program, Program] {
+object SynthesisPhase extends TransformationPhase {
   val name        = "Synthesis"
   val description = "Partial synthesis of \"choose\" constructs. Also used by repair during the synthesis stage."
 
@@ -62,7 +62,7 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
     )
   }
 
-  def run(ctx: LeonContext)(program: Program): Program = {
+  def apply(ctx: LeonContext, program: Program): Program = {
     val options = processOptions(ctx)
 
 
@@ -101,6 +101,5 @@ object SynthesisPhase extends LeonPhase[Program, Program] {
 
     program
   }
-
 
 }

@@ -35,7 +35,7 @@ class TestCasesCompile extends LeonRegressionSuite {
       val ctx = createLeonContext()
 
       try {
-        pipeline.run(ctx)(List(f.getAbsolutePath))
+        pipeline.run(ctx, List(f.getAbsolutePath))
       } catch {
         case _: LeonFatalError =>
           fail(" Failed to compile "+name)

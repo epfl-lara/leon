@@ -8,13 +8,13 @@ import purescala.Definitions._
 import purescala.DefOps._
 import purescala.Expressions._
 
-object EvaluationPhase extends LeonPhase[Program, Unit] {
+object EvaluationPhase extends UnitPhase[Program] {
   val name = "Evaluation"
   val description = "Evaluating ground functions"
 
   implicit val debugSection = utils.DebugSectionEvaluation
 
-  def run(ctx: LeonContext)(program: Program): Unit = {
+  def apply(ctx: LeonContext, program: Program): Unit = {
     val evalFuns: Option[Seq[String]] = ctx.findOption(SharedOptions.optFunctions)
 
     val evaluator = ctx.findOptionOrDefault(MainComponent.optEval)

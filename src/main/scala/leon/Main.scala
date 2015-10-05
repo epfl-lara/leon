@@ -246,24 +246,28 @@ object Main {
       val timer = ctx.timers.total.start()
 
       // Run pipeline
-      pipeline.run(ctx)(args.toList) match {
-        case (vReport: verification.VerificationReport, tReport: termination.TerminationReport) =>
-          ctx.reporter.info(vReport.summaryString)
-          ctx.reporter.info(tReport.summaryString)
+      val ctx2 = pipeline.run(ctx, args.toList) match {
+        case (ctx2, (vReport: verification.VerificationReport, tReport: termination.TerminationReport)) =>
+          ctx2.reporter.info(vReport.summaryString)
+          ctx2.reporter.info(tReport.summaryString)
+          ctx2
 
-        case report: verification.VerificationReport =>
-          ctx.reporter.info(report.summaryString)
+        case (ctx2, report: verification.VerificationReport) =>
+          ctx2.reporter.info(report.summaryString)
+          ctx2
 
-        case report: termination.TerminationReport =>
-          ctx.reporter.info(report.summaryString)
+        case (ctx2, report: termination.TerminationReport) =>
+          ctx2.reporter.info(report.summaryString)
+          ctx2
 
-        case _ =>
+        case (ctx2, _) =>
+          ctx2
       }
 
       timer.stop()
 
-      ctx.reporter.whenDebug(DebugSectionTimers) { debug =>
-        ctx.timers.outputTable(debug)
+      ctx2.reporter.whenDebug(DebugSectionTimers) { debug =>
+        ctx2.timers.outputTable(debug)
       }
       hasFatal = false
     } catch {

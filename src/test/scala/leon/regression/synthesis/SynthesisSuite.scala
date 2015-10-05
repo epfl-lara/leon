@@ -91,12 +91,12 @@ class SynthesisSuite extends LeonRegressionSuite {
                        new PreprocessingPhase andThen
                        SynthesisProblemExtractionPhase
 
-        val (program, results) = pipeline.run(ctx)((List(content), Nil))
+        val (ctx2, (program, results)) = pipeline.run(ctx, (List(content), Nil))
 
         for ((f,cis) <- results; ci <- cis) {
           info(f"${ci.fd.id.toString}%-20s")
 
-          val sctx = SynthesisContext(ctx,
+          val sctx = SynthesisContext(ctx2,
                                       SynthesisSettings(),
                                       ci.fd,
                                       program)
@@ -104,7 +104,7 @@ class SynthesisSuite extends LeonRegressionSuite {
           val p      = ci.problem
 
           if (strats.isDefinedAt(f.id.name)) {
-            val search = new TestSearch(ctx, ci, p, strats(f.id.name))
+            val search = new TestSearch(ctx2, ci, p, strats(f.id.name))
 
             val sols = search.search(sctx)
 

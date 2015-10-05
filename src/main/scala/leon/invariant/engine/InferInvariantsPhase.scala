@@ -24,7 +24,7 @@ import leon.purescala.PrettyPrinter
  * This phase performs automatic invariant inference.
  * TODO: should time be implicitly made positive
  */
-object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
+object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   val name = "InferInv"
   val description = "Invariant Inference"
 
@@ -45,7 +45,7 @@ object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
         optDisableInfer)
 
   //TODO provide options for analyzing only selected functions
-  def run(ctx: LeonContext)(program: Program): InferenceReport = {
+  def apply(ctx: LeonContext, program: Program): InferenceReport = {
 
     //control printing of statistics
     val dumpStats = true
@@ -146,7 +146,7 @@ object InferInvariantsPhase extends LeonPhase[Program, InferenceReport] {
   def validateAndCollectNotValidated(prog: Program, ctx: LeonContext, timeout: Int): Set[String] = {
     val verifyPipe = AnalysisPhase
     val ctxWithTO = createLeonContext(ctx, "--timeout=" + timeout)
-    (verifyPipe.run(ctxWithTO)(prog)).results.collect{
+    (verifyPipe.run(ctxWithTO, prog)._2).results.collect{
       case (VC(_, fd, VCKinds.Postcondition), Some(vcRes)) if vcRes.isInconclusive =>
         fd.id.name
       case (VC(_, fd, vcKind), Some(vcRes)) if vcRes.isInvalid =>

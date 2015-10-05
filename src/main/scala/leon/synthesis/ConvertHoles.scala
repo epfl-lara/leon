@@ -10,7 +10,7 @@ import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 
-object ConvertHoles extends LeonPhase[Program, Program] {
+object ConvertHoles extends TransformationPhase {
   val name        = "Convert Holes to Choose"
   val description = "Convert Holes found in bodies to equivalent Choose"
 
@@ -97,8 +97,12 @@ object ConvertHoles extends LeonPhase[Program, Program] {
   }
 
 
-  def run(ctx: LeonContext)(pgm: Program): Program = {
-    pgm.definedFunctions.foreach(fd => fd.fullBody = convertHoles(fd.fullBody,ctx) )
+  def apply(ctx: LeonContext, pgm: Program): Program = {
+    // TODO: remove side-effects
+    for (fd <- pgm.definedFunctions) {
+      fd.fullBody = convertHoles(fd.fullBody,ctx)
+    }
+
     pgm
   }
 

@@ -39,7 +39,7 @@ class RepairSuite extends LeonRegressionSuite {
     )
 
     test(name) {
-      pipeline.run(ctx)(List(path))
+      pipeline.run(ctx, List(path))
       if(reporter.errorCount > 0) {
         fail("Errors during repair:\n")//+reporter.lastErrors.mkString("\n"))
       }

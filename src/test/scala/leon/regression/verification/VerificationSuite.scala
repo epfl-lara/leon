@@ -39,7 +39,7 @@ trait VerificationSuite extends LeonRegressionSuite {
     val ctx = createLeonContext(files:_*)
 
     try {
-      val ast = extraction.run(ctx)(files)
+      val (ctx2, ast) = extraction.run(ctx, files)
       val programs = {
         val (user, lib) = ast.units partition { _.isMainUnit }
         user map { u => (u.id, Program(u :: lib)) }
@@ -50,12 +50,12 @@ trait VerificationSuite extends LeonRegressionSuite {
           val ctx = createLeonContext(options: _*)
           if (forError) {
             intercept[LeonFatalError] {
-              pipeBack.run(ctx)(p)
+              pipeBack.run(ctx, p)
             }
           }
           else {
-            val report = pipeBack.run(ctx)(p)
-            block(Output(report, ctx.reporter))
+            val (ctx2, report) = pipeBack.run(ctx, p)
+            block(Output(report, ctx2.reporter))
           }
         }
       }

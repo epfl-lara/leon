@@ -14,13 +14,13 @@ import leon.utils.PreprocessingPhase
 
 class IsabelleLibrarySuite extends LeonRegressionSuite {
 
-  object IsabelleNoopPhase extends LeonPhase[Program, Unit] {
+  object IsabelleNoopPhase extends UnitPhase[Program] {
     val name = "isabelle-noop"
     val description = "Isabelle definitions"
 
     implicit val debugSection = DebugSectionIsabelle
 
-    def run(context: LeonContext)(program: Program): Unit =
+    def apply(context: LeonContext, program: Program): Unit =
       Await.result(IsabelleEnvironment(context, program).map(_ => ()), Duration.Inf)
   }
 
@@ -29,7 +29,7 @@ class IsabelleLibrarySuite extends LeonRegressionSuite {
 
     val ctx = Main.processOptions(Seq("--isabelle:download=true", "--functions=_")).copy(reporter = new TestSilentReporter())
 
-    pipeline.run(ctx)(Nil)
+    pipeline.run(ctx, Nil)
   }
 
 }

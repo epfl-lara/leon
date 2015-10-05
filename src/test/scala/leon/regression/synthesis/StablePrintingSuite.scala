@@ -34,9 +34,9 @@ class StablePrintingSuite extends LeonRegressionSuite {
                      frontends.scalac.ExtractionPhase andThen
                      new leon.utils.PreprocessingPhase
 
-      val program = pipeline.run(ctx)((List(content), Nil))
+      val (ctx2, program) = pipeline.run(ctx, (List(content), Nil))
 
-      (program, opts, ChooseInfo.extractFromProgram(ctx, program))
+      (program, opts, ChooseInfo.extractFromProgram(ctx2, program))
     }
 
     case class Job(content: String, choosesToProcess: Set[Int], rules: List[String]) {

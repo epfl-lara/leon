@@ -32,10 +32,10 @@ class OrbInstrumentationTestSuite extends LeonRegressionSuite {
 	}""")
     val beginPipe = leon.frontends.scalac.ExtractionPhase andThen
       new leon.utils.PreprocessingPhase
-    val program = beginPipe.run(ctx)(testFilename)
+    val (ctx2, program) = beginPipe.run(ctx, testFilename)
     val processPipe = InstrumentationPhase
     // check properties.
-    val instProg = processPipe.run(ctx)(program)
+    val (ctx3, instProg) = processPipe.run(ctx2, program)
     val sizeFun = instProg.definedFunctions.find(_.id.name.startsWith("size"))
     if(!sizeFun.isDefined || !sizeFun.get.returnType.isInstanceOf[TupleType])
       fail("Error in instrumentation")
@@ -43,6 +43,6 @@ class OrbInstrumentationTestSuite extends LeonRegressionSuite {
 
   def toTempFile(content: String): List[String] = {
     val pipeline = leon.utils.TemporaryInputPhase
-    pipeline.run(createLeonContext())((List(content), Nil))
+    pipeline.run(createLeonContext(), (List(content), Nil))._2
   }
 }

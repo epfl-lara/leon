@@ -56,13 +56,13 @@ class TerminationSuite extends LeonRegressionSuite {
 
       if(forError) {
         intercept[LeonFatalError]{
-          pipeline.run(ctx)(file.getPath :: Nil)
+          pipeline.run(ctx, file.getPath :: Nil)
         }
       } else {
 
-        val report = pipeline.run(ctx)(file.getPath :: Nil)
+        val (ctx2, report) = pipeline.run(ctx, file.getPath :: Nil)
 
-        block(Output(report, ctx.reporter))
+        block(Output(report, ctx2.reporter))
       }
     }
   }

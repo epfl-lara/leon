@@ -11,12 +11,12 @@ import leon.synthesis.{ConvertWithOracle, ConvertHoles}
 import leon.verification.InjectAsserts
 import leon.xlang.XLangDesugaringPhase
 
-class PreprocessingPhase(private val desugarXLang: Boolean = false) extends TransformationPhase {
+class PreprocessingPhase(private val desugarXLang: Boolean = false) extends LeonPhase[Program, Program] {
 
   val name = "preprocessing"
   val description = "Various preprocessings on Leon programs"
 
-  def apply(ctx: LeonContext, p: Program): Program = {
+  override def run(ctx: LeonContext, p: Program): (LeonContext, Program) = {
 
     def debugTrees(title: String): LeonPhase[Program, Program] = {
       if (ctx.reporter.isDebugEnabled(DebugSectionTrees)) {
@@ -52,6 +52,6 @@ class PreprocessingPhase(private val desugarXLang: Boolean = false) extends Tran
       AdaptationPhase andThen
       debugTrees("Program after pre-processing")
 
-    phases.run(ctx)(p)
+    phases.run(ctx, p)
   }
 }

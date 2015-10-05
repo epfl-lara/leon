@@ -18,10 +18,10 @@ class FrontEndsSuite extends LeonRegressionSuite {
       val ctx = createLeonContext()
       if (forError) {
         intercept[LeonFatalError]{
-          pipeline.run(ctx)(List(f.getAbsolutePath))
+          pipeline.run(ctx, List(f.getAbsolutePath))
         }
       } else {
-        pipeline.run(ctx)(List(f.getAbsolutePath))
+        pipeline.run(ctx, List(f.getAbsolutePath))
       }
     }
 

@@ -8,7 +8,7 @@ import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Constructors._
 
-object ConvertWithOracle extends LeonPhase[Program, Program] {
+object ConvertWithOracle extends TransformationPhase {
   val name        = "Convert WithOracle to Choose"
   val description = "Convert WithOracle found in bodies to equivalent Choose"
 
@@ -36,7 +36,8 @@ object ConvertWithOracle extends LeonPhase[Program, Program] {
    * }
    *
    */
-  def run(ctx: LeonContext)(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
+    // TODO: Remove side-effects
 
     pgm.definedFunctions.foreach(fd => {
       if (fd.hasBody) {

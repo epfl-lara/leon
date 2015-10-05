@@ -5,17 +5,18 @@ package xlang
 
 import purescala.Definitions.Program
 
-object XLangDesugaringPhase extends TransformationPhase {
+object XLangDesugaringPhase extends LeonPhase[Program, Program] {
 
   val name = "xlang desugaring"
   val description = "Desugar xlang features into PureScala"
 
-  def apply(ctx: LeonContext, pgm: Program): Program = {
+  override def run(ctx: LeonContext, pgm: Program): (LeonContext, Program) = {
     val phases =
       ArrayTransformation andThen
       EpsilonElimination andThen
       ImperativeCodeElimination
-    phases.run(ctx)(pgm)
+
+    phases.run(ctx, pgm)
   }
 
 }

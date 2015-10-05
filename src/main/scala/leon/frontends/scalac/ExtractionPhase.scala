@@ -9,7 +9,7 @@ import utils._
 import scala.tools.nsc.{Settings,CompilerCommand}
 import java.io.File
 
-object ExtractionPhase extends LeonPhase[List[String], Program] {
+object ExtractionPhase extends SimpleLeonPhase[List[String], Program] {
 
   val name = "Scalac Extraction"
   val description = "Extraction of trees from the Scala Compiler"
@@ -20,7 +20,7 @@ object ExtractionPhase extends LeonPhase[List[String], Program] {
 
   implicit val debug = DebugSectionTrees
 
-  def run(ctx: LeonContext)(args: List[String]): Program = {
+  def apply(ctx: LeonContext, args: List[String]): Program = {
     val timer = ctx.timers.frontend.start()
 
     val settings = new Settings

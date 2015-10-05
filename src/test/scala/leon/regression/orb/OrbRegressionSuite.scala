@@ -23,9 +23,9 @@ class OrbRegressionSuite extends LeonRegressionSuite {
     val ctx = createLeonContext("--inferInv", "--minbounds", "--timeout="+bound)
     val beginPipe = leon.frontends.scalac.ExtractionPhase andThen
       new leon.utils.PreprocessingPhase
-    val program = beginPipe.run(ctx)(f.getAbsolutePath :: Nil)
+    val (ctx2, program) = beginPipe.run(ctx, f.getAbsolutePath :: Nil)
     val processPipe = InferInvariantsPhase
-    val report = processPipe.run(ctx)(program)
+    val (ctx3, report) = processPipe.run(ctx2, program)
     val fails = report.conditions.filterNot(_.invariant.isDefined)
     if (!fails.isEmpty)
       fail(s"Inference failed for functions ${fails.map(_.fd).mkString("\n")}")

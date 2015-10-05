@@ -30,14 +30,14 @@ trait LeonTestSuiteWithProgram extends fixture.FunSuite {
 
   def getFixture(): (LeonContext, Program) = synchronized {
     if (fixtureCache.isEmpty) {
-      val reporter = new TestSilentReporter
-      val im       = new InterruptManager(reporter)
+      val reporter    = new TestSilentReporter
+      val im          = new InterruptManager(reporter)
 
-      val ctx      = Main.processOptions(leonOpts).copy(reporter = reporter, interruptManager = im)
+      val ctx         = Main.processOptions(leonOpts).copy(reporter = reporter, interruptManager = im)
 
-      val pgm      = pipeline.run(ctx)((sources, Nil))
+      val (ctx2, pgm) = pipeline.run(ctx, (sources, Nil))
 
-      fixtureCache = Some((ctx, pgm))
+      fixtureCache = Some((ctx2, pgm))
     }
 
     fixtureCache.get

@@ -33,9 +33,11 @@ class SynthesisRegressionSuite extends LeonRegressionSuite {
 
       val pipeline = leon.frontends.scalac.ExtractionPhase andThen new leon.utils.PreprocessingPhase
 
-      program = pipeline.run(ctx)(f.getAbsolutePath :: Nil)
+      val (ctx2, pgm2) = pipeline.run(ctx, f.getAbsolutePath :: Nil)
 
-      chooses = ChooseInfo.extractFromProgram(ctx, program)
+      program = pgm2
+
+      chooses = ChooseInfo.extractFromProgram(ctx2, program)
     }
 
     for (ci <- chooses) {

@@ -10,7 +10,7 @@ import purescala.Expressions._
 import purescala.Definitions._
 import purescala.Constructors._
 
-object TypingPhase extends LeonPhase[Program, Program] {
+object TypingPhase extends SimpleLeonPhase[Program, Program] {
 
   val name = "Typing"
   val description = "Ensure and enforce certain Leon typing rules"
@@ -28,7 +28,7 @@ object TypingPhase extends LeonPhase[Program, Program] {
    * 
    * 3) Make sure that abstract classes have at least one descendant
    */
-  def run(ctx: LeonContext)(pgm: Program): Program = {
+  def apply(ctx: LeonContext, pgm: Program): Program = {
     pgm.definedFunctions.foreach(fd => {
 
       // Part (1)
