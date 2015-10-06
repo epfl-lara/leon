@@ -701,7 +701,7 @@ trait AbstractZ3Solver extends Solver {
                   case other =>
                     reporter.fatalError(
                       s"""|Don't know what to do with this declKind: $other
-                          |Expected type: ${tpe.asString}
+                          |Expected type: ${Option(tpe).map{_.asString}.getOrElse("")}
                           |Tree: $t
                           |The arguments are: $args""".stripMargin
                     )
