@@ -95,7 +95,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           }
 
         val (postConds, postExprs, postGuarded, postLambdas, postQuantifications) = mkClauses(start, postHolds, substMap)
-        val allGuarded = (bodyGuarded.keys ++ postGuarded.keys).map { k => 
+        val allGuarded = (bodyGuarded.keys ++ postGuarded.keys).map { k =>
           k -> (bodyGuarded.getOrElse(k, Seq.empty) ++ postGuarded.getOrElse(k, Seq.empty))
         }.toMap
 

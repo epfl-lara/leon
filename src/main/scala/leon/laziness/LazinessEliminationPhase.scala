@@ -32,12 +32,13 @@ object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
-  val dumpFinalProg = false
+  val dumpProgWithPreAsserts = false
+  val dumpInstrumentedProgram = false
   val debugSolvers = false
-  
+
   val skipVerification = false
   val prettyPrint = true
-  
+
   val name = "Laziness Elimination Phase"
   val description = "Coverts a program that uses lazy construct" +
     " to a program that does not use lazy constructs"
@@ -50,28 +51,33 @@ object LazinessEliminationPhase extends TransformationPhase {
    */
   def apply(ctx: LeonContext, prog: Program): Program = {
 
-    val nprog = liftLazyExpressions(prog)        
+    val nprog = liftLazyExpressions(prog)
     val progWithClosures = (new LazyClosureConverter(nprog, new LazyClosureFactory(nprog))).apply
     if (dumpProgramWithClosures)
-      println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures))    
-      
-    //Rectify type parameters and local types      
+      println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures))
+
+    //Rectify type parameters and local types
     val typeCorrectProg = (new TypeRectifier(progWithClosures, tp => tp.id.name.endsWith("@"))).apply
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
-      
-    val transProg = (new ClosurePreAsserter(typeCorrectProg)).apply
-    if (dumpFinalProg)
-      println("After asserting closure preconditions: \n" + ScalaPrinter.apply(transProg))      
-  
+
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    if (dumpProgWithPreAsserts)
+      println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
+
+    // instrument the program for resources
+    val instProg = (new LazyInstrumenter(progWithPre)).apply
+    if(dumpInstrumentedProgram)
+      println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
+
     // check specifications (to be moved to a different phase)
     if (!skipVerification)
-      checkSpecifications(transProg)
+      checkSpecifications(instProg)
     if (prettyPrint)
-      prettyPrintProgramToFile(transProg, ctx)
-    transProg
-  }  
-  
+      prettyPrintProgramToFile(instProg, ctx)
+    instProg
+  }
+
   /**
    * convert the argument of every lazy constructors to a procedure
    */
@@ -128,7 +134,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     prog.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
-    }    
+    }
     val functions = Seq() // Seq("--functions=Rotate@rotateLem")
     val solverOptions = if(debugSolvers) Seq("--debug=solver") else Seq()
     val ctx = Main.processOptions(Seq("--solvers=smt-cvc4") ++ solverOptions ++ functions)
@@ -232,4 +238,3 @@ object LazinessEliminationPhase extends TransformationPhase {
     invFuns
   }*/
 }
-

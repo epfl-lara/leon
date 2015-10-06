@@ -57,7 +57,7 @@ object LazinessUtil {
       }
     }
     ctx.reporter.info("Output written on " + outputFolder)
-  }  
+  }
 
   def isLazyInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
@@ -134,6 +134,14 @@ object LazinessUtil {
     fd.id.name.startsWith("new@")
   }
 
+  def evalFunctionName(absTypeName: String) = {
+    "eval@" + absTypeName
+  }
+
+  def isEvalFunction(fd: FunDef) = {
+    fd.id.name.startsWith("eval@")
+  }
+
   /**
    * Returns all functions that 'need' states to be passed in
    * and those that return a new state.
@@ -163,4 +171,3 @@ object LazinessUtil {
     (funsNeedStates, funsRetStates)
   }
 }
-

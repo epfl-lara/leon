@@ -99,13 +99,10 @@ object LetTupleSimplification {
           postMap(replaceMap.lift, true)(e) //perform recursive replacements to handle nested tuple selects
         //replaceMap(ts) //replace tuple-selects in the map with the new identifier
 
+        case ts @ TupleSelect(Tuple(subes), i) =>
+          subes(i - 1)
+
         case t: Terminal => t
-
-        /*case UnaryOperator(sube, op) =>
-          op(recSimplify(sube, replaceMap))
-
-        case BinaryOperator(e1, e2, op) =>
-          op(recSimplify(e1, replaceMap), recSimplify(e2, replaceMap))*/
 
         case Operator(subes, op) =>
           op(subes.map(recSimplify(_, replaceMap)))
@@ -383,6 +380,9 @@ object LetTupleSimplification {
             }
           }
         }
+        // also perform a tuple simplification
+        case ts @ TupleSelect(Tuple(subes), i) =>
+          Some(subes(i - 1))
         case _ => None
       }
       res

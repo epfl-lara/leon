@@ -134,7 +134,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
     val retType = TupleType(Seq(tpe, stType))
 
     // create a eval function
-    val dfun = new FunDef(FreshIdentifier("eval" + absdef.id.name, Untyped),
+    val dfun = new FunDef(FreshIdentifier(evalFunctionName(absdef.id.name), Untyped),
       tparamDefs, retType, Seq(ValDef(param1), ValDef(param2)))
 
     // assign body of the eval fucntion
@@ -523,4 +523,3 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
         evalFunctions.values ++ computeFunctions.values, anchor)
   }
 }
-
