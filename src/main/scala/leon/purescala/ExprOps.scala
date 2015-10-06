@@ -337,7 +337,7 @@ object ExprOps {
     rec(initBinders, e)
   }
 
-  /** Returns the set of identifiers in an expression */
+  /** Returns the set of free variables in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
     import leon.xlang.Expressions.LetVar
     fold[Set[Identifier]] {
