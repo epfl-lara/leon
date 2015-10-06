@@ -46,10 +46,6 @@ case class State[S, A](runState: S => (A, S)) {
   @inline
   def >:: (s: S) = eval(s)
 
-  /** Helpers */
-  @isabelle.noBody
-  def forever[B]: State[S, B] = this >> forever
-
   def apply(s: S) = runState(s)
 
 }
