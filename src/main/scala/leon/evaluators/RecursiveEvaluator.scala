@@ -603,26 +603,24 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       )
 
     case f @ FiniteMap(ss, kT, vT) =>
-      FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }.distinct, kT, vT)
+      FiniteMap(ss.map{ case (k, v) => (e(k), e(v)) }, kT, vT)
 
     case g @ MapApply(m,k) => (e(m), e(k)) match {
-      case (FiniteMap(ss, _, _), e) => ss.find(_._1 == e) match {
-        case Some((_, v0)) => v0
-        case None => throw RuntimeError("Key not found: " + e.asString)
-      }
-      case (l,r) => throw EvalError(typeErrorMsg(l, MapType(r.getType, g.getType)))
+      case (FiniteMap(ss, _, _), e) =>
+        ss.getOrElse(e, throw RuntimeError("Key not found: " + e.asString))
+      case (l,r) =>
+        throw EvalError(typeErrorMsg(l, MapType(r.getType, g.getType)))
     }
     case u @ MapUnion(m1,m2) => (e(m1), e(m2)) match {
-      case (f1@FiniteMap(ss1, _, _), FiniteMap(ss2, _, _)) => {
-        val filtered1 = ss1.filterNot(s1 => ss2.exists(s2 => s2._1 == s1._1))
-        val newSs = filtered1 ++ ss2
+      case (f1@FiniteMap(ss1, _, _), FiniteMap(ss2, _, _)) =>
+        val newSs = ss1 ++ ss2
         val MapType(kT, vT) = u.getType
         FiniteMap(newSs, kT, vT)
-      }
-      case (l, r) => throw EvalError(typeErrorMsg(l, m1.getType))
+      case (l, r) =>
+        throw EvalError(typeErrorMsg(l, m1.getType))
     }
     case i @ MapIsDefinedAt(m,k) => (e(m), e(k)) match {
-      case (FiniteMap(ss, _, _), e) => BooleanLiteral(ss.exists(_._1 == e))
+      case (FiniteMap(ss, _, _), e) => BooleanLiteral(ss.contains(e))
       case (l, r) => throw EvalError(typeErrorMsg(l, m.getType))
     }
 

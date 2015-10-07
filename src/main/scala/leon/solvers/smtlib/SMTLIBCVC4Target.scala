@@ -63,7 +63,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
 
           case MapType(k, v) =>
-            FiniteMap(Nil, k, v)
+            FiniteMap(Map(), k, v)
 
         }
 
@@ -76,7 +76,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
 
           case MapType(k, v) =>
-            FiniteMap(Nil, k, v)
+            FiniteMap(Map(), k, v)
 
         }
 
@@ -92,7 +92,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
 
           case MapType(k, v) =>
             val FiniteMap(elems, k, v) = fromSMT(arr, otpe)
-            FiniteMap(elems :+ (fromSMT(key, k) -> fromSMT(elem, v)), k, v)
+            FiniteMap(elems + (fromSMT(key, k) -> fromSMT(elem, v)), k, v)
         }
 
       case (FunctionApplication(SimpleSymbol(SSymbol("singleton")), elems), Some(SetType(base))) =>

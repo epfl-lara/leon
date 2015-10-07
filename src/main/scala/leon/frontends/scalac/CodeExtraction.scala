@@ -1329,10 +1329,10 @@ trait CodeExtraction extends ASTExtractors {
           Forall(vds, exBody)
 
         case ExFiniteMap(tptFrom, tptTo, args) =>
-          val singletons: Seq[(LeonExpr, LeonExpr)] = args.collect {
+          val singletons = args.collect {
             case ExTuple(tpes, trees) if trees.size == 2 =>
               (extractTree(trees(0)), extractTree(trees(1)))
-          }
+          }.toMap
 
           if (singletons.size != args.size) {
             outOfSubsetError(tr, "Some map elements could not be extracted as Tuple2")
@@ -1678,17 +1678,17 @@ trait CodeExtraction extends ASTExtractors {
               MapIsDefinedAt(a1, a2)
 
             case (IsTyped(a1, mt: MapType), "updated", List(k, v)) =>
-              MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
+              MapUnion(a1, FiniteMap(Map(k -> v), mt.from, mt.to))
 
             case (IsTyped(a1, mt: MapType), "+", List(k, v)) =>
-              MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
+              MapUnion(a1, FiniteMap(Map(k -> v), mt.from, mt.to))
 
             case (IsTyped(a1, mt: MapType), "+", List(IsTyped(kv, TupleType(List(_, _))))) =>
               kv match {
                 case Tuple(List(k, v)) =>
-                  MapUnion(a1, FiniteMap(Seq((k, v)), mt.from, mt.to))
+                  MapUnion(a1, FiniteMap(Map(k -> v), mt.from, mt.to))
                 case kv =>
-                  MapUnion(a1, FiniteMap(Seq((TupleSelect(kv, 1), TupleSelect(kv, 2))), mt.from, mt.to))
+                  MapUnion(a1, FiniteMap(Map(TupleSelect(kv, 1) -> TupleSelect(kv, 2)), mt.from, mt.to))
               }
 
             case (IsTyped(a1, mt1: MapType), "++", List(IsTyped(a2, mt2: MapType)))  if mt1 == mt2 =>

@@ -788,7 +788,7 @@ object Expressions {
 
   /* Map operations */
   /** $encodingof `Map[keyType, valueType](key1 -> value1, key2 -> value2 ...)` */
-  case class FiniteMap(singletons: Seq[(Expr, Expr)], keyType: TypeTree, valueType: TypeTree) extends Expr {
+  case class FiniteMap(pairs: Map[Expr, Expr], keyType: TypeTree, valueType: TypeTree) extends Expr {
     val getType = MapType(keyType, valueType).unveilUntyped
   }
   /** $encodingof `map.apply(key)` (or `map(key)`)*/

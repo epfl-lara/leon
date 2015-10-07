@@ -6,17 +6,10 @@ import leon._
 import leon.test._
 import leon.test.helpers._
 import leon.evaluators._
-
-import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
-import leon.frontends.scalac.ExtractionPhase
-
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
-import leon.purescala.DefOps._
 import leon.purescala.Types._
-import leon.purescala.Extractors._
-import leon.purescala.Constructors._
 import leon.codegen._
 
 class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
@@ -291,8 +284,6 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
       case e =>
         fail("Expected FiniteMap, got "+e)
     }
-
-    val em     = FiniteMap(Seq(), Int32Type, Int32Type)
 
     for(e <- allEvaluators) {
       eqMap(eval(e, fcall("Maps.finite0")()).res, Map())

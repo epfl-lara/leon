@@ -658,7 +658,7 @@ trait AbstractZ3Solver extends Solver {
                     val elems = r.elems.flatMap {
                       case (k, CaseClass(leonSome, Seq(x))) => Some(k -> x)
                       case (k, _) => None
-                    }.toSeq
+                    }.toMap
 
                     FiniteMap(elems, from, to)
                 }

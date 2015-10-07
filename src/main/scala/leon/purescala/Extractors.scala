@@ -159,12 +159,12 @@ object Extractors {
       case FiniteSet(els, base) =>
         Some((els.toSeq, els => FiniteSet(els.toSet, base)))
       case FiniteMap(args, f, t) => {
-        val subArgs = args.flatMap { case (k, v) => Seq(k, v) }
+        val subArgs = args.flatMap { case (k, v) => Seq(k, v) }.toSeq
         val builder = (as: Seq[Expr]) => {
-          def rec(kvs: Seq[Expr]): Seq[(Expr, Expr)] = kvs match {
+          def rec(kvs: Seq[Expr]): Map[Expr, Expr] = kvs match {
             case Seq(k, v, t@_*) =>
-              (k, v) +: rec(t)
-            case Seq() => Seq()
+              Map(k -> v) ++ rec(t)
+            case Seq() => Map()
             case _ => sys.error("odd number of key/value expressions")
           }
           FiniteMap(rec(as), f, t)

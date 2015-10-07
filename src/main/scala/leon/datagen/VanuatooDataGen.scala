@@ -99,7 +99,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
           val subs   = (1 to size).flatMap(i => List(from, to)).toList
 
-          Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toSeq, from, to), mt.asString(ctx)+"@"+size)
+          Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toMap, from, to), mt.asString(ctx)+"@"+size)
         }
         constructors += mt -> cs
         cs

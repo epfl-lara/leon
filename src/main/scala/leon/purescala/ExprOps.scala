@@ -1107,7 +1107,7 @@ object ExprOps {
     case BooleanType                => BooleanLiteral(false)
     case UnitType                   => UnitLiteral()
     case SetType(baseType)          => FiniteSet(Set(), baseType)
-    case MapType(fromType, toType)  => FiniteMap(Nil, fromType, toType)
+    case MapType(fromType, toType)  => FiniteMap(Map(), fromType, toType)
     case TupleType(tpes)            => Tuple(tpes.map(simplestValue))
     case ArrayType(tpe)             => EmptyArray(tpe)
 
@@ -1304,7 +1304,7 @@ object ExprOps {
     case wp: WildcardPattern =>
       1
     case _ =>
-      1 + (if(p.binder.isDefined) 1 else 0) + p.subPatterns.map(patternSize).sum
+      1 + p.binder.size + p.subPatterns.map(patternSize).sum
   }
 
   def formulaSize(e: Expr): Int = e match {
