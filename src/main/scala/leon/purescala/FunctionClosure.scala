@@ -12,7 +12,7 @@ import leon.purescala.Common.Identifier
 import leon.purescala.Types.TypeParameter
 import utils.GraphOps._
 
-class FunctionClosure extends TransformationPhase {
+object FunctionClosure extends TransformationPhase {
 
   override val name: String = "Function Closure"
   override val description: String = "Closing function with its scoping variables"

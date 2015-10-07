@@ -48,7 +48,7 @@ class PreprocessingPhase(private val desugarXLang: Boolean = false) extends Leon
     val phases =
       pipeBegin andThen
       pipeX andThen
-      new FunctionClosure andThen
+      FunctionClosure andThen
       AdaptationPhase andThen
       debugTrees("Program after pre-processing")
 

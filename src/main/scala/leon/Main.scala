@@ -17,7 +17,7 @@ object Main {
       xlang.ImperativeCodeElimination,
       xlang.FixReportLabels,
       xlang.XLangDesugaringPhase,
-      new purescala.FunctionClosure,
+      purescala.FunctionClosure,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
       verification.AnalysisPhase,
