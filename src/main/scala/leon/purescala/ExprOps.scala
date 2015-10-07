@@ -1112,17 +1112,17 @@ object ExprOps {
     case ArrayType(tpe)             => EmptyArray(tpe)
 
     case act @ AbstractClassType(acd, tpe) =>
-      val children = act.knownCCDescendants
+      val ccDesc = act.knownCCDescendants
 
       def isRecursive(cct: CaseClassType): Boolean = {
         cct.fieldsTypes.exists{
-          case AbstractClassType(fieldAcd, _) => acd == fieldAcd
-          case CaseClassType(fieldCcd, _) => acd == fieldCcd
+          case AbstractClassType(fieldAcd, _) => acd.root == fieldAcd.root
+          case CaseClassType(fieldCcd, _) => acd.root == fieldCcd.root
           case _ => false
         }
       }
 
-      val nonRecChildren = children.filterNot(isRecursive).sortBy(_.fields.size)
+      val nonRecChildren = ccDesc.filterNot(isRecursive).sortBy(_.fields.size)
 
       nonRecChildren.headOption match {
         case Some(cct) =>
