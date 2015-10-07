@@ -22,31 +22,31 @@ class ExprOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
   }
 
   test("foldRight works on single variable expression") { ctx =>
-    assert(foldRight(foldConcatNames)(x) === x.id.name)
-    assert(foldRight(foldConcatNames)(y) === y.id.name)
-    assert(foldRight(foldCountVariables)(x) === 1)
-    assert(foldRight(foldCountVariables)(y) === 1)
+    assert(fold(foldConcatNames)(x) === x.id.name)
+    assert(fold(foldConcatNames)(y) === y.id.name)
+    assert(fold(foldCountVariables)(x) === 1)
+    assert(fold(foldCountVariables)(y) === 1)
   }
 
   test("foldRight works on simple expressions without nested structure") { ctx =>
-    assert(foldRight(foldConcatNames)(And(p, q)) === (p.id.name + q.id.name))
-    assert(foldRight(foldConcatNames)(And(q, p)) === (q.id.name + p.id.name))
-    assert(foldRight(foldConcatNames)(And(Seq(p, p, p, q, r))) ===
+    assert(fold(foldConcatNames)(And(p, q)) === (p.id.name + q.id.name))
+    assert(fold(foldConcatNames)(And(q, p)) === (q.id.name + p.id.name))
+    assert(fold(foldConcatNames)(And(Seq(p, p, p, q, r))) ===
            (p.id.name + p.id.name + p.id.name + q.id.name + r.id.name))
-    assert(foldRight(foldConcatNames)(Or(Seq(p, p, p, q, r))) ===
+    assert(fold(foldConcatNames)(Or(Seq(p, p, p, q, r))) ===
            (p.id.name + p.id.name + p.id.name + q.id.name + r.id.name))
-    assert(foldRight(foldConcatNames)(Plus(x, y)) === (x.id.name + y.id.name))
+    assert(fold(foldConcatNames)(Plus(x, y)) === (x.id.name + y.id.name))
 
-    assert(foldRight(foldCountVariables)(And(p, q)) === 2)
-    assert(foldRight(foldCountVariables)(And(q, p)) === 2)
-    assert(foldRight(foldCountVariables)(And(p, p)) === 2)
-    assert(foldRight(foldCountVariables)(And(Seq(p, p, p, q, r))) === 5)
-    assert(foldRight(foldCountVariables)(Or(Seq(p, p, p, q, r))) === 5)
+    assert(fold(foldCountVariables)(And(p, q)) === 2)
+    assert(fold(foldCountVariables)(And(q, p)) === 2)
+    assert(fold(foldCountVariables)(And(p, p)) === 2)
+    assert(fold(foldCountVariables)(And(Seq(p, p, p, q, r))) === 5)
+    assert(fold(foldCountVariables)(Or(Seq(p, p, p, q, r))) === 5)
   }
 
   test("foldRight works on simple structure of nested expressions") { ctx =>
-    assert(foldRight(foldConcatNames)(And(And(p, q), r)) === (p.id.name + q.id.name + r.id.name))
-    assert(foldRight(foldConcatNames)(And(p, Or(q, r))) === (p.id.name + q.id.name + r.id.name))
+    assert(fold(foldConcatNames)(And(And(p, q), r)) === (p.id.name + q.id.name + r.id.name))
+    assert(fold(foldConcatNames)(And(p, Or(q, r))) === (p.id.name + q.id.name + r.id.name))
   }
 
   private class LocalCounter {

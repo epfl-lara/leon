@@ -19,7 +19,7 @@ import solvers._
   *
   * The generic operations lets you apply operations on a whole tree
   * expression. You can look at:
-  *   - [[ExprOps.foldRight foldRight]]
+  *   - [[ExprOps.fold foldRight]]
   *   - [[ExprOps.preTraversal preTraversal]]
   *   - [[ExprOps.postTraversal postTraversal]]
   *   - [[ExprOps.preMap preMap]]
@@ -53,8 +53,8 @@ object ExprOps {
     * @return The expression after applying `f` on all subtrees.
     * @note the computation is lazy, hence you should not rely on side-effects of `f`
     */
-  def foldRight[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
-    val rec = foldRight(f) _
+  def fold[T](f: (Expr, Seq[T]) => T)(e: Expr): T = {
+    val rec = fold(f) _
     val Operator(es, _) = e
 
     //Usages of views makes the computation lazy. (which is useful for
@@ -252,7 +252,6 @@ object ExprOps {
     rec(expr, init)
   }
 
-
   /*
    * =============
    * Auxiliary API
@@ -263,16 +262,16 @@ object ExprOps {
 
   /** Checks if the predicate holds in some sub-expression */
   def exists(matcher: Expr => Boolean)(e: Expr): Boolean = {
-    foldRight[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
+    fold[Boolean]({ (e, subs) =>  matcher(e) || subs.contains(true) } )(e)
   }
 
   /** Collects a set of objects from all sub-expressions */
   def collect[T](matcher: Expr => Set[T])(e: Expr): Set[T] = {
-    foldRight[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
+    fold[Set[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
 
   def collectPreorder[T](matcher: Expr => Seq[T])(e: Expr): Seq[T] = {
-    foldRight[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
+    fold[Seq[T]]({ (e, subs) => matcher(e) ++ subs.flatten } )(e)
   }
 
   /** Returns a set of all sub-expressions matching the predicate */
@@ -282,7 +281,7 @@ object ExprOps {
 
   /** Counts how many times the predicate holds in sub-expressions */
   def count(matcher: Expr => Int)(e: Expr): Int = {
-    foldRight[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
+    fold[Int]({ (e, subs) =>  matcher(e) + subs.sum } )(e)
   }
 
   /** Replaces bottom-up sub-expressions by looking up for them in a map */
@@ -309,14 +308,13 @@ object ExprOps {
 
   /** Returns the set of identifiers in an expression */
   def variablesOf(expr: Expr): Set[Identifier] = {
-    foldRight[Set[Identifier]]{
+    fold[Set[Identifier]] {
       case (e, subs) =>
         val subvs = subs.flatten.toSet
-
         e match {
-          case Variable(i)  => subvs + i
-          case LetDef(fd,_) => subvs -- fd.params.map(_.id)
-          case Let(i,_,_)   => subvs - i
+          case Variable(i) => subvs + i
+          case LetDef(fd, _) => subvs -- fd.params.map(_.id)
+          case Let(i, _, _) => subvs - i
           case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Passes(_, _, cses) => subvs -- cses.flatMap(_.pattern.binders)
           case Lambda(args, _) => subvs -- args.map(_.id)
@@ -344,7 +342,7 @@ object ExprOps {
 
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
-    foldRight[Set[FunDef]]{ 
+    fold[Set[FunDef]]{
       case (LetDef(fd,_), Seq(fromFd, fromBd)) => fromBd + fd
       case (_, subs) => subs.flatten.toSet
     }(e)
@@ -416,7 +414,7 @@ object ExprOps {
 
   /** Computes the depth of the expression's tree */
   def depth(e: Expr): Int = {
-    foldRight[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
+    fold[Int]{ (e, sub) => 1 + (0 +: sub).max }(e)
   }
 
   /** Applies the function to the I/O constraint and simplifies the resulting constraint */
@@ -478,7 +476,7 @@ object ExprOps {
     * structures and must therefore be synchronized.
     */
   def normalizeStructure(expr: Expr): (Expr, Map[Identifier, Identifier]) = synchronized {
-    val allVars : Seq[Identifier] = foldRight[Seq[Identifier]] {
+    val allVars : Seq[Identifier] = fold[Seq[Identifier]] {
       (expr, idSeqs) => idSeqs.foldLeft(expr match {
         case Lambda(args, _) => args.map(_.id)
         case Forall(args, _) => args.map(_.id)
@@ -624,7 +622,7 @@ object ExprOps {
         // the occurences of all variables in one traversal of the
         // expression.
 
-        val occurences : Seq[Int] = foldRight[Seq[Int]]({ case (e, subs) =>
+        val occurences : Seq[Int] = fold[Seq[Int]]({ case (e, subs) =>
           e match {
             case Variable(x) => idMap.getOrElse(x, zeroVec)
             case _ => subs.foldLeft(zeroVec) { case (a1, a2) =>

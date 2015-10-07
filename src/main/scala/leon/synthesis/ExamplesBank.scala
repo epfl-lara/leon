@@ -170,8 +170,8 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   }
 
   def removeIns(toRemove: Set[Identifier]) = {
-    val toKeep = as.zipWithIndex.filterNot(a => toRemove(a._1)).map(_._2)
-    eb mapIns { in => List(toKeep.map(in)) }
+    val toKeep: List[Int] = as.zipWithIndex.filterNot(a => toRemove(a._1)).map(_._2)
+    eb mapIns { (in: Seq[Expr]) => List(toKeep.map(in)) }
   }
 
   def filterIns(expr: Expr): ExamplesBank = {

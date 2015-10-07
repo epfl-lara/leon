@@ -146,7 +146,7 @@ object Quantification {
             if (id2Quant.filter(_._2.nonEmpty).groupBy(_._2).size >= 1)
               ctx.reporter.warning("Multiple matchers must provide bijective matching in " + conjunct)
 
-            foldRight[Set[Identifier]] { case (m, children) =>
+            fold[Set[Identifier]] { case (m, children) =>
               val q = children.toSet.flatten
 
               m match {

@@ -192,7 +192,7 @@ object Template {
             case _ => Set.empty
           }(e)
 
-          matchInfos ++= foldRight[Map[Expr, Matcher[T]]] { (expr, res) =>
+          matchInfos ++= fold[Map[Expr, Matcher[T]]] { (expr, res) =>
             val result = res.flatten.toMap
 
             result ++ (expr match {
