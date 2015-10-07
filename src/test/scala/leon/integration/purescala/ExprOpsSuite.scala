@@ -4,14 +4,10 @@ package leon.integration.purescala
 
 import leon.test._
 
-import leon._
 import leon.purescala.Constructors._
-import leon.purescala.Definitions._
 import leon.purescala.Expressions._
 import leon.purescala.ExprOps._
-import leon.purescala.DefOps._
 import leon.purescala.Common._
-import leon.utils._
 
 class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL {
 
@@ -27,6 +23,7 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
         |    case b1 @ Bar4(b2: Bar3) => b2
         |  }
         |}""".stripMargin,
+
       """object Nested {
         |  def foo = {
         |    def bar = {
@@ -43,7 +40,6 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
   test("mapForPattern introduces casts"){ implicit fix =>
     funDef("Casts1.aMatch").body match {
       case Some(MatchExpr(scrut, Seq(MatchCase(p, None, b)))) =>
-        val m = mapForPattern(scrut, p)
         val bar4 = caseClassDef("Casts1.Bar4").typed
         val i    = caseClassDef("Casts1.Bar4").fields.head.id
 
@@ -92,10 +88,18 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
     assert(asInstOf(expr, cct) === AsInstanceOf(expr, cct))
   }
 
-  test("directlyNestedFunDefs") { implicit fix =>
-    val foo = funDef("Nested.foo")
-    val nested = directlyNestedFunDefs(foo.fullBody)
-    nested.exists { _.id.name == "bar"} &&
-    nested.exists { _.id.name == "zoo"}
+  test("closing functions") { implicit fix =>
+    val nested = moduleDef("Nested")
+    assert(nested.definedFunctions.size === 4)
   }
+
+  test("simplestValue") { implicit fix =>
+    import leon.purescala.TypeOps.isSubtypeOf
+    val act = classDef("Casts1.Foo").typed
+    val cct = caseClassDef("Casts1.Bar1").typed
+
+    assert(isSubtypeOf(simplestValue(act).getType, act))
+    assert(simplestValue(cct).getType == cct)
+  }
+
 }

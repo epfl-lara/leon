@@ -1101,7 +1101,7 @@ object ExprOps {
   /** Returns simplest value of a given type */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
     case Int32Type                  => IntLiteral(0)
-    case RealType               	=> FractionalLiteral(0, 1)
+    case RealType               	  => FractionalLiteral(0, 1)
     case IntegerType                => InfiniteIntegerLiteral(0)
     case CharType                   => CharLiteral('a')
     case BooleanType                => BooleanLiteral(false)

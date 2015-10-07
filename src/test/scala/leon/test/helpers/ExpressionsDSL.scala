@@ -59,6 +59,14 @@ trait ExpressionsDSL {
     }
   }
 
+  def moduleDef(name: String)(implicit pgm: Program): ModuleDef = {
+    pgm.lookupAll(name).collect {
+      case m: ModuleDef => m
+    }.headOption.getOrElse {
+      fail(s"Failed to lookup module '$name' in program")
+    }
+  }
+
   def cc(name: String)(args: Expr*)(implicit pgm: Program): Expr = {
     val cct = caseClassDef(name).typed(Seq())
     CaseClass(cct, args.toSeq)
