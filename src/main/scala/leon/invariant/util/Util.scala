@@ -150,7 +150,7 @@ object Util {
     })(ine)
   }
 
-  def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program, 
+  def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program,
       funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay : Boolean = true): Program = {
 
     val funMap = Util.functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {

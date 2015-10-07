@@ -21,6 +21,7 @@ import leon.solvers.TimeoutSolver
 import leon.solvers.SolverFactory
 import leon.solvers.TimeoutSolverFactory
 import leon.solvers.Model
+import leon.solvers.smtlib.SMTLIBZ3Solver
 import leon.invariant.util.RealValuedExprEvaluator._
 
 class FarkasLemmaSolver(ctx: InferenceContext) {
@@ -278,7 +279,9 @@ class FarkasLemmaSolver(ctx: InferenceContext) {
       throw new IllegalStateException("Not supported now. Will be in the future!")
       //new ExtendedUFSolver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
-      new ExtendedUFSolver(leonctx, program) with TimeoutSolver
+      // use SMTLIBSolver to solve the constraints so that it can be timed out effectively
+      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+      //new ExtendedUFSolver(leonctx, program) with TimeoutSolver
     }
     val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
     if (verbose) reporter.info("solving...")

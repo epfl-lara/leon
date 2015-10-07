@@ -9,6 +9,7 @@ import purescala.Extractors._
 import purescala.Types._
 import solvers._
 import solvers.z3._
+import solvers.smtlib.SMTLIBZ3Solver
 import leon.invariant._
 import scala.util.control.Breaks._
 import invariant.engine.InferenceContext
@@ -55,9 +56,11 @@ class Minimizer(ctx: InferenceContext) {
   def minimizeBounds(nestMap: Map[Variable, Int])(inputCtr: Expr, initModel: Model): Model = {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
     //do a binary search sequentially on each of these tempvars
+    // note: use smtlib solvers so that they can be timedout
     val solver = SimpleSolverAPI(
       new TimeoutSolverFactory(SolverFactory(() =>
-        new ExtendedUFSolver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
+        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
+        //new ExtendedUFSolver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
 
     reporter.info("minimizing...")
     var currentModel = initModel

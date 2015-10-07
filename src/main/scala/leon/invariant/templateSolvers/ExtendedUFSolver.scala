@@ -13,16 +13,17 @@ import purescala.ExprOps._
 import purescala.Types._
 import leon.LeonContext
 import leon.solvers.z3.UninterpretedZ3Solver
+import leon.solvers.smtlib.SMTLIBZ3Solver
 
 /**
  *  A uninterpreted solver extended with additional functionalities.
  *  TODO: need to handle bit vectors
  */
-class ExtendedUFSolver(context : LeonContext, program: Program)
-  extends UninterpretedZ3Solver(context, program) {
+class ExtendedUFSolver(context: LeonContext, program: Program)
+    extends UninterpretedZ3Solver(context, program) {
 
   override val name = "Z3-eu"
-  override val description = "Extended UF-ADT Z3 Solver"
+  override  val description = "Extended UF-ADT Z3 Solver"
 
   /**
    * This uses z3 methods to evaluate the model
@@ -36,7 +37,7 @@ class ExtendedUFSolver(context : LeonContext, program: Program)
     else None
   }
 
-  def getAssertions : Expr = {
+  def getAssertions: Expr = {
     val assers = solver.getAssertions.map((ast) => fromZ3Formula(null, ast, null))
     And(assers)
   }
@@ -60,7 +61,7 @@ class ExtendedUFSolver(context : LeonContext, program: Program)
         if (line == "; benchmark") newHeaders :+= line
         else if (line.startsWith("(set")) newHeaders :+= line
         else if (line.startsWith("(declare")) newHeaders :+= line
-        else if(line.startsWith("(check-sat)")) {} //do nothing
+        else if (line.startsWith("(check-sat)")) {} //do nothing
         else asserts :+= line
       })
       headers ++= newHeaders

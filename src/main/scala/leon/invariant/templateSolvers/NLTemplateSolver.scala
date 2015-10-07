@@ -12,6 +12,8 @@ import evaluators._
 import scala.collection.mutable.{ Map => MutableMap }
 import java.io._
 import solvers._
+import solvers.combinators._
+import solvers.smtlib._
 import solvers.z3._
 import scala.util.control.Breaks._
 import purescala.ScalaPrinter
@@ -56,12 +58,14 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
   private val startFromEarlierModel = true
   private val disableCegis = true
   private val useIncrementalSolvingForVCs = true
+  private val useCVCToCheckVCs = false
 
   //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'
   protected var funcVCs = Map[FunDef, Expr]()
   //TODO: can incremental solving be trusted ? There were problems earlier.
-  protected var vcSolvers = Map[FunDef, ExtendedUFSolver]()
+  protected var vcSolvers = Map[FunDef, Solver with TimeoutSolver]()
   protected var paramParts = Map[FunDef, Expr]()
+  protected var simpleParts = Map[FunDef, Expr]()
   private var lastFoundModel: Option[Model] = None
 
   //for miscellaneous things
@@ -83,7 +87,11 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
       if (Util.hasReals(rest) && Util.hasInts(rest))
         throw new IllegalStateException("Non-param Part has both integers and reals: " + rest)
 
-      val vcSolver = new ExtendedUFSolver(leonctx, program)
+      val vcSolver =
+        if (this.useCVCToCheckVCs)
+          new SMTLIBCVC4Solver(leonctx, program) with TimeoutSolver
+        else
+          new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
       vcSolver.assertCnstr(rest)
 
       if (debugIncrementalVC) {
@@ -97,6 +105,7 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
       }
       vcSolvers += (fd -> vcSolver)
       paramParts += (fd -> paramPart)
+      simpleParts += (fd -> rest)
     })
   }
 
@@ -233,111 +242,111 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
       var confFunctions = Set[FunDef]()
       var confDisjuncts = Seq[Expr]()
 
-      val newctrs = conflictingFuns.foldLeft(Seq[Expr]())((acc, fd) => {
-
-        val disableCounterExs = if (seenPaths.contains(fd)) {
-          blockedCEs = true
-          Not(Util.createOr(seenPaths(fd)))
-        } else tru
-        val (data, ctrsForFun) = getUNSATConstraints(fd, model, disableCounterExs)
-        val (disjunct, callsInPath) = data
-        if (ctrsForFun == tru) acc
-        else {
-          confFunctions += fd
-          confDisjuncts :+= disjunct
-          callsInPaths ++= callsInPath
-          //instantiate the disjunct
-          val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
-
-          //some sanity checks
-          if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
-            throw new IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
-
-          updateSeenPaths(fd, cePath)
-          acc :+ ctrsForFun
-        }
-      })
-      //update conflicting functions
-      conflictingFuns = confFunctions
-      if (newctrs.isEmpty) {
-
-        if (!blockedCEs) {
-          //yes, hurray,found an inductive invariant
-          (Some(false), prevCtr, model)
-        } else {
-          //give up, only hard paths remaining
-          reporter.info("- Exhausted all easy paths !!")
-          reporter.info("- Number of remaining hard paths: " + seenPaths.values.foldLeft(0)((acc, elem) => acc + elem.size))
-          //TODO: what to unroll here ?
+      val newctrsOpt = conflictingFuns.foldLeft(Some(Seq()): Option[Seq[Expr]]) {
+        case (None, _) => None
+        case (Some(acc), fd) =>
+          val disableCounterExs = if (seenPaths.contains(fd)) {
+            blockedCEs = true
+            Not(Util.createOr(seenPaths(fd)))
+          } else tru
+          getUNSATConstraints(fd, model, disableCounterExs) match {
+            case None =>
+              None
+            case Some(((disjunct, callsInPath), ctrsForFun)) =>
+              if (ctrsForFun == tru) Some(acc)
+              else {
+                confFunctions += fd
+                confDisjuncts :+= disjunct
+                callsInPaths ++= callsInPath
+                //instantiate the disjunct
+                val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+                //some sanity checks
+                if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+                  throw new IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
+                updateSeenPaths(fd, cePath)
+                Some(acc :+ ctrsForFun)
+              }
+          }
+      }
+      newctrsOpt match {
+        case None =>
+          // give up, the VC cannot be decided
           (None, tru, Model.empty)
-        }
-      } else {
-
-        //check that the new constraints does not have any reals
-        val newPart = Util.createAnd(newctrs)
-        val newSize = Util.atomNum(newPart)
-        Stats.updateCounterStats((newSize + inputSize), "NLsize", "disjuncts")
-        if (verbose)
-          reporter.info("# of atomic predicates: " + newSize + " + " + inputSize)
-
-        /*if (this.debugIncremental)
-          solverWithCtr.assertCnstr(newPart)*/
-
-        //here we need to solve for the newctrs + inputCtrs
-        val combCtr = And(prevCtr, newPart)
-        val (res, newModel) = farkasSolver.solveFarkasConstraints(combCtr)
-
-        res match {
-          case None => {
-            //here we have timed out while solving the non-linear constraints
+        case Some(newctrs) =>
+          //update conflicting functions
+          conflictingFuns = confFunctions
+          if (newctrs.isEmpty) {
+            if (!blockedCEs) {
+              //yes, hurray,found an inductive invariant
+              (Some(false), prevCtr, model)
+            } else {
+              //give up, only hard paths remaining
+              reporter.info("- Exhausted all easy paths !!")
+              reporter.info("- Number of remaining hard paths: " + seenPaths.values.foldLeft(0)((acc, elem) => acc + elem.size))
+              //TODO: what to unroll here ?
+              (None, tru, Model.empty)
+            }
+          } else {
+            //check that the new constraints does not have any reals
+            val newPart = Util.createAnd(newctrs)
+            val newSize = Util.atomNum(newPart)
+            Stats.updateCounterStats((newSize + inputSize), "NLsize", "disjuncts")
             if (verbose)
-              if (!this.disableCegis)
-                reporter.info("NLsolver timed-out on the disjunct... starting cegis phase...")
-              else
-                reporter.info("NLsolver timed-out on the disjunct... blocking this disjunct...")
-
-            if (!this.disableCegis) {
-              val (cres, cctr, cmodel) = solveWithCegis(tempIds.toSet, Util.createOr(confDisjuncts), inputCtr, Some(model))
-              cres match {
-                case Some(true) => {
-                  disjsSolvedInIter ++= confDisjuncts
-                  (Some(true), And(inputCtr, cctr), cmodel)
-                }
-                case Some(false) => {
-                  disjsSolvedInIter ++= confDisjuncts
-                  //here also return the calls that needs to be unrolled
-                  (None, fls, Model.empty)
-                }
-                case _ => {
+              reporter.info("# of atomic predicates: " + newSize + " + " + inputSize)
+            //here we need to solve for the newctrs + inputCtrs
+            val combCtr = And(prevCtr, newPart)
+            val (res, newModel) = farkasSolver.solveFarkasConstraints(combCtr)
+            res match {
+              case None => {
+                //here we have timed out while solving the non-linear constraints
+                if (verbose)
+                  if (!this.disableCegis)
+                    reporter.info("NLsolver timed-out on the disjunct... starting cegis phase...")
+                  else
+                    reporter.info("NLsolver timed-out on the disjunct... blocking this disjunct...")
+                if (!this.disableCegis) {
+                  val (cres, cctr, cmodel) = solveWithCegis(tempIds.toSet, Util.createOr(confDisjuncts), inputCtr, Some(model))
+                  cres match {
+                    case Some(true) => {
+                      disjsSolvedInIter ++= confDisjuncts
+                      (Some(true), And(inputCtr, cctr), cmodel)
+                    }
+                    case Some(false) => {
+                      disjsSolvedInIter ++= confDisjuncts
+                      //here also return the calls that needs to be unrolled
+                      (None, fls, Model.empty)
+                    }
+                    case _ => {
+                      if (verbose) reporter.info("retrying...")
+                      Stats.updateCumStats(1, "retries")
+                      //disable this disjunct and retry but, use the inputCtrs + the constraints generated by cegis from the next iteration
+                      invalidateDisjRecr(And(inputCtr, cctr))
+                    }
+                  }
+                } else {
                   if (verbose) reporter.info("retrying...")
                   Stats.updateCumStats(1, "retries")
-                  //disable this disjunct and retry but, use the inputCtrs + the constraints generated by cegis from the next iteration
-                  invalidateDisjRecr(And(inputCtr, cctr))
+                  invalidateDisjRecr(inputCtr)
                 }
               }
-            } else {
-              if (verbose) reporter.info("retrying...")
-              Stats.updateCumStats(1, "retries")
-              invalidateDisjRecr(inputCtr)
+              case Some(false) => {
+                //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
+                disjsSolvedInIter ++= confDisjuncts
+                (None, fls, Model.empty)
+              }
+              case Some(true) => {
+                disjsSolvedInIter ++= confDisjuncts
+                //new model may not have mappings for all the template variables, hence, use the mappings from earlier models
+                val compModel = new Model(tempIds.map((id) => {
+                  if (newModel.isDefinedAt(id))
+                    (id -> newModel(id))
+                  else
+                    (id -> model(id))
+                }).toMap)
+                (Some(true), combCtr, compModel)
+              }
             }
           }
-          case Some(false) => {
-            //reporter.info("- Number of explored paths (of the DAG) in this unroll step: " + exploredPaths)
-            disjsSolvedInIter ++= confDisjuncts
-            (None, fls, Model.empty)
-          }
-          case Some(true) => {
-            disjsSolvedInIter ++= confDisjuncts
-            //new model may not have mappings for all the template variables, hence, use the mappings from earlier models
-            val compModel = new Model(tempIds.map((id) => {
-              if (newModel.isDefinedAt(id))
-                (id -> newModel(id))
-              else
-                (id -> model(id))
-            }).toMap)
-            (Some(true), combCtr, compModel)
-          }
-        }
       }
     }
     val (res, newctr, newmodel) = invalidateDisjRecr(inputCtr)
@@ -362,11 +371,12 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
   /**
    * Constructs a quantifier-free non-linear constraint for unsatisfiability
    */
-  def getUNSATConstraints(fd: FunDef, inModel: Model, disableCounterExs: Expr): ((Expr, Set[Call]), Expr) = {
+  def getUNSATConstraints(fd: FunDef, inModel: Model, disableCounterExs: Expr): Option[((Expr, Set[Call]), Expr)] = {
 
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-    val innerSolver = if (this.useIncrementalSolvingForVCs) vcSolvers(fd)
-    else new ExtendedUFSolver(leonctx, program)
+    val innerSolver =
+      if (this.useIncrementalSolvingForVCs) vcSolvers(fd)
+      else new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
     val instExpr = if (this.useIncrementalSolvingForVCs) {
       val instParamPart = instantiateTemplate(this.paramParts(fd), tempVarMap)
       And(instParamPart, disableCounterExs)
@@ -379,7 +389,7 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
       // println("Plain vc: "+funcVCs(fd))
       val wr = new PrintWriter(new File("formula-dump.txt"))
       val fullExpr = if (this.useIncrementalSolvingForVCs) {
-        And(innerSolver.getAssertions, instExpr)
+        And(simpleParts(fd), instExpr)
       } else
         instExpr
       // println("Instantiated VC of " + fd.id + " is: " + fullExpr)
@@ -389,31 +399,23 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
       wr.flush()
       wr.close()
     }
-    //throw an exception if the candidate expression has reals
     if (Util.hasMixedIntReals(instExpr)) {
-      //variablesOf(instExpr).foreach(id => println("Id: "+id+" type: "+id.getType))
       throw new IllegalStateException("Instantiated VC of " + fd.id + " contains mixed integer/reals: " + instExpr)
     }
 
     //reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()
+    innerSolver.setTimeout(timeout * 1000)
     val (res, model) = if (this.useIncrementalSolvingForVCs) {
       innerSolver.push
       innerSolver.assertCnstr(instExpr)
-      //dump the inst VC as SMTLIB
-      /*val filename = "vc" + FileCountGUID.getID + ".smt2"
-      Util.toZ3SMTLIB(innerSolver.getAssertions, filename, "", leonctx, program)
-      val writer = new PrintWriter(filename)
-      writer.println(innerSolver.ctrsToString(""))
-      writer.close()
-      println("vc dumped to: " + filename)*/
-
-      val solRes = innerSolver.check
-      innerSolver.pop()
-      solRes match {
-        case Some(true) => (solRes, innerSolver.getModel)
-        case _ => (solRes, Model.empty)
+      val solRes = innerSolver.check match {
+        case r @ Some(true) =>
+          (r, innerSolver.getModel)
+        case r => (r, Model.empty)
       }
+      innerSolver.pop()
+      solRes
     } else {
       val solver = SimpleSolverAPI(SolverFactory(() => innerSolver))
       solver.solveSAT(instExpr)
@@ -430,7 +432,7 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
       Stats.updateCounterStats(Util.atomNum(upVCinst), "UP-VC-size", "disjuncts")
 
       t1 = System.currentTimeMillis()
-      val (res2, _) = SimpleSolverAPI(SolverFactory(() => new ExtendedUFSolver(leonctx, program))).solveSAT(upVCinst)
+      val (res2, _) = SimpleSolverAPI(SolverFactory(() => new SMTLIBZ3Solver(leonctx, program))).solveSAT(upVCinst)
       val unpackedTime = System.currentTimeMillis() - t1
       if (res != res2) {
         throw new IllegalStateException("Unpacked VC produces different result: " + upVCinst)
@@ -442,11 +444,12 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
     t1 = System.currentTimeMillis()
     res match {
       case None => {
-        throw new IllegalStateException("cannot check the satisfiability of " + funcVCs(fd))
+        //throw new IllegalStateException("cannot check the satisfiability of " + funcVCs(fd))
+        None
       }
       case Some(false) => {
         //do not generate any constraints
-        ((fls, Set()), tru)
+        Some(((fls, Set()), tru))
       }
       case Some(true) => {
         //For debugging purposes.
@@ -454,7 +457,6 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
         if (this.printCounterExample) {
           reporter.info("Model: " + model)
         }
-
         //get the disjuncts that are satisfied
         val (data, newctr) = generateCtrsFromDisjunct(fd, model)
         if (newctr == tru)
@@ -464,7 +466,7 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
         Stats.updateCounterTime((t2 - t1), "Disj-choosing-time", "disjuncts")
         Stats.updateCumTime((t2 - t1), "Total-Choose-Time")
 
-        (data, newctr)
+        Some((data, newctr))
       }
     }
   }

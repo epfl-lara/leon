@@ -32,7 +32,7 @@ case class InferResult(res: Boolean, model: Option[Model], inferredFuncs: List[F
 }
 
 trait FunctionTemplateSolver {
-  def apply() : Option[InferResult]
+  def apply(): Option[InferResult]
 }
 
 class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends FunctionTemplateSolver {
@@ -57,14 +57,13 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
 
     val fullPost = matchToIfThenElse(if (funDef.hasTemplate)
       if (ctx.toVerifyPostFor.contains(funDef.id.name))
-        And(funDef.getPostWoTemplate, funDef.getTemplate)
-      else
-        funDef.getTemplate
+      And(funDef.getPostWoTemplate, funDef.getTemplate)
     else
-      if (ctx.toVerifyPostFor.contains(funDef.id.name))
-        funDef.getPostWoTemplate
-      else
-        BooleanLiteral(true))
+      funDef.getTemplate
+    else if (ctx.toVerifyPostFor.contains(funDef.id.name))
+      funDef.getPostWoTemplate
+    else
+      BooleanLiteral(true))
 
     (bodyExpr, fullPost)
   }
@@ -178,7 +177,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
     val newFundefs = program.definedFunctions.collect {
       case fd @ _ => { //if !Util.isMultFunctions(fd)
         val newfd = new FunDef(FreshIdentifier(fd.id.name, Untyped, false),
-            fd.tparams, fd.returnType, fd.params)
+          fd.tparams, fd.returnType, fd.params)
         (fd, newfd)
       }
     }.toMap
@@ -215,7 +214,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
           val ninv = replace(Map(ResultVariable(fd.returnType) -> resvar.toVariable), inv)
           Some(Lambda(Seq(ValDef(resvar, Some(fd.returnType))), ninv))
         }
-      } else if(fd.postcondition.isDefined) {
+      } else if (fd.postcondition.isDefined) {
         val Lambda(resultBinder, _) = fd.postcondition.get
         Some(Lambda(resultBinder, fd.getPostWoTemplate))
       } else None
@@ -241,19 +240,29 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
       (augmentedProg, newFundefs(rootFd))
     }
     //println("New Root: "+newroot)
-    import leon.solvers.z3._
-    val dummySolFactory = new leon.solvers.SolverFactory[ExtendedUFSolver] {
-      def getNewSolver() = new ExtendedUFSolver(ctx.leonContext, program)
+    import leon.solvers.smtlib.SMTLIBZ3Solver
+    import leon.solvers.combinators.UnrollingSolver
+    val dummySolFactory = new leon.solvers.SolverFactory[SMTLIBZ3Solver] {
+      def getNewSolver() = new SMTLIBZ3Solver(ctx.leonContext, program)
     }
     val vericontext = VerificationContext(ctx.leonContext, newprog, dummySolFactory, reporter)
     val defaultTactic = new DefaultTactic(vericontext)
     val vc = defaultTactic.generatePostconditions(newroot)(0)
 
     val verifyTimeout = 5
-    val fairZ3 = new SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() => new FairZ3Solver(ctx.leonContext, newprog) with TimeoutSolver),
-        verifyTimeout * 1000))
-    val sat = fairZ3.solveSAT(Not(vc.condition))
-    sat
+    //    val fairZ3 = new SimpleSolverAPI(
+    //      new TimeoutSolverFactory(SolverFactory(() =>
+    //        new FairZ3Solver(ctx.leonContext, newprog) with TimeoutSolver),
+    //        verifyTimeout * 1000))
+    val smtUnrollZ3 = new UnrollingSolver(ctx.leonContext, program,
+      new SMTLIBZ3Solver(ctx.leonContext, program)) with TimeoutSolver
+    smtUnrollZ3.setTimeout(verifyTimeout * 1000)
+    smtUnrollZ3.assertVC(vc)
+    smtUnrollZ3.check match {
+      case Some(true) =>
+        (Some(true), smtUnrollZ3.getModel)
+      case r =>
+        (r, Model.empty)
+    }
   }
 }
