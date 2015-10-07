@@ -1,4 +1,3 @@
-//import leon.lazyeval._
 package leon
 import lang._
 import annotation._
@@ -40,9 +39,9 @@ object RealTimeQueue {
 
   case class SNil[T]() extends LList[T]
 
-  // TODO: closures are not ADTs since two closures with same arguments are not necessarily equal but 
+  // TODO: closures are not ADTs since two closures with same arguments are not necessarily equal but
   // ADTs are equal. This creates a bit of problem in checking if a closure belongs to a set or not.
-  // However, currently we are assuming that such problems do not happen. 
+  // However, currently we are assuming that such problems do not happen.
   // A solution is to pass around a dummy id that is unique for each closure.
   abstract class LazyLList[T]
 
@@ -65,7 +64,7 @@ object RealTimeQueue {
     }) || LList$isEmpty[T](evalLazyLList[T](l, st)._1)
   }
 
-  // an assertion: closures created by evaluating a closure will result in unevaluated closure  
+  // an assertion: closures created by evaluating a closure will result in unevaluated closure
   @library
   def lemmaLazy[T](l: LazyLList[T], st: Set[LazyLList[T]]): Boolean = {
     Set[LazyLList[T]](l).subsetOf(st) || {
@@ -122,9 +121,9 @@ object RealTimeQueue {
         res._1 != SNil[T]() &&
         res._3 <= 4
     case _ => true
-  }) // && 
+  }) // &&
   //   (res._1 match {
-  //       case SCons(_, tail) => 
+  //       case SCons(_, tail) =>
   //         Set[LazyLList[T]](cl).subsetOf(st) || !Set[LazyLList[T]](tail).subsetOf(res._2)
   //       case _ => true
   //   })
@@ -154,18 +153,18 @@ object RealTimeQueue {
 
   // things to prove:
   // (a0) prove that pre implies post for 'rotate' (this depends on the assumption on eval)
-  // (a) Rotate closure creations satisfy the preconditions of 'rotate' (or)    
-  //	for the preconditions involving state, the state at the Rotate invocation sites (through eval)    
+  // (a) Rotate closure creations satisfy the preconditions of 'rotate' (or)
+  //	for the preconditions involving state, the state at the Rotate invocation sites (through eval)
   // 	satisfy the preconditions of  'rotate'
   // (b) If we verify that preconditoins involving state hold at creation time,
-  // 	 then we can assume them for calling time only if the preconditions are monotonic 
+  // 	 then we can assume them for calling time only if the preconditions are monotonic
   //	 with respect to inclusion of relation of state (this also have to be shown)
   // Note: using both captured and calling context is possible but is more involved
   // (c) Assume that 'eval' ensures the postcondition of 'rotate'
   // (d) Moreover we can also assume that the preconditons of rotate hold whenever we use a closure
 
   // proof of (a)
-  // (i) for stateless invariants this can be proven by treating lazy eager, 
+  // (i) for stateless invariants this can be proven by treating lazy eager,
   // so not doing this here
 
   // monotonicity of isConcrete
@@ -191,7 +190,7 @@ object RealTimeQueue {
   } holds
 
   // proof that the precondition isConcrete(f, st) holds for closure creation in 'createQueue' function
-  // @ important use and instantiate monotonicity of 
+  // @ important use and instantiate monotonicity of
   def rotateClosureLemma2[T](f: LazyLList[T], sch: LazyLList[T], st: Set[LazyLList[T]]): Boolean = {
     require(streamScheduleProperty[T](f, sch, st)) // && ssize[T](sch) == (ssize[T](f) - r.size) + BigInt(1))
     val dres4 = evalLazyLList[T](sch, st);
@@ -217,11 +216,11 @@ object RealTimeQueue {
     }
   } holds
 
-  // part(c) assume postconditon of 'rotate' in closure invocation time and also 
-  // the preconditions of 'rotate' if necesssary, and prove the properties of the 
-  // methods that invoke closures     
+  // part(c) assume postconditon of 'rotate' in closure invocation time and also
+  // the preconditions of 'rotate' if necesssary, and prove the properties of the
+  // methods that invoke closures
 
-  // proving specifications of 'rotate' (only state specifications are interesting)  
+  // proving specifications of 'rotate' (only state specifications are interesting)
   def rotate[T](f: LazyLList[T], r: List[T], a: LazyLList[T], st: Set[LazyLList[T]]): (LList[T], Set[LazyLList[T]], BigInt) = {
     require(r.size == ssize[T](f) + BigInt(1) && isConcrete(f, st))
     val dres = evalLazyLList[T](f, st);

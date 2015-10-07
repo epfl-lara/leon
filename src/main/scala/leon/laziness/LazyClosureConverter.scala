@@ -204,7 +204,8 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       Seq(ValDef(param1), ValDef(param2)))
     fun.body = Some(param1.toVariable)
     val resid = FreshIdentifier("res", param1Type)
-    val postbody = Not(SubsetOf(FiniteSet(Set(resid.toVariable), param1Type), param2.toVariable))
+    val postbody = Not(ElementOfSet(resid.toVariable, param2.toVariable))
+        /*SubsetOf(FiniteSet(Set(resid.toVariable), param1Type), param2.toVariable)*/
     fun.postcondition = Some(Lambda(Seq(ValDef(resid)), postbody))
     fun.addFlag(Annotation("axiom", Seq()))
     (tname -> fun)
@@ -228,8 +229,9 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
         val narg = nargs(0) // there must be only one argument here
         val baseType = unwrapLazyType(narg.getType).get
         val tname = typeNameWOParams(baseType)
-        val adtType = AbstractClassType(closureFactory.absClosureType(tname), getTypeParameters(baseType))
-        SubsetOf(FiniteSet(Set(narg), adtType), st(tname))
+        //val adtType = AbstractClassType(closureFactory.absClosureType(tname), getTypeParameters(baseType))
+        //SubsetOf(FiniteSet(Set(narg), adtType), st(tname))
+        ElementOfSet(narg, st(tname))
       }, false)
       mapNAryOperator(args, op)
 

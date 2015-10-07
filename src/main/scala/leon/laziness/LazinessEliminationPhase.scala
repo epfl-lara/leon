@@ -135,7 +135,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-    val functions = Seq() // Seq("--functions=Rotate@rotateLem")
+    val functions = Seq() // Seq("--functions=rotate-time")
     val solverOptions = if(debugSolvers) Seq("--debug=solver") else Seq()
     val ctx = Main.processOptions(Seq("--solvers=smt-cvc4") ++ solverOptions ++ functions)
     val report = AnalysisPhase.run(ctx)(prog)

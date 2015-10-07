@@ -92,7 +92,7 @@ object RealTimeQueue {
         val rot = $(rotate(tail, r1, $(newa))) //this creates a lazy rotate operation
         SCons[T](x, rot)
     }
-  } ensuring (res => res.size == ssize(f) + r.size + ssize(a) && res.isCons &&  
+  } ensuring (res => res.size == ssize(f) + r.size + ssize(a) && res.isCons &&
                      time <= 30)
 
   // TODO: make newa into sch to avoid a different closure category

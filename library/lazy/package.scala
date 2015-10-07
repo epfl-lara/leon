@@ -12,9 +12,8 @@ object $ {
 }
 
 @library
-case class $[T](f: Unit => T) { // leon does not support call by name as of now  
+case class $[T](f: Unit => T) { // leon does not support call by name as of now
   lazy val value = f(())
-  def *  = f(()) 
-  def isEvaluated = true // for now this is a dummy function, but it will be made sound when leon supports mutable fields. 
+  def *  = f(())
+  def isEvaluated = true // for now this is a dummy function, but it will be made sound when leon supports mutable fields.
 }
-
