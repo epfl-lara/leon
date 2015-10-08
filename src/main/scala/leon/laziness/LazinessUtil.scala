@@ -154,6 +154,9 @@ object LazinessUtil {
     prog.definedFunctions.foreach {
       case fd if fd.hasBody && !fd.isLibrary =>
         postTraversal {
+          case finv: FunctionInvocation if isLazyInvocation(finv)(prog) =>
+            // the lazy invocation constructor will need the state
+            needRoots += fd
           case finv: FunctionInvocation if isEvaluatedInvocation(finv)(prog) =>
             needRoots += fd
           case finv: FunctionInvocation if isValueInvocation(finv)(prog) =>

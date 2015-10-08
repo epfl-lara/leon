@@ -342,6 +342,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
             Let(bder, scrExpr, MatchExpr(TupleSelect(bder.toVariable, 1), ncases)),
             scrst)
         } else {
+          //println(s"Scrutiny does not update state: current state: $st")
           ((ncases: Seq[MatchCase]) => MatchExpr(scrExpr, ncases), st)
         }
         val ncases = (cases zip casesRes).map {
@@ -496,8 +497,10 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
         unwrapLazyType(fld.getType) match {
           case None => fld
           case Some(btype) =>
-            val adtType = AbstractClassType(closureFactory.absClosureType(typeNameWOParams(btype)),
-              getTypeParameters(btype))
+            val clType = closureFactory.absClosureType(typeNameWOParams(btype))
+            val typeArgs = getTypeArguments(btype)
+            //println(s"AbsType: $clType type args: $typeArgs")
+            val adtType = AbstractClassType(clType, typeArgs)
             ValDef(fld.id, Some(adtType)) // overriding the field type
         }
       }

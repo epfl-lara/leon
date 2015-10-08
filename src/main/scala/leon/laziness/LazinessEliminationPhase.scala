@@ -67,7 +67,7 @@ object LazinessEliminationPhase extends TransformationPhase {
 
     // instrument the program for resources
     val instProg = (new LazyInstrumenter(progWithPre)).apply
-    if(dumpInstrumentedProgram)
+    if (dumpInstrumentedProgram)
       println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
 
     // check specifications (to be moved to a different phase)
@@ -113,14 +113,14 @@ object LazinessEliminationPhase extends TransformationPhase {
       }
     }.toMap
     // map  the new functions to themselves
-    val newfdMap = newfuns.values.map { case (nfd, _) => nfd -> None }.toMap
-    val (repProg, _) = replaceFunDefs(prog)(fdmap ++ newfdMap)
     val nprog =
       if (!newfuns.isEmpty) {
+        val newfdMap = newfuns.values.map { case (nfd, _) => nfd -> None }.toMap
+        val (repProg, _) = replaceFunDefs(prog)(fdmap ++ newfdMap)
         val modToNewDefs = newfuns.values.groupBy(_._2).map { case (k, v) => (k, v.map(_._1)) }.toMap
         appendDefsToModules(repProg, modToNewDefs)
       } else
-        throw new IllegalStateException("Cannot find any lazy computation")
+        prog
     if (debugLifting)
       println("After lifiting arguments of lazy constructors: \n" + ScalaPrinter.apply(nprog))
     nprog
@@ -136,8 +136,8 @@ object LazinessEliminationPhase extends TransformationPhase {
         fd.addFlag(Annotation("library", Seq()))
     }
     val functions = Seq() // Seq("--functions=rotate-time")
-    val solverOptions = if(debugSolvers) Seq("--debug=solver") else Seq()
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4") ++ solverOptions ++ functions)
+    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
+    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3") ++ solverOptions ++ functions)
     val report = AnalysisPhase.run(ctx)(prog)
     println(report.summaryString)
     /*val timeout = 10

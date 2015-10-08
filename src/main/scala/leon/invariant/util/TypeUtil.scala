@@ -20,7 +20,7 @@ object TypeUtil {
   def getTypeArguments(t: TypeTree) : Seq[TypeTree] =  t match {
     case ct: ClassType => ct.tps
     case NAryType(tps, _) =>
-        (tps flatMap getTypeParameters).distinct
+        (tps flatMap getTypeArguments).distinct
   }
 
   def typeNameWOParams(t: TypeTree): String = t match {
