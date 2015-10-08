@@ -44,7 +44,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     val newBody : Option[Expr] = tfd.body.map(b => matchToIfThenElse(b))
     val lambdaBody : Option[Expr] = newBody.map(b => simplifyHOFunctions(b))
 
-    val funDefArgs: Seq[Identifier] = tfd.params.map(_.id)
+    val funDefArgs: Seq[Identifier] = tfd.paramIds
     val lambdaArguments: Seq[Identifier] = lambdaBody.map(lambdaArgs).toSeq.flatten
     val invocation : Expr = FunctionInvocation(tfd, funDefArgs.map(_.toVariable))
 

@@ -37,7 +37,7 @@ trait SMTLIBZ3QuantifiedTarget extends SMTLIBZ3Target with SMTLIBQuantifiedTarge
       val tfd = functions.toA(sym)
       val term = quantifiedTerm(
         SMTForall,
-        tfd.params map { _.id },
+        tfd.paramIds,
         Equals(
           FunctionInvocation(tfd, tfd.params.map {_.toVariable}),
           tfd.body.get

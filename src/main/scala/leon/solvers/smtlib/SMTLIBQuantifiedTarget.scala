@@ -30,7 +30,7 @@ trait SMTLIBQuantifiedTarget extends SMTLIBTarget {
     val inductiveHyps = for {
       fi@FunctionInvocation(tfd, args) <- functionCallsOf(cond).toSeq
     } yield {
-      val formalToRealArgs = tfd.params.map{ _.id}.zip(args).toMap
+      val formalToRealArgs = tfd.paramIds.zip(args).toMap
       val post = tfd.postcondition map { post =>
         application(
           replaceFromIDs(formalToRealArgs, post),

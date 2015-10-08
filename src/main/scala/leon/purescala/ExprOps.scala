@@ -513,7 +513,7 @@ object ExprOps {
       (expr, idSeqs) => idSeqs.foldLeft(expr match {
         case Lambda(args, _) => args.map(_.id)
         case Forall(args, _) => args.map(_.id)
-        case LetDef(fd, _) => fd.params.map(_.id)
+        case LetDef(fd, _) => fd.paramIds
         case Let(i, _, _) => Seq(i)
         case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
         case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
@@ -1511,7 +1511,7 @@ object ExprOps {
       (fd1.params.size == fd2.params.size) && {
          val newMap = map +
            (fd1.id -> fd2.id) ++
-           (fd1.params zip fd2.params).map{ case (vd1, vd2) => (vd1.id, vd2.id) }
+           (fd1.paramIds zip fd2.paramIds)
          isHomo(fd1.fullBody, fd2.fullBody)(newMap)
       }
     }
@@ -1777,14 +1777,14 @@ object ExprOps {
   def flattenFunctions(fdOuter: FunDef, ctx: LeonContext, p: Program): FunDef = {
     fdOuter.body match {
       case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
-        val argsDef  = fdOuter.params.map(_.id)
+        val argsDef  = fdOuter.paramIds
         val argsCall = args.collect { case Variable(id) => id }
 
         if (argsDef.toSet == argsCall.toSet) {
           val defMap = argsDef.zipWithIndex.toMap
           val rewriteMap = argsCall.map(defMap)
 
-          val innerIdsToOuterIds = (fdInner.params.map(_.id) zip argsCall).toMap
+          val innerIdsToOuterIds = (fdInner.paramIds zip argsCall).toMap
 
           def pre(e: Expr) = e match {
             case FunctionInvocation(tfd, args) if tfd.fd == fdInner =>

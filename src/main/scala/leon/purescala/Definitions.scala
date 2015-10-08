@@ -483,7 +483,7 @@ object Definitions {
 
     def paramSubst(realArgs: Seq[Expr]) = {
       require(realArgs.size == params.size)
-      (params map { _.id } zip realArgs).toMap
+      (paramIds zip realArgs).toMap
     }
 
     def withParamSubst(realArgs: Seq[Expr], e: Expr) = {
@@ -521,6 +521,8 @@ object Definitions {
     lazy val functionType = FunctionType(params.map(_.getType).toList, returnType)
 
     lazy val returnType: TypeTree = translated(fd.returnType)
+
+    lazy val paramIds = params map { _.id }
 
     private var trCache = Map[Expr, Expr]()
 

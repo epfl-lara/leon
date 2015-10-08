@@ -180,7 +180,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       val vrs = report.vrs
 
       vrs.collect { case (_, VCResult(VCStatus.Invalid(ex), _, _)) =>
-        InExample(fd.params.map{vd => ex(vd.id)})
+        InExample(fd.paramIds map ex)
       }
     } finally {
       solverf.shutdown()
@@ -203,7 +203,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       case None =>
         _ => true
       case Some(pre) =>
-        val argIds = fd.params.map(_.id)
+        val argIds = fd.paramIds
         evaluator.compile(pre, argIds) match {
           case Some(evalFun) =>
             val sat = EvaluationResults.Successful(BooleanLiteral(true));

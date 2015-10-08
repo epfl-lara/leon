@@ -108,7 +108,7 @@ object Quantification {
           case _ => Set.empty
         } (fd.fullBody)
 
-        val free = fd.params.map(_.id).toSet ++ (fd.postcondition match {
+        val free = fd.paramIds.toSet ++ (fd.postcondition match {
           case Some(Lambda(args, _)) => args.map(_.id)
           case _ => Seq.empty
         })
