@@ -5,7 +5,6 @@ package leon.test
 import leon._
 import leon.utils._
 
-import scala.io.Source
 import org.scalatest._
 import org.scalatest.time.Span
 import org.scalatest.concurrent._
@@ -15,8 +14,8 @@ import org.scalatest.exceptions.TestFailedException
 import java.io.File
 
 trait LeonRegressionSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
-  // Hard-code resource directory, for Eclipse purposes
-  val resourceDirHard = "src/test/resources/"
+
+  val regressionTestDirectory = "src/test/resources"
 
   def createLeonContext(opts: String*): LeonContext = {
     val reporter = new TestSilentReporter
@@ -66,23 +65,6 @@ trait LeonRegressionSuite extends FunSuite with Timeouts with BeforeAndAfterEach
   }
 
   protected val all : String=>Boolean = (s : String) => true
-
-
-  def resourceDir(dir : String) : File = {
-
-    val d = this.getClass.getClassLoader.getResource(dir)
-
-    if(d == null || d.getProtocol != "file") {
-      // We are in Eclipse. The only way we are saved is by hard-coding the path
-      new File(resourceDirHard + dir)
-    }
-    else {
-      new File(d.toURI)
-    }
-  }
-
-
-  
   
   def scanFilesIn(f: File, filter: String=>Boolean = all, recursive: Boolean = false): Iterable[File] = {
     Option(f.listFiles()).getOrElse(Array()).flatMap{f =>
@@ -96,13 +78,8 @@ trait LeonRegressionSuite extends FunSuite with Timeouts with BeforeAndAfterEach
 
   def filesInResourceDir(dir : String, filter : String=>Boolean = all, recursive: Boolean = false) : Iterable[File] = {
 
-    val d = this.getClass.getClassLoader.getResource(dir)
+    val baseDir = new File(s"${Build.baseDirectory}/$regressionTestDirectory/$dir")
 
-    val asFile = if(d == null || d.getProtocol != "file") {
-      // We are in Eclipse. The only way we are saved is by hard-coding the path
-      new File(resourceDirHard + dir)
-    } else new File(d.toURI)
-
-    scanFilesIn(asFile, filter, recursive)
+    scanFilesIn(baseDir, filter, recursive)
   }
 }

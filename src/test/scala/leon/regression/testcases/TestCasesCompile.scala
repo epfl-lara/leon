@@ -19,8 +19,6 @@ class TestCasesCompile extends LeonRegressionSuite {
 
   val baseDir = "regression/testcases/"
 
-  val slashes = resourceDir(baseDir).getAbsolutePath.split("/").toList.size
-
   val allTests = (filesIn(baseDir+"repair/") ++
                  filesIn(baseDir+"runtime/") ++
                  filesIn(baseDir+"synthesis/") ++
@@ -28,7 +26,11 @@ class TestCasesCompile extends LeonRegressionSuite {
                  filesIn(baseDir+"web/")).sortBy(_.getAbsolutePath)
 
   allTests.foreach { f =>
-    val name = f.getAbsolutePath.split("/").toList.drop(slashes).mkString("/")
+
+    val path = f.getAbsolutePath
+
+    val index = path.indexOf(baseDir)
+    val name = path.drop(index)
 
     test("Compiling "+name) {
 
