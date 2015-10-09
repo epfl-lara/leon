@@ -10,6 +10,7 @@ import leon.purescala.ScalaPrinter
 import leon.purescala.PrinterContext
 import leon.purescala.PrinterOptions
 import leon.synthesis._
+import leon.synthesis.rules._
 
 import scala.collection.mutable.Stack
 import scala.io.Source
@@ -27,6 +28,27 @@ class StablePrintingSuite extends LeonRegressionSuite {
 
 
   private def testIterativeSynthesis(cat: String, f: File, depth: Int) {
+
+    val decompRules = List[Rule](
+      Unification.DecompTrivialClash,
+      Unification.OccursCheck, // probably useless
+      Disunification.Decomp,
+      ADTDual,
+      CaseSplit,
+      IfSplit,
+      UnusedInput,
+      EquivalentInputs,
+      UnconstrainedOutput,
+      OptimisticGround,
+      EqualitySplit,
+      InequalitySplit,
+      rules.Assert,
+      DetupleOutput,
+      DetupleInput,
+      ADTSplit,
+      IntInduction,
+      InnerCaseSplit
+    )
 
     def getChooses(ctx: LeonContext, content: String): (Program, SynthesisSettings, Seq[ChooseInfo]) = {
       val opts = SynthesisSettings()
@@ -85,7 +107,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
               val hctx = SearchContext(sctx, ci, search.g.root, search)
               val problem = ci.problem
               info(j.info("synthesis "+problem.asString(sctx.context)))
-              val apps = sctx.rules flatMap { _.instantiateOn(hctx, problem)}
+              val apps = decompRules flatMap { _.instantiateOn(hctx, problem)}
 
               for (a <- apps) {
                 a.apply(hctx) match {
