@@ -75,7 +75,7 @@ object FunctionClosure extends TransformationPhase {
       //  println(from.uniqueName + " -> " + to.uniqueName)
       //}
       f.fullBody = preMap {
-        case FunctionInvocation(tfd, args) if closed contains tfd.fd =>
+        case fi@FunctionInvocation(tfd, args) if closed contains tfd.fd =>
           val FunSubst(newFd, newParams, newTParams) = closed(tfd.fd)
 
           // New -> old map for function call
@@ -94,7 +94,7 @@ object FunctionClosure extends TransformationPhase {
           Some(FunctionInvocation(
             newFd.typed(tfd.tps ++ tFinalExtra),
             args ++ extraArgs
-          ))
+          ).copiedFrom(fi))
         case _ => None
       }(f.fullBody)
     }
