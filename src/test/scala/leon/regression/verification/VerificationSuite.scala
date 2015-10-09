@@ -61,8 +61,13 @@ trait VerificationSuite extends LeonRegressionSuite {
 
         ts(f"$index%3d: $displayName ${options.mkString(" ")}", Seq()) {
           val ctx = createLeonContext(options: _*)
-          val (ctx2, report) = analysis.run(ctx, p)
-          block(Output(report, ctx2.reporter))
+          try {
+            val (ctx2, report) = analysis.run(ctx, p)
+            block(Output(report, ctx2.reporter))
+          } catch {
+            case fe: LeonFatalError =>
+              fail(ctx, "Verification failed", fe)
+          }
         }
       }
     } catch {

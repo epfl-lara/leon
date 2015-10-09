@@ -33,7 +33,7 @@ trait LeonRegressionSuite extends FunSuite with Timeouts {
         body
       } catch {
         case fe: LeonFatalError =>
-          throw new TestFailedException("", fe, 5)
+          throw new TestFailedException("Uncaught LeonFatalError", fe, 5)
       }
     }
   }
