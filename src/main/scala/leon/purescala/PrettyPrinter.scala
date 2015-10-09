@@ -101,7 +101,9 @@ class PrettyPrinter(opts: PrinterOptions,
             |$body"""
 
       case Ensuring(body, post) =>
-        p"""|$body ensuring {
+        p"""| {
+            |  $body
+            |} ensuring {
             |  $post
             |}"""
 
@@ -190,7 +192,11 @@ class PrettyPrinter(opts: PrinterOptions,
             case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
             case other => true
           }
-          p"($presentArgs)"
+
+          val requireParens = presentArgs.nonEmpty || args.nonEmpty
+          if (requireParens) {
+            p"($presentArgs)"
+          }
         }
 
       case BinaryMethodCall(a, op, b) =>
@@ -207,7 +213,11 @@ class PrettyPrinter(opts: PrinterOptions,
             case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
             case other => true
           }
-          p"($presentArgs)"
+
+          val requireParens = presentArgs.nonEmpty || args.nonEmpty
+          if (requireParens) {
+            p"($presentArgs)"
+          }
         }
 
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
@@ -222,7 +232,10 @@ class PrettyPrinter(opts: PrinterOptions,
             case FunctionInvocation(tfd, _)     if tfd.fd.isSynthetic => false
             case other => true
           }
-          p"($presentArgs)"
+          val requireParens = presentArgs.nonEmpty || args.nonEmpty
+          if (requireParens) {
+            p"($presentArgs)"
+          }
         }
 
       case Application(caller, args) =>
@@ -563,7 +576,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case LetDef(_, bd) => Seq(bd)
     case Require(_, bd) => Seq(bd)
     case IfExpr(_, t, e) => Seq(t, e) // If always has braces anyway
-    case Ensuring(_, pred) => Seq(pred)
+    case Ensuring(bd, pred) => Seq(bd, pred)
     case _ => Seq()
   }
 
@@ -591,7 +604,6 @@ class PrettyPrinter(opts: PrinterOptions,
   protected def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
-    case (me: MatchExpr, Some(_ :Ensuring)) => true
     case (_, Some(_: Ensuring)) => false
     case (_, Some(_: Assert)) => false
     case (_, Some(_: Require)) => false
