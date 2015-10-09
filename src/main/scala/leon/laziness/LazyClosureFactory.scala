@@ -30,13 +30,13 @@ import LazinessUtil._
 //case class ClosureData(tpe: TypeTree, absDef: AbstractClassDef, caseClass: Seq[CaseClassDef])
 
 class LazyClosureFactory(p: Program) {
-  val debug = false  
-  implicit val prog = p            
+  val debug = false
+  implicit val prog = p
   /**
    * Create a mapping from types to the lazyops that may produce a value of that type
    * TODO: relax that requirement that type parameters of return type of a function
    * lazy evaluated should include all of its type parameters
-   */  
+   */
   private val (tpeToADT, opToCaseClass) = {
     // collect all the operations that could be lazily evaluated.
     val lazyops = p.definedFunctions.flatMap {
@@ -88,28 +88,27 @@ class LazyClosureFactory(p: Program) {
     }
     (tpeToADT, opToAdt)
   }
-  
-  // this fixes an ordering on lazy types 
+
+  // this fixes an ordering on lazy types
   lazy val lazyTypeNames = tpeToADT.keys.toSeq
-  
+
   def allClosuresAndParents = tpeToADT.values.flatMap(v => v._2 +: v._3)
-  
+
   def lazyType(tn: String) = tpeToADT(tn)._1
-  
+
   def absClosureType(tn: String) = tpeToADT(tn)._2
-  
+
   def closures(tn: String) = tpeToADT(tn)._3
-  
+
   lazy val caseClassToOp = opToCaseClass map { case (k, v) => v -> k }
-  
-  def lazyopOfClosure(cl: CaseClassDef) = caseClassToOp(cl)   
-  
+
+  def lazyopOfClosure(cl: CaseClassDef) = caseClassToOp(cl)
+
   def closureOfLazyOp(op: FunDef) = opToCaseClass(op)
-  
+
   /**
    * Here, the lazy type name is recovered from the closure's name.
-   * This avoids the use of additional maps. 
+   * This avoids the use of additional maps.
    */
-  def lazyTypeNameOfClosure(cl: CaseClassDef) =  adtNameToTypeName(cl.parent.get.classDef.id.name)  
+  def lazyTypeNameOfClosure(cl: CaseClassDef) =  adtNameToTypeName(cl.parent.get.classDef.id.name)
 }
-

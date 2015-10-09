@@ -461,7 +461,6 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       val cdefs = closureFactory.closures(tname)
       val tparams = evalfd.tparams.map(_.tp)
       val postres = FreshIdentifier("res", evalfd.returnType)
-      // create a match case to switch over the possible class defs and invoke the corresponding functions
       val postMatchCases = cdefs map { cdef =>
         val ctype = CaseClassType(cdef, tparams)
         val binder = FreshIdentifier("t", ctype)
@@ -470,14 +469,19 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
         val op = closureFactory.lazyopOfClosure(cdef)
         val targetFd = funMap(op)
         val rhs = if (targetFd.hasPostcondition) {
+          val Lambda(Seq(resparam), targetPost) = targetFd.postcondition.get
           val args = cdef.fields map { fld => CaseClassSelector(ctype, binder.toVariable, fld.id) }
           val stArgs =
             if (funsNeedStates(op)) // TODO: here we are assuming that only one state is used, fix this.
               Seq(evalfd.params.last.toVariable)
             else Seq()
-          val Lambda(Seq(resarg), targetPost) = targetFd.postcondition.get
+          val resarg =
+            if (funsRetStates(op))
+              postres.toVariable
+            else
+              TupleSelect(postres.toVariable, 1) // here 'targetFd' does not return state, but eval does
           val replaceMap = (targetFd.params.map(_.toVariable) zip (args ++ stArgs)).toMap[Expr, Expr] +
-            (resarg.toVariable -> postres.toVariable)
+            (resparam.toVariable -> resarg)
           replace(replaceMap, targetPost)
         } else
           Util.tru

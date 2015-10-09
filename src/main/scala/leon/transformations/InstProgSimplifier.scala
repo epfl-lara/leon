@@ -25,27 +25,29 @@ object ProgramSimplifier {
 
   def mapProgram(funMap: Map[FunDef, FunDef]): Map[FunDef, FunDef] = {
 
-    def mapExpr(ine: Expr): Expr = {
+    def mapExpr(ine: Expr, fd: FunDef): Expr = {
       val replaced = simplePostTransform((e: Expr) => e match {
         case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
           FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
         case _ => e
       })(ine)
 
+      // Note: simplify only instrumented functions
       // One might want to add the maximum function to the program in the stack
       // and depth instrumentation phases if inlineMax is removed from here
-      val allSimplifications =
-        simplifyTuples _ andThen
-          simplifyMax _ andThen
-          simplifyLetsAndLetsWithTuples _ andThen
-          simplifyAdditionsAndMax _ andThen
-          inlineMax _
-
-      allSimplifications(replaced)
+      if (InstUtil.isInstrumented(fd)) {
+        val allSimplifications =
+          simplifyTuples _ andThen
+            simplifyMax _ andThen
+            simplifyLetsAndLetsWithTuples _ andThen
+            simplifyAdditionsAndMax _ andThen
+            inlineMax _
+        allSimplifications(replaced)
+      } else replaced
     }
 
     for ((from, to) <- funMap) {
-      to.fullBody = mapExpr(from.fullBody)
+      to.fullBody = mapExpr(from.fullBody, from)
       //copy annotations
       from.flags.foreach(to.addFlag(_))
     }

@@ -125,7 +125,7 @@ object LetTupleSimplification {
           (arg1, arg2) match {
             case (_: TupleSelect, _) => error = true
             case (_, _: TupleSelect) => error = true
-            case _ => { ; }
+            case _                   => { ; }
           }
         }
 
@@ -143,7 +143,7 @@ object LetTupleSimplification {
     //Note: this is applicable only to expressions involving depth
     def positiveTermLowerBound(e: Expr): Int = e match {
       case IntLiteral(v) => v
-      case Plus(l, r) => positiveTermLowerBound(l) + positiveTermLowerBound(r)
+      case Plus(l, r)    => positiveTermLowerBound(l) + positiveTermLowerBound(r)
       case FunctionInvocation(tfd, args) if (tfd.fd == maxFun) => {
         val Seq(arg1, arg2) = args
         val lb1 = positiveTermLowerBound(arg1)
@@ -158,7 +158,7 @@ object LetTupleSimplification {
     //Assuming that every sub-term used in the term is positive
     def subsumedBy(sub: Expr, e: Expr): Boolean = e match {
       case _ if (sub == e) => true
-      case Plus(l, r) => subsumedBy(sub, l) || subsumedBy(sub, r)
+      case Plus(l, r)      => subsumedBy(sub, l) || subsumedBy(sub, r)
       case FunctionInvocation(tfd, args) if (tfd.fd == maxFun) =>
         val Seq(l, r) = args
         subsumedBy(sub, l) || subsumedBy(sub, r)
@@ -180,21 +180,21 @@ object LetTupleSimplification {
           //now, check if all the variables in 'lt' have only positive coefficients
           val allPositive = lt.coeffTemplate.forall(entry => entry match {
             case (k, IntLiteral(v)) if (v >= 0) => true
-            case _ => false
+            case _                              => false
           }) && (lt.constTemplate match {
-            case None => true
+            case None                            => true
             case Some(IntLiteral(v)) if (v >= 0) => true
-            case _ => false
+            case _                               => false
           })
           if (allPositive) arg1
           else {
             val allNegative = lt.coeffTemplate.forall(entry => entry match {
               case (k, IntLiteral(v)) if (v <= 0) => true
-              case _ => false
+              case _                              => false
             }) && (lt.constTemplate match {
-              case None => true
+              case None                            => true
               case Some(IntLiteral(v)) if (v <= 0) => true
-              case _ => false
+              case _                               => false
             })
             if (allNegative) arg2
             else FunctionInvocation(tfd, newargs) //here we cannot do any simplification.
@@ -282,13 +282,6 @@ object LetTupleSimplification {
               // here, there is no let in the value
               Let(binder, nval, pullLetToTop(body))
           }
-        case t: Terminal => t
-        case Operator(Seq(sube), op) =>
-          replaceLetBody(pullLetToTop(sube), e => op(Seq(e)))
-
-        case Operator(Seq(e1, e2), op) =>
-          replaceLetBody(pullLetToTop(e1), te1 =>
-            replaceLetBody(pullLetToTop(e2), te2 => op(Seq(te1, te2))))
 
         //don't pull lets out of if-then-else branches and match cases
         case IfExpr(c, th, elze) =>
@@ -303,6 +296,14 @@ object LetTupleSimplification {
 
         case Operator(Seq(), op) =>
           op(Seq())
+
+        case t: Terminal => t
+        /*case Operator(Seq(sube), op) =>
+          replaceLetBody(pullLetToTop(sube), e => op(Seq(e)))
+
+        case Operator(Seq(e1, e2), op) =>
+          replaceLetBody(pullLetToTop(e1), te1 =>
+            replaceLetBody(pullLetToTop(e2), te2 => op(Seq(te1, te2))))*/
 
         case Operator(subes, op) =>
           // transform all the sub-expressions
@@ -330,7 +331,7 @@ object LetTupleSimplification {
     }
     //val res = pullLetToTop(matchToIfThenElse(ine))
     val res = pullLetToTop(ine)
-    // println("After Pulling lets to top : \n" + ScalaPrinter.apply(res))
+    //println(s"InE : $ine After Pulling lets to top : \n ${ScalaPrinter.apply(res)}")
     res
   }
 
@@ -345,7 +346,7 @@ object LetTupleSimplification {
         case letExpr @ Let(i, e, b) => {
           val occurrences = count {
             case Variable(x) if x == i => 1
-            case _ => 0
+            case _                     => 0
           }(b)
 
           if (occurrences == 0) {
@@ -402,8 +403,8 @@ object LetTupleSimplification {
       makeTree: Makes an AST from the operands
   */
   def simplifyConstantsGeneral(e: Expr, op: (BigInt, BigInt) => BigInt,
-    getLeaves: (Expr, Boolean) => Seq[Expr], identity: BigInt,
-    makeTree: (Expr, Expr) => Expr): Expr = {
+                               getLeaves: (Expr, Boolean) => Seq[Expr], identity: BigInt,
+                               makeTree: (Expr, Expr) => Expr): Expr = {
 
     val allLeaves = getLeaves(e, true)
     // Here the expression is not of the form we are currently simplifying
@@ -412,12 +413,12 @@ object LetTupleSimplification {
       // fold constants here
       val allConstantsOpped = allLeaves.foldLeft(identity)((acc, e) => e match {
         case InfiniteIntegerLiteral(x) => op(acc, x)
-        case _ => acc
+        case _                         => acc
       })
 
       val allNonConstants = allLeaves.filter((e) => e match {
         case _: InfiniteIntegerLiteral => false
-        case _ => true
+        case _                         => true
       })
 
       // Reconstruct the expressin tree with the non-constants and the result of constant evaluation above

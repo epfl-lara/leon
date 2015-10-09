@@ -51,6 +51,8 @@ object Stack extends Instrumentation {
 
 object InstUtil {
 
+  val InstTypes = Seq(Time, Depth, Rec, TPR, Stack)
+
   val maxFun = {
     val xid = FreshIdentifier("x", IntegerType)
     val yid = FreshIdentifier("y", IntegerType)
@@ -99,6 +101,11 @@ object InstUtil {
 
   def isInstrumented(fd: FunDef, instType: Instrumentation) = {
     fd.id.name.split("-").contains(instType.toString)
+  }
+
+  def isInstrumented(fd: FunDef) = {
+    val comps = fd.id.name.split("-")
+    InstTypes.exists { x => comps.contains(x.toString) }
   }
 
   def resultExprForInstVariable(fd: FunDef, instType: Instrumentation) = {

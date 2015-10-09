@@ -185,4 +185,3 @@ object TypeChecker {
     rec(ine)._2
   }
 }
-

@@ -4,7 +4,7 @@ import leon.annotation._
 import leon.instrumentation._
 //import leon.invariant._
 
-object Sorting {
+object SortingnConcat {
 
   // TODO: making this parametric will break many things. Fix them
   sealed abstract class LList {
@@ -51,12 +51,15 @@ object Sorting {
     }
   } ensuring (res => res.size == l.size && time <= 15 * l.size + 20)
 
-  /* This is also an interesting benchmark.
-   * as it uses laziness internally that is
-   * not visible outside
-   *
-   * def secondMin(l: List) : BigInt = {
-    sort(l) match {
+  def concat(l1: List, l2: LList) : LList = {
+    l1 match {
+      case Cons(x, xs) => SCons(x, $(concat(xs, l2)))
+      case Nil() => SNil()
+    }
+  } ensuring(res => time <= 15)
+
+  def secondMin(l: $[LList]) : BigInt = {
+    l.value match {
       case SCons(x, xs) =>
         xs.value match {
           case SCons(y, ys) => y
@@ -64,18 +67,16 @@ object Sorting {
         }
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= 30 * l.size + 40)*/
+  } ensuring (_ => time <= 30 * ssize(l) + 40)
 
-  // cannot prove this due to nonlinearity
-  def kthMin(l: $[LList], k: BigInt): BigInt = {
+  /*def kthMin(l: $[LList], k: BigInt): BigInt = {
     require(k >= 1)
     l.value match {
       case SCons(x, xs) =>
         if (k == 1) x
         else
           kthMin(xs, k - 1)
-      case SNil() => BigInt(0)
+      case SNil() => BigInt(0) // None[BigInt]
     }
-  } ensuring (_ => time <= 20 * k * ssize(l) + 40*ssize(l) + 40 * k)
-
+  } ensuring (_ => time <= 15 * k * ssize(l) + 20 * k + 20)*/
 }
