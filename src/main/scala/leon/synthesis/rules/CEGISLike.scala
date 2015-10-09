@@ -349,7 +349,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         replaceFunDefs(program0){
           case fd if fd == hctx.ci.fd =>
-            val nfd = fd.duplicate
+            val nfd = fd.duplicate()
 
             nfd.fullBody = postMap {
               case src if src eq hctx.ci.source =>
@@ -366,7 +366,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             None
 
           case fd =>
-            Some(fd.duplicate)
+            Some(fd.duplicate())
         }
 
       }

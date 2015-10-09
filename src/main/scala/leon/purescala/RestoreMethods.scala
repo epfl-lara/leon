@@ -4,7 +4,6 @@ package leon
 package purescala
 
 import Definitions._
-import Common._
 import Expressions._
 import ExprOps.replaceFromIDs
 import DefOps.replaceFunDefs
@@ -23,14 +22,10 @@ object RestoreMethods extends TransformationPhase {
     }
 
     val fdToMd = for( (cd, fds) <- classMethods; fd <- fds) yield {
-      val md = new FunDef(
-        id = FreshIdentifier(fd.id.name),
+      val md = fd.duplicate(
         tparams = fd.tparams.drop(cd.tparams.size),
-        params = fd.params.tail, // drop 'this'
-        returnType = fd.returnType
-      ).copiedFrom(fd)
-
-      md.copyContentFrom(fd)
+        params = fd.params.tail // drop 'this'
+      )
 
       val thisArg  = fd.params.head
       val thisExpr = This(thisArg.getType.asInstanceOf[ClassType])

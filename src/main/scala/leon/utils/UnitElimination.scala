@@ -10,6 +10,7 @@ import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Types._
 
+// FIXME: Unused and untested
 object UnitElimination extends TransformationPhase {
 
   val name = "Unit Elimination"
@@ -26,13 +27,9 @@ object UnitElimination extends TransformationPhase {
         //first introduce new signatures without Unit parameters
         allFuns.foreach(fd => {
           if(fd.returnType != UnitType && fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = new FunDef(
-              FreshIdentifier(fd.id.name),
-              fd.tparams,
-              fd.returnType,
-              fd.params.filterNot(vd => vd.getType == UnitType)
-            ).setPos(fd)
-            freshFunDef.copyContentFrom(fd)
+            val freshFunDef = fd.duplicate(
+              params = fd.params.filterNot(vd => vd.getType == UnitType)
+            )
             fun2FreshFun += (fd -> freshFunDef)
           } else {
             fun2FreshFun += (fd -> fd) //this will make the next step simpler
@@ -103,13 +100,9 @@ object UnitElimination extends TransformationPhase {
           removeUnit(b)
         else {
           val (newFd, rest) = if(fd.params.exists(vd => vd.getType == UnitType)) {
-            val freshFunDef = new FunDef(
-              FreshIdentifier(fd.id.name),
-              fd.tparams,
-              fd.returnType,
-              fd.params.filterNot(vd => vd.getType == UnitType)
-            ).setPos(fd)
-            freshFunDef.copyContentFrom(fd)
+            val freshFunDef = fd.duplicate(
+              params = fd.params.filterNot(vd => vd.getType == UnitType)
+            )
             fun2FreshFun += (fd -> freshFunDef)
             freshFunDef.fullBody = removeUnit(fd.fullBody)
             val restRec = removeUnit(b)

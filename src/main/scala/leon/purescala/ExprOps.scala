@@ -1822,7 +1822,7 @@ object ExprOps {
               )))
           }
 
-          val newFd = fdOuter.duplicate
+          val newFd = fdOuter.duplicate()
 
           val simp = Simplifiers.bestEffort(ctx, p) _
 
@@ -2022,7 +2022,7 @@ object ExprOps {
     import synthesis.Witnesses.Terminating
     val res1 = preMap({
       case LetDef(fd, b) =>
-        val nfd = fd.duplicate
+        val nfd = fd.duplicate()
 
         fds += fd -> nfd
 

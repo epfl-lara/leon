@@ -48,9 +48,7 @@ object AdaptationPhase extends TransformationPhase {
           val diff: List[TypeParameter] = (expected -- actual).toList
           context.reporter.debug(s"Rewriting function definition ${fd.qualifiedName(program)}: adding dummies for hidden type parameter(s) ${diff.map(_.id).mkString(" and ")}")
           val nid = FreshIdentifier(fd.id.name, FunctionType(fd.params.map(_.getType) ++ diff.map(mkDummyTyp), fd.returnType))
-          val nfd = new FunDef(nid, fd.tparams, fd.returnType, fd.params ++ diff.map(mkDummyParameter))
-          nfd.copyContentFrom(fd)
-          nfd.setPos(fd.getPos)
+          val nfd = fd.duplicate(id = nid, params = fd.params ++ diff.map(mkDummyParameter))
           Some(fd -> ((nfd, diff)))
         }
       }.toMap

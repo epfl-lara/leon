@@ -117,8 +117,7 @@ object MethodLifting extends TransformationPhase {
       val paramsMap = fd.params.zip(fdParams).map{ case (from, to) => from.id -> to.id }.toMap
       val eSubst: Expr => Expr = instantiateType(_, tMap, paramsMap)
 
-      val newFd = new FunDef(fd.id, fd.tparams, tSubst(fd.returnType), fdParams).copiedFrom(fd)
-      newFd.copyContentFrom(fd)
+      val newFd = fd.duplicate(fd.id, fd.tparams, tSubst(fd.returnType), fdParams) // FIXME: I don't like reusing the Identifier
 
       mdToCls += newFd -> c
 
@@ -146,9 +145,7 @@ object MethodLifting extends TransformationPhase {
 
         val receiver = FreshIdentifier("thiss", recType).setPos(cd.id)
 
-        val nfd = new FunDef(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams)
-        nfd.copyContentFrom(fd)
-        nfd.setPos(fd)
+        val nfd = fd.duplicate(id, ctParams ++ fd.tparams, retType, ValDef(receiver) +: fdParams)
         nfd.addFlag(IsMethod(cd))
 
         def classPre(fd: FunDef) = mdToCls.get(fd) match {

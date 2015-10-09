@@ -108,7 +108,7 @@ class Synthesizer(val context : LeonContext,
 
     val (npr, fdMap) = replaceFunDefs(program)({
       case fd if fd eq ci.fd =>
-        val nfd = fd.duplicate
+        val nfd = fd.duplicate()
         nfd.fullBody = replace(Map(ci.source -> solutionExpr), nfd.fullBody)
         Some(nfd)
       case _ => None

@@ -3,6 +3,7 @@
 package leon
 package purescala
 
+import sun.reflect.generics.tree.ReturnType
 import utils.Library
 import Common._
 import Expressions._
@@ -410,15 +411,16 @@ object Definitions {
 
     /* Duplication */
     
-    def duplicate: FunDef = {
-      val fd = new FunDef(id.freshen, tparams, returnType, params)
-      fd.copyContentFrom(this)
+    def duplicate(
+      id: Identifier                  = this.id.freshen,
+      tparams: Seq[TypeParameterDef]  = this.tparams,
+      returnType: TypeTree            = this.returnType,
+      params: Seq[ValDef]             = this.params
+    ): FunDef = {
+      val fd = new FunDef(id, tparams, returnType, params)
+      fd.fullBody = this.fullBody
+      fd.addFlags(this.flags)
       fd.copiedFrom(this)
-    }
-    
-    def copyContentFrom(from : FunDef) {
-      this.fullBody  = from.fullBody 
-      this.addFlags(from.flags)
     }
 
     /* Flags */
