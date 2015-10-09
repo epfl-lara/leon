@@ -5,12 +5,15 @@ package leon.regression.verification
 import leon._
 import leon.test._
 
-import leon.verification.VerificationReport
+import leon.utils.UniqueCounter
+import leon.verification.{AnalysisPhase, VerificationReport}
 import leon.purescala.Definitions.Program
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
+import leon.solvers.isabelle.AdaptationPhase
+import leon.xlang.FixReportLabels
 
-import org.scalatest.{Reporter => TestReporter, _}
+import org.scalatest.{Reporter => _, _}
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
 // This is because we compile all tests from each folder separately.
@@ -20,28 +23,28 @@ trait VerificationSuite extends LeonRegressionSuite {
   val testDir: String
 
   val ignored: Seq[String] = Seq()
+  val desugarXLang: Boolean = false
+  val isabelle: Boolean = false
 
-  private var counter: Int = 0
-  private def nextInt(): Int = {
-    counter += 1
-    counter
-  }
+  private val counter = new UniqueCounter[Unit]
+  counter.nextGlobal // Start with 1
 
-  private[verification] case class Output(report: VerificationReport, reporter: Reporter)
- 
-  val pipeFront: Pipeline[Program, Program]
-  val pipeBack : Pipeline[Program, VerificationReport]
+  private case class Output(report: VerificationReport, reporter: Reporter)
 
-  private def mkTest(files: List[String], cat: String, forError: Boolean)(block: Output => Unit) = {
+  private def mkTest(files: List[String], cat: String)(block: Output => Unit) = {
     val extraction =
       ExtractionPhase andThen
-      new PreprocessingPhase andThen // Warning: If XLang at some point inherits this, we need to fix this line
-      pipeFront
+      new PreprocessingPhase(desugarXLang)
+
+    val analysis =
+      (if (isabelle) AdaptationPhase else NoopPhase[Program]) andThen
+      AnalysisPhase andThen
+      (if (desugarXLang) FixReportLabels else NoopPhase[VerificationReport])
 
     val ctx = createLeonContext(files:_*)
 
     try {
-      val (ctx2, ast) = extraction.run(ctx, files)
+      val (_, ast) = extraction.run(ctx, files)
       val programs = {
         val (user, lib) = ast.units partition { _.isMainUnit }
         user map ( u => Program(u :: lib) )
@@ -50,7 +53,7 @@ trait VerificationSuite extends LeonRegressionSuite {
 
         val displayName = s"$cat/${p.units.head.id.name}.scala"
 
-        val index = nextInt()
+        val index = counter.nextGlobal
         val ts = if (ignored exists (_.endsWith(displayName)))
           ignore _
         else
@@ -58,15 +61,8 @@ trait VerificationSuite extends LeonRegressionSuite {
 
         ts(f"$index%3d: $displayName ${options.mkString(" ")}", Seq()) {
           val ctx = createLeonContext(options: _*)
-          if (forError) {
-            intercept[LeonFatalError] {
-              pipeBack.run(ctx, p)
-            }
-          }
-          else {
-            val (ctx2, report) = pipeBack.run(ctx, p)
-            block(Output(report, ctx2.reporter))
-          }
+          val (ctx2, report) = analysis.run(ctx, p)
+          block(Output(report, ctx2.reporter))
         }
       }
     } catch {
@@ -83,7 +79,7 @@ trait VerificationSuite extends LeonRegressionSuite {
     }
   }
 
-  private[verification] def forEachFileIn(cat: String, forError: Boolean)(block: Output => Unit) {
+  private[verification] def forEachFileIn(cat: String)(block: Output => Unit) {
     val fs = filesInResourceDir(testDir + cat, _.endsWith(".scala")).toList
 
     fs foreach { file => 
@@ -93,11 +89,11 @@ trait VerificationSuite extends LeonRegressionSuite {
 
     val files = fs map { _.getPath }
 
-    mkTest(files, cat, forError)(block)
+    mkTest(files, cat)(block)
   }
 
   override def run(testName: Option[String], args: Args): Status = {
-    forEachFileIn("valid", false) { output =>
+    forEachFileIn("valid") { output =>
       val Output(report, reporter) = output
       for ((vc, vr) <- report.vrs if vr.isInvalid) {
         fail(s"The following verification condition was invalid: $vc @${vc.getPos}")
@@ -108,7 +104,7 @@ trait VerificationSuite extends LeonRegressionSuite {
       reporter.terminateIfError()
     }
 
-    forEachFileIn("invalid", false) { output =>
+    forEachFileIn("invalid") { output =>
       val Output(report, _) = output
       assert(report.totalUnknown === 0,
         "There should not be unknown verification conditions.")
@@ -116,18 +112,16 @@ trait VerificationSuite extends LeonRegressionSuite {
         "There should be at least one invalid verification condition.")
     }
 
-    forEachFileIn("unknown", false) { output =>
+    forEachFileIn("unknown") { output =>
       val Output(report, reporter) = output
       for ((vc, vr) <- report.vrs if vr.isInvalid) {
         fail(s"The following verification condition was invalid: $vc @${vc.getPos}")
       }
       assert(report.totalUnknown > 0,
-        "There should be at least one unknown verification conditions.")
+        "There should be at least one unknown verification condition.")
 
       reporter.terminateIfError()
     }
-
-    forEachFileIn("error", true) { _ => () }
 
     super.run(testName, args)
   }

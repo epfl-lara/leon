@@ -3,9 +3,6 @@
 package leon.regression
 package verification
 
-import leon._
-import leon.verification.AnalysisPhase
-
 import _root_.smtlib.interpreters._
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
@@ -13,8 +10,6 @@ import _root_.smtlib.interpreters._
 class PureScalaVerificationSuite extends VerificationSuite {
   
   val testDir = "regression/verification/purescala/"
-  val pipeFront = xlang.NoXLangFeaturesChecking
-  val pipeBack = AnalysisPhase
 
   val optionVariants: List[List[String]] = {
     val isZ3Available = try {
