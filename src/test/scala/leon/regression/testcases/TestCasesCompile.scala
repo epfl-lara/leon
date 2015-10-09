@@ -39,8 +39,8 @@ class TestCasesCompile extends LeonRegressionSuite {
       try {
         pipeline.run(ctx, List(f.getAbsolutePath))
       } catch {
-        case _: LeonFatalError =>
-          fail(" Failed to compile "+name)
+        case fe: LeonFatalError =>
+          fail(ctx, s"Failed to compile $name", fe)
       }
     }
   }

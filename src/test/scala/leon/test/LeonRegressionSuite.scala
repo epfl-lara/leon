@@ -39,7 +39,7 @@ trait LeonRegressionSuite extends FunSuite with Timeouts {
   }
 
   protected val all : String=>Boolean = (s : String) => true
-  
+
   def scanFilesIn(f: File, filter: String=>Boolean = all, recursive: Boolean = false): Iterable[File] = {
     Option(f.listFiles()).getOrElse(Array()).flatMap{f =>
       if (f.isDirectory && recursive) {
@@ -55,5 +55,22 @@ trait LeonRegressionSuite extends FunSuite with Timeouts {
     val baseDir = new File(s"${Build.baseDirectory}/$regressionTestDirectory/$dir")
 
     scanFilesIn(baseDir, filter, recursive)
+  }
+
+  protected def fail(ctx: LeonContext, reason: String, fe: LeonFatalError): Nothing = {
+    val omsg = ctx.reporter match {
+      case sr: TestSilentReporter =>
+        sr.lastErrors ++= fe.msg
+        Some((sr.lastErrors ++ fe.msg).mkString("\n"))
+      case _ =>
+        fe.msg
+    }
+
+    val fullError = omsg match {
+      case Some(msg) => s"$reason:\n$msg"
+      case None => s"$reason"
+    }
+
+    throw new TestFailedException(fullError, fe, 5)
   }
 }

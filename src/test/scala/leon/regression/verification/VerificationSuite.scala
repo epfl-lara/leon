@@ -66,16 +66,10 @@ trait VerificationSuite extends LeonRegressionSuite {
         }
       }
     } catch {
-      case _: LeonFatalError =>
-        ctx.reporter match {
-          case sr: TestSilentReporter =>
-            println("Unexpected fatal error:")
-            for (e <- sr.lastErrors) {
-              println(" "+e)
-            }
-          case _ =>
+      case fe: LeonFatalError =>
+        test("Compilation") {
+          fail(ctx, "Unexpected fatal error while setting up tests", fe)
         }
-        test("Compilation of test files in " + testDir + cat)(fail("Failed to compile"))
     }
   }
 
