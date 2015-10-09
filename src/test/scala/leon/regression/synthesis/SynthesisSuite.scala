@@ -82,9 +82,9 @@ class SynthesisSuite extends LeonRegressionSuite {
 
   }
 
-  def forProgram(title: String, opts: Seq[LeonOption[Any]] = Nil)(content: String)(strats: PartialFunction[String, SynStrat]) {
+  def forProgram(title: String, opts: Seq[String] = Nil)(content: String)(strats: PartialFunction[String, SynStrat]) {
       test(f"Synthesizing ${nextInt()}%3d: [$title]") {
-        val ctx = testContext.copy(options = opts ++ testContext.options)
+        val ctx = createLeonContext(opts: _*)
 
         val pipeline = leon.utils.TemporaryInputPhase andThen
                        leon.frontends.scalac.ExtractionPhase andThen
@@ -118,7 +118,7 @@ class SynthesisSuite extends LeonRegressionSuite {
       }
   }
 
-  forProgram("Ground Enum", Seq(LeonOption(SharedOptions.optSelectedSolvers)(Set("enum"))))(
+  forProgram("Ground Enum", Seq("--solvers=enum"))(
     """
 import leon.annotation._
 import leon.lang._

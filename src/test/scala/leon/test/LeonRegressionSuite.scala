@@ -6,14 +6,12 @@ import leon._
 import leon.utils._
 
 import org.scalatest._
-import org.scalatest.time.Span
 import org.scalatest.concurrent._
-import org.scalatest.time.SpanSugar._
 import org.scalatest.exceptions.TestFailedException
 
 import java.io.File
 
-trait LeonRegressionSuite extends FunSuite with Timeouts with BeforeAndAfterEach {
+trait LeonRegressionSuite extends FunSuite with Timeouts {
 
   val regressionTestDirectory = "src/test/resources"
 
@@ -23,45 +21,21 @@ trait LeonRegressionSuite extends FunSuite with Timeouts with BeforeAndAfterEach
     Main.processOptions(opts.toList).copy(reporter = reporter, interruptManager = new InterruptManager(reporter))
   }
 
-  var testContext: LeonContext = null
-
-  override def beforeEach() = {
-    testContext = createLeonContext()
-    super.beforeEach()
-  }
-
   def testIdentifier(name: String): String = {
     def sanitize(s: String) = s.replaceAll("[^0-9a-zA-Z-]", "")
 
     sanitize(this.getClass.getName)+"/"+sanitize(name)
   }
 
-  override implicit val defaultInterruptor = new Interruptor {
-    def apply(t: Thread) {
-      testContext.interruptManager.interrupt()
-    }
-  }
-
-  def testWithTimeout(name: String, timeout: Span)(body: => Unit) {
+  override def test(name: String, tags: Tag*)(body: => Unit) {
     super.test(name) {
-      failAfter(timeout) {
-        try {
-          body
-        } catch {
-          case fe: LeonFatalError =>
-            testContext.reporter match {
-              case sr: TestSilentReporter =>
-                sr.lastErrors ++= fe.msg
-                throw new TestFailedException(sr.lastErrors.mkString("\n"), fe, 5)
-            }
-        }
+      try {
+        body
+      } catch {
+        case fe: LeonFatalError =>
+          throw new TestFailedException("", fe, 5)
       }
     }
-  }
-
-
-  override def test(name: String, tags: Tag*)(body: => Unit) {
-    testWithTimeout(name, 5.minutes)(body)
   }
 
   protected val all : String=>Boolean = (s : String) => true

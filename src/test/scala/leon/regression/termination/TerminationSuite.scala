@@ -22,7 +22,7 @@ class TerminationSuite extends LeonRegressionSuite {
     new leon.utils.PreprocessingPhase     andThen
     leon.termination.TerminationPhase
 
-  private def mkTest(file : File, leonOptions: Seq[LeonOption[Any]], forError: Boolean)(block: Output=>Unit) = {
+  private def mkTest(file : File, leonOptions: Seq[String], forError: Boolean)(block: Output=>Unit) = {
     val fullName = file.getPath
     val start = fullName.indexOf("regression")
 
@@ -38,7 +38,7 @@ class TerminationSuite extends LeonRegressionSuite {
       "verification/purescala/valid/InductiveQuantification.scala"
     )
 
-    val t = if (ignored.exists(displayName endsWith _)) {
+    val t = if (ignored.exists(displayName.endsWith)) {
       ignore _
     } else {
       test _
@@ -48,10 +48,7 @@ class TerminationSuite extends LeonRegressionSuite {
       assert(file.exists && file.isFile && file.canRead,
              s"Benchmark $displayName is not a readable file")
 
-      val ctx = testContext.copy(
-        options = leonOptions,
-        files = List(file)
-      )
+      val ctx = createLeonContext((leonOptions ++ List(file.getAbsolutePath)): _* )
 
       val pipeline = mkPipeline
 
