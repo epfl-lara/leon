@@ -16,11 +16,6 @@ class PureScalaVerificationSuite extends VerificationSuite {
   val pipeFront = xlang.NoXLangFeaturesChecking
   val pipeBack = AnalysisPhase
 
-  override val ignored = Seq(
-    "verification/purescala/valid/Nested15.scala",
-    "verification/purescala/invalid/Nested15.scala"
-  )
-
   val optionVariants: List[List[String]] = {
     val isZ3Available = try {
       Z3Interpreter.buildDefault.free()
