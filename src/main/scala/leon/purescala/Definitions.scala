@@ -403,7 +403,9 @@ object Definitions {
     def directlyNestedFuns = directlyNestedFunDefs(fullBody)
     def subDefinitions = params ++ tparams ++ directlyNestedFuns.toList
 
-    /* Duplication */
+    /** Duplication of this [[FunDef]].
+      * @note This will not replace recursive function calls
+      */
     def duplicate(
       id: Identifier = this.id.freshen,
       tparams: Seq[TypeParameterDef] = this.tparams,
