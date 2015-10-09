@@ -163,9 +163,6 @@ class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends Leo
   }
 
   def leonToScalac(e: Expr): AnyRef = e match {
-    case eo: ExternalObject =>
-      eo
-
     case CharLiteral(v) =>
       new java.lang.Character(v)
 
@@ -274,7 +271,7 @@ class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends Leo
 
       FiniteMap(s.iterator.map {
         case (k, v) => scalacToLeon(k, ktpe) -> scalacToLeon(v, vtpe)
-      }.toSeq, ktpe, vtpe)
+      }.toMap, ktpe, vtpe)
 
     case FunctionType(_, _) =>
       unsupported("It is not possible to pass a closure from @extern back to leon")
@@ -458,8 +455,6 @@ class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends Leo
     }
   }
 }
-
-case class ExternalObject(o: Any, getType: TypeTree) extends Expr with Terminal
 
 object LeonJVMCallBacks {
   def callBack(token: Int, className: String, methodName: String, args: Array[AnyRef]): AnyRef = {
