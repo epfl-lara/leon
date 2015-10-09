@@ -61,7 +61,7 @@ object ProgramSimplifier {
       case (accMap, fd) => {
         //here we need not augment the return types
         val freshId = FreshIdentifier(fd.id.name, fd.returnType)
-        val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
         accMap.updated(fd, newfd)
       }
     }

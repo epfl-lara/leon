@@ -23,8 +23,7 @@ object MultFuncs {
       val vary = yid.toVariable
       val args = Seq(xid, yid)
       val funcType = FunctionType(Seq(domain, domain), domain)
-      val mfd = new FunDef(FreshIdentifier("pmult", funcType, false), Seq(), domain,
-        args.map((arg) => ValDef(arg, Some(arg.getType))))
+      val mfd = new FunDef(FreshIdentifier("pmult", funcType, false), Seq(), args.map((arg) => ValDef(arg, Some(arg.getType))), domain)
       val tmfd = TypedFunDef(mfd, Seq())
 
       //define a body (a) using mult(x,y) = if(x == 0 || y ==0) 0 else mult(x-1,y) + y
@@ -57,7 +56,7 @@ object MultFuncs {
       val yid = FreshIdentifier("y", domain)
       val args = Seq(xid, yid)
       val funcType = FunctionType(Seq(domain, domain), domain)
-      val fd = new FunDef(FreshIdentifier("mult", funcType, false), Seq(), domain, args.map((arg) => ValDef(arg, Some(arg.getType))))
+      val fd = new FunDef(FreshIdentifier("mult", funcType, false), Seq(), args.map((arg) => ValDef(arg, Some(arg.getType))), domain)
       val tpivMultFun = TypedFunDef(pivMultFun, Seq())
 
       //the body is defined as mult(x,y) = val px = if(x < 0) -x else x;
@@ -101,7 +100,7 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
     //create a fundef for each function in the program
     val newFundefs = program.definedFunctions.map((fd) => {
       val newFunType = FunctionType(fd.tparams.map((currParam) => currParam.tp), fd.returnType)
-      val newfd = new FunDef(FreshIdentifier(fd.id.name, newFunType, false), fd.tparams, fd.returnType, fd.params)
+      val newfd = new FunDef(FreshIdentifier(fd.id.name, newFunType, false), fd.tparams, fd.params, fd.returnType)
       (fd, newfd)
     }).toMap
 

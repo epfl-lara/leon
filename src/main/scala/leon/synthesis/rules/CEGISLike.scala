@@ -283,10 +283,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         // Define all C-def
         for ((c, alts) <- cTree) yield {
-          cToFd += c -> new FunDef(FreshIdentifier(c.asString, alwaysShowUniqueID = true),
-                                   Seq(),
-                                   c.getType,
-                                   p.as.map(id => ValDef(id)))
+          cToFd += c -> new FunDef(FreshIdentifier(c.asString, alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), c.getType)
         }
 
         // Fill C-def bodies
@@ -315,19 +312,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
 
 
-      private val cTreeFd = new FunDef(
-        FreshIdentifier("cTree", alwaysShowUniqueID = true),
-        Seq(),
-        p.outType,
-        p.as.map(id => ValDef(id))
-      )
+      private val cTreeFd = new FunDef(FreshIdentifier("cTree", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), p.outType)
 
-      private val phiFd = new FunDef(
-        FreshIdentifier("phiFd", alwaysShowUniqueID = true),
-        Seq(),
-        BooleanType,
-        p.as.map(id => ValDef(id))
-      )
+      private val phiFd = new FunDef(FreshIdentifier("phiFd", alwaysShowUniqueID = true), Seq(), p.as.map(id => ValDef(id)), BooleanType)
 
 
       private val (innerProgram, origFdMap) = {

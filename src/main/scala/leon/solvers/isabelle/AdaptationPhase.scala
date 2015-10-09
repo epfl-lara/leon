@@ -41,7 +41,7 @@ object AdaptationPhase extends TransformationPhase {
 
       val map = program.definedFunctions.flatMap { fd =>
         val expected = fd.tparams.map(_.tp).toSet
-        val actual = fd.params.map(_.getType).flatMap(TypeOps.typeParamsOf).toSet ++ TypeOps.typeParamsOf(fd.returnType).toSet
+        val actual = fd.params.map(_.getType).flatMap(TypeOps.typeParamsOf).toSet ++ TypeOps.typeParamsOf(fd.returnType)
         if (expected == actual)
           None
         else {

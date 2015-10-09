@@ -176,8 +176,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
     //note: mult functions are also copied
     val newFundefs = program.definedFunctions.collect {
       case fd @ _ => { //if !Util.isMultFunctions(fd)
-        val newfd = new FunDef(FreshIdentifier(fd.id.name, Untyped, false),
-          fd.tparams, fd.returnType, fd.params)
+        val newfd = new FunDef(FreshIdentifier(fd.id.name, Untyped, false), fd.tparams, fd.params, fd.returnType)
         (fd, newfd)
       }
     }.toMap

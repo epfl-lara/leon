@@ -53,7 +53,7 @@ abstract class SygusSolver(val context: LeonContext, val program: Program, val p
 
     // declare outputs
     val xToFd = for (x <- p.xs) yield {
-      val fd = new FunDef(x.freshen, Seq(), x.getType, p.as.map(a => ValDef(a)))
+      val fd = new FunDef(x.freshen, Seq(), p.as.map(a => ValDef(a)), x.getType)
 
       val fsym = id2sym(fd.id)
 

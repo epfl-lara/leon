@@ -22,10 +22,7 @@ object RestoreMethods extends TransformationPhase {
     }
 
     val fdToMd = for( (cd, fds) <- classMethods; fd <- fds) yield {
-      val md = fd.duplicate(
-        tparams = fd.tparams.drop(cd.tparams.size),
-        params = fd.params.tail // drop 'this'
-      )
+      val md = fd.duplicate(tparams = fd.tparams.drop(cd.tparams.size), params = fd.params.tail)
 
       val thisArg  = fd.params.head
       val thisExpr = This(thisArg.getType.asInstanceOf[ClassType])

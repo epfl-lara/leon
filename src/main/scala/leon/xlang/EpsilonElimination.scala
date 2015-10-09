@@ -22,7 +22,7 @@ object EpsilonElimination extends UnitPhase[Program] {
           val freshName = FreshIdentifier("epsilon")
           val bSeq = binders.toSeq
           val freshParams = bSeq.map { _.freshen }
-          val newFunDef = new FunDef(freshName, Nil, tpe, freshParams map (ValDef(_)))
+          val newFunDef = new FunDef(freshName, Nil, freshParams map (ValDef(_)), tpe)
           val epsilonVar = EpsilonVariable(eps.getPos, tpe)
           val resId = FreshIdentifier("res", tpe)
           val eMap: Map[Expr, Expr] = bSeq.zip(freshParams).map {

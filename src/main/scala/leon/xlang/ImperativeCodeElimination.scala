@@ -132,7 +132,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
           val whileFunValDefs = whileFunVars.map(ValDef(_))
           val whileFunReturnType = tupleTypeWrap(whileFunVars.map(_.getType))
-          val whileFunDef = new FunDef(parent.id.freshen, Nil, whileFunReturnType, whileFunValDefs).setPos(wh)
+          val whileFunDef = new FunDef(parent.id.freshen, Nil, whileFunValDefs, whileFunReturnType).setPos(wh)
           whileFunDef.addFlag(IsLoop(parent))
           
           val whileFunCond = condScope(condRes)

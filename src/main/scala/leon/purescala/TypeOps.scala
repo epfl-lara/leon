@@ -314,7 +314,7 @@ object TypeOps {
             }
             val returnType = tpeSub(fd.returnType)
             val params = fd.params map (instantiateType(_, tps))
-            val newFd = fd.duplicate(id, tparams, returnType, params)
+            val newFd = fd.duplicate(id, tparams, params, returnType)
 
             val subCalls = preMap {
               case fi @ FunctionInvocation(tfd, args) if tfd.fd == fd =>

@@ -64,7 +64,7 @@ object FunctionUtils {
     def tmplFunction(paramTypes: Seq[TypeTree]) = {
       val lambdaType = FunctionType(paramTypes, BooleanType)
       val paramid = FreshIdentifier("lamb", lambdaType)
-      new FunDef(FreshIdentifier("tmpl", BooleanType), Seq(), BooleanType, Seq(ValDef(paramid)))
+      new FunDef(FreshIdentifier("tmpl", BooleanType), Seq(), Seq(ValDef(paramid)), BooleanType)
     }
 
     /**

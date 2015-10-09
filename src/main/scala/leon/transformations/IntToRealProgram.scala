@@ -93,8 +93,7 @@ abstract class ProgramTypeTransformer {
     //Unlike functions, classes are created lazily as required.
     newFundefs = program.definedFunctions.map((fd) => {
       val newFunType = FunctionType(fd.tparams.map((currParam) => currParam.tp), fd.returnType)
-      val newfd = new FunDef(FreshIdentifier(fd.id.name, newFunType, true), fd.tparams,
-          mapType(fd.returnType), fd.params.map(mapDecl))
+      val newfd = new FunDef(FreshIdentifier(fd.id.name, newFunType, true), fd.tparams, fd.params.map(mapDecl), mapType(fd.returnType))
       (fd, newfd)
     }).toMap
 

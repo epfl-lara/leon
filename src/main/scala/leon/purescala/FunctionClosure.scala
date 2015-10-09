@@ -118,12 +118,7 @@ object FunctionClosure extends TransformationPhase {
     val freshVals = (inner.paramIds ++ free).map{_.freshen}.map(instantiateType(_, tparamsMap))
     val freeMap   = (inner.paramIds ++ free).zip(freshVals).toMap
 
-    val newFd = inner.duplicate(
-      inner.id.freshen,
-      inner.tparams ++ tpFresh,
-      instantiateType(inner.returnType, tparamsMap),
-      freshVals.map(ValDef(_))
-    )
+    val newFd = inner.duplicate(inner.id.freshen, inner.tparams ++ tpFresh, freshVals.map(ValDef(_)), instantiateType(inner.returnType, tparamsMap))
     newFd.precondition = Some(and(pc, inner.precOrTrue))
 
     val instBody = instantiateType(

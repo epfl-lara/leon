@@ -76,12 +76,12 @@ class SerialInstrumenter(ctx: LeonContext, program: Program) {
           val newRetType = TupleType(fd.returnType +: instTypes(fd))
           // let the names of the function encode the kind of instrumentations performed
           val freshId = FreshIdentifier(fd.id.name + "-" + funcInsts(fd).map(_.name).mkString("-"), newRetType)
-          val newfd = new FunDef(freshId, fd.tparams, newRetType, fd.params)
+          val newfd = new FunDef(freshId, fd.tparams, fd.params, newRetType)
           accMap + (fd -> newfd)
         } else {
           //here we need not augment the return types but do need to create a new copy
           val freshId = FreshIdentifier(fd.id.name, fd.returnType)
-          val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
+          val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
           accMap + (fd -> newfd)
         }
       }

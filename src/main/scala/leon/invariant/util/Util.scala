@@ -114,9 +114,8 @@ object Util {
 
   def createTemplateFun(plainTemp: Expr): FunctionInvocation = {
     val tmpl = Lambda(getTemplateIds(plainTemp).toSeq.map(id => ValDef(id)), plainTemp)
-    val tmplFd = new FunDef(FreshIdentifier("tmpl", FunctionType(Seq(tmpl.getType), BooleanType), false),
-      Seq(), BooleanType, Seq(ValDef(FreshIdentifier("arg", tmpl.getType),
-        Some(tmpl.getType))))
+    val tmplFd = new FunDef(FreshIdentifier("tmpl", FunctionType(Seq(tmpl.getType), BooleanType), false), Seq(), Seq(ValDef(FreshIdentifier("arg", tmpl.getType),
+            Some(tmpl.getType))), BooleanType)
     tmplFd.body = Some(BooleanLiteral(true))
     FunctionInvocation(TypedFunDef(tmplFd, Seq()), Seq(tmpl))
   }
@@ -158,7 +157,7 @@ object Util {
         accMap + (fd -> fd)
       case (accMap, fd) => {
         val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
-        val newfd = new FunDef(freshId, fd.tparams, fd.returnType, fd.params)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
         accMap.updated(fd, newfd)
       }
     }

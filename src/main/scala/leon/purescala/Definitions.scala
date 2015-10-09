@@ -371,18 +371,14 @@ object Definitions {
   class FunDef(
     val id: Identifier,
     val tparams: Seq[TypeParameterDef],
-    val returnType: TypeTree,
-    val params: Seq[ValDef]
+    val params: Seq[ValDef],
+    val returnType: TypeTree
   ) extends Definition {
 
     /* Body manipulation */
     
-    private var fullBody_ : Expr = NoTree(returnType)
-    def fullBody = fullBody_
-    def fullBody_= (e : Expr) {
-      fullBody_ = e
-    }
-
+    var fullBody: Expr = NoTree(returnType)
+    
     def body: Option[Expr] = withoutSpec(fullBody)
     def body_=(b: Option[Expr]) = {
       fullBody = withBody(fullBody, b)
@@ -399,25 +395,22 @@ object Definitions {
       fullBody = withPostcondition(fullBody, op) 
     }
 
-    def hasBody                     = body.isDefined
-    def hasPrecondition : Boolean   = precondition.isDefined
-    def hasPostcondition : Boolean  = postcondition.isDefined
-
-    def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
+    def hasBody          = body.isDefined
+    def hasPrecondition  = precondition.isDefined
+    def hasPostcondition = postcondition.isDefined
     
     /* Nested definitions */
-    def nestedFuns = directlyNestedFunDefs(fullBody)
-    def subDefinitions = params ++ tparams ++ nestedFuns.toList
+    def directlyNestedFuns = directlyNestedFunDefs(fullBody)
+    def subDefinitions = params ++ tparams ++ directlyNestedFuns.toList
 
     /* Duplication */
-    
     def duplicate(
-      id: Identifier                  = this.id.freshen,
-      tparams: Seq[TypeParameterDef]  = this.tparams,
-      returnType: TypeTree            = this.returnType,
-      params: Seq[ValDef]             = this.params
+      id: Identifier = this.id.freshen,
+      tparams: Seq[TypeParameterDef] = this.tparams,
+      params: Seq[ValDef] = this.params,
+      returnType: TypeTree = this.returnType
     ): FunDef = {
-      val fd = new FunDef(id, tparams, returnType, params)
+      val fd = new FunDef(id, tparams, params, returnType)
       fd.fullBody = this.fullBody
       fd.addFlags(this.flags)
       fd.copiedFrom(this)
@@ -437,7 +430,9 @@ object Definitions {
     def flags = _flags
 
     def annotations: Set[String] = extAnnotations.keySet
-    def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
+    def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect {
+      case Annotation(s, args) => s -> args
+    }.toMap
     def canBeLazyField    = flags.contains(IsField(true))  && params.isEmpty && tparams.isEmpty
     def canBeStrictField  = flags.contains(IsField(false)) && params.isEmpty && tparams.isEmpty
     def canBeField        = canBeLazyField || canBeStrictField
@@ -447,19 +442,19 @@ object Definitions {
 
     /* Wrapping in TypedFunDef */
     
-    def typed(tps: Seq[TypeTree]) = {
+    def typed(tps: Seq[TypeTree]): TypedFunDef = {
       assert(tps.size == tparams.size)
       TypedFunDef(this, tps)
     }
 
-    def typed = {
-      TypedFunDef(this, tparams.map(_.tp))
-    }
+    def typed: TypedFunDef = typed(tparams.map(_.tp))
 
-    /* Auxilliary methods */
+    /* Auxiliary methods */
 
-    def qualifiedName(implicit pgm: Program) = DefOps.qualifiedName(this, false)
-    
+    def qualifiedName(implicit pgm: Program) = DefOps.qualifiedName(this, useUniqueIds = false)
+
+    def isRecursive(p: Program) = p.callGraph.transitiveCallees(this) contains this
+
     def paramIds = params map { _.id }
   }
 

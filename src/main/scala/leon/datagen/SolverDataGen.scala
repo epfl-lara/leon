@@ -33,10 +33,7 @@ class SolverDataGen(ctx: LeonContext, pgm: Program, sff: ((LeonContext, Program)
 
             val e = FreshIdentifier("e", actDef)
 
-            val fd: FunDef = new FunDef(FreshIdentifier("sizeOf", Untyped),
-                                        acd.tparams,
-                                        IntegerType,
-                                        Seq(ValDef(e)))
+            val fd: FunDef = new FunDef(FreshIdentifier("sizeOf", Untyped), acd.tparams, Seq(ValDef(e)), IntegerType)
 
             fds += acd -> fd
 

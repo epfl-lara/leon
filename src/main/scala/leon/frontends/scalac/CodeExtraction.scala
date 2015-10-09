@@ -648,7 +648,7 @@ trait CodeExtraction extends ASTExtractors {
 
       val id = cachedWithOverrides(sym, within, idType)
 
-      val fd = new FunDef(id.setPos(sym.pos), tparamsDef, returnType, newParams)
+      val fd = new FunDef(id.setPos(sym.pos), tparamsDef, newParams, returnType)
 
       fd.setPos(sym.pos)
 
@@ -672,7 +672,7 @@ trait CodeExtraction extends ASTExtractors {
       // @mk: We type the identifiers of methods during code extraction because
       // a possible implementing/overriding field will use this same Identifier
       val id = cachedWithOverrides(sym, within, returnType)
-      val fd = new FunDef(id.setPos(sym.pos), Seq(), returnType, Seq())
+      val fd = new FunDef(id.setPos(sym.pos), Seq(), Seq(), returnType)
 
       fd.setPos(sym.pos)
       fd.addFlag(IsField(isLazy))

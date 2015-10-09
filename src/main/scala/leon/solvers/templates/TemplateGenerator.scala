@@ -24,10 +24,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
       return cacheExpr(body)
     }
 
-    val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true),
-                                Nil,
-                                body.getType,
-                                variablesOf(body).toSeq.map(ValDef(_)))
+    val fakeFunDef = new FunDef(FreshIdentifier("fake", alwaysShowUniqueID = true), Nil, variablesOf(body).toSeq.map(ValDef(_)), body.getType)
 
     fakeFunDef.body = Some(body)
 
