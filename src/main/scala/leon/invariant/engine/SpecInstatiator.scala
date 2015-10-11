@@ -140,7 +140,7 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
       }
       //flatten functions
       //TODO: should we freshen locals here ??
-      Some(ExpressionTransformer.normalizeExpr(template, ctx.multOp))
+      Some(ExpressionTransformer.normalizeExpr(matchToIfThenElse(template), ctx.multOp))
     } else None
   }
 

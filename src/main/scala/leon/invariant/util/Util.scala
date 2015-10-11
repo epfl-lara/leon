@@ -608,7 +608,7 @@ object Util {
    * Apply an expression operation on all expressions contained in a FunDef
    */
   def applyOnFunDef(operation: Expr => Expr)(funDef: FunDef): FunDef = {
-    val newFunDef = funDef.duplicate
+    val newFunDef = funDef.duplicate()
     newFunDef.fullBody = operation(funDef.fullBody)
     newFunDef
   }

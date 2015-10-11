@@ -31,7 +31,7 @@ import leon.invariant.datastructure.DisjointSets
 /**
  * This performs a little bit of Hindley-Milner type Inference
  * to correct the local types and also unify type parameters
- * @param placeHolderParameter Expected to returns true iff a type parameter 
+ * @param placeHolderParameter Expected to returns true iff a type parameter
  * 														is meant as a placeholder and cannot be used
  * 														to represent a unified type
  */
@@ -69,7 +69,7 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
   }
 
   val equivTypeParams = typeClasses.toMap
-  
+
   val fdMap = p.definedFunctions.collect {
     case fd if !fd.isLibrary =>
       val (tempTPs, otherTPs) = fd.tparams.map(_.tp).partition {
@@ -98,8 +98,8 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
           (id -> FreshIdentifier(id.name, instf(vd.getType)))
       }.toMap
       val ntparams = tpMap.values.toSeq.distinct.collect { case tp: TypeParameter => tp } map TypeParameterDef
-      val nfd = new FunDef(fd.id.freshen, ntparams, instf(fd.returnType),
-        fd.params.map(vd => ValDef(paramMap(vd.id))))
+      val nfd = new FunDef(fd.id.freshen, ntparams, fd.params.map(vd => ValDef(paramMap(vd.id))),
+          instf(fd.returnType))
       fd -> (nfd, tpMap, paramMap)
   }.toMap
 
@@ -149,4 +149,3 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
     })
   }
 }
-

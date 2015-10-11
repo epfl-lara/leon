@@ -99,7 +99,7 @@ object LazinessEliminationPhase extends TransformationPhase {
                 } else {
                   //construct type parameters for the function
                   val nfun = new FunDef(FreshIdentifier("lazyarg", arg.getType, true),
-                    tparams map TypeParameterDef.apply, arg.getType, freevars.map(ValDef(_)))
+                    tparams map TypeParameterDef.apply, freevars.map(ValDef(_)), arg.getType)
                   nfun.body = Some(arg)
                   newfuns += (argstruc -> (nfun, md))
                   nfun
@@ -109,7 +109,7 @@ object LazinessEliminationPhase extends TransformationPhase {
             case _ => None
           }(fd)
           (fd -> Some(nfd))
-        case fd => fd -> Some(fd.duplicate)
+        case fd => fd -> Some(fd.duplicate())
       }
     }.toMap
     // map  the new functions to themselves
@@ -138,7 +138,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     val functions = Seq() // Seq("--functions=rotate-time")
     val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
     val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3") ++ solverOptions ++ functions)
-    val report = AnalysisPhase.run(ctx)(prog)
+    val report = AnalysisPhase.apply(ctx, prog)
     println(report.summaryString)
     /*val timeout = 10
     val rep = ctx.reporter

@@ -69,10 +69,10 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
             nretType
         // the type parameters will be unified later
         new FunDef(FreshIdentifier(fd.id.name, Untyped),
-          fd.tparams ++ newTParams, retTypeWithState, nparams ++ stParams)
+          fd.tparams ++ newTParams, nparams ++ stParams, retTypeWithState)
         // body of these functions are defined later
       } else {
-        new FunDef(FreshIdentifier(fd.id.name, Untyped), fd.tparams, nretType, nparams)
+        new FunDef(FreshIdentifier(fd.id.name, Untyped), fd.tparams, nparams, nretType)
       }
       // copy annotations
       fd.flags.foreach(nfd.addFlag(_))
@@ -86,7 +86,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
   lazy val uninterpretedTargets = funMap.map {
     case (k, v) =>
       val ufd = new FunDef(FreshIdentifier(v.id.name, v.id.getType, true),
-        v.tparams, v.returnType, v.params)
+        v.tparams, v.params, v.returnType)
       (k -> ufd)
   }.toMap
 
@@ -135,7 +135,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
 
     // create a eval function
     val dfun = new FunDef(FreshIdentifier(evalFunctionName(absdef.id.name), Untyped),
-      tparamDefs, retType, Seq(ValDef(param1), ValDef(param2)))
+      tparamDefs, Seq(ValDef(param1), ValDef(param2)), retType)
 
     // assign body of the eval fucntion
     // create a match case to switch over the possible class defs and invoke the corresponding functions
@@ -159,6 +159,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
           // do not make all targets uninterpreted
           uninterpretedTargets(op)
         } else funMap(op)
+      //println(s"invoking function $targetFun with args $args")
       val invoke = FunctionInvocation(TypedFunDef(targetFun, tparams), args ++ stArgs) // we assume that the type parameters of lazy ops are same as absdefs
       val invPart = if (funsRetStates(op)) {
         TupleSelect(invoke, 1) // we are only interested in the value
@@ -180,7 +181,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       val tpe = closureFactory.lazyType(tname)
       val param1 = evalfd.params.head
       val fun = new FunDef(FreshIdentifier(evalfd.id.name + "*", Untyped),
-        evalfd.tparams, tpe, Seq(param1))
+        evalfd.tparams, Seq(param1), tpe)
       val invoke = FunctionInvocation(TypedFunDef(evalfd, evalfd.tparams.map(_.tp)),
         Seq(param1.id.toVariable, FiniteSet(Set(),
           getStateType(tname, getTypeParameters(tpe)).base)))
@@ -200,8 +201,8 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
     val stType = SetType(param1Type)
     val param2 = FreshIdentifier("st@", stType)
     val tparamDefs = adt.tparams
-    val fun = new FunDef(FreshIdentifier(closureConsName(tname)), adt.tparams, param1Type,
-      Seq(ValDef(param1), ValDef(param2)))
+    val fun = new FunDef(FreshIdentifier(closureConsName(tname)), adt.tparams,
+      Seq(ValDef(param1), ValDef(param2)), param1Type)
     fun.body = Some(param1.toVariable)
     val resid = FreshIdentifier("res", param1Type)
     val postbody = Not(ElementOfSet(resid.toVariable, param2.toVariable))

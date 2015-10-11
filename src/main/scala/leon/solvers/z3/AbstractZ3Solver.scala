@@ -224,7 +224,6 @@ trait AbstractZ3Solver extends Solver {
         declareStructuralSort(tpe)
       }
 
-
     case tt @ SetType(base) =>
       sorts.cachedB(tt) {
         z3.mkSetSort(typeToSort(base))
@@ -533,7 +532,6 @@ trait AbstractZ3Solver extends Solver {
         elems.foldLeft(rec(m1)) { case (m, (k,v)) =>
           z3.mkStore(m, rec(k), rec(CaseClass(library.someType(t), Seq(v))))
         }
-
 
       case gv @ GenericValue(tp, id) =>
         z3.mkApp(genericValueToDecl(gv))

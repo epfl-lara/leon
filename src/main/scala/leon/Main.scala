@@ -159,7 +159,6 @@ object Main {
     import invariant.engine.InferInvariantsPhase
     import transformations._
 
-
     val helpF        = ctx.findOptionOrDefault(optHelp)
     val noopF        = ctx.findOptionOrDefault(optNoop)
     val synthesisF   = ctx.findOptionOrDefault(optSynthesis)
@@ -196,7 +195,7 @@ object Main {
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
-        else analysis
+        else InstrumentationPhase andThen analysis
       }
 
       pipeBegin andThen

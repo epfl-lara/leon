@@ -48,8 +48,8 @@ object LazinessUtil {
       try {
         val out = new BufferedWriter(new FileWriter(outputFile))
         // remove '@' from the end of the identifier names
-        val pat = new Regex("""(\S+)(@)""", "base", "suffix")
-        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p), m => m.group("base"))
+        val pat = new Regex("""(\w+)([@*]+)(\w*)""", "base", "AtorStar", "rest")
+        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p), m => m.group("base") + m.group("rest"))
         out.write(pgmText)
         out.close()
       } catch {

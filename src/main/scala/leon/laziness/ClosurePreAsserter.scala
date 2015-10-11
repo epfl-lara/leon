@@ -56,7 +56,7 @@ class ClosurePreAsserter(p: Program) {
           val lemmaid = FreshIdentifier(ccd.id.name + fd.id.name + "Lem", Untyped, true)
           val params = variablesOf(vc).toSeq.map(v => ValDef(v))
           val tparams = params.flatMap(p => getTypeParameters(p.getType)).distinct map TypeParameterDef
-          val lemmafd = new FunDef(lemmaid, tparams, BooleanType, params)
+          val lemmafd = new FunDef(lemmaid, tparams, params, BooleanType)
           // reset the types of locals
           val initGamma = params.map(vd => vd.id -> vd.getType).toMap
           lemmafd.body = Some(TypeChecker.inferTypesOfLocals(vc, initGamma))
@@ -75,4 +75,3 @@ class ClosurePreAsserter(p: Program) {
     else p
   }
 }
-
