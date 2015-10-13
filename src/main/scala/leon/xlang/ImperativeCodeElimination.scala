@@ -10,6 +10,7 @@ import leon.purescala.Extractors._
 import leon.purescala.Constructors._
 import leon.purescala.ExprOps._
 import leon.purescala.TypeOps._
+import leon.purescala.Types._
 import leon.xlang.Expressions._
 
 object ImperativeCodeElimination extends UnitPhase[Program] {
@@ -22,13 +23,22 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       fd <- pgm.definedFunctions
       body <- fd.body
     } {
-      val (res, scope, _) = toFunction(body)(State(fd, Set()))
+      val (res, scope, _) = toFunction(body)(State(fd, Set(), Map()))
       fd.body = Some(scope(res))
     }
   }
 
-  case class State(parent: FunDef, varsInScope: Set[Identifier]) {
+  /* varsInScope refers to variable declared in the same level scope.
+     Typically, when entering a nested function body, the scope should be
+     reset to empty */
+  private case class State(
+    parent: FunDef, 
+    varsInScope: Set[Identifier],
+    funDefsMapping: Map[FunDef, (FunDef, List[Identifier])]
+  ) {
     def withVar(i: Identifier) = copy(varsInScope = varsInScope + i)
+    def withFunDef(fd: FunDef, nfd: FunDef, ids: List[Identifier]) = 
+      copy(funDefsMapping = funDefsMapping + (fd -> (nfd, ids)))
   }
 
   //return a "scope" consisting of purely functional code that defines potentially needed 
@@ -218,14 +228,72 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           bindFun ++ bodyFun
         )
 
-      case LetDef(fd, b) =>
-        //Recall that here the nested function should not access mutable variables from an outside scope
-        fd.body.foreach { bd =>
-          val (fdRes, fdScope, _) = toFunction(bd)
-          fd.body = Some(fdScope(fdRes))
+      //a function invocation can update variables in scope.
+      case FunctionInvocation(tfd, args) =>
+        val fd = tfd.fd
+        state.funDefsMapping.get(fd) match { 
+          case Some((newFd, modifiedVars)) => {
+            val newInvoc = FunctionInvocation(newFd.typed, args ++ modifiedVars.map(id => id.toVariable))
+            val freshNames = modifiedVars.map(id => id.freshen)
+            val tmpTuple = FreshIdentifier("t", newFd.returnType)
+
+            val scope = (body: Expr) => {
+              Let(tmpTuple, newInvoc,
+                freshNames.zipWithIndex.foldRight(body)((p, b) =>
+                  Let(p._1, TupleSelect(tmpTuple.toVariable, p._2 + 2), b))
+              )
+            }
+            val newMap = modifiedVars.zip(freshNames).toMap
+
+            (TupleSelect(tmpTuple.toVariable, 1), scope, newMap)
+          }
+          case None => (FunctionInvocation(tfd, args), x => x, Map())
         }
-        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+        
+
+      case LetDef(fd, b) =>
+        fd.body match {
+          case Some(bd) => {
+            val modifiedVars: List[Identifier] = variablesOf(bd).intersect(state.varsInScope).toList
+            val freshNames: List[Identifier] = modifiedVars.map(id => id.freshen)
+
+            val newParams: Seq[ValDef] = fd.params ++ freshNames.map(n => ValDef(n))
+            val freshVarDecls: List[Identifier] = freshNames.map(id => id.freshen)
+
+            val rewritingMap: Map[Identifier, Identifier] =
+              modifiedVars.zip(freshVarDecls).toMap
+            val freshBody =
+              preMap({
+                case Assignment(v, e) => rewritingMap.get(v).map(nv => Assignment(nv, e))
+                case Variable(id) => rewritingMap.get(id).map(nid => Variable(nid))
+                case _ => None
+              })(bd)
+            val wrappedBody = freshNames.zip(freshVarDecls).foldLeft(freshBody)((body, p) => {
+              LetVar(p._2, Variable(p._1), body)
+            })
+
+            val newReturnType = TupleType(fd.returnType :: modifiedVars.map(_.getType))
+
+            val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType)
+
+            val (fdRes, fdScope, fdFun) = 
+              toFunction(wrappedBody)(
+                State(state.parent, Set(), 
+                      state.funDefsMapping + (fd -> ((newFd, freshVarDecls))))
+              )
+            val newRes = Tuple(fdRes :: freshVarDecls.map(vd => fdFun(vd).toVariable))
+            val newBody = fdScope(newRes)
+
+            newFd.body = Some(newBody)
+
+            val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
+            (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+          }
+          case None => {
+            val (bodyRes, bodyScope, bodyFun) = toFunction(b)
+            (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+          }
+        }
 
       case c @ Choose(b) =>
         //Recall that Choose cannot mutate variables from the scope
