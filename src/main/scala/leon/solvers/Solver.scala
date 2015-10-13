@@ -87,7 +87,8 @@ trait Solver extends Interruptible {
 
   implicit lazy val leonContext = context
 
-  def dbg(msg: => Any) = context.reporter.debug(msg)
+  // This is ugly, but helpful for smtlib solvers
+  def dbg(msg: => Any) {}
 
   def assertCnstr(expression: Expr): Unit
   def assertVC(vc: VC) = {
