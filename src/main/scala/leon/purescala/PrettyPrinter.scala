@@ -121,13 +121,13 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case h @ Hole(tpe, es) =>
         if (es.isEmpty) {
-          p"""|???[$tpe]"""
+          p"???[$tpe]"
         } else {
-          p"""|?($es)"""
+          p"?($es)"
         }
 
       case Forall(args, e) =>
-        p"""\u2200${typed(args.map(_.id))}. $e"""
+        p"\u2200${typed(args.map(_.id))}. $e"
 
       case e @ CaseClass(cct, args) =>
         opgm.flatMap { pgm => isListLiteral(e)(pgm) } match {
@@ -153,7 +153,7 @@ class PrettyPrinter(opts: PrinterOptions,
         }
 
       case And(exprs)           => optP { p"${nary(exprs, " && ")}" }
-      case Or(exprs)            => optP { p"${nary(exprs, " || ")}" }
+      case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" } // Ugliness award! The first | is there to shield from stripMargin()
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
       case UMinus(expr)         => p"-$expr"
@@ -279,8 +279,8 @@ class PrettyPrinter(opts: PrinterOptions,
       case MapUnion(l,r)             => p"$l \u222A $r"
       case SetDifference(l,r)        => p"$l \\ $r"
       case SetIntersection(l,r)      => p"$l \u2229 $r"
-      case SetCardinality(s)         => p"|$s|"
-      case MapApply(m,k)               => p"$m($k)"
+      case SetCardinality(s)         => p"$s.size"
+      case MapApply(m,k)             => p"$m($k)"
       case MapIsDefinedAt(m,k)       => p"$m.isDefinedAt($k)"
       case ArrayLength(a)            => p"$a.length"
       case ArraySelect(a, i)         => p"$a($i)"
@@ -575,7 +575,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case Let(_, _, bd) => Seq(bd)
     case LetDef(_, bd) => Seq(bd)
     case Require(_, bd) => Seq(bd)
-    case IfExpr(_, t, e) => Seq(t, e) // If always has braces anyway
+    case IfExpr(_, t, e) => Seq(t, e) // if-else always has braces anyway
     case Ensuring(bd, pred) => Seq(bd, pred)
     case _ => Seq()
   }
