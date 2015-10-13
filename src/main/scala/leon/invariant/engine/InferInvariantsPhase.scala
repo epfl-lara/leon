@@ -48,7 +48,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   def apply(ctx: LeonContext, program: Program): InferenceReport = {
 
     //control printing of statistics
-    val dumpStats = true
+    val dumpStats = false
     var timeout: Int = 15
 
     //defualt true flags
