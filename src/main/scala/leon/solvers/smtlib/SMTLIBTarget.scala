@@ -24,21 +24,18 @@ import _root_.smtlib.parser.Terms.{
   Let => SMTLet,
   _
 }
-import _root_.smtlib.theories.Core.{
-  Equals => SMTEquals
-}
 import _root_.smtlib.parser.CommandsResponses.{ Error => ErrorResponse, _ }
 import _root_.smtlib.theories._
 import _root_.smtlib.interpreters.ProcessInterpreter
 
 trait SMTLIBTarget extends Interruptible {
-  val context: LeonContext;
-  val program: Program;
-  protected val reporter: Reporter;
+  val context: LeonContext
+  val program: Program
+  protected val reporter: Reporter
 
   def targetName: String
 
-  implicit val debugSection: DebugSection;
+  implicit val debugSection: DebugSection
 
   protected def interpreterOps(ctx: LeonContext): Seq[String]
 

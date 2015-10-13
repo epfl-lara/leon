@@ -4,8 +4,6 @@ package leon
 package solvers
 package combinators
 
-import utils.Interruptible
-import scala.collection.mutable.Queue
 import scala.reflect.runtime.universe._
 
 class PortfolioSolverFactory[S <: Solver](ctx: LeonContext, sfs: Seq[SolverFactory[S]])(implicit tag: TypeTag[S]) extends SolverFactory[PortfolioSolver[S] with TimeoutSolver] {

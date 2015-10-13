@@ -4,7 +4,6 @@ package leon
 package solvers
 package combinators
 
-import purescala.Common._
 import purescala.Expressions._
 import verification.VC
 
@@ -31,6 +30,8 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
   override def assertVC(vc: VC): Unit = {
     solvers.foreach(_.assertVC(vc))
   }
+
+  override def dbg(msg: => Any) = solvers foreach (_.dbg(msg))
 
   def check: Option[Boolean] = {
     model = Model.empty

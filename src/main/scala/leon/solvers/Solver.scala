@@ -3,7 +3,7 @@
 package leon
 package solvers
 
-import utils.{DebugSectionSolver, Interruptible}
+import leon.utils.{Position, DebugSectionSolver, Interruptible}
 import purescala.Expressions._
 import purescala.Common.{Tree, Identifier}
 import purescala.ExprOps._
@@ -87,8 +87,11 @@ trait Solver extends Interruptible {
 
   implicit lazy val leonContext = context
 
+  def dbg(msg: => Any) = context.reporter.debug(msg)
+
   def assertCnstr(expression: Expr): Unit
   def assertVC(vc: VC) = {
+    dbg(s"; Solving $vc @ ${vc.getPos}\n")
     assertCnstr(Not(vc.condition))
   }
 
