@@ -252,47 +252,59 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         
 
       case LetDef(fd, b) =>
+
+        def fdWithoutSideEffects =  {
+          val (bodyRes, bodyScope, bodyFun) = toFunction(b)
+          (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+        }
+
         fd.body match {
           case Some(bd) => {
-            val modifiedVars: List[Identifier] = variablesOf(bd).intersect(state.varsInScope).toList
-            val freshNames: List[Identifier] = modifiedVars.map(id => id.freshen)
 
-            val newParams: Seq[ValDef] = fd.params ++ freshNames.map(n => ValDef(n))
-            val freshVarDecls: List[Identifier] = freshNames.map(id => id.freshen)
+            val modifiedVars: List[Identifier] =
+              collect[Identifier]({
+                case Assignment(v, _) => Set(v)
+                case _ => Set()
+              })(bd).intersect(state.varsInScope).toList
 
-            val rewritingMap: Map[Identifier, Identifier] =
-              modifiedVars.zip(freshVarDecls).toMap
-            val freshBody =
-              preMap({
-                case Assignment(v, e) => rewritingMap.get(v).map(nv => Assignment(nv, e))
-                case Variable(id) => rewritingMap.get(id).map(nid => Variable(nid))
-                case _ => None
-              })(bd)
-            val wrappedBody = freshNames.zip(freshVarDecls).foldLeft(freshBody)((body, p) => {
-              LetVar(p._2, Variable(p._1), body)
-            })
+            if(modifiedVars.isEmpty) fdWithoutSideEffects else {
 
-            val newReturnType = TupleType(fd.returnType :: modifiedVars.map(_.getType))
+              val freshNames: List[Identifier] = modifiedVars.map(id => id.freshen)
 
-            val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType)
+              val newParams: Seq[ValDef] = fd.params ++ freshNames.map(n => ValDef(n))
+              val freshVarDecls: List[Identifier] = freshNames.map(id => id.freshen)
 
-            val (fdRes, fdScope, fdFun) = 
-              toFunction(wrappedBody)(
-                State(state.parent, Set(), 
-                      state.funDefsMapping + (fd -> ((newFd, freshVarDecls))))
-              )
-            val newRes = Tuple(fdRes :: freshVarDecls.map(vd => fdFun(vd).toVariable))
-            val newBody = fdScope(newRes)
+              val rewritingMap: Map[Identifier, Identifier] =
+                modifiedVars.zip(freshVarDecls).toMap
+              val freshBody =
+                preMap({
+                  case Assignment(v, e) => rewritingMap.get(v).map(nv => Assignment(nv, e))
+                  case Variable(id) => rewritingMap.get(id).map(nid => Variable(nid))
+                  case _ => None
+                })(bd)
+              val wrappedBody = freshNames.zip(freshVarDecls).foldLeft(freshBody)((body, p) => {
+                LetVar(p._2, Variable(p._1), body)
+              })
 
-            newFd.body = Some(newBody)
+              val newReturnType = TupleType(fd.returnType :: modifiedVars.map(_.getType))
 
-            val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
-            (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+              val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType)
+
+              val (fdRes, fdScope, fdFun) = 
+                toFunction(wrappedBody)(
+                  State(state.parent, Set(), 
+                        state.funDefsMapping + (fd -> ((newFd, freshVarDecls))))
+                )
+              val newRes = Tuple(fdRes :: freshVarDecls.map(vd => fdFun(vd).toVariable))
+              val newBody = fdScope(newRes)
+
+              newFd.body = Some(newBody)
+
+              val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
+              (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+            }
           }
-          case None => {
-            val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-            (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
-          }
+          case None => fdWithoutSideEffects
         }
 
       case c @ Choose(b) =>
