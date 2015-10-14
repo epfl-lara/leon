@@ -3,6 +3,8 @@ package leon.monads.state
 import leon.collection._
 import leon.lang._
 import leon.annotation._
+import State._
+
 
 @library
 case class State[S, A](runState: S => (A, S)) {
@@ -149,8 +151,6 @@ object State {
 
 @library
 object MonadStateLaws {
-  import State._
-
   /* Monadic laws:
    *
    * return a >>= k  =  k a
