@@ -15,7 +15,7 @@ object ConvertHoles extends TransformationPhase {
   val description = "Convert Holes found in bodies to equivalent Choose"
 
   /**
-   * This phase converts a body with "withOracle{ .. }" into a choose construct:
+   * This phase converts a body with "???" into a choose construct:
    *
    * def foo(a: T) = {
    *   require(..a..)
@@ -44,7 +44,7 @@ object ConvertHoles extends TransformationPhase {
     (pre ++ post).foreach {
       preTraversal{
         case h : Hole =>
-          ctx.reporter.error("Holes are not supported in preconditions. @"+ h.getPos)
+          ctx.reporter.error("Holes are not supported in pre- or postconditions. @"+ h.getPos)
         case _ =>
       }
     }

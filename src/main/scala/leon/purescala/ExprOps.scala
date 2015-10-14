@@ -1474,14 +1474,14 @@ object ExprOps {
       val solver = SimpleSolverAPI(sf)
 
       toCheck.forall { cond =>
-        solver.solveSAT(cond) match {
-            case (Some(false), _)  =>
-              true
-            case (Some(true), model)  =>
-              false
-            case (None, _)  =>
-              // Should we be optimistic here?
-              false
+        solver.solveSAT(cond)._1 match {
+          case Some(false) =>
+            true
+          case Some(true)  =>
+            false
+          case None =>
+            // Should we be optimistic here?
+            false
         }
       }
     case _ =>

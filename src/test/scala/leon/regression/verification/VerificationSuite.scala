@@ -15,8 +15,8 @@ import leon.xlang.FixReportLabels
 
 import org.scalatest.{Reporter => _, _}
 
-// If you add another regression test, make sure it contains one object whose name matches the file name
-// This is because we compile all tests from each folder separately.
+// If you add another regression test, make sure it contains exactly one object, whose name matches the file name.
+// This is because we compile all tests from each folder together.
 trait VerificationSuite extends LeonRegressionSuite {
 
   val optionVariants: List[List[String]]
