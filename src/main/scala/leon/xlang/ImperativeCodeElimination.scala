@@ -299,6 +299,21 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
               val newBody = fdScope(newRes)
 
               newFd.body = Some(newBody)
+              newFd.precondition = fd.precondition.map(prec => {
+                replace(modifiedVars.zip(freshNames).map(p => (p._1.toVariable, p._2.toVariable)).toMap, prec)
+              })
+              newFd.postcondition = fd.postcondition.map(post => {
+                val Lambda(Seq(res), postBody) = post
+                val newRes = ValDef(FreshIdentifier(res.id.name, newFd.returnType))
+
+                val newBody =
+                  replace(
+                    modifiedVars.zipWithIndex.map{ case (v, i) => 
+                      (v.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap + 
+                    (res.toVariable -> TupleSelect(newRes.toVariable, 1)),
+                  postBody)
+                Lambda(Seq(newRes), newBody)
+              })
 
               val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
               (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
