@@ -254,6 +254,10 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       case LetDef(fd, b) =>
 
         def fdWithoutSideEffects =  {
+          fd.body.foreach { bd =>
+            val (fdRes, fdScope, _) = toFunction(bd)
+            fd.body = Some(fdScope(fdRes))
+          }
           val (bodyRes, bodyScope, bodyFun) = toFunction(b)
           (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
         }
