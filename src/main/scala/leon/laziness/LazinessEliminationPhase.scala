@@ -33,12 +33,12 @@ object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
-  val dumpProgWithPreAsserts = true
+  val dumpProgWithPreAsserts = false
   val dumpInstrumentedProgram = false
   val debugSolvers = false
 
   val skipVerification = false
-  val prettyPrint = true
+  val prettyPrint = false
 
   val name = "Laziness Elimination Phase"
   val description = "Coverts a program that uses lazy construct" +
@@ -63,8 +63,10 @@ object LazinessEliminationPhase extends TransformationPhase {
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
 
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
-    if (dumpProgWithPreAsserts)
+    if (dumpProgWithPreAsserts) {
       println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
+      prettyPrintProgramToFile(progWithPre, ctx)
+    }
 
     // instrument the program for resources
     val instProg = (new LazyInstrumenter(progWithPre)).apply

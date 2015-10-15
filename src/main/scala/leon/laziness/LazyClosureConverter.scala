@@ -450,8 +450,9 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
           } else
             replace(Map(resid.toVariable -> newres.toVariable), npostFun(initStateMap))
         val npost =
-          if (postUpdatesState)
+          if (postUpdatesState) {
             TupleSelect(npost1, 1) // ignore state updated by post
+          }
           else npost1
         nfd.postcondition = Some(Lambda(Seq(ValDef(newres)), npost))
       }
