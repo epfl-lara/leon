@@ -2,7 +2,7 @@
   * Name:     BinaryTreeRender.scala
   * Creation: 14.10.2015
   * Author:   Mikaël Mayer (mikael.mayer@epfl.ch)
-  * Comments: First benchmark ever for solving string transformation problems. Tree specifications
+  * Comments: Binary tree rendering specifications.
   */
 
 import leon.lang._
