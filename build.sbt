@@ -91,7 +91,7 @@ sourceGenerators in Compile <+= Def.task {
   IO.write(build, s"""|package leon
                       |
                       |object Build {
-                      |  val baseDirectory = \"${baseDirectory.value.toString}\"
+                      |  val baseDirectory = \"\"\"${baseDirectory.value.toString}\"\"\"
                       |  val libFiles = List(
                       |    ${libFiles.mkString("\"\"\"", "\"\"\",\n    \"\"\"", "\"\"\"")}
                       |  )
