@@ -652,15 +652,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         val solverf = SolverFactory.getFromSettings(ctx, program)
         val solver  = solverf.getNewSolver()
 
-        val eqs = p.as.map {
-          case id =>
-            Equals(Variable(id), rctx.mappings(id))
-        }
-
-        val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
-        solver.assertCnstr(cnstr)
 
         try {
+          val eqs = p.as.map {
+            case id =>
+              Equals(Variable(id), rctx.mappings(id))
+          }
+
+          val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
+          solver.assertCnstr(cnstr)
+
           solver.check match {
             case Some(true) =>
               val model = solver.getModel
@@ -681,6 +682,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
             case _ =>
               throw RuntimeError("Timeout exceeded")
           }
+        } catch {
+          case e: Throwable =>
+            throw EvalError("Runtime synthesis of choose failed: "+e.getMessage)
         } finally {
           solverf.reclaim(solver)
           solverf.shutdown()

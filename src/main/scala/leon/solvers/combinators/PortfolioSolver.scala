@@ -65,7 +65,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         r
       case None =>
         context.reporter.debug("No solver succeeded")
-        fs.foreach(f => println(f.value))
+        //fs.foreach(f => println(f.value))
         None
     }
 
