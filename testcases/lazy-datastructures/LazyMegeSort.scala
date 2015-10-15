@@ -72,21 +72,15 @@ object MergeSort {
   }) //ensuring (res => ssize(a) + ssize(b) == res.size)
 
   /**
-   * For proving time, we need a term of order \Omega(n) with strict
-   * inverse triangle inequality i.e, f(a + b) > f(a) + f(b)
-   * Log satisfies this but it is very expensive. Is there another function ?
+   * Note the time is not O(n) but only O(n log n) since
+   * we have time recurrence T(n) = 2T(n/2) + O(n)
    */
   def mergeSort(l: List): LList = (l match {
     case Nil()          => SNil()
-    case Cons(x, Nil()) => SCons(x, $(empty))
+    case Cons(x, Nil()) => SCons(x, $(SNil()))
     case _ =>
       val (fst, snd) = split(l, length(l) / 2)
       merge($(mergeSort(fst)), $(mergeSort(snd)))
 
   }) ensuring (res => stack <= 81 * l.size + 35) // res.size == l.size
-
-  // TODO: inlining this creates problems. why ?
-  def empty: LList = {
-    SNil()
-  }
 }

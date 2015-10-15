@@ -406,7 +406,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
 
   def assignBodiesToFunctions = funMap foreach {
     case (fd, nfd) =>
-      //          /println("Considering function: "+fd)
+//      /println("Considering function: "+fd)
       // Here, using name to identify 'state' parameters, also relying
       // on fact that nfd.params are in the same order as tnames
       val stateParams = nfd.params.foldLeft(Seq[Expr]()) {

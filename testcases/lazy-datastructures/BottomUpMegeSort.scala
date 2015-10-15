@@ -113,7 +113,7 @@ object BottomUpMergeSort {
     l match {
       case INil() => SNil()
       case ICons(x, xs) =>
-        SCons($(lsingle(x)), IListToLList(xs))
+        SCons($(LCons(x, $(LNil()))), IListToLList(xs))
     }
   } ensuring (res => res.fullSize == l.size &&
     res.size == l.size &&
@@ -139,13 +139,4 @@ object BottomUpMergeSort {
       case LCons(x, rest) => x
     }
   } ensuring (res => time <= 400 * l.size + 20)
-
-  // TODO: inlining this creates problems. why ?
-  def lempty: ILList = {
-    LNil()
-  }
-
-  def lsingle(x: BigInt): ILList = {
-    LCons(x, $(lempty))
-  }
 }

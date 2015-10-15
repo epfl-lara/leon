@@ -13,6 +13,7 @@ import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Extractors._
 import purescala.Types._
+import purescala.TypeOps._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
 import leon.verification.AnalysisPhase
@@ -32,7 +33,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
-  val dumpProgWithPreAsserts = false
+  val dumpProgWithPreAsserts = true
   val dumpInstrumentedProgram = false
   val debugSolvers = false
 
@@ -83,12 +84,16 @@ object LazinessEliminationPhase extends TransformationPhase {
    */
   def liftLazyExpressions(prog: Program): Program = {
     var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
-    var anchorFun: Option[FunDef] = None // Fix this way of finding anchor functions
-    val fdmap = prog.modules.flatMap { md =>
-      md.definedFunctions.map {
+    val fdmap = prog.definedFunctions.collect {
+      case fd if !fd.isLibrary =>
+        val nfd = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.params, fd.returnType)
+        fd.flags.foreach(nfd.addFlag(_))
+        (fd -> nfd)
+    }.toMap
+    prog.modules.foreach { md =>
+      md.definedFunctions.foreach {
         case fd if fd.hasBody && !fd.isLibrary =>
-          //println("FunDef: "+fd)
-          val nfd = preMapOnFunDef {
+          val nbody = simplePostTransform {
             case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) && !arg.isInstanceOf[FunctionInvocation] =>
               val freevars = variablesOf(arg).toList
               val tparams = freevars.map(_.getType) flatMap getTypeParameters
@@ -98,25 +103,31 @@ object LazinessEliminationPhase extends TransformationPhase {
                   newfuns(argstruc)._1
                 } else {
                   //construct type parameters for the function
-                  val nfun = new FunDef(FreshIdentifier("lazyarg", arg.getType, true),
-                    tparams map TypeParameterDef.apply, freevars.map(ValDef(_)), arg.getType)
+                  // note: we need the root type of arg as the return type
+                  val nfun = new FunDef(FreshIdentifier("lazyarg", Untyped, true), tparams map TypeParameterDef.apply,
+                    freevars.map(ValDef(_)), bestRealType(arg.getType))
                   nfun.body = Some(arg)
                   newfuns += (argstruc -> (nfun, md))
                   nfun
                 }
-              Some(FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams),
-                freevars.map(_.toVariable)))))
-            case _ => None
-          }(fd)
-          (fd -> Some(nfd))
-        case fd => fd -> Some(fd.duplicate())
+              FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams),
+                freevars.map(_.toVariable))))
+
+            case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
+              FunctionInvocation(TypedFunDef(fdmap(fd), targs), args)
+            case e => e
+
+          }(fd.fullBody) // TODO: specs should not create lazy closures. enforce this
+          fdmap(fd).fullBody = nbody
+        case _ => ;
       }
-    }.toMap
-    // map  the new functions to themselves
+    }
     val nprog =
       if (!newfuns.isEmpty) {
-        val newfdMap = newfuns.values.map { case (nfd, _) => nfd -> None }.toMap
-        val (repProg, _) = replaceFunDefs(prog)(fdmap ++ newfdMap)
+        val repProg = copyProgram(prog, (defs: Seq[Definition]) => defs.map {
+          case fd: FunDef => fdmap.getOrElse(fd, fd)
+          case d          => d
+        })
         val modToNewDefs = newfuns.values.groupBy(_._2).map { case (k, v) => (k, v.map(_._1)) }.toMap
         appendDefsToModules(repProg, modToNewDefs)
       } else
