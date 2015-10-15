@@ -1,3 +1,4 @@
+package lazybenchmarks
 import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
@@ -6,7 +7,7 @@ import leon.instrumentation._
 
 object Sorting {
 
-  // TODO: making this parametric will break many things. Fix them
+  // TODO: making this parametric will break many things. Fix them (note: we need each instantiation to be a unique closure)
   sealed abstract class LList {
     def size: BigInt = {
       this match {
@@ -49,7 +50,7 @@ object Sorting {
       case _ =>
         SNil()
     }
-  } ensuring (res => res.size == l.size && time <= 15 * l.size + 20)
+  } ensuring (res => res.size == l.size && time <= 15 * l.size + 10)
 
   /* This is also an interesting benchmark.
    * as it uses laziness internally that is
@@ -66,7 +67,7 @@ object Sorting {
     }
   } ensuring (_ => time <= 30 * l.size + 40)*/
 
-  // cannot prove this due to nonlinearity
+  // Can be proved usign orb
   def kthMin(l: $[LList], k: BigInt): BigInt = {
     require(k >= 1)
     l.value match {
@@ -76,6 +77,6 @@ object Sorting {
           kthMin(xs, k - 1)
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= 20 * k * ssize(l) + 40*ssize(l) + 40 * k)
+  } ensuring (_ => time <= 60 * (k * ssize(l)) + ssize(l) + k + 37)
 
 }
