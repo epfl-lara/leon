@@ -6,6 +6,7 @@
   */
 
 import leon.lang._
+import string.String
 import leon.annotation._
 import leon.collection._
 import leon.collection.ListOps._
@@ -43,6 +44,23 @@ object TupleWrapperRender {
     case TupleWrapper(-1, 2) => "d -1,-2 -1,15 15,15 15,2"
     case TupleWrapper(12, 5) => "d 12,5 12,15 15,15 15,5"
   }
+  
+  def repairUnWrapped(s: IntWrapper): String = {
+    "TupleWrapper(" + s.i + ", " + s.j + ")""
+  } ensuring psUnWrapped(s)
+  
+  def repairNameChangedPrefix(s: IntWrapper): String = {
+    "TupleWrapper(" + s.i + ", " + s.j + ")""
+  } ensuring psNameChangedPrefix(s)
+  
+  def repairNameChangedSuffix(s: IntWrapper): String = {
+    "TupleWrapper(" + s.i + ", " + s.j + ")""
+  } ensuring psNameChangedSuffix(s)
+  
+  def repairDuplicate(s: IntWrapper): String = {
+    "TupleWrapper(" + s.i + ", " + s.j + ")""
+  } ensuring psDuplicate(s)
+  
   
   def synthesisStandard(s: TupleWrapper): String = {
      ???[String]

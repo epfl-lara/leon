@@ -6,6 +6,7 @@
   */
 
 import leon.lang._
+import string.String
 import leon.annotation._
 import leon.collection._
 import leon.collection.ListOps._
@@ -43,6 +44,22 @@ object IntWrapperRender {
     case IntWrapper(-1) => "-1 -1"
     case IntWrapper(12) => "12 12"
   }
+  
+  def repairUnWrapped(s: IntWrapper): String = {
+    "IntWrapper(" + s.i + ")""
+  } ensuring psUnWrapped(s)
+  
+  def repairNameChangedPrefix(s: IntWrapper): String = {
+    "IntWrapper(" + s.i + ")""
+  } ensuring psNameChangedPrefix(s)
+  
+  def repairNameChangedSuffix(s: IntWrapper): String = {
+    "IntWrapper(" + s.i + ")""
+  } ensuring psNameChangedSuffix(s)
+  
+  def repairDuplicate(s: IntWrapper): String = {
+    "IntWrapper(" + s.i + ")""
+  } ensuring psDuplicate(s)
   
   def synthesisStandard(s: IntWrapper): String = {
      ???[String]

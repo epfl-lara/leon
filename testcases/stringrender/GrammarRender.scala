@@ -1,17 +1,18 @@
 /**
   * Name:     GrammarRender.scala
   * Creation: 15.10.2015
-  * Author:   Mikaël Mayer (mikael.mayer@epfl.ch)
+  * Author:   Mikaï¿½l Mayer (mikael.mayer@epfl.ch)
   * Comments: Grammar rendering specifications.
   */
 
 import leon.lang._
+import string.String
 import leon.annotation._
 import leon.collection._
 import leon.collection.ListOps._
 import leon.lang.synthesis._
 
-object GraùùarRender {
+object Graï¿½ï¿½arRender {
   abstract class Symbol
   case class Terminal(i: Int) extends Symbol
   case class NonTerminal(i: Int) extends Symbol
