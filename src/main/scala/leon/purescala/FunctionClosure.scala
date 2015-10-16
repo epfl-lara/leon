@@ -130,7 +130,12 @@ object FunctionClosure extends TransformationPhase {
     val freshVals = (inner.paramIds ++ free).map{_.freshen}.map(instantiateType(_, tparamsMap))
     val freeMap   = (inner.paramIds ++ free).zip(freshVals).toMap
 
-    val newFd = inner.duplicate(inner.id.freshen, inner.tparams ++ tpFresh, freshVals.map(ValDef(_)), instantiateType(inner.returnType, tparamsMap))
+    val newFd = inner.duplicate(
+      inner.id.freshen,
+      inner.tparams ++ tpFresh,
+      freshVals.map(ValDef(_)),
+      instantiateType(inner.returnType, tparamsMap)
+    )
     newFd.precondition = Some(and(pc, inner.precOrTrue))
 
     val instBody = instantiateType(
@@ -154,11 +159,7 @@ object FunctionClosure extends TransformationPhase {
   override def apply(ctx: LeonContext, program: Program): Program = {
     val newUnits = program.units.map { u => u.copy(defs = u.defs map {
       case m: ModuleDef =>
-        ModuleDef(
-          m.id,
-          m.definedClasses ++ m.definedFunctions.flatMap(close),
-          m.isPackageObject
-        )
+        m.copy(defs = m.definedClasses ++ m.definedFunctions.flatMap(close))
       case cd =>
         cd
     })}
