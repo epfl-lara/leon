@@ -886,7 +886,7 @@ object Expressions {
   /** $encodingof a synthesizable hole in a program. Represented by `???[tpe]`
     * in Leon source code.
     *
-    * A [[Hole]] gets transformed into a [[Choose]] construct during [[leon.synthesis.ConvertHoles the ConvertHoles phase]].
+    * A [[Hole]] gets transformed into a [[Choose]] construct during [[leon.synthesis.ConversionPhase the ConvertHoles phase]].
     */
   case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with Extractable {
     val getType = tpe

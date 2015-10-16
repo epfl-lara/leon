@@ -14,7 +14,7 @@ import purescala.Extractors._
 import purescala.Quantification._
 import solvers.{Model, HenkinModel}
 import solvers.SolverFactory
-import synthesis.ConvertHoles.convertHoles
+import synthesis.ConversionPhase.convertHoles
 import leon.purescala.ExprOps
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int) extends Evaluator(ctx, prog) {
