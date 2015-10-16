@@ -4,11 +4,10 @@ package leon.regression.testcases
 
 import leon._
 import leon.test._
-import org.scalatest.time.SpanSugar._
 import java.io.File
-import org.scalatest.ParallelTestExecution
 
-class TestCasesCompile extends LeonRegressionSuite {
+abstract class TestCasesCompile(testDir: String) extends LeonRegressionSuite {
+
   val pipeline = frontends.scalac.ExtractionPhase andThen new utils.PreprocessingPhase(desugarXLang = true)
 
   private def filesIn(path : String): Seq[File] = {
@@ -19,11 +18,7 @@ class TestCasesCompile extends LeonRegressionSuite {
 
   val baseDir = "regression/testcases/"
 
-  val allTests = (filesIn(baseDir+"repair/") ++
-                 filesIn(baseDir+"runtime/") ++
-                 filesIn(baseDir+"synthesis/") ++
-                 filesIn(baseDir+"verification/") ++
-                 filesIn(baseDir+"web/")).sortBy(_.getAbsolutePath)
+  val allTests = filesIn(baseDir + testDir)
 
   allTests.foreach { f =>
 
@@ -45,3 +40,9 @@ class TestCasesCompile extends LeonRegressionSuite {
     }
   }
 }
+
+class TestcasesCompile1 extends TestCasesCompile("repair/")
+class TestcasesCompile2 extends TestCasesCompile("runtime/")
+class TestcasesCompile3 extends TestCasesCompile("synthesis/")
+class TestcasesCompile4 extends TestCasesCompile("verification/")
+class TestcasesCompile5 extends TestCasesCompile("web/")
