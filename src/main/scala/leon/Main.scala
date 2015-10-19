@@ -21,7 +21,7 @@ object Main {
       purescala.FunctionClosure,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
-      verification.AnalysisPhase,
+      verification.VerificationPhase,
       repair.RepairPhase,
       evaluators.EvaluationPhase,
       solvers.isabelle.AdaptationPhase,
@@ -147,7 +147,7 @@ object Main {
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
     import xlang.FixReportLabels
-    import verification.AnalysisPhase
+    import verification.VerificationPhase
     import repair.RepairPhase
     import evaluators.EvaluationPhase
     import solvers.isabelle.IsabellePhase
@@ -177,19 +177,19 @@ object Main {
         ExtractionPhase andThen
         new PreprocessingPhase(xlangF)
 
-      val analysis = if (xlangF) AnalysisPhase andThen FixReportLabels else AnalysisPhase
+      val verification = if (xlangF) VerificationPhase andThen FixReportLabels else VerificationPhase
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
-        else if (analysisF) Pipeline.both(analysis, TerminationPhase)
+        else if (analysisF) Pipeline.both(verification, TerminationPhase)
         else if (terminationF) TerminationPhase
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
-        else analysis
+        else verification
       }
 
       pipeBegin andThen

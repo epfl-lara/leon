@@ -6,13 +6,13 @@ import leon._
 import leon.test._
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
-import leon.verification.AnalysisPhase
+import leon.verification.VerificationPhase
 
 class LibraryVerificationSuite extends LeonRegressionSuite {
   test("Verify the library") {
       val pipeline = ExtractionPhase    andThen
                      new PreprocessingPhase andThen
-                     AnalysisPhase
+                     VerificationPhase
 
       val ctx = Main.processOptions(Seq("--functions=_")).copy(reporter = new TestSilentReporter())
 

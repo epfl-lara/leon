@@ -7,7 +7,7 @@ import leon.test._
 import leon.utils._
 import leon.frontends.scalac.ExtractionPhase
 import leon.repair._
-import leon.verification.AnalysisPhase
+import leon.verification.VerificationPhase
 
 class RepairSuite extends LeonRegressionSuite {
   val pipeline = ExtractionPhase andThen 
@@ -35,7 +35,7 @@ class RepairSuite extends LeonRegressionSuite {
       interruptManager = new InterruptManager(reporter),
       options = Seq(
         LeonOption(SharedOptions.optFunctions)(Seq(fileToFun(name))),
-        LeonOption(AnalysisPhase.optParallelVCs)(true),
+        LeonOption(VerificationPhase.optParallelVCs)(true),
         LeonOption(SharedOptions.optTimeout)(180L)
       )
     )

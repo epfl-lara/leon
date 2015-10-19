@@ -144,7 +144,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   }
 
   def validateAndCollectNotValidated(prog: Program, ctx: LeonContext, timeout: Int): Set[String] = {
-    val verifyPipe = AnalysisPhase
+    val verifyPipe = VerificationPhase
     val ctxWithTO = createLeonContext(ctx, "--timeout=" + timeout)
     (verifyPipe.run(ctxWithTO, prog)._2).results.collect{
       case (VC(_, fd, VCKinds.Postcondition), Some(vcRes)) if vcRes.isInconclusive =>

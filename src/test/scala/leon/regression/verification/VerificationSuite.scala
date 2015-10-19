@@ -6,7 +6,7 @@ import leon._
 import leon.test._
 
 import leon.utils.UniqueCounter
-import leon.verification.{AnalysisPhase, VerificationReport}
+import leon.verification.{VerificationPhase, VerificationReport}
 import leon.purescala.Definitions.Program
 import leon.frontends.scalac.ExtractionPhase
 import leon.utils.PreprocessingPhase
@@ -38,7 +38,7 @@ trait VerificationSuite extends LeonRegressionSuite {
 
     val analysis =
       (if (isabelle) AdaptationPhase else NoopPhase[Program]) andThen
-      AnalysisPhase andThen
+      VerificationPhase andThen
       (if (desugarXLang) FixReportLabels else NoopPhase[VerificationReport])
 
     val ctx = createLeonContext(files:_*)
