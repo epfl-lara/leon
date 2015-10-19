@@ -14,8 +14,6 @@ import purescala.Extractors._
 import purescala.Quantification._
 import solvers.{Model, HenkinModel}
 import solvers.SolverFactory
-import synthesis.ConversionPhase.convertHoles
-import leon.purescala.ExprOps
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int) extends Evaluator(ctx, prog) {
   val name = "evaluator"
@@ -123,11 +121,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case en@Ensuring(body, post) =>
       if ( exists{
         case Hole(_,_) => true
+        case WithOracle(_,_) => true
         case _ => false
-      }(en))
-        e(convertHoles(en, ctx))
-      else
+      }(en)) {
+        import synthesis.ConversionPhase.convert
+        e(convert(en, ctx))
+      } else {
         e(en.toAssert)
+      }
 
     case Error(tpe, desc) =>
       throw RuntimeError("Error reached in evaluation: " + desc)

@@ -78,7 +78,7 @@ object ConversionPhase extends UnitPhase[Program] {
    *
    */
 
-  def convertHoles(e : Expr, ctx : LeonContext) : Expr = {
+  def convert(e : Expr, ctx : LeonContext) : Expr = {
     val (pre, body, post) = breakDownSpecs(e)
 
     // Ensure that holes are not found in pre and/or post conditions
@@ -178,7 +178,7 @@ object ConversionPhase extends UnitPhase[Program] {
   def apply(ctx: LeonContext, pgm: Program): Unit = {
     // TODO: remove side-effects
     for (fd <- pgm.definedFunctions) {
-      fd.fullBody = convertHoles(fd.fullBody,ctx)
+      fd.fullBody = convert(fd.fullBody,ctx)
     }
   }
 
