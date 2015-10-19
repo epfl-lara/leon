@@ -173,7 +173,6 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
       val report = AnalysisPhase.checkVCs(
         vctx,
         vcs,
-        checkInParallel = true,
         stopAfter = Some({ (vc, vr) => vr.isInvalid })
       )
 
