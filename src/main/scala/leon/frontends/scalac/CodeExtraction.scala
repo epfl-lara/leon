@@ -984,11 +984,14 @@ trait CodeExtraction extends ASTExtractors {
 
           val b = extractTreeOrNoTree(body)
 
-          val closure = post.getType match {
-            case BooleanType =>
+          val closure = post match {
+            case IsTyped(_, BooleanType) =>
               val resId = FreshIdentifier("res", b.getType).setPos(post)
               Lambda(Seq(LeonValDef(resId)), post).setPos(post)
-            case _ => post
+            case l: Lambda => l
+            case other =>
+              val resId = FreshIdentifier("res", b.getType).setPos(post)
+              Lambda(Seq(LeonValDef(resId)), application(other, Seq(Variable(resId)))).setPos(post)
           }
 
           Ensuring(b, closure)
