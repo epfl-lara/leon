@@ -27,6 +27,10 @@ object Extractors {
         Some((Seq(t), (es: Seq[Expr]) => RealUMinus(es.head)))
       case BVNot(t) =>
         Some((Seq(t), (es: Seq[Expr]) => BVNot(es.head)))
+      case StringLength(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => StringLength(es.head)))
+      case ToString(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => ToString(es.head)))
       case SetCardinality(t) =>
         Some((Seq(t), (es: Seq[Expr]) => SetCardinality(es.head)))
       case CaseClassSelector(cd, e, sel) =>
@@ -120,6 +124,8 @@ object Extractors {
         Some(Seq(t1, t2), (es: Seq[Expr]) => times(es(0), es(1)))
       case RealDivision(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => RealDivision(es(0), es(1)))
+      case StringConcat(t1, t2) =>
+        Some(Seq(t1, t2), (es: Seq[Expr]) => StringConcat(es(0), es(1)))
       case ElementOfSet(t1, t2) =>
         Some(Seq(t1, t2), (es: Seq[Expr]) => ElementOfSet(es(0), es(1)))
       case SubsetOf(t1, t2) =>
@@ -156,6 +162,7 @@ object Extractors {
       case CaseClass(cd, args) => Some((args, CaseClass(cd, _)))
       case And(args) => Some((args, and))
       case Or(args) => Some((args, or))
+      case SubString(t1, a, b) => Some((t1::a::b::Nil, es => SubString(es(0), es(1), es(2))))
       case FiniteSet(els, base) =>
         Some((els.toSeq, els => FiniteSet(els.toSet, base)))
       case FiniteMap(args, f, t) => {

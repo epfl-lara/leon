@@ -1486,7 +1486,6 @@ trait CodeExtraction extends ASTExtractors {
           Implies(extractTree(lhs), extractTree(rhs)).setPos(current.pos)
 
         case c @ ExCall(rec, sym, tps, args) =>
-          println("Parsing call:" + c)
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) =>
               null

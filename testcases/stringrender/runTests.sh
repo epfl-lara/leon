@@ -15,12 +15,12 @@ echo "################################" >> $summaryLog
 echo "#           Category,                 File,             function, p.S, fuS, foS,   Tms,   Fms,   Rms, verif?" >> $summaryLog
 
 #All benchmarks:
-./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairUnWrapped          testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
+./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairUnwrapped          testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
 ./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairNameChangedPrefix  testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
 ./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairNameChangedSuffix  testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
 ./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairDuplicate          testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
 
-./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairUnWrapped          testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
+./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairUnwrapped          testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
 ./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairNameChangedPrefix  testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
 ./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairNameChangedSuffix  testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
 ./leon --stringrender --timeout=30 --solvers=fairz3,enum --functions=repairDuplicate          testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
