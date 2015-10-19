@@ -19,7 +19,7 @@ object Quantification {
     qargs: A => Set[B]
   ): Seq[Set[A]] = {
     def rec(oms: Seq[A], mSet: Set[A], qss: Seq[Set[B]]): Seq[Set[A]] = {
-      if (qss.exists(_ == quantified)) {
+      if (qss.contains(quantified)) {
         Seq(mSet)
       } else {
         var res = Seq.empty[Set[A]]
@@ -126,12 +126,11 @@ object Quantification {
               ctx.reporter.warning("E-matching isn't possible without matchers!")
 
             if (matchers.exists { case (_, args) =>
-              args.exists(arg => arg match {
+              args.exists{
                 case QuantificationMatcher(_, _) => false
                 case Variable(id) => false
-                case _ if (variablesOf(arg) & quantified).nonEmpty => true
-                case _ => false
-              })
+                case arg => (variablesOf(arg) & quantified).nonEmpty
+              }
             }) ctx.reporter.warning("Matcher arguments must have simple form in " + conjunct)
 
             val freeMatchers = matchers.collect { case (Variable(id), args) if free(id) => id -> args }
@@ -143,7 +142,7 @@ object Quantification {
               }))
             }
 
-            if (id2Quant.filter(_._2.nonEmpty).groupBy(_._2).size >= 1)
+            if (id2Quant.filter(_._2.nonEmpty).groupBy(_._2).nonEmpty)
               ctx.reporter.warning("Multiple matchers must provide bijective matching in " + conjunct)
 
             fold[Set[Identifier]] { case (m, children) =>

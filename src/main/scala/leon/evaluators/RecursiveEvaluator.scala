@@ -14,8 +14,6 @@ import purescala.Extractors._
 import purescala.Quantification._
 import solvers.{Model, HenkinModel}
 import solvers.SolverFactory
-import synthesis.ConvertHoles.convertHoles
-import leon.purescala.ExprOps
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int) extends Evaluator(ctx, prog) {
   val name = "evaluator"
@@ -123,11 +121,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case en@Ensuring(body, post) =>
       if ( exists{
         case Hole(_,_) => true
+        case WithOracle(_,_) => true
         case _ => false
-      }(en))
-        e(convertHoles(en, ctx))
-      else
+      }(en)) {
+        import synthesis.ConversionPhase.convert
+        e(convert(en, ctx))
+      } else {
         e(en.toAssert)
+      }
 
     case Error(tpe, desc) =>
       throw RuntimeError("Error reached in evaluation: " + desc)
@@ -652,15 +653,16 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         val solverf = SolverFactory.getFromSettings(ctx, program)
         val solver  = solverf.getNewSolver()
 
-        val eqs = p.as.map {
-          case id =>
-            Equals(Variable(id), rctx.mappings(id))
-        }
-
-        val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
-        solver.assertCnstr(cnstr)
 
         try {
+          val eqs = p.as.map {
+            case id =>
+              Equals(Variable(id), rctx.mappings(id))
+          }
+
+          val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
+          solver.assertCnstr(cnstr)
+
           solver.check match {
             case Some(true) =>
               val model = solver.getModel
@@ -681,6 +683,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
             case _ =>
               throw RuntimeError("Timeout exceeded")
           }
+        } catch {
+          case e: Throwable =>
+            throw EvalError("Runtime synthesis of choose failed: "+e.getMessage)
         } finally {
           solverf.reclaim(solver)
           solverf.shutdown()
