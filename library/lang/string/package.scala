@@ -9,10 +9,10 @@ import scala.language.implicitConversions
 import scala.collection.immutable.{List => ScalaList}
 
 package object string {
-  @ignore
+  /*@ignore
   implicit def strToStr(s: java.lang.String): leon.lang.string.String = {
     String(listToList(s.toList))
-  }
+  }*/
 
   @ignore
   def listToList[A](s: ScalaList[A]): List[A] = s match {

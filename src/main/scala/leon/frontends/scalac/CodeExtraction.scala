@@ -892,16 +892,8 @@ trait CodeExtraction extends ASTExtractors {
       case ExInt32Literal(i)   => (LiteralPattern(binder, IntLiteral(i)),     dctx)
       case ExBooleanLiteral(b) => (LiteralPattern(binder, BooleanLiteral(b)), dctx)
       case ExUnitLiteral()     => (LiteralPattern(binder, UnitLiteral()),     dctx)
-      case sLit@ExStringLiteral(s)  =>
-        val consClass = libraryCaseClass(sLit.pos, "leon.collection.Cons")
-        val nilClass = libraryCaseClass(sLit.pos, "leon.collection.Nil")
-        val nil = CaseClassPattern(None, CaseClassType(nilClass, Seq(CharType)), Seq())
-        val consType = CaseClassType(consClass, Seq(CharType))
-        def mkCons(hd: Pattern, tl: Pattern) = CaseClassPattern(None, consType, Seq(hd,tl))
-        val chars = s.toCharArray//.asInstanceOf[Seq[Char]]
-        def charPat(ch : Char) = LiteralPattern(None, CharLiteral(ch))
-        (chars.foldRight(nil)( (ch: Char, p : Pattern) => mkCons( charPat(ch), p)), dctx)
-
+      case ExStringLiteral(s)  => (LiteralPattern(binder, StringLiteral(s)),  dctx)
+        
       case up@ExUnapplyPattern(s, args) =>
         implicit val p: Position = NoPosition
         val fd = getFunDef(s, up.pos)
@@ -1485,22 +1477,13 @@ trait CodeExtraction extends ASTExtractors {
           CharLiteral(c)
 
         case str @ ExStringLiteral(s) =>
-          val chars = s.toList.map(CharLiteral)
-
-          val consChar = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Cons"), Seq(CharType))
-          val nilChar  = CaseClassType(libraryCaseClass(str.pos, "leon.collection.Nil"),  Seq(CharType))
-
-          val charList = chars.foldRight(CaseClass(nilChar, Seq())) {
-            case (c, s) => CaseClass(consChar, Seq(c, s))
-          }
-
-          CaseClass(CaseClassType(libraryCaseClass(str.pos, "leon.lang.string.String"), Seq()), Seq(charList))
-
+          StringLiteral(s)
 
         case ExImplies(lhs, rhs) =>
           Implies(extractTree(lhs), extractTree(rhs)).setPos(current.pos)
 
         case c @ ExCall(rec, sym, tps, args) =>
+          println("Parsing call:" + c)
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) =>
               null
@@ -1538,6 +1521,23 @@ trait CodeExtraction extends ASTExtractors {
 
               caseClassSelector(cct, rec, fieldID)
 
+            //String methods
+            case (IsTyped(a1, StringType), "toString", List()) =>
+              a1
+            case (IsTyped(a1, CanHaveStringType(t)), "toString", List()) =>
+              ToString(a1)
+            case (IsTyped(a1, StringType), "+", List(IsTyped(a2, StringType))) =>
+              StringConcat(a1, a2)
+            case (IsTyped(a1, StringType), "+", List(IsTyped(a2, CanHaveStringType(t)))) =>
+              StringConcat(a1, ToString(a2))
+            case (IsTyped(a1, CanHaveStringType(t)), "+", List(IsTyped(a2, StringType))) =>
+              StringConcat(ToString(a1), a2)
+            case (IsTyped(a1, StringType), "length", List()) =>
+              StringLength(a1)
+            case (IsTyped(a1, StringType), "substring", List(IsTyped(start, IntegerType | Int32Type))) =>
+              SubString(a1, start, StringLength(a1))
+            case (IsTyped(a1, StringType), "substring", List(IsTyped(start, IntegerType | Int32Type), IsTyped(end, IntegerType | Int32Type))) =>
+              SubString(a1, start, end)
             //BigInt methods
             case (IsTyped(a1, IntegerType), "+", List(IsTyped(a2, IntegerType))) =>
               Plus(a1, a2)
@@ -1711,8 +1711,12 @@ trait CodeExtraction extends ASTExtractors {
             case (IsTyped(a1, CharType), "<=", List(IsTyped(a2, CharType))) =>
               LessEquals(a1, a2)
 
-            case (_, name, _) =>
-              outOfSubsetError(tr, "Unknown call to "+name)
+            case (a1, name, a2) =>
+              val typea1 = a1.getType
+              val typea2 = a2.map(_.getType).mkString(",")
+              val sa2 = a2.mkString(",")
+              println(Thread.currentThread().getStackTrace.take(5).mkString("\n"))
+              outOfSubsetError(tr, "Unknown call to " + name + s" on $a1 ($typea1) with arguments $sa2 of type $typea2")
           }
 
         // default behaviour is to complain :)
@@ -1755,6 +1759,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case TypeRef(_, sym, _) if isRealSym(sym) =>
         RealType
+      
+      case TypeRef(_, sym, _) if isStringSym(sym) =>
+        StringType
 
       case TypeRef(_, sym, btt :: Nil) if isScalaSetSym(sym) =>
         outOfSubsetError(pos, "Scala's Set API is no longer extracted. Make sure you import leon.lang.Set that defines supported Set operations.")
@@ -1792,7 +1799,7 @@ trait CodeExtraction extends ASTExtractors {
       case TypeRef(_, sym, tps) if isByNameSym(sym) =>
         extractType(tps.head)
 
-      case TypeRef(_, sym, tps) =>
+      case tr @ TypeRef(_, sym, tps) =>
         val leontps = tps.map(extractType)
 
         if (sym.isAbstractType) {

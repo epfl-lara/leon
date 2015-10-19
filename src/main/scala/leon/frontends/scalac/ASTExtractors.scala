@@ -50,6 +50,7 @@ trait ASTExtractors {
   protected lazy val someClassSym       = classFromName("scala.Some")
   protected lazy val byNameSym          = classFromName("scala.<byname>")
   protected lazy val bigIntSym          = classFromName("scala.math.BigInt")
+  protected lazy val stringSym          = classFromName("java.lang.String")
   protected def functionTraitSym(i:Int) = {
     require(1 <= i && i <= 22)
     classFromName("scala.Function" + i)
@@ -61,6 +62,8 @@ trait ASTExtractors {
   def isTuple5(sym : Symbol) : Boolean = sym == tuple5Sym
 
   def isBigIntSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == bigIntSym
+
+  def isStringSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) match { case `stringSym` => true case _ => false }  
 
   def isByNameSym(sym : Symbol) : Boolean = getResolvedTypeSym(sym) == byNameSym
 
@@ -110,29 +113,36 @@ trait ASTExtractors {
   }
 
   def hasBigIntType(t : Tree) = isBigIntSym(t.tpe.typeSymbol)
+  
+  def hasStringType(t : Tree) = isStringSym(t.tpe.typeSymbol)
 
   def hasRealType(t : Tree) = isRealSym(t.tpe.typeSymbol)
     
-  
+  /** A set of helpers for extracting trees.*/
   object ExtractorHelpers {
+    /** Extracts the identifier as `"Ident(name)"` (who needs this?!) */
     object ExIdNamed {
       def unapply(id: Ident): Option[String] = Some(id.toString)
     }
 
+    /** Extracts the tree and its type (who needs this?!) */
     object ExHasType {
       def unapply(tr: Tree): Option[(Tree, Symbol)] = Some((tr, tr.tpe.typeSymbol))
     }
 
+    /** Extracts the string representation of a name of something having the `Name` trait */
     object ExNamed {
       def unapply(name: Name): Option[String] = Some(name.toString)
     }
 
+    /** Returns the full dot-separated names of the symbol as a list of strings */
     object ExSymbol {
       def unapplySeq(t: Tree): Option[Seq[String]] = {
         Some(t.symbol.fullName.toString.split('.').toSeq)
       }
     }
 
+    /** Matches nested `Select(Select(...Select(a, b) ...y) , z)` and returns the list `a,b, ... y,z` */
     object ExSelected {
       def unapplySeq(select: Select): Option[Seq[String]] = select match {
         case Select(This(scalaName), name) =>
@@ -153,8 +163,8 @@ trait ASTExtractors {
   object StructuralExtractors {
     import ExtractorHelpers._
 
+    /** Extracts the 'ensuring' contract from an expression. */
     object ExEnsuredExpression {
-      /** Extracts the 'ensuring' contract from an expression. */
       def unapply(tree: Apply): Option[(Tree,Tree)] = tree match {
         case Apply(Select(Apply(TypeApply(ExSelected("scala", "Predef", "Ensuring"), _ :: Nil), body :: Nil), ExNamed("ensuring")), contract :: Nil)
           => Some((body, contract))
@@ -162,6 +172,7 @@ trait ASTExtractors {
       }
     }
 
+    /** Matches the `holds` expression at the end of any boolean expression, and return the boolean expression.*/
     object ExHoldsExpression {
       def unapply(tree: Select) : Option[Tree] = tree match {
         case Select(
@@ -172,6 +183,7 @@ trait ASTExtractors {
        }
     }
 
+    /** Matches an implication `lhs ==> rhs` and returns (lhs, rhs)*/
     object ExImplies {
       def unapply(tree: Apply) : Option[(Tree, Tree)] = tree match {
         case
@@ -189,9 +201,9 @@ trait ASTExtractors {
       }
     }
 
+    /** Extracts the 'require' contract from an expression (only if it's the
+     * first call in the block). */
     object ExRequiredExpression {
-      /** Extracts the 'require' contract from an expression (only if it's the
-       * first call in the block). */
       def unapply(tree: Apply): Option[Tree] = tree match {
         case Apply(ExSelected("scala", "Predef", "require"), contractBody :: Nil) =>
          Some(contractBody)
@@ -199,6 +211,7 @@ trait ASTExtractors {
       }
     }
  
+    /** Extracts the `(input, output) passes { case In => Out ...}` and returns (input, output, list of case classes) */
     object ExPasses { 
       def unapply(tree : Apply) : Option[(Tree, Tree, List[CaseDef])] = tree match {
         case  Apply(
@@ -223,7 +236,7 @@ trait ASTExtractors {
     }
 
 
-
+    /** Returns a string literal either from leon.lang.string.String or from a constant string literal. */
     object ExStringLiteral {
       def unapply(tree: Tree): Option[String] = tree  match {
         case Apply(ExSelected("leon", "lang", "string", "package", "strToStr"), (str: Literal) :: Nil) =>
@@ -235,6 +248,7 @@ trait ASTExtractors {
       }
     }
 
+    /** Returns the arguments of an unapply pattern */
     object ExUnapplyPattern {
       def unapply(tree: Tree): Option[(Symbol, Seq[Tree])] = tree match {
         case UnApply(Apply(s, _), args) =>
@@ -243,6 +257,7 @@ trait ASTExtractors {
       }
     }
 
+    /** Returns the argument of a bigint literal, either from scala or leon */
     object ExBigIntLiteral {
       def unapply(tree: Tree): Option[Tree] = tree  match {
         case Apply(ExSelected("scala", "package", "BigInt", "apply"), n :: Nil) =>
@@ -254,6 +269,7 @@ trait ASTExtractors {
       }
     }
 
+    /** Returns the two components (n, d) of a real n/d literal */
     object ExRealLiteral {
       def unapply(tree: Tree): Option[(Tree, Tree)] = tree  match {
         case Apply(ExSelected("leon", "lang", "Real", "apply"), n :: d :: Nil) =>
@@ -262,6 +278,8 @@ trait ASTExtractors {
           None
       }
     }
+    
+    /** Matches Real(x) when n is an integer and returns x */
     object ExRealIntLiteral {
       def unapply(tree: Tree): Option[Tree] = tree  match {
         case Apply(ExSelected("leon", "lang", "Real", "apply"), n :: Nil) =>
@@ -271,7 +289,7 @@ trait ASTExtractors {
       }
     }
 
-
+    /** Matches the construct int2bigInt(a) and returns a */
     object ExIntToBigInt {
       def unapply(tree: Tree): Option[Tree] = tree  match {
         case Apply(ExSelected("math", "BigInt", "int2bigInt"), tree :: Nil) => Some(tree)
@@ -279,7 +297,7 @@ trait ASTExtractors {
       }
     }
 
-
+    /** Matches the construct List[tpe](a, b, ...) and returns tpe and arguments */
     object ExListLiteral {
       def unapply(tree: Apply): Option[(Tree, List[Tree])] = tree  match {
         case Apply(
@@ -291,9 +309,9 @@ trait ASTExtractors {
       }
     }
 
+    /** Extracts the 'assert' contract from an expression (only if it's the
+      * first call in the block). */
     object ExAssertExpression {
-      /** Extracts the 'assert' contract from an expression (only if it's the
-       * first call in the block). */
       def unapply(tree: Apply): Option[(Tree, Option[String])] = tree match {
         case Apply(ExSelected("scala", "Predef", "assert"), contractBody :: Nil) =>
          Some((contractBody, None))
@@ -304,11 +322,10 @@ trait ASTExtractors {
       }
     }
 
-
+    /** Matches an object with no type parameters, and regardless of its
+      * visibility. Does not match on case objects or the automatically generated companion
+      * objects of case classes (or any synthetic class). */
     object ExObjectDef {
-      /** Matches an object with no type parameters, and regardless of its
-       * visibility. Does not match on case objects or the automatically generated companion
-       * objects of case classes (or any synthetic class). */
       def unapply(cd: ClassDef): Option[(String,Template)] = cd match {
         case ClassDef(_, name, tparams, impl) if
           (cd.symbol.isModuleClass || cd.symbol.hasPackageFlag) &&
@@ -322,10 +339,10 @@ trait ASTExtractors {
       }
     }
 
+    /** Matches an abstract class or a trait with no type parameters, no
+      * constructor args (in the case of a class), no implementation details,
+      * no abstract members. */
     object ExAbstractClass {
-      /** Matches an abstract class or a trait with no type parameters, no
-       * constrctor args (in the case of a class), no implementation details,
-       * no abstract members. */
       def unapply(cd: ClassDef): Option[(String, Symbol, Template)] = cd match {
         // abstract class
         case ClassDef(_, name, tparams, impl) if cd.symbol.isAbstractClass => Some((name.toString, cd.symbol, impl))
@@ -334,10 +351,12 @@ trait ASTExtractors {
       }
     }
 
+    /** Returns true if the class definition is a case class */
     private def isCaseClass(cd: ClassDef): Boolean = {
       cd.symbol.isCase && !cd.symbol.isAbstractClass && cd.impl.body.size >= 8
     }
 
+    /** Returns true if the class definition is an implicit class */
     private def isImplicitClass(cd: ClassDef): Boolean = {
       cd.symbol.isImplicit
     }

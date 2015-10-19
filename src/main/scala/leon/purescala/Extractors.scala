@@ -235,22 +235,6 @@ object Extractors {
   trait Extractable {
     def extract: Option[(Seq[Expr], Seq[Expr] => Expr)]
   }
-
-  object StringLiteral {
-    def unapply(e: Expr)(implicit pgm: Program): Option[String] = e match {
-      case CaseClass(cct, args) =>
-        for {
-          libS <- pgm.library.String
-          if cct.classDef == libS
-          (_, chars) <- isListLiteral(args.head)
-          if chars.forall(_.isInstanceOf[CharLiteral])
-        } yield {
-          chars.collect{ case CharLiteral(c) => c }.mkString
-        }
-      case _ =>
-        None
-    }
-  }
   
   object TopLevelOrs { // expr1 AND (expr2 AND (expr3 AND ..)) => List(expr1, expr2, expr3)
     def unapply(e: Expr): Option[Seq[Expr]] = e match {

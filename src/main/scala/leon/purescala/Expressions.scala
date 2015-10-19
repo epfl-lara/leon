@@ -416,6 +416,10 @@ object Expressions {
     val getType = UnitType
     val value = ()
   }
+  /** $encodingof a string literal */
+  case class StringLiteral(value: String) extends Literal[String] {
+    val getType = StringType
+  }
 
 
   /** Generic values. Represent values of the generic type `tp`.
@@ -542,7 +546,39 @@ object Expressions {
       else Untyped
     }
   }
-
+  
+  /** Returns true if the underlined type can be converted to a String */
+  object CanHaveStringType {
+    def apply(t: TypeTree): Boolean = t match { case BooleanType | Int32Type | IntegerType | CharType | RealType | StringType => true case _ => false }
+    def unapply(t: TypeTree) = if(apply(t)) Some(t) else None
+  }
+  
+  /* String Theory */
+  /** $encodingof `expr.toString` for strings */
+  case class ToString(expr: Expr) extends Expr {
+    val getType = if(CanHaveStringType(expr.getType)) StringType else Untyped
+  }
+  /** $encodingof `lhs + rhs` for strings */
+  case class StringConcat(lhs: Expr, rhs: Expr) extends Expr {
+     val getType = {
+      if (CanHaveStringType(lhs.getType) || CanHaveStringType(rhs.getType)) StringType
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.subString(start, end)` for strings */
+  case class SubString(expr: Expr, start: Expr, end: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType && (start == IntegerType || start == Int32Type) && (end == IntegerType || end == Int32Type)) StringType
+      else Untyped
+    }
+  }
+  /** $encodingof `lhs.length` for strings */
+  case class StringLength(expr: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType) StringType
+      else Untyped
+    }
+  }
 
   /* Integer arithmetic */
 
