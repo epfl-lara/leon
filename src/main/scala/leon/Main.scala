@@ -44,15 +44,15 @@ object Main {
     val description = "Selection of Leon functionality. Default: verify"
 
     val optEval        = LeonStringOptionDef("eval", "Evaluate ground functions through code generation or evaluation (default: evaluation)", "default", "[code|default]")
-    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify", false)
-    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                             false)
-    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",              false)
-    val optIsabelle    = LeonFlagOptionDef("isabelle",    "Run Isabelle verification",                             false)
-    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",           false)
-    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                             false)
-    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                     false)
-    val optInstrument = LeonFlagOptionDef("instrument", "Instrument the code for inferring time/depth/stack bounds", false)
-    val optInferInv = LeonFlagOptionDef("inferInv", "Infer invariants from (instrumented) the code", false)
+    val optTermination = LeonFlagOptionDef("termination", "Check program termination. Can be used along --verify",     false)
+    val optRepair      = LeonFlagOptionDef("repair",      "Repair selected functions",                                 false)
+    val optSynthesis   = LeonFlagOptionDef("synthesis",   "Partial synthesis of choose() constructs",                  false)
+    val optIsabelle    = LeonFlagOptionDef("isabelle",    "Run Isabelle verification",                                 false)
+    val optNoop        = LeonFlagOptionDef("noop",        "No operation performed, just output program",               false)
+    val optVerify      = LeonFlagOptionDef("verify",      "Verify function contracts",                                 false)
+    val optHelp        = LeonFlagOptionDef("help",        "Show help message",                                         false)
+    val optInstrument  = LeonFlagOptionDef("instrument",  "Instrument the code for inferring time/depth/stack bounds", false)
+    val optInferInv    = LeonFlagOptionDef("inferInv",    "Infer invariants from (instrumented) the code",             false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
       Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv)
@@ -74,7 +74,7 @@ object Main {
     }
     reporter.info("")
 
-    reporter.info("Additional options, by component:")
+    reporter.title("Additional options, by component:")
 
     for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
