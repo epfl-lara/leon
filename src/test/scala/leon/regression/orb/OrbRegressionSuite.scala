@@ -33,31 +33,31 @@ class OrbRegressionSuite extends LeonRegressionSuite {
 
   forEachFileIn("regression/orb/timing") { f =>
     test("Timing: " + f.getName) {
-      testInference(f, 50)
+      testInference(f, 200)
     }
   }
 
   forEachFileIn("regression/orb/stack/") { f =>
     test("Stack: " + f.getName) {
-      testInference(f, 50)
+      testInference(f, 200)
     }
   }
 
   forEachFileIn("regression/orb//depth") { f =>
     test("Depth: " + f.getName) {
-      testInference(f, 50)
+      testInference(f, 200)
     }
   }
 
   forEachFileIn("regression/orb/numerical") { f =>
     test("Numerical: " + f.getName) {
-      testInference(f, 50)
+      testInference(f, 200)
     }
   }
 
   forEachFileIn("regression/orb/combined/") { f =>
     test("Multiple Instrumentations: " + f.getName) {
-      testInference(f, 50)
+      testInference(f, 200)
     }
   }
 }
