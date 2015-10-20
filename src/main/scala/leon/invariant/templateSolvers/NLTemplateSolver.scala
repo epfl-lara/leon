@@ -178,6 +178,8 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
     val (res, newCtr, newModel, newdisjs, newcalls) = invalidateSATDisjunct(inputCtr, model)
     res match {
+      case _ if ctx.abort =>
+        (None, None)
       case None => {
         //here, we cannot proceed and have to return unknown
         //However, we can return the calls that need to be unrolled
@@ -297,6 +299,9 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
             val combCtr = And(prevCtr, newPart)
             val (res, newModel) = farkasSolver.solveFarkasConstraints(combCtr)
             res match {
+              case _ if ctx.abort =>
+                 // stop immediately
+                (None, tru, Model.empty)
               case None => {
                 //here we have timed out while solving the non-linear constraints
                 if (verbose)
@@ -374,7 +379,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   def getUNSATConstraints(fd: FunDef, inModel: Model, disableCounterExs: Expr): Option[((Expr, Set[Call]), Expr)] = {
 
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
-    val innerSolver =
+    val solver =
       if (this.useIncrementalSolvingForVCs) vcSolvers(fd)
       else new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
     val instExpr = if (this.useIncrementalSolvingForVCs) {
@@ -405,20 +410,21 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
     //reporter.info("checking VC inst ...")
     var t1 = System.currentTimeMillis()
-    innerSolver.setTimeout(timeout * 1000)
+    solver.setTimeout(timeout * 1000)
     val (res, model) = if (this.useIncrementalSolvingForVCs) {
-      innerSolver.push
-      innerSolver.assertCnstr(instExpr)
-      val solRes = innerSolver.check match {
+      solver.push
+      solver.assertCnstr(instExpr)
+      val solRes = new TimerUtil.InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(solver.check) match {
+        case _ if ctx.abort =>
+          (None, Model.empty)
         case r @ Some(true) =>
-          (r, innerSolver.getModel)
+          (r, solver.getModel)
         case r => (r, Model.empty)
       }
-      innerSolver.pop()
+      solver.pop()
       solRes
     } else {
-      val solver = SimpleSolverAPI(SolverFactory(() => innerSolver))
-      solver.solveSAT(instExpr)
+      SimpleSolverAPI(SolverFactory(() => solver)).solveSAT(instExpr)
     }
     val vccTime = (System.currentTimeMillis() - t1)
 

@@ -16,6 +16,7 @@ import invariant.engine.InferenceContext
 import invariant.factories._
 import leon.invariant.templateSolvers.ExtendedUFSolver
 import leon.invariant.util.RealValuedExprEvaluator._
+import invariant.util.TimerUtil._
 
 class Minimizer(ctx: InferenceContext, program: Program) {
 
@@ -54,9 +55,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
     //do a binary search sequentially on each of these tempvars
     // note: use smtlib solvers so that they can be timedout
-    val solver = SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() =>
-        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.vcTimeout * 1000))
+    val solver = new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
 
     reporter.info("minimizing...")
     var currentModel = initModel
@@ -97,7 +96,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
           else {
             val boundCtr = And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound))
             //val t1 = System.currentTimeMillis()
-            val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
+            val (res, newModel) = solver.solveSAT(And(acc, boundCtr), ctx.vcTimeout * 1000)
             //val t2 = System.currentTimeMillis()
             //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
             res match {
@@ -111,7 +110,7 @@ class Minimizer(ctx: InferenceContext, program: Program) {
             }
           }
         }
-      } while (continue && iter < MaxIter)
+      } while (!ctx.abort && continue && iter < MaxIter)
       //this is the last ditch effort to make the upper bound constant smaller.
       //check if the floor of the upper-bound is a solution
       val currval @ FractionalLiteral(n, d) =
@@ -120,8 +119,8 @@ class Minimizer(ctx: InferenceContext, program: Program) {
         } else {
           initModel(tvar.id).asInstanceOf[FractionalLiteral]
         }
-      if (d != 1) {
-        val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
+      if (d != 1 && !ctx.abort) {
+        val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(currval))), ctx.vcTimeout * 1000)
         if (res == Some(true))
           updateState(newModel)
       }

@@ -50,8 +50,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
     var inferTemp = false
     var enumerationRelation: (Expr, Expr) => Expr = LessEquals
     var useCegis = false
-    //var maxCegisBound = 200 //maximum bound for the constants in cegis
-    var maxCegisBound = 1000000000
+    var maxCegisBound = 200
     var statsSuff = "-stats" + FileCountGUID.getID
     var usereals = false
     var autoInference = true
@@ -82,7 +81,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
         targettedUnroll, autoInference, dumpStats, tightBounds,
         withmult, usereals, inferTemp, useCegis, vcTimeout,
         maxCegisBound, statsSuff)
-    val report = (new InferenceEngine(inferctx)).run()
+    val report = (new InferenceEngine(inferctx)).runWithTimeout()
     //println("Final Program: \n" +PrettyPrinter.apply(report.finalProgramWoInstrumentation))
     report
   }

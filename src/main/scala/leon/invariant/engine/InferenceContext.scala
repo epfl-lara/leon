@@ -30,9 +30,10 @@ class InferenceContext(
     val maxCegisBound: Int,
     val statsSuffix: String) {
 
+  var abort = false // a flag for aborting
+  val totalTimeout = leonContext.findOption(SharedOptions.optTimeout) // in secs
   val reporter = leonContext.reporter
   val functionsToInfer = leonContext.findOption(SharedOptions.optFunctions)
-  val totalTimeout = leonContext.findOption(SharedOptions.optTimeout)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
   // convets qmarks to templates

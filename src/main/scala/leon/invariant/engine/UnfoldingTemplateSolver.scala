@@ -83,41 +83,47 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
     var toRefineCalls: Option[Set[Call]] = None
     var infRes: Option[InferResult] = None
     do {
-      Stats.updateCounter(1, "VC-refinement")
-      /* uncomment if we want to bound refinements
-       * if (refinementStep >= 5)
-          throw new IllegalStateException("Done 4 refinements")*/
-      val refined =
-        if (refinementStep >= 1) {
-          reporter.info("- More unrollings for invariant inference")
-
-          val toUnrollCalls = if (ctx.targettedUnroll) toRefineCalls else None
-          val unrolledCalls = constTracker.refineVCs(toUnrollCalls)
-          if (unrolledCalls.isEmpty) {
-            reporter.info("- Cannot do more unrollings, reached unroll bound")
-            false
-          } else true
-        } else {
-          constTracker.initialize
-          true
-        }
-      refinementStep += 1
       infRes =
-        if (!refined)
+        if(ctx.abort)
           Some(InferResult(false, None, List()))
-        else {
-          //solve for the templates in this unroll step
-          templateSolver.solveTemplates() match {
-            case (Some(model), callsInPath) =>
-              toRefineCalls = callsInPath
-              //Validate the model here
-              instantiateAndValidateModel(model, constTracker.getFuncs.toSeq)
-              Some(InferResult(true, Some(model),
-                constTracker.getFuncs.toList))
-            case (None, callsInPath) =>
-              toRefineCalls = callsInPath
-              //here, we do not know if the template is solvable or not, we need to do more unrollings.
-              None
+        else{
+          Stats.updateCounter(1, "VC-refinement")
+          /*
+           * uncomment if we want to bound refinements
+           * if (refinementStep >= 5)
+           * throw new IllegalStateException("Done 4 refinements")
+           */
+          val refined =
+            if (refinementStep >= 1) {
+              reporter.info("- More unrollings for invariant inference")
+
+              val toUnrollCalls = if (ctx.targettedUnroll) toRefineCalls else None
+              val unrolledCalls = constTracker.refineVCs(toUnrollCalls)
+              if (unrolledCalls.isEmpty) {
+                reporter.info("- Cannot do more unrollings, reached unroll bound")
+                false
+              } else true
+            } else {
+              constTracker.initialize
+              true
+            }
+          refinementStep += 1
+          if (!refined)
+            Some(InferResult(false, None, List()))
+          else {
+            //solve for the templates in this unroll step
+            templateSolver.solveTemplates() match {
+              case (Some(model), callsInPath) =>
+                toRefineCalls = callsInPath
+                //Validate the model here
+                instantiateAndValidateModel(model, constTracker.getFuncs.toSeq)
+                Some(InferResult(true, Some(model),
+                  constTracker.getFuncs.toList))
+              case (None, callsInPath) =>
+                toRefineCalls = callsInPath
+                //here, we do not know if the template is solvable or not, we need to do more unrollings.
+                None
+            }
           }
         }
     } while (!infRes.isDefined)

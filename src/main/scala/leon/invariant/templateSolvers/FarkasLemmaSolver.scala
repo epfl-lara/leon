@@ -16,6 +16,7 @@ import invariant.engine._
 import invariant.factories._
 import invariant.util.Util._
 import invariant.util._
+import TimerUtil._
 import invariant.structure._
 import leon.solvers.TimeoutSolver
 import leon.solvers.SolverFactory
@@ -270,16 +271,17 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
     }
 
     // solve the resulting constraints using solver
-    val innerSolver = if (solveAsBitvectors) {
+    val solver = if (solveAsBitvectors) {
       throw new IllegalStateException("Not supported now. Will be in the future!")
       //new ExtendedUFSolver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
-      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+      new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
     }
-    val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
+    //val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), ))
     if (verbose) reporter.info("solving...")
     val t1 = System.currentTimeMillis()
-    val (res, model) = solver.solveSAT(simpctrs)
+    //solver.solveSAT(simpctrs)
+    val (res, model) = solver.solveSAT(simpctrs, timeout * 1000)
     val t2 = System.currentTimeMillis()
     if (verbose) reporter.info((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")
