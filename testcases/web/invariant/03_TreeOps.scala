@@ -43,7 +43,7 @@ object TreeOperations {
       case Node(l, x, r) => if (x <= elem) Node(l, x, insert(elem, r))
       else Node(insert(elem, l), x, r)
     }
-  } ensuring (res => height(res) <= height(t) + 1time <= ? *height(t) + ?)
+  } ensuring (res => height(res) <= height(t) + 1 && time <= ? *height(t) + ?)
 
   def addAll(l: List, t: Tree): Tree = {
     l match {
@@ -53,7 +53,7 @@ object TreeOperations {
         addAll(xs, newt)
       }
     }
-  } ensuring(res => tmpl((a,b,c) => time <= ? *(listSize(l) * (height(t) + listSize(l))) + ? *listSize(l) + ?)
+  } ensuring(_ => time <= ? *(listSize(l) * (height(t) + listSize(l))) + ? *listSize(l) + ?)
 
   def remove(elem: BigInt, t: Tree): Tree = {
     t match {
