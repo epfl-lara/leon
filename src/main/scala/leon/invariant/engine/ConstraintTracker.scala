@@ -16,13 +16,13 @@ import invariant.factories._
 import invariant.util._
 import invariant.structure._
 
-class ConstraintTracker(ctx : InferenceContext, rootFun : FunDef/*, temFactory: TemplateFactory*/) {
+class ConstraintTracker(ctx : InferenceContext, program: Program, rootFun : FunDef/*, temFactory: TemplateFactory*/) {
 
   //a mapping from functions to its VCs represented as a CNF formula
   protected var funcVCs = Map[FunDef,Formula]()
 
-  val vcRefiner = new RefinementEngine(ctx, this/*, temFactory*/)
-  val specInstantiator = new SpecInstantiator(ctx, this/*, temFactory*/)
+  val vcRefiner = new RefinementEngine(ctx, program, this)
+  val specInstantiator = new SpecInstantiator(ctx, program, this)
 
   def getFuncs : Seq[FunDef] = funcVCs.keys.toSeq
   def hasVC(fdef: FunDef) = funcVCs.contains(fdef)

@@ -17,7 +17,7 @@ import invariant.factories._
 import leon.invariant.templateSolvers.ExtendedUFSolver
 import leon.invariant.util.RealValuedExprEvaluator._
 
-class Minimizer(ctx: InferenceContext) {
+class Minimizer(ctx: InferenceContext, program: Program) {
 
   val verbose = false
   val debugMinimization = false
@@ -26,14 +26,11 @@ class Minimizer(ctx: InferenceContext) {
    * TODO: make sure that the template for rootFun is the time template
    */
   val MaxIter = 16 //note we may not be able to represent anything beyond 2^16
-  /*val MaxInt = Int.MaxValue
-  val sqrtMaxInt = 45000 //this is a number that is close a sqrt of 2^31
-*/ val half = FractionalLiteral(1, 2)
+  val half = FractionalLiteral(1, 2)
   val two = FractionalLiteral(2, 1)
   val rzero = FractionalLiteral(0, 1)
   val mone = FractionalLiteral(-1, 1)
 
-  private val program = ctx.program
   private val leonctx = ctx.leonContext
   val reporter = leonctx.reporter
 
@@ -59,8 +56,7 @@ class Minimizer(ctx: InferenceContext) {
     // note: use smtlib solvers so that they can be timedout
     val solver = SimpleSolverAPI(
       new TimeoutSolverFactory(SolverFactory(() =>
-        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
-        //new ExtendedUFSolver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
+        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.vcTimeout * 1000))
 
     reporter.info("minimizing...")
     var currentModel = initModel
@@ -151,7 +147,7 @@ class Minimizer(ctx: InferenceContext) {
       val (res, newModel) = solver.solveSAT(And(nlctr, Equals(tvar, flval)))
       res match {
         case Some(true) => Some(newModel)
-        case _ => None
+        case _          => None
       }
     } else None
   }
@@ -191,10 +187,10 @@ class Minimizer(ctx: InferenceContext) {
           0
         }
         case FunctionInvocation(_, args) => 1 + args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
-        case t: Terminal => 0
+        case t: Terminal                 => 0
         /*case UnaryOperator(arg, _) => functionNesting(arg)
         case BinaryOperator(a1, a2, _) => functionNesting(a1) + functionNesting(a2)*/
-        case Operator(args, _) => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
+        case Operator(args, _)           => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
       }
     }
     functionNesting(template)

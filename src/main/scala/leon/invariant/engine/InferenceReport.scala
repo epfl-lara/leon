@@ -30,8 +30,8 @@ class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
   }
 }
 
-class InferenceReport(fvcs: Map[FunDef, List[VC]])(implicit ctx: InferenceContext)
-  extends VerificationReport(ctx.program, Map()) {
+class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ctx: InferenceContext)
+  extends VerificationReport(program, Map()) {
 
   import scala.math.Ordering.Implicits._
   val conditions: Seq[InferenceCondition] =
@@ -86,17 +86,17 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]])(implicit ctx: InferenceContex
       case cd if cd.invariant.isDefined =>
         cd.fd -> cd.invariant.get
     }.toMap
-    Util.assignTemplateAndCojoinPost(funToTmpl, ctx.program)
+    Util.assignTemplateAndCojoinPost(funToTmpl, program)
   }
 
   def finalProgramWoInstrumentation: Program = {
 
-    val funToUninstFun = ctx.program.definedFunctions.foldLeft(Map[FunDef, FunDef]()) {
+    val funToUninstFun = program.definedFunctions.foldLeft(Map[FunDef, FunDef]()) {
       case (acc, fd) =>
         val uninstFunName = InstUtil.userFunctionName(fd)
         val uninstFdOpt =
           if (uninstFunName.isEmpty) None
-          else Util.functionByName(uninstFunName, ctx.uninstrumentedProgram)
+          else Util.functionByName(uninstFunName, ctx.initProgram)
         if (uninstFdOpt.isDefined) {
           acc + (fd -> uninstFdOpt.get)
         } else acc
@@ -106,6 +106,6 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]])(implicit ctx: InferenceContex
         funToUninstFun(cd.fd) -> cd.prettyInv.get
     }.toMap
     //println("Function to template: " + funToTmpl.map { case (k, v) => s"${k.id.name} --> $v" }.mkString("\n"))
-    Util.assignTemplateAndCojoinPost(Map(), ctx.uninstrumentedProgram, funToPost, uniqueIdDisplay = false)
+    Util.assignTemplateAndCojoinPost(Map(), ctx.initProgram, funToPost, uniqueIdDisplay = false)
   }
 }

@@ -33,7 +33,6 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
 
   private val dumpVCtoConsole = false
   private val dumpVCasText = false
-  private val dumpVCasSMTLIB = false
 
   /**
    * Completes a model by adding mapping to new template variables
@@ -73,7 +72,7 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
       val vc = if (ctx.usereals)
         ExpressionTransformer.IntLiteralToReal(getVCForFun(fd))
       else getVCForFun(fd)
-      if (dumpVCtoConsole || dumpVCasText || dumpVCasSMTLIB) {
+      if (dumpVCtoConsole || dumpVCasText) {
         //val simpForm = simplifyArithmetic(vc)
         val filename = "vc-" + FileCountGUID.getID
         if (dumpVCtoConsole) {
@@ -86,10 +85,6 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
           wr.println(vc.toString)
           wr.flush()
           wr.close()
-        }
-        if (dumpVCasSMTLIB) {
-          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
-          println("Printed VC of " + fd.id + " to file: " + filename)
         }
       }
 

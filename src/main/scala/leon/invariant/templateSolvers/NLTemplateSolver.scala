@@ -27,8 +27,9 @@ import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.invariant.util.RealValuedExprEvaluator._
 
-class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: ConstraintTracker,
-  minimizer: Option[(Expr, Model) => Model])
+class NLTemplateSolver(ctx: InferenceContext, program: Program,
+    rootFun: FunDef, ctrTracker: ConstraintTracker,
+    minimizer: Option[(Expr, Model) => Model])
   extends TemplateSolver(ctx, rootFun, ctrTracker) {
 
   //flags controlling debugging
@@ -49,12 +50,11 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
   val printCallConstriants = false
   val dumpInstantiatedVC = false
 
-  private val program = ctx.program
-  private val timeout = ctx.timeout
+  private val timeout = ctx.vcTimeout
   private val leonctx = ctx.leonContext
 
   //flag controlling behavior
-  private val farkasSolver = new FarkasLemmaSolver(ctx)
+  private val farkasSolver = new FarkasLemmaSolver(ctx, program)
   private val startFromEarlierModel = true
   private val disableCegis = true
   private val useIncrementalSolvingForVCs = true
@@ -355,7 +355,7 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
 
   def solveWithCegis(tempIds: Set[Identifier], expr: Expr, precond: Expr, initModel: Option[Model]): (Option[Boolean], Expr, Model) = {
 
-    val cegisSolver = new CegisCore(ctx, timeout, this)
+    val cegisSolver = new CegisCore(ctx, program, timeout, this)
     val (res, ctr, model) = cegisSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
     if (!res.isDefined)
       reporter.info("cegis timed-out on the disjunct...")
@@ -471,7 +471,7 @@ class NLTemplateSolver(ctx: InferenceContext, rootFun: FunDef, ctrTracker: Const
     }
   }
 
-  val evaluator = new DefaultEvaluator(leonctx, program) //as of now used only for debugging
+  lazy val evaluator = new DefaultEvaluator(leonctx, program) //as of now used only for debugging
   //a helper method
   //TODO: this should also handle reals
   protected def doesSatisfyModel(expr: Expr, model: Model): Boolean = {

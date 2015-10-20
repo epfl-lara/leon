@@ -18,11 +18,9 @@ import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.invariant.util.RealValuedExprEvaluator._
 
-class CegisSolver(ctx: InferenceContext,
-  rootFun: FunDef,
-  ctrTracker: ConstraintTracker,
-  timeout: Int,
-  bound: Option[Int] = None) extends TemplateSolver(ctx, rootFun, ctrTracker) {
+class CegisSolver(ctx: InferenceContext, program: Program,
+  rootFun: FunDef, ctrTracker: ConstraintTracker,
+  timeout: Int, bound: Option[Int] = None) extends TemplateSolver(ctx, rootFun, ctrTracker) {
 
   override def solve(tempIds: Set[Identifier], funcVCs: Map[FunDef, Expr]): (Option[Model], Option[Set[Call]]) = {
 
@@ -40,7 +38,7 @@ class CegisSolver(ctx: InferenceContext,
     val formula = Util.createOr(funcs.map(funcVCs.apply _).toSeq)
 
     //using reals with bounds does not converge and also results in overflow
-    val (res, _, model) = (new CegisCore(ctx, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
+    val (res, _, model) = (new CegisCore(ctx, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
     res match {
       case Some(true) => (Some(model), None)
       case Some(false) => (None, None) //no solution exists
@@ -51,7 +49,7 @@ class CegisSolver(ctx: InferenceContext,
 }
 
 class CegisCore(ctx: InferenceContext,
-  timeout: Int,
+    program: Program, timeout: Int,
   cegisSolver: TemplateSolver) {
 
   val fls = BooleanLiteral(false)
@@ -60,7 +58,6 @@ class CegisCore(ctx: InferenceContext,
   val timeoutMillis = timeout.toLong * 1000
   val dumpCandidateInvs = true
   val minimizeSum = false
-  val program = ctx.program
   val context = ctx.leonContext
   val reporter = context.reporter
 

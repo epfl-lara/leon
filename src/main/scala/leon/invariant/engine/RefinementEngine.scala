@@ -18,11 +18,10 @@ import FunctionUtils._
 
 //TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
 //TODO: there is a better way to compute heads, which is to consider all guards not previous seen
-class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
+class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: ConstraintTracker) {
 
   val tru = BooleanLiteral(true)
   val reporter = ctx.reporter
-  val prog = ctx.program
   val cg = CallGraphUtil.constructCallGraph(prog)
 
   //this count indicates the number of times we unroll a recursive call

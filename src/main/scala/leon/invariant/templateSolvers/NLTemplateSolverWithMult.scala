@@ -17,9 +17,9 @@ import invariant.factories._
 import invariant.util._
 import invariant.structure._
 
-class NLTemplateSolverWithMult(ctx : InferenceContext, rootFun: FunDef,
+class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun: FunDef,
   ctrTracker: ConstraintTracker, minimizer: Option[(Expr, Model) => Model])
-  extends NLTemplateSolver(ctx, rootFun, ctrTracker, minimizer) {
+  extends NLTemplateSolver(ctx, program, rootFun, ctrTracker, minimizer) {
 
   val axiomFactory = new AxiomFactory(ctx)
 

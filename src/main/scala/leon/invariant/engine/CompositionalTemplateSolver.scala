@@ -21,7 +21,7 @@ import leon.invariant.factories.TemplateSolverFactory
 import leon.invariant.util.Minimizer
 import leon.solvers.Model
 
-class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
+class CompositionalTimeBoundSolver(ctx: InferenceContext, prog: Program, rootFd: FunDef)
   extends FunctionTemplateSolver {
 
   val printIntermediatePrograms = false
@@ -30,7 +30,7 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
   val reporter = ctx.reporter
 
   def inferTemplate(instProg: Program) = {
-    (new UnfoldingTemplateSolver(ctx.copy(program = instProg), findRoot(instProg)))()
+    (new UnfoldingTemplateSolver(ctx, instProg, findRoot(instProg)))()
   }
 
   def findRoot(prog: Program) = {
@@ -45,7 +45,7 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
       throw new IllegalStateException("Templates for tpr, rec, time as well as all other templates " +
         " taken together should not have the any common template variables for compositional analysis")
 
-    val origProg = ctx.program
+    val origProg = prog
     // add only rec templates for all functions
     val funToRecTmpl = origProg.definedFunctions.collect {
       case fd if fd.hasTemplate && fd == rootFd =>
@@ -81,7 +81,7 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
         }.toMap
         val compProg = assignTemplateAndCojoinPost(funToTmpl, origProg)
         val compFunDef = findRoot(compProg)
-        val nctx = ctx.copy(program = compProg)
+        //val nctx = ctx.copy(program = compProg)
 
         // construct the instantiated tpr bound and check if it monotonically decreases
         val Operator(Seq(_, tprFun), _) = tprTmpl
@@ -118,13 +118,13 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
         if (printIntermediatePrograms) reporter.info("Comp prog: " + compProg)
         if (debugComposition) reporter.info("Compositional VC: " + vcExpr)
 
-        val recTempSolver = new UnfoldingTemplateSolver(nctx, compFunDef) {
+        val recTempSolver = new UnfoldingTemplateSolver(ctx, compProg, compFunDef) {
           val minFunc = {
-            val mizer = new Minimizer(ctx)
+            val mizer = new Minimizer(ctx, compProg)
             Some(mizer.minimizeBounds(mizer.computeCompositionLevel(timeTmpl)) _)
           }
           override lazy val templateSolver =
-            TemplateSolverFactory.createTemplateSolver(ctx, constTracker, rootFd, minFunc)
+            TemplateSolverFactory.createTemplateSolver(ctx, compProg, constTracker, rootFd, minFunc)
           override def instantiateModel(model: Model, funcs: Seq[FunDef]) = {
             funcs.collect {
               case `compFunDef` =>
@@ -148,12 +148,12 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
     }
   }
 
-  def combineMapsUsingConjunction(maps: List[Map[FunDef, Expr]]) = {
+  /*def combineMapsUsingConjunction(maps: List[Map[FunDef, Expr]], prog: Program) = {
     val combMap = new OrderedMultiMap[FunDef, Expr]
     maps.foreach {
       _.foreach {
         case (k, v) =>
-          val origFun = functionByName(k.id.name, ctx.program).get
+          val origFun = functionByName(k.id.name, prog).get
           combMap.addBinding(origFun, v)
       }
     }
@@ -161,7 +161,7 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
       case (acc, (k, vs)) if vs.size == 1 => acc + (k -> vs(0))
       case (acc, (k, vs)) => acc + (k -> And(vs.toSeq))
     }
-  }
+  }*/
 
   def extractSeparateTemplates(funDef: FunDef): (Option[Expr], Option[Expr], Option[Expr], Seq[Expr]) = {
     if (!funDef.hasTemplate) (None, None, None, Seq[Expr]())
@@ -204,7 +204,7 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, rootFd: FunDef)
   }
 
   def inferTPRTemplate(tprProg: Program) = {
-    val tempSolver = new UnfoldingTemplateSolver(ctx.copy(program = tprProg), findRoot(tprProg)) {
+    val tempSolver = new UnfoldingTemplateSolver(ctx, tprProg, findRoot(tprProg)) {
       override def constructVC(rootFd: FunDef): (Expr, Expr) = {
         val body = Equals(getResId(rootFd).get.toVariable, matchToIfThenElse(rootFd.body.get))
         val preExpr =

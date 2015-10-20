@@ -20,6 +20,7 @@ import invariant.util.Util._
 import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.invariant.factories.TemplateFactory
+import transformations._
 
 /**
  * @author ravi
@@ -30,7 +31,7 @@ class InferenceEngine(ctx: InferenceContext) {
 
   def run(): InferenceReport = {
     val reporter = ctx.reporter
-    val program = ctx.program
+    val program = ctx.inferProgram
     reporter.info("Running Inference Engine...")
 
     //register a shutdownhook
@@ -40,15 +41,19 @@ class InferenceEngine(ctx: InferenceContext) {
     val t1 = System.currentTimeMillis()
     //compute functions to analyze by sorting based on topological order (this is an ascending topological order)
     val callgraph = CallGraphUtil.constructCallGraph(program, withTemplates = true)
-    val functionsToAnalyze = if (ctx.modularlyAnalyze) {
-      callgraph.topologicalOrder
-    } else {
-      callgraph.topologicalOrder.reverse
+    val functionsToAnalyze = ctx.functionsToInfer match {
+      case Some(rootfuns) =>
+        val rootset = rootfuns.toSet
+        val rootfds = program.definedFunctions.filter(fd => rootset(InstUtil.userFunctionName(fd)))
+        val relfuns = rootfds.flatMap(callgraph.transitiveCallees _).toSet
+        callgraph.topologicalOrder.filter{ fd => relfuns(fd) }
+      case _ =>
+        callgraph.topologicalOrder
     }
     //reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
     var results: Map[FunDef, InferenceCondition] = null
     if (!ctx.useCegis) {
-      results = analyseProgram(functionsToAnalyze)
+      results = analyseProgram(program, functionsToAnalyze)
       //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
     } else {
       var remFuncs = functionsToAnalyze
@@ -57,7 +62,7 @@ class InferenceEngine(ctx: InferenceContext) {
       breakable {
         while (b <= maxCegisBound) {
           Stats.updateCumStats(1, "CegisBoundsTried")
-          val succeededFuncs = analyseProgram(remFuncs)
+          val succeededFuncs = analyseProgram(program, remFuncs)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
           if (remFuncs.isEmpty) break;
           b += 5 //increase bounds in steps of 5
@@ -75,12 +80,12 @@ class InferenceEngine(ctx: InferenceContext) {
     new InferenceReport(results.map(pair => {
       val (fd, ic) = pair
       (fd -> List[VC](ic))
-    }))(ctx)
+    }), program)(ctx)
   }
 
   def dumpStats(statsSuffix: String) = {
     //pick the module id.
-    val modid = ctx.program.modules.last.id
+    val modid = ctx.inferProgram.modules.last.id
     val pw = new PrintWriter(modid + statsSuffix + ".txt")
     Stats.dumpStats(pw)
     SpecificStats.dumpOutputs(pw)
@@ -94,17 +99,20 @@ class InferenceEngine(ctx: InferenceContext) {
    * TODO: use function names in inference conditions, so that
    * we an get rid of dependence on origFd in many places.
    */
-  def analyseProgram(functionsToAnalyze: Seq[FunDef]): Map[FunDef, InferenceCondition] = {
+  def analyseProgram(startProg: Program, functionsToAnalyze: Seq[FunDef]): Map[FunDef, InferenceCondition] = {
     val reporter = ctx.reporter
     val funToTmpl =
       if (ctx.autoInference) {
         //A template generator that generates templates for the functions (here we are generating templates by enumeration)
-        val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(ctx)), ctx.program, ctx.reporter)
-        ctx.program.definedFunctions.map(fd => fd -> getOrCreateTemplateForFun(fd)).toMap
+        // not usef for now
+        /*val tempFactory = new TemplateFactory(Some(new TemplateEnumerator(ctx, startProg)),
+            startProg, ctx.reporter)*/
+        startProg.definedFunctions.map(fd => fd -> getOrCreateTemplateForFun(fd)).toMap
       } else
-        ctx.program.definedFunctions.collect { case fd if fd.hasTemplate => fd -> fd.getTemplate }.toMap
-    val progWithTemplates = assignTemplateAndCojoinPost(funToTmpl, ctx.program)
+        startProg.definedFunctions.collect { case fd if fd.hasTemplate => fd -> fd.getTemplate }.toMap
+    val progWithTemplates = assignTemplateAndCojoinPost(funToTmpl, startProg)
     var analyzedSet = Map[FunDef, InferenceCondition]()
+
     functionsToAnalyze.filterNot((fd) => {
       (fd.annotations contains "verified") ||
         (fd.annotations contains "library") ||
@@ -117,27 +125,26 @@ class InferenceEngine(ctx: InferenceContext) {
       //skip the function if it has been analyzed
       if (!analyzedSet.contains(origFun)) {
         if (funDef.hasBody && funDef.hasPostcondition) {
-          val currCtx = ctx.copy(program = prog)
           // for stats
           Stats.updateCounter(1, "procs")
           val solver =
             if (funDef.annotations.contains("compose")) //compositional inference ?
-              new CompositionalTimeBoundSolver(currCtx, funDef)
+              new CompositionalTimeBoundSolver(ctx, prog, funDef)
             else
-              new UnfoldingTemplateSolver(currCtx, funDef)
+              new UnfoldingTemplateSolver(ctx, prog, funDef)
           val t1 = System.currentTimeMillis()
           val infRes = solver()
           val funcTime = (System.currentTimeMillis() - t1) / 1000.0
           infRes match {
             case Some(InferResult(true, model, inferredFuns)) =>
               val funsWithTemplates = inferredFuns.filter { fd =>
-                val origFd = Util.functionByName(fd.id.name, ctx.program).get
+                val origFd = Util.functionByName(fd.id.name, startProg).get
                 !analyzedSet.contains(origFd) && origFd.hasTemplate
               }
               // create a inference condition for reporting
               var first = true
               funsWithTemplates.foreach { fd =>
-                val origFd = Util.functionByName(fd.id.name, ctx.program).get
+                val origFd = Util.functionByName(fd.id.name, startProg).get
                 val inv = TemplateInstantiator.getAllInvariants(model.get,
                   Map(origFd -> origFd.getTemplate))
                 // record the inferred invariants
@@ -151,15 +158,13 @@ class InferenceEngine(ctx: InferenceContext) {
                 funsWithTemplates.collect {
                   case fd if fd.hasTemplate => fd -> fd.getTemplate
                 }.toMap)
-              if (ctx.modularlyAnalyze) {
-                // create a new program that has the inferred templates
-                val funToTmpl = prog.definedFunctions.collect {
-                  case fd if !invs.contains(fd) && fd.hasTemplate =>
-                    fd -> fd.getTemplate
-                }.toMap
-                assignTemplateAndCojoinPost(funToTmpl, prog, invs)
-              } else
-                prog
+              // create a new program that has the inferred templates
+              val funToTmpl = prog.definedFunctions.collect {
+                case fd if !invs.contains(fd) && fd.hasTemplate =>
+                  fd -> fd.getTemplate
+              }.toMap
+              assignTemplateAndCojoinPost(funToTmpl, prog, invs)
+
             case _ =>
               reporter.info("- Exhausted all templates, cannot infer invariants")
               val ic = new InferenceCondition(None, origFun)

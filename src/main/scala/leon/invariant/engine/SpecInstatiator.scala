@@ -22,7 +22,7 @@ import invariant.util.Util._
 import invariant.structure._
 import FunctionUtils._
 
-class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
+class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: ConstraintTracker) {
 
   val verbose = false
 
@@ -31,7 +31,6 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
 
   val tru = BooleanLiteral(true)
   val axiomFactory = new AxiomFactory(ctx) //handles instantiation of axiomatic specification
-  val program = ctx.program
 
   //the guards of the set of calls that were already processed
   protected var exploredGuards = Set[Variable]()

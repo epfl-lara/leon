@@ -8,6 +8,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
+import purescala.DefOps._
 import solvers._
 import solvers.z3.FairZ3Solver
 import java.io._
@@ -35,14 +36,13 @@ trait FunctionTemplateSolver {
   def apply(): Option[InferResult]
 }
 
-class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends FunctionTemplateSolver {
+class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: FunDef) extends FunctionTemplateSolver {
 
   val reporter = ctx.reporter
-  val program = ctx.program
   val debugVCs = false
 
-  lazy val constTracker = new ConstraintTracker(ctx, rootFd)
-  lazy val templateSolver = TemplateSolverFactory.createTemplateSolver(ctx, constTracker, rootFd)
+  lazy val constTracker = new ConstraintTracker(ctx, program, rootFd)
+  lazy val templateSolver = TemplateSolverFactory.createTemplateSolver(ctx, program, constTracker, rootFd)
 
   def constructVC(funDef: FunDef): (Expr, Expr) = {
     val body = funDef.body.get
@@ -55,15 +55,18 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
       And(matchToIfThenElse(funDef.precondition.get), plainBody)
     } else plainBody
 
-    val fullPost = matchToIfThenElse(if (funDef.hasTemplate)
-      if (ctx.toVerifyPostFor.contains(funDef.id.name))
-      And(funDef.getPostWoTemplate, funDef.getTemplate)
-    else
-      funDef.getTemplate
-    else if (ctx.toVerifyPostFor.contains(funDef.id.name))
-      funDef.getPostWoTemplate
-    else
-      BooleanLiteral(true))
+    val funName = fullName(funDef, useUniqueIds = false)(program)
+    val fullPost = matchToIfThenElse(
+      if (funDef.hasTemplate) {
+        // if the postcondition is verified do not include it in the sequent
+        if (ctx.isFunctionPostVerified(funName))
+          funDef.getTemplate
+        else
+          And(funDef.getPostWoTemplate, funDef.getTemplate)
+      } else if (!ctx.isFunctionPostVerified(funName))
+        funDef.getPostWoTemplate
+      else
+        BooleanLiteral(true))
 
     (bodyExpr, fullPost)
   }

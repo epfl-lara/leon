@@ -98,6 +98,11 @@ object Util {
   val tru = BooleanLiteral(true)
   val fls = BooleanLiteral(false)
 
+  def createLeonContext(ctx: LeonContext, opts: String*): LeonContext = {
+    Main.processOptions(opts.toList).copy(reporter = ctx.reporter,
+      interruptManager = ctx.interruptManager, files = ctx.files, timers = ctx.timers)
+  }
+
   /**
    * Here, we exclude empty units that do not have any modules and empty
    * modules that do not have any definitions
