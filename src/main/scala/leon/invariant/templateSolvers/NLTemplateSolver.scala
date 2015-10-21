@@ -417,7 +417,8 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     val (res, model) = if (this.useIncrementalSolvingForVCs) {
       solver.push
       solver.assertCnstr(instExpr)
-      val solRes = new InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(solver.check) match {
+      // new InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(
+      val solRes = solver.check match {
         case _ if ctx.abort =>
           (None, Model.empty)
         case r @ Some(true) =>

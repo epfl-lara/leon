@@ -21,26 +21,6 @@ import java.io._
 import Util._
 import PredicateUtil._
 
-class AbortableSolver(solverFactory: () => TimeoutSolver, ctx: InferenceContext) {
-
-  def solveSAT(expr: Expr, timeout: Long): (Option[Boolean], Model) = {
-    val solver = solverFactory()
-    try {
-      solver.setTimeout(timeout * 1000)
-      solver.assertCnstr(expr)
-      val res = new InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(solver.check) match {
-        case r @ Some(true) =>
-          (r, solver.getModel)
-        case r =>
-          (r, Model.empty)
-      }
-      res
-    } finally {
-      solver.free()
-    }
-  }
-}
-
 object SolverUtil {
 
   def modelToExpr(model: Model): Expr = {

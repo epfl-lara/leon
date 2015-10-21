@@ -278,13 +278,15 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
       throw new IllegalStateException("Not supported now. Will be in the future!")
       //new ExtendedUFSolver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
-      new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
+      //new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
+      SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() =>
+        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), timeout * 1000))
     }
     //val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), ))
     if (verbose) reporter.info("solving...")
     val t1 = System.currentTimeMillis()
     //solver.solveSAT(simpctrs)
-    val (res, model) = solver.solveSAT(simpctrs, timeout * 1000)
+    val (res, model) = solver.solveSAT(simpctrs) //solver.solveSAT(simpctrs, timeout * 1000)
     val t2 = System.currentTimeMillis()
     if (verbose) reporter.info((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")

@@ -38,10 +38,11 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
 
   def interrupt() = {
     ctx.abort = true
+    ctx.leonContext.interruptManager.interrupt()
   }
 
   def recoverInterrupt() = {
-    ctx.abort = true
+    ctx.abort = false
   }
 
   def runWithTimeout() = {
