@@ -8,6 +8,11 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import leon.utils.Library
+import invariant.util._
+import invariant.util._
+import Util._
+import ProgramUtil._
+import PredicateUtil._
 
 sealed abstract class Instrumentation {
   val getType: TypeTree
@@ -73,7 +78,7 @@ object InstUtil {
   }
 
   def getInstMap(fd: FunDef) = {
-    val resvar = invariant.util.Util.getResId(fd).get.toVariable // note: every instrumented function has a postcondition
+    val resvar = getResId(fd).get.toVariable // note: every instrumented function has a postcondition
     val insts = fd.id.name.split("-").tail // split the name of the function w.r.t '-'
     (insts.zipWithIndex).foldLeft(Map[Expr, String]()) {
       case (acc, (instName, i)) =>
@@ -82,7 +87,7 @@ object InstUtil {
   }
 
   def getInstExpr(fd: FunDef, inst: Instrumentation) = {
-    val resvar = invariant.util.Util.getResId(fd).get.toVariable // note: every instrumented function has a postcondition
+    val resvar = getResId(fd).get.toVariable // note: every instrumented function has a postcondition
     val insts = fd.id.name.split("-").tail // split the name of the function w.r.t '-'
     val index = insts.indexOf(inst.name)
     if (index >= 0)

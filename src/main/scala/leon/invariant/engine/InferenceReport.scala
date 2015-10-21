@@ -34,7 +34,12 @@ class InferenceCondition(invs: Seq[Expr], funDef: FunDef)
     simplifyArithmetic(InstUtil.replaceInstruVars(multToTimes(inv), fd))) match {
     case Seq() => None
     case Seq(inv) => Some(inv)
-    case invs => Some(And(invs))
+    case invs =>
+      invs.map(ExpressionTransformer.simplify _).filter(_ != tru) match {
+        case Seq() => Some(tru)
+        case Seq(ninv) => Some(ninv)
+        case ninvs => Some(And(ninvs))
+      }
   }
 
   def status: String = prettyInv match {
