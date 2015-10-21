@@ -22,64 +22,43 @@ object TimerUtil {
       Some(timer)
     } else None
   }
+}
 
-  class InterruptOnSignal(it: Interruptible) {
+class InterruptOnSignal(it: Interruptible) {
 
-    private class Poll(signal: => Boolean, onSignal: => Unit) extends Thread {
-      private var keepRunning = true
+  private class Poll(signal: => Boolean, onSignal: => Unit) extends Thread {
+    private var keepRunning = true
 
-      override def run(): Unit = {
-        val startTime: Long = System.currentTimeMillis
-        while (!signal && keepRunning) {
-          Thread.sleep(100) // a relatively infrequent poll
-        }
-        if (signal && keepRunning) {
-          onSignal
-        }
+    override def run(): Unit = {
+      val startTime: Long = System.currentTimeMillis
+      while (!signal && keepRunning) {
+        Thread.sleep(100) // a relatively infrequent poll
       }
-
-      def finishedRunning(): Unit = {
-        keepRunning = false
+      if (signal && keepRunning) {
+        onSignal
       }
     }
 
-    def interruptOnSignal[T](signal: => Boolean)(body: => T): T = {
-      var recdSignal = false
-
-      val timer = new Poll(signal, {
-        it.interrupt()
-        recdSignal = true
-      })
-
-      timer.start()
-      val res = body
-      timer.finishedRunning()
-
-      if (recdSignal) {
-        it.recoverInterrupt()
-      }
-      res
+    def finishedRunning(): Unit = {
+      keepRunning = false
     }
-
   }
 
-  class AbortableSolver(solverFactory: () => TimeoutSolver, ctx: InferenceContext) {
+  def interruptOnSignal[T](signal: => Boolean)(body: => T): T = {
+    var recdSignal = false
 
-    def solveSAT(expr: Expr, timeout: Long): (Option[Boolean], Model) = {
-      val solver = solverFactory()
-      try {
-        solver.setTimeout(timeout * 1000)
-        solver.assertCnstr(expr)
-        val res = new InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(solver.check) match {
-          case r @ Some(true) =>
-            (r, solver.getModel)
-          case r =>
-            (r, Model.empty)
-        }
-        res
-      } finally {
-        solver.free()
-      }
+    val timer = new Poll(signal, {
+      it.interrupt()
+      recdSignal = true
+    })
+
+    timer.start()
+    val res = body
+    timer.finishedRunning()
+
+    if (recdSignal) {
+      it.recoverInterrupt()
     }
+    res
   }
 }

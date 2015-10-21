@@ -18,11 +18,14 @@ import scala.reflect.runtime.universe
 import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
-import invariant.util.Util._
 import invariant.structure._
 import transformations._
 import FunctionUtils._
 import leon.invariant.templateSolvers.ExtendedUFSolver
+import Util._
+import PredicateUtil._
+import ProgramUtil._
+import SolverUtil._
 
 /**
  * @author ravi
@@ -184,7 +187,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
     //create a fundef for each function in the program
     //note: mult functions are also copied
     val newFundefs = program.definedFunctions.collect {
-      case fd @ _ => { //if !Util.isMultFunctions(fd)
+      case fd @ _ => { //if !isMultFunctions(fd)
         val newfd = new FunDef(FreshIdentifier(fd.id.name, Untyped, false), fd.tparams, fd.params, fd.returnType)
         (fd, newfd)
       }
@@ -235,7 +238,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
       newfd.addFlags(fd.flags)
     })
 
-    val augmentedProg = Util.copyProgram(program, (defs: Seq[Definition]) => defs.collect {
+    val augmentedProg = copyProgram(program, (defs: Seq[Definition]) => defs.collect {
       case fd: FunDef if (newFundefs.contains(fd)) => newFundefs(fd)
       case d if (!d.isInstanceOf[FunDef]) => d
     })

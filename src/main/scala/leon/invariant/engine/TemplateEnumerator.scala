@@ -17,6 +17,9 @@ import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
+import Util._
+import PredicateUtil._
+import ProgramUtil._
 
 /**
  * An enumeration based template generator.
@@ -102,7 +105,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr, Expr
           }
         })
 
-        val resVar = Util.getFunctionReturnVariable(rootFun)
+        val resVar = getFunctionReturnVariable(rootFun)
         if (newTerms.contains(rootFun.returnType)) {
           newTerms(rootFun.returnType).add(resVar)
         } else {

@@ -17,6 +17,8 @@ import evaluators._
 import java.io._
 import solvers.z3.UninterpretedZ3Solver
 import invariant.util._
+import Util._
+import PredicateUtil._
 
 trait Constraint {
   def toExpr: Expr
@@ -41,7 +43,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   val coeffTemplate = {
     //assert if the coefficients are templated expressions
     assert(coeffTemp.values.foldLeft(true)((acc, e) => {
-      acc && Util.isTemplateExpr(e)
+      acc && isTemplateExpr(e)
     }))
 
     //print the template mapping
@@ -53,7 +55,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   val constTemplate = {
     assert(constTemp match {
       case None => true
-      case Some(e) => Util.isTemplateExpr(e)
+      case Some(e) => isTemplateExpr(e)
     })
     constTemp
   }
@@ -76,7 +78,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   }
 
   def templateVars: Set[Variable] = {
-    Util.getTemplateVars(template)
+    getTemplateVars(template)
   }
 
   def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {

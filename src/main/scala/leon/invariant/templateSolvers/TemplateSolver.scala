@@ -19,6 +19,7 @@ import invariant.util._
 import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.solvers.Model
+import PredicateUtil._
 
 abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
   ctrTracker: ConstraintTracker) {
@@ -89,8 +90,8 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
       }
 
       if (ctx.dumpStats) {
-        Stats.updateCounterStats(Util.atomNum(vc), "VC-size", "VC-refinement")
-        Stats.updateCounterStats(Util.numUIFADT(vc), "UIF+ADT", "VC-refinement")
+        Stats.updateCounterStats(atomNum(vc), "VC-size", "VC-refinement")
+        Stats.updateCounterStats(numUIFADT(vc), "UIF+ADT", "VC-refinement")
       }
       (fd -> vc)
     }).toMap
@@ -100,7 +101,7 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
         //val tempOption = if (fd.hasTemplate) Some(fd.getTemplate) else None
         //if (!tempOption.isDefined) acc
         //else
-        acc ++ Util.getTemplateIds(vc)
+        acc ++ getTemplateIds(vc)
     }
 
     Stats.updateCounterStats(tempIds.size, "TemplateIds", "VC-refinement")

@@ -15,13 +15,27 @@ import invariant.util._
 import invariant.structure._
 import leon.transformations.InstUtil
 import leon.purescala.PrettyPrinter
+import Util._
+import PredicateUtil._
+import ProgramUtil._
+import SolverUtil._
 
-class InferenceCondition(val invariant: Option[Expr], funDef: FunDef)
+class InferenceCondition(invs: Seq[Expr], funDef: FunDef)
   extends VC(BooleanLiteral(true), funDef, null) {
 
   var time: Option[Double] = None
-  lazy val prettyInv = invariant.map(inv =>
-    simplifyArithmetic(InstUtil.replaceInstruVars(Util.multToTimes(inv), fd)))
+  var invariants = invs
+
+  def addInv(invs : Seq[Expr]) {
+    invariants ++= invs
+  }
+
+  lazy val prettyInv = invariants.map(inv =>
+    simplifyArithmetic(InstUtil.replaceInstruVars(multToTimes(inv), fd))) match {
+    case Seq() => None
+    case Seq(inv) => Some(inv)
+    case invs => Some(And(invs))
+  }
 
   def status: String = prettyInv match {
     case None => "unknown"
@@ -65,7 +79,7 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
     })
     val summaryStr = {
       val totalTime = conditions.foldLeft(0.0)((a, ic) => a + ic.time.getOrElse(0.0))
-      val inferredConds = conditions.count((ic) => ic.invariant.isDefined)
+      val inferredConds = conditions.count((ic) => ic.prettyInv.isDefined)
       "total: %-4d  inferred: %-4d  unknown: %-4d  time: %-3.3f".format(
         conditions.size, inferredConds, conditions.size - inferredConds, totalTime)
     }
@@ -83,10 +97,10 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
 
   def finalProgram: Program = {
     val funToTmpl = conditions.collect {
-      case cd if cd.invariant.isDefined =>
-        cd.fd -> cd.invariant.get
+      case cd if cd.prettyInv.isDefined =>
+        cd.fd -> cd.prettyInv.get
     }.toMap
-    Util.assignTemplateAndCojoinPost(funToTmpl, program)
+    assignTemplateAndCojoinPost(funToTmpl, program)
   }
 
   def finalProgramWoInstrumentation: Program = {
@@ -96,16 +110,16 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
         val uninstFunName = InstUtil.userFunctionName(fd)
         val uninstFdOpt =
           if (uninstFunName.isEmpty) None
-          else Util.functionByName(uninstFunName, ctx.initProgram)
+          else functionByName(uninstFunName, ctx.initProgram)
         if (uninstFdOpt.isDefined) {
           acc + (fd -> uninstFdOpt.get)
         } else acc
     }
     val funToPost = conditions.collect {
-      case cd if cd.invariant.isDefined && funToUninstFun.contains(cd.fd) =>
+      case cd if cd.prettyInv.isDefined && funToUninstFun.contains(cd.fd) =>
         funToUninstFun(cd.fd) -> cd.prettyInv.get
     }.toMap
     //println("Function to template: " + funToTmpl.map { case (k, v) => s"${k.id.name} --> $v" }.mkString("\n"))
-    Util.assignTemplateAndCojoinPost(Map(), ctx.initProgram, funToPost, uniqueIdDisplay = false)
+    assignTemplateAndCojoinPost(Map(), ctx.initProgram, funToPost, uniqueIdDisplay = false)
   }
 }

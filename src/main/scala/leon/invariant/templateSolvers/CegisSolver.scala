@@ -17,6 +17,9 @@ import invariant.util._
 import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.invariant.util.RealValuedExprEvaluator._
+import Util._
+import PredicateUtil._
+import SolverUtil._
 
 class CegisSolver(ctx: InferenceContext, program: Program,
   rootFun: FunDef, ctrTracker: ConstraintTracker,
@@ -26,7 +29,7 @@ class CegisSolver(ctx: InferenceContext, program: Program,
 
     val initCtr = if (bound.isDefined) {
       //use a predefined bound on the template variables
-      Util.createAnd(tempIds.map((id) => {
+      createAnd(tempIds.map((id) => {
         val idvar = id.toVariable
         And(Implies(LessThan(idvar, realzero), GreaterEquals(idvar, InfiniteIntegerLiteral(-bound.get))),
           Implies(GreaterEquals(idvar, realzero), LessEquals(idvar, InfiniteIntegerLiteral(bound.get))))
@@ -35,7 +38,7 @@ class CegisSolver(ctx: InferenceContext, program: Program,
     } else tru
 
     val funcs = funcVCs.keys
-    val formula = Util.createOr(funcs.map(funcVCs.apply _).toSeq)
+    val formula = createOr(funcs.map(funcVCs.apply _).toSeq)
 
     //using reals with bounds does not converge and also results in overflow
     val (res, _, model) = (new CegisCore(ctx, program, timeout, this)).solve(tempIds, formula, initCtr, solveAsInt = true)
@@ -77,7 +80,7 @@ class CegisCore(ctx: InferenceContext,
     //for some sanity checks
     var oldModels = Set[Expr]()
     def addModel(m: Model) = {
-      val mexpr = Util.modelToExpr(m)
+      val mexpr = modelToExpr(m)
       if (oldModels.contains(mexpr))
         throw new IllegalStateException("repeating model !!:" + m)
       else oldModels += mexpr
@@ -91,7 +94,7 @@ class CegisCore(ctx: InferenceContext,
 
     val tempVarSum = if (minimizeSum) {
       //compute the sum of the tempIds
-      val rootTempIds = Util.getTemplateVars(cegisSolver.rootFun.getTemplate)
+      val rootTempIds = getTemplateVars(cegisSolver.rootFun.getTemplate)
       if (rootTempIds.size >= 1) {
         rootTempIds.tail.foldLeft(rootTempIds.head.asInstanceOf[Expr])((acc, tvar) => Plus(acc, tvar))
       } else zero
@@ -99,7 +102,7 @@ class CegisCore(ctx: InferenceContext,
 
     //convert initCtr to a real-constraint
     val initRealCtr = ExpressionTransformer.IntLiteralToReal(initCtr)
-    if (Util.hasInts(initRealCtr))
+    if (hasInts(initRealCtr))
       throw new IllegalStateException("Initial constraints have integer terms: " + initRealCtr)
 
     def cegisRec(model: Model, prevctr: Expr): (Option[Boolean], Expr, Model) = {
@@ -125,7 +128,7 @@ class CegisCore(ctx: InferenceContext,
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
         if (!spuriousTempIds.isEmpty)
           throw new IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
-        if (Util.hasReals(instFormula))
+        if (hasReals(instFormula))
           throw new IllegalStateException("Reals in instFormula: " + instFormula)
 
         //println("solving instantiated vcs...")
@@ -163,7 +166,7 @@ class CegisCore(ctx: InferenceContext,
             //println("Newctr: " +newctr)
 
             if (ctx.dumpStats) {
-              Stats.updateCounterStats(Util.atomNum(newctr), "CegisTemplateCtrs", "CegisIters")
+              Stats.updateCounterStats(atomNum(newctr), "CegisTemplateCtrs", "CegisIters")
             }
 
             //println("solving template constraints...")
@@ -185,7 +188,7 @@ class CegisCore(ctx: InferenceContext,
               (res1, rti.unmapModel(intModel))
             } else {
 
-              /*if(InvariantUtil.hasInts(tempctrs))
+              /*if(InvarianthasInts(tempctrs))
             	throw new IllegalStateException("Template constraints have integer terms: " + tempctrs)*/
               if (minimizeSum) {
                 minimizeReals(And(newctr, initRealCtr), tempVarSum)

@@ -15,6 +15,9 @@ import invariant.util._
 import invariant.structure._
 import leon.solvers.Model
 import leon.invariant.util.RealValuedExprEvaluator
+import Util._
+import PredicateUtil._
+import ProgramUtil._
 
 object TemplateInstantiator {
     /**
@@ -29,7 +32,7 @@ object TemplateInstantiator {
       val freevars = variablesOf(t)
       val template = ExpressionTransformer.FlattenFunction(t)
 
-      val tempvars = Util.getTemplateVars(template)
+      val tempvars = getTemplateVars(template)
       val tempVarMap: Map[Expr, Expr] = tempvars.map((v) => {
         (v, model(v.id))
       }).toMap
@@ -53,7 +56,7 @@ object TemplateInstantiator {
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
         || e.isInstanceOf[GreaterEquals])
         &&
-        !Util.getTemplateVars(tempExpr).isEmpty) => {
+        !getTemplateVars(tempExpr).isEmpty) => {
 
         //println("Template Expression: "+tempExpr)
         val linearTemp = LinearConstraintUtil.exprToTemplate(tempExpr)
@@ -64,7 +67,6 @@ object TemplateInstantiator {
     })(expr)
     inv
   }
-
 
   def validateLiteral(e : Expr) = e match {
     case FractionalLiteral(num, denom) => {

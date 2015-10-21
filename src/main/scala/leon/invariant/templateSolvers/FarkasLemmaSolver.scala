@@ -14,8 +14,11 @@ import solvers.SimpleSolverAPI
 import scala.collection.mutable.{ Map => MutableMap }
 import invariant.engine._
 import invariant.factories._
-import invariant.util.Util._
 import invariant.util._
+import Util._
+import ProgramUtil._
+import SolverUtil._
+import PredicateUtil._
 import TimerUtil._
 import invariant.structure._
 import leon.solvers.TimeoutSolver
@@ -249,7 +252,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
     					reduceNonlinearity)(nlctrs)
 
     //for debugging nonlinear constraints
-    if (this.debugNLCtrs && Util.hasInts(simpctrs)) {
+    if (this.debugNLCtrs && hasInts(simpctrs)) {
       throw new IllegalStateException("Nonlinear constraints have integers: " + simpctrs)
     }
     if (verbose && LinearConstraintUtil.isLinear(simpctrs)) {
@@ -260,11 +263,11 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
       reporter.info("SimpCtrs: " + simpctrs)
       if (this.dumpNLCtrsAsSMTLIB) {
         val filename = program.modules.last.id + "-nlctr" + FileCountGUID.getID + ".smt2"
-        if (Util.atomNum(simpctrs) >= 5) {
+        if (atomNum(simpctrs) >= 5) {
           if (solveAsBitvectors)
-            Util.toZ3SMTLIB(simpctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)
+            toZ3SMTLIB(simpctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)
           else
-            Util.toZ3SMTLIB(simpctrs, filename, "QF_NRA", leonctx, program)
+            toZ3SMTLIB(simpctrs, filename, "QF_NRA", leonctx, program)
           reporter.info("NLctrs dumped to: " + filename)
         }
       }

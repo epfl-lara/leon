@@ -41,46 +41,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
         optDisableInfer)
 
   def apply(ctx: LeonContext, program: Program): InferenceReport = {
-    //default values for flags
-    val dumpStats = false
-    var vcTimeout: Int = 15
-    var targettedUnroll = true
-    var tightBounds = false
-    var withmult = false
-    var inferTemp = false
-    var enumerationRelation: (Expr, Expr) => Expr = LessEquals
-    var useCegis = false
-    var maxCegisBound = 200
-    var statsSuff = "-stats" + FileCountGUID.getID
-    var usereals = false
-    var autoInference = true
-
-    for (opt <- ctx.options) (opt.optionDef.name, opt.value) match {
-      case ("fullunroll", true) =>
-        targettedUnroll = false
-      case ("minbounds", true) =>
-        tightBounds = true
-      case ("withmult", true) =>
-        withmult = true
-      case ("usereals", true) =>
-        usereals = true
-      case ("disableInfer", true) =>
-        autoInference = false
-      case ("inferTemp", true) =>
-        inferTemp = true
-      case ("cegis", true) =>
-        useCegis = true
-      case ("vcTimeout", timeOut: Int) =>
-        vcTimeout = timeOut
-      case ("stats-suffix", suffix: String) =>
-        statsSuff = suffix
-      case _ =>
-    }
-    //populate the inference context and invoke inferenceEngine
-    val inferctx = new InferenceContext(program,  ctx,
-        targettedUnroll, autoInference, dumpStats, tightBounds,
-        withmult, usereals, inferTemp, useCegis, vcTimeout,
-        maxCegisBound, statsSuff)
+    val inferctx = new InferenceContext(program,  ctx)
     val report = (new InferenceEngine(inferctx)).runWithTimeout()
     //println("Final Program: \n" +PrettyPrinter.apply(report.finalProgramWoInstrumentation))
     report

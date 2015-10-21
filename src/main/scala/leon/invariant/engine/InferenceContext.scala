@@ -11,29 +11,37 @@ import invariant.structure.FunctionUtils._
 import invariant.util._
 import verification._
 import verification.VCKinds
+import InferInvariantsPhase._
+import Util._
+import ProgramUtil._
 
 /**
  * @author ravi
  */
-class InferenceContext(
-    val initProgram: Program,
-    val leonContext: LeonContext,
-    val targettedUnroll: Boolean,
-    val autoInference: Boolean,
-    val dumpStats: Boolean,
-    val tightBounds: Boolean,
-    val withmult: Boolean,
-    val usereals: Boolean,
-    val inferTemp: Boolean,
-    val useCegis: Boolean,
-    val vcTimeout: Int, //in secs
-    val maxCegisBound: Int,
-    val statsSuffix: String) {
+class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
 
   var abort = false // a flag for aborting
+
+  // get  options from ctx or initialize them to default values
+  // the following options are enabled by default
+  val targettedUnroll = !(leonContext.findOption(optFunctionUnroll).getOrElse(false))
+  val autoInference = leonContext.findOption(optDisableInfer).getOrElse(true)
+
+  // the following options are disabled by default
+  val tightBounds = leonContext.findOption(optMinBounds).getOrElse(false)
+  val inferTemp = leonContext.findOption(optInferTemp).getOrElse(false)
+  val withmult = leonContext.findOption(optWithMult).getOrElse(false)
+  val usereals = leonContext.findOption(optUseReals).getOrElse(false)
+  val useCegis: Boolean = leonContext.findOption(optCegis).getOrElse(false)
+  val dumpStats = false
+
+  // the following options have default values
+  val vcTimeout = leonContext.findOption(optVCTimeout).getOrElse(15L) // in secs
   val totalTimeout = leonContext.findOption(SharedOptions.optTimeout) // in secs
-  val reporter = leonContext.reporter
   val functionsToInfer = leonContext.findOption(SharedOptions.optFunctions)
+  val reporter = leonContext.reporter
+  val maxCegisBound = 1000
+  val statsSuffix = leonContext.findOption(optStatsSuffix).getOrElse("-stats" + FileCountGUID.getID)
 
   val instrumentedProg = InstrumentationPhase(leonContext, initProgram)
   // convets qmarks to templates
@@ -42,7 +50,7 @@ class InferenceContext(
       case fd if fd.hasTemplate =>
         fd -> fd.getTemplate
     }.toMap
-    Util.assignTemplateAndCojoinPost(funToTmpl, instrumentedProg, Map())
+    assignTemplateAndCojoinPost(funToTmpl, instrumentedProg, Map())
   }
 
   val nlelim = new NonlinearityEliminator(withmult, if (usereals) RealType else IntegerType)
@@ -90,7 +98,7 @@ class InferenceContext(
       validPosts(funName).isValid
     } else {
       val verifyPipe = VerificationPhase
-      val ctxWithTO = Util.createLeonContext(leonContext, s"--timeout=$vcTimeout", s"--functions=$funName")
+      val ctxWithTO = createLeonContext(leonContext, s"--timeout=$vcTimeout", s"--functions=$funName")
       (true /: verifyPipe.run(ctxWithTO, qMarksRemovedProg)._2.results) {
         case (acc, (VC(_, _, vckind), Some(vcRes))) if vcRes.isInvalid =>
           throw new IllegalStateException(s"$vckind invalid for function $funName") // TODO: remove the exception

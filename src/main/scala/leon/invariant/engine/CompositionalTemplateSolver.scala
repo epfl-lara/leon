@@ -8,18 +8,19 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import invariant.templateSolvers._
-import invariant.util.Util._
 import transformations._
 import invariant.structure.FunctionUtils._
 import transformations.InstUtil._
 import leon.invariant.structure.Formula
 import leon.invariant.structure.Call
-import leon.invariant.util.RealToInt
-import leon.invariant.util.OrderedMultiMap
-import leon.invariant.util.ExpressionTransformer
+import leon.invariant.util._
 import leon.invariant.factories.TemplateSolverFactory
 import leon.invariant.util.Minimizer
 import leon.solvers.Model
+import Util._
+import PredicateUtil._
+import ProgramUtil._
+import SolverUtil._
 
 class CompositionalTimeBoundSolver(ctx: InferenceContext, prog: Program, rootFd: FunDef)
   extends FunctionTemplateSolver {

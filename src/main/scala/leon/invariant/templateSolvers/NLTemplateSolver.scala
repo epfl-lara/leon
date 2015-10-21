@@ -25,7 +25,10 @@ import invariant.util._
 import invariant.util.ExpressionTransformer._
 import invariant.structure._
 import invariant.structure.FunctionUtils._
-import leon.invariant.util.RealValuedExprEvaluator._
+import RealValuedExprEvaluator._
+import Util._
+import PredicateUtil._
+import SolverUtil._
 
 class NLTemplateSolver(ctx: InferenceContext, program: Program,
     rootFun: FunDef, ctrTracker: ConstraintTracker,
@@ -84,7 +87,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       } else
         splitVC(fd)
 
-      if (Util.hasReals(rest) && Util.hasInts(rest))
+      if (hasReals(rest) && hasInts(rest))
         throw new IllegalStateException("Non-param Part has both integers and reals: " + rest)
 
       val vcSolver =
@@ -95,7 +98,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       vcSolver.assertCnstr(rest)
 
       if (debugIncrementalVC) {
-        assert(Util.getTemplateVars(rest).isEmpty)
+        assert(getTemplateVars(rest).isEmpty)
         println("For function: " + fd.id)
         println("Param part: " + paramPart)
         /*vcSolver.check match {
@@ -221,7 +224,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
     val tempIds = model.map(_._1)
     val tempVarMap: Map[Expr, Expr] = model.map((elem) => (elem._1.toVariable, elem._2)).toMap
-    val inputSize = Util.atomNum(inputCtr)
+    val inputSize = atomNum(inputCtr)
 
     var disjsSolvedInIter = Seq[Expr]()
     var callsInPaths = Set[Call]()
@@ -249,7 +252,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         case (Some(acc), fd) =>
           val disableCounterExs = if (seenPaths.contains(fd)) {
             blockedCEs = true
-            Not(Util.createOr(seenPaths(fd)))
+            Not(createOr(seenPaths(fd)))
           } else tru
           getUNSATConstraints(fd, model, disableCounterExs) match {
             case None =>
@@ -290,8 +293,8 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
             }
           } else {
             //check that the new constraints does not have any reals
-            val newPart = Util.createAnd(newctrs)
-            val newSize = Util.atomNum(newPart)
+            val newPart = createAnd(newctrs)
+            val newSize = atomNum(newPart)
             Stats.updateCounterStats((newSize + inputSize), "NLsize", "disjuncts")
             if (verbose)
               reporter.info("# of atomic predicates: " + newSize + " + " + inputSize)
@@ -310,7 +313,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
                   else
                     reporter.info("NLsolver timed-out on the disjunct... blocking this disjunct...")
                 if (!this.disableCegis) {
-                  val (cres, cctr, cmodel) = solveWithCegis(tempIds.toSet, Util.createOr(confDisjuncts), inputCtr, Some(model))
+                  val (cres, cctr, cmodel) = solveWithCegis(tempIds.toSet, createOr(confDisjuncts), inputCtr, Some(model))
                   cres match {
                     case Some(true) => {
                       disjsSolvedInIter ++= confDisjuncts
@@ -360,7 +363,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
   def solveWithCegis(tempIds: Set[Identifier], expr: Expr, precond: Expr, initModel: Option[Model]): (Option[Boolean], Expr, Model) = {
 
-    val cegisSolver = new CegisCore(ctx, program, timeout, this)
+    val cegisSolver = new CegisCore(ctx, program, timeout.toInt, this)
     val (res, ctr, model) = cegisSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
     if (!res.isDefined)
       reporter.info("cegis timed-out on the disjunct...")
@@ -404,7 +407,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       wr.flush()
       wr.close()
     }
-    if (Util.hasMixedIntReals(instExpr)) {
+    if (hasMixedIntReals(instExpr)) {
       throw new IllegalStateException("Instantiated VC of " + fd.id + " contains mixed integer/reals: " + instExpr)
     }
 
@@ -414,7 +417,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     val (res, model) = if (this.useIncrementalSolvingForVCs) {
       solver.push
       solver.assertCnstr(instExpr)
-      val solRes = new TimerUtil.InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(solver.check) match {
+      val solRes = new InterruptOnSignal(solver).interruptOnSignal(ctx.abort)(solver.check) match {
         case _ if ctx.abort =>
           (None, Model.empty)
         case r @ Some(true) =>
@@ -435,7 +438,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     //for debugging
     if (this.trackUnpackedVCCTime) {
       val upVCinst = simplifyArithmetic(TemplateInstantiator.instantiate(ctrTracker.getVC(fd).unpackedExpr, tempVarMap))
-      Stats.updateCounterStats(Util.atomNum(upVCinst), "UP-VC-size", "disjuncts")
+      Stats.updateCounterStats(atomNum(upVCinst), "UP-VC-size", "disjuncts")
 
       t1 = System.currentTimeMillis()
       val (res2, _) = SimpleSolverAPI(SolverFactory(() => new SMTLIBZ3Solver(leonctx, program))).solveSAT(upVCinst)
@@ -543,7 +546,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     //for debugging
     if (this.debugChooseDisjunct || this.printPathToConsole || this.dumpPathAsSMTLIB || this.verifyInvariant) {
       val pathctrs = satCtrs.map(_.toExpr)
-      val plainFormula = Util.createAnd(pathctrs)
+      val plainFormula = createAnd(pathctrs)
       val pathcond = simplifyArithmetic(plainFormula)
 
       if (this.debugChooseDisjunct) {
@@ -555,7 +558,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
       if (this.verifyInvariant) {
         println("checking invariant for path...")
-        val sat = Util.checkInvariant(pathcond, leonctx, program)
+        val sat = checkInvariant(pathcond, leonctx, program)
       }
 
       if (this.printPathToConsole) {
@@ -572,7 +575,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
       if (this.dumpPathAsSMTLIB) {
         val filename = "pathcond" + FileCountGUID.getID + ".smt2"
-        Util.toZ3SMTLIB(pathcond, filename, "QF_NIA", leonctx, program)
+        toZ3SMTLIB(pathcond, filename, "QF_NIA", leonctx, program)
         println("Path dumped to: " + filename)
       }
     }
@@ -623,15 +626,15 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     }
 
     if (this.debugTheoryReduction) {
-      val simpPathCond = Util.createAnd((lnctrs ++ temps).map(_.template).toSeq)
+      val simpPathCond = createAnd((lnctrs ++ temps).map(_.template).toSeq)
       if (this.verifyInvariant) {
         println("checking invariant for simp-path...")
-        Util.checkInvariant(simpPathCond, leonctx, program)
+        checkInvariant(simpPathCond, leonctx, program)
       }
     }
 
     if (this.trackNumericalDisjuncts) {
-      numericalDisjuncts :+= Util.createAnd((lnctrs ++ temps).map(_.template).toSeq)
+      numericalDisjuncts :+= createAnd((lnctrs ++ temps).map(_.template).toSeq)
     }
 
     val (data, nlctr) = processNumCtrs(lnctrs.toSeq, temps.toSeq)
@@ -645,14 +648,14 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     //here we are invalidating A^~(B)
     if (temps.isEmpty) {
       //here ants ^ conseq is sat (otherwise we wouldn't reach here) and there is no way to falsify this path
-      (Util.createAnd(lnctrs.map(_.toExpr)), fls)
+      (createAnd(lnctrs.map(_.toExpr)), fls)
     } else {
 
       if (this.debugElimination) {
         //println("Path Constraints (before elim): "+(lnctrs ++ temps))
         if (this.verifyInvariant) {
           println("checking invariant for disjunct before elimination...")
-          Util.checkInvariant(Util.createAnd((lnctrs ++ temps).map(_.template)), leonctx, program)
+          checkInvariant(createAnd((lnctrs ++ temps).map(_.template)), leonctx, program)
         }
       }
       //compute variables to be eliminated
@@ -665,7 +668,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         Some((ctrs: Seq[LinearConstraint]) => {
           //println("checking disjunct before elimination...")
           //println("ctrs: "+ctrs)
-          val debugRes = Util.checkInvariant(Util.createAnd((ctrs ++ temps).map(_.template)), leonctx, program)
+          val debugRes = checkInvariant(createAnd((ctrs ++ temps).map(_.template)), leonctx, program)
         })
       } else None
       val elimLnctrs = LinearConstraintUtil.apply1PRuleOnDisjunct(lnctrs, elimVars, debugger)
@@ -675,7 +678,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         println("Path constriants (after elimination): " + elimLnctrs)
         if (this.verifyInvariant) {
           println("checking invariant for disjunct after elimination...")
-          Util.checkInvariant(Util.createAnd((elimLnctrs ++ temps).map(_.template)), leonctx, program)
+          checkInvariant(createAnd((elimLnctrs ++ temps).map(_.template)), leonctx, program)
         }
       }
       //for stats
@@ -707,7 +710,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       //TODO: Use the dependence chains in the formulas to identify what to assertionize
       // and what can never be implied by solving for the templates
 
-      val disjunct = Util.createAnd((newLnctrs ++ temps).map(_.template))
+      val disjunct = createAnd((newLnctrs ++ temps).map(_.template))
       val implCtrs = farkasSolver.constraintsForUnsat(newLnctrs, temps)
 
       //for debugging
@@ -715,7 +718,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         println("Final Path Constraints: " + disjunct)
         if (this.verifyInvariant) {
           println("checking invariant for final disjunct... ")
-          Util.checkInvariant(disjunct, leonctx, program)
+          checkInvariant(disjunct, leonctx, program)
         }
       }
 

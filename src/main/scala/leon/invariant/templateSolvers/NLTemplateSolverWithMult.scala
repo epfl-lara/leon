@@ -16,6 +16,9 @@ import invariant.engine._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
+import Util._
+import PredicateUtil._
+import SolverUtil._
 
 class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun: FunDef,
   ctrTracker: ConstraintTracker, minimizer: Option[(Expr, Model) => Model])
@@ -25,13 +28,13 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun
 
   override def getVCForFun(fd: FunDef): Expr = {
     val plainvc = ctrTracker.getVC(fd).toExpr
-    val nlvc = Util.multToTimes(plainvc)
+    val nlvc = multToTimes(plainvc)
     nlvc
   }
 
   override def splitVC(fd: FunDef) : (Expr,Expr) = {
     val (paramPart, rest) = ctrTracker.getVC(fd).splitParamPart
-    (Util.multToTimes(paramPart),Util.multToTimes(rest))
+    (multToTimes(paramPart),multToTimes(rest))
   }
 
   override def axiomsForTheory(formula : Formula, calls: Set[Call], model: Model) : Seq[Constraint] = {
@@ -61,7 +64,7 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun
   }
 
   def isMultOp(call : Call) : Boolean = {
-    Util.isMultFunctions(call.fi.tfd.fd)
+    isMultFunctions(call.fi.tfd.fd)
   }
 
   def unaryMultAxioms(formula: Formula, calls: Set[Call], predEval: (Expr => Boolean)) : Seq[Expr] = {
@@ -81,7 +84,7 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun
   def binaryMultAxioms(formula: Formula, calls: Set[Call], predEval: (Expr => Boolean)) : Seq[Expr] = {
 
     val mults = calls.filter(call => isMultOp(call) && axiomFactory.hasBinaryAxiom(call))
-    val product = Util.cross(mults,mults).collect{ case (c1,c2) if c1 != c2 => (c1,c2) }
+    val product = cross(mults,mults).collect{ case (c1,c2) if c1 != c2 => (c1,c2) }
 
     ctx.reporter.info("Theory axioms: "+product.size)
     Stats.updateCumStats(product.size, "-Total-theory-axioms")
