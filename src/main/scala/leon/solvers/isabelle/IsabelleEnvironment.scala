@@ -16,7 +16,7 @@ import leon.purescala.Common._
 import leon.solvers._
 import leon.utils._
 
-import edu.tum.cs.isabelle.{impl => impl2015, _}
+import edu.tum.cs.isabelle._
 import edu.tum.cs.isabelle.api._
 import edu.tum.cs.isabelle.setup._
 
@@ -62,17 +62,17 @@ object IsabelleEnvironment {
     }
 
     val system = setup.flatMap { setup =>
-      val env = new impl2015.Environment(setup.home)
-      val config = env.Configuration.fromPath(Component.leonBase, "Leon")
+      val env = Implementations.makeEnvironment(setup.home, classOf[edu.tum.cs.isabelle.impl.Environment])
+      val config = Configuration.fromPath(Component.leonBase, "Leon")
 
       if (build) {
         context.reporter.info(s"Building session ...")
-        if (!System.build(env)(config))
+        if (!System.build(env, config))
           context.reporter.internalError("Build failed")
       }
 
       context.reporter.info(s"Starting $version instance ...")
-      System.create(env)(config)
+      System.create(env, config)
     }
 
     val thy = system.flatMap { system =>

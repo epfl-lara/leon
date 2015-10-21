@@ -31,13 +31,15 @@ resolvers ++= Seq(
   "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
+val libisabelleVersion = "0.1.2"
+
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-compiler" % "2.11.7",
   "org.scalatest" %% "scalatest" % "2.2.4" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.3.4",
-  "info.hupel" %% "libisabelle" % "0.1.1",
-  "info.hupel" %% "libisabelle-setup" % "0.1.1",
-  "info.hupel" %% "pide-2015" % "0.1.1",
+  "info.hupel" %% "libisabelle" % libisabelleVersion,
+  "info.hupel" %% "libisabelle-setup" % libisabelleVersion,
+  "info.hupel" %% "pide-2015" % libisabelleVersion,
   "org.ow2.asm" % "asm-all" % "5.0.4",
   "com.fasterxml.jackson.module" %% "jackson-module-scala" % "2.6.0-rc2"
 )
