@@ -316,7 +316,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
                       (v.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap + 
                     (res.toVariable -> TupleSelect(newRes.toVariable, 1)),
                   postBody)
-                Lambda(Seq(newRes), newBody)
+                Lambda(Seq(newRes), newBody).setPos(post)
               })
 
               val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
