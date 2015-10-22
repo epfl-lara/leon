@@ -230,6 +230,15 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
 
       //a function invocation can update variables in scope.
       case fi@FunctionInvocation(tfd, args) =>
+
+
+        val (recArgs, argScope, argFun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
+          val (accArgs, accScope, accFun) = acc
+          val (argVal, argScope, argFun) = toFunction(arg)
+          val newScope = (body: Expr) => argScope(replaceNames(argFun, accScope(body)))
+          (argVal +: accArgs, newScope, argFun ++ accFun)
+        })
+
         val fd = tfd.fd
         state.funDefsMapping.get(fd) match { 
           case Some((newFd, modifiedVars)) => {
@@ -238,16 +247,17 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
             val tmpTuple = FreshIdentifier("t", newFd.returnType)
 
             val scope = (body: Expr) => {
-              Let(tmpTuple, newInvoc,
+              argScope(Let(tmpTuple, newInvoc,
                 freshNames.zipWithIndex.foldRight(body)((p, b) =>
                   Let(p._1, TupleSelect(tmpTuple.toVariable, p._2 + 2), b))
-              )
+              ))
             }
-            val newMap = modifiedVars.zip(freshNames).toMap
+            val newMap = modifiedVars.zip(freshNames).toMap ++ argFun
 
             (TupleSelect(tmpTuple.toVariable, 1), scope, newMap)
           }
-          case None => (fi, x => x, Map())
+          case None => 
+            (FunctionInvocation(tfd, recArgs).copiedFrom(fi), argScope, argFun)
         }
         
 
