@@ -229,11 +229,11 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         )
 
       //a function invocation can update variables in scope.
-      case FunctionInvocation(tfd, args) =>
+      case fi@FunctionInvocation(tfd, args) =>
         val fd = tfd.fd
         state.funDefsMapping.get(fd) match { 
           case Some((newFd, modifiedVars)) => {
-            val newInvoc = FunctionInvocation(newFd.typed, args ++ modifiedVars.map(id => id.toVariable))
+            val newInvoc = FunctionInvocation(newFd.typed, args ++ modifiedVars.map(id => id.toVariable)).setPos(fi)
             val freshNames = modifiedVars.map(id => id.freshen)
             val tmpTuple = FreshIdentifier("t", newFd.returnType)
 
@@ -247,7 +247,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
 
             (TupleSelect(tmpTuple.toVariable, 1), scope, newMap)
           }
-          case None => (FunctionInvocation(tfd, args), x => x, Map())
+          case None => (fi, x => x, Map())
         }
         
 
@@ -259,7 +259,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
             fd.body = Some(fdScope(fdRes))
           }
           val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-          (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+          (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).setPos(fd).copiedFrom(expr), bodyFun)
         }
 
         fd.body match {
@@ -292,7 +292,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
 
               val newReturnType = TupleType(fd.returnType :: modifiedVars.map(_.getType))
 
-              val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType)
+              val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType).setPos(fd)
 
               val (fdRes, fdScope, fdFun) = 
                 toFunction(wrappedBody)(
