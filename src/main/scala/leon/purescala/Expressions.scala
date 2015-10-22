@@ -547,21 +547,26 @@ object Expressions {
     }
   }
   
-  /** Returns true if the underlined type can be converted to a String */
-  object CanHaveStringType {
-    def apply(t: TypeTree): Boolean = t match { case BooleanType | Int32Type | IntegerType | CharType | RealType | StringType => true case _ => false }
-    def unapply(t: TypeTree) = if(apply(t)) Some(t) else None
+  abstract class ConverterToString(fromType: TypeTree, toType: TypeTree) extends Expr {
+    def expr: Expr
+    val getType = if(expr.getType == fromType) toType else Untyped
   }
   
   /* String Theory */
-  /** $encodingof `expr.toString` for strings */
-  case class ToString(expr: Expr) extends Expr {
-    val getType = if(CanHaveStringType(expr.getType)) StringType else Untyped
-  }
+  /** $encodingof `expr.toString` for Int32 to String */
+  case class Int32ToString(expr: Expr) extends ConverterToString(Int32Type, StringType)
+  /** $encodingof `expr.toString` for boolean to String */
+  case class BooleanToString(expr: Expr) extends ConverterToString(BooleanType, StringType)
+  /** $encodingof `expr.toString` for BigInt to String */
+  case class IntegerToString(expr: Expr) extends ConverterToString(IntegerType, StringType)
+  /** $encodingof `expr.toString` for char to String */
+  case class CharToString(expr: Expr) extends ConverterToString(CharType, StringType)
+  /** $encodingof `expr.toString` for real to String */
+  case class RealToString(expr: Expr) extends ConverterToString(RealType, StringType)
   /** $encodingof `lhs + rhs` for strings */
   case class StringConcat(lhs: Expr, rhs: Expr) extends Expr {
      val getType = {
-      if (CanHaveStringType(lhs.getType) || CanHaveStringType(rhs.getType)) StringType
+      if (lhs.getType == StringType && rhs.getType == StringType) StringType
       else Untyped
     }
   }

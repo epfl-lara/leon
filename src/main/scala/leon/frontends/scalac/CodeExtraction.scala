@@ -1526,14 +1526,14 @@ trait CodeExtraction extends ASTExtractors {
             //String methods
             case (IsTyped(a1, StringType), "toString", List()) =>
               a1
-            case (IsTyped(a1, CanHaveStringType(t)), "toString", List()) =>
-              ToString(a1)
+            case (IsTyped(a1, WithStringconverter(converter)), "toString", List()) =>
+              converter(a1)
             case (IsTyped(a1, StringType), "+", List(IsTyped(a2, StringType))) =>
               StringConcat(a1, a2)
-            case (IsTyped(a1, StringType), "+", List(IsTyped(a2, CanHaveStringType(t)))) =>
-              StringConcat(a1, ToString(a2))
-            case (IsTyped(a1, CanHaveStringType(t)), "+", List(IsTyped(a2, StringType))) =>
-              StringConcat(ToString(a1), a2)
+            case (IsTyped(a1, StringType), "+", List(IsTyped(a2, WithStringconverter(converter)))) =>
+              StringConcat(a1, converter(a2))
+            case (IsTyped(a1, WithStringconverter(converter)), "+", List(IsTyped(a2, StringType))) =>
+              StringConcat(converter(a1), a2)
             case (IsTyped(a1, StringType), "length", List()) =>
               StringLength(a1)
             case (IsTyped(a1, StringType), "substring", List(IsTyped(start, IntegerType | Int32Type))) =>

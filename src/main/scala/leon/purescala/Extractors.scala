@@ -29,8 +29,16 @@ object Extractors {
         Some((Seq(t), (es: Seq[Expr]) => BVNot(es.head)))
       case StringLength(t) =>
         Some((Seq(t), (es: Seq[Expr]) => StringLength(es.head)))
-      case ToString(t) =>
-        Some((Seq(t), (es: Seq[Expr]) => ToString(es.head)))
+      case Int32ToString(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => Int32ToString(es.head)))
+      case BooleanToString(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => BooleanToString(es.head)))
+      case IntegerToString(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => IntegerToString(es.head)))
+      case CharToString(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => CharToString(es.head)))
+      case RealToString(t) =>
+        Some((Seq(t), (es: Seq[Expr]) => RealToString(es.head)))
       case SetCardinality(t) =>
         Some((Seq(t), (es: Seq[Expr]) => SetCardinality(es.head)))
       case CaseClassSelector(cd, e, sel) =>
@@ -264,6 +272,17 @@ object Extractors {
 
   object IsTyped {
     def unapply[T <: Typed](e: T): Option[(T, TypeTree)] = Some((e, e.getType))
+  }
+  
+  object WithStringconverter {
+    def unapply(t: TypeTree): Option[Expr => Expr] = t match {
+      case BooleanType => Some(BooleanToString)
+      case Int32Type   => Some(Int32ToString)
+      case IntegerType => Some(IntegerToString)
+      case CharType    => Some(CharToString)
+      case RealType    => Some(RealToString)
+      case _           => None
+    }
   }
 
   object FiniteArray {

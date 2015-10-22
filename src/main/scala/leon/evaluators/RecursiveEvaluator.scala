@@ -279,7 +279,27 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case RealMinus(l,r) =>
       e(RealPlus(l, RealUMinus(r)))
-
+      
+    case StringConcat(l, r) =>
+      (e(l), e(r)) match {
+        case (StringLiteral(i1), StringLiteral(i2)) => StringLiteral(i1 + i2)
+        case (le,re) => throw EvalError(typeErrorMsg(le, StringType))
+      }
+    case StringLength(a) => e(a) match {
+      case StringLiteral(a) => InfiniteIntegerLiteral(a.length)
+      case res => throw EvalError(typeErrorMsg(res, IntegerType))
+    }
+    case SubString(a, start, end) => (e(a), e(start), e(end)) match {
+      case (StringLiteral(a), InfiniteIntegerLiteral(b), InfiniteIntegerLiteral(c))  =>
+        StringLiteral(a.substring(b.toInt, c.toInt))
+      case res => throw EvalError(typeErrorMsg(res._1, StringType))
+    }
+    case Int32ToString(a) => StringLiteral(a.toString)
+    case CharToString(a) => StringLiteral(a.toString)
+    case IntegerToString(a) => StringLiteral(a.toString)
+    case BooleanToString(a) => StringLiteral(a.toString)
+    case RealToString(a) => StringLiteral(a.toString)
+    
     case BVPlus(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
