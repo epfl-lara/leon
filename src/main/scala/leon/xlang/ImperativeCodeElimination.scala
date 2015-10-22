@@ -259,7 +259,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           case None => 
             (FunctionInvocation(tfd, recArgs).copiedFrom(fi), argScope, argFun)
         }
-        
+
 
       case LetDef(fd, b) =>
 
