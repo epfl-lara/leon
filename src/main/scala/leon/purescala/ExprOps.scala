@@ -1100,6 +1100,7 @@ object ExprOps {
 
   /** Returns simplest value of a given type */
   def simplestValue(tpe: TypeTree) : Expr = tpe match {
+    case StringType                 => StringLiteral("")
     case Int32Type                  => IntLiteral(0)
     case RealType               	  => FractionalLiteral(0, 1)
     case IntegerType                => InfiniteIntegerLiteral(0)
@@ -1735,6 +1736,10 @@ object ExprOps {
         case UnitType =>
           // Anything matches ()
           ps.nonEmpty
+        
+        case StringType =>
+          // Can't possibly pattern match against all Strings one by one
+          ps exists (_.isInstanceOf[WildcardPattern])
 
         case Int32Type =>
           // Can't possibly pattern match against all Ints one by one

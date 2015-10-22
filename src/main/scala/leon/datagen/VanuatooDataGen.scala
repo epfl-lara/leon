@@ -32,12 +32,19 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
   val booleans = (for (b <- Set(true, false)) yield {
     b -> Constructor[Expr, TypeTree](List(), BooleanType, s => BooleanLiteral(b), ""+b)
   }).toMap
+  
+  val strings = (for (b <- Set("", "a", "Abcd")) yield {
+    b -> Constructor[Expr, TypeTree](List(), StringType, s => StringLiteral(b), b)
+  }).toMap
+
 
   def intConstructor(i: Int) = ints(i)
   
   def bigIntConstructor(i: Int) = bigInts(i)
 
   def boolConstructor(b: Boolean) = booleans(b)
+  
+  def stringConstructor(s: String) = strings(s)
 
   def cPattern(c: Constructor[Expr, TypeTree], args: Seq[VPattern[Expr, TypeTree]]) = {
     ConstructorPattern[Expr, TypeTree](c, args)
@@ -165,6 +172,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     case (b: java.lang.Boolean, BooleanType) =>
       (cPattern(boolConstructor(b), List()), true)
+
+    case (b: java.lang.String, StringType) =>
+      (cPattern(stringConstructor(b), List()), true)
 
     case (cc: codegen.runtime.CaseClass, ct: ClassType) =>
       val r = cc.__getRead()
