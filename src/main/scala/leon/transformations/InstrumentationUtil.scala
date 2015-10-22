@@ -113,6 +113,8 @@ object InstUtil {
   }
 
   def replaceInstruVars(e: Expr, fd: FunDef): Expr = {
-    replace(getInstVariableMap(fd), e)
+    val resvar = getResId(fd).get.toVariable
+    val newres = FreshIdentifier(resvar.id.name, resvar.getType).toVariable
+    replace(getInstVariableMap(fd) + (TupleSelect(resvar, 1) -> newres), e)
   }
 }

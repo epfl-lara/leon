@@ -152,6 +152,10 @@ object ProgramUtil {
     prog.definedFunctions.find(fd => fd.id.name == nm)
   }
 
+  def functionByFullName(nm: String, prog: Program) = {
+    prog.definedFunctions.find(fd => fullName(fd)(prog) == nm)
+  }
+
   def functionsWOFields(fds: Seq[FunDef]): Seq[FunDef] = {
     fds.filter(_.isRealFunction)
   }

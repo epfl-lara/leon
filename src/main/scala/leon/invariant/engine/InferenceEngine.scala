@@ -45,18 +45,18 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     ctx.abort = false
   }
 
-  def runWithTimeout() = {
+  def runWithTimeout(progressCallback: Option[InferenceCondition => Unit] = None) = {
     ctx.totalTimeout match {
       case Some(t) => // timeout in secs
         ti.interruptAfter(t * 1000) {
-          run
+          run(progressCallback)
         }
       case None =>
-        run
+        run(progressCallback)
     }
   }
 
-  private def run(): InferenceReport = {
+  private def run(progressCallback: Option[InferenceCondition => Unit] = None): InferenceReport = {
     val reporter = ctx.reporter
     val program = ctx.inferProgram
     reporter.info("Running Inference Engine...")
@@ -80,7 +80,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     //reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
     var results: Map[FunDef, InferenceCondition] = null
     if (!ctx.useCegis) {
-      results = analyseProgram(program, functionsToAnalyze)
+      results = analyseProgram(program, functionsToAnalyze, progressCallback)
       //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
     } else {
       var remFuncs = functionsToAnalyze
@@ -89,7 +89,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
       breakable {
         while (b <= maxCegisBound) {
           Stats.updateCumStats(1, "CegisBoundsTried")
-          val succeededFuncs = analyseProgram(program, remFuncs)
+          val succeededFuncs = analyseProgram(program, remFuncs, progressCallback)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
           if (remFuncs.isEmpty) break;
           b += 5 //increase bounds in steps of 5
@@ -126,7 +126,8 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
    * TODO: use function names in inference conditions, so that
    * we an get rid of dependence on origFd in many places.
    */
-  def analyseProgram(startProg: Program, functionsToAnalyze: Seq[FunDef]): Map[FunDef, InferenceCondition] = {
+  def analyseProgram(startProg: Program, functionsToAnalyze: Seq[FunDef],
+      progressCallback: Option[InferenceCondition => Unit]): Map[FunDef, InferenceCondition] = {
     val reporter = ctx.reporter
     val funToTmpl =
       if (ctx.autoInference) {
@@ -178,25 +179,28 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                   val origFd = functionByName(fd.id.name, startProg).get
                   val inv = if (origFd.hasTemplate) {
                     TemplateInstantiator.getAllInvariants(model.get,
-                      Map(origFd -> origFd.getTemplate))(origFd)
+                      Map(origFd -> origFd.getTemplate), prettyInv = true)(origFd)
                   } else {
                     val currentInv = TemplateInstantiator.getAllInvariants(model.get,
-                      Map(fd -> fd.getTemplate))(fd)
+                      Map(fd -> fd.getTemplate), prettyInv = true)(fd)
                     // map result variable  in currentInv
                     val repInv = replace(Map(getResId(fd).get.toVariable -> getResId(origFd).get.toVariable), currentInv)
                     translateExprToProgram(repInv, prog, startProg)
                   }
                   // record the inferred invariants
-                  if (analyzedSet.contains(origFd)) {
+                  val inferCond = if (analyzedSet.contains(origFd)) {
                     val ic = analyzedSet(origFd)
                     ic.addInv(Seq(inv))
+                    ic
                   } else {
                     val ic = new InferenceCondition(Seq(inv), origFd)
                     ic.time = if (first) Some(funcTime) else Some(0.0)
                     // update analyzed set
                     analyzedSet += (origFd -> ic)
                     first = false
+                    ic
                   }
+                  progressCallback.map(cb => cb(inferCond))
                 }
                 val funsWithTemplates = inferredFuns.filter { fd =>
                   val origFd = functionByName(fd.id.name, startProg).get
