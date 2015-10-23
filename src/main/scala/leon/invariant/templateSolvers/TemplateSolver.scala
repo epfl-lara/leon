@@ -88,7 +88,6 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
           wr.close()
         }
       }
-
       if (ctx.dumpStats) {
         Stats.updateCounterStats(atomNum(vc), "VC-size", "VC-refinement")
         Stats.updateCounterStats(numUIFADT(vc), "UIF+ADT", "VC-refinement")
@@ -103,9 +102,10 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
         //else
         acc ++ getTemplateIds(vc)
     }
-
     Stats.updateCounterStats(tempIds.size, "TemplateIds", "VC-refinement")
-    val solution = solve(tempIds, funcExprs)
+    val solution =
+      if (ctx.abort) (None, None)
+      else solve(tempIds, funcExprs)
     solution
   }
 

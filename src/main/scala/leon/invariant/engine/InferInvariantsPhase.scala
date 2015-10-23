@@ -43,7 +43,7 @@ object InferInvariantsPhase extends SimpleLeonPhase[Program, InferenceReport] {
   def apply(ctx: LeonContext, program: Program): InferenceReport = {
     val inferctx = new InferenceContext(program,  ctx)
     val report = (new InferenceEngine(inferctx)).runWithTimeout()
-    //println("Final Program: \n" +PrettyPrinter.apply(report.finalProgramWoInstrumentation))
+    //println("Final Program: \n" +PrettyPrinter.apply(InferenceReportUtil.pushResultsToInput(inferctx, report.conditions)))
     report
   }
 }

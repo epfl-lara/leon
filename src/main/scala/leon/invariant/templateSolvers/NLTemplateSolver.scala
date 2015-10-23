@@ -79,8 +79,8 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     ctrTracker.getVC(fd).splitParamPart
   }
 
-  def initVCSolvers {
-    funcVCs.keys.foreach(fd => {
+  def initVCSolvers = {
+    funcVCs.keys.foreach { fd =>
       val (paramPart, rest) = if (ctx.usereals) {
         val (pp, r) = splitVC(fd)
         (IntLiteralToReal(pp), IntLiteralToReal(r))
@@ -90,26 +90,28 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       if (hasReals(rest) && hasInts(rest))
         throw new IllegalStateException("Non-param Part has both integers and reals: " + rest)
 
-      val vcSolver =
-        if (this.useCVCToCheckVCs)
-          new SMTLIBCVC4Solver(leonctx, program) with TimeoutSolver
-        else
-          new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
-      vcSolver.assertCnstr(rest)
+      if (!ctx.abort) { // this is required to ensure that solvers are not created after interrupts
+        val vcSolver =
+          if (this.useCVCToCheckVCs)
+            new SMTLIBCVC4Solver(leonctx, program) with TimeoutSolver
+          else
+            new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+        vcSolver.assertCnstr(rest)
 
-      if (debugIncrementalVC) {
-        assert(getTemplateVars(rest).isEmpty)
-        println("For function: " + fd.id)
-        println("Param part: " + paramPart)
-        /*vcSolver.check match {
+        if (debugIncrementalVC) {
+          assert(getTemplateVars(rest).isEmpty)
+          println("For function: " + fd.id)
+          println("Param part: " + paramPart)
+          /*vcSolver.check match {
         case Some(false) => throw new IllegalStateException("Non param-part is unsat "+rest)
         case _ => ;
       	}*/
+        }
+        vcSolvers += (fd -> vcSolver)
+        paramParts += (fd -> paramPart)
+        simpleParts += (fd -> rest)
       }
-      vcSolvers += (fd -> vcSolver)
-      paramParts += (fd -> paramPart)
-      simpleParts += (fd -> rest)
-    })
+    }
   }
 
   def freeVCSolvers {
@@ -254,24 +256,26 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
             blockedCEs = true
             Not(createOr(seenPaths(fd)))
           } else tru
-          getUNSATConstraints(fd, model, disableCounterExs) match {
-            case None =>
-              None
-            case Some(((disjunct, callsInPath), ctrsForFun)) =>
-              if (ctrsForFun == tru) Some(acc)
-              else {
-                confFunctions += fd
-                confDisjuncts :+= disjunct
-                callsInPaths ++= callsInPath
-                //instantiate the disjunct
-                val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
-                //some sanity checks
-                if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
-                  throw new IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
-                updateSeenPaths(fd, cePath)
-                Some(acc :+ ctrsForFun)
-              }
-          }
+          if (ctx.abort) None
+          else
+            getUNSATConstraints(fd, model, disableCounterExs) match {
+              case None =>
+                None
+              case Some(((disjunct, callsInPath), ctrsForFun)) =>
+                if (ctrsForFun == tru) Some(acc)
+                else {
+                  confFunctions += fd
+                  confDisjuncts :+= disjunct
+                  callsInPaths ++= callsInPath
+                  //instantiate the disjunct
+                  val cePath = simplifyArithmetic(TemplateInstantiator.instantiate(disjunct, tempVarMap))
+                  //some sanity checks
+                  if (variablesOf(cePath).exists(TemplateIdFactory.IsTemplateIdentifier _))
+                    throw new IllegalStateException("Found template identifier in counter-example disjunct: " + cePath)
+                  updateSeenPaths(fd, cePath)
+                  Some(acc :+ ctrsForFun)
+                }
+            }
       }
       newctrsOpt match {
         case None =>

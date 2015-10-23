@@ -112,142 +112,91 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
 
 object InferenceReportUtil {
 
-  /*  def programWoInstrumentation(ctx: InferenceContext, p: Program, ics: Seq[InferenceCondition]) = {
-    val funToUninstFun = p.definedFunctions.foldLeft(Map[FunDef, FunDef]()) {
-      case (acc, fd) =>
-        val uninstFunName = InstUtil.userFunctionName(fd)
-        val uninstFdOpt =
-          if (uninstFunName.isEmpty) None
-          else functionByName(uninstFunName, ctx.initProgram)
-        if (uninstFdOpt.isDefined) {
-          acc + (fd -> uninstFdOpt.get)
-        } else acc
+  def pushResultsToInput(ctx: InferenceContext, ics: Seq[InferenceCondition]) = {
+
+    val initFuns = functionsWOFields(ctx.initProgram.definedFunctions).filter { fd =>
+      !fd.isTheoryOperation && !fd.annotations.contains("library")
     }
-    val funToPost = ics.collect {
-      case cd if cd.prettyInv.isDefined && funToUninstFun.contains(cd.fd) =>
-        funToUninstFun(cd.fd) -> cd.prettyInv.get
-    }.toMap
-    //println("Function to template: " + funToTmpl.map { case (k, v) => s"${k.id.name} --> $v" }.mkString("\n"))
-    assignTemplateAndCojoinPost(Map(), ctx.initProgram, funToPost, uniqueIdDisplay = false)
-  }*/
-
-  def pluginResultInInput(ctx: InferenceContext, ics: Seq[InferenceCondition], p: Program) = {
-
     val solvedICs = ics.filter { _.prettyInv.isDefined }
+
     // mapping from init to output
-    val outputFunMap =
-      functionsWOFields(ctx.initProgram.definedFunctions).map {
-        case fd if fd.isTheoryOperation => (fd -> fd)
-        case fd => {
-          val freshId = FreshIdentifier(fd.id.name, fd.returnType)
-          val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
-          fd -> newfd
-        }
+    val initToOutput =
+      initFuns.map { fd =>
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        fd -> newfd
       }.toMap
 
     def fullNameWoInst(fd: FunDef) = {
-      val splits = DefOps.fullName(fd)(p).split("-")
+      val splits = DefOps.fullName(fd)(ctx.inferProgram).split("-")
       if (!splits.isEmpty) splits(0)
       else ""
     }
 
-    // mapping from p to output
-    val progFunMap = (Map[FunDef, FunDef]() /: functionsWOFields(p.definedFunctions)) {
-      case (acc, fd) =>
-        val inFun = functionByFullName(fullNameWoInst(fd), ctx.initProgram)
-        if (inFun.isDefined)
-          acc + (fd -> outputFunMap(inFun.get))
-        else acc
+    val nameToInitFun = initFuns.map { fd =>
+      DefOps.fullName(fd)(ctx.initProgram) -> fd
     }.toMap
 
     // mapping from init to ic
-    val initICmap = (Map[FunDef, InferenceCondition]() /: solvedICs) {
+    val initICMap = (Map[FunDef, InferenceCondition]() /: solvedICs) {
       case (acc, ic) =>
-        val initfd = functionByFullName(fullNameWoInst(ic.fd), ctx.initProgram)
-        if (initfd.isDefined) {
-          acc + (initfd.get -> ic)
-        } else acc
+        nameToInitFun.get(fullNameWoInst(ic.fd)) match {
+          case Some(initfd) =>
+            acc + (initfd -> ic)
+          case _ => acc
+        }
     }
 
-    def mapProgram(funMap: Map[FunDef, FunDef]) = {
-
-      def mapExpr(ine: Expr): Expr = {
-        val replaced = simplePostTransform((e: Expr) => e match {
-          case FunctionInvocation(tfd, args) if funMap.contains(tfd.fd) =>
-            FunctionInvocation(TypedFunDef(funMap(tfd.fd), tfd.tps), args)
-          case _ => e
-        })(ine)
-        replaced
-      }
-
-      for ((from, to) <- funMap) {
-        to.body = from.body.map(mapExpr)
-        to.precondition = from.precondition.map(mapExpr)
-        if (initICmap.contains(from)) {
-          val ic = initICmap(from)
-          val paramMap = (ic.fd.params zip from.params).map {
-            case (p1, p2) =>
-              (p1.id.toVariable -> p2.id.toVariable)
-          }.toMap
-          val icres = getResId(ic.fd).get
-          val npost =
-            if (from.hasPostcondition) {
-              val resid = getResId(from).get
-              val inv = replace(Map(icres.toVariable -> resid.toVariable) ++ paramMap, ic.prettyInv.get)
-              val postBody = from.postWoTemplate.map(post => createAnd(Seq(post, inv))).getOrElse(inv)
-              Lambda(Seq(ValDef(resid)), postBody)
-            } else {
-              val resid = FreshIdentifier(icres.name, icres.getType)
-              val inv = replace(Map(icres.toVariable -> resid.toVariable) ++ paramMap, ic.prettyInv.get)
-              Lambda(Seq(ValDef(resid)), inv)
+    def mapExpr(ine: Expr): Expr = {
+      val replaced = simplePostTransform((e: Expr) => e match {
+        case FunctionInvocation(TypedFunDef(fd, targs), args) =>
+          if (initToOutput.contains(fd)) {
+            FunctionInvocation(TypedFunDef(initToOutput(fd), targs), args)
+          } else {
+            nameToInitFun.get(fullNameWoInst(fd)) match {
+              case Some(ifun) if initToOutput.contains(ifun) =>
+                FunctionInvocation(TypedFunDef(initToOutput(ifun), targs), args)
+              case _ => e
             }
-          to.postcondition = Some(mapExpr(npost))
-        } else
-          to.postcondition = from.postcondition.map(mapExpr)
-        //copy annotations
-        from.flags.foreach(to.addFlag(_))
-      }
+          }
+        case _ => e
+      })(ine)
+      replaced
     }
-    mapProgram(outputFunMap ++ progFunMap)
+    // copy bodies and specs
+    for ((from, to) <- initToOutput) {
+      to.body = from.body.map(mapExpr)
+      to.precondition = from.precondition.map(mapExpr)
+      val icOpt = initICMap.get(from)
+      if (icOpt.isDefined) {
+        val ic = icOpt.get
+        val paramMap = (ic.fd.params zip from.params).map {
+          case (p1, p2) =>
+            (p1.id.toVariable -> p2.id.toVariable)
+        }.toMap
+        val icres = getResId(ic.fd).get
+        val npost =
+          if (from.hasPostcondition) {
+            val resid = getResId(from).get
+            val inv = replace(Map(icres.toVariable -> resid.toVariable) ++ paramMap, ic.prettyInv.get)
+            val postBody = from.postWoTemplate.map(post => createAnd(Seq(post, inv))).getOrElse(inv)
+            Lambda(Seq(ValDef(resid)), postBody)
+          } else {
+            val resid = FreshIdentifier(icres.name, icres.getType)
+            val inv = replace(Map(icres.toVariable -> resid.toVariable) ++ paramMap, ic.prettyInv.get)
+            Lambda(Seq(ValDef(resid)), inv)
+          }
+        to.postcondition = Some(mapExpr(npost))
+      } else
+        to.postcondition = from.postcondition.map(mapExpr)
+      //copy annotations
+      from.flags.foreach(to.addFlag(_))
+    }
+
     copyProgram(ctx.initProgram, (defs: Seq[Definition]) => defs.map {
-      case fd: FunDef if outputFunMap.contains(fd) =>
-        outputFunMap(fd)
+      case fd: FunDef if initToOutput.contains(fd) =>
+        initToOutput(fd)
       case d => d
     })
-    /*if (debugSimplify)
-      println("After Simplifications: \n" + ScalaPrinter.apply(newprog))*/
-    //    /newprog
-    /*if (ic.prettyInv.isDefined) {
-      val uninstFunName = InstUtil.userFunctionName(ic.fd)
-      val inputFdOpt =
-        if (uninstFunName.isEmpty) None
-        else functionByName(uninstFunName, ctx.initProgram)
-      inputFdOpt match {
-        case None => ctx.initProgram
-        case Some(inFd) =>
-          ProgramUtil.copyProgram(ctx.initProgram, defs => defs map {
-            case fd if fd.id == inFd.id =>
-              val newfd = new FunDef(FreshIdentifier(inFd.id.name), inFd.tparams, inFd.params, inFd.returnType)
-              newfd.body = inFd.body
-              newfd.precondition = inFd.precondition
-              val fdres = getResId(ic.fd).get
-              val npost =
-                if (inFd.hasPostcondition) {
-                  val resid = getResId(inFd).get
-                  val inv = replace(Map(fdres.toVariable -> resid.toVariable), ic.prettyInv.get)
-                  // map also functions here.
-                  val postBody = inFd.postWoTemplate.map(post => createAnd(Seq(post, inv))).getOrElse(inv)
-                  Lambda(Seq(ValDef(resid)), postBody)
-                } else {
-                  val resid = FreshIdentifier(fdres.name, fdres.getType)
-                  val inv = replace(Map(fdres.toVariable -> resid.toVariable), ic.prettyInv.get)
-                  Lambda(Seq(ValDef(resid)), inv)
-                }
-              newfd.postcondition = Some(npost)
-              newfd
-            case d => d
-          })
-      }
-    } else ctx.initProgram*/
   }
 }
