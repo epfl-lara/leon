@@ -6,9 +6,15 @@ import java.util.HashMap;
 
 public final class PartialLambda extends Lambda {
   final HashMap<Tuple, Object> mapping = new HashMap<Tuple, Object>();
+  private final Object dflt;
 
   public PartialLambda() {
+    this(null);
+  }
+
+  public PartialLambda(Object dflt) {
     super();
+    this.dflt = dflt;
   }
 
   public void add(Tuple key, Object value) {
@@ -20,6 +26,8 @@ public final class PartialLambda extends Lambda {
     Tuple tuple = new Tuple(args);
     if (mapping.containsKey(tuple)) {
       return mapping.get(tuple);
+    } else if (dflt != null) {
+      return dflt;
     } else {
       throw new LeonCodeGenRuntimeException("Partial function apply on undefined arguments");
     }
@@ -28,7 +36,8 @@ public final class PartialLambda extends Lambda {
   @Override
   public boolean equals(Object that) {
     if (that != null && (that instanceof PartialLambda)) {
-      return mapping.equals(((PartialLambda) that).mapping);
+      PartialLambda l = (PartialLambda) that;
+      return ((dflt != null && dflt.equals(l.dflt)) || (dflt == null && l.dflt == null)) && mapping.equals(l.mapping);
     } else {
       return false;
     }
@@ -36,6 +45,9 @@ public final class PartialLambda extends Lambda {
 
   @Override
   public int hashCode() {
-    return 63 + 11 * mapping.hashCode();
+    return 63 + 11 * mapping.hashCode() + (dflt == null ? 0 : dflt.hashCode());
   }
+
+  @Override
+  public void checkForall(boolean[] quantified) {}
 }

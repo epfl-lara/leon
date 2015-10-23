@@ -1952,12 +1952,54 @@ object ExprOps {
     es foreach rec
   }
 
-  def functionAppsOf(expr: Expr): Set[Application] = {
-    collect[Application] {
-      case f: Application => Set(f)
-      case _ => Set()
-    }(expr)
+  object InvocationExtractor {
+    private def flatInvocation(expr: Expr): Option[(TypedFunDef, Seq[Expr])] = expr match {
+      case fi @ FunctionInvocation(tfd, args) => Some((tfd, args))
+      case Application(caller, args) => flatInvocation(caller) match {
+        case Some((tfd, prevArgs)) => Some((tfd, prevArgs ++ args))
+        case None => None
+      }
+        case _ => None
+    }
+
+    def unapply(expr: Expr): Option[(TypedFunDef, Seq[Expr])] = expr match {
+      case IsTyped(f: FunctionInvocation, ft: FunctionType) => None
+      case IsTyped(f: Application, ft: FunctionType) => None
+      case FunctionInvocation(tfd, args) => Some(tfd -> args)
+      case f: Application => flatInvocation(f)
+      case _ => None
+    }
   }
+
+  def firstOrderCallsOf(expr: Expr): Set[(TypedFunDef, Seq[Expr])] =
+    collect[(TypedFunDef, Seq[Expr])] {
+      case InvocationExtractor(tfd, args) => Set(tfd -> args)
+      case _ => Set.empty
+    } (expr)
+
+  object ApplicationExtractor {
+    private def flatApplication(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
+      case Application(fi: FunctionInvocation, _) => None
+      case Application(caller: Application, args) => flatApplication(caller) match {
+        case Some((c, prevArgs)) => Some((c, prevArgs ++ args))
+        case None => None
+      }
+        case Application(caller, args) => Some((caller, args))
+        case _ => None
+    }
+
+    def unapply(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
+      case IsTyped(f: Application, ft: FunctionType) => None
+      case f: Application => flatApplication(f)
+      case _ => None
+    }
+  }
+
+  def firstOrderAppsOf(expr: Expr): Set[(Expr, Seq[Expr])] =
+    collect[(Expr, Seq[Expr])] {
+      case ApplicationExtractor(caller, args) => Set(caller -> args)
+      case _ => Set.empty
+    } (expr)
 
   def simplifyHOFunctions(expr: Expr) : Expr = {
 

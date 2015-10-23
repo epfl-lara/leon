@@ -111,9 +111,9 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
 
     def extract(b: Expr, m: Matcher[Expr]): Set[Seq[Expr]] = {
       val QuantificationTypeMatcher(fromTypes, _) = m.tpe
-      val optEnabler = evaluator.eval(b).result
+      val optEnabler = evaluator.eval(b, model).result
       if (optEnabler == Some(BooleanLiteral(true))) {
-        val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg)).result)
+        val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg), model).result)
         if (optArgs.forall(_.isDefined)) {
           Set(optArgs.map(_.get))
         } else {
@@ -132,28 +132,16 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
       case _ => None
     }).toMap.mapValues(_.toSet)
 
-    val asDMap = model.map(p => funDomains.get(p._1) match {
-      case Some(domain) =>
-        val mapping = domain.toSeq.map { es =>
-          val ev: Expr = p._2 match {
-            case RawArrayValue(_, mapping, dflt) =>
-              mapping.collectFirst {
-                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
-              } getOrElse dflt
-            case _ => scala.sys.error("Unexpected function encoding " + p._2)
-          }
-          es -> ev
-        }
-
-        p._1 -> PartialLambda(mapping, p._1.getType.asInstanceOf[FunctionType])
-      case None => p
-    }).toMap
-
     val typeGrouped = templateGenerator.manager.instantiations.groupBy(_._2.tpe)
     val typeDomains = typeGrouped.mapValues(_.flatMap { case (b, m) => extract(b, m) }.toSet)
 
+    val asDMap = purescala.Quantification.extractModel(model.toMap, funDomains, typeDomains, evaluator)
     val domains = new HenkinDomains(typeDomains)
-    new HenkinModel(asDMap, domains)
+    val hmodel = new HenkinModel(asDMap, domains)
+
+    isValidModel(hmodel)
+
+    hmodel
   }
 
   def foundAnswer(res: Option[Boolean], model: Option[HenkinModel] = None) = {

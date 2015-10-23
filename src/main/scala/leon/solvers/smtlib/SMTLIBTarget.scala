@@ -202,7 +202,8 @@ trait SMTLIBTarget extends Interruptible {
       r
 
     case ft @ FunctionType(from, to) =>
-      r
+      val elems = r.elems.toSeq.map { case (k, v) => unwrapTuple(k, from.size) -> v }
+      PartialLambda(elems, Some(r.default), ft)
 
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],

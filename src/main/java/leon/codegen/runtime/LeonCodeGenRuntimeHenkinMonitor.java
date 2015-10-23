@@ -8,6 +8,7 @@ import java.util.HashMap;
 
 public class LeonCodeGenRuntimeHenkinMonitor extends LeonCodeGenRuntimeMonitor {
   private final HashMap<Integer, List<Tuple>> domains = new HashMap<Integer, List<Tuple>>();
+  private final List<String> warnings = new LinkedList<String>();
 
   public LeonCodeGenRuntimeHenkinMonitor(int maxInvocations) {
     super(maxInvocations);
@@ -21,7 +22,8 @@ public class LeonCodeGenRuntimeHenkinMonitor extends LeonCodeGenRuntimeMonitor {
   public List<Tuple> domain(Object obj, int type) {
     List<Tuple> domain = new LinkedList<Tuple>();
     if (obj instanceof PartialLambda) {
-      for (Tuple key : ((PartialLambda) obj).mapping.keySet()) {
+      PartialLambda l = (PartialLambda) obj;
+      for (Tuple key : l.mapping.keySet()) {
         domain.add(key);
       }
     }
@@ -30,5 +32,13 @@ public class LeonCodeGenRuntimeHenkinMonitor extends LeonCodeGenRuntimeMonitor {
     if (tpeDomain != null) domain.addAll(tpeDomain);
 
     return domain;
+  }
+
+  public void warn(String warning) {
+    warnings.add(warning);
+  }
+
+  public List<String> getWarnings() {
+    return warnings;
   }
 }

@@ -72,7 +72,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     val (bodyConds, bodyExprs, bodyGuarded, bodyLambdas, bodyQuantifications) = if (isRealFunDef) {
       invocationEqualsBody.map(expr => mkClauses(start, expr, substMap)).getOrElse {
-        (Map[Identifier,T](), Map[Identifier,T](), Map[Identifier,Seq[Expr]](), Map[T,LambdaTemplate[T]](), Seq[QuantificationTemplate[T]]())
+        (Map[Identifier,T](), Map[Identifier,T](), Map[Identifier,Seq[Expr]](), Seq[LambdaTemplate[T]](), Seq[QuantificationTemplate[T]]())
       }
     } else {
       mkClauses(start, lambdaBody.get, substMap)
@@ -134,7 +134,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
   }
 
   def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]):
-               (Map[Identifier,T], Map[Identifier,T], Map[Identifier, Seq[Expr]], Map[T, LambdaTemplate[T]], Seq[QuantificationTemplate[T]]) = {
+               (Map[Identifier,T], Map[Identifier,T], Map[Identifier, Seq[Expr]], Seq[LambdaTemplate[T]], Seq[QuantificationTemplate[T]]) = {
 
     var condVars = Map[Identifier, T]()
     @inline def storeCond(id: Identifier) : Unit = condVars += id -> encoder.encodeId(id)
@@ -165,8 +165,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     @inline def registerQuantification(quantification: QuantificationTemplate[T]): Unit =
       quantifications :+= quantification
 
-    var lambdas = Map[T, LambdaTemplate[T]]()
-    @inline def registerLambda(idT: T, lambda: LambdaTemplate[T]) : Unit = lambdas += idT -> lambda
+    var lambdas = Seq[LambdaTemplate[T]]()
+    @inline def registerLambda(lambda: LambdaTemplate[T]) : Unit = lambdas :+= lambda
 
     def requireDecomposition(e: Expr) = {
       exists{
@@ -280,13 +280,12 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
           val clauseSubst: Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
           val (lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, lambdaQuants) = mkClauses(pathVar, clause, clauseSubst)
-          assert(lambdaQuants.isEmpty, "Unhandled quantification in lambdas in " + l)
 
           val ids: (Identifier, T) = lid -> storeLambda(lid)
           val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
           val template = LambdaTemplate(ids, encoder, manager, pathVar -> encodedCond(pathVar),
-            idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, localSubst, dependencies, l)
-          registerLambda(ids._2, template)
+            idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaQuants, lambdaTemplates, localSubst, dependencies, l)
+          registerLambda(template)
 
           Variable(lid)
 

@@ -56,8 +56,6 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   toggleWarningMessages(true)
 
   private def extractModel(model: Z3Model, ids: Set[Identifier]): HenkinModel = {
-    val asMap = modelToMap(model, ids)
-
     def extract(b: Z3AST, m: Matcher[Z3AST]): Set[Seq[Expr]] = {
       val QuantificationTypeMatcher(fromTypes, _) = m.tpe
       val optEnabler = model.evalAs[Boolean](b)
@@ -99,24 +97,11 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
       case _ => None
     }).toMap.mapValues(_.toSet)
 
-    val asDMap = asMap.map(p => funDomains.get(p._1) match {
-      case Some(domain) =>
-        val mapping = domain.toSeq.map { es =>
-          val ev: Expr = p._2 match {
-            case RawArrayValue(_, mapping, dflt) =>
-              mapping.collectFirst {
-                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
-              } getOrElse dflt
-            case _ => scala.sys.error("Unexpected function encoding " + p._2)
-          }
-          es -> ev
-        }
-        p._1 -> PartialLambda(mapping, p._1.getType.asInstanceOf[FunctionType])
-      case None => p
-    })
-
     val typeGrouped = templateGenerator.manager.instantiations.groupBy(_._2.tpe)
     val typeDomains = typeGrouped.mapValues(_.flatMap { case (b, m) => extract(b, m) }.toSet)
+
+    val asMap = modelToMap(model, ids)
+    val asDMap = purescala.Quantification.extractModel(asMap, funDomains, typeDomains, evaluator)
 
     val domain = new HenkinDomains(typeDomains)
     new HenkinModel(asDMap, domain)

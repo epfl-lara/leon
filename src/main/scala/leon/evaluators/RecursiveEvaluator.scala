@@ -47,12 +47,14 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     def maxSteps = RecursiveEvaluator.this.maxSteps
 
     var stepsLeft = maxSteps
+    var warnings = List.empty[String]
   }
 
   def initRC(mappings: Map[Identifier, Expr]): RC
   def initGC(model: Model): GC
 
   // Used by leon-web, please do not delete
+  // Used by quantified proposition checking now too!
   var lastGC: Option[GC] = None
 
   private[this] var clpCache = Map[(Choose, Seq[Expr]), Expr]()
@@ -61,7 +63,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     try {
       lastGC = Some(initGC(model))
       ctx.timers.evaluators.recursive.runtime.start()
-      EvaluationResults.Successful(e(ex)(initRC(model.toMap), lastGC.get))
+      val res = e(ex)(initRC(model.toMap), lastGC.get)
+      for (warning <- lastGC.get.warnings) ctx.reporter.warning(warning)
+      EvaluationResults.Successful(res)
     } catch {
       case so: StackOverflowError =>
         EvaluationResults.EvaluatorError("Stack overflow")
@@ -93,10 +97,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           val newArgs = args.map(e)
           val mapping = l.paramSubst(newArgs)
           e(body)(rctx.withNewVars(mapping), gctx)
-        case PartialLambda(mapping, _) =>
+        case PartialLambda(mapping, dflt, _) =>
           mapping.find { case (pargs, res) =>
             (args zip pargs).forall(p => e(Equals(p._1, p._2)) == BooleanLiteral(true))
-          }.map(_._2).getOrElse {
+          }.map(_._2).orElse(dflt).getOrElse {
             throw EvalError("Cannot apply partial lambda outside of domain")
           }
         case f =>
@@ -232,7 +236,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       (lv,rv) match {
         case (FiniteSet(el1, _),FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _),FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
-        case (PartialLambda(m1, _), PartialLambda(m2, _)) => BooleanLiteral(m1.toSet == m2.toSet)
+        case (PartialLambda(m1, d1, _), PartialLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
         case _ => BooleanLiteral(lv == rv)
       }
 
@@ -516,10 +520,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val mapping = variablesOf(l).map(id => structSubst(id) -> e(Variable(id))).toMap
       replaceFromIDs(mapping, nl)
 
-    case PartialLambda(mapping, tpe) =>
-      PartialLambda(mapping.map(p => p._1.map(e) -> e(p._2)), tpe)
+    case PartialLambda(mapping, dflt, tpe) =>
+      PartialLambda(mapping.map(p => p._1.map(e) -> e(p._2)), dflt.map(e), tpe)
 
-    case f @ Forall(fargs, TopLevelAnds(conjuncts)) =>
+    case f @ Forall(fargs, body @ TopLevelAnds(conjuncts)) =>
       val henkinModel: HenkinModel = gctx.model match {
         case hm: HenkinModel => hm
         case _ => throw EvalError("Can't evaluate foralls without henkin model")
@@ -576,7 +580,37 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         e(andJoin(instantiations.map { case (enabler, mapping) =>
           e(Implies(enabler, conj))(rctx.withNewVars(mapping), gctx)
         }))
-      }))
+      })) match {
+        case res @ BooleanLiteral(true) =>
+          val quantified = fargs.map(_.id).toSet
+          val status = checkForall(quantified, body)
+          if (!status.isValid) {
+            gctx.warnings :+= "Invalid forall: " + status
+          } else {
+            for ((caller, appArgs) <- firstOrderAppsOf(body)) e(caller) match {
+              case _: PartialLambda => // OK
+              case Lambda(args, body) =>
+                val lambdaQuantified = (appArgs zip args).collect {
+                  case (Variable(id), vd) if quantified(id) => vd.id
+                }.toSet
+
+                if (lambdaQuantified.nonEmpty) {
+                  val lambdaStatus = checkForall(lambdaQuantified, body)
+                  if (!lambdaStatus.isValid) {
+                    gctx.warnings :+= "Invalid forall: " + lambdaStatus
+                  }
+                }
+              case f =>
+                throw EvalError("Cannot apply non-lambda function " + f.asString)
+            }
+          }
+
+          res
+
+        // `res == false` means the quantification is valid since there effectivelly must
+        // exist an input for which the proposition doesn't hold
+        case res => res
+      }
 
     case ArrayLength(a) =>
       val FiniteArray(_, _, IntLiteral(length)) = e(a)

@@ -247,6 +247,22 @@ class PrettyPrinter(opts: PrinterOptions,
       case Lambda(args, body) =>
         optP { p"($args) => $body" }
 
+      case PartialLambda(mapping, dflt, _) =>
+        optP {
+          def pm(p: (Seq[Expr], Expr)): PrinterHelpers.Printable =
+            (pctx: PrinterContext) => p"${purescala.Constructors.tupleWrap(p._1)} => ${p._2}"(pctx)
+
+          if (mapping.isEmpty) {
+            p"{}"
+          } else {
+            p"{ ${nary(mapping map pm)} }"
+          }
+
+          if (dflt.isDefined) {
+            p" ${dflt.get}"
+          }
+        }
+
       case Plus(l,r)                 => optP { p"$l + $r" }
       case Minus(l,r)                => optP { p"$l - $r" }
       case Times(l,r)                => optP { p"$l * $r" }

@@ -670,8 +670,12 @@ trait AbstractZ3Solver extends Solver {
                     FiniteMap(elems, from, to)
                 }
 
-              case FunctionType(fts, tt) =>
-                rec(t, RawArrayType(tupleTypeWrap(fts), tt))
+              case ft @ FunctionType(fts, tt) =>
+                rec(t, RawArrayType(tupleTypeWrap(fts), tt)) match {
+                  case r: RawArrayValue =>
+                    val elems = r.elems.toSeq.map { case (k, v) => unwrapTuple(k, fts.size) -> v }
+                    PartialLambda(elems, Some(r.default), ft)
+                }
 
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
