@@ -242,7 +242,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         val fd = tfd.fd
         state.funDefsMapping.get(fd) match { 
           case Some((newFd, modifiedVars)) => {
-            val newInvoc = FunctionInvocation(newFd.typed, args ++ modifiedVars.map(id => id.toVariable)).setPos(fi)
+            val newInvoc = FunctionInvocation(newFd.typed, recArgs ++ modifiedVars.map(id => id.toVariable)).setPos(fi)
             val freshNames = modifiedVars.map(id => id.freshen)
             val tmpTuple = FreshIdentifier("t", newFd.returnType)
 
@@ -252,7 +252,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
                   Let(p._1, TupleSelect(tmpTuple.toVariable, p._2 + 2), b))
               ))
             }
-            val newMap = modifiedVars.zip(freshNames).toMap ++ argFun
+            val newMap = argFun ++ modifiedVars.zip(freshNames).toMap
 
             (TupleSelect(tmpTuple.toVariable, 1), scope, newMap)
           }
