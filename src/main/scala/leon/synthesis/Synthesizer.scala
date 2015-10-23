@@ -70,7 +70,7 @@ class Synthesizer(val context : LeonContext,
   }
 
   def validateSolution(search: Search, sol: Solution, timeout: Duration): (Solution, Boolean) = {
-    import verification.AnalysisPhase._
+    import verification.VerificationPhase._
     import verification.VerificationContext
 
     reporter.info("Solution requires validation")

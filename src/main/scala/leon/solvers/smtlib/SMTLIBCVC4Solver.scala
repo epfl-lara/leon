@@ -29,9 +29,9 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
 }
 
 object SMTLIBCVC4Component extends LeonComponent {
-  val name = "cvc4 solver"
+  val name = "CVC4 solver"
 
-  val description = "Solver invoked when --solvers=smt-cvc4"
+  val description = "Solver invoked with --solvers=smt-cvc4"
 
   val optCVC4Options = new LeonOptionDef[Set[String]] {
     val name = "solver:cvc4"

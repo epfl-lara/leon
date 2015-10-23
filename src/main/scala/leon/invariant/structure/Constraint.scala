@@ -17,6 +17,8 @@ import evaluators._
 import java.io._
 import solvers.z3.UninterpretedZ3Solver
 import invariant.util._
+import Util._
+import PredicateUtil._
 
 trait Constraint {
   def toExpr: Expr
@@ -41,19 +43,15 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   val coeffTemplate = {
     //assert if the coefficients are templated expressions
     assert(coeffTemp.values.foldLeft(true)((acc, e) => {
-      acc && Util.isTemplateExpr(e)
+      acc && isTemplateExpr(e)
     }))
-
-    //print the template mapping
-    /*println("Coeff Mapping: "+coeffTemp)
-    println("Constant: "+constTemplate)*/
     coeffTemp
   }
 
   val constTemplate = {
     assert(constTemp match {
       case None => true
-      case Some(e) => Util.isTemplateExpr(e)
+      case Some(e) => isTemplateExpr(e)
     })
     constTemp
   }
@@ -70,13 +68,11 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
       else Plus(lhs, constTemp.get)
     } else lhs
     val expr = oper(Seq(lhs, zero))
-    //assert(expr.isInstanceOf[Equals] || expr.isInstanceOf[LessThan] || expr.isInstanceOf[GreaterThan]
-    //  || expr.isInstanceOf[LessEquals] || expr.isInstanceOf[GreaterEquals])
     expr
   }
 
   def templateVars: Set[Variable] = {
-    Util.getTemplateVars(template)
+    getTemplateVars(template)
   }
 
   def coeffEntryToString(coeffEntry: (Expr, Expr)): String = {
@@ -93,6 +89,45 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   }
 
   override def toExpr: Expr = template
+
+  /**
+   * Converts the template to a more human readable form
+   * by group positive (and negative) terms together
+   */
+  def toPrettyExpr = {
+    val (lhsCoeff, rhsCoeff) = coeffTemplate.partition {
+      case (term, InfiniteIntegerLiteral(v)) =>
+        v >= 0
+      case _ => true
+    }
+    var lhsExprs: Seq[Expr] = lhsCoeff.map(e => Times(e._2, e._1)).toSeq
+    var rhsExprs: Seq[Expr] = rhsCoeff.map {
+      case (term, InfiniteIntegerLiteral(v)) =>
+        Times(InfiniteIntegerLiteral(-v), term) // make the coeff +ve
+    }.toSeq
+    constTemplate match {
+      case Some(InfiniteIntegerLiteral(v)) if v < 0 =>
+        rhsExprs :+= InfiniteIntegerLiteral(-v)
+      case Some(c) =>
+        lhsExprs :+= c
+      case _ => Nil
+    }
+    val lhsExprOpt = ((None: Option[Expr]) /: lhsExprs) {
+      case (acc, minterm) =>
+        if (acc.isDefined)
+          Some(Plus(acc.get, minterm))
+        else Some(minterm)
+    }
+    val rhsExprOpt = ((None: Option[Expr]) /: rhsExprs) {
+      case (acc, minterm) =>
+        if (acc.isDefined)
+          Some(Plus(acc.get, minterm))
+        else Some(minterm)
+    }
+    val lhs = lhsExprOpt.getOrElse(InfiniteIntegerLiteral(0))
+    val rhs = rhsExprOpt.getOrElse(InfiniteIntegerLiteral(0))
+    oper(Seq(lhs, rhs))
+  }
 
   override def toString(): String = {
 
@@ -143,7 +178,6 @@ class LinearConstraint(opr: Seq[Expr] => Expr, cMap: Map[Expr, Expr], constant: 
     assert(cMap.values.foldLeft(true)((acc, e) => {
       acc && variablesOf(e).isEmpty
     }))
-
     //TODO: here we should try to simplify the constant expressions
     cMap
   }

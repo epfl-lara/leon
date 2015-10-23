@@ -8,8 +8,10 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
+import ProgramUtil._
 import Util._
 import invariant.structure.FunctionUtils._
+import invariant.datastructure._
 
 /**
  * This represents a call graph of the functions in the program

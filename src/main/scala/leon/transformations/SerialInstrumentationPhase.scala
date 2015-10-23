@@ -10,6 +10,9 @@ import purescala.Types._
 import leon.purescala.ScalaPrinter
 import leon.utils._
 import invariant.util._
+import Util._
+import ProgramUtil._
+import PredicateUtil._
 import invariant.util.CallGraphUtil
 import invariant.structure.FunctionUtils._
 import scala.collection.mutable.{Map => MutableMap}
@@ -68,7 +71,7 @@ class SerialInstrumenter(ctx: LeonContext, program: Program) {
     //create new functions. Augment the return type of a function iff the postcondition uses
     //the instrumentation variable or if the function is transitively called from such a function
     //note: need not instrument fields
-    val funMap = Util.functionsWOFields(program.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
+    val funMap = functionsWOFields(program.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd: FunDef) if fd.isTheoryOperation =>
         accMap + (fd -> fd)
       case (accMap, fd) => {
@@ -160,7 +163,7 @@ class SerialInstrumenter(ctx: LeonContext, program: Program) {
       else List()
     }.toList.distinct
 
-    val newprog = Util.copyProgram(program, (defs: Seq[Definition]) =>
+    val newprog = copyProgram(program, (defs: Seq[Definition]) =>
       defs.map {
         case fd: FunDef if funMap.contains(fd) =>
            funMap(fd)

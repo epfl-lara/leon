@@ -10,7 +10,10 @@ import purescala.Types._
 import leon.purescala.ScalaPrinter
 
 import invariant.factories._
-import invariant.util.Util._
+import invariant.util._
+import Util._
+import ProgramUtil._
+import PredicateUtil._
 import invariant.structure._
 
 abstract class ProgramTypeTransformer {

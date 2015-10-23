@@ -17,6 +17,9 @@ import invariant.engine._
 import invariant.util._
 import invariant.structure._
 import FunctionUtils._
+import Util._
+import PredicateUtil._
+import ProgramUtil._
 
 object TemplateIdFactory {
   //a set of template ids
@@ -70,7 +73,7 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], prog: Program, report
   private var templateMap = {
     //initialize the template map with predefined user maps
     var muMap = MutableMap[FunDef, Expr]()
-    Util.functionsWOFields(prog.definedFunctions).foreach { fd =>
+    functionsWOFields(prog.definedFunctions).foreach { fd =>
       val tmpl = fd.template
       if (tmpl.isDefined) {
         muMap.update(fd, tmpl.get)
@@ -90,8 +93,8 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], prog: Program, report
   def getDefaultTemplate(fd : FunDef): Expr = {
 
     //just consider all the arguments, return values that are integers
-    val baseTerms = fd.params.filter((vardecl) => Util.isNumericType(vardecl.getType)).map(_.toVariable) ++
-    					(if(Util.isNumericType(fd.returnType)) Seq(Util.getFunctionReturnVariable(fd))
+    val baseTerms = fd.params.filter((vardecl) => isNumericType(vardecl.getType)).map(_.toVariable) ++
+    					(if(isNumericType(fd.returnType)) Seq(getFunctionReturnVariable(fd))
     					 else Seq())
 
     val lhs = baseTerms.foldLeft(TemplateIdFactory.freshTemplateVar() : Expr)((acc, t)=> {
@@ -100,7 +103,6 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], prog: Program, report
     val tempExpr = LessEquals(lhs,InfiniteIntegerLiteral(0))
     tempExpr
   }
-
 
   /**
    * Constructs a template using a mapping from the formals to actuals.
@@ -122,7 +124,6 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], prog: Program, report
     }
     replace(argmap,templateMap(fd))
   }
-
 
   /**
    * Refines the templates of the functions that were assigned templates using the template generator.

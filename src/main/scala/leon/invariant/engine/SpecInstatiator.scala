@@ -18,11 +18,14 @@ import scala.concurrent.duration._
 import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
-import invariant.util.Util._
 import invariant.structure._
 import FunctionUtils._
+import Util._
+import PredicateUtil._
+import ProgramUtil._
+import SolverUtil._
 
-class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
+class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: ConstraintTracker) {
 
   val verbose = false
 
@@ -31,7 +34,6 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
 
   val tru = BooleanLiteral(true)
   val axiomFactory = new AxiomFactory(ctx) //handles instantiation of axiomatic specification
-  val program = ctx.program
 
   //the guards of the set of calls that were already processed
   protected var exploredGuards = Set[Variable]()
@@ -51,7 +53,7 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
       if (!disableAxioms) {
         //remove all multiplication if "withmult" is specified
         val relavantCalls = if (ctx.withmult) {
-          newcalls.filter(call => !Util.isMultFunctions(call.fi.tfd.fd))
+          newcalls.filter(call => !isMultFunctions(call.fi.tfd.fd))
         } else newcalls
         instantiateAxioms(formula, relavantCalls)
       }
@@ -107,7 +109,7 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
   }
 
   def specForCall(call: Call): Option[Expr] = {
-    val argmap = Util.formalToActual(call)
+    val argmap = formalToActual(call)
     val callee = call.fi.tfd.fd
     if (callee.hasPostcondition) {
       //get the postcondition without templates
@@ -130,7 +132,7 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
   def templateForCall(call: Call): Option[Expr] = {
     val callee = call.fi.tfd.fd
     if (callee.hasTemplate) {
-      val argmap = Util.formalToActual(call)
+      val argmap = formalToActual(call)
       val tempExpr = replace(argmap, callee.getTemplate)
       val template = if (callee.hasPrecondition) {
         val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(callee.precondition.get)))
@@ -158,7 +160,7 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
     val inst2 = instantiateBinaryAxioms(formula, calls)
     val axiomInsts = inst1 ++ inst2
 
-    Stats.updateCounterStats(Util.atomNum(Util.createAnd(axiomInsts)), "AxiomBlowup", "VC-refinement")
+    Stats.updateCounterStats(atomNum(createAnd(axiomInsts)), "AxiomBlowup", "VC-refinement")
     if(verbose) ctx.reporter.info("Number of axiom instances: " + axiomInsts.size)
 
     if (this.debugAxiomInstantiation) {
@@ -222,9 +224,9 @@ class SpecInstantiator(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
       (call1.fi.tfd.id == call2.fi.tfd.id) && (call1 != call2)
     }
 
-    val product = Util.cross[Call, Call](newCallsWithAxioms, getBinaxCalls(formula.fd), Some(isInstantiable)).flatMap(
+    val product = cross[Call, Call](newCallsWithAxioms, getBinaxCalls(formula.fd), Some(isInstantiable)).flatMap(
       p => Seq((p._1, p._2), (p._2, p._1))) ++
-      Util.cross[Call, Call](newCallsWithAxioms, newCallsWithAxioms, Some(isInstantiable)).map(p => (p._1, p._2))
+      cross[Call, Call](newCallsWithAxioms, newCallsWithAxioms, Some(isInstantiable)).map(p => (p._1, p._2))
 
     //ctx.reporter.info("# of pairs with axioms: "+product.size)
     //Stats.updateCumStats(product.size, "Call-pairs-with-axioms")

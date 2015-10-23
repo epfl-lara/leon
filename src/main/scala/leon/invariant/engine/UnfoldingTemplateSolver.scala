@@ -8,6 +8,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
+import purescala.DefOps._
 import solvers._
 import solvers.z3.FairZ3Solver
 import java.io._
@@ -17,11 +18,14 @@ import scala.reflect.runtime.universe
 import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
-import invariant.util.Util._
 import invariant.structure._
 import transformations._
 import FunctionUtils._
 import leon.invariant.templateSolvers.ExtendedUFSolver
+import Util._
+import PredicateUtil._
+import ProgramUtil._
+import SolverUtil._
 
 /**
  * @author ravi
@@ -35,14 +39,13 @@ trait FunctionTemplateSolver {
   def apply(): Option[InferResult]
 }
 
-class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends FunctionTemplateSolver {
+class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: FunDef) extends FunctionTemplateSolver {
 
   val reporter = ctx.reporter
-  val program = ctx.program
   val debugVCs = false
 
-  lazy val constTracker = new ConstraintTracker(ctx, rootFd)
-  lazy val templateSolver = TemplateSolverFactory.createTemplateSolver(ctx, constTracker, rootFd)
+  lazy val constTracker = new ConstraintTracker(ctx, program, rootFd)
+  lazy val templateSolver = TemplateSolverFactory.createTemplateSolver(ctx, program, constTracker, rootFd)
 
   def constructVC(funDef: FunDef): (Expr, Expr) = {
     val body = funDef.body.get
@@ -55,15 +58,18 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
       And(matchToIfThenElse(funDef.precondition.get), plainBody)
     } else plainBody
 
-    val fullPost = matchToIfThenElse(if (funDef.hasTemplate)
-      if (ctx.toVerifyPostFor.contains(funDef.id.name))
-      And(funDef.getPostWoTemplate, funDef.getTemplate)
-    else
-      funDef.getTemplate
-    else if (ctx.toVerifyPostFor.contains(funDef.id.name))
-      funDef.getPostWoTemplate
-    else
-      BooleanLiteral(true))
+    val funName = fullName(funDef, useUniqueIds = false)(program)
+    val fullPost = matchToIfThenElse(
+      if (funDef.hasTemplate) {
+        // if the postcondition is verified do not include it in the sequent
+        if (ctx.isFunctionPostVerified(funName))
+          funDef.getTemplate
+        else
+          And(funDef.getPostWoTemplate, funDef.getTemplate)
+      } else if (!ctx.isFunctionPostVerified(funName))
+        funDef.getPostWoTemplate
+      else
+        BooleanLiteral(true))
 
     (bodyExpr, fullPost)
   }
@@ -80,41 +86,47 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
     var toRefineCalls: Option[Set[Call]] = None
     var infRes: Option[InferResult] = None
     do {
-      Stats.updateCounter(1, "VC-refinement")
-      /* uncomment if we want to bound refinements
-       * if (refinementStep >= 5)
-          throw new IllegalStateException("Done 4 refinements")*/
-      val refined =
-        if (refinementStep >= 1) {
-          reporter.info("- More unrollings for invariant inference")
-
-          val toUnrollCalls = if (ctx.targettedUnroll) toRefineCalls else None
-          val unrolledCalls = constTracker.refineVCs(toUnrollCalls)
-          if (unrolledCalls.isEmpty) {
-            reporter.info("- Cannot do more unrollings, reached unroll bound")
-            false
-          } else true
-        } else {
-          constTracker.initialize
-          true
-        }
-      refinementStep += 1
       infRes =
-        if (!refined)
+        if(ctx.abort)
           Some(InferResult(false, None, List()))
-        else {
-          //solve for the templates in this unroll step
-          templateSolver.solveTemplates() match {
-            case (Some(model), callsInPath) =>
-              toRefineCalls = callsInPath
-              //Validate the model here
-              instantiateAndValidateModel(model, constTracker.getFuncs.toSeq)
-              Some(InferResult(true, Some(model),
-                constTracker.getFuncs.toList))
-            case (None, callsInPath) =>
-              toRefineCalls = callsInPath
-              //here, we do not know if the template is solvable or not, we need to do more unrollings.
-              None
+        else{
+          Stats.updateCounter(1, "VC-refinement")
+          /*
+           * uncomment if we want to bound refinements
+           * if (refinementStep >= 5)
+           * throw new IllegalStateException("Done 4 refinements")
+           */
+          val refined =
+            if (refinementStep >= 1) {
+              reporter.info("- More unrollings for invariant inference")
+
+              val toUnrollCalls = if (ctx.targettedUnroll) toRefineCalls else None
+              val unrolledCalls = constTracker.refineVCs(toUnrollCalls)
+              if (unrolledCalls.isEmpty) {
+                reporter.info("- Cannot do more unrollings, reached unroll bound")
+                false
+              } else true
+            } else {
+              constTracker.initialize
+              true
+            }
+          refinementStep += 1
+          if (!refined)
+            Some(InferResult(false, None, List()))
+          else {
+            //solve for the templates in this unroll step
+            templateSolver.solveTemplates() match {
+              case (Some(model), callsInPath) =>
+                toRefineCalls = callsInPath
+                //Validate the model here
+                instantiateAndValidateModel(model, constTracker.getFuncs.toSeq)
+                Some(InferResult(true, Some(model),
+                  constTracker.getFuncs.toList))
+              case (None, callsInPath) =>
+                toRefineCalls = callsInPath
+                //here, we do not know if the template is solvable or not, we need to do more unrollings.
+                None
+            }
           }
         }
     } while (!infRes.isDefined)
@@ -175,7 +187,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
     //create a fundef for each function in the program
     //note: mult functions are also copied
     val newFundefs = program.definedFunctions.collect {
-      case fd @ _ => { //if !Util.isMultFunctions(fd)
+      case fd @ _ => { //if !isMultFunctions(fd)
         val newfd = new FunDef(FreshIdentifier(fd.id.name, Untyped, false), fd.tparams, fd.params, fd.returnType)
         (fd, newfd)
       }
@@ -226,7 +238,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, rootFd: FunDef) extends Fun
       newfd.addFlags(fd.flags)
     })
 
-    val augmentedProg = Util.copyProgram(program, (defs: Seq[Definition]) => defs.collect {
+    val augmentedProg = copyProgram(program, (defs: Seq[Definition]) => defs.collect {
       case fd: FunDef if (newFundefs.contains(fd)) => newFundefs(fd)
       case d if (!d.isInstanceOf[FunDef]) => d
     })

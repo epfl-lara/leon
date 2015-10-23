@@ -19,6 +19,7 @@ import invariant.util._
 import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.solvers.Model
+import PredicateUtil._
 
 abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
   ctrTracker: ConstraintTracker) {
@@ -33,7 +34,6 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
 
   private val dumpVCtoConsole = false
   private val dumpVCasText = false
-  private val dumpVCasSMTLIB = false
 
   /**
    * Completes a model by adding mapping to new template variables
@@ -73,7 +73,7 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
       val vc = if (ctx.usereals)
         ExpressionTransformer.IntLiteralToReal(getVCForFun(fd))
       else getVCForFun(fd)
-      if (dumpVCtoConsole || dumpVCasText || dumpVCasSMTLIB) {
+      if (dumpVCtoConsole || dumpVCasText) {
         //val simpForm = simplifyArithmetic(vc)
         val filename = "vc-" + FileCountGUID.getID
         if (dumpVCtoConsole) {
@@ -87,15 +87,11 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
           wr.flush()
           wr.close()
         }
-        if (dumpVCasSMTLIB) {
-          Util.toZ3SMTLIB(vc, filename + ".smt2", "QF_LIA", ctx.leonContext, ctx.program)
-          println("Printed VC of " + fd.id + " to file: " + filename)
-        }
       }
 
       if (ctx.dumpStats) {
-        Stats.updateCounterStats(Util.atomNum(vc), "VC-size", "VC-refinement")
-        Stats.updateCounterStats(Util.numUIFADT(vc), "UIF+ADT", "VC-refinement")
+        Stats.updateCounterStats(atomNum(vc), "VC-size", "VC-refinement")
+        Stats.updateCounterStats(numUIFADT(vc), "UIF+ADT", "VC-refinement")
       }
       (fd -> vc)
     }).toMap
@@ -105,7 +101,7 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
         //val tempOption = if (fd.hasTemplate) Some(fd.getTemplate) else None
         //if (!tempOption.isDefined) acc
         //else
-        acc ++ Util.getTemplateIds(vc)
+        acc ++ getTemplateIds(vc)
     }
 
     Stats.updateCounterStats(tempIds.size, "TemplateIds", "VC-refinement")

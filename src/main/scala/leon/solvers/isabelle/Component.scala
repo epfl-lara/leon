@@ -10,7 +10,7 @@ import leon._
 
 object Component extends LeonComponent {
 
-  val name = "isabelle"
+  val name = "Isabelle"
   val description = "Isabelle solver"
 
   val leonBase =
