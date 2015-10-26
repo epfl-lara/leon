@@ -641,7 +641,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
       implicit val debugSection = utils.DebugSectionSynthesis
 
-      val p = synthesis.Problem.fromChoose(choose)
+      val p = synthesis.Problem.fromSpec(choose.pred)
 
       ctx.reporter.debug("Executing choose!")
 

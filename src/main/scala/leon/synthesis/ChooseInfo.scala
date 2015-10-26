@@ -12,7 +12,7 @@ import Witnesses._
 case class ChooseInfo(fd: FunDef,
                       pc: Expr,
                       source: Expr,
-                      ch: Choose,
+                      spec: Expr,
                       eb: ExamplesBank) {
 
   val problem = Problem.fromChooseInfo(this)
@@ -57,7 +57,7 @@ object ChooseInfo {
         ExamplesBank.empty
       }
 
-      val ci = ChooseInfo(fd, and(path, term), ch, ch, outerEb)
+      val ci = ChooseInfo(fd, and(path, term), ch, ch.pred, outerEb)
 
       val pcEb = eFinder.generateForPC(ci.problem.as, path, 20)
       val chooseEb = eFinder.extractFromProblem(ci.problem)

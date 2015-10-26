@@ -129,20 +129,16 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
     val origBody = fd.body.get
 
-    val spec = fd.postOrTrue
-
-    val choose = Choose(spec)
-
     val term  = Terminating(fd.typed, fd.params.map(_.id.toVariable))
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
     val ci = ChooseInfo(
-      fd,
-      andJoin(Seq(pre, guide, term)),
-      origBody,
-      choose,
-      eb
+      fd = fd,
+      pc = andJoin(Seq(pre, guide, term)),
+      source = origBody,
+      spec = fd.postOrTrue,
+      eb = eb
     )
 
     // Return synthesizer for this choose

@@ -5,7 +5,6 @@ package synthesis
 
 import purescala.Expressions._
 import purescala.Common.Tree
-import purescala.Definitions.Definition
 import purescala.ScalaPrinter
 import purescala.PrinterOptions
 import purescala.PrinterContext
@@ -35,7 +34,7 @@ class FileInterface(reporter: Reporter) {
 
         var newCode = origCode
         for ( (ci, e) <- solutions) {
-          newCode = substitute(newCode, ci.ch, e)
+          newCode = substitute(newCode, ci.source, e)
         }
 
         val out = new BufferedWriter(new FileWriter(newFile))
