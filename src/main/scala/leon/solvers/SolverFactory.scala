@@ -150,18 +150,16 @@ object SolverFactory {
     getFromName(ctx, program)("fairz3")
   }
 
-  lazy val hasNativeZ3 = {
-    try {
-      new _root_.z3.scala.Z3Config
-      true
-    } catch {
-      case _: java.lang.UnsatisfiedLinkError =>
-        false
-    }
+  lazy val hasNativeZ3 = try {
+    new _root_.z3.scala.Z3Config
+    true
+  } catch {
+    case _: java.lang.UnsatisfiedLinkError =>
+      false
   }
 
   lazy val hasZ3 = try {
-    Z3Interpreter.buildDefault
+    Z3Interpreter.buildDefault.free()
     true
   } catch {
     case e: java.io.IOException =>
@@ -169,7 +167,7 @@ object SolverFactory {
   }
 
   lazy val hasCVC4 = try {
-    CVC4Interpreter.buildDefault
+    CVC4Interpreter.buildDefault.free()
     true
   } catch {
     case e: java.io.IOException =>
