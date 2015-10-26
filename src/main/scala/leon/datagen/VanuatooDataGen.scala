@@ -33,7 +33,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     b -> Constructor[Expr, TypeTree](List(), BooleanType, s => BooleanLiteral(b), ""+b)
   }).toMap
   
-  val strings = (for (b <- Set("", "a", "Abcd")) yield {
+  val strings = (for (b <- Set("", "a", "b", "Abcd")) yield {
     b -> Constructor[Expr, TypeTree](List(), StringType, s => StringLiteral(b), b)
   }).toMap
 

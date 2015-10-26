@@ -548,8 +548,7 @@ trait AbstractZ3Solver extends Solver {
   protected[leon] def fromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree): Expr = {
 
     def rec(t: Z3AST, tpe: TypeTree): Expr = {
-      val kind = z3.getASTKind(t)
-
+      val kind = z3.getASTKind(t))
       kind match {
         case Z3NumeralIntAST(Some(v)) => {
           val leading = t.toString.substring(0, 2 min t.toString.length)
@@ -559,6 +558,7 @@ trait AbstractZ3Solver extends Solver {
                 tpe match {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
+                  case IntegerType => InfiniteIntegerLiteral(BigInt(hexa.toInt))
                   case other =>
                     unsupported(other, "Unexpected target type for BV value")
                 }
@@ -567,20 +567,38 @@ trait AbstractZ3Solver extends Solver {
               }
             }
           } else {
-            InfiniteIntegerLiteral(v)
+            tpe match {
+              case Int32Type => IntLiteral(v)
+              case CharType  => CharLiteral(v.toChar)
+              case IntegerType => InfiniteIntegerLiteral(BigInt(v))
+              case other =>
+                unsupported(other, "Unexpected type for BV value: " + other)
+            } 
           }
         }
         case Z3NumeralIntAST(None) => {
+          val ts = t.toString
+          if(ts.length > 4 && ts.substring(0, 2) == "bv" && ts.substring(ts.length - 4) == "[32]") {
+            val integer = ts.substring(2, ts.length - 4)
+            tpe match {
+              case Int32Type => IntLiteral(integer.toInt)
+              case CharType  => CharLiteral(integer.toInt.toChar)
+              case IntegerType => InfiniteIntegerLiteral(BigInt(integer.toInt))
+              case _ =>
+                reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
+            }
+          } else       
           _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) =>
                 tpe match {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
+                  case IntegerType => InfiniteIntegerLiteral(BigInt(hexa.toInt))
                   case _ =>
                     reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
                 }
             case None => {
-              reporter.fatalError(s"Could not translate Z3NumeralIntAST numeral $t")
+              reporter.fatalError(s"Could not translate Z3NumeralIntAST numeral $t to type $tpe")
             }
           }
         }

@@ -147,7 +147,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     //    id => expr && ... && expr
     var guardedExprs = Map[Identifier, Seq[Expr]]()
     def storeGuarded(guardVar : Identifier, expr : Expr) : Unit = {
-      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty))
+      assert(expr.getType == BooleanType, expr.asString(Program.empty)(LeonContext.empty) + " is not of type Boolean")
 
       val prev = guardedExprs.getOrElse(guardVar, Nil)
 
