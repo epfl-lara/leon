@@ -1200,11 +1200,11 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           getOwner(lhsRec) match {
-            case Some(Some(fd)) if fd != currentFunDef =>
-              outOfSubsetError(tr, "cannot update an array that is not defined locally")
+          //  case Some(Some(fd)) if fd != currentFunDef =>
+          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
 
-            case Some(None) =>
-              outOfSubsetError(tr, "cannot update an array that is not defined locally")
+          //  case Some(None) =>
+          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
 
             case Some(_) =>
 
