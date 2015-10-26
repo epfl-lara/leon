@@ -42,7 +42,6 @@ object ChooseInfo {
 
   def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[ChooseInfo] = {
 
-    val actualBody = and(fd.precOrTrue, fd.body.get)
     val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
     val eFinder = new ExamplesFinder(ctx, prog)
@@ -50,7 +49,7 @@ object ChooseInfo {
     // We are synthesizing, so all examples are valid ones
     val functionEb = eFinder.extractFromFunDef(fd, partition = false)
 
-    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(actualBody)) yield {
+    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(fd.fullBody)) yield {
       val outerEb = if (path == BooleanLiteral(true)) {
         functionEb
       } else {
