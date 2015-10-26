@@ -129,9 +129,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
     val origBody = fd.body.get
 
-    val spec = fd.postcondition.getOrElse(
-      Lambda(Seq(ValDef(FreshIdentifier("res", fd.returnType))), BooleanLiteral(true))
-    )
+    val spec = fd.postOrTrue
 
     val choose = Choose(spec)
 
