@@ -1,0 +1,30 @@
+TODO: 
+Benchmarks to think about
+
+1. Lazy constraint solving 	
+	We can get demand driven pointer-analysis. Can we prove its running time ?
+
+2. Packrat parsers uses memoization
+	Can we prove its running time ?
+
+3. ConcTrees full version ?
+
+4. Binomial heaps ?
+
+5. Futures: How about redex algorithms or map-reduce algorithms ?
+
+Things to implement:
+
+a) A way to check monotonicity of preconditions
+b) Use monotonicity while checking proofs
+c) Extensions for futures 
+d) Extensions for memoization
+e) Extending Orb for type parameters
+
+Integration
+
+Try to fix bugs in CVC4 proof and also try to integerate it with the system
+Try to integrate the tool with Orb
+
+
+
