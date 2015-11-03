@@ -1,4 +1,4 @@
-/* Copyright 2009-2013 EPFL, Lausanne 
+/* Copyright 2009-2015 EPFL, Lausanne
  *
  * Author: Ravi
  * Date: 20.11.2013

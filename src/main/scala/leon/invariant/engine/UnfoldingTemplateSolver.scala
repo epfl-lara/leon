@@ -134,12 +134,16 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
   }
 
   def apply() = {
-    //create a body and post of the function
-    val (bodyExpr, fullPost) = constructVC(rootFd)
-    if (fullPost == tru)
-      Some(InferResult(true, Some(Model.empty), List()))
-    else
-      solveParametricVC(And(bodyExpr, Not(fullPost)))
+    if(ctx.abort) {
+      Some(InferResult(false, None, List()))
+    } else {
+      //create a body and post of the function
+      val (bodyExpr, fullPost) = constructVC(rootFd)
+      if (fullPost == tru)
+        Some(InferResult(true, Some(Model.empty), List()))
+      else
+        solveParametricVC(And(bodyExpr, Not(fullPost)))
+    }
   }
 
   def instantiateModel(model: Model, funcs: Seq[FunDef]) = {
