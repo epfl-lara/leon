@@ -14,7 +14,7 @@ import leon.utils.RangePosition
 import java.io.File
 class FileInterface(reporter: Reporter) {
 
-  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr])(implicit ctx: LeonContext) {
+  def updateFile(origFile: File, solutions: Map[SourceInfo, Expr])(implicit ctx: LeonContext) {
     import java.io.{File, BufferedWriter, FileWriter}
     val FileExt = """^(.+)\.([^.]+)$""".r
 

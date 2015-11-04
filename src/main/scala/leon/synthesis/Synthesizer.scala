@@ -15,7 +15,7 @@ import synthesis.graph._
 
 class Synthesizer(val context : LeonContext,
                   val program: Program,
-                  val ci: ChooseInfo,
+                  val ci: SourceInfo,
                   val settings: SynthesisSettings) {
 
   val problem = ci.problem

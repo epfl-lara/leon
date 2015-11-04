@@ -11,7 +11,7 @@ import graph._
  */
 case class SearchContext (
   sctx: SynthesisContext,
-  ci: ChooseInfo,
+  ci: SourceInfo,
   currentNode: Node,
   search: Search
 ) {
