@@ -24,7 +24,7 @@ class SynthesisSuite extends LeonRegressionSuite {
 
 
   class TestSearch(ctx: LeonContext,
-                   ci: ChooseInfo,
+                   ci: SourceInfo,
                    p: Problem,
                    strat: SynStrat) extends SimpleSearch(ctx, ci, p, CostModels.default, None) {
 

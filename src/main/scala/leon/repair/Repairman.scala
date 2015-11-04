@@ -133,7 +133,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
-    val ci = ChooseInfo(
+    val ci = SourceInfo(
       fd = fd,
       pc = andJoin(Seq(pre, guide, term)),
       source = origBody,

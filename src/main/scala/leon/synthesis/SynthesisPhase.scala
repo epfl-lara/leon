@@ -65,7 +65,7 @@ object SynthesisPhase extends TransformationPhase {
   def apply(ctx: LeonContext, program: Program): Program = {
     val options = processOptions(ctx)
 
-    val chooses = ChooseInfo.extractFromProgram(ctx, program)
+    val chooses = SourceInfo.extractFromProgram(ctx, program)
 
     var functions = Set[FunDef]()
 

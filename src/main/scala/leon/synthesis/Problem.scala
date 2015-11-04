@@ -57,7 +57,7 @@ object Problem {
     Problem(as, andJoin(wss), andJoin(pcs), phi, xs, eb)
   }
 
-  def fromChooseInfo(ci: ChooseInfo): Problem = {
+  def fromSourceInfo(ci: SourceInfo): Problem = {
     // Same as fromChoose, but we order the input variables by the arguments of
     // the functions, so that tests are compatible
     val p = fromSpec(ci.spec, ci.pc, ci.eb)

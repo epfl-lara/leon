@@ -50,7 +50,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
       InnerCaseSplit
     )
 
-    def getChooses(ctx: LeonContext, content: String): (Program, SynthesisSettings, Seq[ChooseInfo]) = {
+    def getChooses(ctx: LeonContext, content: String): (Program, SynthesisSettings, Seq[SourceInfo]) = {
       val opts = SynthesisSettings()
       val pipeline = leon.utils.TemporaryInputPhase andThen 
                      frontends.scalac.ExtractionPhase andThen
@@ -58,7 +58,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
 
       val (ctx2, program) = pipeline.run(ctx, (List(content), Nil))
 
-      (program, opts, ChooseInfo.extractFromProgram(ctx2, program))
+      (program, opts, SourceInfo.extractFromProgram(ctx2, program))
     }
 
     case class Job(content: String, choosesToProcess: Set[Int], rules: List[String]) {
