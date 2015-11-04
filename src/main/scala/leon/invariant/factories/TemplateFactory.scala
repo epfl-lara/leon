@@ -1,23 +1,16 @@
 package leon
 package invariant.factories
 
-import z3.scala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
-import java.io._
-import scala.collection.mutable.{ Map => MutableMap }
-import invariant._
 import scala.collection.mutable.{Map => MutableMap}
 
-import invariant.engine._
 import invariant.util._
 import invariant.structure._
 import FunctionUtils._
-import Util._
 import PredicateUtil._
 import ProgramUtil._
 
@@ -28,7 +21,7 @@ object TemplateIdFactory {
   def getTemplateIds : Set[Identifier] = ids
 
   def freshIdentifier(name : String = "", idType: TypeTree = RealType) : Identifier = {
-    val idname = if(name.isEmpty()) "a?"
+    val idname = if(name.isEmpty) "a?"
     			 else name + "?"
     val freshid = FreshIdentifier(idname, idType, true)
     ids += freshid
@@ -72,7 +65,7 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], prog: Program, report
   //a mapping from function definition to the template
   private var templateMap = {
     //initialize the template map with predefined user maps
-    var muMap = MutableMap[FunDef, Expr]()
+    val muMap = MutableMap[FunDef, Expr]()
     functionsWOFields(prog.definedFunctions).foreach { fd =>
       val tmpl = fd.template
       if (tmpl.isDefined) {
@@ -114,7 +107,7 @@ class TemplateFactory(tempGen : Option[TemplateGenerator], prog: Program, report
 
     //initialize the template for the function
     if (!templateMap.contains(fd)) {
-      if(!tempGen.isDefined) templateMap += (fd -> getDefaultTemplate(fd))
+      if(tempGen.isEmpty) templateMap += (fd -> getDefaultTemplate(fd))
       else {
     	templateMap += (fd -> tempGen.get.getNextTemplate(fd))
     	refinementSet += fd

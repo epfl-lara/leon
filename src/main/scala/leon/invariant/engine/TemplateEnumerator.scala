@@ -1,26 +1,15 @@
 package leon
 package invariant.engine
 
-import z3.scala._
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
-import scala.collection.mutable.{ Set => MutableSet }
-import java.io._
-import scala.collection.mutable.{ Set => MutableSet }
-import scala.collection.mutable.{ Set => MutableSet }
 
-import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
-import invariant.structure._
-import Util._
-import PredicateUtil._
 import ProgramUtil._
 
+import scala.collection.mutable.{Set => MutableSet}
 /**
  * An enumeration based template generator.
  * Enumerates all numerical terms in some order (this enumeration is incomplete for termination).
@@ -126,7 +115,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr, Expr
           if (fun != rootFun && !callGraph.transitivelyCalls(fun, rootFun)) {
 
             //check if every argument has at least one satisfying assignment?
-            if (fun.params.filter((vardecl) => !ttCurrent.contains(vardecl.getType)).isEmpty) {
+            if (!fun.params.exists((vardecl) => !ttCurrent.contains(vardecl.getType))) {
 
               //here compute all the combinations
               val newcalls = generateFunctionCalls(fun)
@@ -153,7 +142,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr, Expr
       //return all the integer valued terms of newTerms
       //++ newTerms.getOrElse(Int32Type, Seq[Expr]()) (for now not handling int 32 terms)
       val numericTerms = (newTerms.getOrElse(RealType, Seq[Expr]()) ++ newTerms.getOrElse(IntegerType, Seq[Expr]())).toSeq
-      if (!numericTerms.isEmpty) {
+      if (numericTerms.nonEmpty) {
         //create a linear combination of intTerms
         val newTemp = numericTerms.foldLeft(null: Expr)((acc, t: Expr) => {
           val summand = Times(t, TemplateIdFactory.freshTemplateVar(): Expr)

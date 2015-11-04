@@ -1,16 +1,13 @@
 package leon
 package invariant.engine
 
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
-import invariant.templateSolvers._
 import transformations._
 import invariant.structure.FunctionUtils._
-import transformations.InstUtil._
 import leon.invariant.structure.Formula
 import leon.invariant.structure.Call
 import leon.invariant.util._
@@ -20,7 +17,6 @@ import leon.solvers.Model
 import Util._
 import PredicateUtil._
 import ProgramUtil._
-import SolverUtil._
 
 class CompositionalTimeBoundSolver(ctx: InferenceContext, prog: Program, rootFd: FunDef)
   extends FunctionTemplateSolver {
@@ -183,23 +179,21 @@ class CompositionalTimeBoundSolver(ctx: InferenceContext, prog: Program, rootFd:
       var timeTmpl: Option[Expr] = None
       var recTmpl: Option[Expr] = None
       var othersTmpls: Seq[Expr] = Seq[Expr]()
-      tmplConjuncts.foreach(conj => {
-        conj match {
-          case Operator(Seq(lhs, _), _) if (tupleSelectToInst.contains(lhs)) =>
-            tupleSelectToInst(lhs) match {
-              case n if n == TPR.name =>
-                tprTmpl = Some(conj)
-              case n if n == Time.name =>
-                timeTmpl = Some(conj)
-              case n if n == Rec.name =>
-                recTmpl = Some(conj)
-              case _ =>
-                othersTmpls = othersTmpls :+ conj
-            }
-          case _ =>
-            othersTmpls = othersTmpls :+ conj
-        }
-      })
+      tmplConjuncts.foreach {
+        case conj@Operator(Seq(lhs, _), _) if (tupleSelectToInst.contains(lhs)) =>
+          tupleSelectToInst(lhs) match {
+            case n if n == TPR.name =>
+              tprTmpl = Some(conj)
+            case n if n == Time.name =>
+              timeTmpl = Some(conj)
+            case n if n == Rec.name =>
+              recTmpl = Some(conj)
+            case _ =>
+              othersTmpls = othersTmpls :+ conj
+          }
+        case conj =>
+          othersTmpls = othersTmpls :+ conj
+      }
       (tprTmpl, recTmpl, timeTmpl, othersTmpls)
     }
   }

@@ -1,23 +1,15 @@
 package leon
 package invariant.factories
 
-import z3.scala._
-import purescala._
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.Types._
-import java.io._
-import invariant.engine._
 import invariant.util._
 import invariant.structure._
 import leon.solvers.Model
 import leon.invariant.util.RealValuedExprEvaluator
-import Util._
 import PredicateUtil._
-import ProgramUtil._
 
 object TemplateInstantiator {
   /**
@@ -51,17 +43,17 @@ object TemplateInstantiator {
    */
   def instantiate(expr: Expr, tempVarMap: Map[Expr, Expr], prettyInv: Boolean = false): Expr = {
     //do a simple post transform and replace the template vars by their values
-    val inv = simplePostTransform((tempExpr: Expr) => tempExpr match {
-      case e @ Operator(Seq(lhs, rhs), op) if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
+    val inv = simplePostTransform {
+      case tempExpr@(e@Operator(Seq(lhs, rhs), op)) if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
         || e.isInstanceOf[GreaterEquals])
         &&
-        !getTemplateVars(tempExpr).isEmpty) => {
+        getTemplateVars(tempExpr).nonEmpty) => {
         val linearTemp = LinearConstraintUtil.exprToTemplate(tempExpr)
         instantiateTemplate(linearTemp, tempVarMap, prettyInv)
       }
-      case _ => tempExpr
-    })(expr)
+      case tempExpr => tempExpr
+    }(expr)
     inv
   }
 

@@ -2,9 +2,6 @@ package leon
 package invariant.util
 
 import utils._
-import solvers._
-import invariant.engine._
-import purescala.Expressions._
 
 object TimerUtil {
   /**
@@ -12,13 +9,13 @@ object TimerUtil {
    */
   def scheduleTask(callBack: () => Unit, timeOut: Long): Option[java.util.Timer] = {
     if (timeOut > 0) {
-      val timer = new java.util.Timer();
+      val timer = new java.util.Timer()
       timer.schedule(new java.util.TimerTask() {
         def run() {
           callBack()
           timer.cancel() //the timer will be cancelled after it runs
         }
-      }, timeOut);
+      }, timeOut)
       Some(timer)
     } else None
   }
@@ -30,7 +27,6 @@ class InterruptOnSignal(it: Interruptible) {
     private var keepRunning = true
 
     override def run(): Unit = {
-      val startTime: Long = System.currentTimeMillis
       while (!signal && keepRunning) {
         Thread.sleep(100) // a relatively infrequent poll
       }

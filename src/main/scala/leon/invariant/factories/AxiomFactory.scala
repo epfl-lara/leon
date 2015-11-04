@@ -1,24 +1,13 @@
 package leon
 package invariant.factories
 
-import z3.scala._
-import purescala.Common._
-import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
-import java.io._
-import leon.invariant._
-import scala.util.control.Breaks._
-import scala.concurrent._
-import scala.concurrent.duration._
 
 import invariant.engine._
 import invariant.util._
 import invariant.structure._
 import FunctionUtils._
-import Util._
 import PredicateUtil._
 
 class AxiomFactory(ctx : InferenceContext) {
@@ -85,7 +74,6 @@ class AxiomFactory(ctx : InferenceContext) {
 
   //this is applicable only to binary operations
   def undistributeCalls(call1: Call, call2: Call): (Expr,Expr) = {
-    val fd = call1.fi.tfd.fd
     val tfd = call1.fi.tfd
 
     val Seq(a1,b1) = call1.fi.args
@@ -93,9 +81,7 @@ class AxiomFactory(ctx : InferenceContext) {
     val r1 = call1.retexpr
     val r2 = call2.retexpr
 
-    val dret1 = TVarFactory.createTemp("dt", IntegerType).toVariable
     val dret2 = TVarFactory.createTemp("dt", IntegerType).toVariable
-    val dcall1 = Call(dret1, FunctionInvocation(tfd,Seq(a2,Plus(b1,b2))))
     val dcall2 = Call(dret2, FunctionInvocation(tfd,Seq(Plus(a1,a2),b2)))
     (LessEquals(b1,b2), And(LessEquals(Plus(r1,r2),dret2), dcall2.toExpr))
   }

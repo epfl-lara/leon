@@ -1,18 +1,10 @@
 package leon
 package invariant.util
 
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
-import scala.collection.mutable.{ Map => MutableMap }
-import java.io._
-import leon.invariant._
 import java.io._
 import scala.collection.mutable.{Map => MutableMap}
-
 
 /**
  * A generic statistics object that provides:

@@ -1,12 +1,8 @@
 package leon
 package invariant.factories
 
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
 import invariant._
 import invariant.engine._
 import invariant.util._
