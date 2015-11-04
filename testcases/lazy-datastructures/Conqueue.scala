@@ -4,8 +4,33 @@ import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
-import conctrees.ConcTrees._
 
+object ConcTrees {
+
+  def max(x: BigInt, y: BigInt): BigInt = if (x >= y) x else y
+  def abs(x: BigInt): BigInt = if (x < 0) -x else x
+
+  sealed abstract class Conc[T] {
+    def isEmpty: Boolean = {
+      this == Empty[T]()
+    }
+
+    val level: BigInt = {
+      (this match {
+        case Empty()   => 0
+        case Single(x) => 0
+        case CC(l, r) =>
+          1 + max(l.level, r.level)
+      }): BigInt
+    } ensuring (_ >= 0)
+  }
+
+  case class Empty[T]() extends Conc[T]
+  case class Single[T](x: T) extends Conc[T]
+  case class CC[T](left: Conc[T], right: Conc[T]) extends Conc[T]
+}
+
+import ConcTrees._
 object Conqueue {
 
   def zeroPreceedsLazy[T](q: $[ConQ[T]]): Boolean = {
@@ -48,19 +73,19 @@ object Conqueue {
       }
     } else
       l
-  } ensuring (res => ((res*).isSpine || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-    ((res*).isTip || !res.isEvaluated) && // if the return value is not a Tip closure then it would not have been evaluated
-    streamLemma(res) &&
-    (res.value match {
+  } ensuring (res => //((res*).isSpine || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
+    //((res*).isTip || !res.isEvaluated) && // if the return value is not a Tip closure then it would not have been evaluated
+    streamLemma(res)  &&
+    /*(res.value match {
       case Spine(_, tail) =>
         firstUnevaluated(l) == tail // after evaluating the firstUnevaluated closure in 'l' we get the next unevaluated closure
       case _ => true
-    }))
+    })*/ true)
 
   sealed abstract class ConQ[T] {
     val isSpine: Boolean = this match {
       case Spine(_, _) => true
-      case _ => false
+      case _           => false
     }
     val isTip = !isSpine
   }
@@ -74,7 +99,7 @@ object Conqueue {
 
   sealed abstract class Scheds[T]
   case class Cons[T](h: $[ConQ[T]], tail: Scheds[T]) extends Scheds[T]
-  case class Nil[T]() extends Scheds
+  case class Nil[T]() extends Scheds[T]
 
   def schedulesProperty[T](q: $[ConQ[T]], schs: Scheds[T]): Boolean = {
     schs match {
@@ -138,15 +163,14 @@ object Conqueue {
           case s @ Spine(_, _) =>
             Spine(Empty(), $(pushLeftLazy(carry, rear)))
 
-          case t @ Tip(tree) if tree.level > carry.level => // can this happen ? this means tree is of level at least two greater than rear ?
-            Spine(Empty(), $[ConQ[T]](Spine(carry, $[ConQ[T]](t))))
-
-          case Tip(tree) =>
-            // here tree level and carry level are equal
-            Spine(Empty(), $[ConQ[T]](Spine(Empty(), $[ConQ[T]](Tip(CC(tree, carry))))))
+          case t @ Tip(tree) =>
+            if (tree.level > carry.level) // can this happen ? this means tree is of level at least two greater than rear ?
+              Spine(Empty(), $[ConQ[T]](Spine(carry, $[ConQ[T]](t))))
+            else // here tree level and carry level are equal
+              Spine(Empty(), $[ConQ[T]](Spine(Empty(), $[ConQ[T]](Tip(CC(tree, carry))))))
         }
     }
-  } ensuring(res => res match { // However, the weakZeroPreceedsLazy property would hold
+  } ensuring (res => res match { // However, the weakZeroPreceedsLazy property would hold
     case Spine(Empty(), _) => true
     case Spine(h, rear) =>
       val _ = rear.value
@@ -159,7 +183,7 @@ object Conqueue {
    * ps in xs. Ideally, the second argument should include every
    * structure that may contain 'pl'.
    */
-/*  def materialize[T](mat: ConQ[T], xs: ConQ[T], schs: Cons[ConQ[T]]): (Spine[T], ConQ[T], BigInt) = {
+  /*  def materialize[T](mat: ConQ[T], xs: ConQ[T], schs: Cons[ConQ[T]]): (Spine[T], ConQ[T], BigInt) = {
     require(weakSchedulesProperty(xs, schs) && schs.head == mat)
     mat match {
       case PushLazy(elem, q) =>
@@ -174,9 +198,10 @@ object Conqueue {
   }) &&
     res._3 <= 2)
 
-  *//**
+  */
+  /**
    * This does not take any time, by the definition of laziness
-   *//*
+   */ /*
   def updateReferences[T](xs: ConQ[T], mat: ConQ[T], schs: Cons[ConQ[T]]): ConQ[T] = {
     require(weakSchedulesProperty(xs, schs) && schs.head == mat)
     xs match {

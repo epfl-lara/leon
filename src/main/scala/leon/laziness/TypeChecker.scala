@@ -152,6 +152,9 @@ object TypeChecker {
             }
           val ntparams = fd.tparams.map(tpd => tpmap(tpd.tp))
           val nexpr = FunctionInvocation(TypedFunDef(fd, ntparams), nargs)
+          if (nexpr.getType == Untyped) {
+            throw new IllegalStateException(s"Cannot infer type for expression: $e arg types: ${nargs.map(_.getType).mkString(",")}")
+          }
           (nexpr.getType, nexpr)
 
         // need to handle tuple select specially
@@ -159,7 +162,8 @@ object TypeChecker {
           val nop = TupleSelect(rec(tup)._2, i)
           (nop.getType, nop)
         case Operator(args, op) =>
-          val nop = op(args.map(arg => rec(arg)._2))
+          val nargs = args.map(arg => rec(arg)._2)
+          val nop = op(nargs)
           (nop.getType, nop)
         case t: Terminal =>
           (t.getType, t)

@@ -62,11 +62,12 @@ class LazyClosureFactory(p: Program) {
       case (tpe, ops) =>
         val name = typeNameWOParams(tpe)
         val absClass = tpeToAbsClass(name)
-        val absType = AbstractClassType(absClass, absClass.tparams.map(_.tp))
         val absTParams = absClass.tparams
         // create a case class for every operation
         val cdefs = ops map { opfd =>
           assert(opfd.tparams.size == absTParams.size)
+          val absType = AbstractClassType(absClass, opfd.tparams.map(_.tp))
+          //println("Creating new case class with name: "+opNameToCCName(opfd.id.uniqueName))
           val classid = FreshIdentifier(opNameToCCName(opfd.id.name), Untyped)
           val cdef = CaseClassDef(classid, opfd.tparams, Some(absType), isCaseObject = false)
           val nfields = opfd.params.map { vd =>
