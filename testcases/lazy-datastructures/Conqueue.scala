@@ -43,7 +43,17 @@ object Conqueue {
         case Tip(_) => true
       }
     } else false // this implies that a ConQ cannot start with a lazy closure
-  }
+  } //ensuring (res => !res || weakZeroPreceedsLazy(q)) //zeroPreceedsLazy is a stronger property
+
+  /*def weakZeroPreceedsLazy[T](q: $[ConQ[T]]): Boolean = {
+    q* match {
+      case Spine(Empty(), rear) =>
+        weakZeroPreceedsLazy(rear)
+      case Spine(h, rear) =>
+        zeroPreceedsLazy(rear) //here we have not seen a zero
+      case Tip(_) => true
+    }
+  }*/
 
   def isConcrete[T](l: $[ConQ[T]]): Boolean = {
     (l.isEvaluated && (l* match {
@@ -73,14 +83,21 @@ object Conqueue {
       }
     } else
       l
-  } ensuring (res => //((res*).isSpine || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-    //((res*).isTip || !res.isEvaluated) && // if the return value is not a Tip closure then it would not have been evaluated
+  } ensuring (res => ((res*).isSpine || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
+    ((res*).isTip || !res.isEvaluated) && // if the return value is not a Tip closure then it would not have been evaluated
     streamLemma(res)  &&
-    /*(res.value match {
+    (res.value match {
       case Spine(_, tail) =>
         firstUnevaluated(l) == tail // after evaluating the firstUnevaluated closure in 'l' we get the next unevaluated closure
       case _ => true
-    })*/ true)
+    }))
+
+  def nextUnevaluated[T](l: $[ConQ[T]]) : $[ConQ[T]] = {
+    l* match {
+      case Spine(_, tail) => firstUnevaluated(tail)
+      case _ => l
+    }
+  }
 
   sealed abstract class ConQ[T] {
     val isSpine: Boolean = this match {
@@ -93,10 +110,6 @@ object Conqueue {
   case class Tip[T](t: Conc[T]) extends ConQ[T]
   case class Spine[T](head: Conc[T], rear: $[ConQ[T]]) extends ConQ[T]
 
-  def queueScheduleProperty[T](xs: $[ConQ[T]], sch: $[ConQ[T]]) = {
-    zeroPreceedsLazy(xs) && firstUnevaluated(xs) == sch //sch is the first lazy closure of 's'
-  }
-
   sealed abstract class Scheds[T]
   case class Cons[T](h: $[ConQ[T]], tail: Scheds[T]) extends Scheds[T]
   case class Nil[T]() extends Scheds[T]
@@ -104,7 +117,8 @@ object Conqueue {
   def schedulesProperty[T](q: $[ConQ[T]], schs: Scheds[T]): Boolean = {
     schs match {
       case Cons(head, tail) =>
-        queueScheduleProperty(q, head) && {
+        (head*).isSpine &&
+        (firstUnevaluated(q) == head) && { //sch is the first lazy closure of 's'
           val _ = head.value // evaluate the head and on the evaluated state the following should hold
           schedulesProperty(head, tail)
         }
@@ -114,7 +128,7 @@ object Conqueue {
   }
 
   // this is a temporary property
-  def weakSchedulesProperty[T](q: $[ConQ[T]], schs: Scheds[T]): Boolean = {
+  /*def weakSchedulesProperty[T](q: $[ConQ[T]], schs: Scheds[T]): Boolean = {
     schs match {
       case Cons(head, tail) =>
         firstUnevaluated(q) == head && {
@@ -124,11 +138,11 @@ object Conqueue {
       case Nil() =>
         isConcrete(q)
     }
-  }
+  }*/
 
   case class Wrapper[T](queue: $[ConQ[T]], schedule: Scheds[T]) {
     val valid: Boolean = {
-      schedulesProperty(queue, schedule)
+      zeroPreceedsLazy(queue) && schedulesProperty(queue, schedule)
     }
   }
 
@@ -141,7 +155,7 @@ object Conqueue {
         Tip(ys)
       case Tip(t @ Single(_)) =>
         Tip(CC(ys, t))
-      case Spine(_, _) =>
+      case s@Spine(_, _) =>
         pushLeftLazy(ys, xs) //ensure precondition here
     }
   }
@@ -158,74 +172,74 @@ object Conqueue {
           //if rear.value is spine it has to be evaluated by the 'zeroPreceedsLazy' invariant
           // otherwise, rear.value should be tip
           case s @ Spine(Empty(), srear) =>
-            Spine(Empty(), $[ConQ[T]](Spine(carry, srear)))
+            val x : ConQ[T] = Spine(carry, srear)
+            Spine(Empty(), $(x))
 
           case s @ Spine(_, _) =>
             Spine(Empty(), $(pushLeftLazy(carry, rear)))
+          /*case s @ _ =>
+            val e : ConQ[T] = Tip(Empty())
+            Spine(Empty(), $(e))*/
 
           case t @ Tip(tree) =>
-            if (tree.level > carry.level) // can this happen ? this means tree is of level at least two greater than rear ?
-              Spine(Empty(), $[ConQ[T]](Spine(carry, $[ConQ[T]](t))))
-            else // here tree level and carry level are equal
-              Spine(Empty(), $[ConQ[T]](Spine(Empty(), $[ConQ[T]](Tip(CC(tree, carry))))))
+            if (tree.level > carry.level) { // can this happen ? this means tree is of level at least two greater than rear ?
+              val x : ConQ[T] = t
+              val y : ConQ[T] = Spine(carry, $(x))
+              Spine(Empty(), $(y))
+            }
+            else {// here tree level and carry level are equal
+              val x : ConQ[T] = Tip(CC(tree, carry))
+              val y : ConQ[T] = Spine(Empty(), $(x))
+              Spine(Empty(), $(y))
+            }
         }
     }
-  } ensuring (res => res match { // However, the weakZeroPreceedsLazy property would hold
-    case Spine(Empty(), _) => true
+  } ensuring (res => res.isSpine && (res match {
+    case Spine(Empty(), rear) =>
+      nextUnevaluated(rear) == firstUnevaluated(xs)
     case Spine(h, rear) =>
-      val _ = rear.value
-      zeroPreceedsLazy(rear) // zeroPreceedsLazy should hold in the evaluated state
-    case _ => false
-  })
+      firstUnevaluated(rear) == firstUnevaluated(xs)
+    case _ => true
+  }) || (firstUnevaluated(xs)*).isTip)
 
-  /**
-   * Materialize will evaluate ps and update the references to
-   * ps in xs. Ideally, the second argument should include every
-   * structure that may contain 'pl'.
-   */
-  /*  def materialize[T](mat: ConQ[T], xs: ConQ[T], schs: Cons[ConQ[T]]): (Spine[T], ConQ[T], BigInt) = {
-    require(weakSchedulesProperty(xs, schs) && schs.head == mat)
-    mat match {
-      case PushLazy(elem, q) =>
-        val (nr, t) = pushLeftLazy(elem, q)
-        (nr, updateReferences(xs, mat, schs), t + 1)
-    }
-  } ensuring (res => (res._1 match {
-    case Spine(_, pl @ PushLazy(_, _)) =>
-      schedulesProperty(res._2, Cons(pl, schs.tail))
-    case _ =>
-      schedulesProperty(res._2, schs.tail)
-  }) &&
-    res._3 <= 2)
-
-  */
-  /**
-   * This does not take any time, by the definition of laziness
-   */ /*
-  def updateReferences[T](xs: ConQ[T], mat: ConQ[T], schs: Cons[ConQ[T]]): ConQ[T] = {
-    require(weakSchedulesProperty(xs, schs) && schs.head == mat)
-    xs match {
-      case Spine(h, pl @ PushLazy(elem, q)) if (pl == mat) =>
-        //ADT property implies that we need not search in the sub-structure 'q'.
-        Spine(h, pushLeftLazy(elem, q)._1) //here, we can ignore the time, this only captures the semantics
-      case Spine(h, rear) => //here mat and xs cannot be equal, so look in the substructures
-        Spine(h, updateReferences(rear, mat, schs))
-    }
-  } ensuring (res => mat match {
-    case PushLazy(elem, q) =>
-      pushLeftLazy(elem, q)._1 match {
-        case Spine(_, pl @ PushLazy(_, _)) =>
-          schedulesProperty(res, Cons(pl, schs.tail))
-        case _ =>
-          schedulesProperty(res, schs.tail)
-      }
-  })*/
-
-  def pushLeftAndPay[T](ys: Single[T], w: Wrapper[T]): Wrapper[T] = {
+  def pushLeftAndPay[T](ys: Single[T], w: Wrapper[T]): (ConQ[T], Scheds[T]) = {
     require(w.valid)
-    val nq = $(pushLeft(ys, w.queue)) // 'zeroPreceedsLazy' invariant could be temporarily broken
+    val nq = pushLeft(ys, w.queue)
+    val nsched = nq match {
+        case Spine(Empty(), rear) =>
+           Cons(rear, w.schedule)
+        //case Spine(_, rear) =>
+        //  firstUnevaluated(rear) == head
+        case _ =>
+          w.schedule
+       }
+    (nq, nsched)
+  } ensuring (res => (res._2 match {
+    case Cons(head, tail) =>
+      res._1 match {
+        case Spine(t, rear) =>
+          (head*).isSpine &&
+          firstUnevaluated(rear) == head && {
+            val _ = head.value // evaluate the head and on the evaluated state the following should hold
+              //if (!t.isEmpty)
+                schedulesProperty(head, tail)
+              //else true
+          }
+      }
+    case _ =>
+      res._1 match {
+        case Spine(t, rear) =>
+          isConcrete(rear)
+        case _ => true
+      }
+  }))
+
+  /*def pushLeftAndPay[T](ys: Single[T], w: Wrapper[T]): Wrapper[T] = {
+    require(w.valid)
+    val pl = pushLeft(ys, w.queue)
+    val nq = $(pl) // 'zeroPreceedsLazy' invariant could be temporarily broken
     // update the schedule
-    // note that only when nq is a spine and the head of nq is empty a lazy closures will be created
+    // note that only when nq is a spine and the head of nq is empty new lazy closures will be created
     val tschs = nq.value match {
       case Spine(Empty(), rear) =>
         Cons(rear, w.schedule)
@@ -233,10 +247,17 @@ object Conqueue {
         w.schedule
     }
     Wrapper(nq, pay(tschs, nq))
-  } ensuring (res => res.valid) // && res._2 <= 6)
+  }*/ //ensuring (res => res.valid) // && res._2 <= 6)
 
-  def pay[T](schs: Scheds[T], xs: $[ConQ[T]]): Scheds[T] = {
-    require(weakSchedulesProperty(xs, schs)) // we are not recursive here
+  /*def pay[T](schs: Scheds[T], xs: $[ConQ[T]]): Scheds[T] = {
+    require(schs match {
+      case Cons(h, t) =>
+        xs.value match {
+          case Spine(Empty(), rear) =>
+            firstUnevaluated(xs) == h
+        }
+      case _ => true
+    })//weakSchedulesProperty(xs, schs)) // we are not recursive here
     schs match {
       case c @ Cons(head, rest) =>
         head.value match {
@@ -249,6 +270,6 @@ object Conqueue {
         // here every thing is concretized
         schs
     }
-  } /*ensuring (res => schedulesProperty(res._2, res._1) &&
+  }*/ /*ensuring (res => schedulesProperty(res._2, res._1) &&
     res._3 <= 3)*/
 }

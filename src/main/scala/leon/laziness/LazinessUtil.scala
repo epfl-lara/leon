@@ -173,4 +173,15 @@ object LazinessUtil {
       cg.transitiveCallees(fd).toSet.intersect(retRoots).isEmpty).toSet
     (funsNeedStates, funsRetStates)
   }
+
+  def freshenTypeArguments(tpe: TypeTree): TypeTree = {
+    tpe match {
+      case NAryType(targs, tcons) =>
+        val ntargs = targs.map {
+          case targ: TypeParameter => targ.freshen
+          case targ                => targ
+        }
+        tcons(ntargs)
+    }
+  }
 }

@@ -121,7 +121,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
    * the call-sites.
    */
   val evalFunctions = tnames.map { tname =>
-    val tpe = closureFactory.lazyType(tname)
+    val tpe = /*freshenTypeArguments(*/closureFactory.lazyType(tname)//)
     val absdef = closureFactory.absClosureType(tname)
     val cdefs = closureFactory.closures(tname)
 
@@ -178,7 +178,7 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
    */
   val computeFunctions = evalFunctions.map {
     case (tname, evalfd) =>
-      val tpe = closureFactory.lazyType(tname)
+      val tpe = /*freshenTypeArguments(*/closureFactory.lazyType(tname)//)
       val param1 = evalfd.params.head
       val fun = new FunDef(FreshIdentifier(evalfd.id.name + "*", Untyped),
         evalfd.tparams, Seq(param1), tpe)

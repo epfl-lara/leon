@@ -49,25 +49,35 @@ class LazyClosureFactory(p: Program) {
     if (debug) {
       println("Lazy operations found: \n" + lazyops.map(_.id).mkString("\n"))
     }
-    val tpeToLazyops = lazyops.groupBy(_.returnType)
-    val tpeToAbsClass = tpeToLazyops.map(_._1).map { tpe =>
-      val name = typeNameWOParams(tpe)
-      val absTParams = getTypeParameters(tpe) map TypeParameterDef.apply
-      // using tpe name below to avoid mismatches due to type parameters
-      name -> AbstractClassDef(FreshIdentifier(typeNameToADTName(name), Untyped),
-        absTParams, None)
+    // using tpe name below to avoid mismatches due to type parameters
+    val tpeToLazyops = lazyops.groupBy(lops => typeNameWOParams(lops.returnType))
+    if(debug) {
+      println("Type to lazy ops: "+tpeToLazyops.map{
+        case (k,v) => s"$k --> ${v.map(_.id).mkString(",")}" }.mkString("\n"))
+    }
+    val tpeToAbsClass = tpeToLazyops.map {
+      case (tpename, ops) =>
+        val tpcount = getTypeParameters(ops(0).returnType).size
+        // check that tparams of all ops should match and should be equal to the tparams of return type
+        // a safety check
+        ops.foreach { op =>
+          if (op.tparams.size != tpcount)
+            throw new IllegalStateException(s"Type parameters of the lazy operation ${op.id.name}" +
+              "should match the type parameters of the return type of the operation")
+        }
+        val absTParams = (1 to tpcount).map(i => TypeParameterDef(TypeParameter.fresh("T" + i)))
+        tpename -> AbstractClassDef(FreshIdentifier(typeNameToADTName(tpename), Untyped),
+          absTParams, None)
     }.toMap
     var opToAdt = Map[FunDef, CaseClassDef]()
     val tpeToADT = tpeToLazyops map {
-      case (tpe, ops) =>
-        val name = typeNameWOParams(tpe)
-        val absClass = tpeToAbsClass(name)
+      case (tpename, ops) =>
+        val absClass = tpeToAbsClass(tpename)
         val absTParams = absClass.tparams
         // create a case class for every operation
         val cdefs = ops map { opfd =>
           assert(opfd.tparams.size == absTParams.size)
           val absType = AbstractClassType(absClass, opfd.tparams.map(_.tp))
-          println("Creating new case class with name: "+opNameToCCName(opfd.id.name))
           val classid = FreshIdentifier(opNameToCCName(opfd.id.name), Untyped)
           val cdef = CaseClassDef(classid, opfd.tparams, Some(absType), isCaseObject = false)
           val nfields = opfd.params.map { vd =>
@@ -85,12 +95,11 @@ class LazyClosureFactory(p: Program) {
           opToAdt += (opfd -> cdef)
           cdef
         }
-        println(s"$absClass --> ${ (cdefs).mkString("\n\t") }")
-        (name -> (tpe, absClass, cdefs))
+        (tpename -> (ops(0).returnType, absClass, cdefs))
     }
-    tpeToADT.foreach {
+    /*tpeToADT.foreach {
       case (k, v) => println(s"$k --> ${ (v._2 +: v._3).mkString("\n\t") }")
-    }
+    }*/
     (tpeToADT, opToAdt)
   }
 
