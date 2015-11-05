@@ -64,7 +64,7 @@ object LazinessEliminationPhase extends TransformationPhase {
 
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
     if (dumpProgWithPreAsserts) {
-      println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
+      //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
       prettyPrintProgramToFile(progWithPre, ctx)
     }
 
