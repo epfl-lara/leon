@@ -504,7 +504,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case SetCardinality(s) =>
       val sr = e(s)
       sr match {
-        case FiniteSet(els, _) => IntLiteral(els.size)
+        case FiniteSet(els, _) => InfiniteIntegerLiteral(els.size)
         case _ => throw EvalError(typeErrorMsg(sr, SetType(Untyped)))
       }
 

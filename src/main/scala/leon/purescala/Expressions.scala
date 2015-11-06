@@ -765,7 +765,7 @@ object Expressions {
   }
   /** $encodingof `set.length` */
   case class SetCardinality(set: Expr) extends Expr {
-    val getType = Int32Type
+    val getType = IntegerType
   }
   /** $encodingof `set.subsetOf(set2)` */
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr {

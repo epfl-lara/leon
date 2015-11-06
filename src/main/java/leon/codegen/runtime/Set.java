@@ -49,8 +49,8 @@ public final class Set {
     return true;
   }
 
-  public int size() {
-    return _underlying.size();
+  public BigInt size() {
+    return new BigInt(""+_underlying.size());
   }
 
   public Set union(Set s) {
@@ -84,7 +84,7 @@ public final class Set {
 
     Set other = (Set)that;
 
-    return this.size() == other.size() && this.subsetOf(other);
+    return this.size().equals(other.size()) && this.subsetOf(other);
   }
 
   @Override

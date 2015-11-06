@@ -138,6 +138,9 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case ElementOfSet(e, s) =>
       FunctionApplication(SSymbol("member"), Seq(toSMT(e), toSMT(s)))
 
+    case SetCardinality(s) =>
+      FunctionApplication(SSymbol("card"), Seq(toSMT(s)))
+
     case SetDifference(a, b) =>
       FunctionApplication(SSymbol("setminus"), Seq(toSMT(a), toSMT(b)))
 

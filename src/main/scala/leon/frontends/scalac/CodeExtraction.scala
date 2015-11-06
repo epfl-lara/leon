@@ -1623,6 +1623,9 @@ trait CodeExtraction extends ASTExtractors {
               or(a1, a2)
 
             // Set methods
+            case (IsTyped(a1, SetType(b1)), "size", Nil) =>
+              SetCardinality(a1)
+
             //case (IsTyped(a1, SetType(b1)), "min", Nil) =>
             //  SetMin(a1)
 
@@ -1842,7 +1845,11 @@ trait CodeExtraction extends ASTExtractors {
       case AnnotatedType(_, tpe) => extractType(tpe)
 
       case _ =>
-        outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
+        if (tpt ne null) {
+          outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
+        } else {
+          outOfSubsetError(NoPosition, "Tree with null-pointer as type found")
+        }
     }
 
     private def getClassType(sym: Symbol, tps: List[LeonType])(implicit dctx: DefContext) = {
