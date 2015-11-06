@@ -134,7 +134,7 @@ object Conqueue {
   
   def schedulesProperty[T](q : LazyConQ[T], schs : Scheds[T], st : Set[LazyConQ[T]]): Boolean = schs match {
     case Cons(head5, tail) =>
-      evalLazyConQS[T](head5).isSpine && firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st)
+  	!isConcrete[T](q, st) && evalLazyConQS[T](head5).isSpine && firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st)
     case Nil() =>
       isConcrete[T](q, st)
   }
@@ -161,10 +161,10 @@ object Conqueue {
       case s @ Spine(_, _) =>
         pushLeftLazy[T](ys, xs, dres5._2)
     }
-  } ensuring {res => res._2 == st &&
+  } /*ensuring {res => res._2 == st &&
     firstUnevaluated[T](pushUntilZero[T](Lazyarg1(res._1)), res._2) == firstUnevaluated[T](xs, res._2) || 
 	isConcrete(xs, res._2)
-  }
+  }*/
 
   def pushLeftLazyUI[T](ys : Conc[T], xs : LazyConQ[T], st : Set[LazyConQ[T]]): (ConQ[T], Set[LazyConQ[T]]) = ???[(ConQ[T], Set[LazyConQ[T]])]
   
@@ -195,6 +195,7 @@ object Conqueue {
   } ensuring {
     (res66 : (Spine[T], Set[LazyConQ[T]])) => res66._1.isSpine && (res66._2 == st) && (res66._1 match {
       case Spine(Empty(), rear16) =>
+	     evalLazyConQS[T](rear16).isSpine && !res66._2.contains(rear16) &&
             (firstUnevaluated[T](pushUntilZero[T](rear16), res66._2) == firstUnevaluated[T](xs, res66._2)) || 
 			(/*evalLazyConQS[T](firstUnevaluated[T](xs, res66._2)).isTip &&*/ isConcrete(xs, res66._2))
       case Spine(h, rear17) =>
@@ -218,12 +219,29 @@ object Conqueue {
   def pushLeftAndPay[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): ((ConQ[T], Scheds[T]), Set[LazyConQ[T]]) = {
     require(w.valid(st) && ys.isInstanceOf[Single[T]])
     val nq2 = pushLeft[T](ys, w.queue, st)
-    ((nq2._1, (nq2._1 match {
+    //val lnq = 
+    //val dres = evalLazyConQ(lnq, nq2._2)
+    val nsched = /*dres._1*/ nq2._1 match {
       case Spine(Empty(), rear18) =>
         Cons[T](rear18, w.schedule)
       case _ =>
         w.schedule
-    })), nq2._2)
+    }   
+    ((nq2._1, nsched), nq2._2)
+  } ensuring {res => 
+     res._1._2 match {
+    	case Cons(head, tail) => // if !isConcrete(w.queue, res._2) =>
+	  res._1._1 match {
+		case Spine(h, rear) => 
+		   evalLazyConQS[T](head).isSpine && firstUnevaluated[T](rear, res._2) == head && schedulesProperty[T](pushUntilZero[T](head), tail, res._2)
+	 }
+	case _ =>
+	 res._1._1 match {
+		case Spine(h, rear) => 
+		  isConcrete[T](rear, res._2)	   
+		case _ => true
+	 }	    	
+     }
   }
   
   def lazyarg1[T](x : ConQ[T]): ConQ[T] = x
