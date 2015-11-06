@@ -119,11 +119,24 @@ object Conqueue {
       case Cons(head, tail) =>
         (head*).isSpine &&
         (firstUnevaluated(q) == head) && { //sch is the first lazy closure of 's'
-          val _ = head.value // evaluate the head and on the evaluated state the following should hold
-          schedulesProperty(head, tail)
+          schedulesProperty(pushUntilZero(head), tail)
         }
       case Nil() =>
         isConcrete(q)
+    }
+  }
+
+  def pushUntilZero[T](q: $[ConQ[T]]) : $[ConQ[T]] = {
+    q* match {
+      case Spine(Empty(), rear) =>
+        // here, rear would be a new unevaluated closure
+        pushUntilZero(rear)
+      case Spine(h, rear) =>
+        //here, the first unevaluated closure is fully pushed
+        // rear could either be the unevaluated or evaluated
+        rear
+      case Tip(_) =>
+        q
     }
   }
 
@@ -160,29 +173,28 @@ object Conqueue {
     }
   }
 
+  // this procedure does not change state (can this be automatically inferred)
+  @invstate
   def pushLeftLazy[T](ys: Conc[T], xs: $[ConQ[T]]): ConQ[T] = {
     require(!ys.isEmpty && zeroPreceedsLazy(xs) && (xs*).isSpine)
     //(xs.head.isEmpty || xs.head.level == ys.level))
     xs.value match { //xs.value is evaluated by the 'zeroPreceedsLazy' invariant
       case Spine(Empty(), rear) =>
         Spine(ys, rear) // if rear is an unevaluated 'pushLazy', this would temporarily break the 'zeroPreceedsLazy' invariant
-      case Spine(head, rear) =>
+      case Spine(head, rear) => // here, rear has to be evaluated by 'zeroPreceedsLazy' invariant
         val carry = CC(head, ys) //here, head and ys are of the same level
         rear.value match {
-          //if rear.value is spine it has to be evaluated by the 'zeroPreceedsLazy' invariant
-          // otherwise, rear.value should be tip
-          case s @ Spine(Empty(), srear) =>
+          /*case s @ Spine(Empty(), srear) =>
             val x : ConQ[T] = Spine(carry, srear)
-            Spine(Empty(), $(x))
+            Spine(Empty(), $(x))*/
 
           case s @ Spine(_, _) =>
             Spine(Empty(), $(pushLeftLazy(carry, rear)))
-          /*case s @ _ =>
-            val e : ConQ[T] = Tip(Empty())
-            Spine(Empty(), $(e))*/
 
           case t @ Tip(tree) =>
-            if (tree.level > carry.level) { // can this happen ? this means tree is of level at least two greater than rear ?
+            val x : ConQ[T] = t
+            Spine(Empty(), $(x))
+            /*if (tree.level > carry.level) { // can this happen ? this means tree is of level at least two greater than rear ?
               val x : ConQ[T] = t
               val y : ConQ[T] = Spine(carry, $(x))
               Spine(Empty(), $(y))
@@ -191,16 +203,28 @@ object Conqueue {
               val x : ConQ[T] = Tip(CC(tree, carry))
               val y : ConQ[T] = Spine(Empty(), $(x))
               Spine(Empty(), $(y))
-            }
+            }*/
         }
     }
   } ensuring (res => res.isSpine && (res match {
     case Spine(Empty(), rear) =>
-      nextUnevaluated(rear) == firstUnevaluated(xs)
+      rear* match {
+        case Spine(h, _) =>
+          xs* match {
+            case Spine(h, xsrear) =>
+              xsrear* match {
+                case Spine(Empty(), _) =>
+                  (firstUnevaluated(pushUntilZero(rear)) == firstUnevaluated(xs))
+                case _ => true
+              }
+          }
+          /*(firstUnevaluated(pushUntilZero(rear)) == firstUnevaluated(xs)) ||
+            (firstUnevaluated(xs)*).isTip*/
+      }
     case Spine(h, rear) =>
       firstUnevaluated(rear) == firstUnevaluated(xs)
     case _ => true
-  }) || (firstUnevaluated(xs)*).isTip)
+  }))
 
   def pushLeftAndPay[T](ys: Single[T], w: Wrapper[T]): (ConQ[T], Scheds[T]) = {
     require(w.valid)
@@ -214,7 +238,7 @@ object Conqueue {
           w.schedule
        }
     (nq, nsched)
-  } ensuring (res => (res._2 match {
+  } /*ensuring (res => (res._2 match {
     case Cons(head, tail) =>
       res._1 match {
         case Spine(t, rear) =>
@@ -232,7 +256,7 @@ object Conqueue {
           isConcrete(rear)
         case _ => true
       }
-  }))
+  }))*/
 
   /*def pushLeftAndPay[T](ys: Single[T], w: Wrapper[T]): Wrapper[T] = {
     require(w.valid)

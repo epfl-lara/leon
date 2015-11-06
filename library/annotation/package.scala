@@ -21,4 +21,6 @@ package object annotation {
   class compose    extends StaticAnnotation
   @ignore
   class axiom 		extends StaticAnnotation
+  @ignore
+  class invstate extends StaticAnnotation
 }

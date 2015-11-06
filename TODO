@@ -1,5 +1,16 @@
 TODO: 
+-----
+
+Important: Fix reasons for unsoundness
+--------------------------------------
+
+a) eval* will use an empty set instead of an arbitrary which may result in unsoundness 
+   if the specs involve function over states
+
+b) the assertion on the newC function that the new closure is unevaluated may result in unsoundness
+
 Benchmarks to think about
+--------------------------
 
 1. Lazy constraint solving 	
 	We can get demand driven pointer-analysis. Can we prove its running time ?
@@ -14,9 +25,12 @@ Benchmarks to think about
 5. Futures: How about redex algorithms or map-reduce algorithms ?
 
 Things to implement:
+----------------------
 
 a) A way to check monotonicity of preconditions
 b) Use monotonicity while checking proofs
+c) Automatically synthesize the invariant that the state is preserved
+d) We can always assume that state is monotonic which proving the specs
 c) Extensions for futures 
 d) Extensions for memoization
 e) Extending Orb for type parameters
