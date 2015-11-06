@@ -1290,12 +1290,6 @@ object ExprOps {
     }
   }
 
-  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
-    def collect(e: Expr, path: Seq[Expr]) = e match {
-      case c: Choose => Some(c -> and(path: _*))
-      case _ => None
-    }
-  }
 
   def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
     CollectorWithPaths(f).traverse(expr)
@@ -1317,11 +1311,6 @@ object ExprOps {
 
     case Operator(es, _) =>
       es.map(formulaSize).sum+1
-  }
-
-  /** Return a list of all [[purescala.Expressions.Choose Choose]] construct inside the expression */
-  def collectChooses(e: Expr): List[Choose] = {
-    new ChooseCollectorWithPaths().traverse(e).map(_._1).toList
   }
 
   /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/

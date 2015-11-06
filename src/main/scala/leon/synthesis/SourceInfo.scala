@@ -19,6 +19,14 @@ case class SourceInfo(fd: FunDef,
 }
 
 object SourceInfo {
+
+  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
+    def collect(e: Expr, path: Seq[Expr]) = e match {
+      case c: Choose => Some(c -> and(path: _*))
+      case _ => None
+    }
+  }
+
   def extractFromProgram(ctx: LeonContext, prog: Program): List[SourceInfo] = {
     val functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet }
 
@@ -49,7 +57,7 @@ object SourceInfo {
     // We are synthesizing, so all examples are valid ones
     val functionEb = eFinder.extractFromFunDef(fd, partition = false)
 
-    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(fd.fullBody)) yield {
+    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(fd)) yield {
       val outerEb = if (path == BooleanLiteral(true)) {
         functionEb
       } else {
