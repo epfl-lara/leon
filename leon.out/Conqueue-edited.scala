@@ -215,7 +215,19 @@ object Conqueue {
   } ensuring {
     (holds : Boolean) => holds
   }*/
+
+  def funeMonotone[T](st1 : Set[LazyConQ[T]], st2 : Set[LazyConQ[T]], l : LazyConQ[T]) : Boolean = {   
+      (st2 == st1 ++ Set(l) && !st1.contains(l)) ==> !firstUnevaluated(l, st1) == firstUnevaluated(l, st2))   
+	//induction scheme
+      (evalLazyConQS[T](l) match {
+        case Spine(_, tail) =>	  
+          	funeMonotone(st1, st2, tail)
+        case _ =>          
+		true
+      })    
+  }
   
+  @library
   def pushLeftAndPay[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): ((ConQ[T], Scheds[T]), Set[LazyConQ[T]]) = {
     require(w.valid(st) && ys.isInstanceOf[Single[T]])
     val nq2 = pushLeft[T](ys, w.queue, st)
@@ -230,7 +242,7 @@ object Conqueue {
     ((nq2._1, nsched), nq2._2)
   } ensuring {res => 
      res._1._2 match {
-    	case Cons(head, tail) => // if !isConcrete(w.queue, res._2) =>
+    	case Cons(head, tail) => 
 	  res._1._1 match {
 		case Spine(h, rear) => 
 		   evalLazyConQS[T](head).isSpine && firstUnevaluated[T](rear, res._2) == head && schedulesProperty[T](pushUntilZero[T](head), tail, res._2)
