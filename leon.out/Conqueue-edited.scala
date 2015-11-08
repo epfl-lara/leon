@@ -90,7 +90,7 @@ object Conqueue {
       true
   }) || evalLazyConQS[T](l).isTip
   
-  @library
+  @library   
   def streamLemma[T](l : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean =  {
     st.contains(l) || (evalLazyConQS[T](l) match {
       case Spine(_, tail14) =>
@@ -334,8 +334,20 @@ object Conqueue {
   //     isConcrete[T](q, st)
   // }
 
+  def funeCompose[T](st1: Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q : LazyConQ[T]) : Boolean = {
+    require(st1.subsetOf(st2))
+    (firstUnevaluated(firstUnevaluated(q, st1), st2) == firstUnevaluated(q, st2)) && //property
+    //induction scheme
+      (evalLazyConQS[T](q) match {
+        case Spine(_, tail) =>    
+            funeCompose(st1, st2, tail)
+        case _ =>          
+            true
+      }) 
+  } holds
+  
   def Pay[T](q : LazyConQ[T], scheds : Scheds[T], st : Set[LazyConQ[T]]): (Scheds[T], Set[LazyConQ[T]]) = {
-    require(schedulesProperty(q, scheds, st))    
+    require(schedulesProperty(q, scheds, st) && st.contains(q))    
     val (nschs, rst) = scheds match {
       case c @ Cons(head, rest) =>
         val (headval, st2) = evalLazyConQ(head, st)
@@ -351,9 +363,23 @@ object Conqueue {
     (nschs, rst)
   } ensuring {res => 
      res._1 match {
-      case Cons(head, tail) =>         
-        !isConcrete(q, res._2) && evalLazyConQS[T](head).isSpine //&&
-        //concreteMonotone(st, res._2, q)
+      case Cons(rhead, rtail) =>            
+        evalLazyConQS[T](rhead).isSpine && schedulesProperty(pushUntilZero(rhead), rtail, res._2) &&
+          firstUnevaluated[T](q, res._2) == rhead && 
+          (scheds match {
+              case Cons(head, _) => 
+                // (evalLazyConQS(head) match {
+                //   case Spine(Empty(), rear) => true                                                   
+                //   case Spine(h, rear) => 
+                //     firstUnevaluated[T](rear, st) == rhead                                                 
+                // }) && 
+                // instantiations
+                dummyAxiom(pushUntilZero(rhead), head) &&   
+                schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head) && 
+                funeCompose(st, res._2, q)
+              case _ => true 
+          })
+        //!isConcrete(q, res._2) && 
       case _ =>
        schedulesProperty(q, res._1, res._2)   
      }
@@ -386,9 +412,9 @@ object ConQ {
         (pushLeftLazyUI[T](t.ys, t.xs, Set[LazyConQ[T]]())._1, (st ++ Set[LazyConQ[T]](t)))
     }
   } ensuring {
-    (res : (ConQ[T], Set[LazyConQ[T]])) => cl match {
+    (res : (ConQ[T], Set[LazyConQ[T]])) => (cl match {
       case t : Lazyarg1[T] =>
-        true
+        res._1.isSpine
       case t : PushLeftLazy[T] =>
         res._1.isSpine && res._2 == st && (res._1 match {
           case Spine(Empty(), rear19) =>
@@ -399,7 +425,13 @@ object ConQ {
           case _ =>
             true
         })
-    }
+     }) && (
+      res._1 match {
+        case Spine(_, rear) => 
+          !res._2.contains(rear) // rear would remain unevaluated
+        case _ => true
+      }
+    )
   }
   
   def evalLazyConQS[T](cl : LazyConQ[T]): ConQ[T] = evalLazyConQ[T](cl, Set[LazyConQ[T]]())._1
