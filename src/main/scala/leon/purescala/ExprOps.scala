@@ -1446,7 +1446,7 @@ object ExprOps {
     *
     * isInductive(foo(a, b), a) where a: List will check whether
     *    foo(Nil, b) and
-    *    foo(Cons(h,t), b) => foo(t, b)
+    *    foo(t, b) => foo(Cons(h,t), b)
     */
   def isInductiveOn(sf: SolverFactory[Solver])(expr: Expr, on: Identifier): Boolean = on match {
     case IsTyped(origId, AbstractClassType(cd, tps)) =>
