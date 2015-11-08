@@ -2,7 +2,7 @@
   * Name:     IntWrapperRender.scala
   * Creation: 15.10.2015
   * Author:   Mikaël Mayer (mikael.mayer@epfl.ch)
-  * Comments: First benchmark ever for solving string transformation problems. List specifications.
+  * Comments: Wrapped integer specifications.
   */
 
 import leon.lang._
