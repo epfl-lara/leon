@@ -73,6 +73,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
     ExamplesBank(valids.flatMap(f), invalids.flatMap(f))
   }
 
+  /** Expands each input example through the function f */
   def mapIns(f: Seq[Expr] => List[Seq[Expr]]) = {
     map {
       case InExample(in) =>
@@ -83,6 +84,7 @@ case class ExamplesBank(valids: Seq[Example], invalids: Seq[Example]) {
     }
   }
 
+   /** Expands each output example through the function f */
   def mapOuts(f: Seq[Expr] => List[Seq[Expr]]) = {
     map {
       case InOutExample(in, out) =>
@@ -159,8 +161,8 @@ object ExamplesBank {
   def empty = ExamplesBank(Nil, Nil)
 }
 
-// Same as an ExamplesBank, but with identifiers corresponding to values. This
-// allows us to evaluate expressions
+/** Same as an ExamplesBank, but with identifiers corresponding to values. This
+  * allows us to evaluate expressions. */
 case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb: ExamplesBank)(implicit hctx: SearchContext) {
 
   def removeOuts(toRemove: Set[Identifier]) = {
@@ -174,12 +176,14 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     eb mapIns { (in: Seq[Expr]) => List(toKeep.map(in)) }
   }
 
+  /** Filter inputs throught expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): ExamplesBank = {
     val ev = new DefaultEvaluator(hctx.sctx.context, hctx.sctx.program)
 
     filterIns(m => ev.eval(expr, m).result == Some(BooleanLiteral(true)))
   }
 
+  /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */
   def filterIns(pred: Map[Identifier, Expr] => Boolean): ExamplesBank = {
     eb mapIns { in =>
       val m = (as zip in).toMap
@@ -191,6 +195,8 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
     }
   }
 
+  /** Maps inputs through the function f
+    * @return A new ExampleBank */
   def mapIns(f: Seq[(Identifier, Expr)] => List[Seq[Expr]]) = {
     eb map {
       case InExample(in) =>

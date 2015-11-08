@@ -13,6 +13,8 @@ import purescala.Constructors._
 import purescala.Definitions._
 import solvers._
 
+/** Abstract datatype split. If a variable is typed as an abstract data type, then
+  * it will create a match case statement on all known subtypes. */
 case object ADTSplit extends Rule("ADT Split.") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(200L))
