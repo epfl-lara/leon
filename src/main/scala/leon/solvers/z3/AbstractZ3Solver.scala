@@ -548,7 +548,7 @@ trait AbstractZ3Solver extends Solver {
   protected[leon] def fromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree): Expr = {
 
     def rec(t: Z3AST, tpe: TypeTree): Expr = {
-      val kind = z3.getASTKind(t))
+      val kind = z3.getASTKind(t)
       kind match {
         case Z3NumeralIntAST(Some(v)) => {
           val leading = t.toString.substring(0, 2 min t.toString.length)
