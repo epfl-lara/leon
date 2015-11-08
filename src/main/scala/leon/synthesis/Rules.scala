@@ -61,7 +61,8 @@ object Rules {
     //IntegerEquation,
     //IntegerInequalities,
     IntInduction,
-    InnerCaseSplit
+    InnerCaseSplit,
+    StringRender
     //new OptimisticInjection(_),
     //new SelectiveInlining(_),
     //ADTLongInduction,
@@ -71,6 +72,7 @@ object Rules {
 
 }
 
+/** When applying this to a [SearchContext] it returns a wrapped stream of solutions or a new list of problems. */
 abstract class RuleInstantiation(val description: String,
                                  val onSuccess: SolutionBuilder = SolutionBuilderCloser())
                                 (implicit val problem: Problem, val rule: Rule) {
@@ -81,12 +83,12 @@ abstract class RuleInstantiation(val description: String,
 }
 
 /**
- * Wrapper class for a function returning a recomposed solution from a list of
- * subsolutions
- *
- * We also need to know the types of the expected sub-solutions to use them in
- * cost-models before having real solutions.
- */
+  * Wrapper class for a function returning a recomposed solution from a list of
+  * subsolutions
+  *
+  * We also need to know the types of the expected sub-solutions to use them in
+  * cost-models before having real solutions.
+  */
 abstract class SolutionBuilder {
   val types: Seq[TypeTree]
 
@@ -113,13 +115,15 @@ case class SolutionBuilderCloser(osol: Option[Solution] = None) extends Solution
 }
 
 /**
- * Results of applying rule instantiations
- *
- * Can either close meaning a stream of solutions are available (can be empty,
- * if it failed)
- */
+  * Results of applying rule instantiations
+  *
+  * Can either close meaning a stream of solutions are available (can be empty,
+  * if it failed)
+  */
 sealed abstract class RuleApplication
+/** Result of applying rule instantiation, finished, resulting in a stream of solutions */
 case class RuleClosed(solutions: Stream[Solution]) extends RuleApplication
+/** Result of applying rule instantiation, resulting is a nnew list of problems */
 case class RuleExpanded(sub: List[Problem])        extends RuleApplication
 
 object RuleClosed {
@@ -161,6 +165,7 @@ trait RuleDSL {
     }
   }
 
+  /** Groups sub-problems and a callback merging the solutions to produce a global solution.*/
   def decomp(sub: List[Problem], onSuccess: List[Solution] => Option[Solution], description: String)
             (implicit problem: Problem): RuleInstantiation = {
 
@@ -182,8 +187,8 @@ trait RuleDSL {
 
   }
 
-  // pc corresponds to the pc to reach the point where the solution is used. It
-  // will be used if the sub-solution has a non-true pre.
+  /** @param pc corresponds to the post-condition to reach the point where the solution is used. It
+    * will be used if the sub-solution has a non-true precondition. */
   def termWrap(f: Expr => Expr, pc: Expr = BooleanLiteral(true)): List[Solution] => Option[Solution] = {
     case List(s) =>
       val pre = if (s.pre == BooleanLiteral(true)) {

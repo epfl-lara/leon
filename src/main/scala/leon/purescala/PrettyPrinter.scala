@@ -160,6 +160,18 @@ class PrettyPrinter(opts: PrinterOptions,
       case BVUMinus(expr)       => p"-$expr"
       case RealUMinus(expr)     => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
+      
+      
+      case Int32ToString(expr)    => p"StrOps.intToString($expr)"
+      case BooleanToString(expr)  => p"StrOps.booleanToString($expr)"
+      case IntegerToString(expr)  => p"StrOps.bigIntToString($expr)"
+      case CharToString(expr)     => p"StrOps.charToString($expr)"
+      case RealToString(expr)     => p"StrOps.realToString($expr)"
+      case StringConcat(lhs, rhs) => p"$lhs + $rhs"
+    
+      case SubString(expr, start, end) => p"StrOps.substring($expr, $start, $end)"
+      case StringLength(expr)          => p"StrOps.length($expr)"
+
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"
       case FractionalLiteral(n, d) =>
