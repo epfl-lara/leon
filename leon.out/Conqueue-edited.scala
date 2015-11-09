@@ -155,8 +155,10 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
   // }
   
   def schedulesProperty[T](q : LazyConQ[T], schs : Scheds[T], st : Set[LazyConQ[T]]): Boolean = schs match {
+    /*case Cons(head, Nil()) =>  	
+      firstUnevaluated[T](q, st) == head // here, head can be tip or cons i.e, q should be concrete*/
     case Cons(head5, tail) =>  	
-      evalLazyConQS[T](head5).isSpine && firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st)
+      /*evalLazyConQS[T](head5).isSpine &&*/ firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st)
     case Nil() =>
       isConcrete[T](q, st)
   }
@@ -187,7 +189,7 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
 
   def pushLeftLazyUI[T](ys : Conc[T], xs : LazyConQ[T], st : Set[LazyConQ[T]]): (ConQ[T], Set[LazyConQ[T]]) = ???[(ConQ[T], Set[LazyConQ[T]])]
   
-  @library
+//  @library
   def pushLeftLazy[T](ys : Conc[T], xs : LazyConQ[T], st : Set[LazyConQ[T]]): (ConQ[T], Set[LazyConQ[T]]) =  {
     require(!ys.isEmpty && zeroPreceedsLazy[T](xs, st) && evalLazyConQS[T](xs).isSpine)
     val dres = evalLazyConQ[T](xs, st)
@@ -287,28 +289,30 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
         })      
   } holds
   
-  @library
+  //@library
   def pushLeftWrapperSub[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): ((ConQ[T], Scheds[T]), Set[LazyConQ[T]]) = {
     require(w.valid(st) && ys.isInstanceOf[Single[T]])
     val nq2 = pushLeft[T](ys, w.queue, st)    
     val nsched = nq2._1 match {
       case Spine(Empty(), rear18) =>
         Cons[T](rear18, w.schedule)
-      case _ =>
+      case Spine(_, _) =>
         w.schedule
+      case t : Tip[T] =>
+	Nil[T]() //we can ignore the tip here
     }   
     ((nq2._1, nsched), nq2._2)
   } ensuring {res => 
-     res._1._2 match {
+     res._1._2 match {	
     	case Cons(head, tail) => 
     	  res._1._1 match {
-    		case Spine(h, rear) => 
-    		   evalLazyConQS[T](head).isSpine && firstUnevaluated[T](rear, res._2) == head && schedulesProperty[T](pushUntilZero[T](head), tail, res._2)
+    		case Spine(_, rear) => 		   
+    		   /*evalLazyConQS[T](head).isSpine &&*/ firstUnevaluated[T](rear, res._2) == head && schedulesProperty[T](pushUntilZero[T](head), tail, res._2)		  
     	 }
     	case _ =>
     	 res._1._1 match {
     		case Spine(h, rear) => 
-    		  isConcrete[T](rear, res._2)	   
+    		  isConcrete[T](rear, res._2)	   		
     		case _ => true
     	 }	    	
      }
@@ -323,7 +327,7 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
         case _ => true          
     })
 
-  @library
+//  @library
   def pushLeftWrapper[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (LazyConQ[T], Scheds[T], Set[LazyConQ[T]]) = {
     require(w.valid(st) && ys.isInstanceOf[Single[T]])
     val ((nq, nsched), nst) = pushLeftWrapperSub(ys, w, st)
@@ -357,7 +361,7 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
       }) 
   } holds
   
-  @library
+  //@library
   def Pay[T](q : LazyConQ[T], scheds : Scheds[T], st : Set[LazyConQ[T]]): (Scheds[T], Set[LazyConQ[T]]) = {
     require(schedulesProperty(q, scheds, st) && st.contains(q))    
     val (nschs, rst) = scheds match {
@@ -366,8 +370,10 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
         (headval match {
           case Spine(Empty(), rear) =>
             Cons(rear, rest) 
-          case _ =>
+          case Spine(_, _) =>
             rest  // in this case: firstUnevaluated[T](rear, st) == rhead                                                 
+	  case _ => 
+	   Nil[T]()
         }, st2)
       case Nil() =>        
         (scheds, st)
@@ -385,10 +391,10 @@ def zeroPredLazyMonotone[T](st1 : Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q: La
               case _ => true 
           })        
       case _ => true          
-     }) &&
+     }) /*&&
      zeroPreceedsLazy(q, res._2) && 
      // instantiations for zeroPreceedsLazy
-     zeroPredLazyMonotone(st, res._2, q)     
+     zeroPredLazyMonotone(st, res._2, q)*/
   }
 
   def pushLeftAndPay[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (Wrapper[T], Set[LazyConQ[T]]) = {

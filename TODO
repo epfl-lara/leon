@@ -6,8 +6,14 @@ Important: Fix reasons for unsoundness
 
 a) eval* will use an empty set instead of an arbitrary which may result in unsoundness 
    if the specs involve function over states
+	- fix: make the state argument a free variable (by possibly calling an uninterpreted function with zero arguments)
 
 b) the assertion on the newC function that the new closure is unevaluated may result in unsoundness
+	- fix: create new identifiers at the time of creating functions. We can also try and use epsilons.
+
+c) Coinductive (or normal) data-types can help ensure acyclicity of stream but that means we need to create 
+   free variables at the time of creation
+	currently, we are creating axioms that state acyclicity.
 
 Benchmarks to think about
 --------------------------
@@ -40,5 +46,10 @@ Integration
 Try to fix bugs in CVC4 proof and also try to integerate it with the system
 Try to integrate the tool with Orb
 
+Some Notes
+----------
+
+a) It is very essential to make the separation between value and state component explicit
+	we can use something like: "foo(x, uiState())" and "foo(x, st)" where st is the actual input state.
 
 
