@@ -417,16 +417,17 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
         (scheds, st)
     }
     (nschs, rst)
-  } ensuring {res =>	true
+  } ensuring {res =>
     // schedulesProperty(q, res._1, res._2) &&      
      // instantiations (relating rhead and head)
-     /*funeCompose(st, res._2, q) && 
+     funeCompose(st, res._2, q) && 
      (res._1 match {
-      case Cons(rhead, rtail) =>                            
+      case Cons(rhead, rtail) =>
           (scheds match {
               case Cons(head, _) =>                 
                 dummyAxiom(pushUntilZero(rhead), head) &&   
-                schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head) //&&                
+                (evalLazyConQS(firstUnevaluated(pushUntilZero(rhead), st)).isTip ||
+		schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)) //&& 
 		//schedulesProperty(q, res._1, res._2)
 		/*(evalLazyConQS(head) match {
 			case Spine(Empty(), rear) if evalLazyConQS(rear).isTip => true				
@@ -437,7 +438,7 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
           })        
       case _ => true          
 	//schedulesProperty(q, res._1, res._2)
-     })*/ //&&
+     }) //&&
      // zeroPreceedsLazy(q, res._2) && 
      // // instantiations for zeroPreceedsLazy
      // zeroPredLazyMonotone(st, res._2, q)     
@@ -481,11 +482,12 @@ object ConQ {
   } ensuring {
     (res : (ConQ[T], Set[LazyConQ[T]])) => (cl match {
       case t : Lazyarg1[T] =>
-        res._1 match {
+        (res._1 match {
           case _ : Tip[T] => true
-          case Spine(Empty(), _) => true //TODO: make this inferrable
+          case Spine(Empty(), rear) => 
+		evalLazyConQS(firstUnevaluated(pushUntilZero(rear), st)).isTip
           case _ =>  false
-        }        
+        })        
       case t : PushLeftLazy[T] =>        
 	true
      }) && (
