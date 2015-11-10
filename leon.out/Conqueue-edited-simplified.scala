@@ -111,13 +111,6 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
 //    })
 //} holds
   
-  // def isConcrete[T](l : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = st.contains(l) && (evalLazyConQS[T](l) match {
-  //   case Spine(_, tail13) =>
-  //     isConcrete[T](tail13, st)
-  //   case _ =>
-  //     true
-  // }) || evalLazyConQS[T](l).isTip
-  
   @library   
   def streamLemma[T](l : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean =  {
     st.contains(l) || (evalLazyConQS[T](l) match {
@@ -144,7 +137,6 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
   } ensuring {
     (res65 : LazyConQ[T]) => {
       val dres4 = evalLazyConQ[T](res65, st)
-      //(evalLazyConQS[T](res65).isSpine || isConcrete[T](l, st)) && 
       (evalLazyConQS[T](res65).isTip || !st.contains(res65)) && streamLemma[T](res65, st) && (dres4._1 match {
         case Spine(_, tail16) =>
           ((firstUnevaluated[T](l, dres4._2) == tail16), dres4._2)
@@ -154,24 +146,12 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
     }
   }
   
-  // def nextUnevaluated[T](l : LazyConQ[T], st : Set[LazyConQ[T]]): LazyConQ[T] = evalLazyConQS[T](l) match {
-  //   case Spine(_, tail17) =>
-  //     firstUnevaluated[T](tail17, st)
-  //   case _ =>
-  //     l
-  // }
-  
   def schedulesProperty[T](q : LazyConQ[T], schs : Scheds[T], st : Set[LazyConQ[T]]): Boolean = {
-	val x = firstUnevaluated[T](q, st)
-	if(evalLazyConQS(x).isTip) true
-	else {
 	  schs match {    
 	    case Cons(head5, tail) =>  	
-	      /*evalLazyConQS[T](head5).isSpine &&*/ firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st)    
-	    case Nil() => true
-	      //isConcrete[T](q, st)
-	}
-      }
+	      evalLazyConQS[T](head5).isSpine && firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st)    
+	    case Nil() => true	     
+	  }
   }
   
   def pushUntilZero[T](q : LazyConQ[T]): LazyConQ[T] = evalLazyConQS[T](q) match {
@@ -207,12 +187,10 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
           case Spine(Empty(), rear) =>
 	      (evalLazyConQS[T](rear).isSpine && !st.contains(rear)) &&
               (firstUnevaluated[T](pushUntilZero[T](rear), st) == firstUnevaluated[T](xs, st) ||
-				      //evalLazyConQS[T](firstUnevaluated[T](rear, st)).isTip) 
-			evalLazyConQS[T](firstUnevaluated[T](pushUntilZero[T](rear), st)).isTip)
+				      evalLazyConQS[T](firstUnevaluated[T](xs, st)).isTip) 
+			//evalLazyConQS[T](firstUnevaluated[T](pushUntilZero[T](rear), st)).isTip)
           case Spine(h, rear) =>
             firstUnevaluated[T](rear, st) == firstUnevaluated[T](xs, st) 		
-          case _ =>
-            true
         }))
   
   //@library
@@ -243,20 +221,14 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
   } ensuring {
     (res66 : (Spine[T], Set[LazyConQ[T]])) => res66._1.isSpine && (res66._2 == st) && (res66._1 match {
       case Spine(Empty(), rear) =>
-	     evalLazyConQS[T](rear).isSpine && !st.contains(rear) &&
-            (//evalLazyConQS[T](firstUnevaluated[T](xs, st)).isTip || 
-		evalLazyConQS[T](firstUnevaluated[T](pushUntilZero[T](rear), st)).isTip ||
-		firstUnevaluated[T](pushUntilZero[T](rear), st) == firstUnevaluated[T](xs, st))	
+	     val _ = evalLazyConQ[T](rear, st)
+	     evalLazyConQS[T](rear).isSpine && !st.contains(rear) && 	     
+	    (evalLazyConQS[T](firstUnevaluated[T](xs, st)).isTip || 
+		//evalLazyConQS[T](firstUnevaluated[T](pushUntilZero[T](rear), st)).isTip ||
+		firstUnevaluated[T](pushUntilZero[T](rear), st) == firstUnevaluated[T](xs, st))		    
       case Spine(h, rear) =>
         firstUnevaluated[T](rear, st) == firstUnevaluated[T](xs, st)
-      case _ =>
-        true
-    }) /*&& (evalLazyConQS[T](xs) match {
-      	case Spine(Empty(), rear) => true
-      	case Spine(h, rear) =>
-      		firstUnevaluated[T](xs, st) == firstUnevaluated[T](rear, st)
-      	case _ => true
-     })*/
+    })
   }
   
   /*def PushLeftLazypushLeftLazyLem[T](rear15 : LazyConQ[T], head : Conc[T], dres : (ConQ[T], Set[LazyConQ[T]]), st : Set[LazyConQ[T]], xs : LazyConQ[T], s : Spine[T], dres : (ConQ[T], Set[LazyConQ[T]]), carry : CC[T], ys : Conc[T]): Boolean =  {
@@ -326,40 +298,9 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
         case _ => true          
     })
 
-  /*def pushLeftWrapperSub[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (ConQ[T], Scheds[T], Set[LazyConQ[T]]) = {
-    require(w.valid(st) && ys.isInstanceOf[Single[T]])
-    val nq2 = pushLeft[T](ys, w.queue, st)    
-    val nsched = nq2._1 match {
-      case Spine(Empty(), rear18) =>
-        Cons[T](rear18, w.schedule)
-      case Spine(_, _) =>
-        w.schedule
-      case t : Tip[T] =>
-	Nil[T]() //we can ignore the tip here
-    }   
-    (nq2._1, nsched, nq2._2)
-  } ensuring {res => (res._3 == st) &&
-     (res._2 match {	
-    	case Cons(head, tail) => 
-    	  res._1 match {
-    		/*case Spine(Empty(), rear) =>
-    		 	firstUnevaluated[T](rear, st) == head && schedulesProperty[T](pushUntilZero[T](head), tail, st)*/		  
-		case Spine(_, rear) => 
-			firstUnevaluated[T](rear, st) == head && schedulesProperty[T](pushUntilZero[T](head), tail, st)
-    	 }
-    	case _ =>
-	  true
-    	 /*res._1 match {
-    		case Spine(h, rear) => 
-    		  isConcrete[T](rear, res._3)	   		
-    		case _ => true
-    	 }*/	    	
-     })
-  }*/
-
   //@library
-  def pushLeftWrapper[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (LazyConQ[T], Scheds[T], Set[LazyConQ[T]]) = {
-    require(w.valid(st) && ys.isInstanceOf[Single[T]])
+  def pushLeftWrapper[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]) = { //: (LazyConQ[T], Scheds[T], Set[LazyConQ[T]]) = {
+    require(w.valid(st) && ys.isInstanceOf[Single[T]])    
     val (nq, nst) = pushLeft[T](ys, w.queue, st)    
     val nsched = nq match {
       case Spine(Empty(), rear18) =>
@@ -371,14 +312,15 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
     val lq = newLazyCons(nq, nst)
     val (_, rst) = evalLazyConQ(lq, nst)
     (lq, nsched, rst)
-  } ensuring {res =>     
+  } ensuring {res =>  
+    //zeroPreceedsLazy(res._1, res._3)    
     schedulesProperty(res._1, res._2, res._3) &&     
     // instantiations
      (evalLazyConQS(res._1) match { 
           case Spine(_, rear) =>
             schedMonotone(st, res._3, res._2, rear, res._1)
-            case _ => true
-      })
+          case _ => true
+     })
   }
 
   @library
@@ -406,10 +348,11 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
         val (headval, st2) = evalLazyConQ(head, st)
         (headval match {
           case Spine(Empty(), rear) =>
-            //evalLazyConQS(rear) match{ // note: here we are ignoring tip
-              //case Spine(_, _) => 
+            evalLazyConQS(rear) match{ // note: here we are ignoring tip
+              case Spine(_, _) => 
                 Cons(rear, rest) 
-              //case _ => rest
+              case _ => rest
+	    }
           case _ =>
             rest  // in this case: firstUnevaluated[T](rear, st) == rhead  && firstUnevaluated[T](q, res._2) == rhead by funeCompose                                                
         }, st2)
@@ -418,41 +361,42 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
     }
     (nschs, rst)
   } ensuring {res =>
-    // schedulesProperty(q, res._1, res._2) &&      
+     schedulesProperty(q, res._1, res._2) &&      
      // instantiations (relating rhead and head)
      funeCompose(st, res._2, q) && 
      (res._1 match {
       case Cons(rhead, rtail) =>
           (scheds match {
-              case Cons(head, _) =>                 
+              case Cons(head, rest) =>                 
                 dummyAxiom(pushUntilZero(rhead), head) &&   
-                //(evalLazyConQS(firstUnevaluated(pushUntilZero(rhead), st)).isTip ||		            		
-            		(evalLazyConQS(head) match {
+		schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)
+                /*(evalLazyConQS(firstUnevaluated(q, st)).isTip ||		            		
+            		( (evalLazyConQS(head) match {
             			case Spine(Empty(), rear) => 
-                    schedulesProperty(pushUntilZero(rhead), rtail, st)				                  
-            			case  _ => true                    
-                    //schedulesProperty(pushUntilZero(rhead), rtail, st)
-                    //schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)
-            		})
-                //)
-// //&& 
-              case _ => true 
-		//schedulesProperty(q, res._1, res._2)
+				   //firstUnevaluated(q, res._2) == rhead && 
+				   //schedulesProperty(pushUntilZero(rhead), rtail, st)      			           
+            			case Spine(_, rear) => 
+				  //firstUnevaluated(rear, st) == rhead &&                                        		  
+				  //schedulesProperty(pushUntilZero(head), res._1, st) &&
+				  //schedulesProperty(pushUntilZero(rhead), rtail, st) 				  
+	                          schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)
+            		}))
+                )*/
+              case _ => true 		
           })        
       case _ => true          
-	//schedulesProperty(q, res._1, res._2)
      }) //&&
      // zeroPreceedsLazy(q, res._2) && 
      // // instantiations for zeroPreceedsLazy
      // zeroPredLazyMonotone(st, res._2, q)     
   }
 
-  def pushLeftAndPay[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (Wrapper[T], Set[LazyConQ[T]]) = {
+  /*def pushLeftAndPay[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (Wrapper[T], Set[LazyConQ[T]]) = {
     require(w.valid(st) && ys.isInstanceOf[Single[T]])
     val (q, scheds, nst) =  pushLeftWrapper(ys, w, st)
     val (nscheds, fst) = Pay(q, scheds, nst)
     (Wrapper(q, nscheds), fst)
-  } ensuring {res =>  res._1.valid(res._2) }
+  } ensuring {res => res._1.valid(res._2) }*/
   
   def lazyarg1[T](x : ConQ[T]): ConQ[T] = x
 }
@@ -485,21 +429,10 @@ object ConQ {
   } ensuring {
     (res : (ConQ[T], Set[LazyConQ[T]])) => (cl match {
       case t : Lazyarg1[T] =>
-        (res._1 match {
-          case _ : Tip[T] => true
-          case Spine(Empty(), rear) => 
-		        evalLazyConQS(firstUnevaluated(pushUntilZero(rear), st)).isTip
-          case _ =>  false
-        })        
+	true       
       case t : PushLeftLazy[T] =>        
 	true
-     }) && (
-      res._1 match {
-        case Spine(Empty(), rear) => 
-          !res._2.contains(rear) // rear would remain unevaluated // TODO: make this inferrable as well
-        case _ => true
-      }
-    )
+     })
   }
 
   def uiState[T]() : Set[LazyConQ[T]] = ???[Set[LazyConQ[T]]]
