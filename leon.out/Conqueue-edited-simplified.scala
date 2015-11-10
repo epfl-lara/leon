@@ -162,6 +162,7 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
 	      evalLazyConQS[T](head5).isSpine && firstUnevaluated[T](q, st) == head5 && schedulesProperty[T](pushUntilZero[T](head5), tail, st) && 
 		weakZeroPreceedsLazy(head5, st)    
 	    case Nil() => true	     
+		//evalLazyConQS(firstUnevaluated(q, st)).isTip
 	  }
   }
   
