@@ -426,13 +426,16 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
           (scheds match {
               case Cons(head, _) =>                 
                 dummyAxiom(pushUntilZero(rhead), head) &&   
-                (evalLazyConQS(firstUnevaluated(pushUntilZero(rhead), st)).isTip ||
-		schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)) //&& 
-		//schedulesProperty(q, res._1, res._2)
-		/*(evalLazyConQS(head) match {
-			case Spine(Empty(), rear) if evalLazyConQS(rear).isTip => true				
-			case _ => true //schedulesProperty(q, res._1, res._2)
-		})*/
+                //(evalLazyConQS(firstUnevaluated(pushUntilZero(rhead), st)).isTip ||		            		
+            		(evalLazyConQS(head) match {
+            			case Spine(Empty(), rear) => 
+                    schedulesProperty(pushUntilZero(rhead), rtail, st)				                  
+            			case  _ => true                    
+                    //schedulesProperty(pushUntilZero(rhead), rtail, st)
+                    //schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)
+            		})
+                //)
+// //&& 
               case _ => true 
 		//schedulesProperty(q, res._1, res._2)
           })        
@@ -485,7 +488,7 @@ object ConQ {
         (res._1 match {
           case _ : Tip[T] => true
           case Spine(Empty(), rear) => 
-		evalLazyConQS(firstUnevaluated(pushUntilZero(rear), st)).isTip
+		        evalLazyConQS(firstUnevaluated(pushUntilZero(rear), st)).isTip
           case _ =>  false
         })        
       case t : PushLeftLazy[T] =>        
