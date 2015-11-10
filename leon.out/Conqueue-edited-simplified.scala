@@ -362,6 +362,7 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
       }) 
   } holds
   
+  // induction following the structure of zeroPredLazy
   def funeZeroProp[T](st1: Set[LazyConQ[T]], st2: Set[LazyConQ[T]], q : LazyConQ[T]) : Boolean = {
     require(st1.subsetOf(st2) && {
  	val x = firstUnevaluated(q, st1)
@@ -370,13 +371,12 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
     zeroPreceedsLazy(q, st2) && //property
     //induction scheme
       (evalLazyConQS[T](q) match {
-        case Spine(h, tail) =>    
+        case Spine(Empty(), tail) =>    
+	    true
+	case Spine(_, tail) =>
  	    (if(st1.contains(q))
                  funeZeroProp(st1, st2, tail)
-	     else true) && 
-	     (if(h != Empty[T]())
-		     zeroPredLazyMonotone(st1, st2, tail)	
-		else true)
+	     else true)
         case _ =>          
             true
       }) 
@@ -407,9 +407,7 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
      // instantiations (relating rhead and head)
      funeCompose(st, res._2, q) && 
      (res._1 match {
-      case Cons(rhead, rtail) =>
-	  // establishing the zeroPreceedsLazy Property (on this case)
-	  
+      case Cons(rhead, rtail) =>	  
           (scheds match {
               case Cons(head, rest) =>                 
                 dummyAxiom(pushUntilZero(rhead), head) &&   
@@ -425,14 +423,21 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
 				  //schedulesProperty(pushUntilZero(rhead), rtail, st) 				  
 	                          schedMonotone(st, res._2, rtail, pushUntilZero(rhead), head)
             		}))
-                )*/
+                )*/		
               case _ => true 		
           })        
       case _ => true          
-     }) //&&
-     // zeroPreceedsLazy(q, res._2) && 
-     // // instantiations for zeroPreceedsLazy
-     // zeroPredLazyMonotone(st, res._2, q)     
+     }) &&
+     (scheds match {
+         case Cons(head, rest) =>                 
+		// establishing the zeroPreceedsLazy Property (on this case)
+	  	//fune(q, st) == head && weakZero(head, st) && res._2 == st ++ { head }
+		zeroPreceedsLazy(q, res._2) &&
+		funeZeroProp(st, res._2, q)  //instantiation
+	case _ => 
+		true
+		// here, we should have the list to be concrete
+     })
   }
 
   /*def pushLeftAndPay[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]): (Wrapper[T], Set[LazyConQ[T]]) = {
