@@ -173,37 +173,45 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
         (Tip[T](ys), dres5._2)
       case Tip(t @ Single(_)) =>
         (Tip[T](CC[T](ys, t)), dres5._2)
+      case s @ Spine(Empty(), rear) =>
+	(Spine[T](ys, rear), dres5._2) // in this case firstUnevaluated[T](rear, st) == firstUnevaluated[T](xs, st)
       case s @ Spine(_, _) =>
         pushLeftLazy[T](ys, xs, dres5._2)
     }
-  }
+  } ensuring { res => 
+	true
+    }
 
   def dummyFun[T]() =  ???[(ConQ[T], Set[LazyConQ[T]])]
 
   @library
   def pushLeftLazyUI[T](ys : Conc[T], xs : LazyConQ[T], st : Set[LazyConQ[T]]): (ConQ[T], Set[LazyConQ[T]]) = {
 	dummyFun()
-  } ensuring(res => res._1.isSpine && res._2 == st && (res._1 match {
+  } ensuring(res => res._2 == st && (res._1 match {
           case Spine(Empty(), rear) =>
 	      (evalLazyConQS[T](rear).isSpine && !st.contains(rear)) &&
               (firstUnevaluated[T](pushUntilZero[T](rear), st) == firstUnevaluated[T](xs, st) ||
 				      evalLazyConQS[T](firstUnevaluated[T](xs, st)).isTip) 
 			//evalLazyConQS[T](firstUnevaluated[T](pushUntilZero[T](rear), st)).isTip)
-          case Spine(h, rear) =>
-            firstUnevaluated[T](rear, st) == firstUnevaluated[T](xs, st) 		
+          case _ => false	      
+            //firstUnevaluated[T](rear, st) == firstUnevaluated[T](xs, st) 		
         }))
   
   //@library
   def pushLeftLazy[T](ys : Conc[T], xs : LazyConQ[T], st : Set[LazyConQ[T]]): (ConQ[T], Set[LazyConQ[T]]) =  {
-    require(!ys.isEmpty && zeroPreceedsLazy[T](xs, st) && evalLazyConQS[T](xs).isSpine)
+    require(!ys.isEmpty && zeroPreceedsLazy[T](xs, st) && 
+		(evalLazyConQS[T](xs) match { 
+		  case Spine(h, _) => h != Empty[T]()
+		  case _ => false
+		}))
     val dres = evalLazyConQ[T](xs, st)
     dres._1 match {
-      case Spine(Empty(), rear14) =>
-        (Spine[T](ys, rear14), dres._2)
       case Spine(head, rear15) =>
         val carry = CC[T](head, ys)
         val dres2 = evalLazyConQ[T](rear15, dres._2)
         dres2._1 match {
+	  case s @ Spine(Empty(), _) =>
+	    (Spine[T](Empty[T](), newConQ(Lazyarg1[T](Spine(carry, rear15)), dres2._2)), dres2._2)
           case s @ Spine(_, _) =>
             (Spine[T](Empty[T](), newConQ[T](PushLeftLazy[T](carry, rear15), dres2._2)), dres2._2)
           case t @ Tip(tree) =>
@@ -219,15 +227,15 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
         }
     }
   } ensuring {
-    (res66 : (Spine[T], Set[LazyConQ[T]])) => res66._1.isSpine && (res66._2 == st) && (res66._1 match {
+    (res66 : (Spine[T], Set[LazyConQ[T]])) => (res66._2 == st) && (res66._1 match {
       case Spine(Empty(), rear) =>
-	     val _ = evalLazyConQ[T](rear, st)
+	     val _ = evalLazyConQ[T](rear, st) // this is necessary to assert properties on the state in the recurisve invocation
 	     evalLazyConQS[T](rear).isSpine && !st.contains(rear) && 	     
 	    (evalLazyConQS[T](firstUnevaluated[T](xs, st)).isTip || 
 		//evalLazyConQS[T](firstUnevaluated[T](pushUntilZero[T](rear), st)).isTip ||
 		firstUnevaluated[T](pushUntilZero[T](rear), st) == firstUnevaluated[T](xs, st))		    
-      case Spine(h, rear) =>
-        firstUnevaluated[T](rear, st) == firstUnevaluated[T](xs, st)
+      case _ =>
+	false        
     })
   }
   
@@ -299,7 +307,7 @@ def zeroPreceedsLazy[T](q : LazyConQ[T], st : Set[LazyConQ[T]]): Boolean = {
     })
 
   //@library
-  def pushLeftWrapper[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]) = { //: (LazyConQ[T], Scheds[T], Set[LazyConQ[T]]) = {
+  def pushLeftWrapper[T](ys : Single[T], w : Wrapper[T], st : Set[LazyConQ[T]]) = { 
     require(w.valid(st) && ys.isInstanceOf[Single[T]])    
     val (nq, nst) = pushLeft[T](ys, w.queue, st)    
     val nsched = nq match {
