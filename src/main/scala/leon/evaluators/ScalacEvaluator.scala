@@ -11,13 +11,8 @@ import purescala.Expressions._
 import purescala.Types._
 
 import java.io.File
-import java.nio.file.Files
-import java.net.{URL, URLClassLoader}
-import java.lang.reflect.{Constructor, Method}
-
-import frontends.scalac.FullScalaCompiler
-
-import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
+import java.net.URLClassLoader
+import java.lang.reflect.Constructor
 
 /**
  * Call scalac-compiled functions from within Leon
@@ -25,7 +20,7 @@ import scala.tools.nsc.{Settings=>NSCSettings,CompilerCommand}
  * Known limitations:
  *  - Multiple argument lists
  */
-class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends LeonComponent {
+class ScalacEvaluator(ev: DeterministicEvaluator, ctx: LeonContext, pgm: Program) extends LeonComponent {
   implicit val _: Program = pgm
 
   val name = "Evaluator of external functions"
@@ -300,11 +295,11 @@ class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends Leo
   /**
    * Black magic here we come!
    */
-  import org.objectweb.asm.ClassReader;
-  import org.objectweb.asm.ClassWriter;
-  import org.objectweb.asm.ClassVisitor;
-  import org.objectweb.asm.MethodVisitor;
-  import org.objectweb.asm.Opcodes;
+  import org.objectweb.asm.ClassReader
+  import org.objectweb.asm.ClassWriter
+  import org.objectweb.asm.ClassVisitor
+  import org.objectweb.asm.MethodVisitor
+  import org.objectweb.asm.Opcodes
 
   class InterceptingClassLoader(p: ClassLoader) extends ClassLoader(p) {
     import java.io._
@@ -320,24 +315,24 @@ class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends Leo
         if (!(toInstrument contains name)) {
           super.loadClass(name, resolve)
         } else {
-          val bs = new ByteArrayOutputStream();
-          val is = getResourceAsStream(name.replace('.', '/') + ".class");
-          val buf = new Array[Byte](512);
-          var len = is.read(buf);
+          val bs = new ByteArrayOutputStream()
+          val is = getResourceAsStream(name.replace('.', '/') + ".class")
+          val buf = new Array[Byte](512)
+          var len = is.read(buf)
           while (len  > 0) {
-            bs.write(buf, 0, len);
+            bs.write(buf, 0, len)
             len = is.read(buf)
           }
 
           // Transform bytecode
-          val cr = new ClassReader(bs.toByteArray());
-          val cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES);
-          val cv = new LeonCallsClassVisitor(cw, name, toInstrument(name));
-          cr.accept(cv, 0);
+          val cr = new ClassReader(bs.toByteArray())
+          val cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES)
+          val cv = new LeonCallsClassVisitor(cw, name, toInstrument(name))
+          cr.accept(cv, 0)
 
-          val res = cw.toByteArray();
+          val res = cw.toByteArray()
 
-          defineClass(name, res, 0, res.length);
+          defineClass(name, res, 0, res.length)
         }
       }
     }
@@ -451,7 +446,7 @@ class ScalacEvaluator(ev: Evaluator, ctx: LeonContext, pgm: Program) extends Leo
 
       unbox(fd.returnType)
       mv.visitInsn(returnOpCode(fd.returnType))
-      mv.visitEnd();
+      mv.visitEnd()
     }
   }
 }

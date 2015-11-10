@@ -47,7 +47,7 @@ object Extractors {
         val builder = (as: Seq[Expr]) => {
           def rec(kvs: Seq[Expr]): Seq[(Seq[Expr], Expr)] = kvs match {
             case seq if seq.size >= sze =>
-              val ((args :+ res), rest) = seq.splitAt(sze)
+              val (args :+ res, rest) = seq.splitAt(sze)
               (args -> res) +: rec(rest)
             case Seq() => Seq.empty
             case _ => sys.error("unexpected number of key/value expressions")
@@ -190,10 +190,7 @@ object Extractors {
         { case Seq(c, t, e) => IfExpr(c, t, e) }
       ))
       case MatchExpr(scrut, cases) => Some((
-        scrut +: cases.flatMap {
-          case SimpleCase(_, e) => Seq(e)
-          case GuardedCase(_, e1, e2) => Seq(e1, e2)
-        },
+        scrut +: cases.flatMap { _.expressions },
         (es: Seq[Expr]) => {
           var i = 1
           val newcases = for (caze <- cases) yield caze match {
@@ -205,9 +202,8 @@ object Extractors {
         }
       ))
       case Passes(in, out, cases) => Some((
-        in +: out +: cases.flatMap {
-          _.expressions
-        }, {
+        in +: out +: cases.flatMap { _.expressions },
+        {
           case Seq(in, out, es@_*) => {
             var i = 0
             val newcases = for (caze <- cases) yield caze match {

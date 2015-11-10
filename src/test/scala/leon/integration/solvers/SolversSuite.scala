@@ -84,7 +84,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
             fail("Constraint "+cnstr.asString+" is unsat!?")
         }
       } finally {
-        solver.free
+        solver.free()
       }
 
     }

@@ -1,40 +1,35 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.unit.allEvaluators
+package leon.unit.evaluators
 
 import leon._
 import leon.test._
 import leon.evaluators._
 
-import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
-import leon.frontends.scalac.ExtractionPhase
-
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
-import leon.purescala.DefOps._
 import leon.purescala.Types._
 import leon.purescala.Extractors._
 import leon.purescala.Constructors._
-import leon.codegen._
 
 class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
 
   implicit val pgm = Program.empty
 
-  def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
+  def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[DeterministicEvaluator] = {
     List(
       new DefaultEvaluator(ctx, pgm)
     )
   }
 
-  def codegenEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
+  def codegenEvaluators(implicit ctx: LeonContext, pgm: Program): List[DeterministicEvaluator] = {
     List(
       new CodeGenEvaluator(ctx, pgm)
     )
   }
 
-  def allEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
+  def allEvaluators(implicit ctx: LeonContext, pgm: Program): List[DeterministicEvaluator] = {
     normalEvaluators ++ codegenEvaluators
   }
 
@@ -275,7 +270,7 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
     def success: Expr = res
   }
 
-  case class Success(expr: Expr, env: Map[Identifier, Expr], evaluator: Evaluator, res: Expr) extends EvalDSL {
+  case class Success(expr: Expr, env: Map[Identifier, Expr], evaluator: DeterministicEvaluator, res: Expr) extends EvalDSL {
     override def failed = {
       fail(s"Evaluation of '$expr' with '$evaluator' (and env $env) should have failed")
     }
@@ -285,7 +280,7 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
     }
   }
 
-  case class Failed(expr: Expr, env: Map[Identifier, Expr], evaluator: Evaluator, err: String) extends EvalDSL {
+  case class Failed(expr: Expr, env: Map[Identifier, Expr], evaluator: DeterministicEvaluator, err: String) extends EvalDSL {
     override def success = {
       fail(s"Evaluation of '$expr' with '$evaluator' (and env $env) should have succeeded but failed with $err")
     }
@@ -295,7 +290,7 @@ class EvaluatorSuite extends LeonTestSuite with helpers.ExpressionsDSL {
     def ===(res: Expr) = success
   }
 
-  def eval(e: Evaluator, toEval: Expr, env: Map[Identifier, Expr] = Map()): EvalDSL = {
+  def eval(e: DeterministicEvaluator, toEval: Expr, env: Map[Identifier, Expr] = Map()): EvalDSL = {
     e.eval(toEval, env) match {
       case EvaluationResults.Successful(res)     => Success(toEval, env, e, res)
       case EvaluationResults.RuntimeError(err)   => Failed(toEval, env, e, err)

@@ -3,10 +3,6 @@
 package leon.test
 
 import leon._
-import leon.purescala.Definitions.Program
-import leon.LeonContext
-import leon.utils._
-import leon.frontends.scalac.ExtractionPhase
 
 import org.scalatest._
 import org.scalatest.exceptions.TestFailedException

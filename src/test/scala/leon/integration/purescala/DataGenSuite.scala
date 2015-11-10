@@ -3,12 +3,9 @@
 package leon.integration.purescala
 
 import leon.test._
-import leon.utils.{TemporaryInputPhase, PreprocessingPhase}
-import leon.frontends.scalac.ExtractionPhase
 
 import leon.purescala.Common._
 import leon.purescala.Expressions._
-import leon.purescala.Definitions._
 import leon.purescala.Types._
 import leon.datagen._
 

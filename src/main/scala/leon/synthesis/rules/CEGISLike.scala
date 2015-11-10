@@ -20,7 +20,6 @@ import scala.collection.mutable.{HashMap=>MutableMap, ArrayBuffer}
 
 import evaluators._
 import datagen._
-import leon.utils._
 import codegen.CodeGenParams
 
 abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
@@ -372,7 +371,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       private val innerPhi = outerExprToInnerExpr(p.phi)
 
       private var programCTree: Program = _
-      private var tester: (Example, Set[Identifier]) => EvaluationResults.Result = _
+      private var tester: (Example, Set[Identifier]) => EvaluationResults.Result[Expr] = _
 
       private def setCExpr(cTreeInfo: (Expr, Seq[FunDef])): Unit = {
         val (cTree, newFds) = cTreeInfo
@@ -384,7 +383,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         //println(programCTree.asString)
         //println(".. "*30)
 
-//        val evaluator  = new DualEvaluator(sctx.context, programCTree, CodeGenParams.default)
+        //val evaluator  = new DualEvaluator(sctx.context, programCTree, CodeGenParams.default)
         val evaluator  = new DefaultEvaluator(sctx.context, programCTree)
 
         tester =

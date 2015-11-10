@@ -5,7 +5,7 @@ package leon.integration.evaluators
 import leon._
 import leon.test._
 import leon.test.helpers._
-import leon.evaluators._
+import leon.evaluators.{Evaluator => _, DeterministicEvaluator => Evaluator, _}
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
