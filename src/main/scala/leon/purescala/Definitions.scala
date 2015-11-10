@@ -543,6 +543,7 @@ object Definitions {
     def precondition  = fd.precondition map cached
     def precOrTrue    = cached(fd.precOrTrue)
     def postcondition = fd.postcondition map cached
+    def postOrTrue    = cached(fd.postOrTrue)
 
     def hasImplementation = body.isDefined
     def hasBody           = hasImplementation

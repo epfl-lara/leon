@@ -5,7 +5,7 @@ package leon.integration.evaluators
 import leon._
 import leon.test._
 import leon.test.helpers._
-import leon.evaluators._
+import leon.evaluators.{Evaluator => _, DeterministicEvaluator => Evaluator, _}
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
@@ -205,7 +205,8 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
 
   def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
     List(
-      new DefaultEvaluator(ctx, pgm)
+      new DefaultEvaluator(ctx, pgm),
+      new AngelicEvaluator(ctx, pgm, new StreamEvaluator(ctx, pgm))
     )
   }
 

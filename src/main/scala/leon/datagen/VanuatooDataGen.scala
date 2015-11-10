@@ -222,7 +222,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       (AnyPattern[Expr, TypeTree](), false)
   }
 
-  type InstrumentedResult = (EvaluationResults.Result, Option[vanuatoo.Pattern[Expr, TypeTree]])
+  type InstrumentedResult = (EvaluationResults.Result[Expr], Option[vanuatoo.Pattern[Expr, TypeTree]])
 
   def compile(expression: Expr, argorder: Seq[Identifier]) : Option[Expr=>InstrumentedResult] = {
     import leon.codegen.runtime.LeonCodeGenRuntimeException

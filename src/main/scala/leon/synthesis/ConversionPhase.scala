@@ -64,7 +64,7 @@ object ConversionPhase extends UnitPhase[Program] {
    *
    *  def foo(a: T) = {
    *    require(..a..)
-   *    ???
+   *    _
    *  } ensuring { res =>
    *    post(res)
    *  }
@@ -75,8 +75,9 @@ object ConversionPhase extends UnitPhase[Program] {
    *    require(..a..)
    *    choose(x => post(x))
    *  }
+   * (in practice, there will be no pre-and postcondition)
    *
-   * 4) Functions that have only a choose as body gets their spec from the choose. 
+   * 4) Functions that have only a choose as body gets their spec from the choose.
    *
    *  def foo(a: T) = {
    *    choose(x => post(a, x))

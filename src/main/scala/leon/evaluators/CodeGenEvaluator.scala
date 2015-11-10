@@ -6,12 +6,11 @@ package evaluators
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.Quantification._
 
 import codegen.CompilationUnit
 import codegen.CodeGenParams
 
-class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) {
+class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) with DeterministicEvaluator {
   val name = "codegen-eval"
   val description = "Evaluator for PureScala expressions based on compilation to JVM"
 

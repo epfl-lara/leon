@@ -6,7 +6,6 @@ package evaluators
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
-import purescala.Quantification._
 import purescala.Types._
 
 class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) extends RecursiveEvaluator(ctx, prog, maxSteps) {
@@ -17,9 +16,9 @@ class TracingEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int = 1000) ex
 
   def initGC(model: solvers.Model) = new TracingGlobalContext(Nil, model)
 
-  class TracingGlobalContext(var values: List[(Tree, Expr)], model: solvers.Model) extends GlobalContext(model)
+  class TracingGlobalContext(var values: List[(Tree, Expr)], model: solvers.Model) extends GlobalContext(model, maxSteps)
 
-  case class TracingRecContext(mappings: Map[Identifier, Expr], tracingFrames: Int) extends RecContext {
+  case class TracingRecContext(mappings: Map[Identifier, Expr], tracingFrames: Int) extends RecContext[TracingRecContext] {
     def newVars(news: Map[Identifier, Expr]) = copy(mappings = news)
   }
 

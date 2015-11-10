@@ -10,7 +10,7 @@ trait EvaluatingSolver extends Solver {
 
   val useCodeGen: Boolean
 
-  lazy val evaluator: Evaluator =
+  lazy val evaluator: DeterministicEvaluator =
     if (useCodeGen) {
       new CodeGenEvaluator(context, program)
     } else {

@@ -4,10 +4,8 @@ package leon.integration.purescala
 
 import leon.test._
 
-import leon._
 import leon.purescala.Definitions._
 import leon.purescala.DefOps._
-import leon.utils._
 
 class DefOpsSuite extends LeonTestSuiteWithProgram {
 

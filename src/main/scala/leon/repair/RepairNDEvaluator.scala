@@ -16,7 +16,7 @@ import scala.util.Try
 // If a function invocation fails or violates a postcondition for cond, 
 // it backtracks and gets executed again for !cond
 class RepairNDEvaluator(ctx: LeonContext, prog: Program, fd : FunDef, cond: Expr) extends DefaultEvaluator(ctx, prog) {
-    
+
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
  
     case FunctionInvocation(tfd, args) if tfd.fd == fd =>

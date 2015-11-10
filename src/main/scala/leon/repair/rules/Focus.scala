@@ -75,9 +75,7 @@ case object Focus extends PreprocessingRule("Focus") {
 
     val fdSpec = {
       val id = FreshIdentifier("res", fd.returnType)
-      Let(id, fd.body.get,
-        fd.postcondition.map(l => application(l, Seq(id.toVariable))).getOrElse(BooleanLiteral(true))
-      )
+      Let(id, fd.body.get, application(fd.postOrTrue, Seq(id.toVariable)))
     }
 
     val TopLevelAnds(clauses) = p.ws
