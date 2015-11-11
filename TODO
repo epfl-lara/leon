@@ -52,4 +52,21 @@ Some Notes
 a) It is very essential to make the separation between value and state component explicit
 	we can use something like: "foo(x, uiState())" and "foo(x, st)" where st is the actual input state.
 
+b) We need to treat Lazyarg's as not closures. That is, they don't change state and are not considered as Unevaluated. They
+	are never added to the set. 
+	We can have an implicit type conversion from normal values to lazyargs. 
+	Since normal values are eagerly computed. This lets us specify lazyargs succinctly in the code.
+	We need to change isEvaluated and value function call modelling
+
+c) Futures when modelled as closures can be stored and then later joined. 
+e.g. a function  'spawn' that will spawn tasks and a function 'join' that will join 
+the spawned threads.
+However, we need to explicitly mark the functions that can be executed in parallel from the 
+point of creation of a Future to the point of joining the Future.
+Eg. as 
+spawn()
+spawn()
+parallel(op(), join(), join())
+//this means op() and the two futures will execute in parallel.
+
 

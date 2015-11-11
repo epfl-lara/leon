@@ -45,6 +45,7 @@ object ConcTrees {
   }
 }
 
+// TODO: change the model so that Lazyargs never appear in isEvaluated or they update state.
 object Conqueue {
   abstract class ConQ[T] { 
     def isSpine : Boolean = this match {
