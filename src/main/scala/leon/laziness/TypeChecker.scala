@@ -150,7 +150,12 @@ object TypeChecker {
                     + s"do not match for call: $call")*/
               }
             }
-          val ntparams = fd.tparams.map(tpd => tpmap(tpd.tp))
+          // for uninterpreted functions, we could have a type parameter used only in the return type
+          val ntparams = (fd.tparams zip tparams).map{
+            case (paramt, argt) =>
+              tpmap.getOrElse(paramt.tp /* in this case we inferred the type parameter */,
+                  argt /* in this case we reuse the argument type parameter */ )
+          }
           val nexpr = FunctionInvocation(TypedFunDef(fd, ntparams), nargs)
           if (nexpr.getType == Untyped) {
             throw new IllegalStateException(s"Cannot infer type for expression: $e arg types: ${nargs.map(_.getType).mkString(",")}")

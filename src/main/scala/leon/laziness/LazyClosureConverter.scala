@@ -91,6 +91,28 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
   }.toMap
 
   /**
+   * A set of uninterpreted functions that return fixed but uninterpreted states
+   * Note: here I am using mutation on purpose to create uninterpreted states on
+   * demand.
+   */
+  var uiStateFuns = Map[String, FunDef]()
+  def getUninterpretedState(lazyTypename: String, tparams: Seq[TypeParameter]) = {
+    val uiStateFun = if (uiStateFuns.contains(lazyTypename)) {
+      uiStateFuns(lazyTypename)
+    } else {
+      // create a body-less fundef that will return a state
+      val absClass = closureFactory.absClosureType(lazyTypename)
+      val initTparams = absClass.tparams.map(_.tp)
+      val stType = SetType(AbstractClassType(absClass, initTparams))
+      val fd = new FunDef(FreshIdentifier("ui" + lazyTypename), absClass.tparams, Seq(), stType)
+      fd.body = Some(Hole(stType, Seq()))
+      uiStateFuns += (lazyTypename -> fd)
+      fd
+    }
+    FunctionInvocation(TypedFunDef(uiStateFun, tparams), Seq())
+  }
+
+  /**
    * A function for creating a state type for every lazy type. Note that Leon
    * doesn't support 'Any' type yet. So we have to have multiple
    * state (though this is  much clearer it results in more complicated code)
@@ -148,10 +170,12 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       val op = closureFactory.caseClassToOp(cdef)
       // TODO: here we are assuming that only one state is used, fix this.
       val stArgs =
-        if (funsNeedStates(op))
-          // Note: it is important to use empty state here to eliminate
-          // dependency on state for the result value
-          Seq(FiniteSet(Set(), stType.base))
+        if (funsNeedStates(op)){
+          // Note: it is important to use uninterpreted state here for 2 reasons:
+          // (a) to eliminate dependency on state for the result value
+          // (b) to avoid inconsistencies when using a fixed state such as empty state
+          Seq(getUninterpretedState(tname, tparams))
+        }
         else Seq()
       val targetFun =
         if (removeRecursionViaEval && op.hasPostcondition) {
@@ -174,7 +198,9 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
   }.toMap
 
   /**
-   * These are evalFunctions that do not affect the state
+   * These are evalFunctions that do not affect the state.
+   * TODO: here we can avoid creating two calls to the function one
+   * with uninterpreted state and other with input state (since here both are equal)
    */
   val computeFunctions = evalFunctions.map {
     case (tname, evalfd) =>
@@ -182,9 +208,9 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       val param1 = evalfd.params.head
       val fun = new FunDef(FreshIdentifier(evalfd.id.name + "*", Untyped),
         evalfd.tparams, Seq(param1), tpe)
+      val uiState = getUninterpretedState(tname, getTypeParameters(tpe))
       val invoke = FunctionInvocation(TypedFunDef(evalfd, evalfd.tparams.map(_.tp)),
-        Seq(param1.id.toVariable, FiniteSet(Set(),
-          getStateType(tname, getTypeParameters(tpe)).base)))
+        Seq(param1.id.toVariable, uiState))
       fun.body = Some(TupleSelect(invoke, 1))
       (tname -> fun)
   }.toMap
@@ -531,6 +557,6 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
           case d => Seq(d)
         }),
       closureFactory.allClosuresAndParents ++ closureCons.values ++
-        evalFunctions.values ++ computeFunctions.values, anchor)
+        evalFunctions.values ++ computeFunctions.values ++ uiStateFuns.values, anchor)
   }
 }

@@ -100,6 +100,7 @@ object CallGraphUtil {
     // println("Constructing call graph")
     val cg = new CallGraph()
     functionsWOFields(prog.definedFunctions).foreach((fd) => {
+      cg.addFunction(fd)
       if (fd.hasBody) {
         // println("Adding func " + fd.id.uniqueName)
         var funExpr = fd.body.get
@@ -114,11 +115,7 @@ object CallGraphUtil {
         }
 
         //introduce a new edge for every callee
-        val callees = getCallees(funExpr)
-        if (callees.isEmpty)
-          cg.addFunction(fd)
-        else
-          callees.foreach(cg.addEdgeIfNotPresent(fd, _))
+        getCallees(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))
       }
     })
     cg
