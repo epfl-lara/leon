@@ -117,6 +117,7 @@ object Definitions {
     }
   }
   
+  /** Object definition */
   case class UnitDef(
     id: Identifier,
     pack : PackageRef,

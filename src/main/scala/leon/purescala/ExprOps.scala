@@ -1442,7 +1442,7 @@ object ExprOps {
     }
   }
 
-  /** Checks whether a predicate is inductive on a certain identfier.
+  /** Checks whether a predicate is inductive on a certain identifier.
     *
     * isInductive(foo(a, b), a) where a: List will check whether
     *    foo(Nil, b) and

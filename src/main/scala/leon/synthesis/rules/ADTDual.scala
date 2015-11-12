@@ -9,6 +9,11 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 
+/** For a `case class A(b: B, c: C)` and expressions `X,Y,D` the latest not containing any output variable, replaces
+  * `A(X, Y) = D`
+  * by the following equivalent
+  * `D.isInstanceOf[A] && X = D.b && Y = D.c`
+  * */
 case object ADTDual extends NormalizingRule("ADTDual") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val xs = p.xs.toSet

@@ -12,10 +12,10 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Definitions._
 
-/** For every inductive variable, output a recurive solution if it exists */
+/** For every inductive variable, outputs a recursive solution if it exists */
 case object ADTInduction extends Rule("ADT Induction") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    /* All input variables (with their Abstract class type) which are inductive in the post condition, along with their abstract data type. */
+    /* All input variables which are inductive in the post condition, along with their abstract data type. */
     val candidates = p.as.collect {
         case IsTyped(origId, act: AbstractClassType) if isInductiveOn(hctx.sctx.solverFactory)(p.pc, origId) => (origId, act)
     }
