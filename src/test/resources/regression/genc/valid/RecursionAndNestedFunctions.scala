@@ -1,0 +1,34 @@
+import leon.lang._
+
+object RecursionAndNestedFunctions {
+
+  // Complex way to return i
+  def zzz(i: Int): Int = {
+    val x = 0
+    def rec(j: Int): Int = {
+      if (i - x == j)     i
+      else if (j > i) rec(j - 1)
+      else            rec(j + 1)
+    }
+
+    rec(4)
+  }
+
+
+  // Complex way to compute 100 + 2 * i
+  def foo(i: Int) = {
+    var j = i
+    def bar(x: Int) = {
+      //j = j - 1 <- not supported by leon
+      val y = x + i
+      def baz(z: Int) = z + y + i
+      //j = j + 1 <- not supported by leon
+      baz(42)
+    }
+    bar(58) + j - i
+  }
+
+  def main() = foo(2) - zzz(104)
+
+}
+
