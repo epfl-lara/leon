@@ -67,35 +67,4 @@ package object lang {
       }
     }
   }
-  
-  @ignore
-  object StrOps {
-    def concat(a: String, b: String): String = {
-      a + b
-    }
-    def length(a: String): BigInt = {
-      BigInt(a.length)
-    }
-    def substring(a: String, start: BigInt, end: BigInt): String = {
-      if(start > end || start >= length(a) || end <= 0) "" else a.substring(start.toInt, end.toInt)
-    }
-    def bigIntToString(a: BigInt): String = {
-      a.toString
-    }
-    def intToString(a: Int): String = {
-      a.toString
-    }
-    def doubleToString(a: Double): String = {
-      a.toString
-    }
-    def booleanToString(a: Boolean): String = {
-      if(a) "true" else "false"
-    }
-    def charToString(a: Char): String = {
-      a.toString
-    }
-    def realToString(a: Real): String = ???
-  }
-    
-  
 }
