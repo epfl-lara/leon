@@ -1054,6 +1054,15 @@ trait CodeExtraction extends ASTExtractors {
           val tupleExprs = exprs.map(e => extractTree(e))
           Tuple(tupleExprs)
 
+        case ex@ExOldExpression(sym) if dctx.isVariable(sym) =>
+          dctx.vars.get(sym).orElse(dctx.mutableVars.get(sym)) match {
+            case Some(builder) =>
+              val Variable(id) = builder()
+              Old(id).setPos(ex.pos)
+            case None =>
+              outOfSubsetError(current, "old can only be used with variables")
+          }
+
         case ExErrorExpression(str, tpt) =>
           Error(extractType(tpt), str)
 

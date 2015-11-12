@@ -4,7 +4,7 @@ object ArrayNested2 {
 
   def test(): Int = {
 
-    var a = Array(1, 2, 0)
+    val a = Array(1, 2, 0)
 
     def nested(): Unit = {
       require(a.length == 3)

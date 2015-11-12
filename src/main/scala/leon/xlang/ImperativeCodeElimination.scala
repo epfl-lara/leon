@@ -129,6 +129,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
  
       case wh@While(cond, body) =>
+        //TODO: rewrite by re-using the nested function transformation code
         val (condRes, condScope, condFun) = toFunction(cond)
         val (_, bodyScope, bodyFun) = toFunction(body)
         val condBodyFun = condFun ++ bodyFun
@@ -323,7 +324,9 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
                 val newBody =
                   replace(
                     modifiedVars.zipWithIndex.map{ case (v, i) => 
-                      (v.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap + 
+                      (v.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap ++
+                    modifiedVars.zip(freshNames).map{ case (ov, nv) => 
+                      (Old(ov), nv.toVariable)}.toMap +
                     (res.toVariable -> TupleSelect(newRes.toVariable, 1)),
                   postBody)
                 Lambda(Seq(newRes), newBody).setPos(post)
