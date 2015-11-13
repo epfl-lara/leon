@@ -15,7 +15,8 @@ import purescala.Extractors._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
-import leon.verification.AnalysisPhase
+import leon.invariant.util.ProgramUtil._
+import leon.invariant.util.PredicateUtil._
 import LazinessUtil._
 
 /**
@@ -51,7 +52,7 @@ class ClosurePreAsserter(p: Program) {
               args :+ st
             else args
           val pre2 = replaceFromIDs((target.params.map(_.id) zip nargs).toMap, pre)
-          val vc = Implies(And(Util.precOrTrue(fd), path), pre2)
+          val vc = Implies(And(precOrTrue(fd), path), pre2)
           // create a function for each vc
           val lemmaid = FreshIdentifier(ccd.id.name + fd.id.name + "Lem", Untyped, true)
           val params = variablesOf(vc).toSeq.map(v => ValDef(v))

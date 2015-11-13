@@ -984,11 +984,14 @@ trait CodeExtraction extends ASTExtractors {
 
           val b = extractTreeOrNoTree(body)
 
-          val closure = post.getType match {
-            case BooleanType =>
+          val closure = post match {
+            case IsTyped(_, BooleanType) =>
               val resId = FreshIdentifier("res", b.getType).setPos(post)
               Lambda(Seq(LeonValDef(resId)), post).setPos(post)
-            case _ => post
+            case l: Lambda => l
+            case other =>
+              val resId = FreshIdentifier("res", b.getType).setPos(post)
+              Lambda(Seq(LeonValDef(resId)), application(other, Seq(Variable(resId)))).setPos(post)
           }
 
           Ensuring(b, closure)
@@ -1620,6 +1623,9 @@ trait CodeExtraction extends ASTExtractors {
               or(a1, a2)
 
             // Set methods
+            case (IsTyped(a1, SetType(b1)), "size", Nil) =>
+              SetCardinality(a1)
+
             //case (IsTyped(a1, SetType(b1)), "min", Nil) =>
             //  SetMin(a1)
 
@@ -1839,7 +1845,11 @@ trait CodeExtraction extends ASTExtractors {
       case AnnotatedType(_, tpe) => extractType(tpe)
 
       case _ =>
-        outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
+        if (tpt ne null) {
+          outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
+        } else {
+          outOfSubsetError(NoPosition, "Tree with null-pointer as type found")
+        }
     }
 
     private def getClassType(sym: Symbol, tps: List[LeonType])(implicit dctx: DefContext) = {

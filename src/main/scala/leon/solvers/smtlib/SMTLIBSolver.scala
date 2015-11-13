@@ -20,11 +20,15 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   def targetName: String
   override def name: String = "smt-"+targetName
 
-  /* Reporter */
-  protected val reporter = context.reporter
+  override def dbg(msg: => Any) = {
+    debugOut foreach { o =>
+      o.write(msg.toString)
+      o.flush()
+    }
+  }
 
   /* Public solver interface */
-  override def assertCnstr(expr: Expr): Unit = if(!hasError) {
+  def assertCnstr(expr: Expr): Unit = if(!hasError) {
     try {
       variablesOf(expr).foreach(declareVariable)
 

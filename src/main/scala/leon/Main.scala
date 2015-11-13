@@ -22,7 +22,7 @@ object Main {
       purescala.FunctionClosure,
       synthesis.SynthesisPhase,
       termination.TerminationPhase,
-      verification.AnalysisPhase,
+      verification.VerificationPhase,
       repair.RepairPhase,
       evaluators.EvaluationPhase,
       solvers.isabelle.AdaptationPhase,
@@ -78,7 +78,7 @@ object Main {
     }
     reporter.info("")
 
-    reporter.info("Additional options, by component:")
+    reporter.title("Additional options, by component:")
 
     for (c <- (allComponents - MainComponent - SharedOptions).toSeq.sortBy(_.name) if c.definedOptions.nonEmpty) {
       reporter.info("")
@@ -145,13 +145,13 @@ object Main {
   def computePipeline(ctx: LeonContext): Pipeline[List[String], Any] = {
 
     import purescala.Definitions.Program
-    import purescala.{FunctionClosure, RestoreMethods}
+    import purescala.RestoreMethods
     import utils.FileOutputPhase
     import frontends.scalac.{ExtractionPhase, ClassgenPhase}
     import synthesis.SynthesisPhase
     import termination.TerminationPhase
     import xlang.FixReportLabels
-    import verification.AnalysisPhase
+    import verification.VerificationPhase
     import repair.RepairPhase
     import evaluators.EvaluationPhase
     import solvers.isabelle.IsabellePhase
@@ -182,20 +182,20 @@ object Main {
         ExtractionPhase andThen
         new PreprocessingPhase(xlangF)
 
-      val analysis = if (xlangF) AnalysisPhase andThen FixReportLabels else AnalysisPhase
+      val verification = if (xlangF) VerificationPhase andThen FixReportLabels else VerificationPhase
 
       val pipeProcess: Pipeline[Program, Any] = {
         if (noopF) RestoreMethods andThen FileOutputPhase
         else if (synthesisF) SynthesisPhase
         else if (repairF) RepairPhase
-        else if (analysisF) Pipeline.both(analysis, TerminationPhase)
+        else if (analysisF) Pipeline.both(verification, TerminationPhase)
         else if (terminationF) TerminationPhase
         else if (isabelleF) IsabellePhase
         else if (evalF) EvaluationPhase
         else if (inferInvF) InferInvariantsPhase
         else if (instrumentF) InstrumentationPhase andThen FileOutputPhase
         else if (lazyevalF) LazinessEliminationPhase
-        else InstrumentationPhase andThen analysis
+        else InstrumentationPhase andThen verification
       }
 
       pipeBegin andThen

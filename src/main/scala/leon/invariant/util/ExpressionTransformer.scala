@@ -13,6 +13,8 @@ import purescala.ScalaPrinter
 import invariant.structure.Call
 import invariant.structure.FunctionUtils._
 import leon.invariant.factories.TemplateIdFactory
+import PredicateUtil._
+import Util._
 
 /**
  * A collection of transformation on expressions and some utility methods.
@@ -40,17 +42,17 @@ object ExpressionTransformer {
         case And(args) if !insideFunction => {
           val newargs = args.map((arg) => {
             val (nexp, ncjs) = transformer(arg, false)
-            Util.createAnd(nexp +: ncjs.toSeq)
+            createAnd(nexp +: ncjs.toSeq)
           })
-          (Util.createAnd(newargs), Set())
+          (createAnd(newargs), Set())
         }
 
         case Or(args) if !insideFunction => {
           val newargs = args.map((arg) => {
             val (nexp, ncjs) = transformer(arg, false)
-            Util.createAnd(nexp +: ncjs.toSeq)
+            createAnd(nexp +: ncjs.toSeq)
           })
-          (Util.createOr(newargs), Set())
+          (createOr(newargs), Set())
         }
 
         case t: Terminal => (t, Set())
@@ -117,7 +119,7 @@ object ExpressionTransformer {
           val mult = multop(quo, rhs)
           val divsem = Equals(lhs, Plus(mult, rem))
           //TODO: here, we have to use |rhs|
-          val newexpr = Util.createAnd(Seq(divsem, LessEquals(zero, rem), LessEquals(rem, Minus(rhs, one))))
+          val newexpr = createAnd(Seq(divsem, LessEquals(zero, rem), LessEquals(rem, Minus(rhs, one))))
           val resset = transform(newexpr, true)
           (quo, resset._2 + resset._1)
         }
@@ -184,7 +186,7 @@ object ExpressionTransformer {
     }
     val (nexp, ncjs) = transform(inexpr, false)
     val res = if (!ncjs.isEmpty) {
-      Util.createAnd(nexp +: ncjs.toSeq)
+      createAnd(nexp +: ncjs.toSeq)
     } else nexp
     res
   }
@@ -306,7 +308,7 @@ object ExpressionTransformer {
 
     val (nexp, ncjs) = flattenFunc(inExpr, false)
     if (!ncjs.isEmpty) {
-      Util.createAnd(nexp +: ncjs.toSeq)
+      createAnd(nexp +: ncjs.toSeq)
     } else nexp
   }
 
@@ -327,8 +329,8 @@ object ExpressionTransformer {
         case Not(Not(e1)) => nnf(e1)
         case e @ Not(t: Terminal) => e
         case e @ Not(FunctionInvocation(_, _)) => e
-        case Not(And(args)) => Util.createOr(args.map(arg => nnf(Not(arg))))
-        case Not(Or(args)) => Util.createAnd(args.map(arg => nnf(Not(arg))))
+        case Not(And(args)) => createOr(args.map(arg => nnf(Not(arg))))
+        case Not(Or(args)) => createAnd(args.map(arg => nnf(Not(arg))))
         case Not(e @ Operator(Seq(e1, e2), op)) => {
         	//matches integer binary relation or a boolean equality
           if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType || e1.getType == IntegerType) {
@@ -391,14 +393,14 @@ object ExpressionTransformer {
           case Or(inArgs) => acc ++ inArgs
           case _ => acc :+ arg
         })
-        Util.createOr(newArgs)
+        createOr(newArgs)
       }
       case And(args) => {
         val newArgs = args.foldLeft(Seq[Expr]())((acc, arg) => arg match {
           case And(inArgs) => acc ++ inArgs
           case _ => acc :+ arg
         })
-        Util.createAnd(newArgs)
+        createAnd(newArgs)
       }
       case _ => e
     })(expr)
@@ -474,7 +476,7 @@ object ExpressionTransformer {
       case _ => e
     })(ine)
     val closure = (e: Expr) => replace(tempMap, e)
-    Util.fix(closure)(newinst)
+    fix(closure)(newinst)
   }
 
   /**
@@ -626,7 +628,7 @@ object ExpressionTransformer {
 
     def distribute(e: Expr): Expr = {
       simplePreTransform(_ match {
-        case e @ FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if Util.isMultFunctions(fd) =>
+        case e @ FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
           val newe = (e1, e2) match {
             case (Plus(sum1, sum2), _) =>
               // distribute e2 over e1

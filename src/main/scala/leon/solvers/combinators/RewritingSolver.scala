@@ -4,7 +4,6 @@ package leon
 package solvers
 package combinators
 
-import purescala.Common._
 import purescala.Expressions._
 
 abstract class RewritingSolver[+S <: Solver, T](underlying: S) {

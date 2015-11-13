@@ -11,6 +11,7 @@ import java.io._
 import java.io._
 import purescala.ScalaPrinter
 import leon.utils._
+import PredicateUtil._
 
 import invariant.structure.Call
 import invariant.structure.FunctionUtils._
@@ -174,7 +175,7 @@ object LetTupleSimplification {
         }
         val newargs: Seq[Expr] = args.map(simplifyArithmetic)
         val Seq(arg1: Expr, arg2: Expr) = newargs
-        val simpval = if (!Util.hasCalls(arg1) && !Util.hasCalls(arg2)) {
+        val simpval = if (!hasCalls(arg1) && !hasCalls(arg2)) {
           import invariant.structure.LinearConstraintUtil._
           val lt = exprToTemplate(LessEquals(Minus(arg1, arg2), InfiniteIntegerLiteral(0)))
           //now, check if all the variables in 'lt' have only positive coefficients

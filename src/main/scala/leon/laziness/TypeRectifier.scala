@@ -15,7 +15,6 @@ import purescala.Extractors._
 import purescala.Types._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
-import leon.verification.AnalysisPhase
 import java.io.File
 import java.io.FileWriter
 import java.io.BufferedWriter
@@ -27,6 +26,7 @@ import leon.Main
 import leon.TransformationPhase
 import LazinessUtil._
 import leon.invariant.datastructure.DisjointSets
+import invariant.util.ProgramUtil._
 
 /**
  * This performs a little bit of Hindley-Milner type Inference

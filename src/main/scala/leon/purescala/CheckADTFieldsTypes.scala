@@ -17,7 +17,7 @@ object CheckADTFieldsTypes extends UnitPhase[Program] {
         for(vd <- ccd.fields) {
           val tpe = vd.getType
           if (bestRealType(tpe) != tpe) {
-            ctx.reporter.warning("Definition of "+ccd.id.asString(ctx)+" has a field of a sub-type ("+vd.asString(ctx)+"): " +
+            ctx.reporter.warning(ccd.getPos, "Definition of "+ccd.id.asString(ctx)+" has a field of a sub-type ("+vd.asString(ctx)+"): " +
               "this type is not supported as-is by solvers and will be up-cast. " +
               "This may cause issues such as crashes.")
           }

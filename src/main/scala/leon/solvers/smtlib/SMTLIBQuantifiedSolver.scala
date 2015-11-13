@@ -14,6 +14,7 @@ trait SMTLIBQuantifiedSolver {
   // The reason is we do not want to assume postconditions of functions referring to
   // the current function, as this may make the proof unsound
   override def assertVC(vc: VC) = {
+    dbg(s"; Solving $vc")
     currentFunDef = Some(vc.fd)
     assertCnstr(withInductiveHyp(vc.condition))
   }

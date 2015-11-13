@@ -2,41 +2,49 @@ import leon.lang._
 import leon.collection._
 
 object BSTSimpler {
-  sealed abstract class Tree
+  case object Leaf extends Tree
   case class Node(left: Tree, value: BigInt, right: Tree) extends Tree
-  case class Leaf() extends Tree
-
-  def content(tree: Tree): Set[BigInt] = tree match {
-    case Leaf() => Set.empty[BigInt]
-    case Node(l, v, r) => content(l) ++ Set(v) ++ content(r)
-  }
-
-  def isBST(tree: Tree) : Boolean = tree match {
-    case Leaf() => true
-    case Node(left, v, right) => {
-      isBST(left) && isBST(right) &&
-      forall((x:BigInt) => (content(left).contains(x) ==> x < v)) &&
-      forall((x:BigInt) => (content(right).contains(x) ==> v < x))
+  sealed abstract class Tree {
+    def isBST: Boolean = this match {
+      case Leaf => true
+      case Node(left, v, right) => {
+        left.isBST && right.isBST &&
+        forall((x:BigInt) => (left.content.contains(x) ==> x < v)) &&
+        forall((x:BigInt) => (right.content.contains(x) ==> v < x))
+      }
     }
-  }
 
-  def emptySet(): Tree = Leaf()
-
-  def insert(tree: Tree, value: BigInt): Node = {
-    require(isBST(tree))
-    tree match {
-      case Leaf() => Node(Leaf(), value, Leaf())
-      case Node(l, v, r) => (if (v < value) {
-        Node(l, v, insert(r, value))
-      } else if (v > value) {
-        Node(insert(l, value), v, r)
-      } else {
-        Node(l, v, r)
-      })
+    def content: Set[BigInt] = this match {
+      case Leaf => Set.empty[BigInt]
+      case Node(l, v, r) => l.content ++ Set(v) ++ r.content
     }
-  } ensuring(res => isBST(res) && content(res) == content(tree) ++ Set(value))
 
-  def createRoot(v: BigInt): Node = {
-    Node(Leaf(), v, Leaf())
-  } ensuring (content(_) == Set(v))
+    def insert(value: BigInt): Node = {
+      require(isBST)
+      this match {
+	case Leaf => Node(Leaf, value, Leaf)
+	case Node(l, v, r) => (if (v < value) {
+          Node(l, v, r.insert(value))
+	} else if (v > value) {
+          Node(l.insert(value), v, r)
+	} else {
+          Node(l, v, r)
+	})
+      }
+    } ensuring(res => res.isBST && res.content == content ++ Set(value))
+
+    def contains(value: BigInt): Boolean = {
+      require(isBST)
+      this match {
+        case Leaf => false
+        case Node(l,v,r) => (if (v < value) {
+	  r.contains(value)
+	} else if (v > value) {
+          l.contains(value)
+	} else true)
+      }
+    } ensuring(res => (res == content.contains(value)))
+
+  }
+  def empty: Tree = Leaf
 }

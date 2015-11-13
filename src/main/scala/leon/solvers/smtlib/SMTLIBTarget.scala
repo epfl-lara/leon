@@ -16,29 +16,31 @@ import purescala.Definitions._
 
 import _root_.smtlib.common._
 import _root_.smtlib.printer.{ RecursivePrinter => SMTPrinter }
-import _root_.smtlib.parser.Commands.{ Constructor => SMTConstructor, FunDef => _, Assert => SMTAssert, _ }
+import _root_.smtlib.parser.Commands.{
+  Constructor => SMTConstructor,
+  FunDef => _,
+  Assert => _,
+  _
+}
 import _root_.smtlib.parser.Terms.{
   Forall => SMTForall,
-  Exists => SMTExists,
+  Exists => _,
   Identifier => SMTIdentifier,
   Let => SMTLet,
   _
-}
-import _root_.smtlib.theories.Core.{
-  Equals => SMTEquals
 }
 import _root_.smtlib.parser.CommandsResponses.{ Error => ErrorResponse, _ }
 import _root_.smtlib.theories._
 import _root_.smtlib.interpreters.ProcessInterpreter
 
 trait SMTLIBTarget extends Interruptible {
-  val context: LeonContext;
-  val program: Program;
-  protected val reporter: Reporter;
+  val context: LeonContext
+  val program: Program
+  protected def reporter = context.reporter
 
   def targetName: String
 
-  implicit val debugSection: DebugSection;
+  implicit val debugSection: DebugSection
 
   protected def interpreterOps(ctx: LeonContext): Seq[String]
 

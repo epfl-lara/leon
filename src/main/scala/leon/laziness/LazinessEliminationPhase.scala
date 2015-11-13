@@ -16,7 +16,7 @@ import purescala.Types._
 import purescala.TypeOps._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
-import leon.verification.AnalysisPhase
+import leon.verification.VerificationPhase
 import java.io.File
 import java.io.FileWriter
 import java.io.BufferedWriter
@@ -27,7 +27,8 @@ import leon.LeonOptionDef
 import leon.Main
 import leon.TransformationPhase
 import LazinessUtil._
-import leon.invariant.datastructure.DisjointSets
+import invariant.datastructure._
+import invariant.util.ProgramUtil._
 
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
@@ -157,7 +158,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     val functions = Seq() // Seq("--functions=rotate-time")
     val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
     val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3") ++ solverOptions ++ functions)
-    val report = AnalysisPhase.apply(ctx, prog)
+    val report = VerificationPhase.apply(ctx, prog)
     println(report.summaryString)
     /*val timeout = 10
     val rep = ctx.reporter

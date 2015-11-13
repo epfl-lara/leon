@@ -1,10 +1,10 @@
-/* Copyright 2009-2014 EPFL, Lausanne */
+/* Copyright 2009-2015 EPFL, Lausanne */
 
 package leon.regression.verification
 
 import _root_.smtlib.interpreters._
 import leon._
-import leon.verification.AnalysisPhase
+import leon.verification.VerificationPhase
 
 /* @EK: Disabled for now as many tests fail 
 class NewSolversSuite extends VerificationSuite {

@@ -4,11 +4,9 @@ package leon
 package synthesis
 package rules
 
-import purescala.Types._
 import solvers.sygus._
 
 import grammars._
-import utils._
 
 case object SygusCVC4 extends Rule("SygusCVC4") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

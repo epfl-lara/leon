@@ -10,6 +10,8 @@ import purescala.Types._
 import invariant.factories._
 import invariant.util._
 import Util._
+import PredicateUtil._
+import ProgramUtil._
 import scala.language.implicitConversions
 
 /**
@@ -108,8 +110,8 @@ object FunctionUtils {
               case a if exists(isQMark)(a) => true
               case _ => false
             }
-            //println(s"Otherpreds: $otherPreds ${qmarksToTmplFunction(Util.createAnd(tempExprs))}")
-            Util.createAnd(otherPreds :+ qmarksToTmplFunction(Util.createAnd(tempExprs)))
+            //println(s"Otherpreds: $otherPreds ${qmarksToTmplFunction(createAnd(tempExprs))}")
+            createAnd(otherPreds :+ qmarksToTmplFunction(createAnd(tempExprs)))
           case pb if exists(isQMark)(pb) =>
             qmarksToTmplFunction(pb)
           case other => other

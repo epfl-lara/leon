@@ -18,46 +18,50 @@ class OrbRegressionSuite extends LeonRegressionSuite {
     }
   }
 
-  private def testInference(f: File, bound: Int) {
+  private def testInference(f: File, bound: Option[Int] = None) {
 
-    val ctx = createLeonContext("--inferInv", "--minbounds", "--timeout="+bound)
+    val ctx = createLeonContext("--inferInv")
     val beginPipe = leon.frontends.scalac.ExtractionPhase andThen
       new leon.utils.PreprocessingPhase
     val (ctx2, program) = beginPipe.run(ctx, f.getAbsolutePath :: Nil)
     val processPipe = InferInvariantsPhase
     val (ctx3, report) = processPipe.run(ctx2, program)
-    val fails = report.conditions.filterNot(_.invariant.isDefined)
-    if (!fails.isEmpty)
-      fail(s"Inference failed for functions ${fails.map(_.fd).mkString("\n")}")
+    if (report.conditions.isEmpty)
+      fail(s"Nothing was solved")
+    else {
+      val fails = report.conditions.filterNot(_.prettyInv.isDefined)
+      if (!fails.isEmpty)
+        fail(s"Inference failed for functions ${fails.map(_.fd).mkString("\n")}")
+    }
   }
 
   forEachFileIn("regression/orb/timing") { f =>
     test("Timing: " + f.getName) {
-      testInference(f, 50)
+      testInference(f)
     }
   }
 
   forEachFileIn("regression/orb/stack/") { f =>
     test("Stack: " + f.getName) {
-      testInference(f, 50)
+      testInference(f)
     }
   }
 
   forEachFileIn("regression/orb//depth") { f =>
     test("Depth: " + f.getName) {
-      testInference(f, 50)
+      testInference(f)
     }
   }
 
   forEachFileIn("regression/orb/numerical") { f =>
     test("Numerical: " + f.getName) {
-      testInference(f, 50)
+      testInference(f)
     }
   }
 
   forEachFileIn("regression/orb/combined/") { f =>
     test("Multiple Instrumentations: " + f.getName) {
-      testInference(f, 50)
+      testInference(f)
     }
   }
 }

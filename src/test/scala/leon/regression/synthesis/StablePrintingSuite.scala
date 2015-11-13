@@ -93,8 +93,8 @@ class StablePrintingSuite extends LeonRegressionSuite {
             for (e <- reporter.lastErrors) {
               info(e)
             }
-            println(e)
             info(e.getMessage)
+            e.printStackTrace()
             fail("Compilation failed")
         }
 
@@ -117,7 +117,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
                       case Some(sol) =>
                         val result = sol.toSimplifiedExpr(ctx, pgm)
 
-                        val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, (indent: Int) => {
+                        val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.source, (indent: Int) => {
                           val p = new ScalaPrinter(PrinterOptions(), Some(pgm))
                           p.pp(result)(PrinterContext(result, List(ci.fd), indent, p))
                           p.toString

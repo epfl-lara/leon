@@ -15,7 +15,6 @@ import utils._
 
 import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre}
 import templates._
-import utils.Interruptible
 import evaluators._
 
 class UnrollingSolver(val context: LeonContext, val program: Program, underlying: Solver)
@@ -84,6 +83,8 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
       solver.assertCnstr(cl)
     }
   }
+
+  override def dbg(msg: => Any) = underlying.dbg(msg)
 
   def push() {
     unrollingBank.push()

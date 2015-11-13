@@ -4,7 +4,6 @@ package leon
 package solvers
 package combinators
 
-import purescala.Common._
 import purescala.Expressions._
 import verification.VC
 
@@ -32,6 +31,8 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
     solvers.foreach(_.assertVC(vc))
   }
 
+  override def dbg(msg: => Any) = solvers foreach (_.dbg(msg))
+
   def check: Option[Boolean] = {
     model = Model.empty
 
@@ -39,17 +40,21 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
     // solving
     val fs = solvers.map { s =>
       Future {
-        val result = s.check
-        val model: Model = if (result == Some(true)) {
-          s.getModel
-        } else {
-          Model.empty
+        try {
+          val result = s.check
+          val model: Model = if (result == Some(true)) {
+            s.getModel
+          } else {
+            Model.empty
+          }
+          (s, result, model)
+        } catch {
+          case _: StackOverflowError =>
+            context.reporter.warning("Stack Overflow while running solver.check()!")
+            (s, None, Model.empty)
         }
-        (s, result, model)
       }
     }
-
-    fs.foreach(_ onFailure { case ex: Throwable => ex.printStackTrace() })
 
     val result = Future.find(fs)(_._2.isDefined)
 
@@ -64,7 +69,7 @@ class PortfolioSolver[S <: Solver with Interruptible](val context: LeonContext, 
         r
       case None =>
         context.reporter.debug("No solver succeeded")
-        fs.foreach(f => println(f.value))
+        //fs.foreach(f => println(f.value))
         None
     }
 

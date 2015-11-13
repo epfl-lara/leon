@@ -4,24 +4,16 @@ package leon
 package solvers
 package sygus
 
-import utils._
-import grammars._
-
 import purescala.Common._
 import purescala.Definitions._
-import purescala.Types._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Expressions._
-
-import scala.collection.mutable.ArrayBuffer
 
 import synthesis.Problem
 
 import leon.solvers.smtlib._
 
-import _root_.smtlib.common._
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => _, _}
@@ -30,8 +22,6 @@ import _root_.smtlib.parser.Parser.UnexpectedEOFException
 abstract class SygusSolver(val context: LeonContext, val program: Program, val p: Problem) extends SMTLIBTarget {
   implicit val ctx = context
   implicit val debugSection = leon.utils.DebugSectionSynthesis
-
-  val reporter = context.reporter
 
   protected def unsupported(t: Tree, str: String): Nothing = {
     throw new Unsupported(t, str)

@@ -7,11 +7,10 @@ import leon.purescala._
 import leon.purescala.Definitions.Program
 import leon.purescala.Quantification.CheckForalls
 import leon.solvers.isabelle.AdaptationPhase
-import leon.synthesis.{ConvertWithOracle, ConvertHoles}
 import leon.verification.InjectAsserts
-import leon.xlang.XLangDesugaringPhase
+import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase}
 
-class PreprocessingPhase(private val desugarXLang: Boolean = false) extends LeonPhase[Program, Program] {
+class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Program, Program] {
 
   val name = "preprocessing"
   val description = "Various preprocessings on Leon programs"
@@ -26,13 +25,18 @@ class PreprocessingPhase(private val desugarXLang: Boolean = false) extends Leon
       }
     }
 
+    val checkX = if (desugarXLang) {
+      NoopPhase[Program]()
+    } else {
+      NoXLangFeaturesChecking
+    }
+
     val pipeBegin =
       debugTrees("Program after extraction") andThen
+      checkX                                 andThen
       MethodLifting                          andThen
       TypingPhase                            andThen
-      ConvertWithOracle                      andThen
-      ConvertHoles                           andThen
-      CompleteAbstractDefinitions            andThen
+      synthesis.ConversionPhase              andThen
       CheckADTFieldsTypes                    andThen
       InjectAsserts                          andThen
       InliningPhase                          andThen
@@ -42,7 +46,7 @@ class PreprocessingPhase(private val desugarXLang: Boolean = false) extends Leon
       XLangDesugaringPhase andThen
       debugTrees("Program after xlang desugaring")
     } else {
-      xlang.NoXLangFeaturesChecking
+      NoopPhase[Program]()
     }
 
     val phases =

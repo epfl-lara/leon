@@ -766,7 +766,7 @@ object Expressions {
   }
   /** $encodingof `set.length` */
   case class SetCardinality(set: Expr) extends Expr {
-    val getType = Int32Type
+    val getType = IntegerType
   }
   /** $encodingof `set.subsetOf(set2)` */
   case class SubsetOf(set1: Expr, set2: Expr) extends Expr {
@@ -887,7 +887,7 @@ object Expressions {
   /** $encodingof a synthesizable hole in a program. Represented by `???[tpe]`
     * in Leon source code.
     *
-    * A [[Hole]] gets transformed into a [[Choose]] construct during [[leon.synthesis.ConvertHoles the ConvertHoles phase]].
+    * A [[Hole]] gets transformed into a [[Choose]] construct during [[leon.synthesis.ConversionPhase the ConvertHoles phase]].
     */
   case class Hole(tpe: TypeTree, alts: Seq[Expr]) extends Expr with Extractable {
     val getType = tpe

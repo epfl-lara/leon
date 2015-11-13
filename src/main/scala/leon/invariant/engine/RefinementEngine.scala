@@ -15,14 +15,16 @@ import invariant.util._
 import invariant.util.Util._
 import invariant.structure._
 import FunctionUtils._
+import Util._
+import PredicateUtil._
+import ProgramUtil._
 
 //TODO: the parts of the code that collect the new head functions is ugly and has many side-effects. Fix this.
 //TODO: there is a better way to compute heads, which is to consider all guards not previous seen
-class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
+class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: ConstraintTracker) {
 
   val tru = BooleanLiteral(true)
   val reporter = ctx.reporter
-  val prog = ctx.program
   val cg = CallGraphUtil.constructCallGraph(prog)
 
   //this count indicates the number of times we unroll a recursive call
@@ -161,7 +163,7 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
           } else plainBody
 
           //note: here we are only adding the template as the postcondition
-          val idmap = Util.formalToActual(Call(resvar, FunctionInvocation(recFunTyped, recFun.params.map(_.toVariable))))
+          val idmap = formalToActual(Call(resvar, FunctionInvocation(recFunTyped, recFun.params.map(_.toVariable))))
           val postTemp = replace(idmap, recFun.getTemplate)
           val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr, Not(postTemp)), ctx.multOp)
           ctrTracker.addVC(recFun, vcExpr)
@@ -185,8 +187,8 @@ class RefinementEngine(ctx: InferenceContext, ctrTracker: ConstraintTracker) {
     //Important: make sure we use a fresh body expression here
     val freshBody = freshenLocals(matchToIfThenElse(callee.body.get))
     val calleeSummary =
-      Equals(Util.getFunctionReturnVariable(callee), freshBody)
-    val argmap1 = Util.formalToActual(call)
+      Equals(getFunctionReturnVariable(callee), freshBody)
+    val argmap1 = formalToActual(call)
     val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary), ctx.multOp)
 
     if (this.dumpInlinedSummary)
