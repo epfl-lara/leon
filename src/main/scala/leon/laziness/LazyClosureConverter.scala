@@ -167,7 +167,15 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       // create a body of the match
       val args = cdef.fields map { fld => CaseClassSelector(ctype, binder.toVariable, fld.id) }
       val op = closureFactory.caseClassToOp(cdef)
+      val targetFun =
+        if (removeRecursionViaEval && op.hasPostcondition) {
+          // checking for postcondition is a hack to make sure that we
+          // do not make all targets uninterpreted
+          uninterpretedTargets(op)
+        } else funMap(op)
       // TODO: here we are assuming that only one state is used, fix this.
+
+      //(a) construct the value component
       val stArgs =
         if (funsNeedStates(op)){
           // Note: it is important to use uninterpreted state here for 2 reasons:
@@ -176,18 +184,19 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
           Seq(getUninterpretedState(tname, tparams))
         }
         else Seq()
-      val targetFun =
-        if (removeRecursionViaEval && op.hasPostcondition) {
-          // checking for postcondition is a hack to make sure that we
-          // do not make all targets uninterpreted
-          uninterpretedTargets(op)
-        } else funMap(op)
       //println(s"invoking function $targetFun with args $args")
       val invoke = FunctionInvocation(TypedFunDef(targetFun, tparams), args ++ stArgs) // we assume that the type parameters of lazy ops are same as absdefs
       val invPart = if (funsRetStates(op)) {
         TupleSelect(invoke, 1) // we are only interested in the value
       } else invoke
-      val newst = SetUnion(param2.toVariable, FiniteSet(Set(binder.toVariable), stType.base))
+
+      //(b) construct the state component
+      val stPart = if (funsRetStates(op)) {
+        val stInvoke = FunctionInvocation(TypedFunDef(targetFun, tparams),
+           args ++ (if (funsNeedStates(op)) Seq(param2.toVariable) else Seq()))
+        TupleSelect(stInvoke, 2)
+      } else param2.toVariable
+      val newst = SetUnion(stPart, FiniteSet(Set(binder.toVariable), stType.base))
       val rhs = Tuple(Seq(invPart, newst))
       MatchCase(pattern, None, rhs)
     }

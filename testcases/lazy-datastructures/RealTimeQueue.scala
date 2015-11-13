@@ -82,6 +82,7 @@ object RealTimeQueue {
     }
   }
 
+  @invstate
   def rotate[T](f: $[LList[T]], r: List[T], a: $[LList[T]]): LList[T] = {
     require(r.size == ssize(f) + 1 && isConcrete(f)) // size invariant between 'f' and 'r' holds
     (f.value, r) match {

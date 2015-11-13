@@ -140,6 +140,7 @@ class SerialInstrumenter(program: Program,
       //copy annotations
       from.flags.foreach(to.addFlag(_))
       to.fullBody = from.fullBody match {
+        case b @ NoTree(_) => b
         case Require(pre, body) =>
           //here 'from' does not have a postcondition but 'to' will always have a postcondition
           val toPost =

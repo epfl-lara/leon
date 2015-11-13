@@ -14,6 +14,7 @@ import scala.collection.mutable.{Map => MutableMap}
 
 object tprCostModel {
   def costOf(e: Expr): Int = e match {
+    case FunctionInvocation(fd, _) if !fd.hasBody => 0 // uninterpreted functions
     case FunctionInvocation(fd, args) => 1
     case t: Terminal => 0
     case _ => 1
@@ -32,7 +33,7 @@ class TPRInstrumenter(p: Program, si: SerialInstrumenter) extends Instrumenter(p
 
   //find all functions transitively called from rootFuncs (here ignore functions called via pre/post conditions)
   val tprFuncs = getRootFuncs()
-  val timeFuncs = tprFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd))
+  val timeFuncs = tprFuncs.foldLeft(Set[FunDef]())((acc, fd) => acc ++ cg.transitiveCallees(fd)).filter(_.hasBody)
 
   def functionsToInstrument(): Map[FunDef, List[Instrumentation]] = {
     var emap = MutableMap[FunDef,List[Instrumentation]]()

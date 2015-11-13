@@ -257,4 +257,17 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
     invFuns
   }*/
+  // Expressions for testing solvers
+  // a test expression
+    /*val tparam =
+    val dummyFunDef = new FunDef(FreshIdentifier("i"),Seq(), Seq(), IntegerType)
+    val eq = Equals(FunctionInvocation(TypedFunDef(dummyFunDef, Seq()), Seq()), InfiniteIntegerLiteral(0))
+    import solvers._
+    val solver = SimpleSolverAPI(SolverFactory(() => new solvers.smtlib.SMTLIBCVC4Solver(ctx, prog)))
+    solver.solveSAT(eq) match {
+      case (Some(true), m) =>
+        println("Model: "+m.toMap)
+      case _ => println("Formula is unsat")
+    }
+    System.exit(0)*/
 }
