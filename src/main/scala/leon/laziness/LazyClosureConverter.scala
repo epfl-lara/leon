@@ -105,7 +105,6 @@ class LazyClosureConverter(p: Program, closureFactory: LazyClosureFactory) {
       val initTparams = absClass.tparams.map(_.tp)
       val stType = SetType(AbstractClassType(absClass, initTparams))
       val fd = new FunDef(FreshIdentifier("ui" + lazyTypename), absClass.tparams, Seq(), stType)
-      fd.body = Some(Hole(stType, Seq()))
       uiStateFuns += (lazyTypename -> fd)
       fd
     }

@@ -69,4 +69,7 @@ spawn()
 parallel(op(), join(), join())
 //this means op() and the two futures will execute in parallel.
 
+d) Memoization: They are evaluated at the time of creation unlike lazy closures. 
+		We need to track whether a closure belongs to a state or not.
+
 
