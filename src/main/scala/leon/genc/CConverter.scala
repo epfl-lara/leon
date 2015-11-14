@@ -337,7 +337,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case BVTimes(lhs, rhs)        => buildBinOp(lhs, "*",   rhs)
     case BVDivision(lhs, rhs)     => buildBinOp(lhs, "/",   rhs)
     case BVRemainder(lhs, rhs)    => buildBinOp(lhs, "%",   rhs)
-    case BVNot(rhs)               => buildUnOp (     "!",   rhs) // TODO check if this one isn't in fact '~'
+    case BVNot(rhs)               => buildUnOp (     "~",   rhs)
     case BVAnd(lhs, rhs)          => buildBinOp(lhs, "&",   rhs)
     case BVOr(lhs, rhs)           => buildBinOp(lhs, "|",   rhs)
     case BVXOr(lhs, rhs)          => buildBinOp(lhs, "^",   rhs)
