@@ -15,6 +15,7 @@ import scala.sys.process._
 
 import org.scalatest.{ Args, Status }
 
+import java.io.ByteArrayInputStream
 import java.nio.file.{ Files, Path }
 
 class GenCSuite extends LeonRegressionSuite {
@@ -100,7 +101,8 @@ class GenCSuite extends LeonRegressionSuite {
     // is printed for some reason.
 
     def testCompiler(cc: String): Boolean = try {
-      val process = s"echo $testCode" #| s"$cc $ccflags -o $testBinary -xc -" #&& s"$testBinary"
+      def input = new ByteArrayInputStream(testCode.getBytes())
+      val process = s"$cc $ccflags -o $testBinary -xc -" #< input #&& s"$testBinary"
       runProcess(process) == 0
     } catch {
       case _: java.lang.RuntimeException => false
