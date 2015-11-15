@@ -28,11 +28,17 @@ import LazinessUtil._
 
 class LazyInstrumenter(p: Program) {
 
-  def apply: Program = {
-    val exprInstFactory = (x: Map[FunDef, FunDef], y: SerialInstrumenter, z: FunDef) =>
+  val exprInstFactory = (x: Map[FunDef, FunDef], y: SerialInstrumenter, z: FunDef) =>
       new LazyExprInstrumenter(x, y)(z)
-    (new SerialInstrumenter(p, Some(exprInstFactory))).apply
-  }
+  val serialInst = new SerialInstrumenter(p, Some(exprInstFactory))
+
+  /*def funsWithInstSpecs  = {
+    serialInst.instToInstrumenter.values.flatMap{inst =>
+      inst.getRootFuncs(p)
+    }.toList.distinct
+  }*/
+
+  def apply: Program = serialInst.apply
 
   class LazyExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrumenter)(implicit currFun: FunDef)
       extends ExprInstrumenter(funMap, serialInst)(currFun) {
@@ -44,18 +50,35 @@ class LazyInstrumenter(p: Program) {
       if (isEvalFunction(currFun)) {
         val closureParam = currFun.params(0).id.toVariable
         val stateParam = currFun.params(1).id.toVariable
-        val nbody = super.apply(e)
+        // we need to specialize instrumentation of body
+        val nbody = e match {
+          case MatchExpr(scr, mcases) =>
+            val ncases = mcases map {
+              case MatchCase(pat, guard, Tuple(Seq(valpart, statepart))) =>
+                // instrument the state part (and ignore the val part)
+                // (Note: this is an hack to ensure that we always consider only one call to targets)
+                val transState = transform(statepart)(Map())
+                val transVal = transform(valpart)(Map())
+
+                val caseId = FreshIdentifier("cd", transState.getType, true)
+                val casePart = Tuple(Seq(TupleSelect(transVal, 1), TupleSelect(caseId.toVariable, 1)))
+                val instPart = instrumenters map { m => selectInst(caseId.toVariable, m.inst) }
+                val lete = Let(caseId, transState, Tuple(casePart +: instPart))
+                MatchCase(pat, guard, lete)
+            }
+            MatchExpr(scr, ncases)
+        }
+        //val nbody = super.apply(e)
         val bodyId = FreshIdentifier("bd", nbody.getType, true)
         val instExprs = instrumenters map { m =>
           IfExpr(ElementOfSet(closureParam, stateParam),
-              //SubsetOf(FiniteSet(Set(closureParam), closureParam.getType), stateParam),
             InfiniteIntegerLiteral(costOfMemoization(m.inst)),
             selectInst(bodyId.toVariable, m.inst))
         }
         Let(bodyId, nbody,
           Tuple(TupleSelect(bodyId.toVariable, 1) +: instExprs))
-
-      } else super.apply(e)
+      } else
+        super.apply(e)
     }
   }
 }

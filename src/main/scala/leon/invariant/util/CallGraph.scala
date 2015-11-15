@@ -18,6 +18,7 @@ import invariant.datastructure._
  */
 class CallGraph {
   val graph = new DirectedGraph[FunDef]()
+  lazy val reverseCG = graph.reverse
 
   def addFunction(fd: FunDef) = graph.addNode(fd)
 
@@ -31,7 +32,19 @@ class CallGraph {
   }
 
   def transitiveCallees(src: FunDef): Set[FunDef] = {
-    graph.BFSReachables(src)
+    graph.BFSReachables(Seq(src))
+  }
+
+  def transitiveCallers(dest: FunDef) : Set[FunDef] = {
+    reverseCG.BFSReachables(Seq(dest))
+  }
+
+  def transitiveCallees(srcs: Seq[FunDef]): Set[FunDef] = {
+    graph.BFSReachables(srcs)
+  }
+
+  def transitiveCallers(dests: Seq[FunDef]) : Set[FunDef] = {
+    reverseCG.BFSReachables(dests)
   }
 
   def isRecursive(fd: FunDef): Boolean = {

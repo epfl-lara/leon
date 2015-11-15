@@ -1,9 +1,11 @@
 import leon.lazyeval._
+import leon.lazyeval.$._
 import leon.lang._
 import leon.annotation._
 import leon.collection._
 import leon.instrumentation._
 
+//TODO: need to automatically check monotonicity of isConcrete
 object RealTimeQueue {
 
   sealed abstract class LList[T] {
@@ -33,6 +35,7 @@ object RealTimeQueue {
 
   def ssize[T](l: $[LList[T]]): BigInt = (l*).size
 
+  //@monotonic
   def isConcrete[T](l: $[LList[T]]): Boolean = {
     (l.isEvaluated && (l* match {
       case SCons(_, tail) =>
@@ -41,16 +44,19 @@ object RealTimeQueue {
     })) || (l*).isEmpty
   }
 
-  // an axiom about lazy streams (this should be a provable axiom, but not as of now)
-  @axiom
-  def streamLemma[T](l: $[LList[T]]) = {
-    l.isEvaluated ||
-      (l* match {
-        case SCons(_, tail) =>
-          l != tail && !tail.isEvaluated
-        case _ => true
-      })
-  } holds
+   @invstate
+  def rotate[T](f: $[LList[T]], r: List[T], a: $[LList[T]]): LList[T] = {
+    require(r.size == ssize(f) + 1 && isConcrete(f)) // size invariant between 'f' and 'r' holds
+    (f.value, r) match {
+      case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
+        SCons[T](y, a)
+      case (SCons(x, tail), Cons(y, r1)) =>
+        val newa: LList[T] = SCons[T](y, a)
+        val rot = $(rotate(tail, r1, newa)) //this creates a lazy rotate operation
+        SCons[T](x, rot)
+    }
+  } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons && // using f*.size instead of ssize seems to help magically
+                     time <= 30)
 
   def firstUnevaluated[T](l: $[LList[T]]): $[LList[T]] = {
     if (l.isEvaluated) {
@@ -63,15 +69,14 @@ object RealTimeQueue {
       l
   } ensuring (res => (!(res*).isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
     ((res*).isEmpty || !res.isEvaluated) && // if the return value is not a Nil closure then it would not have been evaluated
-    streamLemma(res) &&
     (res.value match {
       case SCons(_, tail) =>
-        firstUnevaluated(l) == tail // after evaluating the firstUnevaluated closure in 'l' we get the next unevaluated closure
+        firstUnevaluated(l) == firstUnevaluated(tail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
       case _ => true
     }))
 
   def streamScheduleProperty[T](s: $[LList[T]], sch: $[LList[T]]) = {
-    firstUnevaluated(s) == sch
+    firstUnevaluated(s) == firstUnevaluated(sch)
   }
 
   case class Queue[T](f: $[LList[T]], r: List[T], s: $[LList[T]]) {
@@ -82,21 +87,6 @@ object RealTimeQueue {
     }
   }
 
-  @invstate
-  def rotate[T](f: $[LList[T]], r: List[T], a: $[LList[T]]): LList[T] = {
-    require(r.size == ssize(f) + 1 && isConcrete(f)) // size invariant between 'f' and 'r' holds
-    (f.value, r) match {
-      case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
-        SCons[T](y, a)
-      case (SCons(x, tail), Cons(y, r1)) =>
-        val newa: LList[T] = SCons[T](y, a)
-        val rot = $(rotate(tail, r1, $(newa))) //this creates a lazy rotate operation
-        SCons[T](x, rot)
-    }
-  } ensuring (res => res.size == ssize(f) + r.size + ssize(a) && res.isCons &&
-                     time <= 30)
-
-  // TODO: make newa into sch to avoid a different closure category
   def createQueue[T](f: $[LList[T]], r: List[T], sch: $[LList[T]]): Queue[T] = {
     require(streamScheduleProperty(f, sch) &&
       ssize(sch) == ssize(f) - r.size + 1) //size invariant holds
@@ -105,7 +95,7 @@ object RealTimeQueue {
         Queue(f, r, tail)
       case SNil() =>
         val newa: LList[T] = SNil[T]()
-        val rotres = $(rotate(f, r, $(newa)))
+        val rotres = $(rotate(f, r, newa))
         Queue(rotres, Nil[T](), rotres)
     }
   } ensuring (res => res.valid && time <= 50)
@@ -124,9 +114,9 @@ object RealTimeQueue {
             Queue(nf, q.r, st)
           case _ =>
             val newa: LList[T] = SNil[T]()
-            val rotres = $(rotate(nf, q.r, $(newa)))
+            val rotres = $(rotate(nf, q.r, newa))
             Queue(rotres, Nil[T](), rotres)
         }
     }
-  } ensuring (res => time <= 120) //res.valid && )
+  } ensuring(res => res.valid && time <= 120)
 }

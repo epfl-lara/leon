@@ -126,11 +126,13 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
       case Variable(id) if paramMap.contains(id) =>
         paramMap(id).toVariable
       case TupleSelect(tup, index) => TupleSelect(rec(tup), index)
+      case Ensuring(NoTree(_), post) =>
+        Ensuring(nfd.fullBody, rec(post)) // the newfd body would already be type correct
       case Operator(args, op)      => op(args map rec)
       case t: Terminal             => t
     }
     val nbody = rec(ifd.fullBody)
-    //println("Inferring types for: "+ifd.id)
+    //println(s"Inferring types for ${ifd.id} new fun: $nfd new body: $nbody")
     val initGamma = nfd.params.map(vd => vd.id -> vd.getType).toMap
     TypeChecker.inferTypesOfLocals(nbody, initGamma)
   }

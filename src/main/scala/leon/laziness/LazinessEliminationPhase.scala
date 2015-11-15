@@ -22,6 +22,9 @@ import java.io.FileWriter
 import java.io.BufferedWriter
 import scala.util.matching.Regex
 import leon.purescala.PrettyPrinter
+import leon.solvers._
+import leon.solvers.z3._
+import leon.transformations._
 import leon.LeonContext
 import leon.LeonOptionDef
 import leon.Main
@@ -29,32 +32,48 @@ import leon.TransformationPhase
 import LazinessUtil._
 import invariant.datastructure._
 import invariant.util.ProgramUtil._
+import purescala.Constructors._
+import leon.verification._
+import PredicateUtil._
 
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
+  val dumpInputProg = false
+  val dumpLiftProg = false
   val dumpProgramWithClosures = false
   val dumpTypeCorrectProg = false
   val dumpProgWithPreAsserts = true
+  val dumpProgWOInstSpecs = false
   val dumpInstrumentedProgram = false
   val debugSolvers = false
-
   val skipVerification = false
   val prettyPrint = false
+  val debugInstVCs = false
 
   val name = "Laziness Elimination Phase"
   val description = "Coverts a program that uses lazy construct" +
     " to a program that does not use lazy constructs"
+
+  // options that control behavior
+  val optRefEquality = LeonFlagOptionDef("useRefEquality", "Uses reference equality which memoizing closures", false)
 
   /**
    * TODO: enforce that the specs do not create lazy closures
    * TODO: we are forced to make an assumption that lazy ops takes as type parameters only those
    * type parameters of their return type and not more. (enforce this)
    * TODO: Check that lazy types are not nested
+   * TODO: expose in/out state to the user level, so that they can be used in specs
+   * For now using lazyinv annotation
    */
   def apply(ctx: LeonContext, prog: Program): Program = {
 
+    if (dumpInputProg)
+      println("Input prog: \n" + ScalaPrinter.apply(prog))
     val nprog = liftLazyExpressions(prog)
-    val progWithClosures = (new LazyClosureConverter(nprog, new LazyClosureFactory(nprog))).apply
+    if(dumpLiftProg)
+      println("After lifting expressions: \n" + ScalaPrinter.apply(nprog))
+
+    val progWithClosures = (new LazyClosureConverter(nprog, ctx, new LazyClosureFactory(nprog))).apply
     if (dumpProgramWithClosures)
       println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures))
 
@@ -69,14 +88,24 @@ object LazinessEliminationPhase extends TransformationPhase {
       prettyPrintProgramToFile(progWithPre, ctx)
     }
 
-    // instrument the program for resources
-    val instProg = (new LazyInstrumenter(progWithPre)).apply
-    if (dumpInstrumentedProgram)
+    // verify the contracts that do not use resources
+    val progWOInstSpecs = removeInstrumentationSpecs(progWithPre)
+    if (dumpProgWOInstSpecs) {
+      println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
+    }
+    if (!skipVerification)
+      checkSpecifications(progWOInstSpecs)
+
+    // instrument the program for resources (note: we avoid checking preconditions again here)
+    val instProg = (new LazyInstrumenter(typeCorrectProg)).apply
+    if (dumpInstrumentedProgram){
       println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
+      prettyPrintProgramToFile(instProg, ctx)
+    }
 
     // check specifications (to be moved to a different phase)
     if (!skipVerification)
-      checkSpecifications(instProg)
+      checkInstrumentationSpecs(instProg)
     if (prettyPrint)
       prettyPrintProgramToFile(instProg, ctx)
     instProg
@@ -103,6 +132,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       md.definedFunctions.foreach {
         case fd if fd.hasBody && !fd.isLibrary =>
           val nbody = simplePostTransform {
+            // is the arugment of lazy invocation not a function ?
             case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) && !arg.isInstanceOf[FunctionInvocation] =>
               val freevars = variablesOf(arg).toList
               val tparams = freevars.map(_.getType) flatMap getTypeParameters distinct
@@ -122,32 +152,54 @@ object LazinessEliminationPhase extends TransformationPhase {
               FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams),
                 freevars.map(_.toVariable))))
 
+            // is the argument of eager invocation not a variable ?
+            case finv @ FunctionInvocation(TypedFunDef(fd, _), Seq(arg)) if isEagerInvocation(finv)(prog) && !arg.isInstanceOf[Variable] =>
+              val rootType = bestRealType(arg.getType)
+              val freshid = FreshIdentifier("t", rootType)
+              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, Seq(rootType)), Seq(freshid.toVariable)))
+
             case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
               FunctionInvocation(TypedFunDef(fdmap(fd), targs), args)
             case e => e
 
           }(fd.fullBody) // TODO: specs should not create lazy closures. enforce this
+          //println(s"New body of $fd: $nbody")
           fdmap(fd).fullBody = nbody
         case _ => ;
       }
     }
+    val repProg = copyProgram(prog, (defs: Seq[Definition]) => defs.map {
+      case fd: FunDef => fdmap.getOrElse(fd, fd)
+      case d          => d
+    })
     val nprog =
       if (!newfuns.isEmpty) {
-        val repProg = copyProgram(prog, (defs: Seq[Definition]) => defs.map {
-          case fd: FunDef => fdmap.getOrElse(fd, fd)
-          case d          => d
-        })
         val modToNewDefs = newfuns.values.groupBy(_._2).map { case (k, v) => (k, v.map(_._1)) }.toMap
         appendDefsToModules(repProg, modToNewDefs)
       } else
-        prog
+        repProg
     if (debugLifting)
       println("After lifiting arguments of lazy constructors: \n" + ScalaPrinter.apply(nprog))
     nprog
   }
 
-  import leon.solvers._
-  import leon.solvers.z3._
+  def removeInstrumentationSpecs(p: Program): Program = {
+    def hasInstVar(e: Expr) = {
+      exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)
+    }
+    val newPosts = p.definedFunctions.collect {
+      case fd if fd.postcondition.exists { exists(hasInstVar) } =>
+        // remove the conjuncts that use instrumentation vars
+        val Lambda(resdef, pbody) = fd.postcondition.get
+        val npost = pbody match {
+          case And(args) =>
+            PredicateUtil.createAnd(args.filterNot(hasInstVar))
+          case e => Util.tru
+        }
+        (fd -> Lambda(resdef, npost))
+    }.toMap
+    ProgramUtil.updatePost(newPosts, p) //note: this will not update libraries
+  }
 
   def checkSpecifications(prog: Program) {
     // convert 'axiom annotation to library
@@ -155,37 +207,66 @@ object LazinessEliminationPhase extends TransformationPhase {
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-    val functions = Seq() // Seq("--functions=rotate-time")
+    val functions = Seq() //Seq("--functions=rotate")
     val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3") ++ solverOptions ++ functions)
+    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions ++ functions)
     val report = VerificationPhase.apply(ctx, prog)
     println(report.summaryString)
-    /*val timeout = 10
-    val rep = ctx.reporter
-     * val fun = prog.definedFunctions.find(_.id.name == "firstUnevaluated").get
-    // create a verification context.
-    val solver = new FairZ3Solver(ctx, prog) with TimeoutSolver
-    val solverF = new TimeoutSolverFactory(SolverFactory(() => solver), timeout * 1000)
-    val vctx = VerificationContext(ctx, prog, solverF, rep)
-    val vc = (new DefaultTactic(vctx)).generatePostconditions(fun)(0)
-    val s = solverF.getNewSolver()
+  }
+
+  def checkInstrumentationSpecs(p: Program) = {
+    p.definedFunctions.foreach { fd =>
+      if (fd.annotations.contains("axiom"))
+        fd.addFlag(Annotation("library", Seq()))
+    }
+    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
+    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
+
+    //(a) create vcs
+    // Note: we only need to check specs involving instvars since others were checked before.
+    // Moreover, we can add other specs as assumptions since (A => B) ^ ((A ^ B) => C) => A => B ^ C
+    //checks if the expression uses res._2 which corresponds to instvars after instrumentation
+    def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
+        exists(_ == TupleSelect(resid.toVariable, 2))(e)
+
+    val vcs = p.definedFunctions.collect {
+      // skipping verification of uninterpreted functions
+      case fd if !fd.isLibrary && fd.hasBody && fd.postcondition.exists{post =>
+        val Lambda(Seq(resdef), pbody) =  post
+        accessesSecondRes(pbody, resdef.id)
+      } =>
+        val Lambda(Seq(resdef), pbody) = fd.postcondition.get
+        val (instPost, assumptions) = pbody match {
+          case And(args) =>
+            val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
+            (createAnd(instSpecs), createAnd(rest))
+          case e => (e, Util.tru)
+        }
+        val vc = implies(createAnd(Seq(fd.precOrTrue, assumptions)),
+            application(Lambda(Seq(resdef), instPost), Seq(fd.body.get)))
+        if(debugInstVCs)
+          println(s"VC for function ${fd.id} : "+vc)
+        VC(vc, fd, VCKinds.Postcondition)
+    }
+    //(b) create a verification context
+    val timeout: Option[Long] = None
+    val reporter = ctx.reporter
+    // Solvers selection and validation
+    val baseSolverF = SolverFactory.getFromSettings(ctx, p)
+    val solverF = timeout match {
+      case Some(sec) =>
+        baseSolverF.withTimeout(sec / 1000)
+      case None =>
+        baseSolverF
+    }
+    val vctx = VerificationContext(ctx, p, solverF, reporter)
+    //(c) check the vcs
     try {
-      rep.info(s" - Now considering '${vc.kind}' VC for ${vc.fd.id} @${vc.getPos}...")
-      val tStart = System.currentTimeMillis
-      s.assertVC(vc)
-      val satResult = s.check
-      val dt = System.currentTimeMillis - tStart
-      val res = satResult match {
-        case None =>
-          rep.info("Cannot prove or disprove specifications")
-        case Some(false) =>
-          rep.info("Valid")
-        case Some(true) =>
-          println("Invalid - counter-example: " + s.getModel)
-      }
+      val veriRep = VerificationPhase.checkVCs(vctx, vcs)
+      println("Resource Verification Results: \n" + veriRep.summaryString)
     } finally {
-      s.free()
-    }*/
+      solverF.shutdown()
+    }
   }
 
   /**
@@ -259,7 +340,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   }*/
   // Expressions for testing solvers
   // a test expression
-    /*val tparam =
+  /*val tparam =
     val dummyFunDef = new FunDef(FreshIdentifier("i"),Seq(), Seq(), IntegerType)
     val eq = Equals(FunctionInvocation(TypedFunDef(dummyFunDef, Seq()), Seq()), InfiniteIntegerLiteral(0))
     import solvers._

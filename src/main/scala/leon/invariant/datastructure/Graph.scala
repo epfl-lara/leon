@@ -52,10 +52,10 @@ class DirectedGraph[T] {
     else BFSReachRecur(src)
   }
 
-  def BFSReachables(src: T): Set[T] = {
+  def BFSReachables(srcs: Seq[T]): Set[T] = {
     var queue = List[T]()
     var visited = Set[T]()
-    visited += src
+    visited ++= srcs.toSet
 
     def BFSReachRecur(cur: T): Unit = {
       if (adjlist.contains(cur)) {
@@ -73,7 +73,7 @@ class DirectedGraph[T] {
       }
     }
 
-    BFSReachRecur(src)
+    srcs.foreach{src => BFSReachRecur(src) }
     visited
   }
 
@@ -150,6 +150,17 @@ class DirectedGraph[T] {
     state.components
   }
 
+  /**
+   * Reverses the direction of the edges in the graph
+   */
+  def reverse : DirectedGraph[T] = {
+    val revg = new DirectedGraph[T]()
+    adjlist.foreach{
+      case (src, dests) =>
+        dests.foreach { revg.addEdge(_, src) }
+    }
+    revg
+  }
 }
 
 class UndirectedGraph[T] extends DirectedGraph[T] {

@@ -13,6 +13,7 @@ import purescala.ExprOps._
 import purescala.DefOps._
 import purescala.Extractors._
 import purescala.Types._
+import purescala.TypeOps._
 import leon.invariant.util.TypeUtil._
 import leon.invariant.util.LetTupleSimplification._
 import java.io.File
@@ -71,11 +72,12 @@ class LazyClosureFactory(p: Program) {
     var opToAdt = Map[FunDef, CaseClassDef]()
     val tpeToADT = tpeToLazyops map {
       case (tpename, ops) =>
+        val baseT = ops(0).returnType //TODO: replace targs here ?
         val absClass = tpeToAbsClass(tpename)
-        val absTParams = absClass.tparams
+        val absTParamsDef = absClass.tparams
         // create a case class for every operation
         val cdefs = ops map { opfd =>
-          assert(opfd.tparams.size == absTParams.size)
+          assert(opfd.tparams.size == absTParamsDef.size)
           val absType = AbstractClassType(absClass, opfd.tparams.map(_.tp))
           val classid = FreshIdentifier(opNameToCCName(opfd.id.name), Untyped)
           val cdef = CaseClassDef(classid, opfd.tparams, Some(absType), isCaseObject = false)
@@ -94,7 +96,17 @@ class LazyClosureFactory(p: Program) {
           opToAdt += (opfd -> cdef)
           cdef
         }
-        (tpename -> (ops(0).returnType, absClass, cdefs))
+        // create a case class to represent eager evaluation
+        val absTParams = absTParamsDef.map(_.tp)
+        val fldType = ops(0).returnType match {
+          case NAryType(tparams, tcons) => tcons(absTParams)
+        }
+        val eagerid = FreshIdentifier("Eager"+TypeUtil.typeNameWOParams(fldType))
+        val eagerClosure = CaseClassDef(eagerid, absTParamsDef,
+            Some(AbstractClassType(absClass, absTParams)), isCaseObject = false)
+        eagerClosure.setFields(Seq(ValDef(FreshIdentifier("a", fldType))))
+        absClass.registerChild(eagerClosure)
+        (tpename -> (baseT, absClass, cdefs, eagerClosure))
     }
     /*tpeToADT.foreach {
       case (k, v) => println(s"$k --> ${ (v._2 +: v._3).mkString("\n\t") }")
@@ -105,7 +117,7 @@ class LazyClosureFactory(p: Program) {
   // this fixes an ordering on lazy types
   lazy val lazyTypeNames = tpeToADT.keys.toSeq
 
-  def allClosuresAndParents = tpeToADT.values.flatMap(v => v._2 +: v._3)
+  def allClosuresAndParents = tpeToADT.values.flatMap(v => v._2 +: v._3 :+ v._4)
 
   def lazyType(tn: String) = tpeToADT(tn)._1
 
@@ -113,12 +125,15 @@ class LazyClosureFactory(p: Program) {
 
   def closures(tn: String) = tpeToADT(tn)._3
 
+  def eagerClosure(tn: String) = tpeToADT(tn)._4
+
   lazy val caseClassToOp = opToCaseClass map { case (k, v) => v -> k }
 
   def lazyopOfClosure(cl: CaseClassDef) = caseClassToOp(cl)
 
   def closureOfLazyOp(op: FunDef) = opToCaseClass(op)
 
+  def isLazyOp(op: FunDef) = opToCaseClass.contains(op)
   /**
    * Here, the lazy type name is recovered from the closure's name.
    * This avoids the use of additional maps.

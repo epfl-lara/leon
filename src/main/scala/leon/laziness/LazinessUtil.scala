@@ -39,7 +39,8 @@ object LazinessUtil {
     try {
       new File(outputFolder).mkdir()
     } catch {
-      case _: java.io.IOException => ctx.reporter.fatalError("Could not create directory " + outputFolder)
+      case _: java.io.IOException =>
+        ctx.reporter.fatalError("Could not create directory " + outputFolder)
     }
 
     for (u <- p.units if u.isMainUnit) {
@@ -61,6 +62,13 @@ object LazinessUtil {
   def isLazyInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
       fullName(fd)(p) == "leon.lazyeval.$.apply"
+    case _ =>
+      false
+  }
+
+  def isEagerInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
+      fullName(fd)(p) == "leon.lazyeval.$.eager"
     case _ =>
       false
   }
@@ -146,7 +154,7 @@ object LazinessUtil {
    * and those that return a new state.
    * TODO: implement backwards BFS by reversing the graph
    */
-  def funsNeedingnReturningState(prog: Program) = {
+  /*def funsNeedingnReturningState(prog: Program) = {
     val cg = CallGraphUtil.constructCallGraph(prog, false, true)
     var needRoots = Set[FunDef]()
     var retRoots = Set[FunDef]()
@@ -171,7 +179,7 @@ object LazinessUtil {
     val funsRetStates = prog.definedFunctions.filterNot(fd =>
       cg.transitiveCallees(fd).toSet.intersect(retRoots).isEmpty).toSet
     (funsNeedStates, funsRetStates)
-  }
+  }*/
 
   def freshenTypeArguments(tpe: TypeTree): TypeTree = {
     tpe match {

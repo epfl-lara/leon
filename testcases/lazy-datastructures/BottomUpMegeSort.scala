@@ -1,6 +1,7 @@
 package lazybenchmarks
 
 import leon.lazyeval._
+import leon.lazyeval.$._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
@@ -113,12 +114,12 @@ object BottomUpMergeSort {
     l match {
       case INil() => SNil()
       case ICons(x, xs) =>
-        SCons($(LCons(x, $(LNil()))), IListToLList(xs))
+        SCons(LCons(x, LNil()), IListToLList(xs))
     }
   } ensuring (res => res.fullSize == l.size &&
     res.size == l.size &&
     res.valid &&
-    time <= 9 * l.size + 3)
+    time <= 11 * l.size + 3)
 
   def mergeSort(l: IList): ILList = {
     l match {

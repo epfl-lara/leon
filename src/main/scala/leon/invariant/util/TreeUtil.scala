@@ -185,6 +185,44 @@ object ProgramUtil {
     newprog
   }
 
+  def updatePost(funToPost: Map[FunDef, Lambda], prog: Program,
+      uniqueIdDisplay: Boolean = true, excludeLibrary: Boolean = true): Program = {
+
+    val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
+      case (accMap, fd) if fd.isTheoryOperation || fd.isLibrary =>
+        accMap + (fd -> fd)
+      case (accMap, fd) => {
+        val freshId = FreshIdentifier(fd.id.name, fd.returnType, uniqueIdDisplay)
+        val newfd = new FunDef(freshId, fd.tparams, fd.params, fd.returnType)
+        accMap.updated(fd, newfd)
+      }
+    }
+    val mapExpr = mapFunctionsInExpr(funMap) _
+    for ((from, to) <- funMap) {
+      to.fullBody = if (!funToPost.contains(from)) {
+        mapExpr(from.fullBody)
+      } else {
+        val newpost = funToPost(from)
+        mapExpr {
+          from.fullBody match {
+            case Ensuring(body, post) =>
+              Ensuring(body, newpost) // replace the old post with new post
+            case body =>
+              Ensuring(body, newpost)
+          }
+        }
+      }
+      //copy annotations
+      from.flags.foreach(to.addFlag(_))
+    }
+    val newprog = copyProgram(prog, (defs: Seq[Definition]) => defs.map {
+      case fd: FunDef if funMap.contains(fd) =>
+        funMap(fd)
+      case d => d
+    })
+    newprog
+  }
+
   def functionByName(nm: String, prog: Program) = {
     prog.definedFunctions.find(fd => fd.id.name == nm)
   }
