@@ -54,7 +54,7 @@ case object StringRender extends Rule("StringRender") {
   def solveProblems(problems: Seq[(Expr, String)]): Seq[Map[Identifier, String]] = ???
   
   
-  /// Disambiguation.
+  /// Disambiguation: Enumerate different solutions, augment the size of examples by 1, and check discrepancies.
   
   /** Returns a stream of expressions consistent with the specifications. Tail-recursive method*/
   def solve(ADTToString: Map[TypeTree, FunDef], inputs: Seq[(Identifier, TypeTree)], inlineFuns: Seq[FunDef], inlineExpr: Expr, examples: ExamplesBank): Stream[(FunDef, Expr)] = {

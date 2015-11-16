@@ -46,6 +46,7 @@ class SolversSuite extends LeonTestSuiteWithProgram {
         CharType,
         IntegerType,
         Int32Type,
+        StringType,
         TypeParameter.fresh("T"),
         SetType(IntegerType),
         MapType(IntegerType, IntegerType),
