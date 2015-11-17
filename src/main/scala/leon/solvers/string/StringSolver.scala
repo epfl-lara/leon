@@ -320,8 +320,6 @@ object StringSolver {
     }
     val (bounded, notbounded) = b.partition(isBounded _)
     
-    println(s"After partition, bounded = $bounded, b=$b and notbounded = $notbounded")
-    
     if(notbounded == Nil) true
     else if(notbounded == b) false
     else {
