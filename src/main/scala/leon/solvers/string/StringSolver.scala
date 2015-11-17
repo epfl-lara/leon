@@ -73,7 +73,7 @@ object StringSolver {
     rec(s, Nil).reverse
   }
   
-  /** returns a simpliifed version of the problem. If it is not satisfiable, returns None. */
+  /** returns a simplified version of the problem. If it is not satisfiable, returns None. */
   def simplifyProblem(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
     // Invariant: Every assigned var does not appear in the problem.
     
@@ -182,6 +182,7 @@ object StringSolver {
         .map(startPos :: _.map(_ + (startPos + c.length))))
   }
   
+  /** Computes the Combinatorial coefficient c(n, k)*/
   def cnk(n: BigInt, k: BigInt): BigInt = {
     var res = BigInt(1)
     var i = 0
@@ -270,7 +271,7 @@ object StringSolver {
     }
   }
   
-  /** Soles the problem and returns all possible satisfying assignment */
+  /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy(p, Map())
     
@@ -297,5 +298,61 @@ object StringSolver {
           partialSolution ++ assignment ++ remainingSolution
         }
     }
+  }
+  
+  ////////////////////////////////////////////////
+  //// Transitively Bounded problem extension ////
+  ////////////////////////////////////////////////
+  
+  /** More general types of equations */
+  type GeneralEquation = (StringForm, StringForm)
+  
+  /** Supposes that all variables are transitively bounded by length*/
+  type GeneralProblem = List[GeneralEquation]
+  
+  def variablesStringForm(sf: StringForm): Set[Identifier] = (sf.collect{ case Right(id) => id }).toSet
+  def variables(gf: GeneralEquation): Set[Identifier] = variablesStringForm(gf._1) ++ variablesStringForm(gf._2)
+  
+  /** Returns true if the problem is transitively bounded */
+  def isTransitivelyBounded(b: GeneralProblem, transitivelyBounded: Set[Identifier] = Set()): Boolean = {
+    def isBounded(sf: GeneralEquation) = {
+      variablesStringForm(sf._1).forall(transitivelyBounded) || variablesStringForm(sf._2).forall(transitivelyBounded)
+    }
+    val (bounded, notbounded) = b.partition(isBounded _)
+    
+    println(s"After partition, bounded = $bounded, b=$b and notbounded = $notbounded")
+    
+    if(notbounded == Nil) true
+    else if(notbounded == b) false
+    else {
+      isTransitivelyBounded(notbounded, transitivelyBounded ++ bounded.flatMap { x => variables(x) })
+    }
+  }
+
+  /** Propagates an assignment into a general equation */
+  def reduceGeneralEquation(a: Assignment)(g: GeneralEquation): GeneralEquation = g match {
+    case (sf1, sf2) => (reduceStringForm(a)(sf1), reduceStringForm(a)(sf2))
+  }
+  
+  /** Solves the bounded problem version.
+    * Requires all the variables to be transitively bounded by size. */
+  def solveGeneralProblem(b: GeneralProblem): Stream[Assignment] = {
+    val realProblem = b map { case (lhs, rhs) => (reduceStringForm(lhs), reduceStringForm(rhs)) }
+    
+    def partition(b: GeneralProblem, bounded: ListBuffer[Equation] = ListBuffer(), unbounded: ListBuffer[GeneralEquation] = ListBuffer()): (Problem, GeneralProblem) = b match {
+      case Nil => (bounded.toList, unbounded.toList)
+      case (sf1, List(Left(a)))::q => partition(q, bounded += ((sf1, a)), unbounded)
+      case (sf1, Nil)::q => partition(q, bounded += ((sf1, "")), unbounded)
+      case (List(Left(a)), sf1)::q => partition(q, bounded += ((sf1, a)), unbounded)
+      case (Nil, sf1)::q => partition(q, bounded += ((sf1, "")), unbounded)
+      case a::q => partition(q, bounded, unbounded += a)
+    }
+    
+    val (bounded, unbounded) = partition(realProblem)
+    
+    if(unbounded == Nil) solve(bounded) else
+    solve(bounded).flatMap(assignment => {
+      solveGeneralProblem(unbounded.map(reduceGeneralEquation(assignment)(_))).map(assignment ++ _)
+    })
   }
 }

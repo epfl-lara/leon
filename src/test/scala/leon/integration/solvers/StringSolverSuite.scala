@@ -10,14 +10,23 @@ import leon.purescala.Common.FreshIdentifier
  * @author Mikael
  */
 class StringSolverSuite extends FunSuite with Matchers {
-  val v = "xyzuvw".toSeq.map((k: Char) => k -> FreshIdentifier(k.toString)).toMap
-  lazy val x = v('x')
-  lazy val y = v('y')
-  lazy val z = v('z')
+  val k = "xyzuvw".toSeq.map((k: Char) => k -> FreshIdentifier(k.toString)).toMap
+  lazy val x = k('x')
+  lazy val y = k('y')
+  lazy val z = k('z')
+  lazy val u = k('u')
+  lazy val v = k('v')
   
   implicit class EquationMaker(lhs: String) {
+    def convertStringToStringFrom(s: String) = {
+      s.toList.map((c: Char) => (k.get(c) match {case Some(v) => Right(v) case _ => Left(c.toString) }): StringSolver.StringFormToken)
+    }
+    
     def ===(rhs: String): StringSolver.Equation = {
-      (lhs.toList.map((c: Char) => (v.get(c) match {case Some(v) => Right(v) case _ => Left(c.toString) }): StringSolver.StringFormToken), rhs)
+      (convertStringToStringFrom(lhs), rhs)
+    }
+    def ====(rhs: String): StringSolver.GeneralEquation = {
+      (convertStringToStringFrom(lhs), convertStringToStringFrom(rhs))
     }
   }
   
@@ -74,5 +83,33 @@ class StringSolverSuite extends FunSuite with Matchers {
     solve(List("x2y" === "123")).toList should equal (List(Map(x -> "1", y -> "3")))
     solve(List("x2yz" === "123")).toSet should equal (Set(Map(x -> "1", y -> "3", z -> ""), Map(x -> "1", y -> "", z -> "3")))
     solve(List("x2y" === "12324")).toSet should equal (Set(Map(x -> "1", y -> "324"), Map(x -> "123", y -> "4")))
+  }
+  
+  test("isTransitivelyBounded") {
+    isTransitivelyBounded(List("1" ==== "2")) should be(true)
+    isTransitivelyBounded(List("2" ==== "2")) should be(true)
+    isTransitivelyBounded(List("x2" ==== "2")) should be(true)
+    isTransitivelyBounded(List("x2" ==== "1")) should be(true)
+    isTransitivelyBounded(List("x2" ==== "2x")) should be(false)
+    isTransitivelyBounded(List("x2" ==== "2y")) should be(false)
+    isTransitivelyBounded(List("x2" ==== "2y", "y" ==== "1")) should be(true)
+    isTransitivelyBounded(List("x2" ==== "2x", "x" ==== "1")) should be(true)
+    isTransitivelyBounded(List("xyz" ==== "1234", "uv" ==== "y42x")) should be(true)
+  }
+  
+  test("solveGeneralProblem") {
+    solveGeneralProblem(List("xy" ==== "12", "uv" ==== "yx")).toSet should equal (
+        Set(
+            Map(x -> "", y -> "12", u -> "", v -> "12"),
+            Map(x -> "", y -> "12", u -> "1", v -> "2"),
+            Map(x -> "", y -> "12", u -> "12", v -> ""),
+            Map(x -> "1", y -> "2", u -> "", v -> "21"),
+            Map(x -> "1", y -> "2", u -> "2", v -> "1"),
+            Map(x -> "1", y -> "2", u -> "21", v -> ""),
+            Map(x -> "12", y -> "", u -> "", v -> "12"),
+            Map(x -> "12", y -> "", u -> "1", v -> "2"),
+            Map(x -> "12", y -> "", u -> "12", v -> "")
+        )
+    )
   }
 }
