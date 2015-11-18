@@ -25,6 +25,11 @@ echo "#           Category,                 File,             function, p.S, fuS
 ./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairNameChangedSuffix  testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairDuplicate          testcases/stringrender/IntWrapperRender.scala     | tee -a $fullLog
 
+./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairUnwrapped          testcases/stringrender/TwoArgsWrapperRender.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairNameChangedPrefix  testcases/stringrender/TwoArgsWrapperRender.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairNameChangedSuffix  testcases/stringrender/TwoArgsWrapperRender.scala   | tee -a $fullLog
+./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairDuplicate          testcases/stringrender/TwoArgsWrapperRender.scala   | tee -a $fullLog
+
 ./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairUnwrapped          testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairNameChangedPrefix  testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog
 ./leon --repair --timeout=30 --solvers=smt-cvc4 --functions=repairNameChangedSuffix  testcases/stringrender/TupleWrapperRender.scala   | tee -a $fullLog

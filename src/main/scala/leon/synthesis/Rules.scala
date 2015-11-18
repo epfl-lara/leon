@@ -82,6 +82,14 @@ abstract class RuleInstantiation(val description: String,
   def asString(implicit ctx: LeonContext) = description
 }
 
+object RuleInstantiation {
+  def apply(description: String)(f: => RuleApplication)(implicit problem: Problem, rule: Rule): RuleInstantiation = {
+    new RuleInstantiation(description) {
+      def apply(hctx): RuleApplication = f
+    }
+  }
+}
+
 /**
   * Wrapper class for a function returning a recomposed solution from a list of
   * subsolutions

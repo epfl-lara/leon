@@ -9,13 +9,48 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Types._
+import purescala.Definitions._
 import leon.utils.DebugSectionSynthesis
 import leon.purescala.Common.{Identifier, FreshIdentifier}
 import leon.purescala.Definitions.FunDef
 import leon.utils.IncrementalMap
 import leon.purescala.Definitions.FunDef
 import leon.purescala.Definitions.ValDef
+import scala.collection.mutable.ListBuffer
+import leon.purescala.ExprOps
+import leon.evaluators.Evaluator
+import leon.evaluators.DefaultEvaluator
+import leon.solvers.Model
+import leon.solvers.ModelBuilder
+import leon.solvers.string.StringSolver
 
+
+/** A template generator for a given type tree. 
+  * Extend this class using a concrete type tree,
+  * Then use the apply method to get a hole which can be a placeholder for holes in the template.
+  * Each call to the ``.instantiate` method of the subsequent Template will provide different instances at each position of the hole.
+  */
+abstract class TypedTemplateGenerator(t: TypeTree) {
+  /** Provides a hole which can be */
+  def apply(f: Expr => Expr): TemplateGenerator = {
+    val id = FreshIdentifier("ConstToInstantiate", t, true)
+    new TemplateGenerator(f(Variable(id)), id, t)
+  }
+  class TemplateGenerator(template: Expr, varId: Identifier, t: TypeTree) {
+    private val optimizationVars = ListBuffer[Identifier]()
+    private def Const: Variable = {
+      val res = FreshIdentifier("const", t, true)
+      optimizationVars += res
+      Variable(res)
+    }
+    def instantiate = {
+      ExprOps.postMap({
+        case Variable(id) if id == varId => Some(Const)
+        case _ => None
+      })(template)
+    }
+  }
+}
 
 /**
  * @author Mikael
@@ -78,6 +113,51 @@ case object StringRender extends Rule("StringRender") {
         Stream.Empty
     }
   }
+  import StringSolver.{StringFormToken, StringForm, Problem => SProblem}
+  
+  /** Converts an expression to a stringForm, suitable for StringSolver */
+  def toStringForm(e: Expr, acc: List[StringFormToken] = Nil): Option[StringForm] = e match {
+    case StringLiteral(s) => Some(Left(s)::acc)
+    case Variable(id) => Some(Right(id)::acc)
+    case StringConcat(lhs, rhs) => 
+      toStringForm(rhs, acc).flatMap(toStringForm(lhs, _))
+    case _ => None
+  }
+  
+  /** Returns the string associated to the expression if it is computable */
+  def toStringLiteral(e: Expr): Option[String] = e match {
+    case StringLiteral(s) => Some(s)
+    case StringConcat(lhs, rhs) => toStringLiteral(lhs).flatMap(k => toStringLiteral(rhs).map(l => k + l))
+    case _ => None
+  }
+  
+  /** Returns a stream of assignments compatible with input/output examples */
+  def findAssignments(ctx: LeonContext, p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr): Stream[Map[Identifier, String]] = {
+    //new Evaluator()
+    val e = new DefaultEvaluator(ctx, p)
+    
+    var invalid = false
+    val equations: SProblem = for{
+      (in, rhsExpr) <- examples.valids.collect{ case InOutExample(in, out) => (in, out) }.toList
+      if !invalid || rhsExpr.length != 1
+      model = new ModelBuilder 
+  _ = model ++= inputs.zip(in)
+      result = e.eval(template, model.result()).result
+  _ = invalid ||= result.isEmpty
+      if !invalid
+      sf = toStringForm(result.get)
+      rhs = toStringLiteral(rhsExpr.head)
+  _ = invalid ||= sf.isEmpty || rhs.isEmpty
+      if !invalid
+    } yield {
+      (sf.get, rhs.get)
+    }
+    if(!invalid) {
+      StringSolver.solve(equations)
+    } else {
+      Stream.empty
+    }
+  }
   
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     p.xs match {
@@ -89,7 +169,7 @@ case object StringRender extends Rule("StringRender") {
         val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
         val examples = examplesFinder.extractFromProblem(p)
         
-        /** Possible strategies.
+        /*  Possible strategies.
           * If data structure is recursive on at least one variable (see how Induction works)
           * then
           *   - Inserts a new rec function deconstructing it and put it into the available preconditions to use.
@@ -104,26 +184,38 @@ case object StringRender extends Rule("StringRender") {
           * If there are multiple solutions, we generate one deeper example and ask the user which one should be better.
           */
         
-        /* All input variables which are inductive in the post condition, along with their abstract data type. */
-
         
+        
+        object StringTemplateGenerator extends TypedTemplateGenerator(StringType)
+        val booleanTemplate = (a: Identifier) => StringTemplateGenerator(Hole => IfExpr(Variable(a), Hole, Hole))
+        
+        /* All input variables which are inductive in the post condition, along with their abstract data type. */
         p.as match {
-          case List(IsTyped(a, WithStringconverter(converter))) => // Standard conversions if they work.
-
-            List(new RuleInstantiation(description) { // TODO: Use a VSA to ask questions.
-              def apply(hctx: SearchContext): RuleApplication = {
-                // TODO: Test if the straightforward solution works ! This is wrong for now.
-                RuleClosed(Solution(pre=p.pc, defs=Set(), term=converter(Variable(a))))
+          case List(IsTyped(a, tpe@WithStringconverter(converter))) => // Standard conversions if they work.
+            
+            val ruleInstantiations = ListBuffer[RuleInstantiation]()
+            if(tpe == BooleanType) {
+              ruleInstantiations += RuleInstantiation("Boolean split render") {
+                val template = booleanTemplate(a).instantiate
+                val solutions = findAssignments(hctx.context, hctx.program, p.as, examples, template)
+                if(solutions.isEmpty) RuleFailed() else {
+                  RuleClosed(solutions.map((assignment: Map[Identifier, String]) => {
+                    Solution(pre=p.pc, defs=Set(), term=ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
+                  }))
+                }
               }
-            })
-          /*case List(IsTyped(a, tpe)) =>
-            List(new RuleInstantiation(description) {
-              def apply(hctx: SearchContext): RuleApplication = {
-                val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
-                val examples = examplesFinder.extractFromProblem(p)
-                RuleFailed()
+            }
+            
+            ruleInstantiations += RuleInstantiation("String conversion with pre and post") {
+                val template = StringTemplateGenerator(Hole => StringConcat(StringConcat(Hole, converter(Variable(a))), Hole)).instantiate
+                val solutions = findAssignments(hctx.context, hctx.program, p.as, examples, template)
+                if(solutions.isEmpty) RuleFailed() else {
+                  RuleClosed(solutions.map((assignment: Map[Identifier, String]) => {
+                    Solution(pre=p.pc, defs=Set(), term=ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
+                  }))
+                }
               }
-            })*/
+            ruleInstantiations.toList
           case _ =>
             Nil
         }
