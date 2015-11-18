@@ -77,6 +77,9 @@ class PrettyPrinter(opts: PrinterOptions,
         }
         p"$name"
 
+      case Old(id) =>
+        p"old($id)"
+
       case Variable(id) =>
         p"$id"
 
