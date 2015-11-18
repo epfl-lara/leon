@@ -47,3 +47,7 @@ abstract class Evaluator(val context: LeonContext, val program: Program) extends
 trait DeterministicEvaluator extends Evaluator {
   type Value = Expr
 }
+
+trait NDEvaluator extends Evaluator {
+  type Value = Stream[Expr]
+}

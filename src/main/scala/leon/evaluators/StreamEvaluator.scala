@@ -15,15 +15,14 @@ import purescala.Expressions._
 import leon.solvers.SolverFactory
 import leon.utils.StreamUtils.cartesianProduct
 
-class NDEvaluator(ctx: LeonContext, prog: Program)
+class StreamEvaluator(ctx: LeonContext, prog: Program)
   extends ContextualEvaluator(ctx, prog, 50000)
+  with NDEvaluator
   with DefaultContexts
 {
 
   val name = "ND-evaluator"
   val description = "Non-deterministic interpreter for Leon programs that returns a Stream of solutions"
-
-  type Value = Stream[Expr]
 
   case class NDValue(tp: TypeTree) extends Expr with Terminal {
     val getType = tp
@@ -155,11 +154,7 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
     case f @ Forall(fargs, TopLevelAnds(conjuncts)) =>
 
       def solveOne(conj: Expr) = {
-        val instantiations = try {
-          forallInstantiations(gctx, fargs, conj)
-        } catch {
-          case _: EvalError => Seq()
-        }
+        val instantiations = forallInstantiations(gctx, fargs, conj)
         for {
           es <- cartesianProduct(instantiations.map { case (enabler, mapping) =>
             e(Implies(enabler, conj))(rctx.withNewVars(mapping), gctx)
@@ -199,38 +194,45 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
         val cnstr = andJoin(eqs ::: p.pc :: p.phi :: Nil)
         solver.assertCnstr(cnstr)
 
-        def getSolution = solver.check match {
-          case Some(true) =>
-            val model = solver.getModel
+        def getSolution = try {
+          solver.check match {
+            case Some(true) =>
+              val model = solver.getModel
 
-            val valModel = valuateWithModel(model) _
+              val valModel = valuateWithModel(model) _
 
-            val res = p.xs.map(valModel)
-            val leonRes = tupleWrap(res)
-            val total = System.currentTimeMillis-tStart
+              val res = p.xs.map(valModel)
+              val leonRes = tupleWrap(res)
+              val total = System.currentTimeMillis - tStart
 
-            ctx.reporter.debug("Synthesis took "+total+"ms")
-            ctx.reporter.debug("Finished synthesis with "+leonRes.asString)
+              ctx.reporter.debug("Synthesis took " + total + "ms")
+              ctx.reporter.debug("Finished synthesis with " + leonRes.asString)
 
-            Some(leonRes)
-          case _ =>
-            None
+              Some(leonRes)
+            case _ =>
+              None
+          }
+        } catch {
+          case _: Throwable => None
         }
 
         Stream.iterate(getSolution)(prev => {
-          val ensureDistinct = Not(Equals(p.xs.head.toVariable, prev.get))
+          val ensureDistinct = Not(Equals(tupleWrap(p.xs.map{ _.toVariable}), prev.get))
           solver.assertCnstr(ensureDistinct)
-          getSolution
+          val sol = getSolution
+          // Clean up when the stream ends
+          if (sol.isEmpty) {
+            solverf.reclaim(solver)
+            solverf.shutdown()
+          }
+          sol
         }).takeWhile(_.isDefined).map(_.get)
-
       } catch {
         case e: Throwable =>
+          solverf.reclaim(solver)
+          solverf.shutdown()
           Stream()
-      } finally {
-        solverf.reclaim(solver)
-        solverf.shutdown()
       }
-
 
     case MatchExpr(scrut, cases) =>
 
@@ -306,7 +308,8 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
         try {
           Some(step(expr, es))
         } catch {
-          case _: EvalError | _: RuntimeError =>
+          case _: RuntimeError =>
+            // EvalErrors stop the computation alltogether
             None
         }
       }
@@ -370,7 +373,7 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
     case (Plus(_, _), Seq(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2))) =>
       InfiniteIntegerLiteral(i1 + i2)
 
-    case (Minus(_, _) Seq (InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2))) =>
+    case (Minus(_, _), Seq(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2))) =>
       InfiniteIntegerLiteral(i1 - i2)
 
     case (Times(_, _), Seq(InfiniteIntegerLiteral(i1), InfiniteIntegerLiteral(i2))) =>
@@ -392,6 +395,9 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
       else
         throw RuntimeError("Modulo of division by 0.")
 
+    case (UMinus(_), Seq(InfiniteIntegerLiteral(i))) =>
+      InfiniteIntegerLiteral(-i)
+
     case (RealPlus(_, _), Seq(FractionalLiteral(ln, ld), FractionalLiteral(rn, rd))) =>
       normalizeFraction(FractionalLiteral(ln * rd + rn * ld, ld * rd))
 
@@ -410,9 +416,6 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
 
     case (BVMinus(_, _), Seq(IntLiteral(i1), IntLiteral(i2))) =>
       IntLiteral(i1 - i2)
-
-    case (UMinus(_), Seq(InfiniteIntegerLiteral(i))) =>
-      InfiniteIntegerLiteral(-i)
 
     case (BVUMinus(_), Seq(IntLiteral(i))) =>
       IntLiteral(-i)
@@ -578,6 +581,7 @@ class NDEvaluator(ctx: LeonContext, prog: Program)
       l
 
     case (other, _) =>
+      context.reporter.error(other.getPos, "Error: don't know how to handle " + other.asString + " in Evaluator ("+other.getClass+").")
       throw EvalError("Unhandled case in Evaluator: " + other.asString)
 
   }

@@ -3,19 +3,24 @@
 package leon
 package evaluators
 
+import leon.solvers.Model
 import purescala.Definitions.Program
 import purescala.Expressions.Expr
+import EvaluationResults._
 
-class AngelicEvaluator(ctx: LeonContext, prog: Program)
-  extends ContextualEvaluator(ctx, prog, 50000)
+class AngelicEvaluator(ctx: LeonContext, prog: Program, underlying: NDEvaluator)
+  extends Evaluator(ctx, prog)
   with DeterministicEvaluator
-  with DefaultContexts
 {
-  private val underlying = new NDEvaluator(ctx, prog)
-
   val description: String = "angelic evaluator"
   val name: String = "Interpreter that returns the first solution of a non-deterministic program"
 
-  protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr =
-    underlying.e(expr)(rctx, gctx).headOption.getOrElse(throw RuntimeError("No solution!"))
+  def eval(expr: Expr, model: Model): EvaluationResult = underlying.eval(expr, model) match {
+    case Successful(Stream(h, _*)) =>
+      Successful(h)
+    case Successful(Stream()) =>
+      RuntimeError("Underlying ND-evaluator returned no solution")
+    case other@(RuntimeError(_) | EvaluatorError(_)) =>
+      other.asInstanceOf[Result[Nothing]]
+  }
 }
