@@ -13,7 +13,7 @@ import purescala.Definitions.{TypedFunDef, Program}
 import purescala.Expressions._
 
 import leon.solvers.SolverFactory
-import leon.utils.StreamUtils.cartesianProduct
+import leon.utils.StreamUtils._
 
 class StreamEvaluator(ctx: LeonContext, prog: Program)
   extends ContextualEvaluator(ctx, prog, 50000)
@@ -75,8 +75,10 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       Stream()
 
     case NDValue(tp) =>
-      import grammars.ValueGrammar
-      ValueGrammar.getProductions(tp).toStream.map{ g => g.builder(Seq())}
+      // FIXME: This is the only source of infinite values, and will in a way break
+      // the evaluator: the evaluator is not designed to fairly handle infinite streams.
+      // Of course currently it is only used for boolean type, which is finite :)
+      valuesOf(tp)
 
     case IfExpr(cond, thenn, elze) =>
       e(cond).distinct.flatMap {

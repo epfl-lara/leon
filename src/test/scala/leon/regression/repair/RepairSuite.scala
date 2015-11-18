@@ -16,6 +16,7 @@ class RepairSuite extends LeonRegressionSuite {
     
   val fileToFun = Map(
     "Compiler1.scala"   -> "desugar",
+    "Heap3.scala"       -> "merge",
     "Heap4.scala"       -> "merge",
     "ListEasy.scala"    -> "pad",
     "List1.scala"       -> "pad",
@@ -23,7 +24,10 @@ class RepairSuite extends LeonRegressionSuite {
     "MergeSort2.scala"  -> "merge"
   )
   
-  for (file <- filesInResourceDir("regression/repair/", _.endsWith(".scala")) if fileToFun contains file.getName) {
+  for (file <- filesInResourceDir("regression/repair/", _.endsWith(".scala"))) {
+    if (!(fileToFun contains file.getName)) {
+      fail(s"Don't know which function to repair for ${file.getName}")
+    }
     val path = file.getAbsoluteFile.toString
     val name = file.getName
 

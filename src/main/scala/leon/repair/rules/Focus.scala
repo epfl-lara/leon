@@ -5,7 +5,7 @@ package repair
 package rules
 
 import synthesis._
-import evaluators._
+import leon.evaluators._
 
 import purescala.Expressions._
 import purescala.Common._
@@ -92,12 +92,7 @@ case object Focus extends PreprocessingRule("Focus") {
     def ws(g: Expr) = andJoin(Guide(g) +: wss)
 
     def testCondition(cond: Expr) = {
-      val ndSpec = postMap {
-        case c if c eq cond => Some(not(cond)) // Use reference equality
-        case _ => None
-      }(fdSpec)
-
-      forAllTests(ndSpec, Map(), new RepairNDEvaluator(ctx, program, fd, cond))
+      forAllTests(fdSpec, Map(), new AngelicEvaluator( new RepairNDEvaluator(ctx, program, cond)))
     }
 
     guides.flatMap {
