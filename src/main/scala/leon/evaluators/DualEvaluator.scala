@@ -10,16 +10,15 @@ import purescala.Types._
 
 import codegen._
 
-class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) extends RecursiveEvaluator(ctx, prog, params.maxFunctionInvocations) {
+class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
+  extends RecursiveEvaluator(ctx, prog, params.maxFunctionInvocations)
+  with HasDefaultGlobalContext
+{
 
   type RC = DualRecContext
-  type GC = GlobalContext
-
-  def initGC(model: solvers.Model) = new GlobalContext(model, this.maxSteps)
+  def initRC(mappings: Map[Identifier, Expr]): RC = DualRecContext(mappings)
 
   implicit val debugSection = utils.DebugSectionEvaluation
-
-  def initRC(mappings: Map[Identifier, Expr]): RC = DualRecContext(mappings)
 
   var monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
 

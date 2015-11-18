@@ -3,6 +3,7 @@
 package leon
 package evaluators
 
+import leon.purescala.Types.TypeTree
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._

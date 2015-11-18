@@ -4,8 +4,9 @@ package leon
 package repair
 package rules
 
+import sun.nio.cs.StreamEncoder
 import synthesis._
-import evaluators._
+import leon.evaluators._
 
 import purescala.Expressions._
 import purescala.Common._
@@ -93,11 +94,10 @@ case object Focus extends PreprocessingRule("Focus") {
 
     def testCondition(cond: Expr) = {
       val ndSpec = postMap {
-        case c if c eq cond => Some(not(cond)) // Use reference equality
+        case c if c eq cond => Some(not(cond))
         case _ => None
       }(fdSpec)
-
-      forAllTests(ndSpec, Map(), new RepairNDEvaluator(ctx, program, fd, cond))
+      forAllTests(ndSpec, Map(), new AngelicEvaluator(new RepairNDEvaluator(ctx, program, cond)))
     }
 
     guides.flatMap {

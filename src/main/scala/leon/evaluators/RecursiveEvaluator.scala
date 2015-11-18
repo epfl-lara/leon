@@ -3,17 +3,16 @@
 package leon
 package evaluators
 
-import leon.purescala.Constructors._
-import leon.purescala.ExprOps._
-import leon.purescala.Expressions.Pattern
-import leon.purescala.Extractors._
-import leon.purescala.Quantification._
-import leon.purescala.TypeOps._
-import leon.purescala.Types._
-import leon.solvers.{SolverFactory, HenkinModel}
+import purescala.Constructors._
+import purescala.ExprOps._
+import purescala.Expressions.Pattern
+import purescala.Extractors._
+import purescala.TypeOps._
+import purescala.Types._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
+import solvers.SolverFactory
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)

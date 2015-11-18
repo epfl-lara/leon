@@ -13,20 +13,17 @@ import purescala.Definitions.{TypedFunDef, Program}
 import purescala.Expressions._
 
 import leon.solvers.SolverFactory
-import leon.utils.StreamUtils.cartesianProduct
+import leon.utils.StreamUtils._
 
 class StreamEvaluator(ctx: LeonContext, prog: Program)
   extends ContextualEvaluator(ctx, prog, 50000)
   with NDEvaluator
-  with DefaultContexts
+  with HasDefaultGlobalContext
+  with HasDefaultRecContext
 {
 
   val name = "ND-evaluator"
   val description = "Non-deterministic interpreter for Leon programs that returns a Stream of solutions"
-
-  case class NDValue(tp: TypeTree) extends Expr with Terminal {
-    val getType = tp
-  }
 
   protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Stream[Expr] = expr match {
     case Variable(id) =>
@@ -73,10 +70,6 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
     case Error(tpe, desc) =>
       Stream()
-
-    case NDValue(tp) =>
-      import grammars.ValueGrammar
-      ValueGrammar.getProductions(tp).toStream.map{ g => g.builder(Seq())}
 
     case IfExpr(cond, thenn, elze) =>
       e(cond).distinct.flatMap {
@@ -226,7 +219,8 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
             solverf.shutdown()
           }
           sol
-        }).takeWhile(_.isDefined).map(_.get)
+        }).takeWhile(_.isDefined).take(10).map(_.get)
+        // This take(10) is there because we are not working well with infinite streams yet...
       } catch {
         case e: Throwable =>
           solverf.reclaim(solver)
@@ -586,6 +580,4 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
 
   }
 
-
 }
-

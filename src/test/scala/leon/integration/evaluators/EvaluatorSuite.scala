@@ -206,7 +206,7 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
   def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
     List(
       new DefaultEvaluator(ctx, pgm),
-      new AngelicEvaluator(ctx, pgm, new StreamEvaluator(ctx, pgm))
+      new AngelicEvaluator(new StreamEvaluator(ctx, pgm))
     )
   }
 

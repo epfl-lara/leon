@@ -16,13 +16,11 @@ import leon.evaluators._
   * as well as if each invocation was successful or erroneous (led to an error)
   * (.fiStatus) 
   */
-class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {
+class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext {
   type RC = CollectingRecContext
-  type GC = GlobalContext
 
   def initRC(mappings: Map[Identifier, Expr]) = CollectingRecContext(mappings, None)
-  def initGC(model: leon.solvers.Model) = new GlobalContext(model, maxSteps)
-  
+
   type FI = (FunDef, Seq[Expr])
   
   // This is a call graph to track dependencies of function invocations.

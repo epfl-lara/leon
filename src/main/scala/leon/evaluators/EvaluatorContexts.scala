@@ -29,11 +29,12 @@ class GlobalContext(val model: Model, val maxSteps: Int) {
   var stepsLeft = maxSteps
 }
 
-protected[evaluators] trait DefaultContexts extends ContextualEvaluator {
-
-  final type RC = DefaultRecContext
-  final type GC = GlobalContext
-
+trait HasDefaultRecContext extends ContextualEvaluator {
+  type RC = DefaultRecContext
   def initRC(mappings: Map[Identifier, Expr]) = DefaultRecContext(mappings)
+}
+
+trait HasDefaultGlobalContext extends ContextualEvaluator {
   def initGC(model: solvers.Model) = new GlobalContext(model, this.maxSteps)
+  type GC = GlobalContext
 }
