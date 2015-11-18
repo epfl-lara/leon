@@ -345,6 +345,7 @@ object ExprOps {
         val subvs = subs.flatten.toSet
         e match {
           case Variable(i) => subvs + i
+          case Old(i) => subvs + i
           case LetDef(fd, _) => subvs -- fd.params.map(_.id)
           case Let(i, _, _) => subvs - i
           case LetVar(i, _, _) => subvs - i

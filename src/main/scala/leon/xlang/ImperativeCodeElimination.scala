@@ -10,6 +10,7 @@ import leon.purescala.Extractors._
 import leon.purescala.Constructors._
 import leon.purescala.ExprOps._
 import leon.purescala.TypeOps._
+import leon.purescala.Types._
 import leon.xlang.Expressions._
 
 object ImperativeCodeElimination extends UnitPhase[Program] {
@@ -22,13 +23,22 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       fd <- pgm.definedFunctions
       body <- fd.body
     } {
-      val (res, scope, _) = toFunction(body)(State(fd, Set()))
+      val (res, scope, _) = toFunction(body)(State(fd, Set(), Map()))
       fd.body = Some(scope(res))
     }
   }
 
-  case class State(parent: FunDef, varsInScope: Set[Identifier]) {
+  /* varsInScope refers to variable declared in the same level scope.
+     Typically, when entering a nested function body, the scope should be
+     reset to empty */
+  private case class State(
+    parent: FunDef, 
+    varsInScope: Set[Identifier],
+    funDefsMapping: Map[FunDef, (FunDef, List[Identifier])]
+  ) {
     def withVar(i: Identifier) = copy(varsInScope = varsInScope + i)
+    def withFunDef(fd: FunDef, nfd: FunDef, ids: List[Identifier]) = 
+      copy(funDefsMapping = funDefsMapping + (fd -> (nfd, ids)))
   }
 
   //return a "scope" consisting of purely functional code that defines potentially needed 
@@ -119,6 +129,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
  
       case wh@While(cond, body) =>
+        //TODO: rewrite by re-using the nested function transformation code
         val (condRes, condScope, condFun) = toFunction(cond)
         val (_, bodyScope, bodyFun) = toFunction(body)
         val condBodyFun = condFun ++ bodyFun
@@ -218,14 +229,115 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           bindFun ++ bodyFun
         )
 
-      case LetDef(fd, b) =>
-        //Recall that here the nested function should not access mutable variables from an outside scope
-        fd.body.foreach { bd =>
-          val (fdRes, fdScope, _) = toFunction(bd)
-          fd.body = Some(fdScope(fdRes))
+      //a function invocation can update variables in scope.
+      case fi@FunctionInvocation(tfd, args) =>
+
+
+        val (recArgs, argScope, argFun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
+          val (accArgs, accScope, accFun) = acc
+          val (argVal, argScope, argFun) = toFunction(arg)
+          val newScope = (body: Expr) => argScope(replaceNames(argFun, accScope(body)))
+          (argVal +: accArgs, newScope, argFun ++ accFun)
+        })
+
+        val fd = tfd.fd
+        state.funDefsMapping.get(fd) match { 
+          case Some((newFd, modifiedVars)) => {
+            val newInvoc = FunctionInvocation(newFd.typed, recArgs ++ modifiedVars.map(id => id.toVariable)).setPos(fi)
+            val freshNames = modifiedVars.map(id => id.freshen)
+            val tmpTuple = FreshIdentifier("t", newFd.returnType)
+
+            val scope = (body: Expr) => {
+              argScope(Let(tmpTuple, newInvoc,
+                freshNames.zipWithIndex.foldRight(body)((p, b) =>
+                  Let(p._1, TupleSelect(tmpTuple.toVariable, p._2 + 2), b))
+              ))
+            }
+            val newMap = argFun ++ modifiedVars.zip(freshNames).toMap
+
+            (TupleSelect(tmpTuple.toVariable, 1), scope, newMap)
+          }
+          case None => 
+            (FunctionInvocation(tfd, recArgs).copiedFrom(fi), argScope, argFun)
         }
-        val (bodyRes, bodyScope, bodyFun) = toFunction(b)
-        (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+
+
+      case LetDef(fd, b) =>
+
+        def fdWithoutSideEffects =  {
+          fd.body.foreach { bd =>
+            val (fdRes, fdScope, _) = toFunction(bd)
+            fd.body = Some(fdScope(fdRes))
+          }
+          val (bodyRes, bodyScope, bodyFun) = toFunction(b)
+          (bodyRes, (b2: Expr) => LetDef(fd, bodyScope(b2)).setPos(fd).copiedFrom(expr), bodyFun)
+        }
+
+        fd.body match {
+          case Some(bd) => {
+
+            val modifiedVars: List[Identifier] =
+              collect[Identifier]({
+                case Assignment(v, _) => Set(v)
+                case _ => Set()
+              })(bd).intersect(state.varsInScope).toList
+
+            if(modifiedVars.isEmpty) fdWithoutSideEffects else {
+
+              val freshNames: List[Identifier] = modifiedVars.map(id => id.freshen)
+
+              val newParams: Seq[ValDef] = fd.params ++ freshNames.map(n => ValDef(n))
+              val freshVarDecls: List[Identifier] = freshNames.map(id => id.freshen)
+
+              val rewritingMap: Map[Identifier, Identifier] =
+                modifiedVars.zip(freshVarDecls).toMap
+              val freshBody =
+                preMap({
+                  case Assignment(v, e) => rewritingMap.get(v).map(nv => Assignment(nv, e))
+                  case Variable(id) => rewritingMap.get(id).map(nid => Variable(nid))
+                  case _ => None
+                })(bd)
+              val wrappedBody = freshNames.zip(freshVarDecls).foldLeft(freshBody)((body, p) => {
+                LetVar(p._2, Variable(p._1), body)
+              })
+
+              val newReturnType = TupleType(fd.returnType :: modifiedVars.map(_.getType))
+
+              val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType).setPos(fd)
+
+              val (fdRes, fdScope, fdFun) = 
+                toFunction(wrappedBody)(
+                  State(state.parent, Set(), 
+                        state.funDefsMapping + (fd -> ((newFd, freshVarDecls))))
+                )
+              val newRes = Tuple(fdRes :: freshVarDecls.map(vd => fdFun(vd).toVariable))
+              val newBody = fdScope(newRes)
+
+              newFd.body = Some(newBody)
+              newFd.precondition = fd.precondition.map(prec => {
+                replace(modifiedVars.zip(freshNames).map(p => (p._1.toVariable, p._2.toVariable)).toMap, prec)
+              })
+              newFd.postcondition = fd.postcondition.map(post => {
+                val Lambda(Seq(res), postBody) = post
+                val newRes = ValDef(FreshIdentifier(res.id.name, newFd.returnType))
+
+                val newBody =
+                  replace(
+                    modifiedVars.zipWithIndex.map{ case (v, i) => 
+                      (v.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap ++
+                    modifiedVars.zip(freshNames).map{ case (ov, nv) => 
+                      (Old(ov), nv.toVariable)}.toMap +
+                    (res.toVariable -> TupleSelect(newRes.toVariable, 1)),
+                  postBody)
+                Lambda(Seq(newRes), newBody).setPos(post)
+              })
+
+              val (bodyRes, bodyScope, bodyFun) = toFunction(b)(state.withFunDef(fd, newFd, modifiedVars))
+              (bodyRes, (b2: Expr) => LetDef(newFd, bodyScope(b2)).copiedFrom(expr), bodyFun)
+            }
+          }
+          case None => fdWithoutSideEffects
+        }
 
       case c @ Choose(b) =>
         //Recall that Choose cannot mutate variables from the scope
