@@ -8,6 +8,7 @@ import leon.utils.Interruptible
 import leon.LeonContext
 import scala.collection.mutable.ListBuffer
 import vanuatoo.Pattern
+import scala.annotation.tailrec
 
 /**
  * @author Mikael
@@ -25,14 +26,14 @@ object StringSolver {
   type Problem = List[Equation]
   
   /** Evaluates a String form. Requires the solution to have an assignment to all identifiers. */
-  def evaluate(s: Assignment, acc: StringBuffer = new StringBuffer(""))(sf: StringForm): String = sf match {
+  @tailrec def evaluate(s: Assignment, acc: StringBuffer = new StringBuffer(""))(sf: StringForm): String = sf match {
     case Nil => acc.toString
     case Left(constant)::q => evaluate(s, acc append constant)(q)
     case Right(identifier)::q => evaluate(s, acc append s(identifier))(q)
   }
   
   /** Assigns the new values to the equations and simplify them at the same time. */
-  def reduceStringForm(s: Assignment, acc: ListBuffer[StringFormToken] = ListBuffer())(sf: StringForm): StringForm = sf match {
+  @tailrec def reduceStringForm(s: Assignment, acc: ListBuffer[StringFormToken] = ListBuffer())(sf: StringForm): StringForm = sf match {
     case Nil => acc.toList
     case (l@Left(constant))::(l2@Left(constant2))::q => reduceStringForm(s, acc)(Left(constant + constant2)::q)
     case (l@Left(constant))::(r2@Right(id))::q =>
@@ -65,57 +66,57 @@ object StringSolver {
   
   /** Concatenates constants together */
   def reduceStringForm(s: StringForm): StringForm =  {
-    def rec(s: StringForm, acc: StringForm): StringForm = s match {
-      case Nil => acc
+    @tailrec def rec(s: StringForm, acc: ListBuffer[StringFormToken] = ListBuffer()): StringForm = s match {
+      case Nil => acc.toList
       case Left(c)::Left(d)::q => rec(Left(c+d)::q, acc)
-      case a::q => rec(q, a::acc)
+      case a::q => rec(q, acc += a)
     }
-    rec(s, Nil).reverse
+    rec(s)
   }
   
   /** returns a simplified version of the problem. If it is not satisfiable, returns None. */
-  def simplifyProblem(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+  @tailrec def simplifyProblem(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
     // Invariant: Every assigned var does not appear in the problem.
-    
     // 1. Merge constant in string forms
-    val constantMerge: Option[Problem] = ((Option(List[Equation]()) /: p){
-      case (None, eq) => None
-      case (Some(building_problem), (sf, rhs)) => Some((reduceStringForm(sf), rhs)::building_problem)
-    }).map(_.reverse)
-    
-    if(constantMerge == None) return None
+    @tailrec def mergeConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+      case Nil => Some(acc.toList)
+      case (sf, rhs)::q => mergeConstants(q, acc += ((reduceStringForm(sf), rhs)))
+    }
     
     // 2. Unsat if Const1 = Const2 but constants are different.
     // 2bis.    if Const1 = Const2 and constants are same, remove equality.
-    val simplified = (((Some(Nil): Option[Problem]) /: constantMerge.get){
-      case (None, eq) => None
-      case (Some(building_problem), (Nil, rhs)) => if("" != rhs) None else Some(building_problem)
-      case (Some(building_problem), (List(Left(c)), rhs)) => if(c != rhs) None else Some(building_problem)
-      case (Some(building_problem), sentence) => Some(sentence::building_problem)
-    }).map(_.reverse)
-    
-    if(simplified == None) return None
-    
-    // 3. Get new assignments from equations such as id = Const.
-    val newAssignments = (Option(Map[Identifier, String]()) /: p){
-      case (None, _) => None
-      case (Some(assignments), (List(Right(id)), rhs)) =>
-        assignments.get(id) match { // It was assigned already.
-          case Some(v) =>
-            if(rhs != v) None else Some(assignments)
-          case _ => 
-            Some(assignments + (id -> rhs))
-        }
-      case (s@Some(assignments), sentence) => s
+    @tailrec def simplifyConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+      case Nil => Some(acc.toList)
+      case (Nil, rhs)::q => if("" != rhs) None else simplifyConstants(q, acc)
+      case (List(Left(c)), rhs)::q => if(c != rhs) None else simplifyConstants(q, acc)
+      case sentence::q => simplifyConstants(q, acc += sentence)
     }
     
-    if(newAssignments == None) return None
+    // 3. Get new assignments from equations such as id = Const.
+    @tailrec def obtainAssignments(p: Problem, assignments: Assignment = Map()): Option[Assignment] = p match {
+      case Nil => Some(assignments)
+      case (List(Right(id)), rhs)::q =>
+        assignments.get(id) match { // It was assigned already.
+          case Some(v) =>
+            if(rhs != v) None else obtainAssignments(q, assignments)
+          case None => 
+            obtainAssignments(q, assignments + (id -> rhs))
+        }
+      case sentence::q => obtainAssignments(q, assignments)
+    }
+    val simplifiedOpt = mergeConstants(p)
+    .flatMap(simplifyConstants(_))
     
-    // 4. If there are new assignments, forward them to the equation and relaunch the simplification.
-    if(newAssignments.get.nonEmpty)
-      simplifyProblem(reduceProblem(newAssignments.get)(simplified.get), s ++ newAssignments.get)
-    else { // No new assignments, simplification over.
-      Option((simplified.get, s))
+    simplifiedOpt match {
+      case None => None
+      case Some(simplified) =>
+        // 4. If there are new assignments, forward them to the equation and relaunch the simplification.
+        val newAssignmentsOpt = obtainAssignments(simplified)
+        newAssignmentsOpt match {
+          case Some(newAssignments) if newAssignments.nonEmpty =>
+             simplifyProblem(reduceProblem(newAssignments)(simplified), s ++ newAssignments)
+          case _ => Some((simplified, s))
+        }
     }
   }
   
@@ -128,28 +129,27 @@ object StringSolver {
   
   // Removes all constants from the left and right of the equations
   def noLeftRightConstants(p: Problem): Option[Problem] = {
-    val noLeftConstants: Option[Problem] = ((Option(List[Equation]()) /: p){
-      case (None, eq) => None
-      case (Some(building_problem), (Left(constant)::q, rhs)) =>
+    @tailrec def removeLeftconstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+      case Nil => Some(acc.toList)
+      case ((Left(constant)::q, rhs))::ps =>
         if(rhs.startsWith(constant)) {
-          Some((q, rhs.substring(constant.length))::building_problem)
+          removeLeftconstants(ps, acc += ((q, rhs.substring(constant.length))))
         } else None
-      case (Some(building_problem), (q, rhs)) =>
-        Some((q, rhs)::building_problem)
-    }).map(_.reverse)
-    if(noLeftConstants == None) return None
+      case (t@(q, rhs))::ps =>
+        removeLeftconstants(ps, acc += t)
+    }
     
-    val noRightConstants: Option[Problem] = ((Option(List[Equation]()) /: noLeftConstants.get){
-      case (None, eq) => None
-      case (Some(building_problem), (ConsReverse(q, Left(constant)), rhs)) =>
+    @tailrec def removeRightConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+      case Nil => Some(acc.toList)
+      case (ConsReverse(q, Left(constant)), rhs)::ps =>
         if(rhs.endsWith(constant)) {
-          Some((q, rhs.substring(0, rhs.length - constant.length))::building_problem)
+          removeRightConstants(ps, acc += ((q, rhs.substring(0, rhs.length - constant.length))))
         } else None
-      case (Some(building_problem), (q, rhs)) =>
-        Some((q, rhs)::building_problem)
-    }).map(_.reverse)
+      case (t@(q, rhs))::ps =>
+        removeRightConstants(ps, acc += t)
+    }
     
-    noRightConstants
+    removeLeftconstants(p).flatMap(removeRightConstants(_))
   }
   
   /** Composition of simplifyProble and noLeftRightConstants */

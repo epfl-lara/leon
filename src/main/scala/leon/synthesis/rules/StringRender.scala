@@ -23,6 +23,7 @@ import leon.evaluators.DefaultEvaluator
 import leon.solvers.Model
 import leon.solvers.ModelBuilder
 import leon.solvers.string.StringSolver
+import scala.annotation.tailrec
 
 
 /** A template generator for a given type tree. 
@@ -113,7 +114,7 @@ case object StringRender extends Rule("StringRender") {
         Stream.Empty
     }
   }
-  import StringSolver.{StringFormToken, StringForm, Problem => SProblem}
+  import StringSolver.{StringFormToken, StringForm, Problem => SProblem, Equation}
   
   /** Converts an expression to a stringForm, suitable for StringSolver */
   def toStringForm(e: Expr, acc: List[StringFormToken] = Nil): Option[StringForm] = e match {
@@ -137,25 +138,26 @@ case object StringRender extends Rule("StringRender") {
     val e = new DefaultEvaluator(ctx, p)
     
     var invalid = false
-    val equations: SProblem = for{
-      (in, rhsExpr) <- examples.valids.collect{ case InOutExample(in, out) => (in, out) }.toList
-      if !invalid || rhsExpr.length != 1
-      model = new ModelBuilder 
-  _ = model ++= inputs.zip(in)
-      result = e.eval(template, model.result()).result
-  _ = invalid ||= result.isEmpty
-      if !invalid
-      sf = toStringForm(result.get)
-      rhs = toStringLiteral(rhsExpr.head)
-  _ = invalid ||= sf.isEmpty || rhs.isEmpty
-      if !invalid
-    } yield {
-      (sf.get, rhs.get)
+    
+    @tailrec def gatherEquations(s: List[InOutExample], acc: ListBuffer[Equation] = ListBuffer()): Option[SProblem] = s match {
+      case Nil => Some(acc.toList)
+      case InOutExample(in, rhExpr)::q =>
+        if(rhExpr.length == 1) {
+          val model = new ModelBuilder
+          model ++= inputs.zip(in)
+          e.eval(template, model.result()).result match {
+            case None => None
+            case Some(sfExpr) =>
+              val sf = toStringForm(sfExpr)
+              val rhs = toStringLiteral(rhExpr.head)
+              if(sf.isEmpty || rhs.isEmpty) None
+              else gatherEquations(q, acc += ((sf.get, rhs.get)))
+          }
+        } else None
     }
-    if(!invalid) {
-      StringSolver.solve(equations)
-    } else {
-      Stream.empty
+    gatherEquations(examples.valids.collect{ case io:InOutExample => io }.toList) match {
+      case Some(problem) => StringSolver.solve(problem)
+      case None => Stream.empty
     }
   }
   
@@ -176,15 +178,14 @@ case object StringRender extends Rule("StringRender") {
           * If the input is constant
           *   - just a variable to compute a constant.
           * If there are several variables
-          *   - All possible ways of linearly unbuilding the structure
+          *   - All possible ways of linearly unbuilding the structure.
+          *   - Or maybe try to infer top-bottom the order of variables from examples?
           * if a variable is a primitive
           *   - Introduce an ordered string containing the content.
           *   
           * Once we have a skeleton, we run it on examples given and solve it.
           * If there are multiple solutions, we generate one deeper example and ask the user which one should be better.
           */
-        
-        
         
         object StringTemplateGenerator extends TypedTemplateGenerator(StringType)
         val booleanTemplate = (a: Identifier) => StringTemplateGenerator(Hole => IfExpr(Variable(a), Hole, Hole))
