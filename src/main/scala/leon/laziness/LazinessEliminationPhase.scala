@@ -39,15 +39,15 @@ import PredicateUtil._
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpInputProg = false
-  val dumpLiftProg = false
-  val dumpProgramWithClosures = false
+  val dumpLiftProg = true
+  val dumpProgramWithClosures = true
   val dumpTypeCorrectProg = false
-  val dumpProgWithPreAsserts = true
-  val dumpProgWOInstSpecs = false
-  val dumpInstrumentedProgram = false
+  val dumpProgWithPreAsserts = false
+  val dumpProgWOInstSpecs = true
+  val dumpInstrumentedProgram = true
   val debugSolvers = false
-  val skipVerification = false
-  val prettyPrint = false
+  val skipStateVerification = false
+  val skipResourceVerification = false
   val debugInstVCs = false
 
   val name = "Laziness Elimination Phase"
@@ -70,12 +70,15 @@ object LazinessEliminationPhase extends TransformationPhase {
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(prog))
     val nprog = liftLazyExpressions(prog)
-    if(dumpLiftProg)
-      println("After lifting expressions: \n" + ScalaPrinter.apply(nprog))
+    if(dumpLiftProg) {
+      prettyPrintProgramToFile(nprog, ctx, "-lifted")
+    }
 
     val progWithClosures = (new LazyClosureConverter(nprog, ctx, new LazyClosureFactory(nprog))).apply
-    if (dumpProgramWithClosures)
-      println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures))
+    if (dumpProgramWithClosures) {
+      //println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures, purescala.PrinterOptions(printUniqueIds = true)))
+      prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
+    }
 
     //Rectify type parameters and local types
     val typeCorrectProg = (new TypeRectifier(progWithClosures, tp => tp.id.name.endsWith("@"))).apply
@@ -85,29 +88,28 @@ object LazinessEliminationPhase extends TransformationPhase {
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
     if (dumpProgWithPreAsserts) {
       //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
-      prettyPrintProgramToFile(progWithPre, ctx)
+      prettyPrintProgramToFile(progWithPre, ctx, "-withpre")
     }
 
     // verify the contracts that do not use resources
     val progWOInstSpecs = removeInstrumentationSpecs(progWithPre)
     if (dumpProgWOInstSpecs) {
-      println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
+      //println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
+      prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
     }
-    if (!skipVerification)
+    if (!skipStateVerification)
       checkSpecifications(progWOInstSpecs)
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instProg = (new LazyInstrumenter(typeCorrectProg)).apply
-    if (dumpInstrumentedProgram){
-      println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
-      prettyPrintProgramToFile(instProg, ctx)
+    val instrumenter = new LazyInstrumenter(typeCorrectProg)
+    val instProg = instrumenter.apply
+    if (dumpInstrumentedProgram) {
+      //println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
+      prettyPrintProgramToFile(instProg, ctx, "-withinst")
     }
-
     // check specifications (to be moved to a different phase)
-    if (!skipVerification)
+    if (!skipResourceVerification)
       checkInstrumentationSpecs(instProg)
-    if (prettyPrint)
-      prettyPrintProgramToFile(instProg, ctx)
     instProg
   }
 
@@ -183,6 +185,18 @@ object LazinessEliminationPhase extends TransformationPhase {
     nprog
   }
 
+  /**
+   * Returns a constructor for the let* and also the current
+   * body of let*
+   */
+  def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
+      case Let(binder, letv, letb) =>
+        val (cons, body) = letStarUnapply(letb)
+        (e => Let(binder, letv, cons(e)), letb)
+      case base =>
+        (e => e, base)
+    }
+
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
       exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)
@@ -193,7 +207,14 @@ object LazinessEliminationPhase extends TransformationPhase {
         val Lambda(resdef, pbody) = fd.postcondition.get
         val npost = pbody match {
           case And(args) =>
-            PredicateUtil.createAnd(args.filterNot(hasInstVar))
+            createAnd(args.filterNot(hasInstVar))
+          case l : Let =>  // checks if the body of the let can be deconstructed as And
+            val (letsCons, letsBody) = letStarUnapply(l)
+            letsBody match {
+              case And(args) =>
+                letsCons(createAnd(args.filterNot(hasInstVar)))
+              case _ => Util.tru
+            }
           case e => Util.tru
         }
         (fd -> Lambda(resdef, npost))
@@ -212,6 +233,9 @@ object LazinessEliminationPhase extends TransformationPhase {
     val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions ++ functions)
     val report = VerificationPhase.apply(ctx, prog)
     println(report.summaryString)
+    /*ctx.reporter.whenDebug(leon.utils.DebugSectionTimers) { debug =>
+        ctx.timers.outputTable(debug)
+      }*/
   }
 
   def checkInstrumentationSpecs(p: Program) = {
@@ -231,7 +255,8 @@ object LazinessEliminationPhase extends TransformationPhase {
 
     val vcs = p.definedFunctions.collect {
       // skipping verification of uninterpreted functions
-      case fd if !fd.isLibrary && fd.hasBody && fd.postcondition.exists{post =>
+      case fd if !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
+      fd.postcondition.exists{post =>
         val Lambda(Seq(resdef), pbody) =  post
         accessesSecondRes(pbody, resdef.id)
       } =>
@@ -240,10 +265,20 @@ object LazinessEliminationPhase extends TransformationPhase {
           case And(args) =>
             val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
             (createAnd(instSpecs), createAnd(rest))
+          case l: Let =>
+            val (letsCons, letsBody) = letStarUnapply(l)
+            letsBody match {
+              case And(args) =>
+                val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
+                (letsCons(createAnd(instSpecs)),
+                    letsCons(createAnd(rest)))
+              case _ =>
+                (l, Util.tru)
+            }
           case e => (e, Util.tru)
         }
-        val vc = implies(createAnd(Seq(fd.precOrTrue, assumptions)),
-            application(Lambda(Seq(resdef), instPost), Seq(fd.body.get)))
+        val vc = implies(createAnd(Seq(fd.precOrTrue, assumptions,
+            Equals(resdef.id.toVariable, fd.body.get))), instPost)
         if(debugInstVCs)
           println(s"VC for function ${fd.id} : "+vc)
         VC(vc, fd, VCKinds.Postcondition)

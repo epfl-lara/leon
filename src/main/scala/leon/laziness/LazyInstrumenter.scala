@@ -54,17 +54,17 @@ class LazyInstrumenter(p: Program) {
         val nbody = e match {
           case MatchExpr(scr, mcases) =>
             val ncases = mcases map {
-              case MatchCase(pat, guard, Tuple(Seq(valpart, statepart))) =>
+              case MatchCase(pat, guard, body) =>
                 // instrument the state part (and ignore the val part)
                 // (Note: this is an hack to ensure that we always consider only one call to targets)
-                val transState = transform(statepart)(Map())
+                /*val transState = transform(statepart)(Map())
                 val transVal = transform(valpart)(Map())
 
                 val caseId = FreshIdentifier("cd", transState.getType, true)
                 val casePart = Tuple(Seq(TupleSelect(transVal, 1), TupleSelect(caseId.toVariable, 1)))
                 val instPart = instrumenters map { m => selectInst(caseId.toVariable, m.inst) }
-                val lete = Let(caseId, transState, Tuple(casePart +: instPart))
-                MatchCase(pat, guard, lete)
+                val lete = Let(caseId, transState, Tuple(casePart +: instPart))*/
+                MatchCase(pat, guard, transform(body)(Map()))
             }
             MatchExpr(scr, ncases)
         }

@@ -24,10 +24,11 @@ import leon.LeonContext
 import leon.LeonOptionDef
 import leon.Main
 import leon.TransformationPhase
+import purescala.PrinterOptions
 
 object LazinessUtil {
 
-  def prettyPrintProgramToFile(p: Program, ctx: LeonContext) {
+  def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String) {
     val optOutputDirectory = new LeonOptionDef[String] {
       val name = "o"
       val description = "Output directory"
@@ -44,12 +45,14 @@ object LazinessUtil {
     }
 
     for (u <- p.units if u.isMainUnit) {
-      val outputFile = s"$outputFolder${File.separator}${u.id.toString}.scala"
+      val outputFile = s"$outputFolder${File.separator}${u.id.toString}$suffix.scala"
       try {
         val out = new BufferedWriter(new FileWriter(outputFile))
         // remove '@' from the end of the identifier names
-        val pat = new Regex("""(\w+)([@*]+)(\w*)""", "base", "AtorStar", "rest")
-        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p), m => m.group("base") + m.group("rest"))
+        val pat = new Regex("""(\w+)(@)(\w*)(\*?)(\S*)""", "base", "at", "mid", "star", "rest")
+        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p),
+          m => m.group("base") + m.group("mid") + (
+            if (!m.group("star").isEmpty()) "S" else "") + m.group("rest"))
         out.write(pgmText)
         out.close()
       } catch {
@@ -73,9 +76,41 @@ object LazinessUtil {
       false
   }
 
+  def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
+      fullName(fd)(p) == "leon.lazyeval.$.inState"
+    case _ =>
+      false
+  }
+
+  def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
+      fullName(fd)(p) == "leon.lazyeval.$.outState"
+    case _ =>
+      false
+  }
+
   def isEvaluatedInvocation(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
       fullName(fd)(p) == "leon.lazyeval.$.isEvaluated"
+    case _ => false
+  }
+
+  def isSuspInvocation(e: Expr)(implicit p: Program): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
+      fullName(fd)(p) == "leon.lazyeval.$.isSuspension"
+    case _ => false
+  }
+
+  def isWithStateCons(e: Expr)(implicit p: Program): Boolean = e match {
+    case CaseClass(cct, Seq(_)) =>
+      fullName(cct.classDef)(p) == "leon.lazyeval.$.WithState"
+    case _ => false
+  }
+
+  def isWithStateFun(e: Expr)(implicit p: Program): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
+      fullName(fd)(p) == "leon.lazyeval.WithState.withState"
     case _ => false
   }
 

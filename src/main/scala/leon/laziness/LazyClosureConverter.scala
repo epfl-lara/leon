@@ -25,7 +25,8 @@ import leon.LeonOptionDef
 import leon.Main
 import leon.TransformationPhase
 import LazinessUtil._
-import invariant.util.ProgramUtil._
+import ProgramUtil._
+import PredicateUtil._
 import purescala.TypeOps._
 
 /**
@@ -38,7 +39,7 @@ import purescala.TypeOps._
 class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClosureFactory) {
   val debug = false
   // flags
-  val removeRecursionViaEval = false
+  //val removeRecursionViaEval = false
   val useRefEquality = ctx.findOption(LazinessEliminationPhase.optRefEquality).getOrElse(false)
 
   val funsManager = new LazyFunctionsManager(p)
@@ -83,15 +84,44 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
       (fd -> nfd)
   }.toMap
 
+  // were used for optimization purposes
+  //  lazy val uiTarges = funMap.collect {
+  //    case (k, v) if closureFactory.isLazyOp(k) =>
+  //      val ufd = new FunDef(FreshIdentifier(v.id.name, v.id.getType, true),
+  //        v.tparams, v.params, v.returnType)
+  //      (k -> ufd)
+  //  }.toMap
+
   /**
-   * A set of uninterpreted functions that may be used as targets
-   * of closures in the eval functions, for efficiency reasons.
+   * A set of uninterpreted functions that are used
+   * in specs to ensure that value part is independent of the state
    */
-  lazy val uninterpretedTargets = funMap.collect {
-    case (k, v) if closureFactory.isLazyOp(k) =>
-      val ufd = new FunDef(FreshIdentifier(v.id.name, v.id.getType, true),
-        v.tparams, v.params, v.returnType)
-      (k -> ufd)
+  val uiFuncs = funMap.collect {
+    case (k, v) if funsNeedStates(k) &&
+      funsManager.hasStateIndependentBehavior(k) => //TODO: we can omit come functions whose translations will not be recursive.
+
+      val params = v.params.take(k.params.size) // ignore the state params
+      val retType =
+        if (funsRetStates(k)) {
+          val TupleType(valtype +: _) = v.returnType
+          valtype
+        } else v.returnType
+      val tparams = (params.map(_.getType) :+ retType).flatMap(getTypeParameters(_)).distinct
+      val tparamsDef =  tparams.map(TypeParameterDef(_))
+      val ufd = new FunDef(FreshIdentifier(v.id.name + "UI"), tparamsDef, params, retType)
+
+      // we also need to create a function that assumes that the result equals
+      // the uninterpreted function
+      val valres = ValDef(FreshIdentifier("valres", retType))
+      val pred = new FunDef(FreshIdentifier(v.id.name + "ValPred"), tparamsDef,
+          params :+ valres, BooleanType)
+      val resid = FreshIdentifier("res", pred.returnType)
+      pred.fullBody = Ensuring(
+          Equals(valres.id.toVariable,
+              FunctionInvocation(TypedFunDef(ufd, tparams), params.map(_.id.toVariable))), // res = funUI(..)
+              Lambda(Seq(ValDef(resid)), resid.toVariable)) // holds
+      pred.addFlag(Annotation("axiom", Seq())) // mark it as @library
+      (k -> (ufd, pred))
   }.toMap
 
   /**
@@ -171,36 +201,22 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
       // create a body of the match
       val args = cdef.fields map { fld => CaseClassSelector(ctype, binder.toVariable, fld.id) }
       val op = closureFactory.caseClassToOp(cdef)
-      val targetFun =
-        if (removeRecursionViaEval && op.hasPostcondition) {
-          // checking for postcondition is a hack to make sure that we
-          // do not make all targets uninterpreted
-          uninterpretedTargets(op)
-        } else funMap(op)
-      // TODO: here we are assuming that only one state is used, fix this.
-
-      //(a) construct the value component
-      val stArgs =
-        if (funsNeedStates(op)) {
-          // Note: it is important to use uninterpreted state here for 2 reasons:
-          // (a) to eliminate dependency on state for the result value
-          // (b) to avoid inconsistencies when using a fixed state such as empty state
-          Seq(getUninterpretedState(tname, tparams))
-        } else Seq()
-      //println(s"invoking function $targetFun with args $args")
-      val invoke = FunctionInvocation(TypedFunDef(targetFun, tparams), args ++ stArgs) // we assume that the type parameters of lazy ops are same as absdefs
-      val invPart = if (funsRetStates(op)) {
-        TupleSelect(invoke, 1) // we are only interested in the value
-      } else invoke
-
-      //(b) construct the state component
-      val stPart = if (funsRetStates(op)) {
-        val stInvoke = FunctionInvocation(TypedFunDef(targetFun, tparams),
+      val targetFun = funMap(op)
+      // invoke the target fun with appropriate values
+       val invoke = FunctionInvocation(TypedFunDef(targetFun, tparams),
           args ++ (if (funsNeedStates(op)) Seq(param2.toVariable) else Seq()))
-        TupleSelect(stInvoke, 2)
-      } else param2.toVariable
-      val newst = SetUnion(stPart, FiniteSet(Set(binder.toVariable), stType.base))
-      val rhs = Tuple(Seq(invPart, newst))
+       val invokeRes = FreshIdentifier("dres", invoke.getType)
+      //println(s"invoking function $targetFun with args $args")
+      val (valPart, stPart) = if (funsRetStates(op)) {
+        // TODO: here we are assuming that only one state is used, fix this.
+       val invokeSt = TupleSelect(invokeRes.toVariable, 2)
+        (TupleSelect(invokeRes.toVariable, 1),
+            SetUnion(invokeSt, FiniteSet(Set(binder.toVariable), stType.base)))
+      } else {
+        (invokeRes.toVariable,
+            SetUnion(param2.toVariable, FiniteSet(Set(binder.toVariable), stType.base)))
+      }
+      val rhs = Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
       MatchCase(pattern, None, rhs)
     }
     // create a new match case for eager evaluation
@@ -298,6 +314,46 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
       }, false)
       mapNAryOperator(args, op)
 
+    case finv @ FunctionInvocation(_, Seq(recvr, funcArg)) if isSuspInvocation(finv)(p) =>
+      ((st: Map[String, Expr]) => {
+        // `funcArg` is a closure whose body is a function invocation
+        //TODO: make sure the function is not partially applied in the body
+        funcArg match {
+          case Lambda(_, FunctionInvocation(TypedFunDef(fd, _), _)) =>
+            // retrieve the case-class for the operation from the factory
+            val caseClass = closureFactory.closureOfLazyOp(fd)
+            val targs = TypeUtil.getTypeArguments(unwrapLazyType(recvr.getType).get)
+            val caseClassType = CaseClassType(caseClass, targs)
+            IsInstanceOf(recvr, caseClassType)
+          case _ =>
+            throw new IllegalArgumentException("The argument to isSuspension should be " +
+              "a partially applied function of the form: <method-name> _")
+        }
+      }, false)
+
+    case finv @ FunctionInvocation(_, Seq(recvr, stArg)) if isWithStateFun(finv)(p) =>
+      // recvr is a `WithStateCaseClass` and `stArg` could be an arbitrary expression that returns a state
+      val CaseClass(_, Seq(exprNeedingState)) = recvr
+      val (nexpr, exprReturnsState) = mapBody(exprNeedingState)
+      val (nstArg, stArgReturnsState) = mapBody(stArg)
+      if(stArgReturnsState)
+        throw new IllegalStateException("The state argument to `withState` returns a new state, which is not supported: "+finv)
+      else {
+        ((st: Map[String, Expr]) => {
+          val nst = nstArg(st)
+          // compute the baseType
+          stArg.getType match {
+            case SetType(lazyType) =>
+              val baseType = unwrapLazyType(lazyType).get
+              val tname = typeNameWOParams(baseType)
+              val newStates = st + (tname -> nst)
+              nexpr(newStates)
+            case t =>
+              throw new IllegalStateException(s"$stArg should have a set type, current type: "+t)
+          }
+        }, exprReturnsState)
+      }
+
     case finv @ FunctionInvocation(_, args) if isValueInvocation(finv)(p) => // is  value function ?
       val op = (nargs: Seq[Expr]) => ((st: Map[String, Expr]) => {
         val baseType = unwrapLazyType(nargs(0).getType).get // there must be only one argument here
@@ -305,7 +361,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
         val dispFun = evalFunctions(tname)
         val dispFunInv = FunctionInvocation(TypedFunDef(dispFun,
           getTypeParameters(baseType)), nargs :+ st(tname))
-        val dispRes = FreshIdentifier("dres", dispFun.returnType)
+        val dispRes = FreshIdentifier("dres", dispFun.returnType, true)
         val nstates = tnames map {
           case `tname` =>
             TupleSelect(dispRes.toVariable, 2)
@@ -499,26 +555,89 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
           else Some(npreFun(initStateMap))
       }
 
-      val simpPost = if (fd.hasPostcondition) {
-        val Lambda(arg @ Seq(ValDef(resid, _)), post) = fd.postcondition.get
-        val (npostFun, postUpdatesState) = mapBody(post)
-        val newres = FreshIdentifier(resid.name, bodyWithState.getType)
-        val npost1 =
-          if (bodyUpdatesState || funsRetStates(fd)) {
-            val stmap = tnames.zipWithIndex.map {
-              case (tn, i) => (tn -> TupleSelect(newres.toVariable, i + 2))
-            }.toMap
-            replace(Map(resid.toVariable -> TupleSelect(newres.toVariable, 1)), npostFun(stmap))
-          } else
-            replace(Map(resid.toVariable -> newres.toVariable), npostFun(initStateMap))
-        val npost =
-          if (postUpdatesState) {
-            TupleSelect(npost1, 1) // ignore state updated by post
-          } else npost1
-        Some(Lambda(Seq(ValDef(newres)), npost))
-      } else None
+      // create a new result variable
+      val newres =
+        if (fd.hasPostcondition) {
+          val Lambda(Seq(ValDef(r, _)), _) = fd.postcondition.get
+          FreshIdentifier(r.name, bodyWithState.getType)
+        } else FreshIdentifier("r", nfd.returnType)
+
+      // create an output state map
+      val outStateMap =
+        if (bodyUpdatesState || funsRetStates(fd)) {
+          tnames.zipWithIndex.map {
+            case (tn, i) => (tn -> TupleSelect(newres.toVariable, i + 2))
+          }.toMap
+        } else
+          initStateMap
+
+      // create a specification that relates input-output states
+      val stateRel =
+        if (funsRetStates(fd)) { // add specs on states
+          val instates = initStateMap.values.toSeq
+          val outstates = outStateMap.values.toSeq
+          val stateRel =
+            if(fd.annotations.contains("invstate")) Equals.apply _
+            else SubsetOf.apply _
+          Some(createAnd((instates zip outstates).map(p => stateRel(p._1, p._2))))
+        } else None
+
+      // create a predicate that ensures that the value part is independent of the state
+      val valRel =
+        if (uiFuncs.contains(fd)) { // add specs on value
+          val uipred = uiFuncs(fd)._2
+          val args = nfd.params.take(fd.params.size).map(_.id.toVariable)
+          val retarg =
+            if(funsRetStates(fd))
+              TupleSelect(newres.toVariable, 1)
+              else newres.toVariable
+          Some(FunctionInvocation(TypedFunDef(uipred, nfd.tparams.map(_.tp)),
+              args :+ retarg))
+        } else None
+
+      val targetPost =
+        if (fd.hasPostcondition) {
+          val Lambda(Seq(ValDef(resid, _)), post) = fd.postcondition.get
+          // bind calls to instate and outstate calls to their respective values
+          val tpost = simplePostTransform {
+            case e if LazinessUtil.isInStateCall(e)(p) =>
+              val baseType = getTypeArguments(e.getType).head
+              initStateMap(typeNameWOParams(baseType))
+
+            case e if LazinessUtil.isOutStateCall(e)(p) =>
+              val baseType = getTypeArguments(e.getType).head
+              outStateMap(typeNameWOParams(baseType))
+
+            case e => e
+          }(post)
+          // thread state through postcondition
+          val (npostFun, postUpdatesState) = mapBody(tpost)
+          val resval =
+            if (bodyUpdatesState || funsRetStates(fd))
+              TupleSelect(newres.toVariable, 1)
+            else newres.toVariable
+          val npostWithState = replace(Map(resid.toVariable -> resval), npostFun(outStateMap))
+          val npost =
+            if (postUpdatesState) {
+              TupleSelect(npostWithState, 1) // ignore state updated by post
+            } else
+              npostWithState
+          Some(npost)
+        } else {
+          None
+        }
+      nfd.postcondition = Some(Lambda(Seq(ValDef(newres)),
+          createAnd(stateRel.toList ++ valRel.toList ++ targetPost.toList)))
+//      if (removeRecursionViaEval) {
+//        uninterpretedTargets.get(fd) match {
+//          case Some(uitarget) =>
+//            // uitarget uses the same identifiers as nfd
+//            uitarget.postcondition = targetPost
+//          case None => ;
+//        }
+//      }
       // add invariants on state
-      val fpost =
+      /*val fpost =
         if (funsRetStates(fd)) { // add specs on states
           val instates = stateParams
           val resid = if (fd.hasPostcondition) {
@@ -538,59 +657,32 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
             And(p, statePred)
           } else statePred))
           Some(post)
-        } else simpPost
-      if (fpost.isDefined) {
-        nfd.postcondition = fpost
+        } else simpPost*/
+      //if (fpost.isDefined) {
         // also attach postcondition to uninterpreted targets
-        if (removeRecursionViaEval) {
-          uninterpretedTargets.get(fd) match {
-            case Some(uitarget) =>
-              /*val nfdRes = fpost.get.args(0).id
-              val repmap: Map[Expr, Expr] = ((nfdRes.toVariable, FreshIdentifier(nfdRes.name).toVariable) +:
-                (nfd.params.map(_.id.toVariable) zip uitarget.params.map(_.id.toVariable))).toMap*/
-              // uitarget uses the same identifiers as nfd
-              uitarget.postcondition = fpost
-            case None => ;
-          }
-        }
-      }
+      //}
   }
 
-  /**
-   * This method is not used for now,
-   */
   def assignContractsForEvals = evalFunctions.foreach {
     case (tname, evalfd) =>
       val cdefs = closureFactory.closures(tname)
       val tparams = evalfd.tparams.map(_.tp)
       val postres = FreshIdentifier("res", evalfd.returnType)
-      val postMatchCases = cdefs map { cdef =>
-        val ctype = CaseClassType(cdef, tparams)
-        val binder = FreshIdentifier("t", ctype)
-        val pattern = InstanceOfPattern(Some(binder), ctype)
-        // create a body of the match
+      val postMatchCases = cdefs flatMap { cdef =>
+        // create a body of the match (which asserts that return value equals the uninterpreted function)
         val op = closureFactory.lazyopOfClosure(cdef)
-        val targetFd = funMap(op)
-        val rhs = if (targetFd.hasPostcondition) {
-          val Lambda(Seq(resparam), targetPost) = targetFd.postcondition.get
+        if (uiFuncs.contains(op)) {
+          val ctype = CaseClassType(cdef, tparams)
+          val binder = FreshIdentifier("t", ctype)
+          val pattern = InstanceOfPattern(Some(binder), ctype)
           val args = cdef.fields map { fld => CaseClassSelector(ctype, binder.toVariable, fld.id) }
-          val stArgs =
-            if (funsNeedStates(op)) // TODO: here we are assuming that only one state is used, fix this.
-              Seq(evalfd.params.last.toVariable)
-            else Seq()
-          val resarg =
-            if (funsRetStates(op))
-              postres.toVariable
-            else
-              TupleSelect(postres.toVariable, 1) // here 'targetFd' does not return state, but eval does
-          val replaceMap = (targetFd.params.map(_.toVariable) zip (args ++ stArgs)).toMap[Expr, Expr] +
-            (resparam.toVariable -> resarg)
-          replace(replaceMap, targetPost)
-        } else
-          Util.tru
-        MatchCase(pattern, None, rhs)
+          val rhs = Equals(TupleSelect(postres.toVariable, 1),
+            FunctionInvocation(TypedFunDef(uiFuncs(op)._1, tparams), args)
+            )
+          Seq(MatchCase(pattern, None, rhs))
+        } else Seq()
       }
-      // create a default case to match eagerClosures
+      // create a default case ot match other cases
       val default = MatchCase(WildcardPattern(None), None, Util.tru)
       evalfd.postcondition = Some(
         Lambda(Seq(ValDef(postres)),
@@ -623,18 +715,16 @@ class LazyClosureConverter(p: Program, ctx: LeonContext, closureFactory: LazyClo
     val anchor = funMap.values.last
     transformCaseClasses
     assignBodiesToFunctions
-    //assignContractsForEvals
+    assignContractsForEvals
     addDefs(
       copyProgram(p,
         (defs: Seq[Definition]) => defs.flatMap {
           case fd: FunDef if funMap.contains(fd) =>
-            if (removeRecursionViaEval) {
-              uninterpretedTargets.get(fd) match {
-                case Some(uitarget) =>
-                  Seq(funMap(fd), uitarget)
-                case _ => Seq(funMap(fd))
-              }
-            } else Seq(funMap(fd))
+            uiFuncs.get(fd) match {
+              case Some((funui, predui)) =>
+                Seq(funMap(fd), funui, predui)
+              case _ => Seq(funMap(fd))
+            }
           case d => Seq(d)
         }),
       closureFactory.allClosuresAndParents ++ closureCons.values ++

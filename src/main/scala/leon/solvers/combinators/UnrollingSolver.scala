@@ -13,37 +13,37 @@ import purescala.ExprOps._
 import purescala.Types._
 import utils._
 
-import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre}
+import z3.FairZ3Component.{ optFeelingLucky, optUseCodeGen, optAssumePre }
 import templates._
 import evaluators._
 
 class UnrollingSolver(val context: LeonContext, val program: Program, underlying: Solver)
-  extends Solver
-     with NaiveAssumptionSolver
-     with EvaluatingSolver
-     with QuantificationSolver {
+    extends Solver
+    with NaiveAssumptionSolver
+    with EvaluatingSolver
+    with QuantificationSolver {
 
-  val feelingLucky   = context.findOptionOrDefault(optFeelingLucky)
-  val useCodeGen     = context.findOptionOrDefault(optUseCodeGen)
+  val feelingLucky = context.findOptionOrDefault(optFeelingLucky)
+  val useCodeGen = context.findOptionOrDefault(optUseCodeGen)
   val assumePreHolds = context.findOptionOrDefault(optAssumePre)
 
-  protected var lastCheckResult : (Boolean, Option[Boolean], Option[HenkinModel]) = (false, None, None)
+  protected var lastCheckResult: (Boolean, Option[Boolean], Option[HenkinModel]) = (false, None, None)
 
-  private val freeVars    = new IncrementalSet[Identifier]()
+  private val freeVars = new IncrementalSet[Identifier]()
   private val constraints = new IncrementalSeq[Expr]()
 
-  protected var interrupted : Boolean = false
+  protected var interrupted: Boolean = false
 
   val reporter = context.reporter
 
-  def name = "U:"+underlying.name
+  def name = "U:" + underlying.name
 
   def free() {
     underlying.free()
   }
 
   val templateGenerator = new TemplateGenerator(new TemplateEncoder[Expr] {
-    def encodeId(id: Identifier): Expr= {
+    def encodeId(id: Identifier): Expr = {
       Variable(id.freshen)
     }
 
@@ -138,7 +138,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
           val ev: Expr = p._2 match {
             case RawArrayValue(_, mapping, dflt) =>
               mapping.collectFirst {
-                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
+                case (k, v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
               } getOrElse dflt
             case _ => scala.sys.error("Unexpected function encoding " + p._2)
           }
@@ -176,14 +176,14 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
         false
 
       case Successful(e) =>
-        reporter.warning("- Model leads unexpected result: "+e)
+        reporter.warning("- Model leads unexpected result: " + e)
         false
 
       case RuntimeError(msg) =>
         reporter.debug("- Model leads to runtime error.")
         false
 
-      case EvaluatorError(msg) => 
+      case EvaluatorError(msg) =>
         if (silenceErrors) {
           reporter.debug("- Model leads to evaluator error: " + msg)
         } else {
@@ -196,7 +196,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
   def genericCheck(assumptions: Set[Expr]): Option[Boolean] = {
     lastCheckResult = (false, None, None)
 
-    while(!hasFoundAnswer && !interrupted) {
+    while (!hasFoundAnswer && !interrupted) {
       reporter.debug(" - Running search...")
 
       solver.push()
@@ -260,29 +260,33 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
             solver.pop()
           }
 
-          if(interrupted) {
+          if (interrupted) {
             foundAnswer(None)
           }
 
-          if(!hasFoundAnswer) {
+          if (!hasFoundAnswer) {
             reporter.debug("- We need to keep going.")
 
-            val toRelease = unrollingBank.getBlockersToUnlock
+            //for (i <- 1 to 3) {
+              val toRelease = unrollingBank.getBlockersToUnlock
 
-            reporter.debug(" - more unrollings")
+              reporter.debug(" - more unrollings")
 
-            val newClauses = unrollingBank.unrollBehind(toRelease)
+              // enclose within for loop
+              val newClauses = unrollingBank.unrollBehind(toRelease)
 
-            for(ncl <- newClauses) {
-              solver.assertCnstr(ncl)
-            }
+              for (ncl <- newClauses) {
+                solver.assertCnstr(ncl)
+              }
+            //}
+            // finish here
 
             reporter.debug(" - finished unrolling")
           }
       }
     }
 
-    if(interrupted) {
+    if (interrupted) {
       None
     } else {
       lastCheckResult._2
@@ -300,10 +304,10 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
 
   override def reset() = {
     underlying.reset()
-    lastCheckResult  = (false, None, None)
+    lastCheckResult = (false, None, None)
     freeVars.reset()
     constraints.reset()
-    interrupted      = false
+    interrupted = false
   }
 
   override def interrupt(): Unit = {

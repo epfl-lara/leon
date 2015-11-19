@@ -13,12 +13,35 @@ object $ {
   /**
    * implicit conversion from eager evaluation to lazy evaluation
    */
-  @inline //inlining call-by-name here
+  @inline
   implicit def eagerToLazy[T](x: T) = eager(x)
+
+  /**
+   * accessing in and out states.
+   * Should be used only in ensuring.
+   * TODO: enforce this.
+   */
+  @extern
+  def inState[T] : Set[$[T]] = sys.error("inState method is not executable!")
+
+  @extern
+  def outState[T] : Set[$[T]] = sys.error("outState method is not executable")
+
+  /**
+   * Helper class for invoking with a given state instead of the implicit state
+   */
+  @library
+  case class WithState[T](v: T) {
+    @extern
+    def withState[U](x: Set[$[U]]): T = sys.error("withState method is not executable!")
+  }
+
+  @inline
+  implicit def toWithState[T](x: T) = new WithState(x)
 }
 
 @library
-case class $[T](f: Unit => T) { // leon does not support call by name as of now
+case class $[T](f: Unit => T) {
   @extern
   lazy val value = {
     val x = f(())
@@ -32,4 +55,7 @@ case class $[T](f: Unit => T) { // leon does not support call by name as of now
 
   @extern
   def isEvaluated = eval
+
+  @extern
+  def isSuspension[T](f: T) : Boolean = sys.error("isSuspensionOf method is not executable")
 }

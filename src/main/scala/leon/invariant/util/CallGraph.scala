@@ -109,14 +109,15 @@ class CallGraph {
 
 object CallGraphUtil {
 
-  def constructCallGraph(prog: Program, onlyBody: Boolean = false, withTemplates: Boolean = false): CallGraph = {
-//
-    // println("Constructing call graph")
+  def constructCallGraph(prog: Program,
+      onlyBody: Boolean = false,
+      withTemplates: Boolean = false,
+      calleesFun: Expr => Set[FunDef] = getCallees): CallGraph = {
+
     val cg = new CallGraph()
     functionsWOFields(prog.definedFunctions).foreach((fd) => {
       cg.addFunction(fd)
       if (fd.hasBody) {
-        // println("Adding func " + fd.id.uniqueName)
         var funExpr = fd.body.get
         if (!onlyBody) {
           if (fd.hasPrecondition)
@@ -127,9 +128,8 @@ object CallGraphUtil {
         if (withTemplates && fd.hasTemplate) {
           funExpr = Tuple(Seq(funExpr, fd.getTemplate))
         }
-
         //introduce a new edge for every callee
-        getCallees(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))
+        calleesFun(funExpr).foreach(cg.addEdgeIfNotPresent(fd, _))
       }
     })
     cg

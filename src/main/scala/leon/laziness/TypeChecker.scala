@@ -8,6 +8,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
+import purescala.TypeOps._
 import leon.invariant.util.TypeUtil._
 
 object TypeChecker {
@@ -111,6 +112,7 @@ object TypeChecker {
               MatchCase(npattern, nguard, nrhs)
           }
           val nmatch = MatchExpr(nscr, ncases)
+          //println("Old match expr: "+e+" \n new expr: "+nmatch)
           (nmatch.getType, nmatch)
 
         case cs @ CaseClassSelector(cltype, clExpr, fld) =>
@@ -118,7 +120,8 @@ object TypeChecker {
           // this is a hack. TODO: fix this
           subcast(cltype, ncltype) match {
             case Some(ntype : CaseClassType) =>
-              (ntype, CaseClassSelector(ntype, nclExpr, fld))
+              val nop = CaseClassSelector(ntype, nclExpr, fld)
+              (nop.getType, nop)
             case  _ =>
               throw new IllegalStateException(s"$nclExpr : $ncltype cannot be cast to case class type: $cltype")
           }
@@ -157,16 +160,27 @@ object TypeChecker {
               }
             }
           // for uninterpreted functions, we could have a type parameter used only in the return type
-          val ntparams = (fd.tparams zip tparams).map{
+          val dummyTParam = TypeParameter.fresh("R@")
+          val ntparams = fd.tparams.map(_.tp).zipAll(tparams, dummyTParam, dummyTParam).map{
             case (paramt, argt) =>
-              tpmap.getOrElse(paramt.tp /* in this case we inferred the type parameter */,
+              tpmap.getOrElse(paramt /* in this case we inferred the type parameter */,
                   argt /* in this case we reuse the argument type parameter */ )
           }
           val nexpr = FunctionInvocation(TypedFunDef(fd, ntparams), nargs)
           if (nexpr.getType == Untyped) {
-            throw new IllegalStateException(s"Cannot infer type for expression: $e arg types: ${nargs.map(_.getType).mkString(",")}")
+            throw new IllegalStateException(s"Cannot infer type for expression: $e "+
+                s"arg types: ${nargs.map(_.getType).mkString(",")} \n Callee: ${fd} \n caller: ${nexpr}")
           }
           (nexpr.getType, nexpr)
+
+        case FiniteSet(els, baseType) =>
+          val nels = els.map(rec(_)._2)
+          // make sure every element has the same type (upcast it to the rootType)
+          val nbaseType  = bestRealType(nels.head.getType)
+          if(!nels.forall(el => bestRealType(el.getType) == nbaseType))
+            throw new IllegalStateException("Not all elements in the set have the same type: "+nbaseType)
+          val nop = FiniteSet(nels, nbaseType)
+          (nop.getType, nop)
 
         // need to handle tuple select specially
         case TupleSelect(tup, i) =>

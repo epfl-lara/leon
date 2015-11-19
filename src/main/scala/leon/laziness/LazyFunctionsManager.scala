@@ -1,0 +1,117 @@
+package leon
+package laziness
+
+import invariant.factories._
+import invariant.util.Util._
+import invariant.util._
+import invariant.structure.FunctionUtils._
+import purescala.ScalaPrinter
+import purescala.Common._
+import purescala.Definitions._
+import purescala.Expressions._
+import purescala.ExprOps._
+import purescala.DefOps._
+import purescala.Extractors._
+import purescala.Types._
+import leon.invariant.util.TypeUtil._
+import leon.invariant.util.LetTupleSimplification._
+import java.io.File
+import java.io.FileWriter
+import java.io.BufferedWriter
+import scala.util.matching.Regex
+import leon.purescala.PrettyPrinter
+import leon.LeonContext
+import leon.LeonOptionDef
+import leon.Main
+import leon.TransformationPhase
+import LazinessUtil._
+
+class LazyFunctionsManager(p: Program) {
+
+  // includes calls made through the specs
+  val cg = CallGraphUtil.constructCallGraph(p, false, true,
+    // a specialized callee function that ignores functions called inside `withState` calls, because they would have state as an argument
+    (inexpr: Expr) => {
+      var callees = Set[FunDef]()
+      def rec(e: Expr): Unit = e match {
+        case cc @ CaseClass(_, args) if LazinessUtil.isWithStateCons(cc)(p) =>
+          ; //nothing to be done
+        case f : FunctionInvocation if LazinessUtil.isSuspInvocation(f)(p) =>
+          // we can ignore the arguments to susp invocation as they are not actual calls, but only a test
+          ;
+        //note: do not consider field invocations
+        case f @ FunctionInvocation(TypedFunDef(callee, _), args) if callee.isRealFunction =>
+          callees += callee
+          args map rec
+        case Operator(args, _) => args map rec
+      }
+      rec(inexpr)
+      callees
+    })
+
+  val (funsNeedStates, funsRetStates) = {
+    var needRoots = Set[FunDef]()
+    var retRoots = Set[FunDef]()
+    p.definedFunctions.foreach {
+      case fd if fd.hasBody =>
+        postTraversal {
+          case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
+            // the lazy invocation constructor will need the state
+            needRoots += fd
+          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(p) =>
+            needRoots += fd
+          case finv: FunctionInvocation if isValueInvocation(finv)(p) =>
+            needRoots += fd
+            retRoots += fd
+          case _ =>
+            ;
+        }(fd.body.get)
+      case _ => ;
+    }
+    val retfuns = cg.transitiveCallers(retRoots.toSeq)
+    //println("Ret roots: "+retRoots.map(_.id)+" ret funs: "+retfuns.map(_.id))
+    (cg.transitiveCallers(needRoots.toSeq), retfuns)
+  }
+
+  lazy val callersOfLazyCons = {
+    var consRoots = Set[FunDef]()
+    funsNeedStates.foreach {
+      case fd if fd.hasBody =>
+        postTraversal {
+          case finv: FunctionInvocation if isLazyInvocation(finv)(p) => // this is the lazy invocation constructor
+            consRoots += fd
+          case _ =>
+            ;
+        }(fd.body.get)
+      case _ => ;
+    }
+    cg.transitiveCallers(consRoots.toSeq)
+  }
+
+  lazy val cgWithoutSpecs = CallGraphUtil.constructCallGraph(p, true, false)
+  lazy val callersOfIsEvalandIsSusp = {
+    var roots = Set[FunDef]()
+    funsNeedStates.foreach {
+      case fd if fd.hasBody =>
+        postTraversal {
+          case finv: FunctionInvocation if
+            isEvaluatedInvocation(finv)(p) || isSuspInvocation(finv)(p) => // call to isEvaluated || isSusp ?
+            roots += fd
+          case _ =>
+            ;
+        }(fd.body.get)
+      case _ => ;
+    }
+    cgWithoutSpecs.transitiveCallers(roots.toSeq)
+  }
+
+  def isRecursive(fd: FunDef) : Boolean = {
+    cg.isRecursive(fd)
+  }
+
+  def hasStateIndependentBehavior(fd: FunDef) : Boolean = {
+    // every function that does not call isEvaluated or is Susp has a state independent behavior
+    !callersOfIsEvalandIsSusp.contains(fd)
+  }
+
+}

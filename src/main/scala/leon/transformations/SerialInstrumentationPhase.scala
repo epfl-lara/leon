@@ -233,36 +233,37 @@ class ExprInstrumenter(funMap: Map[FunDef, FunDef], serialInst: SerialInstrument
           val finalRes = Tuple(t +: instPart)
           finalRes
 
-        case f @ FunctionInvocation(tfd, args) if tfd.fd.isRealFunction =>
-          val newfd = TypedFunDef(funMap(tfd.fd), tfd.tps)
-          val newFunInv = FunctionInvocation(newfd, subeVals)
-          //create a variables to store the result of function invocation
-          if (serialInst.instFuncs(tfd.fd)) {
-            //this function is also instrumented
-            val resvar = Variable(FreshIdentifier("e", newfd.returnType, true))
-            val valexpr = TupleSelect(resvar, 1)
-            val instexprs = instrumenters.map { m =>
-              val calleeInst = if (serialInst.funcInsts(tfd.fd).contains(m.inst)) {
-                List(serialInst.selectInst(tfd.fd)(resvar, m.inst))
-              } else List()
-              //Note we need to ensure that the last element of list is the instval of the finv
-              m.instrument(e, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(resvar))
+        // TODO: We are ignoring the construction cost of fields. Fix this.
+        case f @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
+          if (!fd.hasLazyFieldFlag) {
+            val newfd = TypedFunDef(funMap(fd), tps)
+            val newFunInv = FunctionInvocation(newfd, subeVals)
+            //create a variables to store the result of function invocation
+            if (serialInst.instFuncs(fd)) {
+              //this function is also instrumented
+              val resvar = Variable(FreshIdentifier("e", newfd.returnType, true))
+              val valexpr = TupleSelect(resvar, 1)
+              val instexprs = instrumenters.map { m =>
+                val calleeInst =
+                  if (serialInst.funcInsts(fd).contains(m.inst) &&
+                      fd.isUserFunction) {
+                    // ignoring fields here
+                    List(serialInst.selectInst(fd)(resvar, m.inst))
+                  } else List()
+                //Note we need to ensure that the last element of list is the instval of the finv
+                m.instrument(e, subeInsts.getOrElse(m.inst, List()) ++ calleeInst, Some(resvar))
+              }
+              Let(resvar.id, newFunInv, Tuple(valexpr +: instexprs))
+            } else {
+              val resvar = Variable(FreshIdentifier("e", newFunInv.getType, true))
+              val instexprs = instrumenters.map { m =>
+                m.instrument(e, subeInsts.getOrElse(m.inst, List()))
+              }
+              Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
             }
-            Let(resvar.id, newFunInv, Tuple(valexpr +: instexprs))
-          } else {
-            val resvar = Variable(FreshIdentifier("e", newFunInv.getType, true))
-            val instexprs = instrumenters.map { m =>
-              m.instrument(e, subeInsts.getOrElse(m.inst, List()))
-            }
-            Let(resvar.id, newFunInv, Tuple(resvar +: instexprs))
-          }
-
-        // This case will be taken if the function invocation is actually a val (lazy or otherwise) in the class
-        case f @ FunctionInvocation(tfd, args) =>
-          val resvar = Variable(FreshIdentifier("e", tfd.fd.returnType, true))
-          val instPart = instrumenters map (_.instrument(f, Seq()))
-          val finalRes = Tuple(f +: instPart)
-          finalRes
+          } else
+            throw new UnsupportedOperationException("Lazy fields are not handled in instrumentation." +
+              " Consider using the --lazy option and rewrite your program using lazy constructor `$`")
 
         case _ =>
           val exprPart = recons(subeVals)

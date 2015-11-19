@@ -38,7 +38,13 @@ import invariant.util.ProgramUtil._
 class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) {
 
   val typeClasses = {
-    var tc = new DisjointSets[TypeTree]()
+    var tc = new DisjointSets[TypeTree]() /*{
+      override def union(x: TypeTree, y: TypeTree) {
+        if (!x.isInstanceOf[TypeParameter] || !y.isInstanceOf[TypeParameter])
+          throw new IllegalStateException(s"Unifying: $x and $y")
+        super.union(x, y)
+      }
+    }*/
     p.definedFunctions.foreach {
       case fd if fd.hasBody && !fd.isLibrary =>
         postTraversal {
@@ -50,7 +56,12 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
             (fd.params zip args).foreach { x =>
               (x._1.getType, x._2.getType) match {
                 case (SetType(tf: ClassType), SetType(ta: ClassType)) =>
-                  (tf.tps zip ta.tps).foreach { x => tc.union(x._1, x._2) }
+                  // unify only type parameters
+                  (tf.tps zip ta.tps).foreach {
+                    case (t1: TypeParameter, t2: TypeParameter) =>
+                      tc.union(t1, t2)
+                    case _ => ;
+                  }
                 case (tf: TypeParameter, ta: TypeParameter) =>
                   tc.union(tf, ta)
                 case (t1, t2) =>
@@ -113,7 +124,7 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
     // the tupleExpr if it is not TupleTyped.
     // cannot use simplePostTransform because of this
     def rec(e: Expr): Expr = e match {
-      case FunctionInvocation(TypedFunDef(callee, targsOld), args) =>
+      case FunctionInvocation(TypedFunDef(callee, targsOld), args) => // this is already done by the type checker
         val targs = targsOld.map {
           case tp: TypeParameter => tpMap.getOrElse(tp, tp)
           case t                 => t
@@ -123,18 +134,34 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
             fdMap(callee)._1
           else callee
         FunctionInvocation(TypedFunDef(ncallee, targs), args map rec)
+
+      case CaseClass(cct, args) =>
+        val targs = cct.tps.map {
+          case tp: TypeParameter => tpMap.getOrElse(tp, tp)
+          case t                 => t
+        }.distinct
+        CaseClass(CaseClassType(cct.classDef, targs), args map rec)
+
       case Variable(id) if paramMap.contains(id) =>
         paramMap(id).toVariable
-      case TupleSelect(tup, index) => TupleSelect(rec(tup), index)
+      case TupleSelect(tup, index) =>
+        TupleSelect(rec(tup), index)
       case Ensuring(NoTree(_), post) =>
         Ensuring(nfd.fullBody, rec(post)) // the newfd body would already be type correct
       case Operator(args, op)      => op(args map rec)
       case t: Terminal             => t
     }
     val nbody = rec(ifd.fullBody)
-    //println(s"Inferring types for ${ifd.id} new fun: $nfd new body: $nbody")
     val initGamma = nfd.params.map(vd => vd.id -> vd.getType).toMap
-    TypeChecker.inferTypesOfLocals(nbody, initGamma)
+    /*if(ifd.id.name.contains("pushLeftWrapper")) {
+      println(s"Inferring types for ${ifd.id}")
+    }*/
+    val typedBody = TypeChecker.inferTypesOfLocals(nbody, initGamma)
+    /*if(ifd.id.name.contains("pushLeftWrapper")) {
+      //println(s"Inferring types for ${ifd.id} new fun: $nfd \n old body: ${ifd.fullBody} \n type correct body: $typedBody")
+      System.exit(0)
+    }*/
+    typedBody
   }
 
   def apply: Program = {

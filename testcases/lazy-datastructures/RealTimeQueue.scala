@@ -8,7 +8,10 @@ import leon.instrumentation._
 //TODO: need to automatically check monotonicity of isConcrete
 object RealTimeQueue {
 
-  sealed abstract class LList[T] {
+  /**
+   * A stream of values of type T
+   */
+  sealed abstract class Stream[T] {
     def isEmpty: Boolean = {
       this match {
         case SNil() => true
@@ -30,35 +33,35 @@ object RealTimeQueue {
       }
     } ensuring (_ >= 0)
   }
-  case class SCons[T](x: T, tail: $[LList[T]]) extends LList[T]
-  case class SNil[T]() extends LList[T]
+  case class SCons[T](x: T, tail: $[Stream[T]]) extends Stream[T]
+  case class SNil[T]() extends Stream[T]
 
-  def ssize[T](l: $[LList[T]]): BigInt = (l*).size
+  def ssize[T](l: $[Stream[T]]): BigInt = (l*).size
 
   //@monotonic
-  def isConcrete[T](l: $[LList[T]]): Boolean = {
-    (l.isEvaluated && (l* match {
+  def isConcrete[T](l: $[Stream[T]]): Boolean = {
+    l.isEvaluated && (l* match {
       case SCons(_, tail) =>
         isConcrete(tail)
       case _ => true
-    })) || (l*).isEmpty
+    })
   }
 
    @invstate
-  def rotate[T](f: $[LList[T]], r: List[T], a: $[LList[T]]): LList[T] = {
-    require(r.size == ssize(f) + 1 && isConcrete(f)) // size invariant between 'f' and 'r' holds
+  def rotate[T](f: $[Stream[T]], r: List[T], a: $[Stream[T]]): Stream[T] = { // doesn't change state
+    require(r.size == ssize(f) + 1 && isConcrete(f))
     (f.value, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, a)
       case (SCons(x, tail), Cons(y, r1)) =>
-        val newa: LList[T] = SCons[T](y, a)
+        val newa: Stream[T] = SCons[T](y, a)
         val rot = $(rotate(tail, r1, newa)) //this creates a lazy rotate operation
         SCons[T](x, rot)
     }
-  } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons && // using f*.size instead of ssize seems to help magically
+  } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons && // using f*.size instead of ssize seems to speed up verification magically
                      time <= 30)
 
-  def firstUnevaluated[T](l: $[LList[T]]): $[LList[T]] = {
+  def firstUnevaluated[T](l: $[Stream[T]]): $[Stream[T]] = {
     if (l.isEvaluated) {
       l* match {
         case SCons(_, tail) =>
@@ -75,34 +78,25 @@ object RealTimeQueue {
       case _ => true
     }))
 
-  def streamScheduleProperty[T](s: $[LList[T]], sch: $[LList[T]]) = {
-    firstUnevaluated(s) == firstUnevaluated(sch)
-  }
-
-  case class Queue[T](f: $[LList[T]], r: List[T], s: $[LList[T]]) {
+  case class Queue[T](f: $[Stream[T]], r: List[T], s: $[Stream[T]]) {
     def isEmpty = (f*).isEmpty
     def valid = {
-      streamScheduleProperty(f, s) &&
+      (firstUnevaluated(f) == firstUnevaluated(s)) &&
         ssize(s) == ssize(f) - r.size //invariant: |s| = |f| - |r|
     }
   }
 
-  def createQueue[T](f: $[LList[T]], r: List[T], sch: $[LList[T]]): Queue[T] = {
-    require(streamScheduleProperty(f, sch) &&
-      ssize(sch) == ssize(f) - r.size + 1) //size invariant holds
-    sch.value match { // evaluate the schedule if it is not evaluated
-      case SCons(_, tail) =>
-        Queue(f, r, tail)
-      case SNil() =>
-        val newa: LList[T] = SNil[T]()
-        val rotres = $(rotate(f, r, newa))
-        Queue(rotres, Nil[T](), rotres)
-    }
-  } ensuring (res => res.valid && time <= 50)
-
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
-    createQueue(q.f, Cons[T](x, q.r), q.s)
+    val r = Cons[T](x, q.r)
+    q.s.value match {
+      case SCons(_, tail) =>
+        Queue(q.f, r, tail)
+      case SNil() =>
+        val newa: Stream[T] = SNil[T]()
+        val rotres = $(rotate(q.f, r, newa))
+        Queue(rotres, Nil[T](), rotres)
+    }
   } ensuring (res => res.valid && time <= 60)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
@@ -110,10 +104,10 @@ object RealTimeQueue {
     q.f.value match {
       case SCons(x, nf) =>
         q.s.value match {
-          case SCons(_, st) => //here, the precondition of createQueue (reg. suffix property) may get violated, so it is handled specially here.
+          case SCons(_, st) =>
             Queue(nf, q.r, st)
           case _ =>
-            val newa: LList[T] = SNil[T]()
+            val newa: Stream[T] = SNil[T]()
             val rotres = $(rotate(nf, q.r, newa))
             Queue(rotres, Nil[T](), rotres)
         }
