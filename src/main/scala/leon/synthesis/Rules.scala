@@ -85,7 +85,7 @@ abstract class RuleInstantiation(val description: String,
 object RuleInstantiation {
   def apply(description: String)(f: => RuleApplication)(implicit problem: Problem, rule: Rule): RuleInstantiation = {
     new RuleInstantiation(description) {
-      def apply(hctx): RuleApplication = f
+      def apply(hctx: SearchContext): RuleApplication = f
     }
   }
 }
