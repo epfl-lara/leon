@@ -1,12 +1,13 @@
+import leon.annotation._
 import leon.lang._
 
 object Interpret {
-  abstract class BoolTree 
+  abstract class BoolTree
   case class Eq(t1 : IntTree, t2 : IntTree) extends BoolTree
   case class And(t1 : BoolTree, t2 : BoolTree) extends BoolTree
   case class Not(t : BoolTree) extends BoolTree
 
-  abstract class IntTree 
+  abstract class IntTree
   case class Const(c:Int) extends IntTree
   case class Var(index:Int) extends IntTree
   case class Plus(t1 : IntTree, t2 : IntTree) extends IntTree
@@ -19,7 +20,7 @@ object Interpret {
   }
 
   def beval(t:BoolTree, x0 : Int) : Boolean = {
-    t match {   
+    t match {
       case Less(t1, t2) => ieval(t1,x0) < ieval(t2,x0)
       case Eq(t1, t2) => ieval(t1,x0) == ieval(t2,x0)
       case And(t1, t2) => beval(t1,x0) && beval(t2,x0)
@@ -56,6 +57,7 @@ object Interpret {
     !treeBad(If(Less(Const(0),Var(0)), Var(0), Minus(Const(0),Var(0))))
   } holds
 
+  @ignore
   def main(args : Array[String]) {
     thereIsGoodTree()
   }
