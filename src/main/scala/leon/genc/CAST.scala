@@ -164,8 +164,8 @@ object CAST { // C Abstract Syntax Tree
   object Array {
     def apply(base: Type) = {
       val name   = Id("__leon_array_" + base + "_t")
-      val data   = Var(dataId, Const(Pointer(base)))
-      val length = Var(lengthId, Const(Int32))
+      val data   = Var(dataId, Pointer(base))
+      val length = Var(lengthId, Int32)
       val fields = data :: length :: Nil
 
       Struct(name, fields)
