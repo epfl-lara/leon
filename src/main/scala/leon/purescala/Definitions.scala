@@ -395,6 +395,10 @@ object Definitions {
     def postcondition_=(op: Option[Expr]) = {
       fullBody = withPostcondition(fullBody, op) 
     }
+    def postOrTrue = postcondition getOrElse {
+      val arg = ValDef(FreshIdentifier("res", returnType, alwaysShowUniqueID = true))
+      Lambda(Seq(arg), BooleanLiteral(true))
+    }
 
     def hasBody          = body.isDefined
     def hasPrecondition  = precondition.isDefined
@@ -540,6 +544,7 @@ object Definitions {
     def precondition  = fd.precondition map cached
     def precOrTrue    = cached(fd.precOrTrue)
     def postcondition = fd.postcondition map cached
+    def postOrTrue    = cached(fd.postOrTrue)
 
     def hasImplementation = body.isDefined
     def hasBody           = hasImplementation

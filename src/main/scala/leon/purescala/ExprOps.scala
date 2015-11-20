@@ -1140,11 +1140,46 @@ object ExprOps {
       GenericValue(tp, 0)
 
     case FunctionType(from, to) =>
-      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true)))
+      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, alwaysShowUniqueID = true)))
       Lambda(args, simplestValue(to))
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
+
+  def valuesOf(tp: TypeTree): Stream[Expr] = {
+    import utils.StreamUtils._
+    tp match {
+      case BooleanType =>
+        Stream(BooleanLiteral(false), BooleanLiteral(true))
+      case Int32Type =>
+        Stream.iterate(0) { prev =>
+          if (prev > 0) -prev else -prev + 1
+        } map IntLiteral
+      case IntegerType =>
+        Stream.iterate(BigInt(0)) { prev =>
+          if (prev > 0) -prev else -prev + 1
+        } map InfiniteIntegerLiteral
+      case UnitType =>
+        Stream(UnitLiteral())
+      case tp: TypeParameter =>
+        Stream.from(0) map (GenericValue(tp, _))
+      case TupleType(stps) =>
+        cartesianProduct(stps map (tp => valuesOf(tp))) map Tuple
+      case SetType(base) =>
+        def elems = valuesOf(base)
+        elems.scanLeft(Stream(FiniteSet(Set(), base): Expr)){ (prev, curr) =>
+          prev flatMap {
+            case fs@FiniteSet(elems, tp) =>
+              Stream(fs, FiniteSet(elems + curr, tp))
+          }
+        }.flatten // FIXME Need cp οr is this fine?
+      case cct: CaseClassType =>
+        cartesianProduct(cct.fieldsTypes map valuesOf) map (CaseClass(cct, _))
+      case act: AbstractClassType =>
+        interleave(act.knownCCDescendants.map(cct => valuesOf(cct)))
+    }
+  }
+
 
   /** Hoists all IfExpr at top level.
     *
@@ -1290,12 +1325,6 @@ object ExprOps {
     }
   }
 
-  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
-    def collect(e: Expr, path: Seq[Expr]) = e match {
-      case c: Choose => Some(c -> and(path: _*))
-      case _ => None
-    }
-  }
 
   def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
     CollectorWithPaths(f).traverse(expr)
@@ -1317,11 +1346,6 @@ object ExprOps {
 
     case Operator(es, _) =>
       es.map(formulaSize).sum+1
-  }
-
-  /** Return a list of all [[purescala.Expressions.Choose Choose]] construct inside the expression */
-  def collectChooses(e: Expr): List[Choose] = {
-    new ChooseCollectorWithPaths().traverse(e).map(_._1).toList
   }
 
   /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/

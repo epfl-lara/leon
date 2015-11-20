@@ -18,6 +18,8 @@ import invariant.engine._
 import invariant.util._
 import invariant.structure._
 import FunctionUtils._
+import Util._
+import PredicateUtil._
 
 class AxiomFactory(ctx : InferenceContext) {
 
@@ -78,7 +80,7 @@ class AxiomFactory(ctx : InferenceContext) {
       lesse +: acc
     })
     val conseq = LessEquals(call1.retexpr, call2.retexpr)
-    (Util.createAnd(ants), conseq)
+    (createAnd(ants), conseq)
   }
 
   //this is applicable only to binary operations

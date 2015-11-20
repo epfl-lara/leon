@@ -38,13 +38,13 @@ case class Problem(as: List[Identifier], ws: Expr, pc: Expr, phi: Expr, xs: List
 }
 
 object Problem {
-  def fromChoose(ch: Choose, pc: Expr = BooleanLiteral(true), eb: ExamplesBank = ExamplesBank.empty): Problem = {
+  def fromSpec(spec: Expr, pc: Expr = BooleanLiteral(true), eb: ExamplesBank = ExamplesBank.empty): Problem = {
     val xs = {
-      val tps = ch.pred.getType.asInstanceOf[FunctionType].from
-      tps map (FreshIdentifier("x", _, true))
+      val tps = spec.getType.asInstanceOf[FunctionType].from
+      tps map (FreshIdentifier("x", _, alwaysShowUniqueID = true))
     }.toList
 
-    val phi = application(simplifyLets(ch.pred), xs map { _.toVariable})
+    val phi = application(simplifyLets(spec), xs map { _.toVariable})
     val as = (variablesOf(And(pc, phi)) -- xs).toList.sortBy(_.name)
 
     val TopLevelAnds(clauses) = pc
@@ -57,10 +57,10 @@ object Problem {
     Problem(as, andJoin(wss), andJoin(pcs), phi, xs, eb)
   }
 
-  def fromChooseInfo(ci: ChooseInfo): Problem = {
+  def fromSourceInfo(ci: SourceInfo): Problem = {
     // Same as fromChoose, but we order the input variables by the arguments of
     // the functions, so that tests are compatible
-    val p = fromChoose(ci.ch, ci.pc, ci.eb)
+    val p = fromSpec(ci.spec, ci.pc, ci.eb)
     val argsIndex = ci.fd.params.map(_.id).zipWithIndex.toMap.withDefaultValue(100)
 
     p.copy( as = p.as.sortBy(a => argsIndex(a)))

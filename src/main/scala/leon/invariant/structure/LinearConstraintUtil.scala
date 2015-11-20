@@ -14,6 +14,8 @@ import java.io._
 import invariant.util._
 import BigInt._
 import Constructors._
+import Util._
+import PredicateUtil._
 
 class NotImplementedException(message: String) extends RuntimeException(message) {
 
@@ -105,7 +107,7 @@ object LinearConstraintUtil {
 
     //handle each minterm
     minterms.foreach((minterm: Expr) => minterm match {
-      case _ if (Util.isTemplateExpr(minterm)) => {
+      case _ if (isTemplateExpr(minterm)) => {
         addConstant(minterm)
       }
       case Times(e1, e2) => {
@@ -117,7 +119,7 @@ object LinearConstraintUtil {
         }
         e1 match {
           //case c @ InfiniteIntegerLiteral(_) => addCoefficient(e2, c)
-          case _ if (Util.isTemplateExpr(e1)) => {
+          case _ if (isTemplateExpr(e1)) => {
             addCoefficient(e2, e1)
           }
           case _ => throw new IllegalStateException("Coefficient not a constant or template expression: " + e1)
@@ -219,7 +221,7 @@ object LinearConstraintUtil {
             || e.isInstanceOf[GreaterEquals])) => {
 
           //check if the expression has real valued sub-expressions
-          val isReal = Util.hasReals(e1) || Util.hasReals(e2)
+          val isReal = hasReals(e1) || hasReals(e2)
           //doing something else ... ?
     		  // println("[DEBUG] Expr 1 " + e1 + " of type " + e1.getType + " and Expr 2 " + e2 + " of type" + e2.getType)
           val (newe, newop) = e match {
@@ -256,9 +258,9 @@ object LinearConstraintUtil {
         case Times(_, _) | RealTimes(_, _) => {
           val Operator(Seq(e1, e2), op) = inExpr
           val (r1, r2) = (mkLinearRecur(e1), mkLinearRecur(e2))
-          if(Util.isTemplateExpr(r1)) {
+          if(isTemplateExpr(r1)) {
             PushTimes(r1, r2)
-          } else if(Util.isTemplateExpr(r2)){
+          } else if(isTemplateExpr(r2)){
             PushTimes(r2, r1)
           } else
             throw new IllegalStateException("Expression not linear: " + Times(r1, r2))
@@ -486,4 +488,3 @@ object LinearConstraintUtil {
      }
   }
 }
-

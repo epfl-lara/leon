@@ -16,8 +16,9 @@ import invariant.engine.InferenceContext
 import invariant.factories._
 import leon.invariant.templateSolvers.ExtendedUFSolver
 import leon.invariant.util.RealValuedExprEvaluator._
+import invariant.util.TimerUtil._
 
-class Minimizer(ctx: InferenceContext) {
+class Minimizer(ctx: InferenceContext, program: Program) {
 
   val verbose = false
   val debugMinimization = false
@@ -26,14 +27,11 @@ class Minimizer(ctx: InferenceContext) {
    * TODO: make sure that the template for rootFun is the time template
    */
   val MaxIter = 16 //note we may not be able to represent anything beyond 2^16
-  /*val MaxInt = Int.MaxValue
-  val sqrtMaxInt = 45000 //this is a number that is close a sqrt of 2^31
-*/ val half = FractionalLiteral(1, 2)
+  val half = FractionalLiteral(1, 2)
   val two = FractionalLiteral(2, 1)
   val rzero = FractionalLiteral(0, 1)
   val mone = FractionalLiteral(-1, 1)
 
-  private val program = ctx.program
   private val leonctx = ctx.leonContext
   val reporter = leonctx.reporter
 
@@ -57,10 +55,8 @@ class Minimizer(ctx: InferenceContext) {
     val orderedTempVars = nestMap.toSeq.sortWith((a, b) => a._2 >= b._2).map(_._1)
     //do a binary search sequentially on each of these tempvars
     // note: use smtlib solvers so that they can be timedout
-    val solver = SimpleSolverAPI(
-      new TimeoutSolverFactory(SolverFactory(() =>
-        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
-        //new ExtendedUFSolver(leonctx, program) with TimeoutSolver), ctx.timeout * 1000))
+    lazy val solver = new SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() =>
+      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), ctx.vcTimeout * 1000))
 
     reporter.info("minimizing...")
     var currentModel = initModel
@@ -101,7 +97,9 @@ class Minimizer(ctx: InferenceContext) {
           else {
             val boundCtr = And(LessEquals(tvar, currval), GreaterEquals(tvar, lowerBound))
             //val t1 = System.currentTimeMillis()
-            val (res, newModel) = solver.solveSAT(And(acc, boundCtr))
+            val (res, newModel) =
+              if (ctx.abort) (None, Model.empty)
+              else solver.solveSAT(And(acc, boundCtr))
             //val t2 = System.currentTimeMillis()
             //println((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
             res match {
@@ -115,7 +113,7 @@ class Minimizer(ctx: InferenceContext) {
             }
           }
         }
-      } while (continue && iter < MaxIter)
+      } while (!ctx.abort && continue && iter < MaxIter)
       //this is the last ditch effort to make the upper bound constant smaller.
       //check if the floor of the upper-bound is a solution
       val currval @ FractionalLiteral(n, d) =
@@ -124,7 +122,7 @@ class Minimizer(ctx: InferenceContext) {
         } else {
           initModel(tvar.id).asInstanceOf[FractionalLiteral]
         }
-      if (d != 1) {
+      if (d != 1 && !ctx.abort) {
         val (res, newModel) = solver.solveSAT(And(acc, Equals(tvar, floor(currval))))
         if (res == Some(true))
           updateState(newModel)
@@ -151,7 +149,7 @@ class Minimizer(ctx: InferenceContext) {
       val (res, newModel) = solver.solveSAT(And(nlctr, Equals(tvar, flval)))
       res match {
         case Some(true) => Some(newModel)
-        case _ => None
+        case _          => None
       }
     } else None
   }
@@ -191,10 +189,10 @@ class Minimizer(ctx: InferenceContext) {
           0
         }
         case FunctionInvocation(_, args) => 1 + args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
-        case t: Terminal => 0
+        case t: Terminal                 => 0
         /*case UnaryOperator(arg, _) => functionNesting(arg)
         case BinaryOperator(a1, a2, _) => functionNesting(a1) + functionNesting(a2)*/
-        case Operator(args, _) => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
+        case Operator(args, _)           => args.foldLeft(0)((acc, arg) => acc + functionNesting(arg))
       }
     }
     functionNesting(template)

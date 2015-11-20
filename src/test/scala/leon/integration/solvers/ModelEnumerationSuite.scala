@@ -12,7 +12,7 @@ import leon.purescala.Common._
 import leon.evaluators._
 import leon.purescala.Expressions._
 
-class ModelEnumeratorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
+class ModelEnumerationSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
   val sources = List(
     """|import leon.lang._
        |import leon.annotation._

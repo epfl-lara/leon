@@ -2,13 +2,11 @@
 
 package leon.integration.solvers
 
-import leon.test._
 import leon.LeonContext
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.Common._
 import leon.purescala.Definitions._
-import leon.solvers._
 import leon.solvers.z3._
 import leon.solvers.combinators._
 

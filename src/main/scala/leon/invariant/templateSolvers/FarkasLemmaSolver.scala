@@ -14,8 +14,12 @@ import solvers.SimpleSolverAPI
 import scala.collection.mutable.{ Map => MutableMap }
 import invariant.engine._
 import invariant.factories._
-import invariant.util.Util._
 import invariant.util._
+import Util._
+import ProgramUtil._
+import SolverUtil._
+import PredicateUtil._
+import TimerUtil._
 import invariant.structure._
 import leon.solvers.TimeoutSolver
 import leon.solvers.SolverFactory
@@ -24,7 +28,7 @@ import leon.solvers.Model
 import leon.solvers.smtlib.SMTLIBZ3Solver
 import leon.invariant.util.RealValuedExprEvaluator._
 
-class FarkasLemmaSolver(ctx: InferenceContext) {
+class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
 
   //debug flags
   val verbose = true
@@ -39,9 +43,9 @@ class FarkasLemmaSolver(ctx: InferenceContext) {
   val useIncrementalSolvingForNLctrs = false //note: NLsat doesn't support incremental solving. It starts from sratch even in incremental solving.
 
   val leonctx = ctx.leonContext
-  val program = ctx.program
   val reporter = ctx.reporter
-  val timeout = ctx.timeout
+  val timeout = ctx.vcTimeout // Note: we are using vcTimeout here as well
+
   /**
    * This procedure produces a set of constraints that need to be satisfiable for the
    * conjunction ants and conseqs to be false
@@ -54,11 +58,6 @@ class FarkasLemmaSolver(ctx: InferenceContext) {
    *
    */
   def constraintsForUnsat(linearCtrs: Seq[LinearConstraint], temps: Seq[LinearTemplate]): Expr = {
-
-    //for debugging
-    /*println("#" * 20)
-    println(allAnts + " ^ " + allConseqs)
-    println("#" * 20)*/
     this.applyFarkasLemma(linearCtrs ++ temps, Seq(), true)
   }
 
@@ -253,7 +252,7 @@ class FarkasLemmaSolver(ctx: InferenceContext) {
     					reduceNonlinearity)(nlctrs)
 
     //for debugging nonlinear constraints
-    if (this.debugNLCtrs && Util.hasInts(simpctrs)) {
+    if (this.debugNLCtrs && hasInts(simpctrs)) {
       throw new IllegalStateException("Nonlinear constraints have integers: " + simpctrs)
     }
     if (verbose && LinearConstraintUtil.isLinear(simpctrs)) {
@@ -263,30 +262,31 @@ class FarkasLemmaSolver(ctx: InferenceContext) {
       reporter.info("InputCtrs: " + nlctrs)
       reporter.info("SimpCtrs: " + simpctrs)
       if (this.dumpNLCtrsAsSMTLIB) {
-        val filename = ctx.program.modules.last.id + "-nlctr" + FileCountGUID.getID + ".smt2"
-        if (Util.atomNum(simpctrs) >= 5) {
+        val filename = program.modules.last.id + "-nlctr" + FileCountGUID.getID + ".smt2"
+        if (atomNum(simpctrs) >= 5) {
           if (solveAsBitvectors)
-            Util.toZ3SMTLIB(simpctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)
+            toZ3SMTLIB(simpctrs, filename, "QF_BV", leonctx, program, useBitvectors = true, bitvecSize = bvsize)
           else
-            Util.toZ3SMTLIB(simpctrs, filename, "QF_NRA", leonctx, program)
+            toZ3SMTLIB(simpctrs, filename, "QF_NRA", leonctx, program)
           reporter.info("NLctrs dumped to: " + filename)
         }
       }
     }
 
     // solve the resulting constraints using solver
-    val innerSolver = if (solveAsBitvectors) {
+    lazy val solver = if (solveAsBitvectors) {
       throw new IllegalStateException("Not supported now. Will be in the future!")
       //new ExtendedUFSolver(leonctx, program, useBitvectors = true, bitvecSize = bvsize) with TimeoutSolver
     } else {
-      // use SMTLIBSolver to solve the constraints so that it can be timed out effectively
-      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
-      //new ExtendedUFSolver(leonctx, program) with TimeoutSolver
+      //new AbortableSolver(() => new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver, ctx)
+      SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() =>
+        new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver), timeout * 1000))
     }
-    val solver = SimpleSolverAPI(new TimeoutSolverFactory(SolverFactory(() => innerSolver), timeout * 1000))
     if (verbose) reporter.info("solving...")
     val t1 = System.currentTimeMillis()
-    val (res, model) = solver.solveSAT(simpctrs)
+    val (res, model) =
+      if (ctx.abort) (None, Model.empty)
+      else solver.solveSAT(simpctrs)
     val t2 = System.currentTimeMillis()
     if (verbose) reporter.info((if (res.isDefined) "solved" else "timed out") + "... in " + (t2 - t1) / 1000.0 + "s")
     Stats.updateCounterTime((t2 - t1), "NL-solving-time", "disjuncts")

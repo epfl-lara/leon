@@ -141,7 +141,7 @@ object Main {
   def computePipeline(ctx: LeonContext): Pipeline[List[String], Any] = {
 
     import purescala.Definitions.Program
-    import purescala.{FunctionClosure, RestoreMethods}
+    import purescala.RestoreMethods
     import utils.FileOutputPhase
     import frontends.scalac.{ExtractionPhase, ClassgenPhase}
     import synthesis.SynthesisPhase
@@ -164,8 +164,8 @@ object Main {
     val terminationF = ctx.findOptionOrDefault(optTermination)
     val verifyF      = ctx.findOptionOrDefault(optVerify)
     val evalF        = ctx.findOption(optEval).isDefined
-    val inferInvF = ctx.findOptionOrDefault(optInferInv)
-    val instrumentF = ctx.findOptionOrDefault(optInstrument)
+    val inferInvF    = ctx.findOptionOrDefault(optInferInv)
+    val instrumentF  = ctx.findOptionOrDefault(optInstrument)
     val analysisF    = verifyF && terminationF
 
     if (helpF) {

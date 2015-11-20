@@ -11,47 +11,49 @@ import purescala.Types._
 import scala.collection.mutable.{ Set => MutableSet }
 import java.io._
 import scala.collection.mutable.{ Set => MutableSet }
-import scala.collection.mutable.{Set => MutableSet}
+import scala.collection.mutable.{ Set => MutableSet }
 
 import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
+import Util._
+import PredicateUtil._
+import ProgramUtil._
 
 /**
-   * An enumeration based template generator.
-   * Enumerates all numerical terms in some order (this enumeration is incomplete for termination).
-   * TODO: Feature:
-   * (a) allow template functions and functions with template variables ?
-   * (b) should we unroll algebraic data types ?
-   *
-   * The following function may potentially have complexity O(n^i) where 'n' is the number of functions
-   * and 'i' is the increment step
-   * TODO: optimize the running and also reduce the size of the input templates
-   *
-   * For now this is incomplete
-   */
-class TemplateEnumerator(ctx: InferenceContext) extends TemplateGenerator {
-  val prog = ctx.program
+ * An enumeration based template generator.
+ * Enumerates all numerical terms in some order (this enumeration is incomplete for termination).
+ * TODO: Feature:
+ * (a) allow template functions and functions with template variables ?
+ * (b) should we unroll algebraic data types ?
+ *
+ * The following function may potentially have complexity O(n^i) where 'n' is the number of functions
+ * and 'i' is the increment step
+ * TODO: optimize the running and also reduce the size of the input templates
+ *
+ * For now this is incomplete
+ */
+class TemplateEnumerator(ctx: InferenceContext, prog: Program) extends TemplateGenerator {
   val reporter = ctx.reporter
 
-    //create a call graph for the program
-    //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
-    private val callGraph = {
-      val cg = CallGraphUtil.constructCallGraph(prog)
-      cg
+  //create a call graph for the program
+  //Caution: this call-graph could be modified later while call the 'getNextTemplate' method
+  private val callGraph = {
+    val cg = CallGraphUtil.constructCallGraph(prog)
+    cg
+  }
+
+  private var tempEnumMap = Map[FunDef, FunctionTemplateEnumerator]()
+
+  def getNextTemplate(fd: FunDef): Expr = {
+    if (tempEnumMap.contains(fd)) tempEnumMap(fd).getNextTemplate()
+    else {
+      val enumerator = new FunctionTemplateEnumerator(fd, prog, ctx.enumerationRelation, callGraph, reporter)
+      tempEnumMap += (fd -> enumerator)
+      enumerator.getNextTemplate()
     }
-
-	private var tempEnumMap = Map[FunDef, FunctionTemplateEnumerator]()
-
-	def getNextTemplate(fd : FunDef) : Expr = {
-	  if(tempEnumMap.contains(fd)) tempEnumMap(fd).getNextTemplate()
-	  else {
-	    val enumerator = new FunctionTemplateEnumerator(fd, prog, ctx.enumerationRelation,  callGraph, reporter)
-	    tempEnumMap += (fd -> enumerator)
-	    enumerator.getNextTemplate()
-	  }
-	}
+  }
 }
 
 /**
@@ -59,15 +61,15 @@ class TemplateEnumerator(ctx: InferenceContext) extends TemplateGenerator {
  * 'op' is a side-effects parameter
  * Caution: The methods of this class has side-effects on the 'callGraph' parameter
  */
-class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr) => Expr,
-    callGraph : CallGraph,  reporter: Reporter) {
+class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr, Expr) => Expr,
+                                 callGraph: CallGraph, reporter: Reporter) {
   private val MAX_INCREMENTS = 2
   private val zero = InfiniteIntegerLiteral(0)
   //using default op as <= or == (manually adjusted)
   //private val op = LessEquals
-    //LessThan
-    //LessEquals
-    //Equals.apply _
+  //LessThan
+  //LessEquals
+  //Equals.apply _
   private var currTemp: Expr = null
   private var incrStep: Int = 0
   private var typeTermMap = Map[TypeTree, MutableSet[Expr]]()
@@ -82,11 +84,10 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
   def getNextTemplate(): Expr = {
     //println("Getting next template for function: "+fd.id)
 
-    if (incrStep == MAX_INCREMENTS){
+    if (incrStep == MAX_INCREMENTS) {
       //exhausted the templates, so return
       op(currTemp, zero)
-    }
-    else {
+    } else {
 
       incrStep += 1
 
@@ -104,7 +105,7 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
           }
         })
 
-        val resVar = Util.getFunctionReturnVariable(rootFun)
+        val resVar = getFunctionReturnVariable(rootFun)
         if (newTerms.contains(rootFun.returnType)) {
           newTerms(rootFun.returnType).add(resVar)
         } else {
@@ -152,10 +153,10 @@ class FunctionTemplateEnumerator(rootFun: FunDef, prog: Program, op: (Expr,Expr)
       //return all the integer valued terms of newTerms
       //++ newTerms.getOrElse(Int32Type, Seq[Expr]()) (for now not handling int 32 terms)
       val numericTerms = (newTerms.getOrElse(RealType, Seq[Expr]()) ++ newTerms.getOrElse(IntegerType, Seq[Expr]())).toSeq
-      if(!numericTerms.isEmpty) {
+      if (!numericTerms.isEmpty) {
         //create a linear combination of intTerms
         val newTemp = numericTerms.foldLeft(null: Expr)((acc, t: Expr) => {
-          val summand = Times(t, TemplateIdFactory.freshTemplateVar() : Expr)
+          val summand = Times(t, TemplateIdFactory.freshTemplateVar(): Expr)
           if (acc == null) summand
           else
             Plus(summand, acc)

@@ -50,7 +50,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
       InnerCaseSplit
     )
 
-    def getChooses(ctx: LeonContext, content: String): (Program, SynthesisSettings, Seq[ChooseInfo]) = {
+    def getChooses(ctx: LeonContext, content: String): (Program, SynthesisSettings, Seq[SourceInfo]) = {
       val opts = SynthesisSettings()
       val pipeline = leon.utils.TemporaryInputPhase andThen 
                      frontends.scalac.ExtractionPhase andThen
@@ -58,7 +58,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
 
       val (ctx2, program) = pipeline.run(ctx, (List(content), Nil))
 
-      (program, opts, ChooseInfo.extractFromProgram(ctx2, program))
+      (program, opts, SourceInfo.extractFromProgram(ctx2, program))
     }
 
     case class Job(content: String, choosesToProcess: Set[Int], rules: List[String]) {
@@ -93,8 +93,8 @@ class StablePrintingSuite extends LeonRegressionSuite {
             for (e <- reporter.lastErrors) {
               info(e)
             }
-            println(e)
             info(e.getMessage)
+            e.printStackTrace()
             fail("Compilation failed")
         }
 
@@ -117,7 +117,7 @@ class StablePrintingSuite extends LeonRegressionSuite {
                       case Some(sol) =>
                         val result = sol.toSimplifiedExpr(ctx, pgm)
 
-                        val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.ch, (indent: Int) => {
+                        val newContent = new FileInterface(ctx.reporter).substitute(j.content, ci.source, (indent: Int) => {
                           val p = new ScalaPrinter(PrinterOptions(), Some(pgm))
                           p.pp(result)(PrinterContext(result, List(ci.fd), indent, p))
                           p.toString

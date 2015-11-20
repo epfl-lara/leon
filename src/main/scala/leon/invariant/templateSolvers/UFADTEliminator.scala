@@ -8,10 +8,13 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import java.io._
-import leon.invariant.util.UndirectedGraph
+import invariant.datastructure.UndirectedGraph
 import scala.util.control.Breaks._
 import invariant.util._
 import leon.purescala.TypeOps
+import PredicateUtil._
+import SolverUtil._
+import Util._
 
 class UFADTEliminator(ctx: LeonContext, program: Program) {
 
@@ -32,7 +35,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     val product = vec.foldLeft(Set[(Expr, Expr)]())((acc, call) => {
 
       //an optimization: here we can exclude calls to maxFun from axiomatization, they will be inlined anyway
-      /*val shouldConsider = if(InvariantUtil.isCallExpr(call)) {
+      /*val shouldConsider = if(InvariantisCallExpr(call)) {
         val BinaryOperator(_,FunctionInvocation(calledFun,_), _) = call
         if(calledFun == DepthInstPhase.maxFun) false
         else true
@@ -88,7 +91,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       val Operator(Seq(r2 @ Variable(_), _), _) = call2
       val resEquals = predEval(Equals(r1, r2))
       if (resEquals) {
-        if (Util.isCallExpr(call1)) {
+        if (isCallExpr(call1)) {
           val (ants, _) = axiomatizeCalls(call1, call2)
           val antsHold = ants.forall(ant => {
             val Operator(Seq(lvar @ Variable(_), rvar @ Variable(_)), _) = ant
@@ -102,7 +105,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
 
     def predForEquality(call1: Expr, call2: Expr): Seq[Expr] = {
 
-      val eqs = if (Util.isCallExpr(call1)) {
+      val eqs = if (isCallExpr(call1)) {
         val (_, rhs) = axiomatizeCalls(call1, call2)
         Seq(rhs)
       } else {
@@ -125,7 +128,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
 
     def predForDisequality(call1: Expr, call2: Expr): Seq[Expr] = {
 
-      val (ants, _) = if (Util.isCallExpr(call1)) {
+      val (ants, _) = if (isCallExpr(call1)) {
         axiomatizeCalls(call1, call2)
       } else {
         axiomatizeADTCons(call1, call2)

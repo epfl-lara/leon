@@ -5,35 +5,31 @@ package utils
 
 import scala.collection.JavaConversions._
 
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicLong, AtomicBoolean}
 import sun.misc.{Signal, SignalHandler}
 import java.util.WeakHashMap
 
 class InterruptManager(reporter: Reporter) extends Interruptible {
   private[this] val interruptibles = new WeakHashMap[Interruptible, Boolean]()
   private[this] val sigINT = new Signal("INT")
-  private[this] val withinTimeout: AtomicBoolean = new AtomicBoolean(false)
+
+  private[this] val lastTimestamp = new AtomicLong(0L)
+  private val exitWindow = 1000L
+
   private[this] val handler = new SignalHandler {
     def handle(sig: Signal) {
-      println()
-      if (withinTimeout.get()) {
+      def now(): Long = System.currentTimeMillis()
+      reporter.info("")
+      if (now() - lastTimestamp.get < exitWindow) {
         reporter.warning("Aborting Leon...")
         System.exit(1)
       }
       else {
         reporter.warning("Interrupted...")
-        setTimeout()
+        lastTimestamp.set(now())
         interrupt()
       }
     }
-  }
-  private val exitWindow = 1000
-  private[this] def setTimeout() = {
-    import scala.concurrent.Future
-    import scala.concurrent.ExecutionContext.Implicits.global
-    withinTimeout.set(true)
-    Future { Thread.sleep(exitWindow) } onComplete { _ => withinTimeout.set(false) }
-    ()
   }
 
   val interrupted: AtomicBoolean = new AtomicBoolean(false)

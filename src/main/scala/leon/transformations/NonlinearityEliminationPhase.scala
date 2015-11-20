@@ -2,7 +2,10 @@ package leon
 package transformations
 
 import invariant.factories._
-import invariant.util.Util._
+import invariant.util._
+import Util._
+import ProgramUtil._
+import PredicateUtil._
 import invariant.structure.FunctionUtils._
 
 import purescala.ScalaPrinter
@@ -146,7 +149,6 @@ class NonlinearityEliminator(skipAxioms: Boolean, domain: TypeTree) {
         val simpBody = simplifyLets(fd.body.get)
         Some(replaceFun(simpBody))
       } else None
-
 
       //add a new postcondition
       newfd.postcondition = if (fd.postcondition.isDefined) {

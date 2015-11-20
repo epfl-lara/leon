@@ -16,6 +16,8 @@ import solvers.z3._
 import invariant.engine._
 import invariant.util._
 import leon.solvers.Model
+import Util._
+import PredicateUtil._
 
 /**
  * Data associated with a call
@@ -99,12 +101,12 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
         })
         //create a temporary for Or
         val gor = TVarFactory.createTemp("b", BooleanType).toVariable
-        val newor = Util.createOr(newargs)
+        val newor = createOr(newargs)
         conjuncts += (gor -> newor)
         gor
       }
       case And(args) => {
-        val newargs = args.map(arg => if (Util.getTemplateVars(e).isEmpty) {
+        val newargs = args.map(arg => if (getTemplateVars(e).isEmpty) {
           arg
         } else {
           //if the expression has template variables then we separate it using guards
@@ -114,7 +116,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
           disjuncts += (g -> ctrs)
           g
         })
-        Util.createAnd(newargs)
+        createAnd(newargs)
       }
       case _ => e
     })(ExpressionTransformer.simplify(simplifyArithmetic(
@@ -209,24 +211,24 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
     var rest = Seq[Expr]()
     disjuncts.foreach(entry => {
       val (g,ctrs) = entry
-      val ctrExpr = combiningOp(g,Util.createAnd(ctrs.map(_.toExpr)))
-      if(Util.getTemplateVars(ctrExpr).isEmpty)
+      val ctrExpr = combiningOp(g,createAnd(ctrs.map(_.toExpr)))
+      if(getTemplateVars(ctrExpr).isEmpty)
         rest :+= ctrExpr
       else
         paramPart :+= ctrExpr
 
     })
     val conjs = conjuncts.map((entry) => combiningOp(entry._1, entry._2)).toSeq ++ roots
-    (Util.createAnd(paramPart), Util.createAnd(rest ++ conjs ++ roots))
+    (createAnd(paramPart), createAnd(rest ++ conjs ++ roots))
   }
 
   def toExpr : Expr={
     val disjs = disjuncts.map((entry) => {
       val (g,ctrs) = entry
-      combiningOp(g, Util.createAnd(ctrs.map(_.toExpr)))
+      combiningOp(g, createAnd(ctrs.map(_.toExpr)))
     }).toSeq
     val conjs = conjuncts.map((entry) => combiningOp(entry._1, entry._2)).toSeq
-    Util.createAnd(disjs ++ conjs ++ roots)
+    createAnd(disjs ++ conjs ++ roots)
   }
 
   //unpack the disjunct and conjuncts by removing all guards
@@ -238,7 +240,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
         case BoolConstraint(g@Variable(_)) if conjuncts.contains(g) => conjuncts(g)
         case ctr@_ => ctr.toExpr
       })
-      (g, Util.createAnd(newctrs))
+      (g, createAnd(newctrs))
     })
     val rootexprs = roots.map(_ match {
         case g@Variable(_) if conjuncts.contains(g) => conjuncts(g)
@@ -266,13 +268,13 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
       unpackedDisjs = newDisjs
     }
     //replace all the 'guards' in root using 'unpackedDisjs'
-    replace(unpackedDisjs, Util.createAnd(rootexprs))
+    replace(unpackedDisjs, createAnd(rootexprs))
   }
 
   override def toString : String = {
     val disjStrs = disjuncts.map((entry) => {
       val (g,ctrs) = entry
-      simplifyArithmetic(combiningOp(g, Util.createAnd(ctrs.map(_.toExpr)))).toString
+      simplifyArithmetic(combiningOp(g, createAnd(ctrs.map(_.toExpr)))).toString
     }).toSeq
     val conjStrs = conjuncts.map((entry) => combiningOp(entry._1, entry._2).toString).toSeq
     val rootStrs = roots.map(_.toString)

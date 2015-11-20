@@ -4,7 +4,6 @@ package leon
 package solvers
 package smtlib
 
-import verification.VC
 import purescala.Common._
 import purescala.Expressions._
 import purescala.ExprOps._
@@ -20,9 +19,6 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   /* Solver name */
   def targetName: String
   override def name: String = "smt-"+targetName
-
-  /* Reporter */
-  protected val reporter = context.reporter
 
   override def dbg(msg: => Any) = {
     debugOut foreach { o =>

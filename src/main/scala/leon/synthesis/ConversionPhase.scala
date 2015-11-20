@@ -64,7 +64,7 @@ object ConversionPhase extends UnitPhase[Program] {
    *
    *  def foo(a: T) = {
    *    require(..a..)
-   *    ???
+   *    _
    *  } ensuring { res =>
    *    post(res)
    *  }
@@ -76,6 +76,7 @@ object ConversionPhase extends UnitPhase[Program] {
    *    choose(x => post(x))
    *  }
    *
+   * (in practice, there will be no pre-and postcondition)
    */
 
   def convert(e : Expr, ctx : LeonContext) : Expr = {
