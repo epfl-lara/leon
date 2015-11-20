@@ -43,7 +43,6 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
     candidates.flatMap {
       case List(a1, a2) =>
-
         val subLT = p.copy(pc = and(LessThan(Variable(a1), Variable(a2)), p.pc),
                            eb = p.qeb.filterIns(LessThan(Variable(a1), Variable(a2))))
         val subEQ = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc),

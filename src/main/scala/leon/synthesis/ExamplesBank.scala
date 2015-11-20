@@ -4,7 +4,6 @@ package synthesis
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Constructors._
-import evaluators._
 import purescala.Common._
 import repair._
 import leon.utils.ASCIIHelpers._
@@ -175,9 +174,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
   }
 
   def filterIns(expr: Expr): ExamplesBank = {
-    val ev = new DefaultEvaluator(hctx.sctx.context, hctx.sctx.program)
-
-    filterIns(m => ev.eval(expr, m).result == Some(BooleanLiteral(true)))
+    filterIns(m => hctx.sctx.defaultEvaluator.eval(expr, m).result == Some(BooleanLiteral(true)))
   }
 
   def filterIns(pred: Map[Identifier, Expr] => Boolean): ExamplesBank = {

@@ -43,14 +43,15 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     val sctx = hctx.sctx
     val ctx  = sctx.context
 
+    val timings = ctx.timers.synthesis.rules.get(name)
 
     // CEGIS Flags to activate or deactivate features
     val useOptTimeout    = sctx.settings.cegisUseOptTimeout.getOrElse(true)
     val useVanuatoo      = sctx.settings.cegisUseVanuatoo.getOrElse(false)
-    val useShrink        = sctx.settings.cegisUseShrink.getOrElse(true)
+    val useShrink        = sctx.settings.cegisUseShrink.getOrElse(false)
 
     // Limits the number of programs CEGIS will specifically validate individually
-    val validateUpTo     = 5
+    val validateUpTo     = 0
 
     // Shrink the program when the ratio of passing cases is less than the threshold
     val shrinkThreshold  = 1.0/2
@@ -513,19 +514,26 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        * First phase of CEGIS: solve for potential programs (that work on at least one input)
        */
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
+        timings.get("Solving for tentative").start();
         val solverf = SolverFactory.default(ctx, programCTree).withTimeout(exSolverTo)
         val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
         //debugCExpr(cTree)
 
+        println("Program: ")
+        println("-"*80)
+        println(programCTree.asString)
+
         //println(" --- PhiFD ---")
         //println(phiFd.fullBody.asString(ctx))
 
         val toFind = and(innerPc, cnstr)
-        //println(" --- Constraints ---")
-        //println(" - "+toFind)
+        println(" --- Constraints ---")
+        println(" - "+toFind.asString)
         try {
-          solver.assertCnstr(andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable))))
+          //TODO: WHAT THE F IS THIS?
+          //val bsOrNotBs = andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable)))
+          //solver.assertCnstr(bsOrNotBs)
           solver.assertCnstr(toFind)
 
           for ((c, alts) <- cTree) {
@@ -565,11 +573,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
               val bModel = bs.filter(b => model.get(b).contains(BooleanLiteral(true)))
 
-              //println("Tentative expr: "+getExpr(bModel))
+              println("Tentative model: "+bModel)
+              println("Tentative expr: "+getExpr(bModel))
               Some(Some(bModel))
 
             case Some(false) =>
-              //println("UNSAT!")
+              println("UNSAT!")
               Some(None)
 
             case None =>
@@ -582,6 +591,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               Some(None)
           }
         } finally {
+          timings.get("Solving for tentative").stop();
           solverf.reclaim(solver)
           solverf.shutdown()
         }
@@ -591,6 +601,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        * Second phase of CEGIS: verify a given program by looking for CEX inputs
        */
       def solveForCounterExample(bs: Set[Identifier]): Option[Option[Seq[Expr]]] = {
+        timings.get("Solving for cex").start();
+
         val solverf = SolverFactory.default(ctx, programCTree).withTimeout(cexSolverTo)
         val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
@@ -615,6 +627,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               None
           }
         } finally {
+          timings.get("Solving for cex").stop();
           solverf.reclaim(solver)
           solverf.shutdown()
         }
@@ -623,6 +636,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
+        timings.get("Prefix").start()
         var result: Option[RuleApplication] = None
         val sctx = hctx.sctx
         implicit val ctx = sctx.context
@@ -718,6 +732,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           gi.iterator
         }
 
+        timings.get("Prefix").stop()
+        timings.get("Main Block").start();
         try {
           do {
             var skipCESearch = false
@@ -749,6 +765,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               for (bs <- prunedPrograms if !interruptManager.isInterrupted) {
                 var valid = true
                 val examples = allInputExamples()
+                timings.get("Testing").start()
                 while(valid && examples.hasNext) {
                   val e = examples.next()
                   if (!ndProgram.testForProgram(bs)(e)) {
@@ -760,6 +777,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     valid = false
                   }
                 }
+                timings.get("Testing").stop()
 
                 if (wrongPrograms.size+1 % 1000 == 0) {
                   sctx.reporter.debug("..."+wrongPrograms.size)
@@ -795,6 +813,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               var doFilter = true
 
               if (validateUpTo > 0) {
+                timings.get("Validating first N").start()
                 // Validate the first N programs individualy
                 ndProgram.validatePrograms(prunedPrograms.take(validateUpTo)) match {
                   case Left(sols) if sols.nonEmpty =>
@@ -810,18 +829,20 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                       skipCESearch = true
                     }
                 }
+                timings.get("Validating first N").stop()
               }
 
               if (doFilter && !(nPassing < nInitial * shrinkThreshold && useShrink)) {
+                sctx.reporter.debug("Excluding "+wrongPrograms.size+" programs")
                 wrongPrograms.foreach {
                   ndProgram.excludeProgram
                 }
               }
             }
 
+            timings.get("Loop").start()
             // CEGIS Loop at a given unfolding level
             while (result.isEmpty && !skipCESearch && !interruptManager.isInterrupted) {
-
               ndProgram.solveForTentativeProgram() match {
                 case Some(Some(bs)) =>
                   // Should we validate this program with Z3?
@@ -833,6 +854,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                       // make sure by validating this candidate with z3
                       true
                     } else {
+                      println("testing failed ?!")
                       // One valid input failed with this candidate, we can skip
                       ndProgram.excludeProgram(bs)
                       false
@@ -841,10 +863,12 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     // No inputs or capability to test, we need to ask Z3
                     true
                   }
+                  sctx.reporter.debug("Found tentative model (Validate="+validateWithZ3+")!")
 
                   if (validateWithZ3) {
                     ndProgram.solveForCounterExample(bs) match {
                       case Some(Some(inputsCE)) =>
+                        sctx.reporter.debug("Found counter-example:"+inputsCE)
                         val ce = InExample(inputsCE)
                         // Found counter example!
                         baseExampleInputs += ce
@@ -863,6 +887,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
                       case None =>
                         // We are not sure
+                        sctx.reporter.debug("Unknown")
                         if (useOptTimeout) {
                           // Interpret timeout in CE search as "the candidate is valid"
                           sctx.reporter.info("CEGIS could not prove the validity of the resulting expression")
@@ -881,6 +906,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                   result = Some(RuleFailed())
               }
             }
+            timings.get("Loop").stop()
 
             unfolding += 1
           } while(unfolding <= maxUnfoldings && result.isEmpty && !interruptManager.isInterrupted)
@@ -892,6 +918,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             sctx.reporter.warning("CEGIS crashed: "+e.getMessage)
             e.printStackTrace()
             RuleFailed()
+        } finally {
+          timings.get("Main Block").stop();
         }
       }
     })

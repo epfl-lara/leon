@@ -6,6 +6,7 @@ package synthesis
 import solvers._
 import solvers.combinators._
 import purescala.Definitions.{Program, FunDef}
+import evaluators._
 
 /**
  * This is global information per entire search, contains necessary information
@@ -22,6 +23,10 @@ case class SynthesisContext(
   val rules = settings.rules
 
   val solverFactory = SolverFactory.getFromSettings(context, program)
+
+  lazy val defaultEvaluator = {
+    new DefaultEvaluator(context, program)
+  }
 }
 
 object SynthesisContext {
