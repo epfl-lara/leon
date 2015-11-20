@@ -73,7 +73,7 @@ object CAST { // C Abstract Syntax Tree
   }
 
   case class Assign(lhs: Stmt, rhs: Stmt) extends Stmt {
-    require(rhs.isValue)
+    require(lhs.isValue && rhs.isValue)
   }
 
   // Note: we don't need to differentiate between specific
@@ -185,10 +185,10 @@ object CAST { // C Abstract Syntax Tree
     }
 
     // True if statement can be used as a value
-    def isValue = isLiteral || {
+    def isValue: Boolean = isLiteral || {
       stmt match {
         //case _: Assign => true it's probably the case but for now let's ignore it
-        case c: Compound            => c.stmts.size == 1
+        case c: Compound            => c.stmts.size == 1 && c.stmts.head.isValue
         case _: UnOp                => true
         case _: MultiOp             => true
         case _: SubscriptOp         => true

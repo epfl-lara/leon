@@ -245,8 +245,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       f.body ~~ assign
 
-    case t @ Tuple(exprs) =>
-      val struct = convertToStruct(t.getType)
+    case tuple @ Tuple(exprs) =>
+      val struct = convertToStruct(tuple.getType)
       val types  = struct.fields map { _.typ }
       val fs     = convertAndNormaliseExecution(exprs, types)
       val args   = fs.values.zipWithIndex map {
@@ -255,37 +255,50 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       fs.bodies ~~ CAST.StructInit(args, struct)
 
-    case TupleSelect(tuple, idx) => // here idx is already 1-based
-      CAST.AccessField(convertToStmt(tuple), CAST.Tuple.getNthId(idx))
+    case TupleSelect(tuple1, idx) => // here idx is already 1-based
+      val struct = convertToStruct(tuple1.getType)
+      val tuple2 = convertToStmt(tuple1)
 
-    case ArrayLength(array) =>
-      CAST.AccessField(convertToStmt(array), CAST.Array.lengthId)
+      val fs = normaliseExecution((tuple2, struct) :: Nil)
 
-    case ArraySelect(array1, index) =>
-      val arrayF = convertAndFlatten(array1)
-      val idxF   = convertAndFlatten(index)
-      val ptr    = CAST.AccessField(arrayF.value, CAST.Array.dataId)
+      val tuple = fs.values.head
 
-      val select = if (idxF.value.isValue) {
-        CAST.SubscriptOp(ptr, idxF.value)
-      } else {
-        val tmp  = CAST.FreshVar(CAST.Int32, "index")
-        val decl = CAST.DeclVar(tmp)
-        val set  = injectAssign(tmp, idxF.value)
+      fs.bodies ~~ CAST.AccessField(tuple, CAST.Tuple.getNthId(idx))
 
-        decl ~ set ~ CAST.SubscriptOp(ptr, CAST.AccessVar(tmp.id))
-      }
+    case ArrayLength(array1) =>
+      val array2    = convertToStmt(array1)
+      val arrayType = convertToType(array1.getType)
 
-      arrayF.body ~~~ idxF.body ~ select
+      val fs = normaliseExecution((array2, arrayType) :: Nil)
 
-    case NonemptyArray(elems, Some((defaultValue, length))) if elems.isEmpty =>
-      val lengthF = convertAndFlatten(length)
-      val typ     = convertToType(defaultValue.getType)
-      val valueF  = convertAndFlatten(defaultValue)
-      // TODO the value (which can be a function call) should be saved into
-      // a local variable to prevent calling it many times
+      val array = fs.values.head
 
-      lengthF.body ~~~ valueF.body ~ CAST.ArrayInit(lengthF.value, typ, valueF.value)
+      fs.bodies ~~ CAST.AccessField(array, CAST.Array.lengthId)
+
+    case ArraySelect(array1, index1) =>
+      val array2    = convertToStmt(array1)
+      val arrayType = convertToType(array1.getType)
+      val index2    = convertToStmt(index1)
+
+      val fs = normaliseExecution((array2, arrayType) :: (index2, CAST.Int32) :: Nil)
+
+      val array  = fs.values(0)
+      val index  = fs.values(1)
+      val ptr    = CAST.AccessField(array, CAST.Array.dataId)
+      val select = CAST.SubscriptOp(ptr, index)
+
+      fs.bodies ~~ select
+
+    case NonemptyArray(elems, Some((value1, length1))) if elems.isEmpty =>
+      val length2   = convertToStmt(length1)
+      val valueType = convertToType(value1.getType)
+      val value2    = convertToStmt(value1)
+
+      val fs = normaliseExecution((length2, CAST.Int32) :: (value2, valueType) :: Nil)
+      val length = fs.values(0)
+      val value  = fs.values(1)
+
+      fs.bodies ~~ CAST.ArrayInit(length, valueType, value)
 
     case NonemptyArray(elems, Some(_)) =>
       fatalError("NonemptyArray with non empty elements is not supported")
@@ -305,11 +318,24 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       fs.bodies ~~ CAST.ArrayInitWithValues(typ, fs.values)
 
-    case ArrayUpdate(array, index, newValue) =>
-      val lhsF = convertAndFlatten(ArraySelect(array, index))
-      val rhsF = convertAndFlatten(newValue)
+    case ArrayUpdate(array1, index1, newValue1) =>
+      val arrayType = convertToType(array1.getType)
+      val indexType = CAST.Int32
+      val valueType = convertToType(newValue1.getType)
+      val values    = array1    :: index1    :: newValue1 :: Nil
+      val types     = arrayType :: indexType :: valueType :: Nil
 
-      lhsF.body ~~~ rhsF.body ~ CAST.Assign(lhsF.value, rhsF.value)
+      val fs = convertAndNormaliseExecution(values, types)
+
+      val array    = fs.values(0)
+      val index    = fs.values(1)
+      val newValue = fs.values(2)
+
+      val ptr    = CAST.AccessField(array, CAST.Array.dataId)
+      val select = CAST.SubscriptOp(ptr, index)
+      val assign = CAST.Assign(select, newValue)
+
+      fs.bodies ~~ assign
 
     case CaseClass(typ, args1) =>
       val struct    = convertToStruct(typ)
@@ -590,7 +616,10 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     normaliseExecution(exprs map convertToStmt, types)
   }
 
-  private def normaliseExecution(stmts: Seq[CAST.Stmt], types: Seq[CAST.Type]) = {
+  private def normaliseExecution(typedStmts: Seq[(CAST.Stmt, CAST.Type)]): FlattenedSeq =
+    normaliseExecution(typedStmts map { _._1 }, typedStmts map { _._2 })
+
+  private def normaliseExecution(stmts: Seq[CAST.Stmt], types: Seq[CAST.Type]): FlattenedSeq = {
     require(stmts.length == types.length)
 
     // Create temporary variables if needed

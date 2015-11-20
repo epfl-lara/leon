@@ -9,7 +9,7 @@ object ExpressionOrder {
   def bar(i: Int) = i * 2
   def baz(i: Int, j: Int) = bar(i) - bar(j)
 
-  def syntaxCheck {
+  def syntaxCheck(i: Int) {
     val p = Pixel(fun)
     val m = Matrix(Array(0, 1, 2, 3), 2, 2)
 
@@ -17,6 +17,21 @@ object ExpressionOrder {
     val a = Array(0, 1, foo / 2, 3, bar(2), z / 1)
 
     val t = (true, foo, bar(a(0)))
+
+    val a2 = Array.fill(4)(2)
+    val a3 = Array.fill(if (i <= 0) 1 else i)(bar(i))
+    val b = Array(1, 2, 0)
+    b(1) = if (bar(b(1)) % 2 == 0) 42 else 58
+
+    def f1 = (if (i < 0) a else b)(0)
+    def f2 = (if (i < 0) a else b).length
+
+    //def f3 = (if (i < 0) a else b)(0) = 0 // <- not supported
+
+    val c = (0, true, 2)
+    val d = (if (i > 0) i else -i, false, 0)
+
+    def f4 = (if (i < 0) d else c)._2 // expression result unused
   }
 
   def main =
