@@ -57,25 +57,16 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     /* --------------------------------------------------------- Stmts  ----- */
     case NoStmt => c"/* empty */"
 
-
-    // Try to print new lines and semicolon somewhat correctly
-    case Compound(stmts) if stmts.isEmpty => // should not happen
-
-    case Compound(stmts) if stmts.length == 1 =>
-      stmts.head match {
-        case s: Call => c"$s;" // for function calls whose returned value is not saved
-        case s       => c"$s"
-      }
-
     case Compound(stmts) =>
-      val head = stmts.head
-      val tail = Compound(stmts.tail)
+      val lastIdx = stmts.length - 1
 
-      head match {
-        case s: Call => c"$s;" // for function calls whose returned value is not saved
-        case s       => c"$s"
+      for ((stmt, idx) <- stmts.zipWithIndex) {
+        if (stmt.isValue) c"$stmt;"
+        else              c"$stmt"
+
+        if (idx != lastIdx)
+          c"$NewLine"
       }
-      c"$NewLine$tail"
 
     case Assert(pred, Some(error)) => c"assert($pred); /* $error */"
     case Assert(pred, None)        => c"assert($pred);"

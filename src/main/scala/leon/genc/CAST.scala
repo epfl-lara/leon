@@ -230,11 +230,29 @@ object CAST { // C Abstract Syntax Tree
   /* ------------------------------------------------------------- DSL  ----- */
   // Operator ~~ appends and flattens nested compounds
   implicit class StmtOps(val stmt: Stmt) {
-    def ~(other: Stmt) = (stmt, other) match {
-      case (Compound(stmts), Compound(others)) => Compound(stmts ++ others)
-      case (stmt           , Compound(others)) => Compound(stmt  +: others)
-      case (Compound(stmts), other           ) => Compound(stmts :+ other )
-      case (stmt           , other           ) => Compound(stmt :: other :: Nil)
+    // In addition to combining statements together in a compound
+    // we remove the empty ones and if the resulting compound
+    // has only one statement we return this one without being
+    // wrapped into a Compound
+    def ~(other: Stmt) = {
+      val stmts = (stmt, other) match {
+        case (Compound(stmts), Compound(others)) => stmts ++ others
+        case (stmt           , Compound(others)) => stmt  +: others
+        case (Compound(stmts), other           ) => stmts :+ other
+        case (stmt           , other           ) => stmt :: other :: Nil
+      }
+
+      def isNoStmt(s: Stmt) = s match {
+        case NoStmt => true
+        case _      => false
+      }
+
+      val compound = Compound(stmts filterNot isNoStmt)
+      compound match {
+        case Compound(stmts) if stmts.length == 0 => NoStmt
+        case Compound(stmts) if stmts.length == 1 => stmts.head
+        case compound                             => compound
+      }
     }
 
     def ~~(others: Seq[Stmt]) = stmt ~ Compound(others)
