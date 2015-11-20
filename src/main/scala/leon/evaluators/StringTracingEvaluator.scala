@@ -13,8 +13,8 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
   val underlying = new DefaultEvaluator(ctx, prog)
   override type Value = (Expr, Expr)
 
-  override val description: String = ??? // FIXME
-  override val name: String = ??? // FIXME
+  override val description: String = "Evaluates string programs but keeps the formula which generated the string"
+  override val name: String = "String Tracing evaluator"
 
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): (Expr, Expr) = expr match {
     case StringConcat(s1, s2) =>
@@ -22,8 +22,12 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
       val (es2, t2) = e(s2)
       (underlying.e(StringConcat(es1, es2)), StringConcat(t1, t2))
 
-    case StringLength(_) => ??? // FIXME
-    case StringLiteral(_) => ??? // FIXME
+    case StringLength(s1) => 
+      val (es1, t1) = e(s1)
+      (underlying.e(StringLength(es1)), StringLength(t1))
+
+    case expr@StringLiteral(s) => 
+      (expr, expr)
 
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip

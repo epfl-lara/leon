@@ -92,9 +92,12 @@ case object StringRender extends Rule("StringRender") {
   
   /// Disambiguation: Enumerate different solutions, augment the size of examples by 1, and check discrepancies.
   
-  /** Returns a stream of expressions consistent with the specifications. Tail-recursive method*/
-  def solve(ADTToString: Map[TypeTree, FunDef], inputs: Seq[(Identifier, TypeTree)], inlineFuns: Seq[FunDef], inlineExpr: Expr, examples: ExamplesBank): Stream[(FunDef, Expr)] = {
-    val inputTypeWithoutToStringFunction = inputs.collectFirst{ case (input, tpe: AbstractClassType) if
+  
+    
+    
+    
+    
+    /*val inputTypeWithoutToStringFunction = inputs.collectFirst{ case (input, tpe: AbstractClassType) if
       WithStringconverter.unapply(tpe).isEmpty &&
       ADTToString.contains(tpe) =>
         (input, tpe)
@@ -112,9 +115,8 @@ case object StringRender extends Rule("StringRender") {
         
         
         Stream.Empty
-    }
-  }
-  import StringSolver.{StringFormToken, StringForm, Problem => SProblem, Equation}
+    }*/
+  import StringSolver.{StringFormToken, StringForm, Problem => SProblem, Equation, Assignment}
   
   /** Converts an expression to a stringForm, suitable for StringSolver */
   def toStringForm(e: Expr, acc: List[StringFormToken] = Nil): Option[StringForm] = e match {
@@ -161,7 +163,83 @@ case object StringRender extends Rule("StringRender") {
     }
   }
   
+  def findSolutions(examples: ExamplesBank, template: Expr)(implicit hctx: SearchContext, p: Problem): RuleApplication = {
+    val solutions = findAssignments(hctx.context, hctx.program, p.as, examples, template)
+    solutionStreamToRuleApplication(p, template, solutions)
+  }
+  
+  def solutionStreamToRuleApplication(p: Problem, template: Expr, solutions: Stream[Assignment]): RuleApplication = {
+    if(solutions.isEmpty) RuleFailed() else {
+      RuleClosed(solutions.map((assignment: Map[Identifier, String]) => {
+        Solution(pre=p.pc, defs=Set(), term=ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
+      }))
+    }
+  }
+  
+  object StringTemplateGenerator extends TypedTemplateGenerator(StringType)
+  
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    
+    /** Returns a (possibly recursive) template which can render the inputs in their order. */
+    def createFunDefsTemplates(adtToString: Map[TypeTree, FunDef], inputs: Seq[(Identifier, TypeTree)]): (Expr, Map[TypeTree, FunDef]) = {
+      
+      def gatherInputs(inputs: List[(Identifier, TypeTree)], adtToString: Map[TypeTree, FunDef], result: ListBuffer[Expr] = ListBuffer()): (List[Expr], Map[TypeTree, FunDef]) = inputs match {
+        case Nil => (result.toList, adtToString)
+        case (input, tpe)::q => adtToString.get(tpe) match {
+          case Some(fd) =>
+            gatherInputs(q, adtToString, result += functionInvocation(fd, Seq(Variable(input))))
+          case None =>
+            tpe match {
+              case WithStringconverter(converter) => // Base case
+                gatherInputs(q, adtToString, result += converter(Variable(input)))
+              case t: ClassType =>
+                t.root match {
+                  case AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps) =>
+                    // Create a complete fundef with pattern matching
+                    val (assignments, cases) = ((adtToString, ListBuffer[MatchCase]()) /: acd.knownChildren) {
+                      case ((adtToString, acc), ccd@CaseClassDef(id, tparams, parent, isCaseObject)) =>
+                        val fields = ccd.fields.map(vd => (vd.id, vd.tpe.get)) // TODO: What if vd.tpe is null ?
+                        val fieldsIds = fields.map(id => FreshIdentifier(id._1.name, id._2))
+                        val pattern = CaseClassPattern(None, ccd.typed, fieldsIds.map(k => WildcardPattern(Some(k))))
+                        val (rhs, assignments) = createFunDefsTemplates(adtToString, fields)
+                        (assignments, acc += MatchCase(pattern, None, rhs))
+                      case ((adtToString, acc), e) => hctx.reporter.fatalError("Could not handle class def for string rendering " + e)
+                    }
+                    
+                    ///////////////////////////
+                    // TODO: Create the function with the pattern matching.
+                    // matchExpr(Variable(input), cases)
+                    // Gather the call to the function.
+                    /////////////////////////
+                    ???
+                    gatherInputs(q, assignments, result += ???)
+                  case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tps) =>
+                    val fields = ccd.fields.map(vd => (vd.id, vd.tpe.get)) // TODO: What if vd.tpe is null ?
+                    ///////////////////////////
+                    // TODO: Create the function with pattern matching.
+                    // Gather the call to the function.
+                    /////////////////////////
+                    ???
+                    
+                    val (expr, assignments) = createFunDefsTemplates(adtToString, fields) // TODO : Create a new function definition !!!!!!!!!!!!!!!!!!!
+                    gatherInputs(q, assignments, result += expr)
+                }
+              case _ => 
+                hctx.reporter.fatalError("Could not handle class type for string rendering " + tpe)
+            }
+        }
+      }
+      val (exprs, assignments) = gatherInputs(inputs.toList, adtToString)
+      
+      (StringTemplateGenerator(Hole => {
+        StringConcat((StringConcat(Hole, exprs.head) /: exprs.tail) {
+          case (finalExpr, expr) => StringConcat(StringConcat(finalExpr, Hole), expr)
+        }, Hole)
+      }).instantiate, assignments)
+    }
+      
+    
+    
     p.xs match {
       case List(IsTyped(v, StringType)) =>
         val description = "Creates a standard string conversion function"
@@ -187,34 +265,27 @@ case object StringRender extends Rule("StringRender") {
           * If there are multiple solutions, we generate one deeper example and ask the user which one should be better.
           */
         
-        object StringTemplateGenerator extends TypedTemplateGenerator(StringType)
+        
         val booleanTemplate = (a: Identifier) => StringTemplateGenerator(Hole => IfExpr(Variable(a), Hole, Hole))
+        
+        
+        
         
         /* All input variables which are inductive in the post condition, along with their abstract data type. */
         p.as match {
           case List(IsTyped(a, tpe@WithStringconverter(converter))) => // Standard conversions if they work.
-            
             val ruleInstantiations = ListBuffer[RuleInstantiation]()
             if(tpe == BooleanType) {
               ruleInstantiations += RuleInstantiation("Boolean split render") {
                 val template = booleanTemplate(a).instantiate
-                val solutions = findAssignments(hctx.context, hctx.program, p.as, examples, template)
-                if(solutions.isEmpty) RuleFailed() else {
-                  RuleClosed(solutions.map((assignment: Map[Identifier, String]) => {
-                    Solution(pre=p.pc, defs=Set(), term=ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
-                  }))
-                }
+                findSolutions(examples, template)
               }
             }
             
             ruleInstantiations += RuleInstantiation("String conversion with pre and post") {
-                val template = StringTemplateGenerator(Hole => StringConcat(StringConcat(Hole, converter(Variable(a))), Hole)).instantiate
-                val solutions = findAssignments(hctx.context, hctx.program, p.as, examples, template)
-                if(solutions.isEmpty) RuleFailed() else {
-                  RuleClosed(solutions.map((assignment: Map[Identifier, String]) => {
-                    Solution(pre=p.pc, defs=Set(), term=ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
-                  }))
-                }
+                val template = StringTemplateGenerator(Hole =>
+                  StringConcat(StringConcat(Hole, converter(Variable(a))), Hole)).instantiate
+                findSolutions(examples, template)
               }
             ruleInstantiations.toList
           case _ =>
