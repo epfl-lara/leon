@@ -26,7 +26,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
   protected var clpCache = Map[(Choose, Seq[Expr]), Expr]()
 
-  protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+  protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
       rctx.mappings.get(id) match {
         case Some(v) if v != expr =>
