@@ -365,7 +365,7 @@ object Robot {
   }
 
   def validState(rs: RobotState)(implicit w: World): Boolean = {
-    
+
     // 6) Sensors have consistent data
     val recentData = rs.ns.validData && rs.hs.validData
 
@@ -509,6 +509,7 @@ object Robot {
   }
 
 
+  @ignore
   def main(a: Array[String]): Unit = {
     val map0 = """|XXXXXXXXX
                   |XR FF   X
