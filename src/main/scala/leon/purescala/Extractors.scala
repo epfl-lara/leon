@@ -181,9 +181,14 @@ object Extractors {
           val l = as.length
           nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
         }))
-      case NonemptyArray(elems, None) =>
-        val all = elems.values.toSeq
-        Some((all, finiteArray))
+      case na@NonemptyArray(elems, None) =>
+        val ArrayType(tpe) = na.getType
+        val (indexes, elsOrdered) = elems.toSeq.unzip
+
+        Some((
+          elsOrdered,
+          es => finiteArray(indexes.zip(es).toMap, None, tpe)
+        ))
       case Tuple(args) => Some((args, tupleWrap))
       case IfExpr(cond, thenn, elze) => Some((
         Seq(cond, thenn, elze),
