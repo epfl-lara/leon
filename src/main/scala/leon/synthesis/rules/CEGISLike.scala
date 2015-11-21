@@ -455,13 +455,13 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
           //println("Solving for: "+cnstr.asString)
 
-          val solverf = SolverFactory.default(ctx, innerProgram).withTimeout(cexSolverTo)
+          val solverf = SolverFactory.getFromSettings(ctx, innerProgram).withTimeout(cexSolverTo)
           val solver  = solverf.getNewSolver()
           try {
             solver.assertCnstr(cnstr)
             solver.check match {
               case Some(true) =>
-                excludeProgram(bs)
+                excludeProgram(bs, true)
                 val model = solver.getModel
                 //println("Found counter example: ")
                 //for ((s, v) <- model) {
@@ -500,8 +500,24 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       var excludedPrograms = ArrayBuffer[Set[Identifier]]()
 
       // Explicitly remove program computed by bValues from the search space
-      def excludeProgram(bValues: Set[Identifier]): Unit = {
-        val bvs = bValues.filter(isBActive)
+      //
+      // If the bValues comes from models, we make sure the bValues we exclude
+      // are minimal we make sure we exclude only Bs that are used.
+      def excludeProgram(bValues: Set[Identifier], isMinimal: Boolean): Unit = {
+        val bs = bValues.filter(isBActive)
+
+        def filterBTree(c: Identifier): Set[Identifier] = {
+          (for ((b, _, subcs) <- cTree(c) if bValues(b)) yield {
+           Set(b) ++ subcs.flatMap(filterBTree)
+          }).toSet.flatten
+        }
+
+        val bvs = if (isMinimal) {
+          bs
+        } else {
+          rootCs.flatMap(filterBTree).toSet
+        }
+
         excludedPrograms += bvs
       }
 
@@ -515,21 +531,17 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
        */
       def solveForTentativeProgram(): Option[Option[Set[Identifier]]] = {
         timings.get("Solving for tentative").start();
-        val solverf = SolverFactory.default(ctx, programCTree).withTimeout(exSolverTo)
+        val solverf = SolverFactory.getFromSettings(ctx, programCTree).withTimeout(exSolverTo)
         val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
-        //debugCExpr(cTree)
 
-        println("Program: ")
-        println("-"*80)
-        println(programCTree.asString)
-
-        //println(" --- PhiFD ---")
-        //println(phiFd.fullBody.asString(ctx))
+        //println("Program: ")
+        //println("-"*80)
+        //println(programCTree.asString)
 
         val toFind = and(innerPc, cnstr)
-        println(" --- Constraints ---")
-        println(" - "+toFind.asString)
+        //println(" --- Constraints ---")
+        //println(" - "+toFind.asString)
         try {
           //TODO: WHAT THE F IS THIS?
           //val bsOrNotBs = andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable)))
@@ -544,26 +556,25 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
             }
 
             if (activeBs.nonEmpty) {
-              //println(" - "+andJoin(either))
+              //println(" - "+andJoin(either).asString)
               solver.assertCnstr(andJoin(either))
 
               val oneOf = orJoin(activeBs.map(_.toVariable))
-              //println(" - "+oneOf)
+              //println(" - "+oneOf.asString)
               solver.assertCnstr(oneOf)
             }
           }
 
-          //println(" -- Excluded:")
           //println(" -- Active:")
           val isActive = andJoin(bsOrdered.filterNot(isBActive).map(id => Not(id.toVariable)))
-          //println("  - "+isActive)
+          //println("  - "+isActive.asString)
           solver.assertCnstr(isActive)
 
           //println(" -- Excluded:")
           for (ex <- excludedPrograms) {
             val notThisProgram = Not(andJoin(ex.map(_.toVariable).toSeq))
 
-            //println(f"  - $notThisProgram%-40s ("+getExpr(ex)+")")
+            //println(f"  - ${notThisProgram.asString}%-40s ("+getExpr(ex)+")")
             solver.assertCnstr(notThisProgram)
           }
 
@@ -573,12 +584,14 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
               val bModel = bs.filter(b => model.get(b).contains(BooleanLiteral(true)))
 
-              println("Tentative model: "+bModel)
-              println("Tentative expr: "+getExpr(bModel))
+              //println("Tentative model: "+model.asString)
+              //println("Tentative model: "+bModel.filter(isBActive).map(_.asString).toSeq.sorted)
+              //println("Tentative expr: "+getExpr(bModel))
+
               Some(Some(bModel))
 
             case Some(false) =>
-              println("UNSAT!")
+              //println("UNSAT!")
               Some(None)
 
             case None =>
@@ -603,7 +616,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       def solveForCounterExample(bs: Set[Identifier]): Option[Option[Seq[Expr]]] = {
         timings.get("Solving for cex").start();
 
-        val solverf = SolverFactory.default(ctx, programCTree).withTimeout(cexSolverTo)
+        val solverf = SolverFactory.getFromSettings(ctx, programCTree).withTimeout(cexSolverTo)
         val solver  = solverf.getNewSolver()
         val cnstr = FunctionInvocation(phiFd.typed, phiFd.params.map(_.id.toVariable))
 
@@ -698,17 +711,6 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
          * We generate tests for discarding potential programs
          */
         val nTests = if (p.pc == BooleanLiteral(true)) 50 else 20
-
-        /*
-        val inputGenerator: FreeableIterator[Example] = {
-          val sff = {
-            (ctx: LeonContext, pgm: Program) =>
-              SolverFactory.default(ctx, pgm).withTimeout(exSolverTo)
-          }
-          new SolverDataGen(sctx.context, sctx.program, sff).generateFor(p.as, p.pc, nTests, nTests).map {
-            InExample(_)
-          }
-        } */
 
         val inputGenerator: Iterator[Example] = if (useVanuatoo) {
           new VanuatooDataGen(sctx.context, sctx.program).generateFor(p.as, p.pc, nTests, 3000).map(InExample)
@@ -835,7 +837,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
               if (doFilter && !(nPassing < nInitial * shrinkThreshold && useShrink)) {
                 sctx.reporter.debug("Excluding "+wrongPrograms.size+" programs")
                 wrongPrograms.foreach {
-                  ndProgram.excludeProgram
+                  ndProgram.excludeProgram(_, true)
                 }
               }
             }
@@ -856,7 +858,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                     } else {
                       println("testing failed ?!")
                       // One valid input failed with this candidate, we can skip
-                      ndProgram.excludeProgram(bs)
+                      ndProgram.excludeProgram(bs, false)
                       false
                     }
                   } else {
@@ -877,7 +879,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                         if (prunedPrograms.forall(p => !ndProgram.testForProgram(p)(ce))) {
                           skipCESearch = true
                         } else {
-                          ndProgram.excludeProgram(bs)
+                          ndProgram.excludeProgram(bs, false)
                         }
 
                       case Some(None) =>
