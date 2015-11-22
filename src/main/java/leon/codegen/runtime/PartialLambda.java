@@ -29,7 +29,7 @@ public final class PartialLambda extends Lambda {
     } else if (dflt != null) {
       return dflt;
     } else {
-      throw new LeonCodeGenRuntimeException("Partial function apply on undefined arguments");
+      throw new LeonCodeGenRuntimeException("Partial function apply on undefined arguments " + tuple);
     }
   }
 
@@ -50,4 +50,7 @@ public final class PartialLambda extends Lambda {
 
   @Override
   public void checkForall(boolean[] quantified) {}
+
+  @Override
+  public void checkAxiom() {}
 }

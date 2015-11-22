@@ -13,6 +13,7 @@ trait FairZ3Component extends LeonComponent {
   val optUseCodeGen    = LeonFlagOptionDef("codegen",     "Use compiled evaluator instead of interpreter",           false)
   val optUnrollCores   = LeonFlagOptionDef("unrollcores", "Use unsat-cores to drive unrolling while remaining fair", false)
   val optAssumePre     = LeonFlagOptionDef("assumepre",   "Assume precondition holds (pre && f(x) = body) when unfolding", false)
+  val optNoChecks      = LeonFlagOptionDef("nochecks",    "Disable counter-example check in presence of foralls"   , false)
 
   override val definedOptions: Set[LeonOptionDef[Any]] =
     Set(optEvalGround, optCheckModels, optFeelingLucky, optUseCodeGen, optUnrollCores, optAssumePre)

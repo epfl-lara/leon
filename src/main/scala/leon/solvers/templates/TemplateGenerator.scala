@@ -11,6 +11,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Definitions._
 import purescala.Constructors._
+import purescala.Quantification._
 
 class TemplateGenerator[T](val encoder: TemplateEncoder[T],
                            val assumePreHolds: Boolean) {
@@ -131,6 +132,45 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     }
 
     andJoin(rec(invocation, body, args, inlineFirst))
+  }
+
+  private def minimalFlattening(inits: Set[Identifier], conj: Expr): (Set[Identifier], Expr) = {
+    var mapping: Map[Expr, Expr] = Map.empty
+    var quantified: Set[Identifier] = inits
+    var quantifierEqualities: Seq[(Expr, Identifier)] = Seq.empty
+
+    val newConj = postMap {
+      case expr if mapping.isDefinedAt(expr) =>
+        Some(mapping(expr))
+
+      case expr @ QuantificationMatcher(c, args) =>
+        val isMatcher = args.exists { case Variable(id) => quantified(id) case _ => false }
+        val isRelevant = (variablesOf(expr) & quantified).nonEmpty
+        if (!isMatcher && isRelevant) {
+          val newArgs = args.map {
+            case arg @ QuantificationMatcher(_, _) if (variablesOf(arg) & quantified).nonEmpty =>
+              val id = FreshIdentifier("flat", arg.getType)
+              quantifierEqualities :+= (arg -> id)
+              quantified += id
+              Variable(id)
+            case arg => arg
+          }
+
+          val newExpr = replace((args zip newArgs).toMap, expr)
+          mapping += expr -> newExpr
+          Some(newExpr)
+        } else {
+          None
+        }
+
+      case _ => None
+    } (conj)
+
+    val flatConj = implies(andJoin(quantifierEqualities.map {
+      case (arg, id) => Equals(arg, Variable(id))
+    }), newConj)
+
+    (quantified, flatConj)
   }
 
   def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]):
@@ -294,7 +334,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
           val conjunctQs = conjuncts.map { conjunct =>
             val vars = variablesOf(conjunct)
-            val quantifiers = args.map(_.id).filter(vars).toSet
+            val inits = args.map(_.id).filter(vars).toSet
+            val (quantifiers, flatConj) = minimalFlattening(inits, conjunct)
 
             val idQuantifiers : Seq[Identifier] = quantifiers.toSeq
             val trQuantifiers : Seq[T] = idQuantifiers.map(encoder.encodeId)
@@ -304,7 +345,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
             val inst: Identifier = FreshIdentifier("inst", BooleanType, true)
             val guard: Identifier = FreshIdentifier("guard", BooleanType, true)
 
-            val clause = Equals(Variable(inst), Implies(Variable(guard), conjunct))
+            val clause = Equals(Variable(inst), Implies(Variable(guard), flatConj))
 
             val qs: (Identifier, T) = q -> encoder.encodeId(q)
             val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars

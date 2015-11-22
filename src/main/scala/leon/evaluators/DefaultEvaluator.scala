@@ -13,7 +13,7 @@ class DefaultEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluat
   type GC = GlobalContext
 
   def initRC(mappings: Map[Identifier, Expr]) = DefaultRecContext(mappings)
-  def initGC(model: solvers.Model) = new GlobalContext(model)
+  def initGC(model: solvers.Model, check: Boolean) = new GlobalContext(model, check)
 
   case class DefaultRecContext(mappings: Map[Identifier, Expr]) extends RecContext {
     def newVars(news: Map[Identifier, Expr]) = copy(news)

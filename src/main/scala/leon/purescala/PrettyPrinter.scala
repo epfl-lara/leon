@@ -259,7 +259,7 @@ class PrettyPrinter(opts: PrinterOptions,
           }
 
           if (dflt.isDefined) {
-            p" ${dflt.get}"
+            p" getOrElse ${dflt.get}"
           }
         }
 

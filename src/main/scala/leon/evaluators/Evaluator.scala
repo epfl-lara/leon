@@ -14,6 +14,7 @@ import solvers.Model
 abstract class Evaluator(val context: LeonContext, val program: Program) extends LeonComponent {
 
   type EvaluationResult = EvaluationResults.Result
+  type CheckResult = EvaluationResults.CheckResult
 
   /** Evaluates an expression, using [[Model.mapping]] as a valuation function for the free variables. */
   def eval(expr: Expr, model: Model) : EvaluationResult
@@ -25,6 +26,9 @@ abstract class Evaluator(val context: LeonContext, val program: Program) extends
 
   /** Evaluates a ground expression. */
   final def eval(expr: Expr) : EvaluationResult = eval(expr, Model.empty)
+
+  /** Checks that `model |= expr` and that quantifications are all valid */
+  def check(expr: Expr, model: Model) : CheckResult
 
   /** Compiles an expression into a function, where the arguments are the free variables in the expression.
     * `argorder` specifies in which order the arguments should be passed.

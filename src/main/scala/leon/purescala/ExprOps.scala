@@ -1139,9 +1139,8 @@ object ExprOps {
     case tp: TypeParameter =>
       GenericValue(tp, 0)
 
-    case FunctionType(from, to) =>
-      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true)))
-      Lambda(args, simplestValue(to))
+    case ft @ FunctionType(from, to) =>
+      PartialLambda(Seq.empty, Some(simplestValue(to)), ft)
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }

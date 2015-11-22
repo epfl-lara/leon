@@ -110,13 +110,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         val cs = for (size <- List(1, 2, 3, 5)) yield {
           val subs = (1 to size).flatMap(_ => from :+ to).toList
           Constructor[Expr, TypeTree](subs, ft, { s =>
-            val args = from.map(tpe => FreshIdentifier("x", tpe, true))
-            val argsTuple = tupleWrap(args.map(_.toVariable))
             val grouped = s.grouped(from.size + 1).toSeq
-            val body = grouped.init.foldRight(grouped.last.last) { case (t, elze) =>
-              IfExpr(Equals(argsTuple, tupleWrap(t.init)), t.last, elze)
-            }
-            Lambda(args.map(id => ValDef(id)), body)
+            val mapping = grouped.init.map { case args :+ res => (args -> res) }
+            PartialLambda(mapping, Some(grouped.last.last), ft)
           }, ft.asString(ctx) + "@" + size)
         }
         constructors += ft -> cs

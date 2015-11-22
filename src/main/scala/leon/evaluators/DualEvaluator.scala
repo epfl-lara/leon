@@ -18,7 +18,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
   implicit val debugSection = utils.DebugSectionEvaluation
 
   def initRC(mappings: Map[Identifier, Expr]) = DefaultRecContext(mappings)
-  def initGC(model: solvers.Model) = new GlobalContext(model)
+  def initGC(model: solvers.Model, check: Boolean) = new GlobalContext(model, check)
 
   var monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
 

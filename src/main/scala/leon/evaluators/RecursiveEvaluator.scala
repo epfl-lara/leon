@@ -15,6 +15,8 @@ import purescala.Quantification._
 import solvers.{Model, HenkinModel}
 import solvers.SolverFactory
 
+import scala.collection.mutable.{Map => MutableMap}
+
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int) extends Evaluator(ctx, prog) {
   val name = "evaluator"
   val description = "Recursive interpreter for PureScala expressions"
@@ -24,8 +26,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   type RC <: RecContext
   type GC <: GlobalContext
 
-  case class EvalError(msg : String) extends Exception
-  case class RuntimeError(msg : String) extends Exception
+  case class EvalError(msg: String) extends Exception
+  case class RuntimeError(msg: String) extends Exception
+  case class QuantificationError(msg: String) extends Exception
 
   val scalaEv = new ScalacEvaluator(this, ctx, prog)
 
@@ -43,29 +46,50 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     }
   }
 
-  class GlobalContext(val model: Model) {
+  class GlobalContext(val model: Model, val check: Boolean) {
     def maxSteps = RecursiveEvaluator.this.maxSteps
-
     var stepsLeft = maxSteps
-    var warnings = List.empty[String]
+
+    val lambdas: MutableMap[Lambda, Lambda] = MutableMap.empty
   }
 
   def initRC(mappings: Map[Identifier, Expr]): RC
-  def initGC(model: Model): GC
+  def initGC(model: Model, check: Boolean): GC
 
   // Used by leon-web, please do not delete
-  // Used by quantified proposition checking now too!
   var lastGC: Option[GC] = None
 
   private[this] var clpCache = Map[(Choose, Seq[Expr]), Expr]()
 
-  def eval(ex: Expr, model: Model) = {
+  def check(ex: Expr, model: Model): CheckResult = {
+    assert(ex.getType == BooleanType, "Can't check non-boolean expression " + ex.asString(ctx))
     try {
-      lastGC = Some(initGC(model))
+      lastGC = Some(initGC(model, true))
       ctx.timers.evaluators.recursive.runtime.start()
       val res = e(ex)(initRC(model.toMap), lastGC.get)
-      for (warning <- lastGC.get.warnings) ctx.reporter.warning(warning)
-      EvaluationResults.Successful(res)
+      if (res == BooleanLiteral(true)) EvaluationResults.CheckSuccess
+      else EvaluationResults.CheckValidityFailure
+    } catch {
+      case so: StackOverflowError =>
+        EvaluationResults.CheckRuntimeFailure("Stack overflow")
+      case e @ EvalError(msg) =>
+        EvaluationResults.CheckRuntimeFailure(msg)
+      case e @ RuntimeError(msg) =>
+        EvaluationResults.CheckRuntimeFailure(msg)
+      case jre: java.lang.RuntimeException =>
+        EvaluationResults.CheckRuntimeFailure(jre.getMessage)
+      case qe @ QuantificationError(msg) =>
+        EvaluationResults.CheckQuantificationFailure(msg)
+    } finally {
+      ctx.timers.evaluators.recursive.runtime.stop()
+    }
+  }
+
+  def eval(ex: Expr, model: Model) = {
+    try {
+      lastGC = Some(initGC(model, false))
+      ctx.timers.evaluators.recursive.runtime.start()
+      EvaluationResults.Successful(e(ex)(initRC(model.toMap), lastGC.get))
     } catch {
       case so: StackOverflowError =>
         EvaluationResults.EvaluatorError("Stack overflow")
@@ -77,6 +101,141 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         EvaluationResults.RuntimeError(jre.getMessage)
     } finally {
       ctx.timers.evaluators.recursive.runtime.stop()
+    }
+  }
+
+  private def evalForall(quants: Set[Identifier], body: Expr, check: Boolean = true)(implicit rctx: RC, gctx: GC): Expr = {
+    val henkinModel: HenkinModel = gctx.model match {
+      case hm: HenkinModel => hm
+      case _ => throw EvalError("Can't evaluate foralls without henkin model")
+    }
+
+    val TopLevelAnds(conjuncts) = body
+    e(andJoin(conjuncts.flatMap { conj =>
+      val vars = variablesOf(conj)
+      val quantified = quants.filter(vars)
+
+      extractQuorums(conj, quantified).flatMap { case (qrm, others) =>
+        val quorum = qrm.toList
+
+        if (quorum.exists { case (TopLevelAnds(paths), _, _) =>
+          val p = andJoin(paths.filter(path => (variablesOf(path) & quantified).isEmpty))
+          e(p) == BooleanLiteral(false)
+        }) List(BooleanLiteral(true)) else {
+
+          var mappings: Seq[(Identifier, Int, Int)] = Seq.empty
+          var constraints: Seq[(Expr, Int, Int)] = Seq.empty
+          var equalities: Seq[((Int, Int), (Int, Int))] = Seq.empty
+
+          for (((_, expr, args), qidx) <- quorum.zipWithIndex) {
+            val (qmappings, qconstraints) = args.zipWithIndex.partition {
+              case (Variable(id),aidx) => quantified(id)
+              case _ => false
+            }
+
+            mappings ++= qmappings.map(p => (p._1.asInstanceOf[Variable].id, qidx, p._2))
+            constraints ++= qconstraints.map(p => (p._1, qidx, p._2))
+          }
+
+          val mapping = for ((id, es) <- mappings.groupBy(_._1)) yield {
+            val base :: others = es.toList.map(p => (p._2, p._3))
+            equalities ++= others.map(p => base -> p)
+            (id -> base)
+          }
+
+          def domain(expr: Expr): Set[Seq[Expr]] = henkinModel.domain(e(expr) match {
+            case l: Lambda => gctx.lambdas.getOrElse(l, l)
+            case ev => ev
+          })
+
+          val argSets = quorum.foldLeft[List[Seq[Seq[Expr]]]](List(Seq.empty)) {
+            case (acc, (_, expr, _)) => acc.flatMap(s => domain(expr).map(d => s :+ d))
+          }
+
+          argSets.map { args =>
+            val argMap: Map[(Int, Int), Expr] = args.zipWithIndex.flatMap {
+              case (a, qidx) => a.zipWithIndex.map { case (e, aidx) => (qidx, aidx) -> e }
+            }.toMap
+
+            val map = mapping.map { case (id, key) => id -> argMap(key) }
+            val enabler = andJoin(constraints.map {
+              case (e, qidx, aidx) => Equals(e, argMap(qidx -> aidx))
+            } ++ equalities.map {
+              case (k1, k2) => Equals(argMap(k1), argMap(k2))
+            })
+
+            val ctx = rctx.withNewVars(map)
+            if (e(enabler)(ctx, gctx) == BooleanLiteral(true)) {
+              if (gctx.check) {
+                for ((b,caller,args) <- others if e(b)(ctx, gctx) == BooleanLiteral(true)) {
+                  val evArgs = args.map(arg => e(arg)(ctx, gctx))
+                  if (!domain(caller)(evArgs))
+                    throw QuantificationError("Unhandled transitive implication in " + replaceFromIDs(map, conj))
+                }
+              }
+
+              e(conj)(ctx, gctx)
+            } else {
+              BooleanLiteral(true)
+            }
+          }
+        }
+      }
+    })) match {
+      case res @ BooleanLiteral(true) if check =>
+        if (gctx.check) {
+          checkForall(quants, body) match {
+            case status: ForallInvalid =>
+              throw QuantificationError("Invalid forall: " + status.getMessage)
+            case _ =>
+              // make sure the body doesn't contain matches or lets as these introduce new locals
+              val cleanBody = expandLets(matchToIfThenElse(body))
+              val calls = new CollectorWithPaths[(Expr, Seq[Expr], Seq[Expr])] {
+                def collect(e: Expr, path: Seq[Expr]): Option[(Expr, Seq[Expr], Seq[Expr])] = e match {
+                  case QuantificationMatcher(IsTyped(caller, _: FunctionType), args) => Some((caller, args, path))
+                  case _ => None
+                }
+
+                override def rec(e: Expr, path: Seq[Expr]): Expr = e match {
+                  case l : Lambda => l
+                  case _ => super.rec(e, path)
+                }
+              }.traverse(cleanBody)
+
+              for ((caller, appArgs, paths) <- calls) {
+                val path = andJoin(paths.filter(expr => (variablesOf(expr) & quants).isEmpty))
+                if (e(path) == BooleanLiteral(true)) e(caller) match {
+                  case _: PartialLambda => // OK
+                  case l: Lambda =>
+                    val nl @ Lambda(args, body) = gctx.lambdas.getOrElse(l, l)
+                    val lambdaQuantified = (appArgs zip args).collect {
+                      case (Variable(id), vd) if quants(id) => vd.id
+                    }.toSet
+
+                    if (lambdaQuantified.nonEmpty) {
+                      checkForall(lambdaQuantified, body) match {
+                        case lambdaStatus: ForallInvalid =>
+                          throw QuantificationError("Invalid forall: " + lambdaStatus.getMessage)
+                        case _ => // do nothing
+                      }
+
+                      val axiom = Equals(Application(nl, args.map(_.toVariable)), nl.body)
+                      if (evalForall(args.map(_.id).toSet, axiom, check = false) == BooleanLiteral(false)) {
+                        throw QuantificationError("Unaxiomatic lambda " + l)
+                      }
+                    }
+                  case f =>
+                    throw EvalError("Cannot apply non-lambda function " + f.asString)
+                }
+              }
+          }
+        }
+
+        res
+
+      // `res == false` means the quantification is valid since there effectivelly must
+      // exist an input for which the proposition doesn't hold
+      case res => res
     }
   }
 
@@ -101,7 +260,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           mapping.find { case (pargs, res) =>
             (args zip pargs).forall(p => e(Equals(p._1, p._2)) == BooleanLiteral(true))
           }.map(_._2).orElse(dflt).getOrElse {
-            throw EvalError("Cannot apply partial lambda outside of domain")
+            throw EvalError("Cannot apply partial lambda outside of domain : " +
+              args.map(e(_).asString(ctx)).mkString("(", ", ", ")"))
           }
         case f =>
           throw EvalError("Cannot apply non-lambda function " + f.asString)
@@ -516,101 +676,19 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       FiniteSet(els.map(e), base)
 
     case l @ Lambda(_, _) =>
-      val (nl, structSubst) = normalizeStructure(l)
+      val (nl, structSubst) = normalizeStructure(matchToIfThenElse(l))
       val mapping = variablesOf(l).map(id => structSubst(id) -> e(Variable(id))).toMap
-      replaceFromIDs(mapping, nl)
+      val newLambda = replaceFromIDs(mapping, nl).asInstanceOf[Lambda]
+      if (!gctx.lambdas.isDefinedAt(newLambda)) {
+        gctx.lambdas += (newLambda -> nl.asInstanceOf[Lambda])
+      }
+      newLambda
 
     case PartialLambda(mapping, dflt, tpe) =>
       PartialLambda(mapping.map(p => p._1.map(e) -> e(p._2)), dflt.map(e), tpe)
 
-    case f @ Forall(fargs, body @ TopLevelAnds(conjuncts)) =>
-      val henkinModel: HenkinModel = gctx.model match {
-        case hm: HenkinModel => hm
-        case _ => throw EvalError("Can't evaluate foralls without henkin model")
-      }
-
-      e(andJoin(for (conj <- conjuncts) yield {
-        val vars = variablesOf(conj)
-        val args = fargs.map(_.id).filter(vars)
-        val quantified = args.toSet
-
-        val matcherQuorums = extractQuorums(conj, quantified)
-
-        val instantiations = matcherQuorums.flatMap { quorum =>
-          var mappings: Seq[(Identifier, Int, Int)] = Seq.empty
-          var constraints: Seq[(Expr, Int, Int)] = Seq.empty
-
-          for (((expr, args), qidx) <- quorum.zipWithIndex) {
-            val (qmappings, qconstraints) = args.zipWithIndex.partition {
-              case (Variable(id),aidx) => quantified(id)
-              case _ => false
-            }
-
-            mappings ++= qmappings.map(p => (p._1.asInstanceOf[Variable].id, qidx, p._2))
-            constraints ++= qconstraints.map(p => (p._1, qidx, p._2))
-          }
-
-          var equalities: Seq[((Int, Int), (Int, Int))] = Seq.empty
-          val mapping = for ((id, es) <- mappings.groupBy(_._1)) yield {
-            val base :: others = es.toList.map(p => (p._2, p._3))
-            equalities ++= others.map(p => base -> p)
-            (id -> base)
-          }
-
-          val argSets = quorum.foldLeft[List[Seq[Seq[Expr]]]](List(Seq.empty)) {
-            case (acc, (expr, _)) => acc.flatMap(s => henkinModel.domain(expr).map(d => s :+ d))
-          }
-
-          argSets.map { args =>
-            val argMap: Map[(Int, Int), Expr] = args.zipWithIndex.flatMap {
-              case (a, qidx) => a.zipWithIndex.map { case (e, aidx) => (qidx, aidx) -> e }
-            }.toMap
-
-            val map = mapping.map { case (id, key) => id -> argMap(key) }
-            val enabler = andJoin(constraints.map {
-              case (e, qidx, aidx) => Equals(e, argMap(qidx -> aidx))
-            } ++ equalities.map {
-              case (k1, k2) => Equals(argMap(k1), argMap(k2))
-            })
-
-            (enabler, map)
-          }
-        }
-
-        e(andJoin(instantiations.map { case (enabler, mapping) =>
-          e(Implies(enabler, conj))(rctx.withNewVars(mapping), gctx)
-        }))
-      })) match {
-        case res @ BooleanLiteral(true) =>
-          val quantified = fargs.map(_.id).toSet
-          val status = checkForall(quantified, body)
-          if (!status.isValid) {
-            gctx.warnings :+= "Invalid forall: " + status
-          } else {
-            for ((caller, appArgs) <- firstOrderAppsOf(body)) e(caller) match {
-              case _: PartialLambda => // OK
-              case Lambda(args, body) =>
-                val lambdaQuantified = (appArgs zip args).collect {
-                  case (Variable(id), vd) if quantified(id) => vd.id
-                }.toSet
-
-                if (lambdaQuantified.nonEmpty) {
-                  val lambdaStatus = checkForall(lambdaQuantified, body)
-                  if (!lambdaStatus.isValid) {
-                    gctx.warnings :+= "Invalid forall: " + lambdaStatus
-                  }
-                }
-              case f =>
-                throw EvalError("Cannot apply non-lambda function " + f.asString)
-            }
-          }
-
-          res
-
-        // `res == false` means the quantification is valid since there effectivelly must
-        // exist an input for which the proposition doesn't hold
-        case res => res
-      }
+    case Forall(fargs, body) =>
+      evalForall(fargs.map(_.id).toSet, body)
 
     case ArrayLength(a) =>
       val FiniteArray(_, _, IntLiteral(length)) = e(a)

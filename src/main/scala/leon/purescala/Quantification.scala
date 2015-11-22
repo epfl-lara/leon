@@ -6,6 +6,7 @@ package purescala
 import Common._
 import Definitions._
 import Expressions._
+import Constructors._
 import Extractors._
 import ExprOps._
 import Types._
@@ -22,7 +23,7 @@ object Quantification {
   ): Seq[Set[A]] = {
     def expand(m: A): Set[A] = Set(m) ++ margs(m).flatMap(expand)
     val expandedMap: Map[A, Set[A]] = matchers.map(m => m -> expand(m)).toMap
-    val reverseMap : Map[A, Set[A]] = expandedMap
+    val reverseMap : Map[A, Set[A]] = expandedMap.toSeq
       .flatMap(p => p._2.map(m => m -> p._1))     // flatten to reversed pairs
       .groupBy(_._1).mapValues(_.map(_._2).toSet) // rebuild map from pair set
 
@@ -48,7 +49,7 @@ object Quantification {
     res.filter(ms => ms.forall(m => reverseMap(m) subsetOf ms))
   }
 
-  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[Set[(Expr, Seq[Expr])]] = {
+  def extractQuorums(expr: Expr, quantified: Set[Identifier]): Seq[(Set[(Expr, Expr, Seq[Expr])], Set[(Expr, Expr, Seq[Expr])])] = {
     object QMatcher {
       def unapply(e: Expr): Option[(Expr, Seq[Expr])] = e match {
         case QuantificationMatcher(expr, args) =>
@@ -61,18 +62,20 @@ object Quantification {
       }
     }
 
-    extractQuorums(collect {
-      case QMatcher(e, a) => Set(e -> a)
-      case _ => Set.empty[(Expr, Seq[Expr])]
-    } (expr), quantified,
-    (p: (Expr, Seq[Expr])) => p._2.collect { case QMatcher(e, a) => e -> a }.toSet,
-    (p: (Expr, Seq[Expr])) => p._2.collect { case Variable(id) if quantified(id) => id }.toSet)
+    val allMatchers = CollectorWithPaths { case QMatcher(expr, args) => expr -> args }.traverse(expr)
+    val matchers = allMatchers.map { case ((caller, args), path) => (path, caller, args) }.toSet
+
+    val quorums = extractQuorums(matchers, quantified,
+      (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case QMatcher(e, a) => (p._1, e, a) }.toSet,
+      (p: (Expr, Expr, Seq[Expr])) => p._3.collect { case Variable(id) if quantified(id) => id }.toSet)
+
+    quorums.map(quorum => quorum -> matchers.filter(m => !quorum(m)))
   }
 
   def extractModel(
     asMap: Map[Identifier, Expr],
     funDomains: Map[Identifier, Set[Seq[Expr]]],
-    tpeDomains: Map[TypeTree, Set[Seq[Expr]]],
+    typeDomains: Map[TypeTree, Set[Seq[Expr]]],
     evaluator: Evaluator
   ): Map[Identifier, Expr] = asMap.map { case (id, expr) =>
     id -> (funDomains.get(id) match {
@@ -84,12 +87,12 @@ object Quantification {
 
       case None => postMap {
         case p @ PartialLambda(mapping, dflt, tpe) =>
-          Some(PartialLambda(tpeDomains.get(tpe) match {
+          Some(PartialLambda(typeDomains.get(tpe) match {
             case Some(domain) => domain.toSeq.map { es =>
               val optEv = evaluator.eval(Application(p, es)).result
               es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + Application(p, es)))
             }
-            case _ => scala.sys.error(s"Can't extract $p without domain")
+            case _ => Seq.empty
           }, None, tpe))
         case _ => None
       } (expr)
@@ -97,28 +100,24 @@ object Quantification {
   }
 
   object HenkinDomains {
-    def empty = new HenkinDomains(Map.empty)
-    def apply(domains: Map[TypeTree, Set[Seq[Expr]]]) = new HenkinDomains(domains)
+    def empty = new HenkinDomains(Map.empty, Map.empty)
   }
 
-  class HenkinDomains (val domains: Map[TypeTree, Set[Seq[Expr]]]) {
-    def get(e: Expr): Set[Seq[Expr]] = e match {
-      case PartialLambda(_, Some(dflt), _) => scala.sys.error("No domain for non-partial lambdas")
-      case PartialLambda(mapping, _, _) => mapping.map(_._1).toSet
-      case _ => domains.get(e.getType) match {
-        case Some(domain) => domain
-        case None => scala.sys.error("Undefined Henkin domain for " + e)
+  class HenkinDomains (val lambdas: Map[Lambda, Set[Seq[Expr]]], val tpes: Map[TypeTree, Set[Seq[Expr]]]) {
+    def get(e: Expr): Set[Seq[Expr]] = {
+      val specialized: Set[Seq[Expr]] = e match {
+        case PartialLambda(_, Some(dflt), _) => scala.sys.error("No domain for non-partial lambdas")
+        case PartialLambda(mapping, _, _) => mapping.map(_._1).toSet
+        case l: Lambda => lambdas.getOrElse(l, Set.empty)
+        case _ => Set.empty
       }
+      specialized ++ tpes.getOrElse(e.getType, Set.empty)
     }
-
-    override def toString = domains.map { case (tpe, argSet) =>
-      tpe + ": " + argSet.map(_.mkString("(", ",", ")")).mkString(", ")
-    }.mkString("domain={\n  ", "\n  ", "}")
   }
 
   object QuantificationMatcher {
     private def flatApplication(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
-      case Application(fi: FunctionInvocation, _) => None
+      case Application(fi: FunctionInvocation, args) => Some((fi, args))
       case Application(caller: Application, args) => flatApplication(caller) match {
         case Some((c, prevArgs)) => Some((c, prevArgs ++ args))
         case None => None
@@ -162,16 +161,17 @@ object Quantification {
     def isValid = true
   }
 
-  sealed abstract class ForallInvalid extends ForallStatus {
+  sealed abstract class ForallInvalid(msg: String) extends ForallStatus {
     def isValid = false
+    def getMessage: String = msg
   }
 
-  case object NoMatchers extends ForallInvalid
-  case class ComplexArgument(expr: Expr) extends ForallInvalid
-  case class NonBijectiveMapping(expr: Expr) extends ForallInvalid
-  case class InvalidOperation(expr: Expr) extends ForallInvalid
+  case class NoMatchers(expr: String) extends ForallInvalid("No matchers available for E-Matching in " + expr)
+  case class ComplexArgument(expr: String) extends ForallInvalid("Unhandled E-Matching pattern in " + expr)
+  case class NonBijectiveMapping(expr: String) extends ForallInvalid("Non-bijective mapping for quantifiers in " + expr)
+  case class InvalidOperation(expr: String) extends ForallInvalid("Invalid operation on quantifiers in " + expr)
 
-  def checkForall(quantified: Set[Identifier], body: Expr): ForallStatus = {
+  def checkForall(quantified: Set[Identifier], body: Expr)(implicit ctx: LeonContext): ForallStatus = {
     val TopLevelAnds(conjuncts) = body
     for (conjunct <- conjuncts) {
       val matchers = collect[(Expr, Seq[Expr])] {
@@ -179,7 +179,7 @@ object Quantification {
         case _ => Set.empty
       } (conjunct)
 
-      if (matchers.isEmpty) return NoMatchers
+      if (matchers.isEmpty) return NoMatchers(conjunct.asString)
 
       val complexArgs = matchers.flatMap { case (_, args) =>
         args.flatMap(arg => arg match {
@@ -190,7 +190,7 @@ object Quantification {
         })
       }
 
-      if (complexArgs.nonEmpty) return ComplexArgument(complexArgs.head)
+      if (complexArgs.nonEmpty) return ComplexArgument(complexArgs.head.asString)
 
       val matcherToQuants = matchers.foldLeft(Map.empty[Expr, Set[Identifier]]) {
         case (acc, (m, args)) => acc + (m -> (acc.getOrElse(m, Set.empty) ++ args.flatMap {
@@ -200,7 +200,7 @@ object Quantification {
       }
 
       val bijectiveMappings = matcherToQuants.filter(_._2.nonEmpty).groupBy(_._2)
-      if (bijectiveMappings.size > 1) return NonBijectiveMapping(bijectiveMappings.head._2.head._1)
+      if (bijectiveMappings.size > 1) return NonBijectiveMapping(bijectiveMappings.head._2.head._1.asString)
 
       val matcherSet = matcherToQuants.filter(_._2.nonEmpty).keys.toSet
 
@@ -223,7 +223,7 @@ object Quantification {
           case Operator(es, _) =>
             val matcherArgs = matcherSet & es.toSet
             if (q.nonEmpty && !(q.size == 1 && matcherArgs.isEmpty && m.getType == BooleanType))
-              return InvalidOperation(m)
+              return InvalidOperation(m.asString)
             else Set.empty
           case Variable(id) if quantified(id) => Set(id)
           case _ => q
