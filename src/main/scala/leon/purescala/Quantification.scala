@@ -204,7 +204,7 @@ object Quantification {
 
       val matcherSet = matcherToQuants.filter(_._2.nonEmpty).keys.toSet
 
-      val qs = foldRight[Set[Identifier]] { case (m, children) =>
+      val qs = fold[Set[Identifier]] { case (m, children) =>
         val q = children.toSet.flatten
 
         m match {

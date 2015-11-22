@@ -7,6 +7,7 @@ package smtlib
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Constructors._
+import purescala.Extractors._
 import purescala.Types._
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Forall => SMTForall, _}
@@ -60,12 +61,11 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           case RawArrayType(k, v) =>
             RawArrayValue(k, Map(), fromSMT(elem, v))
 
-          case FunctionType(from, to) =>
-            RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
+          case ft @ FunctionType(from, to) =>
+            PartialLambda(Seq.empty, Some(fromSMT(elem, to)), ft)
 
           case MapType(k, v) =>
             FiniteMap(Map(), k, v)
-
         }
 
       case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), Some(tpe)) =>
@@ -73,12 +73,11 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           case RawArrayType(k, v) =>
             RawArrayValue(k, Map(), fromSMT(elem, v))
 
-          case FunctionType(from, to) =>
-            RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
+          case ft @ FunctionType(from, to) =>
+            PartialLambda(Seq.empty, Some(fromSMT(elem, to)), ft)
 
           case MapType(k, v) =>
             FiniteMap(Map(), k, v)
-
         }
 
       case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), Some(tpe)) =>
@@ -87,9 +86,10 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             val RawArrayValue(k, elems, base) = fromSMT(arr, otpe)
             RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
 
-          case FunctionType(_, v) =>
-            val RawArrayValue(k, elems, base) = fromSMT(arr, otpe)
-            RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
+          case FunctionType(from, v) =>
+            val PartialLambda(mapping, dflt, ft) = fromSMT(arr, otpe)
+            val args = unwrapTuple(fromSMT(key, tupleTypeWrap(from)), from.size)
+            PartialLambda(mapping :+ (args -> fromSMT(elem, v)), dflt, ft)
 
           case MapType(k, v) =>
             val FiniteMap(elems, k, v) = fromSMT(arr, otpe)

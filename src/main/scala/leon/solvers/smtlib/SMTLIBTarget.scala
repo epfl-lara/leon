@@ -666,6 +666,7 @@ trait SMTLIBTarget extends Interruptible {
         }.toMap
 
         fromSMT(body, tpe)(lets ++ defsMap, letDefs)
+
       case (SimpleSymbol(s), _) if constructors.containsB(s) =>
         constructors.toA(s) match {
           case cct: CaseClassType =>
