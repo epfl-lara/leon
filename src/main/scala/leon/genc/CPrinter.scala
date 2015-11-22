@@ -74,6 +74,14 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case Var(id, _) => c"$id"
     case DeclVar(Var(id, typ)) => c"$typ $id;"
 
+    // If the length is a literal we don't need VLA
+    case DeclInitVar(Var(id, typ), ai @ ArrayInit(IntLiteral(length), _, _)) =>
+      val buffer = FreshId("buffer")
+      val values = for (i <- 0 until length) yield ai.defaultValue
+      c"""|${ai.valueType} $buffer[${ai.length}] = { $values };
+          |$typ $id = { .length = ${ai.length}, .data = $buffer };
+          |"""
+
     // TODO depending on the type of array (e.g. `char`) or the value (e.g. `0`), we could use `memset`.
     case DeclInitVar(Var(id, typ), ai: ArrayInit) => // Note that `typ` is a struct here
       val buffer = FreshId("vla_buffer")
@@ -86,12 +94,10 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
           |"""
 
     case DeclInitVar(Var(id, typ), ai: ArrayInitWithValues) => // Note that `typ` is a struct here
-      val buffer = FreshId("vla_buffer")
-      c"$NewLine${ai.valueType} $buffer[${ai.length}];$NewLine"
-      for ((v, i) <- ai.values.zipWithIndex) {
-        c"$buffer[$i] = $v;$NewLine"
-      }
-      c"$typ $id = { .length = ${ai.length}, .data = $buffer };$NewLine"
+      val buffer = FreshId("buffer")
+      c"""|${ai.valueType} $buffer[${ai.length}] = { ${ai.values} };
+          |$typ $id = { .length = ${ai.length}, .data = $buffer };
+          |"""
 
     case DeclInitVar(Var(id, typ), value) =>
       c"$typ $id = $value;"
