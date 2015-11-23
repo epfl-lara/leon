@@ -21,6 +21,12 @@ object Default {
     case -3 => "-3"
   }
   
+  @inline def psBigIntStandard(s: BigInt) = (res: String) => (s, res) passes {
+    case BigInt(1) => "1"
+    case BigInt(42) => "42"
+    case BigInt(-3) => "-3"
+  }
+  
   @inline def psBooleanStandard(s: Boolean) = (res: String) => (s, res) passes {
     case true => "true"
     case false => "false"
@@ -34,6 +40,10 @@ object Default {
   def synthesizeIntStandard(s: Int): String = {
     ???[String]
   } ensuring psIntStandard(s)
+  
+  def synthesizeBigIntStandard(s: BigInt): String = {
+    ???[String]
+  } ensuring psBigIntStandard(s)
   
   def synthesizeBooleanStandard(s: Boolean): String = {
     ???[String]

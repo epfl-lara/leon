@@ -5,6 +5,7 @@ import org.scalatest.Matchers
 import leon.test.helpers.ExpressionsDSL
 import leon.solvers.string.StringSolver
 import leon.purescala.Common.FreshIdentifier
+import leon.purescala.Common.Identifier
 
 /**
  * @author Mikael
@@ -16,6 +17,7 @@ class StringSolverSuite extends FunSuite with Matchers {
   lazy val z = k('z')
   lazy val u = k('u')
   lazy val v = k('v')
+  lazy val w = k('w')
   
   implicit class EquationMaker(lhs: String) {
     def convertStringToStringFrom(s: String) = {
@@ -63,12 +65,18 @@ class StringSolverSuite extends FunSuite with Matchers {
   }
   
   test("simpleSplit") {
+    implicit val stats = Map(x -> 1, y -> 1) // Dummy stats
     simpleSplit(List(), "").toList should equal (List(Map()))
     simpleSplit(List(), "abc").toList should equal (Nil)
     simpleSplit(List(x), "abc").toList should equal (List(Map(x -> "abc")))
-    simpleSplit(List(x, y), "ab").toList should equal (List(Map(x -> "", y -> "ab"), Map(x -> "a", y -> "b"), Map(x -> "ab", y -> "")))
+    simpleSplit(List(x, y), "ab").toList should equal (List(Map(x -> "", y -> "ab"), Map(x -> "ab", y -> ""), Map(x -> "a", y -> "b")))
     simpleSplit(List(x, x), "ab").toList should equal (Nil)
     simpleSplit(List(x, y, x), "aba").toList should equal (List(Map(x -> "", y -> "aba"), Map(x -> "a", y -> "b")))
+  }
+  
+  test("simpleSplitPriority") {
+    implicit val stats = Map(x -> 1, y -> 2)
+    simpleSplit(List(x, y, y, y), "a121212").toList should equal (List(Map(y -> "1"), Map(y -> "12"), Map(y -> "2"), Map(y -> "")))
   }
 
   
@@ -112,4 +120,80 @@ class StringSolverSuite extends FunSuite with Matchers {
         )
     )
   }
+  
+  test("constantPropagate") {
+    val complexString = "abcdefmlkjsdqfmlkjqezpijbmkqjsdfmijzmajmpqjmfldkqsjmkj"
+    solve(List("w5xyzuv" === (complexString+"5"))).toList should equal (
+        List(Map(w -> complexString,
+                 x -> "",
+                 y -> "",
+                 z -> "",
+                 u -> "",
+                 v -> "")))
+  }
+  
+  test("constantPropagate2") {
+    val complexString = "abcdefmlkjsdqfmlkjqezpijbmkqjsdfmijzmajmpqjmfldkqsjmkj"
+    val complexString2 = complexString.reverse
+    val complexString3 = "flmqmslkjdqfmleomijgmlkqsjdmfijmqzoijdfmlqksjdofijmez"
+    solve(List("w5x5z" === (complexString+"5" + complexString2 + "5" + complexString3))).toList should equal (
+        List(Map(w -> complexString,
+                 x -> complexString2,
+                 z -> complexString3)))
+  }
+  
+  test("ListInt") {
+    var idMap = Map[String, Identifier]()
+    def makeSf(lhs: String): StringForm = {
+      for(elem <- lhs.split("\\+").toList) yield {
+        if(elem.startsWith("\"")) {
+          Left(elem.substring(1, elem.length - 1))
+        } else {
+          val id = idMap.getOrElse(elem, {
+            val res = FreshIdentifier(elem)
+            idMap += elem -> res
+            res
+          })
+          Right(id)
+        }
+      }
+    }
+    val lhs1 = makeSf("""const8+const4+"12"+const5+const+"-1"+const1+const3+const2+const6+const9""")
+    val lhs2 = makeSf("""const8+const4+"1"+const5+const3+const6+const9""")
+    val lhs3 = makeSf("""const8+const7+const9""")
+    val rhs1 = "(12, -1)"
+    val rhs2 = "(1)"
+    val rhs3 = "()"
+    val problem = List((lhs1, rhs1), (lhs2, rhs2), (lhs3, rhs3))
+    solve(problem) should not be 'empty
+  }
+  
+  /*test("solveJadProblem") {
+    val lhs = """const26+const22+const7+const+const8+const3+const9+const5+"5"+const6+const10+const23+const18+const11+const+const12+const19+const18+const7+const1+const8+const2+const9+const4+const10+const19+const18+const13+const+const14+const3+const15+const5+"5"+const6+const16+const4+const17+const19+const18+const11+const1+const12+const19+const18+const13+const1+const14+const2+const15+const4+const16+const5+"5"+const6+const17+const19+const21+const20+const20+const20+const20+const20+const24+const27"""
+    var idMap = Map[String, Identifier]()
+    val lhsSf = for(elem <- lhs.split("\\+")) yield {
+      if(elem.startsWith("\"")) {
+        Left(elem.substring(1, elem.length - 1))
+      } else {
+        val id = idMap.getOrElse(elem, {
+          val res = FreshIdentifier(elem)
+          idMap += elem -> res
+          res
+        })
+        Right(id)
+      }
+    }
+    
+    val expected = """T1: call Push(5)
+T1: internal
+T2: call Pop()
+T1: ret Push(5)
+T2: internal
+T2: ret Pop() -> 5"""
+    
+    val problem: Problem = List((lhsSf.toList, expected))
+    println("Problem to solve:" + StringSolver.renderProblem(problem))
+    
+    solve(problem) should not be 'empty
+  }*/
 }

@@ -25,6 +25,21 @@ object StringSolver {
   /** Sequences of equalities such as xyz"1"uv"2" = "1, 2" */
   type Problem = List[Equation]
   
+  def renderProblem(p: Problem): String = {
+    def renderStringForm(sf: StringForm): String = sf match {
+      case Left(const)::Nil => "\""+const+"\"" 
+      case Right(id)::Nil => id.toString
+      case Left(const)::q =>  "\""+const+"\"+" + renderStringForm(q)
+      case Right(id)::q => id.toString + "+" + renderStringForm(q)
+      case Nil => ""
+    }
+    def renderEquation(e: Equation): String = {
+      renderStringForm(e._1) + "==\""+e._2+"\""
+    }
+    p match {case Nil => ""
+    case e::q => renderEquation(e) + ", " + renderProblem(q)}
+  }
+  
   /** Evaluates a String form. Requires the solution to have an assignment to all identifiers. */
   @tailrec def evaluate(s: Assignment, acc: StringBuffer = new StringBuffer(""))(sf: StringForm): String = sf match {
     case Nil => acc.toString
@@ -68,6 +83,7 @@ object StringSolver {
   def reduceStringForm(s: StringForm): StringForm =  {
     @tailrec def rec(s: StringForm, acc: ListBuffer[StringFormToken] = ListBuffer()): StringForm = s match {
       case Nil => acc.toList
+      case Left("")::q => rec(q, acc)
       case Left(c)::Left(d)::q => rec(Left(c+d)::q, acc)
       case a::q => rec(q, acc += a)
     }
@@ -152,6 +168,99 @@ object StringSolver {
     removeLeftconstants(p).flatMap(removeRightConstants(_))
   }
   
+  def splitAtLastConstant(s: StringForm): (StringForm, StringFormToken, StringForm) = {
+    val i = s.lastIndexWhere(x => x.isInstanceOf[Left[_, _]])
+    (s.take(i), s(i), s.drop(i+1))
+  }
+  
+  /** If constants have only one position in an equation, split the equation */
+  @tailrec def constantPropagate(p: Problem, assignments: Assignment = Map(), newProblem: ListBuffer[Equation] = ListBuffer()): Option[(Problem, Assignment)] = {
+    p match {
+      case Nil => 
+        Some((newProblem.toList, assignments))
+      case (ids, "")::q => // All identifiers should be empty.
+        val constants = ids.find { 
+          case Left(s) if s != "" => true
+          case Right(_) => false
+        }
+        (constants match {
+          case Some(_) => None
+          case None => // Ok now let's assign all variables to empty string.
+            val newMap = (ids.collect{ case Right(id) => id -> ""})
+            val newAssignments = (Option(assignments) /: newMap) {
+              case (None, (id, rhs)) => None 
+              case (Some(a), (id, rhs)) => 
+                a.get(id) match { // It was assigned already.
+                  case Some(v) =>
+                    if(rhs != v) None else Some(a)
+                  case None => 
+                    Some(a + (id -> rhs))
+                }
+            }
+            newAssignments
+        }) match {
+          case None => None
+          case Some(a) => 
+            constantPropagate(q, a, newProblem)
+        }
+      case (sentence@(ids, rhs))::q => // If the constants have an unique position, we should split the equation.
+        val constants = ids.collect { 
+          case l@Left(s) => s
+        }
+        // Check if constants form a partition in the string, i.e. getting the .indexOf() the first time is the only way to split the string.
+        
+        if(constants.length > 0) {
+          
+          var pos = -2
+          var lastPos = -2
+          var lastConst = ""
+          var invalid = false
+          
+          for(c <- constants) {
+            val i = rhs.indexOfSlice(c, pos)
+            lastPos = i
+            lastConst = c
+            if(i == -1) invalid = true
+            pos = i + c.length
+          }
+          if(invalid) None else {
+            val i = rhs.indexOfSlice(lastConst, lastPos + 1)
+            if(i == -1) { // OK it's the smallest position possible, hence we can split at the last position.
+              val (before, constant, after) = splitAtLastConstant(ids)
+              val firstConst = rhs.substring(0, lastPos)
+              val secondConst = rhs.substring(lastPos + lastConst.length)
+              constantPropagate((before, firstConst)::(after, secondConst)::q, assignments, newProblem)
+            } else {
+              // Other splitting strategy: independent constants ?
+              
+              
+              val constantsSplit = constants.flatMap{ c => {
+                val i = rhs.indexOfSlice(c, -1)
+                val j = rhs.indexOfSlice(c, i + 1)
+                if(j == -1 && i != -1) {
+                  List((c, i))
+                } else Nil
+              }}
+              
+              constantsSplit match {
+                case Nil =>
+                 constantPropagate(q, assignments, newProblem += sentence)
+                case ((c, i)::_) =>
+                  val (before, after) = ids.splitAt(ids.indexOf(Left(c)))
+                  val firstconst = rhs.substring(0, i)
+                  val secondConst = rhs.substring(i+c.length)
+                  constantPropagate((before, firstconst)::(after.tail, secondConst)::q, assignments, newProblem)
+              }
+              
+            }
+          }
+        } else {
+          constantPropagate(q, assignments, newProblem += sentence)
+        }
+      case sentence::q => constantPropagate(q, assignments, newProblem += sentence)
+    }
+  }
+  
   /** Composition of simplifyProble and noLeftRightConstants */
   def forwardStrategy(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
     leon.utils.fixpoint[Option[(Problem, Assignment)]]{
@@ -159,10 +268,14 @@ object StringSolver {
         case Some((p: Problem, assignment: Assignment)) =>
           val simplified = simplifyProblem(p, Map())
           if(simplified == None) None else {
-            val simplified_problem = simplified.get._1
+            val simplified_problem = reduceProblem(simplified.get._2)(simplified.get._1)
             val simplified2_problem = noLeftRightConstants(simplified_problem)
             if(simplified2_problem == None) None else {
-              Some((simplified2_problem.get, assignment ++ simplified.get._2))
+              val simplified3_assignment = constantPropagate(simplified2_problem.get, simplified.get._2)
+              if(simplified3_assignment == None) None else {
+                val simplified3_problem = reduceProblem(simplified3_assignment.get._2)(simplified3_assignment.get._1)
+                Some((simplified3_problem, assignment ++ simplified3_assignment.get._2))
+              }
             }
           }
     }(Option((p, s)))
@@ -199,7 +312,7 @@ object StringSolver {
   }
   
   def prioritizedPositions(s: String): Stream[Int] = {
-    val separations = "\\b".r.findAllMatchIn(s).map(m => m.start)
+    val separations = "\\b".r.findAllMatchIn(s).map(m => m.start).toList
     separations.toStream #::: {
       val done = separations.toSet
       for( i <- (0 to s.length).toStream if !done(i)) yield i
@@ -207,21 +320,57 @@ object StringSolver {
   }
   
   
-  /** Solves the equation   x1x2x3...xn = CONSTANT */
-  def simpleSplit(ids: List[Identifier], rhs: String): Stream[Assignment] = {
+  /** Solves the equation   x1x2x3...xn = CONSTANT
+    * Prioritizes split positions in the CONSTANT that are word boundaries
+    * Prioritizes variables which have a higher frequency */
+  def simpleSplit(ids: List[Identifier], rhs: String)(implicit statistics: Map[Identifier, Int]): Stream[Assignment] = {
     ids match {
-    case Nil => if(rhs == "") Stream(Map()) else Stream.empty
-    case List(x) => 
-      Stream(Map(x -> rhs))
-    case x :: ys => for{
-      i <- prioritizedPositions(rhs) // Prioritization on positions which are separators.
-      xvalue = rhs.substring(0, i)
-      rvalue = rhs.substring(i)
-      remaining_splits = simpleSplit(ys, rvalue)
-      remaining_split <- remaining_splits
-      if !remaining_split.contains(x) || remaining_split(x) == xvalue
-    } yield (remaining_split + (x -> xvalue))
+      case Nil => if(rhs == "") Stream(Map()) else Stream.empty
+      case List(x) => 
+        Stream(Map(x -> rhs))
+      case x :: ys => 
+        val (bestVar, bestScore, worstScore) = (((None:Option[(Identifier, Int, Int)]) /: ids) {
+          case (None, x) => val sx = statistics(x)
+            Some((x, sx, sx))
+          case (s@Some((x, i, ws)), y) => val yi = statistics(y)
+            if(i >= yi) Some((x, i, Math.min(yi, ws))) else Some((y, yi, ws))
+        }).get
+        val pos = prioritizedPositions(rhs)
+        val numBestVars = ids.count { x => x == bestVar }
+        
+        if(worstScore == bestScore) {
+          for{
+            i <- pos // Prioritization on positions which are separators.
+            xvalue = rhs.substring(0, i)
+            rvalue = rhs.substring(i)
+            remaining_splits = simpleSplit(ys, rvalue)
+            remaining_split <- remaining_splits
+            if !remaining_split.contains(x) || remaining_split(x) == xvalue
+          } yield (remaining_split + (x -> xvalue))
+        } else { // A variable appears more than others in the same equation, so its changes are going to propagate more.
+          val strings = (for{ i <- pos
+               if i != rhs.length
+               j <- (i + 1) to rhs.length} yield rhs.substring(i, j)) #::: Stream("")
+          
+          (for(str <- strings.distinct
+               if java.util.regex.Pattern.quote(str).r.findAllMatchIn(rhs).length >= numBestVars
+          ) yield {
+            Map(bestVar -> str)
+          })
+        }
+    }
   }
+  
+  @tailrec def statsStringForm(e: StringForm, acc: Map[Identifier, Int] = Map()): Map[Identifier, Int] = e match {
+    case Nil => acc
+    case Right(id)::q => statsStringForm(q, acc + (id -> (acc.getOrElse(id, 0) + 1)))
+    case (_::q) => statsStringForm(q, acc)
+  }
+  
+  @tailrec def stats(p: Problem, acc: Map[Identifier, Int] = Map()): Map[Identifier, Int] = p match {
+    case Nil => acc
+    case (sf, rhs)::q => 
+      stats(q, (statsStringForm(sf) /: acc) { case (m, (k, v)) => m + (k -> (m.getOrElse(k, 0) + v)) })
   }
   
   /** Deduces possible new assignments from the problem. */
@@ -267,14 +416,15 @@ object StringSolver {
     val (lhs, rhs) = minStatement
     val constants = minConstants
     val identifiers_grouped = minIdentifiersGrouped
+    val statistics = stats(p)
     if(identifiers_grouped.length > 1) {
       // There might be different repartitions of the first boundary constant. We need to investigate all of them.
       repartitions(constants, rhs).map(_.head).distinct.toStream.flatMap(p => {
-        val firstString = rhs.substring(0, p)
-        simpleSplit(identifiers_grouped.head, firstString)
+        val firstString = rhs.substring(0, p) // We only split on the first string.
+        simpleSplit(identifiers_grouped.head, firstString)(statistics)
       })
     } else if(identifiers_grouped.length == 1) {
-      simpleSplit(identifiers_grouped.head, rhs) // All new assignments
+      simpleSplit(identifiers_grouped.head, rhs)(statistics) // All new assignments
     } else {
       if(rhs == "") Stream(Map()) else Stream.Empty
     }
@@ -283,9 +433,9 @@ object StringSolver {
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy(p, Map())
-    
     realProblem match {
-      case None => Stream.Empty
+      case None => 
+        Stream.Empty
       case Some((Nil, solution)) =>
         Stream(solution)
       case Some((problem, partialSolution)) =>

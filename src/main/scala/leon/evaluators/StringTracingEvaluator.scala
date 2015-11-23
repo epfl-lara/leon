@@ -12,7 +12,55 @@ import leon.utils.DebugSectionSynthesis
 
 class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with DefaultContexts {
 
-  val underlying = new DefaultEvaluator(ctx, prog)
+  val underlying = new DefaultEvaluator(ctx, prog) {
+    override protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+      case FunctionInvocation(tfd, args) =>
+        if (gctx.stepsLeft < 0) {
+          throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
+        }
+        gctx.stepsLeft -= 1
+  
+        val evArgs = args map e
+  
+        // build a mapping for the function...
+        val frame = rctx.withNewVars(tfd.paramSubst(evArgs))
+    
+        val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+          scalaEv.call(tfd, evArgs)
+        } else {
+          if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+            throw EvalError("Evaluation of function with unknown implementation.")
+          }
+  
+          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+          e(body)(frame, gctx)
+        }
+  
+        callResult
+      
+      case Variable(id) =>
+        rctx.mappings.get(id) match {
+          case Some(v) if v != expr =>
+            e(v)
+          case Some(v) =>
+            v
+          case None =>
+            expr
+        }
+      case StringConcat(s1, s2) =>
+        val es1 = e(s1)
+        val es2 = e(s2)
+        (es1, es2) match {
+          case (StringLiteral(_), StringLiteral(_)) =>
+            (super.e(StringConcat(es1, es2)))
+          case _ =>
+            StringConcat(es1, es2)
+        }
+        
+      case expr =>
+        super.e(expr)
+    }
+  }
   override type Value = (Expr, Expr)
 
   override val description: String = "Evaluates string programs but keeps the formula which generated the string"
@@ -28,7 +76,7 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
         case None =>
           (expr, expr)
       }
-      
+
     case StringConcat(s1, s2) =>
       val (es1, t1) = e(s1)
       val (es2, t2) = e(s2)
@@ -59,11 +107,12 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
         case BooleanLiteral(false) => e(elze)
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }
-
+      
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
-      ctx.reporter.debug("Going to evaluate this : " + builder(ees))(DebugSectionSynthesis)
+      ctx.reporter.debug("Going to evaluate this ["+rctx.mappings+"]:\n" + builder(ees))(DebugSectionSynthesis)
       (underlying.e(builder(ees)), builder(ts))
+
   }
 
 

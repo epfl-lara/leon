@@ -35,7 +35,8 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(v) =>
           v
         case None =>
-          throw EvalError("No value for identifier " + id.asString + " in mapping.")
+          ctx.reporter.fatalError("No value for identifier " + id.asString + " in mapping.")
+          //throw EvalError()
       }
 
     case Application(caller, args) =>
@@ -87,9 +88,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case IfExpr(cond, thenn, elze) =>
       val first = e(cond)
       first match {
-        case BooleanLiteral(true) =>
-          ctx.reporter.ifDebug(printer => printer(thenn))(DebugSectionSynthesis)
-          e(thenn)
+        case BooleanLiteral(true) => e(thenn)
         case BooleanLiteral(false) => e(elze)
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }
@@ -246,11 +245,27 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         StringLiteral(a.substring(b.toInt, c.toInt))
       case res => throw EvalError(typeErrorMsg(res._1, StringType))
     }
-    case Int32ToString(a) => StringLiteral(a.toString)
-    case CharToString(a) => StringLiteral(a.toString)
-    case IntegerToString(a) => StringLiteral(a.toString)
-    case BooleanToString(a) => StringLiteral(a.toString)
-    case RealToString(a) => StringLiteral(a.toString)
+    case Int32ToString(a) => e(a) match {
+      case IntLiteral(i) => StringLiteral(i.toString)
+      case res =>  throw EvalError(typeErrorMsg(res, Int32Type))
+    }
+    case CharToString(a) => 
+      e(a) match {
+        case CharLiteral(i) => StringLiteral(i.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, CharType))
+      }
+    case IntegerToString(a) => e(a) match {
+        case InfiniteIntegerLiteral(i) => StringLiteral(i.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, IntegerType))
+      }
+    case BooleanToString(a) => e(a) match {
+        case BooleanLiteral(i) => StringLiteral(i.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, BooleanType))
+      }
+    case RealToString(a) => e(a) match {
+        case FractionalLiteral(n, d) => StringLiteral(n.toString + "/" + d.toString)
+        case res =>  throw EvalError(typeErrorMsg(res, RealType))
+      }
     
     case BVPlus(l,r) =>
       (e(l), e(r)) match {
@@ -610,7 +625,6 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case MatchExpr(scrut, cases) =>
       val rscrut = e(scrut)
-
       cases.toStream.map(c => matchesCase(rscrut, c)).find(_.nonEmpty) match {
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)

@@ -1,6 +1,7 @@
 import leon.collection._
 import leon.lang._
 import leon.proof.check
+import leon.lang.synthesis._
 import scala.language.postfixOps
 
 
@@ -329,7 +330,12 @@ object AtomicStack {
     ???[String]
   } ensuring {
     res => (p, res) passes {
-      case Cons[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]](CallEvent[StackTid, StackMethodName, Option[BigInt], Option[BigInt]](T1(), Push(), Some[BigInt](5)), Cons[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]](InternalEvent[StackTid, StackMethodName, Option[BigInt], Option[BigInt]](T1()), Cons[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]](CallEvent[StackTid, StackMethodName, Option[BigInt], Option[BigInt]](T2(), Pop(), None[BigInt]()), Cons[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]](RetEvent[StackTid, StackMethodName, Option[BigInt], Option[BigInt]](T1(), Push(), Some[BigInt](5), None[BigInt]()), Cons[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]](InternalEvent[StackTid, StackMethodName, Option[BigInt], Option[BigInt]](T2()), Cons[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]](RetEvent[StackTid, StackMethodName, Option[BigInt], Option[BigInt]](T2(), Pop(), None[BigInt](), Some[BigInt](5)), Nil[Event[StackTid, StackMethodName, Option[BigInt], Option[BigInt]]]()))))))
+      case Cons(CallEvent(T1(), Push(), Some(BigInt(5))),
+           Cons(InternalEvent(T1()),
+           Cons(CallEvent(T2(), Pop(), None()),
+           Cons(RetEvent(T1(), Push(), Some(BigInt(5)), None()),
+           Cons(InternalEvent(T2()),
+           Cons(RetEvent(T2(), Pop(), None(), Some(BigInt(5))), Nil()))))))
       =>
      "T1: call Push(5)\nT1: internal\nT2: call Pop()\nT1: ret Push(5)\nT2: internal\nT2: ret Pop() -> 5"
     }

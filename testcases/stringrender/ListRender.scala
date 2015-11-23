@@ -15,6 +15,7 @@ object ListRender {
   /** Synthesis by example specs */
   @inline def psStandard(s: List[Int]) = (res: String) =>(s, res) passes {
     case Cons(12, Cons(-1, Nil())) => "Cons(12, Cons(-1, Nil))"
+    case Cons(-1, Cons(12, Nil())) => "Cons(-1, Cons(12, Nil))"
     case Cons(1, Nil()) => "Cons(1, Nil)"
     case Nil() => "Nil"
   }
