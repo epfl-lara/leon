@@ -198,6 +198,15 @@ object StringSolver {
     res
   }
   
+  def prioritizedPositions(s: String): Stream[Int] = {
+    val separations = "\\b".r.findAllMatchIn(s).map(m => m.start)
+    separations.toStream #::: {
+      val done = separations.toSet
+      for( i <- (0 to s.length).toStream if !done(i)) yield i
+    }
+  }
+  
+  
   /** Solves the equation   x1x2x3...xn = CONSTANT */
   def simpleSplit(ids: List[Identifier], rhs: String): Stream[Assignment] = {
     ids match {
@@ -205,7 +214,7 @@ object StringSolver {
     case List(x) => 
       Stream(Map(x -> rhs))
     case x :: ys => for{
-      i <- (0 to rhs.length).toStream
+      i <- prioritizedPositions(rhs) // Prioritization on positions which are separators.
       xvalue = rhs.substring(0, i)
       rvalue = rhs.substring(i)
       remaining_splits = simpleSplit(ys, rvalue)
