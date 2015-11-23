@@ -357,22 +357,20 @@ object Extractors {
     }
 
     def unapply(me : MatchExpr) : Option[(Pattern, Expr, Expr)] = {
-      if (me eq null) None else { me match {
+      Option(me) collect {
         case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, variablesOf(scrut)) =>
-          Some(( pattern, scrut, body ))
-        case _ => None
-      }}
+          ( pattern, scrut, body )
+      }
     }
   }
 
   object LetTuple {
     def unapply(me : MatchExpr) : Option[(Seq[Identifier], Expr, Expr)] = {
-      if (me eq null) None else { me match {
+      Option(me) collect {
         case LetPattern(TuplePattern(None,subPatts), value, body) if
             subPatts forall { case WildcardPattern(Some(_)) => true; case _ => false } => 
-          Some((subPatts map { _.binder.get }, value, body ))
-        case _ => None
-      }}
+          (subPatts map { _.binder.get }, value, body )
+      }
     }
   }
 
