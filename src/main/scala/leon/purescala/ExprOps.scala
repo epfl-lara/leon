@@ -1373,12 +1373,26 @@ object ExprOps {
     val valuator = valuateWithModel(model) _
     replace(vars.map(id => Variable(id) -> valuator(id)).toMap, expr)
   }
+  
+  /** Simple, local optimization on string */
+  def simplifyString(expr: Expr): Expr = {
+    def simplify0(expr: Expr): Expr = (expr match {
+      case StringConcat(StringLiteral(""), b) => b
+      case StringConcat(b, StringLiteral("")) => b
+      case StringConcat(StringLiteral(a), StringLiteral(b)) => StringLiteral(a + b)
+      case StringLength(StringLiteral(a)) => InfiniteIntegerLiteral(a.length)
+      case SubString(StringLiteral(a), InfiniteIntegerLiteral(start), InfiniteIntegerLiteral(end)) => StringLiteral(a.substring(start.toInt, end.toInt))
+      case _ => expr
+    }).copiedFrom(expr)
+    simplify0(expr)
+    fixpoint(simplePostTransform(simplify0))(expr)
+  }
 
   /** Simple, local simplification on arithmetic
     *
     * You should not assume anything smarter than some constant folding and
-    * simple cancelation. To avoid infinite cycle we only apply simplification
-    * that reduce the size of the tree. The only guarentee from this function is
+    * simple cancellation. To avoid infinite cycle we only apply simplification
+    * that reduce the size of the tree. The only guarantee from this function is
     * to not augment the size of the expression and to be sound.
     */
   def simplifyArithmetic(expr: Expr): Expr = {
