@@ -14,6 +14,7 @@ import leon.solvers.{SolverFactory, HenkinModel}
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
+import leon.utils.DebugSectionSynthesis
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)
@@ -86,7 +87,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case IfExpr(cond, thenn, elze) =>
       val first = e(cond)
       first match {
-        case BooleanLiteral(true) => e(thenn)
+        case BooleanLiteral(true) =>
+          ctx.reporter.ifDebug(printer => printer(thenn))(DebugSectionSynthesis)
+          e(thenn)
         case BooleanLiteral(false) => e(elze)
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }

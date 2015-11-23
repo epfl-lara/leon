@@ -6,6 +6,7 @@ package rules
 
 import purescala.Expressions._
 import purescala.ExprOps._
+import purescala.TypeOps
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Types._
@@ -20,10 +21,12 @@ import scala.collection.mutable.ListBuffer
 import leon.purescala.ExprOps
 import leon.evaluators.Evaluator
 import leon.evaluators.DefaultEvaluator
+import leon.evaluators.StringTracingEvaluator
 import leon.solvers.Model
 import leon.solvers.ModelBuilder
 import leon.solvers.string.StringSolver
 import scala.annotation.tailrec
+import leon.purescala.DefOps
 
 
 /** A template generator for a given type tree. 
@@ -78,7 +81,7 @@ case object StringRender extends Rule("StringRender") {
     }
   }
   
-  val e: AbstractClassType = null
+  val booleanTemplate = (a: Identifier) => StringTemplateGenerator(Hole => IfExpr(Variable(a), Hole, Hole))
   
   /** Returns a seq of expressions such as `x + y + "1" + y + "2" + z` associated to an expected result string `"1, 2"`.
     * We use these equations so that we can find the values of the constants x, y, z and so on.
@@ -137,7 +140,7 @@ case object StringRender extends Rule("StringRender") {
   /** Returns a stream of assignments compatible with input/output examples */
   def findAssignments(ctx: LeonContext, p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr): Stream[Map[Identifier, String]] = {
     //new Evaluator()
-    val e = new DefaultEvaluator(ctx, p)
+    val e = new StringTracingEvaluator(ctx, p)
     
     var invalid = false
     
@@ -147,98 +150,164 @@ case object StringRender extends Rule("StringRender") {
         if(rhExpr.length == 1) {
           val model = new ModelBuilder
           model ++= inputs.zip(in)
-          e.eval(template, model.result()).result match {
-            case None => None
-            case Some(sfExpr) =>
+          val modelResult = model.result()
+          val evalResult =  e.eval(template, modelResult)
+          evalResult.result match {
+            case None =>
+              ctx.reporter.ifDebug(printer => printer("Eval = None : ["+template+"] in ["+inputs.zip(in)+"]"))
+              None
+            case Some((sfExpr, _)) =>
               val sf = toStringForm(sfExpr)
               val rhs = toStringLiteral(rhExpr.head)
-              if(sf.isEmpty || rhs.isEmpty) None
-              else gatherEquations(q, acc += ((sf.get, rhs.get)))
+              if(sf.isEmpty || rhs.isEmpty) {
+                ctx.reporter.ifDebug(printer => printer("sf empty or rhs empty ["+sfExpr+"] => ["+sf+"] in ["+rhs+"]"))
+                None
+              } else gatherEquations(q, acc += ((sf.get, rhs.get)))
           }
-        } else None
+        } else {
+          ctx.reporter.ifDebug(printer => printer("RHS.length != 1 : ["+rhExpr+"]"))
+          None 
+        }
     }
     gatherEquations(examples.valids.collect{ case io:InOutExample => io }.toList) match {
-      case Some(problem) => StringSolver.solve(problem)
-      case None => Stream.empty
+      case Some(problem) =>
+        ctx.reporter.ifDebug(printer => printer("Problem: ["+problem+"]"))
+        StringSolver.solve(problem)
+      case None => 
+        ctx.reporter.ifDebug(printer => printer("No problem found"))
+        Stream.empty
     }
   }
   
-  def findSolutions(examples: ExamplesBank, template: Expr)(implicit hctx: SearchContext, p: Problem): RuleApplication = {
-    val solutions = findAssignments(hctx.context, hctx.program, p.as, examples, template)
+  def findSolutions(examples: ExamplesBank, program: Program, template: Expr)(implicit hctx: SearchContext, p: Problem): RuleApplication = {
+    val solutions = findAssignments(hctx.context, program, p.as, examples, template)
+    hctx.reporter.ifDebug(printer => printer("Solutions: ["+solutions.toList+"]"))
+    
     solutionStreamToRuleApplication(p, template, solutions)
   }
   
   def solutionStreamToRuleApplication(p: Problem, template: Expr, solutions: Stream[Assignment]): RuleApplication = {
     if(solutions.isEmpty) RuleFailed() else {
       RuleClosed(solutions.map((assignment: Map[Identifier, String]) => {
-        Solution(pre=p.pc, defs=Set(), term=ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
+        val term = ExprOps.simplifyString(ExprOps.replaceFromIDs(assignment.mapValues(StringLiteral), template))
+        Solution(pre=p.pc, defs=Set(), term=term)
       }))
     }
   }
   
   object StringTemplateGenerator extends TypedTemplateGenerator(StringType)
   
-  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    
-    /** Returns a (possibly recursive) template which can render the inputs in their order. */
-    def createFunDefsTemplates(adtToString: Map[TypeTree, FunDef], inputs: Seq[(Identifier, TypeTree)]): (Expr, Map[TypeTree, FunDef]) = {
-      
-      def gatherInputs(inputs: List[(Identifier, TypeTree)], adtToString: Map[TypeTree, FunDef], result: ListBuffer[Expr] = ListBuffer()): (List[Expr], Map[TypeTree, FunDef]) = inputs match {
-        case Nil => (result.toList, adtToString)
-        case (input, tpe)::q => adtToString.get(tpe) match {
-          case Some(fd) =>
-            gatherInputs(q, adtToString, result += functionInvocation(fd, Seq(Variable(input))))
-          case None =>
-            tpe match {
-              case WithStringconverter(converter) => // Base case
-                gatherInputs(q, adtToString, result += converter(Variable(input)))
-              case t: ClassType =>
-                t.root match {
-                  case AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps) =>
-                    // Create a complete fundef with pattern matching
-                    val (assignments, cases) = ((adtToString, ListBuffer[MatchCase]()) /: acd.knownChildren) {
-                      case ((adtToString, acc), ccd@CaseClassDef(id, tparams, parent, isCaseObject)) =>
-                        val fields = ccd.fields.map(vd => (vd.id, vd.tpe.get)) // TODO: What if vd.tpe is null ?
-                        val fieldsIds = fields.map(id => FreshIdentifier(id._1.name, id._2))
-                        val pattern = CaseClassPattern(None, ccd.typed, fieldsIds.map(k => WildcardPattern(Some(k))))
-                        val (rhs, assignments) = createFunDefsTemplates(adtToString, fields)
-                        (assignments, acc += MatchCase(pattern, None, rhs))
-                      case ((adtToString, acc), e) => hctx.reporter.fatalError("Could not handle class def for string rendering " + e)
-                    }
-                    
-                    ///////////////////////////
-                    // TODO: Create the function with the pattern matching.
-                    // matchExpr(Variable(input), cases)
-                    // Gather the call to the function.
-                    /////////////////////////
-                    ???
-                    gatherInputs(q, assignments, result += ???)
-                  case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tps) =>
-                    val fields = ccd.fields.map(vd => (vd.id, vd.tpe.get)) // TODO: What if vd.tpe is null ?
-                    ///////////////////////////
-                    // TODO: Create the function with pattern matching.
-                    // Gather the call to the function.
-                    /////////////////////////
-                    ???
-                    
-                    val (expr, assignments) = createFunDefsTemplates(adtToString, fields) // TODO : Create a new function definition !!!!!!!!!!!!!!!!!!!
-                    gatherInputs(q, assignments, result += expr)
-                }
-              case _ => 
-                hctx.reporter.fatalError("Could not handle class type for string rendering " + tpe)
-            }
-        }
-      }
-      val (exprs, assignments) = gatherInputs(inputs.toList, adtToString)
-      
-      (StringTemplateGenerator(Hole => {
-        StringConcat((StringConcat(Hole, exprs.head) /: exprs.tail) {
-          case (finalExpr, expr) => StringConcat(StringConcat(finalExpr, Hole), expr)
-        }, Hole)
-      }).instantiate, assignments)
+  case class DependentType(caseClassParent: Option[TypeTree], typeToConvert: TypeTree)
+  
+  
+  /** Creates an empty function definition for the dependent type */
+  def createEmptyFunDef(tpe: DependentType)(implicit hctx: SearchContext): FunDef = {
+    val funName2 = tpe.caseClassParent match {
+      case None => tpe.typeToConvert.asString(hctx.context)
+      case Some(t) => tpe.typeToConvert.asString(hctx.context)+"In"+t.asString(hctx.context) + "ToString" 
     }
-      
+    val funName = funName2.replace("]","").replace("[","")
+    val funId = FreshIdentifier(funName, alwaysShowUniqueID = true)
+    val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx.context).toLowerCase()(0).toString, tpe.typeToConvert)
+    val fd = new FunDef(funId, Nil, ValDef(argId) :: Nil, StringType) // Empty function.
+    fd
+  }
+  
+  /** Pre-updates of the function definition */
+  def preUpdateFunDefBody(tpe: DependentType, fd: FunDef, assignments: Map[DependentType, FunDef]): Map[DependentType, FunDef] = {
+    assignments.get(tpe) match {
+      case None => assignments + (tpe -> fd)
+      case Some(_) => assignments
+    }
+  }
+  
+  /** Returns a (possibly recursive) template which can render the inputs in their order.
+    * Returns an expression and path-dependent pretty printers which can be used.
+    **/
+  def createFunDefsTemplates(
+      currentCaseClassParent: Option[TypeTree],
+      adtToString: Map[DependentType, FunDef],
+      inputs: Seq[(Identifier, TypeTree)])(implicit hctx: SearchContext): (Expr, Map[DependentType, FunDef]) = {
     
+    /* Returns a list of expressions converting the list of inputs to string.
+     * Holes should be inserted before, after and in-between for solving concatenation.
+     * @return Along with the list, an updated function definitions to transform (parent-dependent) types to strings */
+    @tailrec def gatherInputs(
+        currentCaseClassParent: Option[TypeTree],
+        assignments1: Map[DependentType, FunDef],
+        inputs: List[(Identifier, TypeTree)],
+        result: ListBuffer[Expr] = ListBuffer()): (List[Expr], Map[DependentType, FunDef]) = inputs match {
+      case Nil => (result.toList, assignments1)
+      case (input, tpe)::q => 
+        val dependentType = DependentType(currentCaseClassParent, tpe)
+        assignments1.get(dependentType) match {
+        case Some(fd) =>
+          hctx.reporter.debug("found a function definition " + fd)
+          
+          gatherInputs(currentCaseClassParent, assignments1, q, result += functionInvocation(fd, Seq(Variable(input))))
+        case None => // No function can render the current type.
+          tpe match {
+            case BooleanType => // Special case.
+              gatherInputs(currentCaseClassParent, assignments1, q, result += booleanTemplate(input).instantiate)
+            case WithStringconverter(converter) => // Base case
+              gatherInputs(currentCaseClassParent, assignments1, q, result += converter(Variable(input)))
+            case t: ClassType =>
+              // Create the empty function body and updates the assignments parts.
+              val fd = createEmptyFunDef(dependentType)
+              hctx.reporter.debug("Creating a new function for " + dependentType)
+              val assignments2 = preUpdateFunDefBody(dependentType, fd, assignments1) // Inserts the FunDef in the assignments so that it can already be used.
+              t.root match {
+                case act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps) =>
+                  hctx.reporter.debug("preparing cases classes for " + act)
+                  // Create a complete FunDef body with pattern matching
+                  val (assignments3, cases) = ((assignments2, ListBuffer[MatchCase]()) /: act.knownCCDescendants) {
+                    case ((assignments2tmp, acc), CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
+                      val typeMap = tparams.zip(tparams2).toMap
+                      def resolveType(t: TypeTree): TypeTree = TypeOps.instantiateType(t, typeMap) 
+                      val fields = ccd.fields.map(vd => ( TypeOps.instantiateType(vd, typeMap).id, resolveType(vd.tpe.get)))
+                      val fieldsIds = fields.map(id => FreshIdentifier(id._1.name, id._2))
+                      val pattern = CaseClassPattern(None, ccd.typed(tparams2), fieldsIds.map(k => WildcardPattern(Some(k))))
+                      val (rhs, assignments2tmp2) = createFunDefsTemplates(Some(t), assignments2tmp, fields) // Invoke functions for each of the fields.
+                      (assignments2tmp2, acc += MatchCase(pattern, None, rhs))
+                    case ((adtToString, acc), e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
+                  }
+                  fd.body = Some(MatchExpr(Variable(input), cases))
+                  gatherInputs(currentCaseClassParent, assignments3, q, result += functionInvocation(fd, Seq(Variable(input))))
+                case cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
+                  hctx.reporter.debug("preparing function for " + cct)
+                  val typeMap = tparams.zip(tparams2).toMap
+                  def resolveType(t: TypeTree): TypeTree = TypeOps.instantiateType(t, typeMap)
+                  val fields = ccd.fields.map(vd => (TypeOps.instantiateType(vd, typeMap).id, resolveType(vd.tpe.get)))
+                  val fieldsIds = fields.map(id => FreshIdentifier(id._1.name, id._2))
+                  val pattern = CaseClassPattern(None, ccd.typed(tparams2), fieldsIds.map(k => WildcardPattern(Some(k))))
+                  val (rhs, assignments3) = createFunDefsTemplates(Some(t), assignments2, fields) // Invoke functions for each of the fields.
+                  fd.body = Some(MatchExpr(Variable(input), Seq(MatchCase(pattern, None, rhs))))
+                  gatherInputs(currentCaseClassParent, assignments3, q, result += functionInvocation(fd, Seq(Variable(input))))
+              }
+            case TypeParameter(t) =>
+              hctx.reporter.fatalError("Could not handle type parameter for string rendering " + t)
+            case _ => 
+              hctx.reporter.fatalError("Could not handle class type for string rendering " + tpe)
+          }
+      }
+    }
+    val (exprs, assignments) = gatherInputs(currentCaseClassParent, adtToString, inputs.toList)
+    /** Add post, pre and in-between holes, and returns a single expr along with the new assignments. */
+    
+    val template = exprs match {
+      case Nil =>
+        StringTemplateGenerator(Hole => Hole).instantiate
+      case exprList =>
+        StringTemplateGenerator(Hole => {
+          StringConcat((StringConcat(Hole, exprs.head) /: exprs.tail) {
+            case (finalExpr, expr) => StringConcat(StringConcat(finalExpr, Hole), expr)
+          }, Hole)
+        }).instantiate
+    }
+    (template, assignments)
+  }
+  
+  def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     
     p.xs match {
       case List(IsTyped(v, StringType)) =>
@@ -266,31 +335,26 @@ case object StringRender extends Rule("StringRender") {
           */
         
         
-        val booleanTemplate = (a: Identifier) => StringTemplateGenerator(Hole => IfExpr(Variable(a), Hole, Hole))
         
+        // Returns expr and funDefs as templates.
         
-        
-        
-        /* All input variables which are inductive in the post condition, along with their abstract data type. */
-        p.as match {
-          case List(IsTyped(a, tpe@WithStringconverter(converter))) => // Standard conversions if they work.
-            val ruleInstantiations = ListBuffer[RuleInstantiation]()
-            if(tpe == BooleanType) {
-              ruleInstantiations += RuleInstantiation("Boolean split render") {
-                val template = booleanTemplate(a).instantiate
-                findSolutions(examples, template)
-              }
-            }
-            
-            ruleInstantiations += RuleInstantiation("String conversion with pre and post") {
-                val template = StringTemplateGenerator(Hole =>
-                  StringConcat(StringConcat(Hole, converter(Variable(a))), Hole)).instantiate
-                findSolutions(examples, template)
-              }
-            ruleInstantiations.toList
-          case _ =>
-            Nil
+        val ruleInstantiations = ListBuffer[RuleInstantiation]()
+        ruleInstantiations += RuleInstantiation("String conversion") {
+          val (expr, funDefs) = createFunDefsTemplates(None, Map(), p.as.map(input => (input, input.getType)))
+          
+          val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
+                t + "\n" + s.toString
+              ))
+          hctx.reporter.ifDebug(printer => printer("Inferred expression:\n" + expr + toDebug))
+          
+          //val newProgram = DefOps.addFunDefs(hctx.program, funDefs.values, hctx.sctx.functionContext)
+          val newExpr = (expr /: funDefs.values) {
+            case (e, fd) => LetDef(fd, e)
+          }
+          findSolutions(examples, hctx.program, newExpr)
         }
+        
+        ruleInstantiations.toList
         
       case _ => Nil
     }
