@@ -578,12 +578,17 @@ trait AbstractZ3Solver extends Solver {
         }
         case Z3NumeralIntAST(None) => {
           val ts = t.toString
+          reporter.ifDebug(printer => printer(ts))(DebugSectionSynthesis)
           if(ts.length > 4 && ts.substring(0, 2) == "bv" && ts.substring(ts.length - 4) == "[32]") {
             val integer = ts.substring(2, ts.length - 4)
             tpe match {
-              case Int32Type => IntLiteral(integer.toInt)
+              case Int32Type => 
+                if(integer == "2147483648") IntLiteral(-1) else
+                IntLiteral(integer.toInt)
               case CharType  => CharLiteral(integer.toInt.toChar)
-              case IntegerType => InfiniteIntegerLiteral(BigInt(integer.toInt))
+              case IntegerType => 
+                if(integer == "2147483648") InfiniteIntegerLiteral(BigInt(-1)) else
+                InfiniteIntegerLiteral(BigInt(integer))
               case _ =>
                 reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
             }
