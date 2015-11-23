@@ -8,8 +8,8 @@ object Union {
   case object Nil extends List
 
   def size(l: List) : BigInt = (l match {
-    case Nil => 0
-    case Cons(_, t) => 1 + size(t)
+    case Nil => BigInt(0)
+    case Cons(_, t) => BigInt(1)+ size(t)
   }) ensuring(res => res >= 0)
 
   def content(l: List): Set[BigInt] = l match {
@@ -20,19 +20,6 @@ object Union {
   def insert(in1: List, v: BigInt): List = {
     Cons(v, in1)
   } ensuring { content(_) == content(in1) ++ Set(v) }
-
-  def delete(in1: List, v: BigInt): List = {
-    in1 match {
-      case Cons(h,t) =>
-        if (h == v) {
-          delete(t, v)
-        } else {
-          Cons(h, delete(t, v))
-        }
-      case Nil =>
-        Nil
-    }
-  } ensuring { content(_) == content(in1) -- Set(v) }
 
   // def union(in1: List, in2: List): List = {
   //   in1 match {

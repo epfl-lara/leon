@@ -8,8 +8,8 @@ object Diff {
   case object Nil extends List
 
   def size(l: List) : BigInt = (l match {
-    case Nil => 0
-    case Cons(_, t) => 1 + size(t)
+    case Nil => BigInt(0)
+    case Cons(_, t) => BigInt(1) + size(t)
   }) ensuring(res => res >= 0)
 
   def content(l: List): Set[BigInt] = l match {
@@ -33,15 +33,6 @@ object Diff {
         Nil
     }
   } ensuring { content(_) == content(in1) -- Set(v) }
-
-  def union(in1: List, in2: List): List = {
-    in1 match {
-      case Cons(h, t) =>
-        Cons(h, union(t, in2))
-      case Nil =>
-        in2
-    }
-  } ensuring { content(_) == content(in1) ++ content(in2) }
 
   // def diff(in1: List, in2: List): List = {
   //   in2 match {

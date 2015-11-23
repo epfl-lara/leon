@@ -10,8 +10,8 @@ object Complete {
   case object Nil extends List
 
   def size(l: List) : BigInt = (l match {
-    case Nil => 0
-    case Cons(_, t) => 1 + size(t)
+    case Nil => BigInt(0)
+    case Cons(_, t) => BigInt(1) + size(t)
   }) ensuring(res => res >= 0)
 
   def content(l: List): Set[BigInt] = l match {
@@ -19,63 +19,7 @@ object Complete {
     case Cons(i, t) => Set(i) ++ content(t)
   }
 
-  def insert(in1: List, v: BigInt): List = {
-    Cons(v, in1)
-  } ensuring { content(_) == content(in1) ++ Set(v) }
-
-  //def insert(in1: List, v: BigInt) = choose {
-  //  (out : List) =>
-  //    content(out) == content(in1) ++ Set(v)
-  //}
-
-  def delete(in1: List, v: BigInt): List = {
-    in1 match {
-      case Cons(h,t) =>
-        if (h == v) {
-          delete(t, v)
-        } else {
-          Cons(h, delete(t, v))
-        }
-      case Nil =>
-        Nil
-    }
-  } ensuring { content(_) == content(in1) -- Set(v) }
-
-  //def delete(in1: List, v: BigInt) = choose {
-  //  (out : List) =>
-  //    content(out) == content(in1) -- Set(v)
-  //}
-
-  def union(in1: List, in2: List): List = {
-    in1 match {
-      case Cons(h, t) =>
-        Cons(h, union(t, in2))
-      case Nil =>
-        in2
-    }
-  } ensuring { content(_) == content(in1) ++ content(in2) }
-
-  //def union(in1: List, in2: List) = choose {
-  //  (out : List) =>
-  //    content(out) == content(in1) ++ content(in2)
-  //}
-
-  def diff(in1: List, in2: List): List = {
-    in2 match {
-      case Nil =>
-        in1
-      case Cons(h, t) =>
-        diff(delete(in1, h), t)
-    }
-  } ensuring { content(_) == content(in1) -- content(in2) }
-
-  //def diff(in1: List, in2: List) = choose {
-  //  (out : List) =>
-  //    content(out) == content(in1) -- content(in2)
-  //}
-
   def splitSpec(list : List, res : (List,List)) : Boolean = {
-
     val s1 = size(res._1)
     val s2 = size(res._2)
     abs(s1 - s2) <= 1 && s1 + s2 == size(list) &&
@@ -86,16 +30,10 @@ object Complete {
     if(i < 0) -i else i
   } ensuring(_ >= 0)
 
-  // def split(list : List) : (List,List) = (list match {
-  //   case Nil => (Nil, Nil)
-  //   case Cons(x, Nil) => (Cons(x, Nil), Nil)
-  //   case Cons(x1, Cons(x2, xs)) =>
-  //     val (s1,s2) = split(xs)
-  //     (Cons(x1, s1), Cons(x2, s2))
-  // }) ensuring(res => splitSpec(list, res))
-
   def split(list : List) : (List,List) = {
     choose { (res : (List,List)) => splitSpec(list, res) }
   }
+
+  // case (h1, (h2, t)) => (h1 :: split(t)._1, h2 :: split(t)._2)
 
 }
