@@ -41,15 +41,8 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
 
     val candidates = argsPairs.toList.filter { case List(a1, a2) => !(facts contains Set(a1, a2)) }
 
-    candidates.flatMap {
+    candidates.collect {
       case List(a1, a2) =>
-        val subLT = p.copy(pc = and(LessThan(Variable(a1), Variable(a2)), p.pc),
-                           eb = p.qeb.filterIns(LessThan(Variable(a1), Variable(a2))))
-        val subEQ = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc),
-                           eb = p.qeb.filterIns(Equals(Variable(a1), Variable(a2))))
-        val subGT = p.copy(pc = and(GreaterThan(Variable(a1), Variable(a2)), p.pc),
-                           eb = p.qeb.filterIns(GreaterThan(Variable(a1), Variable(a2))))
-
         val onSuccess: List[Solution] => Option[Solution] = {
           case sols@List(sLT, sEQ, sGT) =>
             val pre = orJoin(sols.map(_.pre))
@@ -70,9 +63,24 @@ case object InequalitySplit extends Rule("Ineq. Split.") {
             None
         }
 
-        Some(decomp(List(subLT, subEQ, subGT), onSuccess, s"Ineq. Split on '$a1' and '$a2'"))
-      case _ =>
-        None
+        val subTypes = List(p.outType, p.outType, p.outType)
+
+        new RuleInstantiation(s"Ineq. Split on '$a1' and '$a2'",
+                              SolutionBuilderDecomp(subTypes, onSuccess)) {
+
+          def apply(hctx: SearchContext) = {
+            implicit val _ = hctx
+
+            val subLT = p.copy(pc = and(LessThan(Variable(a1), Variable(a2)), p.pc),
+                               eb = p.qeb.filterIns(LessThan(Variable(a1), Variable(a2))))
+            val subEQ = p.copy(pc = and(Equals(Variable(a1), Variable(a2)), p.pc),
+                               eb = p.qeb.filterIns(Equals(Variable(a1), Variable(a2))))
+            val subGT = p.copy(pc = and(GreaterThan(Variable(a1), Variable(a2)), p.pc),
+                               eb = p.qeb.filterIns(GreaterThan(Variable(a1), Variable(a2))))
+
+            RuleExpanded(List(subLT, subEQ, subGT))
+          }
+        }
     }
   }
 }
