@@ -584,10 +584,10 @@ trait AbstractZ3Solver extends Solver {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ =>
-                    reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
+                    throw LeonFatalError("Unexpected target type for BV value: " + tpe.asString)
                 }
             case None => {
-              reporter.fatalError(s"Could not translate Z3NumeralIntAST numeral $t")
+              throw LeonFatalError(s"Could not translate Z3NumeralIntAST numeral $t")
             }
           }
         }
@@ -626,12 +626,12 @@ trait AbstractZ3Solver extends Solver {
 
                     val entries = elems.map {
                       case (IntLiteral(i), v) => i -> v
-                      case _ => reporter.fatalError("Translation from Z3 to Array failed")
+                      case _ => throw LeonFatalError("Translation from Z3 to Array failed")
                     }
 
                     finiteArray(entries, Some(default, s), to)
                   case _ =>
-                    reporter.fatalError("Translation from Z3 to Array failed")
+                    throw LeonFatalError("Translation from Z3 to Array failed")
                 }
             }
           } else {
@@ -645,7 +645,7 @@ trait AbstractZ3Solver extends Solver {
                     }
 
                     RawArrayValue(from, entries, default)
-                  case None => reporter.fatalError("Translation from Z3 to Array failed")
+                  case None => throw LeonFatalError("Translation from Z3 to Array failed")
                 }
 
               case tp: TypeParameter =>
@@ -679,7 +679,7 @@ trait AbstractZ3Solver extends Solver {
 
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
-                  case None => reporter.fatalError("Translation from Z3 to set failed")
+                  case None => throw LeonFatalError("Translation from Z3 to set failed")
                   case Some(set) =>
                     val elems = set.map(e => rec(e, dt))
                     FiniteSet(elems, dt)
@@ -710,7 +710,7 @@ trait AbstractZ3Solver extends Solver {
             //      case OpIDiv =>    Division(rargs(0), rargs(1))
             //      case OpMod =>     Modulo(rargs(0), rargs(1))
                   case other =>
-                    reporter.fatalError(
+                    throw LeonFatalError(
                       s"""|Don't know what to do with this declKind: $other
                           |Expected type: ${Option(tpe).map{_.asString}.getOrElse("")}
                           |Tree: $t
@@ -720,7 +720,7 @@ trait AbstractZ3Solver extends Solver {
             }
           }
         case _ =>
-          reporter.fatalError(s"Don't know what to do with this Z3 tree: $t")
+          throw LeonFatalError(s"Don't know what to do with this Z3 tree: $t")
       }
     }
     rec(tree, tpe)
