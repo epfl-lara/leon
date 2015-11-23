@@ -309,12 +309,19 @@ trait AbstractZ3Solver extends Solver {
         newAST
       }
       case v @ Variable(id) => z3Vars.get(id) match {
-        case Some(ast) => ast
+        case Some(ast) => 
+          ast
         case None => {
-          val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
-          z3Vars = z3Vars + (id -> newAST)
-          variables += (v -> newAST)
-          newAST
+          variables.getB(v) match {
+            case Some(ast) =>
+              ast
+
+            case None =>
+              val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
+              z3Vars = z3Vars + (id -> newAST)
+              variables += (v -> newAST)
+              newAST
+          }
         }
       }
 
