@@ -6,7 +6,6 @@
   */
 
 import leon.lang._
-import string.String
 import leon.annotation._
 import leon.collection._
 import leon.collection.ListOps._
@@ -14,76 +13,76 @@ import leon.lang.synthesis._
 
 object ListRender {
   /** Synthesis by example specs */
-  @inline def psStandard(s: List[Int])(res: String) = (s, res) passes {
-    case Cons(12, Cons(-1, Nil)) => "Cons(12, Cons(-1, Nil))"
-    case Cons(1, Nil) => "Cons(1, Nil)"
-    case Nil => "Nil"
+  @inline def psStandard(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Cons(12, Cons(-1, Nil())) => "Cons(12, Cons(-1, Nil))"
+    case Cons(1, Nil()) => "Cons(1, Nil)"
+    case Nil() => "Nil"
   }
   
-  @inline def psRemoveCons(s: List[Int])(res: String) = (s, res) passes {
-    case Cons(12, Cons(-1, Nil)) => "(12, (-1, Nil))"
-    case Cons(1, Nil) => "(1, Nil)"
-    case Nil => "Nil"
+  @inline def psRemoveCons(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Cons(12, Cons(-1, Nil())) => "(12, (-1, Nil))"
+    case Cons(1, Nil()) => "(1, Nil)"
+    case Nil() => "Nil"
   }
   
-  @inline def psRemoveNil(s: List[Int])(res: String) = (s, res) passes {
-    case Cons(12, Cons(-1, Nil)) => "(12, (-1, ))"
-    case Cons(1, Nil) => "(1, )"
-    case Nil => ""
+  @inline def psRemoveNil(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Cons(12, Cons(-1, Nil())) => "(12, (-1, ))"
+    case Cons(1, Nil()) => "(1, )"
+    case Nil() => ""
   }
   
-  @inline def psRemoveLastComma(s: List[Int])(res: String) = (s, res) passes {
-    case Cons(12, Cons(-1, Nil)) => "(12, (-1))"
-    case Cons(1, Nil) => "(1)"
-    case Nil => "()"
+  @inline def psRemoveLastComma(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Cons(12, Cons(-1, Nil())) => "(12, (-1))"
+    case Cons(1, Nil()) => "(1)"
+    case Nil() => "()"
   }
   
-  @inline def psRemoveParentheses(s: List[Int])(res: String) = (s, res) passes {
-    case Cons(12, Cons(-1, Nil)) => "12, -1"
-    case Cons(1, Nil) => "1"
-    case Nil => ""
+  @inline def psRemoveParentheses(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Cons(12, Cons(-1, Nil())) => "12, -1"
+    case Cons(1, Nil()) => "1"
+    case Nil() => ""
   }
   
-  @inline def psWrapParentheses(s: List[Int])(res: String) = (s, res) passes {
-    case Cons(12, Cons(-1, Nil)) => "(12, -1)"
-    case Cons(1, Nil) => "(1)"
-    case Nil => "()"
+  @inline def psWrapParentheses(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Cons(12, Cons(-1, Nil())) => "(12, -1)"
+    case Cons(1, Nil()) => "(1)"
+    case Nil() => "()"
   }
   
-  @inline def psList(s: List[Int])(res: String) = (s, res) passes {
-    case Nil => "List()"
-    case Cons(1, Nil) => "List(1)"
-    case Cons(12, Cons(-1, Nil)) => "List(12, -1)"
+  @inline def psList(s: List[Int]) = (res: String) =>(s, res) passes {
+    case Nil() => "List()"
+    case Cons(1, Nil()) => "List(1)"
+    case Cons(12, Cons(-1, Nil())) => "List(12, -1)"
   }
 
   /** Each function's body is the solution of the previous problem.
     * We want to check that the Leon can repair the programs and also find some ambiguities.*/
   def render1RemoveCons(s: List[Int]): String = {
     s match {
-      case Nil => "Nil"
-      case Cons(a, b) => "Cons(" + a + ", " + render1RemoveCons(b) + ")"
+      case Nil() => "Nil"
+      case Cons(a, b) => "Cons(" + a.toString + ", " + render1RemoveCons(b) + ")"
     }
   } ensuring psRemoveCons(s)
   
   def render2RemoveNil(s: List[Int]): String = {
     s match {
-      case Nil => "Nil"
-      case Cons(a, b) => "(" + a + ", " + render2RemoveNil(b) + ")"
+      case Nil() => "Nil"
+      case Cons(a, b) => "(" + a.toString + ", " + render2RemoveNil(b) + ")"
     }
   } ensuring psRemoveNil(s)
   
   def render3RemoveLastComma(s: List[Int]): String = {
     s match {
-      case Nil => ""
-      case Cons(a, b) => "(" + a + ", " + render3RemoveLastComma(b) + ")"
+      case Nil() => ""
+      case Cons(a, b) => "(" + a.toString + ", " + render3RemoveLastComma(b) + ")"
     }
   } ensuring psRemoveLastComma(s)
   
   def render4RemoveParentheses(s: List[Int]): String = {
     s match {
-      case Nil => ""
-      case Cons(a, Nil) => "(" + a +  ")"
-      case Cons(a, b) => "(" + a + ", " + render4RemoveParentheses(b) + ")"
+      case Nil() => ""
+      case Cons(a, Nil()) => "(" + a.toString +  ")"
+      case Cons(a, b) => "(" + a.toString + ", " + render4RemoveParentheses(b) + ")"
     }
   } ensuring psRemoveParentheses(s)
   
@@ -91,18 +90,18 @@ object ListRender {
    * in order to add strings to the left and to the right (see render6List) */
   def render5WrapParentheses(s: List[Int]): String = {
     s match {
-      case Nil => ""
-      case Cons(a, Nil) => a.toString
-      case Cons(a, b) => a + ", " + render5WrapParentheses(b)
+      case Nil() => ""
+      case Cons(a, Nil()) => a.toString
+      case Cons(a, b) => a.toString + ", " + render5WrapParentheses(b)
     }
   } ensuring psWrapParentheses(s)
   
   def render6List(s: List[Int]): String = {
     def rec(s: List[Int]): String =
       s match {
-        case Nil => ""
-        case Cons(a, Nil) => a
-        case Cons(a, b) => a + ", " + render6List(b)
+        case Nil() => ""
+        case Cons(a, Nil()) => a.toString
+        case Cons(a, b) => a.toString + ", " + render6List(b)
       }
     "(" + rec(s) + ")"
   } ensuring psList(s)

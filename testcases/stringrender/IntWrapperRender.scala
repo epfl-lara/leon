@@ -38,11 +38,11 @@ object IntWrapperRender {
     case IntWrapper(12) => "12.0"
   }
   
-  @inline def psDuplicate(s: IntWrapper) = (res: String) => (s, res) passes {
+  /*@inline def psDuplicate(s: IntWrapper) = (res: String) => (s, res) passes {
     case IntWrapper(0) => "0 0"
     case IntWrapper(-1) => "-1 -1"
     case IntWrapper(12) => "12 12"
-  }
+  }*/
   
   def repairUnwrapped(s: IntWrapper): String = {
     "IntWrapper(" + s.i + ")"
@@ -56,27 +56,27 @@ object IntWrapperRender {
     "IntWrapper(" + s.i + ")"
   } ensuring psNameChangedSuffix(s)
   
-  def repairDuplicate(s: IntWrapper): String = {
+  /*def repairDuplicate(s: IntWrapper): String = {
     "IntWrapper(" + s.i + ")"
-  } ensuring psDuplicate(s)
+  } ensuring psDuplicate(s)*/
   
-  def synthesisStandard(s: IntWrapper): String = {
+  def synthesizeStandard(s: IntWrapper): String = {
      ???[String]
   } ensuring psStandard(s)
   
-  def synthesisUnwrapped(s: IntWrapper): String = {
+  def synthesizeUnwrapped(s: IntWrapper): String = {
      ???[String]
   } ensuring psUnwrapped(s)
   
-  def synthesisNameChangedPrefix(s: IntWrapper): String = {
+  def synthesizeNameChangedPrefix(s: IntWrapper): String = {
      ???[String]
   } ensuring psNameChangedPrefix(s)
   
-  def synthesisNameChangedSuffix(s: IntWrapper): String = {
+  def synthesizeNameChangedSuffix(s: IntWrapper): String = {
      ???[String]
   } ensuring psNameChangedSuffix(s)
   
-  def synthesisDuplicate(s: IntWrapper): String = {
+  /*def synthesizeDuplicate(s: IntWrapper): String = {
      ???[String]
-  } ensuring psDuplicate(s)
+  } ensuring psDuplicate(s)*/
 }
