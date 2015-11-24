@@ -30,10 +30,12 @@ object Complete {
     if(i < 0) -i else i
   } ensuring(_ >= 0)
 
+  def dispatch(es: (BigInt, BigInt), rest: (List, List)): (List, List) = {
+    (Cons(es._1, rest._1), Cons(es._2, rest._2))
+  }
+
   def split(list : List) : (List,List) = {
     choose { (res : (List,List)) => splitSpec(list, res) }
   }
-
-  // case (h1, (h2, t)) => (h1 :: split(t)._1, h2 :: split(t)._2)
 
 }
