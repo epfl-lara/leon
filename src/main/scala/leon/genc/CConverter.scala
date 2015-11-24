@@ -368,8 +368,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case BVOr(lhs, rhs)           => buildBinOp(lhs, "|",   rhs)
     case BVXOr(lhs, rhs)          => buildBinOp(lhs, "^",   rhs)
     case BVShiftLeft(lhs, rhs)    => buildBinOp(lhs, "<<",  rhs)
-    case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>>", rhs)
-    case BVLShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>",  rhs)
+    case BVAShiftRight(lhs, rhs)  => buildBinOp(lhs, ">>", rhs)
+    case BVLShiftRight(lhs, rhs)  => fatalError("operator >>> not supported")
 
     // Ignore assertions for now
     case Ensuring(body, _) => convert(body)

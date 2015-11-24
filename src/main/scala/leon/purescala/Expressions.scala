@@ -725,11 +725,11 @@ object Expressions {
   case class BVShiftLeft(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... >>> ...` $noteBitvector (logical shift) */
+  /** $encodingof `... >> ...` $noteBitvector (arithmetic shift, sign-preserving) */
   case class BVAShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
-  /** $encodingof `... >> ...` $noteBitvector (arithmetic shift, sign-preserving) */
+  /** $encodingof `... >>> ...` $noteBitvector (logical shift) */
   case class BVLShiftRight(lhs: Expr, rhs: Expr) extends Expr {
     val getType = Int32Type
   }
