@@ -583,11 +583,9 @@ trait AbstractZ3Solver extends Solver {
             val integer = ts.substring(2, ts.length - 4)
             tpe match {
               case Int32Type => 
-                if(integer == "2147483648") IntLiteral(-1) else
-                IntLiteral(integer.toInt)
+                IntLiteral(integer.toLong.toInt)
               case CharType  => CharLiteral(integer.toInt.toChar)
               case IntegerType => 
-                if(integer == "2147483648") InfiniteIntegerLiteral(BigInt(-1)) else
                 InfiniteIntegerLiteral(BigInt(integer))
               case _ =>
                 reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
