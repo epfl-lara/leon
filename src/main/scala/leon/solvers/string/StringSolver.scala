@@ -120,7 +120,7 @@ object StringSolver {
         }
       case sentence::q => obtainAssignments(q, assignments)
     }
-    val simplifiedOpt = mergeConstants(p)
+    val simplifiedOpt = mergeConstants(p.distinct)
     .flatMap(simplifyConstants(_))
     
     simplifiedOpt match {
@@ -338,6 +338,8 @@ object StringSolver {
         val pos = prioritizedPositions(rhs)
         val numBestVars = ids.count { x => x == bestVar }
         
+        
+        
         if(worstScore == bestScore) {
           for{
             i <- pos // Prioritization on positions which are separators.
@@ -348,9 +350,33 @@ object StringSolver {
             if !remaining_split.contains(x) || remaining_split(x) == xvalue
           } yield (remaining_split + (x -> xvalue))
         } else { // A variable appears more than others in the same equation, so its changes are going to propagate more.
-          val strings = (for{ i <- pos
+          val indexBestVar = ids.indexOf(bestVar)
+          val strings = if(indexBestVar == 0) { // Test only string prefixes or empty string
+             (for{j <- (rhs.length to 1 by -1).toStream
+                  if pos contains j} yield rhs.substring(0, j)) #:::
+             (for{j <- (rhs.length to 1 by -1).toStream
+                  if !(pos contains j)} yield rhs.substring(0, j)) #:::
+              Stream("")
+          } else {
+            val lastIndexBestVar = ids.lastIndexOf(bestVar)
+            if(lastIndexBestVar == ids.length - 1) {
+               (for{ i <- pos.toStream // Try to maximize the size of the string from the start
+                     if i != rhs.length
+               } yield rhs.substring(i)) #:::
+               Stream("")
+            } else { // Inside, can be anything.
+              (for{ i <- pos.toStream // Try to maximize the size of the string from the start
                if i != rhs.length
-               j <- (i + 1) to rhs.length} yield rhs.substring(i, j)) #::: Stream("")
+               j <- rhs.length to (i+1) by -1
+               if pos contains j} yield rhs.substring(i, j)) #:::
+               (for{ i <- pos.toStream
+               if i != rhs.length
+               j <- rhs.length to (i+1) by -1
+               if !(pos contains j)} yield rhs.substring(i, j)) #:::
+               Stream("")
+            }
+          }
+          //println("Best variable:" + bestVar + " going to test " + strings.toList)
           
           (for(str <- strings.distinct
                if java.util.regex.Pattern.quote(str).r.findAllMatchIn(rhs).length >= numBestVars
@@ -433,6 +459,12 @@ object StringSolver {
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy(p, Map())
+    /*if(realProblem.nonEmpty) {
+      println("Problem:\n"+renderProblem(p))
+      println("Solutions:\n"+realProblem.get._2)
+      println("Real problem:\n"+renderProblem(realProblem.get._1))
+    }*/
+    
     realProblem match {
       case None => 
         Stream.Empty
