@@ -110,7 +110,7 @@ object Types {
 
     def knownDescendants = classDef.knownDescendants.map( _.typed(tps) )
 
-    def knownCCDescendants = classDef.knownCCDescendants.map( _.typed(tps) )
+    def knownCCDescendants: Seq[CaseClassType] = classDef.knownCCDescendants.map( _.typed(tps) )
 
     lazy val fieldsTypes = fields.map(_.getType)
 

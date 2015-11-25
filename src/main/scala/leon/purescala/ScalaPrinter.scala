@@ -15,6 +15,7 @@ class ScalaPrinter(opts: PrinterOptions,
                    opgm: Option[Program],
                    sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, opgm, sb) {
 
+  private val dbquote = "\""
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
 
     tree match {
@@ -39,6 +40,13 @@ class ScalaPrinter(opts: PrinterOptions,
       case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
 
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
+      case StringLiteral(v) =>
+        if(v.indexOf("\n") != -1 && v.indexOf("\"\"\"") == -1) {
+          p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
+        } else {
+          val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\n").replaceAll("\r","\\r")
+          p"$dbquote$escaped$dbquote"
+        }
 
       case a@FiniteArray(elems, oDef, size) =>
         import ExprOps._

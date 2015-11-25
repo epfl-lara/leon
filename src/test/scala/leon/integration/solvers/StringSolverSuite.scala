@@ -168,7 +168,7 @@ class StringSolverSuite extends FunSuite with Matchers {
     solve(problem) should not be 'empty
   }
   
-  /*test("solveJadProblem") {
+  test("solveJadProblem") {
     val lhs = """const26+const22+const7+const+const8+const3+const9+const5+"5"+const6+const10+const23+const18+const11+const+const12+const19+const18+const7+const1+const8+const2+const9+const4+const10+const19+const18+const13+const+const14+const3+const15+const5+"5"+const6+const16+const4+const17+const19+const18+const11+const1+const12+const19+const18+const13+const1+const14+const2+const15+const4+const16+const5+"5"+const6+const17+const19+const21+const20+const20+const20+const20+const20+const24+const27"""
     var idMap = Map[String, Identifier]()
     val lhsSf = for(elem <- lhs.split("\\+")) yield {
@@ -195,5 +195,5 @@ T2: ret Pop() -> 5"""
     println("Problem to solve:" + StringSolver.renderProblem(problem))
     
     solve(problem) should not be 'empty
-  }*/
+  }
 }

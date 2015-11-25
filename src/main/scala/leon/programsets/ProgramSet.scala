@@ -9,6 +9,6 @@ import purescala.Types._
 /**
  * @author Mikael
  */
-abstract class ProgramSet {
-  def programs: Stream[Expr]
+abstract class ProgramSet[T] {
+  def programs: Stream[T]
 }

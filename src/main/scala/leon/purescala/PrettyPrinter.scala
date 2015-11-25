@@ -50,6 +50,8 @@ class PrettyPrinter(opts: PrinterOptions,
         p"${df.id}"
     }
   }
+  
+  private val dbquote = "\""
 
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
 
@@ -167,7 +169,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case IntegerToString(expr)  => p"StrOps.bigIntToString($expr)"
       case CharToString(expr)     => p"StrOps.charToString($expr)"
       case RealToString(expr)     => p"StrOps.realToString($expr)"
-      case StringConcat(lhs, rhs) => p"$lhs + $rhs"
+      case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
     
       case SubString(expr, start, end) => p"StrOps.substring($expr, $start, $end)"
       case StringLength(expr)          => p"StrOps.length($expr)"
@@ -180,7 +182,13 @@ class PrettyPrinter(opts: PrinterOptions,
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
-      case StringLiteral(v)     => p""""$v""""
+      case StringLiteral(v)     => 
+        if(v.indexOf("\n") != -1 && v.indexOf("\"\"\"") == -1) {
+          p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
+        } else {
+          val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\n").replaceAll("\r","\\r")
+          p"$dbquote$escaped$dbquote"
+        }
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
@@ -623,6 +631,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case (_, Some(_: Require)) => false
     case (_, Some(_: Definition)) => false
     case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda)) => false
+    case (ex: StringConcat, Some(_: StringConcat)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false

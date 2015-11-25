@@ -4,6 +4,14 @@ package leon.utils
 
 object StreamUtils {
 
+  /** Interleaves a stream of streams.
+    * {{{
+    * If streams = ((1,2,3),(4,5),(6,7,8,9),(10...),
+    * Order taken    0 1     2
+    * Order taken        3     4   5 6       7
+    * Order taken                      8 9}}}
+    * interleave(streams) = (1, 2, 4, 3, 5, 6, 7, 10, 8, 9...
+    **/
   def interleave[T](streams: Stream[Stream[T]]): Stream[T] = {
     def rec(streams: Stream[Stream[T]], diag: Int): Stream[T] = {
       if(streams.isEmpty) Stream() else {
@@ -15,11 +23,35 @@ object StreamUtils {
     rec(streams, 1)
   }
 
+  /** Applies the interleaving to a finite sequence of streams. */
   def interleave[T](streams : Seq[Stream[T]]) : Stream[T] = {
     if (streams.isEmpty) Stream() else {
       val nonEmpty = streams filter (_.nonEmpty)
       nonEmpty.toStream.map(_.head) ++ interleave(nonEmpty.map(_.tail))
     }
+  }
+
+  private def cantorPair(x: Int, y: Int): Int = {
+    ((x + y) * (x + y + 1)) / 2 + y
+  }
+
+  private def reverseCantorPair(z: Int): (Int, Int) = {
+      val t = Math.floor((-1.0f + Math.sqrt(1.0f + 8.0f * z))/2.0f).toInt;
+      val x = t * (t + 3) / 2 - z;
+      val y = z - t * (t + 1) / 2;
+      (x, y)
+  }
+  
+  /** Combines two streams into one using cantor's unpairing function.
+    *  Ensures that the stream terminates if both streams terminate */
+  def cartesianProduct[A, B](sa: Stream[A], sb: Stream[B]): Stream[(A, B)] = {
+    def combineRec[A, B](sa: Stream[A], sb: Stream[B])(i: Int): Stream[(A, B)] = {
+      val (x, y) = reverseCantorPair(i)
+      if(!sa.isDefinedAt(x) && !sb.isDefinedAt(y)) Stream.Empty
+      else if(sa.isDefinedAt(x) && sb.isDefinedAt(y)) (sa(x), sb(y)) #:: combineRec(sa, sb)(i+1)
+      else combineRec(sa, sb)(i+1)
+    }
+    combineRec(sa, sb)(0)
   }
 
   def cartesianProduct[T](streams : Seq[Stream[T]]) : Stream[List[T]] = {

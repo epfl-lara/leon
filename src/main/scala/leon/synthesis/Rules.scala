@@ -37,6 +37,7 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 object Rules {
   /** Returns the list of all available rules for synthesis */
   def all = List[Rule](
+    StringRender,
     Unification.DecompTrivialClash,
     Unification.OccursCheck, // probably useless
     Disunification.Decomp,
@@ -61,8 +62,7 @@ object Rules {
     //IntegerEquation,
     //IntegerInequalities,
     IntInduction,
-    InnerCaseSplit,
-    StringRender
+    InnerCaseSplit
     //new OptimisticInjection(_),
     //new SelectiveInlining(_),
     //ADTLongInduction,
