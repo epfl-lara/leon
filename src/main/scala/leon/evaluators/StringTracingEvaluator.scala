@@ -110,7 +110,6 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
       
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
-      ctx.reporter.debug("Going to evaluate this ["+rctx.mappings+"]:\n" + builder(ees))(DebugSectionSynthesis)
       (underlying.e(builder(ees)), builder(ts))
 
   }
