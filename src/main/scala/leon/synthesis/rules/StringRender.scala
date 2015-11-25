@@ -93,33 +93,6 @@ case object StringRender extends Rule("StringRender") {
   /** For each solution to the problem such as `x + "1" + y + j + "2" + z = 1, 2`, outputs all possible assignments if they exist. */
   def solveProblems(problems: Seq[(Expr, String)]): Seq[Map[Identifier, String]] = ???
   
-  
-  /// Disambiguation: Enumerate different solutions, augment the size of examples by 1, and check discrepancies.
-  
-  
-    
-    
-    
-    
-    /*val inputTypeWithoutToStringFunction = inputs.collectFirst{ case (input, tpe: AbstractClassType) if
-      WithStringconverter.unapply(tpe).isEmpty &&
-      ADTToString.contains(tpe) =>
-        (input, tpe)
-    }
-    
-    inputTypeWithoutToStringFunction match {
-      case Some((input, tpe)) =>
-        val inductOn = FreshIdentifier(input.name, input.getType, true)
-        val fd = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true),
-            Nil, ValDef(inductOn) :: Nil, StringType) // Empty function.
-        solve(ADTToString + (tpe -> fd), inputs, inlineFuns ++ Seq(fd), inlineExpr, examples) // Tail recursion.
-      case None =>
-        // Now all types have a corresponding toString function, even if it is empty for now.
-        
-        
-        
-        Stream.Empty
-    }*/
   import StringSolver.{StringFormToken, StringForm, Problem => SProblem, Equation, Assignment}
   
   /** Converts an expression to a stringForm, suitable for StringSolver */
@@ -151,7 +124,6 @@ case object StringRender extends Rule("StringRender") {
           val model = new ModelBuilder
           model ++= inputs.zip(in)
           val modelResult = model.result()
-          //ctx.reporter.debug("Going to evaluate this template:" + template)
           val evalResult =  e.eval(template, modelResult)
           evalResult.result match {
             case None =>
@@ -173,7 +145,7 @@ case object StringRender extends Rule("StringRender") {
     }
     gatherEquations(examples.valids.collect{ case io:InOutExample => io }.toList) match {
       case Some(problem) =>
-        //hctx.reporter.ifDebug(printer => printer("Problem: ["+StringSolver.renderProblem(problem)+"]"))
+        hctx.reporter.ifDebug(printer => printer("Problem: ["+StringSolver.renderProblem(problem)+"]"))
         StringSolver.solve(problem)
       case None => 
         hctx.reporter.ifDebug(printer => printer("No problem found"))
@@ -187,10 +159,6 @@ case object StringRender extends Rule("StringRender") {
     
     val wholeTemplates = JoinProgramSet.direct(funs, DirectProgramSet(template))
     
-    /*val newProgram = DefOps.addFunDefs(hctx.program, funDefs.values, hctx.sctx.functionContext)
-      val newExpr = (expr /: funDefs.values) {
-        case (e, fd) => LetDef(fd, e)
-      }*/
     def computeSolutions(funDefsBodies: Seq[(FunDef, Expr)], template: Expr): Stream[Assignment] = {
       val funDefs = for((funDef, body) <- funDefsBodies) yield  { funDef.body = Some(body); funDef }
       val newProgram = DefOps.addFunDefs(hctx.program, funDefs, hctx.sctx.functionContext)
@@ -244,6 +212,9 @@ case object StringRender extends Rule("StringRender") {
       case Some(_) => assignments
     }
   }
+
+  /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
+  private val mergeMatchCases = (fd: FunDef) => (cases: Seq[MatchCase]) => MatchExpr(Variable(fd.params(0).id), cases)
   
   /** Returns a (possibly recursive) template which can render the inputs in their order.
     * Returns an expression and path-dependent pretty printers which can be used.
@@ -254,6 +225,45 @@ case object StringRender extends Rule("StringRender") {
       currentCaseClassParent: Option[TypeTree],
       adtToString: Map[DependentType, (FunDef, Stream[Expr])],
       inputs: Seq[Identifier])(implicit hctx: SearchContext): (Stream[Expr], Map[DependentType, (FunDef, Stream[Expr])]) = {
+    
+    def extractCaseVariants(caseClassParent: TypeTree, cct: CaseClassType, assignments2: Map[DependentType, (FunDef, Stream[Expr])]) = cct match {
+      case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
+        val typeMap = tparams.zip(tparams2).toMap
+        val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd, typeMap).id )
+        val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
+        val (rhs, assignments2tmp2) = createFunDefsTemplates(Some(caseClassParent), assignments2, fields) // Invoke functions for each of the fields.
+        val newCases = rhs.map(MatchCase(pattern, None, _))
+        (assignments2tmp2, newCases)
+    }
+    
+    /** Returns a constant pattern matching in which all classes are rendered using their proper name
+      * For example:
+      * {{{
+      * sealed abstract class Thread
+      * case class T1() extends Thread()
+      * case Class T2() extends Thread()
+      * }}}
+      * Will yield the following expression:
+      * {{{t match {
+      *   case T1() => "T1"
+      *   case T2() => "T2"
+      * }
+      * }}}
+      * 
+      * */
+    def constantPatternMatching(fd: FunDef, act: AbstractClassType): MatchExpr = {
+      val cases = (ListBuffer[MatchCase]() /: act.knownCCDescendants) {
+        case (acc, cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
+          val typeMap = tparams.zip(tparams2).toMap
+          val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd, typeMap).id )
+          val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
+          val rhs = StringLiteral(id.asString)
+          MatchCase(pattern, None, rhs)
+          acc += MatchCase(pattern, None, rhs)
+        case (acc, e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
+      }
+      mergeMatchCases(fd)(cases)
+    }
     
     /* Returns a list of expressions converting the list of inputs to string.
      * Holes should be inserted before, after and in-between for solving concatenation.
@@ -268,7 +278,6 @@ case object StringRender extends Rule("StringRender") {
         val dependentType = DependentType(currentCaseClassParent, input.getType)
         assignments1.get(dependentType) match {
         case Some(fd) =>
-          // TODO : Maybe find other functions.
           gatherInputs(currentCaseClassParent, assignments1, q, result += Stream(functionInvocation(fd._1, Seq(Variable(input)))))
         case None => // No function can render the current type.
           input.getType match {
@@ -289,30 +298,29 @@ case object StringRender extends Rule("StringRender") {
               t.root match {
                 case act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps) =>
                   // Create a complete FunDef body with pattern matching
+                  
+                  val allKnownDescendantsAreCCAndHaveZeroArgs = act.knownCCDescendants.forall { x => x match {
+                    case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) => ccd.fields.isEmpty
+                    case _ => false
+                  }}
+                  
+                  //TODO: Test other templates not only with Wilcard patterns, but more cases options for non-recursive classes (e.g. Option, Boolean, Finite parameterless case classes.)
                   val (assignments3, cases) = ((assignments2, ListBuffer[Stream[MatchCase]]()) /: act.knownCCDescendants) {
-                    case ((assignments2tmp, acc), CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
-                      val typeMap = tparams.zip(tparams2).toMap
-                      def resolveType(t: TypeTree): TypeTree = TypeOps.instantiateType(t, typeMap)
-                      val fields = ccd.fields.map(vd => ( TypeOps.instantiateType(vd, typeMap).id ))
-                      val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
-                      val (rhs, assignments2tmp2) = createFunDefsTemplates(Some(t), assignments2tmp, fields) // Invoke functions for each of the fields.
-                      (assignments2tmp2, acc += rhs.map(MatchCase(pattern, None, _)))
+                    case ((assignments2, acc), cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
+                      val (assignments2tmp2, newCases) = extractCaseVariants(t, cct, assignments2)
+                      (assignments2tmp2, acc += newCases)
                     case ((adtToString, acc), e) => hctx.reporter.fatalError("Could not handle this class definition for string rendering " + e)
                   }
-                  val recombine = (cases: Seq[MatchCase]) => MatchExpr(Variable(fd.params(0).id), cases)
-                  val allMatchExprs = JoinProgramSet(cases.map(DirectProgramSet(_)), recombine).programs
+                  
+                  val allMatchExprsEnd = JoinProgramSet(cases.map(DirectProgramSet(_)), mergeMatchCases(fd)).programs // General pattern match expressions
+                  val allMatchExprs = if(allKnownDescendantsAreCCAndHaveZeroArgs) {
+                    Stream(constantPatternMatching(fd, act)) ++ allMatchExprsEnd
+                  } else allMatchExprsEnd
                   val assignments4 = assignments3 + (dependentType -> (fd, allMatchExprs))
                   gatherInputs(currentCaseClassParent, assignments4, q, result += Stream(functionInvocation(fd, Seq(Variable(input)))))
                 case cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
-                  val typeMap = tparams.zip(tparams2).toMap
-                  def resolveType(t: TypeTree): TypeTree = TypeOps.instantiateType(t, typeMap)
-                  val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd, typeMap).id)
-                  val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
-                  val (rhs, assignments3) = createFunDefsTemplates(Some(t), assignments2, fields) // Invoke functions for each of the fields.
-                  
-                  val recombine = (cases: Seq[MatchCase]) => MatchExpr(Variable(fd.params(0).id), cases)
-                  val cases = rhs.map(MatchCase(pattern, None, _))
-                  val allMatchExprs = cases.map(acase => recombine(Seq(acase)))
+                  val (assignments3, newCases) = extractCaseVariants(t, cct, assignments2)
+                  val allMatchExprs = newCases.map(acase => mergeMatchCases(fd)(Seq(acase)))
                   val assignments4 = assignments3 + (dependentType -> (fd, allMatchExprs))
                   gatherInputs(currentCaseClassParent, assignments4, q, result += Stream(functionInvocation(fd, Seq(Variable(input)))))
               }
@@ -352,26 +360,6 @@ case object StringRender extends Rule("StringRender") {
         val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
         val examples = examplesFinder.extractFromProblem(p)
         
-        /*  Possible strategies.
-          * If data structure is recursive on at least one variable (see how Induction works)
-          * then
-          *   - Inserts a new rec function deconstructing it and put it into the available preconditions to use.
-          * If the input is constant
-          *   - just a variable to compute a constant.
-          * If there are several variables
-          *   - All possible ways of linearly unbuilding the structure.
-          *   - Or maybe try to infer top-bottom the order of variables from examples?
-          * if a variable is a primitive
-          *   - Introduce an ordered string containing the content.
-          *   
-          * Once we have a skeleton, we run it on examples given and solve it.
-          * If there are multiple solutions, we generate one deeper example and ask the user which one should be better.
-          */
-        
-        
-        
-        // Returns expr and funDefs as templates.
-        
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         ruleInstantiations += RuleInstantiation("String conversion") {
           val (expr, funDefs) = createFunDefsTemplates(None, Map(), p.as)
@@ -381,10 +369,6 @@ case object StringRender extends Rule("StringRender") {
               ))
           hctx.reporter.ifDebug(printer => printer("Inferred expression:\n" + expr + toDebug))
           
-          /*val newProgram = DefOps.addFunDefs(hctx.program, funDefs.values, hctx.sctx.functionContext)
-          val newExpr = (expr /: funDefs.values) {
-            case (e, fd) => LetDef(fd, e)
-          }*/
           findSolutions(examples, expr, funDefs.values.toSeq)
         }
         
