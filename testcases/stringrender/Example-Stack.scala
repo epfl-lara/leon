@@ -326,6 +326,39 @@ object AtomicStack {
   
   }  holds
   
+  def threadToStringSimplest(p: StackTid): String = {
+    ???[String]
+  } ensuring {
+    res => (p, res) passes {
+      case T1()
+      =>
+     "T1: call Push(5)"
+    }
+  }
+  
+  def threadToStringSimple0(p: Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]): String = {
+    ???[String]
+  } ensuring {
+    res => (p, res) passes {
+      case CallEvent(T1(), Push(), Some(BigInt(5)))
+      =>
+     "T1: call Push(5)"
+    }
+  }
+  
+  def threadToStringSimple1(p: List[Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]]): String = {
+    ???[String]
+  } ensuring {
+    res => (p, res) passes {
+      case Cons(CallEvent(T1(), Push(), Some(BigInt(5))),
+           Cons(InternalEvent(T1()), Nil()))
+      =>
+     "T1: call Push(5)\nT1: internal"
+    }
+  }
+  
+  
+  /** This is THE method we want to render */
   def threadToString(p: List[Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]]): String = {
     ???[String]
   } ensuring {
