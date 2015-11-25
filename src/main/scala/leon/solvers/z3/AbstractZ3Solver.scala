@@ -731,6 +731,7 @@ trait AbstractZ3Solver extends Solver {
     } catch {
       case e: Unsupported => None
       case e: UnsoundExtractionException => None
+      case n: java.lang.NumberFormatException => None
     }
   }
 
