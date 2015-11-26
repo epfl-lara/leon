@@ -41,7 +41,8 @@ object ExpressionOrder {
       bool2int(test3(false), 8)  +
       bool2int(test4(false), 16) +
       bool2int(test6,        32) +
-      bool2int(test7,        64)
+      bool2int(test7,        64) +
+      bool2int(test8,        128)
 
   def test0(b: Boolean) = {
     val f = b && !b // == false
@@ -126,6 +127,18 @@ object ExpressionOrder {
     a(if(a(0) == 0) { c = c + 1; 0 } else { c = c + 2; 1 }) = { c = c * 2; -1 }
 
     c == 4
+  }
+
+  def test8 = {
+    var x = 0
+
+    def bar(y: Int) = {
+      def fun(z: Int) = 1 * x * (y + z)
+
+      fun(3)
+    }
+
+    bar(2) == 0
   }
 
   def bool2int(b: Boolean, f: Int) = if (b) 0 else f;

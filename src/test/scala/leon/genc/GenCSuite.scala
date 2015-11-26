@@ -87,7 +87,7 @@ class GenCSuite extends LeonRegressionSuite {
     } catch {
       case _: TimeoutException =>
         p.destroy()
-        p.exitValue()
+        throw LeonFatalError("timeout reached")
     }
   }
 
