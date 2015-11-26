@@ -105,8 +105,9 @@ class CPrinter(val sb: StringBuffer = new StringBuffer) {
     case Assign(lhs, rhs) =>
       c"$lhs = $rhs;"
 
-    case UnOp(op, rhs) => c"($op $rhs)"
-    case MultiOp(op, stmts) => c"""${nary(stmts, sep = s" ${op.fixMargin} ")}"""
+    case UnOp(op, rhs) => c"($op$rhs)"
+    case MultiOp(op, stmts) => c"""${nary(stmts, sep = s" ${op.fixMargin} ",
+                                          opening = "(", closing = ")")}"""
     case SubscriptOp(ptr, idx) => c"$ptr[$idx]"
 
     case Break => c"break;"
