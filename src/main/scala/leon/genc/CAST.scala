@@ -52,9 +52,7 @@ object CAST { // C Abstract Syntax Tree
       else name
   }
 
-  case class Var(id: Id, typ: Type) extends Def {
-    def access = AccessVar(id)
-  }
+  case class Var(id: Id, typ: Type) extends Def
 
   /* ----------------------------------------------------------- Stmts  ----- */
   abstract class Stmt extends Tree
