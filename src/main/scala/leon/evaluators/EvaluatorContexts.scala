@@ -4,8 +4,10 @@ package leon
 package evaluators
 
 import purescala.Common.Identifier
-import purescala.Expressions.Expr
+import leon.purescala.Expressions.{Lambda, Expr}
 import solvers.Model
+
+import scala.collection.mutable.{Map => MutableMap}
 
 trait RecContext[RC <: RecContext[RC]] {
   def mappings: Map[Identifier, Expr]
@@ -25,8 +27,10 @@ case class DefaultRecContext(mappings: Map[Identifier, Expr]) extends RecContext
   def newVars(news: Map[Identifier, Expr]) = copy(news)
 }
 
-class GlobalContext(val model: Model, val maxSteps: Int) {
+class GlobalContext(val model: Model, val maxSteps: Int, val check: Boolean) {
   var stepsLeft = maxSteps
+
+  val lambdas: MutableMap[Lambda, Lambda] = MutableMap.empty
 }
 
 trait HasDefaultRecContext extends ContextualEvaluator {
@@ -35,6 +39,6 @@ trait HasDefaultRecContext extends ContextualEvaluator {
 }
 
 trait HasDefaultGlobalContext extends ContextualEvaluator {
-  def initGC(model: solvers.Model) = new GlobalContext(model, this.maxSteps)
+  def initGC(model: solvers.Model, check: Boolean) = new GlobalContext(model, this.maxSteps, check)
   type GC = GlobalContext
 }

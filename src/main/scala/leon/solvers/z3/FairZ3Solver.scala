@@ -26,7 +26,8 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   extends AbstractZ3Solver
      with Z3ModelReconstruction
      with FairZ3Component
-     with EvaluatingSolver {
+     with EvaluatingSolver
+     with QuantificationSolver {
 
   enclosing =>
 
@@ -36,6 +37,9 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   val evalGroundApps    = context.findOptionOrDefault(optEvalGround)
   val unrollUnsatCores  = context.findOptionOrDefault(optUnrollCores)
   val assumePreHolds    = context.findOptionOrDefault(optAssumePre)
+  val disableChecks     = context.findOptionOrDefault(optNoChecks)
+
+  assert(!checkModels || !disableChecks, "Options \"checkmodels\" and \"nochecks\" are mutually exclusive")
 
   protected val errors     = new IncrementalBijection[Unit, Boolean]()
   protected def hasError   = errors.getB(()) contains true
@@ -56,8 +60,6 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   toggleWarningMessages(true)
 
   private def extractModel(model: Z3Model, ids: Set[Identifier]): HenkinModel = {
-    val asMap = modelToMap(model, ids)
-
     def extract(b: Z3AST, m: Matcher[Z3AST]): Set[Seq[Expr]] = {
       val QuantificationTypeMatcher(fromTypes, _) = m.tpe
       val optEnabler = model.evalAs[Boolean](b)
@@ -89,98 +91,26 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
       }
     }
 
-    val funDomains = ids.flatMap(id => id.getType match {
-      case ft @ FunctionType(fromTypes, _) => variables.getB(id.toVariable) match {
-        case Some(z3ID) => Some(id -> templateGenerator.manager.instantiations(z3ID, ft).flatMap {
-          case (b, m) => extract(b, m)
-        })
-        case _ => None
-      }
-      case _ => None
-    }).toMap.mapValues(_.toSet)
+    val (typeInsts, partialInsts, lambdaInsts) = templateGenerator.manager.instantiations
 
-    val asDMap = asMap.map(p => funDomains.get(p._1) match {
-      case Some(domain) =>
-        val mapping = domain.toSeq.map { es =>
-          val ev: Expr = p._2 match {
-            case RawArrayValue(_, mapping, dflt) =>
-              mapping.collectFirst {
-                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
-              } getOrElse dflt
-            case _ => scala.sys.error("Unexpected function encoding " + p._2)
-          }
-          es -> ev
-        }
-        p._1 -> PartialLambda(mapping, p._1.getType.asInstanceOf[FunctionType])
-      case None => p
-    })
-
-    val typeGrouped = templateGenerator.manager.instantiations.groupBy(_._2.tpe)
-    val typeDomains = typeGrouped.mapValues(_.flatMap { case (b, m) => extract(b, m) }.toSet)
-
-    val domain = new HenkinDomains(typeDomains)
-    new HenkinModel(asDMap, domain)
-  }
-
-  private def validateModel(model: Z3Model, formula: Expr, variables: Set[Identifier], silenceErrors: Boolean) : (Boolean, HenkinModel) = {
-    if(!interrupted) {
-
-      val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
-      val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
-        if (functions containsB p._1) {
-          val tfd = functions.toA(p._1)
-          if (!tfd.hasImplementation) {
-            val (cses, default) = p._2
-            val ite = cses.foldLeft(fromZ3Formula(model, default, tfd.returnType))((expr, q) => IfExpr(
-              andJoin(
-                q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1, a12._2.getType), Variable(a12._2.id)))
-              ),
-              fromZ3Formula(model, q._2, tfd.returnType),
-              expr))
-            Seq((tfd.id, ite))
-          } else Seq()
-        } else Seq()
-      })
-
-      val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
-        if(functions containsB p._1) {
-          val tfd = functions.toA(p._1)
-          if(!tfd.hasImplementation) {
-            Seq((tfd.id, fromZ3Formula(model, p._2, tfd.returnType)))
-          } else Seq()
-        } else Seq()
-      }).toMap
-
-      val leonModel = extractModel(model, variables)
-      val fullModel = leonModel ++ (functionsAsMap ++ constantFunctionsAsMap)
-      val evalResult = evaluator.eval(formula, fullModel)
-
-      evalResult match {
-        case EvaluationResults.Successful(BooleanLiteral(true)) =>
-          reporter.debug("- Model validated.")
-          (true, fullModel)
-
-        case EvaluationResults.Successful(res) =>
-          assert(res == BooleanLiteral(false), "Checking model returned non-boolean")
-          reporter.debug("- Invalid model.")
-          (false, fullModel)
-
-        case EvaluationResults.RuntimeError(msg) =>
-          reporter.debug("- Model leads to runtime error.")
-          (false, fullModel)
-
-        case EvaluationResults.EvaluatorError(msg) => 
-          if (silenceErrors) {
-            reporter.debug("- Model leads to evaluator error: " + msg)
-          } else {
-            reporter.warning("Something went wrong. While evaluating the model, we got this : " + msg)
-          }
-          (false, fullModel)
-
-      }
-    } else {
-      (false, HenkinModel.empty)
+    val typeDomains: Map[TypeTree, Set[Seq[Expr]]] = typeInsts.map {
+      case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
     }
+
+    val funDomains: Map[Identifier, Set[Seq[Expr]]] = partialInsts.flatMap {
+      case (c, domain) => variables.getA(c).collect {
+        case Variable(id) => id -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+      }
+    }
+
+    val lambdaDomains: Map[Lambda, Set[Seq[Expr]]] = lambdaInsts.map {
+      case (l, domain) => l -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+    }
+
+    val asMap = modelToMap(model, ids)
+    val asDMap = purescala.Quantification.extractModel(asMap, funDomains, typeDomains, evaluator)
+    val domains = new HenkinDomains(lambdaDomains, typeDomains)
+    new HenkinModel(asDMap, domains)
   }
 
   implicit val z3Printable = (z3: Z3AST) => new Printable {
@@ -315,6 +245,115 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
       }).toSet
     }
 
+    def validatedModel(silenceErrors: Boolean) : (Boolean, HenkinModel) = {
+      if (interrupted) {
+        (false, HenkinModel.empty)
+      } else {
+        val lastModel = solver.getModel
+        val clauses = templateGenerator.manager.checkClauses
+        val optModel = if (clauses.isEmpty) Some(lastModel) else {
+          solver.push()
+          for (clause <- clauses) {
+            solver.assertCnstr(clause)
+          }
+
+          reporter.debug(" - Verifying model transitivity")
+          val timer = context.timers.solvers.z3.check.start()
+          solver.push() // FIXME: remove when z3 bug is fixed
+          val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.satisfactionAssumptions) :_*)
+          solver.pop()  // FIXME: remove when z3 bug is fixed
+          timer.stop()
+
+          val solverModel = res match {
+            case Some(true) =>
+              Some(solver.getModel)
+
+            case Some(false) =>
+              val msg = "- Transitivity independence not guaranteed for model"
+              if (silenceErrors) {
+                reporter.debug(msg)
+              } else {
+                reporter.warning(msg)
+              }
+              None
+
+            case None =>
+              val msg = "- Unknown for transitivity independence!?"
+              if (silenceErrors) {
+                reporter.debug(msg)
+              } else {
+                reporter.warning(msg)
+              }
+              None
+          }
+
+          solver.pop()
+          solverModel
+        }
+
+        val model = optModel getOrElse lastModel
+
+        val functionsModel: Map[Z3FuncDecl, (Seq[(Seq[Z3AST], Z3AST)], Z3AST)] = model.getModelFuncInterpretations.map(i => (i._1, (i._2, i._3))).toMap
+        val functionsAsMap: Map[Identifier, Expr] = functionsModel.flatMap(p => {
+          if (functions containsB p._1) {
+            val tfd = functions.toA(p._1)
+            if (!tfd.hasImplementation) {
+              val (cses, default) = p._2
+              val ite = cses.foldLeft(fromZ3Formula(model, default, tfd.returnType))((expr, q) => IfExpr(
+                andJoin(
+                  q._1.zip(tfd.params).map(a12 => Equals(fromZ3Formula(model, a12._1, a12._2.getType), Variable(a12._2.id)))
+                ),
+                fromZ3Formula(model, q._2, tfd.returnType),
+                expr))
+              Seq((tfd.id, ite))
+            } else Seq()
+          } else Seq()
+        })
+
+        val constantFunctionsAsMap: Map[Identifier, Expr] = model.getModelConstantInterpretations.flatMap(p => {
+          if(functions containsB p._1) {
+            val tfd = functions.toA(p._1)
+            if(!tfd.hasImplementation) {
+              Seq((tfd.id, fromZ3Formula(model, p._2, tfd.returnType)))
+            } else Seq()
+          } else Seq()
+        }).toMap
+
+        val leonModel = extractModel(model, freeVars.toSet)
+        val fullModel = leonModel ++ (functionsAsMap ++ constantFunctionsAsMap)
+
+        if (!optModel.isDefined) {
+          (false, leonModel)
+        } else {
+          (evaluator.check(entireFormula, fullModel) match {
+            case EvaluationResults.CheckSuccess =>
+              reporter.debug("- Model validated.")
+              true
+
+            case EvaluationResults.CheckValidityFailure =>
+              reporter.debug("- Invalid model.")
+              false
+
+            case EvaluationResults.CheckRuntimeFailure(msg) =>
+              if (silenceErrors) {
+                reporter.debug("- Model leads to evaluation error: " + msg)
+              } else {
+                reporter.warning("- Model leads to evaluation error: " + msg)
+              }
+              false
+
+            case EvaluationResults.CheckQuantificationFailure(msg) =>
+              if (silenceErrors) {
+                reporter.debug("- Model leads to quantification error: " + msg)
+              } else {
+                reporter.warning("- Model leads to quantification error: " + msg)
+              }
+              false
+          }, leonModel)
+        }
+      }
+    }
+
     while(!foundDefinitiveAnswer && !interrupted) {
 
       //val blockingSetAsZ3 : Seq[Z3AST] = blockingSet.toSeq.map(toZ3Formula(_).get)
@@ -346,27 +385,18 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
           foundAnswer(None)
 
         case Some(true) => // SAT
-
-          val z3model = solver.getModel()
-
-          if (this.checkModels) {
-            val (isValid, model) = validateModel(z3model, entireFormula, allVars, silenceErrors = false)
-
-            if (isValid) {
-              foundAnswer(Some(true), model)
-            } else {
-              reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
-              reporter.error(model)
-              foundAnswer(None, model)
-            }
+          val (valid, model) = if (!this.disableChecks && (this.checkModels || requireQuantification)) {
+            validatedModel(false)
           } else {
-            val model = extractModel(z3model, allVars)
+            true -> extractModel(solver.getModel, allVars)
+          }
 
-            //lazy val modelAsString = model.toList.map(p => p._1 + " -> " + p._2).mkString("\n")
-            //reporter.debug("- Found a model:")
-            //reporter.debug(modelAsString)
-
+          if (valid) {
             foundAnswer(Some(true), model)
+          } else {
+            reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
+            reporter.error(model.asString(context))
+            foundAnswer(None, model)
           }
 
         case Some(false) if !unrollingBank.canUnroll =>
@@ -433,7 +463,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
                 //reporter.debug("SAT WITHOUT Blockers")
                 if (this.feelingLucky && !interrupted) {
                   // we might have been lucky :D
-                  val (wereWeLucky, cleanModel) = validateModel(solver.getModel, entireFormula, allVars, silenceErrors = true)
+                  val (wereWeLucky, cleanModel) = validatedModel(true)
 
                   if(wereWeLucky) {
                     foundAnswer(Some(true), cleanModel)

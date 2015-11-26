@@ -41,7 +41,7 @@ object Extractors {
         Some((Seq(a), (es: Seq[Expr]) => ArrayLength(es.head)))
       case Lambda(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Lambda(args, es.head)))
-      case PartialLambda(mapping, tpe) =>
+      case PartialLambda(mapping, dflt, tpe) =>
         val sze = tpe.from.size + 1
         val subArgs = mapping.flatMap { case (args, v) => args :+ v }
         val builder = (as: Seq[Expr]) => {
@@ -52,9 +52,10 @@ object Extractors {
             case Seq() => Seq.empty
             case _ => sys.error("unexpected number of key/value expressions")
           }
-          PartialLambda(rec(as), tpe)
+          val (nas, nd) = if (dflt.isDefined) (as.init, Some(as.last)) else (as, None)
+          PartialLambda(rec(nas), nd, tpe)
         }
-        Some((subArgs, builder))
+        Some((subArgs ++ dflt, builder))
       case Forall(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
 

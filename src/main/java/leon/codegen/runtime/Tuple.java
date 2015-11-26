@@ -54,4 +54,20 @@ public final class Tuple {
     _hash = h;
     return h;
   }
+
+  @Override
+  public String toString() {
+    String str = "(";
+    boolean first = true;
+    for (Object obj : elements) {
+      if (first) {
+        first = false;
+      } else {
+        str += ", ";
+      }
+      str += obj == null ? "null" : obj.toString();
+    }
+    str += ")";
+    return str;
+  }
 }

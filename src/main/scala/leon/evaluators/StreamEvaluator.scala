@@ -37,7 +37,8 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           case l @ Lambda(params, body) =>
             val mapping = l.paramSubst(newArgs)
             e(body)(rctx.withNewVars(mapping), gctx).distinct
-          case PartialLambda(mapping, _) =>
+          case PartialLambda(mapping, _, _) =>
+            // FIXME
             mapping.collectFirst {
               case (pargs, res) if (newArgs zip pargs).forall { case (f, r) => f == r } =>
                 res
@@ -134,7 +135,8 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       ).toMap
       Stream(replaceFromIDs(mapping, nl))
 
-    case PartialLambda(mapping, tpe) =>
+    // FIXME
+    case PartialLambda(mapping, tpe, df) =>
       def solveOne(pair: (Seq[Expr], Expr)) = {
         val (args, res) = pair
         for {
@@ -142,11 +144,11 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           r  <- e(res)
         } yield as -> r
       }
-      cartesianProduct(mapping map solveOne) map (PartialLambda(_, tpe))
+      cartesianProduct(mapping map solveOne) map (PartialLambda(_, tpe, df)) // FIXME!!!
 
     case f @ Forall(fargs, TopLevelAnds(conjuncts)) =>
-
-      def solveOne(conj: Expr) = {
+      Stream() // FIXME
+      /*def solveOne(conj: Expr) = {
         val instantiations = forallInstantiations(gctx, fargs, conj)
         for {
           es <- cartesianProduct(instantiations.map { case (enabler, mapping) =>
@@ -159,7 +161,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       for {
         conj <- cartesianProduct(conjuncts map solveOne)
         res <- e(andJoin(conj))
-      } yield res
+      } yield res*/
 
     case p : Passes =>
       e(p.asConstraint)
@@ -344,7 +346,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       (lv, rv) match {
         case (FiniteSet(el1, _), FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _), FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
-        case (PartialLambda(m1, _), PartialLambda(m2, _)) => BooleanLiteral(m1.toSet == m2.toSet)
+        case (PartialLambda(m1, _, d1), PartialLambda(m2, _, d2)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
         case _ => BooleanLiteral(lv == rv)
       }
 

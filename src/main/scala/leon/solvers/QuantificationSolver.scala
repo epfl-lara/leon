@@ -4,14 +4,14 @@ package solvers
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Quantification._
+import purescala.Definitions._
 import purescala.Types._
 
-class HenkinModel(mapping: Map[Identifier, Expr], doms: HenkinDomains)
+class HenkinModel(mapping: Map[Identifier, Expr], val doms: HenkinDomains)
   extends Model(mapping)
      with AbstractModel[HenkinModel] {
   override def newBuilder = new HenkinModelBuilder(doms)
 
-  def domains: Map[TypeTree, Set[Seq[Expr]]] = doms.domains
   def domain(expr: Expr) = doms.get(expr)
 }
 
@@ -26,5 +26,10 @@ class HenkinModelBuilder(domains: HenkinDomains)
 }
 
 trait QuantificationSolver {
+  val program: Program
   def getModel: HenkinModel
+
+  protected lazy val requireQuantification = program.definedFunctions.exists { fd =>
+    purescala.ExprOps.exists { case _: Forall => true case _ => false } (fd.fullBody)
+  }
 }
