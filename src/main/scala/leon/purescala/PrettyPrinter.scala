@@ -183,7 +183,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
       case StringLiteral(v)     => 
-        if(v.indexOf("\n") != -1 && v.indexOf("\"\"\"") == -1) {
+        if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
           p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
         } else {
           val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\n").replaceAll("\r","\\r")
