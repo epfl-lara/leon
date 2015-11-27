@@ -357,6 +357,18 @@ object AtomicStack {
     }
   }
   
+  def threadToStringSimple2(p: List[Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]]): String = {
+    ???[String]
+  } ensuring {
+    res => (p, res) passes {
+      case Cons(RetEvent(T1(), Push(), Some(BigInt(5)), None()),
+           Cons(InternalEvent(T2()),
+           Cons(RetEvent(T2(), Pop(), None(), Some(BigInt(5))), Nil())))
+      =>
+     "T1: ret Push(5)\nT2: internal\nT2: ret Pop() -> 5"
+    }
+  }
+  
   
   /** This is THE method we want to render */
   def threadToString(p: List[Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]]): String = {

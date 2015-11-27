@@ -184,8 +184,8 @@ class StringSolverSuite extends FunSuite with Matchers {
     firstSolution(idMap("const8")) should equal("List(")
   }
   
-  /*test("solveJadProblem") {
-    val lhs = """const26+const22+const7+const+const8+const3+const9+const5+"5"+const6+const10+const23+const18+const11+const+const12+const19+const18+const7+const1+const8+const2+const9+const4+const10+const19+const18+const13+const+const14+const3+const15+const5+"5"+const6+const16+const4+const17+const19+const18+const11+const1+const12+const19+const18+const13+const1+const14+const2+const15+const4+const16+const5+"5"+const6+const17+const19+const21+const20+const20+const20+const20+const20+const24+const27"""
+  test("solveJadProblem") {
+    val lhs = """const38+const34+const7+"T1"+const8+const3+const9+const5+"5"+const6+const10+const35+const30+const13+"T1"+const14+const31+const30+const7+"T2"+const8+const2+const9+const4+const10+const31+const30+const25+"T1"+const26+"Push"+const27+const20+"5"+const21+const28+const22+const29+const31+const30+const13+"T2"+const14+const31+const30+const25+"T2"+const26+"Pop"+const27+const19+const28+const23+"5"+const24+const29+const31+const33+const32+const32+const32+const32+const32+const36+const39=="T1: call Push(5)"""
     implicit val idMap = MMap[String, Identifier]()
     val lhsSf = makeSf(lhs)
     
@@ -200,5 +200,5 @@ T2: ret Pop() -> 5"""
     println("Problem to solve:" + StringSolver.renderProblem(problem))
     
     solve(problem) should not be 'empty
-  }*/
+  }
 }

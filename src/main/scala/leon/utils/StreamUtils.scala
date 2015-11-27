@@ -17,7 +17,7 @@ object StreamUtils {
       if(streams.isEmpty) Stream() else {
         val (take, leave) = streams.splitAt(diag)
         val (nonEmpty, empty) = take partition (_.nonEmpty)
-        nonEmpty.map(_.head) ++ rec(nonEmpty.map(_.tail) ++ leave, diag + 1 - empty.size)
+        nonEmpty.map(_.head) #::: rec(nonEmpty.map(_.tail) ++ leave, diag + 1 - empty.size)
       }
     }
     rec(streams, 1)
@@ -27,7 +27,7 @@ object StreamUtils {
   def interleave[T](streams : Seq[Stream[T]]) : Stream[T] = {
     if (streams.isEmpty) Stream() else {
       val nonEmpty = streams filter (_.nonEmpty)
-      nonEmpty.toStream.map(_.head) ++ interleave(nonEmpty.map(_.tail))
+      nonEmpty.toStream.map(_.head) #::: interleave(nonEmpty.map(_.tail))
     }
   }
 

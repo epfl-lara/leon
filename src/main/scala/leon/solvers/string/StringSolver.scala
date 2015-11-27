@@ -459,7 +459,7 @@ object StringSolver {
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
     val realProblem = forwardStrategy(p, Map())
-    /*if(realProblem.nonEmpty) {
+    /*if(realProblem.nonEmpty && realProblem.get._1.nonEmpty) {
       println("Problem:\n"+renderProblem(p))
       println("Solutions:\n"+realProblem.get._2)
       println("Real problem:\n"+renderProblem(realProblem.get._1))
