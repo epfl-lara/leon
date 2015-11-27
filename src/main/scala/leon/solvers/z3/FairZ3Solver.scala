@@ -65,26 +65,14 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
       val optEnabler = model.evalAs[Boolean](b)
 
       if (optEnabler == Some(true)) {
-        // FIXME: Dirty hack!
-        // Unfortunately, blockers don't lead to a true decision tree where all
-        // unexecutable branches are false since we have
-        //   b1 ==> ( b2 \/  b3)
-        //   b1 ==> (!b2 \/ !b3)
-        // so b2 /\ b3 is possible when b1 is false. This leads to unsound models
-        // (like Nil.tail) which obviously cannot be part of a domain but can't be
-        // translated back from Z3 either.
-        try {
-          val optArgs = (m.args zip fromTypes).map {
-            p => softFromZ3Formula(model, model.eval(Matcher.argValue(p._1), true).get, p._2)
-          }
+        val optArgs = (m.args zip fromTypes).map {
+          p => softFromZ3Formula(model, model.eval(Matcher.argValue(p._1), true).get, p._2)
+        }
 
-          if (optArgs.forall(_.isDefined)) {
-            Set(optArgs.map(_.get))
-          } else {
-            Set.empty
-          }
-        } catch {
-          case _: Throwable => Set.empty
+        if (optArgs.forall(_.isDefined)) {
+          Set(optArgs.map(_.get))
+        } else {
+          Set.empty
         }
       } else {
         Set.empty
