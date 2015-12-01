@@ -413,8 +413,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         // Transform while (cond) { body } into
         // while (true) { if (cond) { body } else { break } }
         val condF = flatten(cond)
-        val ifelse  = condF.body ~~ buildIfElse(condF.value, body, CAST.Break)
-        CAST.While(CAST.True, ifelse)
+        val ifelse  = condF.body ~~ buildIfElse(condF.value, CAST.NoStmt, CAST.Break)
+        CAST.While(CAST.True, ifelse ~ body)
       }
 
     case FunctionInvocation(tfd @ TypedFunDef(fd, _), stdArgs) =>
