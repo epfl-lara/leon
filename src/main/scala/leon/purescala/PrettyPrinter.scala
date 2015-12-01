@@ -186,7 +186,7 @@ class PrettyPrinter(opts: PrinterOptions,
         if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
           p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
         } else {
-          val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\n").replaceAll("\r","\\r")
+          val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\\\n").replaceAll("\r","\\\\r")
           p"$dbquote$escaped$dbquote"
         }
       case GenericValue(tp, id) => p"$tp#$id"
