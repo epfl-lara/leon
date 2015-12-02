@@ -192,10 +192,35 @@ case object StringRender extends Rule("StringRender") {
             }
             val initMap = ids.map(_ -> StringLiteral("_edit_me_")).toMap
             val term = ExprOps.simplifyString(ExprOps.replaceFromIDs(initMap ++ assignment.mapValues(StringLiteral), singleTemplate))
-            Solution(pre=p.pc, defs=fds.toSet, term=term)
+            val (finalTerm, finalDefs) = makeFunctionsUnique(term, fds.toSet)
+            
+            Solution(pre=p.pc, defs=finalDefs, term=finalTerm)
           })
     }
   }
+  
+  /** Crystallizes a solution so that it will not me modified if the body of fds is modified. */
+  def makeFunctionsUnique(term: Expr, fds: Set[FunDef]): (Expr, Set[FunDef]) = {
+    var transformMap = Map[FunDef, FunDef]()
+    def mapExpr(body: Expr): Expr = {
+      ExprOps.preMap((e: Expr) => e match {
+        case FunctionInvocation(nfd, args) => Some(FunctionInvocation(getMapping(nfd.fd).typed, args))
+        case e => None
+      })(body)
+    }
+    
+    def getMapping(fd: FunDef): FunDef = {
+      transformMap.getOrElse(fd, {
+        val newfunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.params, fd.returnType) // With empty body
+        transformMap += fd -> newfunDef
+        newfunDef.body = fd.body.map(mapExpr _)
+        newfunDef
+      })
+    }
+    
+    (mapExpr(term), fds.map(getMapping _))
+  }
+  
   
   object StringTemplateGenerator extends TypedTemplateGenerator(StringType)
   
