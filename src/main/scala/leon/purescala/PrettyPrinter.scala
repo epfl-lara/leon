@@ -167,11 +167,11 @@ class PrettyPrinter(opts: PrinterOptions,
       case Equals(l,r)          => optP { p"$l == $r" }
       
       
-      case Int32ToString(expr)    => p"StrOps.intToString($expr)"
-      case BooleanToString(expr)  => p"StrOps.booleanToString($expr)"
-      case IntegerToString(expr)  => p"StrOps.bigIntToString($expr)"
-      case CharToString(expr)     => p"StrOps.charToString($expr)"
-      case RealToString(expr)     => p"StrOps.realToString($expr)"
+      case Int32ToString(expr)    => p"$expr.toString"
+      case BooleanToString(expr)  => p"$expr.toString"
+      case IntegerToString(expr)  => p"$expr.toString"
+      case CharToString(expr)     => p"$expr.toString"
+      case RealToString(expr)     => p"$expr.toString"
       case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
     
       case SubString(expr, start, end) => p"StrOps.substring($expr, $start, $end)"

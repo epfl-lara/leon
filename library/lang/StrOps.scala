@@ -18,22 +18,19 @@ object StrOps {
   def substring(a: String, start: BigInt, end: BigInt): String = {
     if(start > end || start >= length(a) || end <= 0) "" else a.substring(start.toInt, end.toInt)
   }
-  @ignore
+  @library
   def bigIntToString(a: BigInt): String = {
     a.toString
   }
-  @ignore
+  @library
   def intToString(a: Int): String = {
     a.toString
   }
-  @ignore
-  def doubleToString(a: Double): String = {
-    a.toString
-  }
+  @library
   def booleanToString(a: Boolean): String = {
     if(a) "true" else "false"
   }
-  @ignore
+  @library
   def charToString(a: Char): String = {
     a.toString
   }
