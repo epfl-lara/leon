@@ -211,7 +211,7 @@ case object StringRender extends Rule("StringRender") {
     
     def getMapping(fd: FunDef): FunDef = {
       transformMap.getOrElse(fd, {
-        val newfunDef = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.params, fd.returnType) // With empty body
+        val newfunDef = new FunDef(fd.id.freshen, fd.tparams, fd.params, fd.returnType) // With empty body
         transformMap += fd -> newfunDef
         newfunDef.body = fd.body.map(mapExpr _)
         newfunDef
@@ -241,7 +241,7 @@ case object StringRender extends Rule("StringRender") {
     }
     val funName3 = funName2.replaceAll("[^a-zA-Z0-9_]","")
     val funName = funName3(0).toLower + funName3.substring(1) 
-    val funId = FreshIdentifier(funName, alwaysShowUniqueID = true)
+    val funId = FreshIdentifier(funName, alwaysShowUniqueID = false)
     val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx.context).toLowerCase()(0).toString, tpe.typeToConvert)
     val fd = new FunDef(funId, Nil, ValDef(argId) :: Nil, StringType) // Empty function.
     fd
