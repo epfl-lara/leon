@@ -1,4 +1,5 @@
 import leon.collection._
+import leon.collection.List
 import leon.lang._
 import leon.proof.check
 import leon.lang.synthesis._
@@ -87,76 +88,10 @@ object Concurrency {
  
   case class Configuration[Tid,MethodName,ArgData,LocalState,GlobalState](
     gs: GlobalState, 
-    control: Map[Tid,Option[(MethodName,ArgData,LocalState)]]
+    control: List[(Tid,Option[(MethodName,ArgData,LocalState)])]
   )
   
   
-  
-  /** Describes valid executions of the library.
-  
-    * This function takes as input: a library `lib', an initial configuration
-    * `cfg', a sequence of configuration `cfgs', and a sequence of events
-    * `events'.
-    
-    * It returns true if `lib' can produce the sequence of events `events',
-    * starting from the initial configuration `cfg', and going through the 
-    * configurations `cfgs'. A consequence is that the lists `events' and 
-    * `cfgs' must have the same length.
-    */
-    
-  def isLibraryExecution[Tid,MethodName,ArgData,RetData,LocalState,GlobalState](
-    lib: Library[MethodName,ArgData,RetData,LocalState,GlobalState], 
-    cfg: Configuration[Tid,MethodName,ArgData,LocalState,GlobalState], 
-    cfgs: List[Configuration[Tid,MethodName,ArgData,LocalState,GlobalState]],
-    events: List[Event[Tid,MethodName,ArgData,RetData]]
-  ): Boolean = {
-    
-    val Library(methods) = lib 
-    val Configuration(gs,control) = cfg
-    
-    
-    (cfgs,events) match {
-      case (Nil(),Nil()) => true
-      
-      // call action (doesn't change the global state)
-      case (Cons(Configuration(next_gs,next_control), tail_cfg), Cons(CallEvent(tid,m,arg), evs)) =>
-        val Method(initials,_,_) = methods(m)
-        control.getOrElse(tid,None()) == None[(MethodName,ArgData,LocalState)]() &&
-        next_control == control.updated(tid, Some((m,arg,initials(arg)))) && 
-        next_gs == gs &&
-        isLibraryExecution(lib,Configuration(next_gs,next_control),tail_cfg,evs)
-        
-      
-      // return action (doesn't change the global state)
-      case (Cons(Configuration(next_gs,next_control), tail_cfg), Cons(RetEvent(tid,m,arg,rv), evs)) =>
-        val Method(_,_,finals) = methods(m)
-        control.getOrElse(tid,None()) match {
-          case None() => false
-          case Some((m2,arg2,q)) => 
-            m == m2 && arg2 == arg &&
-            finals(q) == Some(rv) &&
-            next_control == control.updated(tid, None()) && 
-            next_gs == gs && 
-            isLibraryExecution(lib,Configuration(next_gs,next_control),tail_cfg,evs)
-        }
-        
-      
-      // internal action 
-      case (Cons(Configuration(next_gs,next_control), tail_cfg), Cons(InternalEvent(tid), evs)) =>
-        control.getOrElse(tid,None()) match {
-          case None() => false
-          case Some((m,arg,q)) => 
-            val Method(_,transitions,_) = methods(m)
-            val (next_q, next_gs2) = transitions(q,gs)
-            next_gs2 == next_gs && 
-            next_control == control.updated(tid, Some((m,arg,next_q))) &&
-            isLibraryExecution(lib,Configuration(next_gs,next_control),tail_cfg,evs)
-        }
-      
-      case _ => false
-    }
-  }
-   
   /** This class describes client's of a library.
     *
     * A client can be composed of multiple thread. It specifies for each 
@@ -165,53 +100,6 @@ object Concurrency {
     */
   
   case class Client[Tid,MethodName,ArgData,RetData](threads: Tid => List[Event[Tid,MethodName,ArgData,RetData]])
- 
-  
-  
-  /** Helper method to define valid client executions.
-    *
-    * Takes as input a sequence of a thread `tid', and a sequence of events
-    * `evs', and returns the list of tuples in (MethodName,ArgData,RetData)
-    * corresponding to the return events of `tid'.
-    */
-    
-  
-  def isTidExecution[Tid,MethodName,ArgData,RetData](
-    check_tid: Tid, 
-    evs: List[Event[Tid,MethodName,ArgData,RetData]], 
-    clievs: List[Event[Tid,MethodName,ArgData,RetData]]
-  ): Boolean = {
-    (evs,clievs) match {
-    case (Nil(),Nil()) => true
-      case (Cons(CallEvent(tid,_,_), xs),_) if (tid != check_tid) => isTidExecution(check_tid,xs,clievs)
-      case (Cons(RetEvent(tid,_,_,_), xs),_) if (tid != check_tid) => isTidExecution(check_tid,xs,clievs)
-      case (Cons(InternalEvent(_), xs),_) => isTidExecution(check_tid,xs,clievs)
-      case (Cons(CallEvent(tid,m,arg), xs), Cons(CallEvent(tid2,m2,arg2), ys)) 
-        if (tid == check_tid && tid == tid2 && arg == arg2) => isTidExecution(check_tid,xs,ys)
-      case (Cons(RetEvent(tid,m,arg,rv), xs), Cons(RetEvent(tid2,m2,arg2,rv2), ys)) 
-        if (tid == check_tid && tid == tid2 && arg == arg2 && rv == rv2) => isTidExecution(check_tid,xs,ys)
-      case _ => false
-    }
-  }
-  
-  /** Describes executions which correspond to a particular client.
-    *
-    * Takes as input a list of threads `tids', a client `cli', and a sequence 
-    * of events `events', and checks for every thread in `tid', whether the 
-    * sequence expected by the client `cli' for thread `tid' corresponds to the
-    * one given by `events'.
-    */
-  
-  def isClientExecution[Tid,MethodName,ArgData,RetData](
-    tids: List[Tid],
-    cli: Client[Tid,MethodName,ArgData,RetData],
-    events: List[Event[Tid,MethodName,ArgData,RetData]]) = {
-
-    val Client(threads) = cli
-  
-    tids.forall{ (tid: Tid) => isTidExecution(tid, events, threads(tid)) }
-  }
-  
 }
 
 object AtomicStack {
@@ -296,8 +184,6 @@ object AtomicStack {
   }
   
   val libAtomicStack = Library[StackMethodName,Option[BigInt],Option[BigInt],StackState,List[BigInt]](methods)
-  
-  val initCfg: Configuration[StackTid,StackMethodName,Option[BigInt],StackState,List[BigInt]] = Configuration(List(), Map())
 
   
   def threads(tid: StackTid): List[Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]] = tid match {
@@ -314,17 +200,6 @@ object AtomicStack {
   }
   
   val client: Client[StackTid,StackMethodName,Option[BigInt],Option[BigInt]] = Client(threads)
-  
-  
-  def isBadExecution(
-    cfgs: List[Configuration[StackTid,StackMethodName,Option[BigInt],StackState,List[BigInt]]],
-    events: List[Event[StackTid,StackMethodName,Option[BigInt],Option[BigInt]]]
-  ): Boolean = {
-  
-    !isLibraryExecution(libAtomicStack,initCfg,cfgs,events) ||
-    !isClientExecution(List[StackTid](T1(),T2()), client, events)
-  
-  }  holds
   
   def threadToStringSimplest(p: StackTid): String = {
     ???[String]
@@ -388,16 +263,16 @@ object AtomicStack {
   
   // Warning: Spacing differs from records to records.
   // Warning: The displaying of a tuple might depend on its operands.
-  /*def configurationToString(p: List[Configuration[StackTid, StackMethodName, Option[BigInt], StackState, List[BigInt]]]): String = {
+  def configurationToString(p: List[Configuration[StackTid, StackMethodName, Option[BigInt], StackState, List[BigInt]]]): String = {
     ???[String]
   } ensuring {
     res => (p, res) passes {
-      case Cons(Configuration(Nil(), Map(T1() -> Some((Push(), Some(BigInt(5)), ValueState(BigInt(5)))))),
-           Cons(Configuration(Cons(5, Nil()), Map(T1() -> Some((Push(), Some(BigInt(5)), FinalState())))),
-           Cons(Configuration(Cons(5, Nil()), Map(T2() -> Some((Pop(), None(), InitState())), T1() -> Some((Push(), Some(BigInt(5)), FinalState())))),
-           Cons(Configuration(Cons(5, Nil()), Map(T2() -> Some((Pop(), None(), InitState())), T1() -> None())),
-           Cons(Configuration(Nil(), Map(T2() -> Some((Pop(), None(), ValueState(BigInt(5)))), T1() -> None())),
-           Cons(Configuration(Nil(), Map(T2() -> None(), T1() -> None())), Nil())))))) =>
+      case Cons(Configuration(Nil(), Cons((T1(), Some((Push(), Some(BigInt(5)), ValueState(BigInt(5))))), Nil())),
+           Cons(Configuration(Cons(BigInt(5), Nil()), Cons((T1(), Some((Push(), Some(BigInt(5)), FinalState()))), Nil())),
+           Cons(Configuration(Cons(BigInt(5), Nil()), Cons((T2(), Some((Pop(), None(), InitState()))), Cons((T1(), Some((Push(), Some(BigInt(5)), FinalState()))), Nil()))),
+           Cons(Configuration(Cons(BigInt(5), Nil()), Cons((T2(), Some((Pop(), None(), InitState()))), Cons((T1(), None()), Nil()))),
+           Cons(Configuration(Nil(), Cons((T2(), Some((Pop(), None(), ValueState(BigInt(5))))), Cons((T1(), None()), Nil()))),
+           Cons(Configuration(Nil(), Cons((T2(), None()), Cons((T1(), None()), Nil()))), Nil())))))) =>
       """([], { 
   T1 -> Push(5): ValueState(5) 
 })
@@ -433,7 +308,7 @@ object AtomicStack {
 
     }
   }
-  
+  /*
   /// Out of order configurationToString
   def configurationToStringOOO(p: List[Configuration[StackTid, StackMethodName, Option[BigInt], StackState, List[BigInt]]]): String = {
     ???[String]
