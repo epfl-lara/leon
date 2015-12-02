@@ -385,5 +385,100 @@ object AtomicStack {
      "T1: call Push(5)\nT1: internal\nT2: call Pop()\nT1: ret Push(5)\nT2: internal\nT2: ret Pop() -> 5"
     }
   }
+  
+  // Warning: Spacing differs from records to records.
+  // Warning: The displaying of a tuple might depend on its operands.
+  /*def configurationToString(p: List[Configuration[StackTid, StackMethodName, Option[BigInt], StackState, List[BigInt]]]): String = {
+    ???[String]
+  } ensuring {
+    res => (p, res) passes {
+      case Cons(Configuration(Nil(), Map(T1() -> Some((Push(), Some(BigInt(5)), ValueState(BigInt(5)))))),
+           Cons(Configuration(Cons(5, Nil()), Map(T1() -> Some((Push(), Some(BigInt(5)), FinalState())))),
+           Cons(Configuration(Cons(5, Nil()), Map(T2() -> Some((Pop(), None(), InitState())), T1() -> Some((Push(), Some(BigInt(5)), FinalState())))),
+           Cons(Configuration(Cons(5, Nil()), Map(T2() -> Some((Pop(), None(), InitState())), T1() -> None())),
+           Cons(Configuration(Nil(), Map(T2() -> Some((Pop(), None(), ValueState(BigInt(5)))), T1() -> None())),
+           Cons(Configuration(Nil(), Map(T2() -> None(), T1() -> None())), Nil())))))) =>
+      """([], { 
+  T1 -> Push(5): ValueState(5) 
+})
+
+
+([5], { 
+  T1 -> Push(5): FinalState 
+})
+
+
+([5], { 
+  T2 -> Pop(): InitState; 
+  T1 -> Push(5): FinalState 
+})
+
+
+([5], {
+  T2 -> Pop(): InitState;
+  T1 -> idle
+})
+
+
+([], {
+  T2 -> Pop(): ValueState(5);
+  T1 -> idle
+})
+
+
+([], {
+  T2 -> idle;
+  T1 -> idle
+})"""
+
+    }
+  }
+  
+  /// Out of order configurationToString
+  def configurationToStringOOO(p: List[Configuration[StackTid, StackMethodName, Option[BigInt], StackState, List[BigInt]]]): String = {
+    ???[String]
+  } ensuring {
+    res => (p, res) passes {
+      case Cons(Configuration(Nil(), Map(T1() -> Some((Push(), Some(BigInt(5)), ValueState(BigInt(5)))))),
+           Cons(Configuration(Cons(BigInt(5), Nil()), Map(T1() -> Some((Push(), Some(BigInt(5)), FinalState())))),
+           Cons(Configuration(Cons(BigInt(5), Nil()), Map(T2() -> Some((Pop(), None(), InitState())), T1() -> Some((Push(), Some(BigInt(5)), FinalState())))),
+           Cons(Configuration(Cons(BigInt(5), Nil()), Map(T2() -> Some((Pop(), None(), InitState())), T1() -> None())),
+           Cons(Configuration(Nil(), Map(T2() -> Some((Pop(), None(), ValueState(BigInt(5)))), T1() -> None())),
+           Cons(Configuration(Nil(), Map(T2() -> None(), T1() -> None())), Nil())))))) =>
+      """([], { 
+  T1 -> ValueState(5) in Push(5)
+})
+
+
+([5], { 
+  T1 -> FinalState in Push(5)
+})
+
+
+([5], { 
+  T2 -> InitState in Pop(); 
+  T1 -> FinalState in Push(5)
+})
+
+
+([5], {
+  T2 -> InitState in Pop();
+  T1 -> idle
+})
+
+
+([], {
+  T2 -> ValueState(5) in Pop();
+  T1 -> idle
+})
+
+
+([], {
+  T2 -> idle;
+  T1 -> idle
+})"""
+
+    }
+  }*/
 }
 

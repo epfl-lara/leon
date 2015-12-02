@@ -17,53 +17,53 @@ object TreeRender {
   case class Leaf[T]() extends Tree[T]
   
   /** Synthesis by example specs */
-  @inline def psStandard(s: Tree[Int])(res: String) = (s, res) passes {
-    case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf()))"
-    case Node(Leaf(), 1, Leaf()) => "Node(Leaf(), 1, Leaf())"
-    case Leaf() => "Leaf()"
+  @inline def psStandard(s: Tree[Int]) = (res: String) => (s, res) passes {
+    case Node(Node(Leaf[Int](), 2, Leaf[Int]()), 1, Node(Leaf[Int](), -3, Leaf[Int]())) => "Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf()))"
+    case Node(Leaf[Int](), 1, Leaf[Int]()) => "Node(Leaf(), 1, Leaf())"
+    case Leaf[Int]() => "Leaf()"
   }
   
-  @inline def psRemoveNode(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psRemoveNode(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "((Leaf(), 2, Leaf()), 1, (Leaf(), -3, Leaf()))"
     case Node(Leaf(), 1, Leaf()) => "(Leaf(), 1, Leaf())"
     case Leaf() => "Leaf()"
   }
   
-  @inline def psRemoveLeaf(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psRemoveLeaf(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "((, 2, ), 1, (, -3, ))"
     case Node(Leaf(), 1, Leaf()) => "(, 1, )"
     case Leaf() => ""
   }
   
-  @inline def psRemoveComma(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psRemoveComma(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "((2), 1, (-3))"
     case Node(Leaf(), 1, Node(Leaf(), 2, Leaf())) => "(1, (2))"
     case Node(Node(Leaf(), 2, Leaf()), 1, Leaf()) => "((2), 1)"
     case Leaf() => ""
   }
   
-  @inline def psRemoveParentheses(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psRemoveParentheses(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "(2), 1, (-3)"
     case Node(Leaf(), 1, Node(Leaf(), 2, Leaf())) => "1, (2)"
     case Node(Node(Leaf(), 2, Leaf()), 1, Leaf()) => "(2), 1"
     case Leaf() => ""
   }
   
-  @inline def psPrefix(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psPrefix(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "1 (2) (-3)"
     case Node(Leaf(), 1, Node(Leaf(), 2, Leaf())) => "1 () (2)"
     case Node(Node(Leaf(), 2, Leaf()), 1, Leaf()) => "1 (2) ()"
     case Leaf() => "()"
   }
   
-  @inline def psLispLike(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psLispLike(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "(1 (2) (-3))"
     case Node(Leaf(), 1, Node(Leaf(), 2, Leaf())) => "(1 () (2))"
     case Node(Node(Leaf(), 2, Leaf()), 1, Leaf()) => "(1 (2) ())"
     case Leaf() => "()"
   }
   
-  @inline def psSuffix(s: Tree[Int])(res: String) = (s, res) passes {
+  @inline def psSuffix(s: Tree[Int]) = (res: String) => (s, res) passes {
     case Node(Node(Leaf(), 2, Leaf()), 1, Node(Leaf(), -3, Leaf())) => "(2) (-3) 1"
     case Node(Leaf(), 1, Node(Leaf(), 2, Leaf())) => "() (2) 1"
     case Node(Node(Leaf(), 2, Leaf()), 1, Leaf()) => "(2) () 1"
