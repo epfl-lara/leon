@@ -53,7 +53,7 @@ object Extractors {
         Some((Seq(a), (es: Seq[Expr]) => ArrayLength(es.head)))
       case Lambda(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Lambda(args, es.head)))
-      case PartialLambda(mapping, tpe) =>
+      case PartialLambda(mapping, dflt, tpe) =>
         val sze = tpe.from.size + 1
         val subArgs = mapping.flatMap { case (args, v) => args :+ v }
         val builder = (as: Seq[Expr]) => {
@@ -64,9 +64,10 @@ object Extractors {
             case Seq() => Seq.empty
             case _ => sys.error("unexpected number of key/value expressions")
           }
-          PartialLambda(rec(as), tpe)
+          val (nas, nd) = if (dflt.isDefined) (as.init, Some(as.last)) else (as, None)
+          PartialLambda(rec(nas), nd, tpe)
         }
-        Some((subArgs, builder))
+        Some((subArgs ++ dflt, builder))
       case Forall(args, body) =>
         Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
 
@@ -196,9 +197,14 @@ object Extractors {
           val l = as.length
           nonemptyArray(as.take(l - 2), Some((as(l - 2), as(l - 1))))
         }))
-      case NonemptyArray(elems, None) =>
-        val all = elems.values.toSeq
-        Some((all, finiteArray))
+      case na@NonemptyArray(elems, None) =>
+        val ArrayType(tpe) = na.getType
+        val (indexes, elsOrdered) = elems.toSeq.unzip
+
+        Some((
+          elsOrdered,
+          es => finiteArray(indexes.zip(es).toMap, None, tpe)
+        ))
       case Tuple(args) => Some((args, tupleWrap))
       case IfExpr(cond, thenn, elze) => Some((
         Seq(cond, thenn, elze),
@@ -358,22 +364,20 @@ object Extractors {
     }
 
     def unapply(me : MatchExpr) : Option[(Pattern, Expr, Expr)] = {
-      if (me eq null) None else { me match {
+      Option(me) collect {
         case MatchExpr(scrut, List(SimpleCase(pattern, body))) if !aliased(pattern.binders, variablesOf(scrut)) =>
-          Some(( pattern, scrut, body ))
-        case _ => None
-      }}
+          ( pattern, scrut, body )
+      }
     }
   }
 
   object LetTuple {
     def unapply(me : MatchExpr) : Option[(Seq[Identifier], Expr, Expr)] = {
-      if (me eq null) None else { me match {
+      Option(me) collect {
         case LetPattern(TuplePattern(None,subPatts), value, body) if
             subPatts forall { case WildcardPattern(Some(_)) => true; case _ => false } => 
-          Some((subPatts map { _.binder.get }, value, body ))
-        case _ => None
-      }}
+          (subPatts map { _.binder.get }, value, body )
+      }
     }
   }
 

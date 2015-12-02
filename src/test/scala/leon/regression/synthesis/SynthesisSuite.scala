@@ -154,9 +154,9 @@ object Injection {
   case class Nil() extends List
 
   // proved with unrolling=0
-  def size(l: List) : Int = (l match {
-      case Nil() => 0
-      case Cons(t) => 1 + size(t)
+  def size(l: List) : BigInt = (l match {
+      case Nil() => BigInt(0)
+      case Cons(t) => BigInt(1) + size(t)
   }) ensuring(res => res >= 0)
 
   def simple(in: List) = choose{out: List => size(out) == size(in) }
@@ -274,10 +274,10 @@ object ChurchNumerals {
   case object Z extends Num
   case class  S(pred: Num) extends Num
 
-  def value(n:Num) : Int = {
+  def value(n:Num) : BigInt = {
     n match {
-      case Z => 0
-      case S(p) => 1 + value(p)
+      case Z => BigInt(0)
+      case S(p) => BigInt(1) + value(p)
     }
   } ensuring (_ >= 0)
 
@@ -309,10 +309,10 @@ object ChurchNumerals {
   case object Z extends Num
   case class  S(pred: Num) extends Num
 
-  def value(n:Num) : Int = {
+  def value(n:Num) : BigInt = {
     n match {
-      case Z => 0
-      case S(p) => 1 + value(p)
+      case Z => BigInt(0)
+      case S(p) => BigInt(1) + value(p)
     }
   } ensuring (_ >= 0)
 

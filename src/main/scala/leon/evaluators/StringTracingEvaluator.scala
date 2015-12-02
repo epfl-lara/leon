@@ -10,7 +10,7 @@ import purescala.Definitions.Program
 import purescala.Expressions.Expr
 import leon.utils.DebugSectionSynthesis
 
-class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with DefaultContexts {
+class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext with HasDefaultRecContext {
 
   val underlying = new DefaultEvaluator(ctx, prog) {
     override protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {

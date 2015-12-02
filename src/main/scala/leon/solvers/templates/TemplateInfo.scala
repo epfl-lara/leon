@@ -14,6 +14,6 @@ case class TemplateCallInfo[T](tfd: TypedFunDef, args: Seq[T]) {
 
 case class TemplateAppInfo[T](template: LambdaTemplate[T], equals: T, args: Seq[T]) {
   override def toString = {
-    template.id + "|" + equals + args.mkString("(", ",", ")")
+    template.ids._1 + "|" + equals + args.mkString("(", ",", ")")
   }
 }

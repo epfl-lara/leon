@@ -1046,6 +1046,15 @@ trait CodeExtraction extends ASTExtractors {
           val tupleExprs = exprs.map(e => extractTree(e))
           Tuple(tupleExprs)
 
+        case ex@ExOldExpression(sym) if dctx.isVariable(sym) =>
+          dctx.vars.get(sym).orElse(dctx.mutableVars.get(sym)) match {
+            case Some(builder) =>
+              val Variable(id) = builder()
+              Old(id).setPos(ex.pos)
+            case None =>
+              outOfSubsetError(current, "old can only be used with variables")
+          }
+
         case ExErrorExpression(str, tpt) =>
           Error(extractType(tpt), str)
 
@@ -1097,7 +1106,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val oldCurrentFunDef = currentFunDef
 
-          val funDefWithBody = extractFunBody(fd, params, b)(newDctx.copy(mutableVars = Map()))
+          val funDefWithBody = extractFunBody(fd, params, b)(newDctx)
 
           currentFunDef = oldCurrentFunDef
 
@@ -1192,11 +1201,11 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           getOwner(lhsRec) match {
-            case Some(Some(fd)) if fd != currentFunDef =>
-              outOfSubsetError(tr, "cannot update an array that is not defined locally")
+          //  case Some(Some(fd)) if fd != currentFunDef =>
+          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
 
-            case Some(None) =>
-              outOfSubsetError(tr, "cannot update an array that is not defined locally")
+          //  case Some(None) =>
+          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
 
             case Some(_) =>
 
@@ -1622,6 +1631,9 @@ trait CodeExtraction extends ASTExtractors {
               or(a1, a2)
 
             // Set methods
+            case (IsTyped(a1, SetType(b1)), "size", Nil) =>
+              SetCardinality(a1)
+
             //case (IsTyped(a1, SetType(b1)), "min", Nil) =>
             //  SetMin(a1)
 
@@ -1848,7 +1860,11 @@ trait CodeExtraction extends ASTExtractors {
       case AnnotatedType(_, tpe) => extractType(tpe)
 
       case _ =>
-        outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
+        if (tpt ne null) {
+          outOfSubsetError(tpt.typeSymbol.pos, "Could not extract type as PureScala: "+tpt+" ("+tpt.getClass+")")
+        } else {
+          outOfSubsetError(NoPosition, "Tree with null-pointer as type found")
+        }
     }
 
     private def getClassType(sym: Symbol, tps: List[LeonType])(implicit dctx: DefContext) = {

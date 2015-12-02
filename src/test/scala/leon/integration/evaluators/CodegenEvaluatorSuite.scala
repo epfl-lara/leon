@@ -9,7 +9,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.codegen._
 
-class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram {
+class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL{
 
   val sources = List("""
     import leon.lang._
@@ -316,7 +316,7 @@ class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram {
     "Overrides1"      -> Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))),
     "Overrides2"      -> Tuple(Seq(BooleanLiteral(false), BooleanLiteral(true))),
     "Arrays1"         -> IntLiteral(2),
-    "Arrays2"         -> IntLiteral(6)
+    "Arrays2"         -> IntLiteral(10)
   )
 
   for {
@@ -324,29 +324,25 @@ class CodegenEvaluatorSuite extends LeonTestSuiteWithProgram {
     requireMonitor <- Seq(false, true)
     doInstrument <- Seq(false,true)
   } {
-    val opts = ((if(requireMonitor) Some("monitor") else None) ++
-               (if(doInstrument) Some("instrument") else None)).mkString("+")
+    val opts = (if(requireMonitor) "monitor " else "") +
+               (if(doInstrument) "instrument" else "")
 
     val testName = f"$name%-20s $opts%-18s"
 
-    test("Evaluation of "+testName) { case (ctx, pgm) =>
-      val eval = new CodeGenEvaluator(ctx, pgm, CodeGenParams(
+    test("Evaluation of "+testName) { implicit fix =>
+      val eval = new CodeGenEvaluator(fix._1, fix._2, CodeGenParams(
         maxFunctionInvocations = if (requireMonitor) 1000 else -1, // Monitor calls and abort execution if more than X calls
         checkContracts = true,      // Generate calls that checks pre/postconditions
         doInstrument = doInstrument // Instrument reads to case classes (mainly for vanuatoo)
       ))
 
-      val fun = pgm.lookup(name+".test").collect {
-        case fd: FunDef => fd
-      }.getOrElse {
-        fail("Failed to lookup '"+name+".test'")
-      }
-
-      (eval.eval(FunctionInvocation(fun.typed(Seq()), Seq())).result, exp) match {
+      (eval.eval(fcall(name + ".test")()).result, exp) match {
         case (Some(res), exp) =>
+          assert(res === exp)
         case (None, Error(_, _)) =>
-        case (None, _) =>
-        case (_, Error(_, _)) =>
+          // OK
+        case _ =>
+          fail("")
       }
     }
   }

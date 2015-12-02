@@ -32,42 +32,38 @@ class SolversSuite extends LeonTestSuiteWithProgram {
     ) else Nil)
   }
 
-  // Check that we correctly extract several types from solver models
-  for ((sname, sf) <- getFactories) {
-    test(s"Model Extraction in $sname") { implicit fix =>
-      val ctx = fix._1
-      val pgm = fix._2
-
-      val solver = sf(ctx, pgm)
-
       val types = Seq(
         BooleanType,
         UnitType,
         CharType,
+    RealType,
         IntegerType,
         Int32Type,
         StringType,
         TypeParameter.fresh("T"),
         SetType(IntegerType),
         MapType(IntegerType, IntegerType),
+    FunctionType(Seq(IntegerType), IntegerType),
         TupleType(Seq(IntegerType, BooleanType, Int32Type))
       )
 
       val vs = types.map(FreshIdentifier("v", _).toVariable)
 
-
       // We need to make sure models are not co-finite
-      val cnstr = andJoin(vs.map(v => v.getType match {
+  val cnstrs = vs.map(v => v.getType match {
         case UnitType =>
           Equals(v, simplestValue(v.getType))
         case SetType(base) =>
           Not(ElementOfSet(simplestValue(base), v))
         case MapType(from, to) =>
           Not(Equals(MapApply(v, simplestValue(from)), simplestValue(to)))
+    case FunctionType(froms, to) =>
+      Not(Equals(Application(v, froms.map(simplestValue)), simplestValue(to)))
         case _ =>
           not(Equals(v, simplestValue(v.getType)))
-      }))
+  })
 
+  def checkSolver(solver: Solver, vs: Set[Variable], cnstr: Expr)(implicit fix: (LeonContext, Program)): Unit = {
       try {
         solver.assertCnstr(cnstr)
 
@@ -87,7 +83,22 @@ class SolversSuite extends LeonTestSuiteWithProgram {
       } finally {
         solver.free()
       }
+  }
 
+  // Check that we correctly extract several types from solver models
+  for ((sname, sf) <- getFactories) {
+    test(s"Model Extraction in $sname") { implicit fix =>
+      val ctx = fix._1
+      val pgm = fix._2
+      val solver = sf(ctx, pgm)
+      checkSolver(solver, vs.toSet, andJoin(cnstrs))
     }
+  }
+
+  test(s"Data generation in enum solver") { implicit fix =>
+    for ((v,cnstr) <- vs zip cnstrs) {
+      val solver = new EnumerationSolver(fix._1, fix._2)
+      checkSolver(solver, Set(v), cnstr)
+}
   }
 }

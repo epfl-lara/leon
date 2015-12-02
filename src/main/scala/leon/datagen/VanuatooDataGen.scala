@@ -33,6 +33,14 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     b -> Constructor[Expr, TypeTree](List(), BooleanType, s => BooleanLiteral(b), ""+b)
   }).toMap
   
+  val chars = (for (c <- Set('a', 'b', 'c', 'd')) yield {
+    c -> Constructor[Expr, TypeTree](List(), CharType, s => CharLiteral(c), ""+c)
+  }).toMap
+
+  val rationals = (for (n <- Set(0, 1, 2, 3); d <- Set(1,2,3,4)) yield {
+    (n, d) -> Constructor[Expr, TypeTree](List(), RealType, s => FractionalLiteral(n, d), "" + n + "/" + d)
+  }).toMap
+
   val strings = (for (b <- Set("", "a", "b", "Abcd")) yield {
     b -> Constructor[Expr, TypeTree](List(), StringType, s => StringLiteral(b), b)
   }).toMap
@@ -44,6 +52,10 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
   def boolConstructor(b: Boolean) = booleans(b)
   
+  def charConstructor(c: Char) = chars(c)
+
+  def rationalConstructor(n: Int, d: Int) = rationals(n -> d)
+
   def stringConstructor(s: String) = strings(s)
 
   def cPattern(c: Constructor[Expr, TypeTree], args: Seq[VPattern[Expr, TypeTree]]) = {
@@ -56,7 +68,6 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     // We "up-cast" the returnType of the specific caseclass generator to match its superclass
     getConstructors(t).head.copy(retType = act)
   }
-
 
   private def getConstructors(t: TypeTree): List[Constructor[Expr, TypeTree]] = t match {
     case UnitType =>
@@ -105,7 +116,6 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
       constructors.getOrElse(mt, {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
           val subs   = (1 to size).flatMap(i => List(from, to)).toList
-
           Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toMap, from, to), mt.asString(ctx)+"@"+size)
         }
         constructors += mt -> cs
@@ -117,13 +127,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         val cs = for (size <- List(1, 2, 3, 5)) yield {
           val subs = (1 to size).flatMap(_ => from :+ to).toList
           Constructor[Expr, TypeTree](subs, ft, { s =>
-            val args = from.map(tpe => FreshIdentifier("x", tpe, true))
-            val argsTuple = tupleWrap(args.map(_.toVariable))
             val grouped = s.grouped(from.size + 1).toSeq
-            val body = grouped.init.foldRight(grouped.last.last) { case (t, elze) =>
-              IfExpr(Equals(argsTuple, tupleWrap(t.init)), t.last, elze)
-            }
-            Lambda(args.map(id => ValDef(id)), body)
+            val mapping = grouped.init.map { case args :+ res => (args -> res) }
+            PartialLambda(mapping, Some(grouped.last.last), ft)
           }, ft.asString(ctx) + "@" + size)
         }
         constructors += ft -> cs
@@ -173,6 +179,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case (b: java.lang.Boolean, BooleanType) =>
       (cPattern(boolConstructor(b), List()), true)
 
+    case (c: java.lang.Character, CharType) =>
+      (cPattern(charConstructor(c), List()), true)
+
     case (b: java.lang.String, StringType) =>
       (cPattern(stringConstructor(b), List()), true)
 
@@ -203,7 +212,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           (ConstructorPattern(c, elems.map(_._1)), elems.forall(_._2))
 
         case _ =>
-          ctx.reporter.error("Could not retreive type for :"+cc.getClass.getName)
+          ctx.reporter.error("Could not retrieve type for :"+cc.getClass.getName)
           (AnyPattern[Expr, TypeTree](), false)
       }
 
@@ -227,6 +236,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     case (gv: GenericValue, t: TypeParameter) =>
       (cPattern(getConstructors(t)(gv.id-1), List()), true)
+
     case (v, t) =>
       ctx.reporter.debug("Unsupported value, can't paternify : "+v+" ("+v.getClass+") : "+t)
       (AnyPattern[Expr, TypeTree](), false)
@@ -297,8 +307,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         None
     })
 
-
-    val gen = new StubGenerator[Expr, TypeTree]((ints.values ++ bigInts.values ++ booleans.values).toSeq,
+    val stubValues = ints.values ++ bigInts.values ++ booleans.values ++ chars.values ++ rationals.values
+    val gen = new StubGenerator[Expr, TypeTree](stubValues.toSeq,
                                                 Some(getConstructors _),
                                                 treatEmptyStubsAsChildless = true)
 

@@ -75,6 +75,19 @@ object ConversionPhase extends UnitPhase[Program] {
    *    require(..a..)
    *    choose(x => post(x))
    *  }
+   * (in practice, there will be no pre-and postcondition)
+   *
+   * 4) Functions that have only a choose as body gets their spec from the choose.
+   *
+   *  def foo(a: T) = {
+   *    choose(x => post(a, x))
+   *  }
+   *
+   *  gets converted to:
+   *
+   *  def foo(a: T) = {
+   *    choose(x => post(a, x))
+   *  } ensuring { x => post(a, x) }
    *
    * (in practice, there will be no pre-and postcondition)
    */
@@ -116,7 +129,7 @@ object ConversionPhase extends UnitPhase[Program] {
       }
     }
 
-    body match {
+    val fullBody = body match {
       case Some(body) =>
         var holes  = List[Identifier]()
 
@@ -172,6 +185,14 @@ object ConversionPhase extends UnitPhase[Program] {
       case None =>
         val newPost = post getOrElse Lambda(Seq(ValDef(FreshIdentifier("res", e.getType))), BooleanLiteral(true))
         withPrecondition(Choose(newPost), pre)
+    }
+
+    // extract spec from chooses at the top-level
+    fullBody match {
+      case Choose(spec) =>
+        withPostcondition(fullBody, Some(spec))
+      case _ =>
+        fullBody
     }
   }
 

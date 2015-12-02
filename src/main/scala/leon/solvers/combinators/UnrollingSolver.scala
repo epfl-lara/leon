@@ -13,7 +13,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import utils._
 
-import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre}
+import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre, optNoChecks}
 import templates._
 import evaluators._
 
@@ -26,6 +26,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
   val feelingLucky   = context.findOptionOrDefault(optFeelingLucky)
   val useCodeGen     = context.findOptionOrDefault(optUseCodeGen)
   val assumePreHolds = context.findOptionOrDefault(optAssumePre)
+  val disableChecks  = context.findOptionOrDefault(optNoChecks)
 
   protected var lastCheckResult : (Boolean, Option[Boolean], Option[HenkinModel]) = (false, None, None)
 
@@ -111,9 +112,10 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
 
     def extract(b: Expr, m: Matcher[Expr]): Set[Seq[Expr]] = {
       val QuantificationTypeMatcher(fromTypes, _) = m.tpe
-      val optEnabler = evaluator.eval(b).result
+      val optEnabler = evaluator.eval(b, model).result
+
       if (optEnabler == Some(BooleanLiteral(true))) {
-        val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg)).result)
+        val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg), model).result)
         if (optArgs.forall(_.isDefined)) {
           Set(optArgs.map(_.get))
         } else {
@@ -124,35 +126,22 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
       }
     }
 
-    val funDomains = allVars.flatMap(id => id.getType match {
-      case ft @ FunctionType(fromTypes, _) =>
-        Some(id -> templateGenerator.manager.instantiations(Variable(id), ft).flatMap {
-          case (b, m) => extract(b, m)
-        })
-      case _ => None
-    }).toMap.mapValues(_.toSet)
+    val (typeInsts, partialInsts, lambdaInsts) = templateGenerator.manager.instantiations
 
-    val asDMap = model.map(p => funDomains.get(p._1) match {
-      case Some(domain) =>
-        val mapping = domain.toSeq.map { es =>
-          val ev: Expr = p._2 match {
-            case RawArrayValue(_, mapping, dflt) =>
-              mapping.collectFirst {
-                case (k,v) if evaluator.eval(Equals(k, tupleWrap(es))).result == Some(BooleanLiteral(true)) => v
-              } getOrElse dflt
-            case _ => scala.sys.error("Unexpected function encoding " + p._2)
-          }
-          es -> ev
-        }
+    val typeDomains: Map[TypeTree, Set[Seq[Expr]]] = typeInsts.map {
+      case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+    }
 
-        p._1 -> PartialLambda(mapping, p._1.getType.asInstanceOf[FunctionType])
-      case None => p
-    }).toMap
+    val funDomains: Map[Identifier, Set[Seq[Expr]]] = partialInsts.map {
+      case (Variable(id), domain) => id -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+    }
 
-    val typeGrouped = templateGenerator.manager.instantiations.groupBy(_._2.tpe)
-    val typeDomains = typeGrouped.mapValues(_.flatMap { case (b, m) => extract(b, m) }.toSet)
+    val lambdaDomains: Map[Lambda, Set[Seq[Expr]]] = lambdaInsts.map {
+      case (l, domain) => l -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+    }
 
-    val domains = new HenkinDomains(typeDomains)
+    val asDMap = purescala.Quantification.extractModel(model.toMap, funDomains, typeDomains, evaluator)
+    val domains = new HenkinDomains(lambdaDomains, typeDomains)
     new HenkinModel(asDMap, domains)
   }
 
@@ -160,36 +149,78 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
     lastCheckResult = (true, res, model)
   }
 
-  def isValidModel(model: HenkinModel, silenceErrors: Boolean = false): Boolean = {
-    import EvaluationResults._
+  def validatedModel(silenceErrors: Boolean = false): (Boolean, HenkinModel) = {
+    val lastModel = solver.getModel
+    val clauses = templateGenerator.manager.checkClauses
+    val optModel = if (clauses.isEmpty) Some(lastModel) else {
+      solver.push()
+      for (clause <- clauses) {
+        solver.assertCnstr(clause)
+      }
 
-    val expr = andJoin(constraints.toSeq)
-    val fullModel = model fill freeVars.toSet
+      reporter.debug(" - Verifying model transitivity")
+      val solverModel = solver.check match {
+        case Some(true) =>
+          Some(solver.getModel)
 
-    evaluator.eval(expr, fullModel) match {
-      case Successful(BooleanLiteral(true)) =>
-        reporter.debug("- Model validated.")
-        true
+        case Some(false) =>
+          val msg = "- Transitivity independence not guaranteed for model"
+          if (silenceErrors) {
+            reporter.debug(msg)
+          } else {
+            reporter.warning(msg)
+          }
+          None
 
-      case Successful(BooleanLiteral(false)) =>
-        reporter.debug("- Invalid model.")
-        false
+        case None =>
+          val msg = "- Unknown for transitivity independence!?"
+          if (silenceErrors) {
+            reporter.debug(msg)
+          } else {
+            reporter.warning(msg)
+          }
+          None
+      }
 
-      case Successful(e) =>
-        reporter.warning("- Model leads unexpected result: "+e)
-        false
+      solver.pop()
+      solverModel
+    }
 
-      case RuntimeError(msg) =>
-        reporter.debug("- Model leads to runtime error.")
-        false
+    optModel match {
+      case None =>
+        (false, extractModel(lastModel))
 
-      case EvaluatorError(msg) => 
-        if (silenceErrors) {
-          reporter.debug("- Model leads to evaluator error: " + msg)
-        } else {
-          reporter.warning("- Model leads to evaluator error: " + msg)
-        }
-        false
+      case Some(m) =>
+        val model = extractModel(m)
+
+        val expr = andJoin(constraints.toSeq)
+        val fullModel = model set freeVars.toSet
+
+        (evaluator.check(expr, fullModel) match {
+          case EvaluationResults.CheckSuccess =>
+            reporter.debug("- Model validated.")
+            true
+
+          case EvaluationResults.CheckValidityFailure =>
+            reporter.debug("- Invalid model.")
+            false
+
+          case EvaluationResults.CheckRuntimeFailure(msg) =>
+            if (silenceErrors) {
+              reporter.debug("- Model leads to evaluation error: " + msg)
+            } else {
+              reporter.warning("- Model leads to evaluation error: " + msg)
+            }
+            false
+
+          case EvaluationResults.CheckQuantificationFailure(msg) =>
+            if (silenceErrors) {
+              reporter.debug("- Model leads to quantification error: " + msg)
+            } else {
+              reporter.warning("- Model leads to quantification error: " + msg)
+            }
+            false
+        }, fullModel)
     }
   }
 
@@ -215,9 +246,20 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
           foundAnswer(None)
 
         case Some(true) => // SAT
-          val model = extractModel(solver.getModel)
+          val (valid, model) = if (!this.disableChecks && requireQuantification) {
+            validatedModel(silenceErrors = false)
+          } else {
+            true -> extractModel(solver.getModel)
+          }
+
           solver.pop()
-          foundAnswer(Some(true), Some(model))
+          if (valid) {
+            foundAnswer(Some(true), Some(model))
+          } else {
+            reporter.error("Something went wrong. The model should have been valid, yet we got this : ")
+            reporter.error(model.asString(context))
+            foundAnswer(None, Some(model))
+          }
 
         case Some(false) if !unrollingBank.canUnroll =>
           solver.pop()
@@ -246,12 +288,9 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
 
               case Some(true) =>
                 if (feelingLucky && !interrupted) {
-                  val model = extractModel(solver.getModel)
-
                   // we might have been lucky :D
-                  if (isValidModel(model, silenceErrors = true)) {
-                    foundAnswer(Some(true), Some(model))
-                  }
+                  val (valid, model) = validatedModel(silenceErrors = true)
+                  if (valid) foundAnswer(Some(true), Some(model))
                 }
 
               case None =>

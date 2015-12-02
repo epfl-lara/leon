@@ -4,7 +4,6 @@ package synthesis
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.Constructors._
-import evaluators._
 import purescala.Common._
 import repair._
 import leon.utils.ASCIIHelpers._
@@ -178,9 +177,7 @@ case class QualifiedExamplesBank(as: List[Identifier], xs: List[Identifier], eb:
 
   /** Filter inputs throught expr which is an expression evaluating to a boolean */
   def filterIns(expr: Expr): ExamplesBank = {
-    val ev = new DefaultEvaluator(hctx.sctx.context, hctx.sctx.program)
-
-    filterIns(m => ev.eval(expr, m).result == Some(BooleanLiteral(true)))
+    filterIns(m => hctx.sctx.defaultEvaluator.eval(expr, m).result == Some(BooleanLiteral(true)))
   }
 
   /** Filters inputs through the predicate pred, with an assignment of input variables to expressions. */

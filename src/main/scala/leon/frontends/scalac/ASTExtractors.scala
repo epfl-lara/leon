@@ -593,6 +593,15 @@ trait ASTExtractors {
       }
     }
 
+    object ExOldExpression {
+      def unapply(tree: Apply) : Option[Symbol] = tree match {
+        case a @ Apply(TypeApply(ExSymbol("leon", "lang", "old"), List(tpe)), List(arg)) =>
+          Some(arg.symbol)
+        case _ =>
+          None
+      }
+    }
+
     object ExHoleExpression {
       def unapply(tree: Tree) : Option[(Tree, List[Tree])] = tree match {
         case a @ Apply(TypeApply(s @ ExSymbol("leon", "lang", "synthesis", "$qmark"), List(tpt)), args1)  =>

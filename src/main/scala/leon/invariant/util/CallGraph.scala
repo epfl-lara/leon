@@ -1,15 +1,10 @@
 package leon
 package invariant.util
 
-import purescala._
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
 import ProgramUtil._
-import Util._
 import invariant.structure.FunctionUtils._
 import invariant.datastructure._
 
@@ -71,7 +66,7 @@ class CallGraph {
     graph.getNodes.toList.foreach((f) => {
       var inserted = false
       var index = 0
-      for (i <- 0 to funcList.length - 1) {
+      for (i <- funcList.indices) {
         if (!inserted && this.transitivelyCalls(funcList(i), f)) {
           index = i
           inserted = true
@@ -97,7 +92,6 @@ class CallGraph {
 object CallGraphUtil {
 
   def constructCallGraph(prog: Program, onlyBody: Boolean = false, withTemplates: Boolean = false): CallGraph = {
-//
     // println("Constructing call graph")
     val cg = new CallGraph()
     functionsWOFields(prog.definedFunctions).foreach((fd) => {
@@ -125,17 +119,11 @@ object CallGraphUtil {
     cg
   }
 
-  def getCallees(expr: Expr): Set[FunDef] = {
-    var callees = Set[FunDef]()
-    simplePostTransform((expr) => expr match {
-      //note: do not consider field invocations
-      case FunctionInvocation(TypedFunDef(callee, _), args)
-      	if callee.isRealFunction => {
-        callees += callee
-        expr
-      }
-      case _ => expr
-    })(expr)
-    callees
-  }
+  def getCallees(expr: Expr): Set[FunDef] = collect {
+    case expr@FunctionInvocation(TypedFunDef(callee, _), _) if callee.isRealFunction =>
+      Set(callee)
+    case _ =>
+      Set[FunDef]()
+  }(expr)
+
 }

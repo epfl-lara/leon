@@ -48,6 +48,9 @@ package object lang {
   def error[T](reason: java.lang.String): T = sys.error(reason)
 
   @ignore
+  def old[T](value: T): T = value
+
+  @ignore
   implicit class Passes[A,B](io : (A,B)) {
     val (in, out) = io
     def passes(tests : A => B ) : Boolean =

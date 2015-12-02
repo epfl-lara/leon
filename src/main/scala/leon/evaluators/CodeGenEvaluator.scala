@@ -8,9 +8,15 @@ import purescala.Definitions._
 import purescala.Expressions._
 
 import codegen.CompilationUnit
+import codegen.CompiledExpression
 import codegen.CodeGenParams
 
+import leon.codegen.runtime.LeonCodeGenRuntimeException
+import leon.codegen.runtime.LeonCodeGenEvaluationException
+import leon.codegen.runtime.LeonCodeGenQuantificationException
+
 class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Evaluator(ctx, unit.program) with DeterministicEvaluator {
+
   val name = "codegen-eval"
   val description = "Evaluator for PureScala expressions based on compilation to JVM"
 
@@ -19,9 +25,55 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
     this(ctx, new CompilationUnit(ctx, prog, params))
   }
 
+  private def compileExpr(expression: Expr, args: Seq[Identifier]): Option[CompiledExpression] = {
+    ctx.timers.evaluators.codegen.compilation.start()
+    try {
+      Some(unit.compileExpression(expression, args)(ctx))
+    } catch {
+      case t: Throwable =>
+        ctx.reporter.warning(expression.getPos, "Error while compiling expression: "+t.getMessage)
+        None
+    } finally {
+      ctx.timers.evaluators.codegen.compilation.stop()
+    }
+  }
+
+  def check(expression: Expr, model: solvers.Model) : CheckResult = {
+    compileExpr(expression, model.toSeq.map(_._1)).map { ce =>
+      ctx.timers.evaluators.codegen.runtime.start()
+      try {
+        val res = ce.eval(model, check = true)
+        if (res == BooleanLiteral(true)) EvaluationResults.CheckSuccess
+        else EvaluationResults.CheckValidityFailure
+      } catch {
+        case e : ArithmeticException =>
+          EvaluationResults.CheckRuntimeFailure(e.getMessage)
+
+        case e : ArrayIndexOutOfBoundsException =>
+          EvaluationResults.CheckRuntimeFailure(e.getMessage)
+
+        case e : LeonCodeGenRuntimeException =>
+          EvaluationResults.CheckRuntimeFailure(e.getMessage)
+
+        case e : LeonCodeGenEvaluationException =>
+          EvaluationResults.CheckRuntimeFailure(e.getMessage)
+
+        case e : java.lang.ExceptionInInitializerError =>
+          EvaluationResults.CheckRuntimeFailure(e.getException.getMessage) 
+
+        case so : java.lang.StackOverflowError =>
+          EvaluationResults.CheckRuntimeFailure("Stack overflow")
+
+        case e : LeonCodeGenQuantificationException =>
+          EvaluationResults.CheckQuantificationFailure(e.getMessage)
+      } finally {
+        ctx.timers.evaluators.codegen.runtime.stop()
+      }
+    }.getOrElse(EvaluationResults.CheckRuntimeFailure("Couldn't compile expression."))
+  }
+
   def eval(expression: Expr, model: solvers.Model) : EvaluationResult = {
-    val toPairs = model.toSeq
-    compile(expression, toPairs.map(_._1)).map { e =>
+    compile(expression, model.toSeq.map(_._1)).map { e => 
       ctx.timers.evaluators.codegen.runtime.start()
       val res = e(model)
       ctx.timers.evaluators.codegen.runtime.stop()
@@ -30,14 +82,7 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
   }
 
   override def compile(expression: Expr, args: Seq[Identifier]) : Option[solvers.Model=>EvaluationResult] = {
-    import leon.codegen.runtime.LeonCodeGenRuntimeException
-    import leon.codegen.runtime.LeonCodeGenEvaluationException
-
-    ctx.timers.evaluators.codegen.compilation.start()
-    try {
-      val ce = unit.compileExpression(expression, args)(ctx)
-
-      Some((model: solvers.Model) => {
+    compileExpr(expression, args).map(ce => (model: solvers.Model) => {
         if (args.exists(arg => !model.isDefinedAt(arg))) {
           EvaluationResults.EvaluatorError("Model undefined for free arguments")
         } else try {
@@ -60,15 +105,7 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
 
           case so : java.lang.StackOverflowError =>
             EvaluationResults.RuntimeError("Stack overflow")
-
         }
       })
-    } catch {
-      case t: Throwable =>
-        ctx.reporter.warning(expression.getPos, "Error while compiling expression: "+t.getMessage)
-        None
-    } finally {
-      ctx.timers.evaluators.codegen.compilation.stop()
     }
   }
-}

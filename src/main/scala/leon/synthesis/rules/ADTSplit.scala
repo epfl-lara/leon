@@ -11,34 +11,45 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 import purescala.Definitions._
-import solvers._
 
 /** Abstract data type split. If a variable is typed as an abstract data type, then
   * it will create a match case statement on all known subtypes. */
 case object ADTSplit extends Rule("ADT Split.") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(200L))
+    // We approximate knowledge of types based on facts found at the top-level
+    // we don't care if the variables are known to be equal or not, we just
+    // don't want to split on two variables for which only one split
+    // alternative is viable. This should be much less expensive than making
+    //  calls to a solver for each pair.
+    var facts = Map[Identifier, CaseClassType]()
+
+    def addFacts(e: Expr): Unit = e match {
+      case Equals(Variable(a), CaseClass(cct, _))         => facts += a -> cct
+      case IsInstanceOf(Variable(a), cct: CaseClassType)  => facts += a -> cct
+      case _ =>
+    }
+
+    val TopLevelAnds(as) = and(p.pc, p.phi)
+    for (e <- as) {
+      addFacts(e)
+    }
 
     val candidates = p.as.collect {
       case IsTyped(id, act @ AbstractClassType(cd, tpes)) =>
 
-        val optCases = for (dcd <- cd.knownDescendants.sortBy(_.id.name)) yield dcd match {
+        val optCases = cd.knownDescendants.sortBy(_.id.name).collect {
           case ccd : CaseClassDef =>
             val cct = CaseClassType(ccd, tpes)
-            val toSat = and(p.pc, IsInstanceOf(Variable(id), cct))
 
-            val isImplied = solver.solveSAT(toSat) match {
-              case (Some(false), _) => true
-              case _ => false
-            }
-
-            if (!isImplied) {
-              Some(ccd)
+            if (facts contains id) {
+              if (cct == facts(id)) {
+                Seq(ccd)
+              } else {
+                Nil
+              }
             } else {
-              None
+              Seq(ccd)
             }
-          case _ =>
-            None
         }
 
         val cases = optCases.flatten

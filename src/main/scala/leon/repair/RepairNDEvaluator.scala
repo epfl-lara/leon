@@ -1,19 +1,23 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-package leon.repair
+package leon
+package repair
 
-import leon.purescala._
-import Definitions._
-import Expressions._
-import leon.LeonContext
-import leon.evaluators.StreamEvaluator
+import purescala.Definitions.Program
+import purescala.Expressions._
+import purescala.ExprOps.valuesOf
+import evaluators.StreamEvaluator
 
-/** This evaluator treats the expression [[expr]] (reference equality) as a non-deterministic value */
-class RepairNDEvaluator(ctx: LeonContext, prog: Program, expr: Expr) extends StreamEvaluator(ctx, prog) {
+/** This evaluator treats the expression [[nd]] (reference equality) as a non-deterministic value */
+class RepairNDEvaluator(ctx: LeonContext, prog: Program, nd: Expr) extends StreamEvaluator(ctx, prog) {
 
   override def e(expr: Expr)(implicit rctx: RC, gctx: GC): Stream[Expr] = expr match {
-    case c if c eq expr =>
-      e(NDValue(c.getType))
+    case Not(c) if c eq nd =>
+      // This is a hack: We know the only way nd is wrapped within a Not is if it is NOT within
+      // a recursive call. So we need to treat it deterministically at this point...
+      super.e(c) collect { case BooleanLiteral(b) => BooleanLiteral(!b) }
+    case c if c eq nd =>
+      valuesOf(c.getType)
     case other =>
       super.e(other)
   }

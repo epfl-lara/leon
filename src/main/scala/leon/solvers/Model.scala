@@ -12,9 +12,9 @@ trait AbstractModel[+This <: Model with AbstractModel[This]]
 
   protected val mapping: Map[Identifier, Expr]
 
-  def fill(allVars: Iterable[Identifier]): This = {
+  def set(allVars: Iterable[Identifier]): This = {
     val builder = newBuilder
-    builder ++= mapping ++ (allVars.toSet -- mapping.keys).map(id => id -> simplestValue(id.getType))
+    builder ++= allVars.map(id => id -> mapping.getOrElse(id, simplestValue(id.getType)))
     builder.result
   }
 

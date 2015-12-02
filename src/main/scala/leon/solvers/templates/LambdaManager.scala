@@ -12,30 +12,34 @@ import purescala.Types._
 import utils._
 import Instantiation._
 
-class LambdaManager[T](protected val encoder: TemplateEncoder[T]) extends IncrementalState {
+class LambdaManager[T](protected[templates] val encoder: TemplateEncoder[T]) extends IncrementalState {
+  private[templates] lazy val trueT = encoder.encodeExpr(Map.empty)(BooleanLiteral(true))
 
   protected val byID         = new IncrementalMap[T, LambdaTemplate[T]]
   protected val byType       = new IncrementalMap[FunctionType, Set[(T, LambdaTemplate[T])]].withDefaultValue(Set.empty)
   protected val applications = new IncrementalMap[FunctionType, Set[(T, App[T])]].withDefaultValue(Set.empty)
   protected val freeLambdas  = new IncrementalMap[FunctionType, Set[T]].withDefaultValue(Set.empty)
 
+  private val instantiated = new IncrementalSet[(T, App[T])]
+
   protected def incrementals: List[IncrementalState] =
-    List(byID, byType, applications, freeLambdas)
+    List(byID, byType, applications, freeLambdas, instantiated)
 
   def clear(): Unit = incrementals.foreach(_.clear())
   def reset(): Unit = incrementals.foreach(_.reset())
   def push(): Unit = incrementals.foreach(_.push())
   def pop(): Unit = incrementals.foreach(_.pop())
 
-  def registerFree(lambdas: Seq[(TypeTree, T)]): Unit = {
-    for ((tpe, idT) <- lambdas) tpe match {
+  def registerFree(lambdas: Seq[(Identifier, T)]): Unit = {
+    for ((id, idT) <- lambdas) id.getType match {
       case ft: FunctionType =>
         freeLambdas += ft -> (freeLambdas(ft) + idT)
       case _ =>
     }
   }
 
-  def instantiateLambda(idT: T, template: LambdaTemplate[T]): Instantiation[T] = {
+  def instantiateLambda(template: LambdaTemplate[T]): Instantiation[T] = {
+    val idT = template.ids._2
     var clauses      : Clauses[T]     = equalityClauses(idT, template)
     var appBlockers  : AppBlockers[T] = Map.empty.withDefaultValue(Set.empty)
 
@@ -55,32 +59,33 @@ class LambdaManager[T](protected val encoder: TemplateEncoder[T]) extends Increm
 
   def instantiateApp(blocker: T, app: App[T]): Instantiation[T] = {
     val App(caller, tpe, args) = app
-    var clauses      : Clauses[T]      = Seq.empty
-    var callBlockers : CallBlockers[T] = Map.empty.withDefaultValue(Set.empty)
-    var appBlockers  : AppBlockers[T]  = Map.empty.withDefaultValue(Set.empty)
+    val instantiation = Instantiation.empty[T]
 
-    if (byID contains caller) {
-      val (newClauses, newCalls, newApps) = byID(caller).instantiate(blocker, args)
-
-      clauses ++= newClauses
-      newCalls.foreach(p => callBlockers += p._1 -> (callBlockers(p._1) ++ p._2))
-      newApps.foreach(p => appBlockers += p._1 -> (appBlockers(p._1) ++ p._2))
-    } else if (!freeLambdas(tpe).contains(caller)) {
+    if (freeLambdas(tpe).contains(caller)) instantiation else {
       val key = blocker -> app
 
-      // make sure that even if byType(tpe) is empty, app is recorded in blockers
-      // so that UnrollingBank will generate the initial block!
-      if (!(appBlockers contains key)) appBlockers += key -> Set.empty
+      if (instantiated(key)) instantiation else {
+        instantiated += key
 
-      for ((idT,template) <- byType(tpe)) {
-        val equals = encoder.mkEquals(idT, caller)
-        appBlockers += (key -> (appBlockers(key) + TemplateAppInfo(template, equals, args)))
+        if (byID contains caller) {
+          instantiation withApp (key -> TemplateAppInfo(byID(caller), trueT, args))
+        } else {
+
+          // make sure that even if byType(tpe) is empty, app is recorded in blockers
+          // so that UnrollingBank will generate the initial block!
+          val init = instantiation withApps Map(key -> Set.empty)
+          val inst = byType(tpe).foldLeft(init) {
+            case (instantiation, (idT, template)) =>
+              val equals = encoder.mkEquals(idT, caller)
+              instantiation withApp (key -> TemplateAppInfo(template, equals, args))
+          }
+
+          applications += tpe -> (applications(tpe) + key)
+
+          inst
+        }
       }
-
-      applications += tpe -> (applications(tpe) + key)
     }
-
-    (clauses, callBlockers, appBlockers)
   }
 
   private def equalityClauses(idT: T, template: LambdaTemplate[T]): Seq[T] = {
