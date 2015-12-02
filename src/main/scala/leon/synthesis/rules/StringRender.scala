@@ -120,7 +120,7 @@ case object StringRender extends Rule("StringRender") {
     case _ => None
   }
   
-  /** Returns a stream of assignments compatible with input/output examples */
+  /** Returns a stream of assignments compatible with input/output examples for the given template */
   def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr)(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
     //new Evaluator()
     val e = new StringTracingEvaluator(hctx.context, p)
