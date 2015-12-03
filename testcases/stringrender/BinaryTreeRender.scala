@@ -1,7 +1,7 @@
 /** 
   * Name:     BinaryTreeRender.scala
   * Creation: 14.10.2015
-  * Author:   Mika�l Mayer (mikael.mayer@epfl.ch)
+  * Author:   Mikael Mayer (mikael.mayer@epfl.ch)
   * Comments: Binary tree rendering specifications.
   */
 
@@ -13,7 +13,7 @@ import leon.lang.synthesis._
 
 object TreeRender {
   sealed abstract class Tree[T]
-  case class Node[T](left: Node[T], i: T, right: Node[T]) extends Tree[T]
+  case class Node[T](left: Tree[T], i: T, right: Tree[T]) extends Tree[T]
   case class Leaf[T]() extends Tree[T]
   
   /** Synthesis by example specs */
@@ -73,35 +73,35 @@ object TreeRender {
   //////////////////////////////////////////////
   // Non-incremental examples: pure synthesis //
   //////////////////////////////////////////////
-  def synthesizeStandard(s: List[Int]): String = {
+  def synthesizeStandard(s: Tree[Int]): String = {
     ???[String]
   } ensuring psStandard(s)
 
-  def synthesizeRemoveNode(s: List[Int]): String = {
+  def synthesizeRemoveNode(s: Tree[Int]): String = {
     ???[String]
   } ensuring psRemoveNode(s)
   
-  def synthesizeRemoveLeaf(s: List[Int]): String = {
+  def synthesizeRemoveLeaf(s: Tree[Int]): String = {
     ???[String]
   } ensuring psRemoveLeaf(s)
   
-  def synthesizeRemoveComma(s: List[Int]): String = {
+  def synthesizeRemoveComma(s: Tree[Int]): String = {
     ???[String]
   } ensuring psRemoveComma(s)
   
-  def synthesizeRemoveParentheses(s: List[Int]): String = {
+  def synthesizeRemoveParentheses(s: Tree[Int]): String = {
     ???[String]
   } ensuring psRemoveParentheses(s)
   
-  def synthesizePrefix(s: List[Int]): String = {
+  def synthesizePrefix(s: Tree[Int]): String = {
     ???[String]
   } ensuring psPrefix(s)
   
-  def synthesizeLispLike(s: List[Int]): String = {
+  def synthesizeLispLike(s: Tree[Int]): String = {
     ???[String]
   } ensuring psLispLike(s)
   
-  def synthesizeSuffix(s: List[Int]): String = {
+  def synthesizeSuffix(s: Tree[Int]): String = {
     ???[String]
   } ensuring psSuffix(s)
 }
