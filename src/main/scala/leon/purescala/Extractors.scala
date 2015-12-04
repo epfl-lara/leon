@@ -229,7 +229,7 @@ object Extractors {
             var i = 0
             val newcases = for (caze <- cases) yield caze match {
               case SimpleCase(b, _) => i += 1; SimpleCase(b, es(i - 1))
-              case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 1), es(i - 2))
+              case GuardedCase(b, _, _) => i += 2; GuardedCase(b, es(i - 2), es(i - 1))
             }
 
             passes(in, out, newcases)
