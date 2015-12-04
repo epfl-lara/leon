@@ -6,13 +6,12 @@
   */
 
 import leon.lang._
-import string.String
 import leon.annotation._
 import leon.collection._
 import leon.collection.ListOps._
 import leon.lang.synthesis._
 
-object Gra��arRender {
+object GrammarRender {
   abstract class Symbol
   case class Terminal(i: Int) extends Symbol
   case class NonTerminal(i: Int) extends Symbol
@@ -21,7 +20,7 @@ object Gra��arRender {
   case class Grammar(start: Symbol, rules: List[Rule])
 
   /** Synthesis by example specs */
-  @inline def psStandard(s: Grammar)(res: String) = (s, res) passes {
+  @inline def psStandard(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) => "Grammar(NonTerminal(0), Nil())"
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
       "Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil()))"
@@ -29,58 +28,58 @@ object Gra��arRender {
       "Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil())))"
   }
 
-  @inline def psRemoveNames(s: Grammar)(res: String) = (s, res) passes {
+  @inline def psRemoveNames(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) => "(S0, ())"
-    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil)) =>
+    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
       "(S0, ((S0, (t1, ())), ()))"
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
       "(S0, ((S0, (t1, ())), ((S0, (S0, (t1, ()))), ())))"
   }
 
-  @inline def psArrowRules(s: Grammar)(res: String) = (s, res) passes {
+  @inline def psArrowRules(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) => "(S0, ())"
-    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil)) =>
+    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
       "(S0, ((S0 -> (t1, ())), ()))"
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
       "(S0, ((S0 -> (t1, ())), ((S0 -> (S0, (t1, ()))), ())))"
   }
 
-  @inline def psListRules(s: Grammar)(res: String) = (s, res) passes {
+  @inline def psListRules(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) => "(S0, [])"
-    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil)) =>
+    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
       "(S0, [S0 -> [t1]])"
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
       "(S0, [S0 -> [t1], S0 -> [S0, t1])"
   }
 
   // The difficulty here is that two lists have to be rendered differently.
-  @inline def psSpaceRules(s: Grammar)(res: String) = (s, res) passes {
+  @inline def psSpaceRules(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) => "(S0, [])"
-    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil)) =>
+    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
       "(S0, [S0 -> t1])"
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
       "(S0, [S0 -> t1, S0 -> S0 t1)"
   }
 
   // Full HTML generation
-  @inline def psHTMLRules(s: Grammar)(res: String) = (s, res) passes {
+  @inline def psHTMLRules(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) => "<b>Start:</b> S0<br><pre></pre>"
-    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil)) =>
+    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
       "<b>Start:</b> S0<br><pre>S0 -> t1</pte>"
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
       "<b>Start:</b> S0<br><pre>S0 -> t1<br>S0 -> S0 t1</pte>"
   }
-  // Full HTML generation
-  @inline def psPlainTextRules(s: Grammar)(res: String) = (s, res) passes {
+  //Render in plain text.
+  @inline def psPlainTextRules(s: Grammar) = (res: String) => (s, res) passes {
     case Grammar(NonTerminal(0), Nil()) =>
     """Start:S0"""
-    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil)) =>
+    case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Nil())) =>
     """Start:S0
-      |S0 -> t1""".stripMargin
+S0 -> t1"""
     case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
     """Start:S0
-      |S0 -> t1
-      |S0 -> S0 t1""".stripMargin
+S0 -> t1
+S0 -> S0 t1"""
   }
   
   /** Each function's body is the solution of the previous problem.
@@ -150,7 +149,7 @@ object Gra��arRender {
     def renderRule(r: Rule): String = {
       def renderListSymbol(s: List[Symbol]): String = s match {
         case Nil() => ""
-        case Cons(a, Nil) => rendersymbol(a)
+        case Cons(a, Nil()) => rendersymbol(a)
         case Cons(a, q) => rendersymbol(a) + ", " + renderListsymbol(q)
       }
       renderSymbol(r.left) + " -> [" + renderListSymbol(r.right) + "]"
@@ -171,7 +170,7 @@ object Gra��arRender {
     def renderRule(r: Rule): String = {
       def renderListSymbol(s: List[Symbol]): String = s match {
         case Nil() => ""
-        case Cons(a, Nil) => rendersymbol(a)
+        case Cons(a, Nil()) => rendersymbol(a)
         case Cons(a, q) => rendersymbol(a) + " " + renderListsymbol(q)
       }
       renderSymbol(r.left) + " -> " + renderListSymbol(r.right) + ""
@@ -196,7 +195,7 @@ object Gra��arRender {
     def renderRule(r: Rule): String = {
       def renderListSymbol(s: List[Symbol]): String = s match {
         case Nil() => ""
-        case Cons(a, Nil) => rendersymbol(a)
+        case Cons(a, Nil()) => rendersymbol(a)
         case Cons(a, q) => rendersymbol(a) + " " + renderListsymbol(q)
       }
       renderSymbol(r.left) + " -> " + renderListSymbol(r.right) + ""

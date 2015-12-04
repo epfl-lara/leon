@@ -151,7 +151,7 @@ case object StringRender extends Rule("StringRender") {
           None 
         }
     }
-    gatherEquations(examples.valids.collect{ case io:InOutExample => io }.toList) match {
+    gatherEquations((examples.valids ++ examples.invalids).collect{ case io:InOutExample => io }.toList) match {
       case Some(problem) =>
         hctx.reporter.debug("Problem: ["+StringSolver.renderProblem(problem)+"]")
         val res = StringSolver.solve(problem)
@@ -279,21 +279,21 @@ case object StringRender extends Rule("StringRender") {
         (assignments2tmp2, newCases)
     }
     
-    /** Returns a constant pattern matching in which all classes are rendered using their proper name
-      * For example:
-      * {{{
-      * sealed abstract class Thread
-      * case class T1() extends Thread()
-      * case Class T2() extends Thread()
-      * }}}
-      * Will yield the following expression:
-      * {{{t match {
-      *   case T1() => "T1"
-      *   case T2() => "T2"
-      * }
-      * }}}
-      * 
-      * */
+    /* Returns a constant pattern matching in which all classes are rendered using their proper name
+     * For example:
+     * {{{
+     * sealed abstract class Thread
+     * case class T1() extends Thread()
+     * case Class T2() extends Thread()
+     * }}}
+     * Will yield the following expression:
+     * {{{t match {
+     *   case T1() => "T1"
+     *   case T2() => "T2"
+     * }
+     * }}}
+     * 
+     */
     def constantPatternMatching(fd: FunDef, act: AbstractClassType): WithIds[MatchExpr] = {
       val cases = (ListBuffer[WithIds[MatchCase]]() /: act.knownCCDescendants) {
         case (acc, cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
@@ -372,8 +372,7 @@ case object StringRender extends Rule("StringRender") {
       }
     }
     val (exprs, assignments) = gatherInputs(currentCaseClassParent, adtToString, inputs.toList)
-    /** Add post, pre and in-between holes, and returns a single expr along with the new assignments. */
-    
+    /* Add post, pre and in-between holes, and returns a single expr along with the new assignments. */
     val template: Stream[WithIds[Expr]] = exprs match {
       case Nil =>
         Stream(StringTemplateGenerator(Hole => Hole).instantiateWithVars)
