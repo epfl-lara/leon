@@ -28,6 +28,8 @@ import leon.solvers.string.StringSolver
 import scala.annotation.tailrec
 import leon.purescala.DefOps
 import leon.programsets.{UnionProgramSet, DirectProgramSet, JoinProgramSet}
+import bonsai.enumerators.MemoizedEnumerator
+import leon.grammars.ValueGrammar
 
 
 /** A template generator for a given type tree. 
@@ -181,6 +183,37 @@ case object StringRender extends Rule("StringRender") {
     solutionStreamToRuleApplication(p, leon.utils.StreamUtils.interleave(tagged_solutions))
   }
   
+  case class Question(input: Expr, current_output: String, other_outputs: Set[String])
+  
+  /** Find ambiguities not containing _edit_me_ to ask to the user */
+  def askQuestion(argType: TypeTree, r: RuleClosed)(implicit c: LeonContext): List[Question] = {
+    if(r.solutions.isEmpty) return Nil
+    val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
+    val iter = enum.iterator(argType)
+    def run(s: Solution, elem: Expr): String = ???
+    
+    val iterated = iter.take(15).toList
+    
+    val solution = r.solutions.head
+    val alternatives = r.solutions.drop(1).take(15)
+    val questions = ListBuffer[Question]()
+    for(elem <- iterated) {
+      val current_output = run(solution, elem)
+      var possible_outputs = Set[String]()
+      for(alternative <- alternatives) {
+        run(alternative, elem) match {
+          case s if !s.contains("_edit_me_") && s != current_output => possible_outputs += s
+          case _ =>
+        }
+      }
+      if(possible_outputs.nonEmpty) {
+        questions += Question(elem, current_output, possible_outputs)
+      }
+    }
+    questions.toList.sortBy(question => ExprOps.count(e => 1)(question.input))
+  } //TODO: Need to ask these questions to the user, but in the background. Loop by adding new examples. Test with list.
+  
+  /** Converts the stream of solutions to a RuleApplication */
   def solutionStreamToRuleApplication(p: Problem, solutions: Stream[(Seq[(FunDef, WithIds[Expr])], WithIds[Expr], Assignment)]): RuleApplication = {
     if(solutions.isEmpty) RuleFailed() else {
       RuleClosed(
