@@ -186,11 +186,22 @@ case object StringRender extends Rule("StringRender") {
   case class Question(input: Expr, current_output: String, other_outputs: Set[String])
   
   /** Find ambiguities not containing _edit_me_ to ask to the user */
-  def askQuestion(argType: TypeTree, r: RuleClosed)(implicit c: LeonContext): List[Question] = {
+  def askQuestion(input: Identifier, argType: TypeTree, r: RuleClosed)(implicit c: LeonContext, p: Program): List[Question] = {
     if(r.solutions.isEmpty) return Nil
     val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
     val iter = enum.iterator(argType)
-    def run(s: Solution, elem: Expr): String = ???
+    
+    def run(s: Solution, elem: Expr): Option[String] = {
+      val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
+      val e = new StringTracingEvaluator(c, newProgram)
+      val model = new ModelBuilder
+      model ++= List(input -> elem)
+      val modelResult = model.result()
+      e.eval(s.term, modelResult).result match {
+        case Some((StringLiteral(s), _)) => Some(s)
+        case _ => None
+      }
+    }
     
     val iterated = iter.take(15).toList
     
@@ -198,11 +209,11 @@ case object StringRender extends Rule("StringRender") {
     val alternatives = r.solutions.drop(1).take(15)
     val questions = ListBuffer[Question]()
     for(elem <- iterated) {
-      val current_output = run(solution, elem)
+      val current_output = run(solution, elem).get
       var possible_outputs = Set[String]()
       for(alternative <- alternatives) {
         run(alternative, elem) match {
-          case s if !s.contains("_edit_me_") && s != current_output => possible_outputs += s
+          case Some(s) if !s.contains("_edit_me_") && s != current_output => possible_outputs += s
           case _ =>
         }
       }
@@ -442,7 +453,15 @@ case object StringRender extends Rule("StringRender") {
               ))
           hctx.reporter.debug("Inferred expression:\n" + expr + toDebug)
           
-          findSolutions(examples, expr, funDefs.values.toSeq)
+          val res = findSolutions(examples, expr, funDefs.values.toSeq)
+          res match {
+            case r: RuleClosed =>
+              val questions = askQuestion(p.as(0), p.as(0).getType, r)(hctx.context, hctx.program)
+              println("Questions:")
+              println(questions.map(q => "For " + q.input + ", res = " + q.current_output + ", could also be " + q.other_outputs.toSet.map((s: String) => "\""+ s +"\"").mkString(",")).mkString("\n"))
+            case _ =>
+          }
+          res
         }
         
         ruleInstantiations.toList

@@ -46,8 +46,6 @@ object ListRender {
   
   @inline def psWrapParentheses(s: List[Int]) = (res: String) =>(s, res) passes {
     case Cons(12, Cons(-1, Nil())) => "(12, -1)"
-    case Cons(1, Nil()) => "(1)"
-    case Nil() => "()"
   }
   
   @inline def psList(s: List[Int]) = (res: String) =>(s, res) passes {
