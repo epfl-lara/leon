@@ -51,15 +51,22 @@ object IsabelleEnvironment {
       }
     }.toList
 
-    val setup = Setup.detectSetup(base, version) match {
-      case Some(setup) => Future.successful { setup }
-      case None if !download =>
+    val home = base.resolve(s"Isabelle${version.identifier}")
+
+    val setup =
+      if (Files.isDirectory(home))
+        Future.successful { Setup(home, Component.platform, version) }
+      else if (!download)
         context.reporter.fatalError(s"No $version found at $base. Please install manually or set '${Component.optDownload.name}' flag to true.")
-      case _ =>
-        context.reporter.info(s"No $version found at $base")
-        context.reporter.info(s"Preparing $version environment ...")
-        Setup.installTo(Files.createDirectories(base).toRealPath(), version)
-    }
+      else
+        Component.platform match {
+          case o: OfficialPlatform =>
+            context.reporter.info(s"No $version found at $base")
+            context.reporter.info(s"Preparing $version environment ...")
+            Setup.install(o, version)
+          case _ =>
+            context.reporter.fatalError(s"No $version found at $base. Platform unsupported, please install manually.")
+        }
 
     val system = setup.flatMap { setup =>
       val env = Implementations.makeEnvironment(setup.home, classOf[edu.tum.cs.isabelle.impl.Environment])
