@@ -12,9 +12,9 @@ import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
 
-case class App[T](caller: T, tpe: FunctionType, args: Seq[T]) {
-  override def toString = "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
-}
+import utils._
+
+import scala.collection.generic.CanBuildFrom
 
 object Instantiation {
   type Clauses[T] = Seq[T]
@@ -24,9 +24,15 @@ object Instantiation {
 
   def empty[T] = (Seq.empty[T], Map.empty[T, Set[TemplateCallInfo[T]]], Map.empty[(T, App[T]), Set[TemplateAppInfo[T]]])
 
-  implicit class MapWrapper[A,B](map: Map[A,Set[B]]) {
+  implicit class MapSetWrapper[A,B](map: Map[A,Set[B]]) {
     def merge(that: Map[A,Set[B]]): Map[A,Set[B]] = (map.keys ++ that.keys).map { k =>
       k -> (map.getOrElse(k, Set.empty) ++ that.getOrElse(k, Set.empty))
+    }.toMap
+  }
+
+  implicit class MapSeqWrapper[A,B](map: Map[A,Seq[B]]) {
+    def merge(that: Map[A,Seq[B]]): Map[A,Seq[B]] = (map.keys ++ that.keys).map { k =>
+      k -> (map.getOrElse(k, Seq.empty) ++ that.getOrElse(k, Seq.empty))
     }.toMap
   }
 
@@ -59,6 +65,7 @@ trait Template[T] { self =>
   val args : Seq[T]
   val condVars : Map[Identifier, T]
   val exprVars : Map[Identifier, T]
+  val condTree : Map[Identifier, Set[Identifier]]
   val clauses : Seq[T]
   val blockers : Map[T, Set[TemplateCallInfo[T]]]
   val applications : Map[T, Set[App[T]]]
@@ -73,7 +80,8 @@ trait Template[T] { self =>
     val baseSubstMap : Map[T,T] = substCache.get(args) match {
       case Some(subst) => subst
       case None =>
-        val subst = (condVars ++ exprVars).map { case (id, idT) => idT -> encoder.encodeId(id) } ++
+        val subst = exprVars.map { case (id, idT) => idT -> encoder.encodeId(id) } ++
+                    manager.freshConds(aVar, condVars, condTree) ++
                     (this.args zip args)
         substCache += args -> subst
         subst
@@ -270,6 +278,7 @@ object FunctionTemplate {
     arguments: Seq[(Identifier, T)],
     condVars: Map[Identifier, T],
     exprVars: Map[Identifier, T],
+    condTree: Map[Identifier, Set[Identifier]],
     guardedExprs: Map[Identifier, Seq[Expr]],
     quantifications: Seq[QuantificationTemplate[T]],
     lambdas: Seq[LambdaTemplate[T]],
@@ -295,6 +304,7 @@ object FunctionTemplate {
       arguments.map(_._2),
       condVars,
       exprVars,
+      condTree,
       clauses,
       blockers,
       applications,
@@ -315,6 +325,7 @@ class FunctionTemplate[T] private(
   val args: Seq[T],
   val condVars: Map[Identifier, T],
   val exprVars: Map[Identifier, T],
+  val condTree: Map[Identifier, Set[Identifier]],
   val clauses: Seq[T],
   val blockers: Map[T, Set[TemplateCallInfo[T]]],
   val applications: Map[T, Set[App[T]]],
@@ -333,152 +344,41 @@ class FunctionTemplate[T] private(
   }
 }
 
-object LambdaTemplate {
+class TemplateManager[T](protected[templates] val encoder: TemplateEncoder[T]) extends IncrementalState {
+  private val condImplies = new IncrementalMap[T, Set[T]].withDefaultValue(Set.empty)
+  private val condImplied = new IncrementalMap[T, Set[T]].withDefaultValue(Set.empty)
 
-  def apply[T](
-    ids: (Identifier, T),
-    encoder: TemplateEncoder[T],
-    manager: QuantificationManager[T],
-    pathVar: (Identifier, T),
-    arguments: Seq[(Identifier, T)],
-    condVars: Map[Identifier, T],
-    exprVars: Map[Identifier, T],
-    guardedExprs: Map[Identifier, Seq[Expr]],
-    quantifications: Seq[QuantificationTemplate[T]],
-    lambdas: Seq[LambdaTemplate[T]],
-    baseSubstMap: Map[Identifier, T],
-    dependencies: Map[Identifier, T],
-    lambda: Lambda
-  ) : LambdaTemplate[T] = {
+  protected def incrementals: List[IncrementalState] = List(condImplies, condImplied)
 
-    val id = ids._2
-    val tpe = ids._1.getType.asInstanceOf[FunctionType]
-    val (clauses, blockers, applications, matchers, templateString) =
-      Template.encode(encoder, pathVar, arguments, condVars, exprVars, guardedExprs, lambdas,
-        substMap = baseSubstMap + ids, optApp = Some(id -> tpe))
+  def clear(): Unit = incrementals.foreach(_.clear())
+  def reset(): Unit = incrementals.foreach(_.reset())
+  def push(): Unit = incrementals.foreach(_.push())
+  def pop(): Unit = incrementals.foreach(_.pop())
 
-    val lambdaString : () => String = () => {
-      "Template for lambda " + ids._1 + ": " + lambda + " is :\n" + templateString()
+  def freshConds(path: T, condVars: Map[Identifier, T], tree: Map[Identifier, Set[Identifier]]): Map[T, T] = {
+    val subst = condVars.map { case (id, idT) => idT -> encoder.encodeId(id) }
+    val pathVar = tree.keys.filter(id => !condVars.isDefinedAt(id)).head
+    val mapping = condVars.mapValues(subst) + (pathVar -> path)
+
+    for ((parent, children) <- tree; ep = mapping(parent); child <- children) {
+      val ec = mapping(child)
+      condImplies += ep -> (condImplies(ep) + ec)
+      condImplied += ec -> (condImplied(ec) + ep)
     }
 
-    val (structuralLambda, structSubst) = normalizeStructure(lambda)
-    val keyDeps = dependencies.map { case (id, idT) => structSubst(id) -> idT }
-    val key = structuralLambda.asInstanceOf[Lambda]
-
-    new LambdaTemplate[T](
-      ids,
-      encoder,
-      manager,
-      pathVar._2,
-      arguments,
-      condVars,
-      exprVars,
-      clauses,
-      blockers,
-      applications,
-      quantifications,
-      matchers,
-      lambdas,
-      keyDeps,
-      key,
-      lambdaString
-    )
-  }
-}
-
-class LambdaTemplate[T] private (
-  val ids: (Identifier, T),
-  val encoder: TemplateEncoder[T],
-  val manager: QuantificationManager[T],
-  val start: T,
-  val arguments: Seq[(Identifier, T)],
-  val condVars: Map[Identifier, T],
-  val exprVars: Map[Identifier, T],
-  val clauses: Seq[T],
-  val blockers: Map[T, Set[TemplateCallInfo[T]]],
-  val applications: Map[T, Set[App[T]]],
-  val quantifications: Seq[QuantificationTemplate[T]],
-  val matchers: Map[T, Set[Matcher[T]]],
-  val lambdas: Seq[LambdaTemplate[T]],
-  private[templates] val dependencies: Map[Identifier, T],
-  private[templates] val structuralKey: Lambda,
-  stringRepr: () => String) extends Template[T] {
-
-  val args = arguments.map(_._2)
-  val tpe = ids._1.getType.asInstanceOf[FunctionType]
-
-  def substitute(substituter: T => T): LambdaTemplate[T] = {
-    val newStart = substituter(start)
-    val newClauses = clauses.map(substituter)
-    val newBlockers = blockers.map { case (b, fis) =>
-      val bp = if (b == start) newStart else b
-      bp -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
-    }
-
-    val newApplications = applications.map { case (b, fas) =>
-      val bp = if (b == start) newStart else b
-      bp -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
-    }
-
-    val newQuantifications = quantifications.map(_.substitute(substituter))
-
-    val newMatchers = matchers.map { case (b, ms) =>
-      val bp = if (b == start) newStart else b
-      bp -> ms.map(_.substitute(substituter))
-    }
-
-    val newLambdas = lambdas.map(_.substitute(substituter))
-
-    val newDependencies = dependencies.map(p => p._1 -> substituter(p._2))
-
-    new LambdaTemplate[T](
-      ids._1 -> substituter(ids._2),
-      encoder,
-      manager,
-      newStart,
-      arguments,
-      condVars,
-      exprVars,
-      newClauses,
-      newBlockers,
-      newApplications,
-      newQuantifications,
-      newMatchers,
-      newLambdas,
-      newDependencies,
-      structuralKey,
-      stringRepr
-    )
+    subst
   }
 
-  private lazy val str : String = stringRepr()
-  override def toString : String = str
-
-  def contextEquality(that: LambdaTemplate[T]) : Option[Seq[T]] = {
-    if (structuralKey != that.structuralKey) {
-      None // can't be equal
-    } else if (dependencies.isEmpty) {
-      Some(Seq.empty) // must be equal
-    } else {
-      def rec(e1: Expr, e2: Expr): Seq[T] = (e1,e2) match {
-        case (Variable(id1), Variable(id2)) =>
-          if (dependencies.isDefinedAt(id1)) {
-            Seq(encoder.mkEquals(dependencies(id1), that.dependencies(id2)))
-          } else {
-            Seq.empty
-          }
-
-        case (Operator(es1, _), Operator(es2, _)) =>
-          (es1 zip es2).flatMap(p => rec(p._1, p._2))
-
-        case _ => Seq.empty
-      }
-
-      Some(rec(structuralKey, that.structuralKey))
+  def blocker(b: T): Unit = condImplies += (b -> Set.empty)
+  def isBlocker(b: T): Boolean = condImplies.isDefinedAt(b) || condImplied.isDefinedAt(b)
+  
+  def implies(b1: T, b2: T): Unit = implies(b1, Set(b2))
+  def implies(b1: T, b2s: Set[T]): Unit = {
+    val fb2s = b2s.filter(_ != b1)
+    condImplies += b1 -> (condImplies(b1) ++ fb2s)
+    for (b2 <- fb2s) {
+      condImplied += b2 -> (condImplies(b2) + b1)
     }
   }
 
-  override def instantiate(substMap: Map[T, T]): Instantiation[T] = {
-    super.instantiate(substMap) ++ manager.instantiateAxiom(this, substMap)
-  }
 }

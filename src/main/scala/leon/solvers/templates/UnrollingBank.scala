@@ -19,7 +19,8 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   private val manager = templateGenerator.manager
 
   // Function instantiations have their own defblocker
-  private val defBlockers   = new IncrementalMap[TemplateCallInfo[T], T]()
+  private val defBlockers    = new IncrementalMap[TemplateCallInfo[T], T]()
+  private val lambdaBlockers = new IncrementalMap[TemplateAppInfo[T], T]()
 
   // Keep which function invocation is guarded by which guard,
   // also specify the generation of the blocker.
@@ -32,6 +33,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def push() {
     callInfos.push()
     defBlockers.push()
+    lambdaBlockers.push()
     appInfos.push()
     appBlockers.push()
     blockerToApps.push()
@@ -41,6 +43,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def pop() {
     callInfos.pop()
     defBlockers.pop()
+    lambdaBlockers.pop()
     appInfos.pop()
     appBlockers.pop()
     blockerToApps.pop()
@@ -50,6 +53,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def clear() {
     callInfos.clear()
     defBlockers.clear()
+    lambdaBlockers.clear()
     appInfos.clear()
     appBlockers.clear()
     blockerToApps.clear()
@@ -59,6 +63,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def reset() {
     callInfos.reset()
     defBlockers.reset()
+    lambdaBlockers.reset()
     appInfos.reset()
     appBlockers.reset()
     blockerToApps.clear()
@@ -257,6 +262,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
           // we need to define this defBlocker and link it to definition
           val defBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
           defBlockers += info -> defBlocker
+          manager.implies(id, defBlocker)
 
           val template = templateGenerator.mkTemplate(tfd)
           //reporter.debug(template)
@@ -279,7 +285,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
       // We connect it to the defBlocker:   blocker => defBlocker
       if (defBlocker != id) {
-        newCls ++= List(encoder.mkImplies(id, defBlocker))
+        newCls :+= encoder.mkImplies(id, defBlocker)
       }
 
       reporter.debug("Unrolling behind "+info+" ("+newCls.size+")")
@@ -293,22 +299,32 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     for ((app @ (b, _), (gen, _, _, _, infos)) <- thisAppInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
       var newCls = Seq.empty[T]
 
-      val nb = encoder.encodeId(FreshIdentifier("b", BooleanType, true))
-      newCls :+= encoder.mkEquals(nb, encoder.mkAnd(equals, b))
+      val lambdaBlocker = lambdaBlockers.get(info) match {
+        case Some(lambdaBlocker) => lambdaBlocker
 
-      val (newExprs, callBlocks, appBlocks) = template.instantiate(nb, args)
-      val blockExprs = freshAppBlocks(appBlocks.keys)
+        case None =>
+          val lambdaBlocker = encoder.encodeId(FreshIdentifier("d", BooleanType))
+          lambdaBlockers += info -> lambdaBlocker
+          manager.implies(b, lambdaBlocker)
 
-      for ((b, newInfos) <- callBlocks) {
-        registerCallBlocker(nextGeneration(gen), b, newInfos)
+          val (newExprs, callBlocks, appBlocks) = template.instantiate(lambdaBlocker, args)
+          val blockExprs = freshAppBlocks(appBlocks.keys)
+
+          for ((b, newInfos) <- callBlocks) {
+            registerCallBlocker(nextGeneration(gen), b, newInfos)
+          }
+
+          for ((newApp, newInfos) <- appBlocks) {
+            registerAppBlocker(nextGeneration(gen), newApp, newInfos)
+          }
+
+          newCls ++= newExprs
+          newCls ++= blockExprs
+          lambdaBlocker
       }
 
-      for ((newApp, newInfos) <- appBlocks) {
-        registerAppBlocker(nextGeneration(gen), newApp, newInfos)
-      }
-
-      newCls ++= newExprs
-      newCls ++= blockExprs
+      val enabler = if (equals == manager.trueT) b else encoder.mkAnd(equals, b)
+      newCls :+= encoder.mkImplies(enabler, lambdaBlocker)
 
       reporter.debug("Unrolling behind "+info+" ("+newCls.size+")")
       for (cl <- newCls) {
