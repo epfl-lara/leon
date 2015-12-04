@@ -1092,11 +1092,11 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           val restTree = rest match {
-            case Some(rst) => {
+            case Some(rst) =>
               val nctx = dctx.withNewVar(vs -> (() => Variable(newID)))
               extractTree(rst)(nctx)
-            }
-            case None => UnitLiteral()
+            case None =>
+              UnitLiteral()
           }
 
           rest = None
@@ -1764,6 +1764,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case tpe if tpe == NothingClass.tpe =>
         Untyped
+
+      case ct: ConstantType =>
+        extractType(ct.value.tpe)
 
       case TypeRef(_, sym, _) if isBigIntSym(sym) =>
         IntegerType
