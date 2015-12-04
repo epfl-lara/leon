@@ -13,7 +13,7 @@ import purescala.ExprOps._
 import purescala.Types._
 import utils._
 
-import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre, optNoChecks}
+import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre, optNoChecks, optUnfoldFactor}
 import templates._
 import evaluators._
 
@@ -27,6 +27,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
   val useCodeGen     = context.findOptionOrDefault(optUseCodeGen)
   val assumePreHolds = context.findOptionOrDefault(optAssumePre)
   val disableChecks  = context.findOptionOrDefault(optNoChecks)
+  val unfoldFactor   = context.findOptionOrDefault(optUnfoldFactor)
 
   protected var lastCheckResult : (Boolean, Option[Boolean], Option[HenkinModel]) = (false, None, None)
 
@@ -306,14 +307,17 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
           if(!hasFoundAnswer) {
             reporter.debug("- We need to keep going.")
 
-            val toRelease = unrollingBank.getBlockersToUnlock
+            // unfolling `unfoldFactor` times
+            for (i <- 1 to unfoldFactor.toInt) {
+              val toRelease = unrollingBank.getBlockersToUnlock
 
-            reporter.debug(" - more unrollings")
+              reporter.debug(" - more unrollings")
 
-            val newClauses = unrollingBank.unrollBehind(toRelease)
+              val newClauses = unrollingBank.unrollBehind(toRelease)
 
-            for(ncl <- newClauses) {
-              solver.assertCnstr(ncl)
+              for (ncl <- newClauses) {
+                solver.assertCnstr(ncl)
+              }
             }
 
             reporter.debug(" - finished unrolling")
