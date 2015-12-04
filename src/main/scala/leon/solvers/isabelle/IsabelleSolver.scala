@@ -14,7 +14,6 @@ import leon.utils.Interruptible
 import leon.verification.VC
 
 import edu.tum.cs.isabelle._
-import edu.tum.cs.isabelle.api.ProverResult
 
 class IsabelleSolver(val context: LeonContext, program: Program, types: Types, functions: Functions, system: System) extends Solver with Interruptible { self: TimeoutSolver =>
 
