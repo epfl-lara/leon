@@ -110,7 +110,7 @@ object Constructors {
     canBeSubtypeOf(actualType, typeParamsOf(formalType).toSeq, formalType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
-      case None => sys.error(s"$actualType cannot be a subtype of $formalType!")
+      case None => throw LeonFatalError(s"$args:$actualType cannot be a subtype of $formalType!")
     }
   }
 
