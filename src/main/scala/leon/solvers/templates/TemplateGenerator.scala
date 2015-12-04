@@ -228,6 +228,25 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
       }(e)
     }
 
+    def groupWhile[T](es: Seq[T])(p: T => Boolean): Seq[Seq[T]] = {
+      var res: Seq[Seq[T]] = Nil
+
+      var c = es
+      while (!c.isEmpty) {
+        val (span, rest) = c.span(p)
+
+        if (span.isEmpty) {
+          res :+= Seq(rest.head)
+          c = rest.tail
+        } else {
+          res :+= span
+          c = rest
+        }
+      }
+
+      res
+    }
+
     def rec(pathVar: Identifier, expr: Expr): Expr = {
       expr match {
         case a @ Assert(cond, err, body) =>
@@ -274,10 +293,22 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           implies(rec(pathVar, lhs), rec(pathVar, rhs))
 
         case a @ And(parts) =>
-          andJoin(parts.map(rec(pathVar, _)))
+          if (requireDecomposition(a)) {
+            val partitions = groupWhile(parts)(!requireDecomposition(_))
+            val ifExpr = partitions.map(andJoin).reduceRight((a,b) => IfExpr(a, b, BooleanLiteral(false)))
+            rec(pathVar, ifExpr)
+          } else {
+            a
+          }
 
         case o @ Or(parts) =>
-          orJoin(parts.map(rec(pathVar, _)))
+          if (requireDecomposition(o)) {
+            val partitions = groupWhile(parts)(!requireDecomposition(_))
+            val ifExpr = partitions.map(orJoin).reduceRight((a,b) => IfExpr(a, BooleanLiteral(true), b))
+            rec(pathVar, ifExpr)
+          } else {
+            o
+          }
 
         case i @ IfExpr(cond, thenn, elze) => {
           if(!requireDecomposition(i)) {
