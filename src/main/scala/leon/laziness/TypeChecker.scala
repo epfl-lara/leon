@@ -145,6 +145,7 @@ object TypeChecker {
           } else (id.getType, v)
 
         case FunctionInvocation(TypedFunDef(fd, tparams), args) =>
+          //println(s"Consider expr: $e initial type: ${e.getType}")
           val nargs = args.map(arg => rec(arg)._2)
           var tpmap = Map[TypeParameter, TypeTree]()
           (fd.params zip nargs).foreach { x =>

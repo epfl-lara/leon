@@ -389,6 +389,7 @@ object Conqueue {
   } holds
 
   // suffix predicates and  their properties (this should be generalizable)
+
   def suffix[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     if (q == suf) true
     else {
@@ -400,15 +401,50 @@ object Conqueue {
     }
   }
 
-  // TODO: this should be inferable from the model
-  @axiom
   def properSuffix[T](l: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     l* match {
       case Spine(_, _, rear) =>
         suffix(rear, suf)
       case _ => false
     }
-  } ensuring (res => !res || suf != l)
+  } ensuring (res => !res || (suf != l &&
+      suffixDisequality(l, suf)))
+
+  /**
+   * suf(q, suf) ==> suf(q.rear, suf.rear)
+   */
+  def suffixTrans[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
+    require(suffix(q, suf))
+    // induction scheme
+    (if (q == suf) true
+    else {
+      q* match {
+        case Spine(_, _, rear) =>
+          suffixTrans(rear, suf)
+        case Tip(_) => true
+      }
+    }) && // property
+     ((q*, suf*) match {
+      case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+        // 'sufRear' should be a suffix of 'rear1'
+        suffix(rear, sufRear)
+      case _ => true
+    })
+  }.holds
+
+  /**
+   * properSuf(l, suf) ==> l != suf
+   */
+  def suffixDisequality[T](l: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
+    require(properSuffix(l, suf))
+    suffixTrans(l, suf) && // lemma instantiation
+    ((l*, suf*) match { // induction scheme
+      case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+        // 'sufRear' should be a suffix of 'rear1'
+        suffixDisequality(rear, sufRear)
+      case _ => true
+    }) && l != suf
+  }.holds
 
   def suffixCompose[T](q: $[ConQ[T]], suf1: $[ConQ[T]], suf2: $[ConQ[T]]): Boolean = {
     require(suffix(q, suf1) && properSuffix(suf1, suf2))
@@ -423,17 +459,6 @@ object Conqueue {
         }
       })
   } holds
-
-  // uncomment this once the model is fixed
-  /*def suffixInEquality[T](l: LazyConQ[T], suf: LazyConQ[T], suf2: ) : Boolean = {
-    require(properSuffix(l, suf))
-    (l != suf) && (
-      evalLazyConQS(l) match {
-        case Spine(_, _, rear) =>
-          suffixInEquality(rear, suf)
-        case _ => false
-      })
-  }.holds*/
 
   // properties of 'concUntil'
 

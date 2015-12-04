@@ -22,7 +22,7 @@ import LazinessUtil._
 /**
  * Generate lemmas that ensure that preconditions hold for closures.
  */
-class ClosurePreAsserter(p: Program) {
+class ClosurePreAsserter(p: Program, funsManager: LazyFunctionsManager) {
 
   def hasClassInvariants(cc: CaseClass): Boolean = {
     val opname = ccNameToOpName(cc.ct.classDef.id.name)
@@ -43,10 +43,11 @@ class ClosurePreAsserter(p: Program) {
       // Note: once we have separated normal preconditions from state preconditions
       // it suffices to just consider state preconditions here
       closures.map {
-        case ((CaseClass(CaseClassType(ccd, _), args), st), path) =>
+        case ((CaseClass(CaseClassType(ccd, _), argsRet), st), path) =>
           anchorfd = Some(fd)
           val target = functionByName(ccNameToOpName(ccd.id.name), p).get //find the target corresponding to the closure
           val pre = target.precondition.get
+          val args = argsRet.dropRight(1) // drop the return value which is the right-most field
           val nargs =
             if (target.params.size > args.size) // target takes state ?
               args :+ st

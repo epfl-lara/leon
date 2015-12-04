@@ -153,9 +153,8 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
     }
     val nbody = rec(ifd.fullBody)
     val initGamma = nfd.params.map(vd => vd.id -> vd.getType).toMap
-    /*if(ifd.id.name.contains("pushLeftWrapper")) {
-      println(s"Inferring types for ${ifd.id}")
-    }*/
+
+    //println(s"Inferring types for ${ifd.id}: "+nbody)
     val typedBody = TypeChecker.inferTypesOfLocals(nbody, initGamma)
     /*if(ifd.id.name.contains("pushLeftWrapper")) {
       //println(s"Inferring types for ${ifd.id} new fun: $nfd \n old body: ${ifd.fullBody} \n type correct body: $typedBody")

@@ -39,10 +39,10 @@ import PredicateUtil._
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpInputProg = false
-  val dumpLiftProg = true
+  val dumpLiftProg = false
   val dumpProgramWithClosures = true
   val dumpTypeCorrectProg = false
-  val dumpProgWithPreAsserts = false
+  val dumpProgWithPreAsserts = true
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
   val debugSolvers = false
@@ -55,7 +55,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     " to a program that does not use lazy constructs"
 
   // options that control behavior
-  val optRefEquality = LeonFlagOptionDef("useRefEquality", "Uses reference equality which memoizing closures", false)
+  val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
 
   /**
    * TODO: enforce that the specs do not create lazy closures
@@ -74,7 +74,9 @@ object LazinessEliminationPhase extends TransformationPhase {
       prettyPrintProgramToFile(nprog, ctx, "-lifted")
     }
 
-    val progWithClosures = (new LazyClosureConverter(nprog, ctx, new LazyClosureFactory(nprog))).apply
+    val funsManager = new LazyFunctionsManager(nprog)
+    val closureFactory = new LazyClosureFactory(nprog)
+    val progWithClosures = (new LazyClosureConverter(nprog, ctx, closureFactory, funsManager)).apply
     if (dumpProgramWithClosures) {
       //println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures, purescala.PrinterOptions(printUniqueIds = true)))
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
@@ -85,7 +87,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg, funsManager)).apply
     if (dumpProgWithPreAsserts) {
       //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre")

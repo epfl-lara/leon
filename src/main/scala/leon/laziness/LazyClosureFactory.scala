@@ -72,9 +72,11 @@ class LazyClosureFactory(p: Program) {
     var opToAdt = Map[FunDef, CaseClassDef]()
     val tpeToADT = tpeToLazyops map {
       case (tpename, ops) =>
-        val baseT = ops(0).returnType //TODO: replace targs here ?
+        val baseT = ops(0).returnType //TODO: replace targs here i.e, use clresType ?
         val absClass = tpeToAbsClass(tpename)
         val absTParamsDef = absClass.tparams
+        val absTParams = absTParamsDef.map(_.tp)
+
         // create a case class for every operation
         val cdefs = ops map { opfd =>
           assert(opfd.tparams.size == absTParamsDef.size)
@@ -91,20 +93,21 @@ class LazyClosureFactory(p: Program) {
                 ValDef(FreshIdentifier(vd.id.name, adtType))
             }
           }
-          cdef.setFields(nfields)
+          // add a result field as well
+          val resField = ValDef(FreshIdentifier("clres", opfd.returnType))
+          cdef.setFields(nfields :+ resField)
           absClass.registerChild(cdef)
           opToAdt += (opfd -> cdef)
           cdef
         }
         // create a case class to represent eager evaluation
-        val absTParams = absTParamsDef.map(_.tp)
-        val fldType = ops(0).returnType match {
+        val clresType = ops(0).returnType match {
           case NAryType(tparams, tcons) => tcons(absTParams)
         }
-        val eagerid = FreshIdentifier("Eager"+TypeUtil.typeNameWOParams(fldType))
+        val eagerid = FreshIdentifier("Eager"+TypeUtil.typeNameWOParams(clresType))
         val eagerClosure = CaseClassDef(eagerid, absTParamsDef,
             Some(AbstractClassType(absClass, absTParams)), isCaseObject = false)
-        eagerClosure.setFields(Seq(ValDef(FreshIdentifier("a", fldType))))
+        eagerClosure.setFields(Seq(ValDef(FreshIdentifier("a", clresType))))
         absClass.registerChild(eagerClosure)
         (tpename -> (baseT, absClass, cdefs, eagerClosure))
     }
@@ -115,7 +118,9 @@ class LazyClosureFactory(p: Program) {
   }
 
   // this fixes an ordering on lazy types
-  lazy val lazyTypeNames = tpeToADT.keys.toSeq
+  val lazyTypeNames = tpeToADT.keys.toSeq
+
+  val lazyops = opToCaseClass.keySet
 
   def allClosuresAndParents = tpeToADT.values.flatMap(v => v._2 +: v._3 :+ v._4)
 

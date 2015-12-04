@@ -114,4 +114,19 @@ class LazyFunctionsManager(p: Program) {
     !callersOfIsEvalandIsSusp.contains(fd)
   }
 
+//  lazy val targetsOfLazyCons = {
+//    var callees = Set[FunDef]()
+//    funsNeedStates.foreach {
+//      case fd if fd.hasBody =>
+//        postTraversal {
+//          case finv: FunctionInvocation if isLazyInvocation(finv)(p) => // this is the lazy invocation constructor
+//            callees += finv.tfd.fd
+//          case _ =>
+//            ;
+//        }(fd.body.get)
+//      case _ => ;
+//    }
+//    callees
+//  }
+
 }

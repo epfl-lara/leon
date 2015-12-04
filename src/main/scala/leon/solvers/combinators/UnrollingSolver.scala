@@ -267,7 +267,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
           if (!hasFoundAnswer) {
             reporter.debug("- We need to keep going.")
 
-            //for (i <- 1 to 3) {
+            for (i <- 1 to 3) {
               val toRelease = unrollingBank.getBlockersToUnlock
 
               reporter.debug(" - more unrollings")
@@ -278,7 +278,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
               for (ncl <- newClauses) {
                 solver.assertCnstr(ncl)
               }
-            //}
+            }
             // finish here
 
             reporter.debug(" - finished unrolling")
