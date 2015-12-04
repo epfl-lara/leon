@@ -631,11 +631,11 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
           None
         }
       case (up @ UnapplyPattern(ob, _, subs), scrut) =>
-        e(FunctionInvocation(up.unapplyFun, Seq(scrut))) match {
-          case CaseClass(CaseClassType(cd, _), Seq()) if cd == program.library.Nil.get =>
+        e(functionInvocation(up.unapplyFun.fd, Seq(scrut))) match {
+          case CaseClass(CaseClassType(cd, _), Seq()) if cd == program.library.None.get =>
             None
-          case CaseClass(CaseClassType(cd, _), Seq(arg)) if cd == program.library.Cons.get =>
-            val res = subs zip unwrapTuple(arg, up.unapplyFun.returnType.isInstanceOf[TupleType]) map {
+          case CaseClass(CaseClassType(cd, _), Seq(arg)) if cd == program.library.Some.get =>
+            val res = subs zip unwrapTuple(arg, subs.size) map {
               case (s,a) => matchesPattern(s,a)
             }
             if (res.forall(_.isDefined)) {
