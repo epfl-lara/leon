@@ -193,20 +193,6 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     (typeInsts, partialInsts, lambdaInsts)
   }
 
-  def toto: (Map[TypeTree, Matchers], Map[T, Matchers], Map[Lambda, Matchers]) = {
-    var typeInsts: Map[TypeTree, Matchers] = Map.empty
-    var partialInsts: Map[T, Matchers] = Map.empty
-    var lambdaInsts: Map[Lambda, Matchers] = Map.empty
-
-    for ((key, matchers) <- ignored.instantiations) key match {
-      case TypeKey(tpe) => typeInsts += tpe -> matchers
-      case CallerKey(caller, _) => partialInsts += caller -> matchers
-      case LambdaKey(lambda, _) => lambdaInsts += lambda -> matchers
-    }
-
-    (typeInsts, partialInsts, lambdaInsts)
-  }
-
   override def registerFree(ids: Seq[(Identifier, T)]): Unit = {
     super.registerFree(ids)
     known ++= ids.map(_._2)
@@ -342,6 +328,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   private trait MatcherQuantification {
+    val start: T
     val quantified: Set[T]
     val matchers: Set[Matcher[T]]
     val allMatchers: Map[T, Set[Matcher[T]]]
@@ -409,6 +396,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     private def extractSubst(mapping: Set[(Set[T], Matcher[T], Matcher[T])]): (Set[T], Map[T,Either[T, Matcher[T]]], Boolean) = {
       var constraints: Set[T] = Set.empty
+      var eqConstraints: Set[(T, T)] = Set.empty
       var matcherEqs: List[(T, T)] = Nil
       var subst: Map[T, Either[T, Matcher[T]]] = Map.empty
 
@@ -419,17 +407,20 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         (qarg, arg) <- (qargs zip args)
       } qarg match {
         case Left(quant) if subst.isDefinedAt(quant) =>
-          constraints += encoder.mkEquals(quant, Matcher.argValue(arg))
+          eqConstraints += (quant -> Matcher.argValue(arg))
         case Left(quant) if quantified(quant) =>
           subst += quant -> arg
         case Right(qam) =>
           val argVal = Matcher.argValue(arg)
-          constraints += encoder.mkEquals(qam.encoded, argVal)
+          eqConstraints += (qam.encoded -> argVal)
           matcherEqs :+= qam.encoded -> argVal
       }
 
       val substituter = encoder.substitute(subst.mapValues(Matcher.argValue))
-      val enablers = constraints.filter(_ != trueT).map(substituter)
+      val substConstraints = constraints.filter(_ != trueT).map(substituter)
+      val substEqs = eqConstraints.map(p => substituter(p._1) -> p._2)
+        .filter(p => p._1 != p._2).map(p => encoder.mkEquals(p._1, p._2))
+      val enablers = substConstraints ++ substEqs
       val isStrict = matcherEqs.forall(p => substituter(p._1) == p._2)
 
       (enablers, subst, isStrict)
@@ -458,7 +449,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         val substituter = encoder.substitute(substMap)
 
         for ((b,ms) <- allMatchers; m <- ms) {
-          val sb = enablers + substituter(b)
+          val sb = enablers ++ (if (b == start) Set.empty else Set(substituter(b)))
           val sm = m.substitute(substituter, matcherSubst = msubst)
 
           if (matchers(m)) {
@@ -478,6 +469,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   private class Quantification (
+    val start: T,
     val qs: (Identifier, T),
     val q2s: (Identifier, T),
     val insts: (Identifier, T),
@@ -675,7 +667,9 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val subst = substMap + (template.qs._2 -> newQ)
 
       val substituter = encoder.substitute(subst)
-      val quantification = new Quantification(template.qs._1 -> newQ,
+      val quantification = new Quantification(
+        substituter(template.start),
+        template.qs._1 -> newQ,
         template.q2s, template.insts, template.guardVar,
         quantified,
         matchers map (_.substitute(substituter)),

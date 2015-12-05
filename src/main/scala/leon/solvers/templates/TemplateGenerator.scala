@@ -221,7 +221,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     def requireDecomposition(e: Expr) = {
       exists{
-        case (_: Choose) | (_: Forall) => true
+        case (_: Choose) | (_: Forall) | (_: Lambda) => true
         case (_: Assert) | (_: Ensuring) => true
         case (_: FunctionInvocation) | (_: Application) => true
         case _ => false
@@ -245,6 +245,17 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
       }
 
       res
+    }
+
+    def liftToIfExpr(parts: Seq[Expr], join: Seq[Expr] => Expr, recons: (Expr, Expr) => Expr): Expr = {
+      val partitions = groupWhile(parts)(!requireDecomposition(_))
+      partitions.map(join) match {
+        case Seq(e) => e
+        case s @ Seq(e1, e2) if !requireDecomposition(e1) =>
+          join(Seq(e1, rec(pathVar, e2)))
+        case seq =>
+          rec(pathVar, seq.reduceRight(recons))
+      }
     }
 
     def rec(pathVar: Identifier, expr: Expr): Expr = {
@@ -290,25 +301,17 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         case p : Passes    => sys.error("'Passes's should have been eliminated before generating templates.")
 
         case i @ Implies(lhs, rhs) =>
-          implies(rec(pathVar, lhs), rec(pathVar, rhs))
+          if (requireDecomposition(i)) {
+            rec(pathVar, Or(Not(lhs), rhs))
+          } else {
+            implies(rec(pathVar, lhs), rec(pathVar, rhs))
+          }
 
         case a @ And(parts) =>
-          if (requireDecomposition(a)) {
-            val partitions = groupWhile(parts)(!requireDecomposition(_))
-            val ifExpr = partitions.map(andJoin).reduceRight((a,b) => IfExpr(a, b, BooleanLiteral(false)))
-            rec(pathVar, ifExpr)
-          } else {
-            a
-          }
+          liftToIfExpr(parts, andJoin, (a,b) => IfExpr(a, b, BooleanLiteral(false)))
 
         case o @ Or(parts) =>
-          if (requireDecomposition(o)) {
-            val partitions = groupWhile(parts)(!requireDecomposition(_))
-            val ifExpr = partitions.map(orJoin).reduceRight((a,b) => IfExpr(a, BooleanLiteral(true), b))
-            rec(pathVar, ifExpr)
-          } else {
-            o
-          }
+          liftToIfExpr(parts, orJoin, (a,b) => IfExpr(a, BooleanLiteral(true), b))
 
         case i @ IfExpr(cond, thenn, elze) => {
           if(!requireDecomposition(i)) {
