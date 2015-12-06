@@ -66,6 +66,11 @@ class PureScalaValidSuiteCVC4 extends PureScalaValidSuite {
 }
 
 class PureScalaInvalidSuite extends PureScalaVerificationSuite {
+  override val ignored = Seq(
+    "verification/purescala/invalid/PropositionalLogic.scala",
+    "verification/purescala/invalid/InductiveQuantification.scala"
+  )
+
   override def testAll() = testInvalid()
   val optionVariants = opts
 }

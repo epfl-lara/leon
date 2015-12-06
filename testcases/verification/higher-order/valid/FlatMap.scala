@@ -1,4 +1,5 @@
 import leon.lang._
+import leon.proof._
 import leon.collection._
 
 object FlatMap {
