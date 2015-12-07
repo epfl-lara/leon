@@ -311,10 +311,64 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           }
 
         case a @ And(parts) =>
-          liftToIfExpr(pathVar, parts, andJoin, (a,b) => IfExpr(a, b, BooleanLiteral(false)))
+          val partitions = groupWhile(parts)(!requireDecomposition(_))
+          partitions.map(andJoin) match {
+            case Seq(e) => e
+            case seq =>
+              val newExpr : Identifier = FreshIdentifier("e", BooleanType, true)
+              storeExpr(newExpr)
+
+              def recAnd(pathVar: Identifier, partitions: Seq[Expr]): Unit = partitions match {
+                case x :: Nil if !requireDecomposition(x) =>
+                  storeGuarded(pathVar, Equals(Variable(newExpr), x))
+
+                case x :: xs =>
+                  val newBool : Identifier = FreshIdentifier("b", BooleanType, true)
+                  storeCond(pathVar, newBool)
+
+                  val xrec = rec(pathVar, x)
+                  storeGuarded(pathVar, Equals(Variable(newBool), xrec))
+                  storeGuarded(pathVar, Implies(Not(Variable(newBool)), Not(Variable(newExpr))))
+
+                  recAnd(newBool, xs)
+
+                case Nil =>
+                  storeGuarded(pathVar, Variable(newExpr))
+              }
+
+              recAnd(pathVar, seq)
+              Variable(newExpr)
+          }
 
         case o @ Or(parts) =>
-          liftToIfExpr(pathVar, parts, orJoin, (a,b) => IfExpr(a, BooleanLiteral(true), b))
+          val partitions = groupWhile(parts)(!requireDecomposition(_))
+          partitions.map(orJoin) match {
+            case Seq(e) => e
+            case seq =>
+              val newExpr : Identifier = FreshIdentifier("e", BooleanType, true)
+              storeExpr(newExpr)
+
+              def recOr(pathVar: Identifier, partitions: Seq[Expr]): Unit = partitions match {
+                case x :: Nil if !requireDecomposition(x) =>
+                  storeGuarded(pathVar, Equals(Variable(newExpr), x))
+
+                case x :: xs =>
+                  val newBool : Identifier = FreshIdentifier("b", BooleanType, true)
+                  storeCond(pathVar, newBool)
+
+                  val xrec = rec(pathVar, x)
+                  storeGuarded(pathVar, Equals(Not(Variable(newBool)), xrec))
+                  storeGuarded(pathVar, Implies(Not(Variable(newBool)), Variable(newExpr)))
+
+                  recOr(newBool, xs)
+
+                case Nil =>
+                  storeGuarded(pathVar, Not(Variable(newExpr)))
+              }
+
+              recOr(pathVar, seq)
+              Variable(newExpr)
+          }
 
         case i @ IfExpr(cond, thenn, elze) => {
           if(!requireDecomposition(i)) {

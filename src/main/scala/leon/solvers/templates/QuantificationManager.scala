@@ -442,22 +442,24 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         val lambdaSubstMap = lambdas map (lambda => lambda.ids._2 -> encoder.encodeId(lambda.ids._1))
         val substMap = subst.mapValues(Matcher.argValue) ++ baseSubstMap ++ lambdaSubstMap ++ instanceSubst(enablers)
 
-        instantiation ++= Template.instantiate(encoder, QuantificationManager.this,
-          clauses, blockers, applications, Seq.empty, Map.empty[T, Set[Matcher[T]]], lambdas, substMap)
+        if (!skip(substMap)) {
+          instantiation ++= Template.instantiate(encoder, QuantificationManager.this,
+            clauses, blockers, applications, Seq.empty, Map.empty[T, Set[Matcher[T]]], lambdas, substMap)
 
-        val msubst = subst.collect { case (c, Right(m)) => c -> m }
-        val substituter = encoder.substitute(substMap)
+          val msubst = subst.collect { case (c, Right(m)) => c -> m }
+          val substituter = encoder.substitute(substMap)
 
-        for ((b,ms) <- allMatchers; m <- ms) {
-          val sb = enablers ++ (if (b == start) Set.empty else Set(substituter(b)))
-          val sm = m.substitute(substituter, matcherSubst = msubst)
+          for ((b,ms) <- allMatchers; m <- ms) {
+            val sb = enablers ++ (if (b == start) Set.empty else Set(substituter(b)))
+            val sm = m.substitute(substituter, matcherSubst = msubst)
 
-          if (matchers(m)) {
-            handled += sb -> sm
-          } else if (transMatchers(m) && isStrict) {
-            instantiation ++= instCtx.instantiate(sb, sm)(quantifications.toSeq : _*)
-          } else {
-            ignored += sb -> sm
+            if (matchers(m)) {
+              handled += sb -> sm
+            } else if (transMatchers(m) && isStrict) {
+              instantiation ++= instCtx.instantiate(sb, sm)(quantifications.toSeq : _*)
+            } else {
+              ignored += sb -> sm
+            }
           }
         }
       }
@@ -466,6 +468,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     }
 
     protected def instanceSubst(enablers: Set[T]): Map[T, T]
+
+    protected def skip(subst: Map[T, T]): Boolean = false
   }
 
   private class Quantification (
@@ -515,7 +519,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       }
   }
 
-  private class Axiom (
+  private class LambdaAxiom (
     val start: T,
     val blocker: T,
     val guardVar: T,
@@ -535,6 +539,13 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val (newBlocker, optEnabler) = freshBlocker(enablers)
       val guardT = if (optEnabler.isDefined) encoder.mkAnd(start, optEnabler.get) else start
       Map(guardVar -> guardT, blocker -> newBlocker)
+    }
+
+    override protected def skip(subst: Map[T, T]): Boolean = {
+      val substituter = encoder.substitute(subst)
+      allMatchers.forall { case (b, ms) =>
+        ms.forall(m => matchers(m) || instCtx(Set(substituter(b)) -> m.substitute(substituter)))
+      }
     }
   }
 
@@ -630,7 +641,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     var instantiation = Instantiation.empty[T]
 
     for (matchers <- matchQuorums) {
-      val axiom = new Axiom(start, blocker, guardVar, quantified,
+      val axiom = new LambdaAxiom(start, blocker, guardVar, quantified,
         matchers, allMatchers, condVars, exprVars, condTree,
         clauses, blockers, applications, lambdas
       )
