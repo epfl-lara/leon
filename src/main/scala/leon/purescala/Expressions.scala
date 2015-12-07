@@ -370,9 +370,9 @@ object Expressions {
     * [[cases]] should be nonempty. If you are not sure about this, you should use
     * [[purescala.Constructors#passes purescala's constructor passes]]
     *
-    * @param in
-    * @param out
-    * @param cases
+    * @param in The input expression
+    * @param out The output expression
+    * @param cases The cases to compare against
     */
   case class Passes(in: Expr, out : Expr, cases : Seq[MatchCase]) extends Expr {
     require(cases.nonEmpty)

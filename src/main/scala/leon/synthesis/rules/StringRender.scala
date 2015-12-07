@@ -4,32 +4,33 @@ package leon
 package synthesis
 package rules
 
-import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.TypeOps
-import purescala.Extractors._
-import purescala.Constructors._
-import purescala.Types._
-import purescala.Definitions._
-import leon.utils.DebugSectionSynthesis
-import leon.purescala.Common.{Identifier, FreshIdentifier}
-import leon.purescala.Definitions.FunDef
-import leon.utils.IncrementalMap
-import leon.purescala.Definitions.FunDef
-import leon.purescala.Definitions.ValDef
+import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-import leon.purescala.ExprOps
-import leon.evaluators.Evaluator
+
+import bonsai.enumerators.MemoizedEnumerator
 import leon.evaluators.DefaultEvaluator
 import leon.evaluators.StringTracingEvaluator
+import leon.grammars.ValueGrammar
+import leon.programsets.DirectProgramSet
+import leon.programsets.JoinProgramSet
+import leon.purescala.Common.FreshIdentifier
+import leon.purescala.Common.Identifier
+import leon.purescala.DefOps
+import leon.purescala.Definitions.FunDef
+import leon.purescala.Definitions.FunDef
+import leon.purescala.Definitions.ValDef
+import leon.purescala.ExprOps
 import leon.solvers.Model
 import leon.solvers.ModelBuilder
 import leon.solvers.string.StringSolver
-import scala.annotation.tailrec
-import leon.purescala.DefOps
-import leon.programsets.{UnionProgramSet, DirectProgramSet, JoinProgramSet}
-import bonsai.enumerators.MemoizedEnumerator
-import leon.grammars.ValueGrammar
+import leon.utils.DebugSectionSynthesis
+import purescala.Constructors._
+import purescala.Definitions._
+import purescala.ExprOps._
+import purescala.Expressions._
+import purescala.Extractors._
+import purescala.TypeOps
+import purescala.Types._
 
 
 /** A template generator for a given type tree. 
@@ -71,6 +72,8 @@ abstract class TypedTemplateGenerator(t: TypeTree) {
  */
 case object StringRender extends Rule("StringRender") {
   type WithIds[T] = (T, List[Identifier])
+  
+  var EDIT_ME = "_edit_me_"
   
   var _defaultTypeToString: Option[Map[TypeTree, FunDef]] = None
   
@@ -183,46 +186,15 @@ case object StringRender extends Rule("StringRender") {
     solutionStreamToRuleApplication(p, leon.utils.StreamUtils.interleave(tagged_solutions))
   }
   
-  case class Question(input: Expr, current_output: String, other_outputs: Set[String])
-  
   /** Find ambiguities not containing _edit_me_ to ask to the user */
-  def askQuestion(input: Identifier, argType: TypeTree, r: RuleClosed)(implicit c: LeonContext, p: Program): List[Question] = {
-    if(r.solutions.isEmpty) return Nil
-    val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
-    val iter = enum.iterator(argType)
-    
-    def run(s: Solution, elem: Expr): Option[String] = {
-      val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
-      val e = new StringTracingEvaluator(c, newProgram)
-      val model = new ModelBuilder
-      model ++= List(input -> elem)
-      val modelResult = model.result()
-      e.eval(s.term, modelResult).result match {
-        case Some((StringLiteral(s), _)) => Some(s)
-        case _ => None
-      }
-    }
-    
-    val iterated = iter.take(15).toList
-    
-    val solution = r.solutions.head
-    val alternatives = r.solutions.drop(1).take(15)
-    val questions = ListBuffer[Question]()
-    for(elem <- iterated) {
-      val current_output = run(solution, elem).get
-      var possible_outputs = Set[String]()
-      for(alternative <- alternatives) {
-        run(alternative, elem) match {
-          case Some(s) if !s.contains("_edit_me_") && s != current_output => possible_outputs += s
-          case _ =>
-        }
-      }
-      if(possible_outputs.nonEmpty) {
-        questions += Question(elem, current_output, possible_outputs)
-      }
-    }
-    questions.toList.sortBy(question => ExprOps.count(e => 1)(question.input))
-  } //TODO: Need to ask these questions to the user, but in the background. Loop by adding new examples. Test with list.
+  def askQuestion(input: List[Identifier], r: RuleClosed)(implicit c: LeonContext, p: Program): List[disambiguation.Question[StringLiteral]] = {
+    //if !s.contains(EDIT_ME)
+    val qb = new disambiguation.QuestionBuilder(input, r, (expr: Expr) => expr match {
+      case s@StringLiteral(slv) if !slv.contains(EDIT_ME) => Some(s)
+      case _ => None
+    })
+    qb.result()
+  }
   
   /** Converts the stream of solutions to a RuleApplication */
   def solutionStreamToRuleApplication(p: Problem, solutions: Stream[(Seq[(FunDef, WithIds[Expr])], WithIds[Expr], Assignment)]): RuleApplication = {
@@ -230,11 +202,11 @@ case object StringRender extends Rule("StringRender") {
       RuleClosed(
           for((funDefsBodies, (singleTemplate, ids), assignment) <- solutions) yield {
             val fds = for((fd, (body, ids)) <- funDefsBodies) yield {
-              val initMap = ids.map(_ -> StringLiteral("_edit_me_")).toMap
+              val initMap = ids.map(_ -> StringLiteral(EDIT_ME)).toMap
               fd.body = Some(ExprOps.simplifyString(ExprOps.replaceFromIDs(initMap ++ assignment.mapValues(StringLiteral), body)))
               fd
             }
-            val initMap = ids.map(_ -> StringLiteral("_edit_me_")).toMap
+            val initMap = ids.map(_ -> StringLiteral(EDIT_ME)).toMap
             val term = ExprOps.simplifyString(ExprOps.replaceFromIDs(initMap ++ assignment.mapValues(StringLiteral), singleTemplate))
             val (finalTerm, finalDefs) = makeFunctionsUnique(term, fds.toSet)
             
@@ -456,9 +428,9 @@ case object StringRender extends Rule("StringRender") {
           val res = findSolutions(examples, expr, funDefs.values.toSeq)
           res match {
             case r: RuleClosed =>
-              val questions = askQuestion(p.as(0), p.as(0).getType, r)(hctx.context, hctx.program)
+              val questions = askQuestion(p.as, r)(hctx.context, hctx.program)
               println("Questions:")
-              println(questions.map(q => "For " + q.input + ", res = " + q.current_output + ", could also be " + q.other_outputs.toSet.map((s: String) => "\""+ s +"\"").mkString(",")).mkString("\n"))
+              println(questions.map(q => "For (" + q.inputs.mkString(", ") + "), res = " + q.current_output + ", could also be " + q.other_outputs.toSet.map((s: StringLiteral) => s.asString).mkString(",")).mkString("\n"))
             case _ =>
           }
           res
