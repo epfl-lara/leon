@@ -1,6 +1,7 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 package leon
 package synthesis
+package disambiguation
 
 import leon.LeonContext
 import leon.purescala.Expressions._
@@ -10,12 +11,19 @@ import purescala.Definitions.{ FunDef, Program, ValDef }
 import purescala.ExprOps.expressionToPattern
 import purescala.Expressions.{ BooleanLiteral, Equals, Expr, Lambda, MatchCase, Passes, Variable, WildcardPattern }
 import purescala.Extractors.TopLevelAnds
-
+import leon.purescala.Expressions._
 
 /**
  * @author Mikael
  */
 class ExamplesAdder(ctx0: LeonContext, program: Program) {
+  
+  /** Accepts the nth alternative of a question (0 being the current one) */
+  def acceptQuestion[T <: Expr](fd: FunDef, q: Question[T], alternativeIndex: Int): Unit = {
+    val newIn  = tupleWrap(q.inputs)
+    val newOut = if(alternativeIndex == 0) q.current_output else q.other_outputs(alternativeIndex - 1)
+    addToFunDef(fd, Seq((newIn, newOut)))
+  }
   
   /** Adds the given input/output examples to the function definitions */
   def addToFunDef(fd: FunDef, examples: Seq[(Expr, Expr)]) = {
