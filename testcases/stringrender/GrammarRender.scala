@@ -238,4 +238,7 @@ S0 -> S0 t1"""
   def synthesizePlainTextRules(s: Grammar): String = {
     ???[String]
   } ensuring psPlainTextRules(s)
+  
+  def allGrammarsAreIdentical(g: Grammar, g2: Grammar) = (g == g2 || g.rules == g2.rules) holds
+
 }

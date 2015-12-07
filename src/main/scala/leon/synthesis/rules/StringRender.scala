@@ -189,7 +189,7 @@ case object StringRender extends Rule("StringRender") {
   /** Find ambiguities not containing _edit_me_ to ask to the user */
   def askQuestion(input: List[Identifier], r: RuleClosed)(implicit c: LeonContext, p: Program): List[disambiguation.Question[StringLiteral]] = {
     //if !s.contains(EDIT_ME)
-    val qb = new disambiguation.QuestionBuilder(input, r, (expr: Expr) => expr match {
+    val qb = new disambiguation.QuestionBuilder(input, r.solutions, (expr: Expr) => expr match {
       case s@StringLiteral(slv) if !slv.contains(EDIT_ME) => Some(s)
       case _ => None
     })
@@ -257,7 +257,7 @@ case object StringRender extends Rule("StringRender") {
     }
     val funName3 = funName2.replaceAll("[^a-zA-Z0-9_]","")
     val funName = funName3(0).toLower + funName3.substring(1) 
-    val funId = FreshIdentifier(funName, alwaysShowUniqueID = false)
+    val funId = FreshIdentifier(funName, alwaysShowUniqueID = true)
     val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx.context).toLowerCase()(0).toString, tpe.typeToConvert)
     val fd = new FunDef(funId, Nil, ValDef(argId) :: Nil, StringType) // Empty function.
     fd
@@ -425,15 +425,7 @@ case object StringRender extends Rule("StringRender") {
               ))
           hctx.reporter.debug("Inferred expression:\n" + expr + toDebug)
           
-          val res = findSolutions(examples, expr, funDefs.values.toSeq)
-          res match {
-            case r: RuleClosed =>
-              val questions = askQuestion(p.as, r)(hctx.context, hctx.program)
-              println("Questions:")
-              println(questions.map(q => "For (" + q.inputs.mkString(", ") + "), res = " + q.current_output + ", could also be " + q.other_outputs.toSet.map((s: StringLiteral) => s.asString).mkString(",")).mkString("\n"))
-            case _ =>
-          }
-          res
+          findSolutions(examples, expr, funDefs.values.toSeq)
         }
         
         ruleInstantiations.toList

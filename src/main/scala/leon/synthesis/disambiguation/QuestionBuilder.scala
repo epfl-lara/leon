@@ -83,7 +83,7 @@ object QuestionBuilder {
  * @return An ordered
  * 
  */
-class QuestionBuilder[T <: Expr](input: List[Identifier], ruleApplication: RuleClosed, filter: Expr => Option[T])(implicit c: LeonContext, p: Program) {
+class QuestionBuilder[T <: Expr](input: Seq[Identifier], solutions: Stream[Solution], filter: Expr => Option[T])(implicit c: LeonContext, p: Program) {
   import QuestionBuilder._
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
@@ -113,7 +113,7 @@ class QuestionBuilder[T <: Expr](input: List[Identifier], ruleApplication: RuleC
   
   /** Returns a list of input/output questions to ask to the user. */
   def result(): List[Question[T]] = {
-    if(ruleApplication.solutions.isEmpty) return Nil
+    if(solutions.isEmpty) return Nil
     
     val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
     val values = enum.iterator(tupleTypeWrap(_argTypes))
@@ -123,8 +123,8 @@ class QuestionBuilder[T <: Expr](input: List[Identifier], ruleApplication: RuleC
     
     val enumerated_inputs = instantiations.take(expressionsToTake).toList
     
-    val solution = ruleApplication.solutions.head
-    val alternatives = ruleApplication.solutions.drop(1).take(solutionsToTake).toList
+    val solution = solutions.head
+    val alternatives = solutions.drop(1).take(solutionsToTake).toList
     val questions = ListBuffer[Question[T]]()
     for{possible_input             <- enumerated_inputs
         current_output_nonfiltered <- run(solution, possible_input)
@@ -136,7 +136,7 @@ class QuestionBuilder[T <: Expr](input: List[Identifier], ruleApplication: RuleC
             if alternative_output != current_output
       } yield alternative_output_filtered).distinct
       if(alternative_outputs.nonEmpty) {
-        questions += Question(possible_input.map(_._2), current_output, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) < 0))
+        questions += Question(possible_input.map(_._2), current_output, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
       }
     }
     questions.toList.sortBy(_questionSorMethod(_))
