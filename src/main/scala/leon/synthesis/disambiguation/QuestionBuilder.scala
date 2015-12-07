@@ -34,8 +34,8 @@ object QuestionBuilder {
   // Add more if needed.
   
   /** Sort methods for question's answers. You can (and should) build your own. */
-  abstract class AlternativeSortingType[-T <: Expr] extends Ordering[T] { self =>
-    /** Prioritizes this comparison operator agains the second one. */
+  abstract class AlternativeSortingType[T <: Expr] extends Ordering[T] { self =>
+    /** Prioritizes this comparison operator against the second one. */
     def &&(other: AlternativeSortingType[T]): AlternativeSortingType[T] = new AlternativeSortingType[T] {
       def compare(e: T, f: T): Int = {
         val ce = self.compare(e, f)
@@ -45,8 +45,8 @@ object QuestionBuilder {
   }
   object AlternativeSortingType {
     /** Presents shortest alternatives first */
-    case class ShorterIsBetter()(implicit c: LeonContext) extends AlternativeSortingType[Expr] {
-      def compare(e: Expr, f: Expr) = e.asString.length - f.asString.length
+    case class ShorterIsBetter[T <: Expr]()(implicit c: LeonContext) extends AlternativeSortingType[T] {
+      def compare(e: T, f: T) = e.asString.length - f.asString.length
     }
     /** Presents balanced alternatives first */
     case class BalancedParenthesisIsBetter[T <: Expr]()(implicit c: LeonContext) extends AlternativeSortingType[T] {
@@ -87,7 +87,7 @@ class QuestionBuilder[T <: Expr](input: List[Identifier], ruleApplication: RuleC
   import QuestionBuilder._
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
-  private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter() && AlternativeSortingType.ShorterIsBetter() 
+  private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter[T]() && AlternativeSortingType.ShorterIsBetter[T]() 
   private var solutionsToTake = 15
   private var expressionsToTake = 15
     
