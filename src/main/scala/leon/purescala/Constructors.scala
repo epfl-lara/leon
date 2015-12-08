@@ -119,7 +119,7 @@ object Constructors {
     */
   def caseClassSelector(classType: CaseClassType, caseClass: Expr, selector: Identifier): Expr = {
     caseClass match {
-      case CaseClass(ct, fields) if ct.classDef == classType.classDef =>
+      case CaseClass(ct, fields) if ct.classDef == classType.classDef && !ct.classDef.hasInvariant =>
         fields(ct.classDef.selectorID2Index(selector))
       case _ =>
         CaseClassSelector(classType, caseClass, selector)

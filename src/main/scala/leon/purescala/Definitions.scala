@@ -215,10 +215,14 @@ object Definitions {
   case class IsLoop(orig: FunDef) extends FunctionFlag
   // If extraction fails of the function's body fais, it is marked as abstract
   case object IsAbstract extends FunctionFlag
-  // Currently, the only synthetic functions are those that calculate default values of parameters
+  // Currently, the only synthetic functions are:
+  // 1. those that calculate default values of parameters
+  // 2. methods duplicated for ADT invariant verification
   case object IsSynthetic extends FunctionFlag
   // Is inlined
   case object IsInlined extends FunctionFlag
+  // Is an ADT invariant method
+  case object IsADTInvariant extends FunctionFlag with ClassFlag
 
 
   /** Useful because case classes and classes are somewhat unified in some
@@ -249,6 +253,11 @@ object Definitions {
       _methods = _methods ::: List(fd)
     }
 
+    def registerMethod(fd: FunDef, after: FunDef) = {
+      val (m1, m2) = _methods.span(_ != after)
+      _methods = m1 ++ (fd :: m2)
+    }
+
     def unregisterMethod(id: Identifier) = {
       _methods = _methods filterNot (_.id == id)
     }
@@ -272,6 +281,7 @@ object Definitions {
 
     def annotations: Set[String] = extAnnotations.keySet
     def extAnnotations: Map[String, Seq[Option[Any]]] = flags.collect { case Annotation(s, args) => s -> args }.toMap
+    def hasInvariant = flags.contains(IsADTInvariant)
 
     lazy val ancestors: Seq[ClassDef] = parent.toSeq flatMap { p => p.classDef +: p.classDef.ancestors }
 
@@ -444,6 +454,7 @@ object Definitions {
     def canBeField        = canBeLazyField || canBeStrictField
     def isRealFunction    = !canBeField
     def isSynthetic       = flags contains IsSynthetic
+    def isInvariant       = flags contains IsADTInvariant
     def methodOwner       = flags collectFirst { case IsMethod(cd) => cd }
 
     /* Wrapping in TypedFunDef */

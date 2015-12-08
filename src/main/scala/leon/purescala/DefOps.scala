@@ -340,9 +340,20 @@ object DefOps {
         }
       )
     })
+
+    if (!found) {
+      for (cd <- p.definedClasses) {
+        if (cd.methods.contains(after)) {
+          for (fd <- fds.toSeq.reverse) cd.registerMethod(fd, after)
+          found = true
+        }
+      }
+    }
+
     if (!found) {
       println("addFunDefs could not find anchor function!")
     }
+
     res
   }
 

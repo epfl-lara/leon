@@ -317,19 +317,49 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def fillLeonUnit(u: ScalaUnit): Unit = {
+      def extractClassMembers(sym: Symbol, tpl: Template): Unit = {
+        for (t <- tpl.body if !t.isEmpty) {
+          extractFunOrMethodBody(Some(sym), t)
+        }
+
+        classToInvariants.get(sym) match {
+          case Some(bodies) =>
+            val fd = new FunDef(FreshIdentifier("inv", BooleanType, true), Seq.empty, Seq.empty, BooleanType)
+            fd.addFlag(IsADTInvariant)
+
+            val cd = classesToClasses(sym)
+            cd.registerMethod(fd)
+            cd.addFlag(IsADTInvariant)
+
+            val ctparams = sym.tpe match {
+              case TypeRef(_, _, tps) =>
+                extractTypeParams(tps).map(_._1)
+              case _ =>
+                Nil
+            }
+
+            val tparamsMap = (ctparams zip cd.tparams.map(_.tp)).toMap
+            val dctx = DefContext(tparamsMap)
+
+            val body = andJoin(bodies.toSeq.filter(_ != EmptyTree).map {
+              body => flattenBlocks(extractTreeOrNoTree(body)(dctx))
+            })
+
+            fd.fullBody = body
+
+          case None =>
+        }
+      }
+
       for (t <- u.defs) t match {
         case t if isIgnored(t.symbol) =>
           // ignore
 
         case ExAbstractClass(_, sym, tpl) =>
-          for (t <- tpl.body if !t.isEmpty) {
-            extractFunOrMethodBody(Some(sym), t)
-          }
+          extractClassMembers(sym, tpl)
 
         case ExCaseClass(_, sym, _, tpl) =>
-          for (t <- tpl.body if !t.isEmpty) {
-            extractFunOrMethodBody(Some(sym), t)
-          }
+          extractClassMembers(sym, tpl)
 
         case ExObjectDef(n, templ) =>
           for (t <- templ.body if !t.isEmpty) t match {
@@ -338,14 +368,10 @@ trait CodeExtraction extends ASTExtractors {
               None
 
             case ExAbstractClass(_, sym, tpl) =>
-              for (t <- tpl.body if !t.isEmpty) {
-                extractFunOrMethodBody(Some(sym), t)
-              }
+              extractClassMembers(sym, tpl)
 
             case ExCaseClass(_, sym, _, tpl) =>
-              for (t <- tpl.body if !t.isEmpty) {
-                extractFunOrMethodBody(Some(sym), t)
-              }
+              extractClassMembers(sym, tpl)
 
             case t =>
               extractFunOrMethodBody(None, t)
@@ -446,6 +472,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private var isMethod = Set[Symbol]()
     private var methodToClass = Map[FunDef, LeonClassDef]()
+    private var classToInvariants = Map[Symbol, Set[Tree]]()
 
     /**
      * For the function in $defs with name $owner, find its parameter with index $index,
@@ -561,10 +588,12 @@ trait CodeExtraction extends ASTExtractors {
           isMethod += fsym
           val fd = defineFunDef(fsym, Some(cd))(defCtx)
 
-
           methodToClass += fd -> cd
 
           cd.registerMethod(fd)
+
+        case ExRequiredExpression(body) =>
+          classToInvariants += sym -> (classToInvariants.getOrElse(sym, Set.empty) + body)
 
         // Default values for parameters
         case t@ ExDefaultValueFunction(fsym, _, _, _, owner, index, _) =>

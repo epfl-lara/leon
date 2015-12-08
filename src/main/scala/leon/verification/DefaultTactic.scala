@@ -60,6 +60,8 @@ class DefaultTactic(vctx: VerificationContext) extends Tactic(vctx) {
           VCKinds.RemainderByZero
         } else if (err.startsWith("Cast ")) {
           VCKinds.CastError
+        } else if (err.startsWith("ADT ")) {
+          VCKinds.ADTInvariant
         } else {
           VCKinds.Assert
         }

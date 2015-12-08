@@ -37,6 +37,7 @@ class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Progra
       TypingPhase                            andThen
       synthesis.ConversionPhase              andThen
       CheckADTFieldsTypes                    andThen
+      ADTInvariants                          andThen
       InjectAsserts                          andThen
       InliningPhase
 

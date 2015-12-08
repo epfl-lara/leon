@@ -41,7 +41,8 @@ object VerificationPhase extends SimpleLeonPhase[Program,VerificationReport] {
 
     reporter.debug("Generating Verification Conditions...")
 
-    def excludeByDefault(fd: FunDef): Boolean = fd.annotations contains "library"
+    def excludeByDefault(fd: FunDef): Boolean =
+      (fd.annotations contains "library") || fd.isInvariant
 
     val fdFilter = {
       import OptionsHelpers._
