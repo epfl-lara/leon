@@ -31,7 +31,7 @@ class Solution(val pre: Expr, val defs: Set[FunDef], val term: Expr, val isTrust
   }
 
   def toExpr = {
-    defs.foldLeft(guardedTerm){ case (t, fd) => LetDef(fd, t) }
+    LetDef(defs.toList, guardedTerm)
   }
 
   // Projects a solution (ignore several output variables)

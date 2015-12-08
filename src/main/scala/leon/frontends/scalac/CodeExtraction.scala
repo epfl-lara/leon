@@ -1104,18 +1104,25 @@ trait CodeExtraction extends ASTExtractors {
 
           val newDctx = dctx.copy(tparams = dctx.tparams ++ tparamsMap)
 
-          val oldCurrentFunDef = currentFunDef
-
-          val funDefWithBody = extractFunBody(fd, params, b)(newDctx)
-
-          currentFunDef = oldCurrentFunDef
-
           val restTree = rest match {
             case Some(rst) => extractTree(rst)
             case None => UnitLiteral()
           }
           rest = None
-          LetDef(funDefWithBody, restTree)
+          
+          val oldCurrentFunDef = currentFunDef
+
+          val funDefWithBody = extractFunBody(fd, params, b)(newDctx)
+
+          currentFunDef = oldCurrentFunDef
+          
+          val (other_fds, block) = restTree match {
+            case LetDef(fds, block) =>
+              (fds, block)
+            case _ =>
+              (Nil, restTree)
+          }
+          LetDef(funDefWithBody +: other_fds, block)
 
         // FIXME case ExDefaultValueFunction
 
@@ -1495,6 +1502,7 @@ trait CodeExtraction extends ASTExtractors {
           Implies(extractTree(lhs), extractTree(rhs)).setPos(current.pos)
 
         case c @ ExCall(rec, sym, tps, args) =>
+          // The object on which it is called is null if the symbol sym is a valid function in the scope and not a method.
           val rrec = rec match {
             case t if (defsToDefs contains sym) && !isMethod(sym) =>
               null

@@ -307,27 +307,38 @@ object TypeOps {
             val newId = freshId(id, tpeSub(id.getType))
             Let(newId, srec(value), rec(idsMap + (id -> newId))(body)).copiedFrom(l)
 
-          case l @ LetDef(fd, bd) =>
-            val id = fd.id.freshen
-            val tparams = fd.tparams map { p => 
-              TypeParameterDef(tpeSub(p.tp).asInstanceOf[TypeParameter])
+          case l @ LetDef(fds, bd) =>
+            val fds_mapping = for(fd <- fds) yield {
+              val id = fd.id.freshen
+              val tparams = fd.tparams map { p => 
+                TypeParameterDef(tpeSub(p.tp).asInstanceOf[TypeParameter])
+              }
+              val returnType = tpeSub(fd.returnType)
+              val params = fd.params map (instantiateType(_, tps))
+              val newFd = fd.duplicate(id, tparams, params, returnType)
+              val subCalls = preMap {
+                case fi @ FunctionInvocation(tfd, args) if tfd.fd == fd =>
+                  Some(FunctionInvocation(newFd.typed(tfd.tps), args).copiedFrom(fi))
+                case _ => 
+                  None
+              } _
+              (fd, newFd, subCalls)
             }
-            val returnType = tpeSub(fd.returnType)
-            val params = fd.params map (instantiateType(_, tps))
-            val newFd = fd.duplicate(id, tparams, params, returnType)
-
-            val subCalls = preMap {
-              case fi @ FunctionInvocation(tfd, args) if tfd.fd == fd =>
-                Some(FunctionInvocation(newFd.typed(tfd.tps), args).copiedFrom(fi))
-              case _ => 
-                None
-            } _
-            val fullBody = rec(idsMap ++ fd.paramIds.zip(newFd.paramIds))(subCalls(fd.fullBody))
-            newFd.fullBody = fullBody
-
+            // We group the subcalls functions all in once
+            val subCalls = (((None:Option[Expr => Expr]) /: fds_mapping) {
+              case (None, (_, _, subCalls)) => Some(subCalls)
+              case (Some(fn), (_, _, subCalls)) => Some(fn andThen subCalls)
+            }).get
+            
+            // We apply all the functions mappings at once
+            val newFds = for((fd, newFd, _) <- fds_mapping) yield {
+              val fullBody = rec(idsMap ++ fd.paramIds.zip(newFd.paramIds))(subCalls(fd.fullBody))
+              newFd.fullBody = fullBody
+              newFd
+            }
             val newBd = srec(subCalls(bd)).copiedFrom(bd)
 
-            LetDef(newFd, newBd).copiedFrom(l)
+            LetDef(newFds, newBd).copiedFrom(l)
 
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>

@@ -309,9 +309,11 @@ object ExprOps {
   def preTransformWithBinders(f: (Expr, Set[Identifier]) => Expr, initBinders: Set[Identifier] = Set())(e: Expr) = {
     import xlang.Expressions.LetVar
     def rec(binders: Set[Identifier], e: Expr): Expr = (f(e, binders) match {
-      case LetDef(fd, bd) =>
-        fd.fullBody = rec(binders ++ fd.paramIds, fd.fullBody)
-        LetDef(fd, rec(binders, bd))
+      case LetDef(fds, bd) =>
+        fds.foreach(fd => {
+          fd.fullBody = rec(binders ++ fd.paramIds, fd.fullBody)
+        })
+        LetDef(fds, rec(binders, bd))
       case Let(i, v, b) =>
         Let(i, rec(binders + i, v), rec(binders + i, b))
       case LetVar(i, v, b) =>
@@ -346,7 +348,7 @@ object ExprOps {
         e match {
           case Variable(i) => subvs + i
           case Old(i) => subvs + i
-          case LetDef(fd, _) => subvs -- fd.params.map(_.id)
+          case LetDef(fds, _) => subvs -- fds.flatMap(_.params.map(_.id))
           case Let(i, _, _) => subvs - i
           case LetVar(i, _, _) => subvs - i
           case MatchExpr(_, cses) => subvs -- cses.flatMap(_.pattern.binders)
@@ -377,7 +379,7 @@ object ExprOps {
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
     fold[Set[FunDef]]{
-      case (LetDef(fd,_), Seq(fromFd, fromBd)) => fromBd + fd
+      case (LetDef(fds,_), Seq(fromFds, fromBd)) => fromBd ++ fds
       case (_, subs) => subs.flatten.toSet
     }(e)
   }
@@ -514,7 +516,7 @@ object ExprOps {
       (expr, idSeqs) => idSeqs.foldLeft(expr match {
         case Lambda(args, _) => args.map(_.id)
         case Forall(args, _) => args.map(_.id)
-        case LetDef(fd, _) => fd.paramIds
+        case LetDef(fds, _) => fds.flatMap(_.paramIds)
         case Let(i, _, _) => Seq(i)
         case MatchExpr(_, cses) => cses.flatMap(_.pattern.binders)
         case Passes(_, _, cses) => cses.flatMap(_.pattern.binders)
@@ -1239,23 +1241,23 @@ object ExprOps {
 
     def pre(e : Expr) = e match {
 
-      case LetDef(fd, expr) if fd.hasPrecondition =>
-       val pre = fd.precondition.get
+      case LetDef(fds, expr) =>
+       for(fd <- fds if fd.hasPrecondition) {
+          val pre = fd.precondition.get
 
-        solver.solveVALID(pre) match {
-          case Some(true)  =>
-            fd.precondition = None
-
-          case Some(false) => solver.solveSAT(pre) match {
-            case (Some(false), _) =>
-              fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
-            case _ =>
+          solver.solveVALID(pre) match {
+            case Some(true)  =>
+              fd.precondition = None
+  
+            case Some(false) => solver.solveSAT(pre) match {
+              case (Some(false), _) =>
+                fd.precondition = Some(BooleanLiteral(false).copiedFrom(e))
+              case _ =>
+            }
+            case None =>
           }
-          case None =>
-        }
-
-        e
-
+       }
+       e
       case IfExpr(cond, thenn, elze) =>
         try {
           solver.solveVALID(cond) match {
@@ -1630,9 +1632,15 @@ object ExprOps {
           isHomo(v1, v2) &&
           isHomo(e1, e2)(map + (id1 -> id2))
 
-        case (LetDef(fd1, e1), LetDef(fd2, e2)) =>
-          fdHomo(fd1, fd2) &&
-          isHomo(e1, e2)(map + (fd1.id -> fd2.id))
+        case (LetDef(fds1, e1), LetDef(fds2, e2)) =>
+          fds1.size == fds2.size &&
+          {
+            val zipped = fds1.zip(fds2)
+            zipped.forall( fds =>
+            fdHomo(fds._1, fds._2)
+            ) &&
+            isHomo(e1, e2)(map ++ zipped.map(fds => fds._1.id -> fds._2.id))
+          }
 
         case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
           cs1.size == cs2.size && isHomo(s1, s2) && casesMatch(cs1,cs2)
@@ -1819,7 +1827,8 @@ object ExprOps {
     */
   def flattenFunctions(fdOuter: FunDef, ctx: LeonContext, p: Program): FunDef = {
     fdOuter.body match {
-      case Some(LetDef(fdInner, FunctionInvocation(tfdInner2, args))) if fdInner == tfdInner2.fd =>
+      case Some(LetDef(fdsInner, FunctionInvocation(tfdInner2, args))) if fdsInner.size == 1 && fdsInner.head == tfdInner2.fd =>
+        val fdInner = fdsInner.head
         val argsDef  = fdOuter.paramIds
         val argsCall = args.collect { case Variable(id) => id }
 
@@ -2106,12 +2115,12 @@ object ExprOps {
 
     import synthesis.Witnesses.Terminating
     val res1 = preMap({
-      case LetDef(fd, b) =>
-        val nfd = fd.duplicate()
+      case LetDef(lfds, b) =>
+        val nfds = lfds.map(fd => fd -> fd.duplicate())
 
-        fds += fd -> nfd
+        fds ++= nfds
 
-        Some(LetDef(nfd, b))
+        Some(LetDef(nfds.map(_._2), b))
 
       case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {

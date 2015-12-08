@@ -34,23 +34,32 @@ class ScopeSimplifier extends Transformer {
       val sb = rec(b, scope.register(i -> si))
       Let(si, se, sb)
 
-    case LetDef(fd: FunDef, body: Expr) =>
-      val newId    = genId(fd.id, scope)
-      var newScope = scope.register(fd.id -> newId)
-
-      val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
-        val newArg = genId(id, newScope)
-        newScope = newScope.register(id -> newArg)
-        ValDef(newArg, tpe)
+    case LetDef(fds, body: Expr) =>
+      var newScope: Scope = scope
+      // First register all functions
+      val fds_newIds = for(fd <- fds) yield {
+        val newId    = genId(fd.id, scope)
+        newScope = newScope.register(fd.id -> newId)
+        (fd, newId)
       }
-
-      val newFd = fd.duplicate(id = newId, params = newArgs)
-
-      newScope = newScope.registerFunDef(fd -> newFd)
-
-      newFd.fullBody = rec(fd.fullBody, newScope)
-
-      LetDef(newFd, rec(body, newScope))
+      
+      val fds_mapping = for((fd, newId) <- fds_newIds) yield {
+        val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
+          val newArg = genId(id, newScope)
+          newScope = newScope.register(id -> newArg)
+          ValDef(newArg, tpe)
+        }
+  
+        val newFd = fd.duplicate(id = newId, params = newArgs)
+  
+        newScope = newScope.registerFunDef(fd -> newFd)
+        (newFd, fd)
+      }
+      
+      for((newFd, fd) <- fds_mapping) {
+        newFd.fullBody = rec(fd.fullBody, newScope)
+      }
+      LetDef(fds_mapping.map(_._1), rec(body, newScope))
    
     case MatchExpr(scrut, cases) =>
       val rs = rec(scrut, scope)

@@ -141,7 +141,7 @@ class StackSpaceInstrumenter(p: Program, si: SerialInstrumenter) extends Instrum
         (1 + valTemp + bodyTemp, Math.max(valStack, bodyStack))
       }
 
-      case LetDef(fd: FunDef, body: Expr) => {
+      case LetDef(fds, body: Expr) => {
       // The function definition does not take up stack space. Goes into the constant pool
         estimateTemporaries(body)
       }

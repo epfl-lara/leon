@@ -159,12 +159,12 @@ object Expressions {
     }
   }
 
-  /** $encodingof `def ... = ...; ...` (local function definition)
+  /** $encodingof multiple `def ... = ...; ...` (local function definition and possibly mutually recursive)
     *
-    * @param fd The function definition.
+    * @param fds The function definitions.
     * @param body The body of the expression after the function
     */
-  case class LetDef(fd: FunDef, body: Expr) extends Expr {
+  case class LetDef(fds: Seq[FunDef], body: Expr) extends Expr {
     val getType = body.getType
   }
 

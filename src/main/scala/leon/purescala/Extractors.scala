@@ -72,11 +72,13 @@ object Extractors {
         Some((Seq(body), (es: Seq[Expr]) => Forall(args, es.head)))
 
       /* Binary operators */
-      case LetDef(fd, body) => Some((
-        Seq(fd.fullBody, body),
+      case LetDef(fds, rest) => Some((
+        fds.map(_.fullBody) ++ Seq(rest),
         (es: Seq[Expr]) => {
-          fd.fullBody = es(0)
-          LetDef(fd, es(1))
+          for((fd, i) <- fds.zipWithIndex) {
+            fd.fullBody = es(i)
+          }
+          LetDef(fds, es(fds.length))
         }
       ))
       case Equals(t1, t2) =>
