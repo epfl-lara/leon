@@ -33,6 +33,12 @@ object ADTInvariants extends TransformationPhase {
       wrapper.fullBody = Ensuring(Variable(thisId),
         Lambda(Seq(ValDef(res)), FunctionInvocation(fd.typed, Seq(Variable(thisId)))))
 
+      def checkLambda(expr: Expr): Unit = expr match {
+        case CaseClassSelector(_, Variable(`thisId`), _) =>
+        case Variable(`thisId`) => throw LeonFatalError("Unexpected reference to 'this' in lambda of ADT invariant")
+        case Operator(es, _) => es.foreach(checkLambda)
+      }
+
       def rec(expr: Expr, seen: Set[FunDef]): Expr = expr match {
         case FunctionInvocation(tfd, args) if args.contains(Variable(thisId)) =>
           if (seen(tfd.fd)) {
@@ -44,11 +50,9 @@ object ADTInvariants extends TransformationPhase {
             case None => expr
           }
 
-        case CaseClassSelector(_, Variable(`thisId`), _) =>
+        case Lambda(args, body) =>
+          checkLambda(body)
           expr
-
-        case Variable(`thisId`) =>
-          throw LeonFatalError("Unexpected reference to 'this' in ADT invariant")
 
         case Operator(es, recons) => recons(es.map(rec(_, seen)))
       }
@@ -63,13 +67,13 @@ object ADTInvariants extends TransformationPhase {
       val invArg = invClass.map(_ => Variable(fd.params.head.id))
 
       fd.fullBody = postMap {
-        case CaseClassSelector(cct, receiver, field) =>
+        case ccs @ CaseClassSelector(cct, receiver, field) =>
           if (invArg == Some(receiver)) {
             None
           } else cdToWrapper.get(cct.classDef.root) match {
             case Some(fd) =>
-              val wrapped = FunctionInvocation(fd.typed(cct.tps), Seq(receiver))
-              Some(CaseClassSelector(cct, wrapped, field))
+              val wrapped = FunctionInvocation(fd.typed(cct.tps), Seq(receiver)).setPos(ccs)
+              Some(CaseClassSelector(cct, wrapped, field).setPos(ccs))
             case None => None
           }
 

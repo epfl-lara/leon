@@ -31,7 +31,7 @@ trait Solvable extends Processor {
     val program     : Program     = checker.program
     val context     : LeonContext = checker.context
     val sizeModule  : ModuleDef   = ModuleDef(FreshIdentifier("$size"), modules.defs.toSeq, false)
-    val sizeUnit    : UnitDef     = UnitDef(FreshIdentifier("$size"),Seq(sizeModule)) 
+    val sizeUnit    : UnitDef     = UnitDef(FreshIdentifier("$size"),Seq(sizeModule))
     val newProgram  : Program     = program.copy( units = sizeUnit :: program.units)
 
     SolverFactory.getFromSettings(context, newProgram).withTimeout(500.millisecond)
