@@ -89,9 +89,11 @@ class PrettyPrinter(opts: PrinterOptions,
           p"""|val $b = $d
               |$e"""
 
-      case LetDef(fd,body) =>
-        p"""|$fd
-            |$body"""
+      case LetDef(a::q,body) =>
+        p"""|$a
+            |${LetDef(q, body)}"""
+      case LetDef(Nil,body) =>
+        p"""$body"""
 
       case Require(pre, body) =>
         p"""|require($pre)
@@ -625,6 +627,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case (e: Expr, _) if isSimpleExpr(e) => false
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e => false
     case (_: Expr, Some(_: MatchCase)) => false
+    case (_: LetDef, Some(_: LetDef)) => false
     case (e: Expr, Some(_)) => true
     case _ => false
   }

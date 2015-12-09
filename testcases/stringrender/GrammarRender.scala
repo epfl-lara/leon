@@ -182,9 +182,6 @@ S0 -> S0 t1"""
     }
     "(" + renderSymbol(s.start) + ", [" + renderListRules(s.rules) + "])"
   } ensuring psHTMLRules(s)
-
-  case Grammar(NonTerminal(0), Cons(Rule(NonTerminal(0), Cons(Terminal(1), Nil())), Cons(Rule(NonTerminal(0), Cons(NonTerminal(0), Cons(Terminal(1), Nil()))), Nil()))) =>
-      "<b>Start:</b> S0<br><pre>S0 -> t1<br>S0 -> S0 t1</pte>"
   
   /* The initial body of this function is the solution of render3 */
   def render5PlainTextRules(s: Grammar): String = {

@@ -62,7 +62,7 @@ object FunctionClosure extends TransformationPhase {
 
     // Remove LetDefs from fd
     fd.fullBody = preMap({
-      case LetDef(fd, bd) =>
+      case LetDef(fds, bd) =>
         Some(bd)
       case _ =>
         None

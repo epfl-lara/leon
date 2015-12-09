@@ -379,8 +379,8 @@ object ExprOps {
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
     fold[Set[FunDef]]{
-      case (LetDef(fds,_), Seq(fromFds, fromBd)) => fromBd ++ fds
-      case (_, subs) => subs.flatten.toSet
+      case (LetDef(fds,_), fromFdsFromBd) => fromFdsFromBd.last ++ fds
+      case (_,             subs) => subs.flatten.toSet
     }(e)
   }
 
@@ -2142,7 +2142,7 @@ object ExprOps {
 
     // we now remove LetDefs
     val res2 = preMap({
-      case LetDef(fd, b) =>
+      case LetDef(fds, b) =>
         Some(b)
       case _ =>
         None

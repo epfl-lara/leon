@@ -40,7 +40,7 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
               } }
               if(i == -1) {
                 fd.postcondition = Some(Lambda(Seq(ValDef(id, tpe)), and(post, Passes(inputVariables, Variable(id), newCases))))
-                ctx0.reporter.info("No top-level passes in postcondition, adding it:  " + fd)
+                //ctx0.reporter.info("No top-level passes in postcondition, adding it:  " + fd)
               } else {
                 val newPasses = exprs(i) match {
                   case Passes(in, out, cases) =>
@@ -49,17 +49,17 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
                 }
                 val newPost = and(exprs.updated(i, newPasses) : _*)
                 fd.postcondition = Some(Lambda(Seq(ValDef(id, tpe)), newPost))
-                ctx0.reporter.info("Adding the example to the passes postcondition: " + fd)
+                //ctx0.reporter.info("Adding the example to the passes postcondition: " + fd)
               }
           }
         } else {
           fd.postcondition = Some(Lambda(Seq(ValDef(id, tpe)), and(post, Passes(inputVariables, Variable(id), newCases))))
-          ctx0.reporter.info("No passes in postcondition, adding it:" + fd)
+          //ctx0.reporter.info("No passes in postcondition, adding it:" + fd)
         }
       case None =>
         val id = FreshIdentifier("res", fd.returnType, false)
         fd.postcondition = Some(Lambda(Seq(ValDef(id, None)), Passes(inputVariables, Variable(id), newCases)))
-        ctx0.reporter.info("No postcondition, adding it: " + fd)
+        //ctx0.reporter.info("No postcondition, adding it: " + fd)
     }
     fd.body match { // TODO: Is it correct to discard the choose construct inside the body?
       case Some(Choose(Lambda(Seq(ValDef(id, tpe)), bodyChoose))) => fd.body = Some(Hole(id.getType, Nil))
