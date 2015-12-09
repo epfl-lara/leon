@@ -334,6 +334,12 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       newClauses ++= newCls
     }
 
+    /*
+    for ((app @ (b, _), (gen, _, _, _, infos)) <- thisAppInfos if infos.isEmpty) {
+      registerAppBlocker(nextGeneration(gen), app, infos)
+    }
+    */
+
     reporter.debug(s"   - ${newClauses.size} new clauses")
     //context.reporter.ifDebug { debug =>
     //  debug(s" - new clauses:")

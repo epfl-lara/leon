@@ -9,6 +9,7 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
 import purescala.Definitions._
 import purescala.Constructors._
 import purescala.Quantification._
@@ -253,14 +254,6 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
       res
     }
 
-    def liftToIfExpr(pathVar: Identifier, parts: Seq[Expr], join: Seq[Expr] => Expr, recons: (Expr, Expr) => Expr): Expr = {
-      val partitions = groupWhile(parts)(!requireDecomposition(_))
-      partitions.map(join) match {
-        case Seq(e) => e
-        case seq => rec(pathVar, seq.reduceRight(recons))
-      }
-    }
-
     def rec(pathVar: Identifier, expr: Expr): Expr = {
       expr match {
         case a @ Assert(cond, err, body) =>
@@ -416,7 +409,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           val idArgs : Seq[Identifier] = lambdaArgs(l)
           val trArgs : Seq[T] = idArgs.map(id => substMap.getOrElse(id, encoder.encodeId(id)))
 
-          val lid = FreshIdentifier("lambda", l.getType, true)
+          val lid = FreshIdentifier("lambda", bestRealType(l.getType), true)
           val clause = liftedEquals(Variable(lid), l, idArgs, inlineFirst = true)
 
           val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars

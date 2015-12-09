@@ -11,6 +11,7 @@ import purescala.Quantification._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
 
 import utils._
 
@@ -116,7 +117,7 @@ object Template {
 
     val (fiArgs, appArgs) = args.splitAt(tfd.params.size)
     val app @ Application(caller, arguments) = rec(FunctionInvocation(tfd, fiArgs), appArgs)
-    Matcher(encodeExpr(caller), caller.getType, arguments.map(arg => Left(encodeExpr(arg))), encodeExpr(app))
+    Matcher(encodeExpr(caller), bestRealType(caller.getType), arguments.map(arg => Left(encodeExpr(arg))), encodeExpr(app))
   }
 
   def encode[T](
@@ -142,7 +143,9 @@ object Template {
     }).toSeq
 
     val optIdCall = optCall.map(tfd => TemplateCallInfo[T](tfd, arguments.map(_._2)))
-    val optIdApp = optApp.map { case (idT, tpe) => App(idT, tpe, arguments.map(_._2)) }
+    val optIdApp = optApp.map { case (idT, tpe) =>
+      App(idT, bestRealType(tpe).asInstanceOf[FunctionType], arguments.map(_._2))
+    }
 
     lazy val invocMatcher = optCall.filter(_.returnType.isInstanceOf[FunctionType])
       .map(tfd => invocationMatcher(encodeExpr)(tfd, arguments.map(_._1.toVariable)))
@@ -160,7 +163,7 @@ object Template {
         for (e <- es) {
           funInfos ++= firstOrderCallsOf(e).map(p => TemplateCallInfo(p._1, p._2.map(encodeExpr)))
           appInfos ++= firstOrderAppsOf(e).map { case (c, args) =>
-            App(encodeExpr(c), c.getType.asInstanceOf[FunctionType], args.map(encodeExpr))
+            App(encodeExpr(c), bestRealType(c.getType).asInstanceOf[FunctionType], args.map(encodeExpr))
           }
 
           matchInfos ++= fold[Map[Expr, Matcher[T]]] { (expr, res) =>
@@ -175,7 +178,7 @@ object Template {
                   case None => Left(encodeExpr(arg))
                 })
 
-                Some(expr -> Matcher(encodeExpr(c), c.getType, encodedArgs, encodeExpr(expr)))
+                Some(expr -> Matcher(encodeExpr(c), bestRealType(c.getType), encodedArgs, encodeExpr(expr)))
               case _ => None
             })
           }(e).values
