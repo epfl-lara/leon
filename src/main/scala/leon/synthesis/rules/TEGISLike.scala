@@ -29,8 +29,6 @@ abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
 
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
 
-    return Nil
-
     List(new RuleInstantiation(this.name) {
       def apply(hctx: SearchContext): RuleApplication = {
         val sctx = hctx.sctx
