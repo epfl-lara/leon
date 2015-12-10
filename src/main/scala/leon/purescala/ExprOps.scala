@@ -881,7 +881,7 @@ object ExprOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
 
-        case up@UnapplyPattern(ob, fd, subps) =>
+        case up @ UnapplyPattern(ob, fd, subps) =>
           def someCase(e: Expr) = {
             // In the case where unapply returns a Some, it is enough that the subpatterns match
             andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)

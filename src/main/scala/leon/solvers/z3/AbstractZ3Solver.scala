@@ -657,9 +657,9 @@ trait AbstractZ3Solver extends Solver {
                 }
 
               case ft @ FunctionType(fts, tt) => lambdas.getB(ft) match {
-                case None => throw new IllegalArgumentException
+                case None => simplestValue(ft)
                 case Some(decl) => model.getModelFuncInterpretations.find(_._1 == decl) match {
-                  case None => throw new IllegalArgumentException
+                  case None => simplestValue(ft)
                   case Some((_, mapping, elseValue)) =>
                     val leonElseValue = rec(elseValue, tt)
                     PartialLambda(mapping.flatMap { case (z3Args, z3Result) =>
@@ -738,7 +738,8 @@ trait AbstractZ3Solver extends Solver {
         case _ => unsound(t, "unexpected AST")
       }
     }
-    rec(tree, tpe)
+
+    rec(tree, normalizeType(tpe))
   }
 
   protected[leon] def softFromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree) : Option[Expr] = {

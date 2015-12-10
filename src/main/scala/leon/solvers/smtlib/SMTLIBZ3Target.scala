@@ -76,11 +76,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         val n = s.name.split("!").toList.last
         GenericValue(tp, n.toInt)
 
-      // XXX: (NV) Z3 doesn't seem to produce models for uninterpreted functions that
-      //      don't impact satisfiability...
-      case (SNumeral(n), Some(ft: FunctionType)) if !letDefs.isDefinedAt(lambdas.toB(ft)) =>
-        purescala.ExprOps.simplestValue(ft)
-
       case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), Some(tpe)) =>
         if (letDefs contains k) {
           // Need to recover value form function model

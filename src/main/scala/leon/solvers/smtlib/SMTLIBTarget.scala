@@ -630,6 +630,84 @@ trait SMTLIBTarget extends Interruptible {
   /* Translate an SMTLIB term back to a Leon Expr */
   protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
 
+    object EQ {
+      def unapply(t: Term): Option[(Term, Term)] = t match {
+        case Core.Equals(e1, e2) => Some((e1, e2))
+        case FunctionApplication(f, Seq(e1, e2)) if f.toString == "=" => Some((e1, e2))
+        case _ => None
+      }
+    }
+
+    object AND {
+      def unapply(t: Term): Option[Seq[Term]] = t match {
+        case Core.And(e1, e2) => Some(Seq(e1, e2))
+        case FunctionApplication(SimpleSymbol(SSymbol("and")), args) => Some(args)
+        case _ => None
+      }
+      def apply(ts: Seq[Term]): Term = ts match {
+        case Seq() => throw new IllegalArgumentException
+        case Seq(t) => t
+        case _ => FunctionApplication(SimpleSymbol(SSymbol("and")), ts)
+      }
+    }
+
+    object Num {
+      def unapply(t: Term): Option[BigInt] = t match {
+        case SNumeral(n) => Some(n)
+        case FunctionApplication(f, Seq(SNumeral(n))) if f.toString == "-" => Some(-n)
+        case _ => None
+      }
+    }
+
+    def extractLambda(n: BigInt, ft: FunctionType): Expr = {
+      val FunctionType(from, to) = ft
+      lambdas.getB(ft) match {
+        case None => simplestValue(ft)
+        case Some(dynLambda) => letDefs.get(dynLambda) match {
+          case None => simplestValue(ft)
+          case Some(DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body))) =>
+            val d = symbolToQualifiedId(dispatcher)
+            def dispatch(t: Term): Term = t match {
+              case Core.ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
+                if (ni == n) thenn else dispatch(elze)
+              case Core.ITE(AND(EQ(di, Num(ni)) +: rest), thenn, elze) if di == d =>
+                if (ni == n) Core.ITE(AND(rest), thenn, dispatch(elze)) else dispatch(elze)
+              case _ => t
+            }
+
+            def extract(t: Term): Expr = {
+              def recCond(term: Term, index: Int): Seq[Expr] = term match {
+                case AND(es) =>
+                  es.foldLeft(Seq.empty[Expr]) { case (seq, e) => seq ++ recCond(e, index + seq.size) }
+                case EQ(e1, e2) =>
+                  recCond(e2, index)
+                case _ => Seq(fromSMT(term, from(index)))
+              }
+
+              def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
+                case Core.ITE(cond, thenn, elze) =>
+                  val cs = recCond(cond, matchers.size)
+                  recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
+                case AND(es) if to == BooleanType =>
+                  Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+                case EQ(e1, e2) if to == BooleanType =>
+                  Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+                case _ => Seq(matchers -> fromSMT(term, to))
+              }
+
+              val cases = recCases(t, Seq.empty)
+              val (default, rest) = cases.partition(_._1.isEmpty)
+              val leonDefault = if (default.isEmpty && to == BooleanType) BooleanLiteral(false) else default.head._2
+              PartialLambda(rest.filter(_._1.size == from.size), Some(leonDefault), ft)
+            }
+
+            val lambdaTerm = dispatch(body)
+            val lambda = extract(lambdaTerm)
+            lambda
+        }
+      }
+    }
+
     // Use as much information as there is, if there is an expected type, great, but it might not always be there
     (t, otpe) match {
       case (_, Some(UnitType)) =>
@@ -663,79 +741,8 @@ trait SMTLIBTarget extends Interruptible {
           }
         }
 
-      case (SNumeral(n), Some(ft @ FunctionType(from, to))) =>
-        val dynLambda = lambdas.toB(ft)
-        val DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body)) = letDefs(dynLambda)
-
-        object EQ {
-          def unapply(t: Term): Option[(Term, Term)] = t match {
-            case Core.Equals(e1, e2) => Some((e1, e2))
-            case FunctionApplication(f, Seq(e1, e2)) if f.toString == "=" => Some((e1, e2))
-            case _ => None
-          }
-        }
-
-        object AND {
-          def unapply(t: Term): Option[Seq[Term]] = t match {
-            case Core.And(e1, e2) => Some(Seq(e1, e2))
-            case FunctionApplication(SimpleSymbol(SSymbol("and")), args) => Some(args)
-            case _ => None
-          }
-          def apply(ts: Seq[Term]): Term = ts match {
-            case Seq() => throw new IllegalArgumentException
-            case Seq(t) => t
-            case _ => FunctionApplication(SimpleSymbol(SSymbol("and")), ts)
-          }
-        }
-
-        object Num {
-          def unapply(t: Term): Option[BigInt] = t match {
-            case SNumeral(n) => Some(n)
-            case FunctionApplication(f, Seq(SNumeral(n))) if f.toString == "-" => Some(-n)
-            case _ => None
-          }
-        }
-
-        val d = symbolToQualifiedId(dispatcher)
-        def dispatch(t: Term): Term = t match {
-          case Core.ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
-            if (ni == n) thenn else dispatch(elze)
-          case Core.ITE(AND(EQ(di, Num(ni)) +: rest), thenn, elze) if di == d =>
-            if (ni == n) Core.ITE(AND(rest), thenn, dispatch(elze)) else dispatch(elze)
-          case _ => t
-        }
-
-        def extract(t: Term): Expr = {
-          def recCond(term: Term, index: Int): Seq[Expr] = term match {
-            case AND(es) =>
-              es.foldLeft(Seq.empty[Expr]) { case (seq, e) => seq ++ recCond(e, index + seq.size) }
-            case EQ(e1, e2) =>
-              recCond(e2, index)
-            case _ => Seq(fromSMT(term, from(index)))
-          }
-
-          def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
-            case Core.ITE(cond, thenn, elze) =>
-              val cs = recCond(cond, matchers.size)
-              recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
-            case AND(es) if to == BooleanType =>
-              Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
-            case EQ(e1, e2) if to == BooleanType =>
-              Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
-            case _ => Seq(matchers -> fromSMT(term, to))
-          }
-
-          val cases = recCases(t, Seq.empty)
-          val (default, rest) = cases.partition(_._1.isEmpty)
-          val leonDefault = if (default.isEmpty && to == BooleanType) BooleanLiteral(false) else default.head._2
-
-          assert(rest.forall(_._1.size == from.size))
-          PartialLambda(rest, Some(leonDefault), ft)
-        }
-
-        val lambdaTerm = dispatch(body)
-        val lambda = extract(lambdaTerm)
-        lambda
+      case (Num(n), Some(ft: FunctionType)) =>
+        extractLambda(n, ft)
 
       case (SNumeral(n), Some(RealType)) =>
         FractionalLiteral(n, 1)
