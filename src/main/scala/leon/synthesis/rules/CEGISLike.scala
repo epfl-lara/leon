@@ -67,9 +67,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
       val grammar = SizeBoundedGrammar(params.grammar)
 
-      def rootLabel(tpe: TypeTree) = SizedLabel(params.rootLabel(tpe), termSize)
-
-      def xLabels = p.xs.map(x => rootLabel(x.getType))
+      def rootLabel = SizedLabel(params.rootLabel(tupleTypeWrap(p.xs.map(_.getType))), termSize)
 
       var nAltsCache = Map[SizedLabel[T], Int]()
 
@@ -84,7 +82,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
       }
 
       def allProgramsCount(): Int = {
-        xLabels.map(countAlternatives).product
+        countAlternatives(rootLabel)
       }
 
       /**
@@ -108,7 +106,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
 
       // C identifiers corresponding to p.xs
-      private var rootCs: Seq[Identifier]    = Seq()
+      private var rootC: Identifier    = _
 
       private var bs: Set[Identifier]        = Set()
 
@@ -179,9 +177,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         val cGen = new CGenerator()
 
-        rootCs = for (l <- xLabels) yield {
-          val c = cGen.getNext(l)
-          defineCTreeFor(l, c)
+        rootC = {
+          val c = cGen.getNext(rootLabel)
+          defineCTreeFor(rootLabel, c)
           c
         }
 
@@ -244,7 +242,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
         }
 
-        allProgramsFor(rootCs)
+        allProgramsFor(Seq(rootC))
       }
 
       private def debugCTree(cTree: Map[Identifier, Seq[(Identifier, Seq[Expr] => Expr, Seq[Identifier])]],
@@ -299,11 +297,11 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           cToFd(c).fullBody = body
         }
 
-        // Top-level expression for rootCs
-        val expr = tupleWrap(rootCs.map { c =>
-          val fd = cToFd(c)
+        // Top-level expression for rootC
+        val expr = {
+          val fd = cToFd(rootC)
           FunctionInvocation(fd.typed, fd.params.map(_.toVariable))
-        })
+        }
 
         (expr, cToFd.values.toSeq)
       }
@@ -441,7 +439,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           }
         }
 
-        tupleWrap(rootCs.map(c => getCValue(c)))
+        getCValue(rootC)
       }
 
       /**
@@ -521,7 +519,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         val bvs = if (isMinimal) {
           bs
         } else {
-          rootCs.flatMap(filterBTree).toSet
+          filterBTree(rootC)
         }
 
         excludedPrograms += bvs
