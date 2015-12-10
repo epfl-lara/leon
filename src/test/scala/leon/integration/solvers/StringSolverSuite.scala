@@ -7,51 +7,80 @@ import leon.solvers.string.StringSolver
 import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Common.Identifier
 import scala.collection.mutable.{HashMap => MMap}
+import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
+import org.scalatest.concurrent.Timeouts
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.SpanSugar._
+import org.scalatest.FunSuite
+import org.scalatest.concurrent.Timeouts
+import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.time.SpanSugar._
 
 /**
  * @author Mikael
  */
-class StringSolverSuite extends FunSuite with Matchers {
-  val k = "xyzuvw".toSeq.map((k: Char) => k -> FreshIdentifier(k.toString)).toMap
-  lazy val x = k('x')
-  lazy val y = k('y')
-  lazy val z = k('z')
-  lazy val u = k('u')
-  lazy val v = k('v')
-  lazy val w = k('w')
+class StringSolverSuite extends FunSuite with Matchers with ScalaFutures {
+  val k = new MMap[String, Identifier]
+  
+  val x = FreshIdentifier("x")
+  val y = FreshIdentifier("y")
+  val z = FreshIdentifier("z")
+  val u = FreshIdentifier("u")
+  val v = FreshIdentifier("v")
+  val w = FreshIdentifier("w")
+  k ++= List("x" -> x, "y" -> y, "z" -> z, "u" -> u, "v" -> v, "w" -> w)
   
   implicit class EquationMaker(lhs: String) {
-    def convertStringToStringFrom(s: String) = {
-      s.toList.map((c: Char) => (k.get(c) match {case Some(v) => Right(v) case _ => Left(c.toString) }): StringSolver.StringFormToken)
+    def convertStringToStringFrom(s: String)(implicit idMap: MMap[String, Identifier]): StringSolver.StringForm = {
+      for(elem <- s.split("\\+").toList) yield {
+        if(elem.startsWith("\"")) {
+          Left(elem.substring(1, elem.length - 1))
+        } else if(elem(0).isDigit) {
+          Left(elem)
+        } else {
+          val id = idMap.getOrElse(elem, {
+            val res = FreshIdentifier(elem)
+            idMap += elem -> res
+            res
+          })
+          Right(id)
+        }
+      }
     }
     
-    def ===(rhs: String): StringSolver.Equation = {
+    def ===(rhs: String)(implicit k: MMap[String, Identifier]): StringSolver.Equation = {
       (convertStringToStringFrom(lhs), rhs)
     }
-    def ====(rhs: String): StringSolver.GeneralEquation = {
+    def ====(rhs: String)(implicit k: MMap[String, Identifier]): StringSolver.GeneralEquation = {
       (convertStringToStringFrom(lhs), convertStringToStringFrom(rhs))
     }
   }
   
   import StringSolver._
   
+  def m = MMap[String, Identifier]()
+  
   test("simplifyProblem"){
+    implicit val kk = k
     simplifyProblem(List("x" === "1"), Map()) should equal (Some((Nil, Map(x -> "1"))))
     simplifyProblem(List("y" === "23"), Map()) should equal (Some((Nil, Map(y -> "23"))))
     simplifyProblem(List("1" === "1"), Map()) should equal (Some((Nil, Map())))
     simplifyProblem(List("2" === "1"), Map()) should equal (None)
-    simplifyProblem(List("x" === "1", "yx" === "12"), Map()) should equal (Some((List("y1" === "12"), Map(x -> "1"))))
+    simplifyProblem(List("x" === "1", "y+x" === "12"), Map()) should equal (Some((List("y+1" === "12"), Map(x -> "1"))))
   }
   
   test("noLeftRightConstants") {
+    implicit val kk = k
     noLeftRightConstants(List("x" === "1"), Map()) should equal (Some((List("x" === "1"), Map())))
-    noLeftRightConstants(List("y2" === "12"), Map()) should equal (Some((List("y" === "1"), Map())))
-    noLeftRightConstants(List("3z" === "31"), Map()) should equal (Some((List("z" === "1"), Map())))
-    noLeftRightConstants(List("1u2" === "1, 2"), Map()) should equal (Some((List("u" === ", "), Map())))
+    noLeftRightConstants(List("y+2" === "12"), Map()) should equal (Some((List("y" === "1"), Map())))
+    noLeftRightConstants(List("3+z" === "31"), Map()) should equal (Some((List("z" === "1"), Map())))
+    noLeftRightConstants(List("1+u+2" === "1, 2"), Map()) should equal (Some((List("u" === ", "), Map())))
   }
   test("forwardStrategy") {
-    forwardStrategy(List("x3" === "123", "xy" === "1245"), Map()) should equal (Some((Nil, Map(x -> "12", y -> "45"))))
-    forwardStrategy(List("yz" === "4567", "x3" === "123", "xy" === "1245"), Map()) should equal (Some((Nil, Map(x -> "12", y -> "45", z -> "67"))))
+    implicit val kk = k
+    forwardStrategy(List("x+3" === "123", "x+y" === "1245"), Map()) should equal (Some((Nil, Map(x -> "12", y -> "45"))))
+    forwardStrategy(List("y+z" === "4567", "x+3" === "123", "x+y" === "1245"), Map()) should equal (Some((Nil, Map(x -> "12", y -> "45", z -> "67"))))
   }
   
   test("occurrences") {
@@ -82,32 +111,36 @@ class StringSolverSuite extends FunSuite with Matchers {
 
   
   test("solve switch") {
-    solve(List("xy" === "1234", "yx" === "1234")).toSet should equal (Set(Map(x -> "1234", y -> ""), Map(x -> "", y -> "1234")))
-    solve(List("xy" === "1234", "yx" === "3412")).toList should equal (List(Map(x -> "12", y -> "34")))
-    solve(List("xy" === "1234", "yx" === "4123")).toList should equal (List(Map(x -> "123", y -> "4")))
-    solve(List("xy" === "1234", "yx" === "2341")).toList should equal (List(Map(x -> "1", y -> "234")))
+    implicit val kk = k
+    solve(List("x+y" === "1234", "y+x" === "1234")).toSet should equal (Set(Map(x -> "1234", y -> ""), Map(x -> "", y -> "1234")))
+    solve(List("x+y" === "1234", "y+x" === "3412")).toList should equal (List(Map(x -> "12", y -> "34")))
+    solve(List("x+y" === "1234", "y+x" === "4123")).toList should equal (List(Map(x -> "123", y -> "4")))
+    solve(List("x+y" === "1234", "y+x" === "2341")).toList should equal (List(Map(x -> "1", y -> "234")))
   }
 
   test("solve inner") {
-    solve(List("x2y" === "123")).toList should equal (List(Map(x -> "1", y -> "3")))
-    solve(List("x2yz" === "123")).toSet should equal (Set(Map(x -> "1", y -> "3", z -> ""), Map(x -> "1", y -> "", z -> "3")))
-    solve(List("x2y" === "12324")).toSet should equal (Set(Map(x -> "1", y -> "324"), Map(x -> "123", y -> "4")))
+    implicit val kk = k
+    solve(List("x+2+y" === "123")).toList should equal (List(Map(x -> "1", y -> "3")))
+    solve(List("x+2+y+z" === "123")).toSet should equal (Set(Map(x -> "1", y -> "3", z -> ""), Map(x -> "1", y -> "", z -> "3")))
+    solve(List("x+2+y" === "12324")).toSet should equal (Set(Map(x -> "1", y -> "324"), Map(x -> "123", y -> "4")))
   }
   
   test("isTransitivelyBounded") {
+    implicit val kk = k
     isTransitivelyBounded(List("1" ==== "2")) should be(true)
     isTransitivelyBounded(List("2" ==== "2")) should be(true)
-    isTransitivelyBounded(List("x2" ==== "2")) should be(true)
-    isTransitivelyBounded(List("x2" ==== "1")) should be(true)
-    isTransitivelyBounded(List("x2" ==== "2x")) should be(false)
-    isTransitivelyBounded(List("x2" ==== "2y")) should be(false)
-    isTransitivelyBounded(List("x2" ==== "2y", "y" ==== "1")) should be(true)
-    isTransitivelyBounded(List("x2" ==== "2x", "x" ==== "1")) should be(true)
-    isTransitivelyBounded(List("xyz" ==== "1234", "uv" ==== "y42x")) should be(true)
+    isTransitivelyBounded(List("x+2" ==== "2")) should be(true)
+    isTransitivelyBounded(List("x+2" ==== "1")) should be(true)
+    isTransitivelyBounded(List("x+2" ==== "2+x")) should be(false)
+    isTransitivelyBounded(List("x+2" ==== "2+y")) should be(false)
+    isTransitivelyBounded(List("x+2" ==== "2+y", "y" ==== "1")) should be(true)
+    isTransitivelyBounded(List("x+2" ==== "2+x", "x" ==== "1")) should be(true)
+    isTransitivelyBounded(List("x+y+z" ==== "1234", "u+v" ==== "y+42+x")) should be(true)
   }
   
   test("solveGeneralProblem") {
-    solveGeneralProblem(List("xy" ==== "12", "uv" ==== "yx")).toSet should equal (
+    implicit val kk = k
+    solveGeneralProblem(List("x+y" ==== "12", "u+v" ==== "y+x")).toSet should equal (
         Set(
             Map(x -> "", y -> "12", u -> "", v -> "12"),
             Map(x -> "", y -> "12", u -> "1", v -> "2"),
@@ -123,8 +156,9 @@ class StringSolverSuite extends FunSuite with Matchers {
   }
   
   test("constantPropagate") {
+    implicit val kk = k
     val complexString = "abcdefmlkjsdqfmlkjqezpijbmkqjsdfmijzmajmpqjmfldkqsjmkj"
-    solve(List("w5xyzuv" === (complexString+"5"))).toList should equal (
+    solve(List("w+5+x+y+z+u+v" === (complexString+"5"))).toList should equal (
         List(Map(w -> complexString,
                  x -> "",
                  y -> "",
@@ -134,60 +168,42 @@ class StringSolverSuite extends FunSuite with Matchers {
   }
   
   test("constantPropagate2") {
+    implicit val kk = k
     val complexString = "abcdefmlkjsdqfmlkjqezpijbmkqjsdfmijzmajmpqjmfldkqsjmkj"
     val complexString2 = complexString.reverse
     val complexString3 = "flmqmslkjdqfmleomijgmlkqsjdmfijmqzoijdfmlqksjdofijmez"
-    solve(List("w5x5z" === (complexString+"5" + complexString2 + "5" + complexString3))).toList should equal (
+    solve(List("w+5+x+5+z" === (complexString+"5" + complexString2 + "5" + complexString3))).toList should equal (
         List(Map(w -> complexString,
                  x -> complexString2,
                  z -> complexString3)))
   }
-  def makeSf(lhs: String)(implicit idMap: MMap[String, Identifier]): StringForm = {
-    for(elem <- lhs.split("\\+").toList) yield {
-      if(elem.startsWith("\"")) {
-        Left(elem.substring(1, elem.length - 1))
-      } else {
-        val id = idMap.getOrElse(elem, {
-          val res = FreshIdentifier(elem)
-          idMap += elem -> res
-          res
-        })
-        Right(id)
-      }
-    }
-  }
   
   test("ListInt") {
     implicit val idMap = MMap[String, Identifier]()
-    val lhs1 = makeSf("""const8+const4+"12"+const5+const+"-1"+const1+const3+const2+const6+const9""")
-    val lhs2 = makeSf("""const8+const4+"1"+const5+const3+const6+const9""")
-    val lhs3 = makeSf("""const8+const7+const9""")
-    val rhs1 = "(12, -1)"
-    val rhs2 = "(1)"
-    val rhs3 = "()"
-    val problem = List((lhs1, rhs1), (lhs2, rhs2), (lhs3, rhs3))
+    val problem = List(
+        """const8+const4+"12"+const5+const+"-1"+const1+const3+const2+const6+const9""" === "(12, -1)",
+        """const8+const4+"1"+const5+const3+const6+const9""" === "(1)",
+        """const8+const7+const9""" === "()")
     solve(problem) should not be 'empty
   }
   
   test("ListInt as List(...)") {
     implicit val idMap = MMap[String, Identifier]()
-    val lhs1 = makeSf("const8+const7+const9")
-    val rhs1 = "List()"
-    val lhs2 = makeSf("""const8+const4+"1"+const5+const3+const6+const9""")
-    val rhs2 = "List(1)"
-    val lhs3 = makeSf("""const8+const4+"12"+const5+const+"-1"+const1+const3+const2+const6+const9""")
-    val rhs3 = "List(12, -1)"
-    val problem = List((lhs1, rhs1), (lhs2, rhs2), (lhs3, rhs3))
+    val problem = List("const8" ===  "List(",
+        "const8+const7+const9" ===  "List()",
+        """const8+const4+"1"+const5+const3+const6+const9""" === "List(1)",
+        """const8+const4+"12"+const5+const+"-1"+const1+const3+const2+const6+const9""" === "List(12, -1)")
     val solution = solve(problem) 
     solution should not be 'empty
     val firstSolution = solution(0)
+    println("First solution " + firstSolution)
     firstSolution(idMap("const8")) should equal("List(")
+    firstSolution(idMap("const4")) should equal("")
   }
   
   test("solveJadProblem") {
     val lhs = """const38+const34+const7+"T1"+const8+const3+const9+const5+"5"+const6+const10+const35+const30+const13+"T1"+const14+const31+const30+const7+"T2"+const8+const2+const9+const4+const10+const31+const30+const25+"T1"+const26+"Push"+const27+const20+"5"+const21+const28+const22+const29+const31+const30+const13+"T2"+const14+const31+const30+const25+"T2"+const26+"Pop"+const27+const19+const28+const23+"5"+const24+const29+const31+const33+const32+const32+const32+const32+const32+const36+const39=="T1: call Push(5)"""
     implicit val idMap = MMap[String, Identifier]()
-    val lhsSf = makeSf(lhs)
     
     val expected = """T1: call Push(5)
 T1: internal
@@ -196,9 +212,19 @@ T1: ret Push(5)
 T2: internal
 T2: ret Pop() -> 5"""
     
-    val problem: Problem = List((lhsSf.toList, expected))
+    val problem: Problem = List(lhs === expected)
     println("Problem to solve:" + StringSolver.renderProblem(problem))
     
     solve(problem) should not be 'empty
+  }
+  
+  test("SolvePropagateEquationProblem") {
+    implicit val idMap = MMap[String, Identifier]()
+    val problem = List(
+        "a+b+c+d" === "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+        "k+a+b+c+d" === "212345678912345678901234567890123456789012345678912345678901234567890123456789012345678901234567891"
+    )
+    val p = Future { solve(problem) }
+    assert(p.isReadyWithin(2 seconds), "Could not solve propagate")
   }
 }

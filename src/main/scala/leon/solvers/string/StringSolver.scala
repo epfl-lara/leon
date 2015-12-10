@@ -153,8 +153,11 @@ object StringSolver {
     def andThen(other: ProblemSimplicationPhase): ProblemSimplicationPhase = new ProblemSimplicationPhase {
       def run(p: Problem, s: Assignment) = {
         ProblemSimplicationPhase.this.run(p, s) match {
-          case Some((p, s)) => other.run(p, s)
-          case None => None
+          case Some((p, s)) => 
+            //println("Problem before " + other.getClass.getName.substring(33) + ":" + (p, s))
+            other.run(p, s)
+          case None =>
+            None
         }
       }
     }
@@ -217,6 +220,7 @@ object StringSolver {
         case sentence::q => obtainAssignments(q, assignments)
       }
       obtainAssignments(p, s).map(newAssignments => {
+        //println("Obtained new assignments: " + newAssignments)
         val newProblem = if(newAssignments.nonEmpty) reduceProblem(newAssignments)(p) else p
         (newProblem, s ++ newAssignments)
       })
@@ -352,6 +356,27 @@ object StringSolver {
     }
   }
   
+  /** If a left-hand side of the equation appears somewhere else, replace it by the right-hand-side of this equation */
+  object PropagateEquations extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      var newP = p
+      for((lhs, rhs) <- p if lhs.length >= 2) {
+        var indexInP = 0
+        for(eq@(lhs2, rhs2) <- newP)  {
+          if(!(lhs2 eq lhs) || !(rhs2 eq rhs)) {
+            val i = lhs2.indexOfSlice(lhs)
+            if(i != -1) {
+              val res = (lhs2.take(i) ++ Seq(Left(rhs)) ++ lhs2.drop(i + lhs.size), rhs2)
+              newP = newP.updated(indexInP, res)
+            }
+          }
+          indexInP += 1
+        }
+      }
+      Some((newP, s))
+    }
+  }
+  
   /** returns a simplified version of the problem. If it is not satisfiable, returns None. */
   val simplifyProblem: ProblemSimplicationPhase = {
     loopUntilConvergence(DistinctEquation andThen
@@ -367,7 +392,7 @@ object StringSolver {
   
   /** Composition of simplifyProblem and noLeftRightConstants */
   val forwardStrategy =
-    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants)
+    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants andThen PropagateEquations)
   
   
   /** Solves the equation   x1x2x3...xn = CONSTANT
