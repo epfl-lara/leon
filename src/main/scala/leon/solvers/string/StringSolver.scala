@@ -90,52 +90,15 @@ object StringSolver {
     rec(s)
   }
   
-  /** returns a simplified version of the problem. If it is not satisfiable, returns None. */
-  @tailrec def simplifyProblem(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
-    // Invariant: Every assigned var does not appear in the problem.
-    // 1. Merge constant in string forms
-    @tailrec def mergeConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
-      case Nil => Some(acc.toList)
-      case (sf, rhs)::q => mergeConstants(q, acc += ((reduceStringForm(sf), rhs)))
-    }
-    
-    // 2. Unsat if Const1 = Const2 but constants are different.
-    // 2bis.    if Const1 = Const2 and constants are same, remove equality.
-    @tailrec def simplifyConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
-      case Nil => Some(acc.toList)
-      case (Nil, rhs)::q => if("" != rhs) None else simplifyConstants(q, acc)
-      case (List(Left(c)), rhs)::q => if(c != rhs) None else simplifyConstants(q, acc)
-      case sentence::q => simplifyConstants(q, acc += sentence)
-    }
-    
-    // 3. Get new assignments from equations such as id = Const.
-    @tailrec def obtainAssignments(p: Problem, assignments: Assignment = Map()): Option[Assignment] = p match {
-      case Nil => Some(assignments)
-      case (List(Right(id)), rhs)::q =>
-        assignments.get(id) match { // It was assigned already.
-          case Some(v) =>
-            if(rhs != v) None else obtainAssignments(q, assignments)
-          case None => 
-            obtainAssignments(q, assignments + (id -> rhs))
-        }
-      case sentence::q => obtainAssignments(q, assignments)
-    }
-    val simplifiedOpt = mergeConstants(p.distinct)
-    .flatMap(simplifyConstants(_))
-    
-    simplifiedOpt match {
-      case None => None
-      case Some(simplified) =>
-        // 4. If there are new assignments, forward them to the equation and relaunch the simplification.
-        val newAssignmentsOpt = obtainAssignments(simplified)
-        newAssignmentsOpt match {
-          case Some(newAssignments) if newAssignments.nonEmpty =>
-             simplifyProblem(reduceProblem(newAssignments)(simplified), s ++ newAssignments)
-          case _ => Some((simplified, s))
-        }
-    }
+  /** Split the stringFrom at the last constant.
+    * @param s The concatenation of constants and variables  
+    * @return (a, b, c) such that a ++ Seq(b) ++ c == s and b is the last constant of s */
+  def splitAtLastConstant(s: StringForm): (StringForm, StringFormToken, StringForm) = {
+    val i = s.lastIndexWhere(x => x.isInstanceOf[Left[_, _]])
+    (s.take(i), s(i), s.drop(i+1))
   }
   
+  /** Use `val ConsReverse(init, last) = list` to retrieve the n-1 elements and the last element directly. */
   object ConsReverse {
     def unapply[A](l: List[A]): Option[(List[A], A)] = {
       if(l.nonEmpty) Some((l.init, l.last)) else None
@@ -143,143 +106,6 @@ object StringSolver {
     def apply[A](q: List[A], a: A): List[A] = q :+ a
   }
   
-  // Removes all constants from the left and right of the equations
-  def noLeftRightConstants(p: Problem): Option[Problem] = {
-    @tailrec def removeLeftconstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
-      case Nil => Some(acc.toList)
-      case ((Left(constant)::q, rhs))::ps =>
-        if(rhs.startsWith(constant)) {
-          removeLeftconstants(ps, acc += ((q, rhs.substring(constant.length))))
-        } else None
-      case (t@(q, rhs))::ps =>
-        removeLeftconstants(ps, acc += t)
-    }
-    
-    @tailrec def removeRightConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
-      case Nil => Some(acc.toList)
-      case (ConsReverse(q, Left(constant)), rhs)::ps =>
-        if(rhs.endsWith(constant)) {
-          removeRightConstants(ps, acc += ((q, rhs.substring(0, rhs.length - constant.length))))
-        } else None
-      case (t@(q, rhs))::ps =>
-        removeRightConstants(ps, acc += t)
-    }
-    
-    removeLeftconstants(p).flatMap(removeRightConstants(_))
-  }
-  
-  def splitAtLastConstant(s: StringForm): (StringForm, StringFormToken, StringForm) = {
-    val i = s.lastIndexWhere(x => x.isInstanceOf[Left[_, _]])
-    (s.take(i), s(i), s.drop(i+1))
-  }
-  
-  /** If constants have only one position in an equation, split the equation */
-  @tailrec def constantPropagate(p: Problem, assignments: Assignment = Map(), newProblem: ListBuffer[Equation] = ListBuffer()): Option[(Problem, Assignment)] = {
-    p match {
-      case Nil => 
-        Some((newProblem.toList, assignments))
-      case (ids, "")::q => // All identifiers should be empty.
-        val constants = ids.find { 
-          case Left(s) if s != "" => true
-          case Right(_) => false
-        }
-        (constants match {
-          case Some(_) => None
-          case None => // Ok now let's assign all variables to empty string.
-            val newMap = (ids.collect{ case Right(id) => id -> ""})
-            val newAssignments = (Option(assignments) /: newMap) {
-              case (None, (id, rhs)) => None 
-              case (Some(a), (id, rhs)) => 
-                a.get(id) match { // It was assigned already.
-                  case Some(v) =>
-                    if(rhs != v) None else Some(a)
-                  case None => 
-                    Some(a + (id -> rhs))
-                }
-            }
-            newAssignments
-        }) match {
-          case None => None
-          case Some(a) => 
-            constantPropagate(q, a, newProblem)
-        }
-      case (sentence@(ids, rhs))::q => // If the constants have an unique position, we should split the equation.
-        val constants = ids.collect { 
-          case l@Left(s) => s
-        }
-        // Check if constants form a partition in the string, i.e. getting the .indexOf() the first time is the only way to split the string.
-        
-        if(constants.length > 0) {
-          
-          var pos = -2
-          var lastPos = -2
-          var lastConst = ""
-          var invalid = false
-          
-          for(c <- constants) {
-            val i = rhs.indexOfSlice(c, pos)
-            lastPos = i
-            lastConst = c
-            if(i == -1) invalid = true
-            pos = i + c.length
-          }
-          if(invalid) None else {
-            val i = rhs.indexOfSlice(lastConst, lastPos + 1)
-            if(i == -1) { // OK it's the smallest position possible, hence we can split at the last position.
-              val (before, constant, after) = splitAtLastConstant(ids)
-              val firstConst = rhs.substring(0, lastPos)
-              val secondConst = rhs.substring(lastPos + lastConst.length)
-              constantPropagate((before, firstConst)::(after, secondConst)::q, assignments, newProblem)
-            } else {
-              // Other splitting strategy: independent constants ?
-              
-              
-              val constantsSplit = constants.flatMap{ c => {
-                val i = rhs.indexOfSlice(c, -1)
-                val j = rhs.indexOfSlice(c, i + 1)
-                if(j == -1 && i != -1) {
-                  List((c, i))
-                } else Nil
-              }}
-              
-              constantsSplit match {
-                case Nil =>
-                 constantPropagate(q, assignments, newProblem += sentence)
-                case ((c, i)::_) =>
-                  val (before, after) = ids.splitAt(ids.indexOf(Left(c)))
-                  val firstconst = rhs.substring(0, i)
-                  val secondConst = rhs.substring(i+c.length)
-                  constantPropagate((before, firstconst)::(after.tail, secondConst)::q, assignments, newProblem)
-              }
-              
-            }
-          }
-        } else {
-          constantPropagate(q, assignments, newProblem += sentence)
-        }
-      case sentence::q => constantPropagate(q, assignments, newProblem += sentence)
-    }
-  }
-  
-  /** Composition of simplifyProble and noLeftRightConstants */
-  def forwardStrategy(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
-    leon.utils.fixpoint[Option[(Problem, Assignment)]]{
-        case None => None
-        case Some((p: Problem, assignment: Assignment)) =>
-          val simplified = simplifyProblem(p, Map())
-          if(simplified == None) None else {
-            val simplified_problem = reduceProblem(simplified.get._2)(simplified.get._1)
-            val simplified2_problem = noLeftRightConstants(simplified_problem)
-            if(simplified2_problem == None) None else {
-              val simplified3_assignment = constantPropagate(simplified2_problem.get, simplified.get._2)
-              if(simplified3_assignment == None) None else {
-                val simplified3_problem = reduceProblem(simplified3_assignment.get._2)(simplified3_assignment.get._1)
-                Some((simplified3_problem, assignment ++ simplified3_assignment.get._2))
-              }
-            }
-          }
-    }(Option((p, s)))
-  }
   
   /** Returns all start positions of the string s in text.*/
   def occurrences(s: String, text: String): List[Int] = {
@@ -320,6 +146,230 @@ object StringSolver {
   }
   
   
+  /** A single pass simplification process. Converts as much as equations to assignments if possible. */
+  trait ProblemSimplicationPhase { self =>
+    def apply(p: Problem, s: Assignment) = run(p, s)
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)]
+    def andThen(other: ProblemSimplicationPhase): ProblemSimplicationPhase = new ProblemSimplicationPhase {
+      def run(p: Problem, s: Assignment) = {
+        ProblemSimplicationPhase.this.run(p, s) match {
+          case Some((p, s)) => other.run(p, s)
+          case None => None
+        }
+      }
+    }
+    /** Applies a phase until the output does not change anymore */
+    def loopUntilConvergence = new ProblemSimplicationPhase {
+      def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+        leon.utils.fixpoint[Option[(Problem, Assignment)]]{
+          case None => None
+          case Some((problem: Problem, assignment: Assignment)) => self.run(problem, assignment)
+        }(Option((p, s)))
+      }
+    }
+  }
+  def loopUntilConvergence(psp: ProblemSimplicationPhase) = psp.loopUntilConvergence 
+  
+  /** Removes duplicate equations from the problem */
+  object DistinctEquation extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      Some((p.distinct, s))
+    }
+  }
+  
+  /** Merge constant in string forms */
+  object MergeConstants extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      @tailrec def mergeConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+        case Nil => Some(acc.toList)
+        case (sf, rhs)::q => mergeConstants(q, acc += ((reduceStringForm(sf), rhs)))
+      }
+      mergeConstants(p).map((_, s))
+    }
+  }
+  
+  /** Unsat if Const1 = Const2 but constants are different.
+    * if Const1 = Const2 and constants are same, remove equality. */
+  object SimplifyConstants extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      @tailrec def simplifyConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+        case Nil => Some(acc.toList)
+        case (Nil, rhs)::q => if("" != rhs) None else simplifyConstants(q, acc)
+        case (List(Left(c)), rhs)::q => if(c != rhs) None else simplifyConstants(q, acc)
+        case sentence::q => simplifyConstants(q, acc += sentence)
+      }
+      simplifyConstants(p).map((_, s))
+    }
+  }
+  
+  /** . Get new assignments from equations such as id = Const, and propagate them */
+  object PropagateAssignments extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      @tailrec def obtainAssignments(p: Problem, assignments: Assignment = Map()): Option[Assignment] = p match {
+        case Nil => Some(assignments)
+        case (List(Right(id)), rhs)::q =>
+          assignments.get(id) match { // It was assigned already.
+            case Some(v) =>
+              if(rhs != v) None else obtainAssignments(q, assignments)
+            case None => 
+              obtainAssignments(q, assignments + (id -> rhs))
+          }
+        case sentence::q => obtainAssignments(q, assignments)
+      }
+      obtainAssignments(p, s).map(newAssignments => {
+        val newProblem = if(newAssignments.nonEmpty) reduceProblem(newAssignments)(p) else p
+        (newProblem, s ++ newAssignments)
+      })
+    }
+  }
+
+  /** Removes all constants from the left of the equations (i.e. "ab" x ... = "abcd" ==> x ... = "cd" ) */
+  object RemoveLeftConstants extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      @tailrec def removeLeftconstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+        case Nil => Some(acc.toList)
+        case ((Left(constant)::q, rhs))::ps =>
+          if(rhs.startsWith(constant)) {
+            removeLeftconstants(ps, acc += ((q, rhs.substring(constant.length))))
+          } else None
+        case (t@(q, rhs))::ps =>
+          removeLeftconstants(ps, acc += t)
+      }
+      removeLeftconstants(p).map((_, s))
+    }
+  }
+  
+  /** Removes all constants from the right of the equations (i.e. ... x "cd" = "abcd" ==> ... x = "ab" ) */
+  object RemoveRightConstants extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      @tailrec def removeRightConstants(p: Problem, acc: ListBuffer[Equation] = ListBuffer()): Option[Problem] = p match {
+        case Nil => Some(acc.toList)
+        case (ConsReverse(q, Left(constant)), rhs)::ps =>
+          if(rhs.endsWith(constant)) {
+            removeRightConstants(ps, acc += ((q, rhs.substring(0, rhs.length - constant.length))))
+          } else None
+        case (t@(q, rhs))::ps =>
+          removeRightConstants(ps, acc += t)
+      }
+      removeRightConstants(p).map((_, s))
+    }
+  }
+   
+  /** If constants can have only one position in an equation, splits the equation.
+    * If an equation is empty, treats all left-hand-side identifiers as empty.
+    * Requires MergeConstants so that empty constants have been removed. */
+  object PropagateMiddleConstants extends ProblemSimplicationPhase {
+    def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
+      @tailrec def constantPropagate(p: Problem, assignments: Assignment = Map(), newProblem: ListBuffer[Equation] = ListBuffer()): Option[(Problem, Assignment)] = {
+        p match {
+          case Nil => 
+            Some((newProblem.toList, assignments))
+          case (ids, "")::q => // All identifiers should be empty.
+            val constants = ids.find { 
+              case Left(s) if s != "" => true
+              case Right(_) => false
+            }
+            (constants match {
+              case Some(_) => None
+              case None => // Ok now let's assign all variables to empty string.
+                val newMap = (ids.collect{ case Right(id) => id -> ""})
+                val newAssignments = (Option(assignments) /: newMap) {
+                  case (None, (id, rhs)) => None 
+                  case (Some(a), (id, rhs)) => 
+                    a.get(id) match { // It was assigned already.
+                      case Some(v) =>
+                        if(rhs != v) None else Some(a)
+                      case None => 
+                        Some(a + (id -> rhs))
+                    }
+                }
+                newAssignments
+            }) match {
+              case None => None
+              case Some(a) => 
+                constantPropagate(q, a, newProblem)
+            }
+          case (sentence@(ids, rhs))::q => // If the constants have an unique position, we should split the equation.
+            val constants = ids.collect { 
+              case l@Left(s) => s
+            }
+            // Check if constants form a partition in the string, i.e. getting the .indexOf() the first time is the only way to split the string.
+            
+            if(constants.length > 0) {
+              
+              var pos = -2
+              var lastPos = -2
+              var lastConst = ""
+              var invalid = false
+              
+              for(c <- constants) {
+                val i = rhs.indexOfSlice(c, pos)
+                lastPos = i
+                lastConst = c
+                if(i == -1) invalid = true
+                pos = i + c.length
+              }
+              if(invalid) None else {
+                val i = rhs.indexOfSlice(lastConst, lastPos + 1)
+                if(i == -1) { // OK it's the smallest position possible, hence we can split at the last position.
+                  val (before, constant, after) = splitAtLastConstant(ids)
+                  val firstConst = rhs.substring(0, lastPos)
+                  val secondConst = rhs.substring(lastPos + lastConst.length)
+                  constantPropagate((before, firstConst)::(after, secondConst)::q, assignments, newProblem)
+                } else {
+                  // Other splitting strategy: independent constants ?
+                  
+                  val constantsSplit = constants.flatMap{ c => {
+                    val i = rhs.indexOfSlice(c, -1)
+                    val j = rhs.indexOfSlice(c, i + 1)
+                    if(j == -1 && i != -1) {
+                      List((c, i))
+                    } else Nil
+                  }}
+                  
+                  constantsSplit match {
+                    case Nil =>
+                     constantPropagate(q, assignments, newProblem += sentence)
+                    case ((c, i)::_) =>
+                      val (before, after) = ids.splitAt(ids.indexOf(Left(c)))
+                      val firstconst = rhs.substring(0, i)
+                      val secondConst = rhs.substring(i+c.length)
+                      constantPropagate((before, firstconst)::(after.tail, secondConst)::q, assignments, newProblem)
+                  }
+                  
+                }
+              }
+            } else {
+              constantPropagate(q, assignments, newProblem += sentence)
+            }
+          case sentence::q => constantPropagate(q, assignments, newProblem += sentence)
+        }
+      }
+      constantPropagate(p).map(ps => {
+        val newP = if(ps._2.nonEmpty) reduceProblem(ps._2)(p) else p
+        (ps._1, s ++ ps._2)
+      })
+    }
+  }
+  
+  /** returns a simplified version of the problem. If it is not satisfiable, returns None. */
+  val simplifyProblem: ProblemSimplicationPhase = {
+    loopUntilConvergence(DistinctEquation andThen
+    MergeConstants andThen
+    SimplifyConstants andThen
+    PropagateAssignments)
+  }
+  
+  /** Removes all constants from the left and right of the equations */
+  val noLeftRightConstants: ProblemSimplicationPhase = {
+    RemoveLeftConstants andThen RemoveRightConstants
+  }
+  
+  /** Composition of simplifyProblem and noLeftRightConstants */
+  val forwardStrategy =
+    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants)
+  
+  
   /** Solves the equation   x1x2x3...xn = CONSTANT
     * Prioritizes split positions in the CONSTANT that are word boundaries
     * Prioritizes variables which have a higher frequency */
@@ -337,9 +387,7 @@ object StringSolver {
         }).get
         val pos = prioritizedPositions(rhs)
         val numBestVars = ids.count { x => x == bestVar }
-        
-        
-        
+
         if(worstScore == bestScore) {
           for{
             i <- pos // Prioritization on positions which are separators.
@@ -458,7 +506,7 @@ object StringSolver {
   
   /** Solves the problem and returns all possible satisfying assignment */
   def solve(p: Problem): Stream[Assignment] = {
-    val realProblem = forwardStrategy(p, Map())
+    val realProblem = forwardStrategy.run(p, Map())
     /*if(realProblem.nonEmpty && realProblem.get._1.nonEmpty) {
       println("Problem:\n"+renderProblem(p))
       println("Solutions:\n"+realProblem.get._2)

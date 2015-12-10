@@ -44,10 +44,10 @@ class StringSolverSuite extends FunSuite with Matchers {
   }
   
   test("noLeftRightConstants") {
-    noLeftRightConstants(List("x" === "1")) should equal (Some(List("x" === "1")))
-    noLeftRightConstants(List("y2" === "12")) should equal (Some(List("y" === "1")))
-    noLeftRightConstants(List("3z" === "31")) should equal (Some(List("z" === "1")))
-    noLeftRightConstants(List("1u2" === "1, 2")) should equal (Some(List("u" === ", ")))
+    noLeftRightConstants(List("x" === "1"), Map()) should equal (Some((List("x" === "1"), Map())))
+    noLeftRightConstants(List("y2" === "12"), Map()) should equal (Some((List("y" === "1"), Map())))
+    noLeftRightConstants(List("3z" === "31"), Map()) should equal (Some((List("z" === "1"), Map())))
+    noLeftRightConstants(List("1u2" === "1, 2"), Map()) should equal (Some((List("u" === ", "), Map())))
   }
   test("forwardStrategy") {
     forwardStrategy(List("x3" === "123", "xy" === "1245"), Map()) should equal (Some((Nil, Map(x -> "12", y -> "45"))))
