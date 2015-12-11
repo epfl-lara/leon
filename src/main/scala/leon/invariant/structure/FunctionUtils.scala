@@ -5,13 +5,11 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
 import invariant.factories._
 import invariant.util._
 import Util._
 import PredicateUtil._
-import ProgramUtil._
 import scala.language.implicitConversions
 
 /**
@@ -41,8 +39,8 @@ object FunctionUtils {
     def isTemplateInvocation(finv: Expr) = {
       finv match {
         case FunctionInvocation(funInv, args) =>
-          (funInv.id.name == "tmpl" && funInv.returnType == BooleanType &&
-            args.size == 1 && args(0).isInstanceOf[Lambda])
+          funInv.id.name == "tmpl" && funInv.returnType == BooleanType &&
+            args.size == 1 && args(0).isInstanceOf[Lambda]
         case _ =>
           false
       }
@@ -50,8 +48,7 @@ object FunctionUtils {
 
     def isQMark(e: Expr) = e match {
       case FunctionInvocation(TypedFunDef(fd, Seq()), args) =>
-        (fd.id.name == "?" && fd.returnType == IntegerType &&
-          args.size <= 1)
+        fd.id.name == "?" && fd.returnType == IntegerType && args.size <= 1
       case _ => false
     }
 
@@ -108,7 +105,7 @@ object FunctionUtils {
         val Lambda(_, postBody) = fd.postcondition.get
         // collect all terms with question marks and convert them to a template
         val postWoQmarks = postBody match {
-          case And(args) if args.exists(exists(isQMark) _) =>
+          case And(args) if args.exists(exists(isQMark)) =>
             val (tempExprs, otherPreds) = args.partition {
               case a if exists(isQMark)(a) => true
               case _ => false

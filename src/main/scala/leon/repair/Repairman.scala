@@ -3,13 +3,11 @@
 package leon
 package repair
   
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.DefOps._
-import purescala.Quantification._
 import purescala.Constructors._
 import purescala.Extractors.unwrapTuple
 
@@ -133,7 +131,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val guide = Guide(origBody)
     val pre   = fd.precOrTrue
 
-    val ci = ChooseInfo(
+    val ci = SourceInfo(
       fd = fd,
       pc = andJoin(Seq(pre, guide, term)),
       source = origBody,

@@ -6,6 +6,7 @@ package rules
 
 import leon.purescala.Common.Identifier
 import purescala.Expressions._
+import purescala.Extractors._
 import purescala.Constructors._
 
 import solvers._
@@ -14,31 +15,31 @@ import scala.concurrent.duration._
 
 case object EqualitySplit extends Rule("Eq. Split") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
-    val solver = SimpleSolverAPI(hctx.sctx.solverFactory.withTimeout(50.millis))
+    // We approximate knowledge of equality based on facts found at the top-level
+    // we don't care if the variables are known to be equal or not, we just
+    // don't want to split on two variables for which only one split
+    // alternative is viable. This should be much less expensive than making
+    //  calls to a solver for each pair.
+    var facts = Set[Set[Identifier]]()
 
-    val candidates = p.as.groupBy(_.getType).mapValues(_.combinations(2).filter {
-      case List(a1, a2) =>
-        val toValEQ = implies(p.pc, Equals(Variable(a1), Variable(a2)))
+    def addFacts(e: Expr): Unit = e match {
+      case Not(e) => addFacts(e)
+      case LessThan(Variable(a), Variable(b))      => facts += Set(a,b)
+      case LessEquals(Variable(a), Variable(b))    => facts += Set(a,b)
+      case GreaterThan(Variable(a), Variable(b))   => facts += Set(a,b)
+      case GreaterEquals(Variable(a), Variable(b)) => facts += Set(a,b)
+      case Equals(Variable(a), Variable(b))        => facts += Set(a,b)
+      case _ =>
+    }
 
-        val impliesEQ = solver.solveSAT(Not(toValEQ)) match {
-          case (Some(false), _) => true
-          case _ => false
-        }
+    val TopLevelAnds(as) = and(p.pc, p.phi)
+    for (e <- as) {
+      addFacts(e)
+    }
 
-        if (!impliesEQ) {
-          val toValNE = implies(p.pc, not(Equals(Variable(a1), Variable(a2))))
-
-          val impliesNE = solver.solveSAT(Not(toValNE)) match {
-            case (Some(false), _) => true
-            case _ => false
-          }
-
-          !impliesNE
-        } else {
-          false
-        }
-      case _ => false
-    }).values.flatten
+    val candidates = p.as.groupBy(_.getType).mapValues{ as =>
+      as.combinations(2).filterNot(facts contains _.toSet)
+    }.values.flatten
 
     candidates.flatMap {
       case List(a1, a2) =>

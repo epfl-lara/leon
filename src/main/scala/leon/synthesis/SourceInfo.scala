@@ -9,17 +9,25 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import Witnesses._
 
-case class ChooseInfo(fd: FunDef,
+case class SourceInfo(fd: FunDef,
                       pc: Expr,
                       source: Expr,
                       spec: Expr,
                       eb: ExamplesBank) {
 
-  val problem = Problem.fromChooseInfo(this)
+  val problem = Problem.fromSourceInfo(this)
 }
 
-object ChooseInfo {
-  def extractFromProgram(ctx: LeonContext, prog: Program): List[ChooseInfo] = {
+object SourceInfo {
+
+  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
+    def collect(e: Expr, path: Seq[Expr]) = e match {
+      case c: Choose => Some(c -> and(path: _*))
+      case _ => None
+    }
+  }
+
+  def extractFromProgram(ctx: LeonContext, prog: Program): List[SourceInfo] = {
     val functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet }
 
     def excludeByDefault(fd: FunDef): Boolean = {
@@ -40,7 +48,7 @@ object ChooseInfo {
     results.sortBy(_.source.getPos)
   }
 
-  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[ChooseInfo] = {
+  def extractFromFunction(ctx: LeonContext, prog: Program, fd: FunDef): Seq[SourceInfo] = {
 
     val term = Terminating(fd.typed, fd.params.map(_.id.toVariable))
 
@@ -49,14 +57,14 @@ object ChooseInfo {
     // We are synthesizing, so all examples are valid ones
     val functionEb = eFinder.extractFromFunDef(fd, partition = false)
 
-    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(fd.fullBody)) yield {
+    for ((ch, path) <- new ChooseCollectorWithPaths().traverse(fd)) yield {
       val outerEb = if (path == BooleanLiteral(true)) {
         functionEb
       } else {
         ExamplesBank.empty
       }
 
-      val ci = ChooseInfo(fd, and(path, term), ch, ch.pred, outerEb)
+      val ci = SourceInfo(fd, and(path, term), ch, ch.pred, outerEb)
 
       val pcEb = eFinder.generateForPC(ci.problem.as, path, 20)
       val chooseEb = eFinder.extractFromProblem(ci.problem)

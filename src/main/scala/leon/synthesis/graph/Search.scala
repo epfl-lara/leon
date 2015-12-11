@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import leon.utils.Interruptible
 import java.util.concurrent.atomic.AtomicBoolean
 
-abstract class Search(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: CostModel) extends Interruptible {
+abstract class Search(ctx: LeonContext, ci: SourceInfo, p: Problem, costModel: CostModel) extends Interruptible {
   val g = new Graph(costModel, p)
 
   def findNodeToExpandFrom(n: Node): Option[Node]
@@ -83,7 +83,7 @@ abstract class Search(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: C
   ctx.interruptManager.registerForInterrupts(this)
 }
 
-class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: CostModel, bound: Option[Int]) extends Search(ctx, ci, p, costModel) {
+class SimpleSearch(ctx: LeonContext, ci: SourceInfo, p: Problem, costModel: CostModel, bound: Option[Int]) extends Search(ctx, ci, p, costModel) {
   val expansionBuffer = ArrayBuffer[Node]()
 
   def findIn(n: Node) {
@@ -124,7 +124,7 @@ class SimpleSearch(ctx: LeonContext, ci: ChooseInfo, p: Problem, costModel: Cost
   }
 }
 
-class ManualSearch(ctx: LeonContext, ci: ChooseInfo, problem: Problem, costModel: CostModel, initCmd: Option[String]) extends Search(ctx, ci, problem, costModel) {
+class ManualSearch(ctx: LeonContext, ci: SourceInfo, problem: Problem, costModel: CostModel, initCmd: Option[String]) extends Search(ctx, ci, problem, costModel) {
   import ctx.reporter._
 
   abstract class Command

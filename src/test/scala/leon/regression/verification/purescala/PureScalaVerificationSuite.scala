@@ -62,7 +62,7 @@ class PureScalaValidSuiteZ3 extends PureScalaValidSuite {
   val optionVariants = if (isZ3Available) List(opts(3)) else Nil
 }
 class PureScalaValidSuiteCVC4 extends PureScalaValidSuite {
-  val optionVariants = if (isCVC4Available) List(opts(4)) else Nil
+  val optionVariants = if (isCVC4Available) opts.takeRight(1) else Nil
 }
 
 class PureScalaInvalidSuite extends PureScalaVerificationSuite {

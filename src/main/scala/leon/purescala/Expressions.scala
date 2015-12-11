@@ -76,6 +76,10 @@ object Expressions {
     val getType = tpe
   }
 
+  case class Old(id: Identifier) extends Expr with Terminal {
+    val getType = id.getType
+  }
+
   /** Precondition of an [[Expressions.Expr]]. Corresponds to the Leon keyword *require*
     *
     * @param pred The precondition formula inside ``require(...)``
@@ -226,7 +230,7 @@ object Expressions {
     }
   }
 
-  case class PartialLambda(mapping: Seq[(Seq[Expr], Expr)], tpe: FunctionType) extends Expr {
+  case class PartialLambda(mapping: Seq[(Seq[Expr], Expr)], default: Option[Expr], tpe: FunctionType) extends Expr {
     val getType = tpe
   }
 

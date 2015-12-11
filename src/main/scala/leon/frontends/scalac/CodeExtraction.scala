@@ -1054,6 +1054,15 @@ trait CodeExtraction extends ASTExtractors {
           val tupleExprs = exprs.map(e => extractTree(e))
           Tuple(tupleExprs)
 
+        case ex@ExOldExpression(sym) if dctx.isVariable(sym) =>
+          dctx.vars.get(sym).orElse(dctx.mutableVars.get(sym)) match {
+            case Some(builder) =>
+              val Variable(id) = builder()
+              Old(id).setPos(ex.pos)
+            case None =>
+              outOfSubsetError(current, "old can only be used with variables")
+          }
+
         case ExErrorExpression(str, tpt) =>
           Error(extractType(tpt), str)
 
@@ -1083,11 +1092,11 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           val restTree = rest match {
-            case Some(rst) => {
+            case Some(rst) =>
               val nctx = dctx.withNewVar(vs -> (() => Variable(newID)))
               extractTree(rst)(nctx)
-            }
-            case None => UnitLiteral()
+            case None =>
+              UnitLiteral()
           }
 
           rest = None
@@ -1105,7 +1114,7 @@ trait CodeExtraction extends ASTExtractors {
 
           val oldCurrentFunDef = currentFunDef
 
-          val funDefWithBody = extractFunBody(fd, params, b)(newDctx.copy(mutableVars = Map()))
+          val funDefWithBody = extractFunBody(fd, params, b)(newDctx)
 
           currentFunDef = oldCurrentFunDef
 
@@ -1200,11 +1209,11 @@ trait CodeExtraction extends ASTExtractors {
           }
 
           getOwner(lhsRec) match {
-            case Some(Some(fd)) if fd != currentFunDef =>
-              outOfSubsetError(tr, "cannot update an array that is not defined locally")
+          //  case Some(Some(fd)) if fd != currentFunDef =>
+          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
 
-            case Some(None) =>
-              outOfSubsetError(tr, "cannot update an array that is not defined locally")
+          //  case Some(None) =>
+          //    outOfSubsetError(tr, "cannot update an array that is not defined locally")
 
             case Some(_) =>
 
@@ -1755,6 +1764,9 @@ trait CodeExtraction extends ASTExtractors {
 
       case tpe if tpe == NothingClass.tpe =>
         Untyped
+
+      case ct: ConstantType =>
+        extractType(ct.value.tpe)
 
       case TypeRef(_, sym, _) if isBigIntSym(sym) =>
         IntegerType

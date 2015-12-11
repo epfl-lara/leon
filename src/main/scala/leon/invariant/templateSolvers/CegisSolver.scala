@@ -1,23 +1,17 @@
 package leon
 package invariant.templateSolvers
-import z3.scala._
+
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
-import java.io._
-import scala.util.control.Breaks._
 import solvers._
-import solvers.z3._
 import invariant.engine._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
 import invariant.structure.FunctionUtils._
 import leon.invariant.util.RealValuedExprEvaluator._
-import Util._
 import PredicateUtil._
 import SolverUtil._
 
@@ -95,7 +89,7 @@ class CegisCore(ctx: InferenceContext,
     val tempVarSum = if (minimizeSum) {
       //compute the sum of the tempIds
       val rootTempIds = getTemplateVars(cegisSolver.rootFun.getTemplate)
-      if (rootTempIds.size >= 1) {
+      if (rootTempIds.nonEmpty) {
         rootTempIds.tail.foldLeft(rootTempIds.head.asInstanceOf[Expr])((acc, tvar) => Plus(acc, tvar))
       } else zero
     } else zero
@@ -126,7 +120,7 @@ class CegisCore(ctx: InferenceContext,
 
         //sanity checks
         val spuriousTempIds = variablesOf(instFormula).intersect(TemplateIdFactory.getTemplateIds)
-        if (!spuriousTempIds.isEmpty)
+        if (spuriousTempIds.nonEmpty)
           throw new IllegalStateException("Found a template variable in instFormula: " + spuriousTempIds)
         if (hasReals(instFormula))
           throw new IllegalStateException("Reals in instFormula: " + instFormula)
@@ -144,21 +138,21 @@ class CegisCore(ctx: InferenceContext,
             //simplify the tempctrs, evaluate every atom that does not involve a template variable
             //this should get rid of all functions
             val satctrs =
-              simplePreTransform((e) => e match {
+              simplePreTransform {
                 //is 'e' free of template variables ?
-                case _ if (variablesOf(e).filter(TemplateIdFactory.IsTemplateIdentifier _).isEmpty) => {
+                case e if !variablesOf(e).exists(TemplateIdFactory.IsTemplateIdentifier _) => {
                   //evaluate the term
                   val value = solver1.evalExpr(e)
                   if (value.isDefined) value.get
                   else throw new IllegalStateException("Cannot evaluate expression: " + e)
                 }
-                case _ => e
-              })(Not(formula))
+                case e => e
+              }(Not(formula))
             solver1.free()
 
             //sanity checks
             val spuriousProgIds = variablesOf(satctrs).filterNot(TemplateIdFactory.IsTemplateIdentifier _)
-            if (!spuriousProgIds.isEmpty)
+            if (spuriousProgIds.nonEmpty)
               throw new IllegalStateException("Found a progam variable in tempctrs: " + spuriousProgIds)
 
             val tempctrs = if (!solveAsInt) ExpressionTransformer.IntLiteralToReal(satctrs) else satctrs
@@ -201,7 +195,7 @@ class CegisCore(ctx: InferenceContext,
             println("2: " + (if (res1.isDefined) "solved" else "timed out") + "... in " + (t4 - t3) / 1000.0 + "s")
 
             if (res1.isDefined) {
-              if (res1.get == false) {
+              if (!res1.get) {
                 //there exists no solution for templates
                 (Some(false), newctr, Model.empty)
 

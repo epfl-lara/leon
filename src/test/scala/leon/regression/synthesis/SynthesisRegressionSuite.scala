@@ -21,7 +21,7 @@ class SynthesisRegressionSuite extends LeonRegressionSuite {
 
   private def testSynthesis(cat: String, f: File, bound: Int) {
 
-    var chooses = List[ChooseInfo]()
+    var chooses = List[SourceInfo]()
     var program: Program = null 
     var ctx: LeonContext = null 
     var opts: SynthesisSettings = null
@@ -37,7 +37,7 @@ class SynthesisRegressionSuite extends LeonRegressionSuite {
 
       program = pgm2
 
-      chooses = ChooseInfo.extractFromProgram(ctx2, program)
+      chooses = SourceInfo.extractFromProgram(ctx2, program)
     }
 
     for (ci <- chooses) {

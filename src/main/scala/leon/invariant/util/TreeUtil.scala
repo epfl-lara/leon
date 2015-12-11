@@ -33,8 +33,8 @@ object ProgramUtil {
    */
   def copyProgram(prog: Program, mapdefs: (Seq[Definition] => Seq[Definition])): Program = {
     prog.copy(units = prog.units.collect {
-      case unit if (!unit.defs.isEmpty) => unit.copy(defs = unit.defs.collect {
-        case module: ModuleDef if (!module.defs.isEmpty) =>
+      case unit if unit.defs.nonEmpty => unit.copy(defs = unit.defs.collect {
+        case module : ModuleDef  if module.defs.nonEmpty =>
           module.copy(defs = mapdefs(module.defs))
         case other => other
       })
@@ -108,11 +108,11 @@ object ProgramUtil {
   }
 
   def mapFunctionsInExpr(funmap: Map[FunDef, FunDef])(ine: Expr): Expr = {
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case FunctionInvocation(tfd, args) if funmap.contains(tfd.fd) =>
         FunctionInvocation(TypedFunDef(funmap(tfd.fd), tfd.tps), args)
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
   }
 
   /**
@@ -236,7 +236,7 @@ object ProgramUtil {
   }
 
   def translateExprToProgram(ine: Expr, currProg: Program, newProg: Program): Expr = {
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case FunctionInvocation(TypedFunDef(fd, tps), args) =>
         functionByName(fullName(fd)(currProg), newProg) match {
           case Some(nfd) =>
@@ -244,8 +244,8 @@ object ProgramUtil {
           case _ =>
             throw new IllegalStateException(s"Cannot find translation for ${fd.id.name}")
         }
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
   }
 
   def getFunctionReturnVariable(fd: FunDef) = {
@@ -280,18 +280,18 @@ object PredicateUtil {
    */
   def isTemplateExpr(expr: Expr): Boolean = {
     var foundVar = false
-    simplePostTransform((e: Expr) => e match {
-      case Variable(id) => {
+    simplePostTransform {
+      case e@Variable(id) => {
         if (!TemplateIdFactory.IsTemplateIdentifier(id))
           foundVar = true
         e
       }
-      case ResultVariable(_) => {
+      case e@ResultVariable(_) => {
         foundVar = true
         e
       }
-      case _ => e
-    })(expr)
+      case e => e
+    }(expr)
 
     !foundVar
   }
@@ -309,13 +309,13 @@ object PredicateUtil {
    */
   def hasReals(expr: Expr): Boolean = {
     var foundReal = false
-    simplePostTransform((e: Expr) => e match {
-      case _ => {
+    simplePostTransform {
+      case e => {
         if (e.getType == RealType)
-          foundReal = true;
+          foundReal = true
         e
       }
-    })(expr)
+    }(expr)
     foundReal
   }
 
@@ -327,13 +327,13 @@ object PredicateUtil {
    */
   def hasInts(expr: Expr): Boolean = {
     var foundInt = false
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case e: Terminal if (e.getType == Int32Type || e.getType == IntegerType) => {
-        foundInt = true;
+        foundInt = true
         e
       }
-      case _ => e
-    })(expr)
+      case e => e
+    }(expr)
     foundInt
   }
 
@@ -343,29 +343,29 @@ object PredicateUtil {
 
   def atomNum(e: Expr): Int = {
     var count: Int = 0
-    simplePostTransform((e: Expr) => e match {
-      case And(args) => {
+    simplePostTransform {
+      case e@And(args) => {
         count += args.size
         e
       }
-      case Or(args) => {
+      case e@Or(args) => {
         count += args.size
         e
       }
-      case _ => e
-    })(e)
+      case e => e
+    }(e)
     count
   }
 
   def numUIFADT(e: Expr): Int = {
     var count: Int = 0
-    simplePostTransform((e: Expr) => e match {
-      case FunctionInvocation(_, _) | CaseClass(_, _) | Tuple(_) => {
+    simplePostTransform {
+      case e@(FunctionInvocation(_, _) | CaseClass(_, _) | Tuple(_)) => {
         count += 1
         e
       }
-      case _ => e
-    })(e)
+      case e => e
+    }(e)
     count
   }
 
@@ -402,12 +402,12 @@ object PredicateUtil {
 
   //replaces occurrences of mult by Times
   def multToTimes(ine: Expr): Expr = {
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case FunctionInvocation(TypedFunDef(fd, _), args) if isMultFunctions(fd) => {
         Times(args(0), args(1))
       }
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
   }
 
   def createAnd(exprs: Seq[Expr]): Expr = {

@@ -1,31 +1,24 @@
 package leon
 package invariant.engine
 
-import z3.scala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
 import purescala.DefOps._
-import solvers._
-import solvers.z3.FairZ3Solver
-import java.io._
 import purescala.ScalaPrinter
+
+import solvers._
 import verification._
-import scala.reflect.runtime.universe
-import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
 import invariant.structure._
 import transformations._
 import FunctionUtils._
-import leon.invariant.templateSolvers.ExtendedUFSolver
 import Util._
 import PredicateUtil._
 import ProgramUtil._
-import SolverUtil._
 
 /**
  * @author ravi
@@ -119,7 +112,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
               case (Some(model), callsInPath) =>
                 toRefineCalls = callsInPath
                 //Validate the model here
-                instantiateAndValidateModel(model, constTracker.getFuncs.toSeq)
+                instantiateAndValidateModel(model, constTracker.getFuncs)
                 Some(InferResult(true, Some(model),
                   constTracker.getFuncs.toList))
               case (None, callsInPath) =>
@@ -129,7 +122,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
             }
           }
         }
-    } while (!infRes.isDefined)
+    } while (infRes.isEmpty)
     infRes
   }
 

@@ -1,31 +1,18 @@
 package leon
 package invariant.engine
 
-import z3.scala._
-import purescala.Common._
 import purescala.Definitions._
-import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
-import solvers._
 import java.io._
-import verification.VerificationReport
 import verification.VC
 import scala.util.control.Breaks._
-import invariant.templateSolvers._
 import invariant.factories._
 import invariant.util._
-import invariant.util.Util._
-import invariant.structure._
 import invariant.structure.FunctionUtils._
-import leon.invariant.factories.TemplateFactory
 import transformations._
 import leon.utils._
 import Util._
-import PredicateUtil._
 import ProgramUtil._
-import SolverUtil._
 
 /**
  * @author ravi
@@ -85,13 +72,13 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     } else {
       var remFuncs = functionsToAnalyze
       var b = 200
-      var maxCegisBound = 200
+      val maxCegisBound = 200
       breakable {
         while (b <= maxCegisBound) {
           Stats.updateCumStats(1, "CegisBoundsTried")
           val succeededFuncs = analyseProgram(program, remFuncs, progressCallback)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
-          if (remFuncs.isEmpty) break;
+          if (remFuncs.isEmpty) break
           b += 5 //increase bounds in steps of 5
         }
         //println("Inferrence did not succeeded for functions: " + remFuncs.map(_.id))
@@ -200,7 +187,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
                     first = false
                     ic
                   }
-                  progressCallback.map(cb => cb(inferCond))
+                  progressCallback.foreach(cb => cb(inferCond))
                 }
                 val funsWithTemplates = inferredFuns.filter { fd =>
                   val origFd = functionByName(fd.id.name, startProg).get

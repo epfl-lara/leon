@@ -1,20 +1,14 @@
 package leon
 package invariant.templateSolvers
-import z3.scala._
-import purescala.Common._
+
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
-import java.io._
 import invariant.datastructure.UndirectedGraph
-import scala.util.control.Breaks._
 import invariant.util._
 import leon.purescala.TypeOps
 import PredicateUtil._
-import SolverUtil._
-import Util._
 
 class UFADTEliminator(ctx: LeonContext, program: Program) {
 
@@ -113,7 +107,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         lhs :+ rhs
       }
       //remove self equalities.
-      val preds = eqs.filter(_ match {
+      val preds = eqs.filter {
         case Operator(Seq(Variable(lid), Variable(rid)), _) => {
           if (lid == rid) false
           else {
@@ -121,8 +115,8 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
             else false
           }
         }
-        case e @ _ => throw new IllegalStateException("Not an equality or Iff: " + e)
-      })
+        case e@_ => throw new IllegalStateException("Not an equality or Iff: " + e)
+      }
       preds
     }
 
@@ -134,21 +128,21 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         axiomatizeADTCons(call1, call2)
       }
 
-      if (makeEfficient && ants.exists(_ match {
+      if (makeEfficient && ants.exists {
         case Equals(l, r) if (l.getType != RealType && l.getType != BooleanType && l.getType != IntegerType) => true
         case _ => false
-      })) {
+      }) {
         Seq()
       } else {
         var unsatIntEq: Option[Expr] = None
         var unsatOtherEq: Option[Expr] = None
         ants.foreach(eq =>
-          if (!unsatOtherEq.isDefined) {
+          if (unsatOtherEq.isEmpty) {
             eq match {
               case Equals(lhs @ Variable(_), rhs @ Variable(_)) if !predEval(Equals(lhs, rhs)) => {
                 if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType)
                   unsatOtherEq = Some(eq)
-                else if (!unsatIntEq.isDefined)
+                else if (unsatIntEq.isEmpty)
                   unsatIntEq = Some(eq)
               }
               case _ => ;
