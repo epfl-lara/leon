@@ -232,7 +232,8 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
     val functions = Seq() //Seq("--functions=rotate")
     val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions ++ functions)
+    //val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions ++ functions)
+    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4", "--assumepre") ++ solverOptions ++ functions)
     val report = VerificationPhase.apply(ctx, prog)
     println(report.summaryString)
     /*ctx.reporter.whenDebug(leon.utils.DebugSectionTimers) { debug =>
