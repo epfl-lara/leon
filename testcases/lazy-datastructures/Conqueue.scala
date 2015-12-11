@@ -18,7 +18,7 @@ object ConcTrees {
     // Fix this.
     val level: BigInt = {
       this match {
-        case Empty()   => BigInt(0)
+        case Empty() => BigInt(0)
         case Single(x) => BigInt(0)
         case CC(l, r) =>
           BigInt(1) + max(l.level, r.level)
@@ -37,7 +37,7 @@ object Conqueue {
   sealed abstract class ConQ[T] {
     val isSpine: Boolean = this match {
       case Spine(_, _, _) => true
-      case _              => false
+      case _ => false
     }
     val isTip = !isSpine
   }
@@ -173,7 +173,7 @@ object Conqueue {
     require(!ys.isEmpty && zeroPreceedsLazy(xs) &&
       (xs* match {
         case Spine(h, _, _) => h != Empty[T]()
-        case _              => false
+        case _ => false
       }))
     //an additional precondition that is necessary for correctness: xs.head.level == ys.level
     xs.value match {
@@ -216,37 +216,38 @@ object Conqueue {
    * Lemma:
    * forall suf. suf*.head != Empty() ^ zeroPredsSuf(xs, suf) ^ concUntil(xs.tail.tail, suf) => concUntil(push(rear), suf)
    */
+  @invstate
   def pushLeftLazyLemma[T](ys: Conc[T], xs: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     require(!ys.isEmpty && zeroPreceedsSuf(xs, suf) &&
       (xs* match {
         case Spine(h, _, _) => h != Empty[T]()
-        case _              => false
+        case _ => false
       }) &&
       (suf* match {
         case Spine(Empty(), _, _) =>
           concreteUntil(xs, suf)
         case _ => false
       }))
-    // instantiate the lemma that implies zeroPreceedsLazy
-    (if (zeroPredSufConcreteUntilLemma(xs, suf)) {
-      // property
-      (pushLeftLazy(ys, xs) match {
-        case Spine(Empty(), _, rear) =>
-          concreteUntil(pushUntilCarry(rear), suf)
-      })
-    } else false) &&
-      // induction scheme
-      (xs* match {
-        case Spine(head, _, rear) =>
-          val carry = CC[T](head, ys)
-          rear* match {
-            case s @ Spine(h, _, _) =>
-              if (h != Empty[T]())
-                pushLeftLazyLemma(carry, rear, suf)
-              else true
-            case _ => true
-          }
-      })
+    // induction scheme
+    (xs* match {
+      case Spine(head, _, rear) =>
+        val carry = CC[T](head, ys)
+        rear* match {
+          case s @ Spine(h, _, _) =>
+            if (h != Empty[T]())
+              pushLeftLazyLemma(carry, rear, suf)
+            else true
+          case _ => true
+        }
+    }) &&
+      // instantiate the lemma that implies zeroPreceedsLazy
+      (if (zeroPredSufConcreteUntilLemma(xs, suf)) {
+        // property
+        (pushLeftLazy(ys, xs) match {
+          case Spine(Empty(), _, rear) =>
+            concreteUntil(pushUntilCarry(rear), suf)
+        })
+      } else false)
   } holds
 
   // verifies in 300 secs
@@ -272,19 +273,19 @@ object Conqueue {
     val lq: $[ConQ[T]] = nq
     (lq, nsched)
   } ensuring { res =>
-    schedulesProperty(res._1, res._2) &&
-      // lemma instantiations
-      (w.schedule match {
-        case Cons(head, tail) =>
-          w.queue* match {
-            case Spine(h, _, _) =>
-              if (h != Empty[T]())
-                pushLeftLazyLemma(ys, w.queue, head)
-              else true
-            case _ => true
-          }
-        case _ => true
-      }) &&
+    // lemma instantiations
+    (w.schedule match {
+      case Cons(head, tail) =>
+        w.queue* match {
+          case Spine(h, _, _) =>
+            if (h != Empty[T]())
+              pushLeftLazyLemma(ys, w.queue, head)
+            else true
+          case _ => true
+        }
+      case _ => true
+    }) &&
+      schedulesProperty(res._1, res._2) &&
       time <= 80
   }
 
@@ -305,25 +306,24 @@ object Conqueue {
     {
       val in = inState[ConQ[T]]
       val out = outState[ConQ[T]]
-      schedulesProperty(q, res) &&
-        // instantiations for proving the scheds property
-        (scheds match {
-          case Cons(head, rest) =>
-            concUntilExtenLemma(q, head, in, out) &&
-              (head* match {
-                case Spine(Empty(), _, rear) =>
-                  res match {
-                    case Cons(rhead, rtail) =>
-                      schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
-                        concUntilMonotone(rear, rhead, in, out) &&
-                        concUntilCompose(q, rear, rhead)
-                    case _ =>
-                      concreteMonotone(in, out, rear) &&
-                        concUntilConcreteExten(q, rear)
-                  }
-              })
-          case _ => true
-        }) &&
+      // instantiations for proving the scheds property
+      (scheds match {
+        case Cons(head, rest) =>
+          concUntilExtenLemma(q, head, in, out) &&
+            (head* match {
+              case Spine(Empty(), _, rear) =>
+                res match {
+                  case Cons(rhead, rtail) =>
+                    schedMonotone(in, out, rtail, pushUntilCarry(rhead)) &&
+                      concUntilMonotone(rear, rhead, in, out) &&
+                      concUntilCompose(q, rear, rhead)
+                  case _ =>
+                    concreteMonotone(in, out, rear) &&
+                      concUntilConcreteExten(q, rear)
+                }
+            })
+        case _ => true
+      }) &&
         // instantiations for zeroPreceedsSuf property
         (scheds match {
           case Cons(head, rest) =>
@@ -339,53 +339,51 @@ object Conqueue {
           case _ =>
             true
         })
-    } &&
+    } && // properties
+      schedulesProperty(q, res) &&
       time <= 70
   }
 
   // monotonicity lemmas
   def schedMonotone[T](st1: Set[$[ConQ[T]]], st2: Set[$[ConQ[T]]], scheds: Scheds[T], l: $[ConQ[T]]): Boolean = {
     require(st1.subsetOf(st2) &&
-      (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'
-    (schedulesProperty(l, scheds) withState st2) && //property
-      //induction scheme
-      (scheds match {
-        case Cons(head, tail) =>
-          head* match {
-            case Spine(_, _, rear) =>
-              concUntilMonotone(l, head, st1, st2) &&
-                schedMonotone(st1, st2, tail, pushUntilCarry(head))
-            case _ => true
-          }
-        case Nil() =>
-          concreteMonotone(st1, st2, l)
-      })
+      (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'    
+    //induction scheme
+    (scheds match {
+      case Cons(head, tail) =>
+        head* match {
+          case Spine(_, _, rear) =>
+            concUntilMonotone(l, head, st1, st2) &&
+              schedMonotone(st1, st2, tail, pushUntilCarry(head))
+          case _ => true
+        }
+      case Nil() =>
+        concreteMonotone(st1, st2, l)
+    }) && (schedulesProperty(l, scheds) withState st2) //property
   } holds
 
   def concreteMonotone[T](st1: Set[$[ConQ[T]]], st2: Set[$[ConQ[T]]], l: $[ConQ[T]]): Boolean = {
     require((isConcrete(l) withState st1) && st1.subsetOf(st2))
-    (isConcrete(l) withState st2) && {
-      // induction scheme
-      l* match {
-        case Spine(_, _, tail) =>
-          concreteMonotone[T](st1, st2, tail)
-        case _ =>
-          true
-      }
-    }
+    // induction scheme
+    (l* match {
+      case Spine(_, _, tail) =>
+        concreteMonotone[T](st1, st2, tail)
+      case _ =>
+        true
+    }) && (isConcrete(l) withState st2)
   } holds
 
   def concUntilMonotone[T](q: $[ConQ[T]], suf: $[ConQ[T]], st1: Set[$[ConQ[T]]], st2: Set[$[ConQ[T]]]): Boolean = {
     require((concreteUntil(q, suf) withState st1) && st1.subsetOf(st2))
-    (concreteUntil(q, suf) withState st2) &&
-      (if (q != suf) {
-        q* match {
-          case Spine(_, _, tail) =>
-            concUntilMonotone(tail, suf, st1, st2)
-          case _ =>
-            true
-        }
-      } else true)
+    (if (q != suf) {
+      q* match {
+        case Spine(_, _, tail) =>
+          concUntilMonotone(tail, suf, st1, st2)
+        case _ =>
+          true
+      }
+    } else true) &&
+      (concreteUntil(q, suf) withState st2)
   } holds
 
   // suffix predicates and  their properties (this should be generalizable)
@@ -407,8 +405,7 @@ object Conqueue {
         suffix(rear, suf)
       case _ => false
     }
-  } ensuring (res => !res || (suf != l &&
-      suffixDisequality(l, suf)))
+  } ensuring (res => !res || (suffixDisequality(l, suf) && suf != l))
 
   /**
    * suf(q, suf) ==> suf(q.rear, suf.rear)
@@ -424,12 +421,12 @@ object Conqueue {
         case Tip(_) => true
       }
     }) && // property
-     ((q*, suf*) match {
-      case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
-        // 'sufRear' should be a suffix of 'rear1'
-        suffix(rear, sufRear)
-      case _ => true
-    })
+      ((q*, suf*) match {
+        case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+          // 'sufRear' should be a suffix of 'rear1'
+          suffix(rear, sufRear)
+        case _ => true
+      })
   }.holds
 
   /**
@@ -438,88 +435,85 @@ object Conqueue {
   def suffixDisequality[T](l: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     require(properSuffix(l, suf))
     suffixTrans(l, suf) && // lemma instantiation
-    ((l*, suf*) match { // induction scheme
-      case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
-        // 'sufRear' should be a suffix of 'rear1'
-        suffixDisequality(rear, sufRear)
-      case _ => true
-    }) && l != suf
+      ((l*, suf*) match { // induction scheme
+        case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+          // 'sufRear' should be a suffix of 'rear1'
+          suffixDisequality(rear, sufRear)
+        case _ => true
+      }) && l != suf // property
   }.holds
 
   def suffixCompose[T](q: $[ConQ[T]], suf1: $[ConQ[T]], suf2: $[ConQ[T]]): Boolean = {
     require(suffix(q, suf1) && properSuffix(suf1, suf2))
-    properSuffix(q, suf2) &&
-      // induction over suffix(q, suf1)
-      (if (q == suf1) true
-      else {
-        q* match {
-          case Spine(_, _, rear) =>
-            suffixCompose(rear, suf1, suf2)
-          case Tip(_) => false
-        }
-      })
+    // induction over suffix(q, suf1)
+    (if (q == suf1) true
+    else {
+      q* match {
+        case Spine(_, _, rear) =>
+          suffixCompose(rear, suf1, suf2)
+        case Tip(_) => false
+      }
+    }) && properSuffix(q, suf2)
   } holds
 
   // properties of 'concUntil'
 
   def concreteUntilIsSuffix[T](l: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     require(concreteUntil(l, suf))
-    suffix(l, suf) &&
-      // induction scheme
-      (if (l != suf) {
-        (l* match {
-          case Spine(_, cws, tail) =>
-            concreteUntilIsSuffix(tail, suf)
-          case _ =>
-            true
-        })
-      } else true)
+    // induction scheme
+    (if (l != suf) {
+      (l* match {
+        case Spine(_, cws, tail) =>
+          concreteUntilIsSuffix(tail, suf)
+        case _ =>
+          true
+      })
+    } else true) && suffix(l, suf)
   }.holds
 
   // properties that extend `concUntil` to larger portions of the queue
 
   def concUntilExtenLemma[T](q: $[ConQ[T]], suf: $[ConQ[T]], st1: Set[$[ConQ[T]]], st2: Set[$[ConQ[T]]]): Boolean = {
     require((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf))
-    (suf* match {
-      case Spine(_, _, rear) =>
-        concreteUntil(q, rear) withState st2
-      case _ => true
-    }) &&
-      // induction scheme
-      (if (q != suf) {
-        q* match {
-          case Spine(_, _, tail) =>
-            concUntilExtenLemma(tail, suf, st1, st2)
-          case _ =>
-            true
-        }
-      } else true)
+    // induction scheme
+    (if (q != suf) {
+      q* match {
+        case Spine(_, _, tail) =>
+          concUntilExtenLemma(tail, suf, st1, st2)
+        case _ =>
+          true
+      }
+    } else true) &&
+      (suf* match {
+        case Spine(_, _, rear) =>
+          concreteUntil(q, rear) withState st2
+        case _ => true
+      })
   } holds
 
   def concUntilConcreteExten[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     require(concreteUntil(q, suf) && isConcrete(suf))
-    isConcrete(q) &&
-      (if (q != suf) {
-        q* match {
-          case Spine(_, _, tail) =>
-            concUntilConcreteExten(tail, suf)
-          case _ =>
-            true
-        }
-      } else true)
+    (if (q != suf) {
+      q* match {
+        case Spine(_, _, tail) =>
+          concUntilConcreteExten(tail, suf)
+        case _ =>
+          true
+      }
+    } else true) && isConcrete(q)
   } holds
 
   def concUntilCompose[T](q: $[ConQ[T]], suf1: $[ConQ[T]], suf2: $[ConQ[T]]): Boolean = {
     require(concreteUntil(q, suf1) && concreteUntil(suf1, suf2))
-    concreteUntil(q, suf2) &&
-      (if (q != suf1) {
-        q* match {
-          case Spine(_, _, tail) =>
-            concUntilCompose(tail, suf1, suf2)
-          case _ =>
-            true
-        }
-      } else true)
+    (if (q != suf1) {
+      q* match {
+        case Spine(_, _, tail) =>
+          concUntilCompose(tail, suf1, suf2)
+        case _ =>
+          true
+      }
+    } else true) &&
+      concreteUntil(q, suf2)
   } holds
 
   // properties that relate `concUntil`, `concrete`,  `zeroPreceedsSuf` with `zeroPreceedsLazy`
@@ -527,31 +521,29 @@ object Conqueue {
 
   def zeroPredSufConcreteUntilLemma[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     require(concreteUntil(q, suf) && zeroPreceedsSuf(q, suf))
-    zeroPreceedsLazy(q) && {
-      // induction scheme
-      if (q != suf) {
-        q* match {
-          case Spine(Empty(), _, _) => true
-          case Spine(_, _, tail) =>
-            zeroPredSufConcreteUntilLemma(tail, suf)
-          case _ =>
-            true
-        }
-      } else true
-    }
+    // induction scheme
+    (if (q != suf) {
+      q* match {
+        case Spine(Empty(), _, _) => true
+        case Spine(_, _, tail) =>
+          zeroPredSufConcreteUntilLemma(tail, suf)
+        case _ =>
+          true
+      }
+    } else true) &&
+      zeroPreceedsLazy(q)
   } holds
 
   def concreteZeroPredLemma[T](q: $[ConQ[T]]): Boolean = {
     require(isConcrete(q))
-    zeroPreceedsLazy(q) && {
-      // induction scheme
-      q* match {
-        case Spine(_, _, tail) =>
-          concreteZeroPredLemma(tail)
-        case _ =>
-          true
-      }
-    }
+    // induction scheme
+    (q* match {
+      case Spine(_, _, tail) =>
+        concreteZeroPredLemma(tail)
+      case _ =>
+        true
+    }) &&
+      zeroPreceedsLazy(q)
   } holds
 
   // properties relating `suffix` an `zeroPreceedsSuf`
@@ -562,17 +554,17 @@ object Conqueue {
         suffix(q, suf) && properSuffix(suf, suf2)
       case _ => false
     })
-    suffixCompose(q, suf, suf2) &&
-      zeroPreceedsSuf(q, suf2) && (
-        // induction scheme
-        if (q != suf) {
-          q* match {
-            case Spine(_, _, tail) =>
-              suffixZeroLemma(tail, suf, suf2)
-            case _ =>
-              true
-          }
-        } else true)
+    suffixCompose(q, suf, suf2) && (
+      // induction scheme
+      if (q != suf) {
+        q* match {
+          case Spine(_, _, tail) =>
+            suffixZeroLemma(tail, suf, suf2)
+          case _ =>
+            true
+        }
+      } else true) &&
+      zeroPreceedsSuf(q, suf2) // property
   }.holds
 
   /**
@@ -585,7 +577,8 @@ object Conqueue {
     val nscheds = Pay(q, scheds)
     Queue(q, nscheds)
 
-  } ensuring { res => res.valid &&
-    time <= 200
-    }
+  } ensuring { res =>
+    res.valid &&
+      time <= 200
+  }
 }

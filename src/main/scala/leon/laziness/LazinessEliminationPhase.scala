@@ -99,8 +99,9 @@ object LazinessEliminationPhase extends TransformationPhase {
       //println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
     }
+    val checkCtx = contextForChecks(ctx)
     if (!skipStateVerification)
-      checkSpecifications(progWOInstSpecs)
+      checkSpecifications(progWOInstSpecs, checkCtx)
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
     val instrumenter = new LazyInstrumenter(typeCorrectProg)
@@ -111,7 +112,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
     // check specifications (to be moved to a different phase)
     if (!skipResourceVerification)
-      checkInstrumentationSpecs(instProg)
+      checkInstrumentationSpecs(instProg, checkCtx)
     instProg
   }
 
@@ -224,30 +225,37 @@ object LazinessEliminationPhase extends TransformationPhase {
     ProgramUtil.updatePost(newPosts, p) //note: this will not update libraries
   }
 
-  def checkSpecifications(prog: Program) {
+  def contextForChecks(userOptions: LeonContext) = {
+    val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre"))
+    LeonContext(userOptions.reporter, userOptions.interruptManager,
+        solverOptions.options ++ userOptions.options)
+  }
+
+  def checkSpecifications(prog: Program, checkCtx: LeonContext) {
     // convert 'axiom annotation to library
     prog.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-    val functions = Seq() //Seq("--functions=rotate")
-    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    //val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions ++ functions)
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4", "--assumepre") ++ solverOptions ++ functions)
-    val report = VerificationPhase.apply(ctx, prog)
+//    val functions = Seq() //Seq("--functions=rotate")
+//    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
+//    val unfoldFactor = 3 ,
+//        "--unfoldFactor="+unfoldFactor) ++ solverOptions ++ functions
+    //val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre")
+    val report = VerificationPhase.apply(checkCtx, prog)
     println(report.summaryString)
     /*ctx.reporter.whenDebug(leon.utils.DebugSectionTimers) { debug =>
         ctx.timers.outputTable(debug)
       }*/
   }
 
-  def checkInstrumentationSpecs(p: Program) = {
+  def checkInstrumentationSpecs(p: Program, checkCtx: LeonContext) = {
     p.definedFunctions.foreach { fd =>
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
+//    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
+//    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
 
     //(a) create vcs
     // Note: we only need to check specs involving instvars since others were checked before.
@@ -288,16 +296,16 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
     //(b) create a verification context
     val timeout: Option[Long] = None
-    val reporter = ctx.reporter
+    val reporter = checkCtx.reporter
     // Solvers selection and validation
-    val baseSolverF = SolverFactory.getFromSettings(ctx, p)
+    val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
     val solverF = timeout match {
       case Some(sec) =>
         baseSolverF.withTimeout(sec / 1000)
       case None =>
         baseSolverF
     }
-    val vctx = VerificationContext(ctx, p, solverF, reporter)
+    val vctx = VerificationContext(checkCtx, p, solverF, reporter)
     //(c) check the vcs
     try {
       val veriRep = VerificationPhase.checkVCs(vctx, vcs)

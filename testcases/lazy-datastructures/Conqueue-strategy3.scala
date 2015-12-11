@@ -354,9 +354,7 @@ object Conqueue {
     }
     (Eager(nq), nsched, nst)
   } ensuring { res =>
-    isEvaluated(res._1, res._3) &&
-    schedulesProperty(res._1, res._2, res._3) && // head of the schedule may start after the first element
-      // lemma instantiations
+    // lemma instantiations
       (w.schedule match {
         case Cons(head, tail) =>
           evalLazyConQS(w.queue) match {
@@ -365,7 +363,9 @@ object Conqueue {
             case _ => true
           }
         case _ => true
-      })
+      }) && 
+    //isEvaluated(res._1, res._3) &&
+    schedulesProperty(res._1, res._2, res._3) // head of the schedule may start after the first element      
   }
 
   /*def PushLeftLazypushLeftLazyLem[T](rear15 : LazyConQ[T], head : Conc[T], dres : (ConQ[T], Set[LazyConQ[T]]), st : Set[LazyConQ[T]], xs : LazyConQ[T], s : Spine[T], dres : (ConQ[T], Set[LazyConQ[T]]), carry : CC[T], ys : Conc[T]): Boolean =  {
