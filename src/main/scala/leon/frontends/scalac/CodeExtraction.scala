@@ -246,13 +246,13 @@ trait CodeExtraction extends ASTExtractors {
           // ignore
           None
 
-        case t@ExAbstractClass(o2, sym, _) =>
+        case t @ ExAbstractClass(o2, sym, _) =>
           Some(getClassDef(sym, t.pos))
 
-        case t@ExCaseClass(o2, sym, args, _) =>
+        case t @ ExCaseClass(o2, sym, args, _) =>
           Some(getClassDef(sym, t.pos))
 
-        case t@ExObjectDef(n, templ) =>
+        case t @ ExObjectDef(n, templ) =>
           // Module
           val id = FreshIdentifier(n)
           val leonDefs = templ.body.flatMap {
@@ -481,16 +481,31 @@ trait CodeExtraction extends ASTExtractors {
           Nil
       }
 
-      val tparams = tparamsMap.map(t => TypeParameterDef(t._2))
-
-      val defCtx = DefContext(tparamsMap.toMap)
-
       val parent = sym.tpe.parents.headOption match {
         case Some(TypeRef(_, parentSym, tps)) if seenClasses contains parentSym =>
           getClassDef(parentSym, sym.pos) match {
             case acd: AbstractClassDef =>
+              val defCtx = DefContext(tparamsMap.toMap)
               val newTps = tps.map(extractType(_)(defCtx, sym.pos))
-              Some(AbstractClassType(acd, newTps))
+              val zip = (newTps zip tparamsMap.map(_._2))
+              if (newTps.size != tparamsMap.size) {
+                outOfSubsetError(sym.pos, "Child classes should have the same number of type parameters as their parent")
+                None
+              } else if (zip.exists {
+                case (TypeParameter(_), _) => false
+                case _ => true
+              }) {
+                outOfSubsetError(sym.pos, "Child class type params should have a simple mapping to parent params")
+                None
+              } else if (zip.exists {
+                case (TypeParameter(id), ctp) => id.name != ctp.id.name
+                case _ => false
+              }) {
+                outOfSubsetError(sym.pos, "Child type params should be identical to parent class's (e.g. C[T1,T2] extends P[T1,T2])")
+                None
+              } else {
+                Some(acd.typed -> acd.tparams)
+              }
 
             case cd =>
               outOfSubsetError(sym.pos, s"Class $id cannot extend ${cd.id}")
@@ -501,11 +516,18 @@ trait CodeExtraction extends ASTExtractors {
           None
       }
 
+      val tparams = parent match {
+        case Some((p, tparams)) => tparams
+        case None => tparamsMap.map(t => TypeParameterDef(t._2))
+      }
+
+      val defCtx = DefContext((tparamsMap.map(_._1) zip tparams.map(_.tp)).toMap)
+
       // Extract class
       val cd = if (sym.isAbstractClass) {
-        AbstractClassDef(id, tparams, parent)
+        AbstractClassDef(id, tparams, parent.map(_._1))
       } else  {
-        CaseClassDef(id, tparams, parent, sym.isModuleClass)
+        CaseClassDef(id, tparams, parent.map(_._1), sym.isModuleClass)
       }
       cd.setPos(sym.pos)
       //println(s"Registering $sym")
@@ -513,7 +535,7 @@ trait CodeExtraction extends ASTExtractors {
       cd.addFlags(annotationsOf(sym).map { case (name, args) => ClassFlag.fromName(name, args) }.toSet)
 
       // Register parent
-      parent.foreach(_.classDef.registerChild(cd))
+      parent.map(_._1).foreach(_.classDef.registerChild(cd))
 
       // Extract case class fields
       cd match {
@@ -522,28 +544,12 @@ trait CodeExtraction extends ASTExtractors {
           val fields = args.map { case (fsym, t) =>
             val tpe = leonType(t.tpt.tpe)(defCtx, fsym.pos)
             val id = cachedWithOverrides(fsym, Some(ccd), tpe)
+            if (tpe != id.getType) println(tpe, id.getType)
             LeonValDef(id.setPos(t.pos)).setPos(t.pos)
           }
           //println(s"Fields of $sym")
           ccd.setFields(fields)
         case _ =>
-      }
-
-      // Validates type parameters
-      parent foreach { pct =>
-        if(pct.classDef.tparams.size == tparams.size) {
-          val pcd = pct.classDef
-          val ptps = pcd.tparams.map(_.tp)
-
-          val targetType = AbstractClassType(pcd, ptps)
-          val fromChild = cd.typed(ptps).parent.get
-
-          if (fromChild != targetType) {
-            outOfSubsetError(sym.pos, "Child type should form a simple bijection with parent class type (e.g. C[T1,T2] extends P[T1,T2])")
-          }
-        } else {
-          outOfSubsetError(sym.pos, "Child classes should have the same number of type parameters as their parent")
-        }
       }
 
       //println(s"Body of $sym")
@@ -1730,6 +1736,14 @@ trait CodeExtraction extends ASTExtractors {
               LessEquals(a1, a2)
 
             case (_, name, _) =>
+              rrec match {
+                case CaseClass(ct, fields) =>
+                  println(ct.fieldsTypes)
+                  println(rrec.getType)
+                  println(ct)
+                  println(fields.map(f => f -> f.getType))
+                case _ =>
+              }
               outOfSubsetError(tr, "Unknown call to "+name)
           }
 

@@ -666,6 +666,9 @@ trait SMTLIBTarget extends Interruptible {
         case Some(dynLambda) => letDefs.get(dynLambda) match {
           case None => simplestValue(ft)
           case Some(DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body))) =>
+            val lambdaArgs = from.map(tpe => FreshIdentifier("x", tpe, true))
+            val argsMap: Map[Term, Identifier] = (args.map(sv => symbolToQualifiedId(sv.name)) zip lambdaArgs).toMap
+
             val d = symbolToQualifiedId(dispatcher)
             def dispatch(t: Term): Term = t match {
               case Core.ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
@@ -676,34 +679,39 @@ trait SMTLIBTarget extends Interruptible {
             }
 
             def extract(t: Term): Expr = {
-              def recCond(term: Term, index: Int): Seq[Expr] = term match {
+              def recCond(term: Term): Seq[Expr] = term match {
                 case AND(es) =>
-                  es.foldLeft(Seq.empty[Expr]) { case (seq, e) => seq ++ recCond(e, index + seq.size) }
+                  es.foldLeft(Seq.empty[Expr]) {
+                    case (seq, e) => seq ++ recCond(e)
+                  }
                 case EQ(e1, e2) =>
-                  recCond(e2, index)
-                case _ => Seq(fromSMT(term, from(index)))
+                  argsMap.get(e1).map(l => l -> e2) orElse argsMap.get(e2).map(l => l -> e1) match {
+                    case Some((lambdaArg, term)) => Seq(Equals(lambdaArg.toVariable, fromSMT(term, lambdaArg.getType)))
+                    case _ => Seq.empty
+                  }
+                case arg =>
+                  argsMap.get(arg) match {
+                    case Some(lambdaArg) => Seq(lambdaArg.toVariable)
+                    case _ => Seq.empty
+                  }
               }
 
-              def recCases(term: Term, matchers: Seq[Expr]): Seq[(Seq[Expr], Expr)] = term match {
+              def recCases(term: Term): Expr = term match {
                 case Core.ITE(cond, thenn, elze) =>
-                  val cs = recCond(cond, matchers.size)
-                  recCases(thenn, matchers ++ cs) ++ recCases(elze, matchers)
+                  IfExpr(andJoin(recCond(cond)), recCases(thenn), recCases(elze))
                 case AND(es) if to == BooleanType =>
-                  Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
+                  andJoin(recCond(term))
                 case EQ(e1, e2) if to == BooleanType =>
-                  Seq((matchers ++ recCond(term, matchers.size)) -> BooleanLiteral(true))
-                case _ => Seq(matchers -> fromSMT(term, to))
+                  andJoin(recCond(term))
+                case _ =>
+                 fromSMT(term, to)
               }
 
-              val cases = recCases(t, Seq.empty)
-              val (default, rest) = cases.partition(_._1.isEmpty)
-              val leonDefault = if (default.isEmpty && to == BooleanType) BooleanLiteral(false) else default.head._2
-              PartialLambda(rest.filter(_._1.size == from.size), Some(leonDefault), ft)
+              val body = recCases(t)
+              Lambda(lambdaArgs.map(ValDef(_)), body)
             }
 
-            val lambdaTerm = dispatch(body)
-            val lambda = extract(lambdaTerm)
-            lambda
+            extract(dispatch(body))
         }
       }
     }
