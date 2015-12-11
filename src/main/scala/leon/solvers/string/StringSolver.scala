@@ -25,14 +25,15 @@ object StringSolver {
   /** Sequences of equalities such as xyz"1"uv"2" = "1, 2" */
   type Problem = List[Equation]
   
+  def renderStringForm(sf: StringForm): String = sf match {
+    case Left(const)::Nil => "\""+const+"\"" 
+    case Right(id)::Nil => id.toString
+    case Left(const)::q =>  "\""+const+"\"+" + renderStringForm(q)
+    case Right(id)::q => id.toString + "+" + renderStringForm(q)
+    case Nil => ""
+  }
+  
   def renderProblem(p: Problem): String = {
-    def renderStringForm(sf: StringForm): String = sf match {
-      case Left(const)::Nil => "\""+const+"\"" 
-      case Right(id)::Nil => id.toString
-      case Left(const)::q =>  "\""+const+"\"+" + renderStringForm(q)
-      case Right(id)::q => id.toString + "+" + renderStringForm(q)
-      case Nil => ""
-    }
     def renderEquation(e: Equation): String = {
       renderStringForm(e._1) + "==\""+e._2+"\""
     }
@@ -75,8 +76,16 @@ object StringSolver {
   }
   
   /** Returns true if the assignment is a solution to the problem */
-  def check(p: Problem, s: Assignment): Boolean = {
-    p forall (eq => evaluate(s)(eq._1) == eq._2 )
+  def errorcheck(p: Problem, s: Assignment): Option[String] = {
+    val res = p flatMap {eq =>
+      val resultNotCorrect = reduceStringForm(s)(eq._1) match {
+        case Left(a)::Nil if a == eq._2 => None
+        case Nil if eq._2 == "" => None
+        case res => Some(res)
+      }
+      if(resultNotCorrect.nonEmpty) Some(renderStringForm(eq._1) + " == "+ renderStringForm(resultNotCorrect.get) + ", but expected " + eq._2) else None
+    }
+    if(res == Nil) None else Some(res.mkString("\n") + "\nAssignment: " + s)
   }
   
   /** Concatenates constants together */
@@ -154,7 +163,7 @@ object StringSolver {
       def run(p: Problem, s: Assignment) = {
         ProblemSimplicationPhase.this.run(p, s) match {
           case Some((p, s)) => 
-            //println("Problem before " + other.getClass.getName.substring(33) + ":" + (p, s))
+            println("Problem before " + other.getClass.getName.substring(33) + ":" + (renderProblem(p), s))
             other.run(p, s)
           case None =>
             None
@@ -359,11 +368,11 @@ object StringSolver {
   /** If a left-hand side of the equation appears somewhere else, replace it by the right-hand-side of this equation */
   object PropagateEquations extends ProblemSimplicationPhase {
     def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
-      var newP = p
+      var newP = p.distinct
       for((lhs, rhs) <- p if lhs.length >= 2) {
         var indexInP = 0
         for(eq@(lhs2, rhs2) <- newP)  {
-          if(!(lhs2 eq lhs) || !(rhs2 eq rhs)) {
+          if((!(lhs2 eq lhs) || !(rhs2 eq rhs))) {
             val i = lhs2.indexOfSlice(lhs)
             if(i != -1) {
               val res = (lhs2.take(i) ++ Seq(Left(rhs)) ++ lhs2.drop(i + lhs.size), rhs2)
@@ -392,7 +401,7 @@ object StringSolver {
   
   /** Composition of simplifyProblem and noLeftRightConstants */
   val forwardStrategy =
-    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants andThen PropagateEquations)
+    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants/* andThen PropagateEquations*/)
   
   
   /** Solves the equation   x1x2x3...xn = CONSTANT
