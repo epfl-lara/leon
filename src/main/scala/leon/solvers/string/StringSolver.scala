@@ -163,7 +163,7 @@ object StringSolver {
       def run(p: Problem, s: Assignment) = {
         ProblemSimplicationPhase.this.run(p, s) match {
           case Some((p, s)) => 
-            println("Problem before " + other.getClass.getName.substring(33) + ":" + (renderProblem(p), s))
+            //println("Problem before " + other.getClass.getName.substring(33) + ":" + (renderProblem(p), s))
             other.run(p, s)
           case None =>
             None
@@ -369,7 +369,7 @@ object StringSolver {
   object PropagateEquations extends ProblemSimplicationPhase {
     def run(p: Problem, s: Assignment): Option[(Problem, Assignment)] = {
       var newP = p.distinct
-      for((lhs, rhs) <- p if lhs.length >= 2) {
+      for((lhs, rhs) <- newP if lhs.length >= 2) { // Original distinct p.
         var indexInP = 0
         for(eq@(lhs2, rhs2) <- newP)  {
           if((!(lhs2 eq lhs) || !(rhs2 eq rhs))) {
@@ -401,7 +401,7 @@ object StringSolver {
   
   /** Composition of simplifyProblem and noLeftRightConstants */
   val forwardStrategy =
-    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants/* andThen PropagateEquations*/)
+    loopUntilConvergence(simplifyProblem andThen noLeftRightConstants andThen PropagateMiddleConstants andThen PropagateEquations)
   
   
   /** Solves the equation   x1x2x3...xn = CONSTANT

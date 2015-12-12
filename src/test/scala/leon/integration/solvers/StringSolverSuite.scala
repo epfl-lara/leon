@@ -184,7 +184,10 @@ class StringSolverSuite extends FunSuite with Matchers with ScalaFutures {
         """const8+const4+"12"+const5+const+"-1"+const1+const3+const2+const6+const9""" === "(12, -1)",
         """const8+const4+"1"+const5+const3+const6+const9""" === "(1)",
         """const8+const7+const9""" === "()")
-    solve(problem) should not be 'empty
+    val solutions = solve(problem)
+    solutions should not be 'empty
+    val solution = solutions.head
+    errorcheck(problem, solution) should be(None)
   }
   
   test("ListInt as List(...)") {
@@ -221,10 +224,22 @@ T2: ret Pop() -> 5"""
   test("SolvePropagateEquationProblem") {
     implicit val idMap = MMap[String, Identifier]()
     val problem = List(
-        "a+b+c+d" === "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
-        "k+a+b+c+d" === "212345678912345678901234567890123456789012345678912345678901234567890123456789012345678901234567891"
+        "a+b+c+d" ===    "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890",
+        "k+a+b+c+d" === "21234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567891"
     )
     val p = Future { solve(problem) }
     assert(p.isReadyWithin(2 seconds), "Could not solve propagate")
+    p.futureValue should be('empty)
+  }
+  
+  test("SolveRightCheckingProblem") {
+    implicit val idMap = MMap[String, Identifier]()
+    val problem = List(
+        "u+v+w+a+b+c+d" ===      "123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+        "u+v+w+k+a+k+b+c+d" === "21234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567892"
+    )
+    val p = Future { solve(problem) }
+    assert(p.isReadyWithin(2 seconds), "Could not solve propagate")
+    p.futureValue should not be('empty)
   }
 }
