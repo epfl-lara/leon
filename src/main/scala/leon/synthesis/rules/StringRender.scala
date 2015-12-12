@@ -242,6 +242,10 @@ case object StringRender extends Rule("StringRender") {
   
   case class DependentType(caseClassParent: Option[TypeTree], inputName: String, typeToConvert: TypeTree)
   
+  case class StringSynthesisContext(
+      currentCaseClassParent: Option[TypeTree],
+      adtToString: Map[DependentType, (FunDef, Stream[WithIds[Expr]])]
+  )(implicit hctx: SearchContext)
   
   /** Creates an empty function definition for the dependent type */
   def createEmptyFunDef(tpe: DependentType)(implicit hctx: SearchContext): FunDef = {
@@ -280,8 +284,7 @@ case object StringRender extends Rule("StringRender") {
     * @param inputs The list of inputs. Make sure each identifier is typed.
     **/
   def createFunDefsTemplates(
-      currentCaseClassParent: Option[TypeTree],
-      adtToString: Map[DependentType, (FunDef, Stream[WithIds[Expr]])],
+      ctx: StringSynthesisContext,
       inputs: Seq[Identifier])(implicit hctx: SearchContext): (Stream[WithIds[Expr]], Map[DependentType, (FunDef, Stream[WithIds[Expr]])]) = {
     
     def extractCaseVariants(cct: CaseClassType, assignments2: Map[DependentType, (FunDef, Stream[WithIds[Expr]])])
@@ -290,7 +293,7 @@ case object StringRender extends Rule("StringRender") {
         val typeMap = tparams.zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd, typeMap).id )
         val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
-        val (rhs, assignments2tmp2) = createFunDefsTemplates(Some(cct), assignments2, fields) // Invoke functions for each of the fields.
+        val (rhs, assignments2tmp2) = createFunDefsTemplates(StringSynthesisContext(Some(cct), assignments2), fields) // Invoke functions for each of the fields.
         val newCases = rhs.map(e => (MatchCase(pattern, None, e._1), e._2))
         (assignments2tmp2, newCases)
     }
@@ -328,29 +331,28 @@ case object StringRender extends Rule("StringRender") {
      * Each expression is tagged with a list of identifiers, which is the list of variables which need to be found.
      * @return Along with the list, an updated function definitions to transform (parent-dependent) types to strings */
     @tailrec def gatherInputs(
-        currentCaseClassParent: Option[TypeTree],
-        assignments1: Map[DependentType, (FunDef, Stream[WithIds[Expr]])],
+        ctx: StringSynthesisContext,
         inputs: List[Identifier],
         result: ListBuffer[Stream[WithIds[Expr]]] = ListBuffer()): (List[Stream[WithIds[Expr]]], Map[DependentType, (FunDef, Stream[WithIds[Expr]])]) = inputs match {
-      case Nil => (result.toList, assignments1)
+      case Nil => (result.toList, ctx.adtToString)
       case input::q => 
-        val dependentType = DependentType(currentCaseClassParent, input.asString(hctx.program)(hctx.context), input.getType)
-        assignments1.get(dependentType) match {
+        val dependentType = DependentType(ctx.currentCaseClassParent, input.asString(hctx.program)(hctx.context), input.getType)
+        ctx.adtToString.get(dependentType) match {
         case Some(fd) =>
-          gatherInputs(currentCaseClassParent, assignments1, q, result += Stream((functionInvocation(fd._1, Seq(Variable(input))), Nil)))
+          gatherInputs(ctx, q, result += Stream((functionInvocation(fd._1, Seq(Variable(input))), Nil)))
         case None => // No function can render the current type.
           input.getType match {
             case StringType =>
-              gatherInputs(currentCaseClassParent, assignments1, q, result += Stream((Variable(input), Nil)))
+              gatherInputs(ctx, q, result += Stream((Variable(input), Nil)))
             case BooleanType =>
               val (bTemplate, vs) = booleanTemplate(input).instantiateWithVars
-              gatherInputs(currentCaseClassParent, assignments1, q, result += Stream((BooleanToString(Variable(input)), Nil)) #::: Stream((bTemplate, vs)))
+              gatherInputs(ctx, q, result += Stream((BooleanToString(Variable(input)), Nil)) #::: Stream((bTemplate, vs)))
             case WithStringconverter(converter) => // Base case
-              gatherInputs(currentCaseClassParent, assignments1, q, result += Stream((converter(Variable(input)), Nil)))
+              gatherInputs(ctx, q, result += Stream((converter(Variable(input)), Nil)))
             case t: ClassType =>
               // Create the empty function body and updates the assignments parts.
               val fd = createEmptyFunDef(dependentType)
-              val assignments2 = preUpdateFunDefBody(dependentType, fd, assignments1) // Inserts the FunDef in the assignments so that it can already be used.
+              val assignments2 = preUpdateFunDefBody(dependentType, fd, ctx.adtToString) // Inserts the FunDef in the assignments so that it can already be used.
               t.root match {
                 case act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps) =>
                   // Create a complete FunDef body with pattern matching
@@ -373,12 +375,12 @@ case object StringRender extends Rule("StringRender") {
                     Stream(constantPatternMatching(fd, act)) ++ allMatchExprsEnd
                   } else allMatchExprsEnd
                   val assignments4 = assignments3 + (dependentType -> (fd, allMatchExprs))
-                  gatherInputs(currentCaseClassParent, assignments4, q, result += Stream((functionInvocation(fd, Seq(Variable(input))), Nil)))
+                  gatherInputs(ctx.copy(adtToString = assignments4), q, result += Stream((functionInvocation(fd, Seq(Variable(input))), Nil)))
                 case cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
                   val (assignments3, newCases) = extractCaseVariants(cct, assignments2)
                   val allMatchExprs = newCases.map(acase => mergeMatchCases(fd)(Seq(acase)))
                   val assignments4 = assignments3 + (dependentType -> (fd, allMatchExprs))
-                  gatherInputs(currentCaseClassParent, assignments4, q, result += Stream((functionInvocation(fd, Seq(Variable(input))), Nil)))
+                  gatherInputs(ctx.copy(adtToString = assignments4), q, result += Stream((functionInvocation(fd, Seq(Variable(input))), Nil)))
               }
             case TypeParameter(t) =>
               hctx.reporter.fatalError("Could not handle type parameter for string rendering " + t)
@@ -387,7 +389,7 @@ case object StringRender extends Rule("StringRender") {
           }
       }
     }
-    val (exprs, assignments) = gatherInputs(currentCaseClassParent, adtToString, inputs.toList)
+    val (exprs, assignments) = gatherInputs(ctx, inputs.toList)
     /* Add post, pre and in-between holes, and returns a single expr along with the new assignments. */
     val template: Stream[WithIds[Expr]] = exprs match {
       case Nil =>
@@ -418,7 +420,7 @@ case object StringRender extends Rule("StringRender") {
         
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         ruleInstantiations += RuleInstantiation("String conversion") {
-          val (expr, funDefs) = createFunDefsTemplates(None, Map(), p.as)
+          val (expr, funDefs) = createFunDefsTemplates(StringSynthesisContext(None, Map()), p.as)
           
           val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
                 t + "\n" + s._2._1.toString
