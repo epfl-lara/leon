@@ -45,7 +45,7 @@ case class Matcher[T](caller: T, tpe: TypeTree, args: Seq[Either[T, Matcher[T]]]
 
 class QuantificationTemplate[T](
   val quantificationManager: QuantificationManager[T],
-  val start: T,
+  val pathVar: (Identifier, T),
   val qs: (Identifier, T),
   val q2s: (Identifier, T),
   val insts: (Identifier, T),
@@ -60,10 +60,12 @@ class QuantificationTemplate[T](
   val matchers: Map[T, Set[Matcher[T]]],
   val lambdas: Seq[LambdaTemplate[T]]) {
 
+  lazy val start = pathVar._2
+
   def substitute(substituter: T => T): QuantificationTemplate[T] = {
     new QuantificationTemplate[T](
       quantificationManager,
-      substituter(start),
+      pathVar._1 -> substituter(start),
       qs,
       q2s,
       insts,
@@ -114,7 +116,7 @@ object QuantificationTemplate {
         substMap = subst + q2s + insts + guards + qs)
 
     new QuantificationTemplate[T](quantificationManager,
-      pathVar._2, qs, q2s, insts, guards._2, quantifiers,
+      pathVar, qs, q2s, insts, guards._2, quantifiers,
       condVars, exprVars, condTree, clauses, blockers, applications, matchers, lambdas)
   }
 }
@@ -328,7 +330,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   private trait MatcherQuantification {
-    val start: T
+    val pathVar: (Identifier, T)
     val quantified: Set[T]
     val matchers: Set[Matcher[T]]
     val allMatchers: Map[T, Set[Matcher[T]]]
@@ -339,6 +341,8 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     val blockers: Map[T, Set[TemplateCallInfo[T]]]
     val applications: Map[T, Set[App[T]]]
     val lambdas: Seq[LambdaTemplate[T]]
+
+    lazy val start = pathVar._2
 
     private lazy val depth = matchers.map(matcherDepth).max
     private lazy val transMatchers: Set[Matcher[T]] = (for {
@@ -438,7 +442,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         }
 
         val baseSubstMap = exprVars.map { case (id, idT) => idT -> encoder.encodeId(id) } ++
-                           freshConds(enabler, condVars, condTree)
+                           freshConds(pathVar._1 -> enabler, condVars, condTree)
         val lambdaSubstMap = lambdas map (lambda => lambda.ids._2 -> encoder.encodeId(lambda.ids._1))
         val substMap = subst.mapValues(Matcher.argValue) ++ baseSubstMap ++ lambdaSubstMap ++ instanceSubst(enablers)
 
@@ -473,7 +477,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   private class Quantification (
-    val start: T,
+    val pathVar: (Identifier, T),
     val qs: (Identifier, T),
     val q2s: (Identifier, T),
     val insts: (Identifier, T),
@@ -520,7 +524,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   private class LambdaAxiom (
-    val start: T,
+    val pathVar: (Identifier, T),
     val blocker: T,
     val guardVar: T,
     val quantified: Set[T],
@@ -599,7 +603,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val enablingClause = encoder.mkImplies(guardT, blockerT)
 
       instantiateAxiom(
-        substMap(template.start),
+        template.pathVar._1 -> substMap(template.start),
         blockerT,
         guardT,
         quantifiers,
@@ -621,7 +625,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
   }
 
   def instantiateAxiom(
-    start: T,
+    pathVar: (Identifier, T),
     blocker: T,
     guardVar: T,
     quantifiers: Seq[(Identifier, T)],
@@ -641,7 +645,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
     var instantiation = Instantiation.empty[T]
 
     for (matchers <- matchQuorums) {
-      val axiom = new LambdaAxiom(start, blocker, guardVar, quantified,
+      val axiom = new LambdaAxiom(pathVar, blocker, guardVar, quantified,
         matchers, allMatchers, condVars, exprVars, condTree,
         clauses, blockers, applications, lambdas
       )
@@ -679,7 +683,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
       val substituter = encoder.substitute(subst)
       val quantification = new Quantification(
-        substituter(template.start),
+        template.pathVar._1 -> substituter(template.start),
         template.qs._1 -> newQ,
         template.q2s, template.insts, template.guardVar,
         quantified,
