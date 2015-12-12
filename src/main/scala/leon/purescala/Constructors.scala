@@ -19,9 +19,10 @@ import Types._
   *  */
 object Constructors {
 
-  /** If `isTuple`, the whole expression is returned. This is to avoid a situation like
-    * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x`, which is not expected.
-    * Instead,
+  /** If `isTuple`:
+    * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> x`
+    * `tupleSelect(tupleExpr,1) -> tupleExpr._1`
+    * If not `isTuple` (usually used only in the case of a tuple of arity 1)
     * `tupleSelect(tupleWrap(Seq(Tuple(x,y))),1) -> Tuple(x,y)`.
     * @see [[purescala.Expressions.TupleSelect]]
     */
