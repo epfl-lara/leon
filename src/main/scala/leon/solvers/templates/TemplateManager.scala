@@ -62,7 +62,7 @@ trait Template[T] { self =>
   val encoder : TemplateEncoder[T]
   val manager : QuantificationManager[T]
 
-  val start : T
+  val pathVar: (Identifier, T)
   val args : Seq[T]
   val condVars : Map[Identifier, T]
   val exprVars : Map[Identifier, T]
@@ -74,6 +74,8 @@ trait Template[T] { self =>
   val matchers : Map[T, Set[Matcher[T]]]
   val lambdas : Seq[LambdaTemplate[T]]
 
+  lazy val start = pathVar._2
+
   private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
 
   def instantiate(aVar: T, args: Seq[T]): Instantiation[T] = {
@@ -82,7 +84,7 @@ trait Template[T] { self =>
       case Some(subst) => subst
       case None =>
         val subst = exprVars.map { case (id, idT) => idT -> encoder.encodeId(id) } ++
-                    manager.freshConds(aVar, condVars, condTree) ++
+                    manager.freshConds(pathVar._1 -> aVar, condVars, condTree) ++
                     (this.args zip args)
         substCache += args -> subst
         subst
@@ -303,7 +305,7 @@ object FunctionTemplate {
       tfd,
       encoder,
       manager,
-      pathVar._2,
+      pathVar,
       arguments.map(_._2),
       condVars,
       exprVars,
@@ -324,7 +326,7 @@ class FunctionTemplate[T] private(
   val tfd: TypedFunDef,
   val encoder: TemplateEncoder[T],
   val manager: QuantificationManager[T],
-  val start: T,
+  val pathVar: (Identifier, T),
   val args: Seq[T],
   val condVars: Map[Identifier, T],
   val exprVars: Map[Identifier, T],
@@ -358,10 +360,9 @@ class TemplateManager[T](protected[templates] val encoder: TemplateEncoder[T]) e
   def push(): Unit = incrementals.foreach(_.push())
   def pop(): Unit = incrementals.foreach(_.pop())
 
-  def freshConds(path: T, condVars: Map[Identifier, T], tree: Map[Identifier, Set[Identifier]]): Map[T, T] = {
+  def freshConds(path: (Identifier, T), condVars: Map[Identifier, T], tree: Map[Identifier, Set[Identifier]]): Map[T, T] = {
     val subst = condVars.map { case (id, idT) => idT -> encoder.encodeId(id) }
-    val pathVar = tree.keys.filter(id => !condVars.isDefinedAt(id)).head
-    val mapping = condVars.mapValues(subst) + (pathVar -> path)
+    val mapping = condVars.mapValues(subst) + path
 
     for ((parent, children) <- tree; ep = mapping(parent); child <- children) {
       val ec = mapping(child)
