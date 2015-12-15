@@ -33,7 +33,17 @@ object $ {
   @library
   case class WithState[T](v: T) {
     @extern
-    def withState[U](x: Set[$[U]]): T = sys.error("withState method is not executable!")
+    def withState[U](u: Set[$[U]]): T = sys.error("withState method is not executable!")
+
+    @extern
+    def withState[U, V](u: Set[$[U]], v: Set[$[V]]): T = sys.error("withState method is not executable!")
+
+    @extern
+    def withState[U, V, W](u: Set[$[U]], v: Set[$[V]], w: Set[$[W]]): T = sys.error("withState method is not executable!")
+
+    @extern
+    def withState[U, V, W, X](u: Set[$[U]], v: Set[$[V]], w: Set[$[W]], x: Set[$[X]]): T = sys.error("withState method is not executable!")
+    // extend this to more arguments if needed
   }
 
   @inline

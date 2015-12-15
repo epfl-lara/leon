@@ -53,6 +53,7 @@ object LazinessUtil {
         val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p),
           m => m.group("base") + m.group("mid") + (
             if (!m.group("star").isEmpty()) "S" else "") + m.group("rest"))
+        //val pgmText = ScalaPrinter.apply(p)
         out.write(pgmText)
         out.close()
       } catch {
@@ -108,8 +109,12 @@ object LazinessUtil {
     case _ => false
   }
 
+  /**
+   * There are many overloads of withState functions with different number
+   * of arguments. All of them should pass this check.
+   */
   def isWithStateFun(e: Expr)(implicit p: Program): Boolean = e match {
-    case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
+    case FunctionInvocation(TypedFunDef(fd, _), _) =>
       fullName(fd)(p) == "leon.lazyeval.WithState.withState"
     case _ => false
   }
@@ -168,6 +173,10 @@ object LazinessUtil {
     name.substring(4)
   }
 
+  def typeToFieldName(name: String) = {
+    name.toLowerCase()
+  }
+
   def closureConsName(typeName: String) = {
     "new@" + typeName
   }
@@ -183,38 +192,6 @@ object LazinessUtil {
   def isEvalFunction(fd: FunDef) = {
     fd.id.name.startsWith("eval@")
   }
-
-  /**
-   * Returns all functions that 'need' states to be passed in
-   * and those that return a new state.
-   * TODO: implement backwards BFS by reversing the graph
-   */
-  /*def funsNeedingnReturningState(prog: Program) = {
-    val cg = CallGraphUtil.constructCallGraph(prog, false, true)
-    var needRoots = Set[FunDef]()
-    var retRoots = Set[FunDef]()
-    prog.definedFunctions.foreach {
-      case fd if fd.hasBody && !fd.isLibrary =>
-        postTraversal {
-          case finv: FunctionInvocation if isLazyInvocation(finv)(prog) =>
-            // the lazy invocation constructor will need the state
-            needRoots += fd
-          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(prog) =>
-            needRoots += fd
-          case finv: FunctionInvocation if isValueInvocation(finv)(prog) =>
-            needRoots += fd
-            retRoots += fd
-          case _ =>
-            ;
-        }(fd.body.get)
-      case _ => ;
-    }
-    val funsNeedStates = prog.definedFunctions.filterNot(fd =>
-      cg.transitiveCallees(fd).toSet.intersect(needRoots).isEmpty).toSet
-    val funsRetStates = prog.definedFunctions.filterNot(fd =>
-      cg.transitiveCallees(fd).toSet.intersect(retRoots).isEmpty).toSet
-    (funsNeedStates, funsRetStates)
-  }*/
 
   def freshenTypeArguments(tpe: TypeTree): TypeTree = {
     tpe match {

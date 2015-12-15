@@ -144,4 +144,66 @@ class LazyClosureFactory(p: Program) {
    * This avoids the use of additional maps.
    */
   def lazyTypeNameOfClosure(cl: CaseClassDef) =  adtNameToTypeName(cl.parent.get.classDef.id.name)
+
+  /**
+   * Define a state as an ADT whose fields are sets of closures.
+   * Note that we need to ensure that there are state ADT is not recursive.
+   */
+  val state = {
+    var tparams = Seq[TypeParameter]()
+    var i = 0
+    def freshTParams(n: Int): Seq[TypeParameter] = {
+      val start = i + 1
+      i += n // create 'n' fresh ids
+      val nparams = (start to i).map(index => TypeParameter.fresh("T"+index))
+      tparams ++= nparams
+      nparams
+    }
+    // field of the ADT
+    val fields = lazyTypeNames map { tn =>
+      val absClass = absClosureType(tn)
+      val tparams = freshTParams(absClass.tparams.size)
+      val fldType = SetType(AbstractClassType(absClass, tparams))
+      ValDef(FreshIdentifier(typeToFieldName(tn), fldType))
+    }
+    val ccd = CaseClassDef(FreshIdentifier("State@"), tparams map TypeParameterDef, None, false)
+    ccd.setFields(fields)
+    ccd
+  }
+
+  def selectFieldOfState(tn: String, st: Expr, stType: CaseClassType) = {
+    val selName = typeToFieldName(tn)
+    stType.classDef.fields.find{ fld => fld.id.name ==  selName} match {
+      case Some(fld) =>
+        CaseClassSelector(stType, st, fld.id)
+      case _ =>
+        throw new IllegalStateException(s"Cannot find a field of $stType with name: $selName")
+    }
+  }
+
+  val stateUpdateFuns : Map[String, FunDef] =
+    lazyTypeNames.map{ tn =>
+      val fldname = typeToFieldName(tn)
+      val tparams = state.tparams.map(_.tp)
+      val stType = CaseClassType(state, tparams)
+      val param1 = FreshIdentifier("st@", stType)
+      val SetType(baseT) = stType.classDef.fields.find{ fld => fld.id.name == fldname}.get.getType
+      val param2 = FreshIdentifier("cl", baseT)
+
+      // TODO: as an optimization we can mark all these functions as inline and inline them at their callees
+      val updateFun = new FunDef(FreshIdentifier("updState"+tn),
+          state.tparams, Seq(ValDef(param1), ValDef(param2)), stType)
+      // create a body for the updateFun:
+      val nargs = state.fields.map{ fld =>
+        val fldSelect = CaseClassSelector(stType, param1.toVariable, fld.id)
+        if(fld.id.name == fldname) {
+          SetUnion(fldSelect, FiniteSet(Set(param2.toVariable), baseT)) // st@.tn + Set(param2)
+        } else {
+          fldSelect
+        }
+      }
+      val nst = CaseClass(stType, nargs)
+      updateFun.body = Some(nst)
+      (tn -> updateFun)
+    }.toMap
 }

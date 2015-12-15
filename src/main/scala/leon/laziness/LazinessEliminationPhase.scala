@@ -81,6 +81,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       //println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures, purescala.PrinterOptions(printUniqueIds = true)))
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
     }
+    System.exit(0)
 
     //Rectify type parameters and local types
     val typeCorrectProg = (new TypeRectifier(progWithClosures, tp => tp.id.name.endsWith("@"))).apply
