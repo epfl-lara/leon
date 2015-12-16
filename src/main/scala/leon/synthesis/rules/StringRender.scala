@@ -471,10 +471,10 @@ case object StringRender extends Rule("StringRender") {
           val (expr, synthesisResult) = createFunDefsTemplates(StringSynthesisContext.empty, p.as.map(Variable))
           val funDefs = synthesisResult.adtToString
           
-          val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
+          /*val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
                 t + "\n" + s._2._1.toString
-              ))
-          hctx.reporter.debug("Inferred expression:\n" + expr + toDebug)
+              ))*/
+          //hctx.reporter.debug("Inferred expression:\n" + expr + toDebug)
           
           findSolutions(examples, expr, funDefs.values.toSeq)
         }

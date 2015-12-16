@@ -45,14 +45,37 @@ class FileInterface(reporter: Reporter) {
     }
   }
 
-  def substitute(str: String, fromTree: Tree, printer: (Int) => String): String = {
+  def substitute(originalCode: String, fromTree: Tree, printer: (Int) => String): String = {
     fromTree.getPos match {
       case rp: RangePosition =>
         val from = rp.pointFrom
         val to   = rp.pointTo
 
-        val before = str.substring(0, from)
-        val after  = str.substring(to, str.length)
+        val before = originalCode.substring(0, from)
+        val after  = originalCode.substring(to, originalCode.length)
+
+        // Get base indentation of last line:
+        val lineChars = before.substring(before.lastIndexOf('\n')+1).toList
+
+        val indent = lineChars.takeWhile(_ == ' ').size
+
+        val res = printer(indent/2)
+
+        before + res + after
+
+      case p =>
+        sys.error("Substitution requires RangePos on the input tree: "+fromTree +": "+fromTree.getClass+" GOT" +p)
+    }
+  }
+  
+  def insertAfter(originalCode: String, fromTree: Tree, printer: (Int) => String): String = {
+    fromTree.getPos match {
+      case rp: RangePosition =>
+        val from = rp.pointFrom
+        val to   = rp.pointTo
+
+        val before = originalCode.substring(0, to)
+        val after  = originalCode.substring(to, originalCode.length)
 
         // Get base indentation of last line:
         val lineChars = before.substring(before.lastIndexOf('\n')+1).toList

@@ -77,6 +77,7 @@ object QuestionBuilder {
  *   [element of r.solution]
  * }}}
  * 
+ * @tparam T A subtype of Expr that will be the type used in the Question[T] results.
  * @param input The identifier of the unique function's input. Must be typed or the type should be defined by setArgumentType
  * @param ruleApplication The set of solutions for the body of f
  * @param filter A function filtering which outputs should be considered for comparison.
@@ -90,17 +91,20 @@ class QuestionBuilder[T <: Expr](input: Seq[Identifier], solutions: Stream[Solut
   private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter[T]() && AlternativeSortingType.ShorterIsBetter[T]() 
   private var solutionsToTake = 15
   private var expressionsToTake = 15
-    
+  private var keepEmptyAlternativeQuestions: T => Boolean = Set()
+
   /** Sets the way to sort questions. See [[QuestionSortingType]] */
-  def setSortQuestionBy(questionSorMethod: QuestionSortingType) = _questionSorMethod = questionSorMethod
+  def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
   /** Sets the way to sort alternatives. See [[AlternativeSortingType]] */
-  def setSortAlternativesBy(alternativeSortMethod: AlternativeSortingType[T]) = _alternativeSortMethod = alternativeSortMethod
+  def setSortAlternativesBy(alternativeSortMethod: AlternativeSortingType[T]) = { _alternativeSortMethod = alternativeSortMethod; this }
   /** Sets the argument type. Not needed if the input identifier is already assigned a type. */
-  def setArgumentType(argTypes: List[TypeTree]) = _argTypes = argTypes
+  def setArgumentType(argTypes: List[TypeTree]) = { _argTypes = argTypes; this }
   /** Sets the number of solutions to consider. Default is 15 */
-  def setSolutionsToTake(n: Int) = solutionsToTake = n
+  def setSolutionsToTake(n: Int) = { solutionsToTake = n; this }
   /** Sets the number of expressions to consider. Default is 15 */
-  def setExpressionsToTake(n: Int) = expressionsToTake = n
+  def setExpressionsToTake(n: Int) = { expressionsToTake = n; this }
+  /** Sets if when there is no alternative, the question should be kept. */
+  def setKeepEmptyAlternativeQuestions(b: T => Boolean) = {keepEmptyAlternativeQuestions = b; this }
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
@@ -135,7 +139,7 @@ class QuestionBuilder[T <: Expr](input: Seq[Identifier], solutions: Stream[Solut
             alternative_output_filtered <- filter(alternative_output)
             if alternative_output != current_output
       } yield alternative_output_filtered).distinct
-      if(alternative_outputs.nonEmpty) {
+      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(current_output)) {
         questions += Question(possible_input.map(_._2), current_output, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
       }
     }

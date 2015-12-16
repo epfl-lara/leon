@@ -78,34 +78,71 @@ S0 -> S0 t1"""
   //////////////////////////////////////////////
   // Non-incremental examples: pure synthesis //
   //////////////////////////////////////////////
-  def synthesizeStandard(s: Grammar): String = {
+  /*def synthesizeStandard(s: Grammar): String = {
     ???[String]
-  } ensuring psStandard(s)
+  } ensuring psStandard(s)*/
   
-  def synthesizeRemoveNames(s: Grammar): String = {
+  /*def synthesizeRemoveNames(s: Grammar): String = {
     ???[String]
-  } ensuring psRemoveNames(s)
+  } ensuring psRemoveNames(s)*/
 
-  def synthesizeArrowRules(s: Grammar): String = {
+  /*def synthesizeArrowRules(s: Grammar): String = {
     ???[String]
-  } ensuring psArrowRules(s)
+  } ensuring psArrowRules(s)*/
 
-  def synthesizeListRules(s: Grammar): String = {
+  /*def synthesizeListRules(s: Grammar): String = {
     ???[String]
-  } ensuring psListRules(s)
+  } ensuring psListRules(s)*/
 
-  def synthesizeSpaceRules(s: Grammar): String = {
+  /*def synthesizeSpaceRules(s: Grammar): String = {
     ???[String]
-  } ensuring psSpaceRules(s)
+  } ensuring psSpaceRules(s)*/
 
-  def synthesizeHTMLRules(s: Grammar): String = {
+  /*def synthesizeHTMLRules(s: Grammar): String = {
     ???[String]
-  } ensuring psHTMLRules(s)
+  } ensuring psHTMLRules(s)*/
 
-  def synthesizePlainTextRulesToString(s: Grammar): String = {
+  /*def synthesizePlainTextRulesToString(s: Grammar): String = {
     ???[String]
-  } ensuring psPlainTextRules(s)
+  } ensuring psPlainTextRules(s)*/
   
-  def allGrammarsAreIdentical(g: Grammar, g2: Grammar) = (g == g2 || g.rules == g2.rules) holds
-
+  def isTerminal(s: Symbol) = s match {
+    case Terminal(_) => true
+    case _ => false
+  }
+  
+  def isGrammarRule(r: Rule) = !isTerminal(r.left)
+  
+  def noEpsilon(r: Rule) = r.right match {
+    case Nil() => false
+    case Cons(_, _) => true
+  }
+  
+  def areGrammarRule(lr: List[Rule]): Boolean = lr match {
+    case Nil() => true
+    case Cons(r, q) => isGrammarRule(r) && areGrammarRule(q)
+  }
+  
+  def noEpsilons(lr: List[Rule]): Boolean = lr match {
+    case Nil() => true
+    case Cons(r, q) => noEpsilon(r) && noEpsilons(q)
+  }
+  
+  def isGrammar(g: Grammar) = !isTerminal(g.start) && areGrammarRule(g.rules)
+  
+  def isReasonableRule(r: List[Symbol], excluded: Symbol): Boolean = r match {
+    case Nil() => true
+    case Cons(rs, q) if rs == excluded => false
+    case Cons(_, q) => isReasonableRule(q, excluded)
+  }
+  
+  def isReasonable(lr: List[Rule]): Boolean = lr match {
+    case Nil() => true
+    case Cons(r, q) => isReasonableRule(r.right, r.left) && isReasonable(q)
+  } 
+  
+  def allGrammarsAreIdentical(g: Grammar, g2: Grammar) = {
+    require(isGrammar(g) && isGrammar(g2) && noEpsilons(g.rules) && noEpsilons(g2.rules) && isReasonable(g.rules) && isReasonable(g2.rules))
+    (g == g2 || g.rules == g2.rules)
+  } holds
 }

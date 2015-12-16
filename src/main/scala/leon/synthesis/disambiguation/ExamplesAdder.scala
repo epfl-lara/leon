@@ -44,7 +44,7 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
               } else {
                 val newPasses = exprs(i) match {
                   case Passes(in, out, cases) =>
-                    Passes(in, out, cases ++ newCases )
+                    Passes(in, out, (cases ++ newCases).distinct )
                   case _ => ???
                 }
                 val newPost = and(exprs.updated(i, newPasses) : _*)
