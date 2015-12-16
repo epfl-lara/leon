@@ -3,7 +3,6 @@
 package leon
 package purescala
 
-import sun.reflect.generics.tree.ReturnType
 import utils.Library
 import Common._
 import Expressions._
@@ -46,7 +45,7 @@ object Definitions {
    *  The optional tpe, if present, overrides the type of the underlying Identifier id
    *  This is useful to instantiate argument types of polymorphic functions
    */
-  case class ValDef(val id: Identifier, val isLazy: Boolean = false) extends Definition with Typed {
+  case class ValDef(id: Identifier, isLazy: Boolean = false) extends Definition with Typed {
     self: Serializable =>
 
     val getType = id.getType
@@ -154,7 +153,7 @@ object Definitions {
   
   object UnitDef {
     def apply(id: Identifier, modules : Seq[ModuleDef]) : UnitDef = 
-      UnitDef(id,Nil, Nil, modules,true)
+      UnitDef(id, Nil, Nil, modules, true)
   }
   
   /** Objects work as containers for class definitions, functions (def's) and
@@ -479,11 +478,20 @@ object Definitions {
 
     def translated(e: Expr): Expr = instantiateType(e, typesMap, paramsMap)
 
+    /** A mapping from this [[TypedFunDef]]'s formal parameters to real arguments
+      *
+      * @param realArgs The arguments to which the formal argumentas are mapped
+      * */
     def paramSubst(realArgs: Seq[Expr]) = {
       require(realArgs.size == params.size)
       (paramIds zip realArgs).toMap
     }
 
+    /** Substitute this [[TypedFunDef]]'s formal parameters with real arguments in some expression
+     *
+     * @param realArgs The arguments to which the formal argumentas are mapped
+     * @param e The expression in which the substitution will take place
+     */
     def withParamSubst(realArgs: Seq[Expr], e: Expr) = {
       replaceFromIDs(paramSubst(realArgs), e)
     }
