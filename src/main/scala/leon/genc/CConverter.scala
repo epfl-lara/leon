@@ -367,6 +367,15 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
 
       argsFs.bodies ~~ CAST.StructInit(args, struct)
 
+    case CaseClassSelector(_, x1, fieldId) =>
+      val struct = convertToStruct(x1.getType)
+      val x2     = convertToStmt(x1)
+
+      val fs = normaliseExecution((x2, struct) :: Nil)
+      val x  = fs.values.head
+
+      fs.bodies ~~ CAST.AccessField(x, convertToId(fieldId))
+
     case LessThan(lhs, rhs)       => buildBinOp(lhs, "<",   rhs)
     case GreaterThan(lhs, rhs)    => buildBinOp(lhs, ">",   rhs)
     case LessEquals(lhs, rhs)     => buildBinOp(lhs, "<=",  rhs)
