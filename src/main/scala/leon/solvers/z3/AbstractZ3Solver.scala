@@ -607,15 +607,15 @@ trait AbstractZ3Solver extends Solver {
               case _ =>
                 reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
             }
-          } else       
-          _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
+          } else {  
+            _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) =>
                 tpe match {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
                   case _ => unsound(t, "unexpected target type for BV value: " + tpe.asString)
                 }
-            case None => unsound(t, "could not translate Z3NumeralIntAST numeral")
+              case None => unsound(t, "could not translate Z3NumeralIntAST numeral")
             }
           }
 

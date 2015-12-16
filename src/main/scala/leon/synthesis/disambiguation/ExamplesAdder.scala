@@ -58,7 +58,7 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
         }
       case None =>
         val id = FreshIdentifier("res", fd.returnType, false)
-        fd.postcondition = Some(Lambda(Seq(ValDef(id, None)), Passes(inputVariables, Variable(id), newCases)))
+        fd.postcondition = Some(Lambda(Seq(ValDef(id, false)), Passes(inputVariables, Variable(id), newCases)))
         //ctx0.reporter.info("No postcondition, adding it: " + fd)
     }
     fd.body match { // TODO: Is it correct to discard the choose construct inside the body?

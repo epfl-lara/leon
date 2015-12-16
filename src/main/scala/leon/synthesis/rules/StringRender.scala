@@ -325,7 +325,7 @@ case object StringRender extends Rule("StringRender") {
       : (Stream[WithIds[MatchCase]], StringSynthesisResult) = cct match {
       case CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
         val typeMap = tparams.zip(tparams2).toMap
-        val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd, typeMap).id )
+        val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
         val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
         val (rhs, result) = createFunDefsTemplates(ctx.copy(currentCaseClassParent=Some(cct)), fields.map(Variable)) // Invoke functions for each of the fields.
         val newCases = rhs.map(e => (MatchCase(pattern, None, e._1), e._2))
@@ -351,7 +351,7 @@ case object StringRender extends Rule("StringRender") {
       val cases = (ListBuffer[WithIds[MatchCase]]() /: act.knownCCDescendants) {
         case (acc, cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)) =>
           val typeMap = tparams.zip(tparams2).toMap
-          val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd, typeMap).id )
+          val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
           val pattern = CaseClassPattern(None, ccd.typed(tparams2), fields.map(k => WildcardPattern(Some(k))))
           val rhs = StringLiteral(id.asString)
           MatchCase(pattern, None, rhs)
