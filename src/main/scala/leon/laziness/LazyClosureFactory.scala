@@ -89,8 +89,10 @@ class LazyClosureFactory(p: Program) {
               case None =>
                 ValDef(FreshIdentifier(vd.id.name, fldType))
               case Some(btype) =>
-                val adtType = AbstractClassType(absClass, getTypeParameters(btype))
-                ValDef(FreshIdentifier(vd.id.name, adtType))
+                val btname = typeNameWOParams(btype)
+                val baseAbs = tpeToAbsClass(btname)
+                ValDef(FreshIdentifier(vd.id.name,
+                    AbstractClassType(baseAbs, getTypeParameters(btype))))
             }
           }
           // add a result field as well
@@ -122,7 +124,9 @@ class LazyClosureFactory(p: Program) {
 
   val lazyops = opToCaseClass.keySet
 
-  def allClosuresAndParents = tpeToADT.values.flatMap(v => v._2 +: v._3 :+ v._4)
+  val allClosuresAndParents : Seq[ClassDef] = tpeToADT.values.flatMap(v => v._2 +: v._3 :+ v._4).toSeq
+
+  val allClosureSet = allClosuresAndParents.toSet
 
   def lazyType(tn: String) = tpeToADT(tn)._1
 
@@ -139,6 +143,9 @@ class LazyClosureFactory(p: Program) {
   def closureOfLazyOp(op: FunDef) = opToCaseClass(op)
 
   def isLazyOp(op: FunDef) = opToCaseClass.contains(op)
+
+  def isClosureType(cd: ClassDef) = allClosureSet.contains(cd)
+
   /**
    * Here, the lazy type name is recovered from the closure's name.
    * This avoids the use of additional maps.

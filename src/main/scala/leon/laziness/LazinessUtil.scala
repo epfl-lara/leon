@@ -193,6 +193,10 @@ object LazinessUtil {
     fd.id.name.startsWith("eval@")
   }
 
+  def isPlaceHolderTParam(tp: TypeParameter) = {
+    tp.id.name.endsWith("@")
+  }
+
   def freshenTypeArguments(tpe: TypeTree): TypeTree = {
     tpe match {
       case NAryType(targs, tcons) =>

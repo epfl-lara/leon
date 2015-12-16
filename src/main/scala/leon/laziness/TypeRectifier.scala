@@ -29,13 +29,16 @@ import leon.invariant.datastructure.DisjointSets
 import invariant.util.ProgramUtil._
 
 /**
- * This performs a little bit of Hindley-Milner type Inference
- * to correct the local types and also unify type parameters
+ * This performs type parameter inference based on few known facts.
+ * This algorithm is inspired by Hindley-Milner type Inference (but not the same).
+ * Result is a program in which all type paramters of functions, types of
+ * parameters of functions are correct.
+ * The subsequent phase performs a local type inference.
  * @param placeHolderParameter Expected to returns true iff a type parameter
  * 														is meant as a placeholder and cannot be used
  * 														to represent a unified type
  */
-class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) {
+class TypeRectifier(p: Program, clFactory: LazyClosureFactory) {
 
   val typeClasses = {
     var tc = new DisjointSets[TypeTree]() /*{
@@ -51,28 +54,38 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
           case call @ FunctionInvocation(TypedFunDef(fd, tparams), args) =>
             // unify formal type parameters with actual type arguments
             (fd.tparams zip tparams).foreach(x => tc.union(x._1.tp, x._2))
-            // unify the type parameters of types of formal parameters with
-            // type arguments of actual arguments
+            /**
+             *  Unify the type parameters of types of formal parameters with
+             *  type arguments of actual arguments.
+             *  Note: we have a cyclic problem here, since we do not know the
+             *  type of the variables in the programs, we cannot use them
+             *  to infer type parameters, on the other hand we need to know the
+             *  type parameters (at least of fundefs) to infer types of variables.
+             *  The idea to start from few variables whose types we know are correct
+             *  except for type paramters.
+             *  Eg. the state parameters, parameters that have closure ADT type (not the '$' type),
+             *  some parameters that are not of lazy type ('$') type may also have
+             *  correct types, but it is hard to rely on them
+             */
             (fd.params zip args).foreach { x =>
               (x._1.getType, x._2.getType) match {
-                case (t1, t2) =>
-                  getTypeArguments(t1) zip getTypeArguments(t2) foreach {
-                    case (tf, ta) =>
-                      tc.union(tf, ta)
+                case (CaseClassType(cd1, targs1), CaseClassType(cd2, targs2)) if cd1 == cd2 && cd1 == clFactory.state =>
+                  (targs1 zip targs2).foreach {
+                    case (t1: TypeParameter, t2: TypeParameter) =>
+                      tc.union(t1, t2)
+                    case _ =>
                   }
-                //                case (SetType(tf: ClassType), SetType(ta: ClassType)) =>
-                //                  // unify only type parameters
-                //                  (tf.tps zip ta.tps).foreach {
-                //                    case (t1: TypeParameter, t2: TypeParameter) =>
-                //                      tc.union(t1, t2)
-                //                    case _ => ;
-                //                  }
-                //                case (tf: TypeParameter, ta: TypeParameter) =>
-                //                  tc.union(tf, ta)
-                //                case (t1, t2) =>
-                // others could be ignored for now as they are not part of the state
-                //TODO: handle this case
-                //;
+                case (ct1: ClassType, ct2: ClassType)
+                  if clFactory.isClosureType(ct1.classDef) && clFactory.isClosureType(ct1.classDef) =>
+                  // both types are newly created closures, so their types can be trusted
+                  (ct1.tps zip ct2.tps).foreach {
+                    case (t1: TypeParameter, t2: TypeParameter) =>
+                      tc.union(t1, t2)
+                    case _ =>
+                  }
+                //                                case (tf: TypeParameter, ta: TypeParameter) =>
+                //                                  tc.union(tf, ta)
+                case (t1, t2) =>
                 /*throw new IllegalStateException(s"Types of formal and actual parameters: ($tf, $ta)"
                     + s"do not match for call: $call")*/
               }
@@ -82,12 +95,16 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
             // merge the type parameters of `arg` and `set`
             set.getType match {
               case SetType(baseT) =>
-                getTypeArguments(arg.getType) zip getTypeArguments(baseT) foreach {
+                // TODO: this may break easily. Fix this.
+                // Important: here 'arg' may have type lazy type $[ltype]
+                // we need to get the type argument of ltype
+                getTypeParameters(arg.getType) zip getTypeArguments(baseT) foreach {
                   case (tf, ta) =>
                     tc.union(tf, ta)
                 }
+              case _ =>
             }
-          case _ => ;
+          case _ =>
         }(fd.fullBody)
       case _ => ;
     }
@@ -99,7 +116,7 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
   val fdMap = p.definedFunctions.collect {
     case fd if !fd.isLibrary =>
       val (tempTPs, otherTPs) = fd.tparams.map(_.tp).partition {
-        case tp if placeHolderParameter(tp) => true
+        case tp if isPlaceHolderTParam(tp) => true
         case _ => false
       }
       val others = otherTPs.toSet[TypeTree]
@@ -128,7 +145,7 @@ class TypeRectifier(p: Program, placeHolderParameter: TypeParameter => Boolean) 
       } map TypeParameterDef
       val nfd = new FunDef(fd.id.freshen, ntparams, fd.params.map(vd => ValDef(paramMap(vd.id))),
         instf(fd.returnType))
-      println("New fd: "+nfd)
+      //println("New fd: "+nfd)
       fd -> (nfd, tpMap, paramMap)
   }.toMap
 

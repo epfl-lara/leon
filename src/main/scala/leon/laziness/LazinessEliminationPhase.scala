@@ -83,7 +83,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
 
     //Rectify type parameters and local types
-    val typeCorrectProg = (new TypeRectifier(progWithClosures, tp => tp.id.name.endsWith("@"))).apply
+    val typeCorrectProg = (new TypeRectifier(progWithClosures, closureFactory)).apply
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
     System.exit(0)
