@@ -78,14 +78,22 @@ sealed abstract class List[T] {
       }
   }
 
-  def drop(i: BigInt): List[T] = (this, i) match {
-    case (Nil(), _) => Nil()
-    case (Cons(h, t), i) =>
-      if (i == 0) {
-        Cons(h, t)
-      } else {
-        t.drop(i) // FIXME Should be -1
-      }
+  def drop(i: BigInt): List[T] = {
+    require(i >= 0)
+    (this, i) match {
+      case (Nil(), _) => Nil[T]()
+      case (Cons(h, t), i) =>
+        if (i == 0) {
+          Cons[T](h, t)
+        } else {
+          t.drop(i) // FIXME Should be -1
+        }
+    }
+  } ensuring { (res: List[T]) =>
+    ((this, i), res) passes {
+      case (Cons(a, Cons(b, Nil())), BigInt(1)) => Cons(b, Nil())
+      case (Cons(a, Cons(b, Nil())), BigInt(2)) => Nil()
+    }
   }
 
   def slice(from: BigInt, to: BigInt): List[T] = {
