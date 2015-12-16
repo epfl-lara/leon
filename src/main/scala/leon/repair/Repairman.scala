@@ -147,7 +147,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             val fw = new java.io.FileWriter("repair-report.txt", true)
 
             try {
-              fw.write(f"$date:  $benchName%-50s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%.2f &  & ${timeSynth/1000.0}%.2f $proof%7s \\\\\n")
+              fw.write(f"$date:  $benchName%-50s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%.2f &  & ${timeSynth/1000.0}%.2f & $proof%7s \\\\\n")
             } finally {
               fw.close
             }
