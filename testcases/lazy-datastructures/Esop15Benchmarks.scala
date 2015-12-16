@@ -8,7 +8,9 @@ import leon.lazyeval.$._
 import leon.collection._
 
 /**
- * This benchmark is very for finding counter-examples
+ * This file is the collection of programs in the ESOP 2015 paper.
+ * Note this benchmark is very good for finding counter-examples.s
+ * Decreasing the time bounds slightly will display counter-examples.
  */
 object Esop15Benchmarks {
   
