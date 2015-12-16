@@ -252,12 +252,12 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
             } else {
               Stream()
             }
-          case (up @ UnapplyPattern(ob, _, subs), scrut) =>
-            e(FunctionInvocation(up.unapplyFun, Seq(scrut))) flatMap {
-              case CaseClass(CaseClassType(cd, _), Seq()) if cd == program.library.Nil.get =>
+          case (UnapplyPattern(ob, unapplyFun, subs), scrut) =>
+            e(functionInvocation(unapplyFun.fd, Seq(scrut))) flatMap {
+              case CaseClass(CaseClassType(cd, _), Seq()) if cd == program.library.None.get =>
                 None
-              case CaseClass(CaseClassType(cd, _), Seq(arg)) if cd == program.library.Cons.get =>
-                val subMaps = subs zip unwrapTuple(arg, up.unapplyFun.returnType.isInstanceOf[TupleType]) map {
+              case CaseClass(CaseClassType(cd, _), Seq(arg)) if cd == program.library.Some.get =>
+                val subMaps = subs zip unwrapTuple(arg, subs.size) map {
                   case (s,a) => matchesPattern(s,a)
                 }
                 cartesianProduct(subMaps).map( _.flatten.toMap ++ obind(ob, expr))
@@ -305,7 +305,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           Some(step(expr, es))
         } catch {
           case _: RuntimeError =>
-            // EvalErrors stop the computation alltogether
+            // EvalErrors stop the computation altogether
             None
         }
       }

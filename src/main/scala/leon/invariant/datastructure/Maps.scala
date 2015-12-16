@@ -1,13 +1,6 @@
 package leon
-package invariant.util
+package invariant.datastructure
 
-import purescala.Common._
-import purescala.Definitions._
-import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
-import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap }
 import scala.annotation.tailrec
 
 class MultiMap[A, B] extends scala.collection.mutable.HashMap[A, scala.collection.mutable.Set[B]] with scala.collection.mutable.MultiMap[A, B] {

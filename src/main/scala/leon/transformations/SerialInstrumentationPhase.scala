@@ -111,7 +111,7 @@ class SerialInstrumenter(ctx: LeonContext, program: Program) {
 
     def mapPost(pred: Expr, from: FunDef, to: FunDef) = {
       pred match {
-        case Lambda(Seq(ValDef(fromRes, _)), postCond) if (instFuncs.contains(from)) =>
+        case Lambda(Seq(ValDef(fromRes, lzy)), postCond) if (instFuncs.contains(from)) =>
           val toResId = FreshIdentifier(fromRes.name, to.returnType, true)
           val newpost = postMap((e: Expr) => e match {
             case Variable(`fromRes`) =>
@@ -124,7 +124,7 @@ class SerialInstrumenter(ctx: LeonContext, program: Program) {
             case _ =>
               None
           })(postCond)
-          Lambda(Seq(ValDef(toResId)), mapExpr(newpost))
+          Lambda(Seq(ValDef(toResId, lzy)), mapExpr(newpost))
         case _ =>
           mapExpr(pred)
       }

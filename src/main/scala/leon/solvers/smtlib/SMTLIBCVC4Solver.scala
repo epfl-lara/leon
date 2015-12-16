@@ -19,8 +19,10 @@ class SMTLIBCVC4Solver(context: LeonContext, program: Program) extends SMTLIBSol
     Seq(
       "-q",
       "--produce-models",
-      "--no-incremental",
-      "--tear-down-incremental",
+      "--incremental",
+//      "--no-incremental",
+//      "--tear-down-incremental",
+//      "--dt-rewrite-error-sel", // Removing since it causes CVC4 to segfault on some inputs
       "--rewrite-divk",
       "--print-success",
       "--lang", "smt"

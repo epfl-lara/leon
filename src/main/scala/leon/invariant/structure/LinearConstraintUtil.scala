@@ -3,23 +3,15 @@ package invariant.structure
 
 import purescala._
 import purescala.Common._
-import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.Types._
-import scala.collection.mutable.{ Set => MutableSet }
 import scala.collection.mutable.{ Map => MutableMap }
-import java.io._
 import invariant.util._
 import BigInt._
-import Constructors._
-import Util._
 import PredicateUtil._
 
-class NotImplementedException(message: String) extends RuntimeException(message) {
-
-}
+class NotImplementedException(message: String) extends RuntimeException(message)
 
 //a collections of utility methods that manipulate the templates
 object LinearConstraintUtil {
@@ -31,14 +23,14 @@ object LinearConstraintUtil {
 
   //some utility methods
   def getFIs(ctr: LinearConstraint): Set[FunctionInvocation] = {
-    val fis = ctr.coeffMap.keys.collect((e) => e match {
+    val fis = ctr.coeffMap.keys.collect {
       case fi: FunctionInvocation => fi
-    })
+    }
     fis.toSet
   }
 
   def evaluate(lt: LinearTemplate): Option[Boolean] = lt match {
-    case lc: LinearConstraint if (lc.coeffMap.size == 0) =>
+    case lc: LinearConstraint if lc.coeffMap.isEmpty =>
       ExpressionTransformer.simplify(lt.toExpr) match {
         case BooleanLiteral(v) => Some(v)
         case _ => None
@@ -74,7 +66,7 @@ object LinearConstraintUtil {
         }
       } else coeffMap += (term -> simplifyArithmetic(coeff))
 
-      if (!variablesOf(coeff).isEmpty) {
+      if (variablesOf(coeff).nonEmpty) {
         isTemplate = true
       }
     }
@@ -86,7 +78,7 @@ object LinearConstraintUtil {
       } else
         constant = Some(simplifyArithmetic(coeff))
 
-      if (!variablesOf(coeff).isEmpty) {
+      if (variablesOf(coeff).nonEmpty) {
         isTemplate = true
       }
     }
@@ -341,7 +333,6 @@ object LinearConstraintUtil {
     //now consider each constraint look for (a) equality involving the elimVar or (b) check if all bounds are lower
     //or (c) if all bounds are upper.
     var elimExpr : Option[Expr] = None
-    var bestExpr = false
     var elimCtr : Option[LinearConstraint] = None
     var allUpperBounds : Boolean = true
     var allLowerBounds : Boolean = true
@@ -354,7 +345,7 @@ object LinearConstraintUtil {
         foundEquality = true
 
         //here, sometimes we replace an existing expression with a better one if available
-        if (!elimExpr.isDefined || shouldReplace(elimExpr.get, lc, elimVar)) {
+        if (elimExpr.isEmpty || shouldReplace(elimExpr.get, lc, elimVar)) {
           //if the coeffcient of elimVar is +ve the the sign of the coeff of every other term should be changed
           val InfiniteIntegerLiteral(elimCoeff) = lc.coeffMap(elimVar.toVariable)
           //make sure the value of the coefficient is 1 or  -1

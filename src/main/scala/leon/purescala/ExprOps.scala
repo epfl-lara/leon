@@ -542,8 +542,8 @@ object ExprOps {
     }
 
     val normalized = postMap {
-      case Lambda(args, body) => Some(Lambda(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
-      case Forall(args, body) => Some(Forall(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
+      case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
+      case Forall(args, body) => Some(Forall(args.map(vd => vd.copy(id = subst(vd.id))), body))
       case Let(i, e, b)       => Some(Let(subst(i), e, b))
       case MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
         cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
@@ -794,7 +794,7 @@ object ExprOps {
         })
 
       case CaseClassPattern(_, cct, subps) =>
-        val subExprs = (subps zip cct.fields) map {
+        val subExprs = (subps zip cct.classDef.fields) map {
           case (p, f) => p.binder.map(_.toVariable).getOrElse(caseClassSelector(cct, in, f.id))
         }
 
@@ -871,8 +871,8 @@ object ExprOps {
           }
 
         case CaseClassPattern(ob, cct, subps) =>
-          assert(cct.fields.size == subps.size)
-          val pairs = cct.fields.map(_.id).toList zip subps.toList
+          assert(cct.classDef.fields.size == subps.size)
+          val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
           and(IsInstanceOf(in, cct), together)
@@ -883,7 +883,7 @@ object ExprOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
 
-        case up@UnapplyPattern(ob, fd, subps) =>
+        case up @ UnapplyPattern(ob, fd, subps) =>
           def someCase(e: Expr) = {
             // In the case where unapply returns a Some, it is enough that the subpatterns match
             andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)
@@ -907,7 +907,7 @@ object ExprOps {
     pattern match {
       case CaseClassPattern(b, cct, subps) =>
         assert(cct.fields.size == subps.size)
-        val pairs = cct.fields.map(_.id).toList zip subps.toList
+        val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
         val subMaps = pairs.map(p => mapForPattern(caseClassSelector(cct, asInstOf(in, cct), p._1), p._2))
         val together = subMaps.flatten.toMap
         bindIn(b, Some(cct)) ++ together
@@ -1497,8 +1497,8 @@ object ExprOps {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = cct.fields.collect {
-            case vd if vd.getType == on.getType => vd.id
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+            case (vd, tpe) if tpe == on.getType => vd.id
           }
 
           if (recSelectors.isEmpty) {

@@ -103,8 +103,14 @@ object Types {
       if (tmap.isEmpty) {
         classDef.fields
       } else {
-        // This is the only case where ValDef overrides the type of its Identifier
-        classDef.fields.map(vd => ValDef(vd.id, Some(instantiateType(vd.getType, tmap))))
+        // !! WARNING !!
+        // vd.id changes but this should not be an issue as selector uses
+        // classDef.params ids which do not change!
+        classDef.fields.map { vd =>
+          val newTpe = instantiateType(vd.getType, tmap)
+          val newId = FreshIdentifier(vd.id.name, newTpe).copiedFrom(vd.id)
+          vd.copy(id = newId).setPos(vd)
+        }
       }
     }
 

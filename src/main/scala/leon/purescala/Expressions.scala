@@ -331,7 +331,7 @@ object Expressions {
     // Hacky, but ok
     lazy val optionType = unapplyFun.returnType.asInstanceOf[AbstractClassType]
     lazy val Seq(noneType, someType) = optionType.knownCCDescendants.sortBy(_.fields.size)
-    lazy val someValue = someType.fields.head
+    lazy val someValue = someType.classDef.fields.head
     // Pattern match unapply(scrut)
     // In case of None, return noneCase.
     // In case of Some(v), return someCase(v).

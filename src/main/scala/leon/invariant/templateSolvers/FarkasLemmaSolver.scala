@@ -1,26 +1,19 @@
 package leon
 package invariant.templateSolvers
 
-import z3.scala._
-import purescala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
-import java.io._
 import solvers.SimpleSolverAPI
-import scala.collection.mutable.{ Map => MutableMap }
 import invariant.engine._
-import invariant.factories._
 import invariant.util._
 import Util._
-import ProgramUtil._
 import SolverUtil._
 import PredicateUtil._
-import TimerUtil._
 import invariant.structure._
+import invariant.datastructure._
 import leon.solvers.TimeoutSolver
 import leon.solvers.SolverFactory
 import leon.solvers.TimeoutSolverFactory
@@ -83,8 +76,8 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
     println("#" * 20)
 
     //Optimization 1: Check if ants are unsat (already handled)
-    val pathVC = createAnd(antsSimple.map(_.toExpr).toSeq ++ conseqsSimple.map(_.toExpr).toSeq)
-    val notPathVC = And(createAnd(antsSimple.map(_.toExpr).toSeq), Not(createAnd(conseqsSimple.map(_.toExpr).toSeq)))
+    val pathVC = createAnd(antsSimple.map(_.toExpr) ++ conseqsSimple.map(_.toExpr))
+    val notPathVC = And(createAnd(antsSimple.map(_.toExpr)), Not(createAnd(conseqsSimple.map(_.toExpr))))
     val (satVC, _) = uisolver.solveSAT(pathVC)
     val (satNVC, _) = uisolver.solveSAT(notPathVC)
 
@@ -135,7 +128,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
           strictCtrLambdas :+= l
           GreaterEquals(l, zero)
         }
-      }).toSeq :+ GreaterEquals(lambda0, zero))
+      }) :+ GreaterEquals(lambda0, zero))
 
       //add the constraints on constant terms
       val sumConst = ants.foldLeft(UMinus(lambda0): Expr)((acc, ant) => ant.constTemplate match {
@@ -206,7 +199,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
 
     // factor out common nonlinear terms and create an equiv-satisfiable constraint
     def reduceCommonNLTerms(ctrs: Expr) = {
-      var nlUsage = new CounterMap[Expr]()
+      val nlUsage = new CounterMap[Expr]()
       postTraversal{
         case t: Times => nlUsage.inc(t)
         case e => ;
@@ -223,7 +216,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
     // try eliminate nonlinearity to whatever extent possible
     var elimMap = Map[Identifier, (Identifier, Identifier)]() // maps the fresh identifiers to the product of the identifiers they represent.
     def reduceNonlinearity(farkasctrs: Expr): Expr = {
-      var varCounts = new CounterMap[Identifier]()
+      val varCounts = new CounterMap[Identifier]()
       // collect # of uses of each variable
       postTraversal {
         case Variable(id) => varCounts.inc(id)

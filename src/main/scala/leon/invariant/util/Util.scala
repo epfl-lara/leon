@@ -1,19 +1,16 @@
 package leon
 package invariant.util
 
-import purescala.Common._
-import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
 import purescala.Types._
-import leon.purescala.PrettyPrintable
-import leon.purescala.PrinterContext
+import purescala.PrettyPrintable
+import purescala.PrinterContext
 import purescala.PrinterHelpers._
 
 object FileCountGUID {
   var fileCount = 0
   def getID: Int = {
-    var oldcnt = fileCount
+    val oldcnt = fileCount
     fileCount += 1
     oldcnt
   }
@@ -32,7 +29,7 @@ case class ResultVariable(tpe: TypeTree) extends Expr with Terminal with PrettyP
   val getType = tpe
   override def toString: String = "#res"
 
-  def printWith(implicit pctx: PrinterContext) {
+  def printWith(implicit pctx: PrinterContext) = {
     p"#res"
   }
 }

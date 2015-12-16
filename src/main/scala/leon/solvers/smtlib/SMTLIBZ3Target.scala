@@ -76,7 +76,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         val n = s.name.split("!").toList.last
         GenericValue(tp, n.toInt)
 
-
       case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), Some(tpe)) =>
         if (letDefs contains k) {
           // Need to recover value form function model

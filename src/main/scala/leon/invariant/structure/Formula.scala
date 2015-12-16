@@ -22,8 +22,7 @@ import PredicateUtil._
 /**
  * Data associated with a call
  */
-class CallData(val guard : Variable, val parents: List[FunDef]) {
-}
+class CallData(val guard : Variable, val parents: List[FunDef])
 
 /**
  * Representation of an expression as a set of implications.
@@ -81,13 +80,13 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
       })
     }
 
-    val f1 = simplePostTransform((e: Expr) => e match {
-      case Or(args) => {
-        val newargs = args.map(arg => arg match {
-          case v: Variable if (disjuncts.contains(v)) => arg
-          case v: Variable if (conjuncts.contains(v)) => throw new IllegalStateException("or gaurd inside conjunct: "+e+" or-guard: "+v)
-          case _ => {
-            val atoms = arg  match {
+    val f1 = simplePostTransform {
+      case e@Or(args) => {
+        val newargs = args.map {
+          case arg@(v: Variable) if (disjuncts.contains(v)) => arg
+          case v: Variable if (conjuncts.contains(v)) => throw new IllegalStateException("or gaurd inside conjunct: " + e + " or-guard: " + v)
+          case arg => {
+            val atoms = arg match {
               case And(atms) => atms
               case _ => Seq(arg)
             }
@@ -98,14 +97,14 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
             disjuncts += (g -> ctrs)
             g
           }
-        })
+        }
         //create a temporary for Or
         val gor = TVarFactory.createTemp("b", BooleanType).toVariable
         val newor = createOr(newargs)
         conjuncts += (gor -> newor)
         gor
       }
-      case And(args) => {
+      case e@And(args) => {
         val newargs = args.map(arg => if (getTemplateVars(e).isEmpty) {
           arg
         } else {
@@ -118,8 +117,8 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
         })
         createAnd(newargs)
       }
-      case _ => e
-    })(ExpressionTransformer.simplify(simplifyArithmetic(
+      case e => e
+    }(ExpressionTransformer.simplify(simplifyArithmetic(
         //TODO: this is a hack as of now. Fix this.
         //Note: it is necessary to convert real literals to integers since the linear constraint cannot handle real literals
         if(ctx.usereals) ExpressionTransformer.FractionalLiteralToInt(ine)
@@ -151,7 +150,7 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
       val e @ Or(guards) = conjuncts(gd)
       //pick one guard that is true
       val guard = guards.collectFirst { case g @ Variable(id) if (model(id) == tru) => g }
-      if (!guard.isDefined)
+      if (guard.isEmpty)
         throw new IllegalStateException("No satisfiable guard found: " + e)
       guard.get +: traverseAnds(guard.get, model)
     }
@@ -236,16 +235,16 @@ class Formula(val fd: FunDef, initexpr: Expr, ctx: InferenceContext) {
     //replace all conjunct guards in disjuncts by their mapping
     val disjs : Map[Expr,Expr] = disjuncts.map((entry) => {
       val (g,ctrs) = entry
-      val newctrs = ctrs.map(_ match {
+      val newctrs = ctrs.map {
         case BoolConstraint(g@Variable(_)) if conjuncts.contains(g) => conjuncts(g)
         case ctr@_ => ctr.toExpr
-      })
+      }
       (g, createAnd(newctrs))
     })
-    val rootexprs = roots.map(_ match {
-        case g@Variable(_) if conjuncts.contains(g) => conjuncts(g)
-        case e@_ => e
-      })
+    val rootexprs = roots.map {
+      case g@Variable(_) if conjuncts.contains(g) => conjuncts(g)
+      case e@_ => e
+    }
     //replace every guard in the 'disjs' by its disjunct. DO this as long as every guard is replaced in every disjunct
     var unpackedDisjs = disjs
     var replacedGuard = true

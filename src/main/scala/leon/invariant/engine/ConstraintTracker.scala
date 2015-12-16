@@ -1,19 +1,8 @@
 package leon
 package invariant.engine
 
-import z3.scala._
-import purescala._
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
-import evaluators._
-import java.io._
-
-import invariant.factories._
-import invariant.util._
 import invariant.structure._
 
 class ConstraintTracker(ctx : InferenceContext, program: Program, rootFun : FunDef/*, temFactory: TemplateFactory*/) {

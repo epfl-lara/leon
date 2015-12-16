@@ -1,21 +1,13 @@
 package leon
 package invariant.util
 
-import utils._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
-import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap }
-import leon.invariant._
 import solvers.z3._
 import solvers._
-import invariant.engine._
-import invariant.factories._
-import invariant.structure._
-import FunctionUtils._
 import leon.invariant.templateSolvers.ExtendedUFSolver
 import java.io._
 import Util._
@@ -55,7 +47,7 @@ object SolverUtil {
       case id @ _ if (id.name.toString == "c?") => id.toVariable -> InfiniteIntegerLiteral(2)
     }.toMap
     //println("found ids: " + idmap.keys)
-    if (!idmap.keys.isEmpty) {
+    if (idmap.keys.nonEmpty) {
       val newpathcond = replace(idmap, expr)
       //check if this is solvable
       val solver = SimpleSolverAPI(SolverFactory(() => new ExtendedUFSolver(ctx, prog)))
@@ -76,8 +68,8 @@ object SolverUtil {
     var controlVars = Map[Variable, Expr]()
     var newEqs = Map[Expr, Expr]()
     val solver = new ExtendedUFSolver(ctx, prog)
-    val newe = simplePostTransform((e: Expr) => e match {
-      case And(_) | Or(_) => {
+    val newe = simplePostTransform {
+      case e@(And(_) | Or(_)) => {
         val v = TVarFactory.createTemp("a", BooleanType).toVariable
         newEqs += (v -> e)
         val newe = Equals(v, e)
@@ -88,8 +80,8 @@ object SolverUtil {
         solver.assertCnstr(Or(newe, cvar))
         v
       }
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
     //create new variable and add it in disjunction
     val cvar = FreshIdentifier("ctrl", BooleanType, true).toVariable
     controlVars += (cvar -> newe)

@@ -26,7 +26,7 @@ object MultFuncs {
       val vary = yid.toVariable
       val args = Seq(xid, yid)
       val funcType = FunctionType(Seq(domain, domain), domain)
-      val mfd = new FunDef(FreshIdentifier("pmult", funcType, false), Seq(), args.map((arg) => ValDef(arg, Some(arg.getType))), domain)
+      val mfd = new FunDef(FreshIdentifier("pmult", funcType, false), Seq(), args.map(arg => ValDef(arg)), domain)
       val tmfd = TypedFunDef(mfd, Seq())
 
       //define a body (a) using mult(x,y) = if(x == 0 || y ==0) 0 else mult(x-1,y) + y
@@ -47,7 +47,7 @@ object MultFuncs {
       val post1 = Implies(guard, defn2)
 
       // mfd.postcondition = Some((resvar.id, And(Seq(post0, post1))))
-      mfd.fullBody = Ensuring(mfd.body.get, Lambda(Seq(ValDef(resvar.id, Some(resvar.getType))), And(Seq(post0, post1))))
+      mfd.fullBody = Ensuring(mfd.body.get, Lambda(Seq(ValDef(resvar.id)), And(Seq(post0, post1))))
       //set function properties (for now, only monotonicity)
       mfd.addFlags(Set(Annotation("theoryop", Seq()), Annotation("monotonic", Seq()))) //"distributive" ?
       mfd
@@ -59,7 +59,7 @@ object MultFuncs {
       val yid = FreshIdentifier("y", domain)
       val args = Seq(xid, yid)
       val funcType = FunctionType(Seq(domain, domain), domain)
-      val fd = new FunDef(FreshIdentifier("mult", funcType, false), Seq(), args.map((arg) => ValDef(arg, Some(arg.getType))), domain)
+      val fd = new FunDef(FreshIdentifier("mult", funcType, false), Seq(), args.map(arg => ValDef(arg)), domain)
       val tpivMultFun = TypedFunDef(pivMultFun, Seq())
 
       //the body is defined as mult(x,y) = val px = if(x < 0) -x else x;

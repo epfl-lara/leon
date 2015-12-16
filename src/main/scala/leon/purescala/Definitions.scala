@@ -3,7 +3,6 @@
 package leon
 package purescala
 
-import sun.reflect.generics.tree.ReturnType
 import utils.Library
 import Common._
 import Expressions._
@@ -41,27 +40,21 @@ object Definitions {
     }
   }
 
-  /** A ValDef represents a parameter of a [[purescala.Definitions.FunDef function]] or
-    * a [[purescala.Definitions.CaseClassDef case class]].
-    *
-    *  The optional [[tpe]], if present, overrides the type of the underlying Identifier [[id]].
-    *  This is useful to instantiate argument types of polymorphic classes. To be consistent,
-    *  never use the type of [[id]] directly; use [[ValDef#getType]] instead.
-    */
-  case class ValDef(id: Identifier, tpe: Option[TypeTree] = None) extends Definition with Typed {
+  /** 
+   *  A ValDef declares a new identifier to be of a certain type.
+   *  The optional tpe, if present, overrides the type of the underlying Identifier id
+   *  This is useful to instantiate argument types of polymorphic functions
+   */
+  case class ValDef(id: Identifier, isLazy: Boolean = false) extends Definition with Typed {
     self: Serializable =>
 
-    val getType = tpe getOrElse id.getType
+    val getType = id.getType
 
     var defaultValue : Option[FunDef] = None
 
     def subDefinitions = Seq()
 
-    /** Transform this [[ValDef]] into a [[Expressions.Variable Variable]]
-      *
-      * Warning: the variable will not have the same type as this ValDef, but currently
-      * the Identifier type is enough for all uses in Leon.
-      */
+    /** Transform this [[ValDef]] into a [[Expressions.Variable Variable]] */
     def toVariable : Variable = Variable(id)
   }
 
@@ -161,7 +154,7 @@ object Definitions {
   
   object UnitDef {
     def apply(id: Identifier, modules : Seq[ModuleDef]) : UnitDef = 
-      UnitDef(id,Nil, Nil, modules,true)
+      UnitDef(id, Nil, Nil, modules, true)
   }
   
   /** Objects work as containers for class definitions, functions (def's) and
@@ -486,11 +479,20 @@ object Definitions {
 
     def translated(e: Expr): Expr = instantiateType(e, typesMap, paramsMap)
 
+    /** A mapping from this [[TypedFunDef]]'s formal parameters to real arguments
+      *
+      * @param realArgs The arguments to which the formal argumentas are mapped
+      * */
     def paramSubst(realArgs: Seq[Expr]) = {
       require(realArgs.size == params.size)
       (paramIds zip realArgs).toMap
     }
 
+    /** Substitute this [[TypedFunDef]]'s formal parameters with real arguments in some expression
+     *
+     * @param realArgs The arguments to which the formal argumentas are mapped
+     * @param e The expression in which the substitution will take place
+     */
     def withParamSubst(realArgs: Seq[Expr], e: Expr) = {
       replaceFromIDs(paramSubst(realArgs), e)
     }
@@ -510,11 +512,10 @@ object Definitions {
       if (typesMap.isEmpty) {
         (fd.params, Map())
       } else {
-        val newParams = fd.params.map {
-          case vd @ ValDef(id, _) =>
-            val newTpe = translated(vd.getType)
-            val newId = FreshIdentifier(id.name, newTpe, true).copiedFrom(id)
-            ValDef(newId).setPos(vd)
+        val newParams = fd.params.map { vd =>
+          val newTpe = translated(vd.getType)
+          val newId = FreshIdentifier(vd.id.name, newTpe, true).copiedFrom(vd.id)
+          vd.copy(id = newId).setPos(vd)
         }
 
         val paramsMap: Map[Identifier, Identifier] = (fd.params zip newParams).map { case (vd1, vd2) => vd1.id -> vd2.id }.toMap

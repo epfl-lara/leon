@@ -9,7 +9,6 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import evaluators._
-import scala.collection.mutable.{ Map => MutableMap }
 import java.io._
 import solvers._
 import solvers.combinators._
@@ -369,7 +368,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
     val cegisSolver = new CegisCore(ctx, program, timeout.toInt, this)
     val (res, ctr, model) = cegisSolver.solve(tempIds, expr, precond, solveAsInt = false, initModel)
-    if (!res.isDefined)
+    if (res.isEmpty)
       reporter.info("cegis timed-out on the disjunct...")
     (res, ctr, model)
   }
@@ -508,7 +507,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       val InfiniteIntegerLiteral(v) = model(id)
       v
     }
-    def eval: (Expr => Boolean) = e => e match {
+    def eval: (Expr => Boolean) = {
       case And(args) => args.forall(eval)
       // case Iff(Variable(id1), Variable(id2)) => model(id1) == model(id2)
       case Equals(Variable(id1), Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
@@ -516,7 +515,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       case GreaterEquals(Variable(id1), Variable(id2)) => modelVal(id1) >= modelVal(id2)
       case GreaterThan(Variable(id1), Variable(id2)) => modelVal(id1) > modelVal(id2)
       case LessThan(Variable(id1), Variable(id2)) => modelVal(id1) < modelVal(id2)
-      case _ => throw new IllegalStateException("Predicate not handled: " + e)
+      case e => throw new IllegalStateException("Predicate not handled: " + e)
     }
     eval
   }
@@ -526,14 +525,14 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       //println("Identifier: "+id)
       model(id).asInstanceOf[FractionalLiteral]
     }
-    (e: Expr) => e match {
+    {
       case Equals(Variable(id1), Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
-      case Operator(Seq(Variable(id1), Variable(id2)), op) if (e.isInstanceOf[LessThan]
+      case e@Operator(Seq(Variable(id1), Variable(id2)), op) if (e.isInstanceOf[LessThan]
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
         || e.isInstanceOf[GreaterEquals]) => {
         evaluateRealPredicate(op(Seq(modelVal(id1), modelVal(id2))))
       }
-      case _ => throw new IllegalStateException("Predicate not handled: " + e)
+      case e => throw new IllegalStateException("Predicate not handled: " + e)
     }
   }
 
@@ -587,11 +586,11 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
 
     var calls = Set[Call]()
     var cons = Set[Expr]()
-    satCtrs.foreach(ctr => ctr match {
+    satCtrs.foreach {
       case t: Call => calls += t
       case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
       case _ => ;
-    })
+    }
     val callExprs = calls.map(_.toExpr)
 
     var t1 = System.currentTimeMillis()
@@ -617,11 +616,11 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     //exclude guards, separate calls and cons from the rest
     var lnctrs = Set[LinearConstraint]()
     var temps = Set[LinearTemplate]()
-    (satCtrs ++ callCtrs ++ axiomCtrs ++ theoryCtrs).foreach(ctr => ctr match {
+    (satCtrs ++ callCtrs ++ axiomCtrs ++ theoryCtrs).foreach {
       case t: LinearConstraint => lnctrs += t
       case t: LinearTemplate => temps += t
       case _ => ;
-    })
+    }
 
     if (this.debugChooseDisjunct) {
       lnctrs.map(_.toExpr).foreach((ctr) => {
@@ -693,7 +692,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         var elimRems = Set[Identifier]()
         elimLnctrs.foreach((lc) => {
           val evars = variablesOf(lc.toExpr).intersect(elimVars)
-          if (!evars.isEmpty) {
+          if (evars.nonEmpty) {
             elimCtrs :+= lc
             elimCtrCount += 1
             elimRems ++= evars

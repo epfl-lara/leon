@@ -1,23 +1,10 @@
 package leon
 package invariant.structure
 
-import z3.scala._
-import purescala._
-import purescala.Common._
-import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
 import purescala.Types._
-import solvers.{ Solver, TimeoutSolver }
-import solvers.z3.FairZ3Solver
-import scala.collection.mutable.{ Set => MutableSet }
-import scala.collection.mutable.{ Map => MutableMap }
-import evaluators._
-import java.io._
-import solvers.z3.UninterpretedZ3Solver
 import invariant.util._
-import Util._
 import PredicateUtil._
 
 trait Constraint {
@@ -42,9 +29,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
   }
   val coeffTemplate = {
     //assert if the coefficients are templated expressions
-    assert(coeffTemp.values.foldLeft(true)((acc, e) => {
-      acc && isTemplateExpr(e)
-    }))
+    assert(coeffTemp.values.forall(e => isTemplateExpr(e)))
     coeffTemp
   }
 
@@ -110,7 +95,7 @@ class LinearTemplate(oper: Seq[Expr] => Expr,
         rhsExprs :+= InfiniteIntegerLiteral(-v)
       case Some(c) =>
         lhsExprs :+= c
-      case _ => Nil
+      case _ =>
     }
     val lhsExprOpt = ((None: Option[Expr]) /: lhsExprs) {
       case (acc, minterm) =>
@@ -175,9 +160,7 @@ class LinearConstraint(opr: Seq[Expr] => Expr, cMap: Map[Expr, Expr], constant: 
 
   val coeffMap = {
     //assert if the coefficients are only constant expressions
-    assert(cMap.values.foldLeft(true)((acc, e) => {
-      acc && variablesOf(e).isEmpty
-    }))
+    assert(cMap.values.forall(e => variablesOf(e).isEmpty))
     //TODO: here we should try to simplify the constant expressions
     cMap
   }

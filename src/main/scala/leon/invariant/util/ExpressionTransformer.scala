@@ -8,10 +8,7 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
 import java.io._
-import java.io._
 import purescala.ScalaPrinter
-import invariant.structure.Call
-import invariant.structure.FunctionUtils._
 import leon.invariant.factories.TemplateIdFactory
 import PredicateUtil._
 import Util._
@@ -185,7 +182,7 @@ object ExpressionTransformer {
       }
     }
     val (nexp, ncjs) = transform(inexpr, false)
-    val res = if (!ncjs.isEmpty) {
+    val res = if (ncjs.nonEmpty) {
       createAnd(nexp +: ncjs.toSeq)
     } else nexp
     res
@@ -283,31 +280,30 @@ object ExpressionTransformer {
 
     def flattenArgs(args: Seq[Expr], insideFunction: Boolean): (Seq[Expr], Set[Expr]) = {
       var newConjuncts = Set[Expr]()
-      val newargs = args.map((arg) =>
-        arg match {
-          case v: Variable => v
-          case r: ResultVariable => r
-          case _ => {
-            val (nexpr, ncjs) = flattenFunc(arg, insideFunction)
+      val newargs = args.map {
+        case v: Variable => v
+        case r: ResultVariable => r
+        case arg => {
+          val (nexpr, ncjs) = flattenFunc(arg, insideFunction)
 
-            newConjuncts ++= ncjs
+          newConjuncts ++= ncjs
 
-            nexpr match {
-              case v: Variable => v
-              case r: ResultVariable => r
-              case _ => {
-                val freshArgVar = Variable(TVarFactory.createTemp("arg", arg.getType))
-                newConjuncts += Equals(freshArgVar, nexpr)
-                freshArgVar
-              }
+          nexpr match {
+            case v: Variable => v
+            case r: ResultVariable => r
+            case _ => {
+              val freshArgVar = Variable(TVarFactory.createTemp("arg", arg.getType))
+              newConjuncts += Equals(freshArgVar, nexpr)
+              freshArgVar
             }
           }
-        })
+        }
+      }
       (newargs, newConjuncts)
     }
 
     val (nexp, ncjs) = flattenFunc(inExpr, false)
-    if (!ncjs.isEmpty) {
+    if (ncjs.nonEmpty) {
       createAnd(nexp +: ncjs.toSeq)
     } else nexp
   }
@@ -387,7 +383,7 @@ object ExpressionTransformer {
    */
   def pullAndOrs(expr: Expr): Expr = {
 
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case Or(args) => {
         val newArgs = args.foldLeft(Seq[Expr]())((acc, arg) => arg match {
           case Or(inArgs) => acc ++ inArgs
@@ -402,8 +398,8 @@ object ExpressionTransformer {
         })
         createAnd(newArgs)
       }
-      case _ => e
-    })(expr)
+      case e => e
+    }(expr)
   }
 
   def classSelToCons(e: Expr): Expr = {
@@ -466,15 +462,15 @@ object ExpressionTransformer {
    */
   def unFlatten(ine: Expr, freevars: Set[Identifier]): Expr = {
     var tempMap = Map[Expr, Expr]()
-    val newinst = simplePostTransform((e: Expr) => e match {
-      case Equals(v @ Variable(id), rhs @ _) if !freevars.contains(id) =>
+    val newinst = simplePostTransform {
+      case e@Equals(v@Variable(id), rhs@_) if !freevars.contains(id) =>
         if (tempMap.contains(v)) e
         else {
           tempMap += (v -> rhs)
           tru
         }
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
     val closure = (e: Expr) => replace(tempMap, e)
     fix(closure)(newinst)
   }
@@ -510,11 +506,11 @@ object ExpressionTransformer {
   def isSubExpr(key: Expr, expr: Expr): Boolean = {
 
     var found = false
-    simplePostTransform((e: Expr) => e match {
-      case _ if (e == key) =>
+    simplePostTransform {
+      case e if (e == key) =>
         found = true; e
-      case _ => e
-    })(expr)
+      case e => e
+    }(expr)
     found
   }
 
@@ -524,7 +520,7 @@ object ExpressionTransformer {
   def simplify(expr: Expr): Expr = {
 
     //Note: some simplification are already performed by the class constructors (see Tree.scala)
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case Equals(lhs, rhs) if (lhs == rhs) => tru
       case LessEquals(lhs, rhs) if (lhs == rhs) => tru
       case GreaterEquals(lhs, rhs) if (lhs == rhs) => tru
@@ -536,8 +532,8 @@ object ExpressionTransformer {
       case LessThan(InfiniteIntegerLiteral(v1), InfiniteIntegerLiteral(v2)) => BooleanLiteral(v1 < v2)
       case GreaterEquals(InfiniteIntegerLiteral(v1), InfiniteIntegerLiteral(v2)) => BooleanLiteral(v1 >= v2)
       case GreaterThan(InfiniteIntegerLiteral(v1), InfiniteIntegerLiteral(v2)) => BooleanLiteral(v1 > v2)
-      case _ => e
-    })(expr)
+      case e => e
+    }(expr)
   }
 
   /**
@@ -545,7 +541,7 @@ object ExpressionTransformer {
    * Note: (a) Not(Equals()) and Not(Variable) is allowed
    */
   def isDisjunct(e: Expr): Boolean = e match {
-    case And(args) => args.foldLeft(true)((acc, arg) => acc && isDisjunct(arg))
+    case And(args) => args.forall(arg => isDisjunct(arg))
     case Not(Equals(_, _)) | Not(Variable(_)) => true
     case Or(_) | Implies(_, _) | Not(_) | Equals(_, _) => false
     case _ => true
@@ -556,7 +552,7 @@ object ExpressionTransformer {
    * Note: (a) Not(Equals()) and Not(Variable) is allowed
    */
   def isConjunct(e: Expr): Boolean = e match {
-    case Or(args) => args.foldLeft(true)((acc, arg) => acc && isConjunct(arg))
+    case Or(args) => args.forall(arg => isConjunct(arg))
     case Not(Equals(_, _)) | Not(Variable(_)) => true
     case And(_) | Implies(_, _) | Not(_) | Equals(_, _) => false
     case _ => true
@@ -568,17 +564,17 @@ object ExpressionTransformer {
       case And(args) => {
         //have we seen an or ?
         if (seen == 2) false
-        else args.foldLeft(true)((acc, arg) => acc && uniOP(arg, 1))
+        else args.forall(arg => uniOP(arg, 1))
       }
       case Or(args) => {
         //have we seen an And ?
         if (seen == 1) false
-        else args.foldLeft(true)((acc, arg) => acc && uniOP(arg, 2))
+        else args.forall(arg => uniOP(arg, 2))
       }
       case t: Terminal => true
       /*case u @ UnaryOperator(e1, op) => uniOP(e1, seen)
       case b @ BinaryOperator(e1, e2, op) => uniOP(e1, seen) && uniOP(e2, seen)*/
-      case n @ Operator(args, op) => args.foldLeft(true)((acc, arg) => acc && uniOP(arg, seen))
+      case n @ Operator(args, op) => args.forall(arg => uniOP(arg, seen))
     }
 
     def printRec(e: Expr, indent: Int): Unit = {
@@ -588,7 +584,7 @@ object ExpressionTransformer {
         e match {
           case And(args) => {
             var start = true
-            args.map((arg) => {
+            args.foreach((arg) => {
               wr.print(" " * (indent + 1))
               if (!start) wr.print("^")
               printRec(arg, indent + 1)
@@ -597,7 +593,7 @@ object ExpressionTransformer {
           }
           case Or(args) => {
             var start = true
-            args.map((arg) => {
+            args.foreach((arg) => {
               wr.print(" " * (indent + 1))
               if (!start) wr.print("v")
               printRec(arg, indent + 1)
@@ -627,8 +623,8 @@ object ExpressionTransformer {
     }
 
     def distribute(e: Expr): Expr = {
-      simplePreTransform(_ match {
-        case e @ FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
+      simplePreTransform {
+        case e@FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
           val newe = (e1, e2) match {
             case (Plus(sum1, sum2), _) =>
               // distribute e2 over e1
@@ -655,7 +651,7 @@ object ExpressionTransformer {
           }
           newe
         case other => other
-      })(e)
+      }(e)
     }
     distribute(e)
   }

@@ -4,16 +4,9 @@ package leon
 package invariant.templateSolvers
 
 import z3.scala._
-import leon.solvers._
-import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.Extractors._
-import purescala.ExprOps._
-import purescala.Types._
-import leon.LeonContext
 import leon.solvers.z3.UninterpretedZ3Solver
-import leon.solvers.smtlib.SMTLIBZ3Solver
 
 /**
  *  A uninterpreted solver extended with additional functionalities.

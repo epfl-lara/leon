@@ -1,22 +1,15 @@
 package leon
 package invariant.util
-import z3.scala._
-import purescala.Common._
+
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.Types._
 import solvers._
-import solvers.z3._
 import solvers.smtlib.SMTLIBZ3Solver
-import leon.invariant._
-import scala.util.control.Breaks._
 import invariant.engine.InferenceContext
 import invariant.factories._
-import leon.invariant.templateSolvers.ExtendedUFSolver
 import leon.invariant.util.RealValuedExprEvaluator._
-import invariant.util.TimerUtil._
 
 class Minimizer(ctx: InferenceContext, program: Program) {
 

@@ -27,7 +27,7 @@ object MethodLifting extends TransformationPhase {
       // Common for both cases
       val ct = ccd.typed
       val binder = FreshIdentifier(ccd.id.name.toLowerCase, ct, true)
-      val fBinders = ct.fields.map{ f => f.id -> f.id.freshen }.toMap
+      val fBinders = (ccd.fieldsIds zip ct.fields).map(p => p._1 -> p._2.id.freshen).toMap
       def subst(e: Expr): Expr = e match {
         case CaseClassSelector(`ct`, This(`ct`), i) =>
           Variable(fBinders(i)).setPos(e)
@@ -37,19 +37,19 @@ object MethodLifting extends TransformationPhase {
           e
       }
 
-      ccd.methods.find( _.id == fdId).map { m =>
+      ccd.methods.find(_.id == fdId).map { m =>
 
         // Ancestor's method is a method in the case class
-        val subPatts = ct.fields map (f => WildcardPattern(Some(fBinders(f.id))))
+        val subPatts = ccd.fields map (f => WildcardPattern(Some(fBinders(f.id))))
         val patt = CaseClassPattern(Some(binder), ct, subPatts)
         val newE = simplePreTransform(subst)(breakDown(m.fullBody))
         val cse = SimpleCase(patt, newE).setPos(newE)
         (List(cse), true)
 
-      } orElse ccd.fields.find( _.id == fdId).map { f =>
+      } orElse ccd.fields.find(_.id == fdId).map { f =>
 
         // Ancestor's method is a case class argument in the case class
-        val subPatts = ct.fields map (fld =>
+        val subPatts = ccd.fields map (fld =>
           if (fld.id == f.id)
             WildcardPattern(Some(fBinders(f.id)))
           else
@@ -112,7 +112,7 @@ object MethodLifting extends TransformationPhase {
 
       val fdParams = fd.params map { vd =>
         val newId = FreshIdentifier(vd.id.name, tSubst(vd.id.getType))
-        ValDef(newId).setPos(vd.getPos)
+        vd.copy(id = newId).setPos(vd.getPos)
       }
       val paramsMap = fd.params.zip(fdParams).map{ case (from, to) => from.id -> to.id }.toMap
       val eSubst: Expr => Expr = instantiateType(_, tMap, paramsMap)
@@ -140,7 +140,7 @@ object MethodLifting extends TransformationPhase {
         val retType = instantiateType(fd.returnType, tparamsMap)
         val fdParams = fd.params map { vd =>
           val newId = FreshIdentifier(vd.id.name, instantiateType(vd.id.getType, tparamsMap))
-          ValDef(newId).setPos(vd.getPos)
+          vd.copy(id = newId).setPos(vd.getPos)
         }
 
         val receiver = FreshIdentifier("thiss", recType).setPos(cd.id)
