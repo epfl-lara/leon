@@ -26,7 +26,7 @@ import leon.Main
 import leon.transformations._
 import LazinessUtil._
 
-class LazyInstrumenter(p: Program) {
+class LazyInstrumenter(p: Program, clFactory: LazyClosureFactory) {
 
   val exprInstFactory = (x: Map[FunDef, FunDef], y: SerialInstrumenter, z: FunDef) =>
       new LazyExprInstrumenter(x, y)(z)
@@ -70,8 +70,12 @@ class LazyInstrumenter(p: Program) {
         }
         //val nbody = super.apply(e)
         val bodyId = FreshIdentifier("bd", nbody.getType, true)
+        // we need to select the appropriate field of the state
+        val lazyTname = adtNameToTypeName(typeNameWOParams(closureParam.getType))
+        val setField = clFactory.selectFieldOfState(lazyTname, stateParam,
+            stateParam.getType.asInstanceOf[CaseClassType])
         val instExprs = instrumenters map { m =>
-          IfExpr(ElementOfSet(closureParam, stateParam),
+          IfExpr(ElementOfSet(closureParam, setField),
             InfiniteIntegerLiteral(costOfMemoization(m.inst)),
             selectInst(bodyId.toVariable, m.inst))
         }

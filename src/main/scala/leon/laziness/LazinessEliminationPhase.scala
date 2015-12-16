@@ -41,7 +41,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   val dumpInputProg = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = true
-  val dumpTypeCorrectProg = true
+  val dumpTypeCorrectProg = false
   val dumpProgWithPreAsserts = true
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
@@ -86,7 +86,6 @@ object LazinessEliminationPhase extends TransformationPhase {
     val typeCorrectProg = (new TypeRectifier(progWithClosures, closureFactory)).apply
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
-    System.exit(0)
 
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg, funsManager)).apply
     if (dumpProgWithPreAsserts) {
@@ -105,7 +104,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       checkSpecifications(progWOInstSpecs, checkCtx)
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(typeCorrectProg)
+    val instrumenter = new LazyInstrumenter(typeCorrectProg, closureFactory)
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram) {
       //println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
@@ -196,7 +195,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
       case Let(binder, letv, letb) =>
         val (cons, body) = letStarUnapply(letb)
-        (e => Let(binder, letv, cons(e)), letb)
+        (e => Let(binder, letv, cons(e)), body)
       case base =>
         (e => e, base)
     }
@@ -213,7 +212,9 @@ object LazinessEliminationPhase extends TransformationPhase {
           case And(args) =>
             createAnd(args.filterNot(hasInstVar))
           case l : Let =>  // checks if the body of the let can be deconstructed as And
+            //println(s"Fist let val: ${l.value} body: ${l.body}")
             val (letsCons, letsBody) = letStarUnapply(l)
+            //println("Let* body: "+letsBody)
             letsBody match {
               case And(args) =>
                 letsCons(createAnd(args.filterNot(hasInstVar)))

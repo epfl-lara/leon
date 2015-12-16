@@ -7,6 +7,9 @@ import leon.instrumentation._
 import leon.lazyeval.$._
 import leon.collection._
 
+/**
+ * This benchmark is very for finding counter-examples
+ */
 object Esop15Benchmarks {
   
   /**
@@ -38,7 +41,7 @@ object Esop15Benchmarks {
       case _ => 
         PNil()
     }
-  } ensuring(_ => time <= 50)
+  } ensuring(_ => time <= 65)
 
   def nextFib(x: BigInt, y: BigInt, n: BigInt): IStream = {
     if (n <= 0)
@@ -47,7 +50,7 @@ object Esop15Benchmarks {
       val next = x + y
       SCons(next, $(nextFib(y, next, n - 1)))
     }
-  } //ensuring(_ => time <= 20)
+  } ensuring(_ => time <= 20)
   
   def fibStream(n: BigInt) : IStream = {
     SCons(0, SCons(1, $(nextFib(0, 1, n))))
@@ -63,5 +66,5 @@ object Esop15Benchmarks {
           nthFib(n - 1, tail)
       case SNil() => BigInt(-1)
     }
-  } ensuring(_ => time <= 30 * n + 30) // you get a counter-example for 20*n + 20
+  } ensuring(_ => time <= 40 * n + 40) // you get a counter-example for 20*n + 20
 }

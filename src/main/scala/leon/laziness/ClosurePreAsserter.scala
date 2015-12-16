@@ -29,7 +29,7 @@ class ClosurePreAsserter(p: Program, funsManager: LazyFunctionsManager) {
     functionByName(opname, p).get.hasPrecondition
   }
 
-  // A nasty way of finding anchor functions
+  // TODO: A nasty way of finding anchor functions
   // Fix this soon !!
   var anchorfd: Option[FunDef] = None
   val lemmas = p.definedFunctions.flatMap {
