@@ -11,6 +11,16 @@ object GrammarRender {
 
   case class Rule(left: Symbol, right: List[Symbol])
   case class Grammar(start: Symbol, rules: List[Rule])
+  
+  /** Given a grammar, expanding with the first, second or third rule for the symbol should yield the same list each time.
+   *  Obviously wrong, but provides meaningful counter-examples. */
+  def threeExpansionsIsTheSame(g: Grammar, s: Symbol) = {
+    require(isGrammar(g) && noEpsilons(g.rules) && isReasonable(g.rules) && !isTerminal(s))
+    val a = expand(g.rules, s, BigInt(0))
+    val b = expand(g.rules, s, BigInt(1))
+    val c = expand(g.rules, s, BigInt(2))
+    a == b && b == c
+  } holds
 
   /** Synthesis by example specs */
   @inline def psStandard(s: Grammar) = (res: String) => (s, res) passes {
@@ -140,9 +150,12 @@ S0 -> S0 t1"""
     case Nil() => true
     case Cons(r, q) => isReasonableRule(r.right, r.left) && isReasonable(q)
   } 
-  
-  def allGrammarsAreIdentical(g: Grammar, g2: Grammar) = {
-    require(isGrammar(g) && isGrammar(g2) && noEpsilons(g.rules) && noEpsilons(g2.rules) && isReasonable(g.rules) && isReasonable(g2.rules))
-    (g == g2 || g.rules == g2.rules)
-  } holds
+
+  def expand(lr: List[Rule], s: Symbol, index: BigInt): List[Symbol] = if(index < 0) List(s) else (lr match {
+    case Nil() => List(s)
+    case Cons(Rule(l, r), q) =>
+      if(l == s) {
+        if(index == 0) r else expand(q, s, index - 1)
+      } else expand(q, s, index)
+  })
 }
