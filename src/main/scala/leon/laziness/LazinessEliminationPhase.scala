@@ -41,7 +41,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   val dumpInputProg = false
   val dumpLiftProg = false
   val dumpProgramWithClosures = true
-  val dumpTypeCorrectProg = false
+  val dumpTypeCorrectProg = true
   val dumpProgWithPreAsserts = true
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
@@ -81,12 +81,12 @@ object LazinessEliminationPhase extends TransformationPhase {
       //println("After closure conversion: \n" + ScalaPrinter.apply(progWithClosures, purescala.PrinterOptions(printUniqueIds = true)))
       prettyPrintProgramToFile(progWithClosures, ctx, "-closures")
     }
-    System.exit(0)
 
     //Rectify type parameters and local types
     val typeCorrectProg = (new TypeRectifier(progWithClosures, tp => tp.id.name.endsWith("@"))).apply
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
+    System.exit(0)
 
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg, funsManager)).apply
     if (dumpProgWithPreAsserts) {

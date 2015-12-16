@@ -315,7 +315,9 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val resval = FunctionInvocation(TypedFunDef(uiFuncs(argfd)._1, tparams), flatArgs)
         val cc = CaseClass(CaseClassType(adt, tparams), flatArgs :+ resval)
         val baseLazyTypeName = closureFactory.lazyTypeNameOfClosure(adt)
-        val fi = FunctionInvocation(TypedFunDef(closureCons(baseLazyTypeName), tparams), Seq(cc, st.get))
+        val stTparams = getTypeParameters(st.get.getType)
+        val fi = FunctionInvocation(TypedFunDef(closureCons(baseLazyTypeName), tparams ++ stTparams),
+          Seq(cc, st.get))
         letCons(fi) // this could be 'fi' wrapped into lets
       }, false)
       mapNAryOperator(args, op)
@@ -337,7 +339,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val tname = typeNameWOParams(baseType)
         // select the set using the tname
         val st = stOpt.get
-        val stTparams = closureFactory.state.tparams.map(_.tp) // using dummy set of tparams. The correct type should be inferred later
+        val stTparams = getTypeParameters(st.getType) // using dummy set of tparams. The correct type should be inferred later
         val stType = CaseClassType(closureFactory.state, stTparams)
         val cls = closureFactory.selectFieldOfState(tname, st, stType)
         val memberTest = ElementOfSet(narg, cls)
@@ -418,7 +420,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val baseType = unwrapLazyType(nargs(0).getType).get // there must be only one argument here
         val tname = typeNameWOParams(baseType)
         val dispFun = computeFunctions(tname)
-        // TODO: important: what do we do with type parameters here.
+        // TODO: important: what do we do with type parameters of state that are not a part of base type here ?
         val tparams = getTypeParameters(baseType)
         FunctionInvocation(TypedFunDef(dispFun, getTypeParameters(baseType)), nargs)
       }, false)
@@ -569,7 +571,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   def assignBodiesToFunctions = funMap foreach {
     case (fd, nfd) =>
-      println("Considering function: "+fd)
+      //println("Considering function: "+fd)
       // Here, using name to identify 'state' parameters
       /*nfd.params.foldLeft(Seq[Expr]()) {
         case (acc, ValDef(id, _)) if id.name.startsWith("st@") =>
@@ -627,7 +629,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
             else SubsetOf.apply _
           Some(createAnd((instates zip outstates).map(p => stateRel(p._1, p._2))))
         } else None
-      println("stateRel: "+stateRel)
+      //println("stateRel: "+stateRel)
 
       // create a predicate that ensures that the value part is independent of the state
       val valRel =
