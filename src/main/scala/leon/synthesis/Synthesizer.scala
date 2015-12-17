@@ -99,7 +99,7 @@ class Synthesizer(val context : LeonContext,
       val fw = new java.io.FileWriter("synthesis-report.txt", true)
 
       try {
-        fw.write(f"$date:  $benchName%-50s & $psize%4d & $size%4d & $calls%4d & $proof%7s & $time%.2f \\\\\n")
+        fw.write(f"$date:  $benchName%-50s & $psize%4d & $size%4d & $calls%4d & $proof%7s & $time%2.1f \\\\\n")
       } finally {
         fw.close
       }

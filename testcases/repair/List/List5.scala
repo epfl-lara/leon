@@ -97,7 +97,7 @@ sealed abstract class List[T] {
     case Nil() => Nil[T]()
     case Cons(h, t) =>
       val r = t.replace(from, to)
-      if (h != from) {
+      if (h != from) { // FIXME
         Cons(to, r)
       } else {
         Cons(h, r)

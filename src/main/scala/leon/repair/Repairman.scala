@@ -136,7 +136,8 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
             val (solSize, proof) = solutions.headOption match {
               case Some((sol, trusted)) =>
-                val totalSolSize = formulaSize(sol.toSimplifiedExpr(ctx, program))
+                val solExpr = sol.toSimplifiedExpr(ctx, program)
+                val totalSolSize = formulaSize(solExpr)
                 (locSize+totalSolSize-fSize, if (trusted) "$\\chmark$" else "")
               case _ =>
                 (0, "X")
@@ -147,7 +148,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
             val fw = new java.io.FileWriter("repair-report.txt", true)
 
             try {
-              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%.2f &  & ${timeSynth/1000.0}%.2f & $proof%7s \\\\\n")
+              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%2.1f &  ${timeSynth/1000.0}%2.1f & $proof%7s \\\\\n")
             } finally {
               fw.close
             }
