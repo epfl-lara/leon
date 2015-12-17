@@ -6,6 +6,7 @@ package genc
 import leon.test.LeonRegressionSuite
 
 import leon.frontends.scalac.ExtractionPhase
+import leon.regression.verification.XLangVerificationSuite
 import leon.purescala.Definitions.Program
 import leon.utils.{ PreprocessingPhase, UniqueCounter }
 
@@ -31,6 +32,7 @@ class GenCSuite extends LeonRegressionSuite {
   private case class ExtendedContext(leon: LeonContext, tmpDir: Path, progName: String)
 
   // Tests are run as follows:
+  // - before mkTest is run, all valid test are verified using XLangVerificationSuite
   // - The classic ExtractionPhase & PreprocessingPhase are run on all input files
   //   (this way the libraries are evaluated only once)
   // - A Program is constructed for each input file
@@ -178,7 +180,20 @@ class GenCSuite extends LeonRegressionSuite {
     }
   }
 
+  protected def verifyValidTests() = {
+    class AltVerificationSuite(override val testDir: String) extends XLangVerificationSuite {
+      def run() = testValid() // Test only the valid ones
+    }
+
+    // Use our test dir and not the one from XLangVerificationSuite
+    val verifier = new AltVerificationSuite(testDir)
+
+    test("verifying test cases") { verifier.run() }
+  }
+
   protected def testAll() = {
+    verifyValidTests()
+
     // Set C compiler according to the platform we're currently running on
     detectCompiler match {
       case Some(cc) => testValid(cc)
