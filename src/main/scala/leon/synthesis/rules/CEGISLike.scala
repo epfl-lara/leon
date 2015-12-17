@@ -45,13 +45,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
     // CEGIS Flags to activate or deactivate features
     val useOptTimeout    = sctx.settings.cegisUseOptTimeout.getOrElse(true)
     val useVanuatoo      = sctx.settings.cegisUseVanuatoo.getOrElse(false)
-    val useShrink        = sctx.settings.cegisUseShrink.getOrElse(false)
 
     // Limits the number of programs CEGIS will specifically validate individually
     val validateUpTo     = 3
-
-    // Shrink the program when the ratio of passing cases is less than the threshold
-    val shrinkThreshold  = 1.0/2
 
     val interruptManager = sctx.context.interruptManager
 
@@ -827,14 +823,13 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
                     if (nPassing <= validateUpTo) {
                       // All programs failed verification, we filter everything out and unfold
-                      //ndProgram.shrinkTo(Set(), unfolding == maxUnfoldings)
                       doFilter     = false
                       skipCESearch = true
                     }
                 }
               }
 
-              if (doFilter && !(nPassing < nInitial * shrinkThreshold && useShrink)) {
+              if (doFilter) {
                 sctx.reporter.debug("Excluding "+wrongPrograms.size+" programs")
                 wrongPrograms.foreach {
                   ndProgram.excludeProgram(_, true)
