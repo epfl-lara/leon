@@ -280,7 +280,27 @@ object Constructors {
     if (a == b && isDeterministic(a)) {
       BooleanLiteral(true)
     } else  {
-      Equals(a, b)
+      (a, b) match {
+        case (a: Literal[_], b: Literal[_]) =>
+          if (a.value == b.value) {
+            BooleanLiteral(true)
+          } else {
+            BooleanLiteral(false)
+          }
+
+        case _ =>
+          Equals(a, b)
+      }
+    }
+  }
+
+  def assertion(c: Expr, err: Option[String], res: Expr) = {
+    if (c == BooleanLiteral(true)) {
+      res
+    } else if (c == BooleanLiteral(false)) {
+      Error(res.getType, err.getOrElse("Assertion failed"))
+    } else {
+      Assert(c, err, res)
     }
   }
 
