@@ -7,7 +7,7 @@ import leon.instrumentation._
 //import leon.invariant._
 
 /**
- * TODO: can this be made more efficient
+ * Not the required bound
  */
 object Hamming {
 
