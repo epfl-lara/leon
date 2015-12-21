@@ -9,13 +9,28 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
 import purescala.Definitions._
 import purescala.Constructors._
+import purescala.Quantification._
+
+import Instantiation._
 
 class TemplateGenerator[T](val encoder: TemplateEncoder[T],
                            val assumePreHolds: Boolean) {
   private var cache     = Map[TypedFunDef, FunctionTemplate[T]]()
   private var cacheExpr = Map[Expr, FunctionTemplate[T]]()
+
+  private type Clauses = (
+    Map[Identifier,T],
+    Map[Identifier,T],
+    Map[Identifier, Set[Identifier]],
+    Map[Identifier, Seq[Expr]],
+    Seq[LambdaTemplate[T]],
+    Seq[QuantificationTemplate[T]]
+  )
+
+  private def emptyClauses: Clauses = (Map.empty, Map.empty, Map.empty, Map.empty, Seq.empty, Seq.empty)
 
   val manager = new QuantificationManager[T](encoder)
 
@@ -70,16 +85,14 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     val substMap : Map[Identifier, T] = arguments.toMap + pathVar
 
-    val (bodyConds, bodyExprs, bodyGuarded, bodyLambdas, bodyQuantifications) = if (isRealFunDef) {
-      invocationEqualsBody.map(expr => mkClauses(start, expr, substMap)).getOrElse {
-        (Map[Identifier,T](), Map[Identifier,T](), Map[Identifier,Seq[Expr]](), Map[T,LambdaTemplate[T]](), Seq[QuantificationTemplate[T]]())
-      }
+    val (bodyConds, bodyExprs, bodyTree, bodyGuarded, bodyLambdas, bodyQuantifications) = if (isRealFunDef) {
+      invocationEqualsBody.map(expr => mkClauses(start, expr, substMap)).getOrElse(emptyClauses)
     } else {
       mkClauses(start, lambdaBody.get, substMap)
     }
 
     // Now the postcondition.
-    val (condVars, exprVars, guardedExprs, lambdas, quantifications) = tfd.postcondition match {
+    val (condVars, exprVars, condTree, guardedExprs, lambdas, quantifications) = tfd.postcondition match {
       case Some(post) =>
         val newPost : Expr = application(matchToIfThenElse(post), Seq(invocation))
 
@@ -94,19 +107,15 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
             newPost
           }
 
-        val (postConds, postExprs, postGuarded, postLambdas, postQuantifications) = mkClauses(start, postHolds, substMap)
-        val allGuarded = (bodyGuarded.keys ++ postGuarded.keys).map { k => 
-          k -> (bodyGuarded.getOrElse(k, Seq.empty) ++ postGuarded.getOrElse(k, Seq.empty))
-        }.toMap
-
-        (bodyConds ++ postConds, bodyExprs ++ postExprs, allGuarded, bodyLambdas ++ postLambdas, bodyQuantifications ++ postQuantifications)
+        val (postConds, postExprs, postTree, postGuarded, postLambdas, postQuantifications) = mkClauses(start, postHolds, substMap)
+        (bodyConds ++ postConds, bodyExprs ++ postExprs, bodyTree merge postTree, bodyGuarded merge postGuarded, bodyLambdas ++ postLambdas, bodyQuantifications ++ postQuantifications)
 
       case None =>
-        (bodyConds, bodyExprs, bodyGuarded, bodyLambdas, bodyQuantifications)
+        (bodyConds, bodyExprs, bodyTree, bodyGuarded, bodyLambdas, bodyQuantifications)
     }
 
     val template = FunctionTemplate(tfd, encoder, manager,
-      pathVar, arguments, condVars, exprVars, guardedExprs, quantifications, lambdas, isRealFunDef)
+      pathVar, arguments, condVars, exprVars, condTree, guardedExprs, quantifications, lambdas, isRealFunDef)
     cache += tfd -> template
     template
   }
@@ -133,11 +142,60 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     andJoin(rec(invocation, body, args, inlineFirst))
   }
 
-  def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]):
-               (Map[Identifier,T], Map[Identifier,T], Map[Identifier, Seq[Expr]], Map[T, LambdaTemplate[T]], Seq[QuantificationTemplate[T]]) = {
+  private def minimalFlattening(inits: Set[Identifier], conj: Expr): (Set[Identifier], Expr) = {
+    var mapping: Map[Expr, Expr] = Map.empty
+    var quantified: Set[Identifier] = inits
+    var quantifierEqualities: Seq[(Expr, Identifier)] = Seq.empty
+
+    val newConj = postMap {
+      case expr if mapping.isDefinedAt(expr) =>
+        Some(mapping(expr))
+
+      case expr @ QuantificationMatcher(c, args) =>
+        val isMatcher = args.exists { case Variable(id) => quantified(id) case _ => false }
+        val isRelevant = (variablesOf(expr) & quantified).nonEmpty
+        if (!isMatcher && isRelevant) {
+          val newArgs = args.map {
+            case arg @ QuantificationMatcher(_, _) if (variablesOf(arg) & quantified).nonEmpty =>
+              val id = FreshIdentifier("flat", arg.getType)
+              quantifierEqualities :+= (arg -> id)
+              quantified += id
+              Variable(id)
+            case arg => arg
+          }
+
+          val newExpr = replace((args zip newArgs).toMap, expr)
+          mapping += expr -> newExpr
+          Some(newExpr)
+        } else {
+          None
+        }
+
+      case _ => None
+    } (conj)
+
+    val flatConj = implies(andJoin(quantifierEqualities.map {
+      case (arg, id) => Equals(arg, Variable(id))
+    }), newConj)
+
+    (quantified, flatConj)
+  }
+
+  def mkClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]): Clauses = {
+    val (p, (condVars, exprVars, condTree, guardedExprs, lambdas, quantifications)) = mkExprClauses(pathVar, expr, substMap)
+    val allGuarded = guardedExprs + (pathVar -> (p +: guardedExprs.getOrElse(pathVar, Seq.empty)))
+    (condVars, exprVars, condTree, allGuarded, lambdas, quantifications)
+  }
+
+  private def mkExprClauses(pathVar: Identifier, expr: Expr, substMap: Map[Identifier, T]): (Expr, Clauses) = {
 
     var condVars = Map[Identifier, T]()
-    @inline def storeCond(id: Identifier) : Unit = condVars += id -> encoder.encodeId(id)
+    var condTree = Map[Identifier, Set[Identifier]](pathVar -> Set.empty).withDefaultValue(Set.empty)
+    def storeCond(pathVar: Identifier, id: Identifier) : Unit = {
+      condVars += id -> encoder.encodeId(id)
+      condTree += pathVar -> (condTree(pathVar) + id)
+    }
+
     @inline def encodedCond(id: Identifier) : T = substMap.getOrElse(id, condVars(id))
 
     var exprVars = Map[Identifier, T]()
@@ -165,16 +223,35 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     @inline def registerQuantification(quantification: QuantificationTemplate[T]): Unit =
       quantifications :+= quantification
 
-    var lambdas = Map[T, LambdaTemplate[T]]()
-    @inline def registerLambda(idT: T, lambda: LambdaTemplate[T]) : Unit = lambdas += idT -> lambda
+    var lambdas = Seq[LambdaTemplate[T]]()
+    @inline def registerLambda(lambda: LambdaTemplate[T]) : Unit = lambdas :+= lambda
 
     def requireDecomposition(e: Expr) = {
       exists{
-        case (_: Choose) | (_: Forall) => true
+        case (_: Choose) | (_: Forall) | (_: Lambda) => true
         case (_: Assert) | (_: Ensuring) => true
         case (_: FunctionInvocation) | (_: Application) => true
         case _ => false
       }(e)
+    }
+
+    def groupWhile[T](es: Seq[T])(p: T => Boolean): Seq[Seq[T]] = {
+      var res: Seq[Seq[T]] = Nil
+
+      var c = es
+      while (!c.isEmpty) {
+        val (span, rest) = c.span(p)
+
+        if (span.isEmpty) {
+          res :+= Seq(rest.head)
+          c = rest.tail
+        } else {
+          res :+= span
+          c = rest
+        }
+      }
+
+      res
     }
 
     def rec(pathVar: Identifier, expr: Expr): Expr = {
@@ -220,13 +297,71 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         case p : Passes    => sys.error("'Passes's should have been eliminated before generating templates.")
 
         case i @ Implies(lhs, rhs) =>
-          implies(rec(pathVar, lhs), rec(pathVar, rhs))
+          if (requireDecomposition(i)) {
+            rec(pathVar, Or(Not(lhs), rhs))
+          } else {
+            implies(rec(pathVar, lhs), rec(pathVar, rhs))
+          }
 
         case a @ And(parts) =>
-          andJoin(parts.map(rec(pathVar, _)))
+          val partitions = groupWhile(parts)(!requireDecomposition(_))
+          partitions.map(andJoin) match {
+            case Seq(e) => e
+            case seq =>
+              val newExpr : Identifier = FreshIdentifier("e", BooleanType, true)
+              storeExpr(newExpr)
+
+              def recAnd(pathVar: Identifier, partitions: Seq[Expr]): Unit = partitions match {
+                case x :: Nil if !requireDecomposition(x) =>
+                  storeGuarded(pathVar, Equals(Variable(newExpr), x))
+
+                case x :: xs =>
+                  val newBool : Identifier = FreshIdentifier("b", BooleanType, true)
+                  storeCond(pathVar, newBool)
+
+                  val xrec = rec(pathVar, x)
+                  storeGuarded(pathVar, Equals(Variable(newBool), xrec))
+                  storeGuarded(pathVar, Implies(Not(Variable(newBool)), Not(Variable(newExpr))))
+
+                  recAnd(newBool, xs)
+
+                case Nil =>
+                  storeGuarded(pathVar, Variable(newExpr))
+              }
+
+              recAnd(pathVar, seq)
+              Variable(newExpr)
+          }
 
         case o @ Or(parts) =>
-          orJoin(parts.map(rec(pathVar, _)))
+          val partitions = groupWhile(parts)(!requireDecomposition(_))
+          partitions.map(orJoin) match {
+            case Seq(e) => e
+            case seq =>
+              val newExpr : Identifier = FreshIdentifier("e", BooleanType, true)
+              storeExpr(newExpr)
+
+              def recOr(pathVar: Identifier, partitions: Seq[Expr]): Unit = partitions match {
+                case x :: Nil if !requireDecomposition(x) =>
+                  storeGuarded(pathVar, Equals(Variable(newExpr), x))
+
+                case x :: xs =>
+                  val newBool : Identifier = FreshIdentifier("b", BooleanType, true)
+                  storeCond(pathVar, newBool)
+
+                  val xrec = rec(pathVar, x)
+                  storeGuarded(pathVar, Equals(Not(Variable(newBool)), xrec))
+                  storeGuarded(pathVar, Implies(Not(Variable(newBool)), Variable(newExpr)))
+
+                  recOr(newBool, xs)
+
+                case Nil =>
+                  storeGuarded(pathVar, Not(Variable(newExpr)))
+              }
+
+              recOr(pathVar, seq)
+              Variable(newExpr)
+          }
 
         case i @ IfExpr(cond, thenn, elze) => {
           if(!requireDecomposition(i)) {
@@ -236,8 +371,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
             val newBool2 : Identifier = FreshIdentifier("b", BooleanType, true)
             val newExpr : Identifier = FreshIdentifier("e", i.getType, true)
 
-            storeCond(newBool1)
-            storeCond(newBool2)
+            storeCond(pathVar, newBool1)
+            storeCond(pathVar, newBool2)
 
             storeExpr(newExpr)
 
@@ -274,19 +409,18 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           val idArgs : Seq[Identifier] = lambdaArgs(l)
           val trArgs : Seq[T] = idArgs.map(id => substMap.getOrElse(id, encoder.encodeId(id)))
 
-          val lid = FreshIdentifier("lambda", l.getType, true)
+          val lid = FreshIdentifier("lambda", bestRealType(l.getType), true)
           val clause = liftedEquals(Variable(lid), l, idArgs, inlineFirst = true)
 
           val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
           val clauseSubst: Map[Identifier, T] = localSubst ++ (idArgs zip trArgs)
-          val (lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, lambdaQuants) = mkClauses(pathVar, clause, clauseSubst)
-          assert(lambdaQuants.isEmpty, "Unhandled quantification in lambdas in " + l)
+          val (lambdaConds, lambdaExprs, lambdaTree, lambdaGuarded, lambdaTemplates, lambdaQuants) = mkClauses(pathVar, clause, clauseSubst)
 
           val ids: (Identifier, T) = lid -> storeLambda(lid)
           val dependencies: Map[Identifier, T] = variablesOf(l).map(id => id -> localSubst(id)).toMap
           val template = LambdaTemplate(ids, encoder, manager, pathVar -> encodedCond(pathVar),
-            idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaGuarded, lambdaTemplates, localSubst, dependencies, l)
-          registerLambda(ids._2, template)
+            idArgs zip trArgs, lambdaConds, lambdaExprs, lambdaTree, lambdaGuarded, lambdaQuants, lambdaTemplates, localSubst, dependencies, l)
+          registerLambda(template)
 
           Variable(lid)
 
@@ -295,7 +429,8 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
           val conjunctQs = conjuncts.map { conjunct =>
             val vars = variablesOf(conjunct)
-            val quantifiers = args.map(_.id).filter(vars).toSet
+            val inits = args.map(_.id).filter(vars).toSet
+            val (quantifiers, flatConj) = minimalFlattening(inits, conjunct)
 
             val idQuantifiers : Seq[Identifier] = quantifiers.toSeq
             val trQuantifiers : Seq[T] = idQuantifiers.map(encoder.encodeId)
@@ -305,19 +440,21 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
             val inst: Identifier = FreshIdentifier("inst", BooleanType, true)
             val guard: Identifier = FreshIdentifier("guard", BooleanType, true)
 
-            val clause = Equals(Variable(inst), Implies(Variable(guard), conjunct))
+            val clause = Equals(Variable(inst), Implies(Variable(guard), flatConj))
 
             val qs: (Identifier, T) = q -> encoder.encodeId(q)
             val localSubst: Map[Identifier, T] = substMap ++ condVars ++ exprVars ++ lambdaVars
             val clauseSubst: Map[Identifier, T] = localSubst ++ (idQuantifiers zip trQuantifiers)
-            val (qConds, qExprs, qGuarded, qTemplates, qQuants) = mkClauses(pathVar, clause, clauseSubst)
+            val (p, (qConds, qExprs, qTree, qGuarded, qTemplates, qQuants)) = mkExprClauses(pathVar, flatConj, clauseSubst)
             assert(qQuants.isEmpty, "Unhandled nested quantification in "+clause)
 
-            val binder = Equals(Variable(q), And(Variable(q2), Variable(inst)))
-            val allQGuarded = qGuarded + (pathVar -> (binder +: qGuarded.getOrElse(pathVar, Seq.empty)))
+            val allGuarded = qGuarded + (pathVar -> (Seq(
+              Equals(Variable(inst), Implies(Variable(guard), p)),
+              Equals(Variable(q), And(Variable(q2), Variable(inst)))
+            ) ++ qGuarded.getOrElse(pathVar, Seq.empty)))
 
             val template = QuantificationTemplate[T](encoder, manager, pathVar -> encodedCond(pathVar),
-              qs, q2, inst, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, allQGuarded, qTemplates, localSubst)
+              qs, q2, inst, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qTree, allGuarded, qTemplates, localSubst)
             registerQuantification(template)
             Variable(q)
           }
@@ -329,9 +466,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
     }
 
     val p = rec(pathVar, expr)
-    storeGuarded(pathVar, p)
-
-    (condVars, exprVars, guardedExprs, lambdas, quantifications)
+    (p, (condVars, exprVars, condTree, guardedExprs, lambdas, quantifications))
   }
 
 }

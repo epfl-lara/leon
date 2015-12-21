@@ -74,7 +74,7 @@ object LinearEquations {
       var i = 0
       while(i < sols.size) {
         // seriously ??? 
-        K(i+j+1)(j) = evaluator.eval(sols(i)).asInstanceOf[EvaluationResults.Successful].value.asInstanceOf[InfiniteIntegerLiteral].value
+        K(i+j+1)(j) = evaluator.eval(sols(i)).asInstanceOf[EvaluationResults.Successful[Expr]].value.asInstanceOf[InfiniteIntegerLiteral].value
         i += 1
       }
     }

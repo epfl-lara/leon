@@ -8,22 +8,19 @@ import leon.purescala.Common._
 import leon.purescala.Expressions._
 import leon.purescala.Types._
 import leon.purescala.Definitions._
-import leon.purescala.Quantification._
 import leon.LeonContext
-import leon.evaluators.RecursiveEvaluator
+import leon.evaluators._
 
 /** 
  *  This evaluator tracks all dependencies between function calls (.fullCallGraph)
   * as well as if each invocation was successful or erroneous (led to an error)
   * (.fiStatus) 
   */
-class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) {
+class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends RecursiveEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext {
   type RC = CollectingRecContext
-  type GC = GlobalContext
-  
+
   def initRC(mappings: Map[Identifier, Expr]) = CollectingRecContext(mappings, None)
-  def initGC(model: leon.solvers.Model) = new GlobalContext(model)
-  
+
   type FI = (FunDef, Seq[Expr])
   
   // This is a call graph to track dependencies of function invocations.
@@ -46,7 +43,7 @@ class RepairTrackingEvaluator(ctx: LeonContext, prog: Program) extends Recursive
   private def registerFailed    (fi : FI) = fiStatus_ update (fi, false)
   def fiStatus = fiStatus_.toMap.withDefaultValue(false)
   
-  case class CollectingRecContext(mappings: Map[Identifier, Expr], lastFI : Option[FI]) extends RecContext {
+  case class CollectingRecContext(mappings: Map[Identifier, Expr], lastFI : Option[FI]) extends RecContext[CollectingRecContext] {
     def newVars(news: Map[Identifier, Expr]) = copy(news, lastFI)
     def withLastFI(fi : FI) = copy(lastFI = Some(fi))
   }

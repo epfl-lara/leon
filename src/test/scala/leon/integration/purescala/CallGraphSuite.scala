@@ -4,9 +4,7 @@ package leon.integration.purescala
 
 import leon.test._
 
-import leon._
-import leon.purescala.Definitions._
-import leon.utils._
+import leon.purescala.Definitions.Program
 
 class CallGraphSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL {
 

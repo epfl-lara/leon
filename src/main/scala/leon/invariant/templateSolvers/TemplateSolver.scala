@@ -1,18 +1,11 @@
 package leon
 package invariant.templateSolvers
 
-import z3.scala._
 import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
-import purescala.Extractors._
-import purescala.Types._
 import java.io._
-import leon.invariant._
-import scala.util.control.Breaks._
-import scala.concurrent._
-import scala.concurrent.duration._
 import invariant.engine._
 import invariant.factories._
 import invariant.util._

@@ -4,7 +4,6 @@ package leon.integration.solvers
 
 import leon._
 import leon.test._
-import leon.utils.Interruptible
 import leon.solvers._
 import leon.purescala.Common._
 import leon.purescala.Definitions._

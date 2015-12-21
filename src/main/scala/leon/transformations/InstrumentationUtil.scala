@@ -63,7 +63,7 @@ object InstUtil {
     val vary = yid.toVariable
     val args = Seq(xid, yid)
     val maxType = FunctionType(Seq(IntegerType, IntegerType), IntegerType)
-    val mfd = new FunDef(FreshIdentifier("max", maxType, false), Seq(), args.map((arg) => ValDef(arg, Some(arg.getType))), IntegerType)
+    val mfd = new FunDef(FreshIdentifier("max", maxType, false), Seq(), args.map(arg => ValDef(arg)), IntegerType)
 
     val cond = GreaterEquals(varx, vary)
     mfd.body = Some(IfExpr(cond, varx, vary))

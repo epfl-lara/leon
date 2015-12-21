@@ -77,6 +77,9 @@ class PrettyPrinter(opts: PrinterOptions,
         }
         p"$name"
 
+      case Old(id) =>
+        p"old($id)"
+
       case Variable(id) =>
         p"$id"
 
@@ -244,6 +247,22 @@ class PrettyPrinter(opts: PrinterOptions,
       case Lambda(args, body) =>
         optP { p"($args) => $body" }
 
+      case PartialLambda(mapping, dflt, _) =>
+        optP {
+          def pm(p: (Seq[Expr], Expr)): PrinterHelpers.Printable =
+            (pctx: PrinterContext) => p"${purescala.Constructors.tupleWrap(p._1)} => ${p._2}"(pctx)
+
+          if (mapping.isEmpty) {
+            p"{}"
+          } else {
+            p"{ ${nary(mapping map pm)} }"
+          }
+
+          if (dflt.isDefined) {
+            p" getOrElse ${dflt.get}"
+          }
+        }
+
       case Plus(l,r)                 => optP { p"$l + $r" }
       case Minus(l,r)                => optP { p"$l - $r" }
       case Times(l,r)                => optP { p"$l * $r" }
@@ -315,8 +334,8 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Not(expr) => p"\u00AC$expr"
 
-      case vd@ValDef(id, _) =>
-        p"$id : ${vd.getType}"
+      case vd @ ValDef(id, lzy) =>
+        p"$id :${if (lzy) "=> " else ""} ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
       case This(_)              => p"this"

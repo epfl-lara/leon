@@ -6,19 +6,18 @@ package evaluators
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
-import purescala.Quantification._
 import purescala.Types._
 
 import codegen._
 
-class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) extends RecursiveEvaluator(ctx, prog, params.maxFunctionInvocations) {
-  type RC = DefaultRecContext
-  type GC = GlobalContext
+class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
+  extends RecursiveEvaluator(ctx, prog, params.maxFunctionInvocations)
+  with HasDefaultGlobalContext
+{
 
+  type RC = DualRecContext
+  def initRC(mappings: Map[Identifier, Expr]): RC = DualRecContext(mappings)
   implicit val debugSection = utils.DebugSectionEvaluation
-
-  def initRC(mappings: Map[Identifier, Expr]) = DefaultRecContext(mappings)
-  def initGC(model: solvers.Model) = new GlobalContext(model)
 
   var monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
 
@@ -26,7 +25,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams) exte
 
   val isCompiled = prog.definedFunctions.toSet
 
-  case class DefaultRecContext(mappings: Map[Identifier, Expr], needJVMRef: Boolean = false) extends RecContext {
+  case class DualRecContext(mappings: Map[Identifier, Expr], needJVMRef: Boolean = false) extends RecContext[DualRecContext] {
     def newVars(news: Map[Identifier, Expr]) = copy(news)
   }
 

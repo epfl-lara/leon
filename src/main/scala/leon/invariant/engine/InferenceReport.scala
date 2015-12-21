@@ -9,8 +9,6 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Definitions._
 import purescala.Common._
-import invariant.templateSolvers._
-import invariant.factories._
 import invariant.util._
 import invariant.structure._
 import leon.transformations.InstUtil
@@ -18,7 +16,6 @@ import leon.purescala.PrettyPrinter
 import Util._
 import PredicateUtil._
 import ProgramUtil._
-import SolverUtil._
 import FunctionUtils._
 import purescala._
 
@@ -64,7 +61,7 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
     "║ └─────────┘" + (" " * (size - 12)) + "║"
 
   private def infoLine(str: String, size: Int): String = {
-    "║ " + str + (" " * (size - str.size - 2)) + " ║"
+    "║ " + str + (" " * (size - str.length - 2)) + " ║"
   }
 
   private def fit(str: String, maxLength: Int): String = {
@@ -77,11 +74,11 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
 
   private def funName(fd: FunDef) = InstUtil.userFunctionName(fd)
 
-  override def summaryString: String = if (conditions.size > 0) {
-    val maxTempSize = (conditions.map(_.status.size).max + 3)
+  override def summaryString: String = if (conditions.nonEmpty) {
+    val maxTempSize = (conditions.map(_.status.length).max + 3)
     val outputStrs = conditions.map(vc => {
       val timeStr = vc.time.map(t => "%-3.3f".format(t)).getOrElse("")
-      "%-15s %s %-4s".format(fit(funName(vc.fd), 15), vc.status + (" " * (maxTempSize - vc.status.size)), timeStr)
+      "%-15s %s %-4s".format(fit(funName(vc.fd), 15), vc.status + (" " * (maxTempSize - vc.status.length)), timeStr)
     })
     val summaryStr = {
       val totalTime = conditions.foldLeft(0.0)((a, ic) => a + ic.time.getOrElse(0.0))
@@ -89,7 +86,7 @@ class InferenceReport(fvcs: Map[FunDef, List[VC]], program: Program)(implicit ct
       "total: %-4d  inferred: %-4d  unknown: %-4d  time: %-3.3f".format(
         conditions.size, inferredConds, conditions.size - inferredConds, totalTime)
     }
-    val entrySize = (outputStrs :+ summaryStr).map(_.size).max + 2
+    val entrySize = (outputStrs :+ summaryStr).map(_.length).max + 2
 
     infoHeader(entrySize) +
       outputStrs.map(str => infoLine(str, entrySize)).mkString("\n", "\n", "\n") +
@@ -129,7 +126,7 @@ object InferenceReportUtil {
 
     def fullNameWoInst(fd: FunDef) = {
       val splits = DefOps.fullName(fd)(ctx.inferProgram).split("-")
-      if (!splits.isEmpty) splits(0)
+      if (splits.nonEmpty) splits(0)
       else ""
     }
 
@@ -148,8 +145,8 @@ object InferenceReportUtil {
     }
 
     def mapExpr(ine: Expr): Expr = {
-      val replaced = simplePostTransform((e: Expr) => e match {
-        case FunctionInvocation(TypedFunDef(fd, targs), args) =>
+      val replaced = simplePostTransform {
+        case e@FunctionInvocation(TypedFunDef(fd, targs), args) =>
           if (initToOutput.contains(fd)) {
             FunctionInvocation(TypedFunDef(initToOutput(fd), targs), args)
           } else {
@@ -159,8 +156,8 @@ object InferenceReportUtil {
               case _ => e
             }
           }
-        case _ => e
-      })(ine)
+        case e => e
+      }(ine)
       replaced
     }
     // copy bodies and specs

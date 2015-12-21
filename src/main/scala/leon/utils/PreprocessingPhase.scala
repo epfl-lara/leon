@@ -5,7 +5,6 @@ package utils
 
 import leon.purescala._
 import leon.purescala.Definitions.Program
-import leon.purescala.Quantification.CheckForalls
 import leon.solvers.isabelle.AdaptationPhase
 import leon.verification.InjectAsserts
 import leon.xlang.{NoXLangFeaturesChecking, XLangDesugaringPhase}
@@ -39,8 +38,7 @@ class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Progra
       synthesis.ConversionPhase              andThen
       CheckADTFieldsTypes                    andThen
       InjectAsserts                          andThen
-      InliningPhase                          andThen
-      CheckForalls
+      InliningPhase
 
     val pipeX = if(desugarXLang) {
       XLangDesugaringPhase andThen

@@ -5,7 +5,6 @@ package synthesis
 
 import purescala.Expressions._
 import purescala.Common.Tree
-import purescala.Definitions.Definition
 import purescala.ScalaPrinter
 import purescala.PrinterOptions
 import purescala.PrinterContext
@@ -15,7 +14,7 @@ import leon.utils.RangePosition
 import java.io.File
 class FileInterface(reporter: Reporter) {
 
-  def updateFile(origFile: File, solutions: Map[ChooseInfo, Expr])(implicit ctx: LeonContext) {
+  def updateFile(origFile: File, solutions: Map[SourceInfo, Expr])(implicit ctx: LeonContext) {
     import java.io.{File, BufferedWriter, FileWriter}
     val FileExt = """^(.+)\.([^.]+)$""".r
 
@@ -35,7 +34,7 @@ class FileInterface(reporter: Reporter) {
 
         var newCode = origCode
         for ( (ci, e) <- solutions) {
-          newCode = substitute(newCode, ci.ch, e)
+          newCode = substitute(newCode, ci.source, e)
         }
 
         val out = new BufferedWriter(new FileWriter(newFile))

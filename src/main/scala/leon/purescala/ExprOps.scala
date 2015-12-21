@@ -345,6 +345,7 @@ object ExprOps {
         val subvs = subs.flatten.toSet
         e match {
           case Variable(i) => subvs + i
+          case Old(i) => subvs + i
           case LetDef(fd, _) => subvs -- fd.params.map(_.id)
           case Let(i, _, _) => subvs - i
           case LetVar(i, _, _) => subvs - i
@@ -539,8 +540,8 @@ object ExprOps {
     }
 
     val normalized = postMap {
-      case Lambda(args, body) => Some(Lambda(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
-      case Forall(args, body) => Some(Forall(args.map(vd => ValDef(subst(vd.id), vd.tpe)), body))
+      case Lambda(args, body) => Some(Lambda(args.map(vd => vd.copy(id = subst(vd.id))), body))
+      case Forall(args, body) => Some(Forall(args.map(vd => vd.copy(id = subst(vd.id))), body))
       case Let(i, e, b)       => Some(Let(subst(i), e, b))
       case MatchExpr(scrut, cses) => Some(MatchExpr(scrut, cses.map { cse =>
         cse.copy(pattern = replacePatternBinders(cse.pattern, subst))
@@ -791,7 +792,7 @@ object ExprOps {
         })
 
       case CaseClassPattern(_, cct, subps) =>
-        val subExprs = (subps zip cct.fields) map {
+        val subExprs = (subps zip cct.classDef.fields) map {
           case (p, f) => p.binder.map(_.toVariable).getOrElse(caseClassSelector(cct, in, f.id))
         }
 
@@ -868,8 +869,8 @@ object ExprOps {
           }
 
         case CaseClassPattern(ob, cct, subps) =>
-          assert(cct.fields.size == subps.size)
-          val pairs = cct.fields.map(_.id).toList zip subps.toList
+          assert(cct.classDef.fields.size == subps.size)
+          val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
           val subTests = pairs.map(p => rec(caseClassSelector(cct, in, p._1), p._2))
           val together = and(bind(ob, in) +: subTests :_*)
           and(IsInstanceOf(in, cct), together)
@@ -880,7 +881,7 @@ object ExprOps {
           val subTests = subps.zipWithIndex.map{case (p, i) => rec(tupleSelect(in, i+1, subps.size), p)}
           and(bind(ob, in) +: subTests: _*)
 
-        case up@UnapplyPattern(ob, fd, subps) =>
+        case up @ UnapplyPattern(ob, fd, subps) =>
           def someCase(e: Expr) = {
             // In the case where unapply returns a Some, it is enough that the subpatterns match
             andJoin(unwrapTuple(e, subps.size) zip subps map { case (ex, p) => rec(ex, p).setPos(p) }).setPos(e)
@@ -904,7 +905,7 @@ object ExprOps {
     pattern match {
       case CaseClassPattern(b, cct, subps) =>
         assert(cct.fields.size == subps.size)
-        val pairs = cct.fields.map(_.id).toList zip subps.toList
+        val pairs = cct.classDef.fields.map(_.id).toList zip subps.toList
         val subMaps = pairs.map(p => mapForPattern(caseClassSelector(cct, asInstOf(in, cct), p._1), p._2))
         val together = subMaps.flatten.toMap
         bindIn(b, Some(cct)) ++ together
@@ -1138,12 +1139,46 @@ object ExprOps {
     case tp: TypeParameter =>
       GenericValue(tp, 0)
 
-    case FunctionType(from, to) =>
-      val args = from.map(tpe => ValDef(FreshIdentifier("x", tpe, true)))
-      Lambda(args, simplestValue(to))
+    case ft @ FunctionType(from, to) =>
+      PartialLambda(Seq.empty, Some(simplestValue(to)), ft)
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
+
+  def valuesOf(tp: TypeTree): Stream[Expr] = {
+    import utils.StreamUtils._
+    tp match {
+      case BooleanType =>
+        Stream(BooleanLiteral(false), BooleanLiteral(true))
+      case Int32Type =>
+        Stream.iterate(0) { prev =>
+          if (prev > 0) -prev else -prev + 1
+        } map IntLiteral
+      case IntegerType =>
+        Stream.iterate(BigInt(0)) { prev =>
+          if (prev > 0) -prev else -prev + 1
+        } map InfiniteIntegerLiteral
+      case UnitType =>
+        Stream(UnitLiteral())
+      case tp: TypeParameter =>
+        Stream.from(0) map (GenericValue(tp, _))
+      case TupleType(stps) =>
+        cartesianProduct(stps map (tp => valuesOf(tp))) map Tuple
+      case SetType(base) =>
+        def elems = valuesOf(base)
+        elems.scanLeft(Stream(FiniteSet(Set(), base): Expr)){ (prev, curr) =>
+          prev flatMap {
+            case fs@FiniteSet(elems, tp) =>
+              Stream(fs, FiniteSet(elems + curr, tp))
+          }
+        }.flatten // FIXME Need cp οr is this fine?
+      case cct: CaseClassType =>
+        cartesianProduct(cct.fieldsTypes map valuesOf) map (CaseClass(cct, _))
+      case act: AbstractClassType =>
+        interleave(act.knownCCDescendants.map(cct => valuesOf(cct)))
+    }
+  }
+
 
   /** Hoists all IfExpr at top level.
     *
@@ -1289,12 +1324,6 @@ object ExprOps {
     }
   }
 
-  class ChooseCollectorWithPaths extends CollectorWithPaths[(Choose,Expr)] {
-    def collect(e: Expr, path: Seq[Expr]) = e match {
-      case c: Choose => Some(c -> and(path: _*))
-      case _ => None
-    }
-  }
 
   def collectWithPC[T](f: PartialFunction[Expr, T])(expr: Expr): Seq[(T, Expr)] = {
     CollectorWithPaths(f).traverse(expr)
@@ -1316,11 +1345,6 @@ object ExprOps {
 
     case Operator(es, _) =>
       es.map(formulaSize).sum+1
-  }
-
-  /** Return a list of all [[purescala.Expressions.Choose Choose]] construct inside the expression */
-  def collectChooses(e: Expr): List[Choose] = {
-    new ChooseCollectorWithPaths().traverse(e).map(_._1).toList
   }
 
   /** Returns true if the expression is deterministic / does not contain any [[purescala.Expressions.Choose Choose]] or [[purescala.Expressions.Hole Hole]]*/
@@ -1456,8 +1480,8 @@ object ExprOps {
 
           val isType = IsInstanceOf(Variable(on), cct)
 
-          val recSelectors = cct.fields.collect {
-            case vd if vd.getType == on.getType => vd.id
+          val recSelectors = (cct.classDef.fields zip cct.fieldsTypes).collect { 
+            case (vd, tpe) if tpe == on.getType => vd.id
           }
 
           if (recSelectors.isEmpty) {
@@ -1951,12 +1975,54 @@ object ExprOps {
     es foreach rec
   }
 
-  def functionAppsOf(expr: Expr): Set[Application] = {
-    collect[Application] {
-      case f: Application => Set(f)
-      case _ => Set()
-    }(expr)
+  object InvocationExtractor {
+    private def flatInvocation(expr: Expr): Option[(TypedFunDef, Seq[Expr])] = expr match {
+      case fi @ FunctionInvocation(tfd, args) => Some((tfd, args))
+      case Application(caller, args) => flatInvocation(caller) match {
+        case Some((tfd, prevArgs)) => Some((tfd, prevArgs ++ args))
+        case None => None
+      }
+        case _ => None
+    }
+
+    def unapply(expr: Expr): Option[(TypedFunDef, Seq[Expr])] = expr match {
+      case IsTyped(f: FunctionInvocation, ft: FunctionType) => None
+      case IsTyped(f: Application, ft: FunctionType) => None
+      case FunctionInvocation(tfd, args) => Some(tfd -> args)
+      case f: Application => flatInvocation(f)
+      case _ => None
+    }
   }
+
+  def firstOrderCallsOf(expr: Expr): Set[(TypedFunDef, Seq[Expr])] =
+    collect[(TypedFunDef, Seq[Expr])] {
+      case InvocationExtractor(tfd, args) => Set(tfd -> args)
+      case _ => Set.empty
+    } (expr)
+
+  object ApplicationExtractor {
+    private def flatApplication(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
+      case Application(fi: FunctionInvocation, _) => None
+      case Application(caller: Application, args) => flatApplication(caller) match {
+        case Some((c, prevArgs)) => Some((c, prevArgs ++ args))
+        case None => None
+      }
+        case Application(caller, args) => Some((caller, args))
+        case _ => None
+    }
+
+    def unapply(expr: Expr): Option[(Expr, Seq[Expr])] = expr match {
+      case IsTyped(f: Application, ft: FunctionType) => None
+      case f: Application => flatApplication(f)
+      case _ => None
+    }
+  }
+
+  def firstOrderAppsOf(expr: Expr): Set[(Expr, Seq[Expr])] =
+    collect[(Expr, Seq[Expr])] {
+      case ApplicationExtractor(caller, args) => Set(caller -> args)
+      case _ => Set.empty
+    } (expr)
 
   def simplifyHOFunctions(expr: Expr) : Expr = {
 

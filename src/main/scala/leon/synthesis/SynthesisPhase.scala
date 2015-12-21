@@ -65,8 +65,7 @@ object SynthesisPhase extends TransformationPhase {
   def apply(ctx: LeonContext, program: Program): Program = {
     val options = processOptions(ctx)
 
-
-    val chooses = ChooseInfo.extractFromProgram(ctx, program)
+    val chooses = SourceInfo.extractFromProgram(ctx, program)
 
     var functions = Set[FunDef]()
 
@@ -75,7 +74,7 @@ object SynthesisPhase extends TransformationPhase {
 
       val synthesizer = new Synthesizer(ctx, program, ci, options)
 
-      val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), true)
+      val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), allowPartial = true)
 
       try {
         if (options.generateDerivationTrees) {

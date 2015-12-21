@@ -19,6 +19,9 @@ import purescala.Types._
 
 import scala.collection.mutable.{Map => MutableMap}
 
+case class UnsoundExtractionException(ast: Z3AST, msg: String)
+  extends Exception("Can't extract " + ast + " : " + msg)
+
 // This is just to factor out the things that are common in "classes that deal
 // with a Z3 instance"
 trait AbstractZ3Solver extends Solver {
@@ -33,6 +36,9 @@ trait AbstractZ3Solver extends Solver {
 
   private[this] var freed = false
   val traceE = new Exception()
+
+  protected def unsound(ast: Z3AST, msg: String): Nothing =
+    throw UnsoundExtractionException(ast, msg)
 
   override def finalize() {
     if (!freed) {
@@ -85,10 +91,11 @@ trait AbstractZ3Solver extends Solver {
   protected val adtManager = new ADTManager(context)
 
   // Bijections between Leon Types/Functions/Ids to Z3 Sorts/Decls/ASTs
-  protected val functions  = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
-  protected val generics   = new IncrementalBijection[GenericValue, Z3FuncDecl]()
-  protected val sorts      = new IncrementalBijection[TypeTree, Z3Sort]()
-  protected val variables  = new IncrementalBijection[Expr, Z3AST]()
+  protected val functions = new IncrementalBijection[TypedFunDef, Z3FuncDecl]()
+  protected val generics  = new IncrementalBijection[GenericValue, Z3FuncDecl]()
+  protected val lambdas   = new IncrementalBijection[FunctionType, Z3FuncDecl]()
+  protected val sorts     = new IncrementalBijection[TypeTree, Z3Sort]()
+  protected val variables = new IncrementalBijection[Expr, Z3AST]()
 
   protected val constructors  = new IncrementalBijection[TypeTree, Z3FuncDecl]()
   protected val selectors     = new IncrementalBijection[(TypeTree, Int), Z3FuncDecl]()
@@ -102,6 +109,7 @@ trait AbstractZ3Solver extends Solver {
       z3 = new Z3Context(z3cfg)
 
       functions.clear()
+      lambdas.clear()
       generics.clear()
       sorts.clear()
       variables.clear()
@@ -184,7 +192,6 @@ trait AbstractZ3Solver extends Solver {
         }
       }
     }
-
   }
 
   // Prepares some of the Z3 sorts, but *not* the tuple sorts; these are created on-demand.
@@ -224,7 +231,6 @@ trait AbstractZ3Solver extends Solver {
         declareStructuralSort(tpe)
       }
 
-
     case tt @ SetType(base) =>
       sorts.cachedB(tt) {
         z3.mkSetSort(typeToSort(base))
@@ -251,10 +257,8 @@ trait AbstractZ3Solver extends Solver {
 
     case ft @ FunctionType(from, to) =>
       sorts.cachedB(ft) {
-        val fromSort = typeToSort(tupleTypeWrap(from))
-        val toSort = typeToSort(to)
-
-        z3.mkArraySort(fromSort, toSort)
+        val symbol = z3.mkFreshStringSymbol(ft.toString)
+        z3.mkUninterpretedSort(symbol)
       }
 
     case other =>
@@ -309,12 +313,19 @@ trait AbstractZ3Solver extends Solver {
         newAST
       }
       case v @ Variable(id) => z3Vars.get(id) match {
-        case Some(ast) => ast
+        case Some(ast) => 
+          ast
         case None => {
-          val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
-          z3Vars = z3Vars + (id -> newAST)
-          variables += (v -> newAST)
-          newAST
+          variables.getB(v) match {
+            case Some(ast) =>
+              ast
+
+            case None =>
+              val newAST = z3.mkFreshConst(id.uniqueName, typeToSort(v.getType))
+              z3Vars = z3Vars + (id -> newAST)
+              variables += (v -> newAST)
+              newAST
+          }
         }
       }
 
@@ -483,7 +494,15 @@ trait AbstractZ3Solver extends Solver {
         z3.mkApp(functionDefToDecl(tfd), args.map(rec): _*)
 
       case fa @ Application(caller, args) =>
-        z3.mkSelect(rec(caller), rec(tupleWrap(args)))
+        val ft @ FunctionType(froms, to) = normalizeType(caller.getType)
+        val funDecl = lambdas.cachedB(ft) {
+          val sortSeq    = (ft +: froms).map(tpe => typeToSort(tpe))
+          val returnSort = typeToSort(to)
+
+          val name = FreshIdentifier("dynLambda").uniqueName
+          z3.mkFreshFuncDecl(name, sortSeq, returnSort)
+        }
+        z3.mkApp(funDecl, (caller +: args).map(rec): _*)
 
       case ElementOfSet(e, s) => z3.mkSetMember(rec(e), rec(s))
       case SubsetOf(s1, s2) => z3.mkSetSubset(rec(s1), rec(s2))
@@ -551,7 +570,7 @@ trait AbstractZ3Solver extends Solver {
       val kind = z3.getASTKind(t)
 
       kind match {
-        case Z3NumeralIntAST(Some(v)) => {
+        case Z3NumeralIntAST(Some(v)) =>
           val leading = t.toString.substring(0, 2 min t.toString.length)
           if(leading == "#x") {
             _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
@@ -562,29 +581,25 @@ trait AbstractZ3Solver extends Solver {
                   case other =>
                     unsupported(other, "Unexpected target type for BV value")
                 }
-              case None => {
-                throw LeonFatalError(s"Could not translate hexadecimal Z3 numeral $t")
-              }
+              case None => unsound(t, "could not translate hexadecimal Z3 numeral")
             }
           } else {
             InfiniteIntegerLiteral(v)
           }
-        }
-        case Z3NumeralIntAST(None) => {
+
+        case Z3NumeralIntAST(None) =>
           _root_.smtlib.common.Hexadecimal.fromString(t.toString.substring(2)) match {
               case Some(hexa) =>
                 tpe match {
                   case Int32Type => IntLiteral(hexa.toInt)
                   case CharType  => CharLiteral(hexa.toInt.toChar)
-                  case _ =>
-                    reporter.fatalError("Unexpected target type for BV value: " + tpe.asString)
+                  case _ => unsound(t, "unexpected target type for BV value: " + tpe.asString)
                 }
-            case None => {
-              reporter.fatalError(s"Could not translate Z3NumeralIntAST numeral $t")
-            }
+            case None => unsound(t, "could not translate Z3NumeralIntAST numeral")
           }
-        }
+
         case Z3NumeralRealAST(n: BigInt, d: BigInt) => FractionalLiteral(n, d)
+
         case Z3AppAST(decl, args) =>
           val argsSize = args.size
           if(argsSize == 0 && (variables containsB t)) {
@@ -619,12 +634,12 @@ trait AbstractZ3Solver extends Solver {
 
                     val entries = elems.map {
                       case (IntLiteral(i), v) => i -> v
-                      case _ => reporter.fatalError("Translation from Z3 to Array failed")
+                      case (e,_) => unsupported(e, s"Z3 returned unexpected array index ${e.asString}")
                     }
 
                     finiteArray(entries, Some(default, s), to)
-                  case _ =>
-                    reporter.fatalError("Translation from Z3 to Array failed")
+                  case (s : IntLiteral, arr) => unsound(args(1), "invalid array type")
+                  case (size, _) => unsound(args(0), "invalid array size")
                 }
             }
           } else {
@@ -638,8 +653,24 @@ trait AbstractZ3Solver extends Solver {
                     }
 
                     RawArrayValue(from, entries, default)
-                  case None => reporter.fatalError("Translation from Z3 to Array failed")
+                  case None => unsound(t, "invalid array AST")
                 }
+
+              case ft @ FunctionType(fts, tt) => lambdas.getB(ft) match {
+                case None => simplestValue(ft)
+                case Some(decl) => model.getModelFuncInterpretations.find(_._1 == decl) match {
+                  case None => simplestValue(ft)
+                  case Some((_, mapping, elseValue)) =>
+                    val leonElseValue = rec(elseValue, tt)
+                    PartialLambda(mapping.flatMap { case (z3Args, z3Result) =>
+                      if (t == z3Args.head) {
+                        List((z3Args.tail zip fts).map(p => rec(p._1, p._2)) -> rec(z3Result, tt))
+                      } else {
+                        Nil
+                      }
+                    }, Some(leonElseValue), ft)
+                }
+              }
 
               case tp: TypeParameter =>
                 val id = t.toString.split("!").last.toInt
@@ -663,12 +694,9 @@ trait AbstractZ3Solver extends Solver {
                     FiniteMap(elems, from, to)
                 }
 
-              case FunctionType(fts, tt) =>
-                rec(t, RawArrayType(tupleTypeWrap(fts), tt))
-
               case tpe @ SetType(dt) =>
                 model.getSetValue(t) match {
-                  case None => reporter.fatalError("Translation from Z3 to set failed")
+                  case None => unsound(t, "invalid set AST")
                   case Some(set) =>
                     val elems = set.map(e => rec(e, dt))
                     FiniteSet(elems, dt)
@@ -698,8 +726,7 @@ trait AbstractZ3Solver extends Solver {
             //      case OpDiv =>     Division(rargs(0), rargs(1))
             //      case OpIDiv =>    Division(rargs(0), rargs(1))
             //      case OpMod =>     Modulo(rargs(0), rargs(1))
-                  case other =>
-                    reporter.fatalError(
+                  case other => unsound(t, 
                       s"""|Don't know what to do with this declKind: $other
                           |Expected type: ${Option(tpe).map{_.asString}.getOrElse("")}
                           |Tree: $t
@@ -708,11 +735,11 @@ trait AbstractZ3Solver extends Solver {
                 }
             }
           }
-        case _ =>
-          reporter.fatalError(s"Don't know what to do with this Z3 tree: $t")
+        case _ => unsound(t, "unexpected AST")
       }
     }
-    rec(tree, tpe)
+
+    rec(tree, normalizeType(tpe))
   }
 
   protected[leon] def softFromZ3Formula(model: Z3Model, tree: Z3AST, tpe: TypeTree) : Option[Expr] = {
@@ -720,6 +747,8 @@ trait AbstractZ3Solver extends Solver {
       Some(fromZ3Formula(model, tree, tpe))
     } catch {
       case e: Unsupported => None
+      case e: UnsoundExtractionException => None
+      case n: java.lang.NumberFormatException => None
     }
   }
 

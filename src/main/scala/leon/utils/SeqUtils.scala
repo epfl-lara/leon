@@ -2,6 +2,7 @@
 
 package leon.utils
 
+import scala.collection.SeqView
 import scala.collection.mutable.ArrayBuffer
 
 object SeqUtils {
@@ -39,6 +40,50 @@ object SeqUtils {
       (1 until sum).flatMap{ n => 
         sumTo(sum-n, arity-1).map( r => n +: r)
       }
+    }
+  }
+}
+
+class CartesianView[+A](views: Seq[SeqView[A, Seq[A]]]) extends SeqView[Seq[A], Seq[Seq[A]]] {
+  override protected def underlying: Seq[Seq[A]] = SeqUtils.cartesianProduct(views)
+
+  override def length: Int = views.map{ _.size }.product
+
+  override def apply(idx: Int): Seq[A] = {
+    if (idx < 0 || idx >= length) throw new IndexOutOfBoundsException
+    var c = idx
+    for (v <- views) yield {
+      val ic = c % v.size
+      c /= v.size
+      v(ic)
+    }
+  }
+
+  override def iterator: Iterator[Seq[A]] = new Iterator[Seq[A]] {
+    // It's unfortunate, but we have to use streams to memoize
+    private val streams = views.map { _.toStream }
+    private val current = streams.toArray
+
+    // We take a note if there exists an empty view to begin with
+    // (which means the whole iterator is empty)
+    private val empty = streams exists { _.isEmpty }
+
+    override def hasNext: Boolean = !empty && current.exists { _.nonEmpty }
+
+    override def next(): Seq[A] = {
+      if (!hasNext) throw new NoSuchElementException("next on empty iterator")
+      // Propagate curry
+      for (i <- (0 to streams.size).takeWhile(current(_).isEmpty)) {
+        current(i) = streams(i)
+      }
+
+      val ret = current map { _.head }
+
+      for (i <- (0 to streams.size)) {
+        current(i) = current(i).tail
+      }
+
+      ret
     }
   }
 }

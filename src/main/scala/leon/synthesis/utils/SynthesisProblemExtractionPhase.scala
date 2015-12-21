@@ -7,14 +7,14 @@ package utils
 import purescala.DefOps.funDefsFromMain
 import purescala.Definitions._
 
-object SynthesisProblemExtractionPhase extends SimpleLeonPhase[Program, (Program, Map[FunDef, Seq[ChooseInfo]])] {
+object SynthesisProblemExtractionPhase extends SimpleLeonPhase[Program, (Program, Map[FunDef, Seq[SourceInfo]])] {
   val name        = "Synthesis Problem Extraction"
   val description = "Synthesis Problem Extraction"
 
-  def apply(ctx: LeonContext, p: Program): (Program, Map[FunDef, Seq[ChooseInfo]]) = {
+  def apply(ctx: LeonContext, p: Program): (Program, Map[FunDef, Seq[SourceInfo]]) = {
     // Look for choose()
     val results = for (f <- funDefsFromMain(p).toSeq.sortBy(_.id) if f.body.isDefined) yield {
-      f -> ChooseInfo.extractFromFunction(ctx, p, f)
+      f -> SourceInfo.extractFromFunction(ctx, p, f)
     }
 
     (p, results.toMap)

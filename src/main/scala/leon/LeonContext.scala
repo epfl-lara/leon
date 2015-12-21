@@ -9,8 +9,9 @@ import java.io.File
 import scala.reflect.ClassTag
 
 /** Everything that is part of a compilation unit, except the actual program tree.
- *  Contexts are immutable, and so should all there fields (with the possible
- *  exception of the reporter). */
+  * Contexts are immutable, and so should all there fields (with the possible
+  * exception of the reporter).
+  */
 case class LeonContext(
   reporter: Reporter,
   interruptManager: InterruptManager,
@@ -20,9 +21,6 @@ case class LeonContext(
   timers: TimerStorage = new TimerStorage
 ) {
 
-  // @mk: This is not typesafe, because equality for options is implemented as name equality.
-  // It will fail if an LeonOptionDef is passed that has the same name
-  // with one in Main,allOptions, but is different
   def findOption[A: ClassTag](optDef: LeonOptionDef[A]): Option[A] = options.collectFirst {
     case LeonOption(`optDef`, value:A) => value
   }

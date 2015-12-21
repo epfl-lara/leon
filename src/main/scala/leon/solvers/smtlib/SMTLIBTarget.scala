@@ -11,6 +11,7 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps._
 import purescala.Constructors._
 import purescala.Definitions._
 
@@ -18,7 +19,7 @@ import _root_.smtlib.common._
 import _root_.smtlib.printer.{ RecursivePrinter => SMTPrinter }
 import _root_.smtlib.parser.Commands.{
   Constructor => SMTConstructor,
-  FunDef => _,
+  FunDef => SMTFunDef,
   Assert => _,
   _
 }
@@ -124,6 +125,7 @@ trait SMTLIBTarget extends Interruptible {
 
   /* Symbol handling */
   protected object SimpleSymbol {
+    def apply(sym: SSymbol) = QualifiedIdentifier(SMTIdentifier(sym))
     def unapply(term: Term): Option[SSymbol] = term match {
       case QualifiedIdentifier(SMTIdentifier(sym, Seq()), None) => Some(sym)
       case _ => None
@@ -131,9 +133,7 @@ trait SMTLIBTarget extends Interruptible {
   }
 
   import scala.language.implicitConversions
-  protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = {
-    QualifiedIdentifier(SMTIdentifier(s))
-  }
+  protected implicit def symbolToQualifiedId(s: SSymbol): QualifiedIdentifier = SimpleSymbol(s)
 
   protected val adtManager = new ADTManager(context)
 
@@ -147,14 +147,15 @@ trait SMTLIBTarget extends Interruptible {
   protected def freshSym(name: String): SSymbol = id2sym(FreshIdentifier(name))
 
   /* Metadata for CC, and variables */
-  protected val constructors = new IncrementalBijection[TypeTree, SSymbol]()
-  protected val selectors = new IncrementalBijection[(TypeTree, Int), SSymbol]()
-  protected val testers = new IncrementalBijection[TypeTree, SSymbol]()
-  protected val variables = new IncrementalBijection[Identifier, SSymbol]()
+  protected val constructors  = new IncrementalBijection[TypeTree, SSymbol]()
+  protected val selectors     = new IncrementalBijection[(TypeTree, Int), SSymbol]()
+  protected val testers       = new IncrementalBijection[TypeTree, SSymbol]()
+  protected val variables     = new IncrementalBijection[Identifier, SSymbol]()
   protected val genericValues = new IncrementalBijection[GenericValue, SSymbol]()
-  protected val sorts = new IncrementalBijection[TypeTree, Sort]()
-  protected val functions = new IncrementalBijection[TypedFunDef, SSymbol]()
-  protected val errors = new IncrementalBijection[Unit, Boolean]()
+  protected val sorts         = new IncrementalBijection[TypeTree, Sort]()
+  protected val functions     = new IncrementalBijection[TypedFunDef, SSymbol]()
+  protected val lambdas       = new IncrementalBijection[FunctionType, SSymbol]()
+  protected val errors        = new IncrementalBijection[Unit, Boolean]()
   protected def hasError = errors.getB(()) contains true
   protected def addError() = errors += () -> true
 
@@ -202,7 +203,8 @@ trait SMTLIBTarget extends Interruptible {
       r
 
     case ft @ FunctionType(from, to) =>
-      r
+      val elems = r.elems.toSeq.map { case (k, v) => unwrapTuple(k, from.size) -> v }
+      PartialLambda(elems, Some(r.default), ft)
 
     case MapType(from, to) =>
       // We expect a RawArrayValue with keys in from and values in Option[to],
@@ -246,7 +248,7 @@ trait SMTLIBTarget extends Interruptible {
           declareSort(RawArrayType(from, library.optionType(to)))
 
         case FunctionType(from, to) =>
-          Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(tupleTypeWrap(from)), declareSort(to)))
+          Ints.IntSort()
 
         case tp: TypeParameter =>
           declareUninterpretedSort(tp)
@@ -325,6 +327,20 @@ trait SMTLIBTarget extends Interruptible {
         s,
         tfd.params.map((p: ValDef) => declareSort(p.getType)),
         declareSort(tfd.returnType)))
+      s
+    }
+  }
+
+  protected def declareLambda(tpe: FunctionType): SSymbol = {
+    val realTpe = bestRealType(tpe).asInstanceOf[FunctionType]
+    lambdas.cachedB(realTpe) {
+      val id = FreshIdentifier("dynLambda")
+      val s = id2sym(id)
+      emit(DeclareFun(
+        s,
+        (realTpe +: realTpe.from).map(declareSort),
+        declareSort(realTpe.to)
+      ))
       s
     }
   }
@@ -522,7 +538,10 @@ trait SMTLIBTarget extends Interruptible {
        * ===== Everything else =====
        */
       case ap @ Application(caller, args) =>
-        ArraysEx.Select(toSMT(caller), toSMT(tupleWrap(args)))
+        FunctionApplication(
+          declareLambda(caller.getType.asInstanceOf[FunctionType]),
+          (caller +: args).map(toSMT)
+        )
 
       case Not(u)          => Core.Not(toSMT(u))
       case UMinus(u)       => Ints.Neg(toSMT(u))
@@ -611,6 +630,92 @@ trait SMTLIBTarget extends Interruptible {
   /* Translate an SMTLIB term back to a Leon Expr */
   protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)(implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
 
+    object EQ {
+      def unapply(t: Term): Option[(Term, Term)] = t match {
+        case Core.Equals(e1, e2) => Some((e1, e2))
+        case FunctionApplication(f, Seq(e1, e2)) if f.toString == "=" => Some((e1, e2))
+        case _ => None
+      }
+    }
+
+    object AND {
+      def unapply(t: Term): Option[Seq[Term]] = t match {
+        case Core.And(e1, e2) => Some(Seq(e1, e2))
+        case FunctionApplication(SimpleSymbol(SSymbol("and")), args) => Some(args)
+        case _ => None
+      }
+      def apply(ts: Seq[Term]): Term = ts match {
+        case Seq() => throw new IllegalArgumentException
+        case Seq(t) => t
+        case _ => FunctionApplication(SimpleSymbol(SSymbol("and")), ts)
+      }
+    }
+
+    object Num {
+      def unapply(t: Term): Option[BigInt] = t match {
+        case SNumeral(n) => Some(n)
+        case FunctionApplication(f, Seq(SNumeral(n))) if f.toString == "-" => Some(-n)
+        case _ => None
+      }
+    }
+
+    def extractLambda(n: BigInt, ft: FunctionType): Expr = {
+      val FunctionType(from, to) = ft
+      lambdas.getB(ft) match {
+        case None => simplestValue(ft)
+        case Some(dynLambda) => letDefs.get(dynLambda) match {
+          case None => simplestValue(ft)
+          case Some(DefineFun(SMTFunDef(a, SortedVar(dispatcher, dkind) +: args, rkind, body))) =>
+            val lambdaArgs = from.map(tpe => FreshIdentifier("x", tpe, true))
+            val argsMap: Map[Term, Identifier] = (args.map(sv => symbolToQualifiedId(sv.name)) zip lambdaArgs).toMap
+
+            val d = symbolToQualifiedId(dispatcher)
+            def dispatch(t: Term): Term = t match {
+              case Core.ITE(EQ(di, Num(ni)), thenn, elze) if di == d =>
+                if (ni == n) thenn else dispatch(elze)
+              case Core.ITE(AND(EQ(di, Num(ni)) +: rest), thenn, elze) if di == d =>
+                if (ni == n) Core.ITE(AND(rest), thenn, dispatch(elze)) else dispatch(elze)
+              case _ => t
+            }
+
+            def extract(t: Term): Expr = {
+              def recCond(term: Term): Seq[Expr] = term match {
+                case AND(es) =>
+                  es.foldLeft(Seq.empty[Expr]) {
+                    case (seq, e) => seq ++ recCond(e)
+                  }
+                case EQ(e1, e2) =>
+                  argsMap.get(e1).map(l => l -> e2) orElse argsMap.get(e2).map(l => l -> e1) match {
+                    case Some((lambdaArg, term)) => Seq(Equals(lambdaArg.toVariable, fromSMT(term, lambdaArg.getType)))
+                    case _ => Seq.empty
+                  }
+                case arg =>
+                  argsMap.get(arg) match {
+                    case Some(lambdaArg) => Seq(lambdaArg.toVariable)
+                    case _ => Seq.empty
+                  }
+              }
+
+              def recCases(term: Term): Expr = term match {
+                case Core.ITE(cond, thenn, elze) =>
+                  IfExpr(andJoin(recCond(cond)), recCases(thenn), recCases(elze))
+                case AND(es) if to == BooleanType =>
+                  andJoin(recCond(term))
+                case EQ(e1, e2) if to == BooleanType =>
+                  andJoin(recCond(term))
+                case _ =>
+                 fromSMT(term, to)
+              }
+
+              val body = recCases(t)
+              Lambda(lambdaArgs.map(ValDef(_)), body)
+            }
+
+            extract(dispatch(body))
+        }
+      }
+    }
+
     // Use as much information as there is, if there is an expected type, great, but it might not always be there
     (t, otpe) match {
       case (_, Some(UnitType)) =>
@@ -644,6 +749,9 @@ trait SMTLIBTarget extends Interruptible {
           }
         }
 
+      case (Num(n), Some(ft: FunctionType)) =>
+        extractLambda(n, ft)
+
       case (SNumeral(n), Some(RealType)) =>
         FractionalLiteral(n, 1)
 
@@ -665,6 +773,7 @@ trait SMTLIBTarget extends Interruptible {
         }.toMap
 
         fromSMT(body, tpe)(lets ++ defsMap, letDefs)
+
       case (SimpleSymbol(s), _) if constructors.containsB(s) =>
         constructors.toA(s) match {
           case cct: CaseClassType =>

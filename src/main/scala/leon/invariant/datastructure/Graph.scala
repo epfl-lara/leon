@@ -66,7 +66,7 @@ class DirectedGraph[T] {
           }
         })
       }
-      if (!queue.isEmpty) {
+      if (queue.nonEmpty) {
         val (head :: tail) = queue
         queue = tail
         BFSReachRecur(head)

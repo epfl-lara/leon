@@ -3,17 +3,23 @@
 package leon.utils
 
 object StreamUtils {
-  def interleave[T](streams : Seq[Stream[T]]) : Stream[T] = {
-    var ss = streams
-    while(ss.nonEmpty && ss.head.isEmpty) {
-      ss = ss.tail
-    }
-    if(ss.isEmpty) return Stream.empty
-    if(ss.size == 1) return ss.head
 
-    // TODO: This circular-shifts the list. I'd be interested in a constant time
-    // operation. Perhaps simply by choosing the right data-structure?
-    Stream.cons(ss.head.head, interleave(ss.tail :+ ss.head.tail))
+  def interleave[T](streams: Stream[Stream[T]]): Stream[T] = {
+    def rec(streams: Stream[Stream[T]], diag: Int): Stream[T] = {
+      if(streams.isEmpty) Stream() else {
+        val (take, leave) = streams.splitAt(diag)
+        val (nonEmpty, empty) = take partition (_.nonEmpty)
+        nonEmpty.map(_.head) ++ rec(nonEmpty.map(_.tail) ++ leave, diag + 1 - empty.size)
+      }
+    }
+    rec(streams, 1)
+  }
+
+  def interleave[T](streams : Seq[Stream[T]]) : Stream[T] = {
+    if (streams.isEmpty) Stream() else {
+      val nonEmpty = streams filter (_.nonEmpty)
+      nonEmpty.toStream.map(_.head) ++ interleave(nonEmpty.map(_.tail))
+    }
   }
 
   def cartesianProduct[T](streams : Seq[Stream[T]]) : Stream[List[T]] = {

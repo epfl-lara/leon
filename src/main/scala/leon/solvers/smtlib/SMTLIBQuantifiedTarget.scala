@@ -9,8 +9,6 @@ import purescala.Definitions._
 import purescala.Constructors._
 import purescala.ExprOps._
 
-import _root_.smtlib.parser.Commands.{Assert => _, FunDef => _, _}
-
 trait SMTLIBQuantifiedTarget extends SMTLIBTarget {
 
   protected var currentFunDef: Option[FunDef] = None
@@ -30,14 +28,10 @@ trait SMTLIBQuantifiedTarget extends SMTLIBTarget {
     val inductiveHyps = for {
       fi@FunctionInvocation(tfd, args) <- functionCallsOf(cond).toSeq
     } yield {
-      val formalToRealArgs = tfd.paramIds.zip(args).toMap
-      val post = tfd.postcondition map { post =>
-        application(
-          replaceFromIDs(formalToRealArgs, post),
-          Seq(fi)
-        )
-      } getOrElse BooleanLiteral(true)
-
+      val post = application(
+        tfd.withParamSubst(args, tfd.postOrTrue),
+        Seq(fi)
+      )
       and(tfd.precOrTrue, post)
     }
 

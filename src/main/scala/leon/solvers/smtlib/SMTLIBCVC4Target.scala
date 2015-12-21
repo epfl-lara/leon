@@ -7,11 +7,13 @@ package smtlib
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Constructors._
+import purescala.Extractors._
 import purescala.Types._
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Forall => SMTForall, _}
 import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
+import _root_.smtlib.theories.experimental.Sets
 
 trait SMTLIBCVC4Target extends SMTLIBTarget {
 
@@ -27,7 +29,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     sorts.cachedB(tpe) {
       tpe match {
         case SetType(base) =>
-          Sort(SMTIdentifier(SSymbol("Set")), Seq(declareSort(base)))
+          Sets.SetSort(declareSort(base))
 
         case _ =>
           super.declareSort(t)
@@ -59,12 +61,11 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           case RawArrayType(k, v) =>
             RawArrayValue(k, Map(), fromSMT(elem, v))
 
-          case FunctionType(from, to) =>
-            RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
+          case ft @ FunctionType(from, to) =>
+            PartialLambda(Seq.empty, Some(fromSMT(elem, to)), ft)
 
           case MapType(k, v) =>
             FiniteMap(Map(), k, v)
-
         }
 
       case (FunctionApplication(SimpleSymbol(SSymbol("__array_store_all__")), Seq(_, elem)), Some(tpe)) =>
@@ -72,12 +73,11 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           case RawArrayType(k, v) =>
             RawArrayValue(k, Map(), fromSMT(elem, v))
 
-          case FunctionType(from, to) =>
-            RawArrayValue(tupleTypeWrap(from), Map(), fromSMT(elem, to))
+          case ft @ FunctionType(from, to) =>
+            PartialLambda(Seq.empty, Some(fromSMT(elem, to)), ft)
 
           case MapType(k, v) =>
             FiniteMap(Map(), k, v)
-
         }
 
       case (FunctionApplication(SimpleSymbol(SSymbol("store")), Seq(arr, key, elem)), Some(tpe)) =>
@@ -86,9 +86,10 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
             val RawArrayValue(k, elems, base) = fromSMT(arr, otpe)
             RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
 
-          case FunctionType(_, v) =>
-            val RawArrayValue(k, elems, base) = fromSMT(arr, otpe)
-            RawArrayValue(k, elems + (fromSMT(key, k) -> fromSMT(elem, v)), base)
+          case FunctionType(from, v) =>
+            val PartialLambda(mapping, dflt, ft) = fromSMT(arr, otpe)
+            val args = unwrapTuple(fromSMT(key, tupleTypeWrap(from)), from.size)
+            PartialLambda(mapping :+ (args -> fromSMT(elem, v)), dflt, ft)
 
           case MapType(k, v) =>
             val FiniteMap(elems, k, v) = fromSMT(arr, otpe)
@@ -119,33 +120,24 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
      */
     case fs @ FiniteSet(elems, _) =>
       if (elems.isEmpty) {
-        QualifiedIdentifier(SMTIdentifier(SSymbol("emptyset")), Some(declareSort(fs.getType)))
+        Sets.EmptySet(declareSort(fs.getType))
       } else {
         val selems = elems.toSeq.map(toSMT)
 
-        val sgt = FunctionApplication(SSymbol("singleton"), Seq(selems.head))
+        val sgt = Sets.Singleton(selems.head)
 
         if (selems.size > 1) {
-          FunctionApplication(SSymbol("insert"), selems.tail :+ sgt)
+          Sets.Insert(selems.tail :+ sgt)
         } else {
           sgt
         }
       }
 
-    case SubsetOf(ss, s) =>
-      FunctionApplication(SSymbol("subset"), Seq(toSMT(ss), toSMT(s)))
-
-    case ElementOfSet(e, s) =>
-      FunctionApplication(SSymbol("member"), Seq(toSMT(e), toSMT(s)))
-
-    case SetDifference(a, b) =>
-      FunctionApplication(SSymbol("setminus"), Seq(toSMT(a), toSMT(b)))
-
-    case SetUnion(a, b) =>
-      FunctionApplication(SSymbol("union"), Seq(toSMT(a), toSMT(b)))
-
-    case SetIntersection(a, b) =>
-      FunctionApplication(SSymbol("intersection"), Seq(toSMT(a), toSMT(b)))
+    case SubsetOf(ss, s) => Sets.Subset(toSMT(ss), toSMT(s))
+    case ElementOfSet(e, s) => Sets.Member(toSMT(e), toSMT(s))
+    case SetDifference(a, b) => Sets.Setminus(toSMT(a), toSMT(b))
+    case SetUnion(a, b) => Sets.Union(toSMT(a), toSMT(b))
+    case SetIntersection(a, b) => Sets.Intersection(toSMT(a), toSMT(b))
 
     case _ =>
       super.toSMT(e)

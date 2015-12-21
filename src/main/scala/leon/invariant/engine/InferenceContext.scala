@@ -12,7 +12,6 @@ import invariant.util._
 import verification._
 import verification.VCKinds
 import InferInvariantsPhase._
-import Util._
 import ProgramUtil._
 
 /**
@@ -71,13 +70,13 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
     instrumentedProg.definedFunctions.foreach((fd) => {
       if (!foundStrongest && fd.hasPostcondition) {
         val cond = fd.postcondition.get
-        postTraversal((e) => e match {
+        postTraversal {
           case Equals(_, _) => {
             rel = Equals.apply _
             foundStrongest = true
           }
           case _ => ;
-        })(cond)
+        }(cond)
       }
     })
     rel

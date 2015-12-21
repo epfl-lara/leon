@@ -1,15 +1,9 @@
 package leon
 package invariant.templateSolvers
-import z3.scala._
-import purescala.Common._
+
 import purescala.Definitions._
 import purescala.Expressions._
-import purescala.ExprOps._
 import purescala.Extractors._
-import purescala.Types._
-import java.io._
-import leon.invariant._
-import scala.util.control.Breaks._
 import solvers._
 
 import invariant.engine._
@@ -18,7 +12,6 @@ import invariant.util._
 import invariant.structure._
 import Util._
 import PredicateUtil._
-import SolverUtil._
 
 class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun: FunDef,
   ctrTracker: ConstraintTracker, minimizer: Option[(Expr, Model) => Model])
@@ -42,10 +35,10 @@ class NLTemplateSolverWithMult(ctx : InferenceContext, program: Program, rootFun
     //in the sequel we instantiate axioms for multiplication
     val inst1 = unaryMultAxioms(formula, calls, predEval(model))
     val inst2 = binaryMultAxioms(formula,calls, predEval(model))
-    val multCtrs = (inst1 ++ inst2).flatMap(_ match {
+    val multCtrs = (inst1 ++ inst2).flatMap {
       case And(args) => args.map(ConstraintUtil.createConstriant _)
       case e => Seq(ConstraintUtil.createConstriant(e))
-    })
+    }
 
     Stats.updateCounterStats(multCtrs.size, "MultAxiomBlowup", "disjuncts")
     ctx.reporter.info("Number of multiplication induced predicates: "+multCtrs.size)

@@ -5,7 +5,7 @@ package leon.integration.evaluators
 import leon._
 import leon.test._
 import leon.test.helpers._
-import leon.evaluators._
+import leon.evaluators.{Evaluator => _, DeterministicEvaluator => Evaluator, _}
 import leon.purescala.Common._
 import leon.purescala.Definitions._
 import leon.purescala.Expressions._
@@ -187,6 +187,38 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
       |  def f3 = C(42).isInstanceOf[A]
       |}""".stripMargin,
 
+    """import leon.lang._
+      |import leon.collection._
+      |
+      |object Foo {
+      |  def unapply(i: BigInt): Option[BigInt] = if (i > 0) Some(i) else None()
+      |}
+      |
+      |object Unapply {
+      |  def foo =
+      |    (BigInt(1) match {
+      |      case Foo(i) => i
+      |      case _ => BigInt(0)
+      |    }) + (BigInt(-12) match {
+      |      case Foo(i) => i
+      |      case _ => BigInt(2)
+      |    })
+      |
+      |  def size[A](l: List[A]): BigInt = l match {
+      |    case _ :: _ :: _ :: Nil() => 3
+      |    case _ :: _ :: Nil() => 2
+      |    case _ :: Nil() => 1
+      |    case Nil() => 0
+      |    case _ :: _ => 42
+      |  }
+      |
+      |  def s1 = size(1 :: 2 :: 3 :: Nil[Int]())
+      |  def s2 = size(Nil[Int]())
+      |  def s3 = size(List(1,2,3,4,5,6,7,8))
+      |
+      |}
+    """.stripMargin,
+
     """object Casts1 {
       |  abstract class Foo
       |  case class Bar1(v: BigInt) extends Foo
@@ -205,7 +237,8 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
 
   def normalEvaluators(implicit ctx: LeonContext, pgm: Program): List[Evaluator] = {
     List(
-      new DefaultEvaluator(ctx, pgm)
+      new DefaultEvaluator(ctx, pgm),
+      new AngelicEvaluator(new StreamEvaluator(ctx, pgm))
     )
   }
 
@@ -367,6 +400,15 @@ class EvaluatorSuite extends LeonTestSuiteWithProgram with ExpressionsDSL {
       eval(e, fcall("Methods.f1")()) === T
       eval(e, fcall("Methods.f2")()) === F
       eval(e, fcall("Methods.f3")()) === T
+    }
+  }
+
+  test("Unapply") { implicit fix =>
+    for(e <- allEvaluators) {
+      eval(e, fcall("Unapply.foo")()) === bi(3)
+      eval(e, fcall("Unapply.s1")())  === bi(3)
+      eval(e, fcall("Unapply.s2")())  === bi(0)
+      eval(e, fcall("Unapply.s3")())  === bi(42)
     }
   }
 

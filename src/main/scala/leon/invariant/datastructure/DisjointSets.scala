@@ -1,8 +1,6 @@
 package leon
 package invariant.datastructure
 
-import scala.collection.mutable.{ Map => MutableMap }
-import scala.annotation.migration
 import scala.collection.mutable.{Map => MutableMap}
 
 class DisjointSets[T] {

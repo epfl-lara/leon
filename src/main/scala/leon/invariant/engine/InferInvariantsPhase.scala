@@ -1,21 +1,7 @@
 package leon
 package invariant.engine
 
-import purescala.Common._
 import purescala.Definitions._
-import purescala.ExprOps._
-import purescala.Expressions._
-import purescala.Extractors._
-import purescala.Types._
-import verification.VerificationReport
-import invariant.templateSolvers._
-import invariant.factories._
-import invariant.util._
-import invariant.structure.FunctionUtils._
-import invariant.structure._
-import transformations._
-import leon.purescala.ScalaPrinter
-import leon.purescala.PrettyPrinter
 
 /**
  * @author ravi

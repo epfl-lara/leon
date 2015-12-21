@@ -110,7 +110,7 @@ object Constructors {
     canBeSubtypeOf(actualType, typeParamsOf(formalType).toSeq, formalType) match {
       case Some(tmap) =>
         FunctionInvocation(fd.typed(fd.tparams map { tpd => tmap.getOrElse(tpd.tp, tpd.tp) }), args)
-      case None => sys.error(s"$actualType cannot be a subtype of $formalType!")
+      case None => throw LeonFatalError(s"$args:$actualType cannot be a subtype of $formalType!")
     }
   }
 
@@ -161,7 +161,7 @@ object Constructors {
       BooleanLiteral(true)
     }
   }
-  /** $encodingof `... match { ... }` but simplified if possible. Throws an error if no case can match the scrutined expression.
+  /** $encodingof `... match { ... }` but simplified if possible. Simplifies to [[Error]] if no case can match the scrutined expression.
     * @see [[purescala.Expressions.MatchExpr MatchExpr]]
     */
   def matchExpr(scrutinee : Expr, cases : Seq[MatchCase]) : Expr ={
@@ -249,8 +249,8 @@ object Constructors {
   /** $encodingof Simplified `Array(...)` (array length defined at compile-time)
     * @see [[purescala.Expressions.NonemptyArray NonemptyArray]]
     */
-  def finiteArray(els: Seq[Expr]): Expr = {
-    require(els.nonEmpty)
+  def finiteArray(els: Seq[Expr], tpe: TypeTree = Untyped): Expr = {
+    require(els.nonEmpty || tpe != Untyped)
     finiteArray(els, None, Untyped) // Untyped is not correct, but will not be used anyway
   }
   /** $encodingof Simplified `Array[...](...)` (array length and default element defined at run-time) with type information

@@ -2,7 +2,6 @@
 
 package leon.integration.solvers
 
-import leon.test._
 import leon.solvers._
 import leon.purescala.Common._
 import leon.purescala.Definitions._

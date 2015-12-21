@@ -7,14 +7,8 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Types._
-import java.io._
-import java.io._
-import purescala.ScalaPrinter
 import leon.utils._
 import PredicateUtil._
-
-import invariant.structure.Call
-import invariant.structure.FunctionUtils._
 import leon.transformations.InstUtil._
 
 /**
@@ -31,13 +25,13 @@ object LetTupleSimplification {
   val bone = BigInt(1)
 
   def letSanityChecks(ine: Expr) = {
-    simplePostTransform(_ match {
-      case letExpr @ Let(binderId, letValue, body)
-      	if (binderId.getType != letValue.getType) =>
-          throw new IllegalStateException("Binder and value type mismatch: "+
-              s"(${binderId.getType},${letValue.getType})")
+    simplePostTransform {
+      case letExpr@Let(binderId, letValue, body)
+        if (binderId.getType != letValue.getType) =>
+        throw new IllegalStateException("Binder and value type mismatch: " +
+          s"(${binderId.getType},${letValue.getType})")
       case e => e
-    })(ine)
+    }(ine)
   }
 
   /**
@@ -130,11 +124,11 @@ object LetTupleSimplification {
           (arg1, arg2) match {
             case (_: TupleSelect, _) => error = true
             case (_, _: TupleSelect) => error = true
-            case _ => { ; }
+            case _ =>
           }
         }
 
-        case _ => { ; }
+        case _ =>
       }
     }
 
@@ -172,8 +166,8 @@ object LetTupleSimplification {
 
     // in the sequel, we are using the fact that 'depth' is positive and
     // 'ine' contains only 'depth' variables
-    val simpe = simplePostTransform((e: Expr) => e match {
-      case FunctionInvocation(tfd, args) if (tfd.fd == maxFun) => {
+    val simpe = simplePostTransform {
+      case e@FunctionInvocation(tfd, args) if (tfd.fd == maxFun) => {
         if (debugMaxSimplify) {
           println("Simplifying: " + e)
         }
@@ -183,20 +177,20 @@ object LetTupleSimplification {
           import invariant.structure.LinearConstraintUtil._
           val lt = exprToTemplate(LessEquals(Minus(arg1, arg2), InfiniteIntegerLiteral(0)))
           //now, check if all the variables in 'lt' have only positive coefficients
-          val allPositive = lt.coeffTemplate.forall(entry => entry match {
+          val allPositive = lt.coeffTemplate.forall {
             case (k, IntLiteral(v)) if (v >= 0) => true
             case _ => false
-          }) && (lt.constTemplate match {
+          } && (lt.constTemplate match {
             case None => true
             case Some(IntLiteral(v)) if (v >= 0) => true
             case _ => false
           })
           if (allPositive) arg1
           else {
-            val allNegative = lt.coeffTemplate.forall(entry => entry match {
+            val allNegative = lt.coeffTemplate.forall {
               case (k, IntLiteral(v)) if (v <= 0) => true
               case _ => false
-            }) && (lt.constTemplate match {
+            } && (lt.constTemplate match {
               case None => true
               case Some(IntLiteral(v)) if (v <= 0) => true
               case _ => false
@@ -222,14 +216,14 @@ object LetTupleSimplification {
       // case FunctionInvocation(tfd, args) if(tfd.fd.id.name == "max") => {
       // throw new IllegalStateException("Found just max in expression " + e + "\n")
       // }
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
     simpe
   }
 
   def inlineMax(ine: Expr): Expr = {
     //inline 'max' operations here
-    simplePostTransform((e: Expr) => e match {
+    simplePostTransform {
       case FunctionInvocation(tfd, args) if (tfd.fd == maxFun) =>
         val Seq(arg1, arg2) = args
         val bindWithLet = (value: Expr, body: (Expr with Terminal) => Expr) => {
@@ -245,8 +239,8 @@ object LetTupleSimplification {
         }
         bindWithLet(arg1, a1 => bindWithLet(arg2, a2 =>
           IfExpr(GreaterEquals(a1, a2), a1, a2)))
-      case _ => e
-    })(ine)
+      case e => e
+    }(ine)
   }
 
   def removeLetsFromLetValues(ine: Expr): Expr = {
@@ -317,10 +311,10 @@ object LetTupleSimplification {
                     Tuple(args :+ e2)
                 }))
           }
-          replaceLetBody(transLet, (e: Expr) => e match {
+          replaceLetBody(transLet, {
             case Tuple(args) =>
               op(args)
-            case _ => op(Seq(e)) //here, there was only one argument
+            case e => op(Seq(e)) //here, there was only one argument
           })
       }
       transe
@@ -378,7 +372,7 @@ object LetTupleSimplification {
       res
     }
 
-    val transforms = removeLetsFromLetValues _ andThen fixpoint(postMap(simplerLet)) _ andThen simplifyArithmetic
+    val transforms = removeLetsFromLetValues _ andThen fixpoint(postMap(simplerLet)) andThen simplifyArithmetic
     transforms(ine)
   }
 
@@ -398,7 +392,7 @@ object LetTupleSimplification {
 
     val allLeaves = getLeaves(e, true)
     // Here the expression is not of the form we are currently simplifying
-    if (allLeaves.size == 0) e
+    if (allLeaves.isEmpty) e
     else {
       // fold constants here
       val allConstantsOpped = allLeaves.foldLeft(identity)((acc, e) => e match {
@@ -406,17 +400,17 @@ object LetTupleSimplification {
         case _ => acc
       })
 
-      val allNonConstants = allLeaves.filter((e) => e match {
+      val allNonConstants = allLeaves.filter {
         case _: InfiniteIntegerLiteral => false
         case _ => true
-      })
+      }
 
       // Reconstruct the expressin tree with the non-constants and the result of constant evaluation above
       if (allConstantsOpped != identity) {
         allNonConstants.foldLeft(InfiniteIntegerLiteral(allConstantsOpped): Expr)((acc: Expr, currExpr) => makeTree(acc, currExpr))
       }
       else {
-        if (allNonConstants.size == 0) InfiniteIntegerLiteral(identity)
+        if (allNonConstants.isEmpty) InfiniteIntegerLiteral(identity)
         else {
           allNonConstants.tail.foldLeft(allNonConstants.head)((acc: Expr, currExpr) => makeTree(acc, currExpr))
         }
@@ -455,10 +449,11 @@ object LetTupleSimplification {
           ((a: BigInt, b: BigInt) => if (a > b) a else b),
           getAllMaximands,
           0,
-          ((e1, e2) => {
+          (e1, e2) => {
             val typedMaxFun = TypedFunDef(maxFun, Seq())
             FunctionInvocation(typedMaxFun, Seq(e1, e2))
-          }))
+          }
+        )
 
       maxSimplifiedExpr
     })(e)
