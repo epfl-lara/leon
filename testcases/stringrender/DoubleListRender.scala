@@ -24,12 +24,30 @@ object DoubleListRender {
     a == b || a == c || b == c
   } holds
 
-  def AtoString(a : A): String =  {
+  def mutual_lists(a : A): String =  {
     ???
   } ensuring {
     (res : String) => (a, res) passes {
-      case B(BB(N(), BB(B(NN(), B(NN(), N())), NN())), N()) =>
-        "[([], [(), ()])]"
+      case N() =>
+        "[]"
+      case B(NN(), N()) =>
+        "[()]"
+      case B(NN(), B(NN(), N())) =>
+        "[(), ()]"
+      case B(BB(N(), NN()), N()) =>
+        "[([])]"
+      case B(NN(), B(NN(), B(NN(), N()))) =>
+        "[(), (), ()]"
+      case B(BB(N(), BB(N(), NN())), N()) =>
+        "[([], [])]"
+      case B(NN(), B(BB(N(), NN()), N())) =>
+        "[(), ([])]"
+      case B(BB(N(), NN()), B(NN(), N())) =>
+        "[([]), ()]"
+      case B(BB(B(NN(), N()), NN()), N()) =>
+        "[([()])]"
+      case B(BB(N(), BB(N(), BB(N(), NN()))), N()) =>
+        "[([], [], [])]"
     }
   }
 }

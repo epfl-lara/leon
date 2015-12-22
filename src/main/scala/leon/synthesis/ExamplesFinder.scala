@@ -199,8 +199,10 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
             case None =>
               true
           }
-
-          (for {
+          
+          if(cs.optGuard == Some(BooleanLiteral(false))) {
+            Nil
+          } else (for {
             inst <- instantiations.toSeq
             inR = replaceFromIDs(inst, pattExpr)
             outR = replaceFromIDs(inst, doSubstitute(ieMap, cs.rhs))
