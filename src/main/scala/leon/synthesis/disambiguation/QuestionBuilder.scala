@@ -89,8 +89,8 @@ class QuestionBuilder[T <: Expr](input: Seq[Identifier], solutions: Stream[Solut
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
   private var _alternativeSortMethod: AlternativeSortingType[T] = AlternativeSortingType.BalancedParenthesisIsBetter[T]() && AlternativeSortingType.ShorterIsBetter[T]() 
-  private var solutionsToTake = 15
-  private var expressionsToTake = 15
+  private var solutionsToTake = 30
+  private var expressionsToTake = 30
   private var keepEmptyAlternativeQuestions: T => Boolean = Set()
 
   /** Sets the way to sort questions. See [[QuestionSortingType]] */
