@@ -14,6 +14,7 @@ object CaseClass {
     val d = cyan
     val z = sub(c, d).g
     z
-  }
+  } ensuring { _ == 0 }
 
 }
+

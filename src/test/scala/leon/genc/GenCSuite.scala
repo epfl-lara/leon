@@ -163,7 +163,7 @@ class GenCSuite extends LeonRegressionSuite {
     mkTest(files, cat)(block)
   }
 
-  protected def testValid(cc: String) = forEachFileIn("valid") { (xCtx, prog) =>
+  protected def testDirectory(cc: String, dir: String) = forEachFileIn(dir) { (xCtx, prog) =>
     val converter = convert(xCtx) _
     val saver     = saveToFile(xCtx) _
     val compiler  = compile(xCtx, cc) _
@@ -173,6 +173,9 @@ class GenCSuite extends LeonRegressionSuite {
 
     pipeline(prog)
   }
+
+  protected def testValid(cc: String) = testDirectory(cc, "valid")
+  protected def testUnverified(cc: String) = testDirectory(cc, "unverified");
 
   protected def testInvalid() = forEachFileIn("invalid") { (xCtx, prog) =>
     intercept[LeonFatalError] {
@@ -199,8 +202,11 @@ class GenCSuite extends LeonRegressionSuite {
   protected def testAll() = {
     // Set C compiler according to the platform we're currently running on
     detectCompiler match {
-      case Some(cc) => testValid(cc)
-      case None     => test("dectecting C compiler") { fail("no C compiler found") }
+      case Some(cc) =>
+        testValid(cc)
+        testUnverified(cc)
+      case None     =>
+        test("dectecting C compiler") { fail("no C compiler found") }
     }
 
     testInvalid()

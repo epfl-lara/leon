@@ -7,20 +7,24 @@ object BinarySearchFun {
         0 <= low && low <= high + 1 && high < a.length
     )
 
-    if(low <= high) {
-      val i = (high + low) / 2
+    if (low <= high) {
+      //val i = (high + low) / 2
+      val i = low + (high - low) / 2
+
       val v = a(i)
 
-      if(v == key) i
+      if (v == key) i
       else if (v > key) binarySearch(a, key, low, i - 1)
       else binarySearch(a, key, i + 1, high)
     } else -1
   }) ensuring(res =>
       res >= -1 &&
-      res < a.length &&
-      (if (res >= 0)
-          a(res) == key else
-          (high < 0 || (!occurs(a, low, (high+low)/2, key) && !occurs(a, (high+low)/2, high, key)))
+      res < a.length && (
+      if (res >= 0)
+        a(res) == key
+      else
+        (high < 0 || (!occurs(a, low, low + (high - low) / 2, key) &&
+                      !occurs(a, low + (high - low) / 2, high, key)))
       )
     )
 
@@ -29,13 +33,13 @@ object BinarySearchFun {
     require(a.length >= 0 && to <= a.length && from >= 0)
     def rec(i: Int): Boolean = {
       require(i >= 0)
-      if(i >= to)
+      if (i >= to)
         false
       else {
-       if(a(i) == key) true else rec(i+1)
+       if (a(i) == key) true else rec(i+1)
       }
     }
-    if(from >= to)
+    if (from >= to)
       false
     else
       rec(from)

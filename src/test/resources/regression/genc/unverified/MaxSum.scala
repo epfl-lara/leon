@@ -65,7 +65,7 @@ object MaxSum {
     val max = sm._2
     if (sum == 1244 && max == 999) 0
     else -1
-  }
+  } ensuring { _ == 0 }
 
 }
 

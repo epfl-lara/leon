@@ -5,14 +5,15 @@ object RecursionAndNestedFunctions {
   // Complex way to return i
   def zzz(i: Int): Int = {
     val x = 0
+
     def rec(j: Int): Int = {
-      if (i - x == j)     i
+      if (i - x == j) i
       else if (j > i) rec(j - 1)
       else            rec(j + 1)
-    }
+    } ensuring { _ == i }
 
     rec(4)
-  }
+  } ensuring { _ == i }
 
 
   // Complex way to compute 100 + 2 * i
@@ -26,9 +27,11 @@ object RecursionAndNestedFunctions {
       baz(42)
     }
     bar(58) + j - i
-  }
+  } ensuring { _ == 100 + 2 * i }
 
-  def main() = foo(2) - zzz(104)
+  def main() = {
+    foo(2) - zzz(104)
+  } ensuring { _ == 0 }
 
 }
 

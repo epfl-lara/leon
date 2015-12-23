@@ -11,7 +11,8 @@ object BinarySearch {
     var res = -1
 
     (while(low <= high && res == -1) {
-      val i = (high + low) / 2
+      //val i = (high + low) / 2
+      val i = low + ((high - low) / 2)
       val v = a(i)
 
       if(v == key)
