@@ -68,7 +68,8 @@ object RealTimeDeque {
     }
   } ensuring(res => ssize(res) == ssize(l1) + ssize(l2) &&
       isConcrete(res) &&
-      (ssize(l1) >= 1 ==> (res*).isCons))
+      (ssize(l1) >= 1 ==> (res*).isCons) &&
+      time <= 20*ssize(l1) + 20)
       // takes O(|l1|) time
 
   @invstate
@@ -83,7 +84,8 @@ object RealTimeDeque {
       }
     }
   } ensuring(res => isConcrete(res) &&
-      ssize(res) == ssize(l) - n)
+      ssize(res) == ssize(l) - n &&
+      time <= 20*n + 20)
   // takes O(n) time
 
   @invstate
@@ -101,7 +103,8 @@ object RealTimeDeque {
       }
     r
   } ensuring(res => isConcrete(res) &&
-      ssize(res) == n)
+      ssize(res) == n &&
+      time <= 30*n + 30)
   // takes O(n) time
 
   @invstate
@@ -114,7 +117,9 @@ object RealTimeDeque {
         else
           SCons[T](x, $(takeLazy(n - 1, tail)))
     }
-  } ensuring(res => res.size == n && res.isCons) // takes O(1) time
+  } ensuring(res => res.size == n && res.isCons &&
+      time <= 20
+      ) // takes O(1) time
 
   // requires unfoldFactor=2 why ?
   @invstate
@@ -126,12 +131,13 @@ object RealTimeDeque {
         (lenf <= 2 * lenr + 3 && lenf >= 2 * lenr + 1) // size invariant betwen 'f' and 'r'
       })
     r.value match {
-      case SNil() => revAppend(f, a).value
+      case SNil() => revAppend(f, a).value // |f| <= 3
       case SCons(x, rt) =>
         SCons(x, $(rotateRev(rt, drop(2, f), revAppend(take(2, f), a)))) // here we are creating a lazy closure
     }  // here, it doesn't matter whether 'f' has i elements or not, what we want is |drop(2,f)| + |take(2,f)| == |f|
   } ensuring (res => res.size == (r*).size + (f*).size + (a*).size &&
-      res.isCons)
+      res.isCons &&
+      time <= 250)
   //takes constant time
 
   @invstate
@@ -154,7 +160,8 @@ object RealTimeDeque {
       }
     }
   } ensuring(res => res.size == (r*).size + (f*).size - i &&
-      res.isCons)
+      res.isCons &&
+      time <= 300)
   // takes constant time
 
   def firstUnevaluated[T](l: $[Stream[T]]): $[Stream[T]] = {
@@ -215,7 +222,8 @@ object RealTimeDeque {
       Queue(nf, i, nf, nr, j, nr)
     } else
       Queue(f, lenf, sf, r, lenr, sr)
-  } ensuring(res => res.valid)
+  } ensuring(res => res.valid &&
+      time <= 400)
 
   def check[T](l: $[Stream[T]]): Boolean = {
     l.isEvaluated
@@ -283,7 +291,7 @@ object RealTimeDeque {
           funef == funesf &&
           (rsize == 0 || rsize == ssize(sr) - 1)
       })
-    }
+    } && time <= 350
   })
 
   def forceSchedsTwice[T](q: Queue[T]): ($[Stream[T]], $[Stream[T]]) = {
@@ -304,7 +312,8 @@ object RealTimeDeque {
     val funesr = firstUnevaluated(nsr)
     funef == funesf && funer == funesr &&
       (ssize(nsf) == 0 || ssize(nsf) == ssize(q.sf) - 2) &&
-      (ssize(nsr) == 0 || ssize(nsr) == ssize(q.sr) - 2)
+      (ssize(nsr) == 0 || ssize(nsr) == ssize(q.sr) - 2) &&
+    time <= 1500
   })
 
   def empty[T] = {
@@ -322,7 +331,7 @@ object RealTimeDeque {
     val nsf = forceSched(q.f, q.sf, q.r, q.sr, true)
     val nsr = forceSched(q.f, nsf, q.r, q.sr, false)
     createQueue(nf, q.lenf + 1, nsf, q.r, q.lenr, nsr)
-  } ensuring (res => res.valid) // && time <= 60)
+  } ensuring (res => res.valid && time <= 1200)
 
   /**
    * Removing the a element from front, and returning the tail
@@ -333,7 +342,7 @@ object RealTimeDeque {
       case _ =>
         tailSub(q)
     }
-  } ensuring(res => res.valid)
+  } ensuring(res => res.valid && time <= 3000)
 
   def forceF[T](q: Queue[T]) = {
     require(q.valid)
@@ -358,21 +367,11 @@ object RealTimeDeque {
          // in this case 'r' will have only one element by invariant
         empty[T]
     }
-  } ensuring(res => res.valid) // && time <= 120)
+  } ensuring(res => res.valid && time <= 2750)
 
   def reverse[T](q: Queue[T]): Queue[T] = {
     require(q.valid)
     Queue(q.r, q.lenr, q.sr, q.f, q.lenf, q.sf)
-  } ensuring(q.valid)
-
-  /**
-   * Deque operations
-   *//*
-  def push[T](x: T, q: Queue[T]): Queue[T] = {
-    require(q.valid)
-    val nf : Stream[T] = SCons(x, q.f)
-    val ns : Stream[T] = SCons(x, q.s)
-    Queue(nf, q.r, ns)
-  } ensuring(res => res.valid)*/
+  } ensuring(q.valid && time <= 10)
 
 }
