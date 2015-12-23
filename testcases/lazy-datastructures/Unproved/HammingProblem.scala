@@ -1,9 +1,9 @@
-package lazybenchmarks
-
 import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
+import leon.lazyeval.$.eagerToLazy
+import scala.math.BigInt.int2bigInt
 //import leon.invariant._
 
 /**

@@ -7,6 +7,8 @@ import leon.lang.synthesis._
 import ConcTrees._
 import ConQ._
 import Conqueue._
+import conc.Conqueue
+import conc.ConcTrees
 
 object ConcTrees {
   abstract class Conc[T] { 

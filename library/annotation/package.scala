@@ -10,6 +10,8 @@ package object annotation {
   @ignore
   class induct     extends StaticAnnotation
   @ignore
+  class traceInduct     extends StaticAnnotation
+  @ignore
   class ignore     extends StaticAnnotation
   @ignore
   class extern     extends StaticAnnotation

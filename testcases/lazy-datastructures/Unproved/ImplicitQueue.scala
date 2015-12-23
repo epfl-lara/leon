@@ -3,6 +3,7 @@ import leon.lazyeval.$._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
+import scala.math.BigInt.int2bigInt
 
 /**
  * This is an version of the implicit recursive slowdwon queues of

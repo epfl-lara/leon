@@ -5,6 +5,7 @@ package leon.lazyeval
 import leon.annotation._
 import leon.lang._
 import scala.language.implicitConversions
+import scala.annotation.StaticAnnotation
 
 @library
 object $ {
@@ -48,6 +49,16 @@ object $ {
 
   @inline
   implicit def toWithState[T](x: T) = new WithState(x)
+
+  /**
+   * annotations for monotonicity proofs.
+   * Note implemented as of now.
+   * Let foo be the method that has the annotation.
+   * The given name `methodname` should have the following form:
+   *  m(arg1, ..., argn, substate-Set1,..., substate-Setn, superstate-Set1, ..., superstate-Setn)
+   */
+  @ignore
+  class monoproof(methodname: String) extends StaticAnnotation
 }
 
 @library

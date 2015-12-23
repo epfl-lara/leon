@@ -54,9 +54,7 @@ object MergeSort {
   } ensuring (res => res._2.size == l.size - n && res._1.size == n && stack <= 25 * l.size - 1)
 
   /*
-   * Note: merge is not recursive due to closures.
-   * However, concretizing merge may invoke merge or msort recursively.
-   * So proving standalone bound for merge requires preconditions.
+   * Proving standalone bound for merge requires preconditions.
    */
   def merge(a: $[LList], b: $[LList]): LList = (b.value match {
     case SNil() => a.value

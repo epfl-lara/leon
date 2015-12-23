@@ -1,4 +1,4 @@
-package lazybenchmarks
+package conc
 
 import leon.lazyeval._
 import leon.lang._
@@ -6,6 +6,9 @@ import leon.math._
 import leon.annotation._
 import leon.instrumentation._
 import leon.lazyeval.$._
+
+import ConcTrees._
+import scala.math.BigInt.int2bigInt
 
 object ConcTrees {
 
@@ -30,8 +33,6 @@ object ConcTrees {
   case class Single[T](x: T) extends Conc[T]
   case class CC[T](left: Conc[T], right: Conc[T]) extends Conc[T]
 }
-
-import ConcTrees._
 object Conqueue {
 
   sealed abstract class ConQ[T] {
