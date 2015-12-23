@@ -2,7 +2,6 @@ import leon.lazyeval._
 import leon.lazyeval.$._
 import leon.lang._
 import leon.annotation._
-import leon.collection._
 import leon.instrumentation._
 
 /**
@@ -47,8 +46,7 @@ object ImplicitQueue {
       }
     }
 
-    // valid
-    def valid: Boolean = {
+    def correct: Boolean = {
       this match {
         case OneF(_) => true
         case Two(x, y) => x.size == y.size
@@ -73,14 +71,24 @@ object ImplicitQueue {
       }
     }
 
-    // queue invariant
+    // queue invariants
     // level of mid is one greater than the level of this
-    def valid: Boolean = {
+    def correct: Boolean = { // a property about the content
       this match {
         case Shallow(_) => true
         case Deep(f, m, r) =>
           val mq = (m*)
-          f.valid && (mq.level > this.level) && mq.valid
+          f.correct && (mq.level > this.level) && mq.correct
+      }
+    }
+
+    // a property about the state
+    @invstate
+    def valid: Boolean = {
+      this match {
+        case Shallow(_) => true
+        case Deep(f, m, r) =>
+          m.isEvaluated && (m*).valid
       }
     }
 
@@ -88,17 +96,8 @@ object ImplicitQueue {
   case class Shallow[T](e: ZeroOne[T]) extends Queue[T]
   case class Deep[T](f: OneTwo[T], m: $[Queue[T]], r: ZeroOne[T]) extends Queue[T]
 
-  //def ssize[T](l: $[Stream[T]]): BigInt = (l*).size
-  /*sealed abstract class DOption[T]
-  case class DSome[T](d: Data[T]) extends DOption[T]
-  case class DNone[T]() extends DOption[T]*/
-
-  /*sealed abstract class QOption[T]
-  case class QSome[T](q: Queue[T]) extends QOption[T]
-  case class QNone[T]() extends QOption[T]*/
-
   def head[T](q: Queue[T]): Data[T] = {
-    require(q.valid && !q.isEmpty)
+    require(q.correct && !q.isEmpty)
     q match {
 //      /case Shallow(Zero()) => DNone()
       case Shallow(One(x)) => x
@@ -108,7 +107,7 @@ object ImplicitQueue {
   }
 
   def tail[T](q: Queue[T]): Queue[T] = {
-    require(!q.isEmpty && q.valid)
+    require(!q.isEmpty && q.correct)
     val r: Queue[T] = (q match {
       case Shallow(One(x)) =>
         Shallow(Zero())
@@ -128,17 +127,20 @@ object ImplicitQueue {
     })
     r
   }
-  // To ensure `res.valid` we need more preconditions. But, this is a correctness property
 
-/*  def pot[T](q: Queue[T]): BigInt = {
-    q match {
-      case Deep(OneF(_), m, _) =>
-        if(!m.isEvaluated) {
-
-        }
-
-      case _ => BigInt(0)
-    }
-  }*/
+  /**
+   * Properties of `valid`
+   */
+  def validMonotone[T](q: Queue[T], st1: Set[$[Queue[T]]], st2: Set[$[Queue[T]]]): Boolean = {
+    require((q.valid withState st1) && st1.subsetOf(st2))
+    // induction scheme
+    (q match {
+      case Shallow(_) => true
+      case Deep(f, m, r) =>
+       validMonotone(m*, st1, st2)
+    }) &&
+    //property
+    (q.valid withState st2)
+  } holds
 
 }
