@@ -19,7 +19,7 @@ import org.scalatest.{Reporter => _, _}
 // This is because we compile all tests from each folder together.
 trait VerificationSuite extends LeonRegressionSuite {
 
-  val optionVariants: List[List[String]]
+  def optionVariants: List[List[String]]
   val testDir: String
 
   val ignored: Seq[String] = Seq()
@@ -81,7 +81,7 @@ trait VerificationSuite extends LeonRegressionSuite {
   private[verification] def forEachFileIn(cat: String)(block: Output => Unit) {
     val fs = filesInResourceDir(testDir + cat, _.endsWith(".scala")).toList
 
-    fs foreach { file => 
+    fs foreach { file =>
       assert(file.exists && file.isFile && file.canRead,
         s"Benchmark ${file.getName} is not a readable file")
     }
