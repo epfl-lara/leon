@@ -76,24 +76,11 @@ trait Template[T] { self =>
 
   lazy val start = pathVar._2
 
-  private var substCache : Map[Seq[T],Map[T,T]] = Map.empty
-
   def instantiate(aVar: T, args: Seq[T]): Instantiation[T] = {
-
-    val baseSubstMap : Map[T,T] = substCache.get(args) match {
-      case Some(subst) => subst
-      case None =>
-        val subst = exprVars.map { case (id, idT) => idT -> encoder.encodeId(id) } ++
-                    manager.freshConds(pathVar._1 -> aVar, condVars, condTree) ++
-                    (this.args zip args)
-        substCache += args -> subst
-        subst
-    }
-
-    val lambdaSubstMap = lambdas.map(lambda => lambda.ids._2 -> encoder.encodeId(lambda.ids._1))
-    val quantificationSubstMap = quantifications.map(q => q.qs._2 -> encoder.encodeId(q.qs._1))
-    val substMap : Map[T,T] = baseSubstMap ++ lambdaSubstMap ++ quantificationSubstMap + (start -> aVar)
-    instantiate(substMap)
+    val (substMap, instantiation) = Template.substitution(encoder, manager,
+      condVars, exprVars, condTree, quantifications, lambdas,
+      (this.args zip args).toMap + (start -> aVar), pathVar._1, aVar)
+    instantiation ++ instantiate(substMap)
   }
 
   protected def instantiate(substMap: Map[T, T]): Instantiation[T] = {
@@ -231,6 +218,57 @@ object Template {
     (clauses, encodedBlockers, encodedApps, encodedMatchers, stringRepr)
   }
 
+  def substitution[T](
+    encoder: TemplateEncoder[T],
+    manager: QuantificationManager[T],
+    condVars: Map[Identifier, T],
+    exprVars: Map[Identifier, T],
+    condTree: Map[Identifier, Set[Identifier]],
+    quantifications: Seq[QuantificationTemplate[T]],
+    lambdas: Seq[LambdaTemplate[T]],
+    baseSubst: Map[T, T],
+    pathVar: Identifier,
+    aVar: T
+  ): (Map[T, T], Instantiation[T]) = {
+    var subst = exprVars.map { case (id, idT) => idT -> encoder.encodeId(id) } ++
+                manager.freshConds(pathVar -> aVar, condVars, condTree) ++
+                baseSubst
+
+    // /!\ CAREFUL /!\
+    // We have to be wary while computing the lambda subst map since lambdas can
+    // depend on each other. However, these dependencies cannot be cyclic so it
+    // suffices to make sure the traversal order is correct.
+    var instantiation : Instantiation[T] = Instantiation.empty
+    var seen          : Set[LambdaTemplate[T]] = Set.empty
+
+    val lambdaKeys = lambdas.map(lambda => lambda.ids._1 -> lambda).toMap
+    def extractSubst(lambda: LambdaTemplate[T]): Unit = {
+      for {
+        dep <- lambda.dependencies.flatMap(p => lambdaKeys.get(p._1))
+        if !seen(dep)
+      } extractSubst(dep)
+
+    if (!seen(lambda)) {
+      val substLambda = lambda.substitute(encoder.substitute(subst))
+      val (idT, inst) = manager.instantiateLambda(substLambda)
+      instantiation ++= inst
+      subst += lambda.ids._2 -> idT
+      seen += lambda
+    }
+    }
+
+    for (l <- lambdas) extractSubst(l)
+
+    for (q <- quantifications) {
+      val substQuant = q.substitute(encoder.substitute(subst))
+      val (qT, inst) = manager.instantiateQuantification(substQuant)
+      instantiation ++= inst
+      subst += q.qs._2 -> qT
+    }
+
+    (subst, instantiation)
+  }
+
   def instantiate[T](
     encoder: TemplateEncoder[T],
     manager: QuantificationManager[T],
@@ -252,10 +290,6 @@ object Template {
 
     var instantiation: Instantiation[T] = (newClauses, newBlockers, Map.empty)
 
-    for (lambda <- lambdas) {
-      instantiation ++= manager.instantiateLambda(lambda.substitute(substituter))
-    }
-
     for ((b,apps) <- applications; bp = substituter(b); app <- apps) {
       val newApp = app.copy(caller = substituter(app.caller), args = app.args.map(substituter))
       instantiation ++= manager.instantiateApp(bp, newApp)
@@ -263,10 +297,6 @@ object Template {
 
     for ((b, matchs) <- matchers; bp = substituter(b); m <- matchs) {
       instantiation ++= manager.instantiateMatcher(bp, m.substitute(substituter))
-    }
-
-    for (q <- quantifications) {
-      instantiation ++= manager.instantiateQuantification(q, substMap)
     }
 
     instantiation

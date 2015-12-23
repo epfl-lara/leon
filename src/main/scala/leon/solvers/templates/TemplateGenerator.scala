@@ -453,8 +453,10 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
               Equals(Variable(q), And(Variable(q2), Variable(inst)))
             ) ++ qGuarded.getOrElse(pathVar, Seq.empty)))
 
+            val dependencies: Map[Identifier, T] = vars.filterNot(quantifiers).map(id => id -> localSubst(id)).toMap
             val template = QuantificationTemplate[T](encoder, manager, pathVar -> encodedCond(pathVar),
-              qs, q2, inst, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qTree, allGuarded, qTemplates, localSubst)
+              qs, q2, inst, guard, idQuantifiers zip trQuantifiers, qConds, qExprs, qTree, allGuarded, qTemplates, localSubst,
+              dependencies, Forall(quantifiers.toSeq.sortBy(_.uniqueName).map(ValDef(_)), flatConj))
             registerQuantification(template)
             Variable(q)
           }
