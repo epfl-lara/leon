@@ -180,20 +180,23 @@ class GenCSuite extends LeonRegressionSuite {
     }
   }
 
-  protected def verifyValidTests() = {
-    class AltVerificationSuite(override val testDir: String) extends XLangVerificationSuite {
-      def run() = testValid() // Test only the valid ones
-    }
+  class AltVerificationSuite(override val testDir: String) extends XLangVerificationSuite {
+    override def testAll() = testValid() // Test only the valid ones
 
+    override def suiteName = "Verification Suite For GenC"
+
+    // Add a timeout for the verification
+    override def optionVariants =
+      super.optionVariants map { opts => "--timeout=5" :: opts }
+  }
+
+  // Run verification suite as a nested suite
+  override def nestedSuites = {
     // Use our test dir and not the one from XLangVerificationSuite
-    val verifier = new AltVerificationSuite(testDir)
-
-    test("verifying test cases") { verifier.run() }
+    scala.collection.immutable.IndexedSeq(new AltVerificationSuite(testDir))
   }
 
   protected def testAll() = {
-    verifyValidTests()
-
     // Set C compiler according to the platform we're currently running on
     detectCompiler match {
       case Some(cc) => testValid(cc)
