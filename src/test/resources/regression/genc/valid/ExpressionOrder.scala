@@ -34,7 +34,7 @@ object ExpressionOrder {
     def f4 = (if (i < 0) d else c)._2 // expression result unused
   }
 
-  def main =
+  def main = {
       bool2int(test0(false), 1)  +
       bool2int(test1(42),    2)  +
       bool2int(test2(58),    4)  +
@@ -43,6 +43,7 @@ object ExpressionOrder {
       bool2int(test6,        32) +
       bool2int(test7,        64) +
       bool2int(test8,        128)
+  } ensuring { _ == 0 }
 
   def test0(b: Boolean) = {
     val f = b && !b // == false
@@ -52,7 +53,7 @@ object ExpressionOrder {
     val x = f && { c = 1; true }
 
     c == 0
-  }
+  }.holds
 
   def test1(i: Int) = {
     require(i > 0)
@@ -63,7 +64,7 @@ object ExpressionOrder {
     val x = { c = c + 3; j } + { c = c + 1; j } * { c = c * 2; j }
 
     c == 8 && j == 3 && x == 12
-  }
+  }.holds
 
   def test2(i: Int) = {
     var c = 0;
@@ -71,7 +72,7 @@ object ExpressionOrder {
 
     if (i < 0) c == 1
     else c == 2
-  }
+  }.holds
 
   def test3(b: Boolean) = {
     val f = b && !b // == false
@@ -80,7 +81,7 @@ object ExpressionOrder {
     val x = f || { c = 1; true } || { c = 2; false }
 
     c == 1
-  }
+  }.holds
 
   def test4(b: Boolean) = {
     var i = 10
@@ -97,7 +98,7 @@ object ExpressionOrder {
     }
 
     i == 0 && c == 22
-  }
+  }.holds
 
   def test5(b: Boolean) = {
     val f = b && !b // == false
@@ -107,17 +108,20 @@ object ExpressionOrder {
     c = c + (if (f) 0 else 1)
 
     c == 0
-  }
+  }.holds
 
   def test6 = {
     val a = Array(0, 1, 2, 3, 4)
+
     def rec(b: Boolean, i: Int): Boolean = {
-      if (a.length <= i + 1) b
-      else rec(if (a(i) < a(i + 1)) b else false, i + 1)
+      require(i >= 0 && i < 2147483647) // 2^31 - 1
+
+      if (i + 1 < a.length) rec(if (a(i) < a(i + 1)) b else false, i + 1)
+      else b
     }
 
     rec(true, 0)
-  }
+  }.holds
 
   def test7 = {
     var c = 1
@@ -127,7 +131,7 @@ object ExpressionOrder {
     a(if(a(0) == 0) { c = c + 1; 0 } else { c = c + 2; 1 }) = { c = c * 2; -1 }
 
     c == 4
-  }
+  }.holds
 
   def test8 = {
     var x = 0
@@ -139,7 +143,7 @@ object ExpressionOrder {
     }
 
     bar(2) == 0
-  }
+  }.holds
 
   def bool2int(b: Boolean, f: Int) = if (b) 0 else f;
 }
