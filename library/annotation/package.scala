@@ -10,7 +10,7 @@ package object annotation {
   @ignore
   class induct     extends StaticAnnotation
   @ignore
-  class traceInduct     extends StaticAnnotation
+  class traceInduct(name: String = "") extends StaticAnnotation
   @ignore
   class ignore     extends StaticAnnotation
   @ignore
