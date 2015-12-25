@@ -330,28 +330,14 @@ object LazyNumericalRep {
     }) && (schedulesProperty(l, scheds) withState st2) //property
   } holds
 
+  @traceInduct
   def concreteMonotone[T](st1: Set[$[NumStream]], st2: Set[$[NumStream]], l: $[NumStream]): Boolean = {
-    require((isConcrete(l) withState st1) && st1.subsetOf(st2))
-    // induction scheme
-    (l* match {
-      case Spine(_, _, tail) =>
-        concreteMonotone[T](st1, st2, tail)
-      case _ =>
-        true
-    }) && (isConcrete(l) withState st2)
+    ((isConcrete(l) withState st1) && st1.subsetOf(st2)) ==> (isConcrete(l) withState st2)
   } holds
 
+  @traceInduct
   def concUntilMonotone[T](q: $[NumStream], suf: $[NumStream], st1: Set[$[NumStream]], st2: Set[$[NumStream]]): Boolean = {
-    require((concreteUntil(q, suf) withState st1) && st1.subsetOf(st2))
-    (if (q != suf) {
-      q* match {
-        case Spine(_, _, tail) =>
-          concUntilMonotone(tail, suf, st1, st2)
-        case _ =>
-          true
-      }
-    } else true) &&
-      (concreteUntil(q, suf) withState st2)
+    ((concreteUntil(q, suf) withState st1) && st1.subsetOf(st2)) ==> (concreteUntil(q, suf) withState st2)
   } holds
 
   // suffix predicates and  their properties (this should be generalizable)
@@ -378,23 +364,14 @@ object LazyNumericalRep {
   /**
    * suf(q, suf) ==> suf(q.rear, suf.rear)
    */
+  @traceInduct
   def suffixTrans[T](q: $[NumStream], suf: $[NumStream]): Boolean = {
-    require(suffix(q, suf))
-    // induction scheme
-    (if (q == suf) true
-    else {
-      q* match {
-        case Spine(_, _, rear) =>
-          suffixTrans(rear, suf)
-        case Tip() => true
-      }
-    }) && // property
-      ((q*, suf*) match {
-        case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
-          // 'sufRear' should be a suffix of 'rear1'
-          suffix(rear, sufRear)
-        case _ => true
-      })
+    suffix(q, suf) ==> ((q*, suf*) match {
+      case (Spine(_, _, rear), Spine(_, _, sufRear)) =>
+        // 'sufRear' should be a suffix of 'rear1'
+        suffix(rear, sufRear)
+      case _ => true
+    })
   }.holds
 
   /**
@@ -411,47 +388,23 @@ object LazyNumericalRep {
       }) && l != suf // property
   }.holds
 
+  @traceInduct
   def suffixCompose[T](q: $[NumStream], suf1: $[NumStream], suf2: $[NumStream]): Boolean = {
-    require(suffix(q, suf1) && properSuffix(suf1, suf2))
-    // induction over suffix(q, suf1)
-    (if (q == suf1) true
-    else {
-      q* match {
-        case Spine(_, _, rear) =>
-          suffixCompose(rear, suf1, suf2)
-        case Tip() => false
-      }
-    }) && properSuffix(q, suf2)
+    (suffix(q, suf1) && properSuffix(suf1, suf2)) ==> properSuffix(q, suf2)
   } holds
 
   // properties of 'concUntil'
 
+  @traceInduct
   def concreteUntilIsSuffix[T](l: $[NumStream], suf: $[NumStream]): Boolean = {
-    require(concreteUntil(l, suf))
-    // induction scheme
-    (if (l != suf) {
-      (l* match {
-        case Spine(_, cws, tail) =>
-          concreteUntilIsSuffix(tail, suf)
-        case _ =>
-          true
-      })
-    } else true) && suffix(l, suf)
+    concreteUntil(l, suf) ==> suffix(l, suf)
   }.holds
 
   // properties that extend `concUntil` to larger portions of the queue
 
+  @traceInduct
   def concUntilExtenLemma[T](q: $[NumStream], suf: $[NumStream], st1: Set[$[NumStream]], st2: Set[$[NumStream]]): Boolean = {
-    require((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf))
-    // induction scheme
-    (if (q != suf) {
-      q* match {
-        case Spine(_, _, tail) =>
-          concUntilExtenLemma(tail, suf, st1, st2)
-        case _ =>
-          true
-      }
-    } else true) &&
+    ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==> 
       (suf* match {
         case Spine(_, _, rear) =>
           concreteUntil(q, rear) withState st2
@@ -459,59 +412,27 @@ object LazyNumericalRep {
       })
   } holds
 
+  @traceInduct
   def concUntilConcreteExten[T](q: $[NumStream], suf: $[NumStream]): Boolean = {
-    require(concreteUntil(q, suf) && isConcrete(suf))
-    (if (q != suf) {
-      q* match {
-        case Spine(_, _, tail) =>
-          concUntilConcreteExten(tail, suf)
-        case _ =>
-          true
-      }
-    } else true) && isConcrete(q)
+    (concreteUntil(q, suf) && isConcrete(suf)) ==> isConcrete(q)
   } holds
 
+  @traceInduct
   def concUntilCompose[T](q: $[NumStream], suf1: $[NumStream], suf2: $[NumStream]): Boolean = {
-    require(concreteUntil(q, suf1) && concreteUntil(suf1, suf2))
-    (if (q != suf1) {
-      q* match {
-        case Spine(_, _, tail) =>
-          concUntilCompose(tail, suf1, suf2)
-        case _ =>
-          true
-      }
-    } else true) &&
-      concreteUntil(q, suf2)
+    (concreteUntil(q, suf1) && concreteUntil(suf1, suf2)) ==> concreteUntil(q, suf2)
   } holds
 
   // properties that relate `concUntil`, `concrete`,  `zeroPreceedsSuf` with `zeroPreceedsLazy`
   //   - these are used in preconditions to derive the `zeroPreceedsLazy` property
 
+  @traceInduct
   def zeroPredSufConcreteUntilLemma[T](q: $[NumStream], suf: $[NumStream]): Boolean = {
-    require(concreteUntil(q, suf) && zeroPreceedsSuf(q, suf))
-    // induction scheme
-    (if (q != suf) {
-      q* match {
-        case Spine(Zero(), _, _) => true
-        case Spine(_, _, tail) =>
-          zeroPredSufConcreteUntilLemma(tail, suf)
-        case _ =>
-          true
-      }
-    } else true) &&
-      zeroPreceedsLazy(q)
+    (zeroPreceedsSuf(q, suf) && concreteUntil(q, suf)) ==> zeroPreceedsLazy(q)
   } holds
 
+  @traceInduct
   def concreteZeroPredLemma[T](q: $[NumStream]): Boolean = {
-    require(isConcrete(q))
-    // induction scheme
-    (q* match {
-      case Spine(_, _, tail) =>
-        concreteZeroPredLemma(tail)
-      case _ =>
-        true
-    }) &&
-      zeroPreceedsLazy(q)
+    isConcrete(q) ==> zeroPreceedsLazy(q)
   } holds
 
   // properties relating `suffix` an `zeroPreceedsSuf`
