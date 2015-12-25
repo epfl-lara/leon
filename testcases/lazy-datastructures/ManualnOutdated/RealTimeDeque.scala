@@ -1,3 +1,4 @@
+package outdated
 import leon.lazyeval._
 import leon.lazyeval.$._
 import leon.lang._
@@ -324,11 +325,18 @@ object RealTimeDeque {
   /**
    * st1.subsetOf(st2) ==> fune(l, st2) == fune(fune(l, st1), st2)
    */
-  @traceInduct
   def funeCompose[T](l1: $[Stream[T]], st1: Set[$[Stream[T]]], st2: Set[$[Stream[T]]]): Boolean = {
     require(st1.subsetOf(st2))
+    // induction scheme
+    (if (l1.isEvaluated withState st1) {
+      l1* match {
+        case SCons(_, tail) =>
+          funeCompose(tail, st1, st2)
+        case _ => true
+      }
+    } else true) &&
     // property
-    (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
+      (firstUneval(l1) withState st2) == (firstUneval(firstUneval(l1) withState st1) withState st2)
   } holds
 
   /**
