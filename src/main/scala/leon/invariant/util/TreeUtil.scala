@@ -276,6 +276,18 @@ object ProgramUtil {
 object PredicateUtil {
 
   /**
+   * Returns a constructor for the let* and also the current
+   * body of let*
+   */
+  def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
+    case Let(binder, letv, letb) =>
+      val (cons, body) = letStarUnapply(letb)
+      (e => Let(binder, letv, cons(e)), body)
+    case base =>
+      (e => e, base)
+  }
+  
+  /**
    * Checks if the input expression has only template variables as free variables
    */
   def isTemplateExpr(expr: Expr): Boolean = {

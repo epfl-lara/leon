@@ -192,6 +192,10 @@ object LazinessUtil {
   def isEvalFunction(fd: FunDef) = {
     fd.id.name.startsWith("eval@")
   }
+  
+  def isStateParam(id: Identifier) = {
+    id.name.startsWith("st@")
+  }
 
   def isPlaceHolderTParam(tp: TypeParameter) = {
     tp.id.name.endsWith("@")

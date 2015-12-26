@@ -568,14 +568,9 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   def assignBodiesToFunctions = funMap foreach {
     case (fd, nfd) =>
       //println("Considering function: "+fd)
-      // Here, using name to identify 'state' parameters
-      /*nfd.params.foldLeft(Seq[Expr]()) {
-        case (acc, ValDef(id, _)) if id.name.startsWith("st@") =>
-          acc :+ id.toVariable
-        case (acc, _) => acc
-      }*/
+      // Here, using name to identify 'state' parameters      
       val stateParam = nfd.params.collectFirst {
-        case vd if vd.id.name.startsWith("st@") =>
+        case vd if isStateParam(vd.id) =>
           vd.id.toVariable
       }
       val stType = stateParam.map(_.getType.asInstanceOf[CaseClassType])

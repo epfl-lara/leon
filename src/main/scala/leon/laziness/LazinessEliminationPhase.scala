@@ -87,7 +87,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg, funsManager)).apply
+    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
     if (dumpProgWithPreAsserts) {
       //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre")
@@ -187,18 +187,6 @@ object LazinessEliminationPhase extends TransformationPhase {
       println("After lifiting arguments of lazy constructors: \n" + ScalaPrinter.apply(nprog))
     nprog
   }
-
-  /**
-   * Returns a constructor for the let* and also the current
-   * body of let*
-   */
-  def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
-      case Let(binder, letv, letb) =>
-        val (cons, body) = letStarUnapply(letb)
-        (e => Let(binder, letv, cons(e)), body)
-      case base =>
-        (e => e, base)
-    }
 
   def removeInstrumentationSpecs(p: Program): Program = {
     def hasInstVar(e: Expr) = {
