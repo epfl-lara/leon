@@ -40,7 +40,7 @@ class ClosurePreAsserter(p: Program) {
     })
   }
 
-  def hasClassInvariants(cc: CaseClass): Boolean = {    
+  def hasClassInvariants(cc: CaseClass): Boolean = {
     lookupOp(cc.ct.classDef).hasPrecondition
   }
 
@@ -105,7 +105,7 @@ class ClosurePreAsserter(p: Program) {
                 val (letsCons, letsBody) = letStarUnapply(l)
                 letsBody match {
                   case And(args) =>
-                    args.filter(a => variablesOf(a).contains(stparam)).map{
+                    args.filter(a => variablesOf(a).contains(stparam)).map {
                       e => simplifyLets(letsCons(e))
                     }
                   case _ => Seq()
