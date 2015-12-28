@@ -65,7 +65,9 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     val invocationEqualsBody : Option[Expr] = lambdaBody match {
       case Some(body) if isRealFunDef =>
-        val b : Expr = And(Equals(invocation, body), liftedEquals(invocation, body, lambdaArguments))
+        val b : Expr = And(
+          liftedEquals(invocation, body, lambdaArguments),
+          Equals(invocation, body))
 
         Some(if(prec.isDefined) {
           Implies(prec.get, b)
@@ -121,7 +123,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
   }
 
   private def lambdaArgs(expr: Expr): Seq[Identifier] = expr match {
-    case Lambda(args, body) => args.map(_.id) ++ lambdaArgs(body)
+    case Lambda(args, body) => args.map(_.id.freshen) ++ lambdaArgs(body)
     case IsTyped(_, _: FunctionType) => sys.error("Only applicable on lambda chains")
     case _ => Seq.empty
   }
@@ -133,7 +135,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         val arguments = currArgs.map(_.toVariable)
         val apply = if (inline) application _ else Application
         val (appliedInv, appliedBody) = (apply(i, arguments), apply(b, arguments))
-        Equals(appliedInv, appliedBody) +: rec(appliedInv, appliedBody, nextArgs, false)
+        rec(appliedInv, appliedBody, nextArgs, false) :+ Equals(appliedInv, appliedBody)
       case _ =>
         assert(args.isEmpty, "liftedEquals should consume all provided arguments")
         Seq.empty

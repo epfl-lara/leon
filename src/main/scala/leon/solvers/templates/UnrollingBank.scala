@@ -171,7 +171,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     // define an activating boolean...
     val template = templateGenerator.mkTemplate(expr)
 
-    val trArgs = template.tfd.params.map(vd => bindings(Variable(vd.id)))
+    val trArgs = template.tfd.params.map(vd => Left(bindings(Variable(vd.id))))
 
     for (vd <- template.tfd.params if vd.getType.isInstanceOf[FunctionType]) {
       functionVars += vd.getType -> (functionVars.getOrElse(vd.getType, Set()) + bindings(vd.toVariable))
@@ -291,7 +291,6 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
           }
 
           for ((app, newInfos) <- nextApps) {
-            println(app -> newInfos)
             registerAppBlocker(nextGeneration(gen), app, newInfos)
           }
 

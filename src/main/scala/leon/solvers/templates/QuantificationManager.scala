@@ -14,23 +14,17 @@ import purescala.Types._
 import purescala.Quantification.{QuantificationTypeMatcher => QTM}
 
 import Instantiation._
+import Template._
 
 import scala.collection.mutable.{Map => MutableMap, Set => MutableSet, Stack => MutableStack, Queue}
 
-object Matcher {
-  def argValue[T](arg: Either[T, Matcher[T]]): T = arg match {
-    case Left(value) => value
-    case Right(matcher) => matcher.encoded
-  }
-}
-
-case class Matcher[T](caller: T, tpe: TypeTree, args: Seq[Either[T, Matcher[T]]], encoded: T) {
+case class Matcher[T](caller: T, tpe: TypeTree, args: Seq[Arg[T]], encoded: T) {
   override def toString = caller + args.map {
     case Right(m) => m.toString
     case Left(v) => v.toString
   }.mkString("(",",",")")
 
-  def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]] = Map.empty): Matcher[T] = copy(
+  def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): Matcher[T] = copy(
     caller = substituter(caller),
     args = args.map {
       case Left(v) => matcherSubst.get(v) match {
@@ -64,7 +58,7 @@ class QuantificationTemplate[T](
 
   lazy val start = pathVar._2
 
-  def substitute(substituter: T => T): QuantificationTemplate[T] = {
+  def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): QuantificationTemplate[T] = {
     new QuantificationTemplate[T](
       quantificationManager,
       pathVar._1 -> substituter(start),
@@ -78,15 +72,20 @@ class QuantificationTemplate[T](
       condTree,
       clauses.map(substituter),
       blockers.map { case (b, fis) =>
-        substituter(b) -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
+        substituter(b) -> fis.map(fi => fi.copy(
+          args = fi.args.map(_.substitute(substituter, matcherSubst))
+        ))
       },
       applications.map { case (b, apps) =>
-        substituter(b) -> apps.map(app => app.copy(caller = substituter(app.caller), args = app.args.map(substituter)))
+        substituter(b) -> apps.map(app => app.copy(
+          caller = substituter(app.caller),
+          args = app.args.map(_.substitute(substituter, matcherSubst))
+        ))
       },
       matchers.map { case (b, ms) =>
-        substituter(b) -> ms.map(_.substitute(substituter))
+        substituter(b) -> ms.map(_.substitute(substituter, matcherSubst))
       },
-      lambdas.map(_.substitute(substituter)),
+      lambdas.map(_.substitute(substituter, matcherSubst)),
       dependencies.map { case (id, value) => id -> substituter(value) },
       structuralKey
     )
@@ -397,7 +396,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
        *      matchers in the argument and quorum positions
        */
           allMappings.filter { s =>
-            def expand(ms: Traversable[(Either[T,Matcher[T]], Either[T,Matcher[T]])]): Set[(Matcher[T], Matcher[T])] = ms.flatMap {
+            def expand(ms: Traversable[(Arg[T], Arg[T])]): Set[(Matcher[T], Matcher[T])] = ms.flatMap {
               case (Right(qm), Right(m)) => Set(qm -> m) ++ expand(qm.args zip m.args)
               case _ => Set.empty[(Matcher[T], Matcher[T])]
             }.toSet
@@ -409,11 +408,11 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         }
     }
 
-    private def extractSubst(mapping: Set[(Set[T], Matcher[T], Matcher[T])]): (Set[T], Map[T,Either[T, Matcher[T]]], Boolean) = {
+    private def extractSubst(mapping: Set[(Set[T], Matcher[T], Matcher[T])]): (Set[T], Map[T,Arg[T]], Boolean) = {
       var constraints: Set[T] = Set.empty
       var eqConstraints: Set[(T, T)] = Set.empty
       var matcherEqs: List[(T, T)] = Nil
-      var subst: Map[T, Either[T, Matcher[T]]] = Map.empty
+      var subst: Map[T, Arg[T]] = Map.empty
 
       for {
         (bs, qm @ Matcher(qcaller, _, qargs, _), m @ Matcher(caller, _, args, _)) <- mapping
@@ -422,16 +421,16 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         (qarg, arg) <- (qargs zip args)
       } qarg match {
         case Left(quant) if subst.isDefinedAt(quant) =>
-          eqConstraints += (quant -> Matcher.argValue(arg))
+          eqConstraints += (quant -> arg.encoded)
         case Left(quant) if quantified(quant) =>
           subst += quant -> arg
         case Right(qam) =>
-          val argVal = Matcher.argValue(arg)
+          val argVal = arg.encoded
           eqConstraints += (qam.encoded -> argVal)
           matcherEqs :+= qam.encoded -> argVal
       }
 
-      val substituter = encoder.substitute(subst.mapValues(Matcher.argValue))
+      val substituter = encoder.substitute(subst.mapValues(_.encoded))
       val substConstraints = constraints.filter(_ != trueT).map(substituter)
       val substEqs = eqConstraints.map(p => substituter(p._1) -> p._2)
         .filter(p => p._1 != p._2).map(p => encoder.mkEquals(p._1, p._2))
@@ -448,25 +447,25 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         val (enablers, subst, isStrict) = extractSubst(mapping)
         val (enabler, optEnabler) = freshBlocker(enablers)
 
-        if (optEnabler.isDefined) {
-          instantiation = instantiation withClause encoder.mkEquals(enabler, optEnabler.get)
-        }
-
-        val baseSubst = subst.mapValues(Matcher.argValue) ++ instanceSubst(enablers)
+        val baseSubst = subst ++ instanceSubst(enablers).mapValues(Left(_))
         val (substMap, inst) = Template.substitution(encoder, QuantificationManager.this,
-          exprVars, condVars, condTree, Seq.empty, lambdas, baseSubst, pathVar._1, enabler)
+          condVars, exprVars, condTree, Seq.empty, lambdas, baseSubst, pathVar._1, enabler)
 
         if (!skip(substMap)) {
+          if (optEnabler.isDefined) {
+            instantiation = instantiation withClause encoder.mkEquals(enabler, optEnabler.get)
+          }
+
           instantiation ++= inst
           instantiation ++= Template.instantiate(encoder, QuantificationManager.this,
             clauses, blockers, applications, Seq.empty, Map.empty[T, Set[Matcher[T]]], lambdas, substMap)
 
-          val msubst = subst.collect { case (c, Right(m)) => c -> m }
-          val substituter = encoder.substitute(substMap)
+          val msubst = substMap.collect { case (c, Right(m)) => c -> m }
+          val substituter = encoder.substitute(substMap.mapValues(_.encoded))
 
           for ((b,ms) <- allMatchers; m <- ms) {
             val sb = enablers ++ (if (b == start) Set.empty else Set(substituter(b)))
-            val sm = m.substitute(substituter, matcherSubst = msubst)
+            val sm = m.substitute(substituter, msubst)
 
             if (matchers(m)) {
               handled += sb -> sm
@@ -484,7 +483,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     protected def instanceSubst(enablers: Set[T]): Map[T, T]
 
-    protected def skip(subst: Map[T, T]): Boolean = false
+    protected def skip(subst: Map[T, Arg[T]]): Boolean = false
   }
 
   private class Quantification (
@@ -556,10 +555,11 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       Map(guardVar -> guardT, blocker -> newBlocker)
     }
 
-    override protected def skip(subst: Map[T, T]): Boolean = {
-      val substituter = encoder.substitute(subst)
+    override protected def skip(subst: Map[T, Arg[T]]): Boolean = {
+      val substituter = encoder.substitute(subst.mapValues(_.encoded))
+      val msubst = subst.collect { case (c, Right(m)) => c -> m }
       allMatchers.forall { case (b, ms) =>
-        ms.forall(m => matchers(m) || instCtx(Set(substituter(b)) -> m.substitute(substituter)))
+        ms.forall(m => matchers(m) || instCtx(Set(substituter(b)) -> m.substitute(substituter, msubst)))
       }
     }
   }
@@ -588,9 +588,9 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       (m: Matcher[T]) => m.args.collect { case Left(a) if quantified(a) => a }.toSet)
   }
 
-  def instantiateAxiom(template: LambdaTemplate[T], substMap: Map[T, T]): Instantiation[T] = {
-    val quantifiers = template.arguments map {
-      case (id, idT) => id -> substMap(idT)
+  def instantiateAxiom(template: LambdaTemplate[T], substMap: Map[T, Arg[T]]): Instantiation[T] = {
+    val quantifiers = template.arguments flatMap {
+      case (id, idT) => substMap(idT).left.toOption.map(id -> _)
     } filter (p => isQuantifier(p._2))
 
     if (quantifiers.isEmpty || lambdaAxioms(template -> quantifiers)) {
@@ -602,19 +602,24 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       val guard = FreshIdentifier("guard", BooleanType, true)
       val guardT = encoder.encodeId(guard)
 
-      val substituter = encoder.substitute(substMap + (template.start -> blockerT))
-      val allMatchers = template.matchers map { case (b, ms) => substituter(b) -> ms.map(_.substitute(substituter)) }
+      val substituter = encoder.substitute(substMap.mapValues(_.encoded) + (template.start -> blockerT))
+      val msubst = substMap.collect { case (c, Right(m)) => c -> m }
+
+      val allMatchers = template.matchers map { case (b, ms) =>
+        substituter(b) -> ms.map(_.substitute(substituter, msubst))
+      }
+
       val qMatchers = allMatchers.flatMap(_._2).toSet
 
-      val encArgs = template.args map substituter
+      val encArgs = template.args map (arg => Left(arg).substitute(substituter, msubst))
       val app = Application(Variable(template.ids._1), template.arguments.map(_._1.toVariable))
-      val appT = encoder.encodeExpr((template.arguments.map(_._1) zip encArgs).toMap + template.ids)(app)
-      val selfMatcher = Matcher(template.ids._2, template.tpe, encArgs.map(Left(_)), appT)
+      val appT = encoder.encodeExpr((template.arguments.map(_._1) zip encArgs.map(_.encoded)).toMap + template.ids)(app)
+      val selfMatcher = Matcher(template.ids._2, template.tpe, encArgs, appT)
 
       val enablingClause = encoder.mkImplies(guardT, blockerT)
 
       instantiateAxiom(
-        template.pathVar._1 -> substMap(template.start),
+        template.pathVar._1 -> substituter(template.start),
         blockerT,
         guardT,
         quantifiers,
@@ -625,12 +630,17 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
         template.condTree,
         (template.clauses map substituter) :+ enablingClause,
         template.blockers map { case (b, fis) =>
-          substituter(b) -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
+          substituter(b) -> fis.map(fi => fi.copy(
+            args = fi.args.map(_.substitute(substituter, msubst))
+          ))
         },
         template.applications map { case (b, apps) =>
-          substituter(b) -> apps.map(app => app.copy(caller = substituter(app.caller), args = app.args.map(substituter)))
+          substituter(b) -> apps.map(app => app.copy(
+            caller = substituter(app.caller),
+            args = app.args.map(_.substitute(substituter, msubst))
+          ))
         },
-        template.lambdas map (_.substitute(substituter))
+        template.lambdas map (_.substitute(substituter, msubst))
       )
     }
   }
@@ -675,7 +685,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     for {
       m <- matchers
-      sm = m.substitute(substituter)
+      sm = m.substitute(substituter, Map.empty)
       if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
     } instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
 
@@ -732,7 +742,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
         for {
           (_, ms) <- template.matchers; m <- ms
-          sm = m.substitute(substituter)
+          sm = m.substitute(substituter, Map.empty)
           if !instCtx.corresponding(sm).exists(_._2.args == sm.args)
         } instantiation ++= instCtx.instantiate(Set.empty, sm)(quantifications.toSeq : _*)
 
@@ -787,7 +797,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
       var prev = emptyT
       for ((b, m) <- insts.toSeq) {
         val next = encoder.encodeId(setNext)
-        val argsMap = (elems zip m.args).map { case (idT, arg) => idT -> Matcher.argValue(arg) }
+        val argsMap = (elems zip m.args).map { case (idT, arg) => idT -> arg.encoded }
         val substMap = Map(guardT -> b, setPrevT -> prev, setNextT -> next) ++ argsMap
         prev = next
         clauses += encoder.substitute(substMap)(setT)
@@ -795,7 +805,7 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
       val setMap = Map(setPrevT -> prev)
       for ((b, m) <- ctx.toSeq) {
-        val substMap = setMap ++ (elems zip m.args).map(p => p._1 -> Matcher.argValue(p._2))
+        val substMap = setMap ++ (elems zip m.args).map(p => p._1 -> p._2.encoded)
         clauses += encoder.substitute(substMap)(encoder.mkImplies(b, containsT))
       }
     }

@@ -12,9 +12,10 @@ import purescala.Types._
 
 import utils._
 import Instantiation._
+import Template._
 
-case class App[T](caller: T, tpe: FunctionType, args: Seq[T]) {
-  override def toString = "(" + caller + " : " + tpe + ")" + args.mkString("(", ",", ")")
+case class App[T](caller: T, tpe: FunctionType, args: Seq[Arg[T]]) {
+  override def toString = "(" + caller + " : " + tpe + ")" + args.map(_.encoded).mkString("(", ",", ")")
 }
 
 object LambdaTemplate {
@@ -92,14 +93,6 @@ trait KeyedTemplate[T, E <: Expr] {
 
     structuralKey -> rec(structuralKey).distinct.map(dependencies)
   }
-
-  override def equals(that: Any): Boolean = that match {
-    case t: KeyedTemplate[T, E] =>
-      key == t.key
-    case _ => false
-  }
-
-  override def hashCode: Int = key.hashCode
 }
 
 class LambdaTemplate[T] private (
@@ -124,27 +117,32 @@ class LambdaTemplate[T] private (
   val args = arguments.map(_._2)
   val tpe = ids._1.getType.asInstanceOf[FunctionType]
 
-  def substitute(substituter: T => T): LambdaTemplate[T] = {
+  def substitute(substituter: T => T, matcherSubst: Map[T, Matcher[T]]): LambdaTemplate[T] = {
     val newStart = substituter(start)
     val newClauses = clauses.map(substituter)
     val newBlockers = blockers.map { case (b, fis) =>
       val bp = if (b == start) newStart else b
-      bp -> fis.map(fi => fi.copy(args = fi.args.map(substituter)))
+      bp -> fis.map(fi => fi.copy(
+        args = fi.args.map(_.substitute(substituter, matcherSubst))
+      ))
     }
 
     val newApplications = applications.map { case (b, fas) =>
       val bp = if (b == start) newStart else b
-      bp -> fas.map(fa => fa.copy(caller = substituter(fa.caller), args = fa.args.map(substituter)))
+      bp -> fas.map(fa => fa.copy(
+        caller = substituter(fa.caller),
+        args = fa.args.map(_.substitute(substituter, matcherSubst))
+      ))
     }
 
-    val newQuantifications = quantifications.map(_.substitute(substituter))
+    val newQuantifications = quantifications.map(_.substitute(substituter, matcherSubst))
 
     val newMatchers = matchers.map { case (b, ms) =>
       val bp = if (b == start) newStart else b
-      bp -> ms.map(_.substitute(substituter))
+      bp -> ms.map(_.substitute(substituter, matcherSubst))
     }
 
-    val newLambdas = lambdas.map(_.substitute(substituter))
+    val newLambdas = lambdas.map(_.substitute(substituter, matcherSubst))
 
     val newDependencies = dependencies.map(p => p._1 -> substituter(p._2))
 
@@ -182,7 +180,7 @@ class LambdaTemplate[T] private (
   private lazy val str : String = stringRepr()
   override def toString : String = str
 
-  override def instantiate(substMap: Map[T, T]): Instantiation[T] = {
+  override def instantiate(substMap: Map[T, Arg[T]]): Instantiation[T] = {
     super.instantiate(substMap) ++ manager.instantiateAxiom(this, substMap)
   }
 }
@@ -221,7 +219,7 @@ class LambdaManager[T](encoder: TemplateEncoder[T]) extends TemplateManager(enco
         var appBlockers  : AppBlockers[T] = Map.empty.withDefaultValue(Set.empty)
 
         // make sure the new lambda isn't equal to any free lambda var
-        clauses ++= freeLambdas(newTemplate.tpe).map(pIdT => encoder.mkNot(encoder.mkEquals(pIdT, idT)))
+        clauses ++= freeLambdas(newTemplate.tpe).map(pIdT => encoder.mkNot(encoder.mkEquals(idT, pIdT)))
 
         byID += idT -> newTemplate
         byType += newTemplate.tpe -> (byType(newTemplate.tpe) + (newTemplate.key -> newTemplate))
