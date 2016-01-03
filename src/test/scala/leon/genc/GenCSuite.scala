@@ -189,8 +189,7 @@ class GenCSuite extends LeonRegressionSuite {
     override def suiteName = "Verification Suite For GenC"
 
     // Add a timeout for the verification
-    override def optionVariants =
-      super.optionVariants map { opts => "--timeout=5" :: opts }
+    override val optionVariants = List(List("--solvers=smt-z3,ground"))
   }
 
   // Run verification suite as a nested suite

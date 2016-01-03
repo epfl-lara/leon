@@ -8,7 +8,7 @@ import smtlib.interpreters.Z3Interpreter
 // This is because we compile all tests from each folder together.
 class XLangVerificationSuite extends VerificationSuite {
 
-  def optionVariants: List[List[String]] = {
+  val optionVariants: List[List[String]] = {
     val isZ3Available = try {
       Z3Interpreter.buildDefault.free()
       true
@@ -30,3 +30,4 @@ class XLangVerificationSuite extends VerificationSuite {
   val testDir: String = "regression/verification/xlang/"
   override val desugarXLang = true
 }
+
