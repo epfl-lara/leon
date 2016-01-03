@@ -402,8 +402,9 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case BVLShiftRight(lhs, rhs)  => fatalError("operator >>> not supported")
 
     // Ignore assertions for now
-    case Ensuring(body, _) => convert(body)
-    case Require(_, body)  => convert(body)
+    case Ensuring(body, _)  => convert(body)
+    case Require(_, body)   => convert(body)
+    case Assert(_, _, body) => convert(body)
 
     case IfExpr(cond1, thn1, elze1) =>
       val condF = convertAndFlatten(cond1)
