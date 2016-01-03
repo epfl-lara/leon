@@ -19,7 +19,7 @@ import org.scalatest.{Reporter => _, _}
 // This is because we compile all tests from each folder together.
 trait VerificationSuite extends LeonRegressionSuite {
 
-  def optionVariants: List[List[String]]
+  val optionVariants: List[List[String]]
   val testDir: String
 
   val ignored: Seq[String] = Seq()

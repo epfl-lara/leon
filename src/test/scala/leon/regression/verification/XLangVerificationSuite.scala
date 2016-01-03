@@ -9,7 +9,7 @@ import leon.solvers.SolverFactory
 // This is because we compile all tests from each folder together.
 class XLangVerificationSuite extends VerificationSuite {
 
-  def optionVariants: List[List[String]] = {
+  val optionVariants: List[List[String]] = {
     val isZ3Available = SolverFactory.hasZ3
 
     List(
@@ -25,3 +25,4 @@ class XLangVerificationSuite extends VerificationSuite {
   val testDir: String = "regression/verification/xlang/"
   override val desugarXLang = true
 }
+
