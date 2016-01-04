@@ -5,7 +5,7 @@ object MergeSort {
   def split(l : List[BigInt]) : (List[BigInt],List[BigInt]) = { l match {
     case Cons(a, Cons(b, t)) => 
       val (rec1, rec2) = split(t)
-      (rec1, rec2) // FIXME: Forgot a,b
+      (rec1, Cons(b, rec2)) // FIXME: Forgot a
     case other => (other, Nil[BigInt]())
   }} ensuring { res =>
     val (l1, l2) = res

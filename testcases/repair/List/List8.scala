@@ -191,7 +191,7 @@ sealed abstract class List[T] {
       }
   }} ensuring { res =>
     if (this.content contains e) {
-      res.isDefined && this.size > res.get && this.apply(res.get) == e
+      res.isDefined && this.size > res.get && this.apply(res.get) == e && res.get >= 0
     } else {
       res.isEmpty
     }
