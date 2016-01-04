@@ -81,10 +81,15 @@ object QuestionBuilder {
  * @param input The identifier of the unique function's input. Must be typed or the type should be defined by setArgumentType
  * @param ruleApplication The set of solutions for the body of f
  * @param filter A function filtering which outputs should be considered for comparison.
+ * It takes as input the sequence of outputs already considered for comparison, and the new output.
+ * It should return Some(result) if the result can be shown, and None else.
  * @return An ordered
  * 
  */
-class QuestionBuilder[T <: Expr](input: Seq[Identifier], solutions: Stream[Solution], filter: Expr => Option[T])(implicit c: LeonContext, p: Program) {
+class QuestionBuilder[T <: Expr](
+    input: Seq[Identifier],
+    solutions: Stream[Solution],
+    filter: (Seq[T], Expr) => Option[T])(implicit c: LeonContext, p: Program) {
   import QuestionBuilder._
   private var _argTypes = input.map(_.getType)
   private var _questionSorMethod: QuestionSortingType = QuestionSortingType.IncreasingInputSize
@@ -132,13 +137,19 @@ class QuestionBuilder[T <: Expr](input: Seq[Identifier], solutions: Stream[Solut
     val questions = ListBuffer[Question[T]]()
     for{possible_input             <- enumerated_inputs
         current_output_nonfiltered <- run(solution, possible_input)
-        current_output             <- filter(current_output_nonfiltered)} {
-      val alternative_outputs = (
-        for{alternative                 <- alternatives
-            alternative_output          <- run(alternative, possible_input)
-            alternative_output_filtered <- filter(alternative_output)
-            if alternative_output != current_output
-      } yield alternative_output_filtered).distinct
+        current_output             <- filter(Seq(), current_output_nonfiltered)} {
+      
+      val alternative_outputs = ((ListBuffer[T](current_output) /: alternatives) { (prev, alternative) =>
+        run(alternative, possible_input) match {
+          case Some(alternative_output) if alternative_output != current_output =>
+            filter(prev, alternative_output) match {
+              case Some(alternative_output_filtered) =>
+                prev += alternative_output_filtered
+              case _ => prev
+            }
+          case _ => prev
+        }
+      }).drop(1).toList.distinct
       if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(current_output)) {
         questions += Question(possible_input.map(_._2), current_output, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
       }

@@ -189,7 +189,7 @@ case object StringRender extends Rule("StringRender") {
   /** Find ambiguities not containing _edit_me_ to ask to the user */
   def askQuestion(input: List[Identifier], r: RuleClosed)(implicit c: LeonContext, p: Program): List[disambiguation.Question[StringLiteral]] = {
     //if !s.contains(EDIT_ME)
-    val qb = new disambiguation.QuestionBuilder(input, r.solutions, (expr: Expr) => expr match {
+    val qb = new disambiguation.QuestionBuilder(input, r.solutions, (seq: Seq[Expr], expr: Expr) => expr match {
       case s@StringLiteral(slv) if !slv.contains(EDIT_ME) => Some(s)
       case _ => None
     })
