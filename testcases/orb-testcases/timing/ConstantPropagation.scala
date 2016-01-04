@@ -115,6 +115,10 @@ object ConstantPropagation {
     }
   }
 
+  def progSize(p: Program) = {
+    sizeFuncList(p.funcs)
+  }
+
   def initToBot(l: List[Function]): List[(BigInt /*function id*/ , Element)] = {
     l match {
       case Nil() => Nil[(BigInt /*function id*/ , Element)]()
@@ -127,7 +131,7 @@ object ConstantPropagation {
     val fvals = computeSummaries(p, initToBot(p.funcs), height)
     val newfuns = transformFuns(p.funcs, fvals)
     Program(newfuns)
-  } ensuring(_ => time <= ? * (sizeFuncList(p.funcs)*height) + ? * height + ? * size(p.funcs) + ?)
+  } ensuring(_ => time <= ? * (progSize(p)*height) + ? * height + ? * size(p.funcs) + ?)
 
   /**
    * The initVals is the initial values for the
@@ -139,7 +143,7 @@ object ConstantPropagation {
       initVals
     } else
       computeSummaries(p, analyzeFuns(p.funcs, initVals, initVals), noIters - 1)
-  } ensuring(_ => time <= ? * (sizeFuncList(p.funcs)*noIters) + ? * noIters + ?)
+  } ensuring(_ => time <= ? * (progSize(p)*noIters) + ? * noIters + ?)
 
   /**
    * Initial fvals and oldVals are the same
