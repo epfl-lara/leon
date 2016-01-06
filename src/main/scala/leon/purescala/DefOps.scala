@@ -97,17 +97,17 @@ object DefOps {
   }
 
   private def stripPrefix(off: List[String], from: List[String]): List[String] = {
-    val commonPrefix = (off zip from).takeWhile(p => p._1 == p._2)
+      val commonPrefix = (off zip from).takeWhile(p => p._1 == p._2)
 
-    val res = off.drop(commonPrefix.size)
+      val res = off.drop(commonPrefix.size)
 
-    if (res.isEmpty) {
-      if (off.isEmpty) List()
-      else List(off.last)
-    } else {
-      res
+      if (res.isEmpty) {
+        if (off.isEmpty) List()
+        else List(off.last)
+      } else {
+        res
+      }
     }
-  }
   
   def simplifyPath(namesOf: List[String], from: Definition, useUniqueIds: Boolean)(implicit pgm: Program) = {
     val pathFrom = pathFromRoot(from).dropWhile(_.isInstanceOf[Program])
@@ -356,8 +356,9 @@ object DefOps {
                                  fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap)
                                  : (Program, Map[Identifier, Identifier], Map[FunDef, FunDef], Map[ClassDef, ClassDef]) = {
     replaceDefs(p)(fdMapF, cd => None, fiMapF)
-  }
+      }
 
+  /** Replaces all function calls by an expression depending on the previous function invocation and the new mapped function */
   def replaceFunCalls(e: Expr, fdMapF: FunDef => FunDef, fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap): Expr = {
     preMap {
       case me @ MatchExpr(scrut, cases) =>
@@ -606,9 +607,9 @@ object DefOps {
         case AsInstanceOf(e, ct) => Some(AsInstanceOf(e, tpMap(ct)))
         case MatchExpr(scrut, cases) => 
           Some(MatchExpr(scrut, cases.map{ 
-            case MatchCase(pattern, optGuard, rhs) =>
-              MatchCase(replaceClassDefUse(pattern), optGuard, rhs)
-          }))
+              case MatchCase(pattern, optGuard, rhs) =>
+                MatchCase(replaceClassDefUse(pattern), optGuard, rhs)
+            }))
         case fi @ FunctionInvocation(TypedFunDef(fd, tps), args) =>
           defaultFiMap(fi, fdMap(fd)).map(_.setPos(fi))
         case _ =>
@@ -662,7 +663,7 @@ object DefOps {
       p.definedFunctions.filter(f => f.id.name == after.id.name).map(fd => fd.id.name + " : " + fd) match {
         case Nil => 
         case e => println("Did you mean " + e)
-      }
+    }
       println(Thread.currentThread().getStackTrace.map(_.toString).take(10).mkString("\n"))
     }
 
