@@ -543,10 +543,8 @@ trait SMTLIBTarget extends Interruptible {
        * ===== Everything else =====
        */
       case ap @ Application(caller, args) =>
-        FunctionApplication(
-          declareLambda(caller.getType.asInstanceOf[FunctionType]),
-          (caller +: args).map(toSMT)
-        )
+        val dyn = declareLambda(caller.getType.asInstanceOf[FunctionType])
+        FunctionApplication(dyn, (caller +: args).map(toSMT))
 
       case Not(u)          => Core.Not(toSMT(u))
       case UMinus(u)       => Ints.Neg(toSMT(u))

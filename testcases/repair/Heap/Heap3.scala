@@ -51,7 +51,7 @@ object Heaps {
     case Node(v, l, r) => heapSize(l) + 1 + heapSize(r)
   }} ensuring(_ >= 0)
 
-  private def merge(h1: Heap, h2: Heap) : Heap = {
+  def merge(h1: Heap, h2: Heap) : Heap = {
     require(
       hasLeftistProperty(h1) && hasLeftistProperty(h2) && 
       hasHeapProperty(h1) && hasHeapProperty(h2)

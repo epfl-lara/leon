@@ -6,6 +6,7 @@ package synthesis
 import purescala.ExprOps._
 
 import purescala.ScalaPrinter
+import leon.utils._
 import purescala.Definitions.{Program, FunDef}
 import leon.utils.ASCIIHelpers
 
@@ -20,12 +21,11 @@ object SynthesisPhase extends TransformationPhase {
   val optDerivTrees  = LeonFlagOptionDef( "derivtrees", "Generate derivation trees", false)
 
   // CEGIS options
-  val optCEGISShrink     = LeonFlagOptionDef( "cegis:shrink",     "Shrink non-det programs when tests pruning works well",  true)
   val optCEGISOptTimeout = LeonFlagOptionDef( "cegis:opttimeout", "Consider a time-out of CE-search as untrusted solution", true)
   val optCEGISVanuatoo   = LeonFlagOptionDef( "cegis:vanuatoo",   "Generate inputs using new korat-style generator",       false)
 
   override val definedOptions : Set[LeonOptionDef[Any]] =
-    Set(optManual, optCostModel, optDerivTrees, optCEGISShrink, optCEGISOptTimeout, optCEGISVanuatoo)
+    Set(optManual, optCostModel, optDerivTrees, optCEGISOptTimeout, optCEGISVanuatoo)
 
   def processOptions(ctx: LeonContext): SynthesisSettings = {
     val ms = ctx.findOption(optManual)
@@ -57,7 +57,6 @@ object SynthesisPhase extends TransformationPhase {
       manualSearch = ms,
       functions = ctx.findOption(SharedOptions.optFunctions) map { _.toSet },
       cegisUseOptTimeout = ctx.findOption(optCEGISOptTimeout),
-      cegisUseShrink = ctx.findOption(optCEGISShrink),
       cegisUseVanuatoo = ctx.findOption(optCEGISVanuatoo)
     )
   }
@@ -74,21 +73,25 @@ object SynthesisPhase extends TransformationPhase {
 
       val synthesizer = new Synthesizer(ctx, program, ci, options)
 
-      val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), allowPartial = true)
+      val to = new TimeoutFor(ctx.interruptManager)
 
-      try {
-        if (options.generateDerivationTrees) {
-          val dot = new DotGenerator(search.g)
-          dot.writeFile("derivation"+dotGenIds.nextGlobal+".dot")
+      to.interruptAfter(options.timeoutMs) {
+        val (search, solutions) = synthesizer.validate(synthesizer.synthesize(), allowPartial = true)
+
+        try {
+          if (options.generateDerivationTrees) {
+            val dot = new DotGenerator(search.g)
+            dot.writeFile("derivation"+dotGenIds.nextGlobal+".dot")
+          }
+
+          val (sol, _) = solutions.head
+
+          val expr = sol.toSimplifiedExpr(ctx, program)
+          fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
+          functions += fd
+        } finally {
+          synthesizer.shutdown()
         }
-
-        val (sol, _) = solutions.head
-
-        val expr = sol.toSimplifiedExpr(ctx, program)
-        fd.body = fd.body.map(b => replace(Map(ci.source -> expr), b))
-        functions += fd
-      } finally {
-        synthesizer.shutdown()
       }
     }
 

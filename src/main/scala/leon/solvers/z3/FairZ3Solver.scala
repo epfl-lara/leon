@@ -17,6 +17,7 @@ import purescala.ExprOps._
 import purescala.Types._
 
 import solvers.templates._
+import Template._
 
 import evaluators._
 
@@ -66,7 +67,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
       if (optEnabler == Some(true)) {
         val optArgs = (m.args zip fromTypes).map {
-          p => softFromZ3Formula(model, model.eval(Matcher.argValue(p._1), true).get, p._2)
+          p => softFromZ3Formula(model, model.eval(p._1.encoded, true).get, p._2)
         }
 
         if (optArgs.forall(_.isDefined)) {
@@ -243,7 +244,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
             solver.assertCnstr(clause)
           }
 
-          reporter.debug(" - Verifying model transitivity")
+          reporter.debug(" - Enforcing model transitivity")
           val timer = context.timers.solvers.z3.check.start()
           solver.push() // FIXME: remove when z3 bug is fixed
           val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.satisfactionAssumptions) :_*)

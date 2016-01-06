@@ -131,68 +131,22 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         (resId.toVariable, scope, scrutFun ++ modifiedVars.zip(freshIds).toMap)
  
       case wh@While(cond, body) =>
-        //TODO: rewrite by re-using the nested function transformation code
-        val (condRes, condScope, condFun) = toFunction(cond)
-        val (_, bodyScope, bodyFun) = toFunction(body)
-        val condBodyFun = condFun ++ bodyFun
+        val whileFunDef = new FunDef(parent.id.freshen, Nil, Nil, UnitType).setPos(wh)
+        whileFunDef.addFlag(IsLoop(parent))
+        whileFunDef.body = Some(
+          IfExpr(cond, 
+                 Block(Seq(body), FunctionInvocation(whileFunDef.typed, Seq()).setPos(wh)),
+                 UnitLiteral()))
+        whileFunDef.precondition = wh.invariant
+        whileFunDef.postcondition = Some(
+          Lambda(
+            Seq(ValDef(FreshIdentifier("bodyRes", UnitType))),
+            and(Not(getFunctionalResult(cond)), wh.invariant.getOrElse(BooleanLiteral(true))).setPos(wh)
+          ).setPos(wh)
+        )
 
-        val modifiedVars: Seq[Identifier] = condBodyFun.keys.toSet.intersect(varsInScope).toSeq
-
-        if(modifiedVars.isEmpty)
-          (UnitLiteral(), (b: Expr) => b, Map())
-        else {
-          val whileFunVars = modifiedVars.map(id => FreshIdentifier(id.name, id.getType))
-          val modifiedVars2WhileFunVars = modifiedVars.zip(whileFunVars).toMap
-          val whileFunValDefs = whileFunVars.map(ValDef(_))
-          val whileFunReturnType = tupleTypeWrap(whileFunVars.map(_.getType))
-          val whileFunDef = new FunDef(parent.id.freshen, Nil, whileFunValDefs, whileFunReturnType).setPos(wh)
-          whileFunDef.addFlag(IsLoop(parent))
-          
-          val whileFunCond = condScope(condRes)
-          val whileFunRecursiveCall = replaceNames(condFun,
-            bodyScope(FunctionInvocation(whileFunDef.typed, modifiedVars.map(id => condBodyFun(id).toVariable)).setPos(wh)))
-          val whileFunBaseCase =
-            tupleWrap(modifiedVars.map(id => condFun.getOrElse(id, modifiedVars2WhileFunVars(id)).toVariable))
-          val whileFunBody = replaceNames(modifiedVars2WhileFunVars, 
-            condScope(IfExpr(whileFunCond, whileFunRecursiveCall, whileFunBaseCase)))
-          whileFunDef.body = Some(whileFunBody)
-
-          val resVar = Variable(FreshIdentifier("res", whileFunReturnType))
-          val whileFunVars2ResultVars: Map[Expr, Expr] = 
-            whileFunVars.zipWithIndex.map{ case (v, i) => 
-              (v.toVariable, tupleSelect(resVar, i+1, whileFunVars.size))
-            }.toMap
-          val modifiedVars2ResultVars: Map[Expr, Expr]  = modifiedVars.map(id => 
-            (id.toVariable, whileFunVars2ResultVars(modifiedVars2WhileFunVars(id).toVariable))).toMap
-
-          //the mapping of the trivial post condition variables depends on whether the condition has had some side effect
-          val trivialPostcondition: Option[Expr] = Some(Not(replace(
-            modifiedVars.map(id => (condFun.getOrElse(id, id).toVariable, modifiedVars2ResultVars(id.toVariable))).toMap,
-            whileFunCond)))
-          val invariantPrecondition: Option[Expr] = wh.invariant.map(expr => replaceNames(modifiedVars2WhileFunVars, expr))
-          val invariantPostcondition: Option[Expr] = wh.invariant.map(expr => replace(modifiedVars2ResultVars, expr))
-          whileFunDef.precondition = invariantPrecondition
-          whileFunDef.postcondition = trivialPostcondition.map( expr => 
-            Lambda(
-              Seq(ValDef(resVar.id)), 
-              and(expr, invariantPostcondition.getOrElse(BooleanLiteral(true))).setPos(wh)
-            ).setPos(wh)
-          )
-
-          val finalVars = modifiedVars.map(_.freshen)
-          val finalScope = (body: Expr) => {
-            val tupleId = FreshIdentifier("t", whileFunReturnType)
-            LetDef(Seq(whileFunDef), Let(
-              tupleId,
-              FunctionInvocation(whileFunDef.typed, modifiedVars.map(_.toVariable)).setPos(wh),
-              finalVars.zipWithIndex.foldLeft(body) { (b, id) =>
-                Let(id._1, tupleSelect(tupleId.toVariable, id._2 + 1, finalVars.size), b)
-              }
-            ))
-          }
-
-          (UnitLiteral(), finalScope, modifiedVars.zip(finalVars).toMap)
-        }
+        val newExpr = LetDef(List(whileFunDef), FunctionInvocation(whileFunDef.typed, Seq()).setPos(wh)).setPos(wh)
+        toFunction(newExpr)
 
       case Block(Seq(), expr) =>
         toFunction(expr)
@@ -281,6 +235,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
             val modifiedVars: List[Identifier] =
               collect[Identifier]({
                 case Assignment(v, _) => Set(v)
+                case FunctionInvocation(tfd, _) => state.funDefsMapping.get(tfd.fd).map(p => p._2.toSet).getOrElse(Set())
                 case _ => Set()
               })(bd).intersect(state.varsInScope).toList
             (fd, modifiedVars)
@@ -318,7 +273,11 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
               yield TupleType(fd.returnType :: modifiedVars.map(_.getType))
 
             val newFds = for(((fd, newParams), newReturnType) <- newParams.zip(newReturnType))
-              yield (fd, new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType).setPos(fd))
+              yield {
+                val newFd = new FunDef(fd.id.freshen, fd.tparams, newParams, newReturnType).setPos(fd)
+                newFd.addFlags(fd.flags)
+                (fd, newFd)
+              }
               
             val mappingToAdd: Seq[(FunDef, (FunDef, List[Identifier]))] =
               for(((fd, newFd), (_, freshVarDecls)) <- newFds.zip(freshVarDecls)) yield (fd -> ((newFd, freshVarDecls.toList)))
@@ -328,7 +287,9 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
               wrappedBodyOpt.map(wrappedBody => 
                 toFunction(wrappedBody)(
                   State(state.parent, Set(), 
-                        state.funDefsMapping ++ mappingToAdd)
+                        state.funDefsMapping.map{
+  case (fd, (nfd, mvs)) =>
+  (fd, (nfd, mvs.map(v => rewritingMap.getOrElse(v, v))))} ++ mappingToAdd)
                 )
               )
             }
@@ -398,5 +359,14 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
   }
 
   def replaceNames(fun: Map[Identifier, Identifier], expr: Expr) = replaceFromIDs(fun mapValues Variable, expr)
+
+  
+  /* Extract functional result value. Useful to remove side effect from conditions when moving it to post-condition */
+  private def getFunctionalResult(expr: Expr): Expr = {
+    preMap({
+      case Block(_, res) => Some(res)
+      case _ => None
+    })(expr)
+  }
 
 }

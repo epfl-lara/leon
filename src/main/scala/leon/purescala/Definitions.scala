@@ -205,8 +205,8 @@ object Definitions {
   // If this class was a method. owner is the original owner of the method
   case class IsMethod(owner: ClassDef) extends FunctionFlag
   // If this function represents a loop that was there before XLangElimination
-  // Contains a copy of the original looping function
-  case class IsLoop(orig: FunDef) extends FunctionFlag
+  // Contains a link to the FunDef where the loop was defined
+  case class IsLoop(owner: FunDef) extends FunctionFlag
   // If extraction fails of the function's body fais, it is marked as abstract
   case object IsAbstract extends FunctionFlag
   // Currently, the only synthetic functions are those that calculate default values of parameters

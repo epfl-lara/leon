@@ -2,9 +2,11 @@
 
 package leon
 package repair
-  
+
+import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
+import purescala.Extractors._
 import purescala.ExprOps._
 import purescala.Types._
 import purescala.DefOps._
@@ -97,6 +99,60 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
 
             bh.write()
           }
+
+          reporter.ifDebug { printer =>
+            import java.io.FileWriter
+            import java.text.SimpleDateFormat
+            import java.util.Date
+
+            val categoryName = fd.getPos.file.toString.split("/").dropRight(1).lastOption.getOrElse("?")
+            val benchName = categoryName+"."+fd.id.name
+
+            val defs = visibleFunDefsFromMain(program).collect {
+              case fd: FunDef => 1 + fd.params.size + formulaSize(fd.fullBody)
+            }
+
+            val pSize = defs.sum;
+            val fSize = formulaSize(fd.body.get)
+
+            def localizedExprs(n: graph.Node): List[Expr] = {
+              n match {
+                case on: graph.OrNode =>
+                  on.selected.map(localizedExprs).flatten
+                case an: graph.AndNode if an.ri.rule == Focus =>
+                  an.selected.map(localizedExprs).flatten
+                case an: graph.AndNode =>
+                  val TopLevelAnds(clauses) = an.p.ws
+
+                  val res = clauses.collect {
+                    case Guide(expr) => expr
+                  }
+
+                  res.toList
+              }
+            }
+
+            val locSize = localizedExprs(search.g.root).map(formulaSize).sum;
+
+            val (solSize, proof) = solutions.headOption match {
+              case Some((sol, trusted)) =>
+                val solExpr = sol.toSimplifiedExpr(ctx, program)
+                val totalSolSize = formulaSize(solExpr)
+                (locSize+totalSolSize-fSize, if (trusted) "$\\chmark$" else "")
+              case _ =>
+                (0, "X")
+            }
+
+            val date = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
+
+            val fw = new java.io.FileWriter("repair-report.txt", true)
+
+            try {
+              fw.write(f"$date:  $benchName%-30s & $pSize%4d & $fSize%4d & $locSize%4d & $solSize%4d & ${timeTests/1000.0}%2.1f &  ${timeSynth/1000.0}%2.1f & $proof%7s \\\\\n")
+            } finally {
+              fw.close
+            }
+          }(DebugSectionReport)
 
           if (synth.settings.generateDerivationTrees) {
             val dot = new DotGenerator(search.g)

@@ -42,10 +42,12 @@ object Rules {
     Unification.OccursCheck, // probably useless
     Disunification.Decomp,
     ADTDual,
-    //OnePoint,
+    OnePoint,
     Ground,
     CaseSplit,
+    IndependentSplit,
     IfSplit,
+    InputSplit,
     UnusedInput,
     EquivalentInputs,
     UnconstrainedOutput,

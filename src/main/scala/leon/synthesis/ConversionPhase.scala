@@ -189,6 +189,8 @@ object ConversionPhase extends UnitPhase[Program] {
 
     // extract spec from chooses at the top-level
     fullBody match {
+      case Require(_, Choose(spec)) =>
+        withPostcondition(fullBody, Some(spec))
       case Choose(spec) =>
         withPostcondition(fullBody, Some(spec))
       case _ =>

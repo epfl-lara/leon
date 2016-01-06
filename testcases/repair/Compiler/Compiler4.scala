@@ -150,7 +150,7 @@ object Desugar {
     case Trees.LessThan(lhs, rhs) => LessThan(desugar(lhs), desugar(rhs))
     case Trees.And  (lhs, rhs) => Ite(desugar(lhs), desugar(rhs), Literal(0)) 
     case Trees.Or   (lhs, rhs) => Ite(desugar(lhs), Literal(1), desugar(rhs))
-    case Trees.Not(e) => Ite(desugar(e), Literal(1), Literal(1)) // FIMXE should be 0
+    case Trees.Not(e) => Ite(desugar(e), Literal(1), Literal(1)) // FIXME should be 0
     case Trees.Eq(lhs, rhs) =>
       Eq(desugar(lhs), desugar(rhs))
     case Trees.Ite(cond, thn, els) => Ite(desugar(cond), desugar(thn), desugar(els))

@@ -145,11 +145,11 @@ object FunctionClosure extends TransformationPhase {
     )
 
     newFd.fullBody = preMap {
-      case FunctionInvocation(tfd, args) if tfd.fd == inner =>
+      case fi@FunctionInvocation(tfd, args) if tfd.fd == inner =>
         Some(FunctionInvocation(
           newFd.typed(tfd.tps ++ tpFresh.map{ _.tp }),
           args ++ freshVals.drop(args.length).map(Variable)
-        ))
+        ).setPos(fi))
       case _ => None
     }(instBody)
 
