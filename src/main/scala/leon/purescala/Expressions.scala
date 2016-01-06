@@ -588,6 +588,13 @@ object Expressions {
       else Untyped
     }
   }
+  /** $encodingof `StrOps.escape(expr)` for strings */
+  case class StringEscape(expr: Expr) extends Expr {
+    val getType = {
+      if (expr.getType == StringType) StringType
+      else Untyped
+    }
+  }
 
   /* Integer arithmetic */
 

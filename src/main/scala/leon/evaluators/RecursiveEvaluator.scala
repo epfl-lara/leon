@@ -268,6 +268,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case FractionalLiteral(n, d) => StringLiteral(n.toString + "/" + d.toString)
         case res =>  throw EvalError(typeErrorMsg(res, RealType))
       }
+    case StringEscape(a) => e(a) match {
+      case StringLiteral(i) => StringLiteral(codegen.runtime.StrOps.escape(i))
+      case res => throw EvalError(typeErrorMsg(res, StringType))
+    }
     
     case BVPlus(l,r) =>
       (e(l), e(r)) match {

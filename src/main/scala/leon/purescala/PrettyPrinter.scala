@@ -12,6 +12,7 @@ import PrinterHelpers._
 import ExprOps.{isListLiteral, simplestValue}
 import Expressions._
 import Types._
+import org.apache.commons.lang3.StringEscapeUtils
 
 case class PrinterContext(
   current: Tree,
@@ -174,10 +175,11 @@ class PrettyPrinter(opts: PrinterOptions,
       case IntegerToString(expr)  => p"$expr.toString"
       case CharToString(expr)     => p"$expr.toString"
       case RealToString(expr)     => p"$expr.toString"
+      case StringEscape(expr)     => p"leon.lang.StrOps.escape($expr)"
       case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
     
-      case SubString(expr, start, end) => p"StrOps.substring($expr, $start, $end)"
-      case StringLength(expr)          => p"StrOps.length($expr)"
+      case SubString(expr, start, end) => p"leon.lang.StrOps.substring($expr, $start, $end)"
+      case StringLength(expr)          => p"leon.lang.StrOps.length($expr)"
 
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"
@@ -191,7 +193,7 @@ class PrettyPrinter(opts: PrinterOptions,
         if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
           p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
         } else {
-          val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\\\n").replaceAll("\r","\\\\r")
+          val escaped = StringEscapeUtils.escapeJava(v)
           p"$dbquote$escaped$dbquote"
         }
       case GenericValue(tp, id) => p"$tp#$id"

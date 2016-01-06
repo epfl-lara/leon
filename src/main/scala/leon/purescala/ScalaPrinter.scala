@@ -9,6 +9,7 @@ import Common._
 import Expressions._
 import Types._
 import Definitions._
+import org.apache.commons.lang3.StringEscapeUtils
 
 /** This pretty-printer only print valid scala syntax */
 class ScalaPrinter(opts: PrinterOptions,
@@ -44,7 +45,7 @@ class ScalaPrinter(opts: PrinterOptions,
         if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
           p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
         } else {
-          val escaped = v.replaceAll(dbquote, "\\\\\"").replaceAll("\n","\\\\n").replaceAll("\r","\\\\r")
+          val escaped = StringEscapeUtils.escapeJava(v)
           p"$dbquote$escaped$dbquote"
         }
 

@@ -56,7 +56,12 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
           case _ =>
             StringConcat(es1, es2)
         }
-        
+      case StringEscape(a) =>
+        val ea = e(a)
+        ea match {
+          case StringLiteral(_) => super.e(StringEscape(a))
+          case _ => StringEscape(ea)
+        }
       case expr =>
         super.e(expr)
     }
@@ -93,6 +98,13 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
           (underlying.e(StringLength(es1)), StringLength(t1))
         case _ =>
           (StringLength(es1), StringLength(t1))
+      }
+      
+    case StringEscape(a) =>
+      val (ea, ta) = e(a)
+      ea match {
+        case StringLiteral(_) => (underlying.e(StringEscape(ea)), StringEscape(ta))
+        case _ => (StringEscape(ea), StringEscape(ta))
       }
 
     case expr@StringLiteral(s) => 

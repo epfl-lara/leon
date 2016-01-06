@@ -1509,6 +1509,9 @@ trait CodeExtraction extends ASTExtractors {
         case ExImplies(lhs, rhs) =>
           Implies(extractTree(lhs), extractTree(rhs)).setPos(current.pos)
 
+        case ExStringEscape(s) =>
+          StringEscape(extractTree(s))
+          
         case c @ ExCall(rec, sym, tps, args) =>
           // The object on which it is called is null if the symbol sym is a valid function in the scope and not a method.
           val rrec = rec match {

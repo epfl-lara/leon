@@ -377,7 +377,7 @@ case object StringRender extends Rule("StringRender") {
         case None => // No function can render the current type.
           input.getType match {
             case StringType =>
-              gatherInputs(ctx, q, result += Stream((input, Nil)))
+              gatherInputs(ctx, q, result += Stream((input, Nil))  #::: Stream((StringEscape(input): Expr, Nil)))
             case BooleanType =>
               val (bTemplate, vs) = booleanTemplate(input).instantiateWithVars
               gatherInputs(ctx, q, result += Stream((BooleanToString(input), Nil)) #::: Stream((bTemplate, vs)))

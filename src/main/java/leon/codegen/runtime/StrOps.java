@@ -1,5 +1,7 @@
 package leon.codegen.runtime;
 
+import org.apache.commons.lang3.StringEscapeUtils;
+
 public class StrOps {
 	public static String concat(String a, String b) {
       return a + b;
@@ -33,5 +35,8 @@ public class StrOps {
     }
 	public static String realToString (Real a) {
 	  return ""; // TODO: Not supported at this moment.
+	}
+	public static String escape(String s) {
+	  return StringEscapeUtils.escapeJava(s);
 	}
 }
