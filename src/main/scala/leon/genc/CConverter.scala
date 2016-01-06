@@ -666,7 +666,7 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
         // Similarly to buildDeclInitVar:
         val (tmp, body) = f.value match {
           case CAST.IfElse(cond, thn, elze) =>
-            val tmp    = CAST.FreshVar(typ, "normexec")
+            val tmp    = CAST.FreshVar(typ.mutable, "normexec")
             val decl   = CAST.DeclVar(tmp)
             val ifelse = buildIfElse(cond, injectAssign(tmp, thn), injectAssign(tmp, elze))
             val body   = f.body ~~ decl ~ ifelse
