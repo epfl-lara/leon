@@ -3,9 +3,6 @@
 package leon
 package grammars
 
-import purescala.Types._
-import purescala.Expressions._
-
 case class DepthBoundedGrammar[T](g: ExpressionGrammar[Label[T]], bound: Int) extends ExpressionGrammar[Label[T]] {
   def computeProductions(l: Label[T])(implicit ctx: LeonContext): Seq[Gen] = g.computeProductions(l).flatMap {
     case gen =>

@@ -406,13 +406,13 @@ object Definitions {
     def subDefinitions = params ++ tparams ++ directlyNestedFuns.toList
 
     /** Duplication of this [[FunDef]].
-      * @note This will not replace recursive function calls
+      * @note This will not replace recursive function calls in [[fullBody]]
       */
     def duplicate(
-      id: Identifier = this.id.freshen,
-      tparams: Seq[TypeParameterDef] = this.tparams,
-      params: Seq[ValDef] = this.params,
-      returnType: TypeTree = this.returnType
+      id: Identifier                  = this.id.freshen,
+      tparams: Seq[TypeParameterDef]  = this.tparams,
+      params: Seq[ValDef]             = this.params,
+      returnType: TypeTree            = this.returnType
     ): FunDef = {
       val fd = new FunDef(id, tparams, params, returnType)
       fd.fullBody = this.fullBody
