@@ -279,4 +279,26 @@ class ExprOpsSuite extends LeonTestSuite with helpers.WithLikelyEq with helpers.
     }
 
   }
+
+  test("preMapWithContext") { ctx =>
+    val expr = Plus(bi(1), Minus(bi(2), bi(3)))
+    def op(e : Expr, set: Set[Int]): (Option[Expr], Set[Int]) = e match {
+      case Minus(InfiniteIntegerLiteral(two), e2) if two == BigInt(2) => (Some(bi(2)), set)
+      case InfiniteIntegerLiteral(one) if one == BigInt(1) => (Some(bi(2)), set)
+      case InfiniteIntegerLiteral(two) if two == BigInt(2) => (Some(bi(42)), set)
+      case _ => (None, set)
+    }
+    
+    assert(preMapWithContext(op)(expr, Set()) === Plus(bi(2),  bi(2)))
+
+    val expr2 = Let(x.id, bi(1), Let(y.id, bi(2), Plus(x, y)))
+    def op2(e: Expr, bindings: Map[Identifier, BigInt]): (Option[Expr], Map[Identifier, BigInt]) = e match {
+      case Let(id, InfiniteIntegerLiteral(v), body) => (None, bindings + (id -> v))
+      case Variable(id) => (bindings.get(id).map(v => InfiniteIntegerLiteral(v)), bindings)
+      case _ => (None, bindings)
+    }
+ 
+    assert(preMapWithContext(op2)(expr2, Map()) === Let(x.id, bi(1), Let(y.id, bi(2), Plus(bi(1), bi(2)))))
+  }
+
 }
