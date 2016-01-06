@@ -4,6 +4,8 @@ object ExpressionOrder {
   case class Pixel(rgb: Int)
   case class Matrix(data: Array[Int], w: Int, h: Int)
 
+  def void = ()
+
   def fun = 0xffffff
   def foo = 4
   def bar(i: Int) = i * 2
