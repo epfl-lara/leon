@@ -18,6 +18,11 @@ object CAST { // C Abstract Syntax Tree
   /* ------------------------------------------------------------ Types ----- */
   abstract class Type(val rep: String) extends Tree {
     override def toString = rep
+
+    def mutable: Type = this match {
+      case Const(typ) => typ.mutable
+      case _          => this
+    }
   }
 
   /* Type Modifiers */
@@ -149,7 +154,7 @@ object CAST { // C Abstract Syntax Tree
       val name = Id("__leon_tuple_" + bases.mkString("_") + "_t")
 
       val fields = bases.zipWithIndex map {
-        case (typ, idx) => Var(getNthId(idx + 1), typ)
+        case (typ, idx) => Val(getNthId(idx + 1), typ)
       }
 
       Struct(name, fields)
