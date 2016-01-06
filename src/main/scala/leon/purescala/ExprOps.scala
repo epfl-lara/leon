@@ -221,13 +221,24 @@ object ExprOps {
     * the recursion in its children. The context is "lost" when going back up,
     * so changes made by one node will not be see by its siblings.
     */
-  def preMapWithContext[C](f: (Expr, C) => (Option[Expr], C))(e: Expr, c: C): Expr = {
+  def preMapWithContext[C](f: (Expr, C) => (Option[Expr], C), applyRec: Boolean = false)
+                          (e: Expr, c: C): Expr = {
 
     def rec(expr: Expr, context: C): Expr = {
 
       val (newV, newCtx) = {
-        val res = f(expr, context)
-        (res._1.getOrElse(expr), res._2)
+        if(applyRec) {
+          var ctx = context
+          val finalV = fixpoint{ e: Expr => {
+            val res = f(e, ctx)
+            ctx = res._2
+            res._1.getOrElse(e)
+          }} (expr)
+          (finalV, ctx)
+        } else {
+          val res = f(expr, context)
+          (res._1.getOrElse(expr), res._2)
+        }
       }
 
       val Operator(es, builder) = newV
