@@ -14,14 +14,17 @@ abstract class ExpressionGrammar[T <: Typed] {
 
   private[this] val cache = new MutableMap[T, Seq[Gen]]()
 
+  /** A generator of an unique expression. */
   def terminal(builder: => Expr) = {
     Generator[T, Expr](Nil, { (subs: Seq[Expr]) => builder })
   }
 
+  /** A generator firstly generating elements of types of subs, and then building them together using the builder. */
   def nonTerminal(subs: Seq[T], builder: (Seq[Expr] => Expr)): Generator[T, Expr] = {
     Generator[T, Expr](subs, builder)
   }
 
+  /** Computes and caches all the productions (i.e. generators) for the type t */
   def getProductions(t: T)(implicit ctx: LeonContext): Seq[Gen] = {
     cache.getOrElse(t, {
       val res = computeProductions(t)
@@ -30,14 +33,17 @@ abstract class ExpressionGrammar[T <: Typed] {
     })
   }
 
+  /** Computes a list of generators of expressions of the type t */
   def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Gen]
 
+  /** Filters generators according to a predicate f */
   def filter(f: Gen => Boolean) = {
     new ExpressionGrammar[T] {
       def computeProductions(t: T)(implicit ctx: LeonContext) = ExpressionGrammar.this.computeProductions(t).filter(f)
     }
   }
 
+  /** Returns the union of two generators. */
   final def ||(that: ExpressionGrammar[T]): ExpressionGrammar[T] = {
     Union(Seq(this, that))
   }
