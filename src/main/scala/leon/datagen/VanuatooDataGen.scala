@@ -41,7 +41,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     (n, d) -> Constructor[Expr, TypeTree](List(), RealType, s => FractionalLiteral(n, d), "" + n + "/" + d)
   }).toMap
 
-  val strings = (for (b <- Set("", "a", "\"\t\n", "Abcd")) yield {
+  val strings = (for (b <- Set("", "a", "foo", "bar")) yield {
     b -> Constructor[Expr, TypeTree](List(), StringType, s => StringLiteral(b), b)
   }).toMap
 

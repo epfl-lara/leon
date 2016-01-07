@@ -41,14 +41,6 @@ class ScalaPrinter(opts: PrinterOptions,
       case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
 
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
-      case StringLiteral(v) =>
-        if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
-          p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
-        } else {
-          val escaped = StringEscapeUtils.escapeJava(v)
-          p"$dbquote$escaped$dbquote"
-        }
-
       case a@FiniteArray(elems, oDef, size) =>
         import ExprOps._
         val ArrayType(underlying) = a.getType

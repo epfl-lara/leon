@@ -10,7 +10,6 @@ import scala.collection.mutable.ListBuffer
 import bonsai.enumerators.MemoizedEnumerator
 import leon.evaluators.DefaultEvaluator
 import leon.evaluators.StringTracingEvaluator
-import leon.grammars.ValueGrammar
 import leon.programsets.DirectProgramSet
 import leon.programsets.JoinProgramSet
 import leon.purescala.Common.FreshIdentifier

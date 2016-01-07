@@ -8,7 +8,7 @@ import purescala.Expressions._
 import purescala.ExprOps
 import purescala.Constructors._
 import purescala.Extractors._
-import purescala.Types.TypeTree
+import purescala.Types.{StringType, TypeTree}
 import purescala.Common.Identifier
 import purescala.Definitions.Program
 import purescala.DefOps
@@ -17,6 +17,7 @@ import bonsai.enumerators.MemoizedEnumerator
 import solvers.Model
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
+import leon.grammars.ExpressionGrammar
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -67,6 +68,20 @@ object QuestionBuilder {
       def compare(e: T, f: T): Int = convert(e) - convert(f) 
     }
   }
+  
+  /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
+  object SpecialStringValueGrammar extends ExpressionGrammar[TypeTree] {
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {
+       case StringType =>
+          List(
+            terminal(StringLiteral("")),
+            terminal(StringLiteral("a")),
+            terminal(StringLiteral("\"'\n\t")),
+            terminal(StringLiteral("Lara 2007"))
+          )
+       case _ => ValueGrammar.computeProductions(t)
+    }
+  }
 }
 
 /**
@@ -97,6 +112,7 @@ class QuestionBuilder[T <: Expr](
   private var solutionsToTake = 30
   private var expressionsToTake = 30
   private var keepEmptyAlternativeQuestions: T => Boolean = Set()
+  private var value_enumerator: ExpressionGrammar[TypeTree] = ValueGrammar
 
   /** Sets the way to sort questions. See [[QuestionSortingType]] */
   def setSortQuestionBy(questionSorMethod: QuestionSortingType) = { _questionSorMethod = questionSorMethod; this }
@@ -110,6 +126,8 @@ class QuestionBuilder[T <: Expr](
   def setExpressionsToTake(n: Int) = { expressionsToTake = n; this }
   /** Sets if when there is no alternative, the question should be kept. */
   def setKeepEmptyAlternativeQuestions(b: T => Boolean) = {keepEmptyAlternativeQuestions = b; this }
+  /** Sets the way to enumerate expressions */
+  def setValueEnumerator(v: ExpressionGrammar[TypeTree]) = value_enumerator = v
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
@@ -124,7 +142,7 @@ class QuestionBuilder[T <: Expr](
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
     
-    val enum = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
+    val enum = new MemoizedEnumerator[TypeTree, Expr](value_enumerator.getProductions)
     val values = enum.iterator(tupleTypeWrap(_argTypes))
     val instantiations = values.map {
       v => input.zip(unwrapTuple(v, input.size))

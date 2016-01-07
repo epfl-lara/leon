@@ -145,7 +145,7 @@ object Constructors {
 
     resType match {
       case Some(tpe) =>
-        casesFiltered.filter(c => isSubtypeOf(c.rhs.getType, tpe) || isSubtypeOf(tpe, c.rhs.getType) || c.optGuard.nonEmpty)
+        casesFiltered.filter(c => isSubtypeOf(c.rhs.getType, tpe) || isSubtypeOf(tpe, c.rhs.getType))
       case None =>
         casesFiltered
     }

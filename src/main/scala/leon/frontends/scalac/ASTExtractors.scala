@@ -244,11 +244,9 @@ trait ASTExtractors {
     }
 
 
-    /** Returns a string literal either from leon.lang.string.String or from a constant string literal. */
+    /** Returns a string literal from a constant string literal. */
     object ExStringLiteral {
       def unapply(tree: Tree): Option[String] = tree  match {
-        case Apply(ExSelected("leon", "lang", "string", "package", "strToStr"), (str: Literal) :: Nil) =>
-          Some(str.value.stringValue)
         case Literal(c @ Constant(i)) if c.tpe == StringClass.tpe => 
           Some(c.stringValue)
         case _ =>

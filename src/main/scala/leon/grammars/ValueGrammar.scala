@@ -29,8 +29,8 @@ case object ValueGrammar extends ExpressionGrammar[TypeTree] {
       List(
         terminal(StringLiteral("")),
         terminal(StringLiteral("a")),
-        terminal(StringLiteral("\"'\n\r\t")),
-        terminal(StringLiteral("Lara 2007"))
+        terminal(StringLiteral("foo")),
+        terminal(StringLiteral("bar"))
       )
 
     case tp: TypeParameter =>
