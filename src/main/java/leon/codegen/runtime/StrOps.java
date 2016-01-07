@@ -14,7 +14,7 @@ public class StrOps {
 	public static String substring(String a, BigInt start, BigInt end) {
 		if (start.greaterEquals(end) || start.greaterEquals(length(a))
 				|| end.lessEquals(new BigInt("0")))
-			throw new RuntimeError("Invalid substring indices : " + start + ", " + end + " for string \""+a+"\"");
+			throw new RuntimeException("Invalid substring indices : " + start + ", " + end + " for string \""+a+"\"");
 		else
 			return a.substring(start.underlying().intValue(), end.underlying()
 					.intValue());
