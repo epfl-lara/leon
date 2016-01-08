@@ -1,7 +1,6 @@
 package leon
 package synthesis.disambiguation
 
-import synthesis.RuleClosed
 import synthesis.Solution
 import evaluators.DefaultEvaluator
 import purescala.Expressions._
@@ -14,10 +13,9 @@ import purescala.Definitions.Program
 import purescala.DefOps
 import grammars.ValueGrammar
 import bonsai.enumerators.MemoizedEnumerator
-import solvers.Model
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
-import leon.grammars.ExpressionGrammar
+import grammars._
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -142,7 +140,7 @@ class QuestionBuilder[T <: Expr](
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
     
-    val enum = new MemoizedEnumerator[TypeTree, Expr](value_enumerator.getProductions)
+    val enum = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree,Expr]](value_enumerator.getProductions)
     val values = enum.iterator(tupleTypeWrap(_argTypes))
     val instantiations = values.map {
       v => input.zip(unwrapTuple(v, input.size))

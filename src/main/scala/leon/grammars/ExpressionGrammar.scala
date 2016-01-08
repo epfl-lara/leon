@@ -3,8 +3,6 @@
 package leon
 package grammars
 
-import bonsai._
-
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Common._
