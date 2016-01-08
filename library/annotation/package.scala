@@ -19,4 +19,6 @@ package object annotation {
   class monotonic  extends StaticAnnotation
   @ignore
   class compose    extends StaticAnnotation
+  @ignore
+  class internal   extends StaticAnnotation
 }

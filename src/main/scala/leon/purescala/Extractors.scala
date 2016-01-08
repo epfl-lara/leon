@@ -39,8 +39,6 @@ object Extractors {
         Some((Seq(t), (es: Seq[Expr]) => CharToString(es.head)))
       case RealToString(t) =>
         Some((Seq(t), (es: Seq[Expr]) => RealToString(es.head)))
-      case StringEscape(t) =>
-        Some((Seq(t), (es: Seq[Expr]) => StringEscape(es.head)))
       case SetCardinality(t) =>
         Some((Seq(t), (es: Seq[Expr]) => SetCardinality(es.head)))
       case CaseClassSelector(cd, e, sel) =>

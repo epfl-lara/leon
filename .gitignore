@@ -55,3 +55,12 @@ out-classes
 # Isabelle
 contrib
 /bin/
+/cvc4.exe
+/libz3.dll
+/libz3.lib
+/msvcp100.dll
+/msvcr100.dll
+/scalaz3.dll
+/scalaz3.lib
+/vcomp100.dll
+/z3.exe

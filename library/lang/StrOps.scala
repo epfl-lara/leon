@@ -18,6 +18,6 @@ object StrOps {
   def substring(a: String, start: BigInt, end: BigInt): String = {
     if(start > end || start >= length(a) || end <= 0) "" else a.substring(start.toInt, end.toInt)
   }
-  @ignore
-  def escape(a: String): String = a // Wrong definition, but it will eventually use StringEscapeUtils.escapeJava(s) at parsing and compile time.
+  @internal @library
+  def escape(s: String): String = s // Wrong definition, but it will eventually use StringEscapeUtils.escapeJava(s) at parsing and compile time.
 }

@@ -9,7 +9,7 @@ import leon.lang.synthesis.choose
 
 package object collection {
 
-  @library
+  @internal @library
   def setToList[A](set: Set[A]): List[A] = choose { 
     (x: List[A]) => x.content == set
   }

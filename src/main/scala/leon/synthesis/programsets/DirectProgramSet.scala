@@ -1,4 +1,4 @@
-package leon.programsets
+package leon.synthesis.programsets
 
 import leon.purescala
 import purescala.Expressions._

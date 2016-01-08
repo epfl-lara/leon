@@ -1,5 +1,5 @@
 package leon
-package programsets
+package synthesis.programsets
 
 import leon.purescala
 import purescala.Expressions._

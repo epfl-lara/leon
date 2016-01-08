@@ -175,7 +175,6 @@ class PrettyPrinter(opts: PrinterOptions,
       case IntegerToString(expr)  => p"$expr.toString"
       case CharToString(expr)     => p"$expr.toString"
       case RealToString(expr)     => p"$expr.toString"
-      case StringEscape(expr)     => p"leon.lang.StrOps.escape($expr)"
       case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
     
       case SubString(expr, start, end) => p"leon.lang.StrOps.substring($expr, $start, $end)"

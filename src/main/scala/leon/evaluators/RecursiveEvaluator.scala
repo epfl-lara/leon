@@ -14,8 +14,9 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
 import leon.solvers.{HenkinModel, Model, SolverFactory}
-
 import scala.collection.mutable.{Map => MutableMap}
+import leon.purescala.DefOps
+import org.apache.commons.lang3.StringEscapeUtils
 
 abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int)
   extends ContextualEvaluator(ctx, prog, maxSteps)
@@ -104,6 +105,13 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       val nil = CaseClass(CaseClassType(program.library.Nil.get, Seq(tp)), Seq())
       def mkCons(h: Expr, t: Expr) = CaseClass(CaseClassType(cons, Seq(tp)), Seq(h,t))
       els.foldRight(nil)(mkCons)
+
+    case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == program.library.escape.get =>
+       e(input) match {
+         case StringLiteral(s) => 
+           StringLiteral(StringEscapeUtils.escapeJava(s))
+         case _ => throw EvalError(typeErrorMsg(input, StringType))
+       }
 
     case FunctionInvocation(tfd, args) =>
       if (gctx.stepsLeft < 0) {
@@ -268,11 +276,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case FractionalLiteral(n, d) => StringLiteral(n.toString + "/" + d.toString)
         case res =>  throw EvalError(typeErrorMsg(res, RealType))
       }
-    case StringEscape(a) => e(a) match {
-      case StringLiteral(i) => StringLiteral(codegen.runtime.StrOps.escape(i))
-      case res => throw EvalError(typeErrorMsg(res, StringType))
-    }
-    
+
     case BVPlus(l,r) =>
       (e(l), e(r)) match {
         case (IntLiteral(i1), IntLiteral(i2)) => IntLiteral(i1 + i2)
@@ -643,6 +647,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
 
     case other =>
       context.reporter.error(other.getPos, "Error: don't know how to handle " + other.asString + " in Evaluator ("+other.getClass+").")
+      println("RecursiveEvaluator error:" + other.asString)
       throw EvalError("Unhandled case in Evaluator : " + other.asString)
   }
 

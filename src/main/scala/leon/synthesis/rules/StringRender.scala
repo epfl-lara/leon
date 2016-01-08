@@ -10,8 +10,8 @@ import scala.collection.mutable.ListBuffer
 import bonsai.enumerators.MemoizedEnumerator
 import leon.evaluators.DefaultEvaluator
 import leon.evaluators.StringTracingEvaluator
-import leon.programsets.DirectProgramSet
-import leon.programsets.JoinProgramSet
+import leon.synthesis.programsets.DirectProgramSet
+import leon.synthesis.programsets.JoinProgramSet
 import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Common.Identifier
 import leon.purescala.DefOps
@@ -182,7 +182,7 @@ case object StringRender extends Rule("StringRender") {
     val tagged_solutions =
       for{(funDefs, template) <- wholeTemplates.programs} yield computeSolutions(funDefs, template).map((funDefs, template, _))
     
-    solutionStreamToRuleApplication(p, leon.utils.StreamUtils.interleave(tagged_solutions))
+    solutionStreamToRuleApplication(p, leon.utils.StreamUtils.interleave(tagged_solutions))(hctx.program)
   }
   
   /** Find ambiguities not containing _edit_me_ to ask to the user */
@@ -196,7 +196,7 @@ case object StringRender extends Rule("StringRender") {
   }
   
   /** Converts the stream of solutions to a RuleApplication */
-  def solutionStreamToRuleApplication(p: Problem, solutions: Stream[(Seq[(FunDef, WithIds[Expr])], WithIds[Expr], Assignment)]): RuleApplication = {
+  def solutionStreamToRuleApplication(p: Problem, solutions: Stream[(Seq[(FunDef, WithIds[Expr])], WithIds[Expr], Assignment)])(implicit program: Program): RuleApplication = {
     if(solutions.isEmpty) RuleFailed() else {
       RuleClosed(
           for((funDefsBodies, (singleTemplate, ids), assignment) <- solutions) yield {
@@ -215,11 +215,11 @@ case object StringRender extends Rule("StringRender") {
   }
   
   /** Crystallizes a solution so that it will not me modified if the body of fds is modified. */
-  def makeFunctionsUnique(term: Expr, fds: Set[FunDef]): (Expr, Set[FunDef]) = {
+  def makeFunctionsUnique(term: Expr, fds: Set[FunDef])(implicit program: Program): (Expr, Set[FunDef]) = {
     var transformMap = Map[FunDef, FunDef]()
     def mapExpr(body: Expr): Expr = {
       ExprOps.preMap((e: Expr) => e match {
-        case FunctionInvocation(nfd, args) => Some(FunctionInvocation(getMapping(nfd.fd).typed, args))
+        case FunctionInvocation(TypedFunDef(fd, _), args) if fd != program.library.escape.get => Some(FunctionInvocation(getMapping(fd).typed, args))
         case e => None
       })(body)
     }
@@ -376,10 +376,14 @@ case object StringRender extends Rule("StringRender") {
         case None => // No function can render the current type.
           input.getType match {
             case StringType =>
-              gatherInputs(ctx, q, result += Stream((input, Nil))  #::: Stream((StringEscape(input): Expr, Nil)))
+              gatherInputs(ctx, q, result +=
+                (Stream((input, Nil),
+                        (FunctionInvocation(
+                            hctx.program.library.escape.get.typed,
+                            Seq(input)): Expr, Nil))))
             case BooleanType =>
               val (bTemplate, vs) = booleanTemplate(input).instantiateWithVars
-              gatherInputs(ctx, q, result += Stream((BooleanToString(input), Nil)) #::: Stream((bTemplate, vs)))
+              gatherInputs(ctx, q, result += Stream((BooleanToString(input), Nil), (bTemplate, vs)))
             case WithStringconverter(converter) => // Base case
               gatherInputs(ctx, q, result += Stream((converter(input), Nil)))
             case t: ClassType =>

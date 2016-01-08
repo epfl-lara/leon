@@ -22,6 +22,8 @@ case class Library(pgm: Program) {
   lazy val Dummy  = lookup("leon.lang.Dummy").collectFirst { case ccd : CaseClassDef => ccd }
 
   lazy val setToList = lookup("leon.collection.setToList").collectFirst { case fd : FunDef => fd }
+  
+  lazy val escape = lookup("leon.lang.StrOps.escape").collectFirst { case fd : FunDef => fd }
 
   def lookup(name: String): Seq[Definition] = {
     pgm.lookupAll(name)

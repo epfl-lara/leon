@@ -6,14 +6,24 @@ package evaluators
 import purescala.Extractors.Operator
 import purescala.Expressions._
 import purescala.Types._
-import purescala.Definitions.Program
+import purescala.Definitions.{TypedFunDef, Program}
+import purescala.DefOps
 import purescala.Expressions.Expr
 import leon.utils.DebugSectionSynthesis
+import org.apache.commons.lang3.StringEscapeUtils
 
 class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext with HasDefaultRecContext {
 
   val underlying = new DefaultEvaluator(ctx, prog) {
     override protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
+      
+       case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == prog.library.escape.get =>
+         e(input) match {
+           case StringLiteral(s) => 
+             StringLiteral(StringEscapeUtils.escapeJava(s))
+           case _ => throw EvalError(typeErrorMsg(input, StringType))
+       }
+      
       case FunctionInvocation(tfd, args) =>
         if (gctx.stepsLeft < 0) {
           throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
@@ -56,12 +66,6 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
           case _ =>
             StringConcat(es1, es2)
         }
-      case StringEscape(a) =>
-        val ea = e(a)
-        ea match {
-          case StringLiteral(_) => super.e(StringEscape(a))
-          case _ => StringEscape(ea)
-        }
       case expr =>
         super.e(expr)
     }
@@ -99,13 +103,6 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
         case _ =>
           (StringLength(es1), StringLength(t1))
       }
-      
-    case StringEscape(a) =>
-      val (ea, ta) = e(a)
-      ea match {
-        case StringLiteral(_) => (underlying.e(StringEscape(ea)), StringEscape(ta))
-        case _ => (StringEscape(ea), StringEscape(ta))
-      }
 
     case expr@StringLiteral(s) => 
       (expr, expr)
@@ -119,7 +116,7 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
         case BooleanLiteral(false) => e(elze)
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }
-      
+
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
       (underlying.e(builder(ees)), builder(ts))
