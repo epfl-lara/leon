@@ -359,7 +359,7 @@ case object StringRender extends Rule("StringRender") {
   /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
   private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.map(_._2).flatten.toList)
   
-  class FunDefTemplateGenerator(inputs: Seq[Identifier]) {
+  class FunDefTemplateGenerator(inputs: Seq[Identifier])(implicit ctx: LeonContext, program: Program) {
     abstract class Symbol
     case class NonTerminal(tpe: Option[TypeTree], context: List[NonTerminal] = Nil) extends Symbol
     case class Terminal(builder: Stream[Expr => WithIds[Expr]]) extends Symbol
@@ -406,9 +406,10 @@ case object StringRender extends Rule("StringRender") {
             int32Symbol -> TerminalRHS(Terminal(Stream(expr => (Int32ToString(expr), Nil)))),
             integerSymbol -> TerminalRHS(Terminal(Stream((expr => (IntegerToString(expr), Nil))))),
             booleanSymbol -> TerminalRHS(Terminal(Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
-            stringSymbol -> TerminalRHS(Terminal(Stream((expr => (expr, Nil)),(expr => (StringEscape(expr), Nil)))))
-        ))
+            stringSymbol -> TerminalRHS(Terminal(Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
+        )))
 
+                            
     /** Returns all non-terminals of the given grammar */
     def nonTerminals(g: Grammar): Set[NonTerminal] = {
       Set(g.start) ++ (for{(lhs, rhs) <- g.rules; s <- Seq(lhs) ++ (for(r <- rhs.symbols.collect{ case k: NonTerminal => k }) yield r)} yield s)
