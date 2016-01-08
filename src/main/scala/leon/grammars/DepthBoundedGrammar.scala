@@ -3,8 +3,8 @@
 package leon
 package grammars
 
-case class DepthBoundedGrammar[T](g: ExpressionGrammar[Label[T]], bound: Int) extends ExpressionGrammar[Label[T]] {
-  def computeProductions(l: Label[T])(implicit ctx: LeonContext): Seq[Gen] = g.computeProductions(l).flatMap {
+case class DepthBoundedGrammar[T](g: ExpressionGrammar[NonTerminal[T]], bound: Int) extends ExpressionGrammar[NonTerminal[T]] {
+  def computeProductions(l: NonTerminal[T])(implicit ctx: LeonContext): Seq[Gen] = g.computeProductions(l).flatMap {
     case gen =>
       if (l.depth == Some(bound) && gen.subTrees.nonEmpty) {
         Nil

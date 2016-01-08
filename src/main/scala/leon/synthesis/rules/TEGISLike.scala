@@ -17,7 +17,7 @@ import scala.collection.mutable.{HashMap => MutableMap}
 
 import bonsai.enumerators._
 
-abstract class TEGISLike[T <% Typed](name: String) extends Rule(name) {
+abstract class TEGISLike[T <: Typed](name: String) extends Rule(name) {
   case class TegisParams(
     grammar: ExpressionGrammar[T],
     rootLabel: TypeTree => T,

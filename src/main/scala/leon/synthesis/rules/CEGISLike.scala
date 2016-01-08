@@ -22,7 +22,7 @@ import evaluators._
 import datagen._
 import codegen.CodeGenParams
 
-abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
+abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
   case class CegisParams(
     grammar: ExpressionGrammar[T],

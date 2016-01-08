@@ -26,7 +26,7 @@ case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
   def getRootLabel(tpe: TypeTree): TypeTree = tpe
 }
 
-abstract class BottomUpTEGISLike[T <% Typed](name: String) extends Rule(name) {
+abstract class BottomUpTEGISLike[T <: Typed](name: String) extends Rule(name) {
   def getGrammar(sctx: SynthesisContext, p: Problem): ExpressionGrammar[T]
 
   def getRootLabel(tpe: TypeTree): T
