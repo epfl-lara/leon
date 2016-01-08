@@ -15,7 +15,7 @@ class SMTLIBCVC4CounterExampleSolver(context: LeonContext, program: Program) ext
       "--rewrite-divk",
       "--produce-models",
       "--print-success",
-      "--lang", "smt",
+      "--lang", "smt2.5",
       "--fmf-fun"
     ) ++ userDefinedOps(ctx)
   }
