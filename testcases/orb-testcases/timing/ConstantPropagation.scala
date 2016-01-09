@@ -76,7 +76,7 @@ object ConstantPropagation {
 
   /**
    * Assuming that the functions are ordered from callee to
-   * caller and there is no mutual recursion
+   * caller and there is no mutual recursion, only self recursion
    */
   case class Program(funcs: List[Function])
 
