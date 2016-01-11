@@ -272,14 +272,8 @@ case object StringRender extends Rule("StringRender") {
   
   type MapFunctions = Map[DependentType, (FunDef, Stream[WithIds[Expr]])]
   
-  /** Result of the current synthesis process */
-  class StringSynthesisResult(
-      val adtToString: MapFunctions,
-      val funNames: Set[String]
-  ) {
-    def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisResult = {
-      new StringSynthesisResult(adtToString + (d -> ((f, s))), funNames + f.id.name)
-    }
+  trait FreshFunNameGenerator {
+    def funNames: Set[String]
     def freshFunName(s: String): String = {
       if(!funNames(s)) return s
       var i = 1
@@ -292,6 +286,16 @@ case object StringRender extends Rule("StringRender") {
     }
   }
   type StringConverters = Map[TypeTree, List[Expr => Expr]]
+  
+  /** Result of the current synthesis process */
+  class StringSynthesisResult (
+      val adtToString: MapFunctions,
+      val funNames: Set[String]
+  ) extends FreshFunNameGenerator {
+    def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisResult = {
+      new StringSynthesisResult(adtToString + (d -> ((f, s))), funNames + f.id.name)
+    }
+  }
   
   /** Companion object to create a StringSynthesisContext */
   object StringSynthesisContext {
@@ -306,13 +310,13 @@ case object StringRender extends Rule("StringRender") {
   }
   
   /** Context for the current synthesis process */
-  class StringSynthesisContext(
+  class StringSynthesisContext (
       val currentCaseClassParent: Option[TypeTree],
       val result: StringSynthesisResult,
       val abstractStringConverters: StringConverters,
       val originalInputs: Set[Expr],
       val provided_functions: Seq[Identifier]
-  )(implicit hctx: SearchContext) {
+  )(implicit hctx: SearchContext) extends FreshFunNameGenerator {
     def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisContext = {
       new StringSynthesisContext(currentCaseClassParent, result.add(d, f, s),
           abstractStringConverters,
@@ -324,25 +328,28 @@ case object StringRender extends Rule("StringRender") {
           abstractStringConverters,
           originalInputs,
           provided_functions)
-    def freshFunName(s: String) = result.freshFunName(s)
+    def funNames  = result.funNames
+  }
+  
+  def createEmptyFunDef(ctx: FreshFunNameGenerator, tpe: DependentType)(implicit hctx: SearchContext): FunDef = {
+    createEmptyFunDef(ctx, tpe.caseClassParent.toList, Nil, tpe.typeToConvert)
   }
   
   /** Creates an empty function definition for the dependent type */
-  def createEmptyFunDef(ctx: StringSynthesisContext, tpe: DependentType)(implicit hctx: SearchContext): FunDef = {
-    def defaultFunName(t: TypeTree) = t match {
+  def createEmptyFunDef(ctx: FreshFunNameGenerator, vContext: List[TypeTree], hContext: List[TypeTree], typeToConvert: TypeTree)(implicit hctx: SearchContext): FunDef = {
+    def defaultFunName(t: TypeTree): String = t match {
       case AbstractClassType(c, d) => c.id.asString(hctx.context)
       case CaseClassType(c, d) => c.id.asString(hctx.context)
       case t => t.asString(hctx.context)
     }
     
-    val funName2 = tpe.caseClassParent match {
-      case None => defaultFunName(tpe.typeToConvert) + "_" + tpe.inputName + "_s" 
-      case Some(t) => defaultFunName(tpe.typeToConvert) + "In"+defaultFunName(t) + "_" + tpe.inputName + "_s" 
-    }
+    val funName2 = defaultFunName(typeToConvert) + ("" /: vContext) {
+      case (s, t) => "In" + defaultFunName(t)
+    } + (if(hContext.nonEmpty) hContext.length.toString else "") + "_s" 
     val funName3 = funName2.replaceAll("[^a-zA-Z0-9_]","")
     val funName = funName3(0).toLower + funName3.substring(1) 
     val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = true)
-    val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx.context).toLowerCase()(0).toString, tpe.typeToConvert)
+    val argId= FreshIdentifier(typeToConvert.asString(hctx.context).toLowerCase()(0).toString, typeToConvert)
     val tparams = hctx.sctx.functionContext.tparams
     val fd = new FunDef(funId, tparams, ValDef(argId) :: ctx.provided_functions.map(ValDef(_, false)).toList, StringType) // Empty function.
     fd
@@ -359,10 +366,11 @@ case object StringRender extends Rule("StringRender") {
   /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
   private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.map(_._2).flatten.toList)
   
-  class FunDefTemplateGenerator(inputs: Seq[Identifier])(implicit ctx: LeonContext, program: Program) {
-    abstract class Symbol
-    case class NonTerminal(tpe: Option[TypeTree], context: List[NonTerminal] = Nil) extends Symbol
-    case class Terminal(builder: Stream[Expr => WithIds[Expr]]) extends Symbol
+  class FunDefTemplateGenerator(inputs: Seq[Identifier])(implicit hctx: SearchContext, program: Program) {
+    implicit val ctx = hctx.context
+    abstract class Symbol { def tpe: TypeTree }
+    case class NonTerminal(tpe: TypeTree, vcontext: List[NonTerminal] = Nil, hcontext: List[Symbol] = Nil) extends Symbol
+    case class Terminal(tpe: TypeTree, builder: Stream[Expr => WithIds[Expr]]) extends Symbol
     object VerticalRHS{
       def apply(symbols: Seq[NonTerminal]) = Expansion(symbols.map(symbol => Seq(symbol)))
       def unapply(e: Expansion): Option[Seq[NonTerminal]] =
@@ -388,45 +396,54 @@ case object StringRender extends Rule("StringRender") {
       def symbols = ls.flatten
       def ++(other: Expansion): Expansion = Expansion((ls ++ other.ls).distinct)
       def ++(other: Option[Expansion]): Expansion = other match {case Some(e) => this ++ e case None => this }
+      def contains(s: Symbol): Boolean = {
+        ls.exists { l => l.exists { x => x == s } }
+      }
+      def map(f: Symbol => Symbol): Expansion = {
+        Expansion(ls.map(_.map(f)))
+      }
+      /** Maps symbols with the left context as second argument */
+      def mapLeftContext(f: (Symbol, List[Symbol]) => Symbol): Expansion = {
+        Expansion(ls.map(l => l.foldLeft(List[Symbol]()){ case (l, s) => f(s, l) :: l } ))
+      }
     }
     
-    case class Grammar(start: NonTerminal, rules: Map[NonTerminal, Expansion])
+    case class Grammar(start: Seq[NonTerminal], rules: Map[NonTerminal, Expansion])
     
-    val startSymbol    = NonTerminal(None)
-    val int32Symbol   = NonTerminal(Some(Int32Type))
-    val integerSymbol = NonTerminal(Some(IntegerType))
-    val booleanSymbol = NonTerminal(Some(BooleanType))
-    val stringSymbol  = NonTerminal(Some(StringType))
+    val int32Symbol   = NonTerminal(Int32Type)
+    val integerSymbol = NonTerminal(IntegerType)
+    val booleanSymbol = NonTerminal(BooleanType)
+    val stringSymbol  = NonTerminal(StringType)
     
     val bTemplateGenerator = (expr: Expr) => booleanTemplate(expr).instantiateWithVars
     
     //TODO: Out of order ?
-    def startGrammar = Grammar(startSymbol,
-        Map(startSymbol -> HorizontalRHS(inputs.map(input => NonTerminal(Some(input.getType)))),
-            int32Symbol -> TerminalRHS(Terminal(Stream(expr => (Int32ToString(expr), Nil)))),
-            integerSymbol -> TerminalRHS(Terminal(Stream((expr => (IntegerToString(expr), Nil))))),
-            booleanSymbol -> TerminalRHS(Terminal(Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
-            stringSymbol -> TerminalRHS(Terminal(Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
+    def startGrammar = Grammar(
+        (inputs.foldLeft(List[NonTerminal]()){(lb, i) => lb :+ NonTerminal(i.getType, Nil, lb) }),
+        Map(int32Symbol -> TerminalRHS(Terminal(Int32Type, Stream(expr => (Int32ToString(expr), Nil)))),
+            integerSymbol -> TerminalRHS(Terminal(IntegerType, Stream((expr => (IntegerToString(expr), Nil))))),
+            booleanSymbol -> TerminalRHS(Terminal(BooleanType, Stream((expr => (BooleanToString(expr), Nil)), bTemplateGenerator))),
+            stringSymbol -> TerminalRHS(Terminal(StringType, Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
         )))
 
                             
     /** Returns all non-terminals of the given grammar */
     def nonTerminals(g: Grammar): Set[NonTerminal] = {
-      Set(g.start) ++ (for{(lhs, rhs) <- g.rules; s <- Seq(lhs) ++ (for(r <- rhs.symbols.collect{ case k: NonTerminal => k }) yield r)} yield s)
+      g.start.toSet ++ (for{(lhs, rhs) <- g.rules; s <- Seq(lhs) ++ (for(r <- rhs.symbols.collect{ case k: NonTerminal => k }) yield r)} yield s)
     }
     
     /** Used to produce rules such as Cons => Elem List without context*/
     def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
-      case NonTerminal(Some(cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2)), ctx) => 
+      case NonTerminal(cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2), vc, hc) => 
         val typeMap = tparams.zip(tparams2).toMap
         val fields = ccd.fields.map(vd => TypeOps.instantiateType(vd.id, typeMap) )
-        Some(HorizontalRHS(fields.map(id => NonTerminal(Some(id.getType), Nil))))
+        Some(HorizontalRHS(fields.map(id => NonTerminal(id.getType))))
       case _ => None
     }
     /** Used to produce rules such as List => Cons | Nil without context */
     def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
-      case NonTerminal(Some(act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps)), ctx) => 
-        Some(VerticalRHS(act.knownDescendants.map(tpe => NonTerminal(Some(tpe)))))
+      case NonTerminal(act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps), vc, hc) => 
+        Some(VerticalRHS(act.knownDescendants.map(tpe => NonTerminal(tpe))))
       case _ => None
     }
     
@@ -452,13 +469,91 @@ case object StringRender extends Rule("StringRender") {
       leon.utils.fixpoint(extendGrammar _)(grammar)
     }
     
+    /** Applies 1-markovization to the grammar (add 1 history to every node) */
+    def markovize_vertical(grammar: Grammar): Grammar = {
+      val nts = nonTerminals(grammar)
+      val rulesSeq = grammar.rules.toSeq
+      def parents(nt: NonTerminal): Seq[NonTerminal] = {
+        rulesSeq.collect{ case (ntprev, expansion)  if expansion.contains(nt) => ntprev }
+      }
+      def newVerticalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
+        if(parents.nonEmpty) for(pnt <- parents) yield (pnt :: vContext)
+        else List(vContext)
+      }
+      
+      val newRules = (for{
+        nt <- nts
+        expansion = grammar.rules(nt)
+        newVc <- newVerticalContexts(parents(nt), nt.vcontext)
+        newNt = NonTerminal(nt.tpe, newVc, nt.hcontext)
+      }  yield (newNt -> (expansion.map{(nt: Symbol) => nt match {
+        case NonTerminal(tpe, vc, hc) => NonTerminal(tpe, newNt::vc, hc)
+        case e => e
+      }}))).toMap
+      Grammar(grammar.start, newRules)
+    }
+    /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
+      * Is idempotent. */
+    def markovize_horizontal(grammar: Grammar): Grammar = {
+      val nts = nonTerminals(grammar)
+      val rulesSeq = grammar.rules.toSeq
+      def newHorizontalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
+        if(parents.nonEmpty) for(pnt <- parents) yield (pnt :: vContext)
+        else List(vContext)
+      }
+      
+      // Conversion from old to new non-terminals
+      var mapping = Map[NonTerminal, List[NonTerminal]]()
+      val newRules =
+        for{nt <- nts.toList} yield {
+          val expansion = grammar.rules(nt)
+          nt -> expansion.mapLeftContext{ (s: Symbol, l: List[Symbol]) =>
+            s match {
+              case NonTerminal(tpe, vc, Nil) =>
+                val res = NonTerminal(tpe, vc, l)
+                mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
+                res
+              case e => e
+            }
+          }
+        }
+      val newRules2 =
+        for{(nt, expansion) <- newRules
+            nnt <- mapping.getOrElse(nt, List(nt))
+        } yield {
+          nnt -> expansion
+        }
+      Grammar(grammar.start, newRules2.toMap)
+    }
+    
     /** Builds a set of fun defs out of the grammar */
-    def buildFunDefTemplate(g: Grammar): (WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
+    def buildFunDefTemplate(grammar: Grammar): (WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
+      val nts = nonTerminals(grammar)
+      val funNameGenerator = new FreshFunNameGenerator {
+        var funNames: Set[String] = Set()
+        override def freshFunName(s: String): String = {
+          val res = super.freshFunName(s)
+          funNames += res
+          res
+        }
+      }
+      object TypedNonTerminal { // case-class non-terminal such as Cons or Nil
+        def unapply(nt: NonTerminal) = if(grammar.rules contains nt) {
+          Some((nt.tpe, nt.vcontext.map(_.tpe), nt.hcontext.map(_.tpe)))
+        } else None
+      }
+      /* We create FunDef for vertical and horizontal non-terminals */
+      val funDefs = ((Map[NonTerminal, FunDef](), funNameGenerator) /: nts) {
+        case (mgen@(m, gen), nt@TypedNonTerminal(tp, vct, hct)) =>
+          (m + (nt -> createEmptyFunDef(gen, vct, hct, tp)), gen)
+        case (mgen, _) => mgen
+      }
+      
       /* Interleaves terminals on each horizontal rule */
-      def buildExprForHorizontalExpr(nt: NonTerminal): Option[WithIds[Expr]] = {
-        g.rules(nt) match {
+      def buildExprForHorizontalExpr(nt: NonTerminal, input: List[Identifier]): Option[WithIds[Expr]] = {
+        grammar.rules(nt) match {
           case HorizontalRHS(symbols) => 
-            //linterleaveIdentifiers(symbols) //TODO add the context
+            interleaveIdentifiers(symbols.map(x => (x, Nil))) //TODO add the context
             None
           case _ => None
         }
