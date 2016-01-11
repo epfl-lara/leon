@@ -31,7 +31,6 @@ import purescala.TypeOps
 import purescala.Types._
 import leon.purescala.SelfPrettyPrinter
 
-
 /** A template generator for a given type tree. 
   * Extend this class using a concrete type tree,
   * Then use the apply method to get a hole which can be a placeholder for holes in the template.
@@ -368,47 +367,8 @@ case object StringRender extends Rule("StringRender") {
   
   class FunDefTemplateGenerator(inputs: Seq[Identifier])(implicit hctx: SearchContext, program: Program) {
     implicit val ctx = hctx.context
-    abstract class Symbol { def tpe: TypeTree }
-    case class NonTerminal(tpe: TypeTree, vcontext: List[NonTerminal] = Nil, hcontext: List[Symbol] = Nil) extends Symbol
-    case class Terminal(tpe: TypeTree, builder: Stream[Expr => WithIds[Expr]]) extends Symbol
-    object VerticalRHS{
-      def apply(symbols: Seq[NonTerminal]) = Expansion(symbols.map(symbol => Seq(symbol)))
-      def unapply(e: Expansion): Option[Seq[NonTerminal]] =
-        if(e.ls.forall(rhs => rhs.length == 1 && rhs.head.isInstanceOf[NonTerminal]))
-          Some(e.ls.map(rhs => rhs.head.asInstanceOf[NonTerminal]))
-        else None
-    }
-    object HorizontalRHS {
-      def apply(symbols: Seq[NonTerminal]) = Expansion(Seq(symbols))
-      def unapply(e: Expansion): Option[Seq[NonTerminal]] = e.ls match {
-        case Seq(symbols) if symbols.forall { x => x.isInstanceOf[NonTerminal] } => Some(symbols.map(_.asInstanceOf[NonTerminal]))
-        case _ => None
-      }
-    }
-    object TerminalRHS {
-      def apply(t: Terminal) = Expansion(Seq(Seq(t)))
-      def unapply(e: Expansion): Option[Terminal] = e.ls match {
-        case Seq(Seq(t: Terminal)) => Some(t)
-        case _ => None
-      }
-    }
-    case class Expansion(ls: Seq[Seq[Symbol]]) {
-      def symbols = ls.flatten
-      def ++(other: Expansion): Expansion = Expansion((ls ++ other.ls).distinct)
-      def ++(other: Option[Expansion]): Expansion = other match {case Some(e) => this ++ e case None => this }
-      def contains(s: Symbol): Boolean = {
-        ls.exists { l => l.exists { x => x == s } }
-      }
-      def map(f: Symbol => Symbol): Expansion = {
-        Expansion(ls.map(_.map(f)))
-      }
-      /** Maps symbols with the left context as second argument */
-      def mapLeftContext(f: (Symbol, List[Symbol]) => Symbol): Expansion = {
-        Expansion(ls.map(l => l.foldLeft(List[Symbol]()){ case (l, s) => f(s, l) :: l } ))
-      }
-    }
-    
-    case class Grammar(start: Seq[NonTerminal], rules: Map[NonTerminal, Expansion])
+    val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
+    import gcontext._
     
     val int32Symbol   = NonTerminal(Int32Type)
     val integerSymbol = NonTerminal(IntegerType)
@@ -426,12 +386,6 @@ case object StringRender extends Rule("StringRender") {
             stringSymbol -> TerminalRHS(Terminal(StringType, Stream((expr => (expr, Nil)),(expr => ((FunctionInvocation(program.library.escape.get.typed, Seq(expr)), Nil)))))
         )))
 
-                            
-    /** Returns all non-terminals of the given grammar */
-    def nonTerminals(g: Grammar): Set[NonTerminal] = {
-      g.start.toSet ++ (for{(lhs, rhs) <- g.rules; s <- Seq(lhs) ++ (for(r <- rhs.symbols.collect{ case k: NonTerminal => k }) yield r)} yield s)
-    }
-    
     /** Used to produce rules such as Cons => Elem List without context*/
     def horizontalChildren(n: NonTerminal): Option[Expansion] = n match {
       case NonTerminal(cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2), vc, hc) => 
@@ -443,13 +397,13 @@ case object StringRender extends Rule("StringRender") {
     /** Used to produce rules such as List => Cons | Nil without context */
     def verticalChildren(n: NonTerminal): Option[Expansion] = n match {
       case NonTerminal(act@AbstractClassType(acd@AbstractClassDef(id, tparams, parent), tps), vc, hc) => 
-        Some(VerticalRHS(act.knownDescendants.map(tpe => NonTerminal(tpe))))
+        Some(VerticalRHS(act.knownDescendants.map(tag => NonTerminal(tag))))
       case _ => None
     }
     
     /** Find all dependencies and merge them into one grammar */
     def extendGrammar(grammar: Grammar): Grammar = {
-      val nts = nonTerminals(grammar)
+      val nts = grammar.nonTerminals
       (grammar /: nts) {
         case (grammar, n) =>
           /** If the grammar does not contain any rule for n, add them */
@@ -469,66 +423,9 @@ case object StringRender extends Rule("StringRender") {
       leon.utils.fixpoint(extendGrammar _)(grammar)
     }
     
-    /** Applies 1-markovization to the grammar (add 1 history to every node) */
-    def markovize_vertical(grammar: Grammar): Grammar = {
-      val nts = nonTerminals(grammar)
-      val rulesSeq = grammar.rules.toSeq
-      def parents(nt: NonTerminal): Seq[NonTerminal] = {
-        rulesSeq.collect{ case (ntprev, expansion)  if expansion.contains(nt) => ntprev }
-      }
-      def newVerticalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
-        if(parents.nonEmpty) for(pnt <- parents) yield (pnt :: vContext)
-        else List(vContext)
-      }
-      
-      val newRules = (for{
-        nt <- nts
-        expansion = grammar.rules(nt)
-        newVc <- newVerticalContexts(parents(nt), nt.vcontext)
-        newNt = NonTerminal(nt.tpe, newVc, nt.hcontext)
-      }  yield (newNt -> (expansion.map{(nt: Symbol) => nt match {
-        case NonTerminal(tpe, vc, hc) => NonTerminal(tpe, newNt::vc, hc)
-        case e => e
-      }}))).toMap
-      Grammar(grammar.start, newRules)
-    }
-    /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
-      * Is idempotent. */
-    def markovize_horizontal(grammar: Grammar): Grammar = {
-      val nts = nonTerminals(grammar)
-      val rulesSeq = grammar.rules.toSeq
-      def newHorizontalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
-        if(parents.nonEmpty) for(pnt <- parents) yield (pnt :: vContext)
-        else List(vContext)
-      }
-      
-      // Conversion from old to new non-terminals
-      var mapping = Map[NonTerminal, List[NonTerminal]]()
-      val newRules =
-        for{nt <- nts.toList} yield {
-          val expansion = grammar.rules(nt)
-          nt -> expansion.mapLeftContext{ (s: Symbol, l: List[Symbol]) =>
-            s match {
-              case NonTerminal(tpe, vc, Nil) =>
-                val res = NonTerminal(tpe, vc, l)
-                mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
-                res
-              case e => e
-            }
-          }
-        }
-      val newRules2 =
-        for{(nt, expansion) <- newRules
-            nnt <- mapping.getOrElse(nt, List(nt))
-        } yield {
-          nnt -> expansion
-        }
-      Grammar(grammar.start, newRules2.toMap)
-    }
-    
     /** Builds a set of fun defs out of the grammar */
     def buildFunDefTemplate(grammar: Grammar): (WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
-      val nts = nonTerminals(grammar)
+      val nts = grammar.nonTerminals
       val funNameGenerator = new FreshFunNameGenerator {
         var funNames: Set[String] = Set()
         override def freshFunName(s: String): String = {
@@ -539,7 +436,7 @@ case object StringRender extends Rule("StringRender") {
       }
       object TypedNonTerminal { // case-class non-terminal such as Cons or Nil
         def unapply(nt: NonTerminal) = if(grammar.rules contains nt) {
-          Some((nt.tpe, nt.vcontext.map(_.tpe), nt.hcontext.map(_.tpe)))
+          Some((nt.tag, nt.vcontext.map(_.tag), nt.hcontext.map(_.tag)))
         } else None
       }
       /* We create FunDef for vertical and horizontal non-terminals */
@@ -553,7 +450,7 @@ case object StringRender extends Rule("StringRender") {
       def buildExprForHorizontalExpr(nt: NonTerminal, input: List[Identifier]): Option[WithIds[Expr]] = {
         grammar.rules(nt) match {
           case HorizontalRHS(symbols) => 
-            interleaveIdentifiers(symbols.map(x => (x, Nil))) //TODO add the context
+            //interleaveIdentifiers(symbols.map(x => (x, Nil))) //TODO add the context
             None
           case _ => None
         }

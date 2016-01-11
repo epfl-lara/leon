@@ -11,7 +11,7 @@ import purescala.Constructors._
 import datagen._
 import evaluators._
 import codegen.CodeGenParams
-import grammars._
+import leon.grammars._
 
 import scala.collection.mutable.{HashMap => MutableMap}
 

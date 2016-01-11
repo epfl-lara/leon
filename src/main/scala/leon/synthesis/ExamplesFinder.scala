@@ -11,7 +11,7 @@ import purescala.Common._
 import purescala.Constructors._
 import purescala.Extractors._
 import evaluators._
-import grammars._
+import leon.grammars._
 import bonsai.enumerators._
 import codegen._
 import datagen._
