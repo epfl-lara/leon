@@ -469,6 +469,16 @@ case object StringRender extends Rule("StringRender") {
         val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
         val examples = examplesFinder.extractFromProblem(p)
         
+        val stringConverters: Map[TypeTree, List[Expr => Expr]] =
+          hctx.program.definedFunctions.filter(fd => fd.returnType == StringType && fd.params.length == 1)
+          .groupBy({ fd => fd.paramIds.head.getType }).mapValues(fds =>
+            fds.map((fd : FunDef) => ((x: Expr) => functionInvocation(fd, Seq(x)))))
+        val internalStringConverters: Map[TypeTree, List[Expr => Expr]] =
+          (p.as.flatMap { case x => x.getType match {
+            case FunctionType(Seq(aType), StringType) => List((aType, (arg: Expr) => application(Variable(x), Seq(arg))))
+            case _ => Nil
+          }}).groupBy(_._1).mapValues(_.map(_._2))
+       
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         ruleInstantiations += RuleInstantiation("String conversion") {
           val (expr, synthesisResult) = createFunDefsTemplates(StringSynthesisContext.empty, p.as.map(Variable))
