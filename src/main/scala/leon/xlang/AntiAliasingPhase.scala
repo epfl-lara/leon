@@ -21,111 +21,94 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, pgm: Program): Program = {
 
-    var updatedFunctions: Map[FunDef, (FunDef, Seq[ValDef])] = Map()
+    var updatedFunctions: Map[FunDef, FunDef] = Map()
 
-    println("effects: " + effectsAnalysis(pgm).filter(p => p._2.size > 0).map(p => p._1.id + ": " + p._2))
+    val effects = effectsAnalysis(pgm)
+
+    /*
+     * The first pass will introduce all new function definitions,
+     * so that in the next pass we can update function invocations
+     */
+    for {
+      fd <- pgm.definedFunctions
+    } {
+      updatedFunctions += (fd -> updateFunDef(fd, effects)(ctx))
+    }
 
     for {
       fd <- pgm.definedFunctions
     } {
-      updateFunDef(fd)(ctx).foreach{ case (nfd, mvs) => {
-        updatedFunctions += (fd -> ((nfd, mvs)))
-      }}
+      updateBody(fd, effects, updatedFunctions)(ctx)
     }
 
-    //println(updatedFunctions)
-
-    for {
-      fd <- pgm.definedFunctions
-    } {
-      fd.body = fd.body.map(bd => updateInvocations(bd, updatedFunctions)(ctx))
-    }
-
-    val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd).map(_._1), (fi, fd) => None)
-    //println(res._1)
+    val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd), (fi, fd) => None)
+    println(res._1)
     res._1
   }
 
-  private def updateInvocations(body: Expr, updatedFunctions: Map[FunDef, (FunDef, Seq[ValDef])])(ctx: LeonContext): Expr = {
-    val freshBody = postMap {
-      case fi@FunctionInvocation(fd, args) => updatedFunctions.get(fd.fd).map{ case (nfd, modifiedParams) => {
-        val modifiedArgs: Seq[Variable] = 
-          args.zip(fd.params)
-              .filter(p => modifiedParams.contains(p._2))
-              .map(_._1.asInstanceOf[Variable])
+  /*
+   * Create a new FunDef for a given FunDef in the program.
+   * Adapt the signature to express its effects. In case the
+   * function has no effect, this will still introduce a fresh
+   * FunDef as the body might have to be updated anyway.
+   */
+  private def updateFunDef(fd: FunDef, effects: Effects)(ctx: LeonContext): FunDef = {
 
-        val freshRes = FreshIdentifier("res", nfd.returnType)
-
-        val extractResults = Block(
-          modifiedArgs.zipWithIndex.map(p => Assignment(p._1.id, TupleSelect(freshRes.toVariable, p._2 + 2))),
-          TupleSelect(freshRes.toVariable, 1))
-
-
-        Let(freshRes, FunctionInvocation(nfd.typed, args).setPos(fi), extractResults)
-      }}
+    val ownEffects = effects(fd)
+    val aliasedParams: Seq[Identifier] = fd.params.zipWithIndex.flatMap{
+      case (vd, i) if ownEffects.contains(i) => Some(vd)
       case _ => None
-    }(body)
+    }.map(_.id)
 
-    freshBody
+    val newReturnType: TypeTree = if(aliasedParams.isEmpty) fd.returnType else {
+      tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
+    }
+    val newFunDef = new FunDef(fd.id.freshen, fd.tparams, fd.params, newReturnType)
+    newFunDef.addFlags(fd.flags)
+    newFunDef.setPos(fd)
+    newFunDef
   }
 
-  private def updateFunDef(fd: FunDef)(ctx: LeonContext): Option[(FunDef, Seq[ValDef])] = {
-    val aliasedParams: Seq[Identifier] = 
-      fd.params.filter(vd => vd.getType match {
-        case ArrayType(_) => {
-          fd.body.exists(body => {
-            exists{
-              case ArrayUpdate(Variable(a), _, _) => a == vd.id
-              case _ => false
-            }(body)
-          })
-        }
-        case _ => false
-      }).map(_.id)
+  private def updateBody(fd: FunDef, effects: Effects, updatedFunDefs: Map[FunDef, FunDef])
+                        (ctx: LeonContext): Unit = {
 
+    val ownEffects = effects(fd)
+    val aliasedParams: Seq[Identifier] = fd.params.zipWithIndex.flatMap{
+      case (vd, i) if ownEffects.contains(i) => Some(vd)
+      case _ => None
+    }.map(_.id)
 
-    val explicitBody = fd.body.map(bd => makeSideEffectsExplicit(bd, aliasedParams)(ctx))
+    val newFunDef = updatedFunDefs(fd)
 
     if(aliasedParams.isEmpty) {
-      None
+      val newBody = fd.body.map(body => {
+        makeSideEffectsExplicit(body, Seq(), effects, updatedFunDefs)(ctx)
+      })
+      newFunDef.body = newBody
+      newFunDef.precondition = fd.precondition
+      newFunDef.postcondition = fd.postcondition
     } else {
       val freshLocalVars: Seq[Identifier] = aliasedParams.map(v => v.freshen)
       val rewritingMap: Map[Identifier, Identifier] = aliasedParams.zip(freshLocalVars).toMap
 
       val newBody = fd.body.map(body => {
 
-        //val freshBody = postMap {
-        //  case au@ArrayUpdate(a, i, v) =>
-        //    val Variable(id) = a
-        //    rewritingMap.get(id).map(freshId =>
-        //      Assignment(freshId, ArrayUpdated(freshId.toVariable, i, v).setPos(au)).setPos(au)
-        //    )
-        //  case _ => None
-        //  //case as@ArraySelect(a, i) =>
-
-        //  //case l@Let(i, IsTyped(v, ArrayType(_)), b) =>
-        //  //  LetVar(i, v, b).setPos(l)
-        //}(body)
-
         val freshBody = replaceFromIDs(rewritingMap.map(p => (p._1, p._2.toVariable)), body) 
+        val explicitBody = makeSideEffectsExplicit(freshBody, freshLocalVars, effects, updatedFunDefs)(ctx)
 
         //WARNING: only works if side effects in Tuples are extracted from left to right,
         //         in the ImperativeTransformation phase.
-        val finalBody: Expr = Tuple(freshBody +: freshLocalVars.map(_.toVariable))
+        val finalBody: Expr = Tuple(explicitBody +: freshLocalVars.map(_.toVariable))
 
         freshLocalVars.zip(aliasedParams).foldLeft(finalBody)((bd, vp) => {
-          Let(vp._1, Variable(vp._2), bd)
+          LetVar(vp._1, Variable(vp._2), bd)
         })
 
       })
 
-      val newReturnType: TypeTree = {
-        tupleTypeWrap(fd.returnType +: freshLocalVars.map(_.getType))
-      }
-
       val newPostcondition = fd.postcondition.map(post => {
         val Lambda(Seq(res), postBody) = post
-        val newRes = ValDef(FreshIdentifier(res.id.name, newReturnType))
+        val newRes = ValDef(FreshIdentifier(res.id.name, newFunDef.returnType))
         val newBody =
           replace(
             aliasedParams.zipWithIndex.map{ case (id, i) => 
@@ -135,20 +118,17 @@ object AntiAliasingPhase extends TransformationPhase {
         Lambda(Seq(newRes), newBody).setPos(post)
       })
 
-      val newFunDef = new FunDef(fd.id.freshen, fd.tparams, fd.params, newReturnType)
-      newFunDef.addFlags(fd.flags)
-      newFunDef.setPos(fd)
       newFunDef.body = newBody
       newFunDef.precondition = fd.precondition
       newFunDef.postcondition = newPostcondition
-
-      Some((newFunDef, aliasedParams.map(id => ValDef(id))))
     }
   }
 
   //We turn all local val of mutable objects into vars and explicit side effects
   //using assignments. We also make sure that no aliasing is being done.
-  private def makeSideEffectsExplicit(body: Expr, aliasedParams: Seq[Identifier])(ctx: LeonContext): Expr = {
+  private def makeSideEffectsExplicit
+                (body: Expr, aliasedParams: Seq[Identifier], effects: Effects, updatedFunDefs: Map[FunDef, FunDef])
+                (ctx: LeonContext): Expr = {
     preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
 
       case up@ArrayUpdate(a, i, v) => {
@@ -179,9 +159,37 @@ object AntiAliasingPhase extends TransformationPhase {
 
         (None, bindings + id)
       }
-        
+
+      case fi@FunctionInvocation(fd, args) => {
+        updatedFunDefs.get(fd.fd) match {
+          case None => (None, bindings)
+          case Some(nfd) => {
+            val nfi = FunctionInvocation(nfd.typed, args).setPos(fi)
+            val fiEffects = effects.getOrElse(fd.fd, Set())
+            if(fiEffects.nonEmpty) {
+              val modifiedArgs: Seq[Variable] = 
+                args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
+                    .map(_._1.asInstanceOf[Variable])
+
+              val freshRes = FreshIdentifier("res", nfd.returnType)
+
+              val extractResults = Block(
+                modifiedArgs.zipWithIndex.map(p => Assignment(p._1.id, TupleSelect(freshRes.toVariable, p._2 + 2))),
+                TupleSelect(freshRes.toVariable, 1))
+
+
+              val newExpr = Let(freshRes, nfi, extractResults)
+              (Some(newExpr), bindings)
+            } else {
+              (Some(nfi), bindings)
+            }
+          }
+        }
+      }
+
       case _ => (None, bindings)
-    })(body, Set())
+
+    })(body, aliasedParams.toSet)
   }
 
   //TODO: in the future, any object with vars could be aliased and so
@@ -200,26 +208,30 @@ object AntiAliasingPhase extends TransformationPhase {
 
     for {
       fd <- pgm.definedFunctions
-      body <- fd.body
     } {
+      fd.body match {
+        case None =>
+          effects += (fd -> Set())
+        case Some(body) => {
+          val mutableParams = fd.params.filter(vd => vd.getType match {
+            case ArrayType(_) => true
+            case _ => false
+          })
+          val mutatedParams = mutableParams.filter(vd => exists {
+            case ArrayUpdate(Variable(a), _, _) => a == vd.id
+            case _ => false
+          }(body))
+          val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
+            case (vd, i) if mutatedParams.contains(vd) => Some(i)
+            case _ => None
+          }.toSet
+          effects = effects + (fd -> mutatedParamsIndices)
 
-      val mutableParams = fd.params.filter(vd => vd.getType match {
-        case ArrayType(_) => true
-        case _ => false
-      })
-      val mutatedParams = mutableParams.filter(vd => exists {
-        case ArrayUpdate(Variable(a), _, _) => a == vd.id
-        case _ => false
-      }(body))
-      val mutatedParamsIndices = fd.params.zipWithIndex.flatMap{
-        case (vd, i) if mutatedParams.contains(vd) => Some(i)
-        case _ => None
-      }.toSet
-      effects = effects + (fd -> mutatedParamsIndices)
-
-      val missingCalls: Set[FunctionInvocation] = functionCallsOf(body).filterNot(fi => fi.tfd.fd == fd)
-      if(missingCalls.nonEmpty)
-        missingEffects += (fd -> missingCalls)
+          val missingCalls: Set[FunctionInvocation] = functionCallsOf(body).filterNot(fi => fi.tfd.fd == fd)
+          if(missingCalls.nonEmpty)
+            missingEffects += (fd -> missingCalls)
+        }
+      }
     }
 
     def rec(): Unit = {
@@ -252,6 +264,9 @@ object AntiAliasingPhase extends TransformationPhase {
 
 
     def invocEffects(fi: FunctionInvocation): Set[Identifier] = {
+      if(!effects.isDefinedAt(fi.tfd.fd)) {
+        println("fi not defined: " + fi)
+      }
       val mutatedParams: Set[Int] = effects(fi.tfd.fd)
       fi.args.zipWithIndex.flatMap{
         case (Variable(id), i) if mutatedParams.contains(i) => Some(id)
