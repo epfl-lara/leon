@@ -38,7 +38,9 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
     val grammar1 = 
       Grammar(Seq(A), Map(A -> Expansion(Seq(Seq(x, A), Seq(y)))))
     val grammar2 =
-      Grammar(Seq(A), Map(A -> Expansion(Seq(Seq(x, xA), Seq(y)))))
+      Grammar(Seq(A),
+          Map(A -> Expansion(Seq(Seq(x, xA), Seq(y))),
+              xA -> Expansion(Seq(Seq(x, xA), Seq(y)))))
         
     grammar1.markovize_horizontal() should equal (grammar2)
     grammar2.markovize_horizontal() should equal (grammar2)
@@ -55,7 +57,9 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
     val grammar2 =
       Grammar(Seq(A, AB),
           Map(A -> Expansion(Seq(Seq(B, BA), Seq(y))),
-              B -> Expansion(Seq(Seq(x)))
+              B -> Expansion(Seq(Seq(x))),
+              AB -> Expansion(Seq(Seq(x))),
+              BA -> Expansion(Seq(Seq(B, BA), Seq(y)))
               ))
 
     grammar1.markovize_horizontal() should equal (grammar2)
@@ -64,7 +68,7 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
   
   test("Vertical Markovization simple") {
     val AA = A.copy(vcontext = List(A))
-    val AAA = AA.copy(vcontext = List(A, A))
+    val AAA = A.copy(vcontext = List(AA, A))
     val grammar1 = 
       Grammar(Seq(A), Map(A -> Expansion(Seq(Seq(x, A), Seq(y)))))
     val grammar2 =
@@ -88,16 +92,38 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
     val BB = B.copy(vcontext = List(B))
     
     val grammar1 = 
-      Grammar(Seq(A, B),
+      Grammar(Seq(A),
           Map(A -> Expansion(Seq(Seq(x, B), Seq(y))),
               B -> Expansion(Seq(Seq(z, A), Seq(x)))))
 
     val grammar2 =
-      Grammar(Seq(A, B),
+      Grammar(Seq(A),
           Map(A -> Expansion(Seq(Seq(x, AB), Seq(y))),
               BA -> Expansion(Seq(Seq(x, AB), Seq(y))),
               AB -> Expansion(Seq(Seq(z, BA), Seq(x)))))
     
+    grammar1.markovize_vertical() should equal (grammar2)
+  }
+  
+  test("Vertical Markovization triple") {
+    val AA = A.copy(vcontext = List(A))
+    val BA = A.copy(vcontext = List(B))
+    val AB = B.copy(vcontext = List(A))
+    val BB = B.copy(vcontext = List(B))
+    
+    val grammar1 = 
+      Grammar(Seq(A),
+          Map(A -> Expansion(Seq(Seq(x, B), Seq(y))),
+              B -> Expansion(Seq(Seq(z, A), Seq(z, B), Seq(x)))))
+
+    val grammar2 =
+      Grammar(Seq(A),
+          Map(A -> Expansion(Seq(Seq(x, AB), Seq(y))),
+              BA -> Expansion(Seq(Seq(x, AB), Seq(y))),
+              AB -> Expansion(Seq(Seq(z, BA), Seq(z, BB), Seq(x))),
+              BB -> Expansion(Seq(Seq(z, BA), Seq(z, BB), Seq(x)))
+          ))
+          
     grammar1.markovize_vertical() should equal (grammar2)
   }
   

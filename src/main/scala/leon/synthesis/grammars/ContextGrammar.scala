@@ -2,6 +2,8 @@ package leon
 package synthesis
 package grammars
 
+import scala.collection.mutable.ListBuffer
+
 class ContextGrammar[SymbolTag, TerminalTag] {
   /** A tagged symbol */
   abstract class Symbol { def tag: SymbolTag }
@@ -24,7 +26,9 @@ class ContextGrammar[SymbolTag, TerminalTag] {
     }
     /** Maps symbols with the left context as second argument */
     def mapLeftContext(f: (Symbol, List[Symbol]) => Symbol): Expansion = {
-      Expansion(ls.map(l => l.foldLeft(List[Symbol]()){ case (l, s) => f(s, l) :: l } ))
+      Expansion(ls.map(l => (l.foldLeft(ListBuffer[Symbol]()){
+        case (l: ListBuffer[Symbol], s: Symbol) => l += f(s, l.toList)
+      }).toList ))
     }
   }
   
@@ -72,21 +76,28 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       def parents(nt: NonTerminal): Seq[NonTerminal] = {
         rulesSeq.collect{ case (ntprev, expansion)  if expansion.contains(nt) => ntprev }
       }
-      def newVerticalContexts(parents: Seq[NonTerminal], vContext: List[NonTerminal]): Seq[List[NonTerminal]] = {
-        if(parents.nonEmpty) for(pnt <- parents) yield (pnt :: vContext)
-        else List(vContext)
+      var mapping = Map[NonTerminal, List[NonTerminal]](start.collect{case x: NonTerminal => x }.map(x => x -> List(x)) : _*)
+      def updateMapping(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
+        val res = nt.copy(vcontext = topContext)
+        mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
+        res
       }
       
       val newRules = (for{
         nt <- nts
         expansion = rules(nt)
-        newVc <- newVerticalContexts(parents(nt), nt.vcontext)
-        newNt = NonTerminal(nt.tag, newVc, nt.hcontext)
-      }  yield (newNt -> (expansion.map{(nt: Symbol) => nt match {
-        case NonTerminal(tag, vc, hc) => NonTerminal(tag, newNt::vc, hc)
+      }  yield (nt -> (expansion.map{(s: Symbol) => s match {
+        case n@NonTerminal(tag, vc, hc) => updateMapping(n, nt::nt.vcontext)
         case e => e
       }}))).toMap
-      Grammar(start, newRules)
+      
+      val newRules2 = 
+        for{(nt, expansion) <- newRules
+            nnt <- mapping.getOrElse(nt, List(nt))
+        } yield {
+          nnt -> expansion
+        }
+      Grammar(start, newRules2)
     }
     
     /** Applies horizontal markovization to the grammar (add the left history to every node and duplicate rules as needed.
@@ -99,7 +110,7 @@ class ContextGrammar[SymbolTag, TerminalTag] {
         else List(vContext)
       }
       
-      // Conversion from old to new non-terminals
+      // Conversion from old to new non-terminals to duplicate rules afterwards.
       var mapping = Map[NonTerminal, List[NonTerminal]]()
       
       def updateMapping(nt: NonTerminal, leftContext: List[Symbol]): NonTerminal = {
@@ -117,13 +128,13 @@ class ContextGrammar[SymbolTag, TerminalTag] {
         }
       }
       val newStart = processSequence(start)
+      // Add the context to each symbol in each rule.
       val newRules =
-        for{nt <- nts.toList} yield {
+        for{nt <- nts} yield {
           val expansion = rules(nt)
           nt -> expansion.mapLeftContext{ (s: Symbol, l: List[Symbol]) =>
             s match {
-              case nt@NonTerminal(tag, vc, Nil) =>
-                updateMapping(nt, l)
+              case nt@NonTerminal(tag, vc, Nil) => updateMapping(nt, l)
               case e => e
             }
           }
