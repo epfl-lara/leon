@@ -83,7 +83,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         }
       }
 
-      var eb = p.qeb.mapIns { info =>
+      val eb = p.qeb.mapIns { info =>
         List(info.flatMap { case (id, v) =>
           ebMapInfo.get(id) match {
             case Some(m) =>
@@ -103,7 +103,8 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
         case CaseClass(ct, args) =>
           val (cts, es) = args.zip(ct.fields).map { 
             case (CaseClassSelector(ct, e, id), field) if field.id == id => (ct, e)
-            case _ => return e
+            case _ =>
+              return e
           }.unzip
 
           if (cts.distinct.size == 1 && es.distinct.size == 1) {
@@ -126,7 +127,7 @@ case object DetupleInput extends NormalizingRule("Detuple In") {
       
       val sub = Problem(newAs, subWs, subPc, subProblem, p.xs, eb)
 
-      val s = {substAll(reverseMap, _:Expr)} andThen { simplePostTransform(recompose) }
+      val s = (substAll(reverseMap, _:Expr)) andThen simplePostTransform(recompose)
      
       Some(decomp(List(sub), forwardMap(s), s"Detuple ${reverseMap.keySet.mkString(", ")}"))
     } else {

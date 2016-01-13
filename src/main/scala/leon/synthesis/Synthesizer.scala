@@ -70,21 +70,19 @@ class Synthesizer(val context : LeonContext,
 
     // Print out report for synthesis, if necessary
     reporter.ifDebug { printer =>
-      import java.io.FileWriter
       import java.text.SimpleDateFormat
       import java.util.Date
 
       val categoryName = ci.fd.getPos.file.toString.split("/").dropRight(1).lastOption.getOrElse("?")
       val benchName = categoryName+"."+ci.fd.id.name
-      var time = lastTime/1000.0;
+      val time = lastTime/1000.0
 
       val defs = visibleDefsFrom(ci.fd)(program).collect {
         case cd: ClassDef => 1 + cd.fields.size
         case fd: FunDef => 1 + fd.params.size + formulaSize(fd.fullBody)
       }
 
-      val psize = defs.sum;
-
+      val psize = defs.sum
 
       val (size, calls, proof) = result.headOption match {
         case Some((sol, trusted)) =>

@@ -2,10 +2,9 @@
 
 package leon
 package grammars
+package transformers
 
-import purescala.Types._
-import purescala.Expressions._
-import purescala.Constructors._
+import leon.purescala.Types.Typed
 
 /**
  * Embed a grammar Li->Expr within a grammar Lo->Expr
@@ -13,9 +12,9 @@ import purescala.Constructors._
  * We rely on a bijection between Li and Lo labels
  */
 case class EmbeddedGrammar[Ti <: Typed, To <: Typed](innerGrammar: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
-  def computeProductions(t: To)(implicit ctx: LeonContext): Seq[Gen] = {
+  def computeProductions(t: To)(implicit ctx: LeonContext): Seq[Prod] = {
     innerGrammar.computeProductions(oToi(t)).map { innerGen =>
-      nonTerminal(innerGen.subTrees.map(iToo), innerGen.builder)
+      nonTerminal(innerGen.subTrees.map(iToo), innerGen.builder, innerGen.tag)
     }
   }
 }

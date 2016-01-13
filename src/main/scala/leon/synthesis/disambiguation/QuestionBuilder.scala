@@ -69,15 +69,15 @@ object QuestionBuilder {
   
   /** Specific enumeration of strings, which can be used with the QuestionBuilder#setValueEnumerator method */
   object SpecialStringValueGrammar extends ExpressionGrammar[TypeTree] {
-    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Gen] = t match {
-       case StringType =>
-          List(
-            terminal(StringLiteral("")),
-            terminal(StringLiteral("a")),
-            terminal(StringLiteral("\"'\n\t")),
-            terminal(StringLiteral("Lara 2007"))
-          )
-       case _ => ValueGrammar.computeProductions(t)
+    def computeProductions(t: TypeTree)(implicit ctx: LeonContext): Seq[Prod] = t match {
+      case StringType =>
+        List(
+          terminal(StringLiteral("")),
+          terminal(StringLiteral("a")),
+          terminal(StringLiteral("\"'\n\t")),
+          terminal(StringLiteral("Lara 2007"))
+        )
+      case _ => ValueGrammar.computeProductions(t)
     }
   }
 }
@@ -140,7 +140,7 @@ class QuestionBuilder[T <: Expr](
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
     
-    val enum = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree,Expr]](value_enumerator.getProductions)
+    val enum = new MemoizedEnumerator[TypeTree, Expr, ProductionRule[TypeTree,Expr]](value_enumerator.getProductions)
     val values = enum.iterator(tupleTypeWrap(_argTypes))
     val instantiations = values.map {
       v => input.zip(unwrapTuple(v, input.size))

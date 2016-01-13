@@ -3,21 +3,24 @@
 package leon
 package grammars
 
+import transformers._
 import purescala.Types._
 import purescala.TypeOps._
 import purescala.Extractors._
 import purescala.Definitions._
-import purescala.ExprOps._
-import purescala.DefOps._
 import purescala.Expressions._
 
 import synthesis._
 
+/** A grammar that generates expressions by inserting small variations in [[e]]
+ * @param e The [[Expr]] to which small variations will be inserted
+ * @param terminals A set of [[Expr]]s that may be inserted into [[e]] as small variations
+ */
 case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[NonTerminal[String]] {
 
   val excludeFCalls = sctx.settings.functionsToIgnore
 
-  val normalGrammar = DepthBoundedGrammar(EmbeddedGrammar(
+  val normalGrammar: ExpressionGrammar[NonTerminal[String]] = DepthBoundedGrammar(EmbeddedGrammar(
       BaseGrammar ||
       EqualityGrammar(Set(IntegerType, Int32Type, BooleanType) ++ terminals.map { _.getType }) ||
       OneOf(terminals.toSeq :+ e) ||
@@ -37,9 +40,9 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
     }
   }
 
-  private[this] var similarCache: Option[Map[L, Seq[Gen]]] = None
+  private[this] var similarCache: Option[Map[L, Seq[Prod]]] = None
 
-  def computeProductions(t: L)(implicit ctx: LeonContext): Seq[Gen] = {
+  def computeProductions(t: L)(implicit ctx: LeonContext): Seq[Prod] = {
     t match {
       case NonTerminal(_, "B", _) => normalGrammar.computeProductions(t)
       case _                =>
@@ -54,7 +57,7 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
     }
   }
 
-  def computeSimilar(e : Expr)(implicit ctx: LeonContext): Seq[(L, Gen)] = {
+  def computeSimilar(e : Expr)(implicit ctx: LeonContext): Seq[(L, Prod)] = {
 
     def getLabel(t: TypeTree) = {
       val tpe = bestRealType(t)
@@ -67,9 +70,9 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
       case _ => false
     }
 
-    def rec(e: Expr, gl: L): Seq[(L, Gen)] = {
+    def rec(e: Expr, gl: L): Seq[(L, Prod)] = {
 
-      def gens(e: Expr, gl: L, subs: Seq[Expr], builder: (Seq[Expr] => Expr)): Seq[(L, Gen)] = {
+      def gens(e: Expr, gl: L, subs: Seq[Expr], builder: (Seq[Expr] => Expr)): Seq[(L, Prod)] = {
         val subGls = subs.map { s => getLabel(s.getType) }
 
         // All the subproductions for sub gl
@@ -81,8 +84,8 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
         }
 
         val swaps = if (subs.size > 1 && !isCommutative(e)) {
-          (for (i <- 0 until subs.size;
-               j <- i+1 until subs.size) yield {
+          (for (i <- subs.indices;
+                j <- i+1 until subs.size) yield {
 
             if (subs(i).getType == subs(j).getType) {
               val swapSubs = subs.updated(i, subs(j)).updated(j, subs(i))
@@ -98,18 +101,18 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
         allSubs ++ injectG ++ swaps
       }
 
-      def cegis(gl: L): Seq[(L, Gen)] = {
+      def cegis(gl: L): Seq[(L, Prod)] = {
         normalGrammar.getProductions(gl).map(gl -> _)
       }
 
-      def int32Variations(gl: L, e : Expr): Seq[(L, Gen)] = {
+      def int32Variations(gl: L, e : Expr): Seq[(L, Prod)] = {
         Seq(
           gl -> terminal(BVMinus(e, IntLiteral(1))),
           gl -> terminal(BVPlus (e, IntLiteral(1)))
         )
       }
 
-      def intVariations(gl: L, e : Expr): Seq[(L, Gen)] = {
+      def intVariations(gl: L, e : Expr): Seq[(L, Prod)] = {
         Seq(
           gl -> terminal(Minus(e, InfiniteIntegerLiteral(1))),
           gl -> terminal(Plus (e, InfiniteIntegerLiteral(1)))
@@ -118,7 +121,7 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
 
       // Find neighbor case classes that are compatible with the arguments:
       // Turns And(e1, e2) into Or(e1, e2)...
-      def ccVariations(gl: L, cc: CaseClass): Seq[(L, Gen)] = {
+      def ccVariations(gl: L, cc: CaseClass): Seq[(L, Prod)] = {
         val CaseClass(cct, args) = cc
 
         val neighbors = cct.root.knownCCDescendants diff Seq(cct)
@@ -129,7 +132,7 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
       }
 
       val funFilter = (fd: FunDef) => fd.isSynthetic || (excludeFCalls contains fd)
-      val subs: Seq[(L, Gen)] = e match {
+      val subs: Seq[(L, Prod)] = e match {
         
         case _: Terminal | _: Let | _: LetDef | _: MatchExpr =>
           gens(e, gl, Nil, { _ => e }) ++ cegis(gl)

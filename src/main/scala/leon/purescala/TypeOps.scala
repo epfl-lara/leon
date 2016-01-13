@@ -13,7 +13,7 @@ import ExprOps.preMap
 
 object TypeOps {
   def typeDepth(t: TypeTree): Int = t match {
-    case NAryType(tps, builder) => 1+ (0 +: (tps map typeDepth)).max
+    case NAryType(tps, builder) => 1 + (0 +: (tps map typeDepth)).max
   }
 
   def typeParamsOf(t: TypeTree): Set[TypeParameter] = t match {
