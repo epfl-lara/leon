@@ -167,8 +167,10 @@ case object StringRender extends Rule("StringRender") {
         rec(lhs, rhstail, accEqs, accLeft, accRight append s)
       case (RegularStringFormToken(e)::lhstail, OtherStringChunk(s)::rhstail) =>
         rec(lhstail, rhs, accEqs, accLeft += e, accRight)
-      case (RegularStringFormToken(e)::lhstail, RegularStringChunk(s)::rhstail) =>
-        rec(lhstail, rhstail, accEqs, accLeft += e, accRight append s)
+      case (RegularStringFormToken(e)::lhstail, rhs) =>
+        rec(lhstail, rhs, accEqs, accLeft += e, accRight)
+      case (Nil, RegularStringChunk(s)::rhstail) =>
+        rec(Nil, rhstail, accEqs, accLeft, accRight append s)
     }
     rec(lhs, rhs, ListBuffer[Equation](), ListBuffer[StringFormToken](), new StringBuffer)
   }
@@ -327,10 +329,12 @@ case object StringRender extends Rule("StringRender") {
   object StringSynthesisContext {
     def empty(
         definedStringConverters: StringConverters,
-        abstractStringConverters: StringConverters)(implicit hctx: SearchContext) =
+        abstractStringConverters: StringConverters,
+        originalInputs: Set[Identifier])(implicit hctx: SearchContext) =
       new StringSynthesisContext(None, new StringSynthesisResult(Map(), Set()),
         definedStringConverters,
-        abstractStringConverters)
+        abstractStringConverters,
+        originalInputs)
   }
   
   /** Context for the current synthesis process */
@@ -338,17 +342,20 @@ case object StringRender extends Rule("StringRender") {
       val currentCaseClassParent: Option[TypeTree],
       val result: StringSynthesisResult,
       val definedStringConverters: StringConverters,
-      val abstractStringConverters: StringConverters
+      val abstractStringConverters: StringConverters,
+      val originalInputs: Set[Identifier]
   )(implicit hctx: SearchContext) {
     def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisContext = {
       new StringSynthesisContext(currentCaseClassParent, result.add(d, f, s),
           definedStringConverters,
-          abstractStringConverters)
+          abstractStringConverters,
+          originalInputs)
     }
     def copy(currentCaseClassParent: Option[TypeTree]=currentCaseClassParent, result: StringSynthesisResult = result): StringSynthesisContext = 
       new StringSynthesisContext(currentCaseClassParent, result,
           definedStringConverters,
-          abstractStringConverters)
+          abstractStringConverters,
+          originalInputs)
     def freshFunName(s: String) = result.freshFunName(s)
   }
   
@@ -446,7 +453,11 @@ case object StringRender extends Rule("StringRender") {
         case Some(fd) =>
           gatherInputs(ctx, q, result += Stream((functionInvocation(fd._1, Seq(input)), Nil)))
         case None => // No function can render the current type.
-          val exprs1 = ctx.definedStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), Nil))
+          val exprs1 = ctx.definedStringConverters.getOrElse(input.getType, Nil).flatMap(f =>
+            f(input) match {
+              case FunctionInvocation(fd, Seq(Variable(id))) if ctx.originalInputs(id) => None
+              case e => Some((e, Nil))
+            })
           val exprs2 = ctx.abstractStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), Nil))
           val converters = (exprs1 ++ exprs2).toStream
           def mergeResults(defaultconverters: =>Stream[WithIds[Expr]]): Stream[WithIds[Expr]] = {
@@ -556,11 +567,14 @@ case object StringRender extends Rule("StringRender") {
         val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
         val examples = examplesFinder.extractFromProblem(p)
         
-        val stringConverters: StringConverters =
-          hctx.program.definedFunctions.filter(fd => fd.returnType == StringType && fd.params.length == 1)
+        val definedStringConverters: StringConverters =
+          hctx.program.definedFunctions.filter(fd =>
+            fd.returnType == StringType && fd.params.length == 1
+            && fd != hctx.program.library.escape.get
+          )
           .groupBy({ fd => fd.paramIds.head.getType }).mapValues(fds =>
             fds.map((fd : FunDef) => ((x: Expr) => functionInvocation(fd, Seq(x)))))
-        val internalStringConverters: StringConverters =
+        val abstractStringConverters: StringConverters =
           (p.as.flatMap { case x => x.getType match {
             case FunctionType(Seq(aType), StringType) => List((aType, (arg: Expr) => application(Variable(x), Seq(arg))))
             case _ => Nil
@@ -569,7 +583,11 @@ case object StringRender extends Rule("StringRender") {
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         ruleInstantiations += RuleInstantiation("String conversion") {
           val (expr, synthesisResult) = createFunDefsTemplates(
-              StringSynthesisContext.empty(stringConverters, internalStringConverters), p.as.map(Variable))
+              StringSynthesisContext.empty(
+                  definedStringConverters,
+                  abstractStringConverters,
+                  p.as.toSet
+                  ), p.as.map(Variable))
           val funDefs = synthesisResult.adtToString
           
           /*val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
