@@ -262,7 +262,6 @@ object AntiAliasingPhase extends TransformationPhase {
       }
     }
 
-
     def invocEffects(fi: FunctionInvocation): Set[Identifier] = {
       if(!effects.isDefinedAt(fi.tfd.fd)) {
         println("fi not defined: " + fi)
@@ -275,7 +274,6 @@ object AntiAliasingPhase extends TransformationPhase {
         case _ => None
       }.toSet
     }
-
 
     rec()
     effects
