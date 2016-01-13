@@ -3,13 +3,11 @@
 package leon
 package synthesis
 
-import purescala.ExprOps._
-
+import purescala.ExprOps.replace
 import purescala.ScalaPrinter
-import leon.utils._
 import purescala.Definitions.{Program, FunDef}
-import leon.utils.ASCIIHelpers
 
+import leon.utils._
 import graph._
 
 object SynthesisPhase extends TransformationPhase {

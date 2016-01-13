@@ -45,6 +45,10 @@ object SourceInfo {
       ci
     }
 
+    if (results.isEmpty) {
+      ctx.reporter.warning("No 'choose' found. Maybe the functions you chose do not exist?")
+    }
+
     results.sortBy(_.source.getPos)
   }
 

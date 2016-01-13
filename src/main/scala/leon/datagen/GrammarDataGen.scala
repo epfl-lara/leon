@@ -20,7 +20,7 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] 
   implicit val ctx = evaluator.context
 
   def generate(tpe: TypeTree): Iterator[Expr] = {
-    val enum = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree, Expr]](grammar.getProductions)
+    val enum = new MemoizedEnumerator[TypeTree, Expr, ProductionRule[TypeTree, Expr]](grammar.getProductions)
     enum.iterator(tpe)
   }
 

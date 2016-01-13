@@ -35,6 +35,9 @@ abstract class PreprocessingRule(name: String) extends Rule(name) {
 
 /** Contains the list of all available rules for synthesis */
 object Rules {
+
+  private val newCegis = true
+
   /** Returns the list of all available rules for synthesis */
   def all = List[Rule](
     StringRender,
@@ -54,8 +57,8 @@ object Rules {
     OptimisticGround,
     EqualitySplit,
     InequalitySplit,
-    CEGIS,
-    TEGIS,
+    if(newCegis) CEGIS2 else CEGIS,
+    //TEGIS,
     //BottomUpTEGIS,
     rules.Assert,
     DetupleOutput,

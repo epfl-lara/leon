@@ -42,6 +42,20 @@ object SeqUtils {
       }
     }
   }
+
+  def sumToOrdered(sum: Int, arity: Int): Seq[Seq[Int]] = {
+    def rec(sum: Int, arity: Int): Seq[Seq[Int]] = {
+      require(arity > 0)
+      if (sum < 0) Nil
+      else if (arity == 1) Seq(Seq(sum))
+      else for {
+        n <- 0 to sum / arity
+        rest <- rec(sum - arity * n, arity - 1)
+      } yield n +: rest.map(n + _)
+    }
+
+    rec(sum, arity) filterNot (_.head == 0)
+  }
 }
 
 class CartesianView[+A](views: Seq[SeqView[A, Seq[A]]]) extends SeqView[Seq[A], Seq[Seq[A]]] {
