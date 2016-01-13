@@ -164,7 +164,7 @@ object AntiAliasingPhase extends TransformationPhase {
         updatedFunDefs.get(fd.fd) match {
           case None => (None, bindings)
           case Some(nfd) => {
-            val nfi = FunctionInvocation(nfd.typed, args).setPos(fi)
+            val nfi = FunctionInvocation(nfd.typed(fd.tps), args).setPos(fi)
             val fiEffects = effects.getOrElse(fd.fd, Set())
             if(fiEffects.nonEmpty) {
               val modifiedArgs: Seq[Variable] = 
@@ -267,7 +267,9 @@ object AntiAliasingPhase extends TransformationPhase {
       if(!effects.isDefinedAt(fi.tfd.fd)) {
         println("fi not defined: " + fi)
       }
-      val mutatedParams: Set[Int] = effects(fi.tfd.fd)
+      //TODO: the require should be fine once we consider nested functions as well
+      //require(effects.isDefinedAt(fi.tfd.fd)
+      val mutatedParams: Set[Int] = effects.get(fi.tfd.fd).getOrElse(Set())
       fi.args.zipWithIndex.flatMap{
         case (Variable(id), i) if mutatedParams.contains(i) => Some(id)
         case _ => None
