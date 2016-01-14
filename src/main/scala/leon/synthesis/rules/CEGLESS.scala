@@ -30,7 +30,7 @@ case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
       }
     }
 
-    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, sctx, p)).foldLeft[ExpressionGrammar[NonTerminal[String]]](Empty())(_ || _)
+    val guidedGrammar = Union(guides.map(SimilarTo(_, inputs.toSet, sctx, p)))
 
     CegisParams(
       grammar = guidedGrammar,
