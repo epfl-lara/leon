@@ -330,11 +330,13 @@ case object StringRender extends Rule("StringRender") {
     def empty(
         definedStringConverters: StringConverters,
         abstractStringConverters: StringConverters,
-        originalInputs: Set[Identifier])(implicit hctx: SearchContext) =
+        originalInputs: Set[Identifier],
+        provided_functions: Seq[Identifier])(implicit hctx: SearchContext) =
       new StringSynthesisContext(None, new StringSynthesisResult(Map(), Set()),
         definedStringConverters,
         abstractStringConverters,
-        originalInputs)
+        originalInputs,
+        provided_functions)
   }
   
   /** Context for the current synthesis process */
@@ -343,19 +345,22 @@ case object StringRender extends Rule("StringRender") {
       val result: StringSynthesisResult,
       val definedStringConverters: StringConverters,
       val abstractStringConverters: StringConverters,
-      val originalInputs: Set[Identifier]
+      val originalInputs: Set[Identifier],
+      val provided_functions: Seq[Identifier]
   )(implicit hctx: SearchContext) {
     def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisContext = {
       new StringSynthesisContext(currentCaseClassParent, result.add(d, f, s),
           definedStringConverters,
           abstractStringConverters,
-          originalInputs)
+          originalInputs,
+          provided_functions)
     }
     def copy(currentCaseClassParent: Option[TypeTree]=currentCaseClassParent, result: StringSynthesisResult = result): StringSynthesisContext = 
       new StringSynthesisContext(currentCaseClassParent, result,
           definedStringConverters,
           abstractStringConverters,
-          originalInputs)
+          originalInputs,
+          provided_functions)
     def freshFunName(s: String) = result.freshFunName(s)
   }
   
@@ -375,7 +380,7 @@ case object StringRender extends Rule("StringRender") {
     val funName = funName3(0).toLower + funName3.substring(1) 
     val funId = FreshIdentifier(ctx.freshFunName(funName), alwaysShowUniqueID = true)
     val argId= FreshIdentifier(tpe.typeToConvert.asString(hctx.context).toLowerCase()(0).toString, tpe.typeToConvert)
-    val fd = new FunDef(funId, Nil, ValDef(argId) :: Nil, StringType) // Empty function.
+    val fd = new FunDef(funId, Nil, ValDef(argId) :: ctx.provided_functions.map(ValDef(_, false)).toList, StringType) // Empty function.
     fd
   }
   
@@ -451,11 +456,11 @@ case object StringRender extends Rule("StringRender") {
         val dependentType = DependentType(ctx.currentCaseClassParent, input.asString(hctx.program)(hctx.context), input.getType)
         ctx.result.adtToString.get(dependentType) match {
         case Some(fd) =>
-          gatherInputs(ctx, q, result += Stream((functionInvocation(fd._1, Seq(input)), Nil)))
+          gatherInputs(ctx, q, result += Stream((functionInvocation(fd._1, input::ctx.provided_functions.toList.map(Variable)), Nil)))
         case None => // No function can render the current type.
           val exprs1 = ctx.definedStringConverters.getOrElse(input.getType, Nil).flatMap(f =>
             f(input) match {
-              case FunctionInvocation(fd, Seq(Variable(id))) if ctx.originalInputs(id) => None
+              case FunctionInvocation(fd, Variable(id)::_) if ctx.originalInputs(id) => None
               case e => Some((e, Nil))
             })
           val exprs2 = ctx.abstractStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), Nil))
@@ -470,9 +475,9 @@ case object StringRender extends Rule("StringRender") {
             case StringType =>
               gatherInputs(ctx, q, result +=
                 mergeResults(Stream((input, Nil),
-                        (FunctionInvocation(
-                            hctx.program.library.escape.get.typed,
-                            Seq(input)): Expr, Nil))))
+                        (functionInvocation(
+                            hctx.program.library.escape.get,
+                            input::ctx.provided_functions.toList.map(Variable)): Expr, Nil))))
             case BooleanType =>
               val (bTemplate, vs) = booleanTemplate(input).instantiateWithVars
               gatherInputs(ctx, q, result += mergeResults(Stream((BooleanToString(input), Nil), (bTemplate, vs))))
@@ -508,16 +513,20 @@ case object StringRender extends Rule("StringRender") {
                       Stream(constantPatternMatching(fd, act)) ++ allMatchExprsEnd
                     } else allMatchExprsEnd
                     gatherInputs(ctx3.add(dependentType, fd, allMatchExprs), q,
-                        result += Stream((functionInvocation(fd, Seq(input)), Nil)))
+                        result += Stream((functionInvocation(fd, input::ctx.provided_functions.toList.map(Variable)), Nil)))
                   case cct@CaseClassType(ccd@CaseClassDef(id, tparams, parent, isCaseObject), tparams2) =>
                     val (newCases, result3) = extractCaseVariants(cct, ctx2)
                     val allMatchExprs = newCases.map(acase => mergeMatchCases(fd)(Seq(acase)))
                     gatherInputs(ctx2.copy(result = result3).add(dependentType, fd, allMatchExprs), q,
-                        result += Stream((functionInvocation(fd, Seq(input)), Nil)))
+                        result += Stream((functionInvocation(fd, input::ctx.provided_functions.toList.map(Variable)), Nil)))
                 }
               }
             case TypeParameter(t) =>
-              hctx.reporter.fatalError("Could not handle type parameter for string rendering " + t)
+              if(converters.isEmpty) {
+                hctx.reporter.fatalError("Could not handle type parameter for string rendering " + t)
+              } else {
+                gatherInputs(ctx, q, result += mergeResults(Stream.empty))
+              }
             case tpe => 
               hctx.reporter.fatalError("Could not handle class type for string rendering " + tpe)
           }
@@ -580,7 +589,7 @@ case object StringRender extends Rule("StringRender") {
             case _ => Nil
           }}).groupBy(_._1).mapValues(_.map(_._2))
        
-        val inputVariables = p.as.filter( x => x.getType match {
+        val (inputVariables, functionVariables) = p.as.partition ( x => x.getType match {
           case f: FunctionType => false
           case _ => true
         })
@@ -591,7 +600,8 @@ case object StringRender extends Rule("StringRender") {
               StringSynthesisContext.empty(
                   definedStringConverters,
                   abstractStringConverters,
-                  p.as.toSet
+                  p.as.toSet,
+                  functionVariables
                   ), inputVariables.map(Variable))
           val funDefs = synthesisResult.adtToString
           

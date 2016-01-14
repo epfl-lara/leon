@@ -18,6 +18,11 @@ object GrammarRender {
   case class NonTerminal(tag: String, vcontext: List[Symbol], hcontext: List[Symbol]) extends Symbol
   /** A tagged terminal */
   case class Terminal(tag: String) extends Symbol
+  
+    /** All possible right-hand-side of rules */
+  case class Expansion(ls: List[List[Symbol]]) 
+  /** A grammar here has a start sequence instead of a start symbol */
+  case class Grammar(start: List[Symbol], rules: List[(Symbol, Expansion)])
 
   def symbol_markov(s: Grammar): String = {
     ???[String]
@@ -41,6 +46,15 @@ object GrammarRender {
         "Nfoo_vTfoo_hNfoo"
       case NonTerminal("foo", Cons(NonTerminal("foo", Nil(), Nil()), Cons(NonTerminal("foo", Nil(), Nil()), Nil())), Nil()) =>
         "Nfoo_vNfoo_Nfoo"
+    }
+  }
+  
+  def grammarToString(p : Grammar): String =  {
+    ???[String]
+  } ensuring {
+    (res : String) => (p, res) passes {
+      case _ if false =>
+        ""
     }
   }
 }
