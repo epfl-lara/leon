@@ -60,6 +60,12 @@ object AntiAliasingPhase extends TransformationPhase {
       case _ => None
     }.map(_.id)
 
+    fd.body.foreach(body => getReturnedExpr(body).foreach{
+      case v@Variable(id) if aliasedParams.contains(id) =>
+        ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object")
+      case _ => ()
+    })
+
     val newReturnType: TypeTree = if(aliasedParams.isEmpty) fd.returnType else {
       tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
     }
@@ -279,5 +285,18 @@ object AntiAliasingPhase extends TransformationPhase {
     effects
   }
 
+
+  /*
+   * A bit hacky, but not sure of the best way to do something like that
+   * currently.
+   */
+  private def getReturnedExpr(expr: Expr): Seq[Expr] = expr match {
+    case Let(_, _, rest) => getReturnedExpr(rest)
+    case LetVar(_, _, rest) => getReturnedExpr(rest)
+    case Block(_, rest) => getReturnedExpr(rest)
+    case IfExpr(_, thenn, elze) => getReturnedExpr(thenn) ++ getReturnedExpr(elze)
+    case MatchExpr(_, cses) => cses.flatMap{ cse => getReturnedExpr(cse.rhs) }
+    case e => Seq(expr)
+  }
 
 }
