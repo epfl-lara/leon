@@ -112,7 +112,7 @@ case object StringRender extends Rule("StringRender") {
   /** Augment the left-hand-side to have possible function calls, such as x + "const" + customToString(_) ...
    *  Function calls will be eliminated when converting to a valid problem.
    */
-  abstract class AugmentedStringFormToken
+  sealed abstract class AugmentedStringFormToken
   case class RegularStringFormToken(e: StringFormToken) extends AugmentedStringFormToken
   case class OtherStringFormToken(e: Expr) extends AugmentedStringFormToken
   type AugmentedStringForm = List[AugmentedStringFormToken]
@@ -120,7 +120,7 @@ case object StringRender extends Rule("StringRender") {
   /** Augments the right-hand-side to have possible function calls, such as "const" + customToString(_) ... 
    *  Function calls will be eliminated when converting to a valid problem.
    */
-  abstract class AugmentedStringChunkRHS
+  sealed abstract class AugmentedStringChunkRHS
   case class RegularStringChunk(e: String) extends AugmentedStringChunkRHS
   case class OtherStringChunk(e: Expr) extends AugmentedStringChunkRHS
   type AugmentedStringLiteral = List[AugmentedStringChunkRHS]
@@ -163,14 +163,14 @@ case object StringRender extends Rule("StringRender") {
         if(e == f) {
           rec(lhstail, rhstail, accEqs += ((accLeft.toList, accRight.toString)), ListBuffer[StringFormToken](), new StringBuffer)
         } else None
-      case (OtherStringFormToken(e)::lhstail, RegularStringChunk(s)::rhstail) =>
+      case (OtherStringFormToken(e)::lhstail, Nil) =>
+        None
+      case (Nil, OtherStringChunk(f)::rhstail) =>
+        None
+      case (lhs, RegularStringChunk(s)::rhstail) =>
         rec(lhs, rhstail, accEqs, accLeft, accRight append s)
-      case (RegularStringFormToken(e)::lhstail, OtherStringChunk(s)::rhstail) =>
-        rec(lhstail, rhs, accEqs, accLeft += e, accRight)
       case (RegularStringFormToken(e)::lhstail, rhs) =>
         rec(lhstail, rhs, accEqs, accLeft += e, accRight)
-      case (Nil, RegularStringChunk(s)::rhstail) =>
-        rec(Nil, rhstail, accEqs, accLeft, accRight append s)
     }
     rec(lhs, rhs, ListBuffer[Equation](), ListBuffer[StringFormToken](), new StringBuffer)
   }
@@ -580,6 +580,11 @@ case object StringRender extends Rule("StringRender") {
             case _ => Nil
           }}).groupBy(_._1).mapValues(_.map(_._2))
        
+        val inputVariables = p.as.filter( x => x.getType match {
+          case f: FunctionType => false
+          case _ => true
+        })
+        
         val ruleInstantiations = ListBuffer[RuleInstantiation]()
         ruleInstantiations += RuleInstantiation("String conversion") {
           val (expr, synthesisResult) = createFunDefsTemplates(
@@ -587,7 +592,7 @@ case object StringRender extends Rule("StringRender") {
                   definedStringConverters,
                   abstractStringConverters,
                   p.as.toSet
-                  ), p.as.map(Variable))
+                  ), inputVariables.map(Variable))
           val funDefs = synthesisResult.adtToString
           
           /*val toDebug: String = (("\nInferred functions:" /: funDefs)( (t, s) =>
