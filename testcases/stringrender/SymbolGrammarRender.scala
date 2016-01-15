@@ -1,8 +1,8 @@
 /**
-  * Name:     GrammarRender.scala
-  * Creation: 15.10.2015
+  * Name:     SymbolGrammarRender.scala
+  * Creation: 14.01.2016
   * Author:   Mika�l Mayer (mikael.mayer@epfl.ch)
-  * Comments: Grammar rendering specifications.
+  * Comments: Grammar rendering specifications starting with symbols
   */
 
 import leon.lang._

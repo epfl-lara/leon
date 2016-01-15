@@ -1,8 +1,8 @@
 /** 
-  * Name:     ListRender.scala
-  * Creation: 14.10.2015
-  * Author:   Mika�l Mayer (mikael.mayer@epfl.ch)
-  * Comments: First benchmark ever for solving string transformation problems. List specifications.
+  * Name:     JsonRender.scala
+  * Creation: 25.11.2015
+  * Author:   Mikael Mayer (mikael.mayer@epfl.ch)
+  * Comments: Json specifications
   */
 
 import leon.lang._
