@@ -37,7 +37,6 @@ class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Progra
       TypingPhase                            andThen
       synthesis.ConversionPhase              andThen
       CheckADTFieldsTypes                    andThen
-      InjectAsserts                          andThen
       InliningPhase
 
     val pipeX = if(desugarXLang) {
@@ -50,6 +49,7 @@ class PreprocessingPhase(desugarXLang: Boolean = false) extends LeonPhase[Progra
     val phases =
       pipeBegin andThen
       pipeX andThen
+      InjectAsserts andThen
       FunctionClosure andThen
       AdaptationPhase andThen
       debugTrees("Program after pre-processing")
