@@ -66,6 +66,16 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
           case _ =>
             StringConcat(es1, es2)
         }
+      case Application(caller, args) =>
+        val ecaller = e(caller)
+        ecaller match {
+          case l @ Lambda(params, body) =>
+            super.e(Application(ecaller, args))
+          case PartialLambda(mapping, dflt, _) =>
+            super.e(Application(ecaller, args))
+          case f =>
+            Application(f, args.map(e))
+        }
       case expr =>
         super.e(expr)
     }

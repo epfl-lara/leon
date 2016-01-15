@@ -190,7 +190,7 @@ case object StringRender extends Rule("StringRender") {
           val evalResult =  e.eval(template, modelResult)
           evalResult.result match {
             case None =>
-              hctx.reporter.debug("Eval = None : ["+template+"] in ["+inputs.zip(in)+"]")
+              hctx.reporter.info("Eval = None : ["+template+"] in ["+inputs.zip(in)+"]")
               None
             case Some((sfExpr, abstractSfExpr)) =>
               //ctx.reporter.debug("Eval = ["+sfExpr+"] (from "+abstractSfExpr+")")
@@ -202,16 +202,16 @@ case object StringRender extends Rule("StringRender") {
                     case Some(equations) =>
                       gatherEquations(q, acc ++= equations)
                     case None =>
-                      hctx.reporter.debug("Could not extract equations from ["+sfget+"] == ["+rhsget+"]")
+                      hctx.reporter.info("Could not extract equations from ["+sfget+"] == ["+rhsget+"]")
                     None
                   }
                 case _ =>
-                  hctx.reporter.debug("sf empty or rhs empty ["+sfExpr+"] => ["+sf+"] in ["+rhs+"]")
+                  hctx.reporter.info("sf empty or rhs empty ["+sfExpr+"] => ["+sf+"] in ["+rhs+"]")
                   None
               }
           }
         } else {
-          hctx.reporter.debug("RHS.length != 1 : ["+rhExpr+"]")
+          hctx.reporter.info("RHS.length != 1 : ["+rhExpr+"]")
           None 
         }
     }
@@ -237,7 +237,7 @@ case object StringRender extends Rule("StringRender") {
     def computeSolutions(funDefsBodies: Seq[(FunDef, WithIds[Expr])], template: WithIds[Expr]): Stream[Assignment] = {
       val funDefs = for((funDef, body) <- funDefsBodies) yield  { funDef.body = Some(body._1); funDef }
       val newProgram = DefOps.addFunDefs(hctx.program, funDefs, hctx.sctx.functionContext)
-      findAssignments(newProgram, p.as, examples, template._1)
+      findAssignments(newProgram, p.as.filter{ x => !x.getType.isInstanceOf[FunctionType] }, examples, template._1)
     }
     
     val tagged_solutions =
@@ -573,7 +573,7 @@ case object StringRender extends Rule("StringRender") {
         
         val defaultToStringFunctions = defaultMapTypeToString()
         
-        val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
+        val examplesFinder = new ExamplesFinder(hctx.context, hctx.program).setKeepAbstractExamples(true)
         val examples = examplesFinder.extractFromProblem(p)
         
         val definedStringConverters: StringConverters =
