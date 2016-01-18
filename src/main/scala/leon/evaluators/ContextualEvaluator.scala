@@ -72,7 +72,7 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
 
   protected def e(expr: Expr)(implicit rctx: RC, gctx: GC): Value
 
-  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString}."
+  def typeErrorMsg(tree : Expr, expected : TypeTree) : String = s"Type error : expected ${expected.asString}, found ${tree.asString} of type ${tree.getType}."
 
 }
 
