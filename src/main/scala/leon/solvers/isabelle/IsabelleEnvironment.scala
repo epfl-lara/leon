@@ -16,7 +16,7 @@ import leon.purescala.Common._
 import leon.solvers._
 import leon.utils._
 
-import edu.tum.cs.isabelle.{impl => impl2015, _}
+import edu.tum.cs.isabelle._
 import edu.tum.cs.isabelle.api._
 import edu.tum.cs.isabelle.setup._
 
@@ -51,28 +51,35 @@ object IsabelleEnvironment {
       }
     }.toList
 
-    val setup = Setup.detectSetup(base, version) match {
-      case Some(setup) => Future.successful { setup }
-      case None if !download =>
+    val home = base.resolve(s"Isabelle${version.identifier}")
+
+    val setup =
+      if (Files.isDirectory(home))
+        Future.successful { Setup(home, Component.platform, version) }
+      else if (!download)
         context.reporter.fatalError(s"No $version found at $base. Please install manually or set '${Component.optDownload.name}' flag to true.")
-      case _ =>
-        context.reporter.info(s"No $version found at $base")
-        context.reporter.info(s"Preparing $version environment ...")
-        Setup.installTo(Files.createDirectories(base), version)
-    }
+      else
+        Component.platform match {
+          case o: OfficialPlatform =>
+            context.reporter.info(s"No $version found at $base")
+            context.reporter.info(s"Preparing $version environment ...")
+            Setup.install(o, version)
+          case _ =>
+            context.reporter.fatalError(s"No $version found at $base. Platform unsupported, please install manually.")
+        }
 
     val system = setup.flatMap { setup =>
-      val env = new impl2015.Environment(setup.home)
-      val config = env.Configuration.fromPath(Component.leonBase, "Leon")
+      val env = Implementations.makeEnvironment(setup.home, classOf[edu.tum.cs.isabelle.impl.Environment])
+      val config = Configuration.fromPath(Component.leonBase, "Leon")
 
       if (build) {
         context.reporter.info(s"Building session ...")
-        if (!System.build(env)(config))
+        if (!System.build(env, config))
           context.reporter.internalError("Build failed")
       }
 
       context.reporter.info(s"Starting $version instance ...")
-      System.create(env)(config)
+      System.create(env, config)
     }
 
     val thy = system.flatMap { system =>
