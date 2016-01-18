@@ -3,6 +3,7 @@
 package leon
 package purescala
 
+import collection.mutable.ListBuffer
 import Common._
 import Definitions._
 import Expressions._
@@ -10,10 +11,14 @@ import Extractors._
 
 class ScopeSimplifier extends Transformer {
   case class Scope(inScope: Set[Identifier] = Set(), oldToNew: Map[Identifier, Identifier] = Map(), funDefs: Map[FunDef, FunDef] = Map()) {
-
+    
     def register(oldNew: (Identifier, Identifier)): Scope = {
       val newId = oldNew._2
       copy(inScope = inScope + newId, oldToNew = oldToNew + oldNew)
+    }
+    
+    def register(oldNews: Seq[(Identifier, Identifier)]): Scope = {
+      (this /: oldNews){ case (oldScope, oldNew) => oldScope.register(oldNew) }
     }
 
     def registerFunDef(oldNew: (FunDef, FunDef)): Scope = {
@@ -37,27 +42,28 @@ class ScopeSimplifier extends Transformer {
     case LetDef(fds, body: Expr) =>
       var newScope: Scope = scope
       // First register all functions
-      val fds_newIds = for(fd <- fds) yield {
+      val fds_newIds = for(fd <- fds) yield { // Problem if some functions use the same ID for a ValDef
         val newId    = genId(fd.id, scope)
         newScope = newScope.register(fd.id -> newId)
         (fd, newId)
       }
       
       val fds_mapping = for((fd, newId) <- fds_newIds) yield {
+        val localScopeToRegister = ListBuffer[(Identifier, Identifier)]() // We record the mapping of these variables only for the function.
         val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
-          val newArg = genId(id, newScope)
-          newScope = newScope.register(id -> newArg)
+          val newArg = genId(id, newScope.register(localScopeToRegister))
+          localScopeToRegister += (id -> newArg) // This should happen only inside the function.
           ValDef(newArg, tpe)
         }
   
         val newFd = fd.duplicate(id = newId, params = newArgs)
   
         newScope = newScope.registerFunDef(fd -> newFd)
-        (newFd, fd)
+        (newFd, localScopeToRegister, fd)
       }
       
-      for((newFd, fd) <- fds_mapping) {
-        newFd.fullBody = rec(fd.fullBody, newScope)
+      for((newFd, localScopeToRegister, fd) <- fds_mapping) {
+        newFd.fullBody = rec(fd.fullBody, newScope.register(localScopeToRegister))
       }
       LetDef(fds_mapping.map(_._1), rec(body, newScope))
    

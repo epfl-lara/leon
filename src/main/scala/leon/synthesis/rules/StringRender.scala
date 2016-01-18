@@ -476,8 +476,7 @@ case object StringRender extends Rule("StringRender") {
               gatherInputs(ctx, q, result +=
                 mergeResults(Stream((input, Nil),
                         (functionInvocation(
-                            hctx.program.library.escape.get,
-                            input::ctx.provided_functions.toList.map(Variable)): Expr, Nil))))
+                            hctx.program.library.escape.get, List(input)): Expr, Nil))))
             case BooleanType =>
               val (bTemplate, vs) = booleanTemplate(input).instantiateWithVars
               gatherInputs(ctx, q, result += mergeResults(Stream((BooleanToString(input), Nil), (bTemplate, vs))))
