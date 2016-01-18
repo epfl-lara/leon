@@ -1,5 +1,4 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
-
 package leon.xlang
 
 import leon.TransformationPhase
@@ -176,6 +175,10 @@ object AntiAliasingPhase extends TransformationPhase {
               val modifiedArgs: Seq[Variable] = 
                 args.zipWithIndex.filter{ case (arg, i) => fiEffects.contains(i) }
                     .map(_._1.asInstanceOf[Variable])
+
+              val duplicatedParams = modifiedArgs.diff(modifiedArgs.distinct).distinct
+              if(duplicatedParams.nonEmpty) 
+                ctx.reporter.fatalError(fi.getPos, "Illegal passing of aliased parameter: " + duplicatedParams.head)
 
               val freshRes = FreshIdentifier("res", nfd.returnType)
 
