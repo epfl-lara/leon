@@ -13,10 +13,7 @@ object RealTimeQueue {
   sealed abstract class Stream[T] {
     @inline
     def isEmpty: Boolean = {
-      this match {
-        case SNil() => true
-        case _      => false
-      }
+      this == SNil[T]()
     }
 
     @inline
@@ -40,16 +37,17 @@ object RealTimeQueue {
   def ssize[T](l: $[Stream[T]]): BigInt = (l*).size
 
   def isConcrete[T](l: $[Stream[T]]): Boolean = {
-    l.isEvaluated && (l* match {
-      case SCons(_, tail) =>
-        isConcrete(tail)
-      case _ => true
-    })
+//    l.isEvaluated && (l* match {
+//      case SCons(_, tail) =>
+//        isConcrete(tail)
+//      case _ => true
+//    })
+    (firstUneval(l)*) == SNil[T]()
   }
 
    @invstate
   def rotate[T](f: $[Stream[T]], r: List[T], a: $[Stream[T]]): Stream[T] = { // doesn't change state
-    require(r.size == ssize(f) + 1 && (firstUneval(f)*).isEmpty)
+    require(r.size == (f*).size + 1 && isConcrete(f))
     (f.value, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons(y, a)
@@ -70,8 +68,7 @@ object RealTimeQueue {
       }
     } else
       l
-  } ensuring (res => //(!(res*).isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-    //((res*).isEmpty || !res.isEvaluated) && // if the return value is not a Nil closure then it would not have been evaluated
+  } ensuring (res => 
     (res.value match {
       case SCons(_, tail) =>
         firstUneval(l) == firstUneval(tail) // after evaluating the firstUneval closure in 'l' we can access the next unevaluated closure
