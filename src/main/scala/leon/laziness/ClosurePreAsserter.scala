@@ -61,8 +61,12 @@ class ClosurePreAsserter(p: Program) {
         case ((CaseClass(CaseClassType(ccd, _), argsRet), st), path) =>
           anchorfd = Some(fd)
           val target = lookupOp(ccd) //find the target corresponding to the closure
+
           val pre = target.precondition.get
-          val args = argsRet.dropRight(1) // drop the return value which is the right-most field
+          val args =
+            if (!isMemoized(target))
+              argsRet.dropRight(1) // drop the return value which is the right-most field
+            else argsRet
           val nargs =
             if (target.params.size > args.size) // target takes state ?
               args :+ st
@@ -93,7 +97,7 @@ class ClosurePreAsserter(p: Program) {
   val monoLemmas = {
     var exprsProcessed = Set[ExprStructure]()
     ccToOp.values.flatMap {
-      case op if op.hasPrecondition =>
+      case op if op.hasPrecondition && !isMemoized(op) => // ignore memoized functions which are always evaluated at the time of creation
         // get the state param
         op.paramIds.find(isStateParam) match {
           case Some(stparam) =>
@@ -122,7 +126,7 @@ class ClosurePreAsserter(p: Program) {
                   val fieldSelect = (id: Identifier) => CaseClassSelector(stType, id.toVariable, fld.id)
                   SubsetOf(fieldSelect(stparam), fieldSelect(superSt))
                 })
-              // create a function for each pre-disjunct that is not processed              
+              // create a function for each pre-disjunct that is not processed
               preDisjs.map(new ExprStructure(_)).collect {
                 case preStruct if !exprsProcessed(preStruct) =>
                   exprsProcessed += preStruct

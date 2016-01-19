@@ -49,7 +49,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   val consCallers = funsManager.callersOfLazyCons  // transitive constructors of closures
   val starCallers = funsManager.funsNeedStateTps
   val fvFactory = new FreeVariableFactory()
-  val tnames = closureFactory.lazyTypeNames
+  val lazyTnames = closureFactory.lazyTypeNames
   val lazyops = closureFactory.lazyops
 
   val funMap = p.definedFunctions.collect {
@@ -178,7 +178,8 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
    * Note that by using 'assume-pre' we can also assume the preconditions of closures at
    * the call-sites.
    */
-  val evalFunctions = tnames.map { tname =>
+  val evalFunctions = lazyTnames.map { tname =>
+    val ismem = closureFactory.isMemType(tname)
     val tpe = /*freshenTypeArguments(*/ closureFactory.lazyType(tname) //)
     val absdef = closureFactory.absClosureType(tname)
     val cdefs = closureFactory.closures(tname)
@@ -204,8 +205,11 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       val binder = FreshIdentifier("t", ctype)
       val pattern = InstanceOfPattern(Some(binder), ctype)
       // create a body of the match
-      // the last field represents the result
-      val args = cdef.fields.dropRight(1) map { fld =>
+      // the last field represents the result (only if the type is a susp type)
+      val flds =
+        if (!ismem) cdef.fields.dropRight(1)
+        else cdef.fields
+      val args = flds map { fld =>
         CaseClassSelector(ctype, binder.toVariable, fld.id)
       }
       val op = closureFactory.caseClassToOp(cdef)
@@ -231,17 +235,18 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       val rhs = Let(invokeRes, invoke, Tuple(Seq(valPart, stPart)))
       MatchCase(pattern, None, rhs)
     }
-    // create a new match case for eager evaluation
-    val eagerCase = {
-      val eagerDef = closureFactory.eagerClosure(tname)
+    val cases = if (!ismem) {
+      // create a new match case for eager evaluation
+      val eagerDef = closureFactory.eagerClosure(tname).get
       val ctype = CaseClassType(eagerDef, recvTparams)
       val binder = FreshIdentifier("t", ctype)
       // create a body of the match
       val valPart = CaseClassSelector(ctype, binder.toVariable, eagerDef.fields(0).id)
       val rhs = Tuple(Seq(valPart, param2.toVariable)) // state doesn't change for eager closure
-      MatchCase(InstanceOfPattern(Some(binder), ctype), None, rhs)
-    }
-    dfun.body = Some(MatchExpr(param1.toVariable, eagerCase +: bodyMatchCases))
+      MatchCase(InstanceOfPattern(Some(binder), ctype), None, rhs) +: bodyMatchCases
+    } else
+      bodyMatchCases
+    dfun.body = Some(MatchExpr(param1.toVariable, cases))
     dfun.addFlag(Annotation("axiom", Seq()))
     (tname -> dfun)
   }.toMap
@@ -272,7 +277,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
    * They are defined for each lazy class since it avoids generics and
    * simplifies the type inference (which is not full-fledged in Leon)
    */
-  val closureCons = tnames.map { tname =>
+  val closureCons = lazyTnames.map { tname =>
     val adt = closureFactory.absClosureType(tname)
     val param1Type = AbstractClassType(adt, adt.tparams.map(_.tp))
     val param1 = FreshIdentifier("cc", param1Type)
@@ -283,7 +288,6 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     val fun = new FunDef(FreshIdentifier(closureConsName(tname)), tparamdefs,
       Seq(ValDef(param1), ValDef(param2)), param1Type)
     fun.body = Some(param1.toVariable)
-
     // assert that the closure in unevaluated if useRefEquality is enabled
     // not supported as of now
     /*if (refEq) {
@@ -295,25 +299,45 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     (tname -> fun)
   }.toMap
 
-  def mapBody(body: Expr)(implicit stTparams: Seq[TypeParameter]): (Option[Expr] => Expr, Boolean) = body match {
+  def mapExpr(expr: Expr)(implicit stTparams: Seq[TypeParameter], inSpec: Boolean): (Option[Expr] => Expr, Boolean) = expr match {
 
     case finv @ FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(argfd, tparams), args))) // lazy construction ?
-    if isLazyInvocation(finv)(p) =>
+    if isLazyInvocation(finv)(p) && !inSpec =>
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
         val adt = closureFactory.closureOfLazyOp(argfd)
         // create lets to bind the nargs to variables
-        val (flatArgs, letCons) = nargs.foldRight((Seq[Variable](), (e : Expr) => e)){
+        val (flatArgs, letCons) = nargs.foldRight((Seq[Variable](), (e: Expr) => e)) {
           case (narg, (fargs, lcons)) =>
             val id = FreshIdentifier("a", narg.getType, true)
             (id.toVariable +: fargs, e => Let(id, narg, lcons(e)))
         }
-        // construct a value for the result (an uninterpreted function)
-        val resval = FunctionInvocation(TypedFunDef(uiFuncs(argfd)._1, tparams), flatArgs)
-        val cc = CaseClass(CaseClassType(adt, tparams), flatArgs :+ resval)
+        val ccArgs = if (!isMemoized(argfd)) {
+          // construct a value for the result (an uninterpreted function)
+          val resval = FunctionInvocation(TypedFunDef(uiFuncs(argfd)._1, tparams), flatArgs)
+          flatArgs :+ resval
+        } else
+          flatArgs
+        val cc = CaseClass(CaseClassType(adt, tparams), ccArgs)
         val baseLazyTypeName = closureFactory.lazyTypeNameOfClosure(adt)
         val fi = FunctionInvocation(TypedFunDef(closureCons(baseLazyTypeName), tparams ++ stTparams),
           Seq(cc, st.get))
         letCons(fi) // this could be 'fi' wrapped into lets
+      }, false)
+      mapNAryOperator(args, op)
+
+    // TODO: we don't have to create a dummy return value for memoized functions, as they wouldn't be stored in other structures
+    case finv @ FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(argfd, tparams), args))) // invocation in spec ?
+    if isLazyInvocation(finv)(p) && inSpec =>
+      // in this case argfd is a memoized function
+      val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
+        val adt = closureFactory.closureOfLazyOp(argfd)
+        /*// create lets to bind the nargs to variables
+        val (flatArgs, letCons) = nargs.foldRight((Seq[Variable](), (e : Expr) => e)){
+          case (narg, (fargs, lcons)) =>
+            val id = FreshIdentifier("a", narg.getType, true)
+            (id.toVariable +: fargs, e => Let(id, narg, lcons(e)))
+        }*/
+        CaseClass(CaseClassType(adt, tparams), nargs)
       }, false)
       mapNAryOperator(args, op)
 
@@ -323,7 +347,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val rootType = bestRealType(arg.getType)
         val tname = typeNameWOParams(rootType)
         val tparams = getTypeArguments(rootType)
-        val eagerClosure = closureFactory.eagerClosure(tname)
+        val eagerClosure = closureFactory.eagerClosure(tname).get
         CaseClass(CaseClassType(eagerClosure, tparams), Seq(arg))
       }, false)
 
@@ -336,9 +360,13 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val stType = CaseClassType(closureFactory.state, stTparams)
         val cls = closureFactory.selectFieldOfState(tname, st, stType)
         val memberTest = ElementOfSet(narg, cls)
-        val subtypeTest = IsInstanceOf(narg,
-          CaseClassType(closureFactory.eagerClosure(tname), getTypeArguments(baseType)))
-        Or(memberTest, subtypeTest)
+        if(closureFactory.isMemType(tname)) {
+          memberTest
+        } else {
+          val subtypeTest = IsInstanceOf(narg,
+          CaseClassType(closureFactory.eagerClosure(tname).get, getTypeArguments(baseType)))
+          Or(memberTest, subtypeTest)
+        }
       }, false)
       mapNAryOperator(args, op)
 
@@ -366,8 +394,8 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         throw new IllegalStateException("The arguments to `withState` should equal the number of states: "+numStates)
 
       val CaseClass(_, Seq(exprNeedingState)) = recvr
-      val (nexprCons, exprReturnsState) = mapBody(exprNeedingState)
-      val nstConses = stArgs map mapBody
+      val (nexprCons, exprReturnsState) = mapExpr(exprNeedingState)
+      val nstConses = stArgs map mapExpr
       if(nstConses.exists(_._2)) // any 'stArg' returning state
         throw new IllegalStateException("One of the  arguments to `withState` returns a new state, which is not supported: "+finv)
       else {
@@ -398,13 +426,6 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val dispFun = evalFunctions(tname)
         val tparams = (getTypeParameters(baseType) ++ stTparams).distinct
         FunctionInvocation(TypedFunDef(dispFun, tparams), nargs :+ st)
-        //val dispRes = FreshIdentifier("dres", dispFun.returnType, true)
-        /*val nstates = tnames map {
-          case `tname` =>
-            TupleSelect(dispRes.toVariable, 2)
-          case other => st(other)
-        }*/
-        //Let(dispRes, dispFunInv, Tuple(TupleSelect(dispRes.toVariable, 1) +: nstates))
       }, true)
       mapNAryOperator(args, op)
 
@@ -433,14 +454,13 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         }, funsRetStates(fd)))
 
     case Let(id, value, body) =>
-      val (valCons, valUpdatesState) = mapBody(value)
-      val (bodyCons, bodyUpdatesState) = mapBody(body)
+      val (valCons, valUpdatesState) = mapExpr(value)
+      val (bodyCons, bodyUpdatesState) = mapExpr(body)
       ((st: Option[Expr]) => {
         val nval = valCons(st)
         if (valUpdatesState) {
           val freshid = FreshIdentifier(id.name, nval.getType, true)
           val nextState = TupleSelect(freshid.toVariable, 2)
-          //val nsMap = (tnames zip nextStates).toMap
           val transBody = replace(Map(id.toVariable -> TupleSelect(freshid.toVariable, 1)),
             bodyCons(Some(nextState)))
           if (bodyUpdatesState)
@@ -452,9 +472,9 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       }, valUpdatesState || bodyUpdatesState)
 
     case IfExpr(cond, thn, elze) =>
-      val (condCons, condState) = mapBody(cond)
-      val (thnCons, thnState) = mapBody(thn)
-      val (elzeCons, elzeState) = mapBody(elze)
+      val (condCons, condState) = mapExpr(cond)
+      val (thnCons, thnState) = mapExpr(thn)
+      val (elzeCons, elzeState) = mapExpr(elze)
       ((st: Option[Expr]) => {
         val (ncondCons, nst) =
           if (condState) {
@@ -479,10 +499,10 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       }, condState || thnState || elzeState)
 
     case MatchExpr(scr, cases) =>
-      val (scrCons, scrUpdatesState) = mapBody(scr)
+      val (scrCons, scrUpdatesState) = mapExpr(scr)
       val casesRes = cases.foldLeft(Seq[(Option[Expr] => Expr, Boolean)]()) {
         case (acc, MatchCase(pat, None, rhs)) =>
-          acc :+ mapBody(rhs)
+          acc :+ mapExpr(rhs)
         case mcase =>
           throw new IllegalStateException("Match case with guards are not supported yet: " + mcase)
       }
@@ -525,12 +545,12 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     case t: Terminal => (_ => t, false)
   }
 
-  def mapNAryOperator(args: Seq[Expr], op: Seq[Expr] => (Option[Expr] => Expr, Boolean))(implicit stTparams: Seq[TypeParameter]) = {
+  def mapNAryOperator(args: Seq[Expr], op: Seq[Expr] => (Option[Expr] => Expr, Boolean))(implicit stTparams: Seq[TypeParameter], inSpec: Boolean) = {
     // create n variables to model n lets
     val letvars = args.map(arg => FreshIdentifier("arg", arg.getType, true).toVariable)
     (args zip letvars).foldRight(op(letvars)) {
       case ((arg, letvar), (accCons, stUpdatedBefore)) =>
-        val (argCons, stUpdateFlag) = mapBody(arg)
+        val (argCons, stUpdateFlag) = mapExpr(arg)
         val cl = if (!stUpdateFlag) {
           // here arg does not affect the newstate
           (st: Option[Expr]) => replace(Map(letvar -> argCons(st)), accCons(st))
@@ -541,13 +561,6 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
               val narg = argCons(st)
               val argres = FreshIdentifier("a", narg.getType, true).toVariable
               val nstate = Some(TupleSelect(argres, 2))
-              /*val nstateSeq = tnames.zipWithIndex.map {
-                // states start from index 2
-                case (tn, i) => TupleSelect(argres, i + 2)
-              }
-              val nstate = (tnames zip nstateSeq).map {
-                case (tn, st) => (tn -> st)
-              }.toMap[String, Expr]*/
               val letbody =
                 if (stUpdatedBefore) accCons(nstate) // here, 'acc' already returns a superseeding state
                 else Tuple(Seq(accCons(nstate), nstate.get)) // here, 'acc; only returns the result
@@ -568,7 +581,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
   def assignBodiesToFunctions = funMap foreach {
     case (fd, nfd) =>
       //println("Considering function: "+fd)
-      // Here, using name to identify 'state' parameters      
+      // Here, using name to identify 'state' parameters
       val stateParam = nfd.params.collectFirst {
         case vd if isStateParam(vd.id) =>
           vd.id.toVariable
@@ -578,7 +591,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       val stTparams = nfd.tparams.collect{
         case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
       }
-      val (nbodyFun, bodyUpdatesState) = mapBody(fd.body.get)(stTparams)
+      val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams, false)
       val nbody = nbodyFun(stateParam)
       val bodyWithState =
         if (!bodyUpdatesState && funsRetStates(fd))
@@ -593,7 +606,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       // This guarantees their observational purity/transparency
       // collect class invariants that need to be added
       if (fd.hasPrecondition) {
-        val (npreFun, preUpdatesState) = mapBody(fd.precondition.get)(stTparams)
+        val (npreFun, preUpdatesState) = mapExpr(fd.precondition.get)(stTparams, true)
         nfd.precondition =
           if (preUpdatesState)
             Some(TupleSelect(npreFun(stateParam), 1)) // ignore state updated by pre
@@ -657,7 +670,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
             case e => e
           }(post)
           // thread state through postcondition
-          val (npostFun, postUpdatesState) = mapBody(tpost)(stTparams)
+          val (npostFun, postUpdatesState) = mapExpr(tpost)(stTparams, true)
           val resval =
             if (bodyUpdatesState || funsRetStates(fd))
               TupleSelect(newres.toVariable, 1)
@@ -678,6 +691,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   def assignContractsForEvals = evalFunctions.foreach {
     case (tname, evalfd) =>
+      val ismem = closureFactory.isMemType(tname)
       val cdefs = closureFactory.closures(tname)
       val recvTparams = getTypeParameters(evalfd.params.head.getType)
       val postres = FreshIdentifier("res", evalfd.returnType)
@@ -689,12 +703,18 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val binder = FreshIdentifier("t", ctype)
         val pattern = InstanceOfPattern(Some(binder), ctype)
         // t.clres == res._1
-        val clresField = cdef.fields.last
-        val clause1 = Equals(TupleSelect(postres.toVariable, 1),
-          CaseClassSelector(ctype, binder.toVariable, clresField.id))
+        val clause1 = if(ismem) {
+          val clresField = cdef.fields.last
+          Equals(TupleSelect(postres.toVariable, 1),
+            CaseClassSelector(ctype, binder.toVariable, clresField.id))
+        } else
+          Util.tru
         //res._1 == uifun(args)
         val clause2 = if (takesStateButIndep(op)) {
-          val args = cdef.fields.dropRight(1) map {
+          val flds =
+            if (!ismem) cdef.fields.dropRight(1)
+            else cdef.fields
+          val args = flds map {
             fld => CaseClassSelector(ctype, binder.toVariable, fld.id)
           }
           Some(Equals(TupleSelect(postres.toVariable, 1),

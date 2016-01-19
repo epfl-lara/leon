@@ -4,28 +4,25 @@ import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
-import scala.math.BigInt.int2bigInt
 //import leon.invariant._
 
 object FibMem {
-
-  /**
-   * A simple non-lazy list of integers
-   */
   sealed abstract class IList
   case class Cons(x: BigInt, tail: IList) extends IList
   case class Nil() extends IList
 
+  @memoize
   def fibRec(n: BigInt): BigInt = {
-    require(n <= 2 || ($(fibRec(n-1)).isEvaluated && // previous two values have been evaluated
-        $(fibRec(n-2)).isEvaluated))
+    require(n >= 0)
         if(n <= 2)
           BigInt(1)
         else
-          fibRec(n-1) + fibRec(n-2)
-  } ensuring(_ => time <= 50)
+          fibRec(n-1) + fibRec(n-2) // postcondition implies that the second call would be cached
+  } ensuring(_ =>
+    (n <= 2 || ($(fibRec(n-1)).isEvaluated &&
+        $(fibRec(n-2)).isEvaluated))  && time <= 40*n + 10)
 
-  def fibRange(i: BigInt, k: BigInt): IList = {
+  /*def fibRange(i: BigInt, k: BigInt): IList = {
     require(k >= 1 && i <= k &&
         (i <= 1 ||
         (($(fibRec(i-1)).isEvaluated) &&
@@ -33,7 +30,7 @@ object FibMem {
     if(i == k)
       Cons(fibRec(i), Nil())
     else {
-      val x = $(fibRec(i)).value
+      val x = fibRec(i)
       Cons(x, fibRange(i + 1, k))
     }
   } ensuring(_ => time <= (k - i + 1) * 60)
@@ -41,5 +38,5 @@ object FibMem {
   def kfibs(k: BigInt) = {
     require(k >= 1)
     fibRange(1, k)
-  } ensuring(_ => time <= 70 * k)
+  } ensuring(_ => time <= 70 * k)*/
 }

@@ -57,6 +57,9 @@ object LazinessEliminationPhase extends TransformationPhase {
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
 
+  /**
+   * TODO: add inlining annotations for optimization.
+   */
   def apply(ctx: LeonContext, prog: Program): Program = {
 
     if (dumpInputProg)
@@ -113,6 +116,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   }
 
   /**
+   * TODO: enforce that lazy and nested types do not overlap
    * TODO: we are forced to make an assumption that lazy ops takes as type parameters only those
    * type parameters of their return type and not more. (This is checked in the closureFactory,\
    * but may be check this upfront)
@@ -155,7 +159,16 @@ object LazinessEliminationPhase extends TransformationPhase {
             if (nestedCheckFailed) {
               failMsg = "Nested suspension creation in the body:  " + fd.id
               false
-            } else true
+            } else {
+              // arguments or return types of memoized functions cannot be lazy because we do not know how to compare them for equality
+              if (isMemoized(fd)) {
+                val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(LazinessUtil.isLazyType)
+                if (argCheckFailed) {
+                  failMsg = "Memoized function has a lazy argument or return type: " + fd.id
+                  false
+                } else true
+              } else true
+            }
           }
         }
       case _ => true
@@ -172,6 +185,11 @@ object LazinessEliminationPhase extends TransformationPhase {
     "lazyarg" + globalId
   }
 
+  /**
+   * (a) The functions lifts arguments of '$' to functions
+   * (b) lifts eager computations to lazy computations if necessary
+   * (c) converts memoization to lazy evaluation
+   */
   def liftLazyExpressions(prog: Program): Program = {
     var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
     val fdmap = prog.definedFunctions.collect {
@@ -180,43 +198,60 @@ object LazinessEliminationPhase extends TransformationPhase {
         fd.flags.foreach(nfd.addFlag(_))
         (fd -> nfd)
     }.toMap
+
+    lazy val lazyFun = ProgramUtil.functionByFullName("leon.lazyeval.$.apply", prog).get
+    lazy val valueFun = ProgramUtil.functionByFullName("leon.lazyeval.$.value", prog).get
+
     prog.modules.foreach { md =>
+      def exprLifter(inspec: Boolean)(expr: Expr) = expr match {
+        // is the arugment of lazy invocation not a function ?
+        case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) && !arg.isInstanceOf[FunctionInvocation] =>
+          val freevars = variablesOf(arg).toList
+          val tparams = freevars.map(_.getType).flatMap(getTypeParameters).distinct
+          val argstruc = new ExprStructure(arg)
+          val argfun =
+            if (newfuns.contains(argstruc)) {
+              newfuns(argstruc)._1
+            } else {
+              //construct type parameters for the function
+              // note: we should make the base type of arg as the return type
+              val nfun = new FunDef(FreshIdentifier(freshFunctionNameForArg, Untyped, true), tparams map TypeParameterDef.apply,
+                freevars.map(ValDef(_)), bestRealType(arg.getType))
+              nfun.body = Some(arg)
+              newfuns += (argstruc -> (nfun, md))
+              nfun
+            }
+          FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams),
+            freevars.map(_.toVariable))))
+
+        // is the argument of eager invocation not a variable ?
+        case finv @ FunctionInvocation(TypedFunDef(fd, _), Seq(arg)) if isEagerInvocation(finv)(prog) && !arg.isInstanceOf[Variable] =>
+          val rootType = bestRealType(arg.getType)
+          val freshid = FreshIdentifier("t", rootType)
+          Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, Seq(rootType)), Seq(freshid.toVariable)))
+
+        case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inspec =>
+          // calling a memoized function is modeled as creating a lazy closure and forcing it
+          val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
+          val finv = FunctionInvocation(tfd, args)
+          // enclose the call within the $ and force it
+          val susp = FunctionInvocation(TypedFunDef(lazyFun, Seq(tfd.returnType)), Seq(finv))
+          FunctionInvocation(TypedFunDef(valueFun, Seq(tfd.returnType)), Seq(susp))
+
+        case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
+          FunctionInvocation(TypedFunDef(fdmap(fd), targs), args)
+        case e => e
+      }
       md.definedFunctions.foreach {
         case fd if fd.hasBody && !fd.isLibrary =>
-          val nbody = simplePostTransform {
-            // is the arugment of lazy invocation not a function ?
-            case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) && !arg.isInstanceOf[FunctionInvocation] =>
-              val freevars = variablesOf(arg).toList
-              val tparams = freevars.map(_.getType) flatMap getTypeParameters distinct
-              val argstruc = new ExprStructure(arg)
-              val argfun =
-                if (newfuns.contains(argstruc)) {
-                  newfuns(argstruc)._1
-                } else {
-                  //construct type parameters for the function
-                  // note: we should make the base type of arg as the return type
-                  val nfun = new FunDef(FreshIdentifier(freshFunctionNameForArg, Untyped, true), tparams map TypeParameterDef.apply,
-                    freevars.map(ValDef(_)), bestRealType(arg.getType))
-                  nfun.body = Some(arg)
-                  newfuns += (argstruc -> (nfun, md))
-                  nfun
-                }
-              FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams),
-                freevars.map(_.toVariable))))
-
-            // is the argument of eager invocation not a variable ?
-            case finv @ FunctionInvocation(TypedFunDef(fd, _), Seq(arg)) if isEagerInvocation(finv)(prog) && !arg.isInstanceOf[Variable] =>
-              val rootType = bestRealType(arg.getType)
-              val freshid = FreshIdentifier("t", rootType)
-              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, Seq(rootType)), Seq(freshid.toVariable)))
-
-            case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
-              FunctionInvocation(TypedFunDef(fdmap(fd), targs), args)
-            case e => e
-
-          }(fd.fullBody) // TODO: specs should not create lazy closures. enforce this
+          val nbody = simplePostTransform(exprLifter(false))(fd.body.get)
+          val npre = fd.precondition.map(simplePostTransform(exprLifter(true)))
+          val npost = fd.postcondition.map(simplePostTransform(exprLifter(true)))
           //println(s"New body of $fd: $nbody")
-          fdmap(fd).fullBody = nbody
+          val nfd = fdmap(fd)
+          nfd.body = Some(nbody)
+          nfd.precondition = npre
+          nfd.postcondition = npost
         case _ => ;
       }
     }
