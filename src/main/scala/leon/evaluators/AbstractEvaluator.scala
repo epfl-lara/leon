@@ -12,9 +12,11 @@ import purescala.TypeOps
 import purescala.ExprOps
 import purescala.Expressions.Expr
 import leon.utils.DebugSectionSynthesis
-import org.apache.commons.lang3.StringEscapeUtils
 
-class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext with HasDefaultRecContext {
+/** The evaluation returns a pair (e, t),
+ *  where e is the expression evaluated as much as possible, and t is the way the expression has been evaluated.
+ *  Caution: If and Match statement require the condition to be non-abstract. */
+class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext with HasDefaultRecContext {
   lazy val scalaEv = new ScalacEvaluator(underlying, ctx, prog)
   
   /** Evaluates resuts which can be evaluated directly
@@ -61,29 +63,23 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
         throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
       }
       gctx.stepsLeft -= 1
-
       val evArgs = args map e
       val evArgsValues = evArgs.map(_._1)
       val evArgsOrigin = evArgs.map(_._2)
-      if(evArgsValues forall ExprOps.isValue) {
-        // build a mapping for the function...
-        val frame = rctx.withNewVars(tfd.paramSubst(evArgsValues))
-    
-        val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-          (scalaEv.call(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
-        } else {
-          if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-            throw EvalError("Evaluation of function with unknown implementation.")
-          }
+      
+      // build a mapping for the function...
+      val frame = rctx.withNewVars(tfd.paramSubst(evArgsValues))
   
-          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-          e(body)(frame, gctx)
-        }
-  
-        callResult
+      val callResult = if ((evArgsValues forall ExprOps.isValue) && tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+        (scalaEv.call(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
       } else {
-        (FunctionInvocation(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
+        if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+          throw EvalError("Evaluation of function with unknown implementation.")
+        }
+        val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+        e(body)(frame, gctx)
       }
+      callResult
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
       if(ees forall ExprOps.isValue) {

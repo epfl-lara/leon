@@ -1,12 +1,10 @@
 package leon.purescala
 
-import leon.evaluators.StringTracingEvaluator
 import leon.purescala
 import leon.solvers.{ HenkinModel, Model, SolverFactory }
 import leon.LeonContext
 import leon.evaluators
 import leon.utils.StreamUtils
-import leon.evaluators.StringTracingEvaluator
 import leon.purescala.Quantification._
 import leon.utils.DebugSectionSynthesis
 import leon.utils.DebugSectionVerification

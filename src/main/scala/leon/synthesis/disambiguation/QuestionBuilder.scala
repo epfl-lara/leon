@@ -18,6 +18,7 @@ import solvers.Model
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
 import leon.grammars.ExpressionGrammar
+import evaluators.AbstractEvaluator
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -131,11 +132,11 @@ class QuestionBuilder[T <: Expr](
   
   private def run(s: Solution, elems: Seq[(Identifier, Expr)]): Option[Expr] = {
     val newProgram = DefOps.addFunDefs(p, s.defs, p.definedFunctions.head)
-    val e = new DefaultEvaluator(c, newProgram)
+    val e = new AbstractEvaluator(c, newProgram)
     val model = new ModelBuilder
     model ++= elems
     val modelResult = model.result()
-    e.eval(s.term, modelResult).result
+    e.eval(s.term, modelResult).result.map(_._1)
   }
   
   /** Returns a list of input/output questions to ask to the user. */

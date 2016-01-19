@@ -8,7 +8,7 @@ import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 import bonsai.enumerators.MemoizedEnumerator
 import leon.evaluators.DefaultEvaluator
-import leon.evaluators.StringTracingEvaluator
+import leon.evaluators.AbstractEvaluator
 import leon.synthesis.programsets.DirectProgramSet
 import leon.synthesis.programsets.JoinProgramSet
 import leon.purescala.Common.FreshIdentifier
@@ -133,6 +133,7 @@ case object StringRender extends Rule("StringRender") {
     case StringConcat(lhs, rhs) => 
       toStringForm(rhs, acc).flatMap(toStringForm(lhs, _))
     case e:Application => Some(OtherStringFormToken(e)::acc)
+    case e:FunctionInvocation => Some(OtherStringFormToken(e)::acc)
     case _ => None
   }
   
@@ -146,6 +147,7 @@ case object StringRender extends Rule("StringRender") {
         case _ => k ++ l
       }))
     case e: Application => Some(List(OtherStringChunk(e)))
+    case e: FunctionInvocation => Some(List(OtherStringChunk(e)))
     case _ => None
   }
   
@@ -178,7 +180,7 @@ case object StringRender extends Rule("StringRender") {
   /** Returns a stream of assignments compatible with input/output examples for the given template */
   def findAssignments(p: Program, inputs: Seq[Identifier], examples: ExamplesBank, template: Expr)(implicit hctx: SearchContext): Stream[Map[Identifier, String]] = {
     //new Evaluator()
-    val e = new StringTracingEvaluator(hctx.context, p)
+    val e = new AbstractEvaluator(hctx.context, p)
     
     @tailrec def gatherEquations(s: List[InOutExample], acc: ListBuffer[Equation] = ListBuffer()): Option[SProblem] = s match {
       case Nil => Some(acc.toList)
@@ -216,14 +218,8 @@ case object StringRender extends Rule("StringRender") {
         }
     }
     gatherEquations((examples.valids ++ examples.invalids).collect{ case io:InOutExample => io }.toList) match {
-      case Some(problem) =>
-        hctx.reporter.debug("Problem: ["+StringSolver.renderProblem(problem)+"]")
-        val res = StringSolver.solve(problem)
-        hctx.reporter.debug("Solution found:"+res.nonEmpty)
-        res
-      case None => 
-        hctx.reporter.ifDebug(printer => printer("No problem found"))
-        Stream.empty
+      case Some(problem) => StringSolver.solve(problem)
+      case None => Stream.empty
     }
   }
   

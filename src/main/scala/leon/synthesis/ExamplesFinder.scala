@@ -193,7 +193,14 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
             None
         }) getOrElse {
           if(this.keepAbstractExamples) {
-            Seq((pattExpr, cs.rhs))
+            cs.optGuard match {
+              case Some(BooleanLiteral(false)) =>
+                Seq()
+              case None =>
+                Seq((pattExpr, cs.rhs))
+              case Some(pred) =>
+                Seq((Require(pred, pattExpr), cs.rhs))
+            }
           } else {
             // If the input contains free variables, it does not provide concrete examples. 
             // We will instantiate them according to a simple grammar to get them.
