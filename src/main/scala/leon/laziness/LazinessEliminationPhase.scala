@@ -57,20 +57,16 @@ object LazinessEliminationPhase extends TransformationPhase {
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
 
-  /**
-   * TODO: enforce that the specs do not create lazy closures
-   * TODO: we are forced to make an assumption that lazy ops takes as type parameters only those
-   * type parameters of their return type and not more. (enforce this)
-   * TODO: Check that lazy types are not nested
-   * TODO: expose in/out state to the user level, so that they can be used in specs
-   * For now using lazyinv annotation
-   */
   def apply(ctx: LeonContext, prog: Program): Program = {
 
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(prog))
+
+    val (pass, msg) = sanityChecks(prog, ctx)
+    assert(pass, msg)
+
     val nprog = liftLazyExpressions(prog)
-    if(dumpLiftProg) {
+    if (dumpLiftProg) {
       prettyPrintProgramToFile(nprog, ctx, "-lifted")
     }
 
@@ -114,6 +110,57 @@ object LazinessEliminationPhase extends TransformationPhase {
     if (!skipResourceVerification)
       checkInstrumentationSpecs(instProg, checkCtx)
     instProg
+  }
+
+  /**
+   * TODO: we are forced to make an assumption that lazy ops takes as type parameters only those
+   * type parameters of their return type and not more. (This is checked in the closureFactory,\
+   * but may be check this upfront)
+   */
+  def sanityChecks(p: Program, ctx: LeonContext): (Boolean, String) = {
+    // using a bit of a state here
+    var failMsg = ""
+    val checkres = p.definedFunctions.forall {
+      case fd if !fd.isLibrary =>
+        /**
+         * Fails when the argument to a suspension creation
+         * is either a normal or memoized function depending on the flag
+         * 'argMem' = true implies fail if the argument is a memoized function
+         */
+        def failOnClosures(argMem: Boolean, e: Expr) = e match {
+          case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
+            finv match {
+              case FunctionInvocation(_, Seq(FunctionInvocation(callee, _))) if isMemoized(callee.fd) => argMem
+              case _ => !argMem
+            }
+          case _ => false
+        }
+        // specs should not create lazy closures, but can refer to memoized functions
+        val specCheckFailed = exists(failOnClosures(false, _))(fd.precOrTrue) || exists(failOnClosures(false, _))(fd.postOrTrue)
+        if (specCheckFailed) {
+          failMsg = "Lazy closure creation in the specification of function: " + fd.id
+          false
+        } else {
+          // cannot suspend a memoized function
+          val bodyCheckFailed = exists(failOnClosures(true, _))(fd.body.getOrElse(Util.tru))
+          if (bodyCheckFailed) {
+            failMsg = "Suspending a memoized function is not supported! in body of:  " + fd.id
+            false
+          } else {
+            def nestedSusp(e: Expr) = e match {
+              case finv @ FunctionInvocation(_, Seq(call: FunctionInvocation)) if isLazyInvocation(finv)(p) && isLazyInvocation(call)(p) => true
+              case _ => false
+            }
+            val nestedCheckFailed = exists(nestedSusp)(fd.body.getOrElse(Util.tru))
+            if (nestedCheckFailed) {
+              failMsg = "Nested suspension creation in the body:  " + fd.id
+              false
+            } else true
+          }
+        }
+      case _ => true
+    }
+    (checkres, failMsg)
   }
 
   /**
@@ -199,7 +246,7 @@ object LazinessEliminationPhase extends TransformationPhase {
         val npost = pbody match {
           case And(args) =>
             createAnd(args.filterNot(hasInstVar))
-          case l : Let =>  // checks if the body of the let can be deconstructed as And
+          case l: Let => // checks if the body of the let can be deconstructed as And
             //println(s"Fist let val: ${l.value} body: ${l.body}")
             val (letsCons, letsBody) = letStarUnapply(l)
             //println("Let* body: "+letsBody)
@@ -218,7 +265,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   def contextForChecks(userOptions: LeonContext) = {
     val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre"))
     LeonContext(userOptions.reporter, userOptions.interruptManager,
-        solverOptions.options ++ userOptions.options)
+      solverOptions.options ++ userOptions.options)
   }
 
   def checkSpecifications(prog: Program, checkCtx: LeonContext) {
@@ -227,10 +274,10 @@ object LazinessEliminationPhase extends TransformationPhase {
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-//    val functions = Seq() //Seq("--functions=rotate")
-//    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-//    val unfoldFactor = 3 ,
-//        "--unfoldFactor="+unfoldFactor) ++ solverOptions ++ functions
+    //    val functions = Seq() //Seq("--functions=rotate")
+    //    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
+    //    val unfoldFactor = 3 ,
+    //        "--unfoldFactor="+unfoldFactor) ++ solverOptions ++ functions
     //val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre")
     val report = VerificationPhase.apply(checkCtx, prog)
     println(report.summaryString)
@@ -244,23 +291,23 @@ object LazinessEliminationPhase extends TransformationPhase {
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-//    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-//    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
+    //    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
+    //    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
 
     //(a) create vcs
     // Note: we only need to check specs involving instvars since others were checked before.
     // Moreover, we can add other specs as assumptions since (A => B) ^ ((A ^ B) => C) => A => B ^ C
     //checks if the expression uses res._2 which corresponds to instvars after instrumentation
     def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
-        exists(_ == TupleSelect(resid.toVariable, 2))(e)
+      exists(_ == TupleSelect(resid.toVariable, 2))(e)
 
     val vcs = p.definedFunctions.collect {
       // skipping verification of uninterpreted functions
       case fd if !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
-      fd.postcondition.exists{post =>
-        val Lambda(Seq(resdef), pbody) =  post
-        accessesSecondRes(pbody, resdef.id)
-      } =>
+        fd.postcondition.exists { post =>
+          val Lambda(Seq(resdef), pbody) = post
+          accessesSecondRes(pbody, resdef.id)
+        } =>
         val Lambda(Seq(resdef), pbody) = fd.postcondition.get
         val (instPost, assumptions) = pbody match {
           case And(args) =>
@@ -272,16 +319,16 @@ object LazinessEliminationPhase extends TransformationPhase {
               case And(args) =>
                 val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
                 (letsCons(createAnd(instSpecs)),
-                    letsCons(createAnd(rest)))
+                  letsCons(createAnd(rest)))
               case _ =>
                 (l, Util.tru)
             }
           case e => (e, Util.tru)
         }
         val vc = implies(createAnd(Seq(fd.precOrTrue, assumptions,
-            Equals(resdef.id.toVariable, fd.body.get))), instPost)
-        if(debugInstVCs)
-          println(s"VC for function ${fd.id} : "+vc)
+          Equals(resdef.id.toVariable, fd.body.get))), instPost)
+        if (debugInstVCs)
+          println(s"VC for function ${fd.id} : " + vc)
         VC(vc, fd, VCKinds.Postcondition)
     }
     //(b) create a verification context

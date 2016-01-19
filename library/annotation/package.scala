@@ -25,4 +25,6 @@ package object annotation {
   class axiom 		extends StaticAnnotation
   @ignore
   class invstate extends StaticAnnotation
+  @ignore
+  class memoize extends StaticAnnotation
 }

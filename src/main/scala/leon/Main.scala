@@ -57,6 +57,7 @@ object Main {
     val optInstrument = LeonFlagOptionDef("instrument", "Instrument the code for inferring time/depth/stack bounds", false)
     val optInferInv = LeonFlagOptionDef("inferInv", "Infer invariants from (instrumented) the code", false)
     val optLazyEval   	= LeonFlagOptionDef("lazy",    "Handles programs that may use the lazy construct",   false)
+    //val optMemoize   	= LeonFlagOptionDef("memoize",    "Handles programs that uses memoization",   false)
 
     override val definedOptions: Set[LeonOptionDef[Any]] =
       Set(optTermination, optRepair, optSynthesis, optIsabelle, optNoop, optHelp, optEval, optVerify, optInstrument, optInferInv, optLazyEval)

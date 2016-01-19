@@ -34,7 +34,7 @@ class LazyClosureFactory(p: Program) {
   implicit val prog = p
   /**
    * Create a mapping from types to the lazyops that may produce a value of that type
-   * TODO: relax that requirement that type parameters of return type of a function
+   * TODO: relax the requirement that type parameters of return type of a function
    * lazy evaluated should include all of its type parameters
    */
   private val (tpeToADT, opToCaseClass) = {

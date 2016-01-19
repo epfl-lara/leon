@@ -28,6 +28,10 @@ import purescala.PrinterOptions
 
 object LazinessUtil {
 
+  def isMemoized(fd: FunDef) = {
+    fd.flags.contains(Annotation("memoize", Seq()))
+  }
+
   def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String) {
     val optOutputDirectory = new LeonOptionDef[String] {
       val name = "o"
@@ -192,7 +196,7 @@ object LazinessUtil {
   def isEvalFunction(fd: FunDef) = {
     fd.id.name.startsWith("eval@")
   }
-  
+
   def isStateParam(id: Identifier) = {
     id.name.startsWith("st@")
   }
