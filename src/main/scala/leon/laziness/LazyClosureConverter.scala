@@ -299,10 +299,10 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     (tname -> fun)
   }.toMap
 
-  def mapExpr(expr: Expr)(implicit stTparams: Seq[TypeParameter], inSpec: Boolean): (Option[Expr] => Expr, Boolean) = expr match {
+  def mapExpr(expr: Expr)(implicit stTparams: Seq[TypeParameter]): (Option[Expr] => Expr, Boolean) = expr match {
 
     case finv @ FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(argfd, tparams), args))) // lazy construction ?
-    if isLazyInvocation(finv)(p) && !inSpec =>
+    if isLazyInvocation(finv)(p) =>
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
         val adt = closureFactory.closureOfLazyOp(argfd)
         // create lets to bind the nargs to variables
@@ -325,18 +325,10 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       }, false)
       mapNAryOperator(args, op)
 
-    // TODO: we don't have to create a dummy return value for memoized functions, as they wouldn't be stored in other structures
-    case finv @ FunctionInvocation(_, Seq(FunctionInvocation(TypedFunDef(argfd, tparams), args))) // invocation in spec ?
-    if isLazyInvocation(finv)(p) && inSpec =>
+    case cc @ CaseClass(_, Seq(FunctionInvocation(TypedFunDef(argfd, tparams), args))) if isMemCons(cc)(p) =>
       // in this case argfd is a memoized function
       val op = (nargs: Seq[Expr]) => ((st: Option[Expr]) => {
         val adt = closureFactory.closureOfLazyOp(argfd)
-        /*// create lets to bind the nargs to variables
-        val (flatArgs, letCons) = nargs.foldRight((Seq[Variable](), (e : Expr) => e)){
-          case (narg, (fargs, lcons)) =>
-            val id = FreshIdentifier("a", narg.getType, true)
-            (id.toVariable +: fargs, e => Let(id, narg, lcons(e)))
-        }*/
         CaseClass(CaseClassType(adt, tparams), nargs)
       }, false)
       mapNAryOperator(args, op)
@@ -360,13 +352,24 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val stType = CaseClassType(closureFactory.state, stTparams)
         val cls = closureFactory.selectFieldOfState(tname, st, stType)
         val memberTest = ElementOfSet(narg, cls)
-        if(closureFactory.isMemType(tname)) {
-          memberTest
-        } else {
-          val subtypeTest = IsInstanceOf(narg,
+        val subtypeTest = IsInstanceOf(narg,
           CaseClassType(closureFactory.eagerClosure(tname).get, getTypeArguments(baseType)))
-          Or(memberTest, subtypeTest)
-        }
+        Or(memberTest, subtypeTest)
+      }, false)
+      mapNAryOperator(args, op)
+
+    case finv @ FunctionInvocation(_, args) if isCachedInv(finv)(p) => // isCached function ?
+      val baseType = args(0).getType match {
+        case cct: CaseClassType => cct.fieldsTypes(0)
+      }
+      val op = (nargs: Seq[Expr]) => ((stOpt: Option[Expr]) => {
+        val narg = nargs(0) // there must be only one argument here
+        //println("narg: "+narg+" type: "+narg.getType)
+        val tname = typeNameWOParams(baseType)
+        val st = stOpt.get
+        val stType = CaseClassType(closureFactory.state, stTparams)
+        val cls = closureFactory.selectFieldOfState(tname, st, stType)
+        ElementOfSet(narg, cls)
       }, false)
       mapNAryOperator(args, op)
 
@@ -545,7 +548,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     case t: Terminal => (_ => t, false)
   }
 
-  def mapNAryOperator(args: Seq[Expr], op: Seq[Expr] => (Option[Expr] => Expr, Boolean))(implicit stTparams: Seq[TypeParameter], inSpec: Boolean) = {
+  def mapNAryOperator(args: Seq[Expr], op: Seq[Expr] => (Option[Expr] => Expr, Boolean))(implicit stTparams: Seq[TypeParameter]) = {
     // create n variables to model n lets
     val letvars = args.map(arg => FreshIdentifier("arg", arg.getType, true).toVariable)
     (args zip letvars).foldRight(op(letvars)) {
@@ -591,7 +594,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       val stTparams = nfd.tparams.collect{
         case tpd if isPlaceHolderTParam(tpd.tp) => tpd.tp
       }
-      val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams, false)
+      val (nbodyFun, bodyUpdatesState) = mapExpr(fd.body.get)(stTparams)
       val nbody = nbodyFun(stateParam)
       val bodyWithState =
         if (!bodyUpdatesState && funsRetStates(fd))
@@ -606,7 +609,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       // This guarantees their observational purity/transparency
       // collect class invariants that need to be added
       if (fd.hasPrecondition) {
-        val (npreFun, preUpdatesState) = mapExpr(fd.precondition.get)(stTparams, true)
+        val (npreFun, preUpdatesState) = mapExpr(fd.precondition.get)(stTparams)
         nfd.precondition =
           if (preUpdatesState)
             Some(TupleSelect(npreFun(stateParam), 1)) // ignore state updated by pre
@@ -670,7 +673,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
             case e => e
           }(post)
           // thread state through postcondition
-          val (npostFun, postUpdatesState) = mapExpr(tpost)(stTparams, true)
+          val (npostFun, postUpdatesState) = mapExpr(tpost)(stTparams)
           val resval =
             if (bodyUpdatesState || funsRetStates(fd))
               TupleSelect(newres.toVariable, 1)
@@ -703,7 +706,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
         val binder = FreshIdentifier("t", ctype)
         val pattern = InstanceOfPattern(Some(binder), ctype)
         // t.clres == res._1
-        val clause1 = if(ismem) {
+        val clause1 = if(!ismem) {
           val clresField = cdef.fields.last
           Equals(TupleSelect(postres.toVariable, 1),
             CaseClassSelector(ctype, binder.toVariable, clresField.id))
@@ -734,7 +737,8 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
    * Overrides the types of the lazy fields  in the case class definitions
    */
   def transformCaseClasses = p.definedClasses.foreach {
-    case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj) =>
+    case ccd @ CaseClassDef(id, tparamDefs, superClass, isCaseObj)
+      if !ccd.flags.contains(Annotation("library", Seq())) =>
       val nfields = ccd.fields.map { fld =>
         unwrapLazyType(fld.getType) match {
           case None => fld

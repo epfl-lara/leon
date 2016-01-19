@@ -203,7 +203,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     lazy val valueFun = ProgramUtil.functionByFullName("leon.lazyeval.$.value", prog).get
 
     prog.modules.foreach { md =>
-      def exprLifter(inspec: Boolean)(expr: Expr) = expr match {
+      def exprLifter(inmem: Boolean)(expr: Expr) = expr match {
         // is the arugment of lazy invocation not a function ?
         case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) && !arg.isInstanceOf[FunctionInvocation] =>
           val freevars = variablesOf(arg).toList
@@ -230,7 +230,7 @@ object LazinessEliminationPhase extends TransformationPhase {
           val freshid = FreshIdentifier("t", rootType)
           Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, Seq(rootType)), Seq(freshid.toVariable)))
 
-        case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inspec =>
+        case FunctionInvocation(TypedFunDef(fd, targs), args) if isMemoized(fd) && !inmem =>
           // calling a memoized function is modeled as creating a lazy closure and forcing it
           val tfd = TypedFunDef(fdmap.getOrElse(fd, fd), targs)
           val finv = FunctionInvocation(tfd, args)
@@ -244,14 +244,20 @@ object LazinessEliminationPhase extends TransformationPhase {
       }
       md.definedFunctions.foreach {
         case fd if fd.hasBody && !fd.isLibrary =>
-          val nbody = simplePostTransform(exprLifter(false))(fd.body.get)
-          val npre = fd.precondition.map(simplePostTransform(exprLifter(true)))
-          val npost = fd.postcondition.map(simplePostTransform(exprLifter(true)))
-          //println(s"New body of $fd: $nbody")
+          def rec(inmem: Boolean)(e: Expr): Expr = e match {
+            case Operator(args, op) =>
+              val nargs = args map rec(inmem || isMemCons(e)(prog))
+              exprLifter(inmem)(op(nargs))
+          }
           val nfd = fdmap(fd)
-          nfd.body = Some(nbody)
+          nfd.fullBody = rec(false)(fd.fullBody)
+          /*val nbody = simplePostTransform(exprLifter(false))(fd.body.get)
+          val npre = fd.precondition.map(simplePostTransform(exprLifter(true)))
+          val npost = fd.postcondition.map(simplePostTransform(exprLifter(true)))*/
+          //println(s"New body of $fd: $nbody")
+          /*nfd.body = Some(nbody)
           nfd.precondition = npre
-          nfd.postcondition = npost
+          nfd.postcondition = npost*/
         case _ => ;
       }
     }

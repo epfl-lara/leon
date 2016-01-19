@@ -50,6 +50,14 @@ object $ {
   @inline
   implicit def toWithState[T](x: T) = new WithState(x)
 
+   @library
+  case class Mem[T](v: T) {
+    @extern
+    def isCached: Boolean = sys.error("not implemented!")
+  }
+  @inline
+  implicit def toMem[T](x: T) = new Mem(x)
+
   /**
    * annotations for monotonicity proofs.
    * Note implemented as of now.

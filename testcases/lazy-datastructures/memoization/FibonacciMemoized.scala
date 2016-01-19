@@ -1,6 +1,5 @@
-package Unproved
-
 import leon.lazyeval._
+import leon.lazyeval.$._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
@@ -19,8 +18,8 @@ object FibMem {
         else
           fibRec(n-1) + fibRec(n-2) // postcondition implies that the second call would be cached
   } ensuring(_ =>
-    (n <= 2 || ($(fibRec(n-1)).isEvaluated &&
-        $(fibRec(n-2)).isEvaluated))  && time <= 40*n + 10)
+    (n <= 2 || (fibRec(n-1).isCached &&
+        fibRec(n-2).isCached))  && time <= 40*n + 10)
 
   /*def fibRange(i: BigInt, k: BigInt): IList = {
     require(k >= 1 && i <= k &&
