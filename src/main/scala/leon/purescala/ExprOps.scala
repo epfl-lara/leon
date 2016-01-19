@@ -2217,6 +2217,42 @@ object ExprOps {
     )
   }
 
-
-
+  /** Returns true if expr is a value of type t */
+  def isValueOfType(e: Expr, t: TypeTree): Boolean = {
+    (e, t) match {
+      case (StringLiteral(_), StringType) => true
+      case (IntLiteral(_), Int32Type) => true
+      case (InfiniteIntegerLiteral(_), IntegerType) => true
+      case (CharLiteral(_), CharType) => true
+      case (FractionalLiteral(_, _), RealType) => true
+      case (BooleanLiteral(_), BooleanType) => true
+      case (UnitLiteral(), UnitType) => true
+      case (GenericValue(t, _), tp) => t == tp
+      case (Tuple(elems), TupleType(bases)) =>
+        elems zip bases forall (eb => isValueOfType(eb._1, eb._2))
+      case (FiniteSet(elems, tbase), SetType(base)) =>
+        tbase == base &&
+        (elems forall isValue)
+      case (FiniteMap(elems, tk, tv), MapType(from, to)) =>
+        tk == from && tv == to &&
+        (elems forall (kv => isValueOfType(kv._1, from) && isValueOfType(kv._2, to) ))
+      case (NonemptyArray(elems, defaultValues), ArrayType(base)) =>
+        elems.values forall (x => isValueOfType(x, base))
+      case (EmptyArray(tpe), ArrayType(base)) =>
+        tpe == base
+      case (CaseClass(ct, args), ct2@AbstractClassType(classDef, tps)) => 
+        TypeOps.isSubtypeOf(ct, ct2) &&
+        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+      case (CaseClass(ct, args), ct2@CaseClassType(classDef, tps)) => 
+        ct == ct2 &&
+        ((args zip ct.fieldsTypes) forall (argstyped => isValueOfType(argstyped._1, argstyped._2)))
+      case (Lambda(valdefs, body), FunctionType(ins, out)) =>
+        (valdefs zip ins forall (vdin => vdin._1.getType == vdin._2)) &&
+        body.getType == out
+      case _ => false
+    }
+  }
+  
+  /** Returns true if expr is a value. Stronger than isGround */
+  val isValue = (e: Expr) => isValueOfType(e, e.getType)
 }

@@ -42,7 +42,7 @@ class ScopeSimplifier extends Transformer {
     case LetDef(fds, body: Expr) =>
       var newScope: Scope = scope
       // First register all functions
-      val fds_newIds = for(fd <- fds) yield { // Problem if some functions use the same ID for a ValDef
+      val fds_newIds = for(fd <- fds) yield {
         val newId    = genId(fd.id, scope)
         newScope = newScope.register(fd.id -> newId)
         (fd, newId)
@@ -52,7 +52,7 @@ class ScopeSimplifier extends Transformer {
         val localScopeToRegister = ListBuffer[(Identifier, Identifier)]() // We record the mapping of these variables only for the function.
         val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
           val newArg = genId(id, newScope.register(localScopeToRegister))
-          localScopeToRegister += (id -> newArg) // This should happen only inside the function.
+          localScopeToRegister += (id -> newArg) // This renaming happens only inside the function.
           ValDef(newArg, tpe)
         }
   

@@ -645,9 +645,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
     case l : Literal[_] => l
 
     case other =>
-      context.reporter.error(other.getPos, "Error: don't know how to handle " + other.asString + " in Evaluator ("+other.getClass+").")
-      println("RecursiveEvaluator error:" + other.asString)
-      throw EvalError("Unhandled case in Evaluator : " + other.asString)
+      throw EvalError("Unhandled case in Evaluator : [" + other.getClass + "] " + other.asString)
   }
 
   def matchesCase(scrut: Expr, caze: MatchCase)(implicit rctx: RC, gctx: GC): Option[(MatchCase, Map[Identifier, Expr])] = {

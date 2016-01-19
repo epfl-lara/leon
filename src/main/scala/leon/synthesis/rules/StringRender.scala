@@ -6,7 +6,6 @@ package rules
 
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
-
 import bonsai.enumerators.MemoizedEnumerator
 import leon.evaluators.DefaultEvaluator
 import leon.evaluators.StringTracingEvaluator
@@ -30,6 +29,7 @@ import purescala.Expressions._
 import purescala.Extractors._
 import purescala.TypeOps
 import purescala.Types._
+import leon.purescala.SelfPrettyPrinter
 
 
 /** A template generator for a given type tree. 
@@ -328,12 +328,10 @@ case object StringRender extends Rule("StringRender") {
   /** Companion object to create a StringSynthesisContext */
   object StringSynthesisContext {
     def empty(
-        definedStringConverters: StringConverters,
         abstractStringConverters: StringConverters,
         originalInputs: Set[Identifier],
         provided_functions: Seq[Identifier])(implicit hctx: SearchContext) =
       new StringSynthesisContext(None, new StringSynthesisResult(Map(), Set()),
-        definedStringConverters,
         abstractStringConverters,
         originalInputs,
         provided_functions)
@@ -343,21 +341,18 @@ case object StringRender extends Rule("StringRender") {
   class StringSynthesisContext(
       val currentCaseClassParent: Option[TypeTree],
       val result: StringSynthesisResult,
-      val definedStringConverters: StringConverters,
       val abstractStringConverters: StringConverters,
       val originalInputs: Set[Identifier],
       val provided_functions: Seq[Identifier]
   )(implicit hctx: SearchContext) {
     def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisContext = {
       new StringSynthesisContext(currentCaseClassParent, result.add(d, f, s),
-          definedStringConverters,
           abstractStringConverters,
           originalInputs,
           provided_functions)
     }
     def copy(currentCaseClassParent: Option[TypeTree]=currentCaseClassParent, result: StringSynthesisResult = result): StringSynthesisContext = 
       new StringSynthesisContext(currentCaseClassParent, result,
-          definedStringConverters,
           abstractStringConverters,
           originalInputs,
           provided_functions)
@@ -458,13 +453,11 @@ case object StringRender extends Rule("StringRender") {
         case Some(fd) =>
           gatherInputs(ctx, q, result += Stream((functionInvocation(fd._1, input::ctx.provided_functions.toList.map(Variable)), Nil)))
         case None => // No function can render the current type.
-          val exprs1 = ctx.definedStringConverters.getOrElse(input.getType, Nil).flatMap(f =>
-            f(input) match {
-              case FunctionInvocation(fd, Variable(id)::_) if ctx.originalInputs(id) => None
-              case e => Some((e, Nil))
-            })
-          val exprs2 = ctx.abstractStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), Nil))
-          val converters = (exprs1 ++ exprs2).toStream
+          
+          val exprs1s = (new SelfPrettyPrinter).allowFunction(hctx.sctx.functionContext).prettyPrintersForType(input.getType)(hctx.context, hctx.program).map(l => (application(l, Seq(input)), List[Identifier]())) // Use already pre-defined pretty printers.
+          val exprs1 = exprs1s.toList.sortBy{ case (Lambda(_, FunctionInvocation(fd, _)), _) if fd == hctx.sctx.functionContext => 0 case _ => 1}
+          val exprs2 = ctx.abstractStringConverters.getOrElse(input.getType, Nil).map(f => (f(input), List[Identifier]()))
+          val converters: Stream[WithIds[Expr]] = (exprs1.toStream #::: exprs2.toStream)
           def mergeResults(defaultconverters: =>Stream[WithIds[Expr]]): Stream[WithIds[Expr]] = {
             if(converters.isEmpty) defaultconverters
             else if(enforceDefaultStringMethodsIfAvailable) converters
@@ -575,13 +568,6 @@ case object StringRender extends Rule("StringRender") {
         val examplesFinder = new ExamplesFinder(hctx.context, hctx.program).setKeepAbstractExamples(true)
         val examples = examplesFinder.extractFromProblem(p)
         
-        val definedStringConverters: StringConverters =
-          hctx.program.definedFunctions.filter(fd =>
-            fd.returnType == StringType && fd.params.length == 1
-            && fd != hctx.program.library.escape.get
-          )
-          .groupBy({ fd => fd.paramIds.head.getType }).mapValues(fds =>
-            fds.map((fd : FunDef) => ((x: Expr) => functionInvocation(fd, Seq(x)))))
         val abstractStringConverters: StringConverters =
           (p.as.flatMap { case x => x.getType match {
             case FunctionType(Seq(aType), StringType) => List((aType, (arg: Expr) => application(Variable(x), Seq(arg))))
@@ -597,7 +583,6 @@ case object StringRender extends Rule("StringRender") {
         ruleInstantiations += RuleInstantiation("String conversion") {
           val (expr, synthesisResult) = createFunDefsTemplates(
               StringSynthesisContext.empty(
-                  definedStringConverters,
                   abstractStringConverters,
                   p.as.toSet,
                   functionVariables

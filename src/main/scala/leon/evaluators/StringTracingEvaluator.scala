@@ -8,78 +8,18 @@ import purescala.Expressions._
 import purescala.Types._
 import purescala.Definitions.{TypedFunDef, Program}
 import purescala.DefOps
+import purescala.TypeOps
+import purescala.ExprOps
 import purescala.Expressions.Expr
 import leon.utils.DebugSectionSynthesis
 import org.apache.commons.lang3.StringEscapeUtils
 
 class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvaluator(ctx, prog, 50000) with HasDefaultGlobalContext with HasDefaultRecContext {
-
-  val underlying = new DefaultEvaluator(ctx, prog) {
-    override protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
-      
-       case FunctionInvocation(TypedFunDef(fd, Nil), Seq(input)) if fd == prog.library.escape.get =>
-         e(input) match {
-           case StringLiteral(s) => 
-             StringLiteral(StringEscapeUtils.escapeJava(s))
-           case _ => throw EvalError(typeErrorMsg(input, StringType))
-       }
-      
-      case FunctionInvocation(tfd, args) =>
-        if (gctx.stepsLeft < 0) {
-          throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
-        }
-        gctx.stepsLeft -= 1
+  lazy val scalaEv = new ScalacEvaluator(underlying, ctx, prog)
   
-        val evArgs = args map e
-  
-        // build a mapping for the function...
-        val frame = rctx.withNewVars(tfd.paramSubst(evArgs))
-    
-        val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
-          scalaEv.call(tfd, evArgs)
-        } else {
-          if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-            throw EvalError("Evaluation of function with unknown implementation.")
-          }
-  
-          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-          e(body)(frame, gctx)
-        }
-  
-        callResult
-      
-      case Variable(id) =>
-        rctx.mappings.get(id) match {
-          case Some(v) if v != expr =>
-            e(v)
-          case Some(v) =>
-            v
-          case None =>
-            expr
-        }
-      case StringConcat(s1, s2) =>
-        val es1 = e(s1)
-        val es2 = e(s2)
-        (es1, es2) match {
-          case (StringLiteral(_), StringLiteral(_)) =>
-            (super.e(StringConcat(es1, es2)))
-          case _ =>
-            StringConcat(es1, es2)
-        }
-      case Application(caller, args) =>
-        val ecaller = e(caller)
-        ecaller match {
-          case l @ Lambda(params, body) =>
-            super.e(Application(ecaller, args))
-          case PartialLambda(mapping, dflt, _) =>
-            super.e(Application(ecaller, args))
-          case f =>
-            Application(f, args.map(e))
-        }
-      case expr =>
-        super.e(expr)
-    }
-  }
+  /** Evaluates resuts which can be evaluated directly
+    * For example, concatenation of two string literals */
+  val underlying = new DefaultEvaluator(ctx, prog)
   override type Value = (Expr, Expr)
 
   override val description: String = "Evaluates string programs but keeps the formula which generated the string"
@@ -90,32 +30,12 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
       rctx.mappings.get(id) match {
         case Some(v) if v != expr =>
           e(v)
-        case Some(v) =>
-          (v, expr)
-        case None =>
+        case _ =>
           (expr, expr)
       }
 
-    case StringConcat(s1, s2) =>
-      val (es1, t1) = e(s1)
-      val (es2, t2) = e(s2)
-      (es1, es2) match {
-        case (StringLiteral(_), StringLiteral(_)) =>
-          (underlying.e(StringConcat(es1, es2)), StringConcat(t1, t2))
-        case _ =>
-          (StringConcat(es1, es2), StringConcat(t1, t2))
-      }
-    case StringLength(s1) => 
-      val (es1, t1) = e(s1)
-      es1 match {
-        case StringLiteral(_) =>
-          (underlying.e(StringLength(es1)), StringLength(t1))
-        case _ =>
-          (StringLength(es1), StringLength(t1))
-      }
-
-    case expr@StringLiteral(s) => 
-      (expr, expr)
+    case e if ExprOps.isValue(e) =>
+      (e, e)
       
     case IfExpr(cond, thenn, elze) =>
       val first = underlying.e(cond)
@@ -126,11 +46,51 @@ class StringTracingEvaluator(ctx: LeonContext, prog: Program) extends Contextual
         case BooleanLiteral(false) => e(elze)
         case _ => throw EvalError(typeErrorMsg(first, BooleanType))
       }
+      
+    case MatchExpr(scrut, cases) =>
+      val rscrut = if(ExprOps.isValue(scrut)) scrut else underlying.e(scrut)
+      cases.toStream.map(c => underlying.matchesCase(rscrut, c)).find(_.nonEmpty) match {
+        case Some(Some((c, mappings))) =>
+          e(c.rhs)(rctx.withNewVars(mappings), gctx)
+        case _ =>
+          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases")
+      }
 
+    case FunctionInvocation(tfd, args) =>
+      if (gctx.stepsLeft < 0) {
+        throw RuntimeError("Exceeded number of allocated methods calls ("+gctx.maxSteps+")")
+      }
+      gctx.stepsLeft -= 1
+
+      val evArgs = args map e
+      val evArgsValues = evArgs.map(_._1)
+      val evArgsOrigin = evArgs.map(_._2)
+      if(evArgsValues forall ExprOps.isValue) {
+        // build a mapping for the function...
+        val frame = rctx.withNewVars(tfd.paramSubst(evArgsValues))
+    
+        val callResult = if (tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
+          (scalaEv.call(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
+        } else {
+          if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
+            throw EvalError("Evaluation of function with unknown implementation.")
+          }
+  
+          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+          e(body)(frame, gctx)
+        }
+  
+        callResult
+      } else {
+        (FunctionInvocation(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
+      }
     case Operator(es, builder) =>
       val (ees, ts) = es.map(e).unzip
-      (underlying.e(builder(ees)), builder(ts))
-
+      if(ees forall ExprOps.isValue) {
+        (underlying.e(builder(ees)), builder(ts))
+      } else {
+        (builder(ees), builder(ts))
+      }
   }
 
 

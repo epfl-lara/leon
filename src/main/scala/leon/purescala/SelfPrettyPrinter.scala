@@ -25,24 +25,37 @@ import purescala.Definitions._
 import scala.collection.mutable.ListBuffer
 import leon.evaluators.DefaultEvaluator
 
+object SelfPrettyPrinter {
+  def prettyPrintersForType(inputType: TypeTree)(implicit ctx: LeonContext, program: Program): Stream[Lambda] = {
+    (new SelfPrettyPrinter).prettyPrintersForType(inputType)
+  }
+  def print(v: Expr, orElse: =>String, excluded: FunDef => Boolean = Set())(implicit ctx: LeonContext, program: Program): String = {
+    (new SelfPrettyPrinter).print(v, orElse, excluded)
+  }
+}
 
 /** This pretty-printer uses functions defined in Leon itself.
   * If not pretty printing function is defined, return the default value instead
   * @param The list of functions which should be excluded from pretty-printing (to avoid rendering counter-examples of toString methods using the method itself)
   * @return a user defined string for the given typed expression. */
-object SelfPrettyPrinter {
+class SelfPrettyPrinter {
+  private var allowedFunctions = Set[FunDef]()
+  
+  def allowFunction(fd: FunDef) = { allowedFunctions += fd; this }
+  
   /** Returns a list of possible lambdas that can transform the input type to a String*/
   def prettyPrintersForType(inputType: TypeTree/*, existingPp: Map[TypeTree, List[Lambda]] = Map()*/)(implicit ctx: LeonContext, program: Program): Stream[Lambda] = {
     // Use the other argument if you need recursive typing (?)
-    (program.definedFunctions flatMap {
+    program.definedFunctions.toStream flatMap {
       fd =>
         val isCandidate = fd.returnType == StringType &&
         fd.params.length >= 1 &&
+        allowedFunctions(fd) || (
         //TypeOps.isSubtypeOf(v.getType, fd.params.head.getType) &&
         fd.id.name.toLowerCase().endsWith("tostring") &&
         program.callGraph.transitiveCallees(fd).forall { fde => 
           !purescala.ExprOps.exists( _.isInstanceOf[Choose])(fde.fullBody)
-        }
+        })
         if(isCandidate) {
           // InputType is concrete, the types of params may be abstract.
           TypeOps.canBeSubtypeOf(inputType, fd.tparams.map(_.tp), fd.params.head.getType) match {
@@ -69,12 +82,12 @@ object SelfPrettyPrinter {
             case None => Nil
           }
         } else Nil
-    }).toStream
+    }
   }
   
   /** Actually prints the expression with as alternative the given orElse */
   def print(v: Expr, orElse: =>String, excluded: FunDef => Boolean = Set())(implicit ctx: LeonContext, program: Program): String = {
-    val s = prettyPrintersForType(v.getType) 
+    val s = prettyPrintersForType(v.getType)   // TODO: Included the variable excluded if necessary.
     if(s.isEmpty) {
       orElse
     } else {
