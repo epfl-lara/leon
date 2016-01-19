@@ -39,6 +39,8 @@ class LazyFunctionsManager(p: Program) {
         case f : FunctionInvocation if LazinessUtil.isSuspInvocation(f)(p) =>
           // we can ignore the arguments to susp invocation as they are not actual calls, but only a test
           ;
+        case cc : CaseClass if LazinessUtil.isMemCons(cc)(p) =>
+          ; // we can ignore the arguments to mem
         //note: do not consider field invocations
         case f @ FunctionInvocation(TypedFunDef(callee, _), args) if callee.isRealFunction =>
           callees += callee
@@ -61,7 +63,7 @@ class LazyFunctionsManager(p: Program) {
           case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
             // the lazy invocation constructor will need the state
             readRoots += fd
-          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(p) =>
+          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(p) || isCachedInv(finv)(p) =>
             readRoots += fd
           case finv: FunctionInvocation if isValueInvocation(finv)(p) =>
             valRoots += fd
@@ -99,7 +101,7 @@ class LazyFunctionsManager(p: Program) {
       case fd if fd.hasBody =>
         postTraversal {
           case finv: FunctionInvocation if
-            isEvaluatedInvocation(finv)(p) || isSuspInvocation(finv)(p) => // call to isEvaluated || isSusp ?
+            isEvaluatedInvocation(finv)(p) || isSuspInvocation(finv)(p) || isCachedInv(finv)(p) => // call to isEvaluated || isSusp ?
             roots += fd
           case _ =>
             ;
