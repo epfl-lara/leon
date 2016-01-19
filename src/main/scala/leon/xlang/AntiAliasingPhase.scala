@@ -41,7 +41,7 @@ object AntiAliasingPhase extends TransformationPhase {
     }
 
     val res = replaceFunDefs(pgm)(fd => updatedFunctions.get(fd), (fi, fd) => None)
-    println(res._1)
+    //println(res._1)
     res._1
   }
 
@@ -117,7 +117,9 @@ object AntiAliasingPhase extends TransformationPhase {
         val newBody =
           replace(
             aliasedParams.zipWithIndex.map{ case (id, i) => 
-              (id.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap +
+              (id.toVariable, TupleSelect(newRes.toVariable, i+2)): (Expr, Expr)}.toMap ++
+            aliasedParams.map(id =>
+              (Old(id), id.toVariable): (Expr, Expr)).toMap +
             (res.toVariable -> TupleSelect(newRes.toVariable, 1)),
           postBody)
         Lambda(Seq(newRes), newBody).setPos(post)
@@ -272,9 +274,6 @@ object AntiAliasingPhase extends TransformationPhase {
     }
 
     def invocEffects(fi: FunctionInvocation): Set[Identifier] = {
-      if(!effects.isDefinedAt(fi.tfd.fd)) {
-        println("fi not defined: " + fi)
-      }
       //TODO: the require should be fine once we consider nested functions as well
       //require(effects.isDefinedAt(fi.tfd.fd)
       val mutatedParams: Set[Int] = effects.get(fi.tfd.fd).getOrElse(Set())
