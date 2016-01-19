@@ -837,11 +837,13 @@ trait SMTLIBTarget extends Interruptible {
             val rargs = args.zip(tt.bases).map(fromSMT)
             tupleWrap(rargs)
 
-          case ArrayType(baseType) =>
+          case at@ArrayType(baseType) =>
             val IntLiteral(size) = fromSMT(args(0), Int32Type)
             val RawArrayValue(_, elems, default) = fromSMT(args(1), RawArrayType(Int32Type, baseType))
 
-            if (size > 10) {
+            if (size < 0) {
+              unsupported(at, "Cannot build an array of negative length: " + size)
+            } else if (size > 10) {
               val definedElements = elems.collect {
                 case (IntLiteral(i), value) => (i, value)
               }

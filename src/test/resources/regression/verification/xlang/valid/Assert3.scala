@@ -11,7 +11,7 @@ object Assert3 {
     j += 1
     assert(j == i + 1)
     j += 2
-    assert(j == i + 2)
+    assert(j == i + 3)
 
     j
 

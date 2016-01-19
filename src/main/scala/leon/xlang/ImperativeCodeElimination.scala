@@ -152,14 +152,13 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
       case Block(exprs, expr) =>
         val (scope, fun) = exprs.foldRight((body: Expr) => body, Map[Identifier, Identifier]())((e, acc) => {
           val (accScope, accFun) = acc
-          val (_, rScope, rFun) = toFunction(e)
+          val (rVal, rScope, rFun) = toFunction(e)
           val scope = (body: Expr) => {
-            val withoutPrec = rScope(replaceNames(rFun, accScope(body)))
-            e match {
+            rVal match {
               case FunctionInvocation(tfd, args) if tfd.hasPrecondition =>
-                Assert(tfd.withParamSubst(args, tfd.precondition.get), Some("Precondition failed"), withoutPrec)
+                rScope(replaceNames(rFun, Let(FreshIdentifier("tmp", tfd.returnType), rVal, accScope(body))))
               case _ =>
-                withoutPrec
+                rScope(replaceNames(rFun, accScope(body)))
             }
 
           }
@@ -211,7 +210,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
 
             (TupleSelect(tmpTuple.toVariable, 1), scope, newMap)
           }
-          case None => 
+          case None =>
             (FunctionInvocation(tfd, recArgs).copiedFrom(fi), argScope, argFun)
         }
 
@@ -315,6 +314,15 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
         val ifExpr = args.reduceRight((el, acc) => IfExpr(el, BooleanLiteral(true), acc))
         toFunction(ifExpr)
 
+      //TODO: this should be handled properly by the Operator case, but there seems to be a subtle bug in the way Let's are lifted
+      //      which leads to Assert refering to the wrong value of a var in some cases.
+      case a@Assert(cond, msg, body) =>
+        val (condVal, condScope, condFun) = toFunction(cond)
+        val (bodyRes, bodyScope, bodyFun) = toFunction(body)
+        val scope = (body: Expr) => condScope(Assert(condVal, msg, replaceNames(condFun, bodyScope(body))).copiedFrom(a))
+        (bodyRes, scope, condFun ++ bodyFun)
+
+
       case n @ Operator(args, recons) =>
         val (recArgs, scope, fun) = args.foldRight((Seq[Expr](), (body: Expr) => body, Map[Identifier, Identifier]()))((arg, acc) => {
           val (accArgs, accScope, accFun) = acc
@@ -322,6 +330,7 @@ object ImperativeCodeElimination extends UnitPhase[Program] {
           val newScope = (body: Expr) => argScope(replaceNames(argFun, accScope(body)))
           (argVal +: accArgs, newScope, argFun ++ accFun)
         })
+
         (recons(recArgs).copiedFrom(n), scope, fun)
 
       case _ =>
