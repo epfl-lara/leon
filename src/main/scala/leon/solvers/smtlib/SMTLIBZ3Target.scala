@@ -140,29 +140,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
           case t => unsupported(t, "Cannot extract string")
         }
 
-      /*case (Strings.Length(a), _) =>
-        val aa = fromSMT(a)
-        StringLength(aa)
-
-      case (Strings.Concat(a, b, c @ _*), _) =>
-        val aa = fromSMT(a)
-        val bb = fromSMT(b)
-        (StringConcat(aa, bb) /: c.map(fromSMT(_))) {
-          case (s, cc) => StringConcat(s, cc)
-        }
-      
-      case (Strings.Substring(s, start, offset), _) =>
-        val ss = fromSMT(s)
-        val tt = fromSMT(start)
-        val oo = fromSMT(offset)
-        oo match {
-          case Minus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
-          case _ => SubString(ss, tt, Plus(tt, oo))
-        }
-        
-      case (Strings.At(a, b), _) => fromSMT(Strings.Substring(a, b, SNumeral(1)))
-*/
-
       case _ =>
         super.fromSMT(t, otpe)
     }
