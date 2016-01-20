@@ -84,7 +84,7 @@ object TypeChecker {
                     (CaseClassPattern(nbopt, cct, npats), cct)
 
                   case TuplePattern(bopt, subpats) =>
-                    val TupleType(subts) = scrtype
+                    val TupleType(subts) = expType
                     val patnTypes = (subpats zip subts).map {
                       case (p, t) => mapPattern(p, t)
                     }
