@@ -93,6 +93,9 @@ object Knapscak {
     }
   } ensuring(_ => items.size <= 10 ==> time <= 500 * (w - i + 1))
 
+  /**
+   * Computes the list of optimal solutions of all weights up to 'w'
+   */
   def knapSackSol(w: BigInt, items: IList) = {
     require(w >= 0 && items.size <= 10) //  the second requirement is only to keep the bounds linear for z3 to work
     bottomup(0, w, items)
