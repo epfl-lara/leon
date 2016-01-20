@@ -24,8 +24,21 @@ object Knapscak {
     (st1.subsetOf(st2) && (depsEval(i, items) withState st1)) ==> (depsEval(i, items) withState st2)
   } holds
 
+  @traceInduct
+  def depsLem(x: BigInt, y: BigInt, items: IList) = {
+    require(x >= 0 && y >= 0)
+    (x <= y && depsEval(y, items)) ==> depsEval(x, items)
+  } holds
+
   def maxValue(items: IList, w: BigInt, currList: IList): BigInt = {
-    require(w >= 0 && (w == 0 || depsEval(w - 1, items)))
+    require((w >= 0 || (w > 0 && depsEval(w - 1, items))) &&
+      // lemma inst
+      (currList match {
+        case Cons(wi, _) =>
+          if (wi <= w && wi > 0) depsLem(w - wi, w - 1, items)
+          else true
+        case Nil() => true
+      }))
     currList match {
       case Cons(wi, tail) =>
         val oldMax = maxValue(items, w, tail)
