@@ -1,6 +1,5 @@
 import leon.lang._
 import leon.lang.synthesis._
-import leon.lang.string._
 import leon.collection._
 
 object Justify {

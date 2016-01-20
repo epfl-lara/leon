@@ -199,7 +199,6 @@ class StringSolverSuite extends FunSuite with Matchers with ScalaFutures {
     val solution = solve(problem) 
     solution should not be 'empty
     val firstSolution = solution(0)
-    println("First solution " + firstSolution)
     firstSolution(idMap("const8")) should equal("List(")
     firstSolution(idMap("const4")) should equal("")
   }
@@ -216,7 +215,6 @@ T2: internal
 T2: ret Pop() -> 5"""
     
     val problem: Problem = List(lhs === expected)
-    println("Problem to solve:" + StringSolver.renderProblem(problem))
     
     solve(problem) should not be 'empty
   }

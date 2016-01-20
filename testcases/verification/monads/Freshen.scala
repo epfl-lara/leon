@@ -6,7 +6,6 @@ import leon.lang._
 object Freshen {
 
   import State._
-  import leon.lang.string._
 
   case class Id(name: String, id: BigInt)
 
