@@ -38,7 +38,7 @@ class TerminationSuite extends LeonRegressionSuite {
       "verification/purescala/valid/InductiveQuantification.scala"
     )
 
-    val t = if (ignored.exists(displayName.endsWith)) {
+    val t = if (ignored.exists(displayName.replaceAll("\\\\","/").endsWith)) {
       ignore _
     } else {
       test _
