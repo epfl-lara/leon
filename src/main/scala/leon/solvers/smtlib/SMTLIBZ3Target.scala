@@ -9,13 +9,11 @@ import purescala.Expressions._
 import purescala.Constructors._
 import purescala.Types._
 import purescala.Definitions._
-
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
-
 import utils.Bijection
 
 trait SMTLIBZ3Target extends SMTLIBTarget {
@@ -90,11 +88,11 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     case Some(fd) => fd
     case _ => throw new Exception("Could not find function "+s+" in program")
   }
-  lazy val list_size = lookupFunDef("leon.collection.List.size")
-  lazy val list_++ = lookupFunDef("leon.collection.List.++")
-  lazy val list_take = lookupFunDef("leon.collection.List.take")
-  lazy val list_drop = lookupFunDef("leon.collection.List.drop")
-  lazy val list_slice = lookupFunDef("leon.collection.List.slice")
+  lazy val list_size = lookupFunDef("leon.collection.List.size").typed(Seq(CharType))
+  lazy val list_++ = lookupFunDef("leon.collection.List.++").typed(Seq(CharType))
+  lazy val list_take = lookupFunDef("leon.collection.List.take").typed(Seq(CharType))
+  lazy val list_drop = lookupFunDef("leon.collection.List.drop").typed(Seq(CharType))
+  lazy val list_slice = lookupFunDef("leon.collection.List.slice").typed(Seq(CharType))
   
   
   override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
@@ -188,13 +186,14 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       }
       toSMT(stringEncoding)
     case StringLength(a)           =>
-      toSMT(functionInvocation(list_size, Seq(a)))
+      FunctionApplication(declareFunction(list_size), Seq(toSMT(a)))
     case StringConcat(a, b)        =>
-      toSMT(functionInvocation(list_++, Seq(a, b)))
+      FunctionApplication(declareFunction(list_++), Seq(toSMT(a), toSMT(b)))
     case SubString(a, start, Plus(start2, length)) if start == start2  =>
-      toSMT(functionInvocation(list_take, Seq(functionInvocation(list_drop, Seq(a, start)), length)))
+      FunctionApplication(declareFunction(list_take),
+          Seq(FunctionApplication(declareFunction(list_drop), Seq(toSMT(a), toSMT(start))), toSMT(length)))
     case SubString(a, start, end)  => 
-      toSMT(functionInvocation(list_slice, Seq(a, start, end)))
+      FunctionApplication(declareFunction(list_slice), Seq(toSMT(a), toSMT(start), toSMT(end)))
     case _ =>
       super.toSMT(e)
   }
