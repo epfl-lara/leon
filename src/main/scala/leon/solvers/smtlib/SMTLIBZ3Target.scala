@@ -8,12 +8,15 @@ import purescala.Common._
 import purescala.Expressions._
 import purescala.Constructors._
 import purescala.Types._
+import purescala.Definitions._
 
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
+
+import utils.Bijection
 
 trait SMTLIBZ3Target extends SMTLIBTarget {
 
@@ -69,6 +72,31 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     Sort(SMTIdentifier(setSort.get), Seq(declareSort(of)))
   }
 
+  val stringBijection = new Bijection[String, CaseClass]()
+  
+  lazy val cons = program.lookup("leon.collection.Cons") match {
+    case Some(cc@CaseClassDef(id, tparams, parent, _)) => cc.typed
+    case _ => throw new Exception("Could not find Cons in Z3 solver")
+  }
+  lazy val nil = program.lookup("leon.collection.Nil") match {
+    case Some(cc@CaseClassDef(id, tparams, parent, _)) => cc.typed
+    case _ => throw new Exception("Could not find Nil in Z3 solver")
+  }
+  lazy val list = program.lookup("leon.collection.List") match {
+    case Some(cc@AbstractClassDef(id, tparams, parent)) => cc.typed
+    case _ => throw new Exception("Could not find List in Z3 solver")
+  }
+  def extractFunDef(s: String): FunDef = program.lookup(s) match {
+    case Some(fd: FunDef) => fd
+    case _ => throw new Exception("Could not find "+s+" in Z3 solver")
+  }
+  lazy val list_size = extractFunDef("leon.collection.List.size")
+  lazy val list_++ = extractFunDef("leon.collection.List.++")
+  lazy val list_take = extractFunDef("leon.collection.List.take")
+  lazy val list_drop = extractFunDef("leon.collection.List.drop")
+  lazy val list_slice = extractFunDef("leon.collection.List.slice")
+  
+  
   override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
                                 (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
     (t, otpe) match {
@@ -92,6 +120,48 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         val vtpe = sorts.fromB(v)
 
         fromRawArray(RawArrayValue(ktpe, Map(), fromSMT(defV, vtpe)), tpe)
+
+      case (SimpleSymbol(s), Some(StringType)) if constructors.containsB(s) =>
+        constructors.toA(s) match {
+          case cct: CaseClassType if cct == nil =>
+            StringLiteral("")
+          case t =>
+            unsupported(t, "woot? for a single constructor for non-case-object")
+        }
+      case (FunctionApplication(SimpleSymbol(s), args), Some(StringType)) if constructors.containsB(s) =>
+        constructors.toA(s) match {
+          case cct: CaseClassType if cct == cons =>
+            val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
+            val s = ("" /: rargs)  {
+              case (acc, c@CharLiteral(s)) => acc + s
+              case _ => unsupported(cct, "Cannot extract string out of list of any")
+            }
+            StringLiteral(s)
+          case t => unsupported(t, "Cannot extract string")
+        }
+
+      /*case (Strings.Length(a), _) =>
+        val aa = fromSMT(a)
+        StringLength(aa)
+
+      case (Strings.Concat(a, b, c @ _*), _) =>
+        val aa = fromSMT(a)
+        val bb = fromSMT(b)
+        (StringConcat(aa, bb) /: c.map(fromSMT(_))) {
+          case (s, cc) => StringConcat(s, cc)
+        }
+      
+      case (Strings.Substring(s, start, offset), _) =>
+        val ss = fromSMT(s)
+        val tt = fromSMT(start)
+        val oo = fromSMT(offset)
+        oo match {
+          case Minus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
+          case _ => SubString(ss, tt, Plus(tt, oo))
+        }
+        
+      case (Strings.At(a, b), _) => fromSMT(Strings.Substring(a, b, SNumeral(1)))
+*/
 
       case _ =>
         super.fromSMT(t, otpe)
@@ -132,6 +202,22 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     case SetIntersection(l, r) =>
       ArrayMap(SSymbol("and"), toSMT(l), toSMT(r))
 
+    case StringLiteral(v)          =>
+      // No string support for z3 at this moment.
+      val stringEncoding = stringBijection.cachedB(v) {
+        v.toList.foldRight(CaseClass(nil, Seq())){
+          case (char, l) => CaseClass(cons, Seq(CharLiteral(char), l))
+        }
+      }
+      toSMT(stringEncoding)
+    case StringLength(a)           =>
+      toSMT(functionInvocation(list_size, Seq(a)))
+    case StringConcat(a, b)        =>
+      toSMT(functionInvocation(list_++, Seq(a, b)))
+    case SubString(a, start, Plus(start2, length)) if start == start2  =>
+      toSMT(functionInvocation(list_take, Seq(functionInvocation(list_drop, Seq(a, start)), length)))
+    case SubString(a, start, end)  => 
+      toSMT(functionInvocation(list_slice, Seq(a, start, end)))
     case _ =>
       super.toSMT(e)
   }
