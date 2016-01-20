@@ -1440,6 +1440,12 @@ object ExprOps {
       case Minus(Plus(e1, e2), Plus(e3, e4)) if e1 == e4 && e2 == e3 => InfiniteIntegerLiteral(0)
       case Minus(Plus(e1, e2), Plus(Plus(e3, e4), e5)) if e1 == e4 && e2 == e3 => UMinus(e5)
 
+      case StringConcat(StringLiteral(""), a) => a
+      case StringConcat(a, StringLiteral("")) => a
+      case StringConcat(StringLiteral(a), StringLiteral(b)) => StringLiteral(a+b)
+      case StringConcat(StringLiteral(a), StringConcat(StringLiteral(b), c)) => StringConcat(StringLiteral(a+b), c)
+      case StringConcat(StringConcat(c, StringLiteral(a)), StringLiteral(b)) => StringConcat(c, StringLiteral(a+b))
+      case StringConcat(a, StringConcat(b, c)) => StringConcat(StringConcat(a, b), c)
       //default
       case e => e
     }).copiedFrom(expr)

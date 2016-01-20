@@ -136,7 +136,10 @@ class QuestionBuilder[T <: Expr](
     val model = new ModelBuilder
     model ++= elems
     val modelResult = model.result()
-    e.eval(s.term, modelResult).result.map(_._1)
+    for{x <- e.eval(s.term, modelResult).result
+        res = x._1
+        simp = ExprOps.simplifyArithmetic(res)}
+      yield simp
   }
   
   /** Returns a list of input/output questions to ask to the user. */
