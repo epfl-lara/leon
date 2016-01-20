@@ -14,10 +14,9 @@ import _root_.smtlib.parser.Commands.{FunDef => SMTFunDef, _}
 import _root_.smtlib.interpreters.Z3Interpreter
 import _root_.smtlib.theories.Core.{Equals => SMTEquals, _}
 import _root_.smtlib.theories.ArraysEx
-import utils.Bijection
+import leon.solvers.z3.Z3StringConversion
 
-trait SMTLIBZ3Target extends SMTLIBTarget {
-
+trait SMTLIBZ3Target extends SMTLIBTarget with Z3StringConversion[Term] {
   def targetName = "z3"
 
   def interpreterOps(ctx: LeonContext) = {
@@ -41,11 +40,11 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
   override protected def declareSort(t: TypeTree): Sort = {
     val tpe = normalizeType(t)
     sorts.cachedB(tpe) {
-      tpe match {
+      convertType(tpe) match {
         case SetType(base) =>
           super.declareSort(BooleanType)
           declareSetSort(base)
-        case _ =>
+        case t =>
           super.declareSort(t)
       }
     }
@@ -70,34 +69,13 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     Sort(SMTIdentifier(setSort.get), Seq(declareSort(of)))
   }
 
-  val stringBijection = new Bijection[String, CaseClass]()
-  
-  lazy val conschar = program.lookupCaseClass("leon.collection.Cons") match {
-    case Some(cc) => cc.typed(Seq(CharType))
-    case _ => throw new Exception("Could not find Cons in Z3 solver")
-  }
-  lazy val nilchar = program.lookupCaseClass("leon.collection.Nil") match {
-    case Some(cc) => cc.typed(Seq(CharType))
-    case _ => throw new Exception("Could not find Nil in Z3 solver")
-  }
-  lazy val listchar = program.lookupAbstractClass("leon.collection.List") match {
-    case Some(cc) => cc.typed(Seq(CharType))
-    case _ => throw new Exception("Could not find List in Z3 solver")
-  }
-  def lookupFunDef(s: String): FunDef = program.lookupFunDef(s) match {
-    case Some(fd) => fd
-    case _ => throw new Exception("Could not find function "+s+" in program")
-  }
-  lazy val list_size = lookupFunDef("leon.collection.List.size").typed(Seq(CharType))
-  lazy val list_++ = lookupFunDef("leon.collection.List.++").typed(Seq(CharType))
-  lazy val list_take = lookupFunDef("leon.collection.List.take").typed(Seq(CharType))
-  lazy val list_drop = lookupFunDef("leon.collection.List.drop").typed(Seq(CharType))
-  lazy val list_slice = lookupFunDef("leon.collection.List.slice").typed(Seq(CharType))
-  
-  
-  override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
+  override protected def fromSMT(t: Term, expected_otpe: Option[TypeTree] = None)
                                 (implicit lets: Map[SSymbol, Term], letDefs: Map[SSymbol, DefineFun]): Expr = {
-    (t, otpe) match {
+    val otpe = expected_otpe match {
+      case Some(StringType) => Some(listchar)
+      case _ => expected_otpe
+    }
+    val res = (t, otpe) match {
       case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
         val n = s.name.split("!").toList.last
         GenericValue(tp, n.toInt)
@@ -119,28 +97,19 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
         fromRawArray(RawArrayValue(ktpe, Map(), fromSMT(defV, vtpe)), tpe)
 
-      case (SimpleSymbol(s), Some(StringType)) if constructors.containsB(s) =>
-        constructors.toA(s) match {
-          case cct: CaseClassType if cct == nilchar =>
-            StringLiteral("")
-          case t =>
-            unsupported(t, "woot? for a single constructor for non-case-object")
-        }
-      case (FunctionApplication(SimpleSymbol(s), args), Some(StringType)) if constructors.containsB(s) =>
-        constructors.toA(s) match {
-          case cct: CaseClassType if cct == conschar =>
-            val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
-            val s = ("" /: rargs)  {
-              case (acc, c@CharLiteral(s)) => acc + s
-              case _ => unsupported(cct, "Cannot extract string out of list of any")
-            }
-            StringLiteral(s)
-          case t => unsupported(t, "Cannot extract string")
-        }
-
       case _ =>
         super.fromSMT(t, otpe)
     }
+    expected_otpe match {
+      case Some(StringType) =>
+        StringLiteral(convertToString(res)(program))
+      case _ => res
+    }
+  }
+  
+  def convertToTarget(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = toSMT(e)
+  def targetApplication(tfd: TypedFunDef, args: Seq[Term])(implicit bindings: Map[Identifier, Term]): Term = {
+    FunctionApplication(declareFunction(tfd), args)
   }
 
   override protected def toSMT(e: Expr)(implicit bindings: Map[Identifier, Term]): Term = e match {
@@ -177,23 +146,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     case SetIntersection(l, r) =>
       ArrayMap(SSymbol("and"), toSMT(l), toSMT(r))
 
-    case StringLiteral(v)          =>
-      // No string support for z3 at this moment.
-      val stringEncoding = stringBijection.cachedB(v) {
-        v.toList.foldRight(CaseClass(nilchar, Seq())){
-          case (char, l) => CaseClass(conschar, Seq(CharLiteral(char), l))
-        }
-      }
-      toSMT(stringEncoding)
-    case StringLength(a)           =>
-      FunctionApplication(declareFunction(list_size), Seq(toSMT(a)))
-    case StringConcat(a, b)        =>
-      FunctionApplication(declareFunction(list_++), Seq(toSMT(a), toSMT(b)))
-    case SubString(a, start, Plus(start2, length)) if start == start2  =>
-      FunctionApplication(declareFunction(list_take),
-          Seq(FunctionApplication(declareFunction(list_drop), Seq(toSMT(a), toSMT(start))), toSMT(length)))
-    case SubString(a, start, end)  => 
-      FunctionApplication(declareFunction(list_slice), Seq(toSMT(a), toSMT(start), toSMT(end)))
+    case StringConverted(result) => result
     case _ =>
       super.toSMT(e)
   }
