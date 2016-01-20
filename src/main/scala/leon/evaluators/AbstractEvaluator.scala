@@ -50,7 +50,8 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
       }
       
     case MatchExpr(scrut, cases) =>
-      val rscrut = if(ExprOps.isValue(scrut)) scrut else underlying.e(scrut)
+      val (escrut, tscrut) = e(scrut)
+      val rscrut = escrut
       cases.toStream.map(c => underlying.matchesCase(rscrut, c)).find(_.nonEmpty) match {
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)

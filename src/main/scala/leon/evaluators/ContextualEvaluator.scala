@@ -20,7 +20,9 @@ abstract class ContextualEvaluator(ctx: LeonContext, prog: Program, val maxSteps
   def initRC(mappings: Map[Identifier, Expr]): RC
   def initGC(model: solvers.Model, check: Boolean): GC
 
-  case class EvalError(msg : String) extends Exception
+  case class EvalError(msg : String) extends Exception {
+    override def getMessage = msg + Option(super.getMessage).map("\n" + _).getOrElse("")
+  }
   case class RuntimeError(msg : String) extends Exception
   case class QuantificationError(msg: String) extends Exception
 

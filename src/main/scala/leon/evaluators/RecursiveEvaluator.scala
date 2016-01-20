@@ -37,7 +37,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(v) =>
           v
         case None =>
-          throw EvalError("No value for identifier " + id.asString + " in mapping.")
+          throw EvalError("No value for identifier " + id.asString + " in mapping " + rctx.mappings)
       }
 
     case Application(caller, args) =>
