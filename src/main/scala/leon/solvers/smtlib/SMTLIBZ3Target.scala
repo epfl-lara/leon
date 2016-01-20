@@ -74,27 +74,27 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
   val stringBijection = new Bijection[String, CaseClass]()
   
-  lazy val cons = program.lookup("leon.collection.Cons") match {
-    case Some(cc@CaseClassDef(id, tparams, parent, _)) => cc.typed
+  lazy val conschar = program.lookupCaseClass("leon.collection.Cons") match {
+    case Some(cc) => cc.typed(Seq(CharType))
     case _ => throw new Exception("Could not find Cons in Z3 solver")
   }
-  lazy val nil = program.lookup("leon.collection.Nil") match {
-    case Some(cc@CaseClassDef(id, tparams, parent, _)) => cc.typed
+  lazy val nilchar = program.lookupCaseClass("leon.collection.Nil") match {
+    case Some(cc) => cc.typed(Seq(CharType))
     case _ => throw new Exception("Could not find Nil in Z3 solver")
   }
-  lazy val list = program.lookup("leon.collection.List") match {
-    case Some(cc@AbstractClassDef(id, tparams, parent)) => cc.typed
+  lazy val listchar = program.lookupAbstractClass("leon.collection.List") match {
+    case Some(cc) => cc.typed(Seq(CharType))
     case _ => throw new Exception("Could not find List in Z3 solver")
   }
-  def extractFunDef(s: String): FunDef = program.lookup(s) match {
-    case Some(fd: FunDef) => fd
-    case _ => throw new Exception("Could not find "+s+" in Z3 solver")
+  def lookupFunDef(s: String): FunDef = program.lookupFunDef(s) match {
+    case Some(fd) => fd
+    case _ => throw new Exception("Could not find function "+s+" in program")
   }
-  lazy val list_size = extractFunDef("leon.collection.List.size")
-  lazy val list_++ = extractFunDef("leon.collection.List.++")
-  lazy val list_take = extractFunDef("leon.collection.List.take")
-  lazy val list_drop = extractFunDef("leon.collection.List.drop")
-  lazy val list_slice = extractFunDef("leon.collection.List.slice")
+  lazy val list_size = lookupFunDef("leon.collection.List.size")
+  lazy val list_++ = lookupFunDef("leon.collection.List.++")
+  lazy val list_take = lookupFunDef("leon.collection.List.take")
+  lazy val list_drop = lookupFunDef("leon.collection.List.drop")
+  lazy val list_slice = lookupFunDef("leon.collection.List.slice")
   
   
   override protected def fromSMT(t: Term, otpe: Option[TypeTree] = None)
@@ -123,14 +123,14 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
 
       case (SimpleSymbol(s), Some(StringType)) if constructors.containsB(s) =>
         constructors.toA(s) match {
-          case cct: CaseClassType if cct == nil =>
+          case cct: CaseClassType if cct == nilchar =>
             StringLiteral("")
           case t =>
             unsupported(t, "woot? for a single constructor for non-case-object")
         }
       case (FunctionApplication(SimpleSymbol(s), args), Some(StringType)) if constructors.containsB(s) =>
         constructors.toA(s) match {
-          case cct: CaseClassType if cct == cons =>
+          case cct: CaseClassType if cct == conschar =>
             val rargs = args.zip(cct.fields.map(_.getType)).map(fromSMT)
             val s = ("" /: rargs)  {
               case (acc, c@CharLiteral(s)) => acc + s
@@ -205,8 +205,8 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
     case StringLiteral(v)          =>
       // No string support for z3 at this moment.
       val stringEncoding = stringBijection.cachedB(v) {
-        v.toList.foldRight(CaseClass(nil, Seq())){
-          case (char, l) => CaseClass(cons, Seq(CharLiteral(char), l))
+        v.toList.foldRight(CaseClass(nilchar, Seq())){
+          case (char, l) => CaseClass(conschar, Seq(CharLiteral(char), l))
         }
       }
       toSMT(stringEncoding)
