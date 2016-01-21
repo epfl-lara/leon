@@ -18,7 +18,6 @@ import purescala.Types._
 import purescala.Common._
 import purescala.Expressions._
 import purescala.Definitions._
-import purescala.SelfPrettyPrinter
 import leon.solvers.{ HenkinModel, Model, SolverFactory }
 import leon.LeonContext
 import leon.evaluators

@@ -58,6 +58,8 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
   def stringConstructor(s: String) = strings(s)
 
+  lazy val stubValues = ints.values ++ bigInts.values ++ booleans.values ++ chars.values ++ rationals.values ++ strings.values
+  
   def cPattern(c: Constructor[Expr, TypeTree], args: Seq[VPattern[Expr, TypeTree]]) = {
     ConstructorPattern[Expr, TypeTree](c, args)
   }
@@ -307,7 +309,6 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         None
     })
 
-    val stubValues = ints.values ++ bigInts.values ++ booleans.values ++ chars.values ++ rationals.values
     val gen = new StubGenerator[Expr, TypeTree](stubValues.toSeq,
                                                 Some(getConstructors _),
                                                 treatEmptyStubsAsChildless = true)

@@ -156,6 +156,8 @@ object SolverFactory {
       SolverFactory(() => new SMTLIBCVC4Solver(ctx, program) with TimeoutSolver)
     } else if(names contains "smt-z3") {
       SolverFactory(() => new SMTLIBZ3Solver(ctx, program) with TimeoutSolver)
+    } else if ((names contains "fairz3") && hasNativeZ3) {
+      SolverFactory(() => new UninterpretedZ3Solver(ctx, program) with TimeoutSolver)
     } else {
       ctx.reporter.fatalError("No SMT solver available: native Z3 api could not load and 'cvc4' or 'z3' binaries were not found in PATH.")
     }

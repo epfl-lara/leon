@@ -241,7 +241,6 @@ trait SMTLIBTarget extends Interruptible {
         case RealType    => Reals.RealSort()
         case Int32Type   => FixedSizeBitVectors.BitVectorSort(32)
         case CharType    => FixedSizeBitVectors.BitVectorSort(32)
-        case StringType  => Strings.StringSort()
 
         case RawArrayType(from, to) =>
           Sort(SMTIdentifier(SSymbol("Array")), Seq(declareSort(from), declareSort(to)))
@@ -379,9 +378,6 @@ trait SMTLIBTarget extends Interruptible {
       case FractionalLiteral(n, d)   => Reals.Div(Reals.NumeralLit(n), Reals.NumeralLit(d))
       case CharLiteral(c)            => FixedSizeBitVectors.BitVectorLit(Hexadecimal.fromInt(c.toInt))
       case BooleanLiteral(v)         => Core.BoolConst(v)
-      case StringLiteral(v)          =>
-        declareSort(StringType)
-        Strings.StringLit(v)
       case Let(b, d, e) =>
         val id = id2sym(b)
         val value = toSMT(d)
@@ -613,12 +609,6 @@ trait SMTLIBTarget extends Interruptible {
       case RealMinus(a, b)           => Reals.Sub(toSMT(a), toSMT(b))
       case RealTimes(a, b)           => Reals.Mul(toSMT(a), toSMT(b))
       case RealDivision(a, b)        => Reals.Div(toSMT(a), toSMT(b))
-      
-      case StringLength(a)           => Strings.Length(toSMT(a))
-      case StringConcat(a, b)        => Strings.Concat(toSMT(a), toSMT(b))
-      case SubString(a, start, Plus(start2, length)) if start == start2  =>
-                                        Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
-      case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
 
       case And(sub)                  => Core.And(sub.map(toSMT): _*)
       case Or(sub)                   => Core.Or(sub.map(toSMT): _*)
@@ -764,31 +754,6 @@ trait SMTLIBTarget extends Interruptible {
       case (SNumeral(n), Some(RealType)) =>
         FractionalLiteral(n, 1)
       
-      case (SString(v), Some(StringType)) =>
-        StringLiteral(v)
-        
-      case (Strings.Length(a), _) =>
-        val aa = fromSMT(a)
-        StringLength(aa)
-
-      case (Strings.Concat(a, b, c @ _*), _) =>
-        val aa = fromSMT(a)
-        val bb = fromSMT(b)
-        (StringConcat(aa, bb) /: c.map(fromSMT(_))) {
-          case (s, cc) => StringConcat(s, cc)
-        }
-      
-      case (Strings.Substring(s, start, offset), _) =>
-        val ss = fromSMT(s)
-        val tt = fromSMT(start)
-        val oo = fromSMT(offset)
-        oo match {
-          case Minus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
-          case _ => SubString(ss, tt, Plus(tt, oo))
-        }
-        
-      case (Strings.At(a, b), _) => fromSMT(Strings.Substring(a, b, SNumeral(1)))
-
       case (FunctionApplication(SimpleSymbol(SSymbol("ite")), Seq(cond, thenn, elze)), t) =>
         IfExpr(
           fromSMT(cond, Some(BooleanType)),

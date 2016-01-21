@@ -14,6 +14,7 @@ import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, Forall => SMTFor
 import _root_.smtlib.parser.Commands._
 import _root_.smtlib.interpreters.CVC4Interpreter
 import _root_.smtlib.theories.experimental.Sets
+import _root_.smtlib.theories.experimental.Strings
 
 trait SMTLIBCVC4Target extends SMTLIBTarget {
 
@@ -30,7 +31,7 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
       tpe match {
         case SetType(base) =>
           Sets.SetSort(declareSort(base))
-
+        case StringType  => Strings.StringSort()
         case _ =>
           super.declareSort(t)
       }
@@ -109,6 +110,31 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
           case FiniteSet(elems, _) => elems
         }).toSet, base)
 
+      case (SString(v), Some(StringType)) =>
+        StringLiteral(v)
+        
+      case (Strings.Length(a), _) =>
+        val aa = fromSMT(a)
+        StringLength(aa)
+
+      case (Strings.Concat(a, b, c @ _*), _) =>
+        val aa = fromSMT(a)
+        val bb = fromSMT(b)
+        (StringConcat(aa, bb) /: c.map(fromSMT(_))) {
+          case (s, cc) => StringConcat(s, cc)
+        }
+      
+      case (Strings.Substring(s, start, offset), _) =>
+        val ss = fromSMT(s)
+        val tt = fromSMT(start)
+        val oo = fromSMT(offset)
+        oo match {
+          case Minus(otherEnd, `tt`) => SubString(ss, tt, otherEnd)
+          case _ => SubString(ss, tt, Plus(tt, oo))
+        }
+        
+      case (Strings.At(a, b), _) => fromSMT(Strings.Substring(a, b, SNumeral(1)))
+
       case _ =>
         super.fromSMT(t, otpe)
     }
@@ -138,7 +164,14 @@ trait SMTLIBCVC4Target extends SMTLIBTarget {
     case SetDifference(a, b) => Sets.Setminus(toSMT(a), toSMT(b))
     case SetUnion(a, b) => Sets.Union(toSMT(a), toSMT(b))
     case SetIntersection(a, b) => Sets.Intersection(toSMT(a), toSMT(b))
-
+    case StringLiteral(v)          =>
+        declareSort(StringType)
+        Strings.StringLit(v)
+    case StringLength(a)           => Strings.Length(toSMT(a))
+    case StringConcat(a, b)        => Strings.Concat(toSMT(a), toSMT(b))
+    case SubString(a, start, Plus(start2, length)) if start == start2  =>
+                                      Strings.Substring(toSMT(a),toSMT(start),toSMT(length))
+    case SubString(a, start, end)  => Strings.Substring(toSMT(a),toSMT(start),toSMT(Minus(end, start)))
     case _ =>
       super.toSMT(e)
   }
