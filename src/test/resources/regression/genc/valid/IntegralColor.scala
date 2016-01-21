@@ -65,7 +65,7 @@ object IntegralColor {
     val expected = Array(159, 52, 255, 0) // gray convertion
     val gray     = Array.fill(4)(0)
 
-    // NOTE: Cannot define toGray function as XLang doesn't allow mutating
+    // NOTE: Cannot define a toGray function as XLang doesn't allow mutating
     // arguments and GenC doesn't allow returning arrays
 
     var idx = 0
@@ -145,7 +145,7 @@ object IntegralColor {
     val expected = Array(124, 158, 76, 73)
     val size = 2 // grey is size x size
 
-    // NOTE: Cannot define toGray function as XLang doesn't allow mutating
+    // NOTE: Cannot define a `smoothed` function as XLang doesn't allow mutating
     // arguments and GenC doesn't allow returning arrays
 
     val kernel = Kernel(3, Array(1, 1, 1,
