@@ -1,4 +1,3 @@
-import leon.lang.string._
 import leon.annotation._
 
 sealed abstract class Outcome[T] {

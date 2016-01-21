@@ -3,7 +3,6 @@ import leon.annotation._
 import leon.collection._
 import leon.lang.synthesis._
 import leon._
-import leon.lang.string._
 
 object Lambda {
   case class Id(v: BigInt)

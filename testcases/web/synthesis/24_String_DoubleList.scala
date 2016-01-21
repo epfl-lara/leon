@@ -26,7 +26,7 @@ object DoubleListRender {
     (res : String) => (a, res) passes {
       case N() =>
         "[]"
-      case B(NN()) =>
+      case B(NN(), N()) =>
         "[()]"
     }
   }

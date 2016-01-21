@@ -84,6 +84,10 @@ object Definitions {
 
     def lookupAll(name: String)  = DefOps.searchWithin(name, this)
     def lookup(name: String)     = lookupAll(name).headOption
+    
+    def lookupCaseClass(name: String) = lookupAll(name).collect{ case c: CaseClassDef => c }.headOption
+    def lookupAbstractClass(name: String) = lookupAll(name).collect{ case c: AbstractClassDef => c }.headOption
+    def lookupFunDef(name: String) = lookupAll(name).collect{ case c: FunDef => c }.headOption
   }
 
   object Program {

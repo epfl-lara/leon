@@ -16,7 +16,6 @@ case class Library(pgm: Program) {
   lazy val Some   = lookup("leon.lang.Some").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val None   = lookup("leon.lang.None").collectFirst { case ccd : CaseClassDef => ccd }
 
-  //lazy val String = lookup("leon.lang.string.String").collectFirst { case ccd : CaseClassDef => ccd }
   lazy val StrOps = lookup("leon.lang.StrOps").collectFirst { case md: ModuleDef => md }
 
   lazy val Dummy  = lookup("leon.lang.Dummy").collectFirst { case ccd : CaseClassDef => ccd }
