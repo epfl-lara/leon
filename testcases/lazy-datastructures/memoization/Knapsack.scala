@@ -1,5 +1,5 @@
 import leon.lazyeval._
-import leon.lazyeval.$._
+import leon.lazyeval.Mem._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
@@ -27,7 +27,7 @@ object Knapscak {
   }
 
   @traceInduct
-  def depsEvalMono(i: BigInt, items: IList, st1: Set[$[BigInt]], st2: Set[$[BigInt]]) = {
+  def depsEvalMono(i: BigInt, items: IList, st1: Set[Mem[BigInt]], st2: Set[Mem[BigInt]]) = {
     require(i >= 0)
     (st1.subsetOf(st2) && (depsEval(i, items) withState st1)) ==> (depsEval(i, items) withState st2)
   } holds
@@ -75,8 +75,8 @@ object Knapscak {
     require(i == 0 || (i > 0 && depsEval(i - 1, items)))
     knapSack(i, items)
   } ensuring (res => {
-    val in = $.inState[BigInt]
-    val out = $.outState[BigInt]
+    val in = Mem.inState[BigInt]
+    val out = Mem.outState[BigInt]
     depsEvalMono(i - 1, items, in, out) &&
       depsEval(i - 1, items) &&
       time <= 40*items.size + 40

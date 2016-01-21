@@ -83,14 +83,16 @@ object LazinessUtil {
 
   def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
-      fullName(fd)(p) == "leon.lazyeval.$.inState"
+      val fn = fullName(fd)(p)
+      (fn == "leon.lazyeval.$.inState" || fn == "leon.lazyeval.Mem.inState")
     case _ =>
       false
   }
 
   def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
-      fullName(fd)(p) == "leon.lazyeval.$.outState"
+      val fn = fullName(fd)(p)
+      (fn == "leon.lazyeval.$.outState" || fn == "leon.lazyeval.Mem.outState")
     case _ =>
       false
   }
@@ -109,13 +111,14 @@ object LazinessUtil {
 
   def isWithStateCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.lazyeval.$.WithState"
+      val fn = fullName(cct.classDef)(p)
+      (fn == "leon.lazyeval.$.WithState" || fn == "leon.lazyeval.Mem.memWithState")
     case _ => false
   }
 
   def isMemCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.lazyeval.$.Mem"
+      fullName(cct.classDef)(p) == "leon.lazyeval.Mem"
     case _ => false
   }
 
@@ -125,7 +128,9 @@ object LazinessUtil {
    */
   def isWithStateFun(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), _) =>
-      fullName(fd)(p) == "leon.lazyeval.WithState.withState"
+      val fn = fullName(fd)(p)
+      (fn == "leon.lazyeval.WithState.withState" ||
+          fn == "leon.lazyeval.memWithState.withState")
     case _ => false
   }
 
@@ -153,11 +158,17 @@ object LazinessUtil {
     case _ => false
   }
 
+  def isMemType(tpe: TypeTree): Boolean = tpe match {
+    case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
+      cid.name == "Mem"
+    case _ => false
+  }
+
   /**
-   * TODO: Check that lazy types are not nested
+   * Lazy types are not nested by precondition
    */
   def unwrapLazyType(tpe: TypeTree) = tpe match {
-    case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) =>
+    case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) || isMemType(ctype) =>
       Some(innerType)
     case _ => None
   }

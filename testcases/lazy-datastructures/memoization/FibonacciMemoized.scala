@@ -1,5 +1,5 @@
 import leon.lazyeval._
-import leon.lazyeval.$._
+import leon.lazyeval.Mem._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._

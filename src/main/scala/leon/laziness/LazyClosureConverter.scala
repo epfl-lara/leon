@@ -359,9 +359,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       mapNAryOperator(args, op)
 
     case finv @ FunctionInvocation(_, args) if isCachedInv(finv)(p) => // isCached function ?
-      val baseType = args(0).getType match {
-        case cct: CaseClassType => cct.fieldsTypes(0)
-      }
+      val baseType = unwrapLazyType(args(0).getType).get
       val op = (nargs: Seq[Expr]) => ((stOpt: Option[Expr]) => {
         val narg = nargs(0) // there must be only one argument here
         //println("narg: "+narg+" type: "+narg.getType)
