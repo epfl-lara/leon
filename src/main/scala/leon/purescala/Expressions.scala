@@ -584,7 +584,7 @@ object Expressions {
   /** $encodingof `lhs.length` for strings */
   case class StringLength(expr: Expr) extends Expr {
     val getType = {
-      if (expr.getType == StringType) StringType
+      if (expr.getType == StringType) Int32Type
       else Untyped
     }
   }

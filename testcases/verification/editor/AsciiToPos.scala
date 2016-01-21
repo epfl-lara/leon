@@ -13,7 +13,7 @@ object Justify {
         Cons(wordAcc, tokenize0(t, ""))
       }
     } else {
-      tokenize0(t, String(List(h)) + wordAcc)
+      tokenize0(t, h + wordAcc)
     }
   }
 
