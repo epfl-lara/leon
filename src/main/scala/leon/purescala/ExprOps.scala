@@ -2182,7 +2182,7 @@ object ExprOps {
     * @param collectFIs Whether we also want to collect preconditions for function invocations
     * @return A sequence of pairs (expression, condition)
     */
-  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = true): Seq[(Expr, Expr)] = {
+  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = false): Seq[(Expr, Expr)] = {
     val conds = collectWithPC {
 
       case m @ MatchExpr(scrut, cases) =>
@@ -2194,11 +2194,11 @@ object ExprOps {
       case a @ Assert(cond, _, _) =>
         (a, cond)
 
-      case e @ Ensuring(body, post) =>
+      /*case e @ Ensuring(body, post) =>
         (e, application(post, Seq(body)))
 
       case r @ Require(pred, e) =>
-        (r, pred)
+        (r, pred)*/
 
       case fi @ FunctionInvocation(tfd, args) if tfd.hasPrecondition && collectFIs =>
         (fi, tfd.withParamSubst(args, tfd.precondition.get))
