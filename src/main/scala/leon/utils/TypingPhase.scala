@@ -44,7 +44,7 @@ object TypingPhase extends SimpleLeonPhase[Program, Program] {
         argTypesPreconditions match {
           case Nil => fd.precondition
           case xs => fd.precondition match {
-            case Some(p) => Some(andJoin(p +: xs))
+            case Some(p) => Some(andJoin(xs :+ p))
             case None => Some(andJoin(xs))
           }
         }
