@@ -328,7 +328,7 @@ object Conqueue {
         // instantiations for zeroPreceedsSuf property
         (scheds match {
           case Cons(head, rest) =>
-            concreteUntilIsSuffix(q, head) &&
+            (concreteUntilIsSuffix(q, head) withState in) &&
               (res match {
                 case Cons(rhead, rtail) =>
                   concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
@@ -348,7 +348,7 @@ object Conqueue {
   // monotonicity lemmas
   def schedMonotone[T](st1: Set[$[ConQ[T]]], st2: Set[$[ConQ[T]]], scheds: Scheds[T], l: $[ConQ[T]]): Boolean = {
     require(st1.subsetOf(st2) &&
-      (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'    
+      (schedulesProperty(l, scheds) withState st1)) // here the input state is fixed as 'st1'
     //induction scheme
     (scheds match {
       case Cons(head, tail) =>
@@ -437,7 +437,7 @@ object Conqueue {
 
   @traceInduct
   def concUntilExtenLemma[T](q: $[ConQ[T]], suf: $[ConQ[T]], st1: Set[$[ConQ[T]]], st2: Set[$[ConQ[T]]]): Boolean = {
-    ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==> 
+    ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==>
       (suf* match {
         case Spine(_, _, rear) =>
           concreteUntil(q, rear) withState st2
