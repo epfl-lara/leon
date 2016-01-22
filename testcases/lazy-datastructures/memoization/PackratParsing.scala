@@ -146,6 +146,14 @@ object PackratParsing {
     (x <= y && depsEval(y)) ==> depsEval(x)
   } holds
 
+  def invokeTest(i: BigInt): Result = {
+    require(i == 0 || (i > 0 && depsEval(i-1)))
+    pPrim(i) match {
+      case _ => pMul(i)
+    }
+  }
+
+
   def invoke(i: BigInt): (Result, Result, Result) = {
     require(i == 0 || (i > 0 && depsEval(i-1)))
     (pPrim(i), pMul(i), pAdd(i))
