@@ -77,8 +77,8 @@ object Knapscak {
   } ensuring (res => {
     val in = Mem.inState[BigInt]
     val out = Mem.outState[BigInt]
-    (i == 0 || depsEvalMono(i - 1, items, in, out)) &&
-      depsEval(i - 1, items) &&
+    (i == 0 || depsEvalMono(i - 1, items, in, out) && // lemma inst
+        depsEval(i - 1, items)) &&
       time <= 40*items.size + 40
   })
 
