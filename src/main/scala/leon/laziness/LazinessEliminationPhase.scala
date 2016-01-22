@@ -89,7 +89,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
     if (dumpProgWithPreAsserts) {
       //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
-      prettyPrintProgramToFile(progWithPre, ctx, "-withpre")
+      prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
     }
 
     // verify the contracts that do not use resources

@@ -5,10 +5,12 @@ import leon.annotation._
 import leon.instrumentation._
 //import leon.invariant._
 
+/**
+ * The packrat parser that uses the Expressions grammar presented in Bran Ford ICFP'02 paper.
+ * The implementation is almost exactly as it was presented in the paper, but
+ * here indices are passed around between parse functions, instead of strings.
+ */
 object PackratParsing {
-
-  // same grammar used by Bran Ford ICFP'02 paper.
-  // The code is as unoptimized as it was presented in the paper to mimic a auto-genrated code
 
   sealed abstract class Terminal
   case class Open() extends Terminal
@@ -17,18 +19,17 @@ object PackratParsing {
   case class Times() extends Terminal
   case class Digit() extends Terminal
 
-  /*sealed abstract class List {
-    def size: BigInt = {
-      this match {
-        case Cons(_, tail) => 1 + tail.size
-        case Nil() => BigInt(0)
-      }
-    } ensuring(_ >= 0)
+  sealed abstract class Result {
+    /**
+     * Checks if the index in the result (if any) is
+     * smaller than `i`
+     */
+    @inline
+    def smallerIndex(i: BigInt) = this match {
+      case Parsed(m) => m < i
+      case _ => true
+    }
   }
-  case class Cons(x: Terminal, tail: List) extends List // list of terminals
-  case class Nil() extends List*/
-
-  sealed abstract class Result
   case class Parsed(rest: BigInt) extends Result
   case class NoParse() extends Result
 
@@ -43,18 +44,13 @@ object PackratParsing {
     else Digit()
   }
 
-  @invstate
   @memoize
+  @invstate
   def pAdd(i: BigInt): Result = {
-    require((i == 0 || (i > 0 && depsEval(i-1))) &&
-        pMul(i).isCached && pPrim(i).isCached &&
-      // lemma inst
-      (pMul(i) match {
-        case Parsed(j) =>
-         if(j >= 0) depsLem(j, i - 1)
-          else true
-        case _ => true
-      }))
+    require(depsEval(i) &&
+      pMul(i).isCached && pPrim(i).isCached &&
+      resEval(i, pMul(i))) // lemma inst
+
     // Rule 1: Add <- Mul + Add
     pMul(i) match {
       case Parsed(j) =>
@@ -69,22 +65,14 @@ object PackratParsing {
       case _ =>
         pMul(i)
     }
-  } ensuring (res => (res match {
-    case Parsed(rem) => rem < i
-    case _           => true
-  }))
+  } ensuring (res => res.smallerIndex(i) && time <= 40)
 
-  @invstate
   @memoize
+  @invstate
   def pMul(i: BigInt): Result = {
-    require((i == 0 || (i > 0 && depsEval(i - 1))) && pPrim(i).isCached &&
-      // lemma inst
-      (pPrim(i) match {
-        case Parsed(j) =>
-          if(j>=0) depsLem(j, i - 1)
-          else true
-        case _ => true
-      }))
+    require(depsEval(i) && pPrim(i).isCached &&
+      resEval(i, pPrim(i)) // lemma inst
+      )
     // Rule 1: Mul <- Prim *  Mul
     pPrim(i) match {
       case Parsed(j) =>
@@ -99,21 +87,18 @@ object PackratParsing {
       case _ =>
         pPrim(i)
     }
-  } ensuring (res => (res match {
-    case Parsed(rem) => rem < i
-    case _           => true
-  }))
+  } ensuring (res => res.smallerIndex(i) && time <= 40)
 
-  @invstate
   @memoize
+  @invstate
   def pPrim(i: BigInt): Result = {
-    require(i == 0 || (i > 0 && depsEval(i-1)))
+    require(depsEval(i))
     val char = lookup(i)
     if (char == Digit()) {
       if (i > 0)
         Parsed(i - 1) // Rule1: Prim <- Digit
       else
-        Parsed(-1)  // here, we can use bot to convery that the suffix is empty
+        Parsed(-1)  // here, we can use -1 to convery that the suffix is empty
     } else if (char == Open() && i > 0) {
       pAdd(i - 1) match { // Rule 2: pPrim <- ( Add )
         case Parsed(rem) =>
@@ -122,56 +107,67 @@ object PackratParsing {
           NoParse()
       }
     } else NoParse()
-  } ensuring (res => res match {
-    case Parsed(rem) => rem < i
-    case _           => true
-  })
+  } ensuring (res => res.smallerIndex(i) && time <= 30)
 
-  def depsEval(i: BigInt): Boolean = {
+  @inline
+  def depsEval(i: BigInt) = i == 0 || (i > 0 && allEval(i-1))
+
+  def allEval(i: BigInt): Boolean = {
     require(i >= 0)
-    (pPrim(i).isCached && pMul(i).isCached && pAdd(i).isCached) &&
-      (if (i == 0) true
-      else depsEval(i - 1))
+    (pPrim(i).isCached && pMul(i).isCached && pAdd(i).isCached) &&(
+      if (i == 0) true
+      else allEval(i - 1))
   }
 
   @traceInduct
   def evalMono(i: BigInt, st1: Set[Mem[Result]], st2: Set[Mem[Result]]) = {
     require(i >= 0)
-    (st1.subsetOf(st2) && (depsEval(i) withState st1)) ==> (depsEval(i) withState st2)
+    (st1.subsetOf(st2) && (allEval(i) withState st1)) ==> (allEval(i) withState st2)
   } holds
 
   @traceInduct
   def depsLem(x: BigInt, y: BigInt) = {
     require(x >= 0 && y >= 0)
-    (x <= y && depsEval(y)) ==> depsEval(x)
+    (x <= y && allEval(y)) ==> allEval(x)
   } holds
 
-  def invokeTest(i: BigInt): Result = {
-    require(i == 0 || (i > 0 && depsEval(i-1)))
-    pPrim(i) match {
-      case _ => pMul(i)
-    }
+  /**
+   * Instantiates the lemma `depsLem` on the result index (if any)
+   */
+  @inline
+  def resEval(i: BigInt, res: Result) = {
+    (res match {
+      case Parsed(j) =>
+        if (j >= 0 && i > 1) depsLem(j, i - 1)
+        else true
+      case _ => true
+    })
   }
 
-
   def invoke(i: BigInt): (Result, Result, Result) = {
-    require(i == 0 || (i > 0 && depsEval(i-1)))
+    require(i == 0 || (i > 0 && allEval(i-1)))
     (pPrim(i), pMul(i), pAdd(i))
   } ensuring (res => {
     val in = Mem.inState[Result]
     val out = Mem.outState[Result]
     (if(i >0) evalMono(i-1, in, out) else true) &&
-    depsEval(i) //&&
-      //time <= 40*items.size + 40
+    allEval(i) &&
+    time <= 200
   })
 
-  def bottomup(i: BigInt): Result = {
-    require(i >= 0)
-    if(i == 0) invoke(i)._3
+  /**
+   * Parsing a string of length 'n+1'.
+   * Word is represented as an array indexed by 'n'. We only pass around the index.
+   * The 'lookup' function will return a character of the array.
+   */
+  def parse(n: BigInt): Result = {
+    require(n >= 0)
+    if(n == 0) invoke(n)._3
     else {
-      val tailres = bottomup(i-1)
-      invoke(i)._3
+      val tailres = parse(n-1) // we parse the prefixes ending at 0, 1, 2, 3, ..., n
+      invoke(n)._3
     }
-  } ensuring(_ => depsEval(i))
+  } ensuring(_ => allEval(n) &&
+      time <= 250*n + 250)
 
 }

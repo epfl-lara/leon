@@ -32,7 +32,7 @@ object LazinessUtil {
     fd.flags.contains(Annotation("memoize", Seq()))
   }
 
-  def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String) {
+  def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
     val optOutputDirectory = new LeonOptionDef[String] {
       val name = "o"
       val description = "Output directory"
@@ -54,7 +54,7 @@ object LazinessUtil {
         val out = new BufferedWriter(new FileWriter(outputFile))
         // remove '@' from the end of the identifier names
         val pat = new Regex("""(\w+)(@)(\w*)(\*?)(\S*)""", "base", "at", "mid", "star", "rest")
-        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p),
+        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p, purescala.PrinterOptions(printUniqueIds = uniqueIds)),
           m => m.group("base") + m.group("mid") + (
             if (!m.group("star").isEmpty()) "S" else "") + m.group("rest"))
         //val pgmText = ScalaPrinter.apply(p)
