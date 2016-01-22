@@ -6,7 +6,7 @@ import leon.instrumentation._
 //import leon.invariant._
 
 object WeightedSched {
-  sealed abstract class IList {
+  /*sealed abstract class IList {
     def size: BigInt = {
       this match {
         case Cons(_, tail) => 1 + tail.size
@@ -26,7 +26,15 @@ object WeightedSched {
     } ensuring(_ >= 0)
   }
   case class LCons(l: IList, pl: LList, tail: LList) extends LList // a list of pointers into IList, and LList
-  case class LNil() extends LList
+  case class LNil() extends LList*/
+
+  def lookupP(i: BigInt): BigInt = {
+
+  }
+
+  def jobs(i: BigInt): BigInt = {
+
+  }
 
   @inline
   def max(x: BigInt, y: BigInt) = if (x >= y) x else y
