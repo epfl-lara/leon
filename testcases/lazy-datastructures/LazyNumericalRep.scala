@@ -295,7 +295,7 @@ object LazyNumericalRep {
         // instantiations for zeroPreceedsSuf property
         (scheds match {
           case Cons(head, rest) =>
-            concreteUntilIsSuffix(q, head) &&
+            (concreteUntilIsSuffix(q, head) withState in) &&
               (res match {
                 case Cons(rhead, rtail) =>
                   concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
@@ -404,7 +404,7 @@ object LazyNumericalRep {
 
   @traceInduct
   def concUntilExtenLemma[T](q: $[NumStream], suf: $[NumStream], st1: Set[$[NumStream]], st2: Set[$[NumStream]]): Boolean = {
-    ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==> 
+    ((concreteUntil(q, suf) withState st1) && st2 == st1 ++ Set(suf)) ==>
       (suf* match {
         case Spine(_, _, rear) =>
           concreteUntil(q, rear) withState st2
