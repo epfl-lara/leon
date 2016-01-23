@@ -106,11 +106,16 @@ class SerialInstrumenter(program: Program,
     }
 
     def mapBody(body: Expr, from: FunDef, to: FunDef) = {
-      val res = if (instFuncs.contains(from)) {
-        //(new ExprInstrumenter(funMap, this)(from)(body))
-        exprInstFactory(funMap, this, from)(body)
-      } else
-        mapExpr(body)
+      val res =
+        if (from.isExtern) {
+          // this is an extern function, we must only rely on the specs
+          // so make the body empty
+          NoTree(to.returnType)
+        } else if (instFuncs.contains(from)) {
+          //(new ExprInstrumenter(funMap, this)(from)(body))
+          exprInstFactory(funMap, this, from)(body)
+        } else
+          mapExpr(body)
       res
     }
 
@@ -140,7 +145,7 @@ class SerialInstrumenter(program: Program,
       //copy annotations
       from.flags.foreach(to.addFlag(_))
       to.fullBody = from.fullBody match {
-        case b @ NoTree(_) => b
+        case b @ NoTree(_) => NoTree(to.returnType)
         case Require(pre, body) =>
           //here 'from' does not have a postcondition but 'to' will always have a postcondition
           val toPost =

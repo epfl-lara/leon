@@ -19,6 +19,21 @@ object PackratParsing {
   case class Times() extends Terminal
   case class Digit() extends Terminal
 
+  /**
+   * A mutable array of tokens returned by the lexer
+   */
+  @ignore
+  var string = Array[Terminal]()
+
+  /**
+   * looking up the ith token
+   */
+  @extern
+  def lookup(i: BigInt): Terminal = {
+    string(i.toInt)
+  } ensuring(_ => time <= 1)
+
+
   sealed abstract class Result {
     /**
      * Checks if the index in the result (if any) is
@@ -32,17 +47,6 @@ object PackratParsing {
   }
   case class Parsed(rest: BigInt) extends Result
   case class NoParse() extends Result
-
-  /**
-   * A placeholder function for now.
-   */
-  def lookup(i: BigInt): Terminal = {
-    if(i <= -100) Open()
-    else if(i <= 0) Close()
-    else if(i <= 100) Plus()
-    else if(i <= 200) Times()
-    else Digit()
-  }
 
   @memoize
   @invstate
