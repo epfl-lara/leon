@@ -251,13 +251,15 @@ case class Call(retexpr: Expr, fi: FunctionInvocation) extends Constraint {
 }
 
 object SetConstraint {
+  def isSetOp(e: Expr) =
+    e match {
+      case SetUnion(_, _) | FiniteSet(_, _) | ElementOfSet(_, _) | SubsetOf(_, _) | Variable(_) =>
+        true
+      case _ => false
+    }
+
   def setConstraintOfBase(e: Expr) = e match {
-    case Equals(lhs@Variable(_), rhs) if lhs.getType.isInstanceOf[SetType] =>
-      rhs match {
-        case SetUnion(_, _) | FiniteSet(_, _) | ElementOfSet(_, _) | SubsetOf(_, _) | Variable(_) =>
-          true
-        case _ => false
-      }
+    case Equals(Variable(_), rhs) if isSetOp(rhs) => true
     case _ => false
   }
 
@@ -271,22 +273,22 @@ object SetConstraint {
 }
 
 case class SetConstraint(expr: Expr) extends Constraint {
-  var union = false
-  var newset = false
-  var equal = false
-  var elemof = false
-  var subset = false
-  // TODO: add more operations here
-  expr match {
-    case Equals(Variable(_), rhs) =>
-      rhs match {
-        case SetUnion(_, _) => union = true
-        case FiniteSet(_, _) => newset = true
-        case ElementOfSet(_, _) => elemof = true
-        case SubsetOf(_, _) => subset = true
-        case Variable(_) => equal = true
-      }
-  }
+//  var union = false
+//  var newset = false
+//  var equal = false
+//  var elemof = false
+//  var subset = false
+//  // TODO: add more operations here
+//  expr match {
+//    case Equals(Variable(_), rhs) =>
+//      rhs match {
+//        case SetUnion(_, _) => union = true
+//        case FiniteSet(_, _) => newset = true
+//        case ElementOfSet(_, _) => elemof = true
+//        case SubsetOf(_, _) => subset = true
+//        case Variable(_) => equal = true
+//      }
+//  }
   override def toString(): String = {
     expr.toString
   }

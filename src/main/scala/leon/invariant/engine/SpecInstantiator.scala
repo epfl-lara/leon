@@ -109,23 +109,28 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
     resetUntempCalls(formula.fd, newUntemplatedCalls ++ calls)
   }
 
+  import leon.purescala.TypeOps._
   def specForCall(call: Call): Option[Expr] = {
     val argmap = formalToActual(call)
-    val callee = call.fi.tfd.fd
+    val tfd = call.fi.tfd
+    val callee = tfd.fd
     if (callee.hasPostcondition) {
+      // instantiate the post
+      val tparamMap = (callee.tparams zip tfd.tps).toMap
+      val trans = freshenLocals _ andThen (e => instantiateType(e, tparamMap, Map())) andThen matchToIfThenElse _
       //get the postcondition without templates
-      val post = callee.getPostWoTemplate
-      val freshPost = freshenLocals(matchToIfThenElse(post))
-      val spec = if (callee.hasPrecondition) {
-        val freshPre = freshenLocals(matchToIfThenElse(callee.precondition.get))
+      val rawpost = trans(callee.getPostWoTemplate)
+      val rawspec = if (callee.hasPrecondition) {
+        val pre = trans(callee.precondition.get)
         if (ctx.assumepre)
-          And(freshPre, freshPost)
+          And(pre, rawpost)
         else
-          Implies(freshPre, freshPost)
+          Implies(pre, rawpost)
       } else {
-        freshPost
+        rawpost
       }
-      val inlinedSpec = ExpressionTransformer.normalizeExpr(replace(argmap, spec), ctx.multOp)
+      val spec = replace(argmap, rawspec)
+      val inlinedSpec = ExpressionTransformer.normalizeExpr(spec, ctx.multOp)
       Some(inlinedSpec)
     } else {
       None
@@ -133,12 +138,15 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
   }
 
   def templateForCall(call: Call): Option[Expr] = {
-    val callee = call.fi.tfd.fd
+    val tfd = call.fi.tfd
+    val callee = tfd.fd
     if (callee.hasTemplate) {
       val argmap = formalToActual(call)
-      val tempExpr = replace(argmap, callee.getTemplate)
+      val tparamMap = (callee.tparams zip tfd.tps).toMap
+      val tempExpr = replace(argmap, instantiateType(callee.getTemplate, tparamMap, Map()))
       val template = if (callee.hasPrecondition) {
-        val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(callee.precondition.get)))
+        val pre = replace(argmap, instantiateType(callee.precondition.get, tparamMap, Map()))
+        val freshPre =  freshenLocals(matchToIfThenElse(pre))
         if (ctx.assumepre)
           And(freshPre, tempExpr)
         else

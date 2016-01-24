@@ -258,7 +258,9 @@ object LinearConstraintUtil {
             throw new IllegalStateException("Expression not linear: " + Times(r1, r2))
         }
         case Plus(e1, e2) => Plus(mkLinearRecur(e1), mkLinearRecur(e2))
-        case RealPlus(e1, e2) => RealPlus(mkLinearRecur(e1), mkLinearRecur(e2))
+        case rp@RealPlus(e1, e2) =>
+          println(s"Expr: $rp arg1: $e1 arg2: $e2")
+          RealPlus(mkLinearRecur(e1), mkLinearRecur(e2))
         case t: Terminal => t
         case fi: FunctionInvocation => fi
         case _ => throw new IllegalStateException("Expression not linear: " + inExpr)

@@ -47,7 +47,7 @@ object LazinessEliminationPhase extends TransformationPhase {
   val dumpProgWOInstSpecs = true
   val dumpInstrumentedProgram = true
   val debugSolvers = false
-  val skipStateVerification = false
+  val skipStateVerification = true
   val skipResourceVerification = false
   val debugInstVCs = false
 
@@ -111,7 +111,7 @@ object LazinessEliminationPhase extends TransformationPhase {
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram) {
       //println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
-      prettyPrintProgramToFile(instProg, ctx, "-withinst")
+      prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
     }
     // check specifications (to be moved to a different phase)
     if (!skipResourceVerification)
@@ -344,7 +344,8 @@ object LazinessEliminationPhase extends TransformationPhase {
         inferOpts.options ++ checkCtx.options)
       val inferctx = new InferenceContext(p,  ctxForInf)
       val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
-      (new InferenceEngine(inferctx)).analyseProgram(p, funsToCheck, vcSolver, None)
+      prettyPrintProgramToFile(inferctx.inferProgram, checkCtx, "-inferProg", true)
+      (new InferenceEngine(inferctx)).analyseProgram(inferctx.inferProgram, funsToCheck, vcSolver, None)
     } else {
       val vcs = funsToCheck.map { fd =>
         val (ants, post, tmpl) = createVC(fd)

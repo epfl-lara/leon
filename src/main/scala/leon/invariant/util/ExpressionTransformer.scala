@@ -35,48 +35,37 @@ object ExpressionTransformer {
    */
   def conjoinWithinClause(e: Expr, transformer: (Expr, Boolean) => (Expr, Set[Expr]),
     insideFunction: Boolean): (Expr, Set[Expr]) = {
-      e match {
-        case And(args) if !insideFunction => {
-          val newargs = args.map((arg) => {
-            val (nexp, ncjs) = transformer(arg, false)
-            createAnd(nexp +: ncjs.toSeq)
-          })
-          (createAnd(newargs), Set())
-        }
-
-        case Or(args) if !insideFunction => {
-          val newargs = args.map((arg) => {
-            val (nexp, ncjs) = transformer(arg, false)
-            createAnd(nexp +: ncjs.toSeq)
-          })
-          (createOr(newargs), Set())
-        }
-
-        case t: Terminal => (t, Set())
-
-        /*case BinaryOperator(e1, e2, op) => {
-          val (nexp1, ncjs1) = transformer(e1, true)
-          val (nexp2, ncjs2) = transformer(e2, true)
-          (op(nexp1, nexp2), ncjs1 ++ ncjs2)
-        }
-
-        case u @ UnaryOperator(e1, op) => {
-          val (nexp, ncjs) = transformer(e1, true)
-          (op(nexp), ncjs)
-        }*/
-
-        case n @ Operator(args, op) => {
-          var ncjs = Set[Expr]()
-          val newargs = args.map((arg) => {
-            val (nexp, js) = transformer(arg, true)
-            ncjs ++= js
-            nexp
-          })
-          (op(newargs), ncjs)
-        }
-        case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + e)
+    e match {
+      case And(args) if !insideFunction => {
+        val newargs = args.map((arg) => {
+          val (nexp, ncjs) = transformer(arg, false)
+          createAnd(nexp +: ncjs.toSeq)
+        })
+        (createAnd(newargs), Set())
       }
+
+      case Or(args) if !insideFunction => {
+        val newargs = args.map((arg) => {
+          val (nexp, ncjs) = transformer(arg, false)
+          createAnd(nexp +: ncjs.toSeq)
+        })
+        (createOr(newargs), Set())
+      }
+
+      case t: Terminal => (t, Set())
+
+      case n @ Operator(args, op) => {
+        var ncjs = Set[Expr]()
+        val newargs = args.map((arg) => {
+          val (nexp, js) = transformer(arg, true)
+          ncjs ++= js
+          nexp
+        })
+        (op(newargs), ncjs)
+      }
+      case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + e)
     }
+  }
 
   /**
    * Assumed that that given expression has boolean type
@@ -274,14 +263,14 @@ object ExpressionTransformer {
 
           (freshResVar, newConjuncts)
         }
-        case SetUnion(_, _) | ElementOfSet(_, _) | SubsetOf(_, _)  =>
+        case SetUnion(_, _) | ElementOfSet(_, _) | SubsetOf(_, _) =>
           val Operator(args, op) = e
           val (Seq(a1, a2), newcjs) = flattenArgs(args, true)
           val newexpr = op(Seq(a1, a2))
           val freshResVar = Variable(TVarFactory.createTemp("set", e.getType))
           (freshResVar, newcjs + Equals(freshResVar, newexpr))
 
-        case fs@FiniteSet(es, typ) =>
+        case fs @ FiniteSet(es, typ) =>
           val args = es.toSeq
           val (nargs, newcjs) = flattenArgs(args, true)
           val newexpr = FiniteSet(nargs.toSet, typ)
@@ -322,6 +311,23 @@ object ExpressionTransformer {
     } else nexp
   }
 
+  def testHelp(e: Expr) = {
+    e match {
+      case Operator(args, op) =>
+        args.foreach { arg =>
+          if (arg.getType == Untyped) {
+            println(s"$arg is untyped! ")
+            arg match {
+              case CaseClassSelector(cct, cl, fld) =>
+                println("cl type: " + cl.getType + " cct: " + cct)
+              case _ =>
+            }
+          }
+        }
+      case _ =>
+    }
+  }
+
   /**
    * The following procedure converts the formula into negated normal form by pushing all not's inside.
    * It also handles disequality constraints.
@@ -333,58 +339,65 @@ object ExpressionTransformer {
    */
   def TransformNot(expr: Expr, retainNEQ: Boolean = false): Expr = { // retainIff : Boolean = false
     def nnf(inExpr: Expr): Expr = {
-
+      if(inExpr.getType == Untyped){
+        testHelp(inExpr)
+        println(s"Warning: $inExpr is untyped")
+      }
       if (inExpr.getType != BooleanType) inExpr
-      else inExpr match {
-        case Not(Not(e1)) => nnf(e1)
-        case e @ Not(t: Terminal) => e
-        case e @ Not(FunctionInvocation(_, _)) => e
-        case Not(And(args)) => createOr(args.map(arg => nnf(Not(arg))))
-        case Not(Or(args)) => createAnd(args.map(arg => nnf(Not(arg))))
-        case Not(e @ Operator(Seq(e1, e2), op)) => {
-        	//matches integer binary relation or a boolean equality
-          if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType || e1.getType == IntegerType) {
-            e match {
-              case e: Equals => {
-                if (e1.getType == BooleanType && e2.getType == BooleanType) {
-                  Or(And(nnf(e1), nnf(Not(e2))), And(nnf(e2), nnf(Not(e1))))
-                } else {
-                  if (retainNEQ) Not(Equals(e1, e2))
-                  else Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
+      else {
+        inExpr match {
+          case Not(Not(e1)) => nnf(e1)
+          case e @ Not(t: Terminal) => e
+          case e @ Not(FunctionInvocation(_, _)) => e
+          case Not(And(args)) => createOr(args.map(arg => nnf(Not(arg))))
+          case Not(Or(args)) => createAnd(args.map(arg => nnf(Not(arg))))
+          case Not(e @ Operator(Seq(e1, e2), op)) => {
+            //matches integer binary relation or a boolean equality
+            if (e1.getType == BooleanType || e1.getType == Int32Type || e1.getType == RealType || e1.getType == IntegerType) {
+              e match {
+                case e: Equals => {
+                  if (e1.getType == BooleanType && e2.getType == BooleanType) {
+                    Or(And(nnf(e1), nnf(Not(e2))), And(nnf(e2), nnf(Not(e1))))
+                  } else {
+                    if (retainNEQ) Not(Equals(e1, e2))
+                    else Or(nnf(LessThan(e1, e2)), nnf(GreaterThan(e1, e2)))
+                  }
                 }
+                case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
+                case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
+                case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
+                case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
+                case e: Implies => And(nnf(e1), nnf(Not(e2)))
+                case _ => throw new IllegalStateException("Unknown binary operation: " + e)
               }
-              case e: LessThan => GreaterEquals(nnf(e1), nnf(e2))
-              case e: LessEquals => GreaterThan(nnf(e1), nnf(e2))
-              case e: GreaterThan => LessEquals(nnf(e1), nnf(e2))
-              case e: GreaterEquals => LessThan(nnf(e1), nnf(e2))
-              case e: Implies => And(nnf(e1), nnf(Not(e2)))
-              case _ => throw new IllegalStateException("Unknown binary operation: " + e)
-            }
-          } else {
-            //in this case e is a binary operation over ADTs
-            e match {
-              case ninst @ Not(IsInstanceOf(e1, cd)) => Not(IsInstanceOf(nnf(e1), cd))
-              case e: Equals => Not(Equals(nnf(e1), nnf(e2)))
-              case _ => throw new IllegalStateException("Unknown operation on algebraic data types: " + e)
+            } else {
+              //in this case e is a binary operation over ADTs
+              e match {
+                case ninst @ Not(IsInstanceOf(e1, cd)) => Not(IsInstanceOf(nnf(e1), cd))
+                case Not(SubsetOf(_, _)) | Not(ElementOfSet(_, _)) | Not(SetUnion(_, _)) | Not(FiniteSet(_, _)) =>
+                  e
+                case e: Equals => Not(Equals(nnf(e1), nnf(e2)))
+                case _ => throw new IllegalStateException("Unknown operation on algebraic data types: " + e)
+              }
             }
           }
-        }
-        case Implies(lhs, rhs) => nnf(Or(Not(lhs), rhs))
-        case e @ Equals(lhs, IsInstanceOf(_, _) | CaseClassSelector(_, _, _) | TupleSelect(_, _) | FunctionInvocation(_, _)) =>
-          //all case where rhs could use an ADT tree e.g. instanceOF, tupleSelect, fieldSelect, function invocation
-          e
-        case Equals(lhs, rhs) if (lhs.getType == BooleanType && rhs.getType == BooleanType) => {
-          nnf(And(Implies(lhs, rhs), Implies(rhs, lhs)))
-        }
-        case Not(IfExpr(cond, thn, elze)) => IfExpr(nnf(cond), nnf(Not(thn)), nnf(Not(elze)))
-        case Not(Let(i, v, e)) => Let(i, nnf(v), nnf(Not(e)))
-        //note that Not(LetTuple) is not possible
-        case t: Terminal => t
-        /*case u @ UnaryOperator(e1, op) => op(nnf(e1))
-        case b @ BinaryOperator(e1, e2, op) => op(nnf(e1), nnf(e2))*/
-        case n @ Operator(args, op) => op(args.map(nnf(_)))
+          case e @ Equals(lhs, SubsetOf(_, _) | ElementOfSet(_, _) | SetUnion(_, _) | FiniteSet(_, _)) =>
+            // all are set operations
+            e
+          case e @ Equals(lhs, IsInstanceOf(_, _) | CaseClassSelector(_, _, _) | TupleSelect(_, _) | FunctionInvocation(_, _)) =>
+            //all case where rhs could use an ADT tree e.g. instanceOF, tupleSelect, fieldSelect, function invocation
+            e
+          case Implies(lhs, rhs) => nnf(Or(Not(lhs), rhs))
+          case Equals(lhs, rhs) if (lhs.getType == BooleanType && rhs.getType == BooleanType) => {
+            nnf(And(Implies(lhs, rhs), Implies(rhs, lhs)))
+          }
+          case Not(IfExpr(cond, thn, elze)) => IfExpr(nnf(cond), nnf(Not(thn)), nnf(Not(elze)))
+          case Not(Let(i, v, e)) => Let(i, nnf(v), nnf(Not(e)))
+          case t: Terminal => t
+          case n @ Operator(args, op) => op(args.map(nnf(_)))
 
-        case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
+          case _ => throw new IllegalStateException("Impossible event: expr did not match any case: " + inExpr)
+        }
       }
     }
     val nnfvc = nnf(expr)
@@ -455,14 +468,14 @@ object ExpressionTransformer {
    */
   def normalizeExpr(expr: Expr, multOp: (Expr, Expr) => Expr): Expr = {
     //reduce the language before applying flatten function
-    // println("Normalizing " + ScalaPrinter(expr) + "\n")
+    //println("Normalizing " + ScalaPrinter(expr) + "\n")
     val redex = reduceLangBlocks(expr, multOp)
-    // println("Redex: "+ScalaPrinter(redex) + "\n")
+    //println("Redex: " + ScalaPrinter(redex) + "\n")
     val nnfExpr = TransformNot(redex)
-    // println("NNFexpr: "+ScalaPrinter(nnfExpr) + "\n")
+    //println("NNFexpr: " + ScalaPrinter(nnfExpr) + "\n")
     //flatten all function calls
     val flatExpr = FlattenFunction(nnfExpr)
-    // println("Flatexpr: "+ScalaPrinter(flatExpr) + "\n")
+    println("Flatexpr: " + ScalaPrinter(flatExpr) + "\n")
     //perform additional simplification
     val simpExpr = pullAndOrs(TransformNot(flatExpr))
     simpExpr
@@ -477,7 +490,7 @@ object ExpressionTransformer {
   def unFlatten(ine: Expr, freevars: Set[Identifier]): Expr = {
     var tempMap = Map[Expr, Expr]()
     val newinst = simplePostTransform {
-      case e@Equals(v@Variable(id), rhs@_) if !freevars.contains(id) =>
+      case e @ Equals(v @ Variable(id), rhs @ _) if !freevars.contains(id) =>
         if (tempMap.contains(v)) e
         else {
           tempMap += (v -> rhs)
@@ -638,7 +651,7 @@ object ExpressionTransformer {
 
     def distribute(e: Expr): Expr = {
       simplePreTransform {
-        case e@FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
+        case e @ FunctionInvocation(TypedFunDef(fd, _), Seq(e1, e2)) if isMultFunctions(fd) =>
           val newe = (e1, e2) match {
             case (Plus(sum1, sum2), _) =>
               // distribute e2 over e1
