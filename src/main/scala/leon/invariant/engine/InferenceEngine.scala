@@ -67,7 +67,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     //reporter.info("Analysis Order: " + functionsToAnalyze.map(_.id))
     var results: Map[FunDef, InferenceCondition] = null
     if (!ctx.useCegis) {
-      results = analyseProgram(program, functionsToAnalyze, progressCallback)
+      results = analyseProgram(program, functionsToAnalyze, defaultVCSolver, progressCallback)
       //println("Inferrence did not succeeded for functions: "+functionsToAnalyze.filterNot(succeededFuncs.contains _).map(_.id))
     } else {
       var remFuncs = functionsToAnalyze
@@ -76,7 +76,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
       breakable {
         while (b <= maxCegisBound) {
           Stats.updateCumStats(1, "CegisBoundsTried")
-          val succeededFuncs = analyseProgram(program, remFuncs, progressCallback)
+          val succeededFuncs = analyseProgram(program, remFuncs, defaultVCSolver, progressCallback)
           remFuncs = remFuncs.filterNot(succeededFuncs.contains _)
           if (remFuncs.isEmpty) break
           b += 5 //increase bounds in steps of 5
@@ -108,12 +108,21 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
     }
   }
 
+  def defaultVCSolver =
+    (funDef: FunDef, prog: Program) => {
+      if (funDef.annotations.contains("compose")) //compositional inference ?
+        new CompositionalTimeBoundSolver(ctx, prog, funDef)
+      else
+        new UnfoldingTemplateSolver(ctx, prog, funDef)
+    }
+
   /**
    * Returns map from analyzed functions to their inference conditions.
    * TODO: use function names in inference conditions, so that
    * we an get rid of dependence on origFd in many places.
    */
   def analyseProgram(startProg: Program, functionsToAnalyze: Seq[FunDef],
+      vcSolver: (FunDef, Program) => FunctionTemplateSolver,
       progressCallback: Option[InferenceCondition => Unit]): Map[FunDef, InferenceCondition] = {
     val reporter = ctx.reporter
     val funToTmpl =
@@ -150,11 +159,7 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
           if (funDef.hasBody && funDef.hasPostcondition) {
             // for stats
             Stats.updateCounter(1, "procs")
-            val solver =
-              if (funDef.annotations.contains("compose")) //compositional inference ?
-                new CompositionalTimeBoundSolver(ctx, prog, funDef)
-              else
-                new UnfoldingTemplateSolver(ctx, prog, funDef)
+            val solver = vcSolver(funDef, prog)
             val t1 = System.currentTimeMillis()
             val infRes = solver()
             val funcTime = (System.currentTimeMillis() - t1) / 1000.0

@@ -35,6 +35,7 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
   val tru = BooleanLiteral(true)
   val axiomFactory = new AxiomFactory(ctx) //handles instantiation of axiomatic specification
 
+
   //the guards of the set of calls that were already processed
   protected var exploredGuards = Set[Variable]()
 
@@ -115,10 +116,12 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
       //get the postcondition without templates
       val post = callee.getPostWoTemplate
       val freshPost = freshenLocals(matchToIfThenElse(post))
-
       val spec = if (callee.hasPrecondition) {
         val freshPre = freshenLocals(matchToIfThenElse(callee.precondition.get))
-        Implies(freshPre, freshPost)
+        if (ctx.assumepre)
+          And(freshPre, freshPost)
+        else
+          Implies(freshPre, freshPost)
       } else {
         freshPost
       }
@@ -136,7 +139,10 @@ class SpecInstantiator(ctx: InferenceContext, program: Program, ctrTracker: Cons
       val tempExpr = replace(argmap, callee.getTemplate)
       val template = if (callee.hasPrecondition) {
         val freshPre = replace(argmap, freshenLocals(matchToIfThenElse(callee.precondition.get)))
-        Implies(freshPre, tempExpr)
+        if (ctx.assumepre)
+          And(freshPre, tempExpr)
+        else
+          Implies(freshPre, tempExpr)
       } else {
         tempExpr
       }

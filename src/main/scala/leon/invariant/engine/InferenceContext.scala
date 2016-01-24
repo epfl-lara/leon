@@ -25,6 +25,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   // the following options are enabled by default
   val targettedUnroll = !(leonContext.findOption(optFunctionUnroll).getOrElse(false))
   val autoInference = leonContext.findOption(optDisableInfer).getOrElse(true)
+  val assumepre = leonContext.findOption(optAssumePre).getOrElse(false)
 
   // the following options are disabled by default
   val tightBounds = leonContext.findOption(optMinBounds).getOrElse(false)

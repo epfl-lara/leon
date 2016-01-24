@@ -375,25 +375,28 @@ object LazinessEliminationPhase extends TransformationPhase {
           println(s"VC for function ${fd.id} : " + vc)
         VC(vc, fd, VCKinds.Postcondition)
     }
-    //(b) create a verification context
-    val timeout: Option[Long] = None
-    val reporter = checkCtx.reporter
-    // Solvers selection and validation
-    val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
-    val solverF = timeout match {
-      case Some(sec) =>
-        baseSolverF.withTimeout(sec / 1000)
-      case None =>
-        baseSolverF
-    }
-    val vctx = VerificationContext(checkCtx, p, solverF, reporter)
-    //(c) check the vcs
-    try {
-      val veriRep = VerificationPhase.checkVCs(vctx, vcs)
-      println("Resource Verification Results: \n" + veriRep.summaryString)
-    } finally {
-      solverF.shutdown()
-    }
+    //(b) create a verification context and check the vcs
+    /*if (checkCtx.findOption(optUseOrb).getOrElse(false)) {
+      // create an inference context
+    } else {*/
+      val timeout: Option[Long] = None
+      val reporter = checkCtx.reporter
+      // Solvers selection and validation
+      val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
+      val solverF = timeout match {
+        case Some(sec) =>
+          baseSolverF.withTimeout(sec / 1000)
+        case None =>
+          baseSolverF
+      }
+      val vctx = VerificationContext(checkCtx, p, solverF, reporter)
+      try {
+        val veriRep = VerificationPhase.checkVCs(vctx, vcs)
+        println("Resource Verification Results: \n" + veriRep.summaryString)
+      } finally {
+        solverF.shutdown()
+      }
+    //}
   }
 
   /**
