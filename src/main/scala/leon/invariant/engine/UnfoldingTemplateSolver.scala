@@ -166,7 +166,7 @@ class UnfoldingTemplateSolver(ctx: InferenceContext, program: Program, rootFd: F
         reporter.info("- Invariant verified")
         sols
       case Some(true) =>
-        reporter.error("- Invalid invariant, model: " + verifierRes._2)
+        reporter.error("- Invalid invariant, model: " + verifierRes._2.toMap)
         throw new IllegalStateException("")
       case _ =>
         //the solver timed out here

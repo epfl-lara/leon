@@ -35,6 +35,7 @@ import invariant.util.ProgramUtil._
 import purescala.Constructors._
 import leon.verification._
 import PredicateUtil._
+import leon.invariant.engine._
 
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
@@ -335,68 +336,105 @@ object LazinessEliminationPhase extends TransformationPhase {
       if (fd.annotations.contains("axiom"))
         fd.addFlag(Annotation("library", Seq()))
     }
-    //    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    //    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
-
-    //(a) create vcs
-    // Note: we only need to check specs involving instvars since others were checked before.
-    // Moreover, we can add other specs as assumptions since (A => B) ^ ((A ^ B) => C) => A => B ^ C
-    //checks if the expression uses res._2 which corresponds to instvars after instrumentation
-    def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
-      exists(_ == TupleSelect(resid.toVariable, 2))(e)
-
-    val vcs = p.definedFunctions.collect {
-      // skipping verification of uninterpreted functions
-      case fd if !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
-        fd.postcondition.exists { post =>
-          val Lambda(Seq(resdef), pbody) = post
-          accessesSecondRes(pbody, resdef.id)
-        } =>
-        val Lambda(Seq(resdef), pbody) = fd.postcondition.get
-        val (instPost, assumptions) = pbody match {
-          case And(args) =>
-            val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
-            (createAnd(instSpecs), createAnd(rest))
-          case l: Let =>
-            val (letsCons, letsBody) = letStarUnapply(l)
-            letsBody match {
-              case And(args) =>
-                val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
-                (letsCons(createAnd(instSpecs)),
-                  letsCons(createAnd(rest)))
-              case _ =>
-                (l, Util.tru)
-            }
-          case e => (e, Util.tru)
-        }
-        val vc = implies(createAnd(Seq(fd.precOrTrue, assumptions,
-          Equals(resdef.id.toVariable, fd.body.get))), instPost)
+    val funsToCheck = p.definedFunctions.filter(shouldGenerateVC)
+    if (checkCtx.findOption(optUseOrb).getOrElse(false)) {
+      // create an inference context
+      val inferOpts = Main.processOptions(Seq("--disableInfer", "--assumepreInf", "--minbounds"))
+      val ctxForInf = LeonContext(checkCtx.reporter, checkCtx.interruptManager,
+        inferOpts.options ++ checkCtx.options)
+      val inferctx = new InferenceContext(p,  ctxForInf)
+      val vcSolver = (funDef: FunDef, prog: Program) => new VCSolver(inferctx, prog, funDef)
+      (new InferenceEngine(inferctx)).analyseProgram(p, funsToCheck, vcSolver, None)
+    } else {
+      val vcs = funsToCheck.map { fd =>
+        val (ants, post, tmpl) = createVC(fd)
+        if (tmpl.isDefined)
+          throw new IllegalStateException("Postcondition has holes! Run with --useOrb option")
+        val vc = implies(ants, post)
         if (debugInstVCs)
           println(s"VC for function ${fd.id} : " + vc)
         VC(vc, fd, VCKinds.Postcondition)
+      }
+      val rep = checkVCs(vcs, checkCtx, p)
+      println("Resource Verification Results: \n" + rep.summaryString)
     }
-    //(b) create a verification context and check the vcs
-    /*if (checkCtx.findOption(optUseOrb).getOrElse(false)) {
-      // create an inference context
-    } else {*/
-      val timeout: Option[Long] = None
-      val reporter = checkCtx.reporter
-      // Solvers selection and validation
-      val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
-      val solverF = timeout match {
-        case Some(sec) =>
-          baseSolverF.withTimeout(sec / 1000)
-        case None =>
-          baseSolverF
+  }
+
+  def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
+      exists(_ == TupleSelect(resid.toVariable, 2))(e)
+
+  /**
+   * Note: we also skip verification of uninterpreted functions
+   */
+  def shouldGenerateVC(fd: FunDef) = {
+    !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
+      fd.postcondition.exists { post =>
+        val Lambda(Seq(resdef), pbody) = post
+        accessesSecondRes(pbody, resdef.id)
       }
-      val vctx = VerificationContext(checkCtx, p, solverF, reporter)
-      try {
-        val veriRep = VerificationPhase.checkVCs(vctx, vcs)
-        println("Resource Verification Results: \n" + veriRep.summaryString)
-      } finally {
-        solverF.shutdown()
-      }
-    //}
+  }
+
+  /**
+   * creates vcs
+   *  Note: we only need to check specs involving instvars since others were checked before.
+   *  Moreover, we can add other specs as assumptions since (A => B) ^ ((A ^ B) => C) => A => B ^ C
+   *  checks if the expression uses res._2 which corresponds to instvars after instrumentation
+   */
+  def createVC(fd: FunDef) = {
+    val Lambda(Seq(resdef), _) = fd.postcondition.get
+    val (pbody, tmpl) = (fd.getPostWoTemplate, fd.template)
+    val (instPost, assumptions) = pbody match {
+      case And(args) =>
+        val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
+        (createAnd(instSpecs), createAnd(rest))
+      case l: Let =>
+        val (letsCons, letsBody) = letStarUnapply(l)
+        letsBody match {
+          case And(args) =>
+            val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
+            (letsCons(createAnd(instSpecs)),
+              letsCons(createAnd(rest)))
+          case _ =>
+            (l, Util.tru)
+        }
+      case e => (e, Util.tru)
+    }
+    val ants = createAnd(Seq(fd.precOrTrue, assumptions, Equals(resdef.id.toVariable, fd.body.get)))
+    (ants, instPost, tmpl)
+  }
+
+  def checkVCs(vcs: List[VC], checkCtx: LeonContext, p: Program) = {
+    val timeout: Option[Long] = None
+    val reporter = checkCtx.reporter
+    // Solvers selection and validation
+    val baseSolverF = SolverFactory.getFromSettings(checkCtx, p)
+    val solverF = timeout match {
+      case Some(sec) =>
+        baseSolverF.withTimeout(sec / 1000)
+      case None =>
+        baseSolverF
+    }
+    val vctx = VerificationContext(checkCtx, p, solverF, reporter)
+    try {
+      VerificationPhase.checkVCs(vctx, vcs)
+      //println("Resource Verification Results: \n" + veriRep.summaryString)
+    } finally {
+      solverF.shutdown()
+    }
+  }
+
+  class VCSolver(ctx: InferenceContext, p: Program, rootFd: FunDef) extends
+  	UnfoldingTemplateSolver(ctx, p, rootFd) {
+    override def constructVC(fd: FunDef): (Expr, Expr) = {
+      val (ants, post, tmpl) = createVC(fd)
+      val conseq = matchToIfThenElse(createAnd(Seq(post, tmpl.getOrElse(Util.tru))))
+      (matchToIfThenElse(ants), conseq)
+    }
+
+    /**
+     * TODO: fix this!!
+     */
+    override def verifyInvariant(newposts: Map[FunDef, Expr]) = (Some(false), Model.empty)
   }
 
   /**
