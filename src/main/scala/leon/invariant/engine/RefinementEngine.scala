@@ -5,6 +5,7 @@ import purescala.Common._
 import purescala.Definitions._
 import purescala.Expressions._
 import purescala.ExprOps._
+import purescala.TypeOps._
 import purescala.Extractors._
 import purescala.Types._
 import java.io._
@@ -142,28 +143,35 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
         val recFun = fi.tfd.fd
         val recFunTyped = fi.tfd
 
-        //check if we need to create a constraint tree for the call's target
+        //check if we need to create a VC formula for the call's target
         if (shouldCreateVC(recFun)) {
-
-          //create a new verification condition for this recursive function
           reporter.info("Creating VC for " + recFun.id)
-          val freshBody = freshenLocals(matchToIfThenElse(recFun.body.get))
+          // instantiate the body with new types
+          val tparamMap = (recFun.tparams zip recFunTyped.tps).toMap
+          val paramMap = recFun.params.map{pdef =>
+            pdef.id -> FreshIdentifier(pdef.id.name, instantiateType(pdef.id.getType, tparamMap))
+          }.toMap
+          val newbody = freshenLocals(matchToIfThenElse(recFun.body.get))
+          val freshBody = instantiateType(newbody, tparamMap, paramMap)
           val resvar = if (recFun.hasPostcondition) {
             //create a new result variable here for the same reason as freshening the locals,
             //which is to avoid variable capturing during unrolling
             val origRes = getResId(recFun).get
-            Variable(FreshIdentifier(origRes.name, origRes.getType, true))
+            Variable(FreshIdentifier(origRes.name, recFunTyped.returnType, true))
           } else {
             //create a new resvar
-            Variable(FreshIdentifier("res", recFun.returnType, true))
+            Variable(FreshIdentifier("res", recFunTyped.returnType, true))
           }
           val plainBody = Equals(resvar, freshBody)
-          val bodyExpr = if (recFun.hasPrecondition) {
-            And(matchToIfThenElse(recFun.precondition.get), plainBody)
-          } else plainBody
+          val bodyExpr =
+            if (recFun.hasPrecondition) {
+              val pre = instantiateType(matchToIfThenElse(recFun.precondition.get), tparamMap, paramMap)
+              And(pre, plainBody)
+            } else plainBody
 
-          //note: here we are only adding the template as the postcondition
-          val idmap = formalToActual(Call(resvar, FunctionInvocation(recFunTyped, recFun.params.map(_.toVariable))))
+          //note: here we are only adding the template as the postcondition (other post need not be proved again)
+          val idmap = formalToActual(Call(resvar, FunctionInvocation(recFunTyped,
+              paramMap.values.toSeq.map(_.toVariable))))
           val postTemp = replace(idmap, recFun.getTemplate)
           val vcExpr = ExpressionTransformer.normalizeExpr(And(bodyExpr, Not(postTemp)), ctx.multOp)
           ctrTracker.addVC(recFun, vcExpr)
@@ -182,10 +190,13 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
 
   def inilineCall(call: Call, formula: Formula) = {
     //here inline the body and conjoin it with the guard
-    val callee = call.fi.tfd.fd
+    val tfd = call.fi.tfd
+    val callee = tfd.fd
 
-    //Important: make sure we use a fresh body expression here
-    val freshBody = freshenLocals(matchToIfThenElse(callee.body.get))
+    //Important: make sure we use a fresh body expression here, and freshenlocals
+    val tparamMap = (callee.tparams zip tfd.tps).toMap
+    val newbody = freshenLocals(matchToIfThenElse(callee.body.get))
+    val freshBody = instantiateType(newbody, tparamMap, Map())
     val calleeSummary =
       Equals(getFunctionReturnVariable(callee), freshBody)
     val argmap1 = formalToActual(call)

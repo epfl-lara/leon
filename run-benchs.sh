@@ -7,3 +7,4 @@
 ./leon --lazy ./testcases/lazy-datastructures/conc/Conqueue.scala --unfoldFactor=3 | tee Conqueue.out
 ./leon --lazy ./testcases/lazy-datastructures/memoization/Knapsack.scala | tee Knapsack.out
 ./leon --lazy ./testcases/lazy-datastructures/memoization/PackratParsing.scala | tee Packrat.out
+./leon --lazy ./testcases/lazy-datastructures/memoization/WeightedScheduling.scala | tee Sched.out
