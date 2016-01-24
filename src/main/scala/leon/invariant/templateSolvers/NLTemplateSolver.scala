@@ -589,6 +589,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     satCtrs.foreach {
       case t: Call => calls += t
       case t: ADTConstraint if (t.cons.isDefined) => cons += t.cons.get
+      // TODO: ignoring all set constraints here, fix this
       case _ => ;
     }
     val callExprs = calls.map(_.toExpr)

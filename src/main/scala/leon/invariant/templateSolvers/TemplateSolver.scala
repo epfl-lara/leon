@@ -25,7 +25,7 @@ abstract class TemplateSolver(ctx: InferenceContext, val rootFun: FunDef,
   protected val tru = BooleanLiteral(true)
   //protected val zero = IntLiteral(0)
 
-  private val dumpVCtoConsole = false
+  private val dumpVCtoConsole = true
   private val dumpVCasText = false
 
   /**

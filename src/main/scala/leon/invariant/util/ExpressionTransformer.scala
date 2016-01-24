@@ -274,6 +274,20 @@ object ExpressionTransformer {
 
           (freshResVar, newConjuncts)
         }
+        case SetUnion(_, _) | ElementOfSet(_, _) | SubsetOf(_, _)  =>
+          val Operator(args, op) = e
+          val (Seq(a1, a2), newcjs) = flattenArgs(args, true)
+          val newexpr = op(Seq(a1, a2))
+          val freshResVar = Variable(TVarFactory.createTemp("set", e.getType))
+          (freshResVar, newcjs + Equals(freshResVar, newexpr))
+
+        case fs@FiniteSet(es, typ) =>
+          val args = es.toSeq
+          val (nargs, newcjs) = flattenArgs(args, true)
+          val newexpr = FiniteSet(nargs.toSet, typ)
+          val freshResVar = Variable(TVarFactory.createTemp("fset", fs.getType))
+          (freshResVar, newcjs + Equals(freshResVar, newexpr))
+
         case _ => conjoinWithinClause(e, flattenFunc, insideFunction)
       }
     }
