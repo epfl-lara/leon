@@ -56,6 +56,9 @@ object LazinessEliminationPhase extends TransformationPhase {
 
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
+  val optUseOrb = LeonFlagOptionDef("useOrb", "Use Orb to infer constants", false)
+
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optUseOrb)
 
   /**
    * TODO: add inlining annotations for optimization.
