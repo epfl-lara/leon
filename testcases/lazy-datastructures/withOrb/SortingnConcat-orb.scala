@@ -1,9 +1,11 @@
+package withOrb
+
 import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
+import leon.invariant._
 import scala.math.BigInt.int2bigInt
-//import leon.invariant._
 
 object SortingnConcat {
 
@@ -40,7 +42,7 @@ object SortingnConcat {
             else Cons(y, Cons(x, ys))
         }
     }
-  } ensuring (res => res.size == l.size && time <= 15 * l.size + 2)
+  } ensuring (res => res.size == l.size && time <= ? * l.size + ?)
 
   def sort(l: List): LList = {
     pullMin(l) match {
@@ -50,14 +52,14 @@ object SortingnConcat {
       case _ =>
         SNil()
     }
-  } ensuring (res => res.size == l.size && time <= 15 * l.size + 20)
+  } ensuring (res => res.size == l.size && time <= ? * l.size + ?)
 
   def concat(l1: List, l2: LList) : LList = {
     l1 match {
       case Cons(x, xs) => SCons(x, $(concat(xs, l2)))
       case Nil() => SNil()
     }
-  } ensuring(res => time <= 15)
+  } ensuring(res => time <= ?)
 
   def secondMin(l: $[LList]) : BigInt = {
     l.value match {
@@ -68,7 +70,7 @@ object SortingnConcat {
         }
       case SNil() => BigInt(0)
     }
-  } ensuring (_ => time <= 30 * ssize(l) + 40)
+  } ensuring (_ => time <= ? * ssize(l) + ?)
 
   /* Orb can prove this
    * def kthMin(l: $[LList], k: BigInt): BigInt = {
