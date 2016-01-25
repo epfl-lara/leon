@@ -52,8 +52,7 @@ out-classes
 #travis
 /travis/builds
 
-# Isabelle
-contrib
+# Windows
 /bin/
 /cvc4.exe
 /libz3.dll
