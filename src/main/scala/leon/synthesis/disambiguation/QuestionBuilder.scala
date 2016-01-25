@@ -19,6 +19,7 @@ import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
 import leon.grammars.ExpressionGrammar
 import evaluators.AbstractEvaluator
+import scala.annotation.tailrec
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -142,13 +143,32 @@ class QuestionBuilder[T <: Expr](
       yield simp
   }
   
+  /** Make all generic values unique.
+    * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
+  def makeGenericValuesUnique(a: Expr): Expr = {
+    var genVals = Set[GenericValue]()
+    @tailrec @inline def freshGenericValue(g: GenericValue): GenericValue = {
+      if(genVals contains g)
+        freshGenericValue(GenericValue(g.tp, g.id + 1))
+      else {
+        genVals += g
+        g
+      }
+    }
+    ExprOps.postMap{ e => e match {
+      case g@GenericValue(tpe, i) =>
+        Some(freshGenericValue(g))
+      case _ => None
+    }}(a)
+  }
+  
   /** Returns a list of input/output questions to ask to the user. */
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
     
     val enum = new MemoizedEnumerator[TypeTree, Expr](value_enumerator.getProductions)
     val values = enum.iterator(tupleTypeWrap(_argTypes))
-    val instantiations = values.map {
+    val instantiations = values.map(makeGenericValuesUnique _).map {
       v => input.zip(unwrapTuple(v, input.size))
     }
     
