@@ -2,7 +2,6 @@ import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
-import scala.math.BigInt.int2bigInt
 //import leon.invariant._
 
 object SortingnConcat {
