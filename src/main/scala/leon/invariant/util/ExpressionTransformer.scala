@@ -339,10 +339,10 @@ object ExpressionTransformer {
    */
   def TransformNot(expr: Expr, retainNEQ: Boolean = false): Expr = { // retainIff : Boolean = false
     def nnf(inExpr: Expr): Expr = {
-      if(inExpr.getType == Untyped){
-        testHelp(inExpr)
-        println(s"Warning: $inExpr is untyped")
-      }
+//      if(inExpr.getType == Untyped){
+//        testHelp(inExpr)
+//        println(s"Warning: $inExpr is untyped")
+//      }
       if (inExpr.getType != BooleanType) inExpr
       else {
         inExpr match {
@@ -373,9 +373,10 @@ object ExpressionTransformer {
             } else {
               //in this case e is a binary operation over ADTs
               e match {
+                // TODO: is this a bug ?
                 case ninst @ Not(IsInstanceOf(e1, cd)) => Not(IsInstanceOf(nnf(e1), cd))
-                case Not(SubsetOf(_, _)) | Not(ElementOfSet(_, _)) | Not(SetUnion(_, _)) | Not(FiniteSet(_, _)) =>
-                  e
+                case SubsetOf(_, _) | ElementOfSet(_, _) | SetUnion(_, _) | FiniteSet(_, _) =>
+                  Not(e)
                 case e: Equals => Not(Equals(nnf(e1), nnf(e2)))
                 case _ => throw new IllegalStateException("Unknown operation on algebraic data types: " + e)
               }
@@ -475,7 +476,7 @@ object ExpressionTransformer {
     //println("NNFexpr: " + ScalaPrinter(nnfExpr) + "\n")
     //flatten all function calls
     val flatExpr = FlattenFunction(nnfExpr)
-    println("Flatexpr: " + ScalaPrinter(flatExpr) + "\n")
+    //println("Flatexpr: " + ScalaPrinter(flatExpr) + "\n")
     //perform additional simplification
     val simpExpr = pullAndOrs(TransformNot(flatExpr))
     simpExpr

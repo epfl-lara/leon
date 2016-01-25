@@ -495,11 +495,10 @@ object Expressions {
     */
   case class And(exprs: Seq[Expr]) extends Expr {
     require(exprs.size >= 2)
-//    val getType = {
-//      if (exprs forall (_.getType == BooleanType)) BooleanType
-//      else Untyped
-//    }
-    val getType = BooleanType
+    val getType = {
+      if (exprs forall (_.getType == BooleanType)) BooleanType
+      else Untyped
+    }
   }
 
   object And {
