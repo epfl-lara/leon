@@ -74,11 +74,12 @@ class AbstractEvaluator(ctx: LeonContext, prog: Program) extends ContextualEvalu
       val callResult = if ((evArgsValues forall ExprOps.isValue) && tfd.fd.annotations("extern") && ctx.classDir.isDefined) {
         (scalaEv.call(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
       } else {
-        if(!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) {
-          throw EvalError("Evaluation of function with unknown implementation.")
+        if((!tfd.hasBody && !rctx.mappings.isDefinedAt(tfd.id)) || tfd.body.exists(b => ExprOps.exists(e => e.isInstanceOf[Choose])(b))) {
+          (FunctionInvocation(tfd, evArgsValues), FunctionInvocation(tfd, evArgsOrigin))
+        } else {
+          val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
+          e(body)(frame, gctx)
         }
-        val body = tfd.body.getOrElse(rctx.mappings(tfd.id))
-        e(body)(frame, gctx)
       }
       callResult
     case Operator(es, builder) =>

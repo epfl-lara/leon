@@ -166,6 +166,24 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  case class Config(i: BigInt, t: (Int, String))
     |  
     |  def configToString(c: Config): String = ??? ensuring { (res: String) => (c, res) passes { case Config(BigInt(1), (2, "3")) => "1: 2 -> 3" } }
+    |  def configToString2(c: Config): String = ??? ensuring { (res: String) => (c, res) passes { case Config(BigInt(1), (2, "3")) => "3: 1 -> 2" } }
+    |  
+    |  sealed abstract class Tree
+    |  case class Knot(left: Tree, right: Tree) extends Tree
+    |  case class Bud(v: String) extends Tree
+    |  
+    |  def treeToString(t: Tree): String = ???[String] ensuring {
+    |    (res : String) => (t, res) passes {
+    |    case Knot(Knot(Bud("17"), Bud("14")), Bud("23")) =>
+    |      "<<17Y14>Y23>"
+    |    case Bud("foo") =>
+    |      "foo"
+    |    case Knot(Bud("foo"), Bud("foo")) =>
+    |      "<fooYfoo>"
+    |    case Knot(Bud("foo"), Knot(Bud("bar"), Bud("foo"))) =>
+    |      "<fooY<barYfoo>>"
+    |    }
+    |  }
     |  
     |  case class Node(tag: String, l: List[Edge])
     |  case class Edge(start: Node, end: Node)
@@ -218,29 +236,47 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         Seq(StringLiteral("\t")) -> "done...\\t")
         
   }*/
-  
-  test("Case class synthesis"){ case (ctx: LeonContext, program: Program) =>
-    object Config {
-      def apply(i: Int, b: (Int, String)): CaseClass = {
-        CaseClass(program.lookupCaseClass("StringRenderSuite.Config").get.typed,
-            Seq(InfiniteIntegerLiteral(i), tupleWrap(Seq(IntLiteral(b._1), StringLiteral(b._2)))))
-      }
+  case class ConfigBuilder(program: Program) {
+    def apply(i: Int, b: (Int, String)): CaseClass = {
+      CaseClass(program.lookupCaseClass("StringRenderSuite.Config").get.typed,
+          Seq(InfiniteIntegerLiteral(i), tupleWrap(Seq(IntLiteral(b._1), StringLiteral(b._2)))))
     }
+  }
+  StringRender.enforceDefaultStringMethodsIfAvailable = false
+  test("Case class synthesis"){ case (ctx: LeonContext, program: Program) =>
+    val Config = ConfigBuilder(program)
     
     synthesizeAndTest("configToString",
         Seq(Config(4, (5, "foo"))) -> "4: 5 -> foo")
   }
   
-  test("Recursive case class synthesis"){ case (ctx: LeonContext, program: Program) =>
-    
-  }
-  
   test("Out of order synthesis"){ case (ctx: LeonContext, program: Program) =>
+    val Config = ConfigBuilder(program)
     
+    synthesizeAndTest("configToString2",
+        Seq(Config(4, (5, "foo"))) -> "foo: 4 -> 5")
+  }
+  class TreeBuilder(program: Program) {
+    object Knot {
+      def apply(left: Expr, right: Expr): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Knot").get.typed,
+            Seq(left, right))
+      }
+    }
+    object Bud {
+      def apply(s: String): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Bud").get.typed,
+            Seq(StringLiteral(s)))
+      }
+    }
   }
   
-  test("Tuple synthesis"){ case (ctx: LeonContext, program: Program) =>
-    
+  test("Recursive case class synthesis"){ case (ctx: LeonContext, program: Program) =>
+    val tb = new TreeBuilder(program)
+    import tb._
+    synthesizeAndTest("treeToString",
+        Seq(Knot(Knot(Bud("aa"), Bud("bb")), Knot(Bud("mm"), Bud("nn")))) ->
+        "<<aaYbb>Y<mmYnn>>")
   }
   
   test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
