@@ -9,6 +9,7 @@ import leon.purescala.Common.FreshIdentifier
 import leon.purescala.Common.Identifier
 import leon.purescala.Expressions._
 import leon.purescala.Definitions._
+import leon.purescala.DefOps
 import leon.purescala.Types._
 import leon.purescala.Constructors._
 import leon.synthesis.rules.{StringRender, TypedTemplateGenerator}
@@ -33,9 +34,10 @@ import leon.synthesis.Synthesizer
 import leon.synthesis.SynthesisSettings
 import leon.synthesis.RuleApplication
 import leon.synthesis.RuleClosed
-import leon.evaluators.DefaultEvaluator
-import leon.evaluators.AbstractEvaluator
+import leon.evaluators._
 import leon.LeonContext
+import leon.synthesis.rules.DetupleInput
+import leon.synthesis.Rules
 
 class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures {
   test("Template Generator simple"){ case (ctx: LeonContext, program: Program) =>
@@ -94,10 +96,10 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     }
   }
 
-  def applyStringRenderOn(functionName: String) = {
+  def applyStringRenderOn(functionName: String): (Expr, Program) = {
     val ci = synthesisInfos(functionName)
     val search = new SimpleSearch(ctx, ci, ci.problem, CostModels.default, Some(200))
-    val synth = new Synthesizer(ctx, program, ci, SynthesisSettings())
+    val synth = new Synthesizer(ctx, program, ci, SynthesisSettings(rules = Seq(StringRender)))
     val orNode = search.g.root
     if (!orNode.isExpanded) {
       val hctx = SearchContext(synth.sctx, synth.ci, orNode, search)
@@ -121,7 +123,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val rid = rulesApps("String conversion")
     val path = List(rid)
     
-    (search.traversePath(path) match {
+    val solutions = (search.traversePath(path) match {
       case Some(an: AndNode) =>
         val hctx = SearchContext(synth.sctx, synth.ci, an, search)
         an.ri.apply(hctx)
@@ -130,6 +132,9 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
       case RuleClosed(solutions) => solutions
       case _ => fail("no solution found")
     }
+    solutions should not be 'empty
+    val newProgram = DefOps.addFunDefs(synth.program, solutions.head.defs, synth.sctx.functionContext)
+    (solutions.head.term, newProgram)
   }
   
   def getFunctionArguments(functionName: String) = {
@@ -139,43 +144,91 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         fail("Could not find function " + functionName + " in sources. Other functions:" + program.definedFunctions.map(_.id.name).sorted)
     }
   }
+  
+  implicit class StringUtils(s: String) {
+    def replaceByExample: String = 
+      s.replaceAll("\\((\\w+):(.*) by example", "\\($1:$2 ensuring { (res: String) => ($1, res) passes { case _ if false => \"\" } }")
+  }
     
   val sources = List("""
     |import leon.lang._
+    |import leon.collection._
     |import leon.lang.synthesis._
     |import leon.annotation._
     |
     |object StringRenderSuite {
     |  def literalSynthesis(i: Int): String = ??? ensuring { (res: String) => (i, res) passes { case 42 => ":42." } }
     |  
+    |  def booleanSynthesis(b: Boolean): String = ??? ensuring { (res: String) => (b, res) passes { case true => "yes" case false => "no" } }
+    |  def booleanSynthesis2(b: Boolean): String = ??? ensuring { (res: String) => (b, res) passes { case true => "B: true" } }
+    |  //def stringEscape(s: String): String = ??? ensuring { (res: String) => (s, res) passes { case "\n" => "done...\\n" } }
+    |  
+    |  case class Config(i: BigInt, t: (Int, String))
+    |  
+    |  def configToString(c: Config): String = ??? ensuring { (res: String) => (c, res) passes { case Config(BigInt(1), (2, "3")) => "1: 2 -> 3" } }
+    |  
+    |  case class Node(tag: String, l: List[Edge])
+    |  case class Edge(start: Node, end: Node)
+    |  
+    |  def nodeToString(n: Node): String = ??? by example
+    |  def edgeToString(e: Edge): String = ??? by example
+    |  def listEdgeToString(l: List[Edge]): String = ??? by example
     |}
-    """.stripMargin)
+    """.stripMargin.replaceByExample)
   implicit val (ctx, program) = getFixture()
   
   val synthesisInfos = SourceInfo.extractFromProgram(ctx, program).map(si => si.fd.id.name -> si ).toMap
-  
-  val when = new DefaultEvaluator(ctx, program)
-  val when_abstract = new AbstractEvaluator(ctx, program)
+
+  def synthesizeAndTest(functionName: String, tests: (Seq[Expr], String)*) {
+    val (expr, program) = applyStringRenderOn(functionName)
+    val when = new DefaultEvaluator(ctx, program)
+    val when_abstract = new AbstractEvaluator(ctx, program)
+    val args = getFunctionArguments(functionName)
+    for((in, out) <- tests) {
+      val test = letTuple(args.map(_.id), tupleWrap(in), expr)
+      when.eval(test) match {
+        case EvaluationResults.Successful(value) => value shouldEqual StringLiteral(out)
+        case EvaluationResults.EvaluatorError(msg) => fail(msg)
+        case EvaluationResults.RuntimeError(msg) => fail("Runtime: " + msg)
+      }
+    }
+  }
   
   test("Literal synthesis"){ case (ctx: LeonContext, program: Program) =>
-    val solutions = applyStringRenderOn("literalSynthesis")
-    solutions should not be 'empty
-    println(solutions.head.term)
-    val Seq(arg) = getFunctionArguments("literalSynthesis")
-    when.eval(let(arg.id, IntLiteral(156),
-        solutions.head.toSimplifiedExpr(ctx, program))).result should equal (Some(StringLiteral(":156.")))
+    synthesizeAndTest("literalSynthesis",
+        Seq(IntLiteral(156)) -> ":156.",
+        Seq(IntLiteral(-5)) -> ":-5.")
   }
   
-  test("String escape synthesis"){ case (ctx: LeonContext, program: Program) =>
-    
+  test("boolean Synthesis"){ case (ctx: LeonContext, program: Program) =>
+    synthesizeAndTest("booleanSynthesis",
+        Seq(BooleanLiteral(true)) -> "yes",
+        Seq(BooleanLiteral(false)) -> "no")
   }
   
-  test("Boolean synthesis"){ case (ctx: LeonContext, program: Program) =>
-    
+  test("Boolean synthesis 2"){ case (ctx: LeonContext, program: Program) =>
+    synthesizeAndTest("booleanSynthesis2",
+        Seq(BooleanLiteral(true)) -> "B: true",
+        Seq(BooleanLiteral(false)) -> "B: false")
   }
+  
+  /*test("String escape synthesis"){ case (ctx: LeonContext, program: Program) =>
+    synthesizeAndTest("stringEscape",
+        Seq(StringLiteral("abc")) -> "done...abc",
+        Seq(StringLiteral("\t")) -> "done...\\t")
+        
+  }*/
   
   test("Case class synthesis"){ case (ctx: LeonContext, program: Program) =>
+    object Config {
+      def apply(i: Int, b: (Int, String)): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Config").get.typed,
+            Seq(InfiniteIntegerLiteral(i), tupleWrap(Seq(IntLiteral(b._1), StringLiteral(b._2)))))
+      }
+    }
     
+    synthesizeAndTest("configToString",
+        Seq(Config(4, (5, "foo"))) -> "4: 5 -> foo")
   }
   
   test("Recursive case class synthesis"){ case (ctx: LeonContext, program: Program) =>
