@@ -1,0 +1,75 @@
+[[33mWarning [0m] warning: there was one feature warning; re-run with -feature for details
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ssize4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pullMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pullMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pullMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for sort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for sort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concat4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for concat4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for secondMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for secondMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for secondMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size14 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size14 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size15 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size15 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                   ║
+║ SortingnConcat.concat          match exhaustiveness      ?:?   valid   U:smt-z3      0.011 ║
+║ SortingnConcat.concat          postcondition             ?:?   valid   U:smt-z3      0.032 ║
+║ SortingnConcat.pullMin         match exhaustiveness      ?:?   valid   U:smt-z3      0.011 ║
+║ SortingnConcat.pullMin         match exhaustiveness      ?:?   valid   U:smt-z3      0.021 ║
+║ SortingnConcat.pullMin         postcondition             ?:?   valid   U:smt-z3      0.107 ║
+║ SortingnConcat.secondMin       match exhaustiveness      ?:?   valid   U:smt-z3      0.018 ║
+║ SortingnConcat.secondMin       match exhaustiveness      ?:?   valid   U:smt-z3      0.021 ║
+║ SortingnConcat.secondMin       postcondition             ?:?   valid   U:smt-z3      0.065 ║
+║ List.size                      match exhaustiveness      ?:?   valid   U:smt-z3      0.010 ║
+║ LList.size                     match exhaustiveness      ?:?   valid   U:smt-z3      0.011 ║
+║ LList.size                     postcondition             ?:?   valid   U:smt-z3      0.027 ║
+║ List.size                      postcondition             ?:?   valid   U:smt-z3      0.012 ║
+║ SortingnConcat.sort            match exhaustiveness      ?:?   valid   U:smt-z3      0.011 ║
+║ SortingnConcat.sort            postcondition             ?:?   valid   U:smt-z3      0.220 ║
+║ SortingnConcat.ssize           postcondition             ?:?   valid   U:smt-z3      0.096 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 15     valid: 15     invalid: 0      unknown 0                                0.673 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pullMin-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for sort-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for concat-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for secondMin-time @?:?...
+[[34m  Info  [0m]  => VALID
+Resource Verification Results: 
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                   ║
+║ SortingnConcat.concat-time            postcondition     ?:?   valid   U:smt-z3       0.026 ║
+║ SortingnConcat.pullMin-time           postcondition     ?:?   valid   U:smt-z3       0.052 ║
+║ SortingnConcat.secondMin-time         postcondition     ?:?   valid   U:smt-z3       0.305 ║
+║ SortingnConcat.sort-time              postcondition     ?:?   valid   U:smt-z3       0.055 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 4      valid: 4      invalid: 0      unknown 0                                0.438 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════╝
