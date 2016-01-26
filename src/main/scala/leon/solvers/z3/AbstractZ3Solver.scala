@@ -276,7 +276,7 @@ trait AbstractZ3Solver extends Solver {
       // variable has to remain in a map etc.
       variables.aToB.collect{ case (Variable(id), p2) => id -> p2 }
     }
-     new Z3StringConversion[Z3AST] {
+    new Z3StringConversion[Z3AST] {
         def getProgram = AbstractZ3Solver.this.program
         def convertToTarget(e: Expr)(implicit bindings: Map[Identifier, Z3AST]): Z3AST = {
           rec(e)
@@ -538,7 +538,7 @@ trait AbstractZ3Solver extends Solver {
     
             rec(RawArrayValue(from, elems.map{
               case (k, v) => (k, CaseClass(library.someType(t), Seq(v)))
-            }.toMap, CaseClass(library.noneType(t), Seq())))
+            }, CaseClass(library.noneType(t), Seq())))
     
           case MapApply(m, k) =>
             val mt @ MapType(_, t) = normalizeType(m.getType)

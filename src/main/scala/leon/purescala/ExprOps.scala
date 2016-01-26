@@ -2129,7 +2129,7 @@ object ExprOps {
 
         fds ++= nfds
 
-        Some(LetDef(nfds.map(_._2), b))
+        Some(letDef(nfds.map(_._2), b))
 
       case FunctionInvocation(tfd, args) =>
         if (fds contains tfd.fd) {

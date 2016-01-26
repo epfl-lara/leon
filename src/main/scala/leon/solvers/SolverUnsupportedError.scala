@@ -7,7 +7,7 @@ import purescala.Common.Tree
 
 object SolverUnsupportedError {
   def msg(t: Tree, s: Solver, reason: Option[String]) = {
-    s" is unsupported by solver ${s.name}" + reason.map(":\n  " + _ ).getOrElse("")
+    s"(of ${t.getClass}) is unsupported by solver ${s.name}" + reason.map(":\n  " + _ ).getOrElse("")
   }
 }
 
