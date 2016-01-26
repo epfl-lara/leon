@@ -144,14 +144,15 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
             case _                                 => test
           }
         }
-
-        // Check whether we can extract all ids from example
-        val results = exs.collect { case e if infos.forall(_._2.isDefinedAt(e)) || this.keepAbstractExamples =>
-          infos.map{ case (id, f) => id -> f(e) }.toMap
+        try {
+          // Check whether we can extract all ids from example
+          val results = exs.collect { case e if this.keepAbstractExamples || infos.forall(_._2.isDefinedAt(e)) =>
+            infos.map{ case (id, f) => id -> f(e) }.toMap
+          }
+          results.toSet
+        } catch {
+          case e: IDExtractionException => Set()
         }
-
-        results.toSet
-
       case _ =>
         Set()
     }(e)
@@ -272,6 +273,8 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     }
     consolidated
   }
+  
+  case class IDExtractionException(msg: String) extends Exception(msg)
 
   /** Extract ids in ins/outs args, and compute corresponding extractors for values map
     *
@@ -291,13 +294,13 @@ class ExamplesFinder(ctx0: LeonContext, program: Program) {
     case Tuple(vs) =>
       vs.map(extractIds).zipWithIndex.flatMap{ case (ids, i) =>
         ids.map{ case (id, e) =>
-          (id, andThen({ case Tuple(vs) => vs(i) }, e))
+          (id, andThen({ case Tuple(vs) => vs(i) case e => throw new IDExtractionException("Expected Tuple, got " + e) }, e))
         }
       }
     case CaseClass(cct, args) =>
       args.map(extractIds).zipWithIndex.flatMap { case (ids, i) =>
         ids.map{ case (id, e) =>
-          (id, andThen({ case CaseClass(cct2, vs) if cct2 == cct => vs(i) } ,e))
+          (id, andThen({ case CaseClass(cct2, vs) if cct2 == cct => vs(i) case e => throw new IDExtractionException("Expected Case class of type " + cct + ", got " + e) } ,e))
         }
       }
 

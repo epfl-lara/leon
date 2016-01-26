@@ -134,7 +134,7 @@ case object StringRender extends Rule("StringRender") {
           case (lhs, rhs) => Some((accEqs += ((lhs, rhs))).toList)
         }
       case (OtherStringFormToken(e)::lhstail, OtherStringChunk(f)::rhstail) =>
-        if(e == f) {
+        if(ExprOps.canBeHomomorphic(e, f).nonEmpty) {
           rec(lhstail, rhstail, accEqs += ((accLeft.toList, accRight.toString)), ListBuffer[StringFormToken](), new StringBuffer)
         } else None
       case (OtherStringFormToken(e)::lhstail, Nil) =>

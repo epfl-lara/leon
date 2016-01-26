@@ -10,6 +10,7 @@ import leon.purescala.Common.Identifier
 import leon.purescala.Expressions._
 import leon.purescala.Definitions._
 import leon.purescala.DefOps
+import leon.purescala.ExprOps
 import leon.purescala.Types._
 import leon.purescala.TypeOps
 import leon.purescala.Constructors._
@@ -206,6 +207,10 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  def bListToString[T](b: BList[T], f: T => String) = ???[String] ensuring
     |  { (res: String) => (b, res) passes { case BNil() => "[]" case BCons(a, BCons(b, BCons(c, BNil()))) => "[" + f(a._1) + "-" + f(a._2) + ", " + f(b._1) + "-" + f(b._2) + ", " + f(c._1) + "-" + f(c._2) + "]" }}
     |  
+    |  case class BConfig(flags: BList[Dummy])
+    |  def bConfigToString(b: BConfig): String = ???[String] ensuring
+    |  { (res: String) => (b, res) passes { case BConfig(BNil()) => "Config" + bListToString[Dummy](BNil(), (x: Dummy) => dummyToString(x)) } }
+    |  
     |  case class Node(tag: String, l: List[Edge])
     |  case class Edge(start: Node, end: Node)
     |  
@@ -221,7 +226,6 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
   def synthesizeAndTest(functionName: String, tests: (Seq[Expr], String)*) {
     val (fd, program) = applyStringRenderOn(functionName)
     val when = new DefaultEvaluator(ctx, program)
-    val when_abstract = new AbstractEvaluator(ctx, program)
     val args = getFunctionArguments(functionName)
     for((in, out) <- tests) {
       val expr = functionInvocation(fd, in)
@@ -229,6 +233,81 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         case EvaluationResults.Successful(value) => value shouldEqual StringLiteral(out)
         case EvaluationResults.EvaluatorError(msg) => fail(/*program + "\n" + */msg)
         case EvaluationResults.RuntimeError(msg) => fail(/*program + "\n" + */"Runtime: " + msg)
+      }
+    }
+  }
+  def synthesizeAndAbstractTest(functionName: String)(tests: (FunDef, Program) => Seq[(Seq[Expr], Expr)]) {
+    val (fd, program) = applyStringRenderOn(functionName)
+    val when_abstract = new AbstractEvaluator(ctx, program)
+    val args = getFunctionArguments(functionName)
+    for((in, out) <- tests(fd, program)) {
+      val expr = functionInvocation(fd, in)
+      when_abstract.eval(expr) match {
+        case EvaluationResults.Successful(value) => val m = ExprOps.canBeHomomorphic(value._1, out)
+          assert(m.nonEmpty, value._1 + " was not homomorphic with " + out)
+        case EvaluationResults.EvaluatorError(msg) => fail(/*program + "\n" + */msg)
+        case EvaluationResults.RuntimeError(msg) => fail(/*program + "\n" + */"Runtime: " + msg)
+      }
+    }
+  }
+  class TreeBuilder(program: Program) {
+    object Knot {
+      def apply(left: Expr, right: Expr): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Knot").get.typed,
+            Seq(left, right))
+      }
+    }
+    object Bud {
+      def apply(s: String): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Bud").get.typed,
+            Seq(StringLiteral(s)))
+      }
+    }
+  }
+  class DummyBuilder(program: Program) {
+    object Dummy {
+      def getType: TypeTree = program.lookupCaseClass("StringRenderSuite.Dummy").get.typed
+      def apply(s: String): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Dummy").get.typed,
+            Seq(StringLiteral(s)))
+      }
+    }
+  }
+  
+  class BListBuilder(program: Program) {
+    object Cons {
+      def apply(types: Seq[TypeTree])(left: Expr, right: Expr): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.BCons").get.typed(types),
+            Seq(left, right))
+      }
+    }
+    object Nil {
+      def apply(types: Seq[TypeTree]): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.BNil").get.typed(types),
+            Seq())
+      }
+    }
+    object List {
+      def apply(types: Seq[TypeTree])(elems: Expr*): CaseClass = {
+        elems.toList match {
+          case collection.immutable.Nil => Nil(types)
+          case a::b => Cons(types)(a, List(types)(b: _*))
+        }
+      }
+    }
+  }
+  case class ConfigBuilder(program: Program) {
+    def apply(i: Int, b: (Int, String)): CaseClass = {
+      CaseClass(program.lookupCaseClass("StringRenderSuite.Config").get.typed,
+          Seq(InfiniteIntegerLiteral(i), tupleWrap(Seq(IntLiteral(b._1), StringLiteral(b._2)))))
+    }
+  }
+  class BConfigBuilder(program: Program) {
+    object BConfig {
+      def getType: TypeTree = program.lookupCaseClass("StringRenderSuite.BConfig").get.typed
+      def apply(s: Expr): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.BConfig").get.typed,
+            Seq(s))
       }
     }
   }
@@ -257,39 +336,19 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         Seq(StringLiteral("\t")) -> "done...\\t")
         
   }*/
-  case class ConfigBuilder(program: Program) {
-    def apply(i: Int, b: (Int, String)): CaseClass = {
-      CaseClass(program.lookupCaseClass("StringRenderSuite.Config").get.typed,
-          Seq(InfiniteIntegerLiteral(i), tupleWrap(Seq(IntLiteral(b._1), StringLiteral(b._2)))))
-    }
-  }
-  StringRender.enforceDefaultStringMethodsIfAvailable = false
+  
   test("Case class synthesis"){ case (ctx: LeonContext, program: Program) =>
     val Config = ConfigBuilder(program)
-    
+    StringRender.enforceDefaultStringMethodsIfAvailable = false
     synthesizeAndTest("configToString",
         Seq(Config(4, (5, "foo"))) -> "4: 5 -> foo")
   }
   
   test("Out of order synthesis"){ case (ctx: LeonContext, program: Program) =>
     val Config = ConfigBuilder(program)
-    
+    StringRender.enforceDefaultStringMethodsIfAvailable = false
     synthesizeAndTest("configToString2",
         Seq(Config(4, (5, "foo"))) -> "foo: 4 -> 5")
-  }
-  class TreeBuilder(program: Program) {
-    object Knot {
-      def apply(left: Expr, right: Expr): CaseClass = {
-        CaseClass(program.lookupCaseClass("StringRenderSuite.Knot").get.typed,
-            Seq(left, right))
-      }
-    }
-    object Bud {
-      def apply(s: String): CaseClass = {
-        CaseClass(program.lookupCaseClass("StringRenderSuite.Bud").get.typed,
-            Seq(StringLiteral(s)))
-      }
-    }
   }
   
   test("Recursive case class synthesis"){ case (ctx: LeonContext, program: Program) =>
@@ -300,30 +359,6 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         "<<aaYbb>Y<mmYnn>>")
   }
   
-  class DummyBuilder(program: Program) {
-    object Dummy {
-      def getType: TypeTree = program.lookupCaseClass("StringRenderSuite.Dummy").get.typed
-      def apply(s: String): CaseClass = {
-        CaseClass(program.lookupCaseClass("StringRenderSuite.Dummy").get.typed,
-            Seq(StringLiteral(s)))
-      }
-    }
-  }
-  
-  class BListBuilder(program: Program) {
-    object Cons {
-      def apply(types: Seq[TypeTree])(left: Expr, right: Expr): CaseClass = {
-        CaseClass(program.lookupCaseClass("StringRenderSuite.BCons").get.typed(types),
-            Seq(left, right))
-      }
-    }
-    object Nil {
-      def apply(types: Seq[TypeTree]): CaseClass = {
-        CaseClass(program.lookupCaseClass("StringRenderSuite.BNil").get.typed(types),
-            Seq())
-      }
-    }
-  }
   test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
     val db = new DummyBuilder(program)
     import db._
@@ -334,20 +369,33 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     val dummyToString = program.lookupFunDef("StringRenderSuite.dummyToString").get
     
     synthesizeAndTest("bListToString",
-        Seq(Cons(DT)(tupleWrap(Seq(Dummy("a"), Dummy("b"))),
-            Cons(DT)(tupleWrap(Seq(Dummy("c"), Dummy("d"))),
-            Nil(DT))),
+        Seq(List(DT)(
+              tupleWrap(Seq(Dummy("a"), Dummy("b"))),
+              tupleWrap(Seq(Dummy("c"), Dummy("d")))),
             Lambda(Seq(ValDef(d)), FunctionInvocation(dummyToString.typed, Seq(Variable(d)))))
             ->
         "[{a}-{b}, {c}-{d}]")
     
   }
   
-  test("Use of existing functions"){ case (ctx: LeonContext, program: Program) =>
-    
-  }
   
-  test("Pretty-printing using existing functions"){ case (ctx: LeonContext, program: Program) =>
-    // Lists of size 2
+  test("Pretty-printing using existing not yet defined functions"){ case (ctx: LeonContext, program: Program) =>
+    StringRender.enforceDefaultStringMethodsIfAvailable = true
+    synthesizeAndAbstractTest("bConfigToString"){ (fd: FunDef, program: Program) =>
+      val db = new DummyBuilder(program)
+      import db._
+      val DT = Seq(Dummy.getType)
+      val bcb = new BConfigBuilder(program)
+      import bcb._
+      val blb = new BListBuilder(program)
+      import blb._
+      val d = FreshIdentifier("d", Dummy.getType)
+      val arg = List(DT)(tupleWrap(Seq(Dummy("a"), Dummy("b"))))
+      val dummyToString = program.lookupFunDef("StringRenderSuite.dummyToString").get
+      val lambdaDummyToString = Lambda(Seq(ValDef(d)), FunctionInvocation(dummyToString.typed, Seq(Variable(d))))
+      val listDummyToString = functionInvocation(program.lookupFunDef("StringRenderSuite.bListToString").get, Seq(arg, lambdaDummyToString))
+      Seq(Seq(BConfig(arg)) ->
+      StringConcat(StringLiteral("Config"), listDummyToString))
+    }
   }
 }

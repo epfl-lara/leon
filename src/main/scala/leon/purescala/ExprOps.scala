@@ -1534,6 +1534,169 @@ object ExprOps {
     case _ =>
       false
   }
+  
+  /** Checks whether two expressions can be homomorphic and returns the corresponding mapping */
+  def canBeHomomorphic(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
+    def mergeContexts(a: Option[Map[Identifier, Identifier]], b: =>Option[Map[Identifier, Identifier]]) = a match {
+      case Some(m) =>
+        b match {
+          case Some(n) if (m.keySet & n.keySet) forall (key => m(key) == n(key)) =>
+            Some(m ++ n)        
+          case _ =>None
+        }
+      case _ => None
+    }
+    object Same {
+      def unapply(tt: (Expr, Expr)): Option[(Expr, Expr)] = {
+        if (tt._1.getClass == tt._2.getClass) {
+          Some(tt)
+        } else {
+          None
+        }
+      }
+    }
+    implicit class AugmentedContext(c: Option[Map[Identifier, Identifier]]) {
+      def &&(other: => Option[Map[Identifier, Identifier]]) = mergeContexts(c, other)
+    }
+    implicit class AugmentedBooleant(c: Boolean) {
+      def &&(other: => Option[Map[Identifier, Identifier]]) = if(c) other else None
+    }
+    implicit class AugmentedSeq[T](c: Seq[T]) {
+      def mergeall(p: T => Option[Map[Identifier, Identifier]]) =
+        (Option(Map[Identifier, Identifier]()) /: c) {
+          case (s, c) => s && p(c)
+        }
+    }
+
+
+    def idHomo(i1: Identifier, i2: Identifier): Option[Map[Identifier, Identifier]] = {
+      Some(Map(i1 -> i2))
+    }
+
+    def fdHomo(fd1: FunDef, fd2: FunDef): Option[Map[Identifier, Identifier]] = {
+      if(fd1.params.size == fd2.params.size) {
+         val newMap = Map((
+           (fd1.id -> fd2.id) +:
+           (fd1.paramIds zip fd2.paramIds)): _*)
+         Option(newMap) && isHomo(fd1.fullBody, fd2.fullBody)
+      } else None
+    }
+
+    def isHomo(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
+      def casesMatch(cs1 : Seq[MatchCase], cs2 : Seq[MatchCase]) : Option[Map[Identifier, Identifier]] = {
+        def patternHomo(p1: Pattern, p2: Pattern): (Boolean, Map[Identifier, Identifier]) = (p1, p2) match {
+          case (InstanceOfPattern(ob1, cd1), InstanceOfPattern(ob2, cd2)) =>
+            (ob1.size == ob2.size && cd1 == cd2, Map((ob1 zip ob2).toSeq : _*))
+
+          case (WildcardPattern(ob1), WildcardPattern(ob2)) =>
+            (ob1.size == ob2.size, Map((ob1 zip ob2).toSeq : _*))
+
+          case (CaseClassPattern(ob1, ccd1, subs1), CaseClassPattern(ob2, ccd2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && ccd1 == ccd2 && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (UnapplyPattern(ob1, fd1, subs1), UnapplyPattern(ob2, fd2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && fd1 == fd2 && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (TuplePattern(ob1, subs1), TuplePattern(ob2, subs2)) =>
+            val m = Map[Identifier, Identifier]() ++ (ob1 zip ob2)
+
+            if (ob1.size == ob2.size && subs1.size == subs2.size) {
+              (subs1 zip subs2).map { case (p1, p2) => patternHomo(p1, p2) }.foldLeft((true, m)) {
+                case ((b1, m1), (b2,m2)) => (b1 && b2, m1 ++ m2)
+              }
+            } else {
+              (false, Map())
+            }
+
+          case (LiteralPattern(ob1, lit1), LiteralPattern(ob2,lit2)) =>
+            (ob1.size == ob2.size && lit1 == lit2, (ob1 zip ob2).toMap)
+
+          case _ =>
+            (false, Map())
+        }
+
+        (cs1 zip cs2).mergeall {
+          case (MatchCase(p1, g1, e1), MatchCase(p2, g2, e2)) =>
+            val (h, nm) = patternHomo(p1, p2)
+            val g: Option[Map[Identifier, Identifier]] = (g1, g2) match {
+              case (Some(g1), Some(g2)) => Some(nm) && isHomo(g1,g2)
+              case (None, None) => Some(Map())
+              case _ => None
+            }
+            val e = Some(nm) && isHomo(e1, e2)
+
+            h && g && e
+        }
+
+      }
+
+      import synthesis.Witnesses.Terminating
+
+      val res: Option[Map[Identifier, Identifier]] = (t1, t2) match {
+        case (Variable(i1), Variable(i2)) =>
+          idHomo(i1, i2)
+
+        case (Let(id1, v1, e1), Let(id2, v2, e2)) =>
+          isHomo(v1, v2) &&
+          isHomo(e1, e2) && Some(Map(id1 -> id2))
+
+        case (LetDef(fds1, e1), LetDef(fds2, e2)) =>
+          fds1.size == fds2.size &&
+          {
+            val zipped = fds1.zip(fds2)
+            (zipped mergeall (fds => fdHomo(fds._1, fds._2))) && Some(zipped.map(fds => fds._1.id -> fds._2.id).toMap) &&
+            isHomo(e1, e2)
+          }
+
+        case (MatchExpr(s1, cs1), MatchExpr(s2, cs2)) =>
+          cs1.size == cs2.size && casesMatch(cs1,cs2) && isHomo(s1, s2)
+
+        case (Passes(in1, out1, cs1), Passes(in2, out2, cs2)) =>
+          (cs1.size == cs2.size && casesMatch(cs1,cs2)) && isHomo(in1,in2) && isHomo(out1,out2)
+
+        case (FunctionInvocation(tfd1, args1), FunctionInvocation(tfd2, args2)) =>
+          // TODO: Check type params
+          fdHomo(tfd1.fd, tfd2.fd) &&
+          (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
+
+        case (Terminating(tfd1, args1), Terminating(tfd2, args2)) =>
+          // TODO: Check type params
+          fdHomo(tfd1.fd, tfd2.fd) &&
+          (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
+
+        // TODO: Seems a lot is missing, like Literals
+
+        case Same(Operator(es1, _), Operator(es2, _)) =>
+          (es1.size == es2.size) &&
+          (es1 zip es2).mergeall{ case (e1, e2) => isHomo(e1, e2) }
+
+        case _ =>
+          None
+      }
+
+      res
+    }
+
+    isHomo(t1,t2)
+    
+    
+  } // ensuring (res => res.isEmpty || isHomomorphic(t1, t2)(res.get))
 
   /** Checks whether two trees are homomoprhic modulo an identifier map.
     *
