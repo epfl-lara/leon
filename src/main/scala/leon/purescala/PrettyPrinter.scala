@@ -649,11 +649,10 @@ class PrettyPrinter(opts: PrinterOptions,
   protected def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
-    case (_, Some(_: Ensuring)) => false
-    case (_, Some(_: Assert)) => false
-    case (_, Some(_: Require)) => false
-    case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda)) => false
+    case (_, Some(
+      _: Ensuring | _: Assert | _: Require | _: Definition | _: MatchExpr |
+      _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda | _ : Choose
+    )) => false
     case (ex: StringConcat, Some(_: StringConcat)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true

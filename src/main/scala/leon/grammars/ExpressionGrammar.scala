@@ -3,15 +3,13 @@
 package leon
 package grammars
 
-import bonsai._
-
 import purescala.Expressions._
 import purescala.Types._
 import purescala.Common._
 
 import scala.collection.mutable.{HashMap => MutableMap}
 
-abstract class ExpressionGrammar[T <% Typed] {
+abstract class ExpressionGrammar[T <: Typed] {
   type Gen = Generator[T, Expr]
 
   private[this] val cache = new MutableMap[T, Seq[Gen]]()

@@ -242,7 +242,7 @@ class Repairman(ctx0: LeonContext, initProgram: Program, fd: FunDef, verifTimeou
     val maxValid      = 400
 
     val evaluator = new CodeGenEvaluator(ctx, program, CodeGenParams.default)
-    val enum      = new MemoizedEnumerator[TypeTree, Expr](ValueGrammar.getProductions)
+    val enum      = new MemoizedEnumerator[TypeTree, Expr, Generator[TypeTree, Expr]](ValueGrammar.getProductions)
 
     val inputs = enum.iterator(tupleTypeWrap(fd.params map { _.getType})).map(unwrapTuple(_, fd.params.size))
 

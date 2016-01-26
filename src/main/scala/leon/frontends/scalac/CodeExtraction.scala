@@ -1387,6 +1387,9 @@ trait CodeExtraction extends ASTExtractors {
           val rr = extractTree(r)
 
           (rl, rr) match {
+            case (IsTyped(_, ArrayType(_)), IsTyped(_, ArrayType(_))) =>
+              outOfSubsetError(tr, "Leon does not support array comparison")
+
             case (IsTyped(_, rt), IsTyped(_, lt)) if typesCompatible(lt, rt) =>
               Not(Equals(rl, rr))
 
@@ -1405,6 +1408,9 @@ trait CodeExtraction extends ASTExtractors {
           val rr = extractTree(r)
 
           (rl, rr) match {
+            case (IsTyped(_, ArrayType(_)), IsTyped(_, ArrayType(_))) =>
+              outOfSubsetError(tr, "Leon does not support array comparison")
+
             case (IsTyped(_, rt), IsTyped(_, lt)) if typesCompatible(lt, rt) =>
               Equals(rl, rr)
 

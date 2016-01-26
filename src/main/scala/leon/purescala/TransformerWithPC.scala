@@ -29,12 +29,32 @@ abstract class TransformerWithPC extends Transformer {
       val sb = rec(b, register(Equals(Variable(i), se), path))
       Let(i, se, sb).copiedFrom(e)
 
-    case Require(pred, body) =>
-      val sp = rec(pred, path)
+    case Ensuring(req@Require(pre, body), lam@Lambda(Seq(arg), post)) =>
+      val spre = rec(pre, path)
+      val sbody = rec(body, register(spre, path))
+      val spost = rec(post, register(
+        and(spre, Equals(arg.toVariable, sbody)),
+        path
+      ))
+      Ensuring(
+        Require(spre, sbody).copiedFrom(req),
+        Lambda(Seq(arg), spost).copiedFrom(lam)
+      ).copiedFrom(e)
+
+    case Ensuring(body, lam@Lambda(Seq(arg), post)) =>
+      val sbody = rec(body, path)
+      val spost = rec(post, register(Equals(arg.toVariable, sbody), path))
+      Ensuring(
+        sbody,
+        Lambda(Seq(arg), spost).copiedFrom(lam)
+      ).copiedFrom(e)
+
+    case Require(pre, body) =>
+      val sp = rec(pre, path)
       val sb = rec(body, register(sp, path))
       Require(sp, sb).copiedFrom(e)
 
-    //@mk: Discuss if we should include asserted predicates in the pc
+    //@mk: TODO Discuss if we should include asserted predicates in the pc
     //case Assert(pred, err, body) =>
     //  val sp = rec(pred, path)
     //  val sb = rec(body, register(sp, path))

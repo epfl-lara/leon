@@ -6,13 +6,13 @@ package grammars
 import purescala.Types._
 import leon.utils.SeqUtils.sumTo
 
-case class SizedLabel[T <% Typed](underlying: T, size: Int) extends Typed {
+case class SizedLabel[T <: Typed](underlying: T, size: Int) extends Typed {
   val getType = underlying.getType
 
   override def asString(implicit ctx: LeonContext) = underlying.asString+"|"+size+"|"
 }
 
-case class SizeBoundedGrammar[T <% Typed](g: ExpressionGrammar[T]) extends ExpressionGrammar[SizedLabel[T]] {
+case class SizeBoundedGrammar[T <: Typed](g: ExpressionGrammar[T]) extends ExpressionGrammar[SizedLabel[T]] {
   def computeProductions(sl: SizedLabel[T])(implicit ctx: LeonContext): Seq[Gen] = {
     if (sl.size <= 0) {
       Nil

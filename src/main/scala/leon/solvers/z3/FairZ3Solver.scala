@@ -137,6 +137,8 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   private val freeVars    = new IncrementalSet[Identifier]()
   private val constraints = new IncrementalSeq[Expr]()
 
+  val tr = implicitly[Z3AST => Printable]
+
   val unrollingBank = new UnrollingBank(context, templateGenerator)
 
   private val incrementals: List[IncrementalState] = List(

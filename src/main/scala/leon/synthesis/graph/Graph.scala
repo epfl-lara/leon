@@ -28,11 +28,10 @@ sealed class Graph(val cm: CostModel, problem: Problem) {
 }
 
 sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
-  var parents: List[Node]     = parent.toList
-  var descendants: List[Node] = Nil
 
   def asString(implicit ctx: LeonContext): String
 
+  var descendants: List[Node] = Nil
   // indicates whether this particular node has already been expanded
   var isExpanded: Boolean = false
   def expand(hctx: SearchContext)
@@ -53,7 +52,7 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
     cm.isImpossible(cost)
   }
 
-  // For non-terminals, selected childs for solution
+  // For non-terminals, selected children for solution
   var selected: List[Node] = Nil
 
   def composeSolutions(sols: List[Stream[Solution]]): Stream[Solution]
@@ -94,7 +93,7 @@ sealed abstract class Node(cm: CostModel, val parent: Option[Node]) {
 
   def updateCost(): Unit = {
     cost = computeCost()
-    parents.foreach(_.updateCost())
+    parent.foreach(_.updateCost())
   }
 }
 
@@ -136,7 +135,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
           info(prefix+"Solved"+(if(sol.isTrusted) "" else " (untrusted)")+" with: "+sol.asString+"...")
         }
 
-        parents.foreach{ p =>
+        parent.foreach{ p =>
           p.updateCost()
           if (isSolved) {
             p.onSolved(this)
@@ -172,7 +171,7 @@ class AndNode(cm: CostModel, parent: Option[Node], val ri: RuleInstantiation) ex
     // Everything is solved correctly
     if (solveds.size == descendants.size) {
       isSolved = true
-      parents.foreach(_.onSolved(this))
+      parent.foreach(_.onSolved(this))
     }
   }
 
@@ -221,7 +220,7 @@ class OrNode(cm: CostModel, parent: Option[Node], val p: Problem) extends Node(c
   def onSolved(desc: Node): Unit = {
     isSolved = true
     selected = List(desc)
-    parents.foreach(_.onSolved(this))
+    parent.foreach(_.onSolved(this))
   }
 
   def composeSolutions(solss: List[Stream[Solution]]): Stream[Solution] = {

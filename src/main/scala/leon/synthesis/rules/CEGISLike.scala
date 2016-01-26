@@ -22,7 +22,7 @@ import evaluators._
 import datagen._
 import codegen.CodeGenParams
 
-abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
+abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
   case class CegisParams(
     grammar: ExpressionGrammar[T],
@@ -114,9 +114,9 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
 
         private var slots = Map[SizedLabel[T], Int]().withDefaultValue(0)
 
-        private def streamOf(t: SizedLabel[T]): Stream[Identifier] = {
-          FreshIdentifier(t.asString, t.getType, true) #:: streamOf(t)
-        }
+        private def streamOf(t: SizedLabel[T]): Stream[Identifier] = Stream.continually(
+          FreshIdentifier(t.asString, t.getType, true)
+        )
 
         def rewind(): Unit = {
           slots = Map[SizedLabel[T], Int]().withDefaultValue(0)
@@ -385,8 +385,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
         //println(programCTree.asString)
         //println(".. "*30)
 
-        //val evaluator  = new DualEvaluator(sctx.context, programCTree, CodeGenParams.default)
-        val evaluator  = new DefaultEvaluator(sctx.context, programCTree)
+        //val evaluator = new DualEvaluator(sctx.context, programCTree, CodeGenParams.default)
+        val evaluator = new DefaultEvaluator(sctx.context, programCTree)
 
         tester =
           { (ex: Example, bValues: Set[Identifier]) =>
@@ -679,7 +679,7 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
           baseExampleInputs += InExample(p.as.map(a => simplestValue(a.getType)))
         } else {
           val solverf = sctx.solverFactory
-          val solver  = solverf.getNewSolver.setTimeout(exSolverTo)
+          val solver  = solverf.getNewSolver().setTimeout(exSolverTo)
 
           solver.assertCnstr(p.pc)
 
@@ -892,8 +892,8 @@ abstract class CEGISLike[T <% Typed](name: String) extends Rule(name) {
                         } else {
                           result = Some(RuleFailed())
                         }
-                      }
                     }
+                  }
 
                 case Some(None) =>
                   skipCESearch = true

@@ -412,4 +412,8 @@ object Constructors {
     case _ => Require(pred, body)
   }
 
+  def ensur(e: Expr, pred: Expr) = {
+    Ensuring(e, tupleWrapArg(pred))
+  }
+
 }

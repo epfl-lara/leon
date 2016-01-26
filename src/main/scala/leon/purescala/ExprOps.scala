@@ -2113,8 +2113,8 @@ object ExprOps {
     * @see [[Expressions.Require]]
     */
   def withPostcondition(expr: Expr, oie: Option[Expr]) = (oie, expr) match {
-    case (Some(npost), Ensuring(b, post)) => Ensuring(b, npost)
-    case (Some(npost), b)                 => Ensuring(b, npost)
+    case (Some(npost), Ensuring(b, post)) => ensur(b, npost)
+    case (Some(npost), b)                 => ensur(b, npost)
     case (None, Ensuring(b, p))           => b
     case (None, b)                        => b
   }
@@ -2354,7 +2354,7 @@ object ExprOps {
     * @param collectFIs Whether we also want to collect preconditions for function invocations
     * @return A sequence of pairs (expression, condition)
     */
-  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = true): Seq[(Expr, Expr)] = {
+  def collectCorrectnessConditions(e: Expr, collectFIs: Boolean = false): Seq[(Expr, Expr)] = {
     val conds = collectWithPC {
 
       case m @ MatchExpr(scrut, cases) =>
@@ -2366,11 +2366,11 @@ object ExprOps {
       case a @ Assert(cond, _, _) =>
         (a, cond)
 
-      case e @ Ensuring(body, post) =>
+      /*case e @ Ensuring(body, post) =>
         (e, application(post, Seq(body)))
 
       case r @ Require(pred, e) =>
-        (r, pred)
+        (r, pred)*/
 
       case fi @ FunctionInvocation(tfd, args) if tfd.hasPrecondition && collectFIs =>
         (fi, tfd.withParamSubst(args, tfd.precondition.get))
@@ -2387,6 +2387,19 @@ object ExprOps {
     simplifyPaths(sf, path)(
       andJoin( collectCorrectnessConditions(e) map { _._2 } )
     )
+  }
+
+  def tupleWrapArg(fun: Expr) = fun.getType match {
+    case FunctionType(args, res) if args.size > 1 =>
+      val newArgs = fun match {
+        case Lambda(args, _) => args map (_.id)
+        case _ => args map (arg => FreshIdentifier("x", arg.getType, alwaysShowUniqueID = true))
+      }
+      val res = FreshIdentifier("res", TupleType(args map (_.getType)), alwaysShowUniqueID = true)
+      val patt = TuplePattern(None, newArgs map (arg => WildcardPattern(Some(arg))))
+      Lambda(Seq(ValDef(res)), MatchExpr(res.toVariable, Seq(SimpleCase(patt, application(fun, newArgs map (_.toVariable))))))
+    case _ =>
+      fun
   }
 
   /** Returns true if expr is a value of type t */

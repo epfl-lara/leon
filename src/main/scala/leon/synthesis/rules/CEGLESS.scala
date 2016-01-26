@@ -11,7 +11,7 @@ import utils._
 import grammars._
 import Witnesses._
 
-case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
+case object CEGLESS extends CEGISLike[NonTerminal[String]]("CEGLESS") {
   def getParams(sctx: SynthesisContext, p: Problem) = {
     val TopLevelAnds(clauses) = p.ws
 
@@ -30,11 +30,11 @@ case object CEGLESS extends CEGISLike[Label[String]]("CEGLESS") {
       }
     }
 
-    val guidedGrammar = guides.map(SimilarTo(_, inputs.toSet, sctx, p)).foldLeft[ExpressionGrammar[Label[String]]](Empty())(_ || _)
+    val guidedGrammar = Union(guides.map(SimilarTo(_, inputs.toSet, sctx, p)))
 
     CegisParams(
       grammar = guidedGrammar,
-      rootLabel = { (tpe: TypeTree) => Label(tpe, "G0") },
+      rootLabel = { (tpe: TypeTree) => NonTerminal(tpe, "G0") },
       maxUnfoldings = (0 +: guides.map(depth(_) + 1)).max
     )
   }
