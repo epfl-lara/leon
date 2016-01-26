@@ -276,7 +276,8 @@ object DefOps {
   }
 
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
-                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {
+                                 fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap)
+                                 : (Program, Map[FunDef, FunDef])= {
 
     var fdMapCache = Map[FunDef, Option[FunDef]]()
     def fdMap(fd: FunDef): FunDef = {

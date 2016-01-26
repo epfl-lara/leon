@@ -538,7 +538,7 @@ case object StringRender extends Rule("StringRender") {
       }
       template
     }
-    (templates.flatten, ctx2.result) // TODO: Flatten or interleave?
+    (templates.flatten, ctx2.result)
   }
   
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {

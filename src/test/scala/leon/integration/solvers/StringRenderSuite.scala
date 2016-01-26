@@ -11,6 +11,7 @@ import leon.purescala.Expressions._
 import leon.purescala.Definitions._
 import leon.purescala.DefOps
 import leon.purescala.Types._
+import leon.purescala.TypeOps
 import leon.purescala.Constructors._
 import leon.synthesis.rules.{StringRender, TypedTemplateGenerator}
 import scala.collection.mutable.{HashMap => MMap}
@@ -38,6 +39,7 @@ import leon.evaluators._
 import leon.LeonContext
 import leon.synthesis.rules.DetupleInput
 import leon.synthesis.Rules
+import leon.solvers.ModelBuilder
 
 class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with ScalaFutures {
   test("Template Generator simple"){ case (ctx: LeonContext, program: Program) =>
@@ -96,7 +98,7 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     }
   }
 
-  def applyStringRenderOn(functionName: String): (Expr, Program) = {
+  def applyStringRenderOn(functionName: String): (FunDef, Program) = {
     val ci = synthesisInfos(functionName)
     val search = new SimpleSearch(ctx, ci, ci.problem, CostModels.default, Some(200))
     val synth = new Synthesizer(ctx, program, ci, SynthesisSettings(rules = Seq(StringRender)))
@@ -134,7 +136,16 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     }
     solutions should not be 'empty
     val newProgram = DefOps.addFunDefs(synth.program, solutions.head.defs, synth.sctx.functionContext)
-    (solutions.head.term, newProgram)
+    val newFd = ci.fd.duplicate()
+    newFd.body = Some(solutions.head.term)
+    val (newProgram2, _) = DefOps.replaceFunDefs(newProgram)({ fd =>
+      if(fd == ci.fd) {
+        Some(newFd)
+      } else None
+    }, { (fi: FunctionInvocation, fd: FunDef) =>
+      Some(FunctionInvocation(fd.typed, fi.args))
+    })
+    (newFd, newProgram2)
   }
   
   def getFunctionArguments(functionName: String) = {
@@ -163,6 +174,9 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |  def booleanSynthesis2(b: Boolean): String = ??? ensuring { (res: String) => (b, res) passes { case true => "B: true" } }
     |  //def stringEscape(s: String): String = ??? ensuring { (res: String) => (s, res) passes { case "\n" => "done...\\n" } }
     |  
+    |  case class Dummy(s: String)
+    |  def dummyToString(d: Dummy): String = "{" + d.s + "}"
+    |  
     |  case class Config(i: BigInt, t: (Int, String))
     |  
     |  def configToString(c: Config): String = ??? ensuring { (res: String) => (c, res) passes { case Config(BigInt(1), (2, "3")) => "1: 2 -> 3" } }
@@ -185,6 +199,13 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
     |    }
     |  }
     |  
+    |  sealed abstract class BList[T]
+    |  case class BCons[T](head: (T, T), tail: BList[T]) extends BList[T]
+    |  case class BNil[T]() extends BList[T]
+    |  
+    |  def bListToString[T](b: BList[T], f: T => String) = ???[String] ensuring
+    |  { (res: String) => (b, res) passes { case BNil() => "[]" case BCons(a, BCons(b, BCons(c, BNil()))) => "[" + f(a._1) + "-" + f(a._2) + ", " + f(b._1) + "-" + f(b._2) + ", " + f(c._1) + "-" + f(c._2) + "]" }}
+    |  
     |  case class Node(tag: String, l: List[Edge])
     |  case class Edge(start: Node, end: Node)
     |  
@@ -198,16 +219,16 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
   val synthesisInfos = SourceInfo.extractFromProgram(ctx, program).map(si => si.fd.id.name -> si ).toMap
 
   def synthesizeAndTest(functionName: String, tests: (Seq[Expr], String)*) {
-    val (expr, program) = applyStringRenderOn(functionName)
+    val (fd, program) = applyStringRenderOn(functionName)
     val when = new DefaultEvaluator(ctx, program)
     val when_abstract = new AbstractEvaluator(ctx, program)
     val args = getFunctionArguments(functionName)
     for((in, out) <- tests) {
-      val test = letTuple(args.map(_.id), tupleWrap(in), expr)
-      when.eval(test) match {
+      val expr = functionInvocation(fd, in)
+      when.eval(expr) match {
         case EvaluationResults.Successful(value) => value shouldEqual StringLiteral(out)
-        case EvaluationResults.EvaluatorError(msg) => fail(msg)
-        case EvaluationResults.RuntimeError(msg) => fail("Runtime: " + msg)
+        case EvaluationResults.EvaluatorError(msg) => fail(/*program + "\n" + */msg)
+        case EvaluationResults.RuntimeError(msg) => fail(/*program + "\n" + */"Runtime: " + msg)
       }
     }
   }
@@ -279,7 +300,46 @@ class StringRenderSuite extends LeonTestSuiteWithProgram with Matchers with Scal
         "<<aaYbb>Y<mmYnn>>")
   }
   
+  class DummyBuilder(program: Program) {
+    object Dummy {
+      def getType: TypeTree = program.lookupCaseClass("StringRenderSuite.Dummy").get.typed
+      def apply(s: String): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.Dummy").get.typed,
+            Seq(StringLiteral(s)))
+      }
+    }
+  }
+  
+  class BListBuilder(program: Program) {
+    object Cons {
+      def apply(types: Seq[TypeTree])(left: Expr, right: Expr): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.BCons").get.typed(types),
+            Seq(left, right))
+      }
+    }
+    object Nil {
+      def apply(types: Seq[TypeTree]): CaseClass = {
+        CaseClass(program.lookupCaseClass("StringRenderSuite.BNil").get.typed(types),
+            Seq())
+      }
+    }
+  }
   test("Abstract synthesis"){ case (ctx: LeonContext, program: Program) =>
+    val db = new DummyBuilder(program)
+    import db._
+    val DT = Seq(Dummy.getType)
+    val bb = new BListBuilder(program)
+    import bb._
+    val d = FreshIdentifier("d", Dummy.getType)
+    val dummyToString = program.lookupFunDef("StringRenderSuite.dummyToString").get
+    
+    synthesizeAndTest("bListToString",
+        Seq(Cons(DT)(tupleWrap(Seq(Dummy("a"), Dummy("b"))),
+            Cons(DT)(tupleWrap(Seq(Dummy("c"), Dummy("d"))),
+            Nil(DT))),
+            Lambda(Seq(ValDef(d)), FunctionInvocation(dummyToString.typed, Seq(Variable(d)))))
+            ->
+        "[{a}-{b}, {c}-{d}]")
     
   }
   

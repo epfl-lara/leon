@@ -637,7 +637,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
         case Some(Some((c, mappings))) =>
           e(c.rhs)(rctx.withNewVars(mappings), gctx)
         case _ =>
-          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases")
+          throw RuntimeError("MatchError: "+rscrut.asString+" did not match any of the cases:\n"+cases)
       }
 
     case gl: GenericValue => gl
