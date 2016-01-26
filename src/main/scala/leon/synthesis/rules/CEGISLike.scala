@@ -287,7 +287,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               case (e, alt) => IfExpr(alt._1.toVariable, exprOf(alt), e)
             }
           } else {
-            Error(c.getType, "Impossibru")
+            Error(c.getType, s"Empty production rule: $c")
           }
 
           cToFd(c).fullBody = body
@@ -408,11 +408,21 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
 
 
       def testForProgram(bValues: Set[Identifier])(ex: Example): Boolean = {
+
         tester(ex, bValues) match {
           case EvaluationResults.Successful(res) =>
             res == BooleanLiteral(true)
 
           case EvaluationResults.RuntimeError(err) =>
+            /*if (err.contains("Empty production rule")) {
+              println(programCTree.asString)
+              println(bValues)
+              println(ex)
+              println(this.getExpr(bValues))
+              (new Throwable).printStackTrace()
+              println(err)
+              println()
+            }*/
             sctx.reporter.debug("RE testing CE: "+err)
             false
 
@@ -431,7 +441,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
             case (b, builder, cs) =>
               builder(cs.map(getCValue))
           }.getOrElse {
-            simplestValue(c.getType)
+            Error(c.getType, "Impossible assignment of bs")
           }
         }
 
@@ -542,9 +552,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
         //println(" --- Constraints ---")
         //println(" - "+toFind.asString)
         try {
-          //TODO: WHAT THE F IS THIS?
-          //val bsOrNotBs = andJoin(bsOrdered.map(b => if (bs(b)) b.toVariable else Not(b.toVariable)))
-          //solver.assertCnstr(bsOrNotBs)
           solver.assertCnstr(toFind)
 
           for ((c, alts) <- cTree) {
@@ -813,7 +820,7 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
               var doFilter = true
 
               if (validateUpTo > 0) {
-                // Validate the first N programs individualy
+                // Validate the first N programs individually
                 ndProgram.validatePrograms(prunedPrograms.take(validateUpTo)) match {
                   case Left(sols) if sols.nonEmpty =>
                     doFilter = false
@@ -850,7 +857,6 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                       // make sure by validating this candidate with z3
                       true
                     } else {
-                      println("testing failed ?!")
                       // One valid input failed with this candidate, we can skip
                       ndProgram.excludeProgram(bs, false)
                       false

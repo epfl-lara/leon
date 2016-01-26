@@ -1130,7 +1130,7 @@ trait CodeExtraction extends ASTExtractors {
             case _ =>
               (Nil, restTree)
           }
-          LetDef(funDefWithBody +: other_fds, block)
+          letDef(funDefWithBody +: other_fds, block)
 
         // FIXME case ExDefaultValueFunction
 

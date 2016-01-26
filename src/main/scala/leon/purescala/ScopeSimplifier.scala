@@ -7,6 +7,7 @@ import Common._
 import Definitions._
 import Expressions._
 import Extractors._
+import Constructors.letDef
 
 class ScopeSimplifier extends Transformer {
   case class Scope(inScope: Set[Identifier] = Set(), oldToNew: Map[Identifier, Identifier] = Map(), funDefs: Map[FunDef, FunDef] = Map()) {
@@ -59,7 +60,7 @@ class ScopeSimplifier extends Transformer {
       for((newFd, fd) <- fds_mapping) {
         newFd.fullBody = rec(fd.fullBody, newScope)
       }
-      LetDef(fds_mapping.map(_._1), rec(body, newScope))
+      letDef(fds_mapping.map(_._1), rec(body, newScope))
    
     case MatchExpr(scrut, cases) =>
       val rs = rec(scrut, scope)

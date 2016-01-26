@@ -67,6 +67,12 @@ object Constructors {
       Extractors.LetPattern(TuplePattern(None,binders map { b => WildcardPattern(Some(b)) }), value, body)
   }
 
+  def letDef(funs: Seq[FunDef], body: Expr) = {
+    if (funs.nonEmpty)
+      LetDef(funs, body)
+    else body
+  }
+
   /** Wraps the sequence of expressions as a tuple. If the sequence contains a single expression, it is returned instead.
     * @see [[purescala.Expressions.Tuple]]
     */

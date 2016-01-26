@@ -165,6 +165,7 @@ object Expressions {
     * @param body The body of the expression after the function
     */
   case class LetDef(fds: Seq[FunDef], body: Expr) extends Expr {
+    require(fds.nonEmpty)
     val getType = body.getType
   }
 

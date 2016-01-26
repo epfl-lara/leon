@@ -330,7 +330,7 @@ object TypeOps {
             }
             val newBd = srec(subCalls(bd)).copiedFrom(bd)
 
-            LetDef(newFds, newBd).copiedFrom(l)
+            letDef(newFds, newBd).copiedFrom(l)
 
           case l @ Lambda(args, body) =>
             val newArgs = args.map { arg =>
