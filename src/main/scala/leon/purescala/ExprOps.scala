@@ -1537,6 +1537,9 @@ object ExprOps {
   
   /** Checks whether two expressions can be homomorphic and returns the corresponding mapping */
   def canBeHomomorphic(t1: Expr, t2: Expr): Option[Map[Identifier, Identifier]] = {
+    val freeT1Variables = ExprOps.variablesOf(t1)
+    val freeT2Variables = ExprOps.variablesOf(t2)
+    
     def mergeContexts(a: Option[Map[Identifier, Identifier]], b: =>Option[Map[Identifier, Identifier]]) = a match {
       case Some(m) =>
         b match {
@@ -1570,7 +1573,7 @@ object ExprOps {
 
 
     def idHomo(i1: Identifier, i2: Identifier): Option[Map[Identifier, Identifier]] = {
-      Some(Map(i1 -> i2))
+      if(!(freeT1Variables(i1) || freeT2Variables(i2)) || i1 == i2) Some(Map(i1 -> i2)) else None
     }
 
     def fdHomo(fd1: FunDef, fd2: FunDef): Option[Map[Identifier, Identifier]] = {

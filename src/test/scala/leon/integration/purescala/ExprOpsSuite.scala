@@ -101,5 +101,17 @@ class ExprOpsSuite extends LeonTestSuiteWithProgram with helpers.ExpressionsDSL 
     assert(isSubtypeOf(simplestValue(act).getType, act))
     assert(simplestValue(cct).getType == cct)
   }
+  
+  test("canBeHomomorphic") { implicit fix =>
+    import leon.purescala.ExprOps.canBeHomomorphic
+    import leon.purescala.Types._
+    import leon.purescala.Definitions._
+    val d = FreshIdentifier("x", IntegerType)
+    val e = FreshIdentifier("y", IntegerType)
+    assert(canBeHomomorphic(Variable(d), Variable(e)).isEmpty)
+    val l1 = Lambda(Seq(ValDef(d)), Variable(d))
+    val l2 = Lambda(Seq(ValDef(e)), Variable(e))
+    assert(canBeHomomorphic(l1, l2).nonEmpty)
+  }
 
 }
