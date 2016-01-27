@@ -1560,6 +1560,8 @@ object ExprOps {
     }
     implicit class AugmentedContext(c: Option[Map[Identifier, Identifier]]) {
       def &&(other: => Option[Map[Identifier, Identifier]]) = mergeContexts(c, other)
+      def --(other: Seq[Identifier]) =
+        c.map(_ -- other)
     }
     implicit class AugmentedBooleant(c: Boolean) {
       def &&(other: => Option[Map[Identifier, Identifier]]) = if(c) other else None
@@ -1685,6 +1687,11 @@ object ExprOps {
 
         // TODO: Seems a lot is missing, like Literals
 
+        case (Lambda(defs, body), Lambda(defs2, body2)) =>
+          // We remove variables introduced by lambdas.
+          (isHomo(body, body2) &&
+          (defs zip defs2).mergeall{ case (ValDef(a1, _), ValDef(a2, _)) => Option(Map(a1 -> a2)) }
+          ) -- (defs.map(_.id))
         case Same(Operator(es1, _), Operator(es2, _)) =>
           (es1.size == es2.size) &&
           (es1 zip es2).mergeall{ case (e1, e2) => isHomo(e1, e2) }

@@ -176,7 +176,7 @@ case object StringRender extends Rule("StringRender") {
                     case Some(equations) =>
                       gatherEquations(q, acc ++= equations)
                     case None =>
-                      hctx.reporter.info("Could not extract equations from ["+sfget+"] == ["+rhsget+"]")
+                      hctx.reporter.info("Could not extract equations from ["+sfget+"] == ["+rhsget+"]\n coming from ... == " + rhExpr)
                     None
                   }
                 case _ =>
@@ -547,7 +547,9 @@ case object StringRender extends Rule("StringRender") {
       case List(IsTyped(v, StringType)) =>
         val description = "Creates a standard string conversion function"
 
-        val examplesFinder = new ExamplesFinder(hctx.context, hctx.program).setKeepAbstractExamples(true)
+        val examplesFinder = new ExamplesFinder(hctx.context, hctx.program)
+        .setKeepAbstractExamples(true)
+        .setEvaluationFailOnChoose(true)
         val examples = examplesFinder.extractFromProblem(p)
         
         val abstractStringConverters: StringConverters =

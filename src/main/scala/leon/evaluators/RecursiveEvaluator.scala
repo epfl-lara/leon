@@ -28,6 +28,10 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
   lazy val scalaEv = new ScalacEvaluator(this, ctx, prog)
 
   protected var clpCache = Map[(Choose, Seq[Expr]), Expr]()
+  
+  private var evaluationFailsOnChoose = false
+  /** Sets the flag if when encountering a Choose, it should fail instead of solving it. */
+  def setEvaluationFailOnChoose(b: Boolean) = { this.evaluationFailsOnChoose = b; this }
 
   protected[evaluators] def e(expr: Expr)(implicit rctx: RC, gctx: GC): Expr = expr match {
     case Variable(id) =>
@@ -577,6 +581,9 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       e(p.asConstraint)
 
     case choose: Choose =>
+      if(evaluationFailsOnChoose) {
+        throw EvalError("Evaluator set to not solve choose constructs")
+      }
 
       implicit val debugSection = utils.DebugSectionSynthesis
 
