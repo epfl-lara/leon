@@ -116,6 +116,8 @@ object LazinessEliminationPhase extends TransformationPhase {
     // check specifications (to be moved to a different phase)
     if (!skipResourceVerification)
       checkInstrumentationSpecs(instProg, checkCtx)
+    // dump stats
+    dumpStats()
     instProg
   }
 
@@ -313,6 +315,36 @@ object LazinessEliminationPhase extends TransformationPhase {
       solverOptions.options ++ userOptions.options)
   }
 
+  // cumulative stats
+  var totalTime = 0L
+  var totalVCs = 0
+  var solvedWithZ3 = 0
+  var solvedWithCVC4 = 0
+  var z3Time = 0L
+  var cvc4Time = 0L
+
+  def collectCumulativeStats(rep: VerificationReport) {
+    totalTime += rep.totalTime
+    totalVCs += rep.totalConditions
+    val (withz3, withcvc) = rep.vrs.partition{
+      case (vc, vr) =>
+        vr.solvedWith.map(s => s.name.contains("smt-z3")).get
+    }
+    solvedWithZ3 += withz3.size
+    solvedWithCVC4 += withcvc.size
+    z3Time += withz3.map(_._2.timeMs.getOrElse(0L)).sum
+    cvc4Time += withcvc.map(_._2.timeMs.getOrElse(0L)).sum
+  }
+
+  def dumpStats() {
+    println("totalTime: "+f"${totalTime/1000d}%-3.3f")
+    println("totalVCs: "+totalVCs)
+    println("solvedWithZ3: "+ solvedWithZ3)
+    println("solvedWithCVC4: "+ solvedWithCVC4)
+    println("z3Time: "+f"${z3Time/1000d}%-3.3f")
+    println("cvc4Time: "+f"${cvc4Time/1000d}%-3.3f")
+  }
+
   def checkSpecifications(prog: Program, checkCtx: LeonContext) {
     // convert 'axiom annotation to library
     prog.definedFunctions.foreach { fd =>
@@ -325,6 +357,8 @@ object LazinessEliminationPhase extends TransformationPhase {
     //        "--unfoldFactor="+unfoldFactor) ++ solverOptions ++ functions
     //val solverOptions = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre")
     val report = VerificationPhase.apply(checkCtx, prog)
+    // collect stats
+    collectCumulativeStats(report)
     println(report.summaryString)
     /*ctx.reporter.whenDebug(leon.utils.DebugSectionTimers) { debug =>
         ctx.timers.outputTable(debug)
@@ -357,6 +391,8 @@ object LazinessEliminationPhase extends TransformationPhase {
         VC(vc, fd, VCKinds.Postcondition)
       }
       val rep = checkVCs(vcs, checkCtx, p)
+      // record some stats
+      collectCumulativeStats(rep)
       println("Resource Verification Results: \n" + rep.summaryString)
     }
   }

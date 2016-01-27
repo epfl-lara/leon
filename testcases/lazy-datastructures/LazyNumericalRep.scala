@@ -143,8 +143,6 @@ object LazyNumericalRep {
     }
   } ensuring (_ => time <= 70)
 
-  // this procedure does not change state
-  // TODO: can `invstate` annotations be automatically inferred
   @invstate
   def incLazy(xs: $[NumStream]): NumStream = {
     require(zeroPreceedsLazy(xs) &&
@@ -466,8 +464,5 @@ object LazyNumericalRep {
     val nscheds = Pay(q, scheds)
     Number(q, nscheds)
 
-  } ensuring { res =>
-    res.valid &&
-      time <= 200
-  }
+  } ensuring { res => res.valid && time <= 200 }
 }

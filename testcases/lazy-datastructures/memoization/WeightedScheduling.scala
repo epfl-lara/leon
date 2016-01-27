@@ -65,10 +65,6 @@ object WeightedSched {
     (x <= y && allEval(y)) ==> allEval(x)
   } holds
 
-  /**
-   * (a) assuming that jobs are sorted in descending order of the finish times
-   * (b) 'prev' -
-   */
   @invstate
   @memoize
   def sched(jobIndex: BigInt): BigInt = {

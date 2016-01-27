@@ -6,9 +6,8 @@ import leon.collection._
 import leon.instrumentation._
 import leon.math._
 
-//TODO: need to automatically check monotonicity of isConcrete
-// requires `unfoldFactor=2`
 /**
+ * A constant time deque based on Okasaki's implementation: Fig.8.4 Pg. 112.
  * Here, both front and rear streams are scheduled.
  * We require both the front and the rear streams to be of almost equal
  * size. If not, we lazily rotate the streams.
@@ -16,9 +15,6 @@ import leon.math._
  */
 object RealTimeDeque {
 
-  /**
-   * A stream of values of type T
-   */
   sealed abstract class Stream[T] {
     @inline
     def isEmpty: Boolean = {
@@ -118,12 +114,12 @@ object RealTimeDeque {
       time <= 20)
 
   @invstate
-  def rotateRev[T](r: $[Stream[T]], f: $[Stream[T]], a: $[Stream[T]]): Stream[T] = { // doesn't change state
+  def rotateRev[T](r: $[Stream[T]], f: $[Stream[T]], a: $[Stream[T]]): Stream[T] = {
     require(isConcrete(r) && isConcrete(f) && isConcrete(a) &&
       {
         val lenf = ssize(f)
         val lenr = ssize(r)
-        (lenf <= 2 * lenr + 3 && lenf >= 2 * lenr + 1) // size invariant betwen 'f' and 'r'
+        (lenf <= 2 * lenr + 3 && lenf >= 2 * lenr + 1)
       })
     r.value match {
       case SNil() => revAppend(f, a).value // |f| <= 3
@@ -154,12 +150,8 @@ object RealTimeDeque {
       }
     }
   } ensuring(res => res.size == (r*).size + (f*).size - i &&
-      res.isCons &&
-      time <= 300)
+      res.isCons && time <= 300)
 
-  /**
-   * Returns the first element of the stream that is not evaluated.
-   */
   def firstUneval[T](l: $[Stream[T]]): $[Stream[T]] = {
     if (l.isEvaluated) {
       l* match {

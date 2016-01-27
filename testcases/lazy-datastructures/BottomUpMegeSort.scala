@@ -11,6 +11,11 @@ import leon.instrumentation._
  * TODO Multiple instantiations of type parameters is not supported yet,
  * since it require creation of multiple states one for each instantiation
  */
+
+/**
+ * A version of merge sort that operates bottom-up. That allows
+ * accessing the first element in the sorted list in constant time.
+ */
 object BottomUpMergeSort {
 
   /**
@@ -43,7 +48,7 @@ object BottomUpMergeSort {
   def ssize(l: $[IStream]): BigInt = (l*).size
 
   /**
-   * A list of lazy closures
+   * A list of suspensions
    */
   sealed abstract class LList {
     def size: BigInt = {
@@ -163,7 +168,6 @@ object BottomUpMergeSort {
   } ensuring (res => time <= 400 * l.size + 10)
 
   /**
-   * Order statistics.
    * A function that accesses the first element of a list using lazy sorting.
    */
   def firstMin(l: IList) : BigInt ={

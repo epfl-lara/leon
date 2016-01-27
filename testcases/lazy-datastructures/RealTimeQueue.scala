@@ -7,9 +7,6 @@ import leon.instrumentation._
 
 object RealTimeQueue {
 
-  /**
-   * A stream of values of type T
-   */
   sealed abstract class Stream[T] {
     def isEmpty: Boolean = {
       this match {
@@ -56,9 +53,12 @@ object RealTimeQueue {
         val rot = $(rotate(tail, r1, newa)) //this creates a lazy rotate operation
         SCons[T](x, rot)
     }
-  } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons && // using f*.size instead of ssize seems to speed up verification magically
+  } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons &&
                      time <= 30)
 
+  /**
+   * Returns the first element of the stream that is not evaluated.
+   */
   def firstUnevaluated[T](l: $[Stream[T]]): $[Stream[T]] = {
     if (l.isEvaluated) {
       l* match {
@@ -69,7 +69,6 @@ object RealTimeQueue {
     } else
       l
   } ensuring (res => (!(res*).isEmpty || isConcrete(l)) && //if there are no lazy closures then the stream is concrete
-    ((res*).isEmpty || !res.isEvaluated) && // if the return value is not a Nil closure then it would not have been evaluated
     (res.value match {
       case SCons(_, tail) =>
         firstUnevaluated(l) == firstUnevaluated(tail) // after evaluating the firstUnevaluated closure in 'l' we can access the next unevaluated closure
@@ -84,31 +83,27 @@ object RealTimeQueue {
     }
   }
 
+  @inline
+  def createQ[T](f: $[Stream[T]], r: List[T], s: $[Stream[T]]) = {
+    s.value match {
+      case SCons(_, tail) => Queue(f, r, tail)
+      case SNil() =>
+        val newa: Stream[T] = SNil()
+        val rotres = $(rotate(f, r, newa))
+        Queue(rotres, Nil(), rotres)
+    }
+  }
+
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
-    val r = Cons[T](x, q.r)
-    q.s.value match {
-      case SCons(_, tail) =>
-        Queue(q.f, r, tail)
-      case SNil() =>
-        val newa: Stream[T] = SNil[T]()
-        val rotres = $(rotate(q.f, r, newa))
-        Queue(rotres, Nil[T](), rotres)
-    }
+    createQ(q.f, Cons(x, q.r), q.s)
   } ensuring (res => res.valid && time <= 60)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
     q.f.value match {
       case SCons(x, nf) =>
-        q.s.value match {
-          case SCons(_, st) =>
-            Queue(nf, q.r, st)
-          case _ =>
-            val newa: Stream[T] = SNil[T]()
-            val rotres = $(rotate(nf, q.r, newa))
-            Queue(rotres, Nil[T](), rotres)
-        }
+        createQ(nf, q.r, q.s)
     }
-  } ensuring(res => res.valid && time <= 120)
+  } ensuring (res => res.valid && time <= 120)
 }

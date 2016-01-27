@@ -16,8 +16,6 @@ object ConcTrees {
       this == Empty[T]()
     }
 
-    // Note: instrumentation phase is unsound in the handling of fields as it does not its cost in object construction.
-    // Fix this.
     val level: BigInt = {
       this match {
         case Empty() => BigInt(0)
@@ -168,7 +166,6 @@ object Conqueue {
   } ensuring (_ => time <= 70)
 
   // this procedure does not change state
-  // TODO: can `invstate` annotations be automatically inferred
   @invstate
   def pushLeftLazy[T](ys: Conc[T], xs: $[ConQ[T]]): ConQ[T] = {
     require(!ys.isEmpty && zeroPreceedsLazy(xs) &&
@@ -176,7 +173,6 @@ object Conqueue {
         case Spine(h, _, _) => h != Empty[T]()
         case _ => false
       }))
-    //an additional precondition that is necessary for correctness: xs.head.level == ys.level
     xs.value match {
       case Spine(head, _, rear) => // here, rear is guaranteed to be evaluated by 'zeroPreceedsLazy' invariant
         val carry = CC(head, ys) //here, head and ys are of the same level
@@ -251,7 +247,6 @@ object Conqueue {
       } else false)
   } holds
 
-  // verifies in 300 secs
   def pushLeftWrapper[T](ys: Single[T], w: Queue[T]) = {
     require(w.valid &&
       // instantiate the lemma that implies zeroPreceedsLazy
@@ -499,8 +494,5 @@ object Conqueue {
     val nscheds = Pay(q, scheds)
     Queue(q, nscheds)
 
-  } ensuring { res =>
-    res.valid &&
-      time <= 200
-  }
+  } ensuring { res => res.valid && time <= 200 }
 }

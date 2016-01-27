@@ -6,7 +6,6 @@ import leon.instrumentation._
 
 object SortingnConcat {
 
-  // TODO: making this parametric will break many things. Fix them
   sealed abstract class LList {
     def size: BigInt = {
       this match {
