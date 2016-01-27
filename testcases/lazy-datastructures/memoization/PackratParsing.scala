@@ -173,5 +173,4 @@ object PackratParsing {
     }
   } ensuring(_ => allEval(n) &&
       time <= 250*n + 250)
-
 }

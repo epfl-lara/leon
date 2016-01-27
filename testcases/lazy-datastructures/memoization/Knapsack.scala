@@ -100,5 +100,4 @@ object Knapscak {
     require(w >= 0 && items.size <= 10) //  the second requirement is only to keep the bounds linear for z3 to work
     bottomup(0, w, items)
   } ensuring(time <= 500*w + 510)
-
 }

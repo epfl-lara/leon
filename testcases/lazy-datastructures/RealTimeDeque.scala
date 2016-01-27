@@ -49,7 +49,6 @@ object RealTimeDeque {
   @inline
   def ssize[T](l: $[Stream[T]]): BigInt = (l*).size
 
-  //@monotonic
   def isConcrete[T](l: $[Stream[T]]): Boolean = {
     l.isEvaluated && (l* match {
       case SCons(_, tail) =>
@@ -118,7 +117,6 @@ object RealTimeDeque {
   } ensuring(res => res.size == n && res.isCons &&
       time <= 20)
 
-  // requires unfoldFactor=2 why ?
   @invstate
   def rotateRev[T](r: $[Stream[T]], f: $[Stream[T]], a: $[Stream[T]]): Stream[T] = { // doesn't change state
     require(isConcrete(r) && isConcrete(f) && isConcrete(a) &&

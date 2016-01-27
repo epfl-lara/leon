@@ -132,7 +132,7 @@ object BottomUpMergeSort {
         }
     }
   } ensuring (res => ssize(a) + ssize(b) == res.size &&
-       time <= 300 * res.size - 100) // note: res.size >= 1
+       time <= 300 * res.size - 100) // note: res.size >= 1 // here stack is max of a and b
 
   /**
    * Converts a list of integers to a list of streams of integers
