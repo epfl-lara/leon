@@ -37,6 +37,9 @@ import leon.verification._
 import PredicateUtil._
 import leon.invariant.engine._
 
+/**
+ * TODO: Function names are assumed to be small case. Fix this!!
+ */
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpInputProg = false
