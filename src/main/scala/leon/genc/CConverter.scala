@@ -233,8 +233,8 @@ class CConverter(val ctx: LeonContext, val prog: Program) {
     case Let(b, v, r)    => buildLet(b, v, r, false)
     case LetVar(b, v, r) => buildLet(b, v, r, true)
 
-    case LetDef(fd, rest) =>
-      convertToFun(fd) // The function get registered there
+    case LetDef(fds, rest) =>
+      fds foreach convertToFun // The functions get registered there
       convertToStmt(rest)
 
     case Assignment(varId, expr) =>
