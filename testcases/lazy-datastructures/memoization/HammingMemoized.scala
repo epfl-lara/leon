@@ -72,4 +72,25 @@ object Hamming {
       Cons(invoke(n), tailRes)
     }
   } ensuring(_ => depsEval(n) && time <= 200 * (n + 1))
+
+  def h(n: BigInt): Result = {
+    if(n == BigInt(0)) Result(1, 0, 0, 0)
+    else {
+      val (x, i2, i3, i5) = H2(n-1)
+      val a = h(i2).i2 * 2
+      val b = h(i3).i3 * 3
+      val c = h(i5).i5 * 5
+      threeWayMerge(a, b, c, i1, i2, i3)      
+    }
+  }
+  
+   def threeWayMerge(a: BigInt, b: BigInt, c: BigInt, i1: BigInt, i2: BigInt, i3: BigInt) = {      
+      if(a == b && b == c)      (a, i2 + 1, i3 + 1, i5 + 1)
+      else if(a == b && a < c)  (a, i2 + 1, i3 + 1, i5    )
+      else if(a == c && a < b)  (a, i2 + 1, i3    , i5 + 1)
+      else if(b == c && b < a)  (b, i2    , i3 + 1, i5 + 1)
+      else if(a < b && a < c)   (a, i2 + 1, i3    , i5    )
+      else if(b < c && b < a)   (b, i2    , i3 + 1, i5    )
+      else/*if(c < a && c < b)*/(c, i2    , i3    , i5 + 1)
+   }
 }
