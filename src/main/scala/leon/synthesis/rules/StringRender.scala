@@ -284,6 +284,9 @@ case object StringRender extends Rule("StringRender") {
       s0
     }
   }
+  trait PrettyPrinterProvider {
+    def provided_functions: Seq[Identifier]
+  }
   type StringConverters = Map[TypeTree, List[Expr => Expr]]
   
   /** Result of the current synthesis process */
@@ -315,7 +318,7 @@ case object StringRender extends Rule("StringRender") {
       val abstractStringConverters: StringConverters,
       val originalInputs: Set[Expr],
       val provided_functions: Seq[Identifier]
-  )(implicit hctx: SearchContext) extends FreshFunNameGenerator {
+  )(implicit hctx: SearchContext) extends FreshFunNameGenerator with PrettyPrinterProvider {
     def add(d: DependentType, f: FunDef, s: Stream[WithIds[Expr]]): StringSynthesisContext = {
       new StringSynthesisContext(currentCaseClassParent, result.add(d, f, s),
           abstractStringConverters,
@@ -330,12 +333,12 @@ case object StringRender extends Rule("StringRender") {
     def funNames  = result.funNames
   }
   
-  def createEmptyFunDef(ctx: FreshFunNameGenerator, tpe: DependentType)(implicit hctx: SearchContext): FunDef = {
+  def createEmptyFunDef(ctx: FreshFunNameGenerator with PrettyPrinterProvider, tpe: DependentType)(implicit hctx: SearchContext): FunDef = {
     createEmptyFunDef(ctx, tpe.caseClassParent.toList, Nil, tpe.typeToConvert)
   }
   
   /** Creates an empty function definition for the dependent type */
-  def createEmptyFunDef(ctx: FreshFunNameGenerator, vContext: List[TypeTree], hContext: List[TypeTree], typeToConvert: TypeTree)(implicit hctx: SearchContext): FunDef = {
+  def createEmptyFunDef(ctx: FreshFunNameGenerator with PrettyPrinterProvider, vContext: List[TypeTree], hContext: List[TypeTree], typeToConvert: TypeTree)(implicit hctx: SearchContext): FunDef = {
     def defaultFunName(t: TypeTree): String = t match {
       case AbstractClassType(c, d) => c.id.asString(hctx.context)
       case CaseClassType(c, d) => c.id.asString(hctx.context)
@@ -365,7 +368,7 @@ case object StringRender extends Rule("StringRender") {
   /** Assembles multiple MatchCase to a singleMatchExpr using the function definition fd */
   private val mergeMatchCases = (fd: FunDef) => (cases: Seq[WithIds[MatchCase]]) => (MatchExpr(Variable(fd.params(0).id), cases.map(_._1)), cases.map(_._2).flatten.toList)
   
-  class FunDefTemplateGenerator(inputs: Seq[Identifier])(implicit hctx: SearchContext, program: Program) {
+  class FunDefTemplateGenerator(inputs: Seq[Identifier], prettyPrinters: Seq[Identifier])(implicit hctx: SearchContext, program: Program) { fdTemplateGenerator =>
     implicit val ctx = hctx.context
     val gcontext = new grammars.ContextGrammar[TypeTree, Stream[Expr => WithIds[Expr]]]
     import gcontext._
@@ -426,13 +429,14 @@ case object StringRender extends Rule("StringRender") {
     /** Builds a set of fun defs out of the grammar */
     def buildFunDefTemplate(grammar: Grammar): (WithIds[Expr], Seq[(FunDef, Stream[WithIds[Expr]])]) = {
       val nts = grammar.nonTerminals
-      val funNameGenerator = new FreshFunNameGenerator {
+      val ctx = new FreshFunNameGenerator with PrettyPrinterProvider {
         var funNames: Set[String] = Set()
         override def freshFunName(s: String): String = {
           val res = super.freshFunName(s)
           funNames += res
           res
         }
+        def provided_functions = FunDefTemplateGenerator.this.prettyPrinters
       }
       object TypedNonTerminal { // case-class non-terminal such as Cons or Nil
         def unapply(nt: NonTerminal) = if(grammar.rules contains nt) {
@@ -440,7 +444,7 @@ case object StringRender extends Rule("StringRender") {
         } else None
       }
       /* We create FunDef for vertical and horizontal non-terminals */
-      val funDefs = ((Map[NonTerminal, FunDef](), funNameGenerator) /: nts) {
+      val funDefs = ((Map[NonTerminal, FunDef](), ctx) /: nts) {
         case (mgen@(m, gen), nt@TypedNonTerminal(tp, vct, hct)) =>
           (m + (nt -> createEmptyFunDef(gen, vct, hct, tp)), gen)
         case (mgen, _) => mgen
