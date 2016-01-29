@@ -42,6 +42,8 @@ object RealTimeQueue {
     })
   }
 
+  def reverse
+
    @invstate
   def rotate[T](f: $[Stream[T]], r: List[T], a: $[Stream[T]]): Stream[T] = { // doesn't change state
     require(r.size == ssize(f) + 1 && isConcrete(f))

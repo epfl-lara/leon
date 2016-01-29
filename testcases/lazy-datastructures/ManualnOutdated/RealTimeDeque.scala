@@ -147,7 +147,7 @@ object RealTimeDeque {
     })
 
     val rval = r.value
-    if(i < 2 || rval == SNil[T]()) {
+    if(i < 2){ // || rval == SNil[T]()) {
       val a: $[Stream[T]] = SNil[T]()
       rotateRev(r, drop(i, f), a)
     } else {

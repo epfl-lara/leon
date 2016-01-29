@@ -20,22 +20,4 @@ object FibMem {
   } ensuring(_ =>
     (n <= 2 || (fibRec(n-1).isCached &&
         fibRec(n-2).isCached))  && time <= 40*n + 10)
-
-  /*def fibRange(i: BigInt, k: BigInt): IList = {
-    require(k >= 1 && i <= k &&
-        (i <= 1 ||
-        (($(fibRec(i-1)).isEvaluated) &&
-            (i <= 2 || $(fibRec(i-2)).isEvaluated))))
-    if(i == k)
-      Cons(fibRec(i), Nil())
-    else {
-      val x = fibRec(i)
-      Cons(x, fibRange(i + 1, k))
-    }
-  } ensuring(_ => time <= (k - i + 1) * 60)
-
-  def kfibs(k: BigInt) = {
-    require(k >= 1)
-    fibRange(1, k)
-  } ensuring(_ => time <= 70 * k)*/
 }
