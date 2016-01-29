@@ -12,7 +12,7 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
   val testDir = "regression/verification/purescala/"
 
   val isZ3Available = try {
-    Z3Interpreter.buildDefault.free()
+    new Z3Interpreter("z3", Array("-in", "-smt2"))
     true
   } catch {
     case e: java.io.IOException =>
@@ -20,7 +20,7 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
   }
 
   val isCVC4Available = try {
-    CVC4Interpreter.buildDefault.free()
+    new CVC4Interpreter("cvc4", Array("-q", "--lang", "smt2.5"))
     true
   } catch {
     case e: java.io.IOException =>
