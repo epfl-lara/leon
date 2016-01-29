@@ -13,25 +13,25 @@ object Hamming {
   case class Cons(x: BigInt, tail: IList) extends IList
   case class Nil() extends IList
 
-  case class Data(v: BigInt, i3: BigInt, i5: BigInt)
+  case class Data(v: BigInt, i2: BigInt, i3: BigInt, i5: BigInt)
 
   @invstate
   @memoize
   def ham(n: BigInt): Data = {
     require(n ==0 || (n > 0 && depsEval(n - 1)))
-    if(n == BigInt(0)) Data(1, 0, 0)
+    if(n == BigInt(0)) Data(1, 0, 0, 0)
     else {
-      val Data(x, i3, i5) = ham(n-1)
-      val a = ham(i3).v * 3
-      val b = ham(i5).v * 5
-      if(a == b) Data(a, i3 + 1, i5 + 1)
-      else if(a < b) Data(a, i3+1, i5)
-      else Data(b, i3, i5+1)
+      val Data(x, i2, i3, i5) = ham(n-1)
+      val a = ham(i2).i2 * 2
+      val b = ham(i3).i3 * 3
+      val c = ham(i5).i5 * 5
+      val (v, ni, nj, nk) = threeWayMerge(a, b, c, i2, i3, i5)
+      Data(v, ni, nj, nk)
     }
-  } ensuring(res => res.i3 <= n && res.i5 <= n &&
-      res.i3 >= 0 && res.i5 >= 0 &&
-      depsLem(res.i3, n) && depsLem(res.i5, n) && // instantiations
-      time <= 100)
+  } ensuring(res =>  res.i2 <= n && res.i3 <= n && res.i5 <= n &&
+      res.i3 >= 0 && res.i5 >= 0 && res.i2 >= 0 &&
+      depsLem(res.i2, n) && depsLem(res.i3, n) && depsLem(res.i5, n) && // instantiations
+      time <= 140)
 
   def depsEval(i: BigInt): Boolean = {
     require(i >= 0)
@@ -57,7 +57,7 @@ object Hamming {
     val in = Mem.inState[Data]
     val out = Mem.outState[Data]
     (n == 0 || depsEvalMono(n-1, in, out)) && // instantiation
-      time <= 130
+      time <= 170
   })
 
   /**
@@ -71,20 +71,10 @@ object Hamming {
       val tailRes =  hammingList(n-1)
       Cons(invoke(n), tailRes)
     }
-  } ensuring(_ => depsEval(n) && time <= 200 * (n + 1))
+  } ensuring(_ => depsEval(n) && time <= 240 * (n + 1))
 
-  def h(n: BigInt): Result = {
-    if(n == BigInt(0)) Result(1, 0, 0, 0)
-    else {
-      val (x, i2, i3, i5) = H2(n-1)
-      val a = h(i2).i2 * 2
-      val b = h(i3).i3 * 3
-      val c = h(i5).i5 * 5
-      threeWayMerge(a, b, c, i1, i2, i3)      
-    }
-  }
-  
-   def threeWayMerge(a: BigInt, b: BigInt, c: BigInt, i1: BigInt, i2: BigInt, i3: BigInt) = {      
+  @inline
+   def threeWayMerge(a: BigInt, b: BigInt, c: BigInt, i2: BigInt, i3: BigInt, i5: BigInt) = {
       if(a == b && b == c)      (a, i2 + 1, i3 + 1, i5 + 1)
       else if(a == b && a < c)  (a, i2 + 1, i3 + 1, i5    )
       else if(a == c && a < b)  (a, i2 + 1, i3    , i5 + 1)

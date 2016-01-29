@@ -17,30 +17,18 @@ object Knapscak {
   case class Cons(x: (BigInt, BigInt), tail: IList) extends IList // a list of pairs of weights and values
   case class Nil() extends IList
 
-  def depsEval(i: BigInt, items: IList): Boolean = {
+  def deps(i: BigInt, items: IList): Boolean = {
     require(i >= 0)
     knapSack(i, items).isCached && // if we have the cached check only along the else branch, we would get a counter-example.
       (if (i <= 0) true
       else {
-        depsEval(i - 1, items)
+        deps(i - 1, items)
       })
   }
 
-  @traceInduct
-  def depsEvalMono(i: BigInt, items: IList, st1: Set[Mem[BigInt]], st2: Set[Mem[BigInt]]) = {
-    require(i >= 0)
-    (st1.subsetOf(st2) && (depsEval(i, items) withState st1)) ==> (depsEval(i, items) withState st2)
-  } holds
-
-  @traceInduct
-  def depsLem(x: BigInt, y: BigInt, items: IList) = {
-    require(x >= 0 && y >= 0)
-    (x <= y && depsEval(y, items)) ==> depsEval(x, items)
-  } holds
-
   @invstate
   def maxValue(items: IList, w: BigInt, currList: IList): BigInt = {
-    require((w ==0 || (w > 0 && depsEval(w - 1, items))) &&
+    require((w ==0 || (w > 0 && deps(w - 1, items))) &&
       // lemma inst
       (currList match {
         case Cons((wi, vi), _) =>
@@ -64,7 +52,7 @@ object Knapscak {
 
   @memoize
   def knapSack(w: BigInt, items: IList): BigInt = {
-    require(w >= 0 && (w == 0 || depsEval(w - 1, items)))
+    require(w >= 0 && (w == 0 || deps(w - 1, items)))
     if (w == 0) BigInt(0)
     else {
       maxValue(items, w, items)
@@ -72,26 +60,23 @@ object Knapscak {
   } ensuring(_ => time <= 40*items.size + 25)
 
   def invoke(i: BigInt, items: IList) = {
-    require(i == 0 || (i > 0 && depsEval(i - 1, items)))
+    require(i == 0 || (i > 0 && deps(i - 1, items)))
     knapSack(i, items)
   } ensuring (res => {
-    val in = Mem.inState[BigInt]
-    val out = Mem.outState[BigInt]
-    (i == 0 || depsEvalMono(i - 1, items, in, out) && // lemma inst
-        depsEval(i - 1, items)) &&
+    (i == 0 || depsMono(i - 1, items, inState[BigInt], outState[BigInt]) && // lemma inst
+        deps(i - 1, items)) &&
       time <= 40*items.size + 40
   })
 
   def bottomup(i: BigInt, w: BigInt, items: IList): IList = {
-    require(i >= 0 && w >= i &&
-      (i == 0 || (i > 0 && depsEval(i - 1, items))))
+    require(w >= i && (i == 0 || i > 0 && deps(i - 1, items)))
     val ri = invoke(i, items)
     if (i == w)
       Cons((i,ri), Nil())
     else {
       Cons((i,ri), bottomup(i + 1, w, items))
     }
-  } ensuring(_ => items.size <= 10 ==> time <= 500 * (w - i + 1))
+  } ensuring(items.size <= 10 ==> time <= 500 * (w - i + 1))
 
   /**
    * Computes the list of optimal solutions of all weights up to 'w'
@@ -100,4 +85,21 @@ object Knapscak {
     require(w >= 0 && items.size <= 10) //  the second requirement is only to keep the bounds linear for z3 to work
     bottomup(0, w, items)
   } ensuring(time <= 500*w + 510)
+
+  /**
+   * Lemmas of deps
+   */
+  // deps is monotonic
+  @traceInduct
+  def depsMono(i: BigInt, items: IList, st1: Set[Mem[BigInt]], st2: Set[Mem[BigInt]]) = {
+    require(i >= 0)
+    (st1.subsetOf(st2) && (deps(i, items) withState st1)) ==> (deps(i, items) withState st2)
+  } holds
+
+  // forall. x, x <= y && deps(y) => deps(x)
+  @traceInduct
+  def depsLem(x: BigInt, y: BigInt, items: IList) = {
+    require(x >= 0 && y >= 0)
+    (x <= y && deps(y, items)) ==> deps(x, items)
+  } holds
 }
