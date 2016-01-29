@@ -148,5 +148,9 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       Grammar(newStart, newRules2.toMap)
     }
     
+    def markovize_abstract_vertical(): Grammar = {
+      this
+    }
+    
   }
 }

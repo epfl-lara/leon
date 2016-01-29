@@ -1,6 +1,7 @@
 package leon
 package integration.solvers
 
+import synthesis.grammars.ContextGrammar
 import org.scalatest.FunSuite
 import org.scalatest.Matchers
 import leon.test.helpers.ExpressionsDSL
@@ -17,21 +18,65 @@ import org.scalatest.FunSuite
 import org.scalatest.concurrent.Timeouts
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.time.SpanSugar._
+import org.scalatest.matchers.Matcher
+import org.scalatest.matchers.MatchResult
+
+trait CustomGrammarEqualMatcher[U, V, T <: ContextGrammar[U, V]] {
+  def symbolToString(symbol: T#Symbol): String = {
+    symbol match {
+      case s: T#NonTerminal => nonterminalToString(s)
+      case s: T#Terminal => terminalToString(s)
+    }
+  }
+  def nonterminalToString(nonterminal: T#NonTerminal): String = {
+    nonterminal.tag + (if(nonterminal.vcontext != Nil) "_v"+nonterminal.vcontext.map(x => symbolToString(x)).reduce(_ + "_" + _) else "") +
+    (if(nonterminal.hcontext != Nil) "_h"+nonterminal.hcontext.map(x => symbolToString(x)).reduce(_ + "_" + _) else "")
+  }
+  def terminalToString(terminal: T#Terminal): String = {
+    terminal.tag + (if(terminal.terminalTag == "") "" else "_" + terminal.terminalTag)
+  }
+  def reduce(l: Iterable[String], separator: String) = if(l == Nil) "" else l.reduce(_ + separator + _)
+  def expansionToString(expansion: T#Expansion): String = {
+    reduce(expansion.ls.map(l => reduce(l.map(x => symbolToString(x)), " ")), " | ")
+  }
+  
+  def grammarToString(grammar: T#Grammar) = {
+    "Start: " + reduce(grammar.start.map(s => symbolToString(s)), " | ") + "\n" +
+    reduce(grammar.rules.map(kv => symbolToString(kv._1) + " -> " + expansionToString(kv._2)), "\n")
+  }
+  
+  class EqualGrammarMatcher(expectedGrammar: T#Grammar) extends Matcher[T#Grammar] {
+    def apply(left: T#Grammar) = {
+      MatchResult(
+        left == expectedGrammar,
+        s"${grammarToString(left)}\n ***did not equal*** \n${grammarToString(expectedGrammar)}",
+        s"${grammarToString(left)}\n ***equaled*** \n${grammarToString(expectedGrammar)}"
+      )
+    }
+  }
+
+  def equalGrammar(grammar: T#Grammar) = new EqualGrammarMatcher(grammar)
+}
+
+class ContextGrammarString extends ContextGrammar[String, String] with CustomGrammarEqualMatcher[String, String, ContextGrammarString]
 
 /**
  * @author Mikael
  */
 class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
-  
-  val ctx = new synthesis.grammars.ContextGrammar[String, String]
+  val ctx = new ContextGrammarString
   import ctx._
   
   val A = NonTerminal("A")
   val B = NonTerminal("B")
   val C = NonTerminal("C")
+  val D = NonTerminal("D")
+  val E = NonTerminal("E")
+  val F = NonTerminal("F")
   val x = Terminal("x", "")
   val y = Terminal("y", "")
   val z = Terminal("z", "")
+  val w = Terminal("w", "")
   
   test("Horizontal Markovization Simple")  {
     val xA = A.copy(hcontext = List(x))
@@ -42,8 +87,8 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
           Map(A -> Expansion(Seq(Seq(x, xA), Seq(y))),
               xA -> Expansion(Seq(Seq(x, xA), Seq(y)))))
         
-    grammar1.markovize_horizontal() should equal (grammar2)
-    grammar2.markovize_horizontal() should equal (grammar2)
+    grammar1.markovize_horizontal() should equalGrammar (grammar2)
+    grammar2.markovize_horizontal() should equalGrammar (grammar2)
   }
   test("Horizontal Markovization Double")  {
     val BA = A.copy(hcontext = List(B))
@@ -62,8 +107,8 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               BA -> Expansion(Seq(Seq(B, BA), Seq(y)))
               ))
 
-    grammar1.markovize_horizontal() should equal (grammar2)
-    grammar2.markovize_horizontal() should equal (grammar2)
+    grammar1.markovize_horizontal() should equalGrammar (grammar2)
+    grammar2.markovize_horizontal() should equalGrammar (grammar2)
   }
   
   test("Vertical Markovization simple") {
@@ -81,8 +126,8 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
               AA -> Expansion(Seq(Seq(x, AAA), Seq(y))),
               AAA -> Expansion(Seq(Seq(x, AAA), Seq(y)))))
     
-    grammar1.markovize_vertical() should equal (grammar2)
-    grammar2.markovize_vertical() should equal (grammar3)
+    grammar1.markovize_vertical() should equalGrammar (grammar2)
+    grammar2.markovize_vertical() should equalGrammar (grammar3)
   }
   
   test("Vertical Markovization double") {
@@ -125,6 +170,47 @@ class ContextGrammarSuite extends FunSuite with Matchers with ScalaFutures {
           ))
           
     grammar1.markovize_vertical() should equal (grammar2)
+  }
+  
+  // Extend the grammar by taking the unique vertical context of an abstract class, not directly vertical.
+  // In this context: A -> A -> B -> B -> B -> A should remind only A -> B -> A
+  test("Abstract vertical Markovization") {
+    val Acons = NonTerminal("Acons")
+    val Alist = NonTerminal("Alist")
+    val Anil = NonTerminal("Anil")
+    val Bcons = NonTerminal("Bcons")
+    val Blist = NonTerminal("Blist")
+    val Bnil = NonTerminal("Bnil")
+    val grammar =
+      Grammar(Seq(Alist),
+          Map(Alist -> Expansion(Seq(Seq(Acons), Seq(Anil))),
+              Acons -> Expansion(Seq(Seq(Blist, Alist))),
+              Anil -> Expansion(Seq(Seq(x))),
+              Blist -> Expansion(Seq(Seq(Bcons), Seq(Bnil))),
+              Bcons -> Expansion(Seq(Seq(Alist, Blist))),
+              Bnil -> Expansion(Seq(Seq(y)))))
+    
+    val AconsB = Acons.copy(vcontext = List(Blist))
+    val AnilB = Anil.copy(vcontext = List(Blist))
+    val AlistB = Alist.copy(vcontext = List(Blist))
+    val BconsA = Bcons.copy(vcontext = List(Alist))
+    val BnilA = Bnil.copy(vcontext = List(Alist))
+    val BlistA = Blist.copy(vcontext = List(Alist))
+    
+    val grammar2 =
+      Grammar(Seq(Alist),
+          Map(Alist -> Expansion(Seq(Seq(Acons), Seq(Anil))),
+              Acons -> Expansion(Seq(Seq(BlistA, Alist))),
+              Anil -> Expansion(Seq(Seq(x))),
+              AlistB -> Expansion(Seq(Seq(AconsB), Seq(AnilB))),
+              AconsB -> Expansion(Seq(Seq(BlistA, AlistB))),
+              AnilB -> Expansion(Seq(Seq(x))),
+              BlistA -> Expansion(Seq(Seq(BconsA), Seq(BnilA))),
+              BconsA -> Expansion(Seq(Seq(AlistB, BlistA))),
+              BnilA -> Expansion(Seq(Seq(y)))))
+              
+    grammar.markovize_abstract_vertical() should equalGrammar (grammar2)
+    
   }
   
   /*test("Horizontal Markovization multiple") {
