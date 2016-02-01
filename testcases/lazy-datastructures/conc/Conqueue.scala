@@ -51,13 +51,13 @@ object Conqueue {
   /**
    * Checks whether there is a zero before an unevaluated closure
    */
-  def zeroPreceedsLazy[T](q: $[ConQ[T]]): Boolean = {
+  def zeroPrecedesLazy[T](q: $[ConQ[T]]): Boolean = {
     if (q.isEvaluated) {
       q* match {
         case Spine(Empty(), _, rear) =>
           true // here we have seen a zero
         case Spine(h, _, rear) =>
-          zeroPreceedsLazy(rear) //here we have not seen a zero
+          zeroPrecedesLazy(rear) //here we have not seen a zero
         case Tip(_) => true
       }
     } else false
@@ -66,12 +66,12 @@ object Conqueue {
   /**
    * Checks whether there is a zero before a given suffix
    */
-  def zeroPreceedsSuf[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
+  def zeroPrecedesSuf[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
     if (q != suf) {
       q* match {
         case Spine(Empty(), _, rear) => true
         case Spine(_, _, rear) =>
-          zeroPreceedsSuf(rear, suf)
+          zeroPrecedesSuf(rear, suf)
         case Tip(_) => false
       }
     } else false
@@ -124,7 +124,7 @@ object Conqueue {
     q.isEvaluated && {
       schs match {
         case Cons(head, tail) =>
-          zeroPreceedsSuf(q, head) // zeroPreceedsSuf holds initially
+          zeroPrecedesSuf(q, head) // zeroPrecedesSuf holds initially
         case Nil() => true
       }
     } &&
@@ -150,7 +150,7 @@ object Conqueue {
   }
 
   def pushLeft[T](ys: Single[T], xs: $[ConQ[T]]): ConQ[T] = {
-    require(zeroPreceedsLazy(xs))
+    require(zeroPrecedesLazy(xs))
     xs.value match {
       case Tip(CC(_, _)) =>
         Spine(ys, False(), xs)
@@ -168,13 +168,13 @@ object Conqueue {
   // this procedure does not change state
   @invstate
   def pushLeftLazy[T](ys: Conc[T], xs: $[ConQ[T]]): ConQ[T] = {
-    require(!ys.isEmpty && zeroPreceedsLazy(xs) &&
+    require(!ys.isEmpty && zeroPrecedesLazy(xs) &&
       (xs* match {
         case Spine(h, _, _) => h != Empty[T]()
         case _ => false
       }))
     xs.value match {
-      case Spine(head, _, rear) => // here, rear is guaranteed to be evaluated by 'zeroPreceedsLazy' invariant
+      case Spine(head, _, rear) => // here, rear is guaranteed to be evaluated by 'zeroPrecedesLazy' invariant
         val carry = CC(head, ys) //here, head and ys are of the same level
         rear.value match {
           case s @ Spine(Empty(), _, srear) =>
@@ -215,7 +215,7 @@ object Conqueue {
    */
   @invstate
   def pushLeftLazyLemma[T](ys: Conc[T], xs: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
-    require(!ys.isEmpty && zeroPreceedsSuf(xs, suf) &&
+    require(!ys.isEmpty && zeroPrecedesSuf(xs, suf) &&
       (xs* match {
         case Spine(h, _, _) => h != Empty[T]()
         case _ => false
@@ -237,7 +237,7 @@ object Conqueue {
           case _ => true
         }
     }) &&
-      // instantiate the lemma that implies zeroPreceedsLazy
+      // instantiate the lemma that implies zeroPrecedesLazy
       (if (zeroPredSufConcreteUntilLemma(xs, suf)) {
         // property
         (pushLeftLazy(ys, xs) match {
@@ -249,7 +249,7 @@ object Conqueue {
 
   def pushLeftWrapper[T](ys: Single[T], w: Queue[T]) = {
     require(w.valid &&
-      // instantiate the lemma that implies zeroPreceedsLazy
+      // instantiate the lemma that implies zeroPrecedesLazy
       (w.schedule match {
         case Cons(h, _) =>
           zeroPredSufConcreteUntilLemma(w.queue, h)
@@ -320,7 +320,7 @@ object Conqueue {
             })
         case _ => true
       }) &&
-        // instantiations for zeroPreceedsSuf property
+        // instantiations for zeroPrecedesSuf property
         (scheds match {
           case Cons(head, rest) =>
             (concreteUntilIsSuffix(q, head) withState in) &&
@@ -328,7 +328,7 @@ object Conqueue {
                 case Cons(rhead, rtail) =>
                   concreteUntilIsSuffix(pushUntilCarry(head), rhead) &&
                     suffixZeroLemma(q, head, rhead) &&
-                    zeroPreceedsSuf(q, rhead)
+                    zeroPrecedesSuf(q, rhead)
                 case _ =>
                   true
               })
@@ -450,20 +450,20 @@ object Conqueue {
     (concreteUntil(q, suf1) && concreteUntil(suf1, suf2)) ==> concreteUntil(q, suf2)
   } holds
 
-  // properties that relate `concUntil`, `concrete`,  `zeroPreceedsSuf` with `zeroPreceedsLazy`
-  //   - these are used in preconditions to derive the `zeroPreceedsLazy` property
+  // properties that relate `concUntil`, `concrete`,  `zeroPrecedesSuf` with `zeroPrecedesLazy`
+  //   - these are used in preconditions to derive the `zeroPrecedesLazy` property
 
   @traceInduct
   def zeroPredSufConcreteUntilLemma[T](q: $[ConQ[T]], suf: $[ConQ[T]]): Boolean = {
-    (zeroPreceedsSuf(q, suf) && concreteUntil(q, suf)) ==> zeroPreceedsLazy(q)
+    (zeroPrecedesSuf(q, suf) && concreteUntil(q, suf)) ==> zeroPrecedesLazy(q)
   } holds
 
   @traceInduct
   def concreteZeroPredLemma[T](q: $[ConQ[T]]): Boolean = {
-    isConcrete(q) ==> zeroPreceedsLazy(q)
+    isConcrete(q) ==> zeroPrecedesLazy(q)
   } holds
 
-  // properties relating `suffix` an `zeroPreceedsSuf`
+  // properties relating `suffix` an `zeroPrecedesSuf`
 
   def suffixZeroLemma[T](q: $[ConQ[T]], suf: $[ConQ[T]], suf2: $[ConQ[T]]): Boolean = {
     require(suf* match {
@@ -481,7 +481,7 @@ object Conqueue {
             true
         }
       } else true) &&
-      zeroPreceedsSuf(q, suf2) // property
+      zeroPrecedesSuf(q, suf2) // property
   }.holds
 
   /**
