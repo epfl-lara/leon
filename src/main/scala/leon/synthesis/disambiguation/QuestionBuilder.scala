@@ -144,18 +144,33 @@ class QuestionBuilder[T <: Expr](
   /** Make all generic values unique.
     * Duplicate generic values are not suitable for disambiguating questions since they remove an order. */
   def makeGenericValuesUnique(a: Expr): Expr = {
-    var genVals = Set[GenericValue]()
-    @tailrec @inline def freshGenericValue(g: GenericValue): GenericValue = {
-      if(genVals contains g)
-        freshGenericValue(GenericValue(g.tp, g.id + 1))
-      else {
-        genVals += g
-        g
-      }
+    var genVals = Set[Expr with Terminal]()
+    def freshenValue(g: Expr with Terminal): Option[Expr with Terminal] = g match {
+      case g: GenericValue => Some(GenericValue(g.tp, g.id + 1))
+      case StringLiteral(s) =>
+        val i = s.lastIndexWhere { c => c < '0' || c > '9' }
+        val prefix = s.take(i+1)
+        val suffix = s.drop(i+1)
+        Some(StringLiteral(prefix + (if(suffix == "") "0" else (suffix.toInt + 1).toString)))
+      case InfiniteIntegerLiteral(i) => Some(InfiniteIntegerLiteral(i+1))
+      case IntLiteral(i) => if(i == Integer.MAX_VALUE) None else Some(IntLiteral(i+1))
+      case CharLiteral(c) => if(c == Char.MaxValue) None else Some(CharLiteral((c+1).toChar))
+      case otherLiteral => None
+    }
+    @tailrec @inline def freshValue(g: Expr with Terminal): Expr with Terminal = {
+          if(genVals contains g)
+            freshenValue(g) match {
+              case None => g
+              case Some(v) => freshValue(v)
+            }
+          else {
+            genVals += g
+            g
+          }
     }
     ExprOps.postMap{ e => e match {
-      case g@GenericValue(tpe, i) =>
-        Some(freshGenericValue(g))
+      case g:Expr with Terminal =>
+        Some(freshValue(g))
       case _ => None
     }}(a)
   }
