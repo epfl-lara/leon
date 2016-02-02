@@ -1,9 +1,12 @@
+package orb
+
 import leon.lazyeval._
 import leon.lazyeval.$._
 import leon.lang._
 import leon.annotation._
 import leon.collection._
 import leon.instrumentation._
+import leon.invariant._
 
 object RealTimeQueue {
 
@@ -42,7 +45,7 @@ object RealTimeQueue {
     })
   }
 
-  @invstate
+   @invstate
   def rotate[T](f: $[Stream[T]], r: List[T], a: $[Stream[T]]): Stream[T] = { // doesn't change state
     require(r.size == ssize(f) + 1 && isConcrete(f))
     (f.value, r) match {
@@ -54,7 +57,7 @@ object RealTimeQueue {
         SCons[T](x, rot)
     }
   } ensuring (res => res.size == (f*).size + r.size + (a*).size && res.isCons &&
-                     time <= 30)
+                     time <= ?)
 
   /**
    * Returns the first element of the stream that is not evaluated.
@@ -97,7 +100,7 @@ object RealTimeQueue {
   def enqueue[T](x: T, q: Queue[T]): Queue[T] = {
     require(q.valid)
     createQ(q.f, Cons(x, q.r), q.s)
-  } ensuring (res => res.valid && time <= 60)
+  } ensuring (res => res.valid && time <= ?)
 
   def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
@@ -105,5 +108,5 @@ object RealTimeQueue {
       case SCons(x, nf) =>
         createQ(nf, q.r, q.s)
     }
-  } ensuring (res => res.valid && time <= 120)
+  } ensuring (res => res.valid && time <= ?)
 }

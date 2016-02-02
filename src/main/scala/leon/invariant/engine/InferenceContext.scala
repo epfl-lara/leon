@@ -24,7 +24,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   // get  options from ctx or initialize them to default values
   // the following options are enabled by default
   val targettedUnroll = !(leonContext.findOption(optFunctionUnroll).getOrElse(false))
-  val autoInference = leonContext.findOption(optDisableInfer).getOrElse(true)
+  val autoInference = !(leonContext.findOption(optDisableInfer).getOrElse(false))
   val assumepre = leonContext.findOption(optAssumePre).getOrElse(false)
 
   // the following options are disabled by default

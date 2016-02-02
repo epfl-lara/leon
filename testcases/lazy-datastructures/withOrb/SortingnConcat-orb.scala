@@ -5,7 +5,6 @@ import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
 import leon.invariant._
-import scala.math.BigInt.int2bigInt
 
 object SortingnConcat {
 

@@ -132,7 +132,6 @@ object ProgramUtil {
       }
     }
 
-    // FIXME: This with createAnd (which performs simplifications) gives an error during composition.
     val mapExpr = mapFunctionsInExpr(funMap) _
     for ((from, to) <- funMap) {
       to.fullBody = if (!funToTmpl.contains(from)) {
@@ -286,7 +285,7 @@ object PredicateUtil {
     case base =>
       (e => e, base)
   }
-  
+
   /**
    * Checks if the input expression has only template variables as free variables
    */

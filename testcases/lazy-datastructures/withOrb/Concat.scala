@@ -1,10 +1,13 @@
+package withOrb
+
 import leon.lazyeval._
 import leon.lang._
 import leon.annotation._
 import leon.instrumentation._
 import leon.collection._
 import leon.invariant._
-//import leon.invariant._
+import scala.BigInt
+import scala.math.BigInt.int2bigInt
 
 object Concat {
   sealed abstract class LList[T] {
@@ -24,7 +27,7 @@ object Concat {
       case Cons(x, xs) => SCons(x, $(concat(xs, l2)))
       case Nil() => SNil[T]()
     }
-  } ensuring(_ => time <= 20)
+  } ensuring(_ => time <= ?)
 
   def kthElem[T](l: $[LList[T]], k: BigInt): Option[T] = {
     require(k >= 1)
@@ -35,10 +38,10 @@ object Concat {
           kthElem(xs, k - 1)
       case SNil() => None[T]
     }
-  } //ensuring (_ => time <= ? * k)
+  } ensuring (_ => time <= ? * k)
 
   def concatnSelect[T](l1: List[T], l2: List[T], k: BigInt) : Option[T] = {
     require(k >= 1)
     kthElem($(concat(l1, l2)), k)
-  } //ensuring (_ => time <= ? * k)
+  } ensuring (_ => time <= ? * k)
 }

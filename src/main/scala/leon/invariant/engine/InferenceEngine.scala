@@ -1,6 +1,7 @@
 package leon
 package invariant.engine
 
+import purescala._
 import purescala.Definitions._
 import purescala.ExprOps._
 import java.io._
@@ -20,6 +21,8 @@ import ProgramUtil._
  * TODO: should time be implicitly made positive
  */
 class InferenceEngine(ctx: InferenceContext) extends Interruptible {
+
+  val debugBottomupIterations = false
 
   val ti = new TimeoutFor(this)
 
@@ -122,8 +125,8 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
    * we an get rid of dependence on origFd in many places.
    */
   def analyseProgram(startProg: Program, functionsToAnalyze: Seq[FunDef],
-      vcSolver: (FunDef, Program) => FunctionTemplateSolver,
-      progressCallback: Option[InferenceCondition => Unit]): Map[FunDef, InferenceCondition] = {
+                     vcSolver: (FunDef, Program) => FunctionTemplateSolver,
+                     progressCallback: Option[InferenceCondition => Unit]): Map[FunDef, InferenceCondition] = {
     val reporter = ctx.reporter
     val funToTmpl =
       if (ctx.autoInference) {
@@ -142,6 +145,12 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
         (fd.annotations contains "library") ||
         (fd.annotations contains "theoryop")
     }).foldLeft(progWithTemplates) { (prog, origFun) =>
+
+      if (debugBottomupIterations) {
+        println("Current Program: \n",
+          ScalaPrinter.apply(prog, purescala.PrinterOptions(printUniqueIds = true)))
+        scala.io.StdIn.readLine()
+      }
 
       if (ctx.abort) {
         reporter.info("- Aborting analysis of " + origFun.id.name)
@@ -165,49 +174,64 @@ class InferenceEngine(ctx: InferenceContext) extends Interruptible {
             val funcTime = (System.currentTimeMillis() - t1) / 1000.0
             infRes match {
               case Some(InferResult(true, model, inferredFuns)) =>
-                // create a inference condition for reporting
-                var first = true
-                inferredFuns.foreach { fd =>
-                  val origFd = functionByName(fd.id.name, startProg).get
-                  val inv = if (origFd.hasTemplate) {
-                    TemplateInstantiator.getAllInvariants(model.get,
-                      Map(origFd -> origFd.getTemplate), prettyInv = true)(origFd)
-                  } else {
-                    val currentInv = TemplateInstantiator.getAllInvariants(model.get,
-                      Map(fd -> fd.getTemplate), prettyInv = true)(fd)
-                    // map result variable  in currentInv
-                    val repInv = replace(Map(getResId(fd).get.toVariable -> getResId(origFd).get.toVariable), currentInv)
-                    translateExprToProgram(repInv, prog, startProg)
-                  }
-                  // record the inferred invariants
-                  val inferCond = if (analyzedSet.contains(origFd)) {
-                    val ic = analyzedSet(origFd)
-                    ic.addInv(Seq(inv))
-                    ic
-                  } else {
-                    val ic = new InferenceCondition(Seq(inv), origFd)
-                    ic.time = if (first) Some(funcTime) else Some(0.0)
-                    // update analyzed set
-                    analyzedSet += (origFd -> ic)
-                    first = false
-                    ic
-                  }
-                  progressCallback.foreach(cb => cb(inferCond))
-                }
+                val origFds = inferredFuns.map { fd =>
+                  (fd -> functionByName(fd.id.name, startProg).get)
+                }.toMap
+                // find functions in the source that had a user-defined template and was solved
+                // and it was not previously solved
                 val funsWithTemplates = inferredFuns.filter { fd =>
-                  val origFd = functionByName(fd.id.name, startProg).get
+                  val origFd = origFds(fd)
                   !analyzedSet.contains(origFd) && origFd.hasTemplate
                 }
+                // now the templates of these functions will be replaced by inferred invariants
                 val invs = TemplateInstantiator.getAllInvariants(model.get,
                   funsWithTemplates.collect {
                     case fd if fd.hasTemplate => fd -> fd.getTemplate
                   }.toMap)
-                // create a new program that has the inferred templates
+                // collect templates of remaining functions
                 val funToTmpl = prog.definedFunctions.collect {
                   case fd if !invs.contains(fd) && fd.hasTemplate =>
                     fd -> fd.getTemplate
                 }.toMap
-                assignTemplateAndCojoinPost(funToTmpl, prog, invs)
+                /*println("Inferred Funs: " + inferredFuns)
+                println("inv map: " + invs)
+                println("Templ map: " + funToTmpl)*/
+                val nextProg = assignTemplateAndCojoinPost(funToTmpl, prog, invs)
+
+                // create a inference condition for reporting
+                var first = true
+                inferredFuns.foreach { fd =>
+                  val origFd = origFds(fd)
+                  val invOpt = if (funsWithTemplates.contains(fd)) {
+                    Some(TemplateInstantiator.getAllInvariants(model.get,
+                      Map(origFd -> origFd.getTemplate), prettyInv = true)(origFd))
+                  } else if (fd.hasTemplate) {
+                    val currentInv = TemplateInstantiator.getAllInvariants(model.get,
+                      Map(fd -> fd.getTemplate), prettyInv = true)(fd)
+                    // map result variable  in currentInv
+                    val repInv = replace(Map(getResId(fd).get.toVariable -> getResId(origFd).get.toVariable), currentInv)
+                    Some(translateExprToProgram(repInv, prog, startProg))
+                  } else None
+                  invOpt match {
+                    case Some(inv) =>
+                      // record the inferred invariants
+                      val inferCond = if (analyzedSet.contains(origFd)) {
+                        val ic = analyzedSet(origFd)
+                        ic.addInv(Seq(inv))
+                        ic
+                      } else {
+                        val ic = new InferenceCondition(Seq(inv), origFd)
+                        ic.time = if (first) Some(funcTime) else Some(0.0)
+                        // update analyzed set
+                        analyzedSet += (origFd -> ic)
+                        first = false
+                        ic
+                      }
+                      progressCallback.foreach(cb => cb(inferCond))
+                    case _ =>
+                  }
+                }
+                nextProg
 
               case _ =>
                 reporter.info("- Exhausted all templates, cannot infer invariants")

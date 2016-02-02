@@ -60,7 +60,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   private val startFromEarlierModel = true
   private val disableCegis = true
   private val useIncrementalSolvingForVCs = true
-  private val useCVCToCheckVCs = false
+  private val useCVCToCheckVCs = true
 
   //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'
   protected var funcVCs = Map[FunDef, Expr]()
