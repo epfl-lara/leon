@@ -287,6 +287,16 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
     def instantiations: Map[MatcherKey, Matchers] =
       (funMap.toMap ++ tpeMap.map { case (tpe,ms) => TypeKey(tpe) -> ms }).mapValues(_.toMatchers)
+
+    def consume: Matchers = {
+      val matchers = funMap.iterator.flatMap(_._2.toMatchers).toSet ++ tpeMap.flatMap(_._2.toMatchers)
+      funMap.clear
+      tpeMap.clear
+      matchers
+    }
+
+    def isEmpty = funMap.isEmpty && tpeMap.isEmpty
+    def nonEmpty = !isEmpty
   }
 
   private class InstantiationContext private (
@@ -753,6 +763,16 @@ class QuantificationManager[T](encoder: TemplateEncoder[T]) extends LambdaManage
 
   def instantiateMatcher(blocker: T, matcher: Matcher[T]): Instantiation[T] = {
     instCtx.instantiate(Set(blocker), matcher)(quantifications.toSeq : _*)
+  }
+
+  def hasIgnored: Boolean = ignored.nonEmpty
+
+  def instantiateIgnored: Instantiation[T] = {
+    var instantiation = Instantiation.empty[T]
+    for ((b,m) <- ignored.consume) {
+      instantiation ++= instantiateMatcher(b, m)
+    }
+    instantiation
   }
 
   private type SetDef = (T, (Identifier, T), (Identifier, T), Seq[T], T, T, T)

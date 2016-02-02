@@ -91,6 +91,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def refutationAssumptions = manager.assumptions
 
   def canUnroll = callInfos.nonEmpty || appInfos.nonEmpty
+  def canInstantiate = manager.hasIgnored
 
   def currentBlockers = callInfos.map(_._2._3).toSeq ++ appInfos.map(_._2._4).toSeq
 
@@ -218,9 +219,9 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
   def promoteBlocker(b: T) = {
     if (callInfos contains b) {
-      val (_, origGen, ast, fis) = callInfos(b)
+      val (_, origGen, notB, fis) = callInfos(b)
       
-      callInfos += b -> (1, origGen, ast, fis)
+      callInfos += b -> (1, origGen, notB, fis)
     }
 
     if (blockerToApps contains b) {
@@ -229,6 +230,22 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
 
       appInfos += app -> (1, origGen, b, notB, infos)
     }
+  }
+
+  def instantiateQuantifiers: Seq[T] = {
+    val (newExprs, callBlocks, appBlocks) = manager.instantiateIgnored
+    val blockExprs = freshAppBlocks(appBlocks.keys)
+    val gen = (callInfos.values.map(_._1) ++ appInfos.values.map(_._1)).min
+
+    for ((b, newInfos) <- callBlocks) {
+      registerCallBlocker(nextGeneration(gen), b, newInfos)
+    }
+
+    for ((newApp, newInfos) <- appBlocks) {
+      registerAppBlocker(nextGeneration(gen), newApp, newInfos)
+    }
+
+    newExprs ++ blockExprs
   }
 
   def unrollBehind(ids: Seq[T]): Seq[T] = {

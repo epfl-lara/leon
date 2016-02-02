@@ -65,7 +65,7 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
 
     val invocationEqualsBody : Option[Expr] = lambdaBody match {
       case Some(body) if isRealFunDef =>
-        val b : Expr = And(
+        val b : Expr = and(
           liftedEquals(invocation, body, lambdaArguments),
           Equals(invocation, body))
 

@@ -30,7 +30,7 @@ trait AbstractZ3Solver extends Solver {
 
   val library = program.library
 
-  protected[z3] val reporter : Reporter = context.reporter
+  protected val reporter : Reporter = context.reporter
 
   context.interruptManager.registerForInterrupts(this)
 
@@ -51,7 +51,7 @@ trait AbstractZ3Solver extends Solver {
   protected[leon] val z3cfg : Z3Config
   protected[leon] var z3 : Z3Context    = null
 
-  override def free() {
+  override def free(): Unit = {
     freed = true
     if (z3 ne null) {
       z3.delete()
@@ -59,18 +59,13 @@ trait AbstractZ3Solver extends Solver {
     }
   }
 
-  protected[z3] var interrupted = false
-
-  override def interrupt() {
-    interrupted = true
+  override def interrupt(): Unit = {
     if(z3 ne null) {
       z3.interrupt()
     }
   }
 
-  override def recoverInterrupt() {
-    interrupted = false
-  }
+  override def recoverInterrupt(): Unit = ()
 
   def functionDefToDecl(tfd: TypedFunDef): Z3FuncDecl = {
     functions.cachedB(tfd) {
@@ -777,7 +772,7 @@ trait AbstractZ3Solver extends Solver {
     z3.mkFreshConst(id.uniqueName, typeToSort(id.getType))
   }
 
-  def reset() = {
+  def reset(): Unit = {
     throw new CantResetException(this)
   }
 

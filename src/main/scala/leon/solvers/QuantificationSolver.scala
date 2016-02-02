@@ -27,7 +27,6 @@ class HenkinModelBuilder(domains: HenkinDomains)
 
 trait QuantificationSolver extends Solver {
   val program: Program
-  def getModel: HenkinModel
 
   protected lazy val requireQuantification = program.definedFunctions.exists { fd =>
     purescala.ExprOps.exists { case _: Forall => true case _ => false } (fd.fullBody)
