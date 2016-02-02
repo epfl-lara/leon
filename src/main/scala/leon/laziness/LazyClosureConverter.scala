@@ -46,9 +46,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   val funsNeedStates = funsManager.funsNeedStates
   val funsRetStates = funsManager.funsRetStates
-  val consCallers = funsManager.callersOfLazyCons  // transitive constructors of closures
   val starCallers = funsManager.funsNeedStateTps
-  val fvFactory = new FreeVariableFactory()
   val lazyTnames = closureFactory.lazyTypeNames
   val lazyops = closureFactory.lazyops
 

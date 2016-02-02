@@ -33,42 +33,50 @@ import invariant.util.ProgramUtil._
  * All free variables are of type `FreeVar` which can be mapped
  * to a required type by applying uninterpreted functions.
  */
-class FreeVariableFactory() {
+object FreeVariableFactory {
 
-  val absClass = AbstractClassDef(FreshIdentifier("FreeVar@"), Seq(), None)
-  val absType = AbstractClassType(absClass, Seq())
+  val fvClass = AbstractClassDef(FreshIdentifier("FreeVar@"), Seq(), None)
+  val fvType = AbstractClassType(fvClass, Seq())
   val varCase = {
-    val cdef = CaseClassDef(FreshIdentifier("Var@"), Seq(), Some(absType), false)
-    cdef.setFields(Seq(ValDef(FreshIdentifier("fl", absType))))
-    absClass.registerChild(cdef)
+    val cdef = CaseClassDef(FreshIdentifier("Var@"), Seq(), Some(fvType), false)
+    cdef.setFields(Seq(ValDef(FreshIdentifier("fl", fvType))))
+    fvClass.registerChild(cdef)
     cdef
   }
   val nextCase = {
-    val cdef = CaseClassDef(FreshIdentifier("NextVar@"), Seq(), Some(absType), false)
-    cdef.setFields(Seq(ValDef(FreshIdentifier("fl", absType))))
-    absClass.registerChild(cdef)
+    val cdef = CaseClassDef(FreshIdentifier("NextVar@"), Seq(), Some(fvType), false)
+    cdef.setFields(Seq(ValDef(FreshIdentifier("fl", fvType))))
+    fvClass.registerChild(cdef)
     cdef
   }
   val nilCase = {
-    val cdef = CaseClassDef(FreshIdentifier("NilVar@"), Seq(), Some(absType), false)
-    absClass.registerChild(cdef)
+    val cdef = CaseClassDef(FreshIdentifier("NilVar@"), Seq(), Some(fvType), false)
+    fvClass.registerChild(cdef)
     cdef
   }
 
   class FreeVarListIterator(initRef: Variable) {
-    require(initRef.getType == absType)
+    require(initRef.getType == fvType)
     var refExpr : Expr = initRef
     def current = CaseClass(varCase.typed, Seq(refExpr)) // Var(refExpr)
     def next {
       refExpr = CaseClass(nextCase.typed, Seq(refExpr)) // Next(refExpr)
     }
+    // returns the current expressions and increments state
+    def nextExpr = {
+      val e = current
+      next
+      e
+    }
   }
+
+  def getFreeListIterator(initRef: Variable) = new FreeVarListIterator(initRef)
 
   var uifuns = Map[TypeTree, FunDef]()
   def getOrCreateUF(t: TypeTree) = {
     uifuns.getOrElse(t, {
       val funName = "uop@" + TypeUtil.typeNameWOParams(t)
-      val param = ValDef(FreshIdentifier("a", absType))
+      val param = ValDef(FreshIdentifier("a", fvType))
       val tparams = TypeUtil.getTypeParameters(t) map TypeParameterDef.apply _
       val uop = new FunDef(FreshIdentifier(funName), tparams, Seq(param), t)
       uifuns += (t -> uop)
@@ -80,8 +88,9 @@ class FreeVariableFactory() {
     val flIter = new FreeVarListIterator(initRef)
 
     /**
-     * Free variables are not guaranteed to be unique.
-     * They are operations over unique references.
+     * Free operations are not guaranteed to be unique: They are
+     * uninterpreted functions of the form: f(ref).
+     * f(res_1) could be equal to f(res_2).
      */
     def nextFV(t: TypeTree) = {
       val uop = getOrCreateUF(t)
@@ -102,7 +111,7 @@ class FreeVariableFactory() {
 
   def getFreeVarGenerator(initRef: Variable) = new FreeVariableGenerator(initRef)
 
-  def createdClasses = Seq(absClass, varCase, nextCase, nilCase)
+  def fvClasses = Seq(fvClass, varCase, nextCase, nilCase)
 
-  def createdFunctions = uifuns.keys.toSeq
+  def fvFunctions = uifuns.keys.toSeq
 }

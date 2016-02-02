@@ -79,19 +79,21 @@ class LazyFunctionsManager(p: Program) {
     (readfuns ++ valCallers, valCallers, starCallers ++ readfuns ++ valCallers)
   }
 
-  lazy val callersOfLazyCons = {
+  lazy val callersnTargetOfLazyCons = {
     var consRoots = Set[FunDef]()
+    var targets = Set[FunDef]()
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
           case finv: FunctionInvocation if isLazyInvocation(finv)(p) => // this is the lazy invocation constructor
             consRoots += fd
+            targets += finv.tfd.fd
           case _ =>
             ;
         }(fd.body.get)
       case _ => ;
     }
-    cg.transitiveCallers(consRoots.toSeq)
+    cg.transitiveCallers(consRoots.toSeq) ++ targets
   }
 
   lazy val cgWithoutSpecs = CallGraphUtil.constructCallGraph(p, true, false)
