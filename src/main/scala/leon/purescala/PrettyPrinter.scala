@@ -164,6 +164,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" } // Ugliness award! The first | is there to shield from stripMargin()
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
+      case BVNot(expr)          => p"~$expr"
       case UMinus(expr)         => p"-$expr"
       case BVUMinus(expr)       => p"-$expr"
       case RealUMinus(expr)     => p"-$expr"

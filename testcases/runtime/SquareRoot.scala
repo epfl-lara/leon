@@ -1,3 +1,4 @@
+import leon.annotation._
 import leon.lang._
 import leon.lang.synthesis._
 
@@ -23,6 +24,7 @@ object SquareRoot {
     }
   }
 
+  @ignore
   def main(a: Array[String]) {
     isqrt2(42)
   }

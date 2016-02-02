@@ -1,3 +1,4 @@
+import leon.annotation._
 import leon.lang._
 import leon.collection._
 
@@ -50,7 +51,7 @@ object BatchedQueue {
       case Cons(_, xs) => checkf(xs, p.r)
     }
   }
-  //	  
+  //
   //	  def last(p: Queue): Int = {
   //	    require(!isEmpty(p))
   //	    p.r match {
@@ -66,6 +67,7 @@ object BatchedQueue {
           (if (isEmpty(p)) true
           else content(tail(res)) ++ Set(x) == content(tail(res))))
 
+  @ignore
   def main(args: Array[String]): Unit = {
     val pair = Queue(Cons(4, Nil), Cons(3, Nil))
 

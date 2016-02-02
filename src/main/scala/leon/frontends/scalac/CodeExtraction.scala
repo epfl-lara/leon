@@ -153,7 +153,7 @@ trait CodeExtraction extends ASTExtractors {
     }
 
     private def isIgnored(s: Symbol) = {
-      (annotationsOf(s) contains "ignore") || s.fullName.toString.endsWith(".main")
+      (annotationsOf(s) contains "ignore")
     }
 
     private def isLibrary(u: CompilationUnit) = Build.libFiles contains u.source.file.absolute.path

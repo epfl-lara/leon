@@ -25,3 +25,4 @@ class XLangVerificationSuite extends VerificationSuite {
   val testDir: String = "regression/verification/xlang/"
   override val desugarXLang = true
 }
+
