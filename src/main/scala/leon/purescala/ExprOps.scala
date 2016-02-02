@@ -1685,13 +1685,15 @@ object ExprOps {
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).mergeall{ case (a1, a2) => isHomo(a1, a2) }
 
-        // TODO: Seems a lot is missing, like Literals
-
         case (Lambda(defs, body), Lambda(defs2, body2)) =>
           // We remove variables introduced by lambdas.
           (isHomo(body, body2) &&
           (defs zip defs2).mergeall{ case (ValDef(a1, _), ValDef(a2, _)) => Option(Map(a1 -> a2)) }
           ) -- (defs.map(_.id))
+          
+        case (v1, v2) if isValue(v1) && isValue(v2) =>
+          v1 == v2 && Some(Map[Identifier, Identifier]())
+
         case Same(Operator(es1, _), Operator(es2, _)) =>
           (es1.size == es2.size) &&
           (es1 zip es2).mergeall{ case (e1, e2) => isHomo(e1, e2) }
@@ -1837,7 +1839,8 @@ object ExprOps {
           fdHomo(tfd1.fd, tfd2.fd) &&
           (args1 zip args2).forall{ case (a1, a2) => isHomo(a1, a2) }
 
-        // TODO: Seems a lot is missing, like Literals
+        case (v1, v2) if isValue(v1) && isValue(v2) =>
+          v1 == v2
 
         case Same(Operator(es1, _), Operator(es2, _)) =>
           (es1.size == es2.size) &&
