@@ -167,8 +167,11 @@ object AntiAliasingPhase extends TransformationPhase {
       }
 
       //we need to replace local fundef by the new updated fun defs.
-      case l@LetDef(fds, body) => {
-        val nfds = fds.map(fd => updatedFunDefs(fd))
+      case l@LetDef(fds, body) => { 
+        //this might be traversed several time in case of doubly nested fundef,
+        //so we need to ignore the second times by checking if updatedFunDefs 
+        //contains a mapping or not
+        val nfds = fds.map(fd => updatedFunDefs.get(fd).getOrElse(fd))
         (Some(LetDef(nfds, body)), bindings)
       }
 
