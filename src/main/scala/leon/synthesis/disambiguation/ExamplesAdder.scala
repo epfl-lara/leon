@@ -30,7 +30,7 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
     val inputVariables = tupleWrap(fd.params.map(p => Variable(p.id): Expr))
     val newCases = examples.map{ case (in, out) => exampleToCase(in, out) }
     fd.postcondition match {
-      case Some(Lambda(Seq(ValDef(id, tpe)), post)) =>
+      case Some(Lambda(Seq(ValDef(id)), post)) =>
         if(fd.postcondition.exists { e => purescala.ExprOps.exists(_.isInstanceOf[Passes])(e) }) {
           post match {
             case TopLevelAnds(exprs) =>
@@ -39,7 +39,7 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
                 case _ => false
               } }
               if(i == -1) {
-                fd.postcondition = Some(Lambda(Seq(ValDef(id, tpe)), and(post, Passes(inputVariables, Variable(id), newCases))))
+                fd.postcondition = Some(Lambda(Seq(ValDef(id)), and(post, Passes(inputVariables, Variable(id), newCases))))
                 //ctx0.reporter.info("No top-level passes in postcondition, adding it:  " + fd)
               } else {
                 val newPasses = exprs(i) match {
@@ -48,21 +48,21 @@ class ExamplesAdder(ctx0: LeonContext, program: Program) {
                   case _ => ???
                 }
                 val newPost = and(exprs.updated(i, newPasses) : _*)
-                fd.postcondition = Some(Lambda(Seq(ValDef(id, tpe)), newPost))
+                fd.postcondition = Some(Lambda(Seq(ValDef(id)), newPost))
                 //ctx0.reporter.info("Adding the example to the passes postcondition: " + fd)
               }
           }
         } else {
-          fd.postcondition = Some(Lambda(Seq(ValDef(id, tpe)), and(post, Passes(inputVariables, Variable(id), newCases))))
+          fd.postcondition = Some(Lambda(Seq(ValDef(id)), and(post, Passes(inputVariables, Variable(id), newCases))))
           //ctx0.reporter.info("No passes in postcondition, adding it:" + fd)
         }
       case None =>
         val id = FreshIdentifier("res", fd.returnType, false)
-        fd.postcondition = Some(Lambda(Seq(ValDef(id, false)), Passes(inputVariables, Variable(id), newCases)))
+        fd.postcondition = Some(Lambda(Seq(ValDef(id)), Passes(inputVariables, Variable(id), newCases)))
         //ctx0.reporter.info("No postcondition, adding it: " + fd)
     }
     fd.body match { // TODO: Is it correct to discard the choose construct inside the body?
-      case Some(Choose(Lambda(Seq(ValDef(id, tpe)), bodyChoose))) => fd.body = Some(Hole(id.getType, Nil))
+      case Some(Choose(Lambda(Seq(ValDef(id)), bodyChoose))) => fd.body = Some(Hole(id.getType, Nil))
       case _ =>
     }
   }

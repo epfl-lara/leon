@@ -44,10 +44,10 @@ class ScopeSimplifier extends Transformer {
       }
       
       val fds_mapping = for((fd, newId) <- fds_newIds) yield {
-        val newArgs = for(ValDef(id, tpe) <- fd.params) yield {
+        val newArgs = for(ValDef(id) <- fd.params) yield {
           val newArg = genId(id, newScope)
           newScope = newScope.register(id -> newArg)
-          ValDef(newArg, tpe)
+          ValDef(newArg)
         }
   
         val newFd = fd.duplicate(id = newId, params = newArgs)

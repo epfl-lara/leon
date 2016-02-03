@@ -327,9 +327,9 @@ object Constructors {
       var defs: Seq[(Identifier, Expr)] = Seq()
 
       val subst = formalArgs.zip(realArgs).map {
-        case (ValDef(from, _), to:Variable) =>
+        case (ValDef(from), to:Variable) =>
           from -> to
-        case (ValDef(from, _), e) =>
+        case (ValDef(from), e) =>
           val fresh = from.freshen
           defs :+= (fresh -> e)
           from -> Variable(fresh)

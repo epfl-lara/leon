@@ -140,9 +140,9 @@ abstract class ProgramTypeTransformer {
       // FIXME
       //add a new postcondition
       newfd.fullBody = if (fd.postcondition.isDefined && newfd.body.isDefined) {
-        val Lambda(Seq(ValDef(resid, lzy)), pexpr) = fd.postcondition.get
+        val Lambda(Seq(ValDef(resid)), pexpr) = fd.postcondition.get
         val tempRes = mapId(resid).toVariable
-        Ensuring(newfd.body.get, Lambda(Seq(ValDef(tempRes.id, lzy)), transformExpr(pexpr)))
+        Ensuring(newfd.body.get, Lambda(Seq(ValDef(tempRes.id)), transformExpr(pexpr)))
         // Some(mapId(resid), transformExpr(pexpr))
       } else NoTree(fd.returnType)
 
