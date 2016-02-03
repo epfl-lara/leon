@@ -419,6 +419,14 @@ object ExprOps {
     }(expr)
   }
 
+  /** Returns all Function calls found in the expression */
+  def nestedFunDefsOf(expr: Expr): Set[FunDef] = {
+    collect[FunDef] {
+      case LetDef(fds, _) => fds.toSet
+      case _ => Set()
+    }(expr)
+  }
+
   /** Returns functions in directly nested LetDefs */
   def directlyNestedFunDefs(e: Expr): Set[FunDef] = {
     fold[Set[FunDef]]{

@@ -20,22 +20,26 @@ object AntiAliasingPhase extends TransformationPhase {
 
   override def apply(ctx: LeonContext, pgm: Program): Program = {
 
+    val fds = allFunDefs(pgm)
+    fds.foreach(fd => checkAliasing(fd)(ctx))
+
     var updatedFunctions: Map[FunDef, FunDef] = Map()
 
     val effects = effectsAnalysis(pgm)
+
 
     /*
      * The first pass will introduce all new function definitions,
      * so that in the next pass we can update function invocations
      */
     for {
-      fd <- pgm.definedFunctions
+      fd <- fds
     } {
       updatedFunctions += (fd -> updateFunDef(fd, effects)(ctx))
     }
 
     for {
-      fd <- pgm.definedFunctions
+      fd <- fds
     } {
       updateBody(fd, effects, updatedFunctions)(ctx)
     }
@@ -64,6 +68,13 @@ object AntiAliasingPhase extends TransformationPhase {
         ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object")
       case _ => ()
     })
+    //val allBodies: Set[Expr] = 
+    //  fd.body.toSet.flatMap((bd: Expr) => nestedFunDefsOf(bd).flatMap(_.body)) ++ fd.body
+    //allBodies.foreach(body => getReturnedExpr(body).foreach{
+    //  case v@Variable(id) if aliasedParams.contains(id) =>
+    //    ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object: "k+ v)
+    //  case _ => ()
+    //})
 
     val newReturnType: TypeTree = if(aliasedParams.isEmpty) fd.returnType else {
       tupleTypeWrap(fd.returnType +: aliasedParams.map(_.getType))
@@ -147,24 +158,18 @@ object AntiAliasingPhase extends TransformationPhase {
       }
 
       case l@Let(id, IsTyped(v, ArrayType(_)), b) => {
-        v match {
-          case FiniteArray(_, _, _) => ()
-          case FunctionInvocation(_, _) => ()
-          case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array")
-        }
-
         val varDecl = LetVar(id, v, b).setPos(l)
         (Some(varDecl), bindings + id)
       }
 
       case l@LetVar(id, IsTyped(v, ArrayType(_)), b) => {
-        v match {
-          case FiniteArray(_, _, _) => ()
-          case FunctionInvocation(_, _) => ()
-          case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array")
-        }
-
         (None, bindings + id)
+      }
+
+      //we need to replace local fundef by the new updated fun defs.
+      case l@LetDef(fds, body) => {
+        val nfds = fds.map(fd => updatedFunDefs(fd))
+        (Some(LetDef(nfds, body)), bindings)
       }
 
       case fi@FunctionInvocation(fd, args) => {
@@ -208,6 +213,10 @@ object AntiAliasingPhase extends TransformationPhase {
 
   private type Effects = Map[FunDef, Set[Int]]
 
+  /*
+   * compute effects for each function in the program, including any nested
+   * functions (LetDef).
+   */
   private def effectsAnalysis(pgm: Program): Effects = {
 
     //currently computed effects (incremental)
@@ -218,7 +227,7 @@ object AntiAliasingPhase extends TransformationPhase {
     def effectsFullyComputed(fd: FunDef): Boolean = !missingEffects.isDefinedAt(fd)
 
     for {
-      fd <- pgm.definedFunctions
+      fd <- allFunDefs(pgm)
     } {
       fd.body match {
         case None =>
@@ -288,6 +297,45 @@ object AntiAliasingPhase extends TransformationPhase {
   }
 
 
+  def checkAliasing(fd: FunDef)(ctx: LeonContext): Unit = {
+    def checkReturnValue(body: Expr, bindings: Set[Identifier]): Unit = {
+      getReturnedExpr(body).foreach{
+        case IsTyped(v@Variable(id), ArrayType(_)) if bindings.contains(id) =>
+          ctx.reporter.fatalError(v.getPos, "Cannot return a shared reference to a mutable object: " + v)
+        case _ => ()
+      }
+    }
+    
+    fd.body.foreach(bd => {
+      val params = fd.params.map(_.id).toSet
+      checkReturnValue(bd, params)
+      preMapWithContext[Set[Identifier]]((expr, bindings) => expr match {
+        case l@Let(id, IsTyped(v, ArrayType(_)), b) => {
+          v match {
+            case FiniteArray(_, _, _) => ()
+            case FunctionInvocation(_, _) => ()
+            case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
+          }
+          (None, bindings + id)
+        }
+        case l@LetVar(id, IsTyped(v, ArrayType(_)), b) => {
+          v match {
+            case FiniteArray(_, _, _) => ()
+            case FunctionInvocation(_, _) => ()
+            case _ => ctx.reporter.fatalError(l.getPos, "Cannot alias array: " + l)
+          }
+          (None, bindings + id)
+        }
+        case l@LetDef(fds, body) => {
+          fds.foreach(fd => fd.body.foreach(bd => checkReturnValue(bd, bindings)))
+          (None, bindings)
+        }
+
+        case _ => (None, bindings)
+      })(bd, params)
+    })
+  }
+
   /*
    * A bit hacky, but not sure of the best way to do something like that
    * currently.
@@ -301,4 +349,13 @@ object AntiAliasingPhase extends TransformationPhase {
     case e => Seq(expr)
   }
 
+
+  /*
+   * returns all fun def in the program, including local definitions inside
+   * other functions (LetDef).
+   */
+  private def allFunDefs(pgm: Program): Seq[FunDef] =
+      pgm.definedFunctions.flatMap(fd => 
+        fd.body.toSet.flatMap((bd: Expr) =>
+          nestedFunDefsOf(bd)) + fd)
 }
