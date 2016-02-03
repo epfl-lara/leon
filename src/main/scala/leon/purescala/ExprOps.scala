@@ -1148,6 +1148,15 @@ object ExprOps {
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }
 
+  /* Checks if a given expression is 'real' and does not contain generic
+   * values. */
+  def isRealExpr(v: Expr): Boolean = {
+    !exists {
+      case gv: GenericValue => true
+      case _ => false
+    }(v)
+  }
+
   def valuesOf(tp: TypeTree): Stream[Expr] = {
     import utils.StreamUtils._
     tp match {

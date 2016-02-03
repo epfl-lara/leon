@@ -5,7 +5,9 @@ package synthesis
 package rules
 
 import purescala.ExprOps._
+import purescala.TypeOps._
 import purescala.Extractors._
+import purescala.Expressions._
 import purescala.Constructors._
 
 /** Moves the preconditions without output variables to the precondition. */
@@ -19,7 +21,13 @@ case object Assert extends NormalizingRule("Assert") {
         if (exprsA.nonEmpty) {
           // If there is no more postcondition, then output the solution.
           if (others.isEmpty) {
-            Some(solve(Solution(pre=andJoin(exprsA), defs=Set(), term=tupleWrap(p.xs.map(id => simplestValue(id.getType))))))
+            val simplestOut = simplestValue(tupleTypeWrap(p.xs.map(_.getType)))
+
+            if (!isRealExpr(simplestOut)) {
+              None
+            } else {
+              Some(solve(Solution(pre = andJoin(exprsA), defs = Set(), term = simplestOut)))
+            }
           } else {
             val sub = p.copy(pc = andJoin(p.pc +: exprsA), phi = andJoin(others), eb = p.qeb.filterIns(andJoin(exprsA)))
 

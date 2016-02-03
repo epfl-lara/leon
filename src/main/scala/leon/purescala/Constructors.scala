@@ -41,6 +41,17 @@ object Constructors {
     */
   def tupleSelect(t: Expr, index: Int, originalSize: Int): Expr = tupleSelect(t, index, originalSize > 1)
 
+  /** $encodingof ``def foo(..) {} ...; e``.
+    * @see [[purescala.Expressions.LetDef]]
+    */
+  def letDef(defs: Seq[FunDef], e: Expr) = {
+    if (defs.isEmpty) {
+      e
+    } else {
+      LetDef(defs, e)
+    }
+  }
+
   /** $encodingof ``val id = e; bd``, and returns `bd` if the identifier is not bound in `bd`.
     * @see [[purescala.Expressions.Let]]
     */
