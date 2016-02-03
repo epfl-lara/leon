@@ -1,6 +1,6 @@
 /* Copyright 2009-2015 EPFL, Lausanne */
 
-object Array9 {
+object ArrayAliasing8 {
 
   def foo(a: Array[Int]): Int = {
     def rec(): Array[Int] = {
