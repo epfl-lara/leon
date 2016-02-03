@@ -77,16 +77,7 @@ abstract class RecursiveEvaluator(ctx: LeonContext, prog: Program, maxSteps: Int
       e(IfExpr(Not(cond), Error(expr.getType, oerr.getOrElse("Assertion failed @"+expr.getPos)), body))
 
     case en@Ensuring(body, post) =>
-      if ( exists{
-        case Hole(_,_) => true
-        case WithOracle(_,_) => true
-        case _ => false
-      }(en)) {
-        import synthesis.ConversionPhase.convert
-        e(convert(en, ctx))
-      } else {
-        e(en.toAssert)
-      }
+      e(en.toAssert)
 
     case Error(tpe, desc) =>
       throw RuntimeError("Error reached in evaluation: " + desc)
