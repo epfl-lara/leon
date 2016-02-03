@@ -11,6 +11,7 @@ import Extractors._
 import PrinterHelpers._
 import ExprOps.{isListLiteral, simplestValue}
 import Expressions._
+import Constructors._
 import Types._
 import org.apache.commons.lang3.StringEscapeUtils
 
@@ -92,7 +93,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case LetDef(a::q,body) =>
         p"""|$a
-            |${LetDef(q, body)}"""
+            |${letDef(q, body)}"""
       case LetDef(Nil,body) =>
         p"""$body"""
 
