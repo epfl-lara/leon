@@ -102,11 +102,11 @@ object RealTimeQueue {
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring (res => res.valid && time <= ?)
 
-  def dequeue[T](q: Queue[T]): Queue[T] = {
+  /*def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
     q.f.value match {
       case SCons(x, nf) =>
         createQ(nf, q.r, q.s)
     }
-  } ensuring (res => res.valid && time <= ?)
+  } ensuring (res => res.valid && time <= ?)*/
 }

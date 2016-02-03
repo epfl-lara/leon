@@ -45,7 +45,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   val trackUnpackedVCCTime = false
 
   //print flags
-  val verbose = false
+  val verbose = true
   val printCounterExample = false
   val printPathToConsole = false
   val dumpPathAsSMTLIB = false
@@ -61,10 +61,10 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   private val disableCegis = true
   private val useIncrementalSolvingForVCs = true
   private val useCVCToCheckVCs = true
+  private val usePortfolio = false // portfolio has a bug in incremental solving
 
   //this is private mutable state used by initialized during every call to 'solve' and used by 'solveUNSAT'
   protected var funcVCs = Map[FunDef, Expr]()
-  //TODO: can incremental solving be trusted ? There were problems earlier.
   protected var vcSolvers = Map[FunDef, Solver with TimeoutSolver]()
   protected var paramParts = Map[FunDef, Expr]()
   protected var simpleParts = Map[FunDef, Expr]()
@@ -78,6 +78,16 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     ctrTracker.getVC(fd).splitParamPart
   }
 
+  def getSolver =
+    if(this.usePortfolio) {
+      new PortfolioSolver(leonctx, Seq(new SMTLIBCVC4Solver(leonctx, program),
+          new SMTLIBZ3Solver(leonctx, program))) with TimeoutSolver
+    }
+    else if (this.useCVCToCheckVCs)
+      new SMTLIBCVC4Solver(leonctx, program) with TimeoutSolver
+    else
+      new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+
   def initVCSolvers = {
     funcVCs.keys.foreach { fd =>
       val (paramPart, rest) = if (ctx.usereals) {
@@ -90,11 +100,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
         throw new IllegalStateException("Non-param Part has both integers and reals: " + rest)
 
       if (!ctx.abort) { // this is required to ensure that solvers are not created after interrupts
-        val vcSolver =
-          if (this.useCVCToCheckVCs)
-            new SMTLIBCVC4Solver(leonctx, program) with TimeoutSolver
-          else
-            new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+        val vcSolver = getSolver
         vcSolver.assertCnstr(rest)
 
         if (debugIncrementalVC) {
@@ -387,7 +393,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
     val tempVarMap: Map[Expr, Expr] = inModel.map((elem) => (elem._1.toVariable, elem._2)).toMap
     val solver =
       if (this.useIncrementalSolvingForVCs) vcSolvers(fd)
-      else new SMTLIBZ3Solver(leonctx, program) with TimeoutSolver
+      else getSolver
     val instExpr = if (this.useIncrementalSolvingForVCs) {
       val instParamPart = instantiateTemplate(this.paramParts(fd), tempVarMap)
       And(instParamPart, disableCounterExs)
@@ -445,7 +451,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
       Stats.updateCounterStats(atomNum(upVCinst), "UP-VC-size", "disjuncts")
 
       t1 = System.currentTimeMillis()
-      val (res2, _) = SimpleSolverAPI(SolverFactory(() => new SMTLIBZ3Solver(leonctx, program))).solveSAT(upVCinst)
+      val (res2, _) = SimpleSolverAPI(SolverFactory(() => getSolver)).solveSAT(upVCinst)
       val unpackedTime = System.currentTimeMillis() - t1
       if (res != res2) {
         throw new IllegalStateException("Unpacked VC produces different result: " + upVCinst)
@@ -495,42 +501,50 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   }
 
   /**
-   * Evaluator for a predicate that is a simple equality/inequality between two variables
+   * Evaluator for a predicate that is a simple equality/inequality between two variables.
+   * Some expressions may not be evaluatable, so we return none in those cases.
    */
-  protected def predEval(model: Model): (Expr => Boolean) = {
+  protected def predEval(model: Model): (Expr => Option[Boolean]) = {
     if (ctx.usereals) realEval(model)
     else intEval(model)
   }
 
-  protected def intEval(model: Model): (Expr => Boolean) = {
+  protected def intEval(model: Model): (Expr => Option[Boolean]) = {
     def modelVal(id: Identifier): BigInt = {
       val InfiniteIntegerLiteral(v) = model(id)
       v
     }
-    def eval: (Expr => Boolean) = {
-      case And(args) => args.forall(eval)
-      // case Iff(Variable(id1), Variable(id2)) => model(id1) == model(id2)
-      case Equals(Variable(id1), Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
-      case LessEquals(Variable(id1), Variable(id2)) => modelVal(id1) <= modelVal(id2)
-      case GreaterEquals(Variable(id1), Variable(id2)) => modelVal(id1) >= modelVal(id2)
-      case GreaterThan(Variable(id1), Variable(id2)) => modelVal(id1) > modelVal(id2)
-      case LessThan(Variable(id1), Variable(id2)) => modelVal(id1) < modelVal(id2)
+    def eval: (Expr => Option[Boolean]) = {
+      case And(args) =>
+        val argres = args.map(eval)
+        if(argres.exists(!_.isDefined)) None
+        else
+          Some(argres.forall(_.get))
+      case Equals(Variable(id1), Variable(id2)) =>
+        if(model.isDefinedAt(id1) &&
+            model.isDefinedAt(id2))
+        Some(model(id1) == model(id2)) //note: ADTs can also be compared for equality
+        else None
+      case LessEquals(Variable(id1), Variable(id2)) => Some(modelVal(id1) <= modelVal(id2))
+      case GreaterEquals(Variable(id1), Variable(id2)) => Some(modelVal(id1) >= modelVal(id2))
+      case GreaterThan(Variable(id1), Variable(id2)) => Some(modelVal(id1) > modelVal(id2))
+      case LessThan(Variable(id1), Variable(id2)) => Some(modelVal(id1) < modelVal(id2))
       case e => throw new IllegalStateException("Predicate not handled: " + e)
     }
     eval
   }
 
-  protected def realEval(model: Model): (Expr => Boolean) = {
+  protected def realEval(model: Model): (Expr => Option[Boolean]) = {
     def modelVal(id: Identifier): FractionalLiteral = {
       //println("Identifier: "+id)
       model(id).asInstanceOf[FractionalLiteral]
     }
     {
-      case Equals(Variable(id1), Variable(id2)) => model(id1) == model(id2) //note: ADTs can also be compared for equality
+      case Equals(Variable(id1), Variable(id2)) => Some(model(id1) == model(id2)) //note: ADTs can also be compared for equality
       case e@Operator(Seq(Variable(id1), Variable(id2)), op) if (e.isInstanceOf[LessThan]
         || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
         || e.isInstanceOf[GreaterEquals]) => {
-        evaluateRealPredicate(op(Seq(modelVal(id1), modelVal(id2))))
+        Some(evaluateRealPredicate(op(Seq(modelVal(id1), modelVal(id2)))))
       }
       case e => throw new IllegalStateException("Predicate not handled: " + e)
     }

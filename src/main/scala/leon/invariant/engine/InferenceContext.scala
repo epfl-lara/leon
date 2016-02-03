@@ -37,6 +37,7 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
 
   // the following options have default values
   val vcTimeout = leonContext.findOption(optVCTimeout).getOrElse(15L) // in secs
+  val nlTimeout = leonContext.findOption(optNLTimeout).getOrElse(15L)
   val totalTimeout = leonContext.findOption(SharedOptions.optTimeout) // in secs
   val functionsToInfer = leonContext.findOption(SharedOptions.optFunctions)
   val reporter = leonContext.reporter

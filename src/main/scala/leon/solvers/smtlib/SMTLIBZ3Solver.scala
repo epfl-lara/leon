@@ -53,7 +53,6 @@ class SMTLIBZ3Solver(context: LeonContext, program: Program) extends SMTLIBSolve
         }
       case _ =>
     }
-
     new Model(model)
   }
 

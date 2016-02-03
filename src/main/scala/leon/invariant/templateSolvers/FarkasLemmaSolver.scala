@@ -37,7 +37,7 @@ class FarkasLemmaSolver(ctx: InferenceContext, program: Program) {
 
   val leonctx = ctx.leonContext
   val reporter = ctx.reporter
-  val timeout = ctx.vcTimeout // Note: we are using vcTimeout here as well
+  val timeout = ctx.nlTimeout // Note: we are using vcTimeout here as well
 
   /**
    * This procedure produces a set of constraints that need to be satisfiable for the

@@ -57,7 +57,7 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
         val t = SSymbol("T")
         setSort = Some(s)
 
-        val arraySort = Sort(SMTIdentifier(SSymbol("Array")), 
+        val arraySort = Sort(SMTIdentifier(SSymbol("Array")),
                              Seq(Sort(SMTIdentifier(t)), BoolSort()))
 
         val cmd = DefineSort(s, Seq(t), arraySort)
@@ -75,7 +75,6 @@ trait SMTLIBZ3Target extends SMTLIBTarget {
       case (SimpleSymbol(s), Some(tp: TypeParameter)) =>
         val n = s.name.split("!").toList.last
         GenericValue(tp, n.toInt)
-
 
       case (QualifiedIdentifier(ExtendedIdentifier(SSymbol("as-array"), k: SSymbol), _), Some(tpe)) =>
         if (letDefs contains k) {
