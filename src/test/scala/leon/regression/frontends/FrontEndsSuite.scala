@@ -36,7 +36,6 @@ class FrontEndsSuite extends LeonRegressionSuite {
   }
 
   val pipeNormal = xlang.NoXLangFeaturesChecking andThen NoopPhase() // redundant NoopPhase to trigger throwing error between phases
-  val pipeX = NoopPhase[Program]()
   val baseDir = "regression/frontends/"
 
   forEachFileIn(baseDir+"passing/") { f => 
@@ -44,9 +43,6 @@ class FrontEndsSuite extends LeonRegressionSuite {
   }
   forEachFileIn(baseDir+"error/simple/") { f =>
     testFrontend(f, pipeNormal, true)
-  }
-  forEachFileIn(baseDir+"error/xlang/") { f =>
-    testFrontend(f, pipeX, true)
   }
    
 }
