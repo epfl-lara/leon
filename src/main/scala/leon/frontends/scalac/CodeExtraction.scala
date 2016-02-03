@@ -827,6 +827,10 @@ trait CodeExtraction extends ASTExtractors {
           NoTree(funDef.returnType)
       }
 
+      if (fctx.isExtern && !exists(_.isInstanceOf[NoTree])(finalBody)) {
+        reporter.warning(finalBody.getPos, "External function could be extracted as Leon tree: "+finalBody)
+      }
+
       funDef.fullBody = finalBody
 
       // Post-extraction sanity checks
@@ -955,11 +959,7 @@ trait CodeExtraction extends ASTExtractors {
 
     private def extractTreeOrNoTree(tr: Tree)(implicit dctx: DefContext): LeonExpr = {
       try {
-        val res = extractTree(tr)
-        if (dctx.isExtern) {
-          reporter.warning(res.getPos, "External function could be extracted as Leon tree")
-        }
-        res
+        extractTree(tr)
       } catch {
         case e: ImpureCodeEncounteredException =>
           if (dctx.isExtern) {
