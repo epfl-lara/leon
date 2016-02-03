@@ -70,7 +70,25 @@ class ContextGrammar[SymbolTag, TerminalTag] {
     lazy val startNonTerminals: Seq[NonTerminal] = {
       start.collect{ case k: NonTerminal => k }
     }
-    
+
+    abstract class NonTerminalMapping {
+      // Conversion from old to new non-terminals to duplicate rules afterwards.
+      private lazy val originalMapping = Map[NonTerminal, List[NonTerminal]](startNonTerminals.map(x => x -> List(x)) : _*)
+      protected var mapping = originalMapping
+      // Resets the mapping transformation
+      def reset() = mapping = originalMapping
+        
+      def apply(lhs: NonTerminal): Seq[NonTerminal]
+      
+        // Keeps expansion the same but applies the current mapping to all keys
+      def mapKeys(rules: Map[NonTerminal, Expansion]) = 
+        for{(lhs, expansion) <- rules
+          new_lhs <- apply(lhs)
+        } yield {
+          new_lhs -> expansion
+        }
+    }
+
     /** Applies 1-markovization to the grammar (add 1 history to every node) */
     def markovize_vertical(): Grammar = {
       val nts = nonTerminals
@@ -78,27 +96,25 @@ class ContextGrammar[SymbolTag, TerminalTag] {
       def parents(nt: NonTerminal): Seq[NonTerminal] = {
         rulesSeq.collect{ case (ntprev, expansion)  if expansion.contains(nt) => ntprev }
       }
-      var mapping = Map[NonTerminal, List[NonTerminal]](startNonTerminals.map(x => x -> List(x)) : _*)
-      def updateMapping(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
-        val res = nt.copy(vcontext = topContext)
-        mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
-        res
+      object Mapping extends NonTerminalMapping {
+        mapping = Map[NonTerminal, List[NonTerminal]](startNonTerminals.map(x => x -> List(x)) : _*)
+        def updateMapping(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
+          val res = nt.copy(vcontext = topContext)
+          mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
+          res
+        }
+        def apply(elem: NonTerminal) = mapping.getOrElse(elem, List(elem))
       }
       
       val newRules = (for{
         nt <- nts
         expansion = rules(nt)
       }  yield (nt -> (expansion.map{(s: Symbol) => s match {
-        case n@NonTerminal(tag, vc, hc) => updateMapping(n, nt::nt.vcontext)
+        case n@NonTerminal(tag, vc, hc) => Mapping.updateMapping(n, nt::nt.vcontext)
         case e => e
       }}))).toMap
       
-      val newRules2 = 
-        for{(nt, expansion) <- newRules
-            nnt <- mapping.getOrElse(nt, List(nt))
-        } yield {
-          nnt -> expansion
-        }
+      val newRules2 = Mapping.mapKeys(newRules)
       Grammar(start, newRules2)
     }
     
@@ -112,41 +128,37 @@ class ContextGrammar[SymbolTag, TerminalTag] {
         else List(vContext)
       }
       
-      // Conversion from old to new non-terminals to duplicate rules afterwards.
-      var mapping = Map[NonTerminal, List[NonTerminal]]()
-      
-      def updateMapping(nt: NonTerminal, leftContext: List[Symbol]): NonTerminal = {
-        val res = nt.copy(hcontext = leftContext)
-        mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
-        res
+      object Mapping extends NonTerminalMapping {
+        def updateMapping(nt: NonTerminal, leftContext: List[Symbol]): NonTerminal = {
+          val res = nt.copy(hcontext = leftContext)
+          mapping += nt -> (res::mapping.getOrElse(nt, Nil)).distinct
+          res
+        }
+        
+        def apply(elem: NonTerminal) = mapping.getOrElse(elem, List(elem))
       }
       
       /** Add to each symbol its left context */
       def processSequence(sq: Seq[Symbol]): Seq[Symbol] = {
         sq.foldLeft(List[Symbol]()) {
           case (leftContext, nt@NonTerminal(tag, vc, Nil)) =>
-            leftContext :+ updateMapping(nt, leftContext)
+            leftContext :+ Mapping.updateMapping(nt, leftContext)
           case (leftContext, e) => leftContext :+ e
         }
       }
       val newStart = processSequence(start)
       // Add the context to each symbol in each rule.
       val newRules =
-        for{nt <- nts} yield {
+        (for{nt <- nts} yield {
           val expansion = rules(nt)
           nt -> expansion.mapLeftContext{ (s: Symbol, l: List[Symbol]) =>
             s match {
-              case nt@NonTerminal(tag, vc, Nil) => updateMapping(nt, l)
+              case nt@NonTerminal(tag, vc, Nil) => Mapping.updateMapping(nt, l)
               case e => e
             }
           }
-        }
-      val newRules2 =
-        for{(nt, expansion) <- newRules
-            nnt <- mapping.getOrElse(nt, List(nt))
-        } yield {
-          nnt -> expansion
-        }
+        }).toMap
+      val newRules2 =Mapping.mapKeys(newRules)
       Grammar(newStart, newRules2.toMap)
     }
     
@@ -160,9 +172,7 @@ class ContextGrammar[SymbolTag, TerminalTag] {
         rulesSeq.collect{ case (ntprev, expansion)  if expansion.contains(nt) => ntprev }
       }
       // Utilities to perform the mapping from one non-terminal to many new non-terminals
-      object Mapping {
-        private lazy val originalMapping = Map[NonTerminal, List[NonTerminal]](startNonTerminals.map(x => x -> List(x)) : _*)
-        private var mapping = originalMapping
+      object Mapping extends NonTerminalMapping {
         // Adds a new mapping by introducing a top-context.
         def updateTopContext(nt: NonTerminal, topContext: List[NonTerminal]): NonTerminal = {
           val new_nt = nt.copy(vcontext = topContext)
@@ -176,15 +186,6 @@ class ContextGrammar[SymbolTag, TerminalTag] {
                 List(elem)
               else Nil) ++
              mapping.getOrElse(elem, List(elem))
-        // Keeps expansion the same but applies the current mapping to all keys
-        def mapKeys(rules: Map[NonTerminal, Expansion]) = 
-          for{(lhs, expansion) <- rules
-            new_lhs <- apply(lhs)
-          } yield {
-            new_lhs -> expansion
-          }
-        // Resets the mapping transformation
-        def reset() = mapping = originalMapping
       }
       
       // An object to keep track of all modifications to return to the original symbols.
