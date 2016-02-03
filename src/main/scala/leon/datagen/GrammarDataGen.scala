@@ -4,14 +4,17 @@ package leon
 package datagen
 
 import purescala.Expressions._
-import purescala.Types.TypeTree
+import purescala.Types._
 import purescala.Common._
 import purescala.Constructors._
 import purescala.Extractors._
+import purescala.ExprOps._
 import evaluators._
 import bonsai.enumerators._
 
 import grammars._
+import utils.UniqueCounter
+import utils.SeqUtils.cartesianProduct
 
 /** Utility functions to generate values of a given type.
   * In fact, it could be used to generate *terms* of a given type,
@@ -19,9 +22,40 @@ import grammars._
 class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] = ValueGrammar) extends DataGenerator {
   implicit val ctx = evaluator.context
 
+  // Assume e contains generic values with index 0.
+  // Return a series of expressions with all normalized combinations of generic values.
+  private def expandGenerics(e: Expr): Seq[Expr] = {
+    val c = new UniqueCounter[TypeParameter]
+    val withUniqueCounters: Expr = postMap {
+      case GenericValue(t, _) =>
+        Some(GenericValue(t, c.next(t)))
+      case _ => None
+    }(e)
+
+    val indices = c.current
+
+    val (tps, substInt) = (for {
+      tp <- indices.keySet.toSeq
+    } yield tp -> (for {
+      from <- 0 to indices(tp)
+      to <- 0 to from
+    } yield (from, to))).unzip
+
+    val combos = cartesianProduct(substInt)
+
+    val substitutions = combos map { subst =>
+      tps.zip(subst).map { case (tp, (from, to)) =>
+        (GenericValue(tp, from): Expr) -> (GenericValue(tp, to): Expr)
+      }.toMap
+    }
+
+    substitutions map (replace(_, withUniqueCounters))
+
+  }
+
   def generate(tpe: TypeTree): Iterator[Expr] = {
     val enum = new MemoizedEnumerator[TypeTree, Expr, ProductionRule[TypeTree, Expr]](grammar.getProductions)
-    enum.iterator(tpe)
+    enum.iterator(tpe).flatMap(expandGenerics)
   }
 
   def generateFor(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int): Iterator[Seq[Expr]] = {
@@ -49,6 +83,10 @@ class GrammarDataGen(evaluator: Evaluator, grammar: ExpressionGrammar[TypeTree] 
               .filter(filterCond)
               .take(maxValid)
     }
+  }
+
+  def generateMapping(ins: Seq[Identifier], satisfying: Expr, maxValid: Int, maxEnumerated: Int) = {
+    generateFor(ins, satisfying, maxValid, maxEnumerated) map (ins zip _)
   }
 
 }

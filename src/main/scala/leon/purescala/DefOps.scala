@@ -275,13 +275,6 @@ object DefOps {
       None
   }
 
-  /** 
-   *
-   * @param p
-   * @param fdMapF
-   * @param fiMapF
-   * @return
-   */
 
   def replaceFunDefs(p: Program)(fdMapF: FunDef => Option[FunDef],
                                  fiMapF: (FunctionInvocation, FunDef) => Option[Expr] = defaultFiMap) = {

@@ -14,7 +14,6 @@ import codegen.CodeGenParams
 import grammars._
 
 import bonsai.enumerators._
-import bonsai.{Generator => Gen}
 
 case object BottomUpTEGIS extends BottomUpTEGISLike[TypeTree]("BU TEGIS") {
   def getGrammar(sctx: SynthesisContext, p: Problem) = {

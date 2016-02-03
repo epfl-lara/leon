@@ -6,8 +6,6 @@ package grammars
 import purescala.Types._
 import purescala.Constructors._
 
-import bonsai._
-
 /** A grammar of equalities
   *
   * @param types The set of types for which equalities will be generated

@@ -765,7 +765,11 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
           }
         }
 
-
+        println("BASE EXAMPLES")
+        baseExampleInputs.foreach { in =>
+          println("  - "+in.asString)
+        }
+        println("BASE EXAMPLES END")
         /**
          * We generate tests for discarding potential programs
          */
@@ -840,6 +844,10 @@ abstract class CEGISLike[T <: Typed](name: String) extends Rule(name) {
                   sctx.reporter.debug("..."+wrongPrograms.size)
                 }
               }
+            }
+
+            allInputExamples().foreach { in =>
+              println("  - "+in.asString)
             }
 
             val nPassing = prunedPrograms.size

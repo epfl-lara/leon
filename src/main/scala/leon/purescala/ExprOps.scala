@@ -442,7 +442,7 @@ object ExprOps {
 
       case l @ Let(i,e,b) =>
         val newID = FreshIdentifier(i.name, i.getType, alwaysShowUniqueID = true).copiedFrom(i)
-        Some(Let(newID, e, replace(Map(Variable(i) -> Variable(newID)), b)))
+        Some(Let(newID, e, replaceFromIDs(Map(i -> Variable(newID)), b)))
 
       case _ => None
     }(expr)
@@ -597,7 +597,7 @@ object ExprOps {
     def simplerLet(t: Expr) : Option[Expr] = t match {
 
       case letExpr @ Let(i, t: Terminal, b) if isDeterministic(b) =>
-        Some(replace(Map(Variable(i) -> t), b))
+        Some(replaceFromIDs(Map(i -> t), b))
 
       case letExpr @ Let(i,e,b) if isDeterministic(b) => {
         val occurrences = count {
@@ -608,7 +608,7 @@ object ExprOps {
         if(occurrences == 0) {
           Some(b)
         } else if(occurrences == 1) {
-          Some(replace(Map(Variable(i) -> e), b))
+          Some(replaceFromIDs(Map(i -> e), b))
         } else {
           None
         }
@@ -619,7 +619,7 @@ object ExprOps {
 
         val (remIds, remExprs) = (ids zip exprs).filter {
           case (id, value: Terminal) =>
-            newBody = replace(Map(Variable(id) -> value), newBody)
+            newBody = replaceFromIDs(Map(id -> value), newBody)
             //we replace, so we drop old
             false
           case (id, value) =>

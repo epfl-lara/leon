@@ -1,21 +1,18 @@
 package leon
 package synthesis.disambiguation
 
+import datagen.GrammarDataGen
 import synthesis.Solution
 import evaluators.DefaultEvaluator
 import purescala.Expressions._
 import purescala.ExprOps
-import purescala.Constructors._
-import purescala.Extractors._
 import purescala.Types.{StringType, TypeTree}
 import purescala.Common.Identifier
 import purescala.Definitions.Program
 import purescala.DefOps
-import grammars.ValueGrammar
-import bonsai.enumerators.MemoizedEnumerator
+import grammars._
 import solvers.ModelBuilder
 import scala.collection.mutable.ListBuffer
-import grammars._
 
 object QuestionBuilder {
   /** Sort methods for questions. You can build your own */
@@ -92,11 +89,9 @@ object QuestionBuilder {
  * 
  * @tparam T A subtype of Expr that will be the type used in the Question[T] results.
  * @param input The identifier of the unique function's input. Must be typed or the type should be defined by setArgumentType
- * @param ruleApplication The set of solutions for the body of f
  * @param filter A function filtering which outputs should be considered for comparison.
- * It takes as input the sequence of outputs already considered for comparison, and the new output.
- * It should return Some(result) if the result can be shown, and None else.
- * @return An ordered
+ *               It takes as input the sequence of outputs already considered for comparison, and the new output.
+ *               It should return Some(result) if the result can be shown, and None else.
  * 
  */
 class QuestionBuilder[T <: Expr](
@@ -139,25 +134,22 @@ class QuestionBuilder[T <: Expr](
   /** Returns a list of input/output questions to ask to the user. */
   def result(): List[Question[T]] = {
     if(solutions.isEmpty) return Nil
-    
-    val enum = new MemoizedEnumerator[TypeTree, Expr, ProductionRule[TypeTree,Expr]](value_enumerator.getProductions)
-    val values = enum.iterator(tupleTypeWrap(_argTypes))
-    val instantiations = values.map {
-      v => input.zip(unwrapTuple(v, input.size))
-    }
-    
-    val enumerated_inputs = instantiations.take(expressionsToTake).toList
-    
+
+    val datagen = new GrammarDataGen(new DefaultEvaluator(c, p), value_enumerator)
+    val enumerated_inputs = datagen.generateMapping(input, BooleanLiteral(true), expressionsToTake, expressionsToTake).toList
+
     val solution = solutions.head
     val alternatives = solutions.drop(1).take(solutionsToTake).toList
     val questions = ListBuffer[Question[T]]()
-    for{possible_input             <- enumerated_inputs
-        current_output_nonfiltered <- run(solution, possible_input)
-        current_output             <- filter(Seq(), current_output_nonfiltered)} {
+    for {
+      possibleInput            <- enumerated_inputs
+      currentOutputNonFiltered <- run(solution, possibleInput)
+      currentOutput            <- filter(Seq(), currentOutputNonFiltered)
+    } {
       
-      val alternative_outputs = ((ListBuffer[T](current_output) /: alternatives) { (prev, alternative) =>
-        run(alternative, possible_input) match {
-          case Some(alternative_output) if alternative_output != current_output =>
+      val alternative_outputs = (ListBuffer[T](currentOutput) /: alternatives) { (prev, alternative) =>
+        run(alternative, possibleInput) match {
+          case Some(alternative_output) if alternative_output != currentOutput =>
             filter(prev, alternative_output) match {
               case Some(alternative_output_filtered) =>
                 prev += alternative_output_filtered
@@ -165,9 +157,9 @@ class QuestionBuilder[T <: Expr](
             }
           case _ => prev
         }
-      }).drop(1).toList.distinct
-      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(current_output)) {
-        questions += Question(possible_input.map(_._2), current_output, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
+      }.drop(1).toList.distinct
+      if(alternative_outputs.nonEmpty || keepEmptyAlternativeQuestions(currentOutput)) {
+        questions += Question(possibleInput.map(_._2), currentOutput, alternative_outputs.sortWith((e,f) => _alternativeSortMethod.compare(e, f) <= 0))
       }
     }
     questions.toList.sortBy(_questionSorMethod(_))

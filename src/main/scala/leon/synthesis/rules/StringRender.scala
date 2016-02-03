@@ -7,35 +7,28 @@ package rules
 import scala.annotation.tailrec
 import scala.collection.mutable.ListBuffer
 
-import bonsai.enumerators.MemoizedEnumerator
-import leon.evaluators.DefaultEvaluator
-import leon.evaluators.StringTracingEvaluator
-import leon.synthesis.programsets.DirectProgramSet
-import leon.synthesis.programsets.JoinProgramSet
-import leon.purescala.Common.FreshIdentifier
-import leon.purescala.Common.Identifier
-import leon.purescala.DefOps
-import leon.purescala.Definitions.FunDef
-import leon.purescala.Definitions.FunDef
-import leon.purescala.Definitions.ValDef
-import leon.purescala.ExprOps
-import leon.solvers.Model
-import leon.solvers.ModelBuilder
-import leon.solvers.string.StringSolver
-import leon.utils.DebugSectionSynthesis
+import purescala.Common._
+import purescala.Types._
 import purescala.Constructors._
 import purescala.Definitions._
-import purescala.ExprOps._
 import purescala.Expressions._
 import purescala.Extractors._
 import purescala.TypeOps
-import purescala.Types._
+import purescala.DefOps
+import purescala.ExprOps
+
+import evaluators.StringTracingEvaluator
+import synthesis.programsets.DirectProgramSet
+import synthesis.programsets.JoinProgramSet
+
+import solvers.ModelBuilder
+import solvers.string.StringSolver
 
 
 /** A template generator for a given type tree. 
   * Extend this class using a concrete type tree,
   * Then use the apply method to get a hole which can be a placeholder for holes in the template.
-  * Each call to the ``.instantiate` method of the subsequent Template will provide different instances at each position of the hole.
+  * Each call to the `.instantiate` method of the subsequent Template will provide different instances at each position of the hole.
   */
 abstract class TypedTemplateGenerator(t: TypeTree) {
   import StringRender.WithIds

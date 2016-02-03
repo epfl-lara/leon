@@ -17,4 +17,5 @@ class UniqueCounter[K] {
     globalId
   }
 
+  def current = nameIds
 }

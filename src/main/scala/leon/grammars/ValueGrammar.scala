@@ -35,9 +35,9 @@ case object ValueGrammar extends ExpressionGrammar[TypeTree] {
       )
 
     case tp: TypeParameter =>
-      for (ind <- (1 to 3).toList) yield {
-        terminal(GenericValue(tp, ind))
-      }
+      List(
+        terminal(GenericValue(tp, 0))
+      )
 
     case TupleType(stps) =>
       List(
