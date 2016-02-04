@@ -70,7 +70,6 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
 
       //unroll each call in the head pointers and in toRefineCalls
       val callsToProcess = if (toRefineCalls.isDefined) {
-
         //pick only those calls that have been least unrolled
         val relevCalls = allheads.intersect(toRefineCalls.get)
         var minCalls = Set[Call]()
@@ -86,14 +85,12 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
           }
         })
         minCalls
-
       } else allheads
 
       if (verbose)
         reporter.info("Unrolling: " + callsToProcess.size + "/" + allheads.size)
 
       val unrolls = callsToProcess.foldLeft(Set[Call]())((acc, call) => {
-
         val calldata = formula.callData(call)
         val recInvokes = calldata.parents.count(_ == call.fi.tfd.fd)
         //if the call is not a recursive call, unroll it unconditionally
@@ -110,7 +107,7 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
             acc
           }
         }
-        //TODO: are there better ways of unrolling ??
+        //TODO: are there better ways of unrolling ?? Yes. Akask Lal "dag Inlining". Implement that!
       })
 
       //update the head functions
@@ -189,25 +186,29 @@ class RefinementEngine(ctx: InferenceContext, prog: Program, ctrTracker: Constra
   }
 
   def inilineCall(call: Call, formula: Formula) = {
-    //here inline the body and conjoin it with the guard
     val tfd = call.fi.tfd
     val callee = tfd.fd
+    if (callee.isBodyVisible) {
+      //here inline the body and conjoin it with the guard
+      //Important: make sure we use a fresh body expression here, and freshenlocals
+      val tparamMap = (callee.tparams zip tfd.tps).toMap
+      val newbody = freshenLocals(matchToIfThenElse(callee.body.get))
+      val freshBody = instantiateType(newbody, tparamMap, Map())
+      val calleeSummary =
+        Equals(getFunctionReturnVariable(callee), freshBody)
+      val argmap1 = formalToActual(call)
+      val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary), ctx.multOp)
 
-    //Important: make sure we use a fresh body expression here, and freshenlocals
-    val tparamMap = (callee.tparams zip tfd.tps).toMap
-    val newbody = freshenLocals(matchToIfThenElse(callee.body.get))
-    val freshBody = instantiateType(newbody, tparamMap, Map())
-    val calleeSummary =
-      Equals(getFunctionReturnVariable(callee), freshBody)
-    val argmap1 = formalToActual(call)
-    val inlinedSummary = ExpressionTransformer.normalizeExpr(replace(argmap1, calleeSummary), ctx.multOp)
+      if (this.dumpInlinedSummary)
+        println("Inlined Summary: " + inlinedSummary)
 
-    if (this.dumpInlinedSummary)
-      println("Inlined Summary: " + inlinedSummary)
-
-    //conjoin the summary with the disjunct corresponding to the 'guard'
-    //note: the parents of the summary are the parents of the call plus the callee function
-    val calldata = formula.callData(call)
-    formula.conjoinWithDisjunct(calldata.guard, inlinedSummary, (callee +: calldata.parents))
+      //conjoin the summary with the disjunct corresponding to the 'guard'
+      //note: the parents of the summary are the parents of the call plus the callee function
+      val calldata = formula.callData(call)
+      formula.conjoinWithDisjunct(calldata.guard, inlinedSummary, (callee +: calldata.parents))
+    } else {
+      if (verbose)
+        reporter.info(s"Not inlining ${call.fi}: body invisible!")
+    }
   }
 }

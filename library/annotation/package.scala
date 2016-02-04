@@ -17,6 +17,8 @@ package object annotation {
   class extern     extends StaticAnnotation
   @ignore
   class inline     extends StaticAnnotation
+
+  // Orb annotations
   @ignore
   class monotonic  extends StaticAnnotation
   @ignore
@@ -27,4 +29,8 @@ package object annotation {
   class invstate extends StaticAnnotation
   @ignore
   class memoize extends StaticAnnotation
+  @ignore
+  class invisibleBody extends StaticAnnotation // do not unfold the body of the function
+  @ignore
+  class unfoldFactor(f: Int=0) extends StaticAnnotation // 0 implies no bound on unfolding
 }

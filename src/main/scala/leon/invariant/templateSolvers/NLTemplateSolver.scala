@@ -45,7 +45,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   val trackUnpackedVCCTime = false
 
   //print flags
-  val verbose = true
+  val verbose = false
   val printCounterExample = false
   val printPathToConsole = false
   val dumpPathAsSMTLIB = false
@@ -59,7 +59,7 @@ class NLTemplateSolver(ctx: InferenceContext, program: Program,
   private val farkasSolver = new FarkasLemmaSolver(ctx, program)
   private val startFromEarlierModel = true
   private val disableCegis = true
-  private val useIncrementalSolvingForVCs = true
+  private val useIncrementalSolvingForVCs = false
   private val useCVCToCheckVCs = true
   private val usePortfolio = false // portfolio has a bug in incremental solving
 

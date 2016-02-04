@@ -251,8 +251,6 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
 
   /**
    * These are evalFunctions that do not affect the state.
-   * TODO: here we can avoid creating two calls to the function one
-   * with uninterpreted state and other with input state (since here both are equal)
    */
   val computeFunctions = evalFunctions.map {
     case (tname, evalfd) =>
@@ -267,6 +265,7 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
       val invoke = FunctionInvocation(TypedFunDef(evalfd, evalfd.tparams.map(_.tp)),
         Seq(param1.id.toVariable, uiState))
       fun.body = Some(TupleSelect(invoke, 1))
+      fun.addFlag(IsInlined)
       (tname -> fun)
   }.toMap
 
@@ -286,7 +285,8 @@ class LazyClosureConverter(p: Program, ctx: LeonContext,
     val fun = new FunDef(FreshIdentifier(closureConsName(tname)), tparamdefs,
       Seq(ValDef(param1), ValDef(param2)), param1Type)
     fun.body = Some(param1.toVariable)
-    // assert that the closure in unevaluated if useRefEquality is enabled
+    fun.addFlag(IsInlined)
+    // assert that the closure in unevaluated if useRefEquality is enabled! is this needed ?
     // not supported as of now
     /*if (refEq) {
       val resid = FreshIdentifier("res", param1Type)

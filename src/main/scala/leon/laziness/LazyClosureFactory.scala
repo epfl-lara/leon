@@ -207,7 +207,6 @@ class LazyClosureFactory(p: Program) {
       val SetType(baseT) = stType.classDef.fields.find { fld => fld.id.name == fldname }.get.getType
       val param2 = FreshIdentifier("cl", baseT)
 
-      // TODO: as an optimization we can mark all these functions as inline and inline them at their callees
       val updateFun = new FunDef(FreshIdentifier("updState" + tn),
         state.tparams, Seq(ValDef(param1), ValDef(param2)), stType)
       // create a body for the updateFun:
@@ -221,6 +220,8 @@ class LazyClosureFactory(p: Program) {
       }
       val nst = CaseClass(stType, nargs)
       updateFun.body = Some(nst)
+      // add inline annotation of optimization
+      updateFun.addFlag(IsInlined)
       (tn -> updateFun)
     }.toMap
 }

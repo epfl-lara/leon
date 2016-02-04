@@ -28,14 +28,12 @@ object RealTimeQueue {
     def size: BigInt = {
       this match {
         case SNil()      => BigInt(0)
-        case SCons(x, t) => 1 + ssize(t)
+        case SCons(x, t) => 1 + (t*).size
       }
     } ensuring (_ >= 0)
   }
   case class SCons[T](x: T, tail: $[Stream[T]]) extends Stream[T]
   case class SNil[T]() extends Stream[T]
-
-  def ssize[T](l: $[Stream[T]]): BigInt = (l*).size
 
   def isConcrete[T](l: $[Stream[T]]): Boolean = {
     l.isEvaluated && (l* match {
@@ -45,9 +43,10 @@ object RealTimeQueue {
     })
   }
 
-   @invstate
+  @invisibleBody
+  @invstate
   def rotate[T](f: $[Stream[T]], r: List[T], a: $[Stream[T]]): Stream[T] = { // doesn't change state
-    require(r.size == ssize(f) + 1 && isConcrete(f))
+    require(r.size == (f*).size + 1 && isConcrete(f))
     (f.value, r) match {
       case (SNil(), Cons(y, _)) => //in this case 'y' is the only element in 'r'
         SCons[T](y, a)
@@ -82,7 +81,7 @@ object RealTimeQueue {
     def isEmpty = (f*).isEmpty
     def valid = {
       (firstUnevaluated(f) == firstUnevaluated(s)) &&
-        ssize(s) == ssize(f) - r.size //invariant: |s| = |f| - |r|
+        (s*).size == (f*).size - r.size //invariant: |s| = |f| - |r|
     }
   }
 
@@ -102,11 +101,11 @@ object RealTimeQueue {
     createQ(q.f, Cons(x, q.r), q.s)
   } ensuring (res => res.valid && time <= ?)
 
-  /*def dequeue[T](q: Queue[T]): Queue[T] = {
+  def dequeue[T](q: Queue[T]): Queue[T] = {
     require(!q.isEmpty && q.valid)
     q.f.value match {
       case SCons(x, nf) =>
         createQ(nf, q.r, q.s)
     }
-  } ensuring (res => res.valid && time <= ?)*/
+  } ensuring (res => res.valid && time <= ?)
 }

@@ -37,6 +37,7 @@ import leon.verification._
 import PredicateUtil._
 import leon.invariant.engine._
 import LazyVerificationPhase._
+import utils._
 /**
  * TODO: Function names are assumed to be small case. Fix this!!
  */
@@ -93,14 +94,14 @@ object LazinessEliminationPhase extends TransformationPhase {
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg)).apply
+    val progWithPre =  (new ClosurePreAsserter(typeCorrectProg)).apply
     if (dumpProgWithPreAsserts) {
       //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
       prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
     }
 
     // verify the contracts that do not use resources
-    val progWOInstSpecs = removeInstrumentationSpecs(progWithPre)
+    val progWOInstSpecs = InliningPhase.apply(ctx, removeInstrumentationSpecs(progWithPre))
     if (dumpProgWOInstSpecs) {
       //println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
@@ -110,7 +111,7 @@ object LazinessEliminationPhase extends TransformationPhase {
       checkSpecifications(progWOInstSpecs, checkCtx)
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(typeCorrectProg, closureFactory)
+    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), closureFactory)
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram) {
       //println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
