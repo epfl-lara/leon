@@ -9,6 +9,7 @@ import purescala.Definitions._
 import purescala.Types._
 
 import codegen._
+import codegen.runtime.{StdMonitor, Monitor}
 
 class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
   extends RecursiveEvaluator(ctx, prog, params.maxFunctionInvocations)
@@ -19,9 +20,10 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
   def initRC(mappings: Map[Identifier, Expr]): RC = DualRecContext(mappings)
   implicit val debugSection = utils.DebugSectionEvaluation
 
-  var monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
 
   val unit = new CompilationUnit(ctx, prog, params)
+
+  var monitor: Monitor = new StdMonitor(unit, params.maxFunctionInvocations, Map())
 
   val isCompiled = prog.definedFunctions.toSet
 
@@ -126,7 +128,7 @@ class DualEvaluator(ctx: LeonContext, prog: Program, params: CodeGenParams)
 
 
   override def eval(ex: Expr, model: solvers.Model) = {
-    monitor = new runtime.LeonCodeGenRuntimeMonitor(params.maxFunctionInvocations)
+    monitor = unit.getMonitor(model, params.maxFunctionInvocations, false)
     super.eval(ex, model)
   }
 
