@@ -40,8 +40,9 @@ trait AbstractModel[+This <: Model with AbstractModel[This]]
       "Model()"
     } else {
       (for ((k,v) <- mapping.toSeq.sortBy(_._1)) yield {
-        f"  ${k.asString}%-20s -> ${v.asString}"
-      }).mkString("Model(\n", ",\n", ")")
+        val valuePadded = v.asString.replaceAll("\n", "\n"+(" "*26))
+        f"  ${k.asString}%-20s -> ${valuePadded}"
+      }).mkString("Model(\n", ",\n", "\n)")
     }
   }
 }
