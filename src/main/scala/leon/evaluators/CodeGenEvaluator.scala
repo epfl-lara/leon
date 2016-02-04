@@ -38,13 +38,23 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
     }
   }
 
-  def check(expression: Expr, model: solvers.Model) : CheckResult = {
-    compileExpr(expression, model.toSeq.map(_._1)).map { ce =>
+
+  def check(expression: Expr, fullModel: solvers.Model) : CheckResult = {
+    val (_, assign) = fullModel.toSeq.partition {
+      case (id, v) => unit.abstractFunDefs(id)
+    }
+
+    compileExpr(expression, assign.map(_._1)).map { ce =>
       ctx.timers.evaluators.codegen.runtime.start()
+
       try {
-        val res = ce.eval(model, check = true)
-        if (res == BooleanLiteral(true)) EvaluationResults.CheckSuccess
-        else EvaluationResults.CheckValidityFailure
+        val res = ce.eval(fullModel, check = true)
+
+        if (res == BooleanLiteral(true)) {
+          EvaluationResults.CheckSuccess
+        } else {
+          EvaluationResults.CheckValidityFailure
+        }
       } catch {
         case e : ArithmeticException =>
           EvaluationResults.CheckRuntimeFailure(e.getMessage)
