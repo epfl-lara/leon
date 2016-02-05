@@ -227,7 +227,7 @@ object Expressions {
     }
   }
 
-  case class PartialLambda(mapping: Seq[(Seq[Expr], Expr)], default: Option[Expr], tpe: FunctionType) extends Expr {
+  case class FiniteLambda(mapping: Seq[(Seq[Expr], Expr)], default: Expr, tpe: FunctionType) extends Expr {
     val getType = tpe
   }
 

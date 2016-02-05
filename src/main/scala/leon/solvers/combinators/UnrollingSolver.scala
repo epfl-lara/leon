@@ -12,6 +12,7 @@ import purescala.Constructors._
 import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Types._
+import purescala.TypeOps.bestRealType
 import utils._
 
 import templates._
@@ -168,6 +169,19 @@ trait AbstractUnrollingSolver[T]
   trait ModelWrapper {
     def get(id: Identifier): Option[Expr]
     def eval(elem: T, tpe: TypeTree): Option[Expr]
+
+    private[AbstractUnrollingSolver] def extract(b: T, m: Matcher[T]): Option[Seq[Expr]] = {
+      val QuantificationTypeMatcher(fromTypes, _) = m.tpe
+      val optEnabler = eval(b, BooleanType)
+      optEnabler.filter(_ == BooleanLiteral(true)).flatMap { _ =>
+        val optArgs = (m.args zip fromTypes).map { case (arg, tpe) => eval(arg.encoded, tpe) }
+        if (optArgs.forall(_.isDefined)) {
+          Some(optArgs.map(_.get))
+        } else {
+          None
+        }
+      }
+    }
   }
 
   def solverGetModel: ModelWrapper
@@ -181,21 +195,21 @@ trait AbstractUnrollingSolver[T]
   private def validateModel(model: Model, assumptions: Seq[Expr], silenceErrors: Boolean): Boolean = {
     val expr = andJoin(assumptions ++ constraints)
 
-    evaluator.check(expr, model) match {
-      case EvaluationResults.CheckSuccess =>
+    evaluator.eval(expr, model) match {
+      case EvaluationResults.Successful(BooleanLiteral(true)) =>
         reporter.debug("- Model validated.")
         true
 
-      case EvaluationResults.CheckValidityFailure =>
+      case EvaluationResults.Successful(_) =>
         reporter.debug("- Invalid model.")
         false
 
-      case EvaluationResults.CheckRuntimeFailure(msg) =>
-        emit(silenceErrors)("- Model leads to evaluation error: " + msg)
+      case EvaluationResults.RuntimeError(msg) =>
+        emit(silenceErrors)("- Model leads to runtime error: " + msg)
         false
 
-      case EvaluationResults.CheckQuantificationFailure(msg) =>
-        emit(silenceErrors)("- Model leads to quantification error: " + msg)
+      case EvaluationResults.EvaluatorError(msg) =>
+        emit(silenceErrors)("- Model leads to evaluation error: " + msg)
         false
     }
   }
@@ -203,74 +217,109 @@ trait AbstractUnrollingSolver[T]
   private def getPartialModel: HenkinModel = {
     val wrapped = solverGetModel
 
-    def extract(b: T, m: Matcher[T]): Option[Seq[Expr]] = {
-      val QuantificationTypeMatcher(fromTypes, _) = m.tpe
-      val optEnabler = wrapped.eval(b, BooleanType)
-      optEnabler.filter(_ == BooleanLiteral(true)).flatMap { _ =>
-        val optArgs = (m.args zip fromTypes).map { case (arg, tpe) => wrapped.eval(arg.encoded, tpe) }
-        if (optArgs.forall(_.isDefined)) {
-          Some(optArgs.map(_.get))
-        } else {
-          None
-        }
-      }
-    }
-
-    val (typeInsts, partialInsts, lambdaInsts) = templateGenerator.manager.instantiations
+    val typeInsts = templateGenerator.manager.typeInstantiations
+    val partialInsts = templateGenerator.manager.partialInstantiations
+    val lambdaInsts = templateGenerator.manager.lambdaInstantiations
 
     val typeDomains: Map[TypeTree, Set[Seq[Expr]]] = typeInsts.map {
-      case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+      case (tpe, domain) => tpe -> domain.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
     }
 
     val funDomains: Map[Identifier, Set[Seq[Expr]]] = freeVars.map { case (id, idT) =>
-      id -> partialInsts.get(idT).toSeq.flatten.flatMap { case (b, m) => extract(b, m) }.toSet
+      id -> partialInsts.get(idT).toSeq.flatten.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
     }
 
     val lambdaDomains: Map[Lambda, Set[Seq[Expr]]] = lambdaInsts.map {
-      case (l, domain) => l -> domain.flatMap { case (b, m) => extract(b, m) }.toSet
+      case (l, domain) => l -> domain.flatMap { case (b, m) => wrapped.extract(b, m) }.toSet
     }
 
-    val model = extractModel(wrapped)
-    val asDMap = purescala.Quantification.extractModel(model.toMap, funDomains, typeDomains, evaluator)
+    val model = new Model(freeVars.toMap.map { case (id, _) =>
+      val value = wrapped.get(id).get
+      id -> (funDomains.get(id) match {
+        case Some(domain) =>
+          val FiniteLambda(_, dflt, tpe) = value
+          FiniteLambda(domain.toSeq.map { es =>
+            val optEv = evaluator.eval(application(value, es)).result
+            es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + application(value, es)))
+          }, dflt, tpe)
+
+        case None => postMap {
+          case p @ FiniteLambda(mapping, dflt, tpe) =>
+            Some(FiniteLambda(typeDomains.get(tpe) match {
+              case Some(domain) => domain.toSeq.map { es =>
+                val optEv = evaluator.eval(application(value, es)).result
+                es -> optEv.getOrElse(scala.sys.error("Unexpectedly failed to evaluate " + application(value, es)))
+              }
+              case _ => Seq.empty
+            }, dflt, tpe))
+          case _ => None
+        } (value)
+      })
+    })
+
     val domains = new HenkinDomains(lambdaDomains, typeDomains)
-    new HenkinModel(asDMap, domains)
+    new HenkinModel(model.toMap, domains)
   }
 
-  private def getTotalModel(silenceErrors: Boolean = false): (Boolean, Model) = {
-    if (interrupted) {
-      (false, Model.empty)
-    } else {
-      var valid = false
-      var wrapper = solverGetModel
+  private def getTotalModel: Model = {
+    val wrapped = solverGetModel
 
-      val clauses = templateGenerator.manager.checkClauses
-      if (clauses.isEmpty) {
-        valid = true
-      } else {
-        reporter.debug(" - Verifying model transitivity")
+    val typeInsts = templateGenerator.manager.typeInstantiations
+    val partialInsts = templateGenerator.manager.partialInstantiations
 
-        val timer = context.timers.solvers.check.start()
-        solverCheck(clauses) { res =>
-          timer.stop()
-
-          reporter.debug(" - Finished transitivity check")
-
-          res match {
-            case Some(true) =>
-              wrapper = solverGetModel
-              valid = true
-
-            case Some(false) =>
-              emit(silenceErrors)(" - Transitivity independence not guaranteed for model")
-
-            case None =>
-              emit(silenceErrors)(" - Unknown for transitivity independence!?")
+    def extractCond(params: Seq[Identifier], args: Seq[(T, Expr)], structure: Map[T, Identifier]): Seq[Expr] = (params, args) match {
+      case (id +: rparams, (v, arg) +: rargs) =>
+        if (templateGenerator.manager.isQuantifier(v)) {
+          structure.get(v) match {
+            case Some(pid) => Equals(Variable(id), Variable(pid)) +: extractCond(rparams, rargs, structure)
+            case None => extractCond(rparams, rargs, structure + (v -> id))
           }
+        } else {
+          Equals(Variable(id), arg) +: extractCond(rparams, rargs, structure)
         }
-      }
-
-      (valid, extractModel(wrapper))
+      case _ => Seq.empty
     }
+
+    new Model(freeVars.toMap.map { case (id, idT) =>
+      val value = wrapped.get(id).get
+      id -> (id.getType match {
+        case FunctionType(from, to) =>
+          val params = from.map(tpe => FreshIdentifier("x", tpe, true))
+          val domain = partialInsts.get(idT).orElse(typeInsts.get(bestRealType(id.getType))).toSeq.flatten
+          val conditionals = domain.flatMap { case (b, m) =>
+            wrapped.extract(b, m) match {
+              case Some(args) =>
+                val result = evaluator.eval(application(value, args)).result.getOrElse {
+                  scala.sys.error("Unexpectedly failed to evaluate " + application(value, args))
+                }
+
+                val c1 = (params zip args).map(p => Equals(Variable(p._1), p._2))
+                if (m.args.exists(arg => templateGenerator.manager.isQuantifier(arg.encoded))) {
+                  val c2 = extractCond(params, m.args.map(_.encoded) zip args, Map.empty)
+                  Seq(c1 -> result, c2 -> result)
+                } else {
+                  Seq(c1 -> result)
+                }
+
+              case None => Seq.empty
+            }
+          }
+
+          val filteredConds = conditionals
+            .foldLeft(Map.empty[Seq[Expr], Expr]) { case (mapping, (conds, result)) =>
+              if (mapping.isDefinedAt(conds)) mapping else mapping + (conds -> result)
+            }
+
+          val rest :+ ((_, dflt)) = filteredConds.toSeq.sortBy(_._1.size)
+          val body = rest.foldLeft(dflt) { case (elze, (conds, res)) =>
+            if (conds.isEmpty) elze else IfExpr(andJoin(conds), res, elze)
+          }
+
+          Lambda(params.map(ValDef(_)), body)
+
+        case _ => value
+      })
+    })
   }
 
   def genericCheck(assumptions: Set[Expr]): Option[Boolean] = {
@@ -291,9 +340,13 @@ trait AbstractUnrollingSolver[T]
 
     while(!foundDefinitiveAnswer && !interrupted) {
       reporter.debug(" - Running search...")
+      var quantify = false
+
+      def check[R](clauses: Seq[T])(block: Option[Boolean] => R) =
+        if (partialModels) solverCheckAssumptions(clauses)(block) else solverCheck(clauses)(block)
 
       val timer = context.timers.solvers.check.start()
-      solverCheckAssumptions(encodedAssumptions.toSeq ++ unrollingBank.satisfactionAssumptions) { res =>
+      check(encodedAssumptions.toSeq ++ unrollingBank.satisfactionAssumptions) { res =>
         timer.stop()
 
         reporter.debug(" - Finished search with blocked literals")
@@ -303,10 +356,37 @@ trait AbstractUnrollingSolver[T]
             foundAnswer(None)
 
           case Some(true) => // SAT
-            val (stop, model) = if (!partialModels) {
-              getTotalModel(silenceErrors = true)
-            } else {
+            val (stop, model) = if (interrupted) {
+              (true, Model.empty)
+            } else if (partialModels) {
               (true, getPartialModel)
+            } else {
+              val clauses = templateGenerator.manager.checkClauses
+              if (clauses.isEmpty) {
+                (true, extractModel(solverGetModel))
+              } else {
+                reporter.debug(" - Verifying model transitivity")
+
+                val timer = context.timers.solvers.check.start()
+                solverCheck(clauses) { res =>
+                  timer.stop()
+
+                  reporter.debug(" - Finished transitivity check")
+
+                  res match {
+                    case Some(true) =>
+                      (true, getTotalModel)
+
+                    case Some(false) =>
+                      reporter.debug(" - Transitivity not guaranteed for model")
+                      (false, Model.empty)
+
+                    case None =>
+                      reporter.warning(" - Unknown for transitivity!?")
+                      (false, Model.empty)
+                  }
+                }
+              }
             }
 
             if (!interrupted) {
@@ -316,15 +396,7 @@ trait AbstractUnrollingSolver[T]
                   reporter.error(model.asString(context))
                   foundAnswer(None, model)
                 } else {
-                  // further quantifier instantiations are required!
-                  val newClauses = unrollingBank.instantiateQuantifiers
-                  reporter.debug(" - more instantiations")
-
-                  for (cls <- newClauses) {
-                    solverAssert(cls)
-                  }
-
-                  reporter.debug(" - finished instantiating")
+                  quantify = true
                 }
               } else {
                 val valid = !checkModels || validateModel(model, assumptionsSeq, silenceErrors = false)
@@ -366,66 +438,74 @@ trait AbstractUnrollingSolver[T]
                   reporter.fatalError("Can't unroll unsat core for incompatible solver " + name)
               }
             }
+        }
+      }
 
-            if (!interrupted) {
-              if (feelingLucky) {
-                reporter.debug(" - Running search without blocked literals (w/ lucky test)")
-              } else {
-                reporter.debug(" - Running search without blocked literals (w/o lucky test)")
+      if (!quantify && !foundDefinitiveAnswer && !interrupted) {
+        if (feelingLucky) {
+          reporter.debug(" - Running search without blocked literals (w/ lucky test)")
+        } else {
+          reporter.debug(" - Running search without blocked literals (w/o lucky test)")
+        }
+
+        val timer = context.timers.solvers.check.start()
+        solverCheckAssumptions(encodedAssumptions.toSeq ++ unrollingBank.refutationAssumptions) { res2 =>
+          timer.stop()
+
+          reporter.debug(" - Finished search without blocked literals")
+
+          res2 match {
+            case Some(false) =>
+              solverUnsatCore match {
+                case Some(core) =>
+                  val exprCore = encodedCoreToCore(core)
+                  foundAnswer(Some(false), core = exprCore)
+                case None =>
+                  foundAnswer(Some(false))
               }
 
-              val timer = context.timers.solvers.check.start()
-              solverCheckAssumptions(encodedAssumptions.toSeq ++ unrollingBank.refutationAssumptions) { res2 =>
-                timer.stop()
-
-                reporter.debug(" - Finished search without blocked literals")
-
-                res2 match {
-                  case Some(false) =>
-                    solverUnsatCore match {
-                      case Some(core) =>
-                        val exprCore = encodedCoreToCore(core)
-                        foundAnswer(Some(false), core = exprCore)
-                      case None =>
-                        foundAnswer(Some(false))
-                    }
-
-                  case Some(true) =>
-                    if (this.feelingLucky && !interrupted) {
-                      // we might have been lucky :D
-                      val model = extractModel(solverGetModel)
-                      val valid = validateModel(model, assumptionsSeq, silenceErrors = true)
-                      if (valid) foundAnswer(Some(true), model)
-                    }
-
-                  case None =>
-                    foundAnswer(None)
-                }
+            case Some(true) =>
+              if (this.feelingLucky && !interrupted) {
+                // we might have been lucky :D
+                val model = extractModel(solverGetModel)
+                val valid = validateModel(model, assumptionsSeq, silenceErrors = true)
+                if (valid) foundAnswer(Some(true), model)
               }
-            }
 
-            if (interrupted) {
+            case None =>
               foundAnswer(None)
+          }
+        }
+      }
+
+      if (!foundDefinitiveAnswer && !interrupted) {
+        reporter.debug("- We need to keep going")
+
+        if (quantify) {
+          // further quantifier instantiations are required!
+          val newClauses = unrollingBank.instantiateQuantifiers
+          reporter.debug(" - more instantiations")
+
+          for (cls <- newClauses) {
+            solverAssert(cls)
+          }
+
+          reporter.debug(" - finished instantiating")
+        } else {
+          // unfolling `unfoldFactor` times
+          for (i <- 1 to unfoldFactor.toInt) {
+            val toRelease = unrollingBank.getBlockersToUnlock
+
+            reporter.debug(" - more unrollings")
+
+            val newClauses = unrollingBank.unrollBehind(toRelease)
+
+            for (ncl <- newClauses) {
+              solverAssert(ncl)
             }
+          }
 
-            if (!foundDefinitiveAnswer) {
-              reporter.debug("- We need to keep going")
-
-              // unfolling `unfoldFactor` times
-              for (i <- 1 to unfoldFactor.toInt) {
-                val toRelease = unrollingBank.getBlockersToUnlock
-
-                reporter.debug(" - more unrollings")
-
-                val newClauses = unrollingBank.unrollBehind(toRelease)
-
-                for (ncl <- newClauses) {
-                  solverAssert(ncl)
-                }
-              }
-
-              reporter.debug(" - finished unrolling")
-            }
+          reporter.debug(" - finished unrolling")
         }
       }
     }

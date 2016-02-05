@@ -4,15 +4,11 @@ package leon.codegen.runtime;
 
 import java.util.HashMap;
 
-public final class PartialLambda extends Lambda {
+public final class FiniteLambda extends Lambda {
   final HashMap<Tuple, Object> mapping = new HashMap<Tuple, Object>();
   private final Object dflt;
 
-  public PartialLambda() {
-    this(null);
-  }
-
-  public PartialLambda(Object dflt) {
+  public FiniteLambda(Object dflt) {
     super();
     this.dflt = dflt;
   }
@@ -26,18 +22,16 @@ public final class PartialLambda extends Lambda {
     Tuple tuple = new Tuple(args);
     if (mapping.containsKey(tuple)) {
       return mapping.get(tuple);
-    } else if (dflt != null) {
-      return dflt;
     } else {
-      throw new LeonCodeGenRuntimeException("Partial function apply on undefined arguments " + tuple);
+      return dflt;
     }
   }
 
   @Override
   public boolean equals(Object that) {
-    if (that != null && (that instanceof PartialLambda)) {
-      PartialLambda l = (PartialLambda) that;
-      return ((dflt != null && dflt.equals(l.dflt)) || (dflt == null && l.dflt == null)) && mapping.equals(l.mapping);
+    if (that != null && (that instanceof FiniteLambda)) {
+      FiniteLambda l = (FiniteLambda) that;
+      return dflt.equals(l.dflt) && mapping.equals(l.mapping);
     } else {
       return false;
     }

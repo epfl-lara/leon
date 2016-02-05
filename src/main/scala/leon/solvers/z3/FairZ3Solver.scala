@@ -35,6 +35,9 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   protected def hasError   = errors.getB(()) contains true
   protected def addError() = errors += () -> true
 
+  override val name = "Z3-f"
+  override val description = "Fair Z3 Solver"
+
   override protected val reporter = context.reporter
   override def reset(): Unit = super[AbstractZ3Solver].reset()
 
@@ -55,12 +58,14 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
     r
   }
 
+  /*
   override def solverCheckAssumptions[R](assumptions: Seq[Z3AST])(block: Option[Boolean] => R): R = {
     solver.push() // FIXME: remove when z3 bug is fixed
     val res = solver.checkAssumptions(assumptions : _*)
     solver.pop()  // FIXME: remove when z3 bug is fixed
     block(res)
   }
+  */
 
   def solverGetModel: ModelWrapper = new ModelWrapper {
     val model = solver.getModel

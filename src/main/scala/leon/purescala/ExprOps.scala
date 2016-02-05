@@ -884,7 +884,7 @@ object ExprOps extends { val Deconstructor = Operator } with SubTreeOps[Expr] {
       GenericValue(tp, 0)
 
     case ft @ FunctionType(from, to) =>
-      PartialLambda(Seq.empty, Some(simplestValue(to)), ft)
+      FiniteLambda(Seq.empty, simplestValue(to), ft)
 
     case _ => throw LeonFatalError("I can't choose simplest value for type " + tpe)
   }

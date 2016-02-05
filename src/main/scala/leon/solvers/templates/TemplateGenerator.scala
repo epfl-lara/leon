@@ -398,7 +398,6 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
         }
 
         case c @ Choose(Lambda(params, cond)) =>
-
           val cs = params.map(_.id.freshen.toVariable)
 
           for (c <- cs) {
@@ -410,6 +409,14 @@ class TemplateGenerator[T](val encoder: TemplateEncoder[T],
           storeGuarded(pathVar, replaceFromIDs(freshMap, cond))
 
           tupleWrap(cs)
+
+        case FiniteLambda(mapping, dflt, FunctionType(from, to)) =>
+          val args = from.map(tpe => FreshIdentifier("x", tpe))
+          val body = mapping.toSeq.foldLeft(dflt) { case (elze, (exprs, res)) =>
+            IfExpr(andJoin((args zip exprs).map(p => Equals(Variable(p._1), p._2))), res, elze)
+          }
+
+          rec(pathVar, Lambda(args.map(ValDef(_)), body))
 
         case l @ Lambda(args, body) =>
           val idArgs : Seq[Identifier] = lambdaArgs(l)

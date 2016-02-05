@@ -32,8 +32,8 @@ public class LeonCodeGenRuntimeHenkinMonitor extends LeonCodeGenRuntimeMonitor {
 
   public List<Tuple> domain(Object obj, int type) {
     List<Tuple> domain = new LinkedList<Tuple>();
-    if (obj instanceof PartialLambda) {
-      PartialLambda l = (PartialLambda) obj;
+    if (obj instanceof FiniteLambda) {
+      FiniteLambda l = (FiniteLambda) obj;
       for (Tuple key : l.mapping.keySet()) {
         domain.add(key);
       }

@@ -128,7 +128,7 @@ trait Z3StringEvaluatingSolver[TUnderlying <: EvaluatingSolver] extends Evaluati
 
 trait Z3StringQuantificationSolver[TUnderlying <: QuantificationSolver] extends QuantificationSolver { self:  Z3StringCapableSolver[TUnderlying] =>
   // Members declared in leon.solvers.QuantificationSolver
-  override def getModel: leon.solvers.HenkinModel = {
+  override def getModel = {
     val model = underlying.getModel
     someConverter map { converter =>
       val ids = model.ids.toSeq
@@ -136,41 +136,39 @@ trait Z3StringQuantificationSolver[TUnderlying <: QuantificationSolver] extends 
       import converter.Backward._
       val original_ids = ids.map(convertId)
       val original_exprs = exprs.map{ case e => convertExpr(e)(Map()) }
+
+      model match {
+        case hm: HenkinModel =>
+          val new_domain = new HenkinDomains(
+              hm.doms.lambdas.map(kv =>
+                (convertExpr(kv._1)(Map()).asInstanceOf[Lambda],
+                 kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap,
+              hm.doms.tpes.map(kv =>
+                (convertType(kv._1),
+                 kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap
+              )
       
-      val new_domain = new HenkinDomains(
-          model.doms.lambdas.map(kv =>
-            (convertExpr(kv._1)(Map()).asInstanceOf[Lambda],
-             kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap,
-          model.doms.tpes.map(kv =>
-            (convertType(kv._1),
-             kv._2.map(e => e.map(e => convertExpr(e)(Map()))))).toMap
-          )
-      
-      new HenkinModel(original_ids.zip(original_exprs).toMap, new_domain)
+          new HenkinModel(original_ids.zip(original_exprs).toMap, new_domain)
+        case _ => model
+      }
     } getOrElse model
   }
 }
 
-trait EvaluatorCheckConverter extends DeterministicEvaluator {
-  def converter: Z3StringConversion
-  abstract override def check(expression: Expr, model: solvers.Model) : CheckResult = {
-    val c = converter
-    import c.Backward._  // Because the evaluator is going to be called by the underlying solver, but it will use the original program
-    super.check(convertExpr(expression)(Map()), convertModel(model))
-  }
-}
-
 class ConvertibleCodeGenEvaluator(context: LeonContext, originalProgram: Program, val converter: Z3StringConversion)
-    extends CodeGenEvaluator(context, originalProgram) with EvaluatorCheckConverter {
+    extends CodeGenEvaluator(context, originalProgram) {
+
   override def compile(expression: Expr, args: Seq[Identifier]) : Option[solvers.Model=>EvaluationResult] = {
     import converter._ 
     super.compile(Backward.convertExpr(expression)(Map()), args.map(Backward.convertId))
-    .map(evaluator => (m: Model) => Forward.convertResult(evaluator(Backward.convertModel(m)))
+      .map(evaluator => (m: Model) => Forward.convertResult(evaluator(Backward.convertModel(m)))
     )
   }
 }
 
-class ConvertibleDefaultEvaluator(context: LeonContext, originalProgram: Program, val converter: Z3StringConversion) extends DefaultEvaluator(context, originalProgram) with EvaluatorCheckConverter {
+class ConvertibleDefaultEvaluator(context: LeonContext, originalProgram: Program, val converter: Z3StringConversion)
+    extends DefaultEvaluator(context, originalProgram) {
+
   override def eval(ex: Expr, model: Model): EvaluationResults.Result[Expr] = {
     import converter._
     Forward.convertResult(super.eval(Backward.convertExpr(ex)(Map()), Backward.convertModel(model)))

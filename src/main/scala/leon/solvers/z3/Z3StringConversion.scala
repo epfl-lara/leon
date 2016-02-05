@@ -185,11 +185,11 @@ trait Z3StringConverters  { self: Z3StringConversion =>
         case Variable(id) if bindings contains id => bindings(id).copiedFrom(e)
         case Variable(id) if hasIdConversion(id) => Variable(convertId(id)).copiedFrom(e)
         case Variable(id) => e
-        case pl@PartialLambda(mappings, default, tpe) =>
-          PartialLambda(
+        case pl @ FiniteLambda(mappings, default, tpe) =>
+          FiniteLambda(
               mappings.map(kv => (kv._1.map(argtpe => convertExpr(argtpe)),
                   convertExpr(kv._2))),
-                  default.map(d => convertExpr(d)), convertType(tpe).asInstanceOf[FunctionType])
+                  convertExpr(default), convertType(tpe).asInstanceOf[FunctionType])
         case Lambda(args, body) =>
           println("Converting Lambda :" + e)
           val new_bindings = scala.collection.mutable.ListBuffer[(Identifier, Identifier)]()

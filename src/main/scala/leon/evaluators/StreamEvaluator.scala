@@ -37,12 +37,12 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           case l @ Lambda(params, body) =>
             val mapping = l.paramSubst(newArgs)
             e(body)(rctx.withNewVars(mapping), gctx).distinct
-          case PartialLambda(mapping, _, _) =>
+          case FiniteLambda(mapping, dflt, _) =>
             // FIXME
-            mapping.collectFirst {
+            Stream(mapping.collectFirst {
               case (pargs, res) if (newArgs zip pargs).forall { case (f, r) => f == r } =>
                 res
-            }.toStream
+            }.getOrElse(dflt))
           case _ =>
             Stream()
         }
@@ -127,7 +127,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       Stream(replaceFromIDs(mapping, nl))
 
     // FIXME
-    case PartialLambda(mapping, tpe, df) =>
+    case FiniteLambda(mapping, dflt, tpe) =>
       def solveOne(pair: (Seq[Expr], Expr)) = {
         val (args, res) = pair
         for {
@@ -135,7 +135,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
           r  <- e(res)
         } yield as -> r
       }
-      cartesianProduct(mapping map solveOne) map (PartialLambda(_, tpe, df)) // FIXME!!!
+      cartesianProduct(mapping map solveOne) map (FiniteLambda(_, dflt, tpe)) // FIXME!!!
 
     case f @ Forall(fargs, TopLevelAnds(conjuncts)) =>
       Stream() // FIXME
@@ -337,7 +337,7 @@ class StreamEvaluator(ctx: LeonContext, prog: Program)
       (lv, rv) match {
         case (FiniteSet(el1, _), FiniteSet(el2, _)) => BooleanLiteral(el1 == el2)
         case (FiniteMap(el1, _, _), FiniteMap(el2, _, _)) => BooleanLiteral(el1.toSet == el2.toSet)
-        case (PartialLambda(m1, _, d1), PartialLambda(m2, _, d2)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
+        case (FiniteLambda(m1, d1, _), FiniteLambda(m2, d2, _)) => BooleanLiteral(m1.toSet == m2.toSet && d1 == d2)
         case _ => BooleanLiteral(lv == rv)
       }
 

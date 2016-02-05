@@ -131,7 +131,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
           Constructor[Expr, TypeTree](subs, ft, { s =>
             val grouped = s.grouped(from.size + 1).toSeq
             val mapping = grouped.init.map { case args :+ res => (args -> res) }
-            PartialLambda(mapping, Some(grouped.last.last), ft)
+            FiniteLambda(mapping, grouped.last.last, ft)
           }, ft.asString(ctx) + "@" + size)
         }
         constructors += ft -> cs

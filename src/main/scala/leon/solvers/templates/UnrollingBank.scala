@@ -235,7 +235,8 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
   def instantiateQuantifiers: Seq[T] = {
     val (newExprs, callBlocks, appBlocks) = manager.instantiateIgnored
     val blockExprs = freshAppBlocks(appBlocks.keys)
-    val gen = (callInfos.values.map(_._1) ++ appInfos.values.map(_._1)).min
+    val gens = (callInfos.values.map(_._1) ++ appInfos.values.map(_._1))
+    val gen = if (gens.nonEmpty) gens.min else 0
 
     for ((b, newInfos) <- callBlocks) {
       registerCallBlocker(nextGeneration(gen), b, newInfos)

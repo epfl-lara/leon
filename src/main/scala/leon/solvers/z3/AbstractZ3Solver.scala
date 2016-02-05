@@ -678,13 +678,13 @@ trait AbstractZ3Solver extends Solver {
                   case None => simplestValue(ft)
                   case Some((_, mapping, elseValue)) =>
                     val leonElseValue = rec(elseValue, tt)
-                    PartialLambda(mapping.flatMap { case (z3Args, z3Result) =>
+                    FiniteLambda(mapping.flatMap { case (z3Args, z3Result) =>
                       if (t == z3Args.head) {
                         List((z3Args.tail zip fts).map(p => rec(p._1, p._2)) -> rec(z3Result, tt))
                       } else {
                         Nil
                       }
-                    }, Some(leonElseValue), ft)
+                    }, leonElseValue, ft)
                 }
               }
 
