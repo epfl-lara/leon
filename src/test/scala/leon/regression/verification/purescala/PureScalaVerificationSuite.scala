@@ -4,6 +4,7 @@ package leon.regression.verification
 package purescala
 
 import smtlib.interpreters.{CVC4Interpreter, Z3Interpreter}
+import leon.solvers.SolverFactory
 
 // If you add another regression test, make sure it contains one object whose name matches the file name
 // This is because we compile all tests from each folder together.
@@ -11,21 +12,9 @@ abstract class PureScalaVerificationSuite extends VerificationSuite {
 
   val testDir = "regression/verification/purescala/"
 
-  val isZ3Available = try {
-    Z3Interpreter.buildDefault.free()
-    true
-  } catch {
-    case e: java.io.IOException =>
-      false
-  }
+  val isZ3Available = SolverFactory.hasZ3
 
-  val isCVC4Available = try {
-    CVC4Interpreter.buildDefault.free()
-    true
-  } catch {
-    case e: java.io.IOException =>
-      false
-  }
+  val isCVC4Available = SolverFactory.hasCVC4
 
   val opts: List[List[String]] = {
     List(

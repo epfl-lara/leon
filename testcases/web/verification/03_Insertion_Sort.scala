@@ -24,7 +24,7 @@ object InsertionSort {
     case Nil => true
     case Cons(x, Nil) => true
     case Cons(x, Cons(y, ys)) => x <= y && isSorted(Cons(y, ys))
-  }   
+  }
 
   /* Inserting element 'e' into a sorted list 'l' produces a sorted list with
    * the expected content and size */
@@ -33,8 +33,8 @@ object InsertionSort {
     l match {
       case Nil => Cons(e,Nil)
       case Cons(x,xs) => if (x <= e) Cons(x,sortedIns(e, xs)) else Cons(e, l)
-    } 
-  } ensuring(res => contents(res) == contents(l) ++ Set(e) 
+    }
+  } ensuring(res => contents(res) == contents(l) ++ Set(e)
                     && isSorted(res)
                     && size(res) == size(l) + 1
             )
@@ -44,8 +44,8 @@ object InsertionSort {
     l match {
       case Nil => Cons(e,Nil)
       case Cons(x,xs) => if (x <= e) Cons(x,buggySortedIns(e, xs)) else Cons(e, l)
-    } 
-  } ensuring(res => contents(res) == contents(l) ++ Set(e) 
+    }
+  } ensuring(res => contents(res) == contents(l) ++ Set(e)
                     && isSorted(res)
                     && size(res) == size(l) + 1
             )
@@ -55,7 +55,7 @@ object InsertionSort {
   def sort(l: List): List = (l match {
     case Nil => Nil
     case Cons(x,xs) => sortedIns(x, sort(xs))
-  }) ensuring(res => contents(res) == contents(l) 
+  }) ensuring(res => contents(res) == contents(l)
                      && isSorted(res)
                      && size(res) == size(l)
              )
@@ -69,6 +69,7 @@ object InsertionSort {
     }
   } ensuring(res => contents(res) == contents(l1) ++ contents(l2) && isSorted(res))
 
+  @ignore
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil))))))
 

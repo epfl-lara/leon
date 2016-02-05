@@ -3,8 +3,8 @@
 package leon
 package grammars
 
-import purescala.Types._
+import purescala.Types.Typed
 
-case class Empty[T <% Typed]() extends ExpressionGrammar[T] {
+case class Empty[T <: Typed]() extends ExpressionGrammar[T] {
   def computeProductions(t: T)(implicit ctx: LeonContext): Seq[Gen] = Nil
 }

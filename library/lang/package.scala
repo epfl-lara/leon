@@ -70,5 +70,4 @@ package object lang {
       }
     }
   }
-
 }

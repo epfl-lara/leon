@@ -9,12 +9,14 @@ import Common._
 import Expressions._
 import Types._
 import Definitions._
+import org.apache.commons.lang3.StringEscapeUtils
 
 /** This pretty-printer only print valid scala syntax */
 class ScalaPrinter(opts: PrinterOptions,
                    opgm: Option[Program],
                    sb: StringBuffer = new StringBuffer) extends PrettyPrinter(opts, opgm, sb) {
 
+  private val dbquote = "\""
   override def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
 
     tree match {
@@ -39,7 +41,6 @@ class ScalaPrinter(opts: PrinterOptions,
       case m @ FiniteMap(els, k, v)  => p"Map[$k,$v]($els)"
 
       case InfiniteIntegerLiteral(v) => p"BigInt($v)"
-
       case a@FiniteArray(elems, oDef, size) =>
         import ExprOps._
         val ArrayType(underlying) = a.getType

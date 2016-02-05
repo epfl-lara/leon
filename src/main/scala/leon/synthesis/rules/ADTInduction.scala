@@ -12,27 +12,41 @@ import purescala.ExprOps._
 import purescala.Types._
 import purescala.Definitions._
 
+/** For every inductive variable, outputs a recursive solution if it exists */
 case object ADTInduction extends Rule("ADT Induction") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
+    /* All input variables which are inductive in the post condition, along with their abstract data type. */
     val candidates = p.as.collect {
         case IsTyped(origId, act: AbstractClassType) if isInductiveOn(hctx.sctx.solverFactory)(p.pc, origId) => (origId, act)
     }
 
     val instances = for (candidate <- candidates) yield {
       val (origId, ct) = candidate
+      // All input variables except the current inductive one.
       val oas = p.as.filterNot(_ == origId)
 
+      // The return type (all output variables).
       val resType = tupleTypeWrap(p.xs.map(_.getType))
 
+      // A new fresh variable similar to the current inductive one to perform induction.
       val inductOn     = FreshIdentifier(origId.name, origId.getType, true)
+
+      // Duplicated arguments names based on existing remaining input variables.
       val residualArgs = oas.map(id => FreshIdentifier(id.name, id.getType, true))
+      
+      // Mapping from existing input variables to the new duplicated ones.
       val residualMap  = (oas zip residualArgs).map{ case (id, id2) => id -> Variable(id2) }.toMap
+      
+      // The value definition to be used in arguments of the recursive method.
       val residualArgDefs = residualArgs.map(ValDef(_))
 
+      // Returns true if the case class has a field of type the one of the induction variable 
+      // E.g. for `List` it returns true since `Cons(a: T, q: List[T])` and Cons is a List[T]
       def isAlternativeRecursive(ct: CaseClassType): Boolean = {
         ct.fields.exists(_.getType == origId.getType)
       }
 
+      // True if one of the case classes has a field with the type being the one of the induction variable
       val isRecursive = ct.knownCCDescendants.exists(isAlternativeRecursive)
 
       // Map for getting a formula in the context of within the recursive function
@@ -40,6 +54,7 @@ case object ADTInduction extends Rule("ADT Induction") {
 
       if (isRecursive) {
 
+        // Transformation of conditions, variables and axioms to use the inner variables of the inductive function.
         val innerPhi = substAll(substMap, p.phi)
         val innerPC  = substAll(substMap, p.pc)
         val innerWS  = substAll(substMap, p.ws)
@@ -79,6 +94,7 @@ case object ADTInduction extends Rule("ADT Induction") {
           case sols =>
             var globalPre = List[Expr]()
 
+            // The recursive inner function
             val newFun = new FunDef(FreshIdentifier("rec", alwaysShowUniqueID = true), Nil, ValDef(inductOn) +: residualArgDefs, resType)
 
             val cases = for ((sol, (problem, pre, cct, ids, calls)) <- sols zip subProblemsInfo) yield {
@@ -114,7 +130,7 @@ case object ADTInduction extends Rule("ADT Induction") {
         }
 
         Some(decomp(subProblemsInfo.map(_._1).toList, onSuccess, s"ADT Induction on '${origId.asString}'"))
-      } else {
+      } else { // If none of the descendants of the type is recursive, then nothing can be done.
         None
       }
     }

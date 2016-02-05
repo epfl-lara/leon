@@ -9,7 +9,7 @@ import purescala.Expressions._
 import purescala.ExprOps._
 import purescala.Definitions._
 
-import _root_.smtlib.parser.Commands.{Assert => SMTAssert, _}
+import _root_.smtlib.parser.Commands.{Assert => SMTAssert, FunDef => SMTFunDef, _}
 import _root_.smtlib.parser.Terms.{Identifier => SMTIdentifier, _}
 import _root_.smtlib.parser.CommandsResponses.{Error => ErrorResponse, _}
 
@@ -62,27 +62,37 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
   }
 
   protected def getModel(filter: Identifier => Boolean): Model = {
-    val syms = variables.aSet.filter(filter).toList.map(variables.aToB)
+    val syms = variables.aSet.filter(filter).map(variables.aToB)
     if (syms.isEmpty) {
       Model.empty
     } else {
       try {
-        val cmd: Command = GetValue(
-          syms.head,
-          syms.tail.map(s => QualifiedIdentifier(SMTIdentifier(s)))
-        )
+        val cmd = GetModel()
 
         emit(cmd) match {
-          case GetValueResponseSuccess(valuationPairs) =>
+          case GetModelResponseSuccess(smodel) =>
+            var modelFunDefs = Map[SSymbol, DefineFun]()
 
-            new Model(valuationPairs.collect {
-              case (SimpleSymbol(sym), value) if variables.containsB(sym) =>
-                val id = variables.toA(sym)
+            // first-pass to gather functions
+            for (me <- smodel) me match {
+              case me @ DefineFun(SMTFunDef(a, args, _, _)) if args.nonEmpty =>
+                modelFunDefs += a -> me
+              case _ =>
+            }
 
-                (id, fromSMT(value, id.getType)(Map(), Map()))
-            }.toMap)
+            var model = Map[Identifier, Expr]()
+
+            for (me <- smodel) me match {
+              case DefineFun(SMTFunDef(s, args, kind, e)) if syms(s) =>
+                val id = variables.toA(s)
+                model += id -> fromSMT(e, id.getType)(Map(), modelFunDefs)
+              case _ =>
+            }
+
+            new Model(model)
+
           case _ =>
-            Model.empty //FIXME improve this
+            Model.empty // FIXME improve this
         }
       } catch {
         case e : SMTLIBUnsupportedError =>
@@ -100,6 +110,7 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
     variables.push()
     genericValues.push()
     sorts.push()
+    lambdas.push()
     functions.push()
     errors.push()
 
@@ -113,6 +124,7 @@ abstract class SMTLIBSolver(val context: LeonContext, val program: Program)
     variables.pop()
     genericValues.pop()
     sorts.pop()
+    lambdas.pop()
     functions.pop()
     errors.pop()
 

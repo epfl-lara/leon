@@ -127,6 +127,9 @@ final class Types(context: LeonContext, program: Program, system: System)(implic
             case Some(datatype) => datatype.typ
           }}.map { Type(_, args) }
         }
+      case StringType =>
+        context.reporter.warning("Strings are not yet supported, translating to unspecified type")
+        Future.successful { Type("Leon_Library.string", Nil) }
       case _ if strict =>
         context.reporter.fatalError(s"Unsupported type $tree, can't be inferred")
       case _ =>

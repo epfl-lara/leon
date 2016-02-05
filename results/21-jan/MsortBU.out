@@ -1,0 +1,138 @@
+[[33mWarning [0m] warning: there were 5 feature warnings; re-run with -feature for details
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for ssize4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pairs4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pairs4(rest, st@))' VC for pairs4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for pairs4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pairs4(l, st@))' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree4(a77._1, a77._2))' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for constructMergeTree4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for merge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for merge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for merge4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for Merge@pairsLem1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call pairs4(rest, st@))' VC for Merge@pairsLem1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for Merge@mergeLem2 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for Merge@mergeLem3 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'tact (postcondition)' VC for mergePreMonotone1 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for IListToLList4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for IListToLList4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call constructMergeTree4(IListToLList4(l), st ...)' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for mergeSort4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for firstMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for firstMin4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size19 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size19 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size20 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size20 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for size21 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for size21 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for valid5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for valid5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fullSize5 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for fullSize5 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                                            ║
+║ BottomUpMergeSort.IListToLList        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ BottomUpMergeSort.IListToLList        postcondition                                                 ?:?  valid  U:smt-cvc4    1.025 ║
+║ BottomUpMergeSort.Merge@mergeLem      postcondition                                                 ?:?  valid  U:smt-z3      0.056 ║
+║ BottomUpMergeSort.Merge@mergeLem      postcondition                                                 ?:?  valid  U:smt-z3      0.062 ║
+║ BottomUpMergeSort.Merge@pairsLem      postcondition                                                 ?:?  valid  U:smt-z3      0.198 ║
+║ BottomUpMergeSort.Merge@pairsLem      precond. (call pairs4(rest, st@))                             ?:?  valid  U:smt-z3      0.021 ║
+║ BottomUpMergeSort.constructMergeTree  match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ BottomUpMergeSort.constructMergeTree  postcondition                                                 ?:?  valid  U:smt-z3      0.174 ║
+║ BottomUpMergeSort.constructMergeTree  precond. (call constructMergeTree4(a77._1, a77._2))           ?:?  valid  U:smt-z3      0.034 ║
+║ BottomUpMergeSort.constructMergeTree  precond. (call pairs4(l, st@))                                ?:?  valid  U:smt-z3      0.014 ║
+║ BottomUpMergeSort.firstMin            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.297 ║
+║ BottomUpMergeSort.firstMin            postcondition                                                 ?:?  valid  U:smt-z3      0.335 ║
+║ LList.fullSize                        match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ LList.fullSize                        postcondition                                                 ?:?  valid  U:smt-z3      0.030 ║
+║ BottomUpMergeSort.merge               match exhaustiveness                                          ?:?  valid  U:smt-z3      0.022 ║
+║ BottomUpMergeSort.merge               match exhaustiveness                                          ?:?  valid  U:smt-z3      0.017 ║
+║ BottomUpMergeSort.merge               postcondition                                                 ?:?  valid  U:smt-cvc4    1.813 ║
+║ BottomUpMergeSort.mergePreMonotone    tact (postcondition)                                          ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.mergeSort           match exhaustiveness                                          ?:?  valid  U:smt-z3      0.148 ║
+║ BottomUpMergeSort.mergeSort           match exhaustiveness                                          ?:?  valid  U:smt-z3      0.008 ║
+║ BottomUpMergeSort.mergeSort           postcondition                                                 ?:?  valid  U:smt-z3      0.315 ║
+║ BottomUpMergeSort.mergeSort           precond. (call constructMergeTree4(IListToLList4(l), st ...)  ?:?  valid  U:smt-z3      0.017 ║
+║ BottomUpMergeSort.pairs               match exhaustiveness                                          ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.pairs               postcondition                                                 ?:?  valid  U:smt-z3      0.779 ║
+║ BottomUpMergeSort.pairs               precond. (call pairs4(rest, st@))                             ?:?  valid  U:smt-z3      0.035 ║
+║ LList.size                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.011 ║
+║ IList.size                            match exhaustiveness                                          ?:?  valid  U:smt-z3      0.008 ║
+║ IStream.size                          match exhaustiveness                                          ?:?  valid  U:smt-z3      0.009 ║
+║ LList.size                            postcondition                                                 ?:?  valid  U:smt-z3      0.017 ║
+║ IList.size                            postcondition                                                 ?:?  valid  U:smt-z3      0.012 ║
+║ IStream.size                          postcondition                                                 ?:?  valid  U:smt-z3      0.015 ║
+║ BottomUpMergeSort.ssize               postcondition                                                 ?:?  valid  U:smt-z3      0.572 ║
+║ LList.valid                           match exhaustiveness                                          ?:?  valid  U:smt-z3      0.013 ║
+║ LList.valid                           postcondition                                                 ?:?  valid  U:smt-z3      0.013 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 34     valid: 34     invalid: 0      unknown 0                                                                         6.131 ║
+╚═════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for pairs-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for constructMergeTree-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for merge-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for IListToLList-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for mergeSort-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for firstMin-time @?:?...
+[[34m  Info  [0m]  => VALID
+Resource Verification Results: 
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                   ║
+║ BottomUpMergeSort.IListToLList-time          postcondition  ?:?  valid   U:smt-z3    0.026 ║
+║ BottomUpMergeSort.constructMergeTree-time    postcondition  ?:?  valid   U:smt-z3    0.401 ║
+║ BottomUpMergeSort.firstMin-time              postcondition  ?:?  valid   U:smt-z3    0.717 ║
+║ BottomUpMergeSort.merge-time                 postcondition  ?:?  valid   U:smt-z3    0.560 ║
+║ BottomUpMergeSort.mergeSort-time             postcondition  ?:?  valid   U:smt-z3    0.433 ║
+║ BottomUpMergeSort.pairs-time                 postcondition  ?:?  valid   U:smt-z3    0.077 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 6      valid: 6      invalid: 0      unknown 0                                2.214 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════╝

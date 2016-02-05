@@ -171,7 +171,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     // define an activating boolean...
     val template = templateGenerator.mkTemplate(expr)
 
-    val trArgs = template.tfd.params.map(vd => bindings(Variable(vd.id)))
+    val trArgs = template.tfd.params.map(vd => Left(bindings(Variable(vd.id))))
 
     for (vd <- template.tfd.params if vd.getType.isInstanceOf[FunctionType]) {
       functionVars += vd.getType -> (functionVars.getOrElse(vd.getType, Set()) + bindings(vd.toVariable))
@@ -240,15 +240,21 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
     callInfos --= ids
 
     val apps = ids.flatMap(id => blockerToApps.get(id))
-    val thisAppInfos = apps.map(app => app -> appInfos(app))
+    val thisAppInfos = apps.map(app => app -> {
+      val (gen, _, _, _, infos) = appInfos(app)
+      (gen, infos)
+    })
+
     blockerToApps --= ids
     appInfos --= apps
 
-    for ((app, (_, _, _, _, infos)) <- thisAppInfos if infos.nonEmpty) {
+    for ((app, (_, infos)) <- thisAppInfos if infos.nonEmpty) {
       val extension = extendAppBlock(app, infos)
       reporter.debug(" -> extending lambda blocker: " + extension)
       newClauses :+= extension
     }
+
+    var fastAppInfos : Map[(T, App[T]), (Int, Set[TemplateAppInfo[T]])] = Map.empty
 
     for ((id, (gen, _, _, infos)) <- newCallInfos; info @ TemplateCallInfo(tfd, args) <- infos) {
       var newCls = Seq[T]()
@@ -268,13 +274,23 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
           //reporter.debug(template)
 
           val (newExprs, callBlocks, appBlocks) = template.instantiate(defBlocker, args)
-          val blockExprs = freshAppBlocks(appBlocks.keys)
+
+          // we handle obvious appBlocks in an immediate manner in order to increase
+          // performance for folds that just pass a lambda around to recursive calls
+          val (fastApps, nextApps) = appBlocks.partition(p => p._2.toSeq match {
+            case Seq(TemplateAppInfo(_, equals, _)) if equals == manager.trueT => true
+            case _ => false
+          })
+
+          fastAppInfos ++= fastApps.mapValues(gen -> _)
+
+          val blockExprs = freshAppBlocks(nextApps.keys)
 
           for((b, newInfos) <- callBlocks) {
             registerCallBlocker(nextGeneration(gen), b, newInfos)
           }
 
-          for ((app, newInfos) <- appBlocks) {
+          for ((app, newInfos) <- nextApps) {
             registerAppBlocker(nextGeneration(gen), app, newInfos)
           }
 
@@ -296,7 +312,7 @@ class UnrollingBank[T <% Printable](ctx: LeonContext, templateGenerator: Templat
       newClauses ++= newCls
     }
 
-    for ((app @ (b, _), (gen, _, _, _, infos)) <- thisAppInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
+    for ((app @ (b, _), (gen, infos)) <- thisAppInfos ++ fastAppInfos; info @ TemplateAppInfo(template, equals, args) <- infos) {
       var newCls = Seq.empty[T]
 
       val lambdaBlocker = lambdaBlockers.get(info) match {

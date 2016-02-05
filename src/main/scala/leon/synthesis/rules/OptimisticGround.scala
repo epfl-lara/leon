@@ -36,7 +36,6 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
             //println("SOLVING " + phi + " ...")
             solver.solveSAT(phi) match {
               case (Some(true), satModel) =>
-
                 val newNotPhi = valuateWithModelIn(notPhi, xss, satModel)
 
                 //println("REFUTING " + Not(newNotPhi) + "...")
@@ -46,8 +45,15 @@ case object OptimisticGround extends Rule("Optimistic Ground") {
                     predicates = valuateWithModelIn(phi, ass, invalidModel) +: predicates
 
                   case (Some(false), _) =>
-                    result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), tupleWrap(p.xs.map(valuateWithModel(satModel))))))
+                    // Model apprears valid, but it might be a fake expression (generic values)
+                    val outExpr = tupleWrap(p.xs.map(valuateWithModel(satModel)))
 
+                    if (!isRealExpr(outExpr)) {
+                      // It does contain a generic value, we skip
+                      predicates = valuateWithModelIn(phi, xss, satModel) +: predicates
+                    } else {
+                      result = Some(RuleClosed(Solution(BooleanLiteral(true), Set(), outExpr)))
+                    }
                   case _ =>
                     continue = false
                     result = None

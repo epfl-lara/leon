@@ -23,7 +23,9 @@ trait Solver extends Interruptible {
     assertCnstr(Not(vc.condition))
   }
 
+  /** Returns Some(true) if it found a satisfying model, Some(false) if no model exists, and None otherwise */
   def check: Option[Boolean]
+  /** Returns the model if it exists */
   def getModel: Model
   def getResultSolver: Option[Solver] = Some(this)
 
@@ -45,7 +47,7 @@ trait Solver extends Interruptible {
 
   protected def unsupported(t: Tree, str: String): Nothing = {
     val err = SolverUnsupportedError(t, this, Some(str))
-    leonContext.reporter.warning(err.getMessage)
+    //leonContext.reporter.warning(str)
     throw err
   }
 

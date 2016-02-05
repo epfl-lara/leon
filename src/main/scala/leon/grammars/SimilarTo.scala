@@ -13,7 +13,7 @@ import purescala.Expressions._
 
 import synthesis._
 
-case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[Label[String]] {
+case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisContext, p: Problem) extends ExpressionGrammar[NonTerminal[String]] {
 
   val excludeFCalls = sctx.settings.functionsToIgnore
 
@@ -23,11 +23,11 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
       OneOf(terminals.toSeq :+ e) ||
       FunctionCalls(sctx.program, sctx.functionContext, p.as.map(_.getType), excludeFCalls) ||
       SafeRecursiveCalls(sctx.program, p.ws, p.pc),
-    { (t: TypeTree)      => Label(t, "B", None)},
-    { (l: Label[String]) => l.getType }
+    { (t: TypeTree)      => NonTerminal(t, "B", None)},
+    { (l: NonTerminal[String]) => l.getType }
   ), 1)
 
-  type L = Label[String]
+  type L = NonTerminal[String]
 
   val getNext: () => Int = {
     var counter = -1
@@ -41,7 +41,7 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
 
   def computeProductions(t: L)(implicit ctx: LeonContext): Seq[Gen] = {
     t match {
-      case Label(_, "B", _) => normalGrammar.computeProductions(t)
+      case NonTerminal(_, "B", _) => normalGrammar.computeProductions(t)
       case _                =>
 
         val allSimilar = similarCache.getOrElse {
@@ -59,7 +59,7 @@ case class SimilarTo(e: Expr, terminals: Set[Expr] = Set(), sctx: SynthesisConte
     def getLabel(t: TypeTree) = {
       val tpe = bestRealType(t)
       val c = getNext()
-      Label(tpe, "G"+c)
+      NonTerminal(tpe, "G"+c)
     }
 
     def isCommutative(e: Expr) = e match {

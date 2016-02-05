@@ -17,6 +17,7 @@ import purescala.ExprOps._
 import purescala.Types._
 
 import solvers.templates._
+import Template._
 
 import evaluators._
 
@@ -66,7 +67,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
 
       if (optEnabler == Some(true)) {
         val optArgs = (m.args zip fromTypes).map {
-          p => softFromZ3Formula(model, model.eval(Matcher.argValue(p._1), true).get, p._2)
+          p => softFromZ3Formula(model, model.eval(p._1.encoded, true).get, p._2)
         }
 
         if (optArgs.forall(_.isDefined)) {
@@ -136,23 +137,23 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
   private val freeVars    = new IncrementalSet[Identifier]()
   private val constraints = new IncrementalSeq[Expr]()
 
+  val tr = implicitly[Z3AST => Printable]
 
   val unrollingBank = new UnrollingBank(context, templateGenerator)
 
+  private val incrementals: List[IncrementalState] = List(
+    errors, freeVars, constraints, functions, generics, lambdas, sorts, variables,
+    constructors, selectors, testers, unrollingBank
+  )
+
   def push() {
-    errors.push()
     solver.push()
-    unrollingBank.push()
-    freeVars.push()
-    constraints.push()
+    incrementals.foreach(_.push())
   }
 
   def pop() {
-    errors.pop()
     solver.pop(1)
-    unrollingBank.pop()
-    freeVars.pop()
-    constraints.pop()
+    incrementals.foreach(_.pop())
   }
 
   override def check: Option[Boolean] = {
@@ -245,7 +246,7 @@ class FairZ3Solver(val context: LeonContext, val program: Program)
             solver.assertCnstr(clause)
           }
 
-          reporter.debug(" - Verifying model transitivity")
+          reporter.debug(" - Enforcing model transitivity")
           val timer = context.timers.solvers.z3.check.start()
           solver.push() // FIXME: remove when z3 bug is fixed
           val res = solver.checkAssumptions((assumptionsAsZ3 ++ unrollingBank.satisfactionAssumptions) :_*)

@@ -48,6 +48,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
 
   private var model = Model.empty
 
+  /** @inheritdoc */
   def check: Option[Boolean] = {
     val timer = context.timers.solvers.enum.check.start()
     val res = try {
@@ -78,6 +79,7 @@ class EnumerationSolver(val context: LeonContext, val program: Program) extends 
     res
   }
 
+  /** @inheritdoc */
   def getModel: Model = {
     model
   }

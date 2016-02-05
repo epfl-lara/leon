@@ -16,6 +16,7 @@ import utils._
 import z3.FairZ3Component.{optFeelingLucky, optUseCodeGen, optAssumePre, optNoChecks, optUnfoldFactor}
 import templates._
 import evaluators._
+import Template._
 
 class UnrollingSolver(val context: LeonContext, val program: Program, underlying: Solver)
   extends Solver
@@ -116,7 +117,7 @@ class UnrollingSolver(val context: LeonContext, val program: Program, underlying
       val optEnabler = evaluator.eval(b, model).result
 
       if (optEnabler == Some(BooleanLiteral(true))) {
-        val optArgs = m.args.map(arg => evaluator.eval(Matcher.argValue(arg), model).result)
+        val optArgs = m.args.map(arg => evaluator.eval(arg.encoded, model).result)
         if (optArgs.forall(_.isDefined)) {
           Set(optArgs.map(_.get))
         } else {

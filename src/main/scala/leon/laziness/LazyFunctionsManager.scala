@@ -39,6 +39,8 @@ class LazyFunctionsManager(p: Program) {
         case f : FunctionInvocation if LazinessUtil.isSuspInvocation(f)(p) =>
           // we can ignore the arguments to susp invocation as they are not actual calls, but only a test
           ;
+        case cc : CaseClass if LazinessUtil.isMemCons(cc)(p) =>
+          ; // we can ignore the arguments to mem
         //note: do not consider field invocations
         case f @ FunctionInvocation(TypedFunDef(callee, _), args) if callee.isRealFunction =>
           callees += callee
@@ -49,43 +51,49 @@ class LazyFunctionsManager(p: Program) {
       callees
     })
 
-  val (funsNeedStates, funsRetStates) = {
-    var needRoots = Set[FunDef]()
-    var retRoots = Set[FunDef]()
+  val (funsNeedStates, funsRetStates, funsNeedStateTps) = {
+    var starRoots = Set[FunDef]()
+    var readRoots = Set[FunDef]()
+    var valRoots = Set[FunDef]()
     p.definedFunctions.foreach {
       case fd if fd.hasBody =>
         postTraversal {
+          case finv: FunctionInvocation if isStarInvocation(finv)(p) =>
+            starRoots += fd
           case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
             // the lazy invocation constructor will need the state
-            needRoots += fd
-          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(p) =>
-            needRoots += fd
+            readRoots += fd
+          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(p) || isCachedInv(finv)(p) =>
+            readRoots += fd
           case finv: FunctionInvocation if isValueInvocation(finv)(p) =>
-            needRoots += fd
-            retRoots += fd
+            valRoots += fd
           case _ =>
             ;
         }(fd.body.get)
       case _ => ;
     }
-    val retfuns = cg.transitiveCallers(retRoots.toSeq)
+    val valCallers = cg.transitiveCallers(valRoots.toSeq)
+    val readfuns = cg.transitiveCallers(readRoots.toSeq)
+    val starCallers = cg.transitiveCallers(starRoots.toSeq)
     //println("Ret roots: "+retRoots.map(_.id)+" ret funs: "+retfuns.map(_.id))
-    (cg.transitiveCallers(needRoots.toSeq), retfuns)
+    (readfuns ++ valCallers, valCallers, starCallers ++ readfuns ++ valCallers)
   }
 
-  lazy val callersOfLazyCons = {
+  lazy val callersnTargetOfLazyCons = {
     var consRoots = Set[FunDef]()
+    var targets = Set[FunDef]()
     funsNeedStates.foreach {
       case fd if fd.hasBody =>
         postTraversal {
           case finv: FunctionInvocation if isLazyInvocation(finv)(p) => // this is the lazy invocation constructor
             consRoots += fd
+            targets += finv.tfd.fd
           case _ =>
             ;
         }(fd.body.get)
       case _ => ;
     }
-    cg.transitiveCallers(consRoots.toSeq)
+    cg.transitiveCallers(consRoots.toSeq) ++ targets
   }
 
   lazy val cgWithoutSpecs = CallGraphUtil.constructCallGraph(p, true, false)
@@ -95,7 +103,7 @@ class LazyFunctionsManager(p: Program) {
       case fd if fd.hasBody =>
         postTraversal {
           case finv: FunctionInvocation if
-            isEvaluatedInvocation(finv)(p) || isSuspInvocation(finv)(p) => // call to isEvaluated || isSusp ?
+            isEvaluatedInvocation(finv)(p) || isSuspInvocation(finv)(p) || isCachedInv(finv)(p) => // call to isEvaluated || isSusp ?
             roots += fd
           case _ =>
             ;

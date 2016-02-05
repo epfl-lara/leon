@@ -40,9 +40,9 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         if (mayAlias(call, call2)) {
 
           call match {
-            case Equals(_, fin : FunctionInvocation) => functions += 1
-            case Equals(_, tup : Tuple) => tuples += 1
-            case _ => adts += 1
+            case Equals(_, fin: FunctionInvocation) => functions += 1
+            case Equals(_, tup: Tuple)              => tuples += 1
+            case _                                  => adts += 1
           }
           if (debugAliases)
             println("Aliases: " + call + "," + call2)
@@ -62,7 +62,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
       j += 1
       acc ++ pairs
     })
-    if(verbose) reporter.info("Number of compatible calls: " + product.size)
+    if (verbose) reporter.info("Number of compatible calls: " + product.size)
     /*reporter.info("Compatible Tuples: "+tuples)
     reporter.info("Compatible Functions+ADTs: "+(functions+adts))*/
     Stats.updateCounterStats(product.size, "Compatible-Calls", "disjuncts")
@@ -77,24 +77,25 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
    * The calls could be functions calls or ADT constructor calls.
    * 'predEval' is an evaluator that evaluates a predicate to a boolean value
    */
-  def constraintsForCalls(calls: Set[Expr], predEval: (Expr => Boolean)): Seq[Expr] = {
+  def constraintsForCalls(calls: Set[Expr], predEval: (Expr => Option[Boolean])): Seq[Expr] = {
 
     //check if two calls (to functions or ADT cons) have the same value in the model
-    def doesAlias(call1: Expr, call2: Expr): Boolean = {
+    def doesAlias(call1: Expr, call2: Expr): Option[Boolean] = {
       val Operator(Seq(r1 @ Variable(_), _), _) = call1
       val Operator(Seq(r2 @ Variable(_), _), _) = call2
-      val resEquals = predEval(Equals(r1, r2))
-      if (resEquals) {
-        if (isCallExpr(call1)) {
+      predEval(Equals(r1, r2)) match {
+        case Some(true) if isCallExpr(call1) =>
           val (ants, _) = axiomatizeCalls(call1, call2)
-          val antsHold = ants.forall(ant => {
+          val antsEvals = ants.map(ant => {
             val Operator(Seq(lvar @ Variable(_), rvar @ Variable(_)), _) = ant
-            //(model(lid) == model(rid))
             predEval(Equals(lvar, rvar))
           })
-          antsHold
-        } else true
-      } else false
+          // return `false` if at least one argument is false
+          if (antsEvals.exists(_ == Some(false))) Some(false)
+          else if (antsEvals.exists(!_.isDefined)) None // here, we cannot decide if the call is true or false
+          else Some(true)
+        case r => r
+      }
     }
 
     def predForEquality(call1: Expr, call2: Expr): Seq[Expr] = {
@@ -115,7 +116,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
             else false
           }
         }
-        case e@_ => throw new IllegalStateException("Not an equality or Iff: " + e)
+        case e @ _ => throw new IllegalStateException("Not an equality or Iff: " + e)
       }
       preds
     }
@@ -139,7 +140,7 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
         ants.foreach(eq =>
           if (unsatOtherEq.isEmpty) {
             eq match {
-              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if !predEval(Equals(lhs, rhs)) => {
+              case Equals(lhs @ Variable(_), rhs @ Variable(_)) if predEval(Equals(lhs, rhs)) == Some(false) => { // there must exist at least one such predicate
                 if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType)
                   unsatOtherEq = Some(eq)
                 else if (unsatIntEq.isEmpty)
@@ -153,21 +154,11 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
           //pick the constraint a < b or a > b that is satisfied
           val Equals(lhs @ Variable(_), rhs @ Variable(_)) = unsatIntEq.get
           val lLTr = LessThan(lhs, rhs)
-          val atom = if (predEval(lLTr)) lLTr
-          else GreaterThan(lhs, rhs)
-          /*val InfiniteIntegerLiteral(lval) = model(lid)
-          val InfiniteIntegerLiteral(rval) = model(rid)
-          val atom = if (lval < rval) LessThan(lhs, rhs)
-          else if (lval > rval) GreaterThan(lhs, rhs)
-          else throw new IllegalStateException("Models are equal!!")*/
-
-          /*if (ants.exists(_ match {
-              case Equals(l, r) if (l.getType != Int32Type && l.getType != RealType && l.getType != BooleanType && l.getType != IntegerType) => true
-              case _ => false
-            })) {
-              Stats.updateCumStats(1, "Diseq-blowup")
-            }*/
-          Seq(atom)
+          predEval(lLTr) match {
+            case Some(true)  => Seq(lLTr)
+            case Some(false) => Seq(GreaterThan(lhs, rhs))
+            case _           => Seq() // actually this case cannot happen.
+          }
         } else throw new IllegalStateException("All arguments are equal: " + (call1, call2))
       }
     }
@@ -177,21 +168,22 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
     val product = collectCompatibleCalls(calls)
     val newctrs = product.foldLeft(Seq[Expr]())((acc, pair) => {
       val (call1, call2) = (pair._1, pair._2)
-      //println("Assertionizing "+call1+" , call2: "+call2)
+      //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
+      //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
       if (!eqGraph.BFSReach(call1, call2) && !neqSet.contains((call1, call2)) && !neqSet.contains((call2, call1))) {
-        if (doesAlias(call1, call2)) {
-          eqGraph.addEdge(call1, call2)
-          //note: here it suffices to check for adjacency and not reachability of calls (i.e, exprs).
-          //This is because the transitive equalities (corresponding to rechability) are encoded by the generated equalities.
-          acc ++ predForEquality(call1, call2)
-
-        } else {
-          neqSet ++= Set((call1, call2))
-          acc ++ predForDisequality(call1, call2)
+        doesAlias(call1, call2) match {
+          case Some(true) =>
+            eqGraph.addEdge(call1, call2)
+            acc ++ predForEquality(call1, call2)
+          case Some(false) =>
+            neqSet ++= Set((call1, call2))
+            acc ++ predForDisequality(call1, call2)
+          case _ =>
+            // in this case, we construct a weaker disjunct by dropping this predicate
+            acc
         }
       } else acc
     })
-
     //reporter.info("Number of equal calls: " + eqGraph.getEdgeCount)
     newctrs
   }
@@ -203,22 +195,6 @@ class UFADTEliminator(ctx: LeonContext, program: Program) {
    * TODO: handling generic can become very trickier here.
    */
   def mayAlias(e1: Expr, e2: Expr): Boolean = {
-    //check if call and call2 are compatible
-    /*(e1, e2) match {
-      case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) if (fd1.id == fd2.id) => true
-      case (Equals(_, CaseClass(cd1, _)), Equals(_, CaseClass(cd2, _))) if (cd1.id == cd2.id) => true
-      case (Equals(_, tp1 @ Tuple(e1)), Equals(_, tp2 @ Tuple(e2))) => {
-        //get the types and check if the types are compatible
-        val TupleType(tps1) = tp1.getType
-        val TupleType(tps2) = tp2.getType
-        (tps1 zip tps2).forall(pair => {
-          val (t1, t2) = pair
-          val lub = TypeOps.leastUpperBound(t1, t2)
-          (lub == Some(t1) || lub == Some(t2))
-        })
-      }
-      case _ => false
-    }*/
     (e1, e2) match {
       case (Equals(_, FunctionInvocation(fd1, _)), Equals(_, FunctionInvocation(fd2, _))) => {
         (fd1.id == fd2.id && fd1.fd.tparams == fd2.fd.tparams)

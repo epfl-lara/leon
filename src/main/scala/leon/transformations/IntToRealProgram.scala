@@ -72,8 +72,7 @@ abstract class ProgramTypeTransformer {
   }
 
   def mapDecl(decl: ValDef): ValDef = {
-    val newtpe = mapType(decl.getType)
-    new ValDef(mapId(decl.id), Some(newtpe))
+    decl.copy(id = mapId(decl.id))
   }
 
   def mapType(tpe: TypeTree): TypeTree = {
@@ -141,9 +140,9 @@ abstract class ProgramTypeTransformer {
       // FIXME
       //add a new postcondition
       newfd.fullBody = if (fd.postcondition.isDefined && newfd.body.isDefined) {
-        val Lambda(Seq(ValDef(resid, _)), pexpr) = fd.postcondition.get
+        val Lambda(Seq(ValDef(resid)), pexpr) = fd.postcondition.get
         val tempRes = mapId(resid).toVariable
-        Ensuring(newfd.body.get, Lambda(Seq(ValDef(tempRes.id, Some(tempRes.getType))), transformExpr(pexpr)))
+        Ensuring(newfd.body.get, Lambda(Seq(ValDef(tempRes.id)), transformExpr(pexpr)))
         // Some(mapId(resid), transformExpr(pexpr))
       } else NoTree(fd.returnType)
 

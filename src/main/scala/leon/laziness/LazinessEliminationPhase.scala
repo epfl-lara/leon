@@ -35,11 +35,16 @@ import invariant.util.ProgramUtil._
 import purescala.Constructors._
 import leon.verification._
 import PredicateUtil._
-
+import leon.invariant.engine._
+import LazyVerificationPhase._
+import utils._
+/**
+ * TODO: Function names are assumed to be small case. Fix this!!
+ */
 object LazinessEliminationPhase extends TransformationPhase {
   val debugLifting = false
   val dumpInputProg = false
-  val dumpLiftProg = false
+  val dumpLiftProg = true
   val dumpProgramWithClosures = true
   val dumpTypeCorrectProg = false
   val dumpProgWithPreAsserts = true
@@ -48,7 +53,6 @@ object LazinessEliminationPhase extends TransformationPhase {
   val debugSolvers = false
   val skipStateVerification = false
   val skipResourceVerification = false
-  val debugInstVCs = false
 
   val name = "Laziness Elimination Phase"
   val description = "Coverts a program that uses lazy construct" +
@@ -56,21 +60,24 @@ object LazinessEliminationPhase extends TransformationPhase {
 
   // options that control behavior
   val optRefEquality = LeonFlagOptionDef("refEq", "Uses reference equality for comparing closures", false)
+  val optUseOrb = LeonFlagOptionDef("useOrb", "Use Orb to infer constants", false)
+
+  override val definedOptions: Set[LeonOptionDef[Any]] = Set(optUseOrb, optRefEquality)
 
   /**
-   * TODO: enforce that the specs do not create lazy closures
-   * TODO: we are forced to make an assumption that lazy ops takes as type parameters only those
-   * type parameters of their return type and not more. (enforce this)
-   * TODO: Check that lazy types are not nested
-   * TODO: expose in/out state to the user level, so that they can be used in specs
-   * For now using lazyinv annotation
+   * TODO: add inlining annotations for optimization.
    */
   def apply(ctx: LeonContext, prog: Program): Program = {
 
     if (dumpInputProg)
       println("Input prog: \n" + ScalaPrinter.apply(prog))
-    val nprog = liftLazyExpressions(prog)
-    if(dumpLiftProg) {
+
+    val (pass, msg) = sanityChecks(prog, ctx)
+    assert(pass, msg)
+
+    // refEq is by default false
+    val nprog = LazyExpressionLifter.liftLazyExpressions(prog, ctx.findOption(optRefEquality).getOrElse(false))
+    if (dumpLiftProg) {
       prettyPrintProgramToFile(nprog, ctx, "-lifted")
     }
 
@@ -83,310 +90,99 @@ object LazinessEliminationPhase extends TransformationPhase {
     }
 
     //Rectify type parameters and local types
-    val typeCorrectProg = (new TypeRectifier(progWithClosures, tp => tp.id.name.endsWith("@"))).apply
+    val typeCorrectProg = (new TypeRectifier(progWithClosures, closureFactory)).apply
     if (dumpTypeCorrectProg)
       println("After rectifying types: \n" + ScalaPrinter.apply(typeCorrectProg))
 
-    val progWithPre = (new ClosurePreAsserter(typeCorrectProg, funsManager)).apply
+    val progWithPre =  (new ClosurePreAsserter(typeCorrectProg)).apply
     if (dumpProgWithPreAsserts) {
       //println("After asserting closure preconditions: \n" + ScalaPrinter.apply(progWithPre))
-      prettyPrintProgramToFile(progWithPre, ctx, "-withpre")
+      prettyPrintProgramToFile(progWithPre, ctx, "-withpre", uniqueIds = true)
     }
 
     // verify the contracts that do not use resources
-    val progWOInstSpecs = removeInstrumentationSpecs(progWithPre)
+    val progWOInstSpecs = InliningPhase.apply(ctx, removeInstrumentationSpecs(progWithPre))
     if (dumpProgWOInstSpecs) {
       //println("After removing instrumentation specs: \n" + ScalaPrinter.apply(progWOInstSpecs))
       prettyPrintProgramToFile(progWOInstSpecs, ctx, "-woinst")
     }
+    val checkCtx = contextForChecks(ctx)
     if (!skipStateVerification)
-      checkSpecifications(progWOInstSpecs)
+      checkSpecifications(progWOInstSpecs, checkCtx)
 
     // instrument the program for resources (note: we avoid checking preconditions again here)
-    val instrumenter = new LazyInstrumenter(typeCorrectProg)
+    val instrumenter = new LazyInstrumenter(InliningPhase.apply(ctx, typeCorrectProg), closureFactory)
     val instProg = instrumenter.apply
     if (dumpInstrumentedProgram) {
       //println("After instrumentation: \n" + ScalaPrinter.apply(instProg))
-      prettyPrintProgramToFile(instProg, ctx, "-withinst")
+      prettyPrintProgramToFile(instProg, ctx, "-withinst", uniqueIds = true)
     }
     // check specifications (to be moved to a different phase)
     if (!skipResourceVerification)
-      checkInstrumentationSpecs(instProg)
+      checkInstrumentationSpecs(instProg, checkCtx)
+    // dump stats
+    dumpStats()
     instProg
   }
 
   /**
-   * convert the argument of every lazy constructors to a procedure
+   * TODO: enforce that lazy and nested types do not overlap
+   * TODO: we are forced to make an assumption that lazy ops takes as type parameters only those
+   * type parameters of their return type and not more. (This is checked in the closureFactory,\
+   * but may be check this upfront)
    */
-  var globalId = 0
-  def freshFunctionNameForArg = {
-    globalId += 1
-    "lazyarg" + globalId
-  }
-
-  def liftLazyExpressions(prog: Program): Program = {
-    var newfuns = Map[ExprStructure, (FunDef, ModuleDef)]()
-    val fdmap = prog.definedFunctions.collect {
+  def sanityChecks(p: Program, ctx: LeonContext): (Boolean, String) = {
+    // using a bit of a state here
+    var failMsg = ""
+    val checkres = p.definedFunctions.forall {
       case fd if !fd.isLibrary =>
-        val nfd = new FunDef(FreshIdentifier(fd.id.name), fd.tparams, fd.params, fd.returnType)
-        fd.flags.foreach(nfd.addFlag(_))
-        (fd -> nfd)
-    }.toMap
-    prog.modules.foreach { md =>
-      md.definedFunctions.foreach {
-        case fd if fd.hasBody && !fd.isLibrary =>
-          val nbody = simplePostTransform {
-            // is the arugment of lazy invocation not a function ?
-            case finv @ FunctionInvocation(lazytfd, Seq(arg)) if isLazyInvocation(finv)(prog) && !arg.isInstanceOf[FunctionInvocation] =>
-              val freevars = variablesOf(arg).toList
-              val tparams = freevars.map(_.getType) flatMap getTypeParameters distinct
-              val argstruc = new ExprStructure(arg)
-              val argfun =
-                if (newfuns.contains(argstruc)) {
-                  newfuns(argstruc)._1
-                } else {
-                  //construct type parameters for the function
-                  // note: we should make the base type of arg as the return type
-                  val nfun = new FunDef(FreshIdentifier(freshFunctionNameForArg, Untyped, true), tparams map TypeParameterDef.apply,
-                    freevars.map(ValDef(_)), bestRealType(arg.getType))
-                  nfun.body = Some(arg)
-                  newfuns += (argstruc -> (nfun, md))
-                  nfun
-                }
-              FunctionInvocation(lazytfd, Seq(FunctionInvocation(TypedFunDef(argfun, tparams),
-                freevars.map(_.toVariable))))
-
-            // is the argument of eager invocation not a variable ?
-            case finv @ FunctionInvocation(TypedFunDef(fd, _), Seq(arg)) if isEagerInvocation(finv)(prog) && !arg.isInstanceOf[Variable] =>
-              val rootType = bestRealType(arg.getType)
-              val freshid = FreshIdentifier("t", rootType)
-              Let(freshid, arg, FunctionInvocation(TypedFunDef(fd, Seq(rootType)), Seq(freshid.toVariable)))
-
-            case FunctionInvocation(TypedFunDef(fd, targs), args) if fdmap.contains(fd) =>
-              FunctionInvocation(TypedFunDef(fdmap(fd), targs), args)
-            case e => e
-
-          }(fd.fullBody) // TODO: specs should not create lazy closures. enforce this
-          //println(s"New body of $fd: $nbody")
-          fdmap(fd).fullBody = nbody
-        case _ => ;
-      }
-    }
-    val repProg = copyProgram(prog, (defs: Seq[Definition]) => defs.map {
-      case fd: FunDef => fdmap.getOrElse(fd, fd)
-      case d          => d
-    })
-    val nprog =
-      if (!newfuns.isEmpty) {
-        val modToNewDefs = newfuns.values.groupBy(_._2).map { case (k, v) => (k, v.map(_._1)) }.toMap
-        appendDefsToModules(repProg, modToNewDefs)
-      } else
-        repProg
-    if (debugLifting)
-      println("After lifiting arguments of lazy constructors: \n" + ScalaPrinter.apply(nprog))
-    nprog
-  }
-
-  /**
-   * Returns a constructor for the let* and also the current
-   * body of let*
-   */
-  def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
-      case Let(binder, letv, letb) =>
-        val (cons, body) = letStarUnapply(letb)
-        (e => Let(binder, letv, cons(e)), letb)
-      case base =>
-        (e => e, base)
-    }
-
-  def removeInstrumentationSpecs(p: Program): Program = {
-    def hasInstVar(e: Expr) = {
-      exists { e => InstUtil.InstTypes.exists(i => i.isInstVariable(e)) }(e)
-    }
-    val newPosts = p.definedFunctions.collect {
-      case fd if fd.postcondition.exists { exists(hasInstVar) } =>
-        // remove the conjuncts that use instrumentation vars
-        val Lambda(resdef, pbody) = fd.postcondition.get
-        val npost = pbody match {
-          case And(args) =>
-            createAnd(args.filterNot(hasInstVar))
-          case l : Let =>  // checks if the body of the let can be deconstructed as And
-            val (letsCons, letsBody) = letStarUnapply(l)
-            letsBody match {
-              case And(args) =>
-                letsCons(createAnd(args.filterNot(hasInstVar)))
-              case _ => Util.tru
+        /**
+         * Fails when the argument to a suspension creation
+         * is either a normal or memoized function depending on the flag
+         * 'argMem' = true implies fail if the argument is a memoized function
+         */
+        def failOnClosures(argMem: Boolean, e: Expr) = e match {
+          case finv: FunctionInvocation if isLazyInvocation(finv)(p) =>
+            finv match {
+              case FunctionInvocation(_, Seq(Lambda(_, FunctionInvocation(callee, _)))) if isMemoized(callee.fd) => argMem
+              case _ => !argMem
             }
-          case e => Util.tru
+          case _ => false
         }
-        (fd -> Lambda(resdef, npost))
-    }.toMap
-    ProgramUtil.updatePost(newPosts, p) //note: this will not update libraries
-  }
-
-  def checkSpecifications(prog: Program) {
-    // convert 'axiom annotation to library
-    prog.definedFunctions.foreach { fd =>
-      if (fd.annotations.contains("axiom"))
-        fd.addFlag(Annotation("library", Seq()))
-    }
-    val functions = Seq() //Seq("--functions=rotate")
-    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    //val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions ++ functions)
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4", "--assumepre") ++ solverOptions ++ functions)
-    val report = VerificationPhase.apply(ctx, prog)
-    println(report.summaryString)
-    /*ctx.reporter.whenDebug(leon.utils.DebugSectionTimers) { debug =>
-        ctx.timers.outputTable(debug)
-      }*/
-  }
-
-  def checkInstrumentationSpecs(p: Program) = {
-    p.definedFunctions.foreach { fd =>
-      if (fd.annotations.contains("axiom"))
-        fd.addFlag(Annotation("library", Seq()))
-    }
-    val solverOptions = if (debugSolvers) Seq("--debug=solver") else Seq()
-    val ctx = Main.processOptions(Seq("--solvers=smt-cvc4,smt-z3", "--assumepre") ++ solverOptions)
-
-    //(a) create vcs
-    // Note: we only need to check specs involving instvars since others were checked before.
-    // Moreover, we can add other specs as assumptions since (A => B) ^ ((A ^ B) => C) => A => B ^ C
-    //checks if the expression uses res._2 which corresponds to instvars after instrumentation
-    def accessesSecondRes(e: Expr, resid: Identifier): Boolean =
-        exists(_ == TupleSelect(resid.toVariable, 2))(e)
-
-    val vcs = p.definedFunctions.collect {
-      // skipping verification of uninterpreted functions
-      case fd if !fd.isLibrary && InstUtil.isInstrumented(fd) && fd.hasBody &&
-      fd.postcondition.exists{post =>
-        val Lambda(Seq(resdef), pbody) =  post
-        accessesSecondRes(pbody, resdef.id)
-      } =>
-        val Lambda(Seq(resdef), pbody) = fd.postcondition.get
-        val (instPost, assumptions) = pbody match {
-          case And(args) =>
-            val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
-            (createAnd(instSpecs), createAnd(rest))
-          case l: Let =>
-            val (letsCons, letsBody) = letStarUnapply(l)
-            letsBody match {
-              case And(args) =>
-                val (instSpecs, rest) = args.partition(accessesSecondRes(_, resdef.id))
-                (letsCons(createAnd(instSpecs)),
-                    letsCons(createAnd(rest)))
-              case _ =>
-                (l, Util.tru)
+        // specs should not create lazy closures, but can refer to memoized functions
+        val specCheckFailed = exists(failOnClosures(false, _))(fd.precOrTrue) || exists(failOnClosures(false, _))(fd.postOrTrue)
+        if (specCheckFailed) {
+          failMsg = "Lazy closure creation in the specification of function: " + fd.id
+          false
+        } else {
+          // cannot suspend a memoized function
+          val bodyCheckFailed = exists(failOnClosures(true, _))(fd.body.getOrElse(Util.tru))
+          if (bodyCheckFailed) {
+            failMsg = "Suspending a memoized function is not supported! in body of:  " + fd.id
+            false
+          } else {
+            def nestedSusp(e: Expr) = e match {
+              case finv @ FunctionInvocation(_, Seq(Lambda(_, call: FunctionInvocation))) if isLazyInvocation(finv)(p) && isLazyInvocation(call)(p) => true
+              case _ => false
             }
-          case e => (e, Util.tru)
+            val nestedCheckFailed = exists(nestedSusp)(fd.body.getOrElse(Util.tru))
+            if (nestedCheckFailed) {
+              failMsg = "Nested suspension creation in the body:  " + fd.id
+              false
+            } else {
+              // arguments or return types of memoized functions cannot be lazy because we do not know how to compare them for equality
+              if (isMemoized(fd)) {
+                val argCheckFailed = (fd.params.map(_.getType) :+ fd.returnType).exists(LazinessUtil.isLazyType)
+                if (argCheckFailed) {
+                  failMsg = "Memoized function has a lazy argument or return type: " + fd.id
+                  false
+                } else true
+              } else true
+            }
+          }
         }
-        val vc = implies(createAnd(Seq(fd.precOrTrue, assumptions,
-            Equals(resdef.id.toVariable, fd.body.get))), instPost)
-        if(debugInstVCs)
-          println(s"VC for function ${fd.id} : "+vc)
-        VC(vc, fd, VCKinds.Postcondition)
+      case _ => true
     }
-    //(b) create a verification context
-    val timeout: Option[Long] = None
-    val reporter = ctx.reporter
-    // Solvers selection and validation
-    val baseSolverF = SolverFactory.getFromSettings(ctx, p)
-    val solverF = timeout match {
-      case Some(sec) =>
-        baseSolverF.withTimeout(sec / 1000)
-      case None =>
-        baseSolverF
-    }
-    val vctx = VerificationContext(ctx, p, solverF, reporter)
-    //(c) check the vcs
-    try {
-      val veriRep = VerificationPhase.checkVCs(vctx, vcs)
-      println("Resource Verification Results: \n" + veriRep.summaryString)
-    } finally {
-      solverF.shutdown()
-    }
+    (checkres, failMsg)
   }
-
-  /**
-   * NOT USED CURRENTLY
-   * Lift the specifications on functions to the invariants corresponding
-   * case classes.
-   * Ideally we should class invariants here, but it is not currently supported
-   * so we create a functions that can be assume in the pre and post of functions.
-   * TODO: can this be optimized
-   */
-  /*  def liftSpecsToClosures(opToAdt: Map[FunDef, CaseClassDef]) = {
-    val invariants = opToAdt.collect {
-      case (fd, ccd) if fd.hasPrecondition =>
-        val transFun = (args: Seq[Identifier]) => {
-          val argmap: Map[Expr, Expr] = (fd.params.map(_.id.toVariable) zip args.map(_.toVariable)).toMap
-          replace(argmap, fd.precondition.get)
-        }
-        (ccd -> transFun)
-    }.toMap
-    val absTypes = opToAdt.values.collect {
-      case cd if cd.parent.isDefined => cd.parent.get.classDef
-    }
-    val invFuns = absTypes.collect {
-      case abs if abs.knownCCDescendents.exists(invariants.contains) =>
-        val absType = AbstractClassType(abs, abs.tparams.map(_.tp))
-        val param = ValDef(FreshIdentifier("$this", absType))
-        val tparams = abs.tparams
-        val invfun = new FunDef(FreshIdentifier(abs.id.name + "$Inv", Untyped),
-            tparams, BooleanType, Seq(param))
-        (abs -> invfun)
-    }.toMap
-    // assign bodies for the 'invfuns'
-    invFuns.foreach {
-      case (abs, fd) =>
-        val bodyCases = abs.knownCCDescendents.collect {
-          case ccd if invariants.contains(ccd) =>
-            val ctype = CaseClassType(ccd, fd.tparams.map(_.tp))
-            val cvar = FreshIdentifier("t", ctype)
-            val fldids = ctype.fields.map {
-              case ValDef(fid, Some(fldtpe)) =>
-                FreshIdentifier(fid.name, fldtpe)
-            }
-            val pattern = CaseClassPattern(Some(cvar), ctype,
-              fldids.map(fid => WildcardPattern(Some(fid))))
-            val rhsInv = invariants(ccd)(fldids)
-            // assert the validity of substructures
-            val rhsValids = fldids.flatMap {
-              case fid if fid.getType.isInstanceOf[ClassType] =>
-                val t = fid.getType.asInstanceOf[ClassType]
-                val rootDef = t match {
-                  case absT: AbstractClassType => absT.classDef
-                  case _ if t.parent.isDefined =>
-                    t.parent.get.classDef
-                }
-                if (invFuns.contains(rootDef)) {
-                  List(FunctionInvocation(TypedFunDef(invFuns(rootDef), t.tps),
-                    Seq(fid.toVariable)))
-                } else
-                  List()
-              case _ => List()
-            }
-            val rhs = Util.createAnd(rhsInv +: rhsValids)
-            MatchCase(pattern, None, rhs)
-        }
-        // create a default case
-        val defCase = MatchCase(WildcardPattern(None), None, Util.tru)
-        val matchExpr = MatchExpr(fd.params.head.id.toVariable, bodyCases :+ defCase)
-        fd.body = Some(matchExpr)
-    }
-    invFuns
-  }*/
-  // Expressions for testing solvers
-  // a test expression
-  /*val tparam =
-    val dummyFunDef = new FunDef(FreshIdentifier("i"),Seq(), Seq(), IntegerType)
-    val eq = Equals(FunctionInvocation(TypedFunDef(dummyFunDef, Seq()), Seq()), InfiniteIntegerLiteral(0))
-    import solvers._
-    val solver = SimpleSolverAPI(SolverFactory(() => new solvers.smtlib.SMTLIBCVC4Solver(ctx, prog)))
-    solver.solveSAT(eq) match {
-      case (Some(true), m) =>
-        println("Model: "+m.toMap)
-      case _ => println("Formula is unsat")
-    }
-    System.exit(0)*/
 }

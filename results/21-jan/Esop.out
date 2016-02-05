@@ -1,0 +1,47 @@
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zipWith4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for zipWith4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nextFib4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for fibStream4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nthFib4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'precond. (call nthFib4(n - BigInt(1), tail9, scr3._2))' VC for nthFib4 @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'match exhaustiveness' VC for nthFib4 @?:?...
+[[34m  Info  [0m]  => VALID
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞══════════════════════════════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                                          ║
+║ Esop15Benchmarks.fibStream  postcondition                                           ?:?  valid  U:smt-z3    0.027 ║
+║ Esop15Benchmarks.nextFib    postcondition                                           ?:?  valid  U:smt-z3    0.035 ║
+║ Esop15Benchmarks.nthFib     match exhaustiveness                                    ?:?  valid  U:smt-z3    0.020 ║
+║ Esop15Benchmarks.nthFib     postcondition                                           ?:?  valid  U:smt-z3    0.098 ║
+║ Esop15Benchmarks.nthFib     precond. (call nthFib4(n - BigInt(1), tail9, scr3._2))  ?:?  valid  U:smt-z3    0.021 ║
+║ Esop15Benchmarks.zipWith    match exhaustiveness                                    ?:?  valid  U:smt-z3    0.023 ║
+║ Esop15Benchmarks.zipWith    postcondition                                           ?:?  valid  U:smt-z3    0.197 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 7      valid: 7      invalid: 0      unknown 0                                                       0.421 ║
+╚═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+[[34m  Info  [0m] Output written on leon.out
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for zipWith-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nextFib-time @?:?...
+[[34m  Info  [0m]  => VALID
+[[34m  Info  [0m]  - Now considering 'postcondition' VC for nthFib-time @?:?...
+[[34m  Info  [0m]  => VALID
+Resource Verification Results: 
+  ┌──────────────────────┐
+╔═╡ Verification Summary ╞═══════════════════════════════════════════════════════════════════╗
+║ └──────────────────────┘                                                                   ║
+║ Esop15Benchmarks.nextFib-time         postcondition     ?:?   valid   U:smt-z3       0.039 ║
+║ Esop15Benchmarks.nthFib-time          postcondition     ?:?   valid   U:smt-z3       0.143 ║
+║ Esop15Benchmarks.zipWith-time         postcondition     ?:?   valid   U:smt-z3       0.106 ║
+╟┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄╢
+║ total: 3      valid: 3      invalid: 0      unknown 0                                0.288 ║
+╚════════════════════════════════════════════════════════════════════════════════════════════╝

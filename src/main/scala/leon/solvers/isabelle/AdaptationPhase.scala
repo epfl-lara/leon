@@ -26,7 +26,7 @@ object AdaptationPhase extends TransformationPhase {
       CaseClassType(dummy, List(tp))
 
     def mkDummyParameter(tp: TypeParameter) =
-      ValDef(FreshIdentifier("dummy", mkDummyTyp(tp)), Some(mkDummyTyp(tp)))
+      ValDef(FreshIdentifier("dummy", mkDummyTyp(tp)))
 
     def mkDummyArgument(tree: TypeTree) =
       CaseClass(CaseClassType(dummy, List(tree)), Nil)

@@ -25,13 +25,16 @@ object ExtractionPhase extends SimpleLeonPhase[List[String], Program] {
 
     val settings = new Settings
 
+    def getFiles(path: String): Option[Array[String]] = 
+      scala.util.Try(new File(path).listFiles().map{ _.getAbsolutePath }).toOption
+    
     val scalaLib = Option(scala.Predef.getClass.getProtectionDomain.getCodeSource).map{
       _.getLocation.getPath
     }.orElse( for {
       // We are in Eclipse. Look in Eclipse plugins to find scala lib
       eclipseHome <- Option(System.getenv("ECLIPSE_HOME")) 
       pluginsHome = eclipseHome + "/plugins"
-      plugins <- scala.util.Try(new File(pluginsHome).listFiles().map{ _.getAbsolutePath }).toOption
+      plugins <- getFiles(pluginsHome)
       path <- plugins.find{ _ contains "scala-library"}
     } yield path).getOrElse( ctx.reporter.fatalError(
       "No Scala library found. If you are working in Eclipse, " +

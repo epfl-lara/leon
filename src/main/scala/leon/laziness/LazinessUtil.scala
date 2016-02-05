@@ -28,7 +28,11 @@ import purescala.PrinterOptions
 
 object LazinessUtil {
 
-  def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String) {
+  def isMemoized(fd: FunDef) = {
+    fd.flags.contains(Annotation("memoize", Seq()))
+  }
+
+  def prettyPrintProgramToFile(p: Program, ctx: LeonContext, suffix: String, uniqueIds: Boolean = false) {
     val optOutputDirectory = new LeonOptionDef[String] {
       val name = "o"
       val description = "Output directory"
@@ -50,9 +54,10 @@ object LazinessUtil {
         val out = new BufferedWriter(new FileWriter(outputFile))
         // remove '@' from the end of the identifier names
         val pat = new Regex("""(\w+)(@)(\w*)(\*?)(\S*)""", "base", "at", "mid", "star", "rest")
-        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p),
+        val pgmText = pat.replaceAllIn(ScalaPrinter.apply(p, purescala.PrinterOptions(printUniqueIds = uniqueIds)),
           m => m.group("base") + m.group("mid") + (
             if (!m.group("star").isEmpty()) "S" else "") + m.group("rest"))
+        //val pgmText = ScalaPrinter.apply(p)
         out.write(pgmText)
         out.close()
       } catch {
@@ -78,14 +83,16 @@ object LazinessUtil {
 
   def isInStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
-      fullName(fd)(p) == "leon.lazyeval.$.inState"
+      val fn = fullName(fd)(p)
+      (fn == "leon.lazyeval.$.inState" || fn == "leon.lazyeval.Mem.inState")
     case _ =>
       false
   }
 
   def isOutStateCall(e: Expr)(implicit p: Program): Boolean = e match {
     case FunctionInvocation(TypedFunDef(fd, _), Seq()) =>
-      fullName(fd)(p) == "leon.lazyeval.$.outState"
+      val fn = fullName(fd)(p)
+      (fn == "leon.lazyeval.$.outState" || fn == "leon.lazyeval.Mem.outState")
     case _ =>
       false
   }
@@ -104,13 +111,32 @@ object LazinessUtil {
 
   def isWithStateCons(e: Expr)(implicit p: Program): Boolean = e match {
     case CaseClass(cct, Seq(_)) =>
-      fullName(cct.classDef)(p) == "leon.lazyeval.$.WithState"
+      val fn = fullName(cct.classDef)(p)
+      (fn == "leon.lazyeval.$.WithState" || fn == "leon.lazyeval.Mem.memWithState")
     case _ => false
   }
 
+  def isMemCons(e: Expr)(implicit p: Program): Boolean = e match {
+    case CaseClass(cct, Seq(_)) =>
+      fullName(cct.classDef)(p) == "leon.lazyeval.Mem"
+    case _ => false
+  }
+
+  /**
+   * There are many overloads of withState functions with different number
+   * of arguments. All of them should pass this check.
+   */
   def isWithStateFun(e: Expr)(implicit p: Program): Boolean = e match {
-    case FunctionInvocation(TypedFunDef(fd, _), Seq(_, _)) =>
-      fullName(fd)(p) == "leon.lazyeval.WithState.withState"
+    case FunctionInvocation(TypedFunDef(fd, _), _) =>
+      val fn = fullName(fd)(p)
+      (fn == "leon.lazyeval.WithState.withState" ||
+          fn == "leon.lazyeval.memWithState.withState")
+    case _ => false
+  }
+
+  def isCachedInv(e: Expr)(implicit p: Program): Boolean = e match {
+    case FunctionInvocation(TypedFunDef(fd, _), Seq(_)) =>
+      fullName(fd)(p) == "leon.lazyeval.Mem.isCached"
     case _ => false
   }
 
@@ -132,11 +158,17 @@ object LazinessUtil {
     case _ => false
   }
 
+  def isMemType(tpe: TypeTree): Boolean = tpe match {
+    case CaseClassType(CaseClassDef(cid, _, None, false), Seq(_)) =>
+      cid.name == "Mem"
+    case _ => false
+  }
+
   /**
-   * TODO: Check that lazy types are not nested
+   * Lazy types are not nested by precondition
    */
   def unwrapLazyType(tpe: TypeTree) = tpe match {
-    case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) =>
+    case ctype @ CaseClassType(_, Seq(innerType)) if isLazyType(ctype) || isMemType(ctype) =>
       Some(innerType)
     case _ => None
   }
@@ -168,6 +200,10 @@ object LazinessUtil {
     name.substring(4)
   }
 
+  def typeToFieldName(name: String) = {
+    name.toLowerCase()
+  }
+
   def closureConsName(typeName: String) = {
     "new@" + typeName
   }
@@ -184,37 +220,13 @@ object LazinessUtil {
     fd.id.name.startsWith("eval@")
   }
 
-  /**
-   * Returns all functions that 'need' states to be passed in
-   * and those that return a new state.
-   * TODO: implement backwards BFS by reversing the graph
-   */
-  /*def funsNeedingnReturningState(prog: Program) = {
-    val cg = CallGraphUtil.constructCallGraph(prog, false, true)
-    var needRoots = Set[FunDef]()
-    var retRoots = Set[FunDef]()
-    prog.definedFunctions.foreach {
-      case fd if fd.hasBody && !fd.isLibrary =>
-        postTraversal {
-          case finv: FunctionInvocation if isLazyInvocation(finv)(prog) =>
-            // the lazy invocation constructor will need the state
-            needRoots += fd
-          case finv: FunctionInvocation if isEvaluatedInvocation(finv)(prog) =>
-            needRoots += fd
-          case finv: FunctionInvocation if isValueInvocation(finv)(prog) =>
-            needRoots += fd
-            retRoots += fd
-          case _ =>
-            ;
-        }(fd.body.get)
-      case _ => ;
-    }
-    val funsNeedStates = prog.definedFunctions.filterNot(fd =>
-      cg.transitiveCallees(fd).toSet.intersect(needRoots).isEmpty).toSet
-    val funsRetStates = prog.definedFunctions.filterNot(fd =>
-      cg.transitiveCallees(fd).toSet.intersect(retRoots).isEmpty).toSet
-    (funsNeedStates, funsRetStates)
-  }*/
+  def isStateParam(id: Identifier) = {
+    id.name.startsWith("st@")
+  }
+
+  def isPlaceHolderTParam(tp: TypeParameter) = {
+    tp.id.name.endsWith("@")
+  }
 
   def freshenTypeArguments(tpe: TypeTree): TypeTree = {
     tpe match {

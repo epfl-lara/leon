@@ -11,7 +11,9 @@ import Extractors._
 import PrinterHelpers._
 import ExprOps.{isListLiteral, simplestValue}
 import Expressions._
+import Constructors._
 import Types._
+import org.apache.commons.lang3.StringEscapeUtils
 
 case class PrinterContext(
   current: Tree,
@@ -50,6 +52,8 @@ class PrettyPrinter(opts: PrinterOptions,
         p"${df.id}"
     }
   }
+  
+  private val dbquote = "\""
 
   def pp(tree: Tree)(implicit ctx: PrinterContext): Unit = {
 
@@ -87,9 +91,11 @@ class PrettyPrinter(opts: PrinterOptions,
           p"""|val $b = $d
               |$e"""
 
-      case LetDef(fd,body) =>
-        p"""|$fd
-            |$body"""
+      case LetDef(a::q,body) =>
+        p"""|$a
+            |${letDef(q, body)}"""
+      case LetDef(Nil,body) =>
+        p"""$body"""
 
       case Require(pre, body) =>
         p"""|require($pre)
@@ -159,10 +165,23 @@ class PrettyPrinter(opts: PrinterOptions,
       case Or(exprs)            => optP { p"${nary(exprs, "| || ")}" } // Ugliness award! The first | is there to shield from stripMargin()
       case Not(Equals(l, r))    => optP { p"$l \u2260 $r" }
       case Implies(l,r)         => optP { p"$l ==> $r" }
+      case BVNot(expr)          => p"~$expr"
       case UMinus(expr)         => p"-$expr"
       case BVUMinus(expr)       => p"-$expr"
       case RealUMinus(expr)     => p"-$expr"
       case Equals(l,r)          => optP { p"$l == $r" }
+      
+      
+      case Int32ToString(expr)    => p"$expr.toString"
+      case BooleanToString(expr)  => p"$expr.toString"
+      case IntegerToString(expr)  => p"$expr.toString"
+      case CharToString(expr)     => p"$expr.toString"
+      case RealToString(expr)     => p"$expr.toString"
+      case StringConcat(lhs, rhs) => optP { p"$lhs + $rhs" }
+    
+      case SubString(expr, start, end) => p"leon.lang.StrOps.substring($expr, $start, $end)"
+      case StringLength(expr)          => p"leon.lang.StrOps.length($expr)"
+
       case IntLiteral(v)        => p"$v"
       case InfiniteIntegerLiteral(v) => p"$v"
       case FractionalLiteral(n, d) =>
@@ -171,6 +190,13 @@ class PrettyPrinter(opts: PrinterOptions,
       case CharLiteral(v)       => p"$v"
       case BooleanLiteral(v)    => p"$v"
       case UnitLiteral()        => p"()"
+      case StringLiteral(v)     => 
+        if(v.count(c => c == '\n') >= 1 && v.length >= 80 && v.indexOf("\"\"\"") == -1) {
+          p"$dbquote$dbquote$dbquote$v$dbquote$dbquote$dbquote"
+        } else {
+          val escaped = StringEscapeUtils.escapeJava(v)
+          p"$dbquote$escaped$dbquote"
+        }
       case GenericValue(tp, id) => p"$tp#$id"
       case Tuple(exprs)         => p"($exprs)"
       case TupleSelect(t, i)    => p"$t._$i"
@@ -334,7 +360,7 @@ class PrettyPrinter(opts: PrinterOptions,
 
       case Not(expr) => p"\u00AC$expr"
 
-      case vd@ValDef(id, _) =>
+      case vd @ ValDef(id) =>
         p"$id : ${vd.getType}"
         vd.defaultValue.foreach { fd => p" = ${fd.body.get}" }
 
@@ -429,6 +455,7 @@ class PrettyPrinter(opts: PrinterOptions,
       case RealType              => p"Real"
       case CharType              => p"Char"
       case BooleanType           => p"Boolean"
+      case StringType            => p"String"
       case ArrayType(bt)         => p"Array[$bt]"
       case SetType(bt)           => p"Set[$bt]"
       case MapType(ft,tt)        => p"Map[$ft, $tt]"
@@ -603,6 +630,7 @@ class PrettyPrinter(opts: PrinterOptions,
     case (e: Expr, _) if isSimpleExpr(e) => false
     case (e: Expr, Some(within: Expr)) if noBracesSub(within) contains e => false
     case (_: Expr, Some(_: MatchCase)) => false
+    case (_: LetDef, Some(_: LetDef)) => false
     case (e: Expr, Some(_)) => true
     case _ => false
   }
@@ -623,11 +651,11 @@ class PrettyPrinter(opts: PrinterOptions,
   protected def requiresParentheses(ex: Tree, within: Option[Tree]): Boolean = (ex, within) match {
     case (pa: PrettyPrintable, _) => pa.printRequiresParentheses(within)
     case (_, None) => false
-    case (_, Some(_: Ensuring)) => false
-    case (_, Some(_: Assert)) => false
-    case (_, Some(_: Require)) => false
-    case (_, Some(_: Definition)) => false
-    case (_, Some(_: MatchExpr | _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda)) => false
+    case (_, Some(
+      _: Ensuring | _: Assert | _: Require | _: Definition | _: MatchExpr |
+      _: MatchCase | _: Let | _: LetDef | _: IfExpr | _ : CaseClass | _ : Lambda | _ : Choose
+    )) => false
+    case (ex: StringConcat, Some(_: StringConcat)) => false
     case (b1 @ BinaryMethodCall(_, _, _), Some(b2 @ BinaryMethodCall(_, _, _))) if precedence(b1) > precedence(b2) => false
     case (BinaryMethodCall(_, _, _), Some(_: FunctionInvocation)) => true
     case (_, Some(_: FunctionInvocation)) => false

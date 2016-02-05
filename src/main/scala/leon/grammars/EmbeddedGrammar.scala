@@ -12,7 +12,7 @@ import purescala.Constructors._
  * 
  * We rely on a bijection between Li and Lo labels
  */
-case class EmbeddedGrammar[Ti <% Typed, To <% Typed](innerGrammar: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
+case class EmbeddedGrammar[Ti <: Typed, To <: Typed](innerGrammar: ExpressionGrammar[Ti], iToo: Ti => To, oToi: To => Ti) extends ExpressionGrammar[To] {
   def computeProductions(t: To)(implicit ctx: LeonContext): Seq[Gen] = {
     innerGrammar.computeProductions(oToi(t)).map { innerGen =>
       nonTerminal(innerGen.subTrees.map(iToo), innerGen.builder)

@@ -10,6 +10,7 @@ import purescala.ExprOps._
 import purescala.Extractors._
 import purescala.Constructors._
 
+/** If there is a top-level equality such as x = e where e does not contains x, then we can output the assignment and replace x anywhere else. */
 case object OnePoint extends NormalizingRule("One-point") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     val TopLevelAnds(exprs) = p.phi

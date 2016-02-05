@@ -24,7 +24,7 @@ object Grammars {
     default(sctx.program, p.as.map(_.toVariable), sctx.functionContext, sctx.settings.functionsToIgnore,  p.ws, p.pc)
   }
 
-  def typeDepthBound[T <% Typed](g: ExpressionGrammar[T], b: Int) = {
+  def typeDepthBound[T <: Typed](g: ExpressionGrammar[T], b: Int) = {
     g.filter(g => g.subTrees.forall(t => typeDepth(t.getType) <= b))
   }
 }

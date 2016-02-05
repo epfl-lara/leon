@@ -24,7 +24,8 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   // get  options from ctx or initialize them to default values
   // the following options are enabled by default
   val targettedUnroll = !(leonContext.findOption(optFunctionUnroll).getOrElse(false))
-  val autoInference = leonContext.findOption(optDisableInfer).getOrElse(true)
+  val autoInference = !(leonContext.findOption(optDisableInfer).getOrElse(false))
+  val assumepre = leonContext.findOption(optAssumePre).getOrElse(false)
 
   // the following options are disabled by default
   val tightBounds = leonContext.findOption(optMinBounds).getOrElse(false)
@@ -35,7 +36,8 @@ class InferenceContext(val initProgram: Program, val leonContext: LeonContext) {
   val dumpStats = false
 
   // the following options have default values
-  val vcTimeout = leonContext.findOption(optVCTimeout).getOrElse(15L) // in secs
+  val vcTimeout = leonContext.findOption(optVCTimeout).getOrElse(30L) // in secs
+  val nlTimeout = leonContext.findOption(optNLTimeout).getOrElse(15L)
   val totalTimeout = leonContext.findOption(SharedOptions.optTimeout) // in secs
   val functionsToInfer = leonContext.findOption(SharedOptions.optFunctions)
   val reporter = leonContext.reporter

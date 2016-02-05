@@ -167,18 +167,30 @@ object LinearConstraintUtil {
       }
     }
 
+    import leon.purescala.Types._
     //we assume that ine is in linear form
     def PushTimes(mul: Expr, ine: Expr): Expr = {
+      val isReal = ine.getType == RealType && mul.getType == RealType
+      val timesCons =
+        if(isReal) RealTimes
+        else Times
       ine match {
-        case t: Terminal => Times(mul, t)
-        case fi @ FunctionInvocation(fdef, args) => Times(mul, fi)
+        case t: Terminal => timesCons(mul, t)
+        case fi @ FunctionInvocation(fdef, ars) => timesCons(mul, fi)
         case Plus(e1, e2) => Plus(PushTimes(mul, e1), PushTimes(mul, e2))
-        case RealPlus(e1, e2) => Plus(PushTimes(mul, e1), PushTimes(mul, e2))
+        case RealPlus(e1, e2) =>
+          val r1 = PushTimes(mul, e1)
+          val r2 = PushTimes(mul, e2)
+          if (isReal) RealPlus(r1, r2)
+          else Plus(r1, r2)
         case Times(e1, e2) => {
           //here push the times into the coefficient which should be the first expression
           Times(PushTimes(mul, e1), e2)
         }
-        case RealTimes(e1, e2) => Times(PushTimes(mul, e1), e2)
+        case RealTimes(e1, e2) =>
+          val r = PushTimes(mul, e1)
+          if(isReal) RealTimes(r, e2)
+          else Times(r, e2)
         case _ => throw new NotImplementedException("PushTimes -- Operators not yet handled: " + ine)
       }
     }
@@ -206,7 +218,8 @@ object LinearConstraintUtil {
     }
 
     def mkLinearRecur(inExpr: Expr): Expr = {
-      inExpr match {
+      //println("inExpr: "+inExpr + " tpe: "+inExpr.getType)
+      val res = inExpr match {
         case e @ Operator(Seq(e1, e2), op)
         if ((e.isInstanceOf[Equals] || e.isInstanceOf[LessThan]
             || e.isInstanceOf[LessEquals] || e.isInstanceOf[GreaterThan]
@@ -258,11 +271,18 @@ object LinearConstraintUtil {
             throw new IllegalStateException("Expression not linear: " + Times(r1, r2))
         }
         case Plus(e1, e2) => Plus(mkLinearRecur(e1), mkLinearRecur(e2))
-        case RealPlus(e1, e2) => RealPlus(mkLinearRecur(e1), mkLinearRecur(e2))
+        case rp@RealPlus(e1, e2) =>
+          //println(s"Expr: $rp arg1: $e1 tpe: ${e1.getType} arg2: $e2 tpe: ${e2.getType}")
+          val r1 = mkLinearRecur(e1)
+          val r2 = mkLinearRecur(e2)
+          //println(s"Res1: $r1 tpe: ${r1.getType} Res2: $r2 tpe: ${r2.getType}")
+          RealPlus(r1, r2)
         case t: Terminal => t
         case fi: FunctionInvocation => fi
         case _ => throw new IllegalStateException("Expression not linear: " + inExpr)
       }
+      //println("Res: "+res+" tpe: "+res.getType)
+      res
     }
     val rese = mkLinearRecur(atom)
     rese

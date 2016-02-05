@@ -53,7 +53,7 @@ object QuickSort {
     case Nil() => bList
     case _ => rev_append(reverse(aList),bList)
   }) ensuring(content(_) == content(aList) ++ content(bList))
-  
+
   def greater(n:Int,list:List) : List = list match {
     case Nil() => Nil()
     case Cons(x,xs) => if (n < x) Cons(x,greater(n,xs)) else greater(n,xs)
@@ -69,7 +69,7 @@ object QuickSort {
     case Nil() => Nil()
     case Cons(x,xs) => if (n>x) Cons(x,smaller(n,xs)) else smaller(n,xs)
   }
-    
+
   @induct
   def smallerProp(n: Int, list: List): Boolean = (max(smaller(n, list)) match {
     case Some(m) => n > m
@@ -117,6 +117,7 @@ object QuickSort {
     case Cons(x,xs) => append(append(quickSort(smaller(x,xs)),Cons(x,equals(x,xs))),quickSort(greater(x,xs)))
   }) ensuring(res => content(res) == content(list)) // && isSorted(res))
 
+  @ignore
   def main(args: Array[String]): Unit = {
     val ls: List = Cons(5, Cons(2, Cons(4, Cons(5, Cons(1, Cons(8,Nil()))))))
 

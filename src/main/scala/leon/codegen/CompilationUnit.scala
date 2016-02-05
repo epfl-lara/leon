@@ -177,6 +177,9 @@ class CompilationUnit(val ctx: LeonContext,
 
     case FractionalLiteral(n, d) =>
       new runtime.Rational(n.toString, d.toString)
+      
+    case StringLiteral(v) =>
+      new java.lang.String(v)
 
     case GenericValue(tp, id) =>
       e
@@ -292,6 +295,9 @@ class CompilationUnit(val ctx: LeonContext,
 
     case (c: java.lang.Character, CharType) =>
       CharLiteral(c.toChar)
+
+    case (c: java.lang.String, StringType) =>
+      StringLiteral(c)
 
     case (cc: runtime.CaseClass, ct: ClassType) =>
       val fields = cc.productElements()

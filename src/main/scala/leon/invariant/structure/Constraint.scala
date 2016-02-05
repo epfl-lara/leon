@@ -250,6 +250,47 @@ case class Call(retexpr: Expr, fi: FunctionInvocation) extends Constraint {
   override def toExpr = expr
 }
 
+object SetConstraint {
+  def setConstraintOfBase(e: Expr) = e match {
+    case Equals(lhs@Variable(_), _) if lhs.getType.isInstanceOf[SetType] =>
+      true
+    case Equals(Variable(_), SetUnion(_, _) | FiniteSet(_, _) | ElementOfSet(_, _) | SubsetOf(_, _)) =>
+      true
+    case _ => false
+  }
+
+  def isSetConstraint(e: Expr) = {
+    val base = e match {
+      case Not(b) => b
+      case _ => e
+    }
+    setConstraintOfBase(base)
+  }
+}
+
+case class SetConstraint(expr: Expr) extends Constraint {
+  var union = false
+  var newset = false
+  var equal = false
+  var elemof = false
+  var subset = false
+  // TODO: add more operations here
+  expr match {
+    case Equals(Variable(_), rhs) =>
+      rhs match {
+        case SetUnion(_, _) => union = true
+        case FiniteSet(_, _) => newset = true
+        case ElementOfSet(_, _) => elemof = true
+        case SubsetOf(_, _) => subset = true
+        case Variable(_) => equal = true
+      }
+  }
+  override def toString(): String = {
+    expr.toString
+  }
+  override def toExpr = expr
+}
+
 object ConstraintUtil {
 
   def createConstriant(ie: Expr): Constraint = {
@@ -264,6 +305,9 @@ object ConstraintUtil {
 
         ADTConstraint(ie)
       }
+      case _ if SetConstraint.isSetConstraint(ie) =>
+        SetConstraint(ie)
+      // every other equality will be considered an ADT constraint (including TypeParameter equalities)
       case Equals(lhs, rhs) if (lhs.getType != Int32Type && lhs.getType != RealType && lhs.getType != IntegerType) => {
         //println("ADT constraint: "+ie)
         ADTConstraint(ie)

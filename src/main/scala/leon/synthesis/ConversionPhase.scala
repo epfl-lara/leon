@@ -89,6 +89,7 @@ object ConversionPhase extends UnitPhase[Program] {
    *    choose(x => post(a, x))
    *  } ensuring { x => post(a, x) }
    *
+   * (in practice, there will be no pre-and postcondition)
    */
 
   def convert(e : Expr, ctx : LeonContext) : Expr = {
@@ -188,6 +189,8 @@ object ConversionPhase extends UnitPhase[Program] {
 
     // extract spec from chooses at the top-level
     fullBody match {
+      case Require(_, Choose(spec)) =>
+        withPostcondition(fullBody, Some(spec))
       case Choose(spec) =>
         withPostcondition(fullBody, Some(spec))
       case _ =>

@@ -7,7 +7,7 @@ object Delete {
   case class Cons(head: BigInt, tail: List) extends List
   case object Nil extends List
 
-  def size(l: List) : BigInt = (l match {
+  def size(l: List): BigInt = (l match {
     case Nil => BigInt(0)
     case Cons(_, t) => BigInt(1) + size(t)
   }) ensuring(res => res >= 0)
@@ -17,25 +17,10 @@ object Delete {
     case Cons(i, t) => Set(i) ++ content(t)
   }
 
-  def insert(in1: List, v: BigInt): List = {
-    Cons(v, in1)
-  } ensuring { content(_) == content(in1) ++ Set(v) }
-
-  //def delete(in1: List, v: BigInt): List = {
-  //  in1 match {
-  //    case Cons(h,t) =>
-  //      if (h == v) {
-  //        delete(t, v)
-  //      } else {
-  //        Cons(h, delete(t, v))
-  //      }
-  //    case Nil =>
-  //      Nil
-  //  }
-  //} ensuring { content(_) == content(in1) -- Set(v) }
-
-  def delete(in1: List, v: BigInt) = choose {
+  def delete(in: List, v: BigInt) = {
+    ???[List]
+  } ensuring {
     (out : List) =>
-      content(out) == content(in1) -- Set(v)
+      content(out) == content(in) -- Set(v)
   }
 }

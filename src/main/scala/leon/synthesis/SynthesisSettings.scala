@@ -17,7 +17,6 @@ case class SynthesisSettings(
   
   // Cegis related options
   cegisUseOptTimeout: Option[Boolean] = None,
-  cegisUseShrink: Option[Boolean]     = None,
   cegisUseVanuatoo: Option[Boolean]   = None
 
 )

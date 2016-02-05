@@ -32,7 +32,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
   val booleans = (for (b <- Set(true, false)) yield {
     b -> Constructor[Expr, TypeTree](List(), BooleanType, s => BooleanLiteral(b), ""+b)
   }).toMap
-
+  
   val chars = (for (c <- Set('a', 'b', 'c', 'd')) yield {
     c -> Constructor[Expr, TypeTree](List(), CharType, s => CharLiteral(c), ""+c)
   }).toMap
@@ -41,16 +41,25 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     (n, d) -> Constructor[Expr, TypeTree](List(), RealType, s => FractionalLiteral(n, d), "" + n + "/" + d)
   }).toMap
 
+  val strings = (for (b <- Set("", "a", "foo", "bar")) yield {
+    b -> Constructor[Expr, TypeTree](List(), StringType, s => StringLiteral(b), b)
+  }).toMap
+
+
   def intConstructor(i: Int) = ints(i)
   
   def bigIntConstructor(i: Int) = bigInts(i)
 
   def boolConstructor(b: Boolean) = booleans(b)
-
+  
   def charConstructor(c: Char) = chars(c)
 
   def rationalConstructor(n: Int, d: Int) = rationals(n -> d)
 
+  def stringConstructor(s: String) = strings(s)
+
+  lazy val stubValues = ints.values ++ bigInts.values ++ booleans.values ++ chars.values ++ rationals.values ++ strings.values
+  
   def cPattern(c: Constructor[Expr, TypeTree], args: Seq[VPattern[Expr, TypeTree]]) = {
     ConstructorPattern[Expr, TypeTree](c, args)
   }
@@ -108,7 +117,7 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
     case mt @ MapType(from, to) =>
       constructors.getOrElse(mt, {
         val cs = for (size <- List(0, 1, 2, 5)) yield {
-          val subs = (1 to size).flatMap(i => List(from, to)).toList
+          val subs   = (1 to size).flatMap(i => List(from, to)).toList
           Constructor[Expr, TypeTree](subs, mt, s => FiniteMap(s.grouped(2).map(t => (t(0), t(1))).toMap, from, to), mt.asString(ctx)+"@"+size)
         }
         constructors += mt -> cs
@@ -174,6 +183,9 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
 
     case (c: java.lang.Character, CharType) =>
       (cPattern(charConstructor(c), List()), true)
+
+    case (b: java.lang.String, StringType) =>
+      (cPattern(stringConstructor(b), List()), true)
 
     case (cc: codegen.runtime.CaseClass, ct: ClassType) =>
       val r = cc.__getRead()
@@ -297,7 +309,6 @@ class VanuatooDataGen(ctx: LeonContext, p: Program) extends DataGenerator {
         None
     })
 
-    val stubValues = ints.values ++ bigInts.values ++ booleans.values ++ chars.values ++ rationals.values
     val gen = new StubGenerator[Expr, TypeTree](stubValues.toSeq,
                                                 Some(getConstructors _),
                                                 treatEmptyStubsAsChildless = true)

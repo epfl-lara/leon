@@ -6,7 +6,6 @@ import leon.instrumentation._
 
 object SortingnConcat {
 
-  // TODO: making this parametric will break many things. Fix them
   sealed abstract class LList {
     def size: BigInt = {
       this match {
@@ -69,7 +68,8 @@ object SortingnConcat {
     }
   } ensuring (_ => time <= 30 * ssize(l) + 40)
 
-  /*def kthMin(l: $[LList], k: BigInt): BigInt = {
+  /* Orb can prove this
+   * def kthMin(l: $[LList], k: BigInt): BigInt = {
     require(k >= 1)
     l.value match {
       case SCons(x, xs) =>

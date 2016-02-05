@@ -83,29 +83,29 @@ class CodeGenEvaluator(ctx: LeonContext, val unit : CompilationUnit) extends Eva
 
   override def compile(expression: Expr, args: Seq[Identifier]) : Option[solvers.Model=>EvaluationResult] = {
     compileExpr(expression, args).map(ce => (model: solvers.Model) => {
-      if (args.exists(arg => !model.isDefinedAt(arg))) {
-        EvaluationResults.EvaluatorError("Model undefined for free arguments")
-      } else try {
-        EvaluationResults.Successful(ce.eval(model))
-      } catch {
-        case e : ArithmeticException =>
-          EvaluationResults.RuntimeError(e.getMessage)
+        if (args.exists(arg => !model.isDefinedAt(arg))) {
+          EvaluationResults.EvaluatorError("Model undefined for free arguments")
+        } else try {
+          EvaluationResults.Successful(ce.eval(model))
+        } catch {
+          case e : ArithmeticException =>
+            EvaluationResults.RuntimeError(e.getMessage)
 
-        case e : ArrayIndexOutOfBoundsException =>
-          EvaluationResults.RuntimeError(e.getMessage)
+          case e : ArrayIndexOutOfBoundsException =>
+            EvaluationResults.RuntimeError(e.getMessage)
 
-        case e : LeonCodeGenRuntimeException =>
-          EvaluationResults.RuntimeError(e.getMessage)
+          case e : LeonCodeGenRuntimeException =>
+            EvaluationResults.RuntimeError(e.getMessage)
 
-        case e : LeonCodeGenEvaluationException =>
-          EvaluationResults.EvaluatorError(e.getMessage)
+          case e : LeonCodeGenEvaluationException =>
+            EvaluationResults.EvaluatorError(e.getMessage)
 
-        case e : java.lang.ExceptionInInitializerError =>
-          EvaluationResults.RuntimeError(e.getException.getMessage) 
+          case e : java.lang.ExceptionInInitializerError =>
+            EvaluationResults.RuntimeError(e.getException.getMessage)
 
-        case so : java.lang.StackOverflowError =>
-          EvaluationResults.RuntimeError("Stack overflow")
-      }
-    })
+          case so : java.lang.StackOverflowError =>
+            EvaluationResults.RuntimeError("Stack overflow")
+        }
+      })
+    }
   }
-}

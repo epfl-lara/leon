@@ -24,7 +24,7 @@ case object EquivalentInputs extends NormalizingRule("EquivalentInputs") {
 
       val ccSubsts = for (IsInstanceOf(s, cct: CaseClassType) <- instanceOfs) yield {
 
-        val fieldsVals = (for (f <- cct.fields) yield {
+        val fieldsVals = (for (f <- cct.classDef.fields) yield {
           val id = f.id
 
           clauses.find {

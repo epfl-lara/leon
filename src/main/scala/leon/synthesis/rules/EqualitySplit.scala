@@ -13,6 +13,8 @@ import solvers._
 
 import scala.concurrent.duration._
 
+/** For every pair of input variables of the same type,
+  * checks equality and output an If-Then-Else statement with the two new branches. */
 case object EqualitySplit extends Rule("Eq. Split") {
   def instantiateOn(implicit hctx: SearchContext, p: Problem): Traversable[RuleInstantiation] = {
     // We approximate knowledge of equality based on facts found at the top-level

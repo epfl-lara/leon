@@ -14,7 +14,7 @@ import scala.collection.mutable.{ Set => MutableSet, Map => MutableMap }
  * by ignoring the variable names.
  * Useful for factoring common parts of two expressions into functions.
  */
-class ExprStructure(val e: Expr) {
+class ExprStructure(val e: Expr) {  
   def structurallyEqual(e1: Expr, e2: Expr): Boolean = {
     (e1, e2) match {
       case (t1: Terminal, t2: Terminal) =>
@@ -31,12 +31,29 @@ class ExprStructure(val e: Expr) {
               }
             } else false
           case (ty1, ty2) => ty1 == ty2
-        }
-      case (Operator(args1, op1), Operator(args2, op2)) =>
-        (op1 == op2) && (args1.size == args2.size) && (args1 zip args2).forall {
+        }      
+      case (Operator(args1, _), Operator(args2, _)) =>        
+        opEquals(e1, e2) && (args1.size == args2.size) && (args1 zip args2).forall {
           case (a1, a2) => structurallyEqual(a1, a2)
         }
       case _ =>
+        false
+    }
+  }
+  
+  def opEquals(e1: Expr, e2: Expr): Boolean = {
+    (e1, e2) match {
+      case (FunctionInvocation(tfd1, _), FunctionInvocation(tfd2, _)) 
+        if tfd1.fd == tfd2.fd => true
+      case (CaseClass(cct1, _), CaseClass(cct2, _)) 
+        if cct1.classDef == cct2.classDef => true
+      case (CaseClassSelector(cct1, _, fld1), CaseClassSelector(cct2, _, fld2))
+        if cct1.classDef == cct2.classDef && fld1 == fld2 => true  
+      case _ if e1.getClass.equals(e2.getClass) => true  // check if e1 and e2 are same instances of the same class        
+      case _ if e1.isInstanceOf[MethodInvocation] || e2.isInstanceOf[MethodInvocation] =>
+        throw new IllegalArgumentException("MethodInvocations are not supported")
+      case _ =>
+        //println(s"Not op equal: ($e1,$e2) classes: (${e1.getClass}, ${e2.getClass})")
         false
     }
   }
@@ -50,13 +67,15 @@ class ExprStructure(val e: Expr) {
     }
   }
 
-  override def hashCode = {
+  val hashcode = {
     var opndcount = 0 // operand count
     var opcount = 0 // operator count
     postTraversal {
       case t: Terminal => opndcount += 1
-      case _ => opcount += 1
+      case _           => opcount += 1
     }(e)
     (opndcount << 16) ^ opcount
   }
+  
+  override def hashCode = hashcode
 }

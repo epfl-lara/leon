@@ -1,3 +1,5 @@
+import leon.annotation._
+
 object Prime {
   // an attempt at defining isPrime in PureScala...
 
@@ -36,6 +38,7 @@ object Prime {
   } ensuring(res => !res)
 
   // Just for testing.
+  @ignore
   def main(args : Array[String]) : Unit = {
     def test(n : BigInt) : Unit = {
       println("Is " + n + " prime ? -> " + isPrime(n))

@@ -8,6 +8,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 
 import leon._
 
+import edu.tum.cs.isabelle.setup._
+
 object Component extends LeonComponent {
 
   val name = "Isabelle"
@@ -16,13 +18,13 @@ object Component extends LeonComponent {
   val leonBase =
     Paths.get(Option(System.getProperty("leon.base")).getOrElse(".")).toAbsolutePath()
 
-  val isabelleBase =
-    leonBase.resolve("contrib").toAbsolutePath()
+  val platform =
+    Platform.guess.getOrElse(Platform.genericPlatform("generic", leonBase.resolve("contrib").toAbsolutePath()))
 
   val optBase = LeonStringOptionDef(
     name = "isabelle:base",
     description = "Base directory of the Isabelle installation",
-    default = isabelleBase.toString,
+    default = platform.setupStorage.toString,
     usageRhs = "path"
   )
 

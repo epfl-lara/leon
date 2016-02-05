@@ -151,7 +151,7 @@ object DefOps {
         if (useUniqueIds) {
           List(d.id.uniqueName)
         } else {
-          List(d.id.name)
+          List(d.id.toString)
         }
     }
   }

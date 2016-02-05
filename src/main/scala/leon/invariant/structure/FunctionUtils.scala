@@ -26,6 +26,8 @@ object FunctionUtils {
     lazy val isDistributive = fd.annotations.contains("distributive")
     lazy val compose = fd.annotations.contains("compose")
     lazy val isLibrary = fd.annotations.contains("library")
+    lazy val isExtern = fd.annotations.contains("extern")
+    lazy val isBodyVisible =  !fd.annotations.contains("invisibleBody")
     lazy val hasFieldFlag = fd.flags.contains(IsField(false))
     lazy val hasLazyFieldFlag = fd.flags.contains(IsField(true))
     lazy val isUserFunction = !hasFieldFlag && !hasLazyFieldFlag

@@ -77,11 +77,11 @@ object ProgramUtil {
     }
     res
   }
-
+  
   def createTemplateFun(plainTemp: Expr): FunctionInvocation = {
     val tmpl = Lambda(getTemplateIds(plainTemp).toSeq.map(id => ValDef(id)), plainTemp)
-    val tmplFd = new FunDef(FreshIdentifier("tmpl", FunctionType(Seq(tmpl.getType), BooleanType), false), Seq(), Seq(ValDef(FreshIdentifier("arg", tmpl.getType),
-      Some(tmpl.getType))), BooleanType)
+    val tmplFd = new FunDef(FreshIdentifier("tmpl", FunctionType(Seq(tmpl.getType), BooleanType), false), Seq(),
+      Seq(ValDef(FreshIdentifier("arg", tmpl.getType))), BooleanType)
     tmplFd.body = Some(BooleanLiteral(true))
     FunctionInvocation(TypedFunDef(tmplFd, Seq()), Seq(tmpl))
   }
@@ -120,7 +120,7 @@ object ProgramUtil {
    * will be removed
    */
   def assignTemplateAndCojoinPost(funToTmpl: Map[FunDef, Expr], prog: Program,
-                                  funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay: Boolean = true): Program = {
+      funToPost: Map[FunDef, Expr] = Map(), uniqueIdDisplay : Boolean = true): Program = {
 
     val funMap = functionsWOFields(prog.definedFunctions).foldLeft(Map[FunDef, FunDef]()) {
       case (accMap, fd) if fd.isTheoryOperation =>
@@ -132,7 +132,6 @@ object ProgramUtil {
       }
     }
 
-    // FIXME: This with createAnd (which performs simplifications) gives an error during composition.
     val mapExpr = mapFunctionsInExpr(funMap) _
     for ((from, to) <- funMap) {
       to.fullBody = if (!funToTmpl.contains(from)) {
@@ -257,7 +256,7 @@ object ProgramUtil {
     funDef.fullBody match {
       case Ensuring(_, post) => {
         post match {
-          case Lambda(Seq(ValDef(fromRes, _)), _) => Some(fromRes)
+          case Lambda(Seq(ValDef(fromRes)), _) => Some(fromRes)
         }
       }
       case _ => None
@@ -274,6 +273,17 @@ object ProgramUtil {
 }
 
 object PredicateUtil {
+  /**
+   * Returns a constructor for the let* and also the current
+   * body of let*
+   */
+  def letStarUnapply(e: Expr): (Expr => Expr, Expr) = e match {
+    case Let(binder, letv, letb) =>
+      val (cons, body) = letStarUnapply(letb)
+      (e => Let(binder, letv, cons(e)), body)
+    case base =>
+      (e => e, base)
+  }
 
   /**
    * Checks if the input expression has only template variables as free variables
@@ -391,8 +401,8 @@ object PredicateUtil {
 
   def isADTConstructor(e: Expr): Boolean = e match {
     case Equals(Variable(_), CaseClass(_, _)) => true
-    case Equals(Variable(_), Tuple(_))        => true
-    case _                                    => false
+    case Equals(Variable(_), Tuple(_)) => true
+    case _ => false
   }
 
   def isMultFunctions(fd: FunDef) = {
@@ -413,24 +423,24 @@ object PredicateUtil {
   def createAnd(exprs: Seq[Expr]): Expr = {
     val newExprs = exprs.filterNot(conj => conj == tru)
     newExprs match {
-      case Seq()  => tru
+      case Seq() => tru
       case Seq(e) => e
-      case _      => And(newExprs)
+      case _ => And(newExprs)
     }
   }
 
   def createOr(exprs: Seq[Expr]): Expr = {
     val newExprs = exprs.filterNot(disj => disj == fls)
     newExprs match {
-      case Seq()  => fls
+      case Seq() => fls
       case Seq(e) => e
-      case _      => Or(newExprs)
+      case _ => Or(newExprs)
     }
   }
 
   def isNumericType(t: TypeTree) = t match {
     case IntegerType | RealType => true
-    case _                      => false
+    case _ => false
   }
 
   def precOrTrue(fd: FunDef): Expr = fd.precondition match {
